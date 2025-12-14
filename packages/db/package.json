@@ -1,0 +1,30 @@
+{
+  "name": "@nixmac/db",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {
+    "db:push": "drizzle-kit push",
+    "db:generate": "drizzle-kit generate",
+    "db:studio": "drizzle-kit studio",
+    "db:migrate": "drizzle-kit migrate"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.8",
+    "@types/pg": "catalog:",
+    "typescript": "^5",
+    "@nixmac/config": "workspace:*"
+  },
+  "dependencies": {
+    "drizzle-orm": "catalog:",
+    "pg": "^8.16.3",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  }
+}

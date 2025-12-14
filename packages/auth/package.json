@@ -1,0 +1,25 @@
+{
+  "name": "@nixmac/auth",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "type": "module",
+  "scripts": {},
+  "devDependencies": {
+    "typescript": "^5",
+    "@nixmac/config": "workspace:*"
+  },
+  "dependencies": {
+    "better-auth": "catalog:",
+    "@polar-sh/better-auth": "catalog:",
+    "@polar-sh/sdk": "^0.34.16",
+    "dotenv": "catalog:",
+    "zod": "catalog:",
+    "@nixmac/db": "workspace:*"
+  }
+}

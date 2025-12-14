@@ -1,0 +1,28 @@
+{
+  "name": "@nixmac/api",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "type": "module",
+  "scripts": {},
+  "devDependencies": {
+    "typescript": "^5",
+    "@nixmac/config": "workspace:*"
+  },
+  "dependencies": {
+    "@trpc/server": "catalog:",
+    "@trpc/client": "catalog:",
+    "hono": "catalog:",
+    "drizzle-orm": "catalog:",
+    "@types/pg": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:",
+    "@nixmac/auth": "workspace:*",
+    "@nixmac/db": "workspace:*"
+  }
+}
