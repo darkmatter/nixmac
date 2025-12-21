@@ -4,9 +4,7 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": [
-      "ESNext"
-    ],
+    "lib": ["ESNext"],
     "verbatimModuleSyntax": true,
     "strict": true,
     "skipLibCheck": true,
@@ -19,10 +17,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "types": [
-      "bun",
-      "@cloudflare/workers-types"
-    ],
+    "types": ["bun", "@cloudflare/workers-types"],
     "strictNullChecks": true
   }
 }

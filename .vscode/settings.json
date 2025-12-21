@@ -1,5 +1,5 @@
 {
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.defaultFormatter": "biomejs.biome",
   "[javascript]": {
     "editor.defaultFormatter": "biomejs.biome"
   },
@@ -31,5 +31,32 @@
   "editor.codeActionsOnSave": {
     "source.fixAll.biome": "explicit",
     "source.organizeImports.biome": "explicit"
-  }
+  },
+  // "terminal.integrated.env.osx": {
+  //   "PATH": "${workspaceFolder}/.devenv/profile/bin:${env:PATH}"
+  // },
+  "biome.lsp.bin": "node_modules/.bin/biome",
+  "explorer.excludeGitIgnore": true,
+  "terminal.integrated.defaultProfile.osx": "devenv",
+  "terminal.integrated.profiles.osx": {
+    "devenv": {
+      "path": "${workspaceFolder}/.vscode/devshell"
+    }
+  },
+  "terminal.integrated.shellIntegration.enabled": true,
+  "terminal.integrated.shellIntegration.environmentReporting": true,
+  "files.exclude": {
+    "**/.claude": true,
+    "**/.codex": true,
+    "**/.cursor": true,
+    "**/.zed": true,
+    "**/.git": true,
+    "**/gen": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/.goosehints": true,
+    "**/bts.jsonc": true
+  },
 }

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSDesktopFolderUsageDescription</key>
+    <string>nixmac needs access to your Desktop folder to manage configuration files.</string>
+    <key>NSDocumentsFolderUsageDescription</key>
+    <string>nixmac needs access to your Documents folder to manage configuration files.</string>
+    <key>NSDownloadsFolderUsageDescription</key>
+    <string>nixmac needs access to your Downloads folder.</string>
+    <key>NSSystemAdministrationUsageDescription</key>
+    <string>nixmac needs administrator privileges to run darwin-rebuild.</string>
+</dict>
+</plist>

@@ -1,0 +1,1709 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`WidgetUI Snapshots > evolving step matches snapshot 1`] = `
+<div>
+  <div
+    class="fixed inset-0 z-50 m-auto h-full max-h-[1200px] min-h-[400px] max-w-[800px]"
+  >
+    <div
+      class="flex h-full h-full min-h-0 w-full flex-col"
+    >
+      <div
+        class="relative min-h-0 flex-1"
+      >
+        <div
+          class="absolute inset-0"
+        >
+          <div
+            class="slide-in-from-bottom-4 z-10 flex h-full min-h-0 w-full animate-in flex-col overflow-hidden rounded-xl border border-border bg-card/90 shadow-2xl backdrop-blur-xl duration-300"
+          >
+            <div
+              class="flex flex-shrink-0 cursor-move select-none items-center justify-between border-border border-b bg-card/50 p-4"
+              data-tauri-drag-region="true"
+            >
+              <div
+                class="flex items-center gap-2"
+                data-tauri-drag-region="true"
+              >
+                <div
+                  class="flex h-8 w-8 items-center justify-center rounded-lg bg-transparent"
+                >
+                  <img
+                    alt="Logo"
+                    class="pointer-events-none w-full object-cover"
+                    src="/icon-dark.svg"
+                  />
+                </div>
+                <div
+                  data-tauri-drag-region="true"
+                >
+                  <h3
+                    class="font-semibold text-foreground text-sm"
+                  >
+                    nixmac
+                  </h3>
+                  <p
+                    class="text-muted-foreground text-xs"
+                  >
+                    System Manager
+                  </p>
+                </div>
+              </div>
+              <div
+                class="flex items-center gap-1"
+              >
+                <button
+                  class="inline-flex shrink-0 items-center justify-center whitespace-nowrap font-medium text-sm outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 gap-1.5 rounded-md has-[>svg]:px-2.5 h-8 w-8 p-0"
+                  data-slot="button"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-settings h-4 w-4"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"
+                    />
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="3"
+                    />
+                  </svg>
+                </button>
+                <button
+                  class="inline-flex shrink-0 items-center justify-center whitespace-nowrap font-medium text-sm outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 gap-1.5 rounded-md has-[>svg]:px-2.5 h-8 w-8 p-0"
+                  data-slot="button"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-x h-4 w-4"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M18 6 6 18"
+                    />
+                    <path
+                      d="m6 6 12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div
+              class="border-border border-b bg-muted/30 px-5 py-4"
+            >
+              <div
+                class="flex items-center justify-between"
+              >
+                <div
+                  class="flex items-center"
+                >
+                  <div
+                    class="flex items-center gap-3"
+                  >
+                    <div
+                      class="flex h-8 w-8 items-center justify-center rounded-full font-medium text-sm transition-colors bg-teal-500 text-white"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-check h-4 w-4"
+                        fill="none"
+                        height="24"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M20 6 9 17l-5-5"
+                        />
+                      </svg>
+                    </div>
+                    <div
+                      class="hidden sm:block"
+                    >
+                      <p
+                        class="font-medium text-sm text-foreground"
+                      >
+                        Evolve
+                      </p>
+                      <p
+                        class="text-muted-foreground text-xs"
+                      >
+                        Make changes
+                      </p>
+                    </div>
+                  </div>
+                  <div
+                    class="relative left-4 mx-4 h-0.5 w-12 bg-teal-500"
+                  />
+                </div>
+                <div
+                  class="flex items-center"
+                >
+                  <div
+                    class="flex items-center gap-3"
+                  >
+                    <div
+                      class="flex h-8 w-8 items-center justify-center rounded-full font-medium text-sm transition-colors bg-primary text-primary-foreground"
+                    >
+                      2
+                    </div>
+                    <div
+                      class="hidden sm:block"
+                    >
+                      <p
+                        class="font-medium text-sm text-foreground"
+                      >
+                        Preview
+                      </p>
+                      <p
+                        class="text-muted-foreground text-xs"
+                      >
+                        Review effects
+                      </p>
+                    </div>
+                  </div>
+                  <div
+                    class="relative left-4 mx-4 h-0.5 w-12 bg-border"
+                  />
+                </div>
+                <div
+                  class="flex items-center"
+                >
+                  <div
+                    class="flex items-center gap-3"
+                  >
+                    <div
+                      class="flex h-8 w-8 items-center justify-center rounded-full font-medium text-sm transition-colors bg-muted text-muted-foreground"
+                    >
+                      3
+                    </div>
+                    <div
+                      class="hidden sm:block"
+                    >
+                      <p
+                        class="font-medium text-sm text-muted-foreground"
+                      >
+                        Commit
+                      </p>
+                      <p
+                        class="text-muted-foreground text-xs"
+                      >
+                        Save to git
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div
+              class="flex min-h-0 flex-1 flex-col overflow-auto"
+            >
+              <div
+                class="flex-1 p-5"
+              >
+                <div
+                  class="space-y-4"
+                >
+                  <div
+                    class="flex flex-col items-center justify-center"
+                  >
+                    <h3
+                      class="mb-2 font-semibold text-lg"
+                    >
+                      Ready to Apply?
+                    </h3>
+                    <p
+                      class="mb-6 text-center text-muted-foreground"
+                    >
+                      Test your changes safely - you can roll back if needed.
+                    </p>
+                  </div>
+                  <div
+                    class="max-h-[800px] min-h-[100px] shrink-0 overflow-y-auto rounded-lg border border-border"
+                  >
+                    <div
+                      class="flex items-center gap-2 border-border/50 border-b px-3 py-2"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-sparkles h-4 w-4 text-primary"
+                        fill="none"
+                        height="24"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"
+                        />
+                        <path
+                          d="M20 2v4"
+                        />
+                        <path
+                          d="M22 4h-4"
+                        />
+                        <circle
+                          cx="4"
+                          cy="20"
+                          r="2"
+                        />
+                      </svg>
+                      <span
+                        class="font-medium text-sm"
+                      >
+                        What's Changed
+                      </span>
+                    </div>
+                    <div
+                      class="flex items-center gap-3 border-border/50 border-b p-3 last:border-b-0"
+                    >
+                      <div
+                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-400"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          class="lucide lucide-pencil h-4 w-4"
+                          fill="none"
+                          height="24"
+                          stroke="currentColor"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          viewBox="0 0 24 24"
+                          width="24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"
+                          />
+                          <path
+                            d="m15 5 4 4"
+                          />
+                        </svg>
+                      </div>
+                      <div
+                        class="min-w-0 flex-1"
+                      >
+                        <p
+                          class="truncate font-medium text-sm"
+                        >
+                          Vim Installed
+                        </p>
+                        <p
+                          class="truncate text-muted-foreground text-xs"
+                        >
+                          Added vim to system packages
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    class="rounded-lg border border-primary/30 bg-primary/5 p-3"
+                  >
+                    <div
+                      class="flex items-start gap-2"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-sparkles mt-0.5 h-4 w-4 flex-shrink-0 text-primary"
+                        fill="none"
+                        height="24"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"
+                        />
+                        <path
+                          d="M20 2v4"
+                        />
+                        <path
+                          d="M22 4h-4"
+                        />
+                        <circle
+                          cx="4"
+                          cy="20"
+                          r="2"
+                        />
+                      </svg>
+                      <div
+                        class="space-y-1"
+                      >
+                        <p
+                          class="font-medium text-foreground text-sm"
+                        >
+                          Try it out
+                        </p>
+                        <p
+                          class="text-muted-foreground text-xs"
+                        >
+                          Run vim in terminal
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    class="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3"
+                  >
+                    <div
+                      class="flex items-start gap-2"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-shield mt-0.5 h-4 w-4 flex-shrink-0 text-blue-400"
+                        fill="none"
+                        height="24"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"
+                        />
+                      </svg>
+                      <div
+                        class="space-y-1"
+                      >
+                        <p
+                          class="font-medium text-blue-200 text-sm"
+                        >
+                          Preview applies changes safely
+                        </p>
+                        <p
+                          class="text-blue-200/70 text-xs"
+                        >
+                          You'll be asked for your password. Changes can be rolled back if needed.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    class="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap font-medium text-sm outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-10 rounded-md px-6 has-[>svg]:px-4 w-full"
+                    data-slot="button"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      class="lucide lucide-eye mr-2 h-4 w-4"
+                      fill="none"
+                      height="24"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"
+                      />
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="3"
+                      />
+                    </svg>
+                    Preview Changes
+                  </button>
+                </div>
+              </div>
+              <div
+                class="flex flex-col border-border border-t"
+              >
+                <button
+                  class="flex items-center justify-between px-4 py-2 text-muted-foreground text-xs transition-colors hover:bg-muted/50 hover:text-foreground"
+                  type="button"
+                >
+                  <span
+                    class="font-medium"
+                  >
+                    Console
+                  </span>
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-chevron-up h-4 w-4"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="m18 15-6-6-6 6"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div
+              class="border-border border-t px-5 py-4"
+            >
+              <div
+                class="flex items-center justify-between"
+              >
+                <button
+                  class="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 h-9 px-4 py-2 has-[>svg]:px-3 invisible"
+                  data-slot="button"
+                  disabled=""
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-arrow-left mr-2 h-4 w-4"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="m12 19-7-7 7-7"
+                    />
+                    <path
+                      d="M19 12H5"
+                    />
+                  </svg>
+                  Back
+                </button>
+                <button
+                  class="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 text-primary-foreground h-9 px-4 py-2 has-[>svg]:px-3 bg-slate-300 hover:bg-slate-400"
+                  data-slot="button"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-eye mr-2 h-4 w-4"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"
+                    />
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="3"
+                    />
+                  </svg>
+                  Preview
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`WidgetUI Snapshots > generating state matches snapshot 1`] = `
+<div>
+  <div
+    class="fixed inset-0 z-50 m-auto h-full max-h-[1200px] min-h-[400px] max-w-[800px]"
+  >
+    <div
+      class="flex h-full h-full min-h-0 w-full flex-col"
+    >
+      <div
+        class="relative min-h-0 flex-1"
+      >
+        <div
+          class="absolute inset-0"
+        >
+          <div
+            class="slide-in-from-bottom-4 z-10 flex h-full min-h-0 w-full animate-in flex-col overflow-hidden rounded-xl border border-border bg-card/90 shadow-2xl backdrop-blur-xl duration-300"
+          >
+            <div
+              class="flex flex-shrink-0 cursor-move select-none items-center justify-between border-border border-b bg-card/50 p-4"
+              data-tauri-drag-region="true"
+            >
+              <div
+                class="flex items-center gap-2"
+                data-tauri-drag-region="true"
+              >
+                <div
+                  class="flex h-8 w-8 items-center justify-center rounded-lg bg-transparent"
+                >
+                  <img
+                    alt="Logo"
+                    class="pointer-events-none w-full object-cover"
+                    src="/icon-dark.svg"
+                  />
+                </div>
+                <div
+                  data-tauri-drag-region="true"
+                >
+                  <h3
+                    class="font-semibold text-foreground text-sm"
+                  >
+                    nixmac
+                  </h3>
+                  <p
+                    class="text-muted-foreground text-xs"
+                  >
+                    System Manager
+                  </p>
+                </div>
+              </div>
+              <div
+                class="flex items-center gap-1"
+              >
+                <button
+                  class="inline-flex shrink-0 items-center justify-center whitespace-nowrap font-medium text-sm outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 gap-1.5 rounded-md has-[>svg]:px-2.5 h-8 w-8 p-0"
+                  data-slot="button"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-settings h-4 w-4"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"
+                    />
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="3"
+                    />
+                  </svg>
+                </button>
+                <button
+                  class="inline-flex shrink-0 items-center justify-center whitespace-nowrap font-medium text-sm outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 gap-1.5 rounded-md has-[>svg]:px-2.5 h-8 w-8 p-0"
+                  data-slot="button"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-x h-4 w-4"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M18 6 6 18"
+                    />
+                    <path
+                      d="m6 6 12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div
+              class="border-border border-b bg-muted/30 px-5 py-4"
+            >
+              <div
+                class="flex items-center justify-between"
+              >
+                <div
+                  class="flex items-center"
+                >
+                  <div
+                    class="flex items-center gap-3"
+                  >
+                    <div
+                      class="flex h-8 w-8 items-center justify-center rounded-full font-medium text-sm transition-colors bg-teal-500 text-white"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-check h-4 w-4"
+                        fill="none"
+                        height="24"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M20 6 9 17l-5-5"
+                        />
+                      </svg>
+                    </div>
+                    <div
+                      class="hidden sm:block"
+                    >
+                      <p
+                        class="font-medium text-sm text-foreground"
+                      >
+                        Evolve
+                      </p>
+                      <p
+                        class="text-muted-foreground text-xs"
+                      >
+                        Make changes
+                      </p>
+                    </div>
+                  </div>
+                  <div
+                    class="relative left-4 mx-4 h-0.5 w-12 bg-teal-500"
+                  />
+                </div>
+                <div
+                  class="flex items-center"
+                >
+                  <div
+                    class="flex items-center gap-3"
+                  >
+                    <div
+                      class="flex h-8 w-8 items-center justify-center rounded-full font-medium text-sm transition-colors bg-primary text-primary-foreground"
+                    >
+                      2
+                    </div>
+                    <div
+                      class="hidden sm:block"
+                    >
+                      <p
+                        class="font-medium text-sm text-foreground"
+                      >
+                        Preview
+                      </p>
+                      <p
+                        class="text-muted-foreground text-xs"
+                      >
+                        Review effects
+                      </p>
+                    </div>
+                  </div>
+                  <div
+                    class="relative left-4 mx-4 h-0.5 w-12 bg-border"
+                  />
+                </div>
+                <div
+                  class="flex items-center"
+                >
+                  <div
+                    class="flex items-center gap-3"
+                  >
+                    <div
+                      class="flex h-8 w-8 items-center justify-center rounded-full font-medium text-sm transition-colors bg-muted text-muted-foreground"
+                    >
+                      3
+                    </div>
+                    <div
+                      class="hidden sm:block"
+                    >
+                      <p
+                        class="font-medium text-sm text-muted-foreground"
+                      >
+                        Commit
+                      </p>
+                      <p
+                        class="text-muted-foreground text-xs"
+                      >
+                        Save to git
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div
+              class="flex min-h-0 flex-1 flex-col overflow-auto"
+            >
+              <div
+                class="flex-1 p-5"
+              >
+                <div
+                  class="space-y-4"
+                >
+                  <div
+                    class="text-center"
+                  >
+                    <h2
+                      class="font-semibold text-foreground text-lg"
+                    >
+                      Evolving your configuration...
+                    </h2>
+                    <p
+                      class="mt-1 text-muted-foreground text-sm"
+                    >
+                      AI is making changes based on your request
+                    </p>
+                  </div>
+                  <div
+                    class="flex flex-col rounded-lg border border-border bg-muted/20"
+                  >
+                    <div
+                      class="flex items-center justify-between border-border/50 border-b px-3 py-2"
+                    >
+                      <div
+                        class="flex items-center gap-2"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          class="lucide lucide-loader-circle h-4 w-4 animate-spin text-primary"
+                          fill="none"
+                          height="24"
+                          stroke="currentColor"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          viewBox="0 0 24 24"
+                          width="24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M21 12a9 9 0 1 1-6.219-8.56"
+                          />
+                        </svg>
+                        <span
+                          class="font-medium text-foreground text-sm"
+                        >
+                          Evolving...
+                        </span>
+                      </div>
+                      <span
+                        class="text-muted-foreground text-xs"
+                      >
+                        1
+                         event
+                      </span>
+                    </div>
+                    <div
+                      class="max-h-80 min-h-[120px] flex-1 overflow-y-auto p-2"
+                    >
+                      <div
+                        class="space-y-1"
+                      >
+                        <div
+                          class="group rounded-md border px-2 py-1.5 transition-all border-primary/30 bg-primary/5"
+                        >
+                          <div
+                            class="flex items-start gap-2"
+                          >
+                            <div
+                              class="mt-0.5 text-blue-400"
+                            >
+                              <svg
+                                aria-hidden="true"
+                                class="lucide lucide-loader-circle h-4 w-4 animate-spin"
+                                fill="none"
+                                height="24"
+                                stroke="currentColor"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                viewBox="0 0 24 24"
+                                width="24"
+                                xmlns="http://www.w3.org/2000/svg"
+                              >
+                                <path
+                                  d="M21 12a9 9 0 1 1-6.219-8.56"
+                                />
+                              </svg>
+                            </div>
+                            <div
+                              class="min-w-0 flex-1"
+                            >
+                              <div
+                                class="flex items-center justify-between gap-2"
+                              >
+                                <span
+                                  class="truncate text-sm font-medium text-foreground"
+                                >
+                                  Starting...
+                                </span>
+                                <div
+                                  class="flex items-center gap-1"
+                                >
+                                  <span
+                                    class="whitespace-nowrap font-mono text-muted-foreground/60 text-xs"
+                                  >
+                                    0s
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div
+                          class="flex items-center gap-2 px-2 py-1.5 text-muted-foreground/60"
+                        >
+                          <svg
+                            aria-hidden="true"
+                            class="lucide lucide-loader-circle h-3 w-3 animate-spin"
+                            fill="none"
+                            height="24"
+                            stroke="currentColor"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            viewBox="0 0 24 24"
+                            width="24"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M21 12a9 9 0 1 1-6.219-8.56"
+                            />
+                          </svg>
+                          <span
+                            class="text-xs"
+                          >
+                            Waiting for next event...
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div
+                class="flex flex-col border-border border-t"
+              >
+                <button
+                  class="flex items-center justify-between px-4 py-2 text-muted-foreground text-xs transition-colors hover:bg-muted/50 hover:text-foreground"
+                  type="button"
+                >
+                  <span
+                    class="font-medium"
+                  >
+                    Console
+                  </span>
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-chevron-up h-4 w-4"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="m18 15-6-6-6 6"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div
+              class="border-border border-t px-5 py-4"
+            >
+              <div
+                class="flex items-center justify-between"
+              >
+                <button
+                  class="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 h-9 px-4 py-2 has-[>svg]:px-3 invisible"
+                  data-slot="button"
+                  disabled=""
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-arrow-left mr-2 h-4 w-4"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="m12 19-7-7 7-7"
+                    />
+                    <path
+                      d="M19 12H5"
+                    />
+                  </svg>
+                  Back
+                </button>
+                <button
+                  class="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 text-primary-foreground h-9 px-4 py-2 has-[>svg]:px-3 bg-slate-300 hover:bg-slate-400"
+                  data-slot="button"
+                  disabled=""
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-eye mr-2 h-4 w-4"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"
+                    />
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="3"
+                    />
+                  </svg>
+                  Preview
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`WidgetUI Snapshots > overview step matches snapshot 1`] = `
+<div>
+  <div
+    class="fixed inset-0 z-50 m-auto h-full max-h-[1200px] min-h-[400px] max-w-[800px]"
+  >
+    <div
+      class="flex h-full h-full min-h-0 w-full flex-col"
+    >
+      <div
+        class="relative min-h-0 flex-1"
+      >
+        <div
+          class="absolute inset-0"
+        >
+          <div
+            class="slide-in-from-bottom-4 z-10 flex h-full min-h-0 w-full animate-in flex-col overflow-hidden rounded-xl border border-border bg-card/90 shadow-2xl backdrop-blur-xl duration-300"
+          >
+            <div
+              class="flex flex-shrink-0 cursor-move select-none items-center justify-between border-border border-b bg-card/50 p-4"
+              data-tauri-drag-region="true"
+            >
+              <div
+                class="flex items-center gap-2"
+                data-tauri-drag-region="true"
+              >
+                <div
+                  class="flex h-8 w-8 items-center justify-center rounded-lg bg-transparent"
+                >
+                  <img
+                    alt="Logo"
+                    class="pointer-events-none w-full object-cover"
+                    src="/icon-dark.svg"
+                  />
+                </div>
+                <div
+                  data-tauri-drag-region="true"
+                >
+                  <h3
+                    class="font-semibold text-foreground text-sm"
+                  >
+                    nixmac
+                  </h3>
+                  <p
+                    class="text-muted-foreground text-xs"
+                  >
+                    System Manager
+                  </p>
+                </div>
+              </div>
+              <div
+                class="flex items-center gap-1"
+              >
+                <button
+                  class="inline-flex shrink-0 items-center justify-center whitespace-nowrap font-medium text-sm outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 gap-1.5 rounded-md has-[>svg]:px-2.5 h-8 w-8 p-0"
+                  data-slot="button"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-settings h-4 w-4"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"
+                    />
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="3"
+                    />
+                  </svg>
+                </button>
+                <button
+                  class="inline-flex shrink-0 items-center justify-center whitespace-nowrap font-medium text-sm outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 gap-1.5 rounded-md has-[>svg]:px-2.5 h-8 w-8 p-0"
+                  data-slot="button"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-x h-4 w-4"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M18 6 6 18"
+                    />
+                    <path
+                      d="m6 6 12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div
+              class="border-border border-b bg-muted/30 px-5 py-4"
+            >
+              <div
+                class="flex items-center justify-between"
+              >
+                <div
+                  class="flex items-center"
+                >
+                  <div
+                    class="flex items-center gap-3"
+                  >
+                    <div
+                      class="flex h-8 w-8 items-center justify-center rounded-full font-medium text-sm transition-colors bg-primary text-primary-foreground"
+                    >
+                      1
+                    </div>
+                    <div
+                      class="hidden sm:block"
+                    >
+                      <p
+                        class="font-medium text-sm text-foreground"
+                      >
+                        Evolve
+                      </p>
+                      <p
+                        class="text-muted-foreground text-xs"
+                      >
+                        Make changes
+                      </p>
+                    </div>
+                  </div>
+                  <div
+                    class="relative left-4 mx-4 h-0.5 w-12 bg-border"
+                  />
+                </div>
+                <div
+                  class="flex items-center"
+                >
+                  <div
+                    class="flex items-center gap-3"
+                  >
+                    <div
+                      class="flex h-8 w-8 items-center justify-center rounded-full font-medium text-sm transition-colors bg-muted text-muted-foreground"
+                    >
+                      2
+                    </div>
+                    <div
+                      class="hidden sm:block"
+                    >
+                      <p
+                        class="font-medium text-sm text-muted-foreground"
+                      >
+                        Preview
+                      </p>
+                      <p
+                        class="text-muted-foreground text-xs"
+                      >
+                        Review effects
+                      </p>
+                    </div>
+                  </div>
+                  <div
+                    class="relative left-4 mx-4 h-0.5 w-12 bg-border"
+                  />
+                </div>
+                <div
+                  class="flex items-center"
+                >
+                  <div
+                    class="flex items-center gap-3"
+                  >
+                    <div
+                      class="flex h-8 w-8 items-center justify-center rounded-full font-medium text-sm transition-colors bg-muted text-muted-foreground"
+                    >
+                      3
+                    </div>
+                    <div
+                      class="hidden sm:block"
+                    >
+                      <p
+                        class="font-medium text-sm text-muted-foreground"
+                      >
+                        Commit
+                      </p>
+                      <p
+                        class="text-muted-foreground text-xs"
+                      >
+                        Save to git
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div
+              class="flex min-h-0 flex-1 flex-col overflow-auto"
+            >
+              <div
+                class="flex-1 p-5 overflow-auto"
+              >
+                <div
+                  class="space-y-4"
+                >
+                  <div
+                    class="text-center"
+                  >
+                    <h2
+                      class="font-semibold text-foreground text-lg"
+                    >
+                      What would you like to change?
+                    </h2>
+                    <p
+                      class="mt-1 text-muted-foreground text-sm"
+                    >
+                      Describe your desired configuration changes
+                    </p>
+                  </div>
+                  <div
+                    class="space-y-3"
+                  >
+                    <input
+                      class="h-9 w-full min-w-0 rounded-md border px-3 py-1 text-base shadow-xs outline-none transition-[color,box-shadow] selection:bg-primary selection:text-primary-foreground file:inline-flex file:h-7 file:border-0 file:bg-transparent file:font-medium file:text-foreground file:text-sm placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 border-border bg-background"
+                      data-slot="input"
+                      placeholder="e.g., install vim, add homebrew packages, configure git..."
+                      value=""
+                    />
+                    <div
+                      class="flex flex-wrap gap-2"
+                    >
+                      <button
+                        class="rounded-full border border-border bg-muted/50 px-3 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground"
+                        type="button"
+                      >
+                        Install vim
+                      </button>
+                      <button
+                        class="rounded-full border border-border bg-muted/50 px-3 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground"
+                        type="button"
+                      >
+                        Add Rectangle app
+                      </button>
+                      <button
+                        class="rounded-full border border-border bg-muted/50 px-3 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground"
+                        type="button"
+                      >
+                        Configure git
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div
+                class="flex flex-col border-border border-t"
+              >
+                <button
+                  class="flex items-center justify-between px-4 py-2 text-muted-foreground text-xs transition-colors hover:bg-muted/50 hover:text-foreground"
+                  type="button"
+                >
+                  <span
+                    class="font-medium"
+                  >
+                    Console
+                  </span>
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-chevron-up h-4 w-4"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="m18 15-6-6-6 6"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div
+              class="border-border border-t px-5 py-4"
+            >
+              <div
+                class="flex items-center justify-between"
+              >
+                <button
+                  class="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 h-9 px-4 py-2 has-[>svg]:px-3 invisible"
+                  data-slot="button"
+                  disabled=""
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-arrow-left mr-2 h-4 w-4"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="m12 19-7-7 7-7"
+                    />
+                    <path
+                      d="M19 12H5"
+                    />
+                  </svg>
+                  Back
+                </button>
+                <button
+                  class="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 text-primary-foreground h-9 px-4 py-2 has-[>svg]:px-3 bg-slate-300 hover:bg-slate-400"
+                  data-slot="button"
+                  disabled=""
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-sparkles mr-2 h-4 w-4"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"
+                    />
+                    <path
+                      d="M20 2v4"
+                    />
+                    <path
+                      d="M22 4h-4"
+                    />
+                    <circle
+                      cx="4"
+                      cy="20"
+                      r="2"
+                    />
+                  </svg>
+                  Evolve
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`WidgetUI Snapshots > setup step matches snapshot 1`] = `
+<div>
+  <div
+    class="fixed inset-0 z-50 m-auto h-full max-h-[1200px] min-h-[400px] max-w-[800px]"
+  >
+    <div
+      class="flex h-full h-full min-h-0 w-full flex-col"
+    >
+      <div
+        class="relative min-h-0 flex-1"
+      >
+        <div
+          class="absolute inset-0"
+        >
+          <div
+            class="slide-in-from-bottom-4 z-10 flex h-full min-h-0 w-full animate-in flex-col overflow-hidden rounded-xl border border-border bg-card/90 shadow-2xl backdrop-blur-xl duration-300"
+          >
+            <div
+              class="flex flex-shrink-0 cursor-move select-none items-center justify-between border-border border-b bg-card/50 p-4"
+              data-tauri-drag-region="true"
+            >
+              <div
+                class="flex items-center gap-2"
+                data-tauri-drag-region="true"
+              >
+                <div
+                  class="flex h-8 w-8 items-center justify-center rounded-lg bg-transparent"
+                >
+                  <img
+                    alt="Logo"
+                    class="pointer-events-none w-full object-cover"
+                    src="/icon-dark.svg"
+                  />
+                </div>
+                <div
+                  data-tauri-drag-region="true"
+                >
+                  <h3
+                    class="font-semibold text-foreground text-sm"
+                  >
+                    nixmac
+                  </h3>
+                  <p
+                    class="text-muted-foreground text-xs"
+                  >
+                    System Manager
+                  </p>
+                </div>
+              </div>
+              <div
+                class="flex items-center gap-1"
+              >
+                <button
+                  class="inline-flex shrink-0 items-center justify-center whitespace-nowrap font-medium text-sm outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 gap-1.5 rounded-md has-[>svg]:px-2.5 h-8 w-8 p-0"
+                  data-slot="button"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-settings h-4 w-4"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"
+                    />
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="3"
+                    />
+                  </svg>
+                </button>
+                <button
+                  class="inline-flex shrink-0 items-center justify-center whitespace-nowrap font-medium text-sm outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 gap-1.5 rounded-md has-[>svg]:px-2.5 h-8 w-8 p-0"
+                  data-slot="button"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-x h-4 w-4"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M18 6 6 18"
+                    />
+                    <path
+                      d="m6 6 12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div
+              class="flex min-h-0 flex-1 flex-col overflow-auto"
+            >
+              <div
+                class="flex-1 p-5 overflow-auto"
+              >
+                <div
+                  class="flex flex-col items-center justify-center space-y-6 py-8"
+                >
+                  <div
+                    class="text-center"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      class="lucide lucide-sparkles mx-auto mb-3 h-10 w-10 text-primary"
+                      fill="none"
+                      height="24"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"
+                      />
+                      <path
+                        d="M20 2v4"
+                      />
+                      <path
+                        d="M22 4h-4"
+                      />
+                      <circle
+                        cx="4"
+                        cy="20"
+                        r="2"
+                      />
+                    </svg>
+                    <h2
+                      class="font-semibold text-foreground text-lg"
+                    >
+                      Welcome to nixmac
+                    </h2>
+                    <p
+                      class="mt-1 text-muted-foreground text-sm"
+                    >
+                      Let's set up your nix-darwin configuration
+                    </p>
+                  </div>
+                  <div
+                    class="w-full max-w-sm space-y-2"
+                  >
+                    <label
+                      class="font-medium text-foreground text-sm"
+                    >
+                      1. Configuration Directory
+                    </label>
+                    <div
+                      class="flex items-center gap-2"
+                    >
+                      <div
+                        class="flex-1 truncate rounded-lg border border-border bg-muted/50 px-3 py-2 font-mono text-sm"
+                      >
+                        /Users/test/nixmac
+                      </div>
+                      <button
+                        class="inline-flex shrink-0 items-center justify-center whitespace-nowrap font-medium text-sm outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5"
+                        data-slot="button"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          class="lucide lucide-folder-open mr-1 h-4 w-4"
+                          fill="none"
+                          height="24"
+                          stroke="currentColor"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          viewBox="0 0 24 24"
+                          width="24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"
+                          />
+                        </svg>
+                        Browse
+                      </button>
+                    </div>
+                  </div>
+                  <div
+                    class="w-full max-w-sm space-y-2"
+                  >
+                    <label
+                      class="font-medium text-foreground text-sm"
+                      for="host-select"
+                    >
+                      2. Select Host
+                    </label>
+                    <button
+                      aria-autocomplete="none"
+                      aria-controls="radix-_r_0_"
+                      aria-expanded="false"
+                      class="flex items-center justify-between gap-2 whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 data-[size=default]:h-9 data-[size=sm]:h-8 data-[placeholder]:text-muted-foreground *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 dark:bg-input/30 dark:aria-invalid:ring-destructive/40 dark:hover:bg-input/50 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 w-full"
+                      data-size="default"
+                      data-slot="select-trigger"
+                      data-state="closed"
+                      dir="ltr"
+                      id="host-select"
+                      role="combobox"
+                      type="button"
+                    >
+                      <span
+                        data-slot="select-value"
+                        style="pointer-events: none;"
+                      >
+                        <div
+                          class="flex items-center gap-2"
+                        >
+                          <svg
+                            aria-hidden="true"
+                            class="lucide lucide-monitor h-4 w-4"
+                            fill="none"
+                            height="24"
+                            stroke="currentColor"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            viewBox="0 0 24 24"
+                            width="24"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <rect
+                              height="14"
+                              rx="2"
+                              width="20"
+                              x="2"
+                              y="3"
+                            />
+                            <line
+                              x1="8"
+                              x2="16"
+                              y1="21"
+                              y2="21"
+                            />
+                            <line
+                              x1="12"
+                              x2="12"
+                              y1="17"
+                              y2="21"
+                            />
+                          </svg>
+                          Test-MacBook
+                        </div>
+                      </span>
+                      <svg
+                        aria-hidden="true"
+                        class="lucide lucide-chevron-down size-4 opacity-50"
+                        fill="none"
+                        height="24"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                        width="24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="m6 9 6 6 6-6"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div
+                class="flex flex-col border-border border-t"
+              >
+                <button
+                  class="flex items-center justify-between px-4 py-2 text-muted-foreground text-xs transition-colors hover:bg-muted/50 hover:text-foreground"
+                  type="button"
+                >
+                  <span
+                    class="font-medium"
+                  >
+                    Console
+                  </span>
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-chevron-up h-4 w-4"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="m18 15-6-6-6 6"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;
