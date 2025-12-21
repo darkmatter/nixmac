@@ -1,30 +1,22 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true,
+    "defaultBranch": "main"
+  },
   "files": {
-    "ignoreUnknown": false,
+    "ignoreUnknown": true,
     "includes": [
-      "**",
-      "!**/.next",
-      "!**/dist",
-      "!**/.turbo",
-      "!**/dev-dist",
-      "!**/.zed",
-      "!**/.vscode",
-      "!**/routeTree.gen.ts",
-      "!**/src-tauri",
-      "!**/.nuxt",
-      "!bts.jsonc",
-      "!**/.expo",
-      "!**/.wrangler",
-      "!**/.alchemy",
-      "!**/.svelte-kit",
-      "!**/wrangler.jsonc",
-      "!**/.source",
-      "!**/convex/_generated"
+      "apps/**",
+      "packages/**",
+      "*.json",
+      "*.ts",
+      "*.tsx",
+      "*.js",
+      "*.jsx"
     ]
   },
-  "extends": [
-    "ultracite/core",
-    "ultracite/react"
-  ]
+  "extends": ["ultracite/core", "ultracite/react"]
 }

@@ -1,0 +1,173 @@
+import { invoke } from "@tauri-apps/api/core";
+import { type Event, listen, once } from "@tauri-apps/api/event";
+
+export interface UnknownRecord {
+  [key: string]: unknown;
+}
+
+export interface DarwinConfig {
+  configDir: string;
+  hostAttr?: string | null;
+}
+
+export interface DarwinPrefs {
+  floatingFooter?: boolean;
+  windowShadow?: boolean;
+  openaiApiKey?: string;
+}
+
+export interface GitFileStatus {
+  working_tree?: string;
+  index?: string;
+  path: string;
+}
+
+export interface GitStatus {
+  hasChanges?: boolean;
+  files?: GitFileStatus[];
+}
+
+export interface SummaryItem {
+  title: string;
+  description: string;
+}
+
+export interface SummaryResponse {
+  items: SummaryItem[];
+  instructions: string;
+  commitMessage: string;
+  filesChanged: number;
+  diffLines: number;
+  additions: number;
+  deletions: number;
+}
+
+export interface PreviewIndicatorState {
+  visible: boolean;
+  summary: string | null;
+  filesChanged: number;
+  additions?: number;
+  deletions?: number;
+  isLoading: boolean;
+}
+
+// =============================================================================
+// Evolve Streaming Events
+// =============================================================================
+
+export type EvolveEventType =
+  | "start"
+  | "iteration"
+  | "thinking"
+  | "reading"
+  | "editing"
+  | "buildCheck"
+  | "buildPass"
+  | "buildFail"
+  | "toolCall"
+  | "apiRequest"
+  | "apiResponse"
+  | "complete"
+  | "error"
+  | "info";
+
+export interface EvolveEvent {
+  /** Raw log output (detailed technical information) */
+  raw: string;
+  /** Human-readable summary of what's happening */
+  summary: string;
+  /** Event type for categorization in the UI */
+  eventType: EvolveEventType;
+  /** Current iteration number (if applicable) */
+  iteration: number | null;
+  /** Timestamp in milliseconds since evolution started */
+  timestampMs: number;
+}
+
+export const EVOLVE_EVENT_CHANNEL = "darwin:evolve:event";
+export const CONFIG_CHANGED_CHANNEL = "config:changed";
+
+export interface ConfigChangedEvent {
+  hasChanges: boolean;
+}
+
+export const darwinAPI = {
+  config: {
+    get: () => invoke<DarwinConfig | null>("config_get"),
+    setDir: (dir: string) => invoke("config_set_dir", { dir }),
+    pickDir: () => invoke("config_pick_dir"),
+    setHostAttr: (host: string) => invoke("config_set_host_attr", { host }),
+  },
+  git: {
+    initIfNeeded: () => invoke("git_init_if_needed"),
+    status: () => invoke<GitStatus | null>("git_status"),
+    commit: (message: string) => invoke("git_commit", { message }),
+    stash: (message: string) => invoke("git_stash", { message }),
+  },
+  darwin: {
+    evolve: (description: string) => invoke("darwin_evolve", { description }),
+    apply: (hostOverride?: string) => invoke("darwin_apply", { hostOverride }),
+    applyStreamStart: (hostOverride?: string) =>
+      invoke("darwin_apply_stream_start", { hostOverride }),
+    applyStreamCancel: () => invoke("darwin_apply_stream_cancel"),
+  },
+  flake: {
+    installedApps: () => invoke<UnknownRecord[]>("flake_installed_apps"),
+    listHosts: () => invoke<string[]>("flake_list_hosts"),
+  },
+  // Summarization with fast model
+  summarize: {
+    changes: () => invoke<SummaryResponse>("summarize_changes"),
+    commitMessage: () => invoke<string>("suggest_commit_message"),
+  },
+  ui: {
+    getPrefs: () => invoke<DarwinPrefs | null>("ui_get_prefs"),
+    setPrefs: (prefs: DarwinPrefs) => invoke("ui_set_prefs", { prefs }),
+    setWindowShadow: (on: boolean) => invoke("ui_set_window_shadow", { on }),
+  },
+  peek: {
+    lockExpanded: () => invoke("peek_lock_expanded"),
+    hide: () => invoke("peek_hide"),
+    getState: () => invoke("peek_get_state"),
+    getDebugZone: () => invoke("peek_get_debug_zone"),
+    showMain: () => invoke("peek_show_main"),
+  },
+  previewIndicator: {
+    show: () => invoke("preview_indicator_show"),
+    hide: () => invoke("preview_indicator_hide"),
+    update: (state: PreviewIndicatorState) =>
+      invoke("preview_indicator_update", { state }),
+    getState: () =>
+      invoke<PreviewIndicatorState>("preview_indicator_get_state"),
+  },
+  watcher: {
+    start: () => invoke("watcher_start"),
+    stop: () => invoke("watcher_stop"),
+    isActive: () => invoke<boolean>("watcher_is_active"),
+  },
+};
+
+export const ipcRenderer = {
+  on: <T = unknown>(channel: string, listener: (event: Event<T>) => void) =>
+    listen<T>(channel, listener),
+  once: <T = unknown>(channel: string, listener: (event: Event<T>) => void) =>
+    once<T>(channel, listener),
+};
+
+// const w = new Window("lol");
+// w.once("tauri://window-created", (event) => {
+//   console.log(event);
+// });
+// w.once("tauri://destroyed", (event) => {
+//   console.log(event);
+// });
+
+declare global {
+  interface Window {
+    darwinAPI?: typeof darwinAPI;
+    __NIXMAC__?: typeof darwinAPI;
+  }
+}
+
+window.__NIXMAC__ = darwinAPI;
+window.darwinAPI = darwinAPI;

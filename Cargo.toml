@@ -1,0 +1,6 @@
+[workspace]
+members = [
+  "apps/native/src-tauri",
+]
+resolver = "2"
+
