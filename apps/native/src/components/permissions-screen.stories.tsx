@@ -1,4 +1,5 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
+
 import { fn } from "@storybook/test";
 import type React from "react";
 import { useState } from "react";
@@ -21,12 +22,19 @@ const meta = preview.meta({
   },
   decorators: [
     (Story: React.ComponentType) => (
-      <div className="min-h-screen bg-background">
+      // <div className="min-h-screen bg-background">
         <Story />
-      </div>
+      // </div>
     ),
   ],
   tags: ["autodocs"],
+  argTypes: {
+    compact: {
+      control: "boolean",
+      description:
+        "When true, renders a compact version suitable for embedding in a widget",
+    },
+  },
 });
 
 export default meta;
@@ -75,8 +83,10 @@ const mixedStatePermissions: Permission[] = [
  */
 function InteractivePermissionsScreen({
   initialPermissions,
+  compact = false,
 }: {
   initialPermissions?: Permission[];
+  compact?: boolean;
 }) {
   const [completed, setCompleted] = useState(false);
 
@@ -86,8 +96,12 @@ function InteractivePermissionsScreen({
   };
 
   if (completed) {
+    const containerClasses = compact
+      ? "flex h-64 items-center justify-center bg-background p-4"
+      : "flex min-h-screen items-center justify-center bg-background";
+
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className={containerClasses}>
         <div className="space-y-4 text-center">
           <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-console-success/10">
             <svg
@@ -105,8 +119,20 @@ function InteractivePermissionsScreen({
               />
             </svg>
           </div>
-          <h2 className="font-semibold text-2xl">Permissions Complete!</h2>
-          <p className="text-muted-foreground">
+          <h2
+            className={
+              compact ? "font-semibold text-lg" : "font-semibold text-2xl"
+            }
+          >
+            Permissions Complete!
+          </h2>
+          <p
+            className={
+              compact
+                ? "text-muted-foreground text-sm"
+                : "text-muted-foreground"
+            }
+          >
             You would now proceed to the main console.
           </p>
           <button
@@ -123,11 +149,24 @@ function InteractivePermissionsScreen({
 
   return (
     <PermissionsScreen
+      compact={compact}
       initialPermissions={initialPermissions}
       onComplete={handleComplete}
     />
   );
 }
+
+// =============================================================================
+// Compact Decorator for Widget Stories
+// =============================================================================
+
+const CompactDecorator = (Story: React.ComponentType) => (
+  <div className="bg-background p-8">
+    <div className="mx-auto max-w-md rounded-lg border bg-card shadow-sm">
+      <Story />
+    </div>
+  </div>
+);
 
 // =============================================================================
 // Stories
@@ -216,4 +255,67 @@ export const InteractiveReadyToContinue = meta.story({
       initialPermissions={requiredGrantedPermissions}
     />
   ),
+});
+
+// =============================================================================
+// Compact Widget Stories
+// =============================================================================
+
+/**
+ * Compact version suitable for embedding in widgets
+ *
+ * Shows how the permissions screen renders when embedded in a smaller
+ * container like a sidebar widget or modal dialog.
+ */
+export const Compact = meta.story({
+  args: {
+    compact: true,
+    onComplete: fn(),
+    initialPermissions: allPendingPermissions,
+  },
+  decorators: [CompactDecorator],
+});
+
+/**
+ * Compact version with required permissions granted
+ *
+ * User can proceed to the next step even in compact mode.
+ */
+export const CompactReadyToContinue = meta.story({
+  args: {
+    compact: true,
+    onComplete: fn(),
+    initialPermissions: requiredGrantedPermissions,
+  },
+  decorators: [CompactDecorator],
+});
+
+/**
+ * Interactive compact version
+ *
+ * Shows the compact permissions screen with full interactivity.
+ * Notice how the success state also adapts to the compact layout.
+ */
+export const CompactInteractive = meta.story({
+  render: () => (
+    <InteractivePermissionsScreen
+      compact={true}
+      initialPermissions={mixedStatePermissions}
+    />
+  ),
+  decorators: [CompactDecorator],
+});
+
+/**
+ * Compact with mixed states
+ *
+ * Demonstrates how different permission states look in the compact layout.
+ */
+export const CompactMixedStates = meta.story({
+  args: {
+    compact: true,
+    onComplete: fn(),
+    initialPermissions: mixedStatePermissions,
+  },
+  decorators: [CompactDecorator],
 });
