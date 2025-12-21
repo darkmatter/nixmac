@@ -15,7 +15,7 @@ export type { WidgetUIProps } from "./types";
 
 export function WidgetUI({
   step,
-  appState,
+  appState: _appState,
   configDir,
   hosts,
   host,

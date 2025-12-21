@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "vcs": {
-    "enabled": true,
+    "enabled": false,
     "clientKind": "git",
     "useIgnoreFile": true,
     "defaultBranch": "main"
@@ -15,7 +15,29 @@
       "*.ts",
       "*.tsx",
       "*.js",
-      "*.jsx"
+      "*.jsx",
+      "!**/.devenv/**",
+      "!**/.devenv*/**",
+      "!**/.git/**",
+      "!**/.github/**",
+      "!**/.ruler/**",
+      "!**/.vscode/**",
+      "!**/.env*/**",
+      "!**/.env.local*/**",
+      "!**/.env.development.local*/**",
+      "!**/.env.test.local*/**",
+      "!**/.env.production.local*/**",
+      "!**/.turbo/**",
+      "!**/node_modules/**",
+      "!**/target/**",
+      "!**/src-tauri/target/**",
+      "!**/src-tauri/gen/**",
+      "!**/dist/**",
+      "!**/dist-ssr/**",
+      "!**/build/**",
+      "!**/.cache/**",
+      "!**/coverage/**",
+      "!**/.alchemy/**"
     ]
   },
   "extends": ["ultracite/core", "ultracite/react"]

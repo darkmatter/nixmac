@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { IconTitleSub as IconTitleSubtitle } from "@/components/icon-title-subtitle";
+import { IconTitleDescriptionCard } from "@/components/icon-title-description-card";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useState } from "react";
 
 export interface Permission {
   id: string;
@@ -192,7 +194,7 @@ export function PermissionsScreen({
   const infoIcon = (
     <svg
       aria-label="Information"
-      className="mt-0.5 size-5 flex-shrink-0 text-primary"
+      className="size-full"
       fill="none"
       role="img"
       stroke="currentColor"
@@ -217,35 +219,16 @@ export function PermissionsScreen({
       }
     >
       <div className={compact ? "w-full" : "w-full max-w-3xl"}>
-        <div className={compact ? "mb-4 text-center" : "mb-8 text-center"}>
-          {!compact && (
-            <div className="mb-4 flex items-center justify-center gap-2">
-              <div className="flex size-12 items-center justify-center rounded-lg bg-primary">
-                {headerIcon}
-              </div>
-            </div>
-          )}
-          <h1
-            className={
-              compact
-                ? "mb-1 font-semibold text-lg tracking-tight"
-                : "mb-2 font-semibold text-3xl tracking-tight"
-            }
-          >
-            System Permissions
-          </h1>
-          <p
-            className={
-              compact
-                ? "text-muted-foreground text-sm"
-                : "text-muted-foreground"
-            }
-          >
-            {compact
+        <IconTitleSubtitle
+          compact={compact}
+          subtitle={
+            compact
               ? "Grant the following permissions to continue"
-              : "To manage your macOS system declaratively, nixmac needs the following permissions"}
-          </p>
-        </div>
+              : "To manage your macOS system declaratively, nixmac needs the following permissions"
+          }
+          icon={headerIcon}
+          title="System Permissions"
+        />
 
         <Card className={compact ? "mb-4 p-4" : "mb-6 p-6"}>
           <div className={compact ? "space-y-4" : "space-y-6"}>
@@ -272,22 +255,13 @@ export function PermissionsScreen({
         </div>
 
         {!compact && (
-          <div className="mt-6 rounded-lg border border-border bg-secondary/30 p-4">
-            <div className="flex gap-3">
-              {infoIcon}
-              <div className="flex-1">
-                <h4 className="mb-1 font-medium text-sm">
-                  Why does nixmac need these permissions?
-                </h4>
-                <p className="text-muted-foreground text-xs leading-relaxed">
-                  nixmac manages your macOS system declaratively, similar to
-                  NixOS. It needs access to configuration files, the ability to
-                  install packages, and permission to modify system settings to
-                  provide a complete system management experience.
-                </p>
-              </div>
-            </div>
-          </div>
+          <IconTitleDescriptionCard
+            className="mt-6"
+            description="nixmac manages your macOS system declaratively, similar to NixOS. It needs access to configuration files, the ability to install packages, and permission to modify system settings to provide a complete system management experience."
+            icon={infoIcon}
+            title="Why does nixmac need these permissions?"
+            variant="default"
+          />
         )}
       </div>
     </div>
