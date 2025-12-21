@@ -40,7 +40,7 @@
   "terminal.integrated.defaultProfile.osx": "devenv",
   "terminal.integrated.profiles.osx": {
     "devenv": {
-      "path": "${workspaceFolder}/.vscode/devshell"
+      "path": ".vscode/devshell"
     }
   },
   "terminal.integrated.shellIntegration.enabled": true,
