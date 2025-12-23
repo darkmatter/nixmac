@@ -42,12 +42,8 @@ export function analyzeGitStatus(gitStatus: GitStatus | null): {
   stagedFiles: GitFileStatus[];
 } {
   const files = gitStatus?.files || [];
-  const unstagedFiles = files.filter(
-    (f) => f.working_tree && f.working_tree !== " "
-  );
-  const stagedFiles = files.filter(
-    (f) => f.index && f.index !== " " && f.index !== "?"
-  );
+  const unstagedFiles = files.filter((f) => f.working_tree && f.working_tree !== " ");
+  const stagedFiles = files.filter((f) => f.index && f.index !== " " && f.index !== "?");
 
   return {
     hasUnstagedChanges: unstagedFiles.length > 0,
@@ -229,10 +225,7 @@ export function computeAppState(state: WidgetState): AppState {
   return "idle";
 }
 
-export function appStateToStep(
-  state: AppState,
-  showCommitScreen: boolean
-): WidgetStep {
+export function appStateToStep(state: AppState, showCommitScreen: boolean): WidgetStep {
   if (showCommitScreen) {
     return "commit";
   }
@@ -298,8 +291,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
       }),
 
     // Console
-    appendLog: (text) =>
-      set((state) => ({ consoleLogs: state.consoleLogs + text })),
+    appendLog: (text) => set((state) => ({ consoleLogs: state.consoleLogs + text })),
     clearLogs: () => set({ consoleLogs: "" }),
 
     // Evolve events
@@ -309,8 +301,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
 
     // Computed - app state is computed entirely client-side
     getAppState: () => computeAppState(get()),
-    getStep: () =>
-      appStateToStep(computeAppState(get()), get().showCommitScreen),
+    getStep: () => appStateToStep(computeAppState(get()), get().showCommitScreen),
 
     // Reset
     reset: () => set(initialWidgetState),

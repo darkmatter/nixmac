@@ -56,11 +56,7 @@ export const NoiseBackground = ({
   children,
   className,
   containerClassName,
-  gradientColors = [
-    "rgb(255, 100, 150)",
-    "rgb(100, 150, 255)",
-    "rgb(255, 200, 100)",
-  ],
+  gradientColors = ["rgb(255, 100, 150)", "rgb(100, 150, 255)", "rgb(255, 200, 100)"],
   noiseIntensity = 0.2,
   speed = 0.1,
   backdropBlur = false,
@@ -145,12 +141,7 @@ export const NoiseBackground = ({
     // This ensures truly random movement in all 360 degrees, not just horizontal/vertical
     const padding = 20; // Keep some distance from edges
 
-    if (
-      newX < padding ||
-      newX > maxX - padding ||
-      newY < padding ||
-      newY > maxY - padding
-    ) {
+    if (newX < padding || newX > maxX - padding || newY < padding || newY > maxY - padding) {
       // Generate completely random direction (full 360 degrees)
       const angle = Math.random() * Math.PI * 2;
       const magnitude = speed * (0.5 + Math.random() * 0.5);
@@ -177,7 +168,7 @@ export const NoiseBackground = ({
         "dark:shadow-[0px_1px_0px_0px_var(--color-neutral-950)_inset,0px_1px_0px_0px_var(--color-neutral-800)]",
         backdropBlur &&
           "after:absolute after:inset-0 after:h-full after:w-full after:backdrop-blur-lg after:content-['']",
-        containerClassName
+        containerClassName,
       )}
       ref={containerRef}
       style={

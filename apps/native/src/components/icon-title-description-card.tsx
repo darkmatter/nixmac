@@ -1,8 +1,7 @@
 import type * as React from "react";
 import { cn } from "@/lib/utils";
 
-export interface IconTitleDescriptionCardProps
-  extends React.ComponentProps<"div"> {
+export interface IconTitleDescriptionCardProps extends React.ComponentProps<"div"> {
   icon: React.ReactNode;
   title: string;
   description: string;
@@ -32,19 +31,12 @@ export function IconTitleDescriptionCard({
   ...props
 }: IconTitleDescriptionCardProps) {
   return (
-    <div
-      className={cn("rounded-lg border p-4", variantStyles[variant], className)}
-      {...props}
-    >
+    <div className={cn("rounded-lg border p-4", variantStyles[variant], className)} {...props}>
       <div className="flex gap-3">
-        <div className={cn("mt-0.5 size-5 flex-shrink-0", iconStyles[variant])}>
-          {icon}
-        </div>
+        <div className={cn("mt-0.5 size-5 flex-shrink-0", iconStyles[variant])}>{icon}</div>
         <div className="flex-1">
           <h4 className="mb-1 font-medium text-sm">{title}</h4>
-          <p className="text-muted-foreground text-xs leading-relaxed">
-            {description}
-          </p>
+          <p className="text-muted-foreground text-xs leading-relaxed">{description}</p>
         </div>
       </div>
     </div>

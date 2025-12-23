@@ -11,8 +11,7 @@ import { darwinAPI } from "@/tauri-api";
 import "./index.css";
 
 // Check for debug mode via URL param: rebuild-overlay.html?debug=true
-const DEBUG_MODE =
-  new URLSearchParams(window.location.search).get("debug") === "true";
+const DEBUG_MODE = new URLSearchParams(window.location.search).get("debug") === "true";
 
 // Mock lines for debug mode
 const DEBUG_MOCK_LINES: RebuildLine[] = [
@@ -50,9 +49,7 @@ let globalStarted = false;
 function RebuildOverlayWindow() {
   const [state, setState] = useState<RebuildState>({
     isRunning: true,
-    lines: DEBUG_MODE
-      ? DEBUG_MOCK_LINES
-      : [{ id: 0, text: "Preparing rebuild...", type: "info" }],
+    lines: DEBUG_MODE ? DEBUG_MOCK_LINES : [{ id: 0, text: "Preparing rebuild...", type: "info" }],
   });
   const lineIdRef = useRef(DEBUG_MODE ? DEBUG_MOCK_LINES.length + 1 : 0);
 
@@ -108,33 +105,30 @@ function RebuildOverlayWindow() {
 
     const setup = async () => {
       // Register listeners first
-      unsubDataFn = await listen<{ chunk: string }>(
-        "darwin:apply:data",
-        (event) => {
-          const normalized = normalizeOutput(event.payload.chunk);
-          if (!normalized) {
-            return;
-          }
-
-          const newLines = normalized.split("\n").filter(Boolean);
-
-          setState((prev) => {
-            const startId = lineIdRef.current;
-            lineIdRef.current += newLines.length;
-            return {
-              ...prev,
-              lines: [
-                ...prev.lines,
-                ...newLines.map((text, i) => ({
-                  id: startId + i,
-                  text,
-                  type: getLineType(text),
-                })),
-              ].slice(-100),
-            };
-          });
+      unsubDataFn = await listen<{ chunk: string }>("darwin:apply:data", (event) => {
+        const normalized = normalizeOutput(event.payload.chunk);
+        if (!normalized) {
+          return;
         }
-      );
+
+        const newLines = normalized.split("\n").filter(Boolean);
+
+        setState((prev) => {
+          const startId = lineIdRef.current;
+          lineIdRef.current += newLines.length;
+          return {
+            ...prev,
+            lines: [
+              ...prev.lines,
+              ...newLines.map((text, i) => ({
+                id: startId + i,
+                text,
+                type: getLineType(text),
+              })),
+            ].slice(-100),
+          };
+        });
+      });
 
       unsubEndFn = await listen<{ ok: boolean; code: number }>(
         "darwin:apply:end",
@@ -159,7 +153,7 @@ function RebuildOverlayWindow() {
           setTimeout(() => {
             darwinAPI.rebuildOverlay.hide();
           }, 2500);
-        }
+        },
       );
 
       // Now start the rebuild
@@ -171,10 +165,7 @@ function RebuildOverlayWindow() {
           ...prev,
           isRunning: false,
           success: false,
-          lines: [
-            ...prev.lines,
-            { id: lineIdRef.current, text: `Error: ${msg}`, type: "stderr" },
-          ],
+          lines: [...prev.lines, { id: lineIdRef.current, text: `Error: ${msg}`, type: "stderr" }],
         }));
         lineIdRef.current += 1;
       }
@@ -207,6 +198,6 @@ if (rootElement) {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
       <RebuildOverlayWindow />
-    </React.StrictMode>
+    </React.StrictMode>,
   );
 }

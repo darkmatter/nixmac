@@ -38,9 +38,7 @@ type LoadingState = {
 };
 
 const SkeletonCircle = ({ className }: { className?: string }) => (
-  <div
-    className={cn("h-6 w-6 animate-pulse rounded-full bg-white/20", className)}
-  />
+  <div className={cn("h-6 w-6 animate-pulse rounded-full bg-white/20", className)} />
 );
 
 const SkeletonLine = ({ width = "w-48" }: { width?: string }) => (
@@ -84,7 +82,7 @@ const LoaderCore = ({
           <motion.div
             animate={{ opacity, y: -(value * 40) }}
             className={cn(
-              "mb-4 flex w-96 gap-2 overflow-hidden text-ellipsis whitespace-pre pr-4 text-left"
+              "mb-4 flex w-96 gap-2 overflow-hidden text-ellipsis whitespace-pre pr-4 text-left",
             )}
             initial={{ opacity: 0, y: -(value * 40) }}
             key={loadingState.id ?? `step-${index}`}

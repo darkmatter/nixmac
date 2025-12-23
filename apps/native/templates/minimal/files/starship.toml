@@ -79,7 +79,7 @@ format = '[[ $symbol ($version) ](fg:#769ff0 bg:#212736)]($style)'
 [aws]
 symbol = ""
 style = "bg:#212736"
-format ='[[ $symbol ($profile )(\[$duration\] )](fg:#df8e1d bg:#212736)]($style)'
+format = '[[ $symbol ($profile )(\[$duration\] )](fg:#df8e1d bg:#212736)]($style)'
 
 [time]
 disabled = false
@@ -88,6 +88,6 @@ style = "bg:#1d2230"
 format = '[[  $time ](fg:#a0a9cb bg:#1d2230)]($style)'
 
 [nix_shell]
-format =	'[ $symbol$state]($style)'
+format = '[ $symbol$state]($style)'
 style = "bg:#212736"
 symbol = " "

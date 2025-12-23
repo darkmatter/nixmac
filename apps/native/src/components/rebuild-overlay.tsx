@@ -30,7 +30,7 @@ export function stripAnsi(str: string): string {
   const CSI = String.fromCharCode(0x9b);
   const pattern = new RegExp(
     `[${ESC}${CSI}][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]`,
-    "g"
+    "g",
   );
   return str.replace(pattern, "");
 }
@@ -51,18 +51,10 @@ export function normalizeOutput(raw: string): string {
  */
 export function getLineType(text: string): "stdout" | "stderr" | "info" {
   const lower = text.toLowerCase();
-  if (
-    lower.includes("error") ||
-    lower.includes("failed") ||
-    lower.includes("warning")
-  ) {
+  if (lower.includes("error") || lower.includes("failed") || lower.includes("warning")) {
     return "stderr";
   }
-  if (
-    lower.includes("building") ||
-    lower.includes("copying") ||
-    lower.includes("activating")
-  ) {
+  if (lower.includes("building") || lower.includes("copying") || lower.includes("activating")) {
     return "info";
   }
   return "stdout";
@@ -72,7 +64,7 @@ export function getLineType(text: string): "stdout" | "stderr" | "info" {
 // Uses an interval to progressively show lines rather than all at once.
 function useNormalizedLines(
   lines: RebuildLine[],
-  isComplete: boolean
+  isComplete: boolean,
 ): { lines: RebuildLine[]; step: number } {
   const tailLength = 3;
   const [displayedCount, setDisplayedCount] = useState(0);
@@ -132,24 +124,12 @@ function useNormalizedLines(
  * Full-screen overlay displayed during nix-rebuild switch.
  * Shows a semi-transparent background with centered console output.
  */
-export function RebuildOverlay({
-  isRunning,
-  lines,
-  className,
-}: RebuildOverlayProps) {
+export function RebuildOverlay({ isRunning, lines, className }: RebuildOverlayProps) {
   // const scrollRef = useRef<HTMLDivElement>(null);
-  const { lines: normalizedLines, step } = useNormalizedLines(
-    lines,
-    !isRunning
-  );
+  const { lines: normalizedLines, step } = useNormalizedLines(lines, !isRunning);
 
   return (
-    <div
-      className={cn(
-        "fixed inset-0 flex items-center justify-center bg-black/50",
-        className
-      )}
-    >
+    <div className={cn("fixed inset-0 flex items-center justify-center bg-black/50", className)}>
       <MultiStepLoader
         duration={2000}
         loading={isRunning}

@@ -60,20 +60,17 @@ export function WidgetUI({
 }: WidgetUIProps) {
   const showExpanded = isExpanded && peekState !== "hidden";
   const staged =
-    gitStatus?.files?.filter(
-      (f) => f.index && f.index !== " " && f.index !== "?"
-    ) || [];
+    gitStatus?.files?.filter((f) => f.index && f.index !== " " && f.index !== "?") || [];
   const isPreviewActive =
-    gitStatus?.files?.every(
-      (f) => f.index && f.index !== " " && f.index !== "?"
-    ) && staged.length > 0;
+    gitStatus?.files?.every((f) => f.index && f.index !== " " && f.index !== "?") &&
+    staged.length > 0;
 
   if (!showExpanded) {
     return (
       <div
         className={cn(
           "fixed inset-0 z-50 flex h-full w-full items-end justify-end space-y-4 p-4",
-          props.className
+          props.className,
         )}
       >
         <Button
@@ -88,10 +85,7 @@ export function WidgetUI({
   }
 
   return (
-    <div
-      {...props}
-      className={cn("fixed inset-0 z-50 m-auto h-full w-full", props.className)}
-    >
+    <div {...props} className={cn("fixed inset-0 z-50 m-auto h-full w-full", props.className)}>
       <div className="flex h-full min-h-0 w-full flex-col">
         <div className="relative min-h-0 flex-1">
           <div className="absolute inset-0">
@@ -103,18 +97,11 @@ export function WidgetUI({
               />
 
               {/* Stepper - only show when not in setup */}
-              {step !== "setup" && (
-                <Stepper currentStep={getStepperStep(step)} />
-              )}
+              {step !== "setup" && <Stepper currentStep={getStepperStep(step)} />}
 
               {/* Main Content */}
               <div className="flex min-h-0 flex-1 flex-col overflow-auto">
-                <div
-                  className={cn(
-                    "flex-1 p-5",
-                    step !== "evolving" && "overflow-auto"
-                  )}
-                >
+                <div className={cn("flex-1 p-5", step !== "evolving" && "overflow-auto")}>
                   {/* Error display */}
                   {error && (
                     <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-red-400 text-sm">
@@ -148,9 +135,7 @@ export function WidgetUI({
                       gitStatus={gitStatus}
                       handleEvolve={onEvolve}
                       isGenerating={isGenerating}
-                      isProcessing={
-                        isProcessing && processingAction === "evolve"
-                      }
+                      isProcessing={isProcessing && processingAction === "evolve"}
                       setEvolvePrompt={onEvolvePromptChange}
                     />
                   )}
@@ -173,8 +158,7 @@ export function WidgetUI({
                   )}
 
                   {/* Step: Commit (action selection) */}
-                  {(step === "commit" ||
-                    (step === "evolving" && isPreviewActive)) && (
+                  {(step === "commit" || (step === "evolving" && isPreviewActive)) && (
                     <CommitStep
                       commitMsg={commitMsg}
                       evolvePrompt={evolvePrompt}

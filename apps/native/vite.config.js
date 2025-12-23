@@ -22,12 +22,7 @@ export default defineConfig({
     watch: {
       // Critical for Nix: don't follow symlinks
       followSymlinks: false,
-      ignored: [
-        "**/src-tauri/**",
-        "**/node_modules/**",
-        "**/.direnv/**",
-        "**/.devenv/**",
-      ],
+      ignored: ["**/src-tauri/**", "**/node_modules/**", "**/.direnv/**", "**/.devenv/**"],
       // Use polling as fallback for Nix
       // usePolling: true,
       // interval: 1000,

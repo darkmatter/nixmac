@@ -57,15 +57,12 @@ const LoaderCore = ({
             transition={{ duration: 0.5 }}
           >
             <div>
-              {index > value && (
-                <CheckIcon className="text-black dark:text-white" />
-              )}
+              {index > value && <CheckIcon className="text-black dark:text-white" />}
               {index <= value && (
                 <CheckFilled
                   className={cn(
                     "text-black dark:text-white",
-                    value === index &&
-                      "text-black opacity-100 dark:text-lime-500"
+                    value === index && "text-black opacity-100 dark:text-lime-500",
                   )}
                 />
               )}
@@ -73,7 +70,7 @@ const LoaderCore = ({
             <span
               className={cn(
                 "text-black dark:text-white",
-                value === index && "text-black opacity-100 dark:text-lime-500"
+                value === index && "text-black opacity-100 dark:text-lime-500",
               )}
             >
               {loadingState.text}
@@ -109,7 +106,7 @@ export const MultiStepLoader = ({
           ? prevState === loadingStates.length - 1
             ? 0
             : prevState + 1
-          : Math.min(prevState + 1, loadingStates.length - 1)
+          : Math.min(prevState + 1, loadingStates.length - 1),
       );
     }, duration);
 
