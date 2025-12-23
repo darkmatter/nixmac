@@ -14,7 +14,6 @@ This is a monorepo with the following structure:
 - **`packages/auth/`** - Authentication logic and utilities
 - **`packages/db/`** - Database schema and utilities
 
-
 ## Available Scripts
 
 - `bun run dev` - Start all apps in development mode
@@ -40,6 +39,7 @@ Database schema files are located in `apps/server/src/db/schema/`
 ## Authentication
 
 Authentication is enabled in this project:
+
 - Server auth logic is in `apps/server/src/lib/auth.ts`
 - Web app auth client is in `apps/web/src/lib/auth-client.ts`
 
@@ -53,6 +53,7 @@ add
 ```
 
 Available addons you can add:
+
 - **Documentation**: Starlight, Fumadocs
 - **Linting**: Biome, Oxlint, Ultracite
 - **Other**: Ruler, Turborepo, PWA, Tauri, Husky

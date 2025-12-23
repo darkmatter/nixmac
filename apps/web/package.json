@@ -8,7 +8,7 @@
     "build": "tsc -b && bun --bun vite build",
     "preview": "bun --bun vite preview --port 3001",
     "start": "bun run .output/server/index.mjs",
-    "lint": "biome check ."
+    "lint": "oxlint ."
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",

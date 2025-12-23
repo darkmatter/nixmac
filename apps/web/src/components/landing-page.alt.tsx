@@ -1,13 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const featuredPresets = [
   {
@@ -15,8 +9,7 @@ const featuredPresets = [
     name: "Minimal Dev",
     author: "sarah_dev",
     downloads: "12.4k",
-    description:
-      "Clean setup for web developers with VS Code, Git, and Node.js",
+    description: "Clean setup for web developers with VS Code, Git, and Node.js",
     tags: ["web", "minimal"],
     icons: ["visual-studio-code", "github", "node-js", "iterm2", "homebrew"],
   },
@@ -27,13 +20,7 @@ const featuredPresets = [
     downloads: "8.2k",
     description: "Full creative workflow with Figma, Adobe CC, and color tools",
     tags: ["design", "creative"],
-    icons: [
-      "figma",
-      "adobe-photoshop",
-      "adobe-illustrator",
-      "sketch",
-      "blender",
-    ],
+    icons: ["figma", "adobe-photoshop", "adobe-illustrator", "sketch", "blender"],
   },
   {
     id: "data-science-pro",
@@ -58,8 +45,7 @@ const featuredPresets = [
     name: "Privacy First",
     author: "securitynerd",
     downloads: "4.3k",
-    description:
-      "Hardened macOS settings with privacy-focused app alternatives",
+    description: "Hardened macOS settings with privacy-focused app alternatives",
     tags: ["security", "privacy"],
     icons: ["bitwarden", "proton-vpn", "firefox", "signal", "tor-browser"],
   },
@@ -68,8 +54,7 @@ const featuredPresets = [
     name: "Streamer Setup",
     author: "livecoder",
     downloads: "5.8k",
-    description:
-      "OBS, audio tools, and streaming essentials for content creators",
+    description: "OBS, audio tools, and streaming essentials for content creators",
     tags: ["streaming", "content"],
     icons: ["obs-studio", "discord", "spotify", "twitch", "streamlabs"],
   },
@@ -80,43 +65,37 @@ const features = [
     id: "one-click",
     icon: "cursor",
     title: "One-Click Presets",
-    description:
-      "Browse community presets and apply them instantly. No configuration needed.",
+    description: "Browse community presets and apply them instantly. No configuration needed.",
   },
   {
     id: "easy-undo",
     icon: "clock",
     title: "Easy Undo",
-    description:
-      "Made a change you don't like? Revert to your previous setup with one click.",
+    description: "Made a change you don't like? Revert to your previous setup with one click.",
   },
   {
     id: "copy-setup",
     icon: "copy",
     title: "Copy Your Setup",
-    description:
-      "Got a new Mac? Apply your exact setup from your old machine in minutes.",
+    description: "Got a new Mac? Apply your exact setup from your old machine in minutes.",
   },
   {
     id: "share",
     icon: "shield",
     title: "Share with Friends",
-    description:
-      "Send your setup to friends or colleagues so they can use it too.",
+    description: "Send your setup to friends or colleagues so they can use it too.",
   },
   {
     id: "consistent",
     icon: "shield",
     title: "Always Consistent",
-    description:
-      "Your apps, settings, and preferences stay exactly how you set them up.",
+    description: "Your apps, settings, and preferences stay exactly how you set them up.",
   },
   {
     id: "fast",
     icon: "bolt",
     title: "Super Fast",
-    description:
-      "Most setups complete in under 10 minutes. Go grab a coffee and come back ready.",
+    description: "Most setups complete in under 10 minutes. Go grab a coffee and come back ready.",
   },
 ];
 
@@ -153,12 +132,7 @@ function CheckIcon() {
       stroke="currentColor"
       viewBox="0 0 24 24"
     >
-      <path
-        d="M5 13l4 4L19 7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-      />
+      <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
     </svg>
   );
 }
@@ -232,12 +206,7 @@ function FeatureIcon({ type }: { type: string }) {
   };
 
   return (
-    <svg
-      aria-hidden="true"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
+    <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         d={paths[type] || paths.cursor}
         strokeLinecap="round"
@@ -266,14 +235,12 @@ export default function LandingPage() {
             <h1 className="mb-6 text-balance font-bold text-5xl tracking-tight sm:text-6xl">
               Set up your Mac
               <br />
-              <span className="text-muted-foreground">
-                exactly how you like it.
-              </span>
+              <span className="text-muted-foreground">exactly how you like it.</span>
             </h1>
             <p className="mb-8 text-pretty text-muted-foreground text-xl leading-relaxed">
-              Stop spending hours configuring your Mac. Pick a preset from our
-              community, click apply, and you are done. No terminal commands. No
-              hunting for settings. Just your perfect setup, instantly.
+              Stop spending hours configuring your Mac. Pick a preset from our community, click
+              apply, and you are done. No terminal commands. No hunting for settings. Just your
+              perfect setup, instantly.
             </p>
             <div className="flex items-center justify-center gap-4">
               <Button asChild size="lg">
@@ -303,10 +270,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section
-        className="border-border border-y bg-secondary/20"
-        id="flake-party"
-      >
+      <section className="border-border border-y bg-secondary/20" id="flake-party">
         <div className="mx-auto max-w-7xl px-6 py-24">
           <div className="mb-12 text-center">
             <div className="mb-4 inline-flex items-center gap-2">
@@ -314,8 +278,8 @@ export default function LandingPage() {
               <h2 className="font-bold text-4xl tracking-tight">Flake Party</h2>
             </div>
             <p className="mx-auto max-w-2xl text-balance text-muted-foreground text-xl">
-              Discover community-created presets for every workflow. Find your
-              perfect setup and apply it with one click.
+              Discover community-created presets for every workflow. Find your perfect setup and
+              apply it with one click.
             </p>
           </div>
 
@@ -335,9 +299,7 @@ export default function LandingPage() {
                       {preset.downloads}
                     </div>
                   </div>
-                  <p className="text-muted-foreground text-xs">
-                    by @{preset.author}
-                  </p>
+                  <p className="text-muted-foreground text-xs">by @{preset.author}</p>
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="mb-3 flex items-center gap-1.5">
@@ -388,12 +350,9 @@ export default function LandingPage() {
       {/* Features Grid - Rewritten for non-technical users */}
       <section className="mx-auto max-w-7xl px-6 py-24" id="features">
         <div className="mb-16 text-center">
-          <h2 className="mb-4 font-bold text-4xl tracking-tight">
-            Why nixmac?
-          </h2>
+          <h2 className="mb-4 font-bold text-4xl tracking-tight">Why nixmac?</h2>
           <p className="mx-auto max-w-2xl text-balance text-muted-foreground text-xl">
-            Setting up a new Mac should take minutes, not hours. Here is how
-            nixmac makes it happen.
+            Setting up a new Mac should take minutes, not hours. Here is how nixmac makes it happen.
           </p>
         </div>
 
@@ -410,9 +369,7 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <CardTitle className="text-lg">{feature.title}</CardTitle>
-                <CardDescription className="leading-relaxed">
-                  {feature.description}
-                </CardDescription>
+                <CardDescription className="leading-relaxed">{feature.description}</CardDescription>
               </CardHeader>
             </Card>
           ))}
@@ -420,15 +377,10 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works Section - Simplified for non-technical users */}
-      <section
-        className="border-border border-t bg-secondary/20"
-        id="how-it-works"
-      >
+      <section className="border-border border-t bg-secondary/20" id="how-it-works">
         <div className="mx-auto max-w-7xl px-6 py-24">
           <div className="mb-16 text-center">
-            <h2 className="mb-4 font-bold text-4xl tracking-tight">
-              How it works
-            </h2>
+            <h2 className="mb-4 font-bold text-4xl tracking-tight">How it works</h2>
             <p className="mx-auto max-w-2xl text-balance text-muted-foreground text-xl">
               Get your perfect Mac setup in three simple steps
             </p>
@@ -437,13 +389,9 @@ export default function LandingPage() {
           <div className="grid gap-8 md:grid-cols-3">
             {steps.map((item) => (
               <div className="relative" key={item.id}>
-                <div className="mb-4 font-bold text-7xl text-primary/10">
-                  {item.step}
-                </div>
+                <div className="mb-4 font-bold text-7xl text-primary/10">{item.step}</div>
                 <h3 className="mb-3 font-semibold text-2xl">{item.title}</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  {item.description}
-                </p>
+                <p className="text-muted-foreground leading-relaxed">{item.description}</p>
               </div>
             ))}
           </div>
@@ -453,12 +401,9 @@ export default function LandingPage() {
       {/* CTA Section */}
       <section className="border-border border-t">
         <div className="mx-auto max-w-4xl px-6 py-24 text-center">
-          <h2 className="mb-4 font-bold text-4xl tracking-tight">
-            Ready to set up your Mac?
-          </h2>
+          <h2 className="mb-4 font-bold text-4xl tracking-tight">Ready to set up your Mac?</h2>
           <p className="mb-8 text-balance text-muted-foreground text-xl">
-            Join thousands of users who have already simplified their Mac setup
-            with nixmac
+            Join thousands of users who have already simplified their Mac setup with nixmac
           </p>
           <div className="flex items-center justify-center gap-4">
             <Button asChild size="lg">
@@ -484,19 +429,13 @@ export default function LandingPage() {
                 </div>
                 <span className="font-semibold text-lg">nixmac</span>
               </div>
-              <p className="text-muted-foreground text-sm">
-                The easiest way to set up your Mac
-              </p>
+              <p className="text-muted-foreground text-sm">The easiest way to set up your Mac</p>
             </div>
             <div>
               <h4 className="mb-3 font-semibold">Product</h4>
               <ul className="space-y-2 text-muted-foreground text-sm">
                 <li>
-                  <Link
-                    className="transition-colors hover:text-foreground"
-                    hash="features"
-                    to="/"
-                  >
+                  <Link className="transition-colors hover:text-foreground" hash="features" to="/">
                     Features
                   </Link>
                 </li>
@@ -510,10 +449,7 @@ export default function LandingPage() {
                   </Link>
                 </li>
                 <li>
-                  <Link
-                    className="transition-colors hover:text-foreground"
-                    to="/dashboard"
-                  >
+                  <Link className="transition-colors hover:text-foreground" to="/dashboard">
                     App
                   </Link>
                 </li>
@@ -581,16 +517,10 @@ export default function LandingPage() {
           <div className="mt-12 flex items-center justify-between border-border border-t pt-8 text-muted-foreground text-sm">
             <p>© 2025 nixmac. All rights reserved.</p>
             <div className="flex items-center gap-6">
-              <a
-                className="transition-colors hover:text-foreground"
-                href="/privacy"
-              >
+              <a className="transition-colors hover:text-foreground" href="/privacy">
                 Privacy
               </a>
-              <a
-                className="transition-colors hover:text-foreground"
-                href="/terms"
-              >
+              <a className="transition-colors hover:text-foreground" href="/terms">
                 Terms
               </a>
             </div>

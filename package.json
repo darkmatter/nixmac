@@ -1,7 +1,6 @@
 {
   "name": "nixmac",
   "private": true,
-  "type": "module",
   "workspaces": {
     "packages": [
       "apps/*",
@@ -21,8 +20,9 @@
       "@types/pg": "^8.15.6"
     }
   },
+  "type": "module",
   "scripts": {
-    "check": "biome check --write .",
+    "check": "oxlint .",
     "ruler:apply": "bunx @intellectronica/ruler@latest apply --local-only",
     "dev": "turbo dev",
     "build": "turbo build",
@@ -39,14 +39,14 @@
   },
   "dependencies": {
     "dotenv": "catalog:",
-    "zod": "catalog:",
-    "znv": "workspace:*"
+    "oxfmt": "^0.20.0",
+    "znv": "workspace:*",
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.3.8",
-    "@biomejs/cli-darwin-arm64": "^2.3.10",
     "@cloudflare/workers-types": "^4.20251213.0",
     "@types/bun": "catalog:",
+    "oxlint": "^1.0.0",
     "turbo": "^2.6.3",
     "typescript": "^5",
     "ultracite": "6.4.0"

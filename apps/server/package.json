@@ -1,7 +1,7 @@
 {
   "name": "server",
-  "main": "src/index.ts",
   "type": "module",
+  "main": "src/index.ts",
   "scripts": {
     "build": "tsdown",
     "check-types": "tsc -b",
@@ -10,21 +10,21 @@
     "start": "bun run dist/index.js"
   },
   "dependencies": {
-    "hono": "catalog:",
-    "@trpc/server": "catalog:",
     "@hono/trpc-server": "^0.4.0",
-    "better-auth": "catalog:",
-    "dotenv": "catalog:",
-    "zod": "catalog:",
     "@nixmac/api": "workspace:*",
     "@nixmac/auth": "workspace:*",
     "@nixmac/db": "workspace:*",
-    "@nixmac/hono-api": "workspace:*"
+    "@nixmac/hono-api": "workspace:*",
+    "@trpc/server": "catalog:",
+    "better-auth": "catalog:",
+    "dotenv": "catalog:",
+    "hono": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
+    "@nixmac/config": "workspace:*",
     "@types/bun": "catalog:",
-    "typescript": "^5",
     "tsdown": "^0.16.5",
-    "@nixmac/config": "workspace:*"
+    "typescript": "^5"
   }
 }

@@ -135,9 +135,7 @@ export function CardGridStyle() {
 
                 {hoveredCard === i && (
                   <div className="mt-3 rounded border border-border bg-muted/50 p-2">
-                    <p className="text-muted-foreground text-xs">
-                      {change.detail}
-                    </p>
+                    <p className="text-muted-foreground text-xs">{change.detail}</p>
                   </div>
                 )}
               </CardContent>
@@ -155,9 +153,8 @@ export function CardGridStyle() {
           <span className="font-medium text-sm">What You're Getting</span>
         </div>
         <p className="text-muted-foreground text-sm leading-relaxed">
-          Three new apps for communication and project management, plus
-          improvements to your code editor that make it easier to read and
-          navigate your work.
+          Three new apps for communication and project management, plus improvements to your code
+          editor that make it easier to read and navigate your work.
         </p>
       </div>
 

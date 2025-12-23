@@ -15,15 +15,15 @@
     "db:studio": "drizzle-kit studio",
     "db:migrate": "drizzle-kit migrate"
   },
-  "devDependencies": {
-    "drizzle-kit": "^0.31.8",
-    "typescript": "^5",
-    "@nixmac/config": "workspace:*"
-  },
   "dependencies": {
+    "dotenv": "catalog:",
     "drizzle-orm": "catalog:",
     "postgres": "^3.4.5",
-    "dotenv": "catalog:",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@nixmac/config": "workspace:*",
+    "drizzle-kit": "^0.31.8",
+    "typescript": "^5"
   }
 }

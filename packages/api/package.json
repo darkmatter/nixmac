@@ -1,5 +1,6 @@
 {
   "name": "@nixmac/api",
+  "type": "module",
   "exports": {
     ".": {
       "default": "./src/index.ts"
@@ -8,12 +9,7 @@
       "default": "./src/*.ts"
     }
   },
-  "type": "module",
   "scripts": {},
-  "devDependencies": {
-    "typescript": "^5",
-    "@nixmac/config": "workspace:*"
-  },
   "dependencies": {
     "@nixmac/auth": "workspace:*",
     "@nixmac/db": "workspace:*",
@@ -25,5 +21,9 @@
     "hono": "catalog:",
     "superjson": "^2.2.6",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@nixmac/config": "workspace:*",
+    "typescript": "^5"
   }
 }

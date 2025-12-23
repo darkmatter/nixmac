@@ -12,8 +12,7 @@ export const Route = createFileRoute("/dashboard")({
     }
 
     const customerStateRes = await authClient.customer.state();
-    const customerState =
-      (customerStateRes.data as { activeSubscriptions?: {}[] } | null) ?? null;
+    const customerState = (customerStateRes.data as { activeSubscriptions?: {}[] } | null) ?? null;
 
     return { session, customerState };
   },
@@ -24,8 +23,7 @@ function RouteComponent() {
 
   const privateData = useQuery(trpc.privateData.queryOptions());
 
-  const hasProSubscription =
-    (customerState?.activeSubscriptions?.length ?? 0) > 0;
+  const hasProSubscription = (customerState?.activeSubscriptions?.length ?? 0) > 0;
 
   return (
     <div>
@@ -38,9 +36,7 @@ function RouteComponent() {
           Manage Subscription
         </Button>
       ) : (
-        <Button
-          onClick={async () => await authClient.checkout({ slug: "pro" })}
-        >
+        <Button onClick={async () => await authClient.checkout({ slug: "pro" })}>
           Upgrade to Pro
         </Button>
       )}

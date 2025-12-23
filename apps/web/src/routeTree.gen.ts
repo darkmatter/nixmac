@@ -8,212 +8,196 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as TodosRouteImport } from './routes/todos'
-import { Route as SuccessRouteImport } from './routes/success'
-import { Route as Lp2RouteImport } from './routes/lp2'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as TrpcSplatRouteImport } from './routes/trpc.$'
-import { Route as ApiSplatRouteImport } from './routes/api.$'
+import { Route as rootRouteImport } from "./routes/__root";
+import { Route as ApiSplatRouteImport } from "./routes/api.$";
+import { Route as DashboardRouteImport } from "./routes/dashboard";
+import { Route as IndexRouteImport } from "./routes/index";
+import { Route as LoginRouteImport } from "./routes/login";
+import { Route as Lp2RouteImport } from "./routes/lp2";
+import { Route as SuccessRouteImport } from "./routes/success";
+import { Route as TodosRouteImport } from "./routes/todos";
+import { Route as TrpcSplatRouteImport } from "./routes/trpc.$";
 
 const TodosRoute = TodosRouteImport.update({
-  id: '/todos',
-  path: '/todos',
+  id: "/todos",
+  path: "/todos",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const SuccessRoute = SuccessRouteImport.update({
-  id: '/success',
-  path: '/success',
+  id: "/success",
+  path: "/success",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const Lp2Route = Lp2RouteImport.update({
-  id: '/lp2',
-  path: '/lp2',
+  id: "/lp2",
+  path: "/lp2",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
+  id: "/login",
+  path: "/login",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
+  id: "/dashboard",
+  path: "/dashboard",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const TrpcSplatRoute = TrpcSplatRouteImport.update({
-  id: '/trpc/$',
-  path: '/trpc/$',
+  id: "/trpc/$",
+  path: "/trpc/$",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ApiSplatRoute = ApiSplatRouteImport.update({
-  id: '/api/$',
-  path: '/api/$',
+  id: "/api/$",
+  path: "/api/$",
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
-  '/login': typeof LoginRoute
-  '/lp2': typeof Lp2Route
-  '/success': typeof SuccessRoute
-  '/todos': typeof TodosRoute
-  '/api/$': typeof ApiSplatRoute
-  '/trpc/$': typeof TrpcSplatRoute
+  "/": typeof IndexRoute;
+  "/dashboard": typeof DashboardRoute;
+  "/login": typeof LoginRoute;
+  "/lp2": typeof Lp2Route;
+  "/success": typeof SuccessRoute;
+  "/todos": typeof TodosRoute;
+  "/api/$": typeof ApiSplatRoute;
+  "/trpc/$": typeof TrpcSplatRoute;
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
-  '/login': typeof LoginRoute
-  '/lp2': typeof Lp2Route
-  '/success': typeof SuccessRoute
-  '/todos': typeof TodosRoute
-  '/api/$': typeof ApiSplatRoute
-  '/trpc/$': typeof TrpcSplatRoute
+  "/": typeof IndexRoute;
+  "/dashboard": typeof DashboardRoute;
+  "/login": typeof LoginRoute;
+  "/lp2": typeof Lp2Route;
+  "/success": typeof SuccessRoute;
+  "/todos": typeof TodosRoute;
+  "/api/$": typeof ApiSplatRoute;
+  "/trpc/$": typeof TrpcSplatRoute;
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
-  '/login': typeof LoginRoute
-  '/lp2': typeof Lp2Route
-  '/success': typeof SuccessRoute
-  '/todos': typeof TodosRoute
-  '/api/$': typeof ApiSplatRoute
-  '/trpc/$': typeof TrpcSplatRoute
+  __root__: typeof rootRouteImport;
+  "/": typeof IndexRoute;
+  "/dashboard": typeof DashboardRoute;
+  "/login": typeof LoginRoute;
+  "/lp2": typeof Lp2Route;
+  "/success": typeof SuccessRoute;
+  "/todos": typeof TodosRoute;
+  "/api/$": typeof ApiSplatRoute;
+  "/trpc/$": typeof TrpcSplatRoute;
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/dashboard'
-    | '/login'
-    | '/lp2'
-    | '/success'
-    | '/todos'
-    | '/api/$'
-    | '/trpc/$'
-  fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/dashboard'
-    | '/login'
-    | '/lp2'
-    | '/success'
-    | '/todos'
-    | '/api/$'
-    | '/trpc/$'
+  fileRoutesByFullPath: FileRoutesByFullPath;
+  fullPaths: "/" | "/dashboard" | "/login" | "/lp2" | "/success" | "/todos" | "/api/$" | "/trpc/$";
+  fileRoutesByTo: FileRoutesByTo;
+  to: "/" | "/dashboard" | "/login" | "/lp2" | "/success" | "/todos" | "/api/$" | "/trpc/$";
   id:
-    | '__root__'
-    | '/'
-    | '/dashboard'
-    | '/login'
-    | '/lp2'
-    | '/success'
-    | '/todos'
-    | '/api/$'
-    | '/trpc/$'
-  fileRoutesById: FileRoutesById
+    | "__root__"
+    | "/"
+    | "/dashboard"
+    | "/login"
+    | "/lp2"
+    | "/success"
+    | "/todos"
+    | "/api/$"
+    | "/trpc/$";
+  fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  DashboardRoute: typeof DashboardRoute
-  LoginRoute: typeof LoginRoute
-  Lp2Route: typeof Lp2Route
-  SuccessRoute: typeof SuccessRoute
-  TodosRoute: typeof TodosRoute
-  ApiSplatRoute: typeof ApiSplatRoute
-  TrpcSplatRoute: typeof TrpcSplatRoute
+  IndexRoute: typeof IndexRoute;
+  DashboardRoute: typeof DashboardRoute;
+  LoginRoute: typeof LoginRoute;
+  Lp2Route: typeof Lp2Route;
+  SuccessRoute: typeof SuccessRoute;
+  TodosRoute: typeof TodosRoute;
+  ApiSplatRoute: typeof ApiSplatRoute;
+  TrpcSplatRoute: typeof TrpcSplatRoute;
 }
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
-    '/todos': {
-      id: '/todos'
-      path: '/todos'
-      fullPath: '/todos'
-      preLoaderRoute: typeof TodosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/success': {
-      id: '/success'
-      path: '/success'
-      fullPath: '/success'
-      preLoaderRoute: typeof SuccessRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lp2': {
-      id: '/lp2'
-      path: '/lp2'
-      fullPath: '/lp2'
-      preLoaderRoute: typeof Lp2RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/trpc/$': {
-      id: '/trpc/$'
-      path: '/trpc/$'
-      fullPath: '/trpc/$'
-      preLoaderRoute: typeof TrpcSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/$': {
-      id: '/api/$'
-      path: '/api/$'
-      fullPath: '/api/$'
-      preLoaderRoute: typeof ApiSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+    "/todos": {
+      id: "/todos";
+      path: "/todos";
+      fullPath: "/todos";
+      preLoaderRoute: typeof TodosRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/success": {
+      id: "/success";
+      path: "/success";
+      fullPath: "/success";
+      preLoaderRoute: typeof SuccessRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/lp2": {
+      id: "/lp2";
+      path: "/lp2";
+      fullPath: "/lp2";
+      preLoaderRoute: typeof Lp2RouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/login": {
+      id: "/login";
+      path: "/login";
+      fullPath: "/login";
+      preLoaderRoute: typeof LoginRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/dashboard": {
+      id: "/dashboard";
+      path: "/dashboard";
+      fullPath: "/dashboard";
+      preLoaderRoute: typeof DashboardRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/": {
+      id: "/";
+      path: "/";
+      fullPath: "/";
+      preLoaderRoute: typeof IndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/trpc/$": {
+      id: "/trpc/$";
+      path: "/trpc/$";
+      fullPath: "/trpc/$";
+      preLoaderRoute: typeof TrpcSplatRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/api/$": {
+      id: "/api/$";
+      path: "/api/$";
+      fullPath: "/api/$";
+      preLoaderRoute: typeof ApiSplatRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  DashboardRoute: DashboardRoute,
-  LoginRoute: LoginRoute,
-  Lp2Route: Lp2Route,
-  SuccessRoute: SuccessRoute,
-  TodosRoute: TodosRoute,
-  ApiSplatRoute: ApiSplatRoute,
-  TrpcSplatRoute: TrpcSplatRoute,
-}
+  IndexRoute,
+  DashboardRoute,
+  LoginRoute,
+  Lp2Route,
+  SuccessRoute,
+  TodosRoute,
+  ApiSplatRoute,
+  TrpcSplatRoute,
+};
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+  ._addFileTypes<FileRouteTypes>();
 
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
+import type { getRouter } from "./router.tsx";
+
+declare module "@tanstack/react-start" {
   interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
+    ssr: true;
+    router: Awaited<ReturnType<typeof getRouter>>;
   }
 }

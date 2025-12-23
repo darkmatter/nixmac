@@ -26,15 +26,14 @@ export const makeTRPCClient = createIsomorphicFn()
           },
         }),
       ],
-    })
+    }),
   )
   .client(() =>
     createTRPCClient<AppRouter>({
       links: [
         loggerLink({
           enabled: (op) =>
-            import.meta.env.DEV ||
-            (op.direction === "down" && op.result instanceof Error),
+            import.meta.env.DEV || (op.direction === "down" && op.result instanceof Error),
         }),
         httpBatchStreamLink({
           transformer: SuperJSON,
@@ -46,7 +45,7 @@ export const makeTRPCClient = createIsomorphicFn()
           },
         }),
       ],
-    })
+    }),
   );
 
 export const { useTRPC, TRPCProvider } = createTRPCContext<typeof appRouter>();

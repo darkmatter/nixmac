@@ -36,9 +36,7 @@ export function OverviewStep({
     return (
       <div className="space-y-4">
         <div className="text-center">
-          <h2 className="font-semibold text-foreground text-lg">
-            Evolving your configuration...
-          </h2>
+          <h2 className="font-semibold text-foreground text-lg">Evolving your configuration...</h2>
           <p className="mt-1 text-muted-foreground text-sm">
             AI is making changes based on your request
           </p>
@@ -63,17 +61,14 @@ export function OverviewStep({
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           {categories.map((cat) => (
-            <div
-              className="rounded-lg border border-border bg-muted/30 p-4"
-              key={cat.title}
-            >
+            <div className="rounded-lg border border-border bg-muted/30 p-4" key={cat.title}>
               <div className="mb-3 flex items-center gap-3">
                 <div
                   className={cn(
                     "rounded-lg p-2",
                     cat.color === "teal" && "bg-teal-500/10 text-teal-500",
                     cat.color === "blue" && "bg-blue-500/10 text-blue-500",
-                    cat.color === "red" && "bg-red-500/10 text-red-500"
+                    cat.color === "red" && "bg-red-500/10 text-red-500",
                   )}
                 >
                   <cat.icon className="h-4 w-4" />
@@ -87,10 +82,7 @@ export function OverviewStep({
               </div>
               <ul className="space-y-1">
                 {cat.items.map((item, i) => (
-                  <li
-                    className="flex items-center gap-2 text-muted-foreground text-sm"
-                    key={i}
-                  >
+                  <li className="flex items-center gap-2 text-muted-foreground text-sm" key={i}>
                     <Check className="h-3 w-3 text-teal-500" />
                     {item}
                   </li>
@@ -107,9 +99,7 @@ export function OverviewStep({
   return (
     <div className="space-y-4">
       <div className="text-center">
-        <h2 className="font-semibold text-foreground text-lg">
-          What would you like to change?
-        </h2>
+        <h2 className="font-semibold text-foreground text-lg">What would you like to change?</h2>
         <p className="mt-1 text-muted-foreground text-sm">
           Describe your desired configuration changes
         </p>
@@ -136,18 +126,16 @@ export function OverviewStep({
         /> */}
 
         <div className="flex flex-wrap gap-2">
-          {["Install vim", "Add Rectangle app", "Configure git"].map(
-            (example) => (
-              <button
-                className="rounded-full border border-border bg-muted/50 px-3 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground"
-                key={example}
-                onClick={() => setEvolvePrompt(example)}
-                type="button"
-              >
-                {example}
-              </button>
-            )
-          )}
+          {["Install vim", "Add Rectangle app", "Configure git"].map((example) => (
+            <button
+              className="rounded-full border border-border bg-muted/50 px-3 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground"
+              key={example}
+              onClick={() => setEvolvePrompt(example)}
+              type="button"
+            >
+              {example}
+            </button>
+          ))}
         </div>
       </div>
     </div>

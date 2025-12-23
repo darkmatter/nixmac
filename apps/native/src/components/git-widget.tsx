@@ -75,7 +75,7 @@ export function GitWidget() {
           "flex items-center gap-3",
           "transition-all duration-300 hover:scale-105 hover:border-primary/50",
           "shadow-2xl shadow-black/50",
-          isExpanded && "pointer-events-none scale-95 opacity-0"
+          isExpanded && "pointer-events-none scale-95 opacity-0",
         )}
         onClick={() => setIsExpanded(true)}
         type="button"
@@ -87,12 +87,8 @@ export function GitWidget() {
           )}
         </div>
         <div className="flex flex-col items-start">
-          <span className="font-medium text-muted-foreground text-xs">
-            Ready to save
-          </span>
-          <span className="font-semibold text-sm">
-            {mockChanges.length} changes
-          </span>
+          <span className="font-medium text-muted-foreground text-xs">Ready to save</span>
+          <span className="font-semibold text-sm">{mockChanges.length} changes</span>
         </div>
       </button>
 
@@ -104,7 +100,7 @@ export function GitWidget() {
           "origin-bottom-right transition-all duration-500",
           isExpanded
             ? "pointer-events-auto scale-100 opacity-100"
-            : "pointer-events-none scale-90 opacity-0"
+            : "pointer-events-none scale-90 opacity-0",
         )}
       >
         <div className="flex items-center justify-between border-border border-b bg-gradient-to-r from-primary/5 to-transparent p-5">
@@ -139,7 +135,7 @@ export function GitWidget() {
                 "flex w-full items-center gap-4 p-4",
                 "transition-all duration-200 hover:bg-muted/50",
                 "border-border/50 border-b last:border-b-0",
-                selectedChange?.name === change.name && "bg-muted"
+                selectedChange?.name === change.name && "bg-muted",
               )}
               key={change.name}
               onClick={() => setSelectedChange(change)}
@@ -149,10 +145,8 @@ export function GitWidget() {
                 className={cn(
                   "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
                   change.type === "new" && "bg-git-added/15 text-git-added",
-                  change.type === "edited" &&
-                    "bg-git-modified/15 text-git-modified",
-                  change.type === "removed" &&
-                    "bg-git-deleted/15 text-git-deleted"
+                  change.type === "edited" && "bg-git-modified/15 text-git-modified",
+                  change.type === "removed" && "bg-git-deleted/15 text-git-deleted",
                 )}
               >
                 {change.type === "new" && <Plus className="h-5 w-5" />}
@@ -161,9 +155,7 @@ export function GitWidget() {
               </div>
               <div className="min-w-0 flex-1 text-left">
                 <p className="truncate font-medium">{change.name}</p>
-                <p className="truncate text-muted-foreground text-sm">
-                  {change.description}
-                </p>
+                <p className="truncate text-muted-foreground text-sm">{change.description}</p>
               </div>
               <span className="whitespace-nowrap text-muted-foreground text-xs">
                 {change.timeAgo}
@@ -180,15 +172,11 @@ export function GitWidget() {
             </div>
             <div className="space-y-2 rounded-xl bg-background p-4 text-sm">
               <div className="flex items-center gap-2 text-git-deleted">
-                <span className="rounded-md bg-git-deleted/10 px-2 py-0.5 text-xs">
-                  Before
-                </span>
+                <span className="rounded-md bg-git-deleted/10 px-2 py-0.5 text-xs">Before</span>
                 <span className="opacity-75">Old configuration value</span>
               </div>
               <div className="flex items-center gap-2 text-git-added">
-                <span className="rounded-md bg-git-added/10 px-2 py-0.5 text-xs">
-                  After
-                </span>
+                <span className="rounded-md bg-git-added/10 px-2 py-0.5 text-xs">After</span>
                 <span>New improved setting</span>
               </div>
             </div>
@@ -208,7 +196,7 @@ export function GitWidget() {
                 "text-sm placeholder:text-muted-foreground",
                 "focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20",
                 "transition-all duration-200",
-                "disabled:cursor-not-allowed disabled:opacity-50"
+                "disabled:cursor-not-allowed disabled:opacity-50",
               )}
               disabled={isProcessing}
               onChange={(e) => setPrompt(e.target.value)}
@@ -222,7 +210,7 @@ export function GitWidget() {
                 "-translate-y-1/2 absolute top-1/2 right-2",
                 "h-8 w-8 rounded-lg",
                 "bg-primary hover:bg-primary/90",
-                "disabled:cursor-not-allowed disabled:opacity-50"
+                "disabled:cursor-not-allowed disabled:opacity-50",
               )}
               disabled={!prompt.trim() || isProcessing}
               onClick={handlePromptSubmit}

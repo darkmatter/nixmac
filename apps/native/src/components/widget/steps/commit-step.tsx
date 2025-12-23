@@ -41,9 +41,9 @@ export function CommitStep({
   summary,
 }: CommitStepProps) {
   const { stagedFiles, allChangesStaged } = analyzeGitStatus(gitStatus);
-  const [selectedAction, setSelectedAction] = useState<
-    "commit" | "update" | "rollback" | null
-  >(allChangesStaged && stagedFiles.length > 0 ? "commit" : null);
+  const [selectedAction, setSelectedAction] = useState<"commit" | "update" | "rollback" | null>(
+    allChangesStaged && stagedFiles.length > 0 ? "commit" : null,
+  );
 
   const actions = [
     {
@@ -75,9 +75,7 @@ export function CommitStep({
   return (
     <div className="flex h-full w-full max-w-full flex-col items-center justify-start py-4">
       <h3 className="mb-2 font-semibold text-lg">Ready to Apply?</h3>
-      <p className="mb-6 text-center text-muted-foreground">
-        Pick how you'd like to proceed:
-      </p>
+      <p className="mb-6 text-center text-muted-foreground">Pick how you'd like to proceed:</p>
 
       {/* Action Cards */}
       <div className="grid w-full max-w-lg grid-cols-3 gap-4">
@@ -89,7 +87,7 @@ export function CommitStep({
                 ? "cursor-not-allowed border-border/50 opacity-50"
                 : selectedAction === action.id
                   ? "border-primary bg-primary/5"
-                  : "border-border hover:border-muted-foreground/50"
+                  : "border-border hover:border-muted-foreground/50",
             )}
             disabled={action.disabled}
             key={action.id}
@@ -101,15 +99,13 @@ export function CommitStep({
                 action.color === "white" && "bg-white-500/10 text-white-500",
                 action.color === "teal" && "bg-teal-300/10 text-teal-300",
                 action.color === "blue" && "bg-teal-300/10 text-teal-300",
-                action.color === "amber" && "bg-rose-300/10 text-rose-300"
+                action.color === "amber" && "bg-rose-300/10 text-rose-300",
               )}
             >
               <action.icon className="h-6 w-6" />
             </div>
             <p className="font-medium">{action.name}</p>
-            <p className="mt-1 text-center text-muted-foreground text-xs">
-              {action.desc}
-            </p>
+            <p className="mt-1 text-center text-muted-foreground text-xs">{action.desc}</p>
           </button>
         ))}
       </div>
@@ -119,16 +115,11 @@ export function CommitStep({
         {selectedAction === "commit" && (
           <div className="space-y-3">
             <div className="my-2 w-full">
-              <Diff
-                changedFiles={stagedFiles}
-                showAdvancedStats={false}
-                summary={summary}
-              />
+              <Diff changedFiles={stagedFiles} showAdvancedStats={false} summary={summary} />
             </div>
             <h3 className="font-medium text-sm">Checkpoint Summary</h3>
             <p className="text-muted-foreground text-xs">
-              This will help you identify the checkpoint if you need to rollback
-              later.
+              This will help you identify the checkpoint if you need to rollback later.
             </p>
             <Input
               className="border-border bg-background"
@@ -198,8 +189,7 @@ export function CommitStep({
         {selectedAction === "rollback" && (
           <div className="space-y-3">
             <p className="text-center text-muted-foreground text-sm">
-              This will discard all pending changes and restore the previous
-              configuration.
+              This will discard all pending changes and restore the previous configuration.
             </p>
             <Button
               className="w-full"

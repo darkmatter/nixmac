@@ -1,12 +1,12 @@
-import { $ZodType, $ZodDefault, $ZodError } from "zod/v4/core";
+import type * as z from "zod";
+import { $ZodDefault, $ZodError, $ZodType } from "zod/v4/core";
 import { getSchemaWithPreprocessor } from "./preprocessors";
 import {
-  ErrorWithContext,
+  type ErrorWithContext,
   makeDefaultReporter,
-  Reporter,
-  TokenFormatters,
+  type Reporter,
+  type TokenFormatters,
 } from "./reporter";
-import type * as z from "zod";
 import type { DeepReadonlyObject } from "./util/type-helpers";
 
 export type SimpleSchema<Out = any, In = any> = $ZodType<Out, In>;
@@ -55,8 +55,7 @@ export type RestrictSchemas<T extends Schemas> = {
   [K in keyof T]: T[K] extends SimpleSchema
     ? SimpleSchema
     : T[K] extends DetailedSpec
-      ? DetailedSpec<T[K]["schema"]> &
-          Omit<Record<keyof T[K], never>, DetailedSpecKeys>
+      ? DetailedSpec<T[K]["schema"]> & Omit<Record<keyof T[K], never>, DetailedSpecKeys>
       : never;
 };
 
@@ -131,9 +130,7 @@ export function parseEnvImpl<T extends Schemas & RestrictSchemas<T>>(
   schemas: T,
   reporterOrTokenFormatters: Reporter | TokenFormatters,
 ): DeepReadonlyObject<ParsedSchema<T>> {
-  const parsed: Record<string, unknown> = {} as DeepReadonlyObject<
-    ParsedSchema<T>
-  >;
+  const parsed: Record<string, unknown> = {} as DeepReadonlyObject<ParsedSchema<T>>;
   const reporter =
     typeof reporterOrTokenFormatters === "function"
       ? reporterOrTokenFormatters
@@ -147,9 +144,7 @@ export function parseEnvImpl<T extends Schemas & RestrictSchemas<T>>(
     let defaultUsed = false;
     let defaultValue: unknown;
     try {
-      handleDeprecation(
-        "schema" in schemaOrSpec ? schemaOrSpec.schema : schemaOrSpec,
-      );
+      handleDeprecation("schema" in schemaOrSpec ? schemaOrSpec.schema : schemaOrSpec);
 
       if (schemaOrSpec instanceof $ZodType) {
         if (envValue == null && schemaOrSpec instanceof $ZodDefault) {
@@ -181,14 +176,10 @@ export function parseEnvImpl<T extends Schemas & RestrictSchemas<T>>(
           // schema-with-preprocessor (it's an edge case, but our schema might
           // accept `null`, and the preprocessor will convert `undefined` to
           // `null` for us).
-          parsed[key] = getSchemaWithPreprocessor(schemaOrSpec.schema).parse(
-            envValue,
-          );
+          parsed[key] = getSchemaWithPreprocessor(schemaOrSpec.schema).parse(envValue);
         }
       } else {
-        parsed[key] = getSchemaWithPreprocessor(schemaOrSpec.schema).parse(
-          envValue,
-        );
+        parsed[key] = getSchemaWithPreprocessor(schemaOrSpec.schema).parse(envValue);
       }
     } catch (e) {
       errors.push({

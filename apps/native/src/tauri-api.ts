@@ -136,10 +136,8 @@ export const darwinAPI = {
   previewIndicator: {
     show: () => invoke("preview_indicator_show"),
     hide: () => invoke("preview_indicator_hide"),
-    update: (state: PreviewIndicatorState) =>
-      invoke("preview_indicator_update", { state }),
-    getState: () =>
-      invoke<PreviewIndicatorState>("preview_indicator_get_state"),
+    update: (state: PreviewIndicatorState) => invoke("preview_indicator_update", { state }),
+    getState: () => invoke<PreviewIndicatorState>("preview_indicator_get_state"),
   },
   rebuildOverlay: {
     show: () => invoke("rebuild_overlay_show"),

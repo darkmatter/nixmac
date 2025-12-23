@@ -3,6 +3,9 @@ inputs:
     url: github:rrbutani/nix-mk-shell-bin
   stackpanel:
     url: https://flakehub.com/f/darkmatter/stackpanel/*
+    inputs:
+      nixpkgs:
+        follows: nixpkgs
   nix2container:
     url: github:nlewo/nix2container
     inputs:
@@ -20,3 +23,5 @@ inputs:
     inputs:
       nixpkgs:
         follows: nixpkgs
+# imports:
+#   - stackpanel/nix

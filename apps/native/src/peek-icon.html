@@ -1,71 +1,71 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Peek Icon</title>
     <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-    html,
-    body {
-      width: 100%;
-      height: 100%;
-      background: transparent;
-      overflow: hidden;
-      user-select: none;
-      -webkit-user-select: none;
-    }
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        background: transparent;
+        overflow: hidden;
+        user-select: none;
+        -webkit-user-select: none;
+      }
 
-    .peek-icon {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition:
-        transform 0.15s ease,
-        opacity 0.15s ease;
-      opacity: 0.85;
-    }
+      .peek-icon {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition:
+          transform 0.15s ease,
+          opacity 0.15s ease;
+        opacity: 0.85;
+      }
 
-    .peek-icon:hover {
-      transform: scale(1.1);
-      opacity: 1;
-    }
+      .peek-icon:hover {
+        transform: scale(1.1);
+        opacity: 1;
+      }
 
-    .peek-icon:active {
-      transform: scale(0.95);
-    }
+      .peek-icon:active {
+        transform: scale(0.95);
+      }
 
-    .peek-icon img {
-      width: 48px;
-      height: 48px;
-      filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
-    }
+      .peek-icon img {
+        width: 48px;
+        height: 48px;
+        filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+      }
     </style>
   </head>
   <body>
     <div class="peek-icon" id="peek-icon">
-      <img src="/icon-dark.svg" alt="Open">
+      <img src="/icon-dark.svg" alt="Open" />
     </div>
 
     <script>
-    "use strict";
-    const { invoke } = window.__TAURI__.core;
+      "use strict";
+      const { invoke } = window.__TAURI__.core;
 
-    document.getElementById("peek-icon").addEventListener("click", async () => {
-      try {
-        await invoke("peek_icon_clicked");
-      } catch (e) {
-        console.error("Failed to handle peek icon click:", e);
-      }
-    });
+      document.getElementById("peek-icon").addEventListener("click", async () => {
+        try {
+          await invoke("peek_icon_clicked");
+        } catch (e) {
+          console.error("Failed to handle peek icon click:", e);
+        }
+      });
     </script>
   </body>
 </html>

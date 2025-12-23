@@ -36,5 +36,5 @@ if (!rootElement) {
 }
 
 ReactDOM.createRoot(rootElement).render(
-  <React.StrictMode>{isOverlay ? <Overlay /> : <App />}</React.StrictMode>
+  <React.StrictMode>{isOverlay ? <Overlay /> : <App />}</React.StrictMode>,
 );

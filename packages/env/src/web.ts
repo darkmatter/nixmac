@@ -1,9 +1,7 @@
 import { parseEnv, z } from "znv";
 
 export const env = parseEnv(process.env, {
-  NODE_ENV: z
-    .enum(["development", "production", "test"])
-    .default("development"),
+  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   PORT: z.coerce.number().default(3000),
   POSTGRES_URL: z.string(),
   BETTER_AUTH_SECRET: z.string().default("supersecret!"),

@@ -26,8 +26,7 @@ export const defaultPermissions: Permission[] = [
   {
     id: "documents",
     name: "Documents Folder Access",
-    description:
-      "Required to access and manage configuration files stored in Documents",
+    description: "Required to access and manage configuration files stored in Documents",
     required: true,
     canRequestProgrammatically: true,
     status: "pending",
@@ -35,8 +34,7 @@ export const defaultPermissions: Permission[] = [
   {
     id: "admin",
     name: "Administrator Privileges",
-    description:
-      "Required to install system packages and modify system configurations",
+    description: "Required to install system packages and modify system configurations",
     required: true,
     canRequestProgrammatically: false,
     status: "pending",
@@ -97,9 +95,7 @@ function PermissionCard({
           <div className="mb-1 flex flex-wrap items-center gap-2">
             <h3
               className={
-                compact
-                  ? "font-medium text-foreground text-sm"
-                  : "font-medium text-foreground"
+                compact ? "font-medium text-foreground text-sm" : "font-medium text-foreground"
               }
             >
               {permission.name}
@@ -111,14 +107,10 @@ function PermissionCard({
             ) : null}
             <PermissionStatusBadge status={permission.status} />
           </div>
-          <p className="text-muted-foreground text-sm">
-            {permission.description}
-          </p>
+          <p className="text-muted-foreground text-sm">{permission.description}</p>
           {permission.instructions ? (
             <div className="mt-2 rounded-md border border-border bg-secondary/50 p-3">
-              <p className="font-mono text-muted-foreground text-xs">
-                {permission.instructions}
-              </p>
+              <p className="font-mono text-muted-foreground text-xs">{permission.instructions}</p>
             </div>
           ) : null}
         </div>
@@ -128,9 +120,7 @@ function PermissionCard({
               disabled={permission.status === "granted"}
               onClick={() => onRequestPermission(permission.id)}
               size="sm"
-              variant={
-                permission.status === "granted" ? "secondary" : "default"
-              }
+              variant={permission.status === "granted" ? "secondary" : "default"}
             >
               {permissionActionLabel(permission.status)}
             </Button>
@@ -155,16 +145,13 @@ export function PermissionsScreen({
   initialPermissions = defaultPermissions,
   compact = false,
 }: PermissionsScreenProps) {
-  const [permissions, setPermissions] =
-    useState<Permission[]>(initialPermissions);
+  const [permissions, setPermissions] = useState<Permission[]>(initialPermissions);
 
   const handleRequestPermission = (permissionId: string) => {
     setPermissions((prev) =>
       prev.map((p) =>
-        p.id === permissionId
-          ? { ...p, status: Math.random() > 0.3 ? "granted" : "denied" }
-          : p
-      )
+        p.id === permissionId ? { ...p, status: Math.random() > 0.3 ? "granted" : "denied" } : p,
+      ),
     );
   };
 
@@ -268,14 +255,9 @@ export function PermissionsScreen({
   );
 }
 
-function PermissionStatusBadge({
-  status,
-}: {
-  status: "granted" | "denied" | "pending";
-}) {
+function PermissionStatusBadge({ status }: { status: "granted" | "denied" | "pending" }) {
   const styles = {
-    granted:
-      "bg-console-success/10 text-console-success border-console-success/20",
+    granted: "bg-console-success/10 text-console-success border-console-success/20",
     denied: "bg-console-error/10 text-console-error border-console-error/20",
     pending: "bg-secondary text-muted-foreground border-border",
   };
@@ -287,9 +269,7 @@ function PermissionStatusBadge({
   };
 
   return (
-    <span
-      className={`rounded-md border px-2 py-0.5 font-medium text-xs ${styles[status]}`}
-    >
+    <span className={`rounded-md border px-2 py-0.5 font-medium text-xs ${styles[status]}`}>
       {icons[status]} {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
   );

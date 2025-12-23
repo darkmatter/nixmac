@@ -26,7 +26,7 @@ export const useAppStore = create<AppState>()(
           }),
         clearConsoleLogs: () => set({ consoleLogs: [] }),
       })),
-      { name: "app-state" }
-    )
-  )
+      { name: "app-state" },
+    ),
+  ),
 );

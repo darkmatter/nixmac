@@ -21,10 +21,7 @@ export function IconTitleSub({
   const showIcon = icon && (!compact || showIconInCompact);
 
   return (
-    <div
-      className={cn("text-center", compact ? "mb-4" : "mb-8", className)}
-      {...props}
-    >
+    <div className={cn("text-center", compact ? "mb-4" : "mb-8", className)} {...props}>
       {showIcon && (
         <div className="mb-4 flex items-center justify-center gap-2">
           <div className="flex size-12 items-center justify-center rounded-lg bg-primary">
@@ -41,11 +38,7 @@ export function IconTitleSub({
       >
         {title}
       </h1>
-      <p
-        className={
-          compact ? "text-muted-foreground text-sm" : "text-muted-foreground"
-        }
-      >
+      <p className={compact ? "text-muted-foreground text-sm" : "text-muted-foreground"}>
         {subtitle}
       </p>
     </div>

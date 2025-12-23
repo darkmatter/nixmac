@@ -1,15 +1,7 @@
 import * as z from "zod";
-import { assertNever } from "./util/type-helpers";
-import {
-  bigInt,
-  boolean,
-  date,
-  identity,
-  json,
-  nullProcessor,
-  number,
-} from "./util/processing";
 import type * as zCore from "zod/v4/core";
+import { bigInt, boolean, date, identity, json, nullProcessor, number } from "./util/processing";
+import { assertNever } from "./util/type-helpers";
 
 /**
  * Given a Zod schema, returns a function that tries to convert a string (or
@@ -88,9 +80,7 @@ export function getPreprocessorByZodType(
       return nullProcessor;
 
     case "union":
-      throw new Error(
-        `Zod type not yet supported: "${def.type}" (PRs welcome)`,
-      );
+      throw new Error(`Zod type not yet supported: "${def.type}" (PRs welcome)`);
 
     case "any":
     case "unknown":
@@ -123,9 +113,7 @@ export function getPreprocessorByZodType(
     case "symbol":
     case "function":
     case "readonly":
-      throw new Error(
-        `Zod type not yet supported: "${def.type}" (PRs welcome)`,
-      );
+      throw new Error(`Zod type not yet supported: "${def.type}" (PRs welcome)`);
     default: {
       assertNever(def);
     }

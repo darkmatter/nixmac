@@ -1,11 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  appStateToStep,
-  computeAppState,
-  useWidgetStore,
-} from "@/stores/widget-store";
+import { appStateToStep, computeAppState, useWidgetStore } from "@/stores/widget-store";
 import {
   CONFIG_CHANGED_CHANNEL,
   type ConfigChangedEvent,
@@ -130,18 +126,15 @@ export function DarwinWidget() {
     s.appendLog(`\n> Evolving: "${s.evolvePrompt}"\n`);
 
     // Set up evolve event listener
-    const unlistenEvolve = await ipcRenderer.on<EvolveEvent>(
-      EVOLVE_EVENT_CHANNEL,
-      (event) => {
-        if (event.payload) {
-          storeRef.current.appendEvolveEvent(event.payload);
-          // Also append raw log to console for debugging
-          if (event.payload.raw) {
-            storeRef.current.appendLog(`${event.payload.raw}\n`);
-          }
+    const unlistenEvolve = await ipcRenderer.on<EvolveEvent>(EVOLVE_EVENT_CHANNEL, (event) => {
+      if (event.payload) {
+        storeRef.current.appendEvolveEvent(event.payload);
+        // Also append raw log to console for debugging
+        if (event.payload.raw) {
+          storeRef.current.appendLog(`${event.payload.raw}\n`);
         }
       }
-    );
+    });
 
     try {
       await darwinAPI.darwin.evolve(s.evolvePrompt);
@@ -169,7 +162,7 @@ export function DarwinWidget() {
       "darwin:apply:data",
       (event: { payload?: { chunk?: string } }) => {
         storeRef.current.appendLog(event.payload?.chunk || "");
-      }
+      },
     );
 
     const unlistenEnd = await ipcRenderer.on("darwin:apply:end", async () => {
@@ -302,7 +295,7 @@ export function DarwinWidget() {
           // Ignore errors - window might not exist yet
         });
     },
-    []
+    [],
   );
 
   // Auto-recover state from git status on startup
@@ -311,7 +304,7 @@ export function DarwinWidget() {
   const recoverFromGitState = useCallback(
     async (
       gitStatus: Awaited<ReturnType<typeof darwinAPI.git.status>> | null,
-      mounted: { current: boolean }
+      mounted: { current: boolean },
     ) => {
       const currentStore = storeRef.current;
 
@@ -337,9 +330,7 @@ export function DarwinWidget() {
 
       if (currentStore.summary.items.length > 0) {
         // Already have summary - use first item's title for preview indicator
-        const summaryText = currentStore.summary.items
-          .map((i) => i.title)
-          .join(", ");
+        const summaryText = currentStore.summary.items.map((i) => i.title).join(", ");
         await updatePreviewIndicator({
           gitStatus,
           summaryText,
@@ -387,7 +378,7 @@ export function DarwinWidget() {
         }
       }
     },
-    [updatePreviewIndicator]
+    [updatePreviewIndicator],
   );
 
   // =============================================================================
@@ -423,28 +414,19 @@ export function DarwinWidget() {
     return () => {
       mounted.current = false;
     };
-  }, [
-    loadConfig,
-    loadHosts,
-    loadPeekState,
-    refreshGitStatus,
-    recoverFromGitState,
-  ]);
+  }, [loadConfig, loadHosts, loadPeekState, refreshGitStatus, recoverFromGitState]);
 
   // Listen for peek state changes
   useEffect(() => {
-    const peekSub = ipcRenderer.on(
-      "peek:state",
-      (event: { payload: unknown }) => {
-        const newState = event.payload as "hidden" | "peeking" | "expanded";
-        storeRef.current.setPeekState(newState);
-        if (newState === "peeking" || newState === "expanded") {
-          storeRef.current.setExpanded(true);
-        } else if (newState === "hidden") {
-          storeRef.current.setExpanded(false);
-        }
+    const peekSub = ipcRenderer.on("peek:state", (event: { payload: unknown }) => {
+      const newState = event.payload as "hidden" | "peeking" | "expanded";
+      storeRef.current.setPeekState(newState);
+      if (newState === "peeking" || newState === "expanded") {
+        storeRef.current.setExpanded(true);
+      } else if (newState === "hidden") {
+        storeRef.current.setExpanded(false);
       }
-    );
+    });
 
     return () => {
       peekSub.then((unlisten) => unlisten());
@@ -456,18 +438,15 @@ export function DarwinWidget() {
   useEffect(() => {
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const configSub = ipcRenderer.on<ConfigChangedEvent>(
-      CONFIG_CHANGED_CHANNEL,
-      (_event) => {
-        // Debounce refreshes so rapid filesystem events don't spam git.
-        if (debounceTimer) {
-          clearTimeout(debounceTimer);
-        }
-        debounceTimer = setTimeout(() => {
-          refreshGitStatus();
-        }, 300);
+    const configSub = ipcRenderer.on<ConfigChangedEvent>(CONFIG_CHANGED_CHANNEL, (_event) => {
+      // Debounce refreshes so rapid filesystem events don't spam git.
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
       }
-    );
+      debounceTimer = setTimeout(() => {
+        refreshGitStatus();
+      }, 300);
+    });
 
     return () => {
       if (debounceTimer) {
@@ -485,11 +464,7 @@ export function DarwinWidget() {
     prevAppStateRef.current = appState;
 
     // Only fetch when transitioning INTO preview mode
-    if (
-      appState === "preview" &&
-      wasNotPreview &&
-      store.summary.items.length === 0
-    ) {
+    if (appState === "preview" && wasNotPreview && store.summary.items.length === 0) {
       (async () => {
         storeRef.current.setSummary({ isLoading: true });
         try {
@@ -513,9 +488,7 @@ export function DarwinWidget() {
   // Update preview indicator window when state changes
   useEffect(() => {
     const summaryText =
-      store.summary.items.length > 0
-        ? store.summary.items.map((i) => i.title).join(", ")
-        : null;
+      store.summary.items.length > 0 ? store.summary.items.map((i) => i.title).join(", ") : null;
     updatePreviewIndicator({
       gitStatus: store.gitStatus,
       summaryText,

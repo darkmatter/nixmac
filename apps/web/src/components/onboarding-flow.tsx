@@ -1,13 +1,7 @@
 import { Check, ChevronLeft, ChevronRight, FolderOpen } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfigurationStep } from "./onboarding/configuration-step";
 import { SetupWizardStep } from "./onboarding/setup-wizard-step";
 import { WelcomeStep } from "./onboarding/welcome-step";
@@ -66,9 +60,7 @@ export function OnboardingFlow() {
               {index < currentStep ? <Check className="h-4 w-4" /> : index + 1}
             </div>
             {index < STEPS.length - 1 && (
-              <div
-                className={`h-0.5 w-12 ${index < currentStep ? "bg-primary" : "bg-muted"}`}
-              />
+              <div className={`h-0.5 w-12 ${index < currentStep ? "bg-primary" : "bg-muted"}`} />
             )}
           </div>
         ))}
@@ -82,9 +74,7 @@ export function OnboardingFlow() {
               <FolderOpen className="h-6 w-6 text-primary" />
             </div>
             <div className="flex-1">
-              <CardTitle className="text-2xl">
-                {STEPS[currentStep].title}
-              </CardTitle>
+              <CardTitle className="text-2xl">{STEPS[currentStep].title}</CardTitle>
               <CardDescription className="text-base">
                 {currentStep === 0 && "Get started with nixmac"}
                 {currentStep === 1 && "Configure your nixmac installation"}
@@ -98,11 +88,7 @@ export function OnboardingFlow() {
 
           {/* Navigation buttons */}
           <div className="flex items-center justify-between border-t pt-4">
-            <Button
-              disabled={currentStep === 0}
-              onClick={handleBack}
-              variant="outline"
-            >
+            <Button disabled={currentStep === 0} onClick={handleBack} variant="outline">
               <ChevronLeft className="mr-2 h-4 w-4" />
               Back
             </Button>

@@ -36,6 +36,15 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_positioner::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_single_instance::init())
+        .plugin(tauri_plugin_stronghold::init())
+        .plugin(tauri_plugin_websocket::init())
+        .plugin(tauri_plugin_window_state::init())
+        .plugin(tauri_plugin_sql::init())
+        .plugin(tauri_plugin_updater::init())
+        .plugin(tauri_plugin_upload::init())
         .invoke_handler(tauri::generate_handler![
             // Configuration
             commands::config_get,
@@ -114,6 +123,9 @@ fn main() {
                 .icon_as_template(true)
                 .menu(&menu)
                 .show_menu_on_left_click(true)
+                .on_tray_icon_event(|tray_handle, event| {
+                    tauri_plugin_positioner::on_tray_event(tray_handle.app_handle(), &event);
+                })
                 .on_menu_event(move |app, event| match event.id().as_ref() {
                     "open" => {
                         peek::lock_expanded();
@@ -160,7 +172,7 @@ fn main() {
                     .decorations(false)
                     .transparent(true)
                     .effects(EffectsBuilder::new().effects(vec![Effect::Acrylic]).build())
-                    .visible(false) // Start hidden - icon reveals it
+                    .visible(true) // Start hidden - icon reveals it
                     .always_on_top(true)
                     .visible_on_all_workspaces(true)
                     .background_color(Color(0, 0, 0, 0))

@@ -50,9 +50,7 @@ export function EvolvingStep({
     return (
       <div className="space-y-4">
         <div className="text-center">
-          <h2 className="font-semibold text-foreground text-lg">
-            Evolving your configuration...
-          </h2>
+          <h2 className="font-semibold text-foreground text-lg">Evolving your configuration...</h2>
           <p className="mt-1 text-muted-foreground text-sm">
             AI is making changes based on your request
           </p>
@@ -98,11 +96,7 @@ export function EvolvingStep({
       )}
 
       {/* AI Summary list - default view */}
-      <Diff
-        changedFiles={changedFiles}
-        showAdvancedStats={showAdvancedStats}
-        summary={summary}
-      />
+      <Diff changedFiles={changedFiles} showAdvancedStats={showAdvancedStats} summary={summary} />
       {/* Instructions for testing changes */}
       {!summary.isLoading && summary.instructions && (
         <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
@@ -110,9 +104,7 @@ export function EvolvingStep({
             <Sparkles className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
             <div className="space-y-1">
               <p className="font-medium text-foreground text-sm">Try it out</p>
-              <p className="text-muted-foreground text-xs">
-                {summary.instructions}
-              </p>
+              <p className="text-muted-foreground text-xs">{summary.instructions}</p>
             </div>
           </div>
         </div>
@@ -124,12 +116,9 @@ export function EvolvingStep({
             <div className="flex items-start gap-2">
               <Shield className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-400" />
               <div className="space-y-1">
-                <p className="font-medium text-blue-200 text-sm">
-                  Preview applies changes safely
-                </p>
+                <p className="font-medium text-blue-200 text-sm">Preview applies changes safely</p>
                 <p className="text-blue-200/70 text-xs">
-                  You'll be asked for your password. Changes can be rolled back
-                  if needed.
+                  You'll be asked for your password. Changes can be rolled back if needed.
                 </p>
               </div>
             </div>
@@ -151,9 +140,7 @@ export function EvolvingStep({
         </>
       ) : null}
 
-      {!hasUnstagedChanges && (
-        <p className="text-muted-foreground text-sm">Evolve Again</p>
-      )}
+      {!hasUnstagedChanges && <p className="text-muted-foreground text-sm">Evolve Again</p>}
       {!hasUnstagedChanges && (
         <ChatInput
           isLoading={isProcessing}

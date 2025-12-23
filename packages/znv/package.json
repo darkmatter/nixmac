@@ -2,13 +2,13 @@
   "name": "znv",
   "version": "0.5.0",
   "description": "Parse your environment with Zod schemas",
-  "license": "MIT",
   "keywords": [
     "env",
     "process.env",
-    "zod",
-    "validation"
+    "validation",
+    "zod"
   ],
+  "license": "MIT",
   "type": "module",
   "main": "src/index.ts",
   "module": "src/index.ts",

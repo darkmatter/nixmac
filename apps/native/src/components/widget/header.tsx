@@ -26,20 +26,10 @@ export function Header(props: {
         </div>
       </div>
       <div className="flex items-center gap-1">
-        <Button
-          className="h-8 w-8 p-0"
-          onClick={onOpenSettings}
-          size="sm"
-          variant="ghost"
-        >
+        <Button className="h-8 w-8 p-0" onClick={onOpenSettings} size="sm" variant="ghost">
           <Settings className="h-4 w-4" />
         </Button>
-        <Button
-          className="h-8 w-8 p-0"
-          onClick={() => setIsExpanded()}
-          size="sm"
-          variant="ghost"
-        >
+        <Button className="h-8 w-8 p-0" onClick={() => setIsExpanded()} size="sm" variant="ghost">
           <X className="h-4 w-4" />
         </Button>
       </div>

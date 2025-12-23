@@ -1,13 +1,6 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 
-import {
-  CheckCircle,
-  Cog,
-  Download,
-  Lock,
-  Shield,
-  Terminal,
-} from "lucide-react";
+import { CheckCircle, Cog, Download, Lock, Shield, Terminal } from "lucide-react";
 import preview from "#storybook/preview";
 import { IconTitleSub } from "./icon-title-subtitle";
 
@@ -82,8 +75,7 @@ export const Default = meta.story({
   args: {
     icon: ConsoleIcon,
     title: "System Permissions",
-    subtitle:
-      "To manage your macOS system declaratively, nixmac needs the following permissions",
+    subtitle: "To manage your macOS system declaratively, nixmac needs the following permissions",
   },
 });
 
@@ -176,8 +168,7 @@ export const SecuritySettings = meta.story({
   args: {
     icon: <Lock className="size-7 text-primary-foreground" />,
     title: "Security & Privacy",
-    subtitle:
-      "Configure security settings and privacy permissions for your nixmac installation.",
+    subtitle: "Configure security settings and privacy permissions for your nixmac installation.",
   },
 });
 

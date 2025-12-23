@@ -31,7 +31,7 @@ lib.mkIf (!(config.container.isBuilding or false)) {
   enterShell = ''
     echo "$(starship preset pure-preset)" > $DEVENV_STATE/starship.toml
     export STARSHIP_CONFIG=$DEVENV_STATE/starship.toml
-    eval "$(starship init $SHELL)"
+    # eval "$(starship init $SHELL)"
   '';
 
   # https://devenv.sh/languages/
@@ -70,7 +70,6 @@ lib.mkIf (!(config.container.isBuilding or false)) {
   treefmt.enable = true;
   treefmt.config = {
     programs.rustfmt.enable = true;
-    programs.biome.enable = true;
     programs.yamlfmt.enable = true;
     programs.mdformat.enable = true;
   };

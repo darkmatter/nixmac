@@ -14,8 +14,7 @@ const meta = preview.meta({
   argTypes: {
     compact: {
       control: "boolean",
-      description:
-        "When true, renders a compact version suitable for embedding in a widget",
+      description: "When true, renders a compact version suitable for embedding in a widget",
     },
   },
 });

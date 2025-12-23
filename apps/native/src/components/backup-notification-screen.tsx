@@ -32,9 +32,7 @@ export function BackupNotificationScreen({
         />
 
         <IconTitleDescriptionCard
-          className={
-            compact ? "mx-auto mb-6 max-w-md" : "mx-auto mb-6 max-w-xl"
-          }
+          className={compact ? "mx-auto mb-6 max-w-md" : "mx-auto mb-6 max-w-xl"}
           description="nix-darwin modifies system configuration files during installation. A backup ensures you can completely restore your original configuration if you decide to uninstall nixmac."
           icon={infoIcon}
           title="Why is a backup necessary?"

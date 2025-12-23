@@ -17,11 +17,7 @@ export function Console({ expanded, setExpanded, logs }: ConsoleProps) {
         type="button"
       >
         <span className="font-medium">Console</span>
-        {expanded ? (
-          <ChevronDown className="h-4 w-4" />
-        ) : (
-          <ChevronUp className="h-4 w-4" />
-        )}
+        {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
       </button>
 
       {expanded && (

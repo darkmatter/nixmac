@@ -40,13 +40,10 @@ function PreviewIndicatorWindow() {
       });
 
     // Listen for state updates from the main widget
-    const unsubscribe = listen<PreviewState>(
-      "preview-indicator:update",
-      (event) => {
-        console.log("[preview-indicator] Received update:", event.payload);
-        setState(event.payload);
-      }
-    );
+    const unsubscribe = listen<PreviewState>("preview-indicator:update", (event) => {
+      console.log("[preview-indicator] Received update:", event.payload);
+      setState(event.payload);
+    });
 
     return () => {
       unsubscribe.then((unlisten) => unlisten());
@@ -65,9 +62,7 @@ function PreviewIndicatorWindow() {
   // DEBUG: Show error or loading state
   if (error) {
     return (
-      <div
-        style={{ background: "red", color: "white", padding: 8, fontSize: 12 }}
-      >
+      <div style={{ background: "red", color: "white", padding: 8, fontSize: 12 }}>
         Error: {error}
       </div>
     );
@@ -75,9 +70,7 @@ function PreviewIndicatorWindow() {
 
   if (!mounted) {
     return (
-      <div
-        style={{ background: "blue", color: "white", padding: 8, fontSize: 12 }}
-      >
+      <div style={{ background: "blue", color: "white", padding: 8, fontSize: 12 }}>
         Mounting...
       </div>
     );
@@ -101,6 +94,6 @@ if (rootElement) {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
       <PreviewIndicatorWindow />
-    </React.StrictMode>
+    </React.StrictMode>,
   );
 }

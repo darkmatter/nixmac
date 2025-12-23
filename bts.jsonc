@@ -1,6 +1,3 @@
-// Better-T-Stack configuration file
-// safe to delete
-
 {
   "$schema": "https://r2.better-t-stack.dev/schema.json",
   "version": "3.8.2",
@@ -9,21 +6,9 @@
   "orm": "drizzle",
   "backend": "hono",
   "runtime": "bun",
-  "frontend": [
-    "tanstack-router"
-  ],
-  "addons": [
-    "biome",
-    "fumadocs",
-    "ruler",
-    "starlight",
-    "tauri",
-    "turborepo",
-    "ultracite"
-  ],
-  "examples": [
-    "todo"
-  ],
+  "frontend": ["tanstack-router"],
+  "addons": ["oxlint", "fumadocs", "ruler", "starlight", "tauri", "turborepo", "ultracite"],
+  "examples": ["todo"],
   "auth": "better-auth",
   "payments": "polar",
   "packageManager": "bun",

@@ -8,12 +8,7 @@ interface SidebarProps {
   onToggleCollapse: () => void;
 }
 
-export function Sidebar({
-  activeView,
-  onViewChange,
-  isCollapsed,
-  onToggleCollapse,
-}: SidebarProps) {
+export function Sidebar({ activeView, onViewChange, isCollapsed, onToggleCollapse }: SidebarProps) {
   const navItems = [
     { id: "landing", label: "Landing Page", icon: Home },
     { id: "onboarding", label: "Onboarding Flow", icon: Rocket },
@@ -63,9 +58,7 @@ export function Sidebar({
               title={isCollapsed ? item.label : undefined}
             >
               <Icon className="h-5 w-5 flex-shrink-0" />
-              {!isCollapsed && (
-                <span className="font-medium">{item.label}</span>
-              )}
+              {!isCollapsed && <span className="font-medium">{item.label}</span>}
             </button>
           );
         })}

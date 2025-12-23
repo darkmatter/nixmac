@@ -6,14 +6,14 @@
       "default": "./src/index.ts"
     }
   },
-  "devDependencies": {
-    "typescript": "^5",
-    "@nixmac/config": "workspace:*"
-  },
   "dependencies": {
     "@hono/trpc-server": "^0.4.0",
     "@nixmac/api": "workspace:*",
     "@nixmac/auth": "workspace:*",
     "hono": "catalog:"
+  },
+  "devDependencies": {
+    "@nixmac/config": "workspace:*",
+    "typescript": "^5"
   }
 }

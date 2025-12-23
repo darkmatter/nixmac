@@ -17,8 +17,7 @@ export function PermissionsScreen({ onComplete }: { onComplete: () => void }) {
     {
       id: "desktop",
       name: "Desktop Folder Access",
-      description:
-        "Required to manage and sync desktop files and configurations",
+      description: "Required to manage and sync desktop files and configurations",
       required: true,
       canRequestProgrammatically: true,
       status: "pending",
@@ -26,8 +25,7 @@ export function PermissionsScreen({ onComplete }: { onComplete: () => void }) {
     {
       id: "documents",
       name: "Documents Folder Access",
-      description:
-        "Required to access and manage configuration files stored in Documents",
+      description: "Required to access and manage configuration files stored in Documents",
       required: true,
       canRequestProgrammatically: true,
       status: "pending",
@@ -35,8 +33,7 @@ export function PermissionsScreen({ onComplete }: { onComplete: () => void }) {
     {
       id: "admin",
       name: "Administrator Privileges",
-      description:
-        "Required to install system packages and modify system configurations",
+      description: "Required to install system packages and modify system configurations",
       required: true,
       canRequestProgrammatically: false,
       status: "pending",
@@ -57,10 +54,8 @@ export function PermissionsScreen({ onComplete }: { onComplete: () => void }) {
   const handleRequestPermission = (permissionId: string) => {
     setPermissions((prev) =>
       prev.map((p) =>
-        p.id === permissionId
-          ? { ...p, status: Math.random() > 0.3 ? "granted" : "denied" }
-          : p
-      )
+        p.id === permissionId ? { ...p, status: Math.random() > 0.3 ? "granted" : "denied" } : p,
+      ),
     );
   };
 
@@ -89,12 +84,9 @@ export function PermissionsScreen({ onComplete }: { onComplete: () => void }) {
               </svg>
             </div>
           </div>
-          <h1 className="mb-2 font-semibold text-3xl tracking-tight">
-            Welcome to nixmac
-          </h1>
+          <h1 className="mb-2 font-semibold text-3xl tracking-tight">Welcome to nixmac</h1>
           <p className="text-muted-foreground">
-            To manage your macOS system declaratively, nixmac needs the
-            following permissions
+            To manage your macOS system declaratively, nixmac needs the following permissions
           </p>
         </div>
 
@@ -108,9 +100,7 @@ export function PermissionsScreen({ onComplete }: { onComplete: () => void }) {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="mb-1 flex items-center gap-2">
-                      <h3 className="font-medium text-foreground">
-                        {permission.name}
-                      </h3>
+                      <h3 className="font-medium text-foreground">{permission.name}</h3>
                       {permission.required && (
                         <span className="rounded-md bg-primary/10 px-2 py-0.5 font-medium text-primary text-xs">
                           Required
@@ -118,9 +108,7 @@ export function PermissionsScreen({ onComplete }: { onComplete: () => void }) {
                       )}
                       <PermissionStatusBadge status={permission.status} />
                     </div>
-                    <p className="text-muted-foreground text-sm">
-                      {permission.description}
-                    </p>
+                    <p className="text-muted-foreground text-sm">{permission.description}</p>
                     {permission.instructions && (
                       <div className="mt-2 rounded-md border border-border bg-secondary/50 p-3">
                         <p className="font-mono text-muted-foreground text-xs">
@@ -135,11 +123,7 @@ export function PermissionsScreen({ onComplete }: { onComplete: () => void }) {
                         disabled={permission.status === "granted"}
                         onClick={() => handleRequestPermission(permission.id)}
                         size="sm"
-                        variant={
-                          permission.status === "granted"
-                            ? "secondary"
-                            : "default"
-                        }
+                        variant={permission.status === "granted" ? "secondary" : "default"}
                       >
                         {permission.status === "granted"
                           ? "Granted"
@@ -154,9 +138,7 @@ export function PermissionsScreen({ onComplete }: { onComplete: () => void }) {
                         size="sm"
                         variant="outline"
                       >
-                        {permission.status === "granted"
-                          ? "Granted"
-                          : "Mark as Done"}
+                        {permission.status === "granted" ? "Granted" : "Mark as Done"}
                       </Button>
                     )}
                   </div>
@@ -193,14 +175,11 @@ export function PermissionsScreen({ onComplete }: { onComplete: () => void }) {
               />
             </svg>
             <div className="flex-1">
-              <h4 className="mb-1 font-medium text-sm">
-                Why does nixmac need these permissions?
-              </h4>
+              <h4 className="mb-1 font-medium text-sm">Why does nixmac need these permissions?</h4>
               <p className="text-muted-foreground text-xs leading-relaxed">
-                nixmac manages your macOS system declaratively, similar to
-                NixOS. It needs access to configuration files, the ability to
-                install packages, and permission to modify system settings to
-                provide a complete system management experience.
+                nixmac manages your macOS system declaratively, similar to NixOS. It needs access to
+                configuration files, the ability to install packages, and permission to modify
+                system settings to provide a complete system management experience.
               </p>
             </div>
           </div>
@@ -210,14 +189,9 @@ export function PermissionsScreen({ onComplete }: { onComplete: () => void }) {
   );
 }
 
-function PermissionStatusBadge({
-  status,
-}: {
-  status: "granted" | "denied" | "pending";
-}) {
+function PermissionStatusBadge({ status }: { status: "granted" | "denied" | "pending" }) {
   const styles = {
-    granted:
-      "bg-console-success/10 text-console-success border-console-success/20",
+    granted: "bg-console-success/10 text-console-success border-console-success/20",
     denied: "bg-console-error/10 text-console-error border-console-error/20",
     pending: "bg-secondary text-muted-foreground border-border",
   };
@@ -229,9 +203,7 @@ function PermissionStatusBadge({
   };
 
   return (
-    <span
-      className={`rounded-md border px-2 py-0.5 font-medium text-xs ${styles[status]}`}
-    >
+    <span className={`rounded-md border px-2 py-0.5 font-medium text-xs ${styles[status]}`}>
       {icons[status]} {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
   );

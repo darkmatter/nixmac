@@ -29,9 +29,6 @@ export default defineConfig({
   },
   ssr: {
     // Force these packages to be bundled properly
-    noExternal: [
-      "@tanstack/react-router",
-      "@tanstack/react-start",
-    ],
+    noExternal: ["@tanstack/react-router", "@tanstack/react-start"],
   },
 });

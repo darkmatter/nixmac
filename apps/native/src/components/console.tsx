@@ -167,10 +167,7 @@ export function Console() {
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       if (history.length > 0) {
-        const newIndex =
-          historyIndex === -1
-            ? history.length - 1
-            : Math.max(0, historyIndex - 1);
+        const newIndex = historyIndex === -1 ? history.length - 1 : Math.max(0, historyIndex - 1);
         setHistoryIndex(newIndex);
         setInput(history[newIndex]);
       }
@@ -202,9 +199,7 @@ export function Console() {
             <div className="size-3 rounded-full bg-console-warning/80" />
             <div className="size-3 rounded-full bg-console-success/80" />
           </div>
-          <span className="ml-2 font-mono text-muted-foreground text-sm">
-            nixmac console
-          </span>
+          <span className="ml-2 font-mono text-muted-foreground text-sm">nixmac console</span>
         </div>
         <div className="flex items-center gap-2">
           <Button
