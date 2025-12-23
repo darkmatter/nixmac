@@ -1,8 +1,8 @@
-import { IconTitleSub as IconTitleSubtitle } from "@/components/icon-title-subtitle";
+import { useState } from "react";
 import { IconTitleDescriptionCard } from "@/components/icon-title-description-card";
+import { IconTitleSub as IconTitleSubtitle } from "@/components/icon-title-subtitle";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useState } from "react";
 
 export interface Permission {
   id: string;
@@ -221,12 +221,12 @@ export function PermissionsScreen({
       <div className={compact ? "w-full" : "w-full max-w-3xl"}>
         <IconTitleSubtitle
           compact={compact}
+          icon={headerIcon}
           subtitle={
             compact
               ? "Grant the following permissions to continue"
               : "To manage your macOS system declaratively, nixmac needs the following permissions"
           }
-          icon={headerIcon}
           title="System Permissions"
         />
 

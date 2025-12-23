@@ -7,6 +7,7 @@ import {
   type RebuildLine,
   RebuildOverlay,
 } from "@/components/rebuild-overlay";
+import { darwinAPI } from "@/tauri-api";
 import "./index.css";
 
 // Check for debug mode via URL param: rebuild-overlay.html?debug=true
@@ -43,12 +44,37 @@ interface RebuildState {
   success?: boolean;
 }
 
+// Track if we've already started a rebuild to prevent duplicates
+let globalStarted = false;
+
 function RebuildOverlayWindow() {
   const [state, setState] = useState<RebuildState>({
     isRunning: true,
-    lines: DEBUG_MODE ? DEBUG_MOCK_LINES : [],
+    lines: DEBUG_MODE
+      ? DEBUG_MOCK_LINES
+      : [{ id: 0, text: "Preparing rebuild...", type: "info" }],
   });
   const lineIdRef = useRef(DEBUG_MODE ? DEBUG_MOCK_LINES.length + 1 : 0);
+
+  // Reset state when window becomes visible (for subsequent runs)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && !state.isRunning) {
+        // Reset state for a new run
+        setState({
+          isRunning: true,
+          lines: [],
+        });
+        lineIdRef.current = 0;
+        globalStarted = false;
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [state.isRunning]);
 
   useEffect(() => {
     // In debug mode, add a new mock line every 2 seconds to simulate activity
@@ -59,56 +85,110 @@ function RebuildOverlayWindow() {
           lines: [
             ...prev.lines,
             {
-              id: lineIdRef.current++,
+              id: lineIdRef.current,
               text: `copying path '/nix/store/${Math.random().toString(36).slice(2, 10)}-package' to the store...`,
-              type: "info",
+              type: "info" as const,
             },
           ].slice(-100),
         }));
+        lineIdRef.current += 1;
       }, 2000);
       return () => clearInterval(interval);
     }
 
-    // Listen for rebuild output data
-    const unsubData = listen<{ chunk: string }>(
-      "darwin:apply:data",
-      (event) => {
-        const normalized = normalizeOutput(event.payload.chunk);
-        if (!normalized) return;
+    // Prevent double-start from StrictMode
+    if (globalStarted) {
+      return;
+    }
+    globalStarted = true;
 
-        // Split by newlines in case multiple lines come at once
-        const newLines = normalized.split("\n").filter(Boolean);
+    // Set up event listeners and start rebuild
+    let unsubDataFn: (() => void) | null = null;
+    let unsubEndFn: (() => void) | null = null;
 
-        setState((prev) => ({
-          ...prev,
-          lines: [
-            ...prev.lines,
-            ...newLines.map((text) => ({
-              id: lineIdRef.current++,
-              text,
-              type: getLineType(text),
-            })),
-          ].slice(-100), // Keep last 100 lines to prevent memory issues
-        }));
-      }
-    );
+    const setup = async () => {
+      // Register listeners first
+      unsubDataFn = await listen<{ chunk: string }>(
+        "darwin:apply:data",
+        (event) => {
+          const normalized = normalizeOutput(event.payload.chunk);
+          if (!normalized) {
+            return;
+          }
 
-    // Listen for rebuild completion (ignored in debug mode)
-    const unsubEnd = listen<{ ok: boolean; code: number }>(
-      "darwin:apply:end",
-      (event) => {
+          const newLines = normalized.split("\n").filter(Boolean);
+
+          setState((prev) => {
+            const startId = lineIdRef.current;
+            lineIdRef.current += newLines.length;
+            return {
+              ...prev,
+              lines: [
+                ...prev.lines,
+                ...newLines.map((text, i) => ({
+                  id: startId + i,
+                  text,
+                  type: getLineType(text),
+                })),
+              ].slice(-100),
+            };
+          });
+        }
+      );
+
+      unsubEndFn = await listen<{ ok: boolean; code: number }>(
+        "darwin:apply:end",
+        async (event) => {
+          setState((prev) => ({
+            ...prev,
+            isRunning: false,
+            success: event.payload.ok,
+            exitCode: event.payload.code,
+          }));
+
+          // If successful, stage all changes to mark them as "previewed"
+          if (event.payload.ok) {
+            try {
+              await darwinAPI.git.stageAll();
+            } catch (e) {
+              console.error("Failed to stage changes:", e);
+            }
+          }
+
+          // Hide the overlay after a delay to let the completion animation play
+          setTimeout(() => {
+            darwinAPI.rebuildOverlay.hide();
+          }, 2500);
+        }
+      );
+
+      // Now start the rebuild
+      try {
+        await darwinAPI.darwin.applyStreamStart();
+      } catch (e: unknown) {
+        const msg = (e as Error)?.message || String(e);
         setState((prev) => ({
           ...prev,
           isRunning: false,
-          success: event.payload.ok,
-          exitCode: event.payload.code,
+          success: false,
+          lines: [
+            ...prev.lines,
+            { id: lineIdRef.current, text: `Error: ${msg}`, type: "stderr" },
+          ],
         }));
+        lineIdRef.current += 1;
       }
-    );
+    };
+
+    setup();
 
     return () => {
-      unsubData.then((unlisten) => unlisten());
-      unsubEnd.then((unlisten) => unlisten());
+      if (unsubDataFn) {
+        unsubDataFn();
+      }
+      if (unsubEndFn) {
+        unsubEndFn();
+      }
     };
   }, []);
 

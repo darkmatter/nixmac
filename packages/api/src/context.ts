@@ -2,12 +2,22 @@ import { auth } from "@nixmac/auth";
 import type { Context as HonoContext } from "hono";
 
 export type CreateContextOptions = {
-  context: HonoContext;
+  context?: HonoContext;
+  headers?: Headers;
 };
 
-export async function createContext({ context }: CreateContextOptions) {
+export async function createContext({
+  context,
+  headers,
+}: CreateContextOptions) {
+  const requestHeaders = headers ?? context?.req.raw.headers;
+  if (!requestHeaders) {
+    throw new Error(
+      "createContext requires either `headers` or a Hono `context`"
+    );
+  }
   const session = await auth.api.getSession({
-    headers: context.req.raw.headers,
+    headers: requestHeaders,
   });
   return {
     session,

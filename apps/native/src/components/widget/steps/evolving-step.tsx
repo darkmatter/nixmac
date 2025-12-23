@@ -1,28 +1,17 @@
 "use client";
 
-import {
-  ArrowLeft,
-  Check,
-  Eye,
-  Loader2,
-  Pencil,
-  Plus,
-  Shield,
-  Sparkles,
-  Trash2,
-} from "lucide-react";
+import { Eye, Loader2, Shield, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { EvolveProgress } from "@/components/evolve-progress";
 import { Button } from "@/components/ui/button";
 import {
   analyzeGitStatus,
   type EvolveEvent,
-  type GitFileStatus,
   type GitStatus,
   type ProcessingAction,
-  type SummaryItem,
   type SummaryState,
 } from "@/stores/widget-store";
+import { darwinAPI } from "@/tauri-api";
 import { ChatInput } from "../chat-input";
 import { Diff } from "../diff";
 
@@ -34,7 +23,6 @@ interface EvolvingStepProps {
   isGenerating: boolean;
   processingAction: ProcessingAction;
   evolveEvents: EvolveEvent[];
-  handleApply: () => void;
   handleEvolve: () => void;
   handleCancel: () => void;
   handleShowCommit: () => void;
@@ -49,7 +37,6 @@ export function EvolvingStep({
   isGenerating,
   processingAction,
   evolveEvents,
-  handleApply,
   handleEvolve,
   summary,
 }: EvolvingStepProps) {
@@ -79,7 +66,6 @@ export function EvolvingStep({
       </div>
     );
   }
-
 
   return (
     <div className="space-y-4">
@@ -112,7 +98,11 @@ export function EvolvingStep({
       )}
 
       {/* AI Summary list - default view */}
-      <Diff summary={summary} showAdvancedStats={showAdvancedStats} changedFiles={changedFiles} />
+      <Diff
+        changedFiles={changedFiles}
+        showAdvancedStats={showAdvancedStats}
+        summary={summary}
+      />
       {/* Instructions for testing changes */}
       {!summary.isLoading && summary.instructions && (
         <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
@@ -128,7 +118,7 @@ export function EvolvingStep({
         </div>
       )}
 
-      {hasUnstagedChanges && (
+      {hasUnstagedChanges ? (
         <>
           <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3">
             <div className="flex items-start gap-2">
@@ -148,7 +138,7 @@ export function EvolvingStep({
           <Button
             className="w-full"
             disabled={isProcessing}
-            onClick={handleApply}
+            onClick={() => darwinAPI.rebuildOverlay.show()}
             size="lg"
           >
             {processingAction === "apply" ? (
@@ -159,7 +149,7 @@ export function EvolvingStep({
             Preview Changes
           </Button>
         </>
-      )}
+      ) : null}
 
       {!hasUnstagedChanges && (
         <p className="text-muted-foreground text-sm">Evolve Again</p>

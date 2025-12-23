@@ -31,7 +31,7 @@ export function LandingPage() {
               variant="secondary"
             >
               <Sparkles className="mr-1 size-3" />
-              Declarative macOS Management
+              Declarative macOS Management :)
             </Badge>
             <h1 className="mb-6 text-balance font-bold text-4xl tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
               Your Mac, defined in{" "}
@@ -340,7 +340,7 @@ export function LandingPage() {
         environment.systemPackages = with nixpkgs; [
           vim git ripgrep fzf
         ];
-        
+
         homebrew = {
           enable = true;
           casks = [ "rectangle" "raycast" "arc" ];

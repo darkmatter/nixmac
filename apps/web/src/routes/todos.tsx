@@ -12,13 +12,13 @@ import {
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { trpc } from "@/utils/trpc";
 
 export const Route = createFileRoute("/todos")({
   component: TodosRoute,
 });
 
 function TodosRoute() {
+  const { trpc } = Route.useRouteContext();
   const [newTodoText, setNewTodoText] = useState("");
 
   const todos = useQuery(trpc.todo.getAll.queryOptions());

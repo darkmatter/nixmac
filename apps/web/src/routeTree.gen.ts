@@ -15,6 +15,8 @@ import { Route as Lp2RouteImport } from './routes/lp2'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TrpcSplatRouteImport } from './routes/trpc.$'
+import { Route as ApiSplatRouteImport } from './routes/api.$'
 
 const TodosRoute = TodosRouteImport.update({
   id: '/todos',
@@ -46,6 +48,16 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TrpcSplatRoute = TrpcSplatRouteImport.update({
+  id: '/trpc/$',
+  path: '/trpc/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSplatRoute = ApiSplatRouteImport.update({
+  id: '/api/$',
+  path: '/api/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +66,8 @@ export interface FileRoutesByFullPath {
   '/lp2': typeof Lp2Route
   '/success': typeof SuccessRoute
   '/todos': typeof TodosRoute
+  '/api/$': typeof ApiSplatRoute
+  '/trpc/$': typeof TrpcSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +76,8 @@ export interface FileRoutesByTo {
   '/lp2': typeof Lp2Route
   '/success': typeof SuccessRoute
   '/todos': typeof TodosRoute
+  '/api/$': typeof ApiSplatRoute
+  '/trpc/$': typeof TrpcSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,12 +87,30 @@ export interface FileRoutesById {
   '/lp2': typeof Lp2Route
   '/success': typeof SuccessRoute
   '/todos': typeof TodosRoute
+  '/api/$': typeof ApiSplatRoute
+  '/trpc/$': typeof TrpcSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/login' | '/lp2' | '/success' | '/todos'
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/lp2'
+    | '/success'
+    | '/todos'
+    | '/api/$'
+    | '/trpc/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/login' | '/lp2' | '/success' | '/todos'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/lp2'
+    | '/success'
+    | '/todos'
+    | '/api/$'
+    | '/trpc/$'
   id:
     | '__root__'
     | '/'
@@ -85,6 +119,8 @@ export interface FileRouteTypes {
     | '/lp2'
     | '/success'
     | '/todos'
+    | '/api/$'
+    | '/trpc/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -94,6 +130,8 @@ export interface RootRouteChildren {
   Lp2Route: typeof Lp2Route
   SuccessRoute: typeof SuccessRoute
   TodosRoute: typeof TodosRoute
+  ApiSplatRoute: typeof ApiSplatRoute
+  TrpcSplatRoute: typeof TrpcSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -140,6 +178,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/trpc/$': {
+      id: '/trpc/$'
+      path: '/trpc/$'
+      fullPath: '/trpc/$'
+      preLoaderRoute: typeof TrpcSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/$': {
+      id: '/api/$'
+      path: '/api/$'
+      fullPath: '/api/$'
+      preLoaderRoute: typeof ApiSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -150,7 +202,18 @@ const rootRouteChildren: RootRouteChildren = {
   Lp2Route: Lp2Route,
   SuccessRoute: SuccessRoute,
   TodosRoute: TodosRoute,
+  ApiSplatRoute: ApiSplatRoute,
+  TrpcSplatRoute: TrpcSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

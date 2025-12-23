@@ -12,10 +12,12 @@ import { getMDXComponents } from "@/mdx-components";
 
 export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
   const params = await props.params;
-  const page = source.getPage(params.slug);
+  const page = source.getPage(params.slug) as any;
   if (!page) notFound();
 
-  const MDX = page.data.body;
+  // In fumadocs, the MDX component is injected on page.data at runtime.
+  // The upstream type doesn't expose `body`, so assert the type locally.
+  const MDX = (page.data as { body: (props: any) => any }).body;
 
   return (
     <DocsPage full={page.data.full} toc={page.data.toc}>

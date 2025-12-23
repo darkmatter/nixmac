@@ -5,7 +5,8 @@
   "workspaces": {
     "packages": [
       "apps/*",
-      "packages/*"
+      "packages/*",
+      "vendor/*"
     ],
     "catalog": {
       "dotenv": "^17.2.2",
@@ -38,7 +39,8 @@
   },
   "dependencies": {
     "dotenv": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "znv": "workspace:*"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.8",

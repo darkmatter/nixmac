@@ -12,7 +12,8 @@
   "scripts": {},
   "devDependencies": {
     "typescript": "^5",
-    "@nixmac/config": "workspace:*"
+    "@nixmac/config": "workspace:*",
+    "@nixmac/env": "workspace:*"
   },
   "dependencies": {
     "better-auth": "catalog:",

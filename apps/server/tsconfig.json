@@ -3,6 +3,7 @@
   "compilerOptions": {
     "composite": true,
     "outDir": "dist",
+    "types": ["bun"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]

@@ -103,6 +103,7 @@ export const darwinAPI = {
     status: () => invoke<GitStatus | null>("git_status"),
     commit: (message: string) => invoke("git_commit", { message }),
     stash: (message: string) => invoke("git_stash", { message }),
+    stageAll: () => invoke("git_stage_all"),
   },
   darwin: {
     evolve: (description: string) => invoke("darwin_evolve", { description }),
@@ -139,6 +140,10 @@ export const darwinAPI = {
       invoke("preview_indicator_update", { state }),
     getState: () =>
       invoke<PreviewIndicatorState>("preview_indicator_get_state"),
+  },
+  rebuildOverlay: {
+    show: () => invoke("rebuild_overlay_show"),
+    hide: () => invoke("rebuild_overlay_hide"),
   },
   watcher: {
     start: () => invoke("watcher_start"),

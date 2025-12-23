@@ -1,0 +1,11 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/env" },
+    { "path": "packages/db" },
+    { "path": "packages/auth" },
+    { "path": "packages/api" },
+    { "path": "packages/hono-api" },
+    { "path": "apps/server" }
+  ]
+}

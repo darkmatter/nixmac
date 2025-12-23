@@ -2,30 +2,30 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
-import { trpc } from "@/utils/trpc";
 
 export const Route = createFileRoute("/dashboard")({
   component: RouteComponent,
   beforeLoad: async () => {
     const session = await authClient.getSession();
     if (!session.data) {
-      redirect({
-        to: "/login",
-        throw: true,
-      });
+      throw redirect({ to: "/login" });
     }
-    const { data: customerState } = await authClient.customer.state();
+
+    const customerStateRes = await authClient.customer.state();
+    const customerState =
+      (customerStateRes.data as { activeSubscriptions?: {}[] } | null) ?? null;
+
     return { session, customerState };
   },
 });
 
 function RouteComponent() {
-  const { session, customerState } = Route.useRouteContext();
+  const { trpc, session, customerState } = Route.useRouteContext();
 
   const privateData = useQuery(trpc.privateData.queryOptions());
 
-  const hasProSubscription = customerState?.activeSubscriptions?.length! > 0;
-  console.log("Active subscriptions:", customerState?.activeSubscriptions);
+  const hasProSubscription =
+    (customerState?.activeSubscriptions?.length ?? 0) > 0;
 
   return (
     <div>

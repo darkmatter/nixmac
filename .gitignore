@@ -1,5 +1,5 @@
 # Dependencies
-node_modules/
+node_modules
 
 # Build output
 dist/
@@ -22,6 +22,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+
+/result
+/result-man
 
 # Editor directories and files
 !.vscode/extensions.json
@@ -97,3 +100,5 @@ temp
 /WARP.md
 /WARP.md.bak
 # END Ruler Generated Files
+
+.output

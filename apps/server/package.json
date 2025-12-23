@@ -18,7 +18,8 @@
     "zod": "catalog:",
     "@nixmac/api": "workspace:*",
     "@nixmac/auth": "workspace:*",
-    "@nixmac/db": "workspace:*"
+    "@nixmac/db": "workspace:*",
+    "@nixmac/hono-api": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "catalog:",

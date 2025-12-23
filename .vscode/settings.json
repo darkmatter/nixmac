@@ -57,6 +57,9 @@
     "**/.DS_Store": true,
     "**/Thumbs.db": true,
     "**/.goosehints": true,
-    "**/bts.jsonc": true
+    "**/bts.jsonc": true,
+    "**/Cargo.lock": true,
+    "**/node_modules": true,
+    "**/devenv.lock": true,
   },
 }

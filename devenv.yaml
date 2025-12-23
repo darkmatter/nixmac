@@ -1,4 +1,13 @@
 inputs:
+  mk-shell-bin:
+    url: github:rrbutani/nix-mk-shell-bin
+  stackpanel:
+    url: https://flakehub.com/f/darkmatter/stackpanel/*
+  nix2container:
+    url: github:nlewo/nix2container
+    inputs:
+      nixpkgs:
+        follows: nixpkgs
   nixpkgs:
     url: github:cachix/devenv-nixpkgs/rolling
   rust-overlay:

@@ -1,0 +1,26 @@
+{
+  "name": "@nixmac/env",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./auth": {
+      "default": "./src/auth.ts"
+    },
+    "./web": {
+      "default": "./src/web.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "dependencies": {
+    "@nixmac/config": "workspace:*",
+    "znv": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

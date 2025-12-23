@@ -1,0 +1,28 @@
+app = "nixmac"
+
+[build]
+  image = "registry.fly.io/nixmac:latest"
+
+[env]
+  PORT = '3001'
+  AWS_ROLE_ARN = "arn:aws:iam::950224716579:role/darkmatter-prod"
+
+[http_service]
+  internal_port = 3001
+  force_https = true
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+
+
+[mounts]
+source="devenv_state"
+destination="/.devenv/state"

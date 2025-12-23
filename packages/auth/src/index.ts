@@ -1,5 +1,7 @@
 import { db } from "@nixmac/db";
+// biome-ignore lint/performance/noNamespaceImport: <explanation>
 import * as schema from "@nixmac/db/schema/auth";
+import { env } from "@nixmac/env/web";
 import { checkout, polar, portal } from "@polar-sh/better-auth";
 import type { BetterAuthPlugin } from "better-auth";
 import { betterAuth } from "better-auth";
@@ -19,7 +21,7 @@ const polarPlugin = polar({
           slug: "pro",
         },
       ],
-      successUrl: process.env.POLAR_SUCCESS_URL,
+      successUrl: env.POLAR_SUCCESS_URL as string,
       authenticatedUsersOnly: true,
     }),
     portal(),
@@ -32,7 +34,7 @@ export const auth = betterAuth({
 
     schema,
   }),
-  trustedOrigins: [process.env.CORS_ORIGIN || ""],
+  trustedOrigins: [String(env.CORS_ORIGIN || "")],
   emailAndPassword: {
     enabled: true,
   },

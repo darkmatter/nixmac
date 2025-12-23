@@ -15,14 +15,15 @@
     "@nixmac/config": "workspace:*"
   },
   "dependencies": {
-    "@trpc/server": "catalog:",
+    "@nixmac/auth": "workspace:*",
+    "@nixmac/db": "workspace:*",
     "@trpc/client": "catalog:",
-    "hono": "catalog:",
-    "drizzle-orm": "catalog:",
+    "@trpc/server": "catalog:",
     "@types/pg": "catalog:",
     "dotenv": "catalog:",
-    "zod": "catalog:",
-    "@nixmac/auth": "workspace:*",
-    "@nixmac/db": "workspace:*"
+    "drizzle-orm": "catalog:",
+    "hono": "catalog:",
+    "superjson": "^2.2.6",
+    "zod": "catalog:"
   }
 }
