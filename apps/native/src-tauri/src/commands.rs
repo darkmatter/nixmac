@@ -104,6 +104,14 @@ pub async fn git_stash(app: AppHandle, message: String) -> Result<serde_json::Va
     Ok(serde_json::json!({"ok": true}))
 }
 
+/// Stage all changes (git add -A)
+#[tauri::command]
+pub async fn git_stage_all(app: AppHandle) -> Result<serde_json::Value, String> {
+    let dir = store::ensure_config_dir_exists(&app).map_err(|e| e.to_string())?;
+    git::stage_all(&dir).map_err(|e| e.to_string())?;
+    Ok(serde_json::json!({"ok": true}))
+}
+
 // =============================================================================
 // Darwin/Nix Commands
 // =============================================================================

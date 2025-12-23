@@ -1,6 +1,5 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 
-import preview from "#storybook/preview";
 import {
   CheckCircle,
   Cog,
@@ -9,6 +8,7 @@ import {
   Shield,
   Terminal,
 } from "lucide-react";
+import preview from "#storybook/preview";
 import { IconTitleSub } from "./icon-title-subtitle";
 
 // =============================================================================
@@ -212,8 +212,8 @@ export const MultipleHeaders = meta.story({
   render: () => (
     <div className="max-w-2xl space-y-8">
       <IconTitleSub
-        subtitle="First step in the onboarding process"
         icon={<Shield className="size-7 text-primary-foreground" />}
+        subtitle="First step in the onboarding process"
         title="Step 1: Permissions"
       />
       <IconTitleSub
@@ -222,8 +222,8 @@ export const MultipleHeaders = meta.story({
         title="Step 2: Configuration"
       />
       <IconTitleSub
-        subtitle="Final step with completion icon"
         icon={<CheckCircle className="size-7 text-primary-foreground" />}
+        subtitle="Final step with completion icon"
         title="Step 3: Complete"
       />
     </div>
@@ -236,15 +236,15 @@ export const MultipleHeaders = meta.story({
 export const ResponsiveComparison = meta.story({
   render: () => (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-      <div className="border rounded-lg p-6">
+      <div className="rounded-lg border p-6">
         <h3 className="mb-4 font-medium text-sm">Full Size</h3>
         <IconTitleSub
-          subtitle="To manage your macOS system declaratively, nixmac needs the following permissions"
           icon={ConsoleIcon}
+          subtitle="To manage your macOS system declaratively, nixmac needs the following permissions"
           title="System Permissions"
         />
       </div>
-      <div className="border rounded-lg p-6">
+      <div className="rounded-lg border p-6">
         <h3 className="mb-4 font-medium text-sm">Compact</h3>
         <IconTitleSub
           compact

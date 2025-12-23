@@ -1,6 +1,6 @@
 "use client";
 
-import { GitBranch, Loader2, RefreshCw, Sparkles, Undo2 } from "lucide-react";
+import { GitBranch, Loader2, RefreshCw, Undo2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,10 +10,8 @@ import {
   type GitStatus,
   type ProcessingAction,
   type SummaryState,
-  type SummaryItem,
 } from "@/stores/widget-store";
 import { Diff } from "../diff";
-import { getChangeType } from "../utils";
 
 interface CommitStepProps {
   gitStatus: GitStatus | null;
@@ -75,7 +73,7 @@ export function CommitStep({
   ];
 
   return (
-    <div className="flex h-full flex-col items-center justify-start py-4 w-full max-w-full">
+    <div className="flex h-full w-full max-w-full flex-col items-center justify-start py-4">
       <h3 className="mb-2 font-semibold text-lg">Ready to Apply?</h3>
       <p className="mb-6 text-center text-muted-foreground">
         Pick how you'd like to proceed:
@@ -101,9 +99,9 @@ export function CommitStep({
               className={cn(
                 "mb-3 rounded-full p-3",
                 action.color === "white" && "bg-white-500/10 text-white-500",
-                action.color === "teal" && "bg-teal-400/10 text-teal-400",
-                action.color === "blue" && "bg-teal-400/10 text-teal-400",
-                action.color === "amber" && "bg-rose-400/10 text-rose-400"
+                action.color === "teal" && "bg-teal-300/10 text-teal-300",
+                action.color === "blue" && "bg-teal-300/10 text-teal-300",
+                action.color === "amber" && "bg-rose-300/10 text-rose-300"
               )}
             >
               <action.icon className="h-6 w-6" />
@@ -120,12 +118,17 @@ export function CommitStep({
       <div className="mt-6 w-full">
         {selectedAction === "commit" && (
           <div className="space-y-3">
-            <div className="w-full my-2">
-              <Diff summary={summary} showAdvancedStats={false} changedFiles={stagedFiles} />
+            <div className="my-2 w-full">
+              <Diff
+                changedFiles={stagedFiles}
+                showAdvancedStats={false}
+                summary={summary}
+              />
             </div>
             <h3 className="font-medium text-sm">Checkpoint Summary</h3>
             <p className="text-muted-foreground text-xs">
-              This will help you identify the checkpoint if you need to rollback later.
+              This will help you identify the checkpoint if you need to rollback
+              later.
             </p>
             <Input
               className="border-border bg-background"

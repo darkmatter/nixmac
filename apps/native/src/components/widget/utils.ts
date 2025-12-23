@@ -58,9 +58,8 @@ export function categorizeChanges(files: GitFileStatus[]) {
 
 // Helper to get change type from git status
 export function getChangeType(
-    f: GitFileStatus
-  ): "new" | "edited" | "removed" | "renamed"
-{
+  f: GitFileStatus
+): "new" | "edited" | "removed" | "renamed" {
   const status = f.index || f.working_tree || "";
   if (status === "A" || status === "?") {
     return "new";

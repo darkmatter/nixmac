@@ -63,7 +63,10 @@ export function WidgetUI({
     gitStatus?.files?.filter(
       (f) => f.index && f.index !== " " && f.index !== "?"
     ) || [];
-  const isPreviewActive = staged.length > 0;
+  const isPreviewActive =
+    gitStatus?.files?.every(
+      (f) => f.index && f.index !== " " && f.index !== "?"
+    ) && staged.length > 0;
 
   if (!showExpanded) {
     return (
@@ -87,10 +90,7 @@ export function WidgetUI({
   return (
     <div
       {...props}
-      className={cn(
-        "fixed inset-0 z-50 m-auto h-full w-full",
-        props.className
-      )}
+      className={cn("fixed inset-0 z-50 m-auto h-full w-full", props.className)}
     >
       <div className="flex h-full min-h-0 w-full flex-col">
         <div className="relative min-h-0 flex-1">
@@ -161,7 +161,6 @@ export function WidgetUI({
                       evolveEvents={evolveEvents}
                       evolvePrompt={evolvePrompt}
                       gitStatus={gitStatus}
-                      handleApply={onApply}
                       handleCancel={onCancel}
                       handleEvolve={onEvolve}
                       handleShowCommit={onShowCommitScreen}

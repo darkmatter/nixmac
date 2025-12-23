@@ -2,10 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { MultiStepLoader } from "@/components/ui/multi-step-loader-overlay";
 import { cn } from "@/lib/utils";
 
-const DURATION = 2000;
-const headers = [{ text: "Intitalizing build" }, { text: "Build started" }];
-const footers = [{ text: "Build completed successfully" }];
-
 export interface RebuildLine {
   id: number;
   text: string;
@@ -46,6 +42,7 @@ export function normalizeOutput(raw: string): string {
   let cleaned = stripAnsi(raw);
   cleaned = cleaned.replace(/\r/g, "");
   cleaned = cleaned.trimEnd();
+  cleaned = cleaned.slice(0, 300); // Limit length
   return cleaned;
 }
 
@@ -71,39 +68,64 @@ export function getLineType(text: string): "stdout" | "stderr" | "info" {
   return "stdout";
 }
 
-// Line normalizer that throttles lines to sync with duration,
-// and attempts to maintain a tail of pending lines for display.
+// Line normalizer that throttles lines for smooth display animation.
+// Uses an interval to progressively show lines rather than all at once.
 function useNormalizedLines(
   lines: RebuildLine[],
   isComplete: boolean
-): { lines: { text: string }[]; step: number } {
-  // 1. Raw lines contains all lines at full speed
+): { lines: RebuildLine[]; step: number } {
   const tailLength = 3;
-  const throttleSpeed = 2000;
-  const [throttledLines, setThrottledLines] = useState<{ text: string }[]>([]);
-  const [tickStatus, setTickStatus] = useState(false);
-  const normalizedLines = lines.map((line) => ({
+  const [displayedCount, setDisplayedCount] = useState(0);
+  const linesRef = useRef(lines);
+  linesRef.current = lines;
+
+  // Use interval to progressively reveal lines
+  useEffect(() => {
+    if (isComplete) {
+      // When complete, show all lines immediately
+      setDisplayedCount(linesRef.current.length);
+      return;
+    }
+
+    const intervalMs = 300; // Show a new line every 300ms
+    const timer = setInterval(() => {
+      setDisplayedCount((prev) => {
+        const total = linesRef.current.length;
+        if (prev < total) {
+          return prev + 1;
+        }
+        return prev;
+      });
+    }, intervalMs);
+
+    return () => clearInterval(timer);
+  }, [isComplete]);
+
+  // Also update when new lines arrive (in case we've caught up)
+  useEffect(() => {
+    if (displayedCount >= lines.length && lines.length > 0) {
+      // We've caught up, stay at current count
+    }
+  }, [lines.length, displayedCount]);
+
+  const normalizedLines = lines.slice(0, displayedCount).map((line) => ({
+    ...line,
     text: normalizeOutput(line.text),
   }));
 
-  // useEffect(() => {
-  //   if (tickStatus) {
-  //     setThrottledLines(normalizedLines.slice(-tailLength));
-  //     setTickStatus(false);
-  //   }
-  // }, [normalizedLines, tickStatus]);
-
-  // useEffect(() => {
-  //   const timeout = setTimeout(() => {
-  //     setTickStatus(true);
-  //   }, throttleSpeed);
-  //   return () => clearTimeout(timeout);
-  // }, [lines]);
+  // Always show at least a "starting" message so the loader has something to display
+  const displayLines =
+    normalizedLines.length > 0
+      ? normalizedLines
+      : [{ id: 0, text: "Starting rebuild...", type: "info" as const }];
 
   if (isComplete) {
-    return { lines: normalizedLines, step: normalizedLines.length };
+    return { lines: displayLines, step: displayLines.length };
   }
-  return { lines: normalizedLines, step: normalizedLines.length - tailLength };
+  return {
+    lines: displayLines,
+    step: Math.max(0, displayLines.length - tailLength),
+  };
 }
 
 /**
@@ -113,23 +135,13 @@ function useNormalizedLines(
 export function RebuildOverlay({
   isRunning,
   lines,
-  exitCode,
-  success,
   className,
 }: RebuildOverlayProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [dismissed, setDismissed] = useState(false);
+  // const scrollRef = useRef<HTMLDivElement>(null);
   const { lines: normalizedLines, step } = useNormalizedLines(
     lines,
     !isRunning
   );
-
-  // Auto-scroll to bottom when new lines come in
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [lines]);
 
   return (
     <div
@@ -197,7 +209,7 @@ export function RebuildOverlay({
             </>
           )} */}
       {/* Console output */}
-      <div
+      {/* <div
         className="max-h-32 w-full max-w-144 overflow-y-auto rounded-lg border border-white/10 bg-gray-950/60 p-4 font-mono text-xs opacity-80 backdrop-blur-sm"
         ref={scrollRef}
       >
@@ -219,11 +231,11 @@ export function RebuildOverlay({
             </div>
           ))
         )}
-      </div>
+      </div> */}
       {/* <div className="mx-8 flex w-full max-w-2xl flex-col items-center gap-6">
         <div className="flex items-center gap-3">
           <MultiStepLoader loadingStates={normalizedLines} step={step} loading={isRunning && !dismissed} duration={2000} />
-          
+
         </div>
       </div> */}
     </div>

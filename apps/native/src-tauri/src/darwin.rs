@@ -104,10 +104,8 @@ fn run_darwin_rebuild(
     config_dir: &str,
     host_attr: &str,
 ) -> Result<(), anyhow::Error> {
-    // Show the rebuild overlay
-    if let Err(e) = peek::show_rebuild_overlay(app) {
-        warn!("[darwin] Failed to show rebuild overlay: {}", e);
-    }
+    // Note: The rebuild overlay is now shown by the frontend before calling applyStreamStart.
+    // This ensures the overlay window is mounted and listening before events start streaming.
 
     // Create log file for this run
     let (mut log_file, log_path) = create_log_file()?;
@@ -136,8 +134,9 @@ fn run_darwin_rebuild(
     info!("[darwin] Building darwin-rebuild command...");
 
     // Build the darwin-rebuild command
+    // sudo darwin-rebuild switch --flake .#Coopers-Mac-Studio --show-trace --print-build-logs
     let cmd_str = format!(
-        "cd '{}' && darwin-rebuild switch --flake '.#{}'",
+        "cd '{}' && darwin-rebuild switch --flake '.#{}' --show-trace --verbose",
         config_dir.replace('\'', "'\\''"),
         host_attr
     );
@@ -156,6 +155,8 @@ fn run_darwin_rebuild(
             "switch",
             "--flake",
             &format!(".#{}", host_attr),
+            "--show-trace",
+            "--verbose",
         ])
         .env("PATH", crate::nix::get_nix_path())
         .stdout(Stdio::piped())
@@ -165,44 +166,59 @@ fn run_darwin_rebuild(
         .map_err(|e| anyhow::anyhow!("Failed to start darwin-rebuild: {}", e))?;
 
     info!("[darwin] darwin-rebuild process spawned, streaming output...");
-    let _ = writeln!(log_file, "--- stdout ---");
 
-    // Stream stdout line by line to all windows and log file
-    if let Some(stdout) = child.stdout.take() {
-        let reader = BufReader::new(stdout);
-        for line in reader.lines() {
-            match line {
-                Ok(line_content) => {
-                    debug!("[darwin] stdout: {}", line_content);
-                    let _ = writeln!(log_file, "{}", line_content);
-                    let _ = log_file.flush();
-                    let payload = serde_json::json!({"chunk": format!("{}\n", line_content)});
-                    if let Err(e) = app.emit("darwin:apply:data", payload) {
-                        error!("[darwin] Failed to emit data event: {}", e);
-                    }
-                }
-                Err(e) => {
-                    warn!("[darwin] Error reading stdout: {}", e);
-                    let _ = writeln!(log_file, "[ERROR reading stdout: {}]", e);
-                }
+    // Read stdout and stderr concurrently using threads
+    // This is critical because nix/darwin-rebuild writes progress to stderr,
+    // and we need to interleave both streams for real-time output.
+    let stdout = child.stdout.take();
+    let stderr = child.stderr.take();
+
+    let app_for_stdout = app.clone();
+    let app_for_stderr = app.clone();
+
+    // Spawn thread for stdout
+    let stdout_handle = std::thread::spawn(move || {
+        let mut lines = Vec::new();
+        if let Some(stdout) = stdout {
+            let reader = BufReader::new(stdout);
+            for line in reader.lines().map_while(Result::ok) {
+                debug!("[darwin] stdout: {}", line);
+                let payload = serde_json::json!({"chunk": format!("{}\n", line)});
+                let _ = app_for_stdout.emit("darwin:apply:data", payload);
+                lines.push(format!("[stdout] {}", line));
             }
         }
-    }
+        lines
+    });
 
-    // Also capture stderr
-    let _ = writeln!(log_file, "--- stderr ---");
-    if let Some(stderr) = child.stderr.take() {
-        let reader = BufReader::new(stderr);
-        for line in reader.lines() {
-            if let Ok(line_content) = line {
-                debug!("[darwin] stderr: {}", line_content);
-                let _ = writeln!(log_file, "{}", line_content);
-                let _ = log_file.flush();
-                let payload = serde_json::json!({"chunk": format!("{}\n", line_content)});
-                let _ = app.emit("darwin:apply:data", payload);
+    // Spawn thread for stderr
+    let stderr_handle = std::thread::spawn(move || {
+        let mut lines = Vec::new();
+        if let Some(stderr) = stderr {
+            let reader = BufReader::new(stderr);
+            for line in reader.lines().map_while(Result::ok) {
+                debug!("[darwin] stderr: {}", line);
+                let payload = serde_json::json!({"chunk": format!("{}\n", line)});
+                let _ = app_for_stderr.emit("darwin:apply:data", payload);
+                lines.push(format!("[stderr] {}", line));
             }
         }
+        lines
+    });
+
+    // Wait for both threads to complete and collect their output for the log file
+    let stdout_lines = stdout_handle.join().unwrap_or_default();
+    let stderr_lines = stderr_handle.join().unwrap_or_default();
+
+    // Write to log file (order may not be perfectly interleaved, but that's ok for logs)
+    let _ = writeln!(log_file, "--- output ---");
+    for line in stdout_lines {
+        let _ = writeln!(log_file, "{}", line);
     }
+    for line in stderr_lines {
+        let _ = writeln!(log_file, "{}", line);
+    }
+    let _ = log_file.flush();
 
     info!("[darwin] Waiting for darwin-rebuild to complete...");
     let status = child
@@ -224,33 +240,7 @@ fn run_darwin_rebuild(
     let end_timestamp = Local::now().format("%Y-%m-%d %H:%M:%S");
     let _ = writeln!(log_file, "Finished at: {}", end_timestamp);
 
-    // If successful, stage all changes to mark them as "previewed"
-    if status.success() {
-        info!("[darwin] Staging changes with git add -A...");
-        let _ = writeln!(log_file, "Running: git add -A");
-        let git_result = Command::new("git")
-            .args(["add", "-A"])
-            .current_dir(config_dir)
-            .env("PATH", crate::nix::get_nix_path())
-            .output();
-
-        match git_result {
-            Ok(output) => {
-                if output.status.success() {
-                    info!("[darwin] Git add completed successfully");
-                    let _ = writeln!(log_file, "Git add: success");
-                } else {
-                    let stderr = String::from_utf8_lossy(&output.stderr);
-                    warn!("[darwin] Git add failed: {}", stderr);
-                    let _ = writeln!(log_file, "Git add failed: {}", stderr);
-                }
-            }
-            Err(e) => {
-                warn!("[darwin] Git add error: {}", e);
-                let _ = writeln!(log_file, "Git add error: {}", e);
-            }
-        }
-    }
+    // Note: git add is now handled by the frontend after receiving darwin:apply:end
 
     // Emit log file location
     log_and_emit!(format!("Log saved to: {:?}", log_path));
@@ -265,11 +255,7 @@ fn run_darwin_rebuild(
         }),
     )?;
 
-    // Hide the rebuild overlay after a short delay to show completion status
-    std::thread::sleep(std::time::Duration::from_millis(2000));
-    if let Err(e) = peek::hide_rebuild_overlay(app) {
-        warn!("[darwin] Failed to hide rebuild overlay: {}", e);
-    }
+    // Note: overlay hiding is now handled by the frontend
 
     info!("[darwin] apply_stream completed");
     Ok(())

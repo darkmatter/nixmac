@@ -1,5 +1,5 @@
-import { cn } from "@/lib/utils";
 import type * as React from "react";
+import { cn } from "@/lib/utils";
 
 export interface IconTitleSubProps extends React.ComponentProps<"div"> {
   icon?: React.ReactNode;

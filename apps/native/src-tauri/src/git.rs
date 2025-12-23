@@ -187,6 +187,15 @@ pub fn has_changes_fast(dir: &str) -> bool {
     has_untracked
 }
 
+/// Stages all changes (git add -A).
+pub fn stage_all(dir: &str) -> Result<()> {
+    git_command()
+        .args(["add", "-A"])
+        .current_dir(dir)
+        .output()?;
+    Ok(())
+}
+
 /// Stages all changes and commits with the given message.
 pub fn commit_all(dir: &str, message: &str) -> Result<()> {
     git_command()

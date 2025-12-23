@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 
 const CheckIcon = ({ className }: { className?: string }) => (
   <svg
+    aria-hidden="true"
     className={cn("h-6 w-6", className)}
     fill="none"
     stroke="currentColor"
@@ -17,6 +18,7 @@ const CheckIcon = ({ className }: { className?: string }) => (
 
 const CheckFilled = ({ className }: { className?: string }) => (
   <svg
+    aria-hidden="true"
     className={cn("h-6 w-6", className)}
     fill="currentColor"
     viewBox="0 0 24 24"
@@ -31,52 +33,91 @@ const CheckFilled = ({ className }: { className?: string }) => (
 );
 
 type LoadingState = {
+  id?: number | string;
   text: string;
 };
+
+const SkeletonCircle = ({ className }: { className?: string }) => (
+  <div
+    className={cn("h-6 w-6 animate-pulse rounded-full bg-white/20", className)}
+  />
+);
+
+const SkeletonLine = ({ width = "w-48" }: { width?: string }) => (
+  <div className={cn("h-4 animate-pulse rounded bg-white/20", width)} />
+);
 
 const LoaderCore = ({
   loadingStates,
   value = 0,
+  pendingCount = 3,
 }: {
   loadingStates: LoadingState[];
   value?: number;
+  pendingCount?: number;
 }) => {
+  const skeletonWidths = ["w-32", "w-48", "w-40", "w-36", "w-44"];
+
   return (
-    <div className="relative mx-auto mt-40 flex max-w-xl flex-col justify-start">
+    <div className="relative mx-auto mt-40 flex max-w-xl translate-x-48 flex-col justify-start">
+      {/* Actual loading states */}
       {loadingStates.map((loadingState, index) => {
-        const distance = Math.abs(index - value);
-        const opacity = Math.max(1 - distance * 0.2, 0); // Minimum opacity is 0, keep it 0.2 if you're sane.
+        const distance = index - value;
+        // Completed items (above) fade slower, pending items (below) fade faster
+        const opacity =
+          distance < 0
+            ? Math.max(1 - Math.abs(distance) * 0.25, 0) // Completed: fade to 0.3 min
+            : Math.max(1 - distance * 0.5, 0); // Pending: fade faster
+
+        const isCompleted = index < value;
+        const isCurrent = index === value;
+        const checkClass = isCompleted || isCurrent ? "text-lime-500" : "";
+
+        let textClass = "text-white";
+        if (isCurrent) {
+          textClass = "text-lime-500";
+        } else if (isCompleted) {
+          textClass = "text-lime-500/80";
+        }
+
+        return (
+          <motion.div
+            animate={{ opacity, y: -(value * 40) }}
+            className={cn(
+              "mb-4 flex w-96 gap-2 overflow-hidden text-ellipsis whitespace-pre pr-4 text-left"
+            )}
+            initial={{ opacity: 0, y: -(value * 40) }}
+            key={loadingState.id ?? `step-${index}`}
+            transition={{ duration: 0.5 }}
+          >
+            <div>
+              {index > value ? (
+                <CheckIcon className="text-white/50" />
+              ) : (
+                <CheckFilled className={checkClass} />
+              )}
+            </div>
+            <span className={textClass}>{loadingState.text}</span>
+          </motion.div>
+        );
+      })}
+
+      {/* Skeleton placeholders for pending items */}
+      {skeletonWidths.slice(0, pendingCount).map((width, i) => {
+        const skeletonIndex = loadingStates.length + i;
+        const distance = skeletonIndex - value;
+        const opacity = Math.max(0.5 - distance * 0.08, 0.15);
 
         return (
           <motion.div
             animate={{ opacity, y: -(value * 40) }}
             className={cn("mb-4 flex gap-2 text-left")}
             initial={{ opacity: 0, y: -(value * 40) }}
-            key={index}
+            key={`skeleton-${width}`}
             transition={{ duration: 0.5 }}
           >
-            <div>
-              {index > value && (
-                <CheckIcon className="text-black dark:text-white" />
-              )}
-              {index <= value && (
-                <CheckFilled
-                  className={cn(
-                    "text-black dark:text-white",
-                    value === index &&
-                      "text-black opacity-100 dark:text-lime-500"
-                  )}
-                />
-              )}
-            </div>
-            <span
-              className={cn(
-                "text-black dark:text-white",
-                value === index && "text-black opacity-100 dark:text-lime-500"
-              )}
-            >
-              {loadingState.text}
-            </span>
+            <SkeletonCircle />
+            <SkeletonLine width={width} />
           </motion.div>
         );
       })}
@@ -88,8 +129,6 @@ export const MultiStepLoader = ({
   loadingStates,
   step,
   loading,
-  duration = 2000,
-  loop = true,
 }: {
   loadingStates: LoadingState[];
   step: number;
@@ -119,7 +158,7 @@ export const MultiStepLoader = ({
   // }, [currentState, loading, loop, loadingStates.length, duration]);
   return (
     <AnimatePresence mode="wait">
-      {loading && (
+      {loading ? (
         <motion.div
           animate={{
             opacity: 1,
@@ -138,7 +177,7 @@ export const MultiStepLoader = ({
 
           <div className="absolute inset-x-0 bottom-0 z-20 h-full bg-black bg-gradient-to-t opacity-20 [mask-image:radial-gradient(900px_at_center,transparent_30%,white)] dark:bg-black" />
         </motion.div>
-      )}
+      ) : null}
     </AnimatePresence>
   );
 };

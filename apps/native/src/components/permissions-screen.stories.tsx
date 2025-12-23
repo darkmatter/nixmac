@@ -23,7 +23,7 @@ const meta = preview.meta({
   decorators: [
     (Story: React.ComponentType) => (
       // <div className="min-h-screen bg-background">
-        <Story />
+      <Story />
       // </div>
     ),
   ],

@@ -47,6 +47,7 @@ fn main() {
             commands::git_status,
             commands::git_commit,
             commands::git_stash,
+            commands::git_stage_all,
             // Darwin/Nix
             commands::darwin_evolve,
             commands::darwin_apply,

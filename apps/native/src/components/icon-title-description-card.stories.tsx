@@ -1,6 +1,5 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 
-import preview from "#storybook/preview";
 import {
   AlertTriangle,
   CheckCircle,
@@ -10,6 +9,7 @@ import {
   Terminal,
 } from "lucide-react";
 import type React from "react";
+import preview from "#storybook/preview";
 import { IconTitleDescriptionCard } from "./icon-title-description-card";
 
 // =============================================================================
@@ -22,11 +22,7 @@ const meta = preview.meta({
   parameters: {
     layout: "centered",
   },
-  decorators: [
-    (Story: React.ComponentType) => (
-        <Story />
-    ),
-  ],
+  decorators: [(Story: React.ComponentType) => <Story />],
   tags: ["autodocs"],
   argTypes: {
     variant: {
@@ -216,9 +212,5 @@ export const Compact = meta.story({
     title: "Quick Tip",
     description: "Use ⌘+Shift+O to quickly open the nixmac interface.",
   },
-  decorators: [
-    (Story: React.ComponentType) => (
-        <Story />
-    ),
-  ],
+  decorators: [(Story: React.ComponentType) => <Story />],
 });

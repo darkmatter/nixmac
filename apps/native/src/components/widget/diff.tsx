@@ -1,7 +1,7 @@
-import { cn } from "@/lib/utils";
-import { SummaryState } from "@/stores/widget-store";
-import { GitFileStatus } from "@/tauri-api";
 import { ArrowLeft, Check, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { SummaryState } from "@/stores/widget-store";
+import type { GitFileStatus } from "@/tauri-api";
 
 interface DiffProps {
   summary: SummaryState;
@@ -10,7 +10,12 @@ interface DiffProps {
   variant?: "default" | "outline";
 }
 
-export function Diff({ summary, showAdvancedStats, changedFiles, variant = "default" }: DiffProps) {
+export function Diff({
+  summary,
+  showAdvancedStats,
+  changedFiles,
+  variant = "default",
+}: DiffProps) {
   // Helper to get change type from git status
   const getChangeType = (
     f: GitFileStatus
@@ -58,7 +63,10 @@ export function Diff({ summary, showAdvancedStats, changedFiles, variant = "defa
     isStaged?: boolean;
   }) => (
     <div
-      className={cn("flex items-center gap-3  py-4 max-w-full", variant === "outline" && "border-border/50 border-b last:border-b-0")}
+      className={cn(
+        "flex max-w-full items-center gap-3 py-4",
+        variant === "outline" && "border-border/50 border-b last:border-b-0"
+      )}
       key={key}
     >
       <div
@@ -89,40 +97,45 @@ export function Diff({ summary, showAdvancedStats, changedFiles, variant = "defa
   const summaryItems: SummaryState["items"] = summary.items || [];
 
   return (
-  <div className={cn("max-w-full shrink-0 rounded-lg flex flex-col max-h-[400px]", variant === "outline" && "border border-border")}>
-    <div className="flex items-center gap-2 border-border/50 border-b py-2 shrink-0">
-      <Sparkles className="h-4 w-4 text-primary" />
-      <span className="font-medium text-sm">
-        {showAdvancedStats ? "Files" : "What's Changed"}
-      </span>
-    </div>
-    <div className="flex-1 overflow-y-auto min-h-0">
-      {showAdvancedStats
-        ? changedFiles.map((f) => {
-            const changeType = getChangeType(f);
-            const fileName = getFileName(f.path);
-            const directory = getDirectory(f.path);
-            const isStaged = Boolean(
-              f.index && f.index !== " " && f.index !== "?"
-            );
+    <div
+      className={cn(
+        "flex max-h-[400px] max-w-full shrink-0 flex-col rounded-lg",
+        variant === "outline" && "border border-border"
+      )}
+    >
+      <div className="flex shrink-0 items-center gap-2 border-border/50 border-b py-2">
+        <Sparkles className="h-4 w-4 text-primary" />
+        <span className="font-medium text-sm">
+          {showAdvancedStats ? "Files" : "What's Changed"}
+        </span>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {showAdvancedStats
+          ? changedFiles.map((f) => {
+              const changeType = getChangeType(f);
+              const fileName = getFileName(f.path);
+              const directory = getDirectory(f.path);
+              const isStaged = Boolean(
+                f.index && f.index !== " " && f.index !== "?"
+              );
 
-            return renderListItem({
-              key: f.path,
-              changeType,
-              fileName,
-              directory,
-              isStaged,
-            });
-          })
-        : summaryItems.map((item, index) =>
-            renderListItem({
-              key: `summary-${index}`,
-              changeType: "edited",
-              fileName: item.title,
-              directory: item.description,
+              return renderListItem({
+                key: f.path,
+                changeType,
+                fileName,
+                directory,
+                isStaged,
+              });
             })
-          )}
+          : summaryItems.map((item, index) =>
+              renderListItem({
+                key: `summary-${index}`,
+                changeType: "edited",
+                fileName: item.title,
+                directory: item.description,
+              })
+            )}
+      </div>
     </div>
-  </div>
-  )
+  );
 }
