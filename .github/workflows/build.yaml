@@ -86,7 +86,7 @@ jobs:
           # Write the API key to a file
           echo "$APPLE_API_KEY_CONTENT" > $RUNNER_TEMP/AuthKey.p8
 
-          DMG_PATH=$(find apps/native/src-tauri/target/release/bundle/dmg -name "*.dmg" -type f | head -1)
+          DMG_PATH=$(find target/release/bundle/dmg -name "*.dmg" -type f | head -1)
 
           if [ -n "$DMG_PATH" ]; then
             echo "Notarizing $DMG_PATH..."
@@ -105,8 +105,8 @@ jobs:
       - name: Get artifact paths
         id: artifacts
         run: |
-          DMG_PATH=$(find apps/native/src-tauri/target/release/bundle/dmg -name "*.dmg" -type f 2>/dev/null | head -1 || echo "")
-          APP_PATH=$(find apps/native/src-tauri/target/release/bundle/macos -name "*.app" -type d 2>/dev/null | head -1 || echo "")
+          DMG_PATH=$(find target/release/bundle/dmg -name "*.dmg" -type f 2>/dev/null | head -1 || echo "")
+          APP_PATH=$(find target/release/bundle/macos -name "*.app" -type d 2>/dev/null | head -1 || echo "")
 
           echo "dmg_path=$DMG_PATH" >> $GITHUB_OUTPUT
           echo "app_path=$APP_PATH" >> $GITHUB_OUTPUT
@@ -118,13 +118,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nixmac-macos-dmg
-          path: apps/native/src-tauri/target/release/bundle/dmg/*.dmg
+          path: target/release/bundle/dmg/*.dmg
           if-no-files-found: warn
       - name: Upload app bundle artifact
         uses: actions/upload-artifact@v4
         with:
           name: nixmac-macos-app
-          path: apps/native/src-tauri/target/release/bundle/macos/*.app
+          path: target/release/bundle/macos/*.app
           if-no-files-found: warn
       # Create GitHub Release for tags
       - name: Create Release
@@ -134,7 +134,7 @@ jobs:
           draft: true
           generate_release_notes: true
           files: |
-            apps/native/src-tauri/target/release/bundle/dmg/*.dmg
+            target/release/bundle/dmg/*.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Cleanup keychain
