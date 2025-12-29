@@ -73,7 +73,7 @@ jobs:
           security list-keychain -d user -s $KEYCHAIN_PATH
       # Build the Tauri app
       - name: Build Tauri app
-        run: bun run --filter native tauri build
+        run: bun run desktop:build
         shell: 'sops exec-env .secrets.enc.yaml "bash -e {0}"'
         # env:
         # Only set signing identity if we have the certificate
