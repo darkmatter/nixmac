@@ -24,10 +24,8 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: apps/native/src-tauri
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
       - name: Setup sops
         uses: nhedger/setup-sops@v2
       - name: Setup age
@@ -36,9 +34,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
       - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
+        run: bun install --frozen-lockfile
       # Check if code signing secrets are available
       - name: Check for code signing secrets
         id: check-secrets
@@ -76,7 +73,7 @@ jobs:
           security list-keychain -d user -s $KEYCHAIN_PATH
       # Build the Tauri app
       - name: Build Tauri app
-        run: pnpm --filter native tauri build
+        run: bun run --filter native tauri build
         shell: 'sops exec-env .secrets.enc.yaml "bash -e {0}"'
         # env:
         # Only set signing identity if we have the certificate
