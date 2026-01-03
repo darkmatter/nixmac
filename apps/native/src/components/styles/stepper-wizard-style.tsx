@@ -93,7 +93,7 @@ export function StepperWizardStyle() {
 
       {/* Stepper */}
       <div className="border-border border-b bg-muted/30 px-5 py-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-center gap-8">
           {steps.map((step, i) => (
             <div className="flex items-center" key={step.id}>
               <div className="flex items-center gap-3">
@@ -106,17 +106,25 @@ export function StepperWizardStyle() {
                         : "bg-muted text-muted-foreground"
                   }`}
                 >
-                  {currentStep > step.id ? <Check className="h-4 w-4" /> : step.id}
+                  {currentStep > step.id ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    step.id
+                  )}
                 </div>
                 <div className="hidden sm:block">
                   <p
                     className={`font-medium text-sm ${
-                      currentStep >= step.id ? "text-foreground" : "text-muted-foreground"
+                      currentStep >= step.id
+                        ? "text-foreground"
+                        : "text-muted-foreground"
                     }`}
                   >
                     {step.name}
                   </p>
-                  <p className="text-muted-foreground text-xs">{step.description}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {step.description}
+                  </p>
                 </div>
               </div>
               {i < steps.length - 1 && (
@@ -139,7 +147,10 @@ export function StepperWizardStyle() {
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               {changeCategories.map((cat) => (
-                <div className="rounded-lg border border-border bg-muted/30 p-4" key={cat.title}>
+                <div
+                  className="rounded-lg border border-border bg-muted/30 p-4"
+                  key={cat.title}
+                >
                   <div className="mb-3 flex items-center gap-3">
                     <div
                       className={`rounded-lg p-2 ${
@@ -156,12 +167,17 @@ export function StepperWizardStyle() {
                     </div>
                     <div>
                       <p className="font-medium">{cat.title}</p>
-                      <p className="text-muted-foreground text-xs">{cat.count} changes</p>
+                      <p className="text-muted-foreground text-xs">
+                        {cat.count} changes
+                      </p>
                     </div>
                   </div>
                   <ul className="space-y-1">
                     {cat.items.map((item, i) => (
-                      <li className="flex items-center gap-2 text-muted-foreground text-sm" key={i}>
+                      <li
+                        className="flex items-center gap-2 text-muted-foreground text-sm"
+                        key={i}
+                      >
                         <Check className="h-3 w-3 text-emerald-500" />
                         {item}
                       </li>
@@ -265,7 +281,9 @@ export function StepperWizardStyle() {
                     <action.icon className="h-6 w-6" />
                   </div>
                   <p className="font-medium">{action.name}</p>
-                  <p className="mt-1 text-muted-foreground text-xs">{action.desc}</p>
+                  <p className="mt-1 text-muted-foreground text-xs">
+                    {action.desc}
+                  </p>
                 </button>
               ))}
             </div>
@@ -291,7 +309,10 @@ export function StepperWizardStyle() {
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           ) : (
-            <Button className="bg-teal-600 hover:bg-teal-700" disabled={!selectedAction}>
+            <Button
+              className="bg-teal-600 hover:bg-teal-700"
+              disabled={!selectedAction}
+            >
               <Zap className="mr-2 h-4 w-4" />
               {selectedAction === "preview" && "Try Changes"}
               {selectedAction === "update" && "Update Now"}

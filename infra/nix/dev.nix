@@ -1,24 +1,28 @@
-{ pkgs, lib, config, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 lib.mkIf (!(config.container.isBuilding or false)) {
   # Dev-only packages (excluded from container builds by conditional import).
-  packages =
-    [
-      pkgs.rustup
-      pkgs.clippy
-      pkgs.cargo-watch
-      pkgs.cargo-nextest
-      pkgs.flyctl
-      pkgs.sops
-      pkgs.git
-      pkgs.libiconv
-      pkgs.starship
-    ]
-    ++ lib.optionals (pkgs.stdenv.isDarwin) [
-      pkgs.apple-sdk_15
-    ]
-    ++ lib.optionals (builtins.getEnv "_PROFILE" == "development") [
-      pkgs.starship
-    ];
+  packages = [
+    pkgs.rustup
+    pkgs.clippy
+    pkgs.cargo-watch
+    pkgs.cargo-nextest
+    pkgs.flyctl
+    pkgs.sops
+    pkgs.git
+    pkgs.libiconv
+    pkgs.starship
+  ]
+  ++ lib.optionals (pkgs.stdenv.isDarwin) [
+    pkgs.apple-sdk_15
+  ]
+  ++ lib.optionals (builtins.getEnv "_PROFILE" == "development") [
+    pkgs.starship
+  ];
 
   # Dev-only languages/toolchains
   languages.swift.enable = true;
@@ -45,7 +49,6 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     cwd = "${config.git.root}/apps/native";
     exec = "${pkgs.sops}/bin/sops exec-env ${config.git.root}/.secrets.enc.yaml 'RUST_LOG=nixmac=debug tauri dev'";
   };
-
 
   # processes.server = {
   #   cwd = "${config.git.root}/apps/server";
@@ -76,7 +79,7 @@ lib.mkIf (!(config.container.isBuilding or false)) {
 
   # https://devenv.sh/git-hooks/
   git-hooks = {
-    hooks.biome.enable = true;
+    # hooks.biome.enable = true;
     hooks.shellcheck.enable = true;
     hooks.rustfmt.enable = true;
     hooks.clippy.enable = true;
@@ -86,5 +89,3 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     ];
   };
 }
-
-

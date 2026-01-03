@@ -35,7 +35,8 @@
     "db:push": "turbo -F @nixmac/db db:push",
     "db:studio": "turbo -F @nixmac/db db:studio",
     "db:generate": "turbo -F @nixmac/db db:generate",
-    "db:migrate": "turbo -F @nixmac/db db:migrate"
+    "db:migrate": "turbo -F @nixmac/db db:migrate",
+    "postinstall": "bun2nix -o bun.nix"
   },
   "dependencies": {
     "dotenv": "catalog:",
@@ -46,8 +47,9 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20251213.0",
     "@types/bun": "catalog:",
+    "bun2nix": "^2.0.6",
     "oxlint": "^1.0.0",
-    "turbo": "^2.6.3",
+    "turbo": "^2.7.2",
     "typescript": "^5",
     "ultracite": "6.4.0"
   },

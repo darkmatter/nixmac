@@ -434,55 +434,6 @@ pub async fn ui_set_window_shadow(app: AppHandle, on: bool) -> Result<serde_json
 }
 
 // =============================================================================
-// Peek/Widget Visibility Commands
-// =============================================================================
-
-/// Called when the peek icon is clicked - shows the main window.
-#[tauri::command]
-pub async fn peek_icon_clicked(app: AppHandle) -> Result<serde_json::Value, String> {
-    peek::on_icon_clicked(&app)?;
-    Ok(serde_json::json!({"ok": true, "state": "expanded"}))
-}
-
-/// Locks the widget in the expanded (visible) state.
-#[tauri::command]
-pub async fn peek_lock_expanded(app: AppHandle) -> Result<serde_json::Value, String> {
-    peek::lock_expanded();
-    peek::show_main_window(&app)?;
-    Ok(serde_json::json!({"ok": true, "state": "expanded"}))
-}
-
-/// Hides the main window.
-#[tauri::command]
-pub async fn peek_hide(app: AppHandle) -> Result<serde_json::Value, String> {
-    peek::unlock_and_hide();
-    peek::hide_main_window(&app)?;
-    Ok(serde_json::json!({"ok": true, "state": "hidden"}))
-}
-
-/// Gets the current peek state.
-#[tauri::command]
-pub async fn peek_get_state() -> Result<serde_json::Value, String> {
-    let open = peek::is_main_window_open();
-    let state = if open { "expanded" } else { "hidden" };
-    Ok(serde_json::json!({"open": open, "state": state}))
-}
-
-/// Gets debug info for visualizing the corner zone.
-#[tauri::command]
-pub async fn peek_get_debug_zone(app: AppHandle) -> Result<peek::DebugZoneInfo, String> {
-    peek::get_debug_zone_info(&app)
-}
-
-/// Shows the main window (called from preview indicator).
-#[tauri::command]
-pub async fn peek_show_main(app: AppHandle) -> Result<serde_json::Value, String> {
-    peek::lock_expanded();
-    peek::show_main_window(&app)?;
-    Ok(serde_json::json!({"ok": true}))
-}
-
-// =============================================================================
 // Preview Indicator Commands
 // =============================================================================
 

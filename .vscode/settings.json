@@ -19,7 +19,18 @@
   "rust-analyzer.inlayHints.typeHints.enable": true,
   "rust-analyzer.inlayHints.chainingHints.enable": true,
   "rust-analyzer.diagnostics.experimental.enable": true,
-
+  "nix.serverSettings": {
+    "nixd": {
+      "formatting": {
+        "command": ["nixfmt"]
+      },
+      "options": {
+        "stackpanel": {
+          "expr": "let  system = builtins.currentSystem; pkgs = import <nixpkgs> { inherit system; }; lib = pkgs.lib; in (builtins.getFlake ./.devenv.flake.nix).inputs.stackpanel.stackpanelOptions"
+        }
+      }
+    }
+  },
   "[javascript]": {
     "editor.defaultFormatter": "oxc.oxc-vscode"
   },

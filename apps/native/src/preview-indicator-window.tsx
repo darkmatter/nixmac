@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { PreviewIndicator } from "@/components/preview-indicator";
@@ -40,10 +41,13 @@ function PreviewIndicatorWindow() {
       });
 
     // Listen for state updates from the main widget
-    const unsubscribe = listen<PreviewState>("preview-indicator:update", (event) => {
-      console.log("[preview-indicator] Received update:", event.payload);
-      setState(event.payload);
-    });
+    const unsubscribe = listen<PreviewState>(
+      "preview-indicator:update",
+      (event) => {
+        console.log("[preview-indicator] Received update:", event.payload);
+        setState(event.payload);
+      },
+    );
 
     return () => {
       unsubscribe.then((unlisten) => unlisten());
@@ -51,18 +55,24 @@ function PreviewIndicatorWindow() {
   }, []);
 
   const handleClick = async () => {
-    // Open the main widget when clicked
+    // Focus the main window when clicked
     try {
-      await invoke("peek_show_main");
+      const mainWindow = await WebviewWindow.getByLabel("main");
+      if (mainWindow) {
+        await mainWindow.show();
+        await mainWindow.setFocus();
+      }
     } catch (e) {
-      console.error("Failed to open main widget:", e);
+      console.error("Failed to focus main window:", e);
     }
   };
 
   // DEBUG: Show error or loading state
   if (error) {
     return (
-      <div style={{ background: "red", color: "white", padding: 8, fontSize: 12 }}>
+      <div
+        style={{ background: "red", color: "white", padding: 8, fontSize: 12 }}
+      >
         Error: {error}
       </div>
     );
@@ -70,7 +80,9 @@ function PreviewIndicatorWindow() {
 
   if (!mounted) {
     return (
-      <div style={{ background: "blue", color: "white", padding: 8, fontSize: 12 }}>
+      <div
+        style={{ background: "blue", color: "white", padding: 8, fontSize: 12 }}
+      >
         Mounting...
       </div>
     );

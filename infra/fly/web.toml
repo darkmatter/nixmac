@@ -4,7 +4,7 @@ app = "nixmac"
 image = "registry.fly.io/nixmac:latest"
 
 [env]
-PORT = '3001'
+PORT = '3000'
 AWS_ROLE_ARN = "arn:aws:iam::950224716579:role/darkmatter-prod"
 
 [http_service]

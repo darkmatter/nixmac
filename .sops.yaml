@@ -1,5 +1,13 @@
 creation_rules:
-  - path_regex: .secrets.*\.yaml
+  - path_regex: .*secrets/.*prod(uction)?\.(ya?ml|json|env)$
+    unencrypted_comment_regex: '^\s?(safe|plaintext|unencrypted)$'
+    age:
+      - age1ua3n0xa25z5tnrhhkndmkpz9elwsxw5jzq89fwldwlcm6wxg9ddsaxksm4
+      - age1unp2wxu3h5t5up5zsnqurwac69v84vtuy8lllpdwf03gddc6xfws00nu2a
+      - age164al9lamrv4ufza9wvg5g5kh863yenq0gdggyxujugxqlv00894spd6jj9
+      - age1vapyvpjzqg8wdfay055s574qt0u6avtzv4ch7kv0epvtycpyjqzqk3m4yr
+  - path_regex: .*/secrets/.*
+    unencrypted_comment_regex: '^\s?(safe|plaintext|unencrypted)$'
     age:
       - age1ua3n0xa25z5tnrhhkndmkpz9elwsxw5jzq89fwldwlcm6wxg9ddsaxksm4
       - age1unp2wxu3h5t5up5zsnqurwac69v84vtuy8lllpdwf03gddc6xfws00nu2a
