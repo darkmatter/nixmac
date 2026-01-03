@@ -126,18 +126,14 @@ export const darwinAPI = {
     setPrefs: (prefs: DarwinPrefs) => invoke("ui_set_prefs", { prefs }),
     setWindowShadow: (on: boolean) => invoke("ui_set_window_shadow", { on }),
   },
-  peek: {
-    lockExpanded: () => invoke("peek_lock_expanded"),
-    hide: () => invoke("peek_hide"),
-    getState: () => invoke("peek_get_state"),
-    getDebugZone: () => invoke("peek_get_debug_zone"),
-    showMain: () => invoke("peek_show_main"),
-  },
+
   previewIndicator: {
     show: () => invoke("preview_indicator_show"),
     hide: () => invoke("preview_indicator_hide"),
-    update: (state: PreviewIndicatorState) => invoke("preview_indicator_update", { state }),
-    getState: () => invoke<PreviewIndicatorState>("preview_indicator_get_state"),
+    update: (state: PreviewIndicatorState) =>
+      invoke("preview_indicator_update", { state }),
+    getState: () =>
+      invoke<PreviewIndicatorState>("preview_indicator_get_state"),
   },
   rebuildOverlay: {
     show: () => invoke("rebuild_overlay_show"),

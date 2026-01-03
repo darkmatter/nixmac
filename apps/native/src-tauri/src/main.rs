@@ -1,7 +1,7 @@
 //! Entry point for the nixmac Tauri application.
 //!
-//! This is a macOS menu bar utility for managing nix-darwin configurations.
-//! It provides a widget-style interface for viewing, evolving, and applying
+//! This is a macOS application for managing nix-darwin configurations.
+//! It provides an interface for viewing, evolving, and applying
 //! Nix flake-based system configurations.
 
 // Prevents additional console window on Windows in release
@@ -25,7 +25,6 @@ use tauri::{
     window::{Color, Effect, EffectsBuilder},
     Emitter, Manager, WebviewUrl, WebviewWindowBuilder,
 };
-use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
 fn main() {
     // Initialize logging - set RUST_LOG=debug for verbose output
@@ -35,14 +34,13 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
         .plugin(tauri_plugin_websocket::init())
         .plugin(tauri_plugin_window_state::Builder::new().build())
         .plugin(tauri_plugin_sql::Builder::new().build())
-        .plugin(tauri_plugin_updater::Builder::new().build())
+        // .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_upload::init())
         .invoke_handler(tauri::generate_handler![
             // Configuration
@@ -70,13 +68,6 @@ fn main() {
             commands::ui_get_prefs,
             commands::ui_set_prefs,
             commands::ui_set_window_shadow,
-            // Peek/Widget visibility
-            commands::peek_lock_expanded,
-            commands::peek_hide,
-            commands::peek_get_state,
-            commands::peek_get_debug_zone,
-            commands::peek_icon_clicked,
-            commands::peek_show_main,
             // Preview indicator
             commands::preview_indicator_show,
             commands::preview_indicator_hide,
@@ -127,18 +118,16 @@ fn main() {
                 })
                 .on_menu_event(move |app, event| match event.id().as_ref() {
                     "open" => {
-                        peek::lock_expanded();
-                        if let Err(e) = peek::show_main_window(app) {
-                            eprintln!("[tray] Failed to show main window: {}", e);
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
                         }
                     }
                     // Navigation items emit events to the frontend to switch tabs
                     "overview" | "evolve" | "commit" | "apply" => {
-                        peek::lock_expanded();
-                        if let Err(e) = peek::show_main_window(app) {
-                            eprintln!("[tray] Failed to show main window: {}", e);
-                        }
                         if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
                             window.emit("navigate", event.id().as_ref()).ok();
                         }
                     }
@@ -149,8 +138,7 @@ fn main() {
                 })
                 .build(app)?;
 
-            // Create the main widget window (starts hidden)
-            // Resizable in both dimensions within these bounds
+            // Create the main window
             let initial_width = 800.0;
             let initial_height = 800.0;
             let min_width = 400.0;
@@ -166,50 +154,31 @@ fn main() {
                     .max_inner_size(max_width, max_height)
                     .resizable(true)
                     .maximizable(false)
-                    .minimizable(true)
-                    .closable(false)
-                    .decorations(false)
+                    .minimizable(false)
+                    .closable(true)
+                    .decorations(true)
                     .transparent(true)
                     .effects(EffectsBuilder::new().effects(vec![Effect::Acrylic]).build())
-                    .visible(true) // Start hidden - icon reveals it
+                    .visible(true)
                     .always_on_top(true)
                     .visible_on_all_workspaces(true)
                     .background_color(Color(0, 0, 0, 0))
+                    .hidden_title(true)
+                    .title_bar_style(tauri::TitleBarStyle::Overlay)
+                    .visible(true)
                     .build()
                     .unwrap();
-
-            // Create the peek icon window
-            if let Err(e) = peek::create_icon_window(&handle) {
-                eprintln!("[peek] ❌ Failed to create icon window: {}", e);
-            }
 
             // Create the preview indicator window (persistent banner for uncommitted changes)
             if let Err(e) = peek::create_preview_indicator_window(&handle) {
                 eprintln!("[peek] ❌ Failed to create preview indicator window: {}", e);
             }
 
-            // Start peek monitoring - watches for Option key + cursor in corner
-            peek::start_monitoring(handle.clone());
-
             // Start config watcher - monitors config directory for file changes
             // This emits config:changed events to the frontend when files are modified
             if let Ok(config_dir) = store::get_config_dir(&handle) {
                 watcher::start_watching(handle.clone(), config_dir);
             }
-
-            // Global hotkey to quickly summon the window
-            let handle_for_shortcut = handle.clone();
-            app.global_shortcut()
-                .on_shortcut(
-                    "CommandOrControl+Shift+O",
-                    move |_app, _shortcut, _event| {
-                        peek::lock_expanded();
-                        if let Err(e) = peek::show_main_window(&handle_for_shortcut) {
-                            eprintln!("[shortcut] Failed to show main window: {}", e);
-                        }
-                    },
-                )
-                .ok();
 
             Ok(())
         })

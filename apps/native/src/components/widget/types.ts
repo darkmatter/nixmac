@@ -2,7 +2,6 @@ import type {
   AppState,
   EvolveEvent,
   GitStatus,
-  PeekState,
   ProcessingAction,
   SummaryState,
   WidgetStep,
@@ -25,14 +24,10 @@ export interface WidgetUIProps extends React.HTMLAttributes<HTMLDivElement> {
   summary: SummaryState;
   consoleLogs: string;
   consoleExpanded: boolean;
-  isExpanded: boolean;
-  peekState: PeekState;
   settingsOpen: boolean;
   error: string | null;
 
   // Handlers
-  onExpand: () => void;
-  onCollapse: () => void;
   onPickDir: () => void;
   onSaveHost: (host: string) => void;
   onEvolve: () => void;
@@ -55,9 +50,6 @@ export interface WidgetUIProps extends React.HTMLAttributes<HTMLDivElement> {
   setPrefWindowShadow?: (enabled: boolean) => void;
   openaiApiKey?: string;
   setOpenaiApiKey?: (key: string) => void;
-
-  // Styling
-  iconClassName?: string;
 }
 
 export const STEPPER_STEPS = [

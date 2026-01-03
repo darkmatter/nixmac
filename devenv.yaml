@@ -1,11 +1,11 @@
 inputs:
-  mk-shell-bin:
-    url: github:rrbutani/nix-mk-shell-bin
-  stackpanel:
-    url: https://flakehub.com/f/darkmatter/stackpanel/*
+  bun2nix:
+    url: github:nix-community/bun2nix
     inputs:
       nixpkgs:
         follows: nixpkgs
+  mk-shell-bin:
+    url: github:rrbutani/nix-mk-shell-bin
   nix2container:
     url: github:nlewo/nix2container
     inputs:
@@ -23,5 +23,3 @@ inputs:
     inputs:
       nixpkgs:
         follows: nixpkgs
-# imports:
-#   - stackpanel/nix
