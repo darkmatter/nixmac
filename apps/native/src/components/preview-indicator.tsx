@@ -25,6 +25,8 @@ interface PreviewIndicatorProps {
   onDiscard?: () => void;
   /** Whether an action is in progress */
   isLoading?: boolean;
+  /** Disable expansion behavior (for separate window context) */
+  disableExpansion?: boolean;
 }
 
 /**
@@ -47,6 +49,7 @@ export function PreviewIndicator({
   onCommit,
   onDiscard,
   isLoading = false,
+  disableExpansion = false,
 }: PreviewIndicatorProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [editedMessage, setEditedMessage] = useState(commitMessage);
@@ -61,7 +64,9 @@ export function PreviewIndicator({
   }
 
   const handleClick = () => {
-    setIsExpanded(!isExpanded);
+    if (!disableExpansion) {
+      setIsExpanded(!isExpanded);
+    }
     onClick?.();
   };
 
@@ -85,7 +90,9 @@ export function PreviewIndicator({
             {/* Header */}
             <div className="flex items-center gap-2 border-amber-500/20 border-b bg-amber-500/10 px-4 py-3">
               <Eye className="h-4 w-4 text-amber-400" />
-              <span className="font-medium text-amber-200 text-sm">Preview Mode</span>
+              <span className="font-medium text-amber-200 text-sm">
+                Preview Mode
+              </span>
               <span className="ml-auto rounded-full bg-amber-500/20 px-2 py-0.5 text-amber-300 text-xs">
                 {filesChanged} file{filesChanged !== 1 ? "s" : ""} changed
               </span>
@@ -94,13 +101,18 @@ export function PreviewIndicator({
             {/* Summary */}
             {summary && (
               <div className="border-zinc-700/50 border-b px-4 py-3">
-                <p className="text-sm text-zinc-300 leading-relaxed">{summary}</p>
+                <p className="text-sm text-zinc-300 leading-relaxed">
+                  {summary}
+                </p>
               </div>
             )}
 
             {/* Commit message input */}
             <div className="space-y-2 px-4 py-3">
-              <label className="font-medium text-xs text-zinc-400" htmlFor="commit-msg">
+              <label
+                className="font-medium text-xs text-zinc-400"
+                htmlFor="commit-msg"
+              >
                 Commit message
               </label>
               <input
@@ -164,8 +176,12 @@ export function PreviewIndicator({
           {/* <img src="/icon.png" alt="Preview Active" width={20} height={20} /> */}
           {(additions !== undefined || deletions !== undefined) && (
             <span className="flex items-center gap-1.5 font-mono text-xs">
-              {additions !== undefined && <span className="text-green-400">+{additions}</span>}
-              {deletions !== undefined && <span className="text-red-400">-{deletions}</span>}
+              {additions !== undefined && (
+                <span className="text-green-400">+{additions}</span>
+              )}
+              {deletions !== undefined && (
+                <span className="text-red-400">-{deletions}</span>
+              )}
             </span>
           )}
         </span>

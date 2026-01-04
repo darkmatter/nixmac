@@ -23,7 +23,7 @@ use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
     window::{Color, Effect, EffectsBuilder},
-    Emitter, Manager, WebviewUrl, WebviewWindowBuilder,
+    Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
 
 fn main() {
@@ -68,6 +68,8 @@ fn main() {
             commands::ui_get_prefs,
             commands::ui_set_prefs,
             commands::ui_set_window_shadow,
+            // Window
+            commands::show_main_window,
             // Preview indicator
             commands::preview_indicator_show,
             commands::preview_indicator_hide,
@@ -182,6 +184,26 @@ fn main() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            // Handle window close events - hide instead of destroy for main window
+            if let RunEvent::WindowEvent {
+                label,
+                event: WindowEvent::CloseRequested { api, .. },
+                ..
+            } = event
+            {
+                if label == "main" {
+                    // Prevent the window from being destroyed
+                    api.prevent_close();
+                    // Hide it instead
+                    if let Some(window) = app_handle.get_webview_window("main") {
+                        let _ = window.hide();
+                        // Update peek state
+                        peek::unlock_and_hide();
+                    }
+                }
+            }
+        });
 }

@@ -38,7 +38,9 @@ type LoadingState = {
 };
 
 const SkeletonCircle = ({ className }: { className?: string }) => (
-  <div className={cn("h-6 w-6 animate-pulse rounded-full bg-white/20", className)} />
+  <div
+    className={cn("h-6 w-6 animate-pulse rounded-full bg-white/20", className)}
+  />
 );
 
 const SkeletonLine = ({ width = "w-48" }: { width?: string }) => (
@@ -57,7 +59,7 @@ const LoaderCore = ({
   const skeletonWidths = ["w-32", "w-48", "w-40", "w-36", "w-44"];
 
   return (
-    <div className="relative mx-auto mt-40 flex max-w-xl translate-x-48 flex-col justify-start">
+    <div className="relative mx-auto flex max-w-xl flex-col justify-start">
       {/* Actual loading states */}
       {loadingStates.map((loadingState, index) => {
         const distance = index - value;
@@ -81,21 +83,26 @@ const LoaderCore = ({
         return (
           <motion.div
             animate={{ opacity, y: -(value * 40) }}
-            className={cn(
-              "mb-4 flex w-96 gap-2 overflow-hidden text-ellipsis whitespace-pre pr-4 text-left",
-            )}
+            className={cn("mb-4 flex w-[500px] gap-2 text-left")}
             initial={{ opacity: 0, y: -(value * 40) }}
             key={loadingState.id ?? `step-${index}`}
             transition={{ duration: 0.5 }}
           >
-            <div>
+            <div className="shrink-0">
               {index > value ? (
                 <CheckIcon className="text-white/50" />
               ) : (
                 <CheckFilled className={checkClass} />
               )}
             </div>
-            <span className={textClass}>{loadingState.text}</span>
+            <span
+              className={cn(
+                textClass,
+                "block overflow-hidden text-ellipsis whitespace-nowrap",
+              )}
+            >
+              {loadingState.text}
+            </span>
           </motion.div>
         );
       })}
@@ -169,7 +176,7 @@ export const MultiStepLoader = ({
             opacity: 0,
           }}
         >
-          <div className="relative h-96">
+          <div className="relative h-96 flex items-center justify-center">
             <LoaderCore loadingStates={loadingStates} value={currentState} />
           </div>
 

@@ -275,23 +275,9 @@ pub fn show_main_window<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
     let window = app
         .get_webview_window("main")
         .ok_or("Main window not found")?;
-    let monitor = get_rightmost_monitor(app)?;
 
-    // Get window size
-    let size = window.outer_size().map_err(|e| e.to_string())?;
-    let (x, y) = monitor.main_window_position(size.width as f64, size.height as f64);
-
-    peek_log!(
-        "📍 Showing main window at ({}, {}) size {}x{}",
-        x,
-        y,
-        size.width,
-        size.height
-    );
-
-    window
-        .set_position(PhysicalPosition::new(x as i32, y as i32))
-        .map_err(|e| e.to_string())?;
+    // Just show and focus the window without changing its position
+    peek_log!("📍 Showing main window");
     window.show().map_err(|e| e.to_string())?;
     window.set_focus().map_err(|e| e.to_string())?;
 
@@ -300,8 +286,8 @@ pub fn show_main_window<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
     // Hide the icon
     hide_icon(app)?;
 
-    // Hide preview indicator when main window is open
-    hide_preview_indicator(app)?;
+    // Note: Preview indicator stays visible when there are changes,
+    // even when main window is open
 
     // Emit state change
     let _ = window.emit("peek:state", PeekState::Expanded);
@@ -667,9 +653,9 @@ pub fn update_preview_indicator<R: Runtime>(
             .emit("preview-indicator:update", &state)
             .map_err(|e| e.to_string())?;
 
-        // Only show if main window is not open
-        let main_open = is_main_window_open();
-        if state.visible && !main_open {
+        // Show preview indicator whenever there are visible changes,
+        // regardless of whether main window is open
+        if state.visible {
             show_preview_indicator(app)?;
         } else {
             hide_preview_indicator(app)?;

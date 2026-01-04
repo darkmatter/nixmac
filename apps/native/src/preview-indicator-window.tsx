@@ -1,6 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { PreviewIndicator } from "@/components/preview-indicator";
@@ -55,15 +54,12 @@ function PreviewIndicatorWindow() {
   }, []);
 
   const handleClick = async () => {
-    // Focus the main window when clicked
+    // Show and focus the main window via Tauri command
+    // This properly updates peek state and hides preview indicator
     try {
-      const mainWindow = await WebviewWindow.getByLabel("main");
-      if (mainWindow) {
-        await mainWindow.show();
-        await mainWindow.setFocus();
-      }
-    } catch (e) {
-      console.error("Failed to focus main window:", e);
+      await invoke("show_main_window");
+    } catch (err) {
+      console.error("Failed to show main window:", err);
     }
   };
 
@@ -92,6 +88,7 @@ function PreviewIndicatorWindow() {
     <PreviewIndicator
       additions={state.additions}
       deletions={state.deletions}
+      disableExpansion
       filesChanged={state.filesChanged}
       isLoading={state.isLoading}
       onClick={handleClick}

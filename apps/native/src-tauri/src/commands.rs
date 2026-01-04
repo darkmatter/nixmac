@@ -434,6 +434,17 @@ pub async fn ui_set_window_shadow(app: AppHandle, on: bool) -> Result<serde_json
 }
 
 // =============================================================================
+// Window Commands
+// =============================================================================
+
+/// Shows and focuses the main window (used by preview indicator).
+#[tauri::command]
+pub async fn show_main_window(app: AppHandle) -> Result<serde_json::Value, String> {
+    peek::show_main_window(&app)?;
+    Ok(serde_json::json!({"ok": true}))
+}
+
+// =============================================================================
 // Preview Indicator Commands
 // =============================================================================
 
