@@ -1,46 +1,48 @@
 import { listen } from "@tauri-apps/api/event";
 import React, { useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom/client";
-import {
-  getLineType,
-  normalizeOutput,
-  type RebuildLine,
-  RebuildOverlay,
-} from "@/components/rebuild-overlay";
+import { type RebuildLine, RebuildOverlay } from "@/components/rebuild-overlay";
 import { darwinAPI } from "@/tauri-api";
 import "./index.css";
 
 // Check for debug mode via URL param: rebuild-overlay.html?debug=true
-const DEBUG_MODE = new URLSearchParams(window.location.search).get("debug") === "true";
+const DEBUG_MODE =
+  new URLSearchParams(window.location.search).get("debug") === "true";
 
-// Mock lines for debug mode
+// Mock lines for debug mode - simulating AI-summarized output
 const DEBUG_MOCK_LINES: RebuildLine[] = [
-  { id: 1, text: "building '/nix/store/abc123-source.drv'...", type: "info" },
-  {
-    id: 2,
-    text: "copying path '/nix/store/def456-package' to the store...",
-    type: "info",
-  },
-  { id: 3, text: "building '/nix/store/ghi789-config.drv'...", type: "info" },
-  { id: 4, text: "activating system configuration...", type: "info" },
-  { id: 5, text: "setting up user profiles...", type: "stdout" },
-  {
-    id: 6,
-    text: "warning: some optional feature is deprecated",
-    type: "stderr",
-  },
-  {
-    id: 7,
-    text: "copying path '/nix/store/jkl012-binary' to the store...",
-    type: "info",
-  },
+  { id: 1, text: "🚀 Starting system rebuild...", type: "info" },
+  { id: 2, text: "🔍 Evaluating nix configuration", type: "info" },
+  { id: 3, text: "📦 Downloading neovim package", type: "info" },
+  { id: 4, text: "📦 Fetching Firefox browser", type: "info" },
+  { id: 5, text: "🔨 Building shell environment", type: "info" },
+  { id: 6, text: "⚡ Activating system configuration", type: "info" },
 ];
+
+/** Payload from the AI-powered log summarizer */
+interface SummaryPayload {
+  text: string;
+  complete?: boolean;
+  success?: boolean;
+  error?: boolean; // True when an error (like infinite recursion) is detected
+  error_type?:
+    | "infinite_recursion"
+    | "evaluation_error"
+    | "build_error"
+    | "generic_error";
+}
 
 interface RebuildState {
   isRunning: boolean;
   lines: RebuildLine[];
   exitCode?: number;
   success?: boolean;
+  errorType?:
+    | "infinite_recursion"
+    | "evaluation_error"
+    | "build_error"
+    | "generic_error";
+  errorMessage?: string;
 }
 
 // Track if we've already started a rebuild to prevent duplicates
@@ -49,9 +51,11 @@ let globalStarted = false;
 function RebuildOverlayWindow() {
   const [state, setState] = useState<RebuildState>({
     isRunning: true,
-    lines: DEBUG_MODE ? DEBUG_MOCK_LINES : [{ id: 0, text: "Preparing rebuild...", type: "info" }],
+    lines: DEBUG_MODE
+      ? DEBUG_MOCK_LINES
+      : [{ id: 0, text: "Preparing rebuild...", type: "info" }],
   });
-  const lineIdRef = useRef(DEBUG_MODE ? DEBUG_MOCK_LINES.length + 1 : 0);
+  const lineIdRef = useRef(DEBUG_MODE ? DEBUG_MOCK_LINES.length + 1 : 1);
 
   // Reset state when window becomes visible (for subsequent runs)
   useEffect(() => {
@@ -62,7 +66,7 @@ function RebuildOverlayWindow() {
           isRunning: true,
           lines: [],
         });
-        lineIdRef.current = 0;
+        lineIdRef.current = 1;
         globalStarted = false;
       }
     };
@@ -74,22 +78,32 @@ function RebuildOverlayWindow() {
   }, [state.isRunning]);
 
   useEffect(() => {
-    // In debug mode, add a new mock line every 2 seconds to simulate activity
+    // In debug mode, add a new mock line every 500ms to simulate AI-summarized activity
     if (DEBUG_MODE) {
+      const mockSummaries = [
+        "📦 Fetching zsh plugins",
+        "📦 Downloading git configuration",
+        "🔨 Building neovim plugins",
+        "🔨 Compiling treesitter grammars",
+        "📦 Fetching homebrew packages",
+        "⚡ Setting up user environment",
+      ];
+      let mockIndex = 0;
+
       const interval = setInterval(() => {
+        const text = mockSummaries[mockIndex % mockSummaries.length];
+        mockIndex++;
+
         setState((prev) => ({
           ...prev,
           lines: [
             ...prev.lines,
-            {
-              id: lineIdRef.current,
-              text: `copying path '/nix/store/${Math.random().toString(36).slice(2, 10)}-package' to the store...`,
-              type: "info" as const,
-            },
-          ].slice(-100),
+            { id: lineIdRef.current, text, type: "info" as const },
+          ].slice(-50),
         }));
         lineIdRef.current += 1;
-      }, 2000);
+      }, 500);
+
       return () => clearInterval(interval);
     }
 
@@ -100,39 +114,66 @@ function RebuildOverlayWindow() {
     globalStarted = true;
 
     // Set up event listeners and start rebuild
-    let unsubDataFn: (() => void) | null = null;
+    let unsubSummaryFn: (() => void) | null = null;
     let unsubEndFn: (() => void) | null = null;
 
     const setup = async () => {
-      // Register listeners first
-      unsubDataFn = await listen<{ chunk: string }>("darwin:apply:data", (event) => {
-        const normalized = normalizeOutput(event.payload.chunk);
-        if (!normalized) {
-          return;
+      // Listen to AI-summarized log events (smooth, 500ms intervals)
+      unsubSummaryFn = await listen<SummaryPayload>(
+        "darwin:apply:summary",
+        (event) => {
+          const { text, complete, success, error, error_type } = event.payload;
+
+          if (complete) {
+            // Summary includes completion status
+            setState((prev) => ({
+              ...prev,
+              isRunning: false,
+              success: success ?? false,
+              // If we already have an error type, preserve it
+              errorType: prev.errorType ?? (success ? undefined : error_type),
+              errorMessage: prev.errorMessage ?? (success ? undefined : text),
+              lines: [
+                ...prev.lines,
+                {
+                  id: lineIdRef.current,
+                  text,
+                  type: success ? "info" : "stderr",
+                },
+              ],
+            }));
+            lineIdRef.current += 1;
+          } else if (error) {
+            // Error detected (e.g., infinite recursion)
+            setState((prev) => ({
+              ...prev,
+              errorType: error_type,
+              errorMessage: text,
+              lines: [
+                ...prev.lines,
+                { id: lineIdRef.current, text, type: "stderr" as const },
+              ].slice(-50),
+            }));
+            lineIdRef.current += 1;
+          } else {
+            // Regular summarized log line
+            setState((prev) => ({
+              ...prev,
+              lines: [
+                ...prev.lines,
+                { id: lineIdRef.current, text, type: "info" as const },
+              ].slice(-50),
+            }));
+            lineIdRef.current += 1;
+          }
         }
+      );
 
-        const newLines = normalized.split("\n").filter(Boolean);
-
-        setState((prev) => {
-          const startId = lineIdRef.current;
-          lineIdRef.current += newLines.length;
-          return {
-            ...prev,
-            lines: [
-              ...prev.lines,
-              ...newLines.map((text, i) => ({
-                id: startId + i,
-                text,
-                type: getLineType(text),
-              })),
-            ].slice(-100),
-          };
-        });
-      });
-
+      // Still listen to the end event for git staging and overlay hiding
       unsubEndFn = await listen<{ ok: boolean; code: number }>(
         "darwin:apply:end",
         async (event) => {
+          // Update state (may already be set by summary complete event)
           setState((prev) => ({
             ...prev,
             isRunning: false,
@@ -147,13 +188,14 @@ function RebuildOverlayWindow() {
             } catch (e) {
               console.error("Failed to stage changes:", e);
             }
-          }
 
-          // Hide the overlay after a delay to let the completion animation play
-          setTimeout(() => {
-            darwinAPI.rebuildOverlay.hide();
-          }, 2500);
-        },
+            // Only auto-hide on success - on failure, user needs to take action
+            setTimeout(() => {
+              darwinAPI.rebuildOverlay.hide();
+            }, 2500);
+          }
+          // On failure, don't auto-hide - let the error UI show with rollback option
+        }
       );
 
       // Now start the rebuild
@@ -165,7 +207,10 @@ function RebuildOverlayWindow() {
           ...prev,
           isRunning: false,
           success: false,
-          lines: [...prev.lines, { id: lineIdRef.current, text: `Error: ${msg}`, type: "stderr" }],
+          lines: [
+            ...prev.lines,
+            { id: lineIdRef.current, text: `❌ Error: ${msg}`, type: "stderr" },
+          ],
         }));
         lineIdRef.current += 1;
       }
@@ -174,8 +219,8 @@ function RebuildOverlayWindow() {
     setup();
 
     return () => {
-      if (unsubDataFn) {
-        unsubDataFn();
+      if (unsubSummaryFn) {
+        unsubSummaryFn();
       }
       if (unsubEndFn) {
         unsubEndFn();
@@ -183,11 +228,29 @@ function RebuildOverlayWindow() {
     };
   }, []);
 
+  const handleRollback = async () => {
+    try {
+      await darwinAPI.git.restoreAll();
+      // Hide overlay after rollback
+      darwinAPI.rebuildOverlay.hide();
+    } catch (e) {
+      console.error("Failed to rollback:", e);
+    }
+  };
+
+  const handleDismiss = () => {
+    darwinAPI.rebuildOverlay.hide();
+  };
+
   return (
     <RebuildOverlay
+      errorMessage={state.errorMessage}
+      errorType={state.errorType}
       exitCode={state.exitCode}
       isRunning={state.isRunning}
       lines={state.lines}
+      onDismiss={handleDismiss}
+      onRollback={handleRollback}
       success={state.success}
     />
   );
@@ -198,6 +261,6 @@ if (rootElement) {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
       <RebuildOverlayWindow />
-    </React.StrictMode>,
+    </React.StrictMode>
   );
 }

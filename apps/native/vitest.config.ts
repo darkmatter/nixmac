@@ -17,7 +17,13 @@ export default defineConfig({
       reporter: ["text", "html"],
       provider: "v8",
       reportsDirectory: "./coverage",
-      exclude: ["dist/**", "dist-electron/**", "public/**", "**/*.d.ts", "vite.config.ts"],
+      exclude: [
+        "dist/**",
+        "dist-electron/**",
+        "public/**",
+        "**/*.d.ts",
+        "vite.config.ts",
+      ],
     },
   },
   resolve: {

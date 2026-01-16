@@ -1,9 +1,18 @@
 "use client";
 
-import { Eye, Loader2, Shield, Sparkles } from "lucide-react";
+import { Eye, FileCode, Loader2, Sparkles } from "lucide-react";
 import { useState } from "react";
+import type { BundledLanguage } from "shiki";
 import { EvolveProgress } from "@/components/evolve-progress";
+import {
+  CodeBlock,
+  CodeBlockBody,
+  CodeBlockContent,
+  CodeBlockItem,
+} from "@/components/kibo-ui/code-block";
 import { Button } from "@/components/ui/button";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
 import {
   analyzeGitStatus,
   type EvolveEvent,
@@ -11,7 +20,6 @@ import {
   type ProcessingAction,
   type SummaryState,
 } from "@/stores/widget-store";
-import { darwinAPI } from "@/tauri-api";
 import { ChatInput } from "../chat-input";
 import { Diff } from "../diff";
 
@@ -24,9 +32,93 @@ interface EvolvingStepProps {
   processingAction: ProcessingAction;
   evolveEvents: EvolveEvent[];
   handleEvolve: () => void;
+  handleApply: () => void;
   handleCancel: () => void;
   handleShowCommit: () => void;
   summary: SummaryState;
+}
+
+interface ParsedDiffSection {
+  filename: string;
+  hunks: string;
+}
+
+/**
+ * Parse a unified diff into sections per file
+ */
+function parseDiffIntoSections(diffContent: string): ParsedDiffSection[] {
+  const sections: ParsedDiffSection[] = [];
+  const lines = diffContent.split("\n");
+
+  let currentFilename = "";
+  let currentHunks: string[] = [];
+
+  for (const line of lines) {
+    // Match "diff --git a/path/to/file b/path/to/file"
+    const gitDiffMatch = line.match(/^diff --git a\/(.+?) b\/(.+)$/);
+    if (gitDiffMatch) {
+      // Save previous section if exists
+      if (currentFilename && currentHunks.length > 0) {
+        sections.push({
+          filename: currentFilename,
+          hunks: currentHunks.join("\n"),
+        });
+      }
+      currentFilename = gitDiffMatch[2];
+      currentHunks = [];
+      continue;
+    }
+
+    // Skip --- and +++ lines (file markers)
+    if (line.startsWith("--- ") || line.startsWith("+++ ")) {
+      continue;
+    }
+
+    // Skip index lines
+    if (line.startsWith("index ")) {
+      continue;
+    }
+
+    // Skip "new file mode" or "deleted file mode" lines
+    if (
+      line.startsWith("new file mode") ||
+      line.startsWith("deleted file mode")
+    ) {
+      continue;
+    }
+
+    // Collect all other lines (hunks, additions, deletions)
+    if (currentFilename) {
+      currentHunks.push(line);
+    }
+  }
+
+  // Don't forget the last section
+  if (currentFilename && currentHunks.length > 0) {
+    sections.push({
+      filename: currentFilename,
+      hunks: currentHunks.join("\n"),
+    });
+  }
+
+  return sections;
+}
+
+/**
+ * Get a short filename from a path
+ */
+function getShortFilename(path: string): string {
+  const parts = path.split("/");
+  return parts[parts.length - 1] || path;
+}
+
+/**
+ * Get the directory from a path
+ */
+function getDirectory(path: string): string {
+  const parts = path.split("/");
+  if (parts.length <= 1) return "";
+  return parts.slice(0, -1).join("/");
 }
 
 export function EvolvingStep({
@@ -38,19 +130,24 @@ export function EvolvingStep({
   processingAction,
   evolveEvents,
   handleEvolve,
+  handleApply,
   summary,
 }: EvolvingStepProps) {
   const changedFiles = gitStatus?.files || [];
   const { hasUnstagedChanges } = analyzeGitStatus(gitStatus);
+  const [showDiff, setShowDiff] = useState(false);
 
-  const [showAdvancedStats, _setShowAdvancedStats] = useState(false);
+  const diffContent = summary.diff || "";
+  const diffSections = parseDiffIntoSections(diffContent);
 
   // Show progress when actively generating
   if (isGenerating && evolveEvents.length > 0) {
     return (
       <div className="space-y-4">
         <div className="text-center">
-          <h2 className="font-semibold text-foreground text-lg">Evolving your configuration...</h2>
+          <h2 className="font-semibold text-foreground text-lg">
+            Evolving your configuration...
+          </h2>
           <p className="mt-1 text-muted-foreground text-sm">
             AI is making changes based on your request
           </p>
@@ -73,19 +170,21 @@ export function EvolvingStep({
           Test your changes safely - you can roll back if needed.
         </p>
       </div>
-      {/* Header */}
-      {/* <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-foreground text-lg">{title}</h2>
+
+      {/* Header with toggle */}
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold text-foreground text-lg">
+          What's Changed
+        </h2>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <span className="text-muted-foreground text-xs">Diff</span>
-            <Switch
-              checked={showAdvancedStats}
-              onCheckedChange={setShowAdvancedStats}
-            />
+            <span className="text-muted-foreground text-xs">
+              {showDiff ? "Diff" : "Summary"}
+            </span>
+            <Switch checked={showDiff} onCheckedChange={setShowDiff} />
           </div>
         </div>
-      </div> */}
+      </div>
 
       {/* Loading state */}
       {summary.isLoading === true && (
@@ -95,8 +194,80 @@ export function EvolvingStep({
         </div>
       )}
 
-      {/* AI Summary list - default view */}
-      <Diff changedFiles={changedFiles} showAdvancedStats={showAdvancedStats} summary={summary} />
+      {/* Content: Summary view or Diff view */}
+      {showDiff ? (
+        // Parsed diff view with file dividers
+        diffSections.length > 0 ? (
+          <ScrollArea className="h-[400px] w-full rounded-lg border border-border">
+            <div className="divide-y divide-border">
+              {diffSections.map((section, index) => {
+                const codeData = [
+                  {
+                    language: "diff",
+                    filename: section.filename,
+                    code: section.hunks,
+                  },
+                ];
+
+                return (
+                  <div key={section.filename + index}>
+                    {/* File divider header */}
+                    <div className="sticky top-0 z-10 flex items-center gap-2 border-border border-b bg-muted/80 px-3 py-2 backdrop-blur-sm">
+                      <FileCode className="h-4 w-4 text-primary" />
+                      <div className="flex min-w-0 flex-1 items-baseline gap-2">
+                        <span className="truncate font-medium text-foreground text-sm">
+                          {getShortFilename(section.filename)}
+                        </span>
+                        {getDirectory(section.filename) && (
+                          <span className="truncate text-muted-foreground text-xs">
+                            {getDirectory(section.filename)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Code diff for this file */}
+                    <CodeBlock
+                      className="border-0"
+                      data={codeData}
+                      value="diff"
+                    >
+                      <CodeBlockBody>
+                        {(item) => (
+                          <CodeBlockItem
+                            className="w-max min-w-full"
+                            key={item.language}
+                            value={item.language}
+                          >
+                            <CodeBlockContent
+                              language={item.language as BundledLanguage}
+                            >
+                              {item.code}
+                            </CodeBlockContent>
+                          </CodeBlockItem>
+                        )}
+                      </CodeBlockBody>
+                    </CodeBlock>
+                  </div>
+                );
+              })}
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+        ) : (
+          <div className="flex items-center justify-center rounded-lg border border-border bg-muted/30 p-8 text-muted-foreground text-sm">
+            No diff available
+          </div>
+        )
+      ) : (
+        // AI Summary list view
+        <Diff
+          changedFiles={changedFiles}
+          showAdvancedStats={false}
+          summary={summary}
+        />
+      )}
+
       {/* Instructions for testing changes */}
       {!summary.isLoading && summary.instructions && (
         <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
@@ -104,43 +275,33 @@ export function EvolvingStep({
             <Sparkles className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
             <div className="space-y-1">
               <p className="font-medium text-foreground text-sm">Try it out</p>
-              <p className="text-muted-foreground text-xs">{summary.instructions}</p>
+              <p className="text-muted-foreground text-xs">
+                {summary.instructions}
+              </p>
             </div>
           </div>
         </div>
       )}
 
       {hasUnstagedChanges ? (
-        <>
-          <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3">
-            <div className="flex items-start gap-2">
-              <Shield className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-400" />
-              <div className="space-y-1">
-                <p className="font-medium text-blue-200 text-sm">Preview applies changes safely</p>
-                <p className="text-blue-200/70 text-xs">
-                  You'll be asked for your password. Changes can be rolled back if needed.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <Button
-            className="w-full"
-            disabled={isProcessing}
-            onClick={() => darwinAPI.rebuildOverlay.show()}
-            size="lg"
-          >
-            {processingAction === "apply" ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Eye className="mr-2 h-4 w-4" />
-            )}
-            Preview Changes
-          </Button>
-        </>
+        <Button
+          className="w-full"
+          disabled={isProcessing}
+          onClick={handleApply}
+          size="lg"
+        >
+          {processingAction === "apply" ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Eye className="mr-2 h-4 w-4" />
+          )}
+          Preview Changes
+        </Button>
       ) : null}
 
-      {!hasUnstagedChanges && <p className="text-muted-foreground text-sm">Evolve Again</p>}
+      {!hasUnstagedChanges && (
+        <p className="text-muted-foreground text-sm">Evolve Again</p>
+      )}
       {!hasUnstagedChanges && (
         <ChatInput
           isLoading={isProcessing}

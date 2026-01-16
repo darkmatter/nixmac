@@ -8,7 +8,11 @@ import {
   type Permission,
   PermissionsScreen,
 } from "@/components/permissions-screen";
-import type { EvolveEvent, GitStatus, SummaryState } from "@/stores/widget-store";
+import type {
+  EvolveEvent,
+  GitStatus,
+  SummaryState,
+} from "@/stores/widget-store";
 import { Header } from "./header";
 import { WidgetUI, type WidgetUIProps } from "./widget-ui";
 
@@ -90,7 +94,8 @@ const mockSummary: SummaryState = {
     },
     {
       title: "Rectangle App Added",
-      description: "Installed Rectangle window manager via Homebrew for better window management.",
+      description:
+        "Installed Rectangle window manager via Homebrew for better window management.",
     },
   ],
   instructions:
@@ -206,7 +211,9 @@ function InteractiveWidget(initialProps: PartialUIProps) {
   const [peekState, setPeekState] = useState(defaults.peekState);
   const [evolvePrompt, setEvolvePrompt] = useState(defaults.evolvePrompt);
   const [commitMsg, setCommitMsg] = useState(defaults.commitMsg);
-  const [consoleExpanded, setConsoleExpanded] = useState(defaults.consoleExpanded);
+  const [consoleExpanded, setConsoleExpanded] = useState(
+    defaults.consoleExpanded
+  );
   const [settingsOpen, setSettingsOpen] = useState(defaults.settingsOpen);
   const [host, setHost] = useState(defaults.host);
   const [error, setError] = useState(defaults.error);
@@ -276,7 +283,13 @@ export const Collapsed = meta.story({
  */
 export const Onboarding = meta.story({
   render: () => (
-    <InteractiveWidget appState="onboarding" configDir="" host="" hosts={[]} step="setup" />
+    <InteractiveWidget
+      appState="onboarding"
+      configDir=""
+      host=""
+      hosts={[]}
+      step="setup"
+    />
   ),
 });
 
@@ -391,7 +404,9 @@ export const Applying = meta.story({
     <InteractiveWidget
       appState="idle"
       consoleExpanded={true}
-      consoleLogs={"> Running darwin-rebuild switch...\nbuilding the system configuration...\n"}
+      consoleLogs={
+        "> Running darwin-rebuild switch...\nbuilding the system configuration...\n"
+      }
       gitStatus={mockGitStatus}
       isProcessing={true}
       processingAction="apply"
@@ -538,7 +553,9 @@ Changes are now active. Commit to save or discard to revert.`}
  * Settings dialog open
  */
 export const SettingsOpen = meta.story({
-  render: () => <InteractiveWidget appState="idle" settingsOpen={true} step="overview" />,
+  render: () => (
+    <InteractiveWidget appState="idle" settingsOpen={true} step="overview" />
+  ),
 });
 
 // =============================================================================
@@ -560,7 +577,13 @@ export const Peeking = meta.story({
  * Evolving with unstaged changes - shows Preview button
  */
 export const EvolvingWithUnstagedChanges = meta.story({
-  render: () => <InteractiveWidget appState="idle" gitStatus={mockGitStatus} step="evolving" />,
+  render: () => (
+    <InteractiveWidget
+      appState="idle"
+      gitStatus={mockGitStatus}
+      step="evolving"
+    />
+  ),
 });
 
 /**
@@ -617,9 +640,9 @@ export const CommitScreenWithMessage = meta.story({
 function OnboardingFlowWithPermissions() {
   // Track which step of onboarding we're in
   // Start in permissions step for testing/demo
-  const [onboardingStep, setOnboardingStep] = useState<"setup" | "permissions" | "complete">(
-    "permissions",
-  );
+  const [onboardingStep, setOnboardingStep] = useState<
+    "setup" | "permissions" | "complete"
+  >("permissions");
   const [configDir, setConfigDir] = useState("/Users/demo/.darwin");
   const [host, setHost] = useState("Demo-MacBook-Pro");
 
@@ -654,9 +677,15 @@ function OnboardingFlowWithPermissions() {
           <div className="absolute inset-0">
             <div className="flex h-full w-full flex-col overflow-hidden rounded-xl border border-border bg-card/90 shadow-2xl backdrop-blur-xl">
               {/* Widget Header */}
-              <Header onOpenSettings={handleOpenSettings} setIsExpanded={handleCollapse} />
+              <Header
+                onOpenSettings={handleOpenSettings}
+                setIsExpanded={handleCollapse}
+              />
               {/* Permissions Content */}
-              <PermissionsScreen compact onComplete={handlePermissionsComplete} />
+              <PermissionsScreen
+                compact
+                onComplete={handlePermissionsComplete}
+              />
             </div>
           </div>
         </div>

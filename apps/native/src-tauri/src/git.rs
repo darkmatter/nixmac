@@ -226,6 +226,30 @@ pub fn stash(dir: &str, message: &str) -> Result<()> {
     Ok(())
 }
 
+/// Discards all uncommitted changes (both staged and unstaged).
+/// This restores tracked files to HEAD and removes untracked files.
+pub fn restore_all(dir: &str) -> Result<()> {
+    // Reset staged changes
+    git_command()
+        .args(["reset", "HEAD", "--"])
+        .current_dir(dir)
+        .output()?;
+
+    // Discard changes to tracked files
+    git_command()
+        .args(["checkout", "--", "."])
+        .current_dir(dir)
+        .output()?;
+
+    // Remove untracked files and directories
+    git_command()
+        .args(["clean", "-fd"])
+        .current_dir(dir)
+        .output()?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

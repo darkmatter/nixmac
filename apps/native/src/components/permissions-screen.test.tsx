@@ -4,7 +4,10 @@ import { defaultPermissions, PermissionsScreen } from "./permissions-screen";
 
 test("default state matches snapshot", () => {
   const { container } = render(
-    <PermissionsScreen initialPermissions={defaultPermissions} onComplete={() => {}} />,
+    <PermissionsScreen
+      initialPermissions={defaultPermissions}
+      onComplete={() => {}}
+    />
   );
   expect(container).toMatchSnapshot();
 });
@@ -15,7 +18,7 @@ test("all granted matches snapshot", () => {
     status: "granted" as const,
   }));
   const { container } = render(
-    <PermissionsScreen initialPermissions={allGranted} onComplete={() => {}} />,
+    <PermissionsScreen initialPermissions={allGranted} onComplete={() => {}} />
   );
   expect(container).toMatchSnapshot();
 });

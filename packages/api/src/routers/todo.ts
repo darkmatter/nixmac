@@ -11,17 +11,22 @@ export const todoRouter = router({
     async ({ input }) =>
       await db.insert(todo).values({
         text: input.text,
-      }),
+      })
   ),
 
   toggle: publicProcedure
     .input(z.object({ id: z.number(), completed: z.boolean() }))
     .mutation(
       async ({ input }) =>
-        await db.update(todo).set({ completed: input.completed }).where(eq(todo.id, input.id)),
+        await db
+          .update(todo)
+          .set({ completed: input.completed })
+          .where(eq(todo.id, input.id))
     ),
 
   delete: publicProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => await db.delete(todo).where(eq(todo.id, input.id))),
+    .mutation(
+      async ({ input }) => await db.delete(todo).where(eq(todo.id, input.id))
+    ),
 });

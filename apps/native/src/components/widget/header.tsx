@@ -6,7 +6,7 @@ export function Header(props: { onOpenSettings: () => void }) {
   const { onOpenSettings } = props;
   return (
     <div
-      className="relative flex flex-shrink-0 cursor-move select-none items-center justify-center border-border border-b bg-card/50 px-3 pb-3 pt-3"
+      className="relative flex flex-shrink-0 cursor-move select-none items-center justify-center border-border border-b bg-card/50 px-3 pt-3 pb-3"
       data-tauri-drag-region
     >
       <h3

@@ -7,7 +7,15 @@
   "backend": "hono",
   "runtime": "bun",
   "frontend": ["tanstack-router"],
-  "addons": ["oxlint", "fumadocs", "ruler", "starlight", "tauri", "turborepo", "ultracite"],
+  "addons": [
+    "oxlint",
+    "fumadocs",
+    "ruler",
+    "starlight",
+    "tauri",
+    "turborepo",
+    "ultracite"
+  ],
   "examples": ["todo"],
   "auth": "better-auth",
   "payments": "polar",

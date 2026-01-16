@@ -1,6 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { AlertTriangle, RotateCcw, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { MultiStepLoader } from "@/components/ui/multi-step-loader-overlay";
 import { cn } from "@/lib/utils";
+
+export type ErrorType =
+  | "infinite_recursion"
+  | "evaluation_error"
+  | "build_error"
+  | "generic_error";
 
 export interface RebuildLine {
   id: number;
@@ -19,23 +26,43 @@ export interface RebuildOverlayProps {
   success?: boolean;
   /** Optional className for the container */
   className?: string;
+  /** Type of error if build failed */
+  errorType?: ErrorType;
+  /** Error message to display */
+  errorMessage?: string;
+  /** Callback when user clicks rollback */
+  onRollback?: () => void;
+  /** Callback when user dismisses the error */
+  onDismiss?: () => void;
 }
 
-// ============================================================================
-// CONFIGURABLE CONSTANTS
-// ============================================================================
+/** Get a user-friendly title for the error type */
+function getErrorTitle(errorType: ErrorType | undefined): string {
+  switch (errorType) {
+    case "infinite_recursion":
+      return "Infinite Recursion Detected";
+    case "evaluation_error":
+      return "Nix Evaluation Error";
+    case "build_error":
+      return "Build Failed";
+    default:
+      return "Build Failed";
+  }
+}
 
-/** Minimum interval between displaying new lines (in ms) - rate limiting */
-const RATE_LIMIT_INTERVAL_MS = 250;
-
-/** Number of characters to compare for duplicate detection */
-const DUPLICATE_PREFIX_LENGTH = 30;
-
-/** Maximum characters to display per line */
-const MAX_LINE_LENGTH = 300;
-
-/** Number of lines to show as "pending" below current */
-const TAIL_LENGTH = 5;
+/** Get helpful suggestion text for the error type */
+function getErrorSuggestion(errorType: ErrorType | undefined): string {
+  switch (errorType) {
+    case "infinite_recursion":
+      return "Your configuration has a circular dependency. Rolling back will restore your previous working configuration.";
+    case "evaluation_error":
+      return "There's a syntax or evaluation error in your Nix files. Check the error message for details.";
+    case "build_error":
+      return "A package failed to build. You may need to update your flake or fix the package configuration.";
+    default:
+      return "The build encountered an error. You can rollback to your previous configuration or dismiss to investigate.";
+  }
+}
 
 // ============================================================================
 
@@ -48,38 +75,45 @@ export function stripAnsi(str: string): string {
   const CSI = String.fromCharCode(0x9b);
   const pattern = new RegExp(
     `[${ESC}${CSI}][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]`,
-    "g",
+    "g"
   );
   return str.replace(pattern, "");
 }
 
 /**
  * Normalize console output for display
+ * Note: With AI summarization, this is mostly a safety net
  */
 export function normalizeOutput(raw: string): string {
   let cleaned = stripAnsi(raw);
   cleaned = cleaned.replace(/\r/g, "");
   cleaned = cleaned.trimEnd();
-  cleaned = cleaned.slice(0, MAX_LINE_LENGTH);
   return cleaned;
 }
 
 /**
  * Get the display type for a line based on content
+ * Note: With AI summarization, most lines come as "info" type
  */
 export function getLineType(text: string): "stdout" | "stderr" | "info" {
   const lower = text.toLowerCase();
   if (
     lower.includes("error") ||
     lower.includes("failed") ||
-    lower.includes("warning")
+    lower.includes("❌")
   ) {
     return "stderr";
   }
   if (
     lower.includes("building") ||
     lower.includes("copying") ||
-    lower.includes("activating")
+    lower.includes("activating") ||
+    lower.includes("🚀") ||
+    lower.includes("📦") ||
+    lower.includes("🔨") ||
+    lower.includes("⚡") ||
+    lower.includes("🔍") ||
+    lower.includes("✅")
   ) {
     return "info";
   }
@@ -87,178 +121,97 @@ export function getLineType(text: string): "stdout" | "stderr" | "info" {
 }
 
 /**
- * Check if two lines are duplicates based on their first N characters
- */
-function isDuplicateLine(
-  line1: string,
-  line2: string,
-  prefixLength: number,
-): boolean {
-  const prefix1 = line1.slice(0, prefixLength);
-  const prefix2 = line2.slice(0, prefixLength);
-  return prefix1 === prefix2;
-}
-
-/**
- * Filter out duplicate lines based on prefix comparison
- */
-function deduplicateLines(
-  lines: RebuildLine[],
-  prefixLength: number,
-): RebuildLine[] {
-  if (lines.length === 0) return lines;
-
-  const result: RebuildLine[] = [lines[0]];
-
-  for (let i = 1; i < lines.length; i++) {
-    const currentText = normalizeOutput(lines[i].text);
-    const previousText = normalizeOutput(lines[i - 1].text);
-
-    if (!isDuplicateLine(currentText, previousText, prefixLength)) {
-      result.push(lines[i]);
-    }
-  }
-
-  return result;
-}
-
-// Line normalizer that throttles lines for smooth display animation.
-// Uses an interval to progressively show lines rather than all at once.
-// Includes rate limiting and duplicate detection.
-function useNormalizedLines(
-  lines: RebuildLine[],
-  isComplete: boolean,
-): { lines: RebuildLine[]; step: number } {
-  const [displayedCount, setDisplayedCount] = useState(0);
-  const linesRef = useRef(lines);
-  const lastUpdateTimeRef = useRef(0);
-  const pendingUpdateRef = useRef<NodeJS.Timeout | null>(null);
-
-  // First deduplicate the lines based on prefix
-  const deduplicatedLines = deduplicateLines(lines, DUPLICATE_PREFIX_LENGTH);
-  linesRef.current = deduplicatedLines;
-
-  // Rate-limited interval to progressively reveal lines
-  useEffect(() => {
-    if (isComplete) {
-      // When complete, show all lines immediately
-      if (pendingUpdateRef.current) {
-        clearTimeout(pendingUpdateRef.current);
-        pendingUpdateRef.current = null;
-      }
-      setDisplayedCount(linesRef.current.length);
-      return;
-    }
-
-    const scheduleUpdate = () => {
-      const now = Date.now();
-      const timeSinceLastUpdate = now - lastUpdateTimeRef.current;
-
-      if (timeSinceLastUpdate >= RATE_LIMIT_INTERVAL_MS) {
-        // Enough time has passed, update immediately
-        setDisplayedCount((prev) => {
-          const total = linesRef.current.length;
-          if (prev < total) {
-            lastUpdateTimeRef.current = now;
-            return prev + 1;
-          }
-          return prev;
-        });
-      } else {
-        // Schedule update for when rate limit allows
-        if (pendingUpdateRef.current) {
-          clearTimeout(pendingUpdateRef.current);
-        }
-        const delay = RATE_LIMIT_INTERVAL_MS - timeSinceLastUpdate;
-        pendingUpdateRef.current = setTimeout(() => {
-          pendingUpdateRef.current = null;
-          lastUpdateTimeRef.current = Date.now();
-          setDisplayedCount((prev) => {
-            const total = linesRef.current.length;
-            if (prev < total) {
-              return prev + 1;
-            }
-            return prev;
-          });
-        }, delay);
-      }
-    };
-
-    // Check periodically if we have more lines to display
-    const timer = setInterval(() => {
-      const total = linesRef.current.length;
-      if (displayedCount < total) {
-        scheduleUpdate();
-      }
-    }, RATE_LIMIT_INTERVAL_MS);
-
-    return () => {
-      clearInterval(timer);
-      if (pendingUpdateRef.current) {
-        clearTimeout(pendingUpdateRef.current);
-        pendingUpdateRef.current = null;
-      }
-    };
-  }, [isComplete, displayedCount]);
-
-  // Reset displayed count when lines change significantly (e.g., new rebuild)
-  useEffect(() => {
-    if (deduplicatedLines.length === 0) {
-      setDisplayedCount(0);
-    }
-  }, [deduplicatedLines.length]);
-
-  const normalizedLines = deduplicatedLines
-    .slice(0, displayedCount)
-    .map((line) => ({
-      ...line,
-      text: normalizeOutput(line.text),
-    }));
-
-  // Always show at least a "starting" message so the loader has something to display
-  const displayLines =
-    normalizedLines.length > 0
-      ? normalizedLines
-      : [{ id: 0, text: "Starting rebuild...", type: "info" as const }];
-
-  if (isComplete) {
-    return { lines: displayLines, step: displayLines.length };
-  }
-  return {
-    lines: displayLines,
-    step: Math.max(0, displayLines.length - TAIL_LENGTH),
-  };
-}
-
-/**
  * Full-screen overlay displayed during nix-rebuild switch.
  * Shows a semi-transparent background with centered console output.
+ *
+ * Lines are now pre-summarized by the server-side AI at ~500ms intervals,
+ * so no client-side rate limiting is needed.
  */
 export function RebuildOverlay({
   isRunning,
   lines,
   className,
+  success,
+  errorType,
+  errorMessage,
+  onRollback,
+  onDismiss,
 }: RebuildOverlayProps) {
-  const { lines: normalizedLines, step } = useNormalizedLines(
-    lines,
-    !isRunning,
-  );
+  // Ensure we always have at least one line to display
+  const displayLines =
+    lines.length > 0
+      ? lines
+      : [{ id: 0, text: "🚀 Starting rebuild...", type: "info" as const }];
+
+  // Step points to the current (most recent) line
+  // - While running: last line is "in progress", previous lines are "completed"
+  // - When complete: all lines are "completed" (step past the end)
+  const step = isRunning
+    ? Math.max(0, displayLines.length - 1)
+    : displayLines.length;
+
+  // Show error panel when build failed
+  const showErrorPanel = !isRunning && success === false;
 
   return (
     <div
       className={cn(
         "fixed inset-0 flex items-center justify-center bg-black/50",
-        className,
+        className
       )}
     >
-      <div className="flex items-center justify-center w-full h-full">
-        <MultiStepLoader
-          duration={2000}
-          loading={isRunning}
-          loadingStates={normalizedLines}
-          step={step}
-        />
-      </div>
+      {showErrorPanel ? (
+        <div className="mx-4 flex max-w-lg flex-col items-center gap-6 rounded-2xl border border-red-500/30 bg-zinc-900/95 p-8 shadow-2xl backdrop-blur-xl">
+          {/* Error Icon */}
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500/20">
+            <AlertTriangle className="h-8 w-8 text-red-400" />
+          </div>
+
+          {/* Error Title */}
+          <h2 className="font-semibold text-white text-xl">
+            {getErrorTitle(errorType)}
+          </h2>
+
+          {/* Error Message */}
+          {errorMessage && (
+            <p className="max-h-32 w-full overflow-y-auto rounded-lg bg-zinc-800/50 px-4 py-3 text-center font-mono text-sm text-zinc-400">
+              {errorMessage}
+            </p>
+          )}
+
+          {/* Suggestion */}
+          <p className="text-center text-sm text-zinc-300">
+            {getErrorSuggestion(errorType)}
+          </p>
+
+          {/* Action Buttons */}
+          <div className="flex w-full gap-3">
+            <Button
+              className="flex-1 border-zinc-600 text-zinc-300 hover:bg-zinc-800"
+              onClick={onDismiss}
+              variant="outline"
+            >
+              <X className="mr-2 h-4 w-4" />
+              Dismiss
+            </Button>
+            <Button
+              className="flex-1 bg-red-600 text-white hover:bg-red-700"
+              onClick={onRollback}
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Rollback Changes
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex h-full w-full items-center justify-center">
+          <MultiStepLoader
+            loading={isRunning}
+            loadingStates={displayLines}
+            step={step}
+          />
+        </div>
+      )}
     </div>
   );
 }

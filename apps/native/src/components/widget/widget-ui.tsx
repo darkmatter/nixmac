@@ -42,7 +42,7 @@ export function WidgetUI({
   onErrorDismiss,
   onHostsChange,
   onShowCommitScreen,
-  onBackFromCommit,
+  onBackFromCommit: _onBackFromCommit,
   prefFloatingFooter,
   setPrefFloatingFooter,
   prefWindowShadow,
@@ -53,19 +53,19 @@ export function WidgetUI({
 }: WidgetUIProps) {
   const staged =
     gitStatus?.files?.filter(
-      (f) => f.index && f.index !== " " && f.index !== "?",
+      (f) => f.index && f.index !== " " && f.index !== "?"
     ) || [];
   const isPreviewActive =
     gitStatus?.files?.every(
-      (f) => f.index && f.index !== " " && f.index !== "?",
+      (f) => f.index && f.index !== " " && f.index !== "?"
     ) && staged.length > 0;
 
   return (
     <div
       {...props}
       className={cn(
-        "flex h-full w-full flex-col bg-background",
-        props.className,
+        "flex h-full w-full flex-col bg-background/90 backdrop-blur-xl",
+        props.className
       )}
     >
       {/* Header */}
@@ -114,6 +114,7 @@ export function WidgetUI({
               isGenerating={isGenerating}
               isProcessing={isProcessing && processingAction === "evolve"}
               setEvolvePrompt={onEvolvePromptChange}
+              summary={summary}
             />
           )}
 
@@ -123,6 +124,7 @@ export function WidgetUI({
               evolveEvents={evolveEvents}
               evolvePrompt={evolvePrompt}
               gitStatus={gitStatus}
+              handleApply={onApply}
               handleCancel={onCancel}
               handleEvolve={onEvolve}
               handleShowCommit={onShowCommitScreen}

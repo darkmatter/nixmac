@@ -1,6 +1,11 @@
 "use client";
 import { ImageIcon, Keyboard, Package } from "lucide-react";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -44,17 +49,22 @@ const APPS = [
 ];
 
 export function SetupWizardStep({ config, setConfig }: SetupWizardStepProps) {
-  const handleToggleItem = (type: "backgrounds" | "shortcuts" | "apps", id: string) => {
+  const handleToggleItem = (
+    type: "backgrounds" | "shortcuts" | "apps",
+    id: string
+  ) => {
     const current = config[type];
-    const updated = current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
+    const updated = current.includes(id)
+      ? current.filter((item) => item !== id)
+      : [...current, id];
     setConfig({ ...config, [type]: updated });
   };
 
   return (
     <div className="space-y-4">
       <p className="text-muted-foreground text-sm">
-        Customize your Mac with popular configurations. You can skip this step and configure these
-        later.
+        Customize your Mac with popular configurations. You can skip this step
+        and configure these later.
       </p>
 
       <Tabs className="w-full" defaultValue="apps">
@@ -87,9 +97,14 @@ export function SetupWizardStep({ config, setConfig }: SetupWizardStepProps) {
                       id={app.id}
                       onCheckedChange={() => handleToggleItem("apps", app.id)}
                     />
-                    <Label className="flex cursor-pointer flex-col gap-0.5" htmlFor={app.id}>
+                    <Label
+                      className="flex cursor-pointer flex-col gap-0.5"
+                      htmlFor={app.id}
+                    >
                       <span className="font-medium">{app.name}</span>
-                      <span className="text-muted-foreground text-xs">{app.category}</span>
+                      <span className="text-muted-foreground text-xs">
+                        {app.category}
+                      </span>
                     </Label>
                   </div>
                 </div>
@@ -113,13 +128,20 @@ export function SetupWizardStep({ config, setConfig }: SetupWizardStepProps) {
                     <Checkbox
                       checked={config.shortcuts.includes(shortcut.id)}
                       id={shortcut.id}
-                      onCheckedChange={() => handleToggleItem("shortcuts", shortcut.id)}
+                      onCheckedChange={() =>
+                        handleToggleItem("shortcuts", shortcut.id)
+                      }
                     />
-                    <Label className="cursor-pointer font-medium" htmlFor={shortcut.id}>
+                    <Label
+                      className="cursor-pointer font-medium"
+                      htmlFor={shortcut.id}
+                    >
                       {shortcut.name}
                     </Label>
                   </div>
-                  <span className="font-mono text-muted-foreground text-sm">{shortcut.keys}</span>
+                  <span className="font-mono text-muted-foreground text-sm">
+                    {shortcut.keys}
+                  </span>
                 </div>
               ))}
             </div>
@@ -145,12 +167,18 @@ export function SetupWizardStep({ config, setConfig }: SetupWizardStepProps) {
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <CardTitle className="text-sm">{wallpaper.name}</CardTitle>
-                        <CardDescription className="text-xs">{wallpaper.category}</CardDescription>
+                        <CardTitle className="text-sm">
+                          {wallpaper.name}
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                          {wallpaper.category}
+                        </CardDescription>
                       </div>
                       <Checkbox
                         checked={config.backgrounds.includes(wallpaper.id)}
-                        onCheckedChange={() => handleToggleItem("backgrounds", wallpaper.id)}
+                        onCheckedChange={() =>
+                          handleToggleItem("backgrounds", wallpaper.id)
+                        }
                       />
                     </div>
                   </CardHeader>
@@ -159,7 +187,8 @@ export function SetupWizardStep({ config, setConfig }: SetupWizardStepProps) {
             </div>
           </ScrollArea>
           <p className="mt-2 text-muted-foreground text-xs">
-            Selected {config.backgrounds.length} of {WALLPAPERS.length} wallpapers
+            Selected {config.backgrounds.length} of {WALLPAPERS.length}{" "}
+            wallpapers
           </p>
         </TabsContent>
       </Tabs>

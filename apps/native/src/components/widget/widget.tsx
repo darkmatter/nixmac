@@ -1,11 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  appStateToStep,
-  computeAppState,
-  useWidgetStore,
-} from "@/stores/widget-store";
+import { appStateToStep, computeAppState, useWidgetStore } from "@/stores/widget-store";
 import {
   CONFIG_CHANGED_CHANNEL,
   type ConfigChangedEvent,
@@ -118,18 +114,15 @@ export function DarwinWidget() {
     s.appendLog(`\n> Evolving: "${s.evolvePrompt}"\n`);
 
     // Set up evolve event listener
-    const unlistenEvolve = await ipcRenderer.on<EvolveEvent>(
-      EVOLVE_EVENT_CHANNEL,
-      (event) => {
-        if (event.payload) {
-          storeRef.current.appendEvolveEvent(event.payload);
-          // Also append raw log to console for debugging
-          if (event.payload.raw) {
-            storeRef.current.appendLog(`${event.payload.raw}\n`);
-          }
+    const unlistenEvolve = await ipcRenderer.on<EvolveEvent>(EVOLVE_EVENT_CHANNEL, (event) => {
+      if (event.payload) {
+        storeRef.current.appendEvolveEvent(event.payload);
+        // Also append raw log to console for debugging
+        if (event.payload.raw) {
+          storeRef.current.appendLog(`${event.payload.raw}\n`);
         }
-      },
-    );
+      }
+    });
 
     try {
       await darwinAPI.darwin.evolve(s.evolvePrompt);
@@ -146,37 +139,85 @@ export function DarwinWidget() {
     }
   }, [refreshGitStatus]);
 
+  // Ref to track line IDs for rebuild
+  const rebuildLineIdRef = useRef(1);
+
   const handleApply = useCallback(async () => {
     const s = storeRef.current;
     s.setProcessing(true, "apply");
-    s.clearLogs();
-    s.setConsoleExpanded(true);
-    s.appendLog("> Running darwin-rebuild switch...\n");
+    s.startRebuild();
+    rebuildLineIdRef.current = 1;
 
-    const unlistenData = await ipcRenderer.on(
-      "darwin:apply:data",
-      (event: { payload?: { chunk?: string } }) => {
-        storeRef.current.appendLog(event.payload?.chunk || "");
+    // Listen to AI-summarized log events
+    const unlistenSummary = await ipcRenderer.on<{
+      text: string;
+      complete?: boolean;
+      success?: boolean;
+      error?: boolean;
+      error_type?: "infinite_recursion" | "evaluation_error" | "build_error" | "generic_error";
+    }>("darwin:apply:summary", (event) => {
+      const { text, complete, success, error, error_type } = event.payload;
+      const currentStore = storeRef.current;
+
+      if (complete) {
+        currentStore.appendRebuildLine({
+          id: rebuildLineIdRef.current++,
+          text,
+          type: success ? "info" : "stderr",
+        });
+        currentStore.setRebuildComplete(success ?? false);
+      } else if (error) {
+        currentStore.setRebuildError(error_type ?? "generic_error", text);
+        currentStore.appendRebuildLine({
+          id: rebuildLineIdRef.current++,
+          text,
+          type: "stderr",
+        });
+      } else {
+        currentStore.appendRebuildLine({
+          id: rebuildLineIdRef.current++,
+          text,
+          type: "info",
+        });
+      }
+    });
+
+    // Listen for rebuild end event
+    const unlistenEnd = await ipcRenderer.on<{ ok: boolean; code: number }>(
+      "darwin:apply:end",
+      async (event) => {
+        const currentStore = storeRef.current;
+        currentStore.setProcessing(false);
+        currentStore.setRebuildComplete(event.payload.ok, event.payload.code);
+        unlistenSummary();
+        unlistenEnd();
+
+        // If successful, stage all changes and auto-dismiss overlay
+        if (event.payload.ok) {
+          try {
+            await darwinAPI.git.stageAll();
+          } catch (e) {
+            console.error("Failed to stage changes:", e);
+          }
+          // Auto-dismiss overlay after success (short delay for user feedback)
+          setTimeout(() => {
+            storeRef.current.clearRebuild();
+          }, 1500);
+        }
+        // On failure, keep the overlay visible so user can see error and rollback
+
+        await refreshGitStatus();
       },
     );
-
-    const unlistenEnd = await ipcRenderer.on("darwin:apply:end", async () => {
-      const currentStore = storeRef.current;
-      currentStore.setProcessing(false);
-      unlistenData();
-      unlistenEnd();
-      currentStore.appendLog("\n✓ Apply complete\n");
-      await refreshGitStatus();
-    });
 
     try {
       await darwinAPI.darwin.applyStreamStart();
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
-      s.setError(msg);
-      s.appendLog(`\n✗ Error: ${msg}\n`);
+      s.setRebuildError("generic_error", msg);
+      s.setRebuildComplete(false);
       s.setProcessing(false);
-      unlistenData();
+      unlistenSummary();
       unlistenEnd();
     }
   }, [refreshGitStatus]);
@@ -311,9 +352,7 @@ export function DarwinWidget() {
 
       if (currentStore.summary.items.length > 0) {
         // Already have summary - use first item's title for preview indicator
-        const summaryText = currentStore.summary.items
-          .map((i) => i.title)
-          .join(", ");
+        const summaryText = currentStore.summary.items.map((i) => i.title).join(", ");
         await updatePreviewIndicator({
           gitStatus,
           summaryText,
@@ -336,6 +375,7 @@ export function DarwinWidget() {
             filesChanged: response.filesChanged,
             additions: response.additions,
             deletions: response.deletions,
+            diff: response.diff,
             isLoading: false,
           });
           // Update preview indicator with summary (use item titles for text)
@@ -403,18 +443,15 @@ export function DarwinWidget() {
   useEffect(() => {
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const configSub = ipcRenderer.on<ConfigChangedEvent>(
-      CONFIG_CHANGED_CHANNEL,
-      (_event) => {
-        // Debounce refreshes so rapid filesystem events don't spam git.
-        if (debounceTimer) {
-          clearTimeout(debounceTimer);
-        }
-        debounceTimer = setTimeout(() => {
-          refreshGitStatus();
-        }, 300);
-      },
-    );
+    const configSub = ipcRenderer.on<ConfigChangedEvent>(CONFIG_CHANGED_CHANNEL, (_event) => {
+      // Debounce refreshes so rapid filesystem events don't spam git.
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+      debounceTimer = setTimeout(() => {
+        refreshGitStatus();
+      }, 300);
+    });
 
     return () => {
       if (debounceTimer) {
@@ -432,11 +469,7 @@ export function DarwinWidget() {
     prevAppStateRef.current = appState;
 
     // Only fetch when transitioning INTO preview mode
-    if (
-      appState === "preview" &&
-      wasNotPreview &&
-      store.summary.items.length === 0
-    ) {
+    if (appState === "preview" && wasNotPreview && store.summary.items.length === 0) {
       (async () => {
         storeRef.current.setSummary({ isLoading: true });
         try {
@@ -448,6 +481,7 @@ export function DarwinWidget() {
             filesChanged: response.filesChanged,
             additions: response.additions,
             deletions: response.deletions,
+            diff: response.diff,
             isLoading: false,
           });
         } catch {
@@ -460,9 +494,7 @@ export function DarwinWidget() {
   // Update preview indicator window when state changes
   useEffect(() => {
     const summaryText =
-      store.summary.items.length > 0
-        ? store.summary.items.map((i) => i.title).join(", ")
-        : null;
+      store.summary.items.length > 0 ? store.summary.items.map((i) => i.title).join(", ") : null;
     updatePreviewIndicator({
       gitStatus: store.gitStatus,
       summaryText,

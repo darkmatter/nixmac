@@ -57,14 +57,22 @@ export function ChatInput({
         value={value}
       />
       <InputGroupAddon align="block-end">
-        <InputGroupButton className="rounded-full" size="icon-xs" variant="outline">
+        <InputGroupButton
+          className="rounded-full"
+          size="icon-xs"
+          variant="outline"
+        >
           <Plus />
         </InputGroupButton>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <InputGroupButton variant="ghost">Auto</InputGroupButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="[--radius:0.95rem]" side="top">
+          <DropdownMenuContent
+            align="start"
+            className="[--radius:0.95rem]"
+            side="top"
+          >
             <DropdownMenuItem>Auto</DropdownMenuItem>
             <DropdownMenuItem>Agent</DropdownMenuItem>
             <DropdownMenuItem>Manual</DropdownMenuItem>

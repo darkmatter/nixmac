@@ -138,7 +138,7 @@ export function PreviewIndicator({
                 className={cn(
                   "flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 font-medium text-sm transition-colors",
                   "bg-amber-500/20 text-amber-200 hover:bg-amber-500/30",
-                  isLoading && "cursor-not-allowed opacity-50",
+                  isLoading && "cursor-not-allowed opacity-50"
                 )}
                 disabled={isLoading || !editedMessage.trim()}
                 onClick={handleCommit}
@@ -151,7 +151,7 @@ export function PreviewIndicator({
                 className={cn(
                   "flex items-center justify-center gap-2 rounded-lg px-3 py-2 font-medium text-sm transition-colors",
                   "bg-zinc-700/50 text-zinc-300 hover:bg-zinc-700/70",
-                  isLoading && "cursor-not-allowed opacity-50",
+                  isLoading && "cursor-not-allowed opacity-50"
                 )}
                 disabled={isLoading}
                 onClick={handleDiscard}

@@ -40,8 +40,9 @@ export function LandingPage() {
               </span>
             </h1>
             <p className="mx-auto mb-10 max-w-2xl text-pretty text-lg text-zinc-400 md:text-xl">
-              nixmac brings the power of Nix to macOS. Declaratively manage packages, settings, and
-              configurations. Version control your entire system. Reproduce your setup anywhere.
+              nixmac brings the power of Nix to macOS. Declaratively manage
+              packages, settings, and configurations. Version control your
+              entire system. Reproduce your setup anywhere.
             </p>
             <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Button
@@ -60,12 +61,14 @@ export function LandingPage() {
                 <ArrowRight className="size-4" />
               </Button>
             </div>
-            <p className="mt-4 text-sm text-zinc-500">Requires macOS 12+ and Nix</p>
+            <p className="mt-4 text-sm text-zinc-500">
+              Requires macOS 12+ and Nix
+            </p>
           </div>
 
           {/* App Screenshot */}
           <div className="relative mx-auto mt-16 max-w-2xl md:mt-20">
-            <div className="-inset-4 absolute rounded-2xl bg-gradient-to-b from-zinc-800/50 to-transparent blur-xl" />
+            <div className="absolute -inset-4 rounded-2xl bg-gradient-to-b from-zinc-800/50 to-transparent blur-xl" />
             <div className="relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-2xl">
               <picture>
                 <img
@@ -85,7 +88,8 @@ export function LandingPage() {
       <section className="border-zinc-800/50 border-y bg-zinc-900/30 py-8">
         <div className="container mx-auto px-6">
           <p className="text-center text-sm text-zinc-500">
-            Trusted by developers who care about reproducible, declarative system management
+            Trusted by developers who care about reproducible, declarative
+            system management
           </p>
         </div>
       </section>
@@ -104,8 +108,9 @@ export function LandingPage() {
               Everything you need to manage your Mac
             </h2>
             <p className="mx-auto max-w-2xl text-zinc-400">
-              nixmac wraps the complexity of Nix in a beautiful native interface, making declarative
-              system management accessible to everyone.
+              nixmac wraps the complexity of Nix in a beautiful native
+              interface, making declarative system management accessible to
+              everyone.
             </p>
           </div>
 
@@ -115,10 +120,12 @@ export function LandingPage() {
                 <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-zinc-800 transition-colors group-hover:bg-zinc-700">
                   <Terminal className="size-6 text-zinc-300" />
                 </div>
-                <h3 className="mb-2 font-semibold text-lg">Declarative Configuration</h3>
+                <h3 className="mb-2 font-semibold text-lg">
+                  Declarative Configuration
+                </h3>
                 <p className="text-sm text-zinc-400 leading-relaxed">
-                  Define your entire system in code. No more manual setup or forgotten
-                  configurations.
+                  Define your entire system in code. No more manual setup or
+                  forgotten configurations.
                 </p>
               </CardContent>
             </Card>
@@ -130,7 +137,8 @@ export function LandingPage() {
                 </div>
                 <h3 className="mb-2 font-semibold text-lg">Version Control</h3>
                 <p className="text-sm text-zinc-400 leading-relaxed">
-                  Track changes to your system configuration with Git. Roll back mistakes instantly.
+                  Track changes to your system configuration with Git. Roll back
+                  mistakes instantly.
                 </p>
               </CardContent>
             </Card>
@@ -140,9 +148,12 @@ export function LandingPage() {
                 <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-zinc-800 transition-colors group-hover:bg-zinc-700">
                   <Package className="size-6 text-zinc-300" />
                 </div>
-                <h3 className="mb-2 font-semibold text-lg">Reproducible Builds</h3>
+                <h3 className="mb-2 font-semibold text-lg">
+                  Reproducible Builds
+                </h3>
                 <p className="text-sm text-zinc-400 leading-relaxed">
-                  Set up a new machine in minutes with the exact same configuration every time.
+                  Set up a new machine in minutes with the exact same
+                  configuration every time.
                 </p>
               </CardContent>
             </Card>
@@ -154,8 +165,8 @@ export function LandingPage() {
                 </div>
                 <h3 className="mb-2 font-semibold text-lg">Atomic Updates</h3>
                 <p className="text-sm text-zinc-400 leading-relaxed">
-                  System changes are atomic. If something fails, your system stays in a working
-                  state.
+                  System changes are atomic. If something fails, your system
+                  stays in a working state.
                 </p>
               </CardContent>
             </Card>
@@ -167,7 +178,8 @@ export function LandingPage() {
                 </div>
                 <h3 className="mb-2 font-semibold text-lg">Multiple Hosts</h3>
                 <p className="text-sm text-zinc-400 leading-relaxed">
-                  Manage configurations for multiple machines from a single repository with ease.
+                  Manage configurations for multiple machines from a single
+                  repository with ease.
                 </p>
               </CardContent>
             </Card>
@@ -179,8 +191,8 @@ export function LandingPage() {
                 </div>
                 <h3 className="mb-2 font-semibold text-lg">Natural Language</h3>
                 <p className="text-sm text-zinc-400 leading-relaxed">
-                  Describe changes in plain English. nixmac translates your intent into
-                  configuration.
+                  Describe changes in plain English. nixmac translates your
+                  intent into configuration.
                 </p>
               </CardContent>
             </Card>
@@ -189,7 +201,10 @@ export function LandingPage() {
       </section>
 
       {/* How It Works Section */}
-      <section className="border-zinc-800/50 border-y bg-zinc-900/20 py-24" id="how-it-works">
+      <section
+        className="border-zinc-800/50 border-y bg-zinc-900/20 py-24"
+        id="how-it-works"
+      >
         <div className="container mx-auto px-6">
           <div className="mx-auto max-w-4xl">
             <div className="mb-16 text-center">
@@ -203,8 +218,8 @@ export function LandingPage() {
                 Simple, yet powerful
               </h2>
               <p className="mx-auto max-w-2xl text-zinc-400">
-                Get started in minutes. nixmac handles the complexity so you can focus on what
-                matters.
+                Get started in minutes. nixmac handles the complexity so you can
+                focus on what matters.
               </p>
             </div>
 
@@ -214,19 +229,31 @@ export function LandingPage() {
                   1
                 </div>
                 <div className="flex-1">
-                  <h3 className="mb-3 font-semibold text-xl">Describe your desired state</h3>
+                  <h3 className="mb-3 font-semibold text-xl">
+                    Describe your desired state
+                  </h3>
                   <p className="mb-4 text-zinc-400 leading-relaxed">
-                    Tell nixmac what you want. Install packages, configure settings, set up keyboard
-                    shortcuts - all in plain language or by selecting from curated options.
+                    Tell nixmac what you want. Install packages, configure
+                    settings, set up keyboard shortcuts - all in plain language
+                    or by selecting from curated options.
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    <Badge className="border-zinc-700 text-zinc-400" variant="outline">
+                    <Badge
+                      className="border-zinc-700 text-zinc-400"
+                      variant="outline"
+                    >
                       Install vim
                     </Badge>
-                    <Badge className="border-zinc-700 text-zinc-400" variant="outline">
+                    <Badge
+                      className="border-zinc-700 text-zinc-400"
+                      variant="outline"
+                    >
                       Add Rectangle app
                     </Badge>
-                    <Badge className="border-zinc-700 text-zinc-400" variant="outline">
+                    <Badge
+                      className="border-zinc-700 text-zinc-400"
+                      variant="outline"
+                    >
                       Configure git
                     </Badge>
                   </div>
@@ -238,11 +265,13 @@ export function LandingPage() {
                   2
                 </div>
                 <div className="flex-1">
-                  <h3 className="mb-3 font-semibold text-xl">Review and evolve</h3>
+                  <h3 className="mb-3 font-semibold text-xl">
+                    Review and evolve
+                  </h3>
                   <p className="text-zinc-400 leading-relaxed">
-                    nixmac shows you exactly what will change before applying. Click "Evolve" and
-                    watch as your system transforms to match your configuration. Every change is
-                    tracked and reversible.
+                    nixmac shows you exactly what will change before applying.
+                    Click "Evolve" and watch as your system transforms to match
+                    your configuration. Every change is tracked and reversible.
                   </p>
                 </div>
               </div>
@@ -252,11 +281,13 @@ export function LandingPage() {
                   3
                 </div>
                 <div className="flex-1">
-                  <h3 className="mb-3 font-semibold text-xl">Share and reproduce</h3>
+                  <h3 className="mb-3 font-semibold text-xl">
+                    Share and reproduce
+                  </h3>
                   <p className="text-zinc-400 leading-relaxed">
-                    Your configuration lives in a Git repository. Share it with your team, sync
-                    across machines, or use it to set up a brand new Mac in minutes. Your system is
-                    now code.
+                    Your configuration lives in a Git repository. Share it with
+                    your team, sync across machines, or use it to set up a brand
+                    new Mac in minutes. Your system is now code.
                   </p>
                 </div>
               </div>
@@ -280,7 +311,8 @@ export function LandingPage() {
               Your entire Mac in a single file
             </h2>
             <p className="text-zinc-400">
-              See exactly what your system looks like. Version control everything.
+              See exactly what your system looks like. Version control
+              everything.
             </p>
           </div>
 
@@ -338,8 +370,8 @@ export function LandingPage() {
                 Ready to evolve your Mac?
               </h2>
               <p className="mx-auto mb-8 max-w-lg text-zinc-400">
-                Join developers who have embraced declarative system management. Download nixmac and
-                take control of your configuration.
+                Join developers who have embraced declarative system management.
+                Download nixmac and take control of your configuration.
               </p>
               <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
                 <Button

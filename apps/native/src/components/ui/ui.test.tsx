@@ -31,7 +31,7 @@ test("Button variants match snapshot", () => {
       <Button variant="secondary">Secondary</Button>
       <Button variant="ghost">Ghost</Button>
       <Button variant="link">Link</Button>
-    </div>,
+    </div>
   );
   expect(container).toMatchSnapshot();
 });
@@ -43,7 +43,7 @@ test("Button sizes match snapshot", () => {
       <Button size="sm">Small</Button>
       <Button size="lg">Large</Button>
       <Button size="icon">I</Button>
-    </div>,
+    </div>
   );
   expect(container).toMatchSnapshot();
 });
@@ -66,7 +66,7 @@ test("Badge variants match snapshot", () => {
       <Badge variant="secondary">Secondary</Badge>
       <Badge variant="destructive">Destructive</Badge>
       <Badge variant="outline">Outline</Badge>
-    </div>,
+    </div>
   );
   expect(container).toMatchSnapshot();
 });
@@ -82,7 +82,7 @@ test("Card matches snapshot", () => {
       </CardHeader>
       <CardContent>Card content goes here</CardContent>
       <CardFooter>Card footer</CardFooter>
-    </Card>,
+    </Card>
   );
   expect(container).toMatchSnapshot();
 });
@@ -105,7 +105,7 @@ test("Input types match snapshot", () => {
       <Input placeholder="Email" type="email" />
       <Input placeholder="Password" type="password" />
       <Input placeholder="Number" type="number" />
-    </div>,
+    </div>
   );
   expect(container).toMatchSnapshot();
 });

@@ -27,7 +27,10 @@ interface ConfigurationStepProps {
   setConfig: (config: any) => void;
 }
 
-export function ConfigurationStep({ config, setConfig }: ConfigurationStepProps) {
+export function ConfigurationStep({
+  config,
+  setConfig,
+}: ConfigurationStepProps) {
   const [newHost, setNewHost] = useState("");
 
   const handleAddHost = () => {
@@ -46,7 +49,10 @@ export function ConfigurationStep({ config, setConfig }: ConfigurationStepProps)
     setConfig({
       ...config,
       hosts: updatedHosts,
-      selectedHost: config.selectedHost === host ? updatedHosts[0] || "" : config.selectedHost,
+      selectedHost:
+        config.selectedHost === host
+          ? updatedHosts[0] || ""
+          : config.selectedHost,
     });
   };
 
@@ -57,12 +63,16 @@ export function ConfigurationStep({ config, setConfig }: ConfigurationStepProps)
         <Label className="font-medium text-base" htmlFor="repoDirectory">
           Repository Directory
         </Label>
-        <p className="text-muted-foreground text-sm">Location of your nixmac configuration files</p>
+        <p className="text-muted-foreground text-sm">
+          Location of your nixmac configuration files
+        </p>
         <div className="flex gap-2">
           <Input
             className="font-mono text-sm"
             id="repoDirectory"
-            onChange={(e) => setConfig({ ...config, repoDirectory: e.target.value })}
+            onChange={(e) =>
+              setConfig({ ...config, repoDirectory: e.target.value })
+            }
             placeholder="~/.config/nixmac"
             value={config.repoDirectory}
           />
@@ -75,13 +85,17 @@ export function ConfigurationStep({ config, setConfig }: ConfigurationStepProps)
       {/* Host Selection - Essential config */}
       <div className="space-y-2">
         <Label className="font-medium text-base">Current Host</Label>
-        <p className="text-muted-foreground text-sm">Select or add the host configuration to use</p>
+        <p className="text-muted-foreground text-sm">
+          Select or add the host configuration to use
+        </p>
 
         <div className="space-y-3">
           {config.hosts.length > 0 ? (
             <>
               <Select
-                onValueChange={(value) => setConfig({ ...config, selectedHost: value })}
+                onValueChange={(value) =>
+                  setConfig({ ...config, selectedHost: value })
+                }
                 value={config.selectedHost}
               >
                 <SelectTrigger>
@@ -101,7 +115,9 @@ export function ConfigurationStep({ config, setConfig }: ConfigurationStepProps)
                   <Badge
                     className="gap-1"
                     key={host}
-                    variant={host === config.selectedHost ? "default" : "secondary"}
+                    variant={
+                      host === config.selectedHost ? "default" : "secondary"
+                    }
                   >
                     {host}
                     <button
@@ -148,7 +164,11 @@ export function ConfigurationStep({ config, setConfig }: ConfigurationStepProps)
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
                 <Label htmlFor="flakeUri">Flake URI</Label>
-                <Input className="font-mono text-sm" id="flakeUri" placeholder="github:user/repo" />
+                <Input
+                  className="font-mono text-sm"
+                  id="flakeUri"
+                  placeholder="github:user/repo"
+                />
                 <p className="text-muted-foreground text-xs">
                   Optional: Use a remote flake repository
                 </p>
@@ -167,7 +187,11 @@ export function ConfigurationStep({ config, setConfig }: ConfigurationStepProps)
               </div>
 
               <div className="flex items-center gap-2">
-                <input className="h-4 w-4 rounded border-border" id="autoUpdate" type="checkbox" />
+                <input
+                  className="h-4 w-4 rounded border-border"
+                  id="autoUpdate"
+                  type="checkbox"
+                />
                 <Label className="font-normal text-sm" htmlFor="autoUpdate">
                   Automatically check for configuration updates
                 </Label>

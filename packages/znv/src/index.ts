@@ -3,7 +3,11 @@ export { z } from "zod";
 export * from "./extra-schemas";
 export * from "./parse-env";
 export * from "./preprocessors";
-export type { DeepReadonly, DeepReadonlyArray, DeepReadonlyObject } from "./util/type-helpers";
+export type {
+  DeepReadonly,
+  DeepReadonlyArray,
+  DeepReadonlyObject,
+} from "./util/type-helpers";
 
 import { type ParseEnv, parseEnvImpl } from "./parse-env";
 
@@ -14,5 +18,8 @@ import { type ParseEnv, parseEnvImpl } from "./parse-env";
  * Parses the passed environment object using the provided map of Zod schemas
  * and returns the immutably-typed, parsed environment.
  */
-export const parseEnv: ParseEnv = (env, schemas, reporterOrTokenFormatters = {}) =>
-  parseEnvImpl(env, schemas, reporterOrTokenFormatters);
+export const parseEnv: ParseEnv = (
+  env,
+  schemas,
+  reporterOrTokenFormatters = {}
+) => parseEnvImpl(env, schemas, reporterOrTokenFormatters);

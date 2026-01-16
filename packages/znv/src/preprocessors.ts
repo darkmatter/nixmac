@@ -1,6 +1,14 @@
 import * as z from "zod";
 import type * as zCore from "zod/v4/core";
-import { bigInt, boolean, date, identity, json, nullProcessor, number } from "./util/processing";
+import {
+  bigInt,
+  boolean,
+  date,
+  identity,
+  json,
+  nullProcessor,
+  number,
+} from "./util/processing";
 import { assertNever } from "./util/type-helpers";
 
 /**
@@ -8,7 +16,7 @@ import { assertNever } from "./util/type-helpers";
  * undefined!) to a valid input type for the schema.
  */
 export function getPreprocessorByZodType(
-  _schema: zCore.$ZodType,
+  _schema: zCore.$ZodType
 ): (arg: string | undefined) => unknown {
   const schema = _schema as zCore.$ZodTypes;
   const {
@@ -80,7 +88,9 @@ export function getPreprocessorByZodType(
       return nullProcessor;
 
     case "union":
-      throw new Error(`Zod type not yet supported: "${def.type}" (PRs welcome)`);
+      throw new Error(
+        `Zod type not yet supported: "${def.type}" (PRs welcome)`
+      );
 
     case "any":
     case "unknown":
@@ -89,7 +99,7 @@ export function getPreprocessorByZodType(
           `Zod type not supported: ${def.type}`,
           "You can use `z.string()` or `z.string().optional()` instead of the above type.",
           "(Environment variables are already constrained to `string | undefined`.)",
-        ].join("\n"),
+        ].join("\n")
       );
 
     // some of these types could maybe be supported (if only via the identity
@@ -113,7 +123,9 @@ export function getPreprocessorByZodType(
     case "symbol":
     case "function":
     case "readonly":
-      throw new Error(`Zod type not yet supported: "${def.type}" (PRs welcome)`);
+      throw new Error(
+        `Zod type not yet supported: "${def.type}" (PRs welcome)`
+      );
     default: {
       assertNever(def);
     }

@@ -18,12 +18,20 @@ interface SetupStepProps {
   saveHost: (h: string) => void;
 }
 
-export function SetupStep({ configDir, pickDir, hosts, host, saveHost }: SetupStepProps) {
+export function SetupStep({
+  configDir,
+  pickDir,
+  hosts,
+  host,
+  saveHost,
+}: SetupStepProps) {
   return (
     <div className="flex flex-col items-center justify-center space-y-6 py-8">
       <div className="text-center">
         <Sparkles className="mx-auto mb-3 h-10 w-10 text-primary" />
-        <h2 className="font-semibold text-foreground text-lg">Welcome to nixmac</h2>
+        <h2 className="font-semibold text-foreground text-lg">
+          Welcome to nixmac
+        </h2>
         <p className="mt-1 text-muted-foreground text-sm">
           Let's set up your nix-darwin configuration
         </p>
@@ -31,7 +39,9 @@ export function SetupStep({ configDir, pickDir, hosts, host, saveHost }: SetupSt
 
       {/* Step 1: Choose Directory */}
       <div className="w-full max-w-sm space-y-2">
-        <label className="font-medium text-foreground text-sm">1. Configuration Directory</label>
+        <label className="font-medium text-foreground text-sm">
+          1. Configuration Directory
+        </label>
         <div className="flex items-center gap-2">
           <div className="flex-1 truncate rounded-lg border border-border bg-muted/50 px-3 py-2 font-mono text-sm">
             {configDir || "Not selected"}
@@ -46,7 +56,10 @@ export function SetupStep({ configDir, pickDir, hosts, host, saveHost }: SetupSt
       {/* Step 2: Select Host */}
       {configDir && (
         <div className="w-full max-w-sm space-y-2">
-          <label className="font-medium text-foreground text-sm" htmlFor="host-select">
+          <label
+            className="font-medium text-foreground text-sm"
+            htmlFor="host-select"
+          >
             2. Select Host
           </label>
           <Select onValueChange={saveHost} value={host || undefined}>

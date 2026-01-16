@@ -15,5 +15,5 @@ apiApp.use(
   trpcServer({
     router: appRouter,
     createContext: (_opts, context) => createContext({ context }),
-  }),
+  })
 );

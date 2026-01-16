@@ -14,7 +14,12 @@ export type { EvolveEvent, EvolveEventType } from "@/tauri-api";
 export type AppState = "onboarding" | "idle" | "generating" | "preview";
 
 export type PeekState = "hidden" | "peeking" | "expanded";
-export type WidgetStep = "setup" | "overview" | "evolving" | "commit";
+export type WidgetStep =
+  | "setup"
+  | "overview"
+  | "evolving"
+  | "rebuilding"
+  | "commit";
 export type ProcessingAction = "evolve" | "apply" | "commit" | "cancel" | null;
 
 export interface GitFileStatus {
@@ -42,8 +47,12 @@ export function analyzeGitStatus(gitStatus: GitStatus | null): {
   stagedFiles: GitFileStatus[];
 } {
   const files = gitStatus?.files || [];
-  const unstagedFiles = files.filter((f) => f.working_tree && f.working_tree !== " ");
-  const stagedFiles = files.filter((f) => f.index && f.index !== " " && f.index !== "?");
+  const unstagedFiles = files.filter(
+    (f) => f.working_tree && f.working_tree !== " "
+  );
+  const stagedFiles = files.filter(
+    (f) => f.index && f.index !== " " && f.index !== "?"
+  );
 
   return {
     hasUnstagedChanges: unstagedFiles.length > 0,
@@ -66,7 +75,30 @@ export interface SummaryState {
   filesChanged: number;
   additions?: number;
   deletions?: number;
+  diff?: string;
   isLoading: boolean;
+}
+
+// Rebuild state for showing progress inline in the widget
+export type RebuildErrorType =
+  | "infinite_recursion"
+  | "evaluation_error"
+  | "build_error"
+  | "generic_error";
+
+export interface RebuildLine {
+  id: number;
+  text: string;
+  type: "stdout" | "stderr" | "info";
+}
+
+export interface RebuildState {
+  isRunning: boolean;
+  lines: RebuildLine[];
+  exitCode?: number;
+  success?: boolean;
+  errorType?: RebuildErrorType;
+  errorMessage?: string;
 }
 
 export interface WidgetState {
@@ -91,6 +123,9 @@ export interface WidgetState {
 
   // Summary (AI-generated)
   summary: SummaryState;
+
+  // Rebuild state (for inline rebuild progress)
+  rebuild: RebuildState;
 
   // Console
   consoleLogs: string;
@@ -132,6 +167,13 @@ export interface WidgetActions {
   appendEvolveEvent: (event: EvolveEvent) => void;
   clearEvolveEvents: () => void;
 
+  // Rebuild state
+  startRebuild: () => void;
+  appendRebuildLine: (line: RebuildLine) => void;
+  setRebuildError: (errorType: RebuildErrorType, errorMessage: string) => void;
+  setRebuildComplete: (success: boolean, exitCode?: number) => void;
+  clearRebuild: () => void;
+
   // Computed
   getAppState: () => AppState;
   getStep: () => WidgetStep;
@@ -145,6 +187,15 @@ export type WidgetStore = WidgetState & WidgetActions;
 // =============================================================================
 // Initial State
 // =============================================================================
+
+export const initialRebuildState: RebuildState = {
+  isRunning: false,
+  lines: [],
+  exitCode: undefined,
+  success: undefined,
+  errorType: undefined,
+  errorMessage: undefined,
+};
 
 export const initialWidgetState: WidgetState = {
   // Config
@@ -174,6 +225,9 @@ export const initialWidgetState: WidgetState = {
     filesChanged: 0,
     isLoading: false,
   },
+
+  // Rebuild
+  rebuild: initialRebuildState,
 
   // Console
   consoleLogs: "",
@@ -225,7 +279,15 @@ export function computeAppState(state: WidgetState): AppState {
   return "idle";
 }
 
-export function appStateToStep(state: AppState, showCommitScreen: boolean): WidgetStep {
+export function appStateToStep(
+  state: AppState,
+  showCommitScreen: boolean,
+  isRebuilding?: boolean
+): WidgetStep {
+  // Rebuilding takes priority over other states
+  if (isRebuilding) {
+    return "rebuilding";
+  }
   if (showCommitScreen) {
     return "commit";
   }
@@ -291,7 +353,8 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
       }),
 
     // Console
-    appendLog: (text) => set((state) => ({ consoleLogs: state.consoleLogs + text })),
+    appendLog: (text) =>
+      set((state) => ({ consoleLogs: state.consoleLogs + text })),
     clearLogs: () => set({ consoleLogs: "" }),
 
     // Evolve events
@@ -299,9 +362,52 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
       set((state) => ({ evolveEvents: [...state.evolveEvents, event] })),
     clearEvolveEvents: () => set({ evolveEvents: [] }),
 
+    // Rebuild state
+    startRebuild: () =>
+      set({
+        rebuild: {
+          isRunning: true,
+          lines: [{ id: 0, text: "Preparing rebuild...", type: "info" }],
+          exitCode: undefined,
+          success: undefined,
+          errorType: undefined,
+          errorMessage: undefined,
+        },
+      }),
+    appendRebuildLine: (line) =>
+      set((state) => ({
+        rebuild: {
+          ...state.rebuild,
+          lines: [...state.rebuild.lines, line].slice(-50), // Keep last 50 lines
+        },
+      })),
+    setRebuildError: (errorType, errorMessage) =>
+      set((state) => ({
+        rebuild: {
+          ...state.rebuild,
+          errorType,
+          errorMessage,
+        },
+      })),
+    setRebuildComplete: (success, exitCode) =>
+      set((state) => ({
+        rebuild: {
+          ...state.rebuild,
+          isRunning: false,
+          success,
+          exitCode,
+        },
+      })),
+    clearRebuild: () => set({ rebuild: initialRebuildState }),
+
     // Computed - app state is computed entirely client-side
     getAppState: () => computeAppState(get()),
-    getStep: () => appStateToStep(computeAppState(get()), get().showCommitScreen),
+    getStep: () =>
+      appStateToStep(
+        computeAppState(get()),
+        get().showCommitScreen,
+        get().rebuild.isRunning
+      ),
 
     // Reset
     reset: () => set(initialWidgetState),

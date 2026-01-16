@@ -12,11 +12,21 @@ export interface HeaderProps {
   onCreateAccount?: () => void;
 }
 
-export const Header = ({ user, onLogin, onLogout, onCreateAccount }: HeaderProps) => (
+export const Header = ({
+  user,
+  onLogin,
+  onLogout,
+  onCreateAccount,
+}: HeaderProps) => (
   <header>
     <div className="storybook-header">
       <div>
-        <svg height="32" viewBox="0 0 32 32" width="32" xmlns="http://www.w3.org/2000/svg">
+        <svg
+          height="32"
+          viewBox="0 0 32 32"
+          width="32"
+          xmlns="http://www.w3.org/2000/svg"
+        >
           <title>Acme logo</title>
           <g fill="none" fillRule="evenodd">
             <path
@@ -46,7 +56,12 @@ export const Header = ({ user, onLogin, onLogout, onCreateAccount }: HeaderProps
         ) : (
           <>
             <Button label="Log in" onClick={onLogin} size="small" />
-            <Button label="Sign up" onClick={onCreateAccount} primary size="small" />
+            <Button
+              label="Sign up"
+              onClick={onCreateAccount}
+              primary
+              size="small"
+            />
           </>
         )}
       </div>

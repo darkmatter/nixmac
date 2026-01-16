@@ -167,16 +167,19 @@ const mockLinesWithWarnings: RebuildLine[] = [
   },
 ];
 
-const mockLinesManyLines: RebuildLine[] = Array.from({ length: 50 }, (_, i) => ({
-  id: i + 1,
-  text:
-    i % 10 === 0
-      ? `building '/nix/store/pkg-${i}.drv'...`
-      : i % 5 === 0
-        ? `copying path '/nix/store/result-${i}'`
-        : `  processing step ${i}...`,
-  type: (i % 10 === 0 ? "info" : "stdout") as "info" | "stdout",
-}));
+const mockLinesManyLines: RebuildLine[] = Array.from(
+  { length: 50 },
+  (_, i) => ({
+    id: i + 1,
+    text:
+      i % 10 === 0
+        ? `building '/nix/store/pkg-${i}.drv'...`
+        : i % 5 === 0
+          ? `copying path '/nix/store/result-${i}'`
+          : `  processing step ${i}...`,
+    type: (i % 10 === 0 ? "info" : "stdout") as "info" | "stdout",
+  })
+);
 
 // =============================================================================
 // Stories

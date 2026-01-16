@@ -55,7 +55,8 @@ export type RestrictSchemas<T extends Schemas> = {
   [K in keyof T]: T[K] extends SimpleSchema
     ? SimpleSchema
     : T[K] extends DetailedSpec
-      ? DetailedSpec<T[K]["schema"]> & Omit<Record<keyof T[K], never>, DetailedSpecKeys>
+      ? DetailedSpec<T[K]["schema"]> &
+          Omit<Record<keyof T[K], never>, DetailedSpecKeys>
       : never;
 };
 
@@ -77,7 +78,7 @@ export type ParsedSchema<T extends Schemas> = T extends any
  */
 export function resolveDefaultValueForSpec<TIn = unknown>(
   defaults: Record<string, TIn> | undefined,
-  nodeEnv: string | undefined,
+  nodeEnv: string | undefined
 ): [hasDefault: boolean, defaultValue: TIn | undefined] {
   if (defaults) {
     if (nodeEnv != null && Object.hasOwn(defaults, nodeEnv)) {
@@ -93,13 +94,13 @@ export function resolveDefaultValueForSpec<TIn = unknown>(
  * parameter unchanged, but with the same inference used in `parseEnv` applied.
  */
 export const inferSchemas = <T extends Schemas & RestrictSchemas<T>>(
-  schemas: T,
+  schemas: T
 ): T & RestrictSchemas<T> => schemas;
 
 export type ParseEnv = <T extends Schemas & RestrictSchemas<T>>(
   env: Record<string, string | undefined>,
   schemas: T,
-  reporterOrTokenFormatters?: Reporter | TokenFormatters,
+  reporterOrTokenFormatters?: Reporter | TokenFormatters
 ) => DeepReadonlyObject<ParsedSchema<T>>;
 
 const handleDeprecation = (type: $ZodType) => {
@@ -128,9 +129,11 @@ const handleDeprecation = (type: $ZodType) => {
 export function parseEnvImpl<T extends Schemas & RestrictSchemas<T>>(
   env: Record<string, string | undefined>,
   schemas: T,
-  reporterOrTokenFormatters: Reporter | TokenFormatters,
+  reporterOrTokenFormatters: Reporter | TokenFormatters
 ): DeepReadonlyObject<ParsedSchema<T>> {
-  const parsed: Record<string, unknown> = {} as DeepReadonlyObject<ParsedSchema<T>>;
+  const parsed: Record<string, unknown> = {} as DeepReadonlyObject<
+    ParsedSchema<T>
+  >;
   const reporter =
     typeof reporterOrTokenFormatters === "function"
       ? reporterOrTokenFormatters
@@ -144,7 +147,9 @@ export function parseEnvImpl<T extends Schemas & RestrictSchemas<T>>(
     let defaultUsed = false;
     let defaultValue: unknown;
     try {
-      handleDeprecation("schema" in schemaOrSpec ? schemaOrSpec.schema : schemaOrSpec);
+      handleDeprecation(
+        "schema" in schemaOrSpec ? schemaOrSpec.schema : schemaOrSpec
+      );
 
       if (schemaOrSpec instanceof $ZodType) {
         if (envValue == null && schemaOrSpec instanceof $ZodDefault) {
@@ -167,7 +172,7 @@ export function parseEnvImpl<T extends Schemas & RestrictSchemas<T>>(
       } else if (envValue == null) {
         [defaultUsed, defaultValue] = resolveDefaultValueForSpec(
           schemaOrSpec.defaults,
-          env["NODE_ENV"],
+          env["NODE_ENV"]
         );
         if (defaultUsed) {
           parsed[key] = (schemaOrSpec.schema as z.ZodType).parse(defaultValue);
@@ -176,10 +181,14 @@ export function parseEnvImpl<T extends Schemas & RestrictSchemas<T>>(
           // schema-with-preprocessor (it's an edge case, but our schema might
           // accept `null`, and the preprocessor will convert `undefined` to
           // `null` for us).
-          parsed[key] = getSchemaWithPreprocessor(schemaOrSpec.schema).parse(envValue);
+          parsed[key] = getSchemaWithPreprocessor(schemaOrSpec.schema).parse(
+            envValue
+          );
         }
       } else {
-        parsed[key] = getSchemaWithPreprocessor(schemaOrSpec.schema).parse(envValue);
+        parsed[key] = getSchemaWithPreprocessor(schemaOrSpec.schema).parse(
+          envValue
+        );
       }
     } catch (e) {
       errors.push({

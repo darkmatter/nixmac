@@ -138,6 +138,9 @@ pub struct SummaryResponse {
 
     /// Number of lines deleted
     pub deletions: usize,
+
+    /// The raw unified diff content
+    pub diff: String,
 }
 
 // =============================================================================

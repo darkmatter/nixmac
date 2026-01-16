@@ -37,7 +37,8 @@ const indent = (str: string, amt: number) => `${" ".repeat(amt)}${str}`;
 export type Reporter = (errors: ErrorWithContext[], schemas: Schemas) => string;
 
 export function makeDefaultReporter(formatters: TokenFormatters) {
-  const reporter: Reporter = (errors, schemas) => reportErrors(errors, schemas, formatters);
+  const reporter: Reporter = (errors, schemas) =>
+    reportErrors(errors, schemas, formatters);
 
   return reporter;
 }
@@ -45,11 +46,13 @@ export function makeDefaultReporter(formatters: TokenFormatters) {
 // this is zod's `prettifyError`, but with formatting for the object path.
 function prettifyError(
   error: $ZodError,
-  formatObjectPath: (string: string) => string = String,
+  formatObjectPath: (string: string) => string = String
 ): string {
   const lines: string[] = [];
   // sort by path length
-  const issues = [...error.issues].sort((a, b) => a.path.length - b.path.length);
+  const issues = [...error.issues].sort(
+    (a, b) => a.path.length - b.path.length
+  );
 
   // Process each issue
   for (const issue of issues) {
@@ -72,63 +75,71 @@ export function reportErrors(
     formatDefaultValue = String,
     formatObjKey = String,
     formatHeader = String,
-  }: TokenFormatters = {},
+  }: TokenFormatters = {}
 ): string {
-  const formattedErrors = errors.map(({ key, receivedValue, error, defaultUsed, defaultValue }) => {
-    let title = `[${formatVarName(key)}]:`;
+  const formattedErrors = errors.map(
+    ({ key, receivedValue, error, defaultUsed, defaultValue }) => {
+      let title = `[${formatVarName(key)}]:`;
 
-    const typeSchema = (
-      schemas[key] && "schema" in schemas[key] ? schemas[key].schema : schemas[key]
-    ) as z.ZodType;
-    const meta = typeSchema.meta();
-    const desc =
-      meta?.description ??
-      (schemas[key] && "description" in schemas[key]
-        ? // eslint-disable-next-line @typescript-eslint/no-deprecated
-          schemas[key].description
-        : undefined);
-    if (desc) {
-      title += ` ${desc}`;
-    }
+      const typeSchema = (
+        schemas[key] && "schema" in schemas[key]
+          ? schemas[key].schema
+          : schemas[key]
+      ) as z.ZodType;
+      const meta = typeSchema.meta();
+      const desc =
+        meta?.description ??
+        (schemas[key] && "description" in schemas[key]
+          ? // eslint-disable-next-line @typescript-eslint/no-deprecated
+            schemas[key].description
+          : undefined);
+      if (desc) {
+        title += ` ${desc}`;
+      }
 
-    const message: string[] = [title];
+      const message: string[] = [title];
 
-    if (error instanceof $ZodError) {
-      message.push(prettifyError(error, formatObjKey));
-    } else if (error instanceof Error) {
-      message.push(...error.message.split("\n").map((l) => indent(l, 2)));
-    } else {
-      message.push(
-        ...JSON.stringify(error, undefined, 2)
-          .split("\n")
-          .map((l) => indent(l, 2)),
-      );
-    }
+      if (error instanceof $ZodError) {
+        message.push(prettifyError(error, formatObjKey));
+      } else if (error instanceof Error) {
+        message.push(...error.message.split("\n").map((l) => indent(l, 2)));
+      } else {
+        message.push(
+          ...JSON.stringify(error, undefined, 2)
+            .split("\n")
+            .map((l) => indent(l, 2))
+        );
+      }
 
-    message.push(
-      indent(
-        `(received ${formatReceivedValue(
-          receivedValue === undefined ? "undefined" : JSON.stringify(receivedValue),
-        )})`,
-        4,
-      ),
-    );
-
-    if (defaultUsed) {
       message.push(
         indent(
-          `(used default of ${formatDefaultValue(
-            defaultValue === undefined ? "undefined" : JSON.stringify(defaultValue),
+          `(received ${formatReceivedValue(
+            receivedValue === undefined
+              ? "undefined"
+              : JSON.stringify(receivedValue)
           )})`,
-          4,
-        ),
+          4
+        )
       );
-    }
 
-    return message.join("\n");
-  });
+      if (defaultUsed) {
+        message.push(
+          indent(
+            `(used default of ${formatDefaultValue(
+              defaultValue === undefined
+                ? "undefined"
+                : JSON.stringify(defaultValue)
+            )})`,
+            4
+          )
+        );
+      }
+
+      return message.join("\n");
+    }
+  );
 
   return `${formatHeader(
-    "Errors found while parsing environment:",
+    "Errors found while parsing environment:"
   )}\n${formattedErrors.join("\n\n")}\n`;
 }

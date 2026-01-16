@@ -1,6 +1,13 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["import", "typescript", "unicorn", "react", "react-perf", "vitest"],
+  "plugins": [
+    "import",
+    "typescript",
+    "unicorn",
+    "react",
+    "react-perf",
+    "vitest"
+  ],
   "rules": {
     "correctness": "error",
     "perf": "error",

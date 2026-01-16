@@ -3,7 +3,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Loader2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 
@@ -22,21 +28,21 @@ function TodosRoute() {
         todos.refetch();
         setNewTodoText("");
       },
-    }),
+    })
   );
   const toggleMutation = useMutation(
     trpc.todo.toggle.mutationOptions({
       onSuccess: () => {
         todos.refetch();
       },
-    }),
+    })
   );
   const deleteMutation = useMutation(
     trpc.todo.delete.mutationOptions({
       onSuccess: () => {
         todos.refetch();
       },
-    }),
+    })
   );
 
   const handleAddTodo = (e: React.FormEvent) => {
@@ -62,15 +68,25 @@ function TodosRoute() {
           <CardDescription>Manage your tasks efficiently</CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="mb-6 flex items-center space-x-2" onSubmit={handleAddTodo}>
+          <form
+            className="mb-6 flex items-center space-x-2"
+            onSubmit={handleAddTodo}
+          >
             <Input
               disabled={createMutation.isPending}
               onChange={(e) => setNewTodoText(e.target.value)}
               placeholder="Add a new task..."
               value={newTodoText}
             />
-            <Button disabled={createMutation.isPending || !newTodoText.trim()} type="submit">
-              {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
+            <Button
+              disabled={createMutation.isPending || !newTodoText.trim()}
+              type="submit"
+            >
+              {createMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Add"
+              )}
             </Button>
           </form>
 
@@ -91,7 +107,9 @@ function TodosRoute() {
                     <Checkbox
                       checked={todo.completed}
                       id={`todo-${todo.id}`}
-                      onCheckedChange={() => handleToggleTodo(todo.id, todo.completed)}
+                      onCheckedChange={() =>
+                        handleToggleTodo(todo.id, todo.completed)
+                      }
                     />
                     <label
                       className={`${todo.completed ? "line-through" : ""}`}

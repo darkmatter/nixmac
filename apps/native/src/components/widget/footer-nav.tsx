@@ -3,7 +3,11 @@
 import { ArrowLeft, ArrowRight, Eye, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { analyzeGitStatus, type GitStatus, type WidgetStep } from "@/stores/widget-store";
+import {
+  analyzeGitStatus,
+  type GitStatus,
+  type WidgetStep,
+} from "@/stores/widget-store";
 
 interface FooterNavProps {
   step: WidgetStep;
