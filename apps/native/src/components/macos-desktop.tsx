@@ -4,7 +4,15 @@ import { Battery, Wifi } from "lucide-react";
 import { APP_NAME } from "../../shared/constants";
 
 export function MacOSDesktop() {
-  const dockPlaceholders = ["finder", "safari", "mail", "calendar", "photos", "notes", "app-store"];
+  const dockPlaceholders = [
+    "finder",
+    "safari",
+    "mail",
+    "calendar",
+    "photos",
+    "notes",
+    "app-store",
+  ];
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-[#1a1a1a]">
@@ -12,7 +20,11 @@ export function MacOSDesktop() {
       <div className="absolute top-0 right-0 left-0 z-40 flex h-7 items-center justify-between border-white/[0.08] border-b bg-[#1c1c1e]/95 px-4 backdrop-blur-xl">
         {/* Left side */}
         <div className="flex items-center gap-6">
-          <svg className="h-3.5 w-3.5 text-white/90" fill="currentColor" viewBox="0 0 16 16">
+          <svg
+            className="h-3.5 w-3.5 text-white/90"
+            fill="currentColor"
+            viewBox="0 0 16 16"
+          >
             <title>Back</title>
             <path d="M11.182 3.818c.74-.74.74-1.939 0-2.678-.74-.74-1.939-.74-2.678 0L3.818 5.826c-.74.74-.74 1.939 0 2.678l4.686 4.686c.74.74 1.939.74 2.678 0 .74-.74.74-1.939 0-2.678L7.496 7.165l3.686-3.347z" />
           </svg>
@@ -31,7 +43,9 @@ export function MacOSDesktop() {
         <div className="flex items-center gap-3">
           <Battery className="h-4 w-4 text-white/70" />
           <Wifi className="h-4 w-4 text-white/70" />
-          <span className="font-medium text-[11px] text-white/90">Fri Nov 22 2:30 PM</span>
+          <span className="font-medium text-[11px] text-white/90">
+            Fri Nov 22 2:30 PM
+          </span>
         </div>
       </div>
 
@@ -43,7 +57,9 @@ export function MacOSDesktop() {
         {/* Terminal Title Bar */}
         <div className="flex h-11 items-center justify-between border-white/[0.08] border-b bg-[#28282a]/95 px-4">
           <div className="flex items-center">
-            <span className="font-medium text-[11px] text-white/60">darwinian-config — zsh</span>
+            <span className="font-medium text-[11px] text-white/60">
+              darwinian-config — zsh
+            </span>
           </div>
         </div>
 
@@ -54,7 +70,9 @@ export function MacOSDesktop() {
             <span className="text-white/60"> ❯ </span>
             <span className="text-white/90">darwin-rebuild switch</span>
           </div>
-          <div className="text-white/70">building the system configuration...</div>
+          <div className="text-white/70">
+            building the system configuration...
+          </div>
           <div className="flex items-center gap-2 text-white/70">
             <span className="text-[#00ff00]">✓</span> vim installed successfully
           </div>
@@ -64,12 +82,14 @@ export function MacOSDesktop() {
           <div className="flex items-center gap-2 text-white/70">
             <span className="text-[#00ff00]">✓</span> system packages updated
           </div>
-          <div className="mt-2 text-[#5ac8fa]">Build succeeded! Your system has evolved.</div>
+          <div className="mt-2 text-[#5ac8fa]">
+            Build succeeded! Your system has evolved.
+          </div>
         </div>
       </div>
 
       {/* Dock */}
-      <div className="-translate-x-1/2 absolute bottom-2 left-1/2 z-30">
+      <div className="absolute bottom-2 left-1/2 z-30 -translate-x-1/2">
         <div className="rounded-2xl border border-white/20 bg-white/10 px-3 py-2 shadow-2xl backdrop-blur-2xl">
           <div className="flex items-center gap-2">
             {dockPlaceholders.map((appName) => (

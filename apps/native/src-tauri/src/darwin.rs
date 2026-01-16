@@ -2,13 +2,14 @@
 //!
 //! Handles AI-assisted configuration evolution and system rebuilds.
 
-use crate::{evolve, peek};
+use crate::{evolve, log_summarizer, peek};
 use chrono::Local;
 use log::{debug, error, info, warn};
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 
 /// Get the log directory path, creating it if needed.
@@ -111,15 +112,21 @@ fn run_darwin_rebuild(
     let (mut log_file, log_path) = create_log_file()?;
     info!("[darwin] Logging to: {:?}", log_path);
 
-    // Helper macro to write to both log file and emit to all windows
+    // Start the log summarizer for smooth UI updates
+    let summarizer = log_summarizer::start(app.clone());
+    let summarizer = Arc::new(summarizer);
+
+    // Helper macro to write to log file, emit raw data, and send to summarizer
     macro_rules! log_and_emit {
         ($msg:expr) => {
             let msg = $msg;
             let _ = writeln!(log_file, "{}", msg);
             let _ = log_file.flush();
+            // Emit raw log for debugging/file logging
             let payload = serde_json::json!({"chunk": format!("{}\n", msg)});
-            // Emit to all windows so both main and overlay receive events
             let _ = app.emit("darwin:apply:data", payload);
+            // Also send to summarizer for UI display
+            summarizer.send_line(&msg);
         };
     }
 
@@ -175,6 +182,8 @@ fn run_darwin_rebuild(
 
     let app_for_stdout = app.clone();
     let app_for_stderr = app.clone();
+    let summarizer_for_stdout = summarizer.clone();
+    let summarizer_for_stderr = summarizer.clone();
 
     // Spawn thread for stdout
     let stdout_handle = std::thread::spawn(move || {
@@ -183,8 +192,11 @@ fn run_darwin_rebuild(
             let reader = BufReader::new(stdout);
             for line in reader.lines().map_while(Result::ok) {
                 debug!("[darwin] stdout: {}", line);
+                // Emit raw log
                 let payload = serde_json::json!({"chunk": format!("{}\n", line)});
                 let _ = app_for_stdout.emit("darwin:apply:data", payload);
+                // Send to summarizer
+                summarizer_for_stdout.send_line(&line);
                 lines.push(format!("[stdout] {}", line));
             }
         }
@@ -198,8 +210,11 @@ fn run_darwin_rebuild(
             let reader = BufReader::new(stderr);
             for line in reader.lines().map_while(Result::ok) {
                 debug!("[darwin] stderr: {}", line);
+                // Emit raw log
                 let payload = serde_json::json!({"chunk": format!("{}\n", line)});
                 let _ = app_for_stderr.emit("darwin:apply:data", payload);
+                // Send to summarizer
+                summarizer_for_stderr.send_line(&line);
                 lines.push(format!("[stderr] {}", line));
             }
         }
@@ -232,6 +247,9 @@ fn run_darwin_rebuild(
         status.success()
     );
 
+    // Signal the summarizer that we're done
+    summarizer.complete(status.success());
+
     // Log completion
     let _ = writeln!(log_file, "");
     let _ = writeln!(log_file, "=== darwin-rebuild completed ===");
@@ -242,8 +260,10 @@ fn run_darwin_rebuild(
 
     // Note: git add is now handled by the frontend after receiving darwin:apply:end
 
-    // Emit log file location
-    log_and_emit!(format!("Log saved to: {:?}", log_path));
+    // Emit log file location (to raw log only, summarizer has already emitted completion)
+    let _ = writeln!(log_file, "Log saved to: {:?}", log_path);
+    let payload = serde_json::json!({"chunk": format!("Log saved to: {:?}\n", log_path)});
+    let _ = app.emit("darwin:apply:data", payload);
 
     // Emit completion event to all windows
     app.emit(

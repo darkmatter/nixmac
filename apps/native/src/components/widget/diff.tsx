@@ -10,9 +10,16 @@ interface DiffProps {
   variant?: "default" | "outline";
 }
 
-export function Diff({ summary, showAdvancedStats, changedFiles, variant = "default" }: DiffProps) {
+export function Diff({
+  summary,
+  showAdvancedStats,
+  changedFiles,
+  variant = "default",
+}: DiffProps) {
   // Helper to get change type from git status
-  const getChangeType = (f: GitFileStatus): "new" | "edited" | "removed" | "renamed" => {
+  const getChangeType = (
+    f: GitFileStatus
+  ): "new" | "edited" | "removed" | "renamed" => {
     const status = f.index || f.working_tree || "";
     if (status === "A" || status === "?") {
       return "new";
@@ -58,7 +65,7 @@ export function Diff({ summary, showAdvancedStats, changedFiles, variant = "defa
     <div
       className={cn(
         "flex max-w-full items-center gap-3 py-4",
-        variant === "outline" && "border-border/50 border-b last:border-b-0",
+        variant === "outline" && "border-border/50 border-b last:border-b-0"
       )}
       key={key}
     >
@@ -68,7 +75,7 @@ export function Diff({ summary, showAdvancedStats, changedFiles, variant = "defa
           changeType === "new" && "bg-green-500/15 text-green-400",
           changeType === "edited" && "bg-amber-500/15 text-amber-400",
           changeType === "removed" && "bg-red-500/15 text-red-400",
-          changeType === "renamed" && "bg-blue-500/15 text-blue-400",
+          changeType === "renamed" && "bg-blue-500/15 text-blue-400"
         )}
       >
         {changeType === "new" && <Plus className="h-4 w-4" />}
@@ -78,7 +85,9 @@ export function Diff({ summary, showAdvancedStats, changedFiles, variant = "defa
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium text-sm">{fileName}</p>
-        {directory && <p className="truncate text-muted-foreground text-xs">{directory}</p>}
+        {directory && (
+          <p className="truncate text-muted-foreground text-xs">{directory}</p>
+        )}
       </div>
       {isStaged && <Check className="h-4 w-4 shrink-0 text-green-400" />}
     </div>
@@ -91,7 +100,7 @@ export function Diff({ summary, showAdvancedStats, changedFiles, variant = "defa
     <div
       className={cn(
         "flex max-h-[400px] max-w-full shrink-0 flex-col rounded-lg",
-        variant === "outline" && "border border-border",
+        variant === "outline" && "border border-border"
       )}
     >
       <div className="flex shrink-0 items-center gap-2 border-border/50 border-b py-2">
@@ -106,7 +115,9 @@ export function Diff({ summary, showAdvancedStats, changedFiles, variant = "defa
               const changeType = getChangeType(f);
               const fileName = getFileName(f.path);
               const directory = getDirectory(f.path);
-              const isStaged = Boolean(f.index && f.index !== " " && f.index !== "?");
+              const isStaged = Boolean(
+                f.index && f.index !== " " && f.index !== "?"
+              );
 
               return renderListItem({
                 key: f.path,
@@ -122,7 +133,7 @@ export function Diff({ summary, showAdvancedStats, changedFiles, variant = "defa
                 changeType: "edited",
                 fileName: item.title,
                 directory: item.description,
-              }),
+              })
             )}
       </div>
     </div>

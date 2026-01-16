@@ -63,7 +63,9 @@ function getCategoryColorClasses(color: string) {
 
 export function VercelListStyle() {
   const [selectedAction, setSelectedAction] = useState<string>("preview");
-  const [expandedCategory, setExpandedCategory] = useState<string | null>("New Apps");
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(
+    "New Apps"
+  );
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
@@ -104,17 +106,23 @@ export function VercelListStyle() {
             <button
               className="group flex w-full items-center justify-between px-5 py-4 transition-colors hover:bg-muted/50"
               onClick={() =>
-                setExpandedCategory(expandedCategory === change.category ? null : change.category)
+                setExpandedCategory(
+                  expandedCategory === change.category ? null : change.category
+                )
               }
               type="button"
             >
               <div className="flex items-center gap-3">
-                <div className={`rounded-lg p-2 ${getCategoryColorClasses(change.color)}`}>
+                <div
+                  className={`rounded-lg p-2 ${getCategoryColorClasses(change.color)}`}
+                >
                   <change.icon className="h-4 w-4" />
                 </div>
                 <div className="text-left">
                   <p className="font-medium">{change.category}</p>
-                  <p className="text-muted-foreground text-sm">{change.description}</p>
+                  <p className="text-muted-foreground text-sm">
+                    {change.description}
+                  </p>
                 </div>
               </div>
               <ChevronDown
@@ -149,8 +157,9 @@ export function VercelListStyle() {
           <span className="font-medium text-sm">What's Changing</span>
         </div>
         <p className="text-muted-foreground text-sm leading-relaxed">
-          This update adds 3 communication apps to your system, improves your code editor layout,
-          and enhances your developer tools with better language support.
+          This update adds 3 communication apps to your system, improves your
+          code editor layout, and enhances your developer tools with better
+          language support.
         </p>
       </div>
 
@@ -206,7 +215,9 @@ export function VercelListStyle() {
           <ChevronDown className="h-4 w-4" />
         </button>
         <div className="border-border border-t bg-black/50 px-5 py-3">
-          <code className="font-mono text-emerald-400 text-xs">Waiting for action...</code>
+          <code className="font-mono text-emerald-400 text-xs">
+            Waiting for action...
+          </code>
         </div>
       </div>
     </div>

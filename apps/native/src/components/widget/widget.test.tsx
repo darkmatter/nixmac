@@ -5,7 +5,9 @@ import { WidgetUI } from "./widget-ui";
 
 // Mock data for testing
 const mockSummary: SummaryState = {
-  items: [{ title: "Vim Installed", description: "Added vim to system packages" }],
+  items: [
+    { title: "Vim Installed", description: "Added vim to system packages" },
+  ],
   instructions: "Run vim in terminal",
   commitMessage: "feat: add vim",
   filesChanged: 1,
@@ -57,7 +59,9 @@ describe("WidgetUI Snapshots", () => {
   });
 
   it("setup step matches snapshot", () => {
-    const { container } = render(<WidgetUI {...baseProps} appState="onboarding" step="setup" />);
+    const { container } = render(
+      <WidgetUI {...baseProps} appState="onboarding" step="setup" />
+    );
     expect(container).toMatchSnapshot();
   });
 
@@ -71,7 +75,7 @@ describe("WidgetUI Snapshots", () => {
           files: [{ path: "test.nix", working_tree: "M" }],
         }}
         step="evolving"
-      />,
+      />
     );
     expect(container).toMatchSnapshot();
   });
@@ -92,7 +96,7 @@ describe("WidgetUI Snapshots", () => {
         ]}
         isGenerating={true}
         step="evolving"
-      />,
+      />
     );
     expect(container).toMatchSnapshot();
   });

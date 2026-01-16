@@ -7,8 +7,12 @@ export function SystemManagerShowcase() {
   return (
     <div className="mx-auto max-w-5xl">
       <div className="mb-8 text-center">
-        <h1 className="font-semibold text-2xl tracking-tight">nixmac System Manager</h1>
-        <p className="mt-2 text-muted-foreground">Alternative design concepts</p>
+        <h1 className="font-semibold text-2xl tracking-tight">
+          nixmac System Manager
+        </h1>
+        <p className="mt-2 text-muted-foreground">
+          Alternative design concepts
+        </p>
       </div>
 
       <Tabs className="w-full" defaultValue="vercel">

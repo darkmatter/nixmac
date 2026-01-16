@@ -112,6 +112,14 @@ pub async fn git_stage_all(app: AppHandle) -> Result<serde_json::Value, String> 
     Ok(serde_json::json!({"ok": true}))
 }
 
+/// Discard all uncommitted changes (restore to HEAD)
+#[tauri::command]
+pub async fn git_restore_all(app: AppHandle) -> Result<serde_json::Value, String> {
+    let dir = store::ensure_config_dir_exists(&app).map_err(|e| e.to_string())?;
+    git::restore_all(&dir).map_err(|e| e.to_string())?;
+    Ok(serde_json::json!({"ok": true}))
+}
+
 // =============================================================================
 // Darwin/Nix Commands
 // =============================================================================
@@ -337,6 +345,7 @@ pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse,
         diff_lines: diff.lines().count(),
         additions,
         deletions,
+        diff,
     })
 }
 

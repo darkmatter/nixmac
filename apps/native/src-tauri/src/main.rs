@@ -11,6 +11,7 @@ mod commands;
 mod darwin;
 mod evolve;
 mod git;
+mod log_summarizer;
 mod nix;
 mod peek;
 mod store;
@@ -22,7 +23,6 @@ use tauri::{
     image::Image,
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    window::{Color, Effect, EffectsBuilder},
     Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
 
@@ -54,6 +54,7 @@ fn main() {
             commands::git_commit,
             commands::git_stash,
             commands::git_stage_all,
+            commands::git_restore_all,
             // Darwin/Nix
             commands::darwin_evolve,
             commands::darwin_apply,
@@ -148,7 +149,7 @@ fn main() {
             let min_height = 400.0;
             let max_height = 900.0;
 
-            let _main_window =
+            let main_window =
                 WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                     .title("nixmac")
                     .inner_size(initial_width, initial_height)
@@ -160,16 +161,16 @@ fn main() {
                     .closable(true)
                     .decorations(true)
                     .transparent(true)
-                    .effects(EffectsBuilder::new().effects(vec![Effect::Acrylic]).build())
                     .visible(true)
                     .always_on_top(true)
                     .visible_on_all_workspaces(true)
-                    .background_color(Color(0, 0, 0, 0))
                     .hidden_title(true)
                     .title_bar_style(tauri::TitleBarStyle::Overlay)
-                    .visible(true)
                     .build()
                     .unwrap();
+
+            // Keep window shadow for visual polish (shadow doesn't cause click issues, Acrylic did)
+            let _ = main_window;
 
             // Create the preview indicator window (persistent banner for uncommitted changes)
             if let Err(e) = peek::create_preview_indicator_window(&handle) {

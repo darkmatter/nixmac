@@ -57,75 +57,82 @@ const LoaderCore = ({
   pendingCount?: number;
 }) => {
   const skeletonWidths = ["w-32", "w-48", "w-40", "w-36", "w-44"];
+  const itemHeight = 40; // Height of each item including margin
 
   return (
-    <div className="relative mx-auto flex max-w-xl flex-col justify-start">
-      {/* Actual loading states */}
-      {loadingStates.map((loadingState, index) => {
-        const distance = index - value;
-        // Completed items (above) fade slower, pending items (below) fade faster
-        const opacity =
-          distance < 0
-            ? Math.max(1 - Math.abs(distance) * 0.25, 0) // Completed: fade to 0.3 min
-            : Math.max(1 - distance * 0.5, 0); // Pending: fade faster
+    <div className="relative flex h-full w-full items-center justify-center">
+      <div className="relative" style={{ width: "500px" }}>
+        {/* Actual loading states */}
+        {loadingStates.map((loadingState, index) => {
+          const distance = index - value;
+          // Completed items (above) fade slower, pending items (below) fade faster
+          const opacity =
+            distance < 0
+              ? Math.max(1 - Math.abs(distance) * 0.25, 0) // Completed: fade to 0.3 min
+              : Math.max(1 - distance * 0.5, 0); // Pending: fade faster
 
-        const isCompleted = index < value;
-        const isCurrent = index === value;
-        const checkClass = isCompleted || isCurrent ? "text-lime-500" : "";
+          const isCompleted = index < value;
+          const isCurrent = index === value;
+          const checkClass = isCompleted || isCurrent ? "text-lime-500" : "";
 
-        let textClass = "text-white";
-        if (isCurrent) {
-          textClass = "text-lime-500";
-        } else if (isCompleted) {
-          textClass = "text-lime-500/80";
-        }
+          let textClass = "text-white";
+          if (isCurrent) {
+            textClass = "text-lime-500";
+          } else if (isCompleted) {
+            textClass = "text-lime-500/80";
+          }
 
-        return (
-          <motion.div
-            animate={{ opacity, y: -(value * 40) }}
-            className={cn("mb-4 flex w-[500px] gap-2 text-left")}
-            initial={{ opacity: 0, y: -(value * 40) }}
-            key={loadingState.id ?? `step-${index}`}
-            transition={{ duration: 0.5 }}
-          >
-            <div className="shrink-0">
-              {index > value ? (
-                <CheckIcon className="text-white/50" />
-              ) : (
-                <CheckFilled className={checkClass} />
-              )}
-            </div>
-            <span
-              className={cn(
-                textClass,
-                "block overflow-hidden text-ellipsis whitespace-nowrap",
-              )}
+          // Position relative to current step - current step stays centered at y=0
+          const y = (index - value) * itemHeight;
+
+          return (
+            <motion.div
+              animate={{ opacity, y }}
+              className={cn("absolute right-0 left-0 flex gap-2 text-left")}
+              initial={{ opacity: 0, y }}
+              key={loadingState.id ?? `step-${index}`}
+              transition={{ duration: 0.5 }}
             >
-              {loadingState.text}
-            </span>
-          </motion.div>
-        );
-      })}
+              <div className="shrink-0">
+                {index > value ? (
+                  <CheckIcon className="text-white/50" />
+                ) : (
+                  <CheckFilled className={checkClass} />
+                )}
+              </div>
+              <span
+                className={cn(
+                  textClass,
+                  "block overflow-hidden text-ellipsis whitespace-nowrap"
+                )}
+              >
+                {loadingState.text}
+              </span>
+            </motion.div>
+          );
+        })}
 
-      {/* Skeleton placeholders for pending items */}
-      {skeletonWidths.slice(0, pendingCount).map((width, i) => {
-        const skeletonIndex = loadingStates.length + i;
-        const distance = skeletonIndex - value;
-        const opacity = Math.max(0.5 - distance * 0.08, 0.15);
+        {/* Skeleton placeholders for pending items */}
+        {skeletonWidths.slice(0, pendingCount).map((width, i) => {
+          const skeletonIndex = loadingStates.length + i;
+          const distance = skeletonIndex - value;
+          const opacity = Math.max(0.5 - distance * 0.08, 0.15);
+          const y = distance * itemHeight;
 
-        return (
-          <motion.div
-            animate={{ opacity, y: -(value * 40) }}
-            className={cn("mb-4 flex gap-2 text-left")}
-            initial={{ opacity: 0, y: -(value * 40) }}
-            key={`skeleton-${width}`}
-            transition={{ duration: 0.5 }}
-          >
-            <SkeletonCircle />
-            <SkeletonLine width={width} />
-          </motion.div>
-        );
-      })}
+          return (
+            <motion.div
+              animate={{ opacity, y }}
+              className={cn("absolute right-0 left-0 flex gap-2 text-left")}
+              initial={{ opacity: 0, y }}
+              key={`skeleton-${width}`}
+              transition={{ duration: 0.5 }}
+            >
+              <SkeletonCircle />
+              <SkeletonLine width={width} />
+            </motion.div>
+          );
+        })}
+      </div>
     </div>
   );
 };
@@ -136,31 +143,12 @@ export const MultiStepLoader = ({
   loading,
 }: {
   loadingStates: LoadingState[];
+  /** Current step - controlled externally, advances only when new messages arrive */
   step: number;
   loading?: boolean;
-  duration?: number;
-  loop?: boolean;
 }) => {
-  const currentState = step;
-  // const [currentState, setCurrentState] = useState(0);
-
-  // useEffect(() => {
-  //   if (!loading) {
-  //     setCurrentState(0);
-  //     return;
-  //   }
-  //   const timeout = setTimeout(() => {
-  //     setCurrentState((prevState) =>
-  //       loop
-  //         ? prevState === loadingStates.length - 1
-  //           ? 0
-  //           : prevState + 1
-  //         : Math.min(prevState + 1, loadingStates.length - 1)
-  //     );
-  //   }, duration);
-
-  //   return () => clearTimeout(timeout);
-  // }, [currentState, loading, loop, loadingStates.length, duration]);
+  // Step is controlled entirely by the parent component via the `step` prop.
+  // No internal timer - step only changes when parent passes a new value.
   return (
     <AnimatePresence mode="wait">
       {loading ? (
@@ -176,8 +164,8 @@ export const MultiStepLoader = ({
             opacity: 0,
           }}
         >
-          <div className="relative h-96 flex items-center justify-center">
-            <LoaderCore loadingStates={loadingStates} value={currentState} />
+          <div className="relative flex h-full w-full items-center justify-center">
+            <LoaderCore loadingStates={loadingStates} value={step} />
           </div>
 
           <div className="absolute inset-x-0 bottom-0 z-20 h-full bg-black bg-gradient-to-t opacity-20 [mask-image:radial-gradient(900px_at_center,transparent_30%,white)] dark:bg-black" />
@@ -186,3 +174,27 @@ export const MultiStepLoader = ({
     </AnimatePresence>
   );
 };
+
+/**
+ * Inline version of MultiStepLoader that renders within a container
+ * instead of as a fullscreen overlay. Use this for embedding in the widget.
+ */
+export const MultiStepLoaderInline = ({
+  loadingStates,
+  step,
+  className,
+}: {
+  loadingStates: LoadingState[];
+  /** Current step - controlled externally, advances only when new messages arrive */
+  step: number;
+  className?: string;
+}) => (
+  <div
+    className={cn(
+      "relative flex min-h-[200px] w-full items-center justify-center",
+      className
+    )}
+  >
+    <LoaderCore loadingStates={loadingStates} pendingCount={2} value={step} />
+  </div>
+);

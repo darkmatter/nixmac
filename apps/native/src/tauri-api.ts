@@ -40,6 +40,7 @@ export interface SummaryResponse {
   diffLines: number;
   additions: number;
   deletions: number;
+  diff: string;
 }
 
 export interface PreviewIndicatorState {
@@ -104,6 +105,7 @@ export const darwinAPI = {
     commit: (message: string) => invoke("git_commit", { message }),
     stash: (message: string) => invoke("git_stash", { message }),
     stageAll: () => invoke("git_stage_all"),
+    restoreAll: () => invoke("git_restore_all"),
   },
   darwin: {
     evolve: (description: string) => invoke("darwin_evolve", { description }),

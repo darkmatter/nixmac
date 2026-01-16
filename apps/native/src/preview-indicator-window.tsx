@@ -45,7 +45,7 @@ function PreviewIndicatorWindow() {
       (event) => {
         console.log("[preview-indicator] Received update:", event.payload);
         setState(event.payload);
-      },
+      }
     );
 
     return () => {
@@ -103,6 +103,6 @@ if (rootElement) {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
       <PreviewIndicatorWindow />
-    </React.StrictMode>,
+    </React.StrictMode>
   );
 }

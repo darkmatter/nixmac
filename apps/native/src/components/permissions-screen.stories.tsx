@@ -4,7 +4,11 @@ import { fn } from "@storybook/test";
 import type React from "react";
 import { useState } from "react";
 import preview from "#storybook/preview";
-import { defaultPermissions, type Permission, PermissionsScreen } from "./permissions-screen";
+import {
+  defaultPermissions,
+  type Permission,
+  PermissionsScreen,
+} from "./permissions-screen";
 
 // =============================================================================
 // Meta
@@ -27,7 +31,8 @@ const meta = preview.meta({
   argTypes: {
     compact: {
       control: "boolean",
-      description: "When true, renders a compact version suitable for embedding in a widget",
+      description:
+        "When true, renders a compact version suitable for embedding in a widget",
     },
   },
 });
@@ -48,10 +53,12 @@ const allGrantedPermissions: Permission[] = defaultPermissions.map((p) => ({
   status: "granted",
 }));
 
-const requiredGrantedPermissions: Permission[] = defaultPermissions.map((p) => ({
-  ...p,
-  status: p.required ? "granted" : "pending",
-}));
+const requiredGrantedPermissions: Permission[] = defaultPermissions.map(
+  (p) => ({
+    ...p,
+    status: p.required ? "granted" : "pending",
+  })
+);
 
 const someDeniedPermissions: Permission[] = [
   { ...defaultPermissions[0], status: "granted" },
@@ -112,10 +119,20 @@ function InteractivePermissionsScreen({
               />
             </svg>
           </div>
-          <h2 className={compact ? "font-semibold text-lg" : "font-semibold text-2xl"}>
+          <h2
+            className={
+              compact ? "font-semibold text-lg" : "font-semibold text-2xl"
+            }
+          >
             Permissions Complete!
           </h2>
-          <p className={compact ? "text-muted-foreground text-sm" : "text-muted-foreground"}>
+          <p
+            className={
+              compact
+                ? "text-muted-foreground text-sm"
+                : "text-muted-foreground"
+            }
+          >
             You would now proceed to the main console.
           </p>
           <button
@@ -233,7 +250,11 @@ export const MixedStates = meta.story({
  * User only needs to optionally grant Full Disk Access before continuing.
  */
 export const InteractiveReadyToContinue = meta.story({
-  render: () => <InteractivePermissionsScreen initialPermissions={requiredGrantedPermissions} />,
+  render: () => (
+    <InteractivePermissionsScreen
+      initialPermissions={requiredGrantedPermissions}
+    />
+  ),
 });
 
 // =============================================================================
@@ -277,7 +298,10 @@ export const CompactReadyToContinue = meta.story({
  */
 export const CompactInteractive = meta.story({
   render: () => (
-    <InteractivePermissionsScreen compact={true} initialPermissions={mixedStatePermissions} />
+    <InteractivePermissionsScreen
+      compact={true}
+      initialPermissions={mixedStatePermissions}
+    />
   ),
   decorators: [CompactDecorator],
 });

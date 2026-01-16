@@ -1,4 +1,12 @@
-import { Check, FolderOpen, Key, Loader2, Palette, Settings2, X } from "lucide-react";
+import {
+  Check,
+  FolderOpen,
+  Key,
+  Loader2,
+  Palette,
+  Settings2,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,7 +53,7 @@ function NavItem({ icon, label, active, onClick }: NavItemProps) {
         "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
         active
           ? "bg-primary/10 text-primary"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          : "text-muted-foreground hover:bg-muted hover:text-foreground"
       )}
       onClick={onClick}
       type="button"
@@ -77,7 +85,9 @@ export function SettingsDialog(props: SettingsDialogProps) {
   } = props;
 
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
-  const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus>(openaiApiKey ? "valid" : "idle");
+  const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus>(
+    openaiApiKey ? "valid" : "idle"
+  );
   const [apiKeyInput, setApiKeyInput] = useState(openaiApiKey);
 
   if (!isOpen) {
@@ -125,7 +135,10 @@ export function SettingsDialog(props: SettingsDialogProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center" data-tauri-no-drag>
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center"
+      data-tauri-no-drag
+    >
       <button
         aria-label="Close settings"
         className="absolute inset-0 bg-black/40"
@@ -160,7 +173,12 @@ export function SettingsDialog(props: SettingsDialogProps) {
             />
           </nav>
           <div className="mt-auto">
-            <Button className="w-full" onClick={onClose} size="sm" variant="secondary">
+            <Button
+              className="w-full"
+              onClick={onClose}
+              size="sm"
+              variant="secondary"
+            >
               Close
             </Button>
           </div>
@@ -175,7 +193,9 @@ export function SettingsDialog(props: SettingsDialogProps) {
                 <div className="space-y-4">
                   {/* Config Directory */}
                   <div className="space-y-2">
-                    <label className="font-medium text-sm">Nix Configuration Directory</label>
+                    <label className="font-medium text-sm">
+                      Nix Configuration Directory
+                    </label>
                     <div className="flex items-center gap-2">
                       <div
                         className="flex-1 truncate rounded-md border border-border bg-muted/50 px-3 py-2 font-mono text-xs"
@@ -197,7 +217,10 @@ export function SettingsDialog(props: SettingsDialogProps) {
                   <div className="space-y-2">
                     <label className="font-medium text-sm">Host</label>
                     <div className="flex items-center gap-2">
-                      <Select onValueChange={saveHost} value={host || undefined}>
+                      <Select
+                        onValueChange={saveHost}
+                        value={host || undefined}
+                      >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select a host" />
                         </SelectTrigger>
@@ -298,7 +321,9 @@ export function SettingsDialog(props: SettingsDialogProps) {
                 <div className="space-y-4">
                   {/* OpenAI API Key */}
                   <div className="space-y-2">
-                    <label className="font-medium text-sm">OpenAI API Key</label>
+                    <label className="font-medium text-sm">
+                      OpenAI API Key
+                    </label>
                     <div className="relative">
                       <input
                         className={cn(
@@ -307,7 +332,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
                             ? "border-green-500"
                             : apiKeyStatus === "invalid"
                               ? "border-red-500"
-                              : "border-border",
+                              : "border-border"
                         )}
                         onBlur={handleApiKeyBlur}
                         onChange={(e) => handleApiKeyChange(e.target.value)}
@@ -337,7 +362,8 @@ export function SettingsDialog(props: SettingsDialogProps) {
                       </div>
                     </div>
                     <p className="text-muted-foreground text-xs">
-                      Required for AI features like code evolution and summaries.{" "}
+                      Required for AI features like code evolution and
+                      summaries.{" "}
                       <a
                         className="text-primary underline hover:no-underline"
                         href="https://platform.openai.com/api-keys"

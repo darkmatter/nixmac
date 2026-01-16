@@ -414,7 +414,7 @@ function generateManyIterations(): EvolveEvent[] {
         raw: `[analysis] Analyzing iteration ${i + 1}`,
         iteration: i + 1,
         timestampMs: baseTime + 2500,
-      },
+      }
     );
   }
 
