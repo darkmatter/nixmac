@@ -104,9 +104,9 @@ fn log_api_error(
     info!("API error logged to: {}", log_file.display());
 }
 
-// Use gpt-4o for evolution - reasoning models (gpt-5.x, o1, o3) have stricter
-// content policies that can trigger false positives on coding prompts
-const DEFAULT_MODEL: &str = "gpt-4o";
+// Use OpenRouter with Claude for evolution - better reasoning without strict content policies
+const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
+const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
 const MAX_TOKENS: u32 = 65_000;
 const TEMPERATURE: f32 = 0.2;
 const MAX_ITERATIONS: usize = 50;
@@ -175,14 +175,17 @@ pub async fn generate_evolution(
         .ok()
         .flatten()
         .or_else(|| {
-            info!("Falling back to OPENAI_API_KEY environment variable");
-            std::env::var("OPENAI_API_KEY").ok()
+            info!("Falling back to OPENROUTER_API_KEY environment variable");
+            std::env::var("OPENROUTER_API_KEY").ok()
         })
-        .ok_or_else(|| anyhow!("No OpenAI API key configured. Please set your API key in Settings."))?;
+        .ok_or_else(|| anyhow!("No API key configured. Please set your OpenRouter API key in Settings."))?;
     
     info!("Using API key: {}...", &api_key[..std::cmp::min(10, api_key.len())]);
 
-    let config = OpenAIConfig::new().with_api_key(&api_key);
+    // Use OpenRouter API
+    let config = OpenAIConfig::new()
+        .with_api_key(&api_key)
+        .with_api_base(OPENROUTER_BASE_URL);
     let client = Client::with_config(config);
     let tools = create_tools();
     let mut evolution = Evolution::new(prompt);

@@ -23,8 +23,10 @@ use std::thread;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 
+/// OpenRouter API base URL
+const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
 /// Fast model for log summarization - needs to be very quick
-const LOG_MODEL: &str = "gpt-4.1-nano";
+const LOG_MODEL: &str = "openai/gpt-4o-mini";
 const MAX_TOKENS: u32 = 100;
 const TEMPERATURE: f32 = 0.2;
 
@@ -394,10 +396,12 @@ async fn generate_log_summary(lines: &[String], phase: &RebuildPhase, api_key: O
     // Use provided API key, fall back to environment variable
     let key = api_key
         .map(|k| k.to_string())
-        .or_else(|| std::env::var("OPENAI_API_KEY").ok())
-        .ok_or_else(|| anyhow::anyhow!("No OpenAI API key configured"))?;
+        .or_else(|| std::env::var("OPENROUTER_API_KEY").ok())
+        .ok_or_else(|| anyhow::anyhow!("No API key configured"))?;
 
-    let config = OpenAIConfig::new().with_api_key(&key);
+    let config = OpenAIConfig::new()
+        .with_api_key(&key)
+        .with_api_base(OPENROUTER_BASE_URL);
     let client = Client::with_config(config);
 
     // Take the most recent lines, limiting to MAX_LINES_PER_BATCH

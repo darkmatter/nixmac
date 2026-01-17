@@ -110,8 +110,8 @@ export function SettingsDialog(props: SettingsDialogProps) {
     setApiKeyStatus("verifying");
 
     try {
-      // Make a simple API request to verify the key
-      const response = await fetch("https://api.openai.com/v1/models", {
+      // Make a simple API request to verify the key via OpenRouter
+      const response = await fetch("https://openrouter.ai/api/v1/models", {
         method: "GET",
         headers: {
           Authorization: `Bearer ${key}`,
@@ -327,10 +327,10 @@ export function SettingsDialog(props: SettingsDialogProps) {
               <div>
                 <h2 className="mb-4 font-semibold text-base">API Keys</h2>
                 <div className="space-y-4">
-                  {/* OpenAI API Key */}
+                  {/* OpenRouter API Key */}
                   <div className="space-y-2">
                     <label className="font-medium text-sm">
-                      OpenAI API Key
+                      OpenRouter API Key
                     </label>
                     <div className="relative">
                       <input
@@ -349,7 +349,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
                             verifyApiKey(apiKeyInput);
                           }
                         }}
-                        placeholder="sk-..."
+                        placeholder="sk-or-..."
                         type="password"
                         value={apiKeyInput}
                       />
@@ -374,7 +374,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
                       summaries.{" "}
                       <a
                         className="text-primary underline hover:no-underline"
-                        href="https://platform.openai.com/api-keys"
+                        href="https://openrouter.ai/keys"
                         rel="noopener noreferrer"
                         target="_blank"
                       >
