@@ -61,60 +61,156 @@ let
       pkgsLinux.sops
       pkgsLinux.coreutils
       pkgsLinux.jq
+      pkgsLinux.curl
+      pkgsLinux.awscli2
     ];
     text = ''
       set -euo pipefail
 
-      # SOPS_AGE_KEY must be set via Fly secrets:
-      #   fly secrets set SOPS_AGE_KEY="AGE-SECRET-KEY-..." --app nixmac
-      if [ -z "''${SOPS_AGE_KEY:-}" ]; then
-        echo "ERROR: SOPS_AGE_KEY not set. Run: fly secrets set SOPS_AGE_KEY='...' --app nixmac" >&2
+      echo "==> Authenticating to AWS using Fly.io OIDC..."
+
+      # Print AWS environment variables for diagnostics
+      echo "==> AWS Environment Variables:"
+      echo "    AWS_ROLE_ARN: ''${AWS_ROLE_ARN:-<not set>}"
+      echo "    AWS_WEB_IDENTITY_TOKEN_FILE: ''${AWS_WEB_IDENTITY_TOKEN_FILE:-<not set>}"
+      echo "    AWS_ROLE_SESSION_NAME: ''${AWS_ROLE_SESSION_NAME:-<not set>}"
+
+      # Check what files exist in /.fly/
+      echo "==> Checking /.fly/ directory:"
+      if [ -d "/.fly" ]; then
+        ls -la /.fly/ || echo "    Unable to list /.fly/"
+      else
+        echo "    /.fly/ directory does not exist"
+      fi
+
+      # Retry logic: attempt to get OIDC token up to 10 times with 10 second sleep between attempts
+      MAX_ATTEMPTS=10
+      ATTEMPT=1
+      FLY_OIDC_TOKEN=""
+
+      # First, wait for the OIDC token file to be created by Fly.io
+      if [ -n "''${AWS_WEB_IDENTITY_TOKEN_FILE:-}" ]; then
+        echo "==> Waiting for OIDC token file at ''${AWS_WEB_IDENTITY_TOKEN_FILE}..."
+        FILE_WAIT_ATTEMPTS=0
+        MAX_FILE_WAIT=30  # Wait up to 30 seconds for the file to appear
+
+        while [ $FILE_WAIT_ATTEMPTS -lt $MAX_FILE_WAIT ]; do
+          if [ -f "''${AWS_WEB_IDENTITY_TOKEN_FILE}" ]; then
+            echo "    OIDC token file found after ''${FILE_WAIT_ATTEMPTS} seconds"
+            break
+          fi
+          sleep 1
+          FILE_WAIT_ATTEMPTS=$((FILE_WAIT_ATTEMPTS + 1))
+        done
+
+        if [ ! -f "''${AWS_WEB_IDENTITY_TOKEN_FILE}" ]; then
+          echo "    WARNING: OIDC token file not found after ''${MAX_FILE_WAIT} seconds, will try API endpoint"
+        fi
+      fi
+
+      # Try reading from the file if it exists
+      if [ -n "''${AWS_WEB_IDENTITY_TOKEN_FILE:-}" ] && [ -f "''${AWS_WEB_IDENTITY_TOKEN_FILE}" ]; then
+        echo "==> Reading OIDC token from file at ''${AWS_WEB_IDENTITY_TOKEN_FILE}..."
+        if FLY_OIDC_TOKEN=$(cat "''${AWS_WEB_IDENTITY_TOKEN_FILE}" 2>&1); then
+          echo "==> Successfully read OIDC token from file (length: ''${#FLY_OIDC_TOKEN})"
+          echo "    Token preview (first 50 chars): ''${FLY_OIDC_TOKEN:0:50}..."
+        else
+          echo "    Failed to read token from file, will try API endpoint"
+          FLY_OIDC_TOKEN=""
+        fi
+      fi
+
+      # If token file read failed or doesn't exist, fall back to API call
+      if [ -z "$FLY_OIDC_TOKEN" ]; then
+        # Wait for Fly API socket
+        echo "==> Waiting for Fly API socket..."
+        for tries in $(seq 1 60); do
+          if [ -S /.fly/api ]; then
+            echo "    Fly API socket found after $tries seconds"
+            break
+          fi
+          sleep 1
+        done
+        if [ ! -S /.fly/api ]; then
+          echo "ERROR: Fly API socket /.fly/api never appeared" >&2
+          exit 1
+        fi
+
+        while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+          echo "==> Attempt $ATTEMPT of $MAX_ATTEMPTS: Fetching OIDC token from Fly.io API..."
+
+          # Capture both stdout and stderr, and the exit code
+          set +e
+          RESPONSE=$(curl -s --unix-socket /.fly/api -X POST "http://localhost/v1/tokens/oidc" \
+            -H 'Content-Type: application/json' \
+            -d '{ "aud": "sts.amazonaws.com", "aws_principal_tags": true }' 2>&1)
+          CURL_EXIT_CODE=$?
+          set -e
+
+          echo "    Curl exit code: $CURL_EXIT_CODE"
+          echo "    Response length: ''${#RESPONSE}"
+
+          if [ $CURL_EXIT_CODE -eq 0 ] && [ -n "$RESPONSE" ]; then
+            # Extract token from JSON response
+            FLY_OIDC_TOKEN=$(echo "$RESPONSE" | jq -r '.token // empty' || true)
+            if [ -n "$FLY_OIDC_TOKEN" ]; then
+              echo "==> Successfully retrieved OIDC token from API (length: ''${#FLY_OIDC_TOKEN})"
+              # Write token to file for AWS SDK
+              umask 077
+              printf '%s' "$FLY_OIDC_TOKEN" > "${tokenFile}"
+              export AWS_WEB_IDENTITY_TOKEN_FILE="${tokenFile}"
+              break
+            fi
+          fi
+
+          if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+            echo "    Failed to retrieve token. Sleeping 10 seconds before retry..."
+            sleep 10
+          fi
+
+          ATTEMPT=$((ATTEMPT + 1))
+        done
+      fi
+
+      if [ -z "$FLY_OIDC_TOKEN" ]; then
+        echo "ERROR: Failed to retrieve OIDC token after $MAX_ATTEMPTS attempts" >&2
         exit 1
       fi
 
-      # Decrypt secrets and run the app
-      exec sops exec-env /secrets/web.prod.yaml -- \
-        ${pkgsLinux.bun}/bin/bun run /app/.output/server/index.mjs
-    '';
-    # text = ''
-    #   set -euo pipefail
-    #   export AWS_WEB_IDENTITY_TOKEN_FILE="${tokenFile}"
-    #   umask 077
-    #   wait_for_socket() {
-    #     for tries in $(seq 1 60); do
-    #       if [ -S /.fly/api ]; then
-    #         return 0
-    #       fi
-    #       sleep 1
-    #     done
-    #     echo "Fly API socket /.fly/api never appeared" >&2
-    #     return 1
-    #   }
+      # Decode and display JWT token claims for debugging
+      echo "==> Decoding OIDC token (JWT) for diagnostics..."
+      # Extract and decode the payload (middle part of JWT)
+      TOKEN_PAYLOAD=$(echo "$FLY_OIDC_TOKEN" | cut -d'.' -f2)
+      # Add padding if needed for base64 decoding
+      case $((''${#TOKEN_PAYLOAD} % 4)) in
+        2) TOKEN_PAYLOAD="''${TOKEN_PAYLOAD}==";;
+        3) TOKEN_PAYLOAD="''${TOKEN_PAYLOAD}=";;
+      esac
+      echo "    Token claims:"
+      echo "$TOKEN_PAYLOAD" | base64 -d 2>/dev/null | jq '.' 2>/dev/null || echo "    Unable to decode token payload"
 
-    #   if [ ! -s "$AWS_WEB_IDENTITY_TOKEN_FILE" ]; then
-    #     wait_for_socket
-    #     tries=0
-    #     while true; do
-    #       token=$(
-    #         curl -fsS --unix-socket /.fly/api http://localhost/v1/tokens/oidc \
-    #           -H 'Content-Type: application/json' \
-    #           -d '{ "aud": "sts.amazonaws.com", "aws_principal_tags": true }' \
-    #           | jq -r '.token // empty' || true
-    #       )
-    #       if [ -n "$token" ]; then
-    #         printf '%s' "$token" > "$AWS_WEB_IDENTITY_TOKEN_FILE"
-    #         break
-    #       fi
-    #       tries=$((tries + 1))
-    #       if [ "$tries" -ge 30 ]; then
-    #         echo "failed to fetch OIDC token after $tries attempts" >&2
-    #         exit 1
-    #       fi
-    #       sleep 1
-    #     done
-    #   fi
-    #   exec ${pkgsLinux.chamber}/bin/chamber exec nixmac/prod -- "$@"
-    # '';
+      echo "==> Assuming AWS role with web identity..."
+      if ! CREDENTIALS=$(aws sts assume-role-with-web-identity \
+        --role-arn "''${AWS_ROLE_ARN}" \
+        --role-session-name "nixmac-flyio-$(date +%s)" \
+        --web-identity-token "$FLY_OIDC_TOKEN" \
+        --duration-seconds 3600 \
+        --output json 2>&1); then
+        echo "ERROR: Failed to assume AWS role" >&2
+        echo "AWS Error: $CREDENTIALS" >&2
+        exit 1
+      fi
+
+      # Export AWS credentials for this session
+      export AWS_ACCESS_KEY_ID=$(echo "''${CREDENTIALS}" | jq -r '.Credentials.AccessKeyId')
+      export AWS_SECRET_ACCESS_KEY=$(echo "''${CREDENTIALS}" | jq -r '.Credentials.SecretAccessKey')
+      export AWS_SESSION_TOKEN=$(echo "''${CREDENTIALS}" | jq -r '.Credentials.SessionToken')
+
+      echo "==> AWS credentials configured successfully"
+      echo "==> Fetching secrets from AWS SSM via Chamber and starting app..."
+
+      exec ${pkgsLinux.chamber}/bin/chamber exec nixmac/prod -- "$@"
+    '';
   };
 in
 {

@@ -16,8 +16,10 @@ use async_openai::{
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 
+/// OpenRouter API base URL
+const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
 /// Fast model for summarization tasks - optimized for speed over reasoning
-const SUMMARY_MODEL: &str = "gpt-4.1-mini";
+const SUMMARY_MODEL: &str = "openai/gpt-4o-mini";
 const MAX_SUMMARY_TOKENS: u32 = 800;
 const TEMPERATURE: f32 = 0.3;
 
@@ -54,10 +56,12 @@ pub async fn summarize_changes(diff: &str, file_list: &[String], api_key: Option
     // Use provided API key, fall back to environment variable
     let key = api_key
         .map(|k| k.to_string())
-        .or_else(|| std::env::var("OPENAI_API_KEY").ok())
-        .ok_or_else(|| anyhow::anyhow!("No OpenAI API key configured"))?;
+        .or_else(|| std::env::var("OPENROUTER_API_KEY").ok())
+        .ok_or_else(|| anyhow::anyhow!("No API key configured"))?;
 
-    let config = OpenAIConfig::new().with_api_key(&key);
+    let config = OpenAIConfig::new()
+        .with_api_key(&key)
+        .with_api_base(OPENROUTER_BASE_URL);
     let client = Client::with_config(config);
 
     let file_summary = if file_list.is_empty() {
@@ -156,10 +160,12 @@ pub async fn generate_commit_message(diff: &str, file_list: &[String], api_key: 
     // Use provided API key, fall back to environment variable
     let key = api_key
         .map(|k| k.to_string())
-        .or_else(|| std::env::var("OPENAI_API_KEY").ok())
-        .ok_or_else(|| anyhow::anyhow!("No OpenAI API key configured"))?;
+        .or_else(|| std::env::var("OPENROUTER_API_KEY").ok())
+        .ok_or_else(|| anyhow::anyhow!("No API key configured"))?;
 
-    let config = OpenAIConfig::new().with_api_key(&key);
+    let config = OpenAIConfig::new()
+        .with_api_key(&key)
+        .with_api_base(OPENROUTER_BASE_URL);
     let client = Client::with_config(config);
 
     let file_summary = if file_list.is_empty() {
