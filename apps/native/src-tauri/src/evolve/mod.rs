@@ -165,7 +165,15 @@ pub async fn generate_evolution(
         EvolveEvent::info(start_time, None, &format!("Target host: {}", host_attr)),
     );
 
-    let client = Client::with_config(OpenAIConfig::default());
+    // Get API key from store, fall back to environment variable
+    let api_key = store::get_openai_api_key(app)
+        .ok()
+        .flatten()
+        .or_else(|| std::env::var("OPENAI_API_KEY").ok())
+        .ok_or_else(|| anyhow!("No OpenAI API key configured. Please set your API key in Settings."))?;
+
+    let config = OpenAIConfig::new().with_api_key(&api_key);
+    let client = Client::with_config(config);
     let tools = create_tools();
     let mut evolution = Evolution::new(prompt);
     let mut iteration: usize = 0;

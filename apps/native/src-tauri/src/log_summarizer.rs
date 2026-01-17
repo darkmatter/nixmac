@@ -236,6 +236,12 @@ fn summarizer_thread(app: AppHandle, rx: Receiver<LogMessage>) {
         }
     };
 
+    // Get API key from store at startup (fall back to env var)
+    let api_key = crate::store::get_openai_api_key(&app)
+        .ok()
+        .flatten()
+        .or_else(|| std::env::var("OPENAI_API_KEY").ok());
+
     let state = Arc::new(Mutex::new(SummarizerState::new()));
 
     // Emit initial "starting" message
@@ -338,7 +344,7 @@ fn summarizer_thread(app: AppHandle, rx: Receiver<LogMessage>) {
                 }
 
                 // Generate summary (use tokio runtime for async)
-                let summary = rt.block_on(generate_log_summary(&lines, &current_phase));
+                let summary = rt.block_on(generate_log_summary(&lines, &current_phase, api_key.as_deref()));
 
                 match summary {
                     Ok(text) => {
@@ -380,12 +386,19 @@ fn summarizer_thread(app: AppHandle, rx: Receiver<LogMessage>) {
 }
 
 /// Generate a summary of the log lines using AI
-async fn generate_log_summary(lines: &[String], phase: &RebuildPhase) -> Result<String> {
+async fn generate_log_summary(lines: &[String], phase: &RebuildPhase, api_key: Option<&str>) -> Result<String> {
     if lines.is_empty() {
         return Ok("Processing...".to_string());
     }
 
-    let client = Client::with_config(OpenAIConfig::default());
+    // Use provided API key, fall back to environment variable
+    let key = api_key
+        .map(|k| k.to_string())
+        .or_else(|| std::env::var("OPENAI_API_KEY").ok())
+        .ok_or_else(|| anyhow::anyhow!("No OpenAI API key configured"))?;
+
+    let config = OpenAIConfig::new().with_api_key(&key);
+    let client = Client::with_config(config);
 
     // Take the most recent lines, limiting to MAX_LINES_PER_BATCH
     let recent_lines: Vec<&String> = lines.iter().rev().take(MAX_LINES_PER_BATCH).collect();

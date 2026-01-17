@@ -39,7 +39,7 @@ pub struct ChangeSummary {
 ///
 /// This creates a structured summary with friendly descriptions and
 /// suggestions for testing the changes.
-pub async fn summarize_changes(diff: &str, file_list: &[String]) -> Result<ChangeSummary> {
+pub async fn summarize_changes(diff: &str, file_list: &[String], api_key: Option<&str>) -> Result<ChangeSummary> {
     if diff.is_empty() && file_list.is_empty() {
         return Ok(ChangeSummary {
             items: vec![SummaryItem {
@@ -51,7 +51,14 @@ pub async fn summarize_changes(diff: &str, file_list: &[String]) -> Result<Chang
         });
     }
 
-    let client = Client::with_config(OpenAIConfig::default());
+    // Use provided API key, fall back to environment variable
+    let key = api_key
+        .map(|k| k.to_string())
+        .or_else(|| std::env::var("OPENAI_API_KEY").ok())
+        .ok_or_else(|| anyhow::anyhow!("No OpenAI API key configured"))?;
+
+    let config = OpenAIConfig::new().with_api_key(&key);
+    let client = Client::with_config(config);
 
     let file_summary = if file_list.is_empty() {
         String::new()
@@ -141,12 +148,19 @@ Respond with ONLY valid JSON, no markdown code blocks or extra text."#;
 ///
 /// Returns a conventional commit style message that can be used as-is
 /// or edited by the user.
-pub async fn generate_commit_message(diff: &str, file_list: &[String]) -> Result<String> {
+pub async fn generate_commit_message(diff: &str, file_list: &[String], api_key: Option<&str>) -> Result<String> {
     if diff.is_empty() && file_list.is_empty() {
         return Ok("chore: no changes".to_string());
     }
 
-    let client = Client::with_config(OpenAIConfig::default());
+    // Use provided API key, fall back to environment variable
+    let key = api_key
+        .map(|k| k.to_string())
+        .or_else(|| std::env::var("OPENAI_API_KEY").ok())
+        .ok_or_else(|| anyhow::anyhow!("No OpenAI API key configured"))?;
+
+    let config = OpenAIConfig::new().with_api_key(&key);
+    let client = Client::with_config(config);
 
     let file_summary = if file_list.is_empty() {
         String::new()
@@ -210,11 +224,12 @@ pub async fn generate_commit_message(diff: &str, file_list: &[String]) -> Result
 pub async fn summarize_for_preview(
     diff: &str,
     file_list: &[String],
+    api_key: Option<&str>,
 ) -> Result<(ChangeSummary, String)> {
     // Run both in parallel
     let (summary, commit_msg) = tokio::join!(
-        summarize_changes(diff, file_list),
-        generate_commit_message(diff, file_list)
+        summarize_changes(diff, file_list, api_key),
+        generate_commit_message(diff, file_list, api_key)
     );
 
     Ok((summary?, commit_msg?))
@@ -228,7 +243,7 @@ mod tests {
     fn test_empty_changes() {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
-            let summary = summarize_changes("", &[]).await;
+            let summary = summarize_changes("", &[], None).await;
             assert!(summary.is_ok());
             let result = summary.unwrap();
             assert_eq!(result.items.len(), 1);
