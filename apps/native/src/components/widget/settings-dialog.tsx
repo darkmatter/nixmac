@@ -95,7 +95,14 @@ export function SettingsDialog(props: SettingsDialogProps) {
   }
 
   const verifyApiKey = async (key: string) => {
-    if (!(key && key.startsWith("sk-"))) {
+    // Always save the key first, regardless of verification
+    if (key && key.length > 10) {
+      setOpenaiApiKey(key);
+      await darwinAPI.ui.setPrefs({ openaiApiKey: key });
+    }
+
+    // If no key or too short, just clear status
+    if (!key || key.length < 10) {
       setApiKeyStatus("idle");
       return;
     }
@@ -113,13 +120,14 @@ export function SettingsDialog(props: SettingsDialogProps) {
 
       if (response.ok) {
         setApiKeyStatus("valid");
-        setOpenaiApiKey(key);
-        await darwinAPI.ui.setPrefs({ openaiApiKey: key });
       } else {
+        // Key is saved but might be invalid - show warning but don't block
         setApiKeyStatus("invalid");
       }
     } catch {
-      setApiKeyStatus("invalid");
+      // Network error - key is saved, show as unverified
+      setApiKeyStatus("idle");
+      console.warn("Could not verify API key - network error");
     }
   };
 

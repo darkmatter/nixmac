@@ -166,11 +166,19 @@ pub async fn generate_evolution(
     );
 
     // Get API key from store, fall back to environment variable
-    let api_key = store::get_openai_api_key(app)
+    let store_result = store::get_openai_api_key(app);
+    info!("Store API key result: {:?}", store_result.as_ref().map(|r| r.as_ref().map(|s| format!("{}...", &s[..std::cmp::min(10, s.len())]))));
+    
+    let api_key = store_result
         .ok()
         .flatten()
-        .or_else(|| std::env::var("OPENAI_API_KEY").ok())
+        .or_else(|| {
+            info!("Falling back to OPENAI_API_KEY environment variable");
+            std::env::var("OPENAI_API_KEY").ok()
+        })
         .ok_or_else(|| anyhow!("No OpenAI API key configured. Please set your API key in Settings."))?;
+    
+    info!("Using API key: {}...", &api_key[..std::cmp::min(10, api_key.len())]);
 
     let config = OpenAIConfig::new().with_api_key(&api_key);
     let client = Client::with_config(config);
