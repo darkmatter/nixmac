@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { appStateToStep, computeAppState, useWidgetStore } from "@/stores/widget-store";
+import {
+  appStateToStep,
+  computeAppState,
+  useWidgetStore,
+} from "@/stores/widget-store";
 import {
   CONFIG_CHANGED_CHANNEL,
   type ConfigChangedEvent,
@@ -114,15 +118,18 @@ export function DarwinWidget() {
     s.appendLog(`\n> Evolving: "${s.evolvePrompt}"\n`);
 
     // Set up evolve event listener
-    const unlistenEvolve = await ipcRenderer.on<EvolveEvent>(EVOLVE_EVENT_CHANNEL, (event) => {
-      if (event.payload) {
-        storeRef.current.appendEvolveEvent(event.payload);
-        // Also append raw log to console for debugging
-        if (event.payload.raw) {
-          storeRef.current.appendLog(`${event.payload.raw}\n`);
+    const unlistenEvolve = await ipcRenderer.on<EvolveEvent>(
+      EVOLVE_EVENT_CHANNEL,
+      (event) => {
+        if (event.payload) {
+          storeRef.current.appendEvolveEvent(event.payload);
+          // Also append raw log to console for debugging
+          if (event.payload.raw) {
+            storeRef.current.appendLog(`${event.payload.raw}\n`);
+          }
         }
       }
-    });
+    );
 
     try {
       await darwinAPI.darwin.evolve(s.evolvePrompt);
@@ -154,7 +161,11 @@ export function DarwinWidget() {
       complete?: boolean;
       success?: boolean;
       error?: boolean;
-      error_type?: "infinite_recursion" | "evaluation_error" | "build_error" | "generic_error";
+      error_type?:
+        | "infinite_recursion"
+        | "evaluation_error"
+        | "build_error"
+        | "generic_error";
     }>("darwin:apply:summary", (event) => {
       const { text, complete, success, error, error_type } = event.payload;
       const currentStore = storeRef.current;
@@ -207,7 +218,7 @@ export function DarwinWidget() {
         // On failure, keep the overlay visible so user can see error and rollback
 
         await refreshGitStatus();
-      },
+      }
     );
 
     try {
@@ -317,7 +328,7 @@ export function DarwinWidget() {
           // Ignore errors - window might not exist yet
         });
     },
-    [],
+    []
   );
 
   // Auto-recover state from git status on startup
@@ -326,7 +337,7 @@ export function DarwinWidget() {
   const recoverFromGitState = useCallback(
     async (
       gitStatus: Awaited<ReturnType<typeof darwinAPI.git.status>> | null,
-      mounted: { current: boolean },
+      mounted: { current: boolean }
     ) => {
       const currentStore = storeRef.current;
 
@@ -352,7 +363,9 @@ export function DarwinWidget() {
 
       if (currentStore.summary.items.length > 0) {
         // Already have summary - use first item's title for preview indicator
-        const summaryText = currentStore.summary.items.map((i) => i.title).join(", ");
+        const summaryText = currentStore.summary.items
+          .map((i) => i.title)
+          .join(", ");
         await updatePreviewIndicator({
           gitStatus,
           summaryText,
@@ -401,7 +414,7 @@ export function DarwinWidget() {
         }
       }
     },
-    [updatePreviewIndicator],
+    [updatePreviewIndicator]
   );
 
   // =============================================================================
@@ -443,15 +456,18 @@ export function DarwinWidget() {
   useEffect(() => {
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const configSub = ipcRenderer.on<ConfigChangedEvent>(CONFIG_CHANGED_CHANNEL, (_event) => {
-      // Debounce refreshes so rapid filesystem events don't spam git.
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
+    const configSub = ipcRenderer.on<ConfigChangedEvent>(
+      CONFIG_CHANGED_CHANNEL,
+      (_event) => {
+        // Debounce refreshes so rapid filesystem events don't spam git.
+        if (debounceTimer) {
+          clearTimeout(debounceTimer);
+        }
+        debounceTimer = setTimeout(() => {
+          refreshGitStatus();
+        }, 300);
       }
-      debounceTimer = setTimeout(() => {
-        refreshGitStatus();
-      }, 300);
-    });
+    );
 
     return () => {
       if (debounceTimer) {
@@ -469,7 +485,11 @@ export function DarwinWidget() {
     prevAppStateRef.current = appState;
 
     // Only fetch when transitioning INTO preview mode
-    if (appState === "preview" && wasNotPreview && store.summary.items.length === 0) {
+    if (
+      appState === "preview" &&
+      wasNotPreview &&
+      store.summary.items.length === 0
+    ) {
       (async () => {
         storeRef.current.setSummary({ isLoading: true });
         try {
@@ -494,7 +514,9 @@ export function DarwinWidget() {
   // Update preview indicator window when state changes
   useEffect(() => {
     const summaryText =
-      store.summary.items.length > 0 ? store.summary.items.map((i) => i.title).join(", ") : null;
+      store.summary.items.length > 0
+        ? store.summary.items.map((i) => i.title).join(", ")
+        : null;
     updatePreviewIndicator({
       gitStatus: store.gitStatus,
       summaryText,

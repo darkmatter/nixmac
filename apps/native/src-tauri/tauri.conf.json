@@ -23,10 +23,7 @@
       "minimumSystemVersion": "10.13",
       "entitlements": "entitlements.plist",
       "infoPlist": "Info.plist",
-      "exceptionDomain": null,
-      "frameworks": [],
-      "providerShortName": null,
-      "signingIdentity": null
+      "frameworks": []
     }
   },
   "app": {

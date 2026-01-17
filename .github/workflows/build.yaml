@@ -72,12 +72,11 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security list-keychain -d user -s $KEYCHAIN_PATH
       # Build the Tauri app
+      # APPLE_SIGNING_IDENTITY is injected by sops exec-env from .secrets.enc.yaml
+      # Tauri will use it automatically when signingIdentity is not set in config
       - name: Build Tauri app
         run: bun run desktop:build
         shell: 'sops exec-env .secrets.enc.yaml "bash -e {0}"'
-        # env:
-        # Only set signing identity if we have the certificate
-        # APPLE_SIGNING_IDENTITY: ${{ startsWith(github.ref, 'refs/tags/') && steps.check-secrets.outputs.has_certificate == 'true' && secrets.APPLE_SIGNING_IDENTITY || '' }}
       # Notarize the app (requires Apple Developer account)
       - name: Notarize app
         if: startsWith(github.ref, 'refs/tags/') && steps.check-secrets.outputs.has_notarization == 'true'
