@@ -104,7 +104,9 @@ fn log_api_error(
     info!("API error logged to: {}", log_file.display());
 }
 
-const DEFAULT_MODEL: &str = "gpt-5.2";
+// Use gpt-4o for evolution - reasoning models (gpt-5.x, o1, o3) have stricter
+// content policies that can trigger false positives on coding prompts
+const DEFAULT_MODEL: &str = "gpt-4o";
 const MAX_TOKENS: u32 = 65_000;
 const TEMPERATURE: f32 = 0.2;
 const MAX_ITERATIONS: usize = 50;
