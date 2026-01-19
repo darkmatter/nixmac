@@ -1,12 +1,16 @@
+import { IconBadge } from "@/components/icon-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { HoverAccordion } from "@/components/hover-accordion";
+import { faqConfig } from "@/lib/config/faq";
 import {
   ArrowRight,
   ChevronRight,
   Code2,
   Download,
   GitBranch,
+  MessageCircleQuestion,
   Monitor,
   Package,
   Shield,
@@ -364,8 +368,43 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* FAQ Section */}
+      <section
+        className="border-zinc-800/50 border-y bg-zinc-900/20 py-24"
+        id="faq"
+      >
+        <div className="container mx-auto px-6">
+          <div className="mx-auto max-w-3xl">
+            <div className="mb-12 text-center">
+              <IconBadge icon={MessageCircleQuestion} trailingIcon>FAQ</IconBadge>
+              <h2 className="mb-4 text-balance font-bold text-3xl md:text-4xl">
+                Frequently Asked Questions
+              </h2>
+              <p className="text-zinc-400">
+                Everything you need to know about nixmac
+              </p>
+            </div>
+
+            <HoverAccordion
+              items={faqConfig.map((faq) => ({
+                value: faq.question,
+                trigger: faq.question,
+                content: faq.answer,
+              }))}
+              className="space-y-4"
+              itemClassName="rounded-lg border border-zinc-800 bg-zinc-900/50 px-6 transition-colors data-[state=open]:bg-zinc-900"
+              triggerClassName="text-left text-zinc-100 hover:no-underline"
+              contentClassName="text-zinc-400"
+            />
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
-      <section className="border-zinc-800/50 border-y bg-zinc-900/20 py-24" id="download">
+      <section
+        className="border-zinc-800/50 border-y bg-zinc-950 py-24"
+        id="download"
+      >
         <div className="container mx-auto px-6">
           <div className="mx-auto max-w-3xl">
             <div className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50 p-8 text-center md:p-12">
@@ -378,8 +417,9 @@ export function LandingPage() {
                   Ready to evolve your Mac?
                 </h2>
                 <p className="mx-auto mb-8 max-w-lg text-zinc-400">
-                  Join developers who have embraced declarative system management.
-                  Download nixmac and take control of your configuration.
+                  Join developers who have embraced declarative system
+                  management. Download nixmac and take control of your
+                  configuration.
                 </p>
                 <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
                   <Button
@@ -426,7 +466,10 @@ export function LandingPage() {
               >
                 GitHub
               </a>
-              <a className="transition-colors hover:text-zinc-300" href="/docs">
+              <a
+                className="transition-colors hover:text-zinc-300"
+                href="/docs"
+              >
                 Documentation
               </a>
               {/* <a
