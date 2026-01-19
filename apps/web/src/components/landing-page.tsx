@@ -1,8 +1,9 @@
+import { HoverAccordion } from "@/components/hover-accordion";
 import { IconBadge } from "@/components/icon-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { HoverAccordion } from "@/components/hover-accordion";
+import { configAsCodeExample } from "@/lib/config/configAsCodeExample";
 import { faqConfig } from "@/lib/config/faq";
 import {
   ArrowRight,
@@ -10,11 +11,13 @@ import {
   Code2,
   Download,
   GitBranch,
+  Lightbulb,
   MessageCircleQuestion,
   Monitor,
   Package,
   Shield,
   Sparkles,
+  Star,
   Terminal,
   Zap,
 } from "lucide-react";
@@ -30,13 +33,9 @@ export function LandingPage() {
 
         <div className="container relative mx-auto px-6 pt-20 pb-12 md:pt-32 md:pb-20">
           <div className="mx-auto max-w-4xl text-center">
-            <Badge
-              className="mb-6 border border-zinc-700 bg-zinc-800/50 text-zinc-300"
-              variant="secondary"
-            >
-              <Sparkles className="mr-1 size-3" />
+            <IconBadge icon={Sparkles}>
               Declarative macOS Management :)
-            </Badge>
+            </IconBadge>
             <h1 className="mb-6 text-balance font-bold text-4xl tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
               Your Mac, defined in{" "}
               <span className="bg-gradient-to-r from-zinc-100 to-zinc-400 bg-clip-text text-transparent">
@@ -109,12 +108,7 @@ export function LandingPage() {
       <section className="container mx-auto px-6 py-24" id="features">
         <div className="mx-auto max-w-6xl">
           <div className="mb-16 text-center">
-            <Badge
-              className="mb-4 border border-zinc-700 bg-zinc-800/50 text-zinc-300"
-              variant="secondary"
-            >
-              Features
-            </Badge>
+            <IconBadge icon={Star}>Features</IconBadge>
             <h2 className="mb-4 text-balance font-bold text-3xl md:text-4xl">
               Everything you need to manage your Mac
             </h2>
@@ -219,12 +213,7 @@ export function LandingPage() {
         <div className="container mx-auto px-6">
           <div className="mx-auto max-w-4xl">
             <div className="mb-16 text-center">
-              <Badge
-                className="mb-4 border border-zinc-700 bg-zinc-800/50 text-zinc-300"
-                variant="secondary"
-              >
-                How It Works
-              </Badge>
+              <IconBadge icon={Lightbulb}>How It Works</IconBadge>
               <h2 className="mb-4 text-balance font-bold text-3xl md:text-4xl">
                 Simple, yet powerful
               </h2>
@@ -311,13 +300,7 @@ export function LandingPage() {
       <section className="container mx-auto px-6 py-24" id="config-as-code">
         <div className="mx-auto max-w-4xl">
           <div className="mb-12 text-center">
-            <Badge
-              className="mb-4 border border-zinc-700 bg-zinc-800/50 text-zinc-300"
-              variant="secondary"
-            >
-              <Code2 className="mr-1 size-3" />
-              Configuration as Code
-            </Badge>
+            <IconBadge icon={Code2}>Configuration as Code</IconBadge>
             <h2 className="mb-4 text-balance font-bold text-3xl md:text-4xl">
               Your entire Mac in a single file
             </h2>
@@ -335,34 +318,7 @@ export function LandingPage() {
               <span className="ml-2 text-sm text-zinc-500">flake.nix</span>
             </div>
             <pre className="overflow-x-auto p-6 text-sm leading-relaxed">
-              <code className="text-zinc-300">
-                {`{
-  description = "My Mac configuration";
-
-  inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    darwin.url = "github:lnl7/nix-darwin";
-  };
-
-  outputs = { self, nixpkgs, darwin }: {
-    darwinConfigurations."macbook" = darwin.lib.darwinSystem {
-      system = "aarch64-darwin";
-      modules = [{
-        environment.systemPackages = with nixpkgs; [
-          vim git ripgrep fzf
-        ];
-
-        homebrew = {
-          enable = true;
-          casks = [ "rectangle" "raycast" "arc" ];
-        };
-
-        system.defaults.dock.autohide = true;
-      }];
-    };
-  };
-}`}
-              </code>
+              <code className="text-zinc-300">{configAsCodeExample}</code>
             </pre>
           </div>
         </div>
