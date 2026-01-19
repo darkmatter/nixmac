@@ -21,9 +21,26 @@ This project was created with [Better-T-Stack](https://github.com/AmanVarshney01
 
 ## Getting Started
 
-First, install the dependencies:
+### Install nix
+
+Recommendation: Use [Determinate](https://docs.determinate.systems/).
+
+```sh
+nix --version
+nix-store --version
+```
+
+### Install devenv
+
+```sh
+nix profile add github:cachix/devenv/latest
+devenv --version
+```
+
+### Install the dependencies in the shell:
 
 ```bash
+devenv shell
 bun install
 ```
 
@@ -32,9 +49,10 @@ bun install
 This project uses PostgreSQL with Drizzle ORM.
 
 1. Make sure you have a PostgreSQL database set up.
-2. Update your `apps/server/.env` file with your PostgreSQL connection details.
 
-3. Apply the schema to your database:
+1. Update your `apps/server/.env` and `apps/web/.env` files with your PostgreSQL connection details as `DATABASE_URL`.
+
+1. Apply the schema to your database:
 
 ```bash
 bun run db:push
