@@ -8,7 +8,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import RouterDevtools from "@/components/router-devtools";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import Header from "@/components/header";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -71,7 +71,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           </div>
           <Toaster richColors />
         </ThemeProvider>
-        <TanStackRouterDevtools position="bottom-left" />
+        <RouterDevtools />
         <ReactQueryDevtools buttonPosition="bottom-right" position="bottom" />
         <Scripts />
       </body>
