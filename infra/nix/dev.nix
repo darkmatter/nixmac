@@ -7,7 +7,10 @@
 lib.mkIf (!(config.container.isBuilding or false)) {
   # Dev-only packages (excluded from container builds by conditional import).
   packages = [
-    pkgs.rustup
+    pkgs.rustPackages.rustc
+    pkgs.rustPackages.cargo
+    pkgs.rustPackages.clippy
+    pkgs.rustPackages.rustfmt
     pkgs.clippy
     pkgs.cargo-watch
     pkgs.cargo-nextest
