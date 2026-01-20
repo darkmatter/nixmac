@@ -5,7 +5,7 @@ export const env = parseEnv(process.env, {
     .enum(["development", "production", "test"])
     .default("development"),
   PORT: z.coerce.number().default(3000),
-  POSTGRES_URL: z.string(),
+  DATABASE_URL: z.string(),
   BETTER_AUTH_SECRET: z.string().default("supersecret!"),
   APP_HOST: z.string().default("localhost"),
   POLAR_SUCCESS_URL: z
