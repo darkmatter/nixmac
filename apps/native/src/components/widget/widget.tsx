@@ -59,33 +59,6 @@ export function DarwinWidget() {
   // API Handlers
   // =============================================================================
 
-  const handlePickDir = useCallback(async () => {
-  const dir = (await darwinAPI.config.pickDir()) as string | null;
-  if (dir) {
-    storeRef.current.setConfigDir(dir);
-
-    // Check if flake exists and load hosts
-    try {
-      const hosts = (await darwinAPI.flake.listHosts()) as string[];
-      if (Array.isArray(hosts)) {
-        storeRef.current.setHosts(hosts);
-      } else {
-        // show bootstrap interface
-        storeRef.current.setHosts([]);
-      }
-    } catch (error) {
-      // No flake.nix or error reading hosts - clear the array
-      console.debug("No hosts found:", error);
-      storeRef.current.setHosts([]);
-    }
-  }
-}, []);
-
-  const handleSaveHost = useCallback(async (host: string) => {
-    storeRef.current.setHost(host);
-    await darwinAPI.config.setHostAttr(host);
-  }, []);
-
   const refreshGitStatus = useCallback(async () => {
     try {
       const status = await darwinAPI.git.status();
@@ -444,7 +417,9 @@ export function DarwinWidget() {
       if (mounted.current) {
         const errorMessage = (e as Error)?.message || String(e);
         // Only set error for actual failures, not missing flake
-        if (!errorMessage.includes('Failed to list hosts: path')) {
+        console.log("step when mounted", step, errorMessage);
+        const supressFlakeError = step === "setup" && errorMessage.includes('Failed to list hosts: path');
+        if (!supressFlakeError) {
           storeRef.current.setError(errorMessage);
         }
       }
@@ -595,15 +570,12 @@ export function DarwinWidget() {
     <WidgetUI
       appState={appState}
       commitMsg={store.commitMsg}
-      configDir={store.configDir}
       consoleExpanded={store.consoleExpanded}
       consoleLogs={store.consoleLogs}
       error={store.error}
       evolveEvents={store.evolveEvents}
       evolvePrompt={store.evolvePrompt}
       gitStatus={store.gitStatus}
-      host={store.host}
-      hosts={store.hosts}
       isGenerating={store.isGenerating}
       isProcessing={store.isProcessing}
       onApply={handleApply}
@@ -615,9 +587,6 @@ export function DarwinWidget() {
       onErrorDismiss={() => store.setError(null)}
       onEvolve={handleEvolve}
       onEvolvePromptChange={store.setEvolvePrompt}
-      onHostsChange={store.setHosts}
-      onPickDir={handlePickDir}
-      onSaveHost={handleSaveHost}
       onSettingsOpenChange={store.setSettingsOpen}
       onShowCommitScreen={() => store.setShowCommitScreen(true)}
       openaiApiKey={openaiApiKey}

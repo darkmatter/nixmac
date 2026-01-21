@@ -14,9 +14,6 @@ export type { WidgetUIProps } from "./types";
 export function WidgetUI({
   step,
   appState: _appState,
-  configDir,
-  hosts,
-  host,
   gitStatus,
   evolvePrompt,
   commitMsg,
@@ -29,8 +26,6 @@ export function WidgetUI({
   consoleExpanded,
   settingsOpen,
   error,
-  onPickDir,
-  onSaveHost,
   onEvolve,
   onApply,
   onCommit,
@@ -40,7 +35,6 @@ export function WidgetUI({
   onConsoleExpandedChange,
   onSettingsOpenChange,
   onErrorDismiss,
-  onHostsChange,
   onShowCommitScreen,
   onBackFromCommit: _onBackFromCommit,
   prefFloatingFooter,
@@ -181,17 +175,11 @@ export function WidgetUI({
 
       {/* Settings Dialog */}
       <SettingsDialog
-        configDir={configDir}
-        host={host}
-        hosts={hosts}
         isOpen={settingsOpen}
         onClose={() => onSettingsOpenChange(false)}
         openaiApiKey={openaiApiKey ?? ""}
-        pickDir={onPickDir}
         prefFloatingFooter={prefFloatingFooter ?? false}
         prefWindowShadow={prefWindowShadow ?? false}
-        saveHost={onSaveHost}
-        setHosts={onHostsChange}
         setOpenaiApiKey={setOpenaiApiKey ?? (() => {})}
         setPrefFloatingFooter={setPrefFloatingFooter ?? (() => {})}
         setPrefWindowShadow={setPrefWindowShadow ?? (() => {})}

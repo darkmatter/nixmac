@@ -1,47 +1,52 @@
-import { darwinAPI } from "@/tauri-api";
 import { useWidgetStore } from "@/stores/widget-store";
-import { useCallback, useState } from "react";
+import { darwinAPI } from "@/tauri-api";
+import { useCallback, useRef, useState } from "react";
 
 export function useDarwinConfig() {
   const [isBootstrapping, setIsBootstrapping] = useState(false);
-
-  const setConfigDir = useWidgetStore((state) => state.setConfigDir);
-  const setHosts = useWidgetStore((state) => state.setHosts);
-  const setHost = useWidgetStore((state) => state.setHost);
-  const setError = useWidgetStore((state) => state.setError);
+  const storeRef = useRef(useWidgetStore.getState());
 
   const pickDir = useCallback(async () => {
     const dir = (await darwinAPI.config.pickDir()) as string | null;
-    if (dir) {
-      setConfigDir(dir);
-
-      // Check if flake exists and load hosts
-      try {
-        const hosts = await darwinAPI.flake.listHosts();
-        if (Array.isArray(hosts)) {
-          setHosts(hosts);
-        } else {
-          // shows default config interface
-          setHosts([]);
-        }
-      } catch {
-          // shows default config interface
-        setHosts([]);
-      }
+    if (!dir) {
+      return;
     }
-  }, [setConfigDir, setHosts]);
+
+    const store = storeRef.current;
+    store.setConfigDir(dir);
+    store.setHost("");
+    try {
+      await darwinAPI.config.setHostAttr("");
+    } catch {
+    }
+
+    // Check if flake exists and load hosts
+    try {
+      const hosts = await darwinAPI.flake.listHosts();
+      if (Array.isArray(hosts)) {
+        store.setHosts(hosts);
+      } else {
+        store.setHosts([]);
+      }
+    } catch {
+      // No flake.nix found - shows bootstrap interface
+      store.setHosts([]);
+    }
+  }, []);
 
   const saveHost = useCallback(
     async (host: string) => {
+      const store = storeRef.current;
+
       try {
         await darwinAPI.config.setHostAttr(host);
-        setHost(host);
+        store.setHost(host);
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
-        setError(`Failed to save host: ${message}`);
+        store.setError(`Failed to save host: ${message}`);
       }
     },
-    [setHost, setError]
+    []
   );
 
   const bootstrap = useCallback(
@@ -50,25 +55,30 @@ export function useDarwinConfig() {
         return;
       }
 
+      const store = storeRef.current;
+      store.setError(null);
       setIsBootstrapping(true);
+
       try {
         await darwinAPI.flake.bootstrapDefault(hostname);
         const hosts = await darwinAPI.flake.listHosts();
+
         if (Array.isArray(hosts) && hosts.length > 0) {
-          setHosts(hosts);
+          store.setHosts(hosts);
+
           if (hosts[0]) {
             await darwinAPI.config.setHostAttr(hosts[0]);
-            setHost(hosts[0]);
+            store.setHost(hosts[0]);
           }
         }
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
-        setError(`Failed to create configuration: ${message}`);
+        store.setError(`Failed to create configuration: ${message}`);
       } finally {
         setIsBootstrapping(false);
       }
     },
-    [setHosts, setHost, setError]
+    []
   );
 
   return { pickDir, saveHost, bootstrap, isBootstrapping };

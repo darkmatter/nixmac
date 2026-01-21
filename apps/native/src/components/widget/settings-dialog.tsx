@@ -1,3 +1,17 @@
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { BootstrapConfig } from "@/components/widget/bootstrap-config";
+import { useDarwinConfig } from "@/hooks/use-darwin-config";
+import { cn } from "@/lib/utils";
+import { useWidgetStore } from "@/stores/widget-store";
+import { darwinAPI } from "@/tauri-api";
 import {
   Check,
   FolderOpen,
@@ -8,29 +22,12 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
-import { darwinAPI } from "@/tauri-api";
 
 type SettingsTab = "general" | "appearance" | "api-keys";
 
 interface SettingsDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  configDir: string;
-  pickDir: () => void;
-  host: string;
-  hosts: string[];
-  saveHost: (h: string) => void;
-  setHosts: (hosts: string[]) => void;
   prefFloatingFooter: boolean;
   setPrefFloatingFooter: (enabled: boolean) => void;
   prefWindowShadow: boolean;
@@ -70,12 +67,6 @@ export function SettingsDialog(props: SettingsDialogProps) {
   const {
     isOpen,
     onClose,
-    configDir,
-    pickDir,
-    host,
-    hosts,
-    saveHost,
-    setHosts,
     prefFloatingFooter,
     setPrefFloatingFooter,
     prefWindowShadow,
@@ -83,6 +74,13 @@ export function SettingsDialog(props: SettingsDialogProps) {
     openaiApiKey,
     setOpenaiApiKey,
   } = props;
+
+  const configDir = useWidgetStore((state) => state.configDir);
+  const hosts = useWidgetStore((state) => state.hosts);
+  const host = useWidgetStore((state) => state.host);
+  const setHosts = useWidgetStore((state) => state.setHosts);
+
+  const { pickDir, saveHost } = useDarwinConfig();
 
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus>(
@@ -141,6 +139,19 @@ export function SettingsDialog(props: SettingsDialogProps) {
       verifyApiKey(apiKeyInput);
     }
   };
+
+  const handleRefreshHosts = async () => {
+    try {
+      const hs = await darwinAPI.flake.listHosts();
+      if (Array.isArray(hs)) {
+        setHosts(hs);
+      }
+    } catch {
+      // Ignore errors when refreshing hosts
+    }
+  };
+
+  const hasFlake = hosts.length > 0;
 
   return (
     <div
@@ -221,46 +232,41 @@ export function SettingsDialog(props: SettingsDialogProps) {
                     </p>
                   </div>
 
-                  {/* Host Selection */}
-                  <div className="space-y-2">
-                    <label className="font-medium text-sm">Host</label>
-                    <div className="flex items-center gap-2">
-                      <Select
-                        onValueChange={saveHost}
-                        value={host || undefined}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select a host" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {hosts.map((h) => (
-                            <SelectItem key={h} value={h}>
-                              {h}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        onClick={async () => {
-                          try {
-                            const hs = await darwinAPI.flake.listHosts();
-                            if (Array.isArray(hs)) {
-                              setHosts(hs);
-                            }
-                          } catch {
-                            // Ignore errors when refreshing hosts
-                          }
-                        }}
-                        size="sm"
-                        variant="outline"
-                      >
-                        Refresh
-                      </Button>
+                  {/* Host Selection or Bootstrap */}
+                  {hasFlake ? (
+                    <div className="space-y-2">
+                      <label className="font-medium text-sm">Host</label>
+                      <div className="flex items-center gap-2">
+                        <Select
+                          onValueChange={saveHost}
+                          value={host || undefined}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select a host" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {hosts.map((h) => (
+                              <SelectItem key={h} value={h}>
+                                {h}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          onClick={handleRefreshHosts}
+                          size="sm"
+                          variant="outline"
+                        >
+                          Refresh
+                        </Button>
+                      </div>
+                      <p className="text-muted-foreground text-xs">
+                        The darwin configuration to use for this machine
+                      </p>
                     </div>
-                    <p className="text-muted-foreground text-xs">
-                      The darwin configuration to use for this machine
-                    </p>
-                  </div>
+                  ) : (
+                    configDir && <BootstrapConfig onSuccess={onClose} />
+                  )}
                 </div>
               </div>
             </div>
