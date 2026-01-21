@@ -11,9 +11,6 @@ export interface WidgetUIProps extends React.HTMLAttributes<HTMLDivElement> {
   // State
   step: WidgetStep;
   appState: AppState;
-  configDir: string;
-  hosts: string[];
-  host: string;
   gitStatus: GitStatus | null;
   evolvePrompt: string;
   commitMsg: string;
@@ -28,8 +25,6 @@ export interface WidgetUIProps extends React.HTMLAttributes<HTMLDivElement> {
   error: string | null;
 
   // Handlers
-  onPickDir: () => void;
-  onSaveHost: (host: string) => void;
   onEvolve: () => void;
   onApply: () => void;
   onCommit: () => void;
@@ -39,7 +34,6 @@ export interface WidgetUIProps extends React.HTMLAttributes<HTMLDivElement> {
   onConsoleExpandedChange: (expanded: boolean) => void;
   onSettingsOpenChange: (open: boolean) => void;
   onErrorDismiss: () => void;
-  onHostsChange: (hosts: string[]) => void;
   onShowCommitScreen: () => void;
   onBackFromCommit: () => void;
 
