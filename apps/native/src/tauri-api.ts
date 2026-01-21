@@ -115,8 +115,11 @@ export const darwinAPI = {
     applyStreamCancel: () => invoke("darwin_apply_stream_cancel"),
   },
   flake: {
-    installedApps: () => invoke<UnknownRecord[]>("flake_installed_apps"),
     listHosts: () => invoke<string[]>("flake_list_hosts"),
+    installedApps: () => invoke<unknown[]>("flake_installed_apps"),
+    exists: () => invoke<boolean>("flake_exists"),
+    bootstrapDefault: (hostname: string) =>
+      invoke<void>("bootstrap_default_config", { hostname }),
   },
   // Summarization with fast model
   summarize: {

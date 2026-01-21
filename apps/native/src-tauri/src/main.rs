@@ -62,6 +62,8 @@ fn main() {
             commands::darwin_apply_stream_cancel,
             commands::flake_installed_apps,
             commands::flake_list_hosts,
+            commands::flake_exists,
+            commands::bootstrap_default_config,
             // Summarization
             commands::summarize_changes,
             commands::suggest_commit_message,
