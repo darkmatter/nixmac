@@ -41,7 +41,11 @@ pub struct ChangeSummary {
 ///
 /// This creates a structured summary with friendly descriptions and
 /// suggestions for testing the changes.
-pub async fn summarize_changes(diff: &str, file_list: &[String], api_key: Option<&str>) -> Result<ChangeSummary> {
+pub async fn summarize_changes(
+    diff: &str,
+    file_list: &[String],
+    api_key: Option<&str>,
+) -> Result<ChangeSummary> {
     if diff.is_empty() && file_list.is_empty() {
         return Ok(ChangeSummary {
             items: vec![SummaryItem {
@@ -152,7 +156,11 @@ Respond with ONLY valid JSON, no markdown code blocks or extra text."#;
 ///
 /// Returns a conventional commit style message that can be used as-is
 /// or edited by the user.
-pub async fn generate_commit_message(diff: &str, file_list: &[String], api_key: Option<&str>) -> Result<String> {
+pub async fn generate_commit_message(
+    diff: &str,
+    file_list: &[String],
+    api_key: Option<&str>,
+) -> Result<String> {
     if diff.is_empty() && file_list.is_empty() {
         return Ok("chore: no changes".to_string());
     }

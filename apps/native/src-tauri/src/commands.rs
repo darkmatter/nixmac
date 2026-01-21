@@ -8,9 +8,15 @@
 //! preview mode, etc.) is computed and managed entirely by the client.
 
 use crate::{darwin, git, nix, peek, store, summarize, types, watcher};
+use std::fs;
+use std::path::Path;
 use std::process::Command;
 use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
+
+// Add these constants after your imports, before the functions
+const DEFAULT_FLAKE_DOT_NIX: &str = include_str!("../../templates/kranzes/flake.nix");
+const DEFAULT_CONFIGURATION_NIX: &str = include_str!("../../templates/kranzes/configuration.nix");
 
 // =============================================================================
 // Configuration Commands
@@ -65,6 +71,44 @@ pub async fn config_pick_dir(app: AppHandle) -> Result<Option<String>, String> {
     }
 
     Ok(None)
+}
+
+/// Checks if a flake.nix exists in the config directory
+#[tauri::command]
+pub async fn flake_exists(app: AppHandle) -> Result<bool, String> {
+    let dir = store::get_config_dir(&app).map_err(|e| e.to_string())?;
+    Ok(Path::new(&dir).join("flake.nix").exists())
+}
+
+/// Creates a flake.nix and configuration.nix
+#[tauri::command]
+pub async fn bootstrap_default_config(app: AppHandle, hostname: String) -> Result<(), String> {
+    let dir = store::get_config_dir(&app).map_err(|e| e.to_string())?;
+    let path = Path::new(&dir);
+
+    if path.join("flake.nix").exists() {
+        return Err("Directory already contains flake.nix".to_string());
+    }
+
+    // use entered hostname
+    let flake_content = DEFAULT_FLAKE_DOT_NIX.replace("macbook", &hostname);
+    fs::write(path.join("flake.nix"), flake_content)
+        .map_err(|e| format!("Failed to write flake.nix: {}", e))?;
+
+    fs::write(path.join("configuration.nix"), DEFAULT_CONFIGURATION_NIX)
+        .map_err(|e| format!("Failed to write configuration.nix: {}", e))?;
+
+    git::init_if_needed(&dir).map_err(|e| e.to_string())?;
+
+    // Stage the new files
+    std::process::Command::new("git")
+        .args(["add", "flake.nix", "configuration.nix"])
+        .current_dir(&dir)
+        .env("PATH", crate::nix::get_nix_path())
+        .output()
+        .map_err(|e| format!("Failed to stage files: {}", e))?;
+
+    Ok(())
 }
 
 // =============================================================================
@@ -326,9 +370,10 @@ pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse,
     let api_key = store::get_openai_api_key(&app).map_err(|e| e.to_string())?;
 
     // Generate both summary and commit message in parallel
-    let (change_summary, commit_message) = summarize::summarize_for_preview(&diff, &file_list, api_key.as_deref())
-        .await
-        .map_err(|e| e.to_string())?;
+    let (change_summary, commit_message) =
+        summarize::summarize_for_preview(&diff, &file_list, api_key.as_deref())
+            .await
+            .map_err(|e| e.to_string())?;
 
     // Convert summarize::SummaryItem to types::SummaryItem
     let items: Vec<types::SummaryItem> = change_summary

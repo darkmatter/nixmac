@@ -1,6 +1,5 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import {
   appStateToStep,
   computeAppState,
@@ -14,6 +13,7 @@ import {
   type EvolveEvent,
   ipcRenderer,
 } from "@/tauri-api";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { WidgetUI } from "./widget-ui";
 
 // =============================================================================
@@ -60,25 +60,26 @@ export function DarwinWidget() {
   // =============================================================================
 
   const handlePickDir = useCallback(async () => {
-    const dir = (await darwinAPI.config.pickDir()) as string | null;
-    if (dir) {
-      storeRef.current.setConfigDir(dir);
-      try {
-        const hosts = (await darwinAPI.flake.listHosts()) as string[];
-        if (Array.isArray(hosts)) {
-          storeRef.current.setHosts(hosts);
-        }
-      } catch {
-        // Ignore - hosts will remain empty
+  const dir = (await darwinAPI.config.pickDir()) as string | null;
+  if (dir) {
+    storeRef.current.setConfigDir(dir);
+
+    // Check if flake exists and load hosts
+    try {
+      const hosts = (await darwinAPI.flake.listHosts()) as string[];
+      if (Array.isArray(hosts)) {
+        storeRef.current.setHosts(hosts);
+      } else {
+        // show bootstrap interface
+        storeRef.current.setHosts([]);
       }
-      try {
-        const status = await darwinAPI.git.status();
-        storeRef.current.setGitStatus(status);
-      } catch {
-        // Ignore - git status will remain null
-      }
+    } catch (error) {
+      // No flake.nix or error reading hosts - clear the array
+      console.debug("No hosts found:", error);
+      storeRef.current.setHosts([]);
     }
-  }, []);
+  }
+}, []);
 
   const handleSaveHost = useCallback(async (host: string) => {
     storeRef.current.setHost(host);
@@ -440,11 +441,15 @@ export function DarwinWidget() {
           setOpenaiApiKey(prefs.openaiApiKey ?? "");
         }
       } catch (e: unknown) {
-        if (mounted.current) {
-          storeRef.current.setError((e as Error)?.message || String(e));
+      if (mounted.current) {
+        const errorMessage = (e as Error)?.message || String(e);
+        // Only set error for actual failures, not missing flake
+        if (!errorMessage.includes('Failed to list hosts: path')) {
+          storeRef.current.setError(errorMessage);
         }
       }
-    })();
+    }
+  })();
 
     return () => {
       mounted.current = false;

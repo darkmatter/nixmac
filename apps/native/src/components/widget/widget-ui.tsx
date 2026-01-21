@@ -95,13 +95,7 @@ export function WidgetUI({
 
           {/* Step: Setup */}
           {step === "setup" && (
-            <SetupStep
-              configDir={configDir}
-              host={host}
-              hosts={hosts}
-              pickDir={onPickDir}
-              saveHost={onSaveHost}
-            />
+            <SetupStep />
           )}
 
           {/* Step: Overview */}

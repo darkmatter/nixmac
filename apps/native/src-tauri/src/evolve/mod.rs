@@ -169,8 +169,13 @@ pub async fn generate_evolution(
 
     // Get API key from store, fall back to environment variable
     let store_result = store::get_openai_api_key(app);
-    info!("Store API key result: {:?}", store_result.as_ref().map(|r| r.as_ref().map(|s| format!("{}...", &s[..std::cmp::min(10, s.len())]))));
-    
+    info!(
+        "Store API key result: {:?}",
+        store_result.as_ref().map(|r| r
+            .as_ref()
+            .map(|s| format!("{}...", &s[..std::cmp::min(10, s.len())])))
+    );
+
     let api_key = store_result
         .ok()
         .flatten()
@@ -178,9 +183,14 @@ pub async fn generate_evolution(
             info!("Falling back to OPENROUTER_API_KEY environment variable");
             std::env::var("OPENROUTER_API_KEY").ok()
         })
-        .ok_or_else(|| anyhow!("No API key configured. Please set your OpenRouter API key in Settings."))?;
-    
-    info!("Using API key: {}...", &api_key[..std::cmp::min(10, api_key.len())]);
+        .ok_or_else(|| {
+            anyhow!("No API key configured. Please set your OpenRouter API key in Settings.")
+        })?;
+
+    info!(
+        "Using API key: {}...",
+        &api_key[..std::cmp::min(10, api_key.len())]
+    );
 
     // Use OpenRouter API
     let config = OpenAIConfig::new()
