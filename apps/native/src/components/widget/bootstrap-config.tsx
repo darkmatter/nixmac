@@ -42,7 +42,7 @@ export function BootstrapConfig({ label, onSuccess }: BootstrapConfigProps) {
               value={hostname}
               onChange={(e) => setHostname(e.target.value)}
               placeholder="macbook"
-              className="font-mono"
+              className="font-mono text-xs"
               disabled={isBootstrapping}
             />
             <p className="text-muted-foreground text-xs">
