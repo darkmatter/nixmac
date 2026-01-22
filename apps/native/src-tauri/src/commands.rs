@@ -60,7 +60,9 @@ pub async fn config_pick_dir(app: AppHandle) -> Result<Option<String>, String> {
     let dialog = app.dialog();
     let result = dialog
         .file()
-        .set_title("Select Configuration Directory")
+        .set_title(
+            "Select Configuration Directory - TIP: press '⌘'+'⇧'+'.' to show hidden directories",
+        )
         .blocking_pick_folder();
 
     if let Some(path) = result {

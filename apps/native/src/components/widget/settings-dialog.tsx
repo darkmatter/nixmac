@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { BootstrapConfig } from "@/components/widget/bootstrap-config";
+import { DirectoryPicker } from "@/components/widget/directory-picker";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
@@ -80,7 +81,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
   const host = useWidgetStore((state) => state.host);
   const setHosts = useWidgetStore((state) => state.setHosts);
 
-  const { pickDir, saveHost } = useDarwinConfig();
+  const { saveHost } = useDarwinConfig();
 
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus>(
@@ -164,7 +165,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
         onClick={onClose}
         type="button"
       />
-      <div className="relative z-10 flex h-[400px] w-[600px] max-w-[90vw] overflow-hidden rounded-xl border border-border bg-card/95 shadow-2xl backdrop-blur-xl">
+      <div className="relative z-10 flex h-[460px] w-[620px] max-w-[90vw] overflow-hidden rounded-xl border border-border bg-card/95 shadow-2xl backdrop-blur-xl">
         {/* Sidebar */}
         <div className="flex w-[180px] flex-col border-border border-r bg-muted/30 p-3">
           <div className="mb-4 flex items-center gap-2 px-2">
@@ -211,26 +212,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
                 <h2 className="mb-4 font-semibold text-base">General</h2>
                 <div className="space-y-4">
                   {/* Config Directory */}
-                  <div className="space-y-2">
-                    <label className="font-medium text-sm">
-                      Nix Configuration Directory
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="flex-1 truncate rounded-md border border-border bg-muted/50 px-3 py-2 font-mono text-xs"
-                        title={configDir}
-                      >
-                        {configDir || "Not set"}
-                      </div>
-                      <Button onClick={pickDir} size="sm" variant="secondary">
-                        <FolderOpen className="mr-1 h-3 w-3" />
-                        Browse
-                      </Button>
-                    </div>
-                    <p className="text-muted-foreground text-xs">
-                      The directory containing your nix-darwin flake
-                    </p>
-                  </div>
+                  <DirectoryPicker label="Configuration Directory" subLabel="Holds your nix-darwin flake" />
 
                   {/* Host Selection or Bootstrap */}
                   {hasFlake ? (
@@ -265,7 +247,12 @@ export function SettingsDialog(props: SettingsDialogProps) {
                       </p>
                     </div>
                   ) : (
-                    configDir && <BootstrapConfig onSuccess={onClose} />
+                    configDir && (
+                      <BootstrapConfig
+                        label="Configuration"
+                        onSuccess={onClose}
+                      />
+                    )
                   )}
                 </div>
               </div>
