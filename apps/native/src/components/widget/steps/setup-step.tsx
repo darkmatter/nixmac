@@ -1,7 +1,5 @@
 "use client";
 
-import { FolderOpen, Monitor, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -10,15 +8,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BootstrapConfig } from "@/components/widget/bootstrap-config";
+import { DirectoryPicker } from "@/components/widget/directory-picker";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { useWidgetStore } from "@/stores/widget-store";
+import { Monitor, Sparkles } from "lucide-react";
 
 export function SetupStep() {
   const configDir = useWidgetStore((state) => state.configDir);
   const hosts = useWidgetStore((state) => state.hosts);
   const host = useWidgetStore((state) => state.host);
 
-  const { pickDir, saveHost } = useDarwinConfig();
+  const { saveHost } = useDarwinConfig();
 
   const hasConfigDir = Boolean(configDir);
   const hasFlake = hasConfigDir && hosts.length > 0;
@@ -36,33 +36,18 @@ export function SetupStep() {
       </div>
 
       {/* Step 1: Choose Directory */}
-      <div className="w-full max-w-sm space-y-2">
-        <label htmlFor="config-dir" className="font-medium text-foreground text-sm">
-          1. Configuration Directory
-        </label>
-        <div className="flex items-center gap-2">
-          <div
-            id="config-dir"
-            className="flex-1 truncate rounded-lg border border-border bg-muted/50 px-3 py-2 font-mono text-sm"
-          >
-            {configDir || "Not selected"}
-          </div>
-          <Button onClick={pickDir} size="sm" variant="secondary">
-            <FolderOpen className="mr-1 h-4 w-4" />
-            Browse
-          </Button>
-        </div>
+      <div className="w-full max-w-sm">
+        <DirectoryPicker label="1. Configuration Directory" />
       </div>
 
       {/* Step 2: Host Configuration */}
       {hasConfigDir && (
         <div className="w-full max-w-sm space-y-2">
-          <label className="font-medium text-foreground text-sm">
-            2. Configuration
-          </label>
-
           {hasFlake ? (
             <>
+              <label className="font-medium text-foreground text-sm">
+                2. Configuration
+              </label>
               <Select onValueChange={saveHost} value={host || undefined}>
                 <SelectTrigger className="w-full" id="host-select">
                   <SelectValue placeholder="Choose a host configuration" />
@@ -83,7 +68,7 @@ export function SetupStep() {
               </p>
             </>
           ) : (
-            <BootstrapConfig />
+            <BootstrapConfig label="2. Configuration" />
           )}
         </div>
       )}
