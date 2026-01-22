@@ -88,5 +88,7 @@
     "**/Cargo.lock": true,
     "**/node_modules": true,
     "**/devenv.lock": true
-  }
+  },
+  "lldb.server": "/nix/store/xbvgwkdz5q2rnr3d9nrd7rkznyq2n1h5-lldb-21.1.2/bin/lldb",
+  "lldb.evaluationTimeout": 30
 }

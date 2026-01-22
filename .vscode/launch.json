@@ -1,0 +1,15 @@
+{
+    "configurations": [
+        {
+            "name": "Debug nixmac Tauri Rust (LLDB)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/target/debug/nixmac",
+            "cwd": "${workspaceFolder}/apps/native/src-tauri",
+            "env": {
+                "RUST_LOG": "trace"
+            },
+            "sourceLanguages": ["rust"]
+        }
+    ]
+}
