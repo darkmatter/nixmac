@@ -1,6 +1,5 @@
 {
-  # Result of `nix flake init -t nix-darwin/master` command as documented in nix-darwin setup
-  # with some small modifications to make it more turnkey and work with Determinate.
+  # Result of `nix flake init -t nix-darwin/master` command as documented in nix-darwin setup.
   description = "Example nix-darwin system flake";
 
   inputs = {
@@ -16,14 +15,10 @@
       nixpkgs,
     }:
     let
-      # Get hostname from the current system.
-      hostname = builtins.getEnv "HOSTNAME";
-      hostnameOrDefault = if hostname == null || hostname == "" then "macbook" else hostname;
-
       configuration =
         { pkgs, ... }:
         {
-          networking.hostName = hostnameOrDefault;
+          networking.hostName = "Scotts-MacBook-Pro-2";
 
           # List packages installed in system profile. To search by name, run:
           # $ nix-env -qaP | grep wget
@@ -53,12 +48,20 @@
     in
     {
       # Build darwin flake using:
-          # Build darwin flake using:
-          # $ darwin-rebuild build --flake .#$(hostname)
-      darwinConfigurations = {
-        (hostnameOrDefault) = nix-darwin.lib.darwinSystem {
-          modules = [ configuration ];
-        };
+      # $ darwin-rebuild build --flake .#Scotts-MacBook-Pro-2
+      darwinConfigurations."Scotts-MacBook-Pro-2" = nix-darwin.lib.darwinSystem {
+        modules = [
+          configuration
+          ./homebrew.nix
+          ./environment.nix
+          ./packages.nix
+          ./services.nix
+          ./users.nix
+          ./networking.nix
+          ./fonts.nix
+          ./security.nix
+          ./nix-overlays.nix
+        ];
       };
     };
 }
