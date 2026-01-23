@@ -44,6 +44,31 @@ devenv shell
 bun install
 ```
 
+### Install and Use nix-darwin
+
+By default, nixmac expects to find a flake-enabled nix configuration at `~/.darwin`. Here is how you can create a minimalist one if you don't already have such a thing *assuming you are using Determinate* since non-Determinate steps will be slightly different:
+
+1. `cd ~ && mkdir ./darwin`
+1. `git init`.
+   1. Add `result` to `.gitignore`.
+1. Copy a `flake.nix` to `~/.darwin`, you can find a basic one [here](./apps/native/templates/nix-darwin-determinate/flake.nix).
+1. This nix setup is going to take over management of your shell files in `/etc` and you need to back them up first or else the following command will fail:
+   1. `sudo cp /etc/bashrc /etc/bashrc.before-nix-darwin`
+   1. `sudo cp /etc/zshrc /etc/zshrc.before-nix-darwin`
+   1. `sudo cp /etc/zshenv /etc/zshenv.before-nix-darwin`
+1. `sudo -i nix run nix-darwin/master#darwin-rebuild -- switch --flake /Users/smcmaster/.darwin#$HOSTNAME`
+1. Verify it "worked":
+   1. `ls -l /nix/var/nix/profiles/system` should point to system link.
+   1. `sudo -i nix run nix-darwin/master#darwin-rebuild --version` should return something, namely "Determinate Nix" if you're using Determinate.
+1. **NOTE**: Determinate does not install `darwin-rebuild` globally to the Mac system path. So to do the usual workflow to update your system after making flake changes, execute it with:
+   1. `sudo -i nix run nix-darwin/master#darwin-rebuild`
+
+### Run apps
+
+```sh
+export SOPS_AGE_KEY={your_sops_key} devenv up
+```
+
 ## Database Setup
 
 This project uses PostgreSQL with Drizzle ORM.
