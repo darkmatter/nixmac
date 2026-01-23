@@ -19,6 +19,7 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     pkgs.git
     pkgs.libiconv
     pkgs.starship
+    pkgs.nixfmt
   ]
   ++ lib.optionals (pkgs.stdenv.isDarwin) [
     pkgs.apple-sdk_15
