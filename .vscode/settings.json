@@ -88,5 +88,14 @@
     "**/Cargo.lock": true,
     "**/node_modules": true,
     "**/devenv.lock": true
+  },
+  "github.copilot.chat.search.excludes": {
+    "**/target/**": true,
+    "**/node_modules/**": true,
+    "**/.next/**": true,
+    "**/.turbo/**": true,
+    "**/dist/**": true,
+    "**/.devenv/**": true,
+    "**/Cargo.lock": true
   }
 }
