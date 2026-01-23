@@ -1,19 +1,26 @@
+import { HoverAccordion } from "@/components/hover-accordion";
+import { IconBadge } from "@/components/icon-badge";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { configAsCodeExample } from "@/lib/config/configAsCodeExample";
+import { faqConfig } from "@/lib/config/faq";
 import {
   ArrowRight,
   ChevronRight,
   Code2,
   Download,
   GitBranch,
+  Lightbulb,
+  MessageCircleQuestion,
   Monitor,
   Package,
   Shield,
   Sparkles,
+  Star,
   Terminal,
   Zap,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 
 export function LandingPage() {
   return (
@@ -26,13 +33,9 @@ export function LandingPage() {
 
         <div className="container relative mx-auto px-6 pt-20 pb-12 md:pt-32 md:pb-20">
           <div className="mx-auto max-w-4xl text-center">
-            <Badge
-              className="mb-6 border border-zinc-700 bg-zinc-800/50 text-zinc-300"
-              variant="secondary"
-            >
-              <Sparkles className="mr-1 size-3" />
+            <IconBadge icon={Sparkles}>
               Declarative macOS Management :)
-            </Badge>
+            </IconBadge>
             <h1 className="mb-6 text-balance font-bold text-4xl tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
               Your Mac, defined in{" "}
               <span className="bg-gradient-to-r from-zinc-100 to-zinc-400 bg-clip-text text-transparent">
@@ -53,12 +56,19 @@ export function LandingPage() {
                 Download for Mac
               </Button>
               <Button
+                asChild
                 className="h-12 gap-2 border-zinc-700 bg-transparent px-8 text-zinc-100 hover:bg-zinc-800"
                 size="lg"
                 variant="outline"
               >
-                View on GitHub
-                <ArrowRight className="size-4" />
+                <a
+                  href="https://github.com/darkmatter/nixmac"
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  View on GitHub
+                  <ArrowRight className="size-4" />
+                </a>
               </Button>
             </div>
             <p className="mt-4 text-sm text-zinc-500">
@@ -98,12 +108,7 @@ export function LandingPage() {
       <section className="container mx-auto px-6 py-24" id="features">
         <div className="mx-auto max-w-6xl">
           <div className="mb-16 text-center">
-            <Badge
-              className="mb-4 border border-zinc-700 bg-zinc-800/50 text-zinc-300"
-              variant="secondary"
-            >
-              Features
-            </Badge>
+            <IconBadge icon={Star}>Features</IconBadge>
             <h2 className="mb-4 text-balance font-bold text-3xl md:text-4xl">
               Everything you need to manage your Mac
             </h2>
@@ -208,12 +213,7 @@ export function LandingPage() {
         <div className="container mx-auto px-6">
           <div className="mx-auto max-w-4xl">
             <div className="mb-16 text-center">
-              <Badge
-                className="mb-4 border border-zinc-700 bg-zinc-800/50 text-zinc-300"
-                variant="secondary"
-              >
-                How It Works
-              </Badge>
+              <IconBadge icon={Lightbulb}>How It Works</IconBadge>
               <h2 className="mb-4 text-balance font-bold text-3xl md:text-4xl">
                 Simple, yet powerful
               </h2>
@@ -297,16 +297,10 @@ export function LandingPage() {
       </section>
 
       {/* Code Example */}
-      <section className="container mx-auto px-6 py-24">
+      <section className="container mx-auto px-6 py-24" id="config-as-code">
         <div className="mx-auto max-w-4xl">
           <div className="mb-12 text-center">
-            <Badge
-              className="mb-4 border border-zinc-700 bg-zinc-800/50 text-zinc-300"
-              variant="secondary"
-            >
-              <Code2 className="mr-1 size-3" />
-              Configuration as Code
-            </Badge>
+            <IconBadge icon={Code2}>Configuration as Code</IconBadge>
             <h2 className="mb-4 text-balance font-bold text-3xl md:text-4xl">
               Your entire Mac in a single file
             </h2>
@@ -324,75 +318,86 @@ export function LandingPage() {
               <span className="ml-2 text-sm text-zinc-500">flake.nix</span>
             </div>
             <pre className="overflow-x-auto p-6 text-sm leading-relaxed">
-              <code className="text-zinc-300">
-                {`{
-  description = "My Mac configuration";
-
-  inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
-    darwin.url = "github:lnl7/nix-darwin";
-  };
-
-  outputs = { self, nixpkgs, darwin }: {
-    darwinConfigurations."macbook" = darwin.lib.darwinSystem {
-      system = "aarch64-darwin";
-      modules = [{
-        environment.systemPackages = with nixpkgs; [
-          vim git ripgrep fzf
-        ];
-
-        homebrew = {
-          enable = true;
-          casks = [ "rectangle" "raycast" "arc" ];
-        };
-
-        system.defaults.dock.autohide = true;
-      }];
-    };
-  };
-}`}
-              </code>
+              <code className="text-zinc-300">{configAsCodeExample}</code>
             </pre>
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="container mx-auto px-6 py-24" id="download">
-        <div className="mx-auto max-w-3xl">
-          <div className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50 p-8 text-center md:p-12">
-            <div className="absolute inset-0 bg-gradient-to-br from-zinc-800/20 to-transparent" />
-            <div className="relative">
-              <div className="mx-auto mb-6 flex size-16 items-center justify-center rounded-2xl bg-zinc-800">
-                <Monitor className="size-8 text-zinc-300" />
-              </div>
+      {/* FAQ Section */}
+      <section
+        className="border-zinc-800/50 border-y bg-zinc-900/20 py-24"
+        id="faq"
+      >
+        <div className="container mx-auto px-6">
+          <div className="mx-auto max-w-3xl">
+            <div className="mb-12 text-center">
+              <IconBadge icon={MessageCircleQuestion} trailingIcon>FAQ</IconBadge>
               <h2 className="mb-4 text-balance font-bold text-3xl md:text-4xl">
-                Ready to evolve your Mac?
+                Frequently Asked Questions
               </h2>
-              <p className="mx-auto mb-8 max-w-lg text-zinc-400">
-                Join developers who have embraced declarative system management.
-                Download nixmac and take control of your configuration.
+              <p className="text-zinc-400">
+                Everything you need to know about nixmac
               </p>
-              <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-                <Button
-                  className="h-12 gap-2 bg-zinc-100 px-8 text-zinc-950 hover:bg-zinc-200"
-                  size="lg"
-                >
-                  <Download className="size-5" />
-                  Download for Mac
-                </Button>
-                <Button
-                  className="h-12 gap-2 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-                  size="lg"
-                  variant="ghost"
-                >
-                  Read the docs
-                  <ChevronRight className="size-4" />
-                </Button>
+            </div>
+
+            <HoverAccordion
+              items={faqConfig.map((faq) => ({
+                value: faq.question,
+                trigger: faq.question,
+                content: faq.answer,
+              }))}
+              className="space-y-4"
+              itemClassName="rounded-lg border border-zinc-800 bg-zinc-900/50 px-6 transition-colors data-[state=open]:bg-zinc-900"
+              triggerClassName="text-left text-zinc-100 hover:no-underline"
+              contentClassName="text-zinc-400"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section
+        className="border-zinc-800/50 border-y bg-zinc-950 py-24"
+        id="download"
+      >
+        <div className="container mx-auto px-6">
+          <div className="mx-auto max-w-3xl">
+            <div className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/50 p-8 text-center md:p-12">
+              <div className="absolute inset-0 bg-gradient-to-br from-zinc-800/20 to-transparent" />
+              <div className="relative">
+                <div className="mx-auto mb-6 flex size-16 items-center justify-center rounded-2xl bg-zinc-800">
+                  <Monitor className="size-8 text-zinc-300" />
+                </div>
+                <h2 className="mb-4 text-balance font-bold text-3xl md:text-4xl">
+                  Ready to evolve your Mac?
+                </h2>
+                <p className="mx-auto mb-8 max-w-lg text-zinc-400">
+                  Join developers who have embraced declarative system
+                  management. Download nixmac and take control of your
+                  configuration.
+                </p>
+                <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+                  <Button
+                    className="h-12 gap-2 bg-zinc-100 px-8 text-zinc-950 hover:bg-zinc-200"
+                    size="lg"
+                  >
+                    <Download className="size-5" />
+                    Download for Mac
+                  </Button>
+                  <Button
+                    className="h-12 gap-2 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+                    size="lg"
+                    variant="ghost"
+                  >
+                    Read the docs
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </div>
+                <p className="mt-6 text-sm text-zinc-500">
+                  Free and open source. macOS 12+ required.
+                </p>
               </div>
-              <p className="mt-6 text-sm text-zinc-500">
-                Free and open source. macOS 12+ required.
-              </p>
             </div>
           </div>
         </div>
@@ -411,23 +416,26 @@ export function LandingPage() {
             <div className="flex items-center gap-6 text-sm text-zinc-500">
               <a
                 className="transition-colors hover:text-zinc-300"
-                href="https://github.com"
+                href="https://github.com/darkmatter/nixmac"
                 rel="noopener noreferrer"
                 target="_blank"
               >
                 GitHub
               </a>
-              <a className="transition-colors hover:text-zinc-300" href="/docs">
+              <a
+                className="transition-colors hover:text-zinc-300"
+                href="/docs"
+              >
                 Documentation
               </a>
-              <a
+              {/* <a
                 className="transition-colors hover:text-zinc-300"
                 href="https://twitter.com"
                 rel="noopener noreferrer"
                 target="_blank"
               >
                 Twitter
-              </a>
+              </a> */}
             </div>
             <p className="text-sm text-zinc-500">Built with Nix and love</p>
           </div>

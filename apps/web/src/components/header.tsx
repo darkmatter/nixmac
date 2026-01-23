@@ -34,13 +34,13 @@ export default function Header() {
           >
             Features
           </Link>
-          <Link
+          {/* <Link
             className="text-muted-foreground text-sm transition-colors hover:text-foreground"
             hash="flake-party"
             to="/"
           >
             Flake Party
-          </Link>
+          </Link> */}
           <Link
             className="text-muted-foreground text-sm transition-colors hover:text-foreground"
             hash="how-it-works"
@@ -48,8 +48,15 @@ export default function Header() {
           >
             How it Works
           </Link>
-          <ModeToggle />
-          <UserMenu />
+            <Link
+            className="text-muted-foreground text-sm transition-colors hover:text-foreground"
+            hash="config-as-code"
+            to="/"
+          >
+            Config as Code
+          </Link>
+          {/* <ModeToggle /> */}
+          {/* <UserMenu /> */}
           <Button asChild size="sm">
             <a href="/download">
               <Download className="mr-2 size-4" />
