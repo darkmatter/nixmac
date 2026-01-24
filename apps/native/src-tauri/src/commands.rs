@@ -15,8 +15,7 @@ use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
 
 // Add these constants after your imports, before the functions
-const DEFAULT_FLAKE_DOT_NIX: &str = include_str!("../../templates/kranzes/flake.nix");
-const DEFAULT_CONFIGURATION_NIX: &str = include_str!("../../templates/kranzes/configuration.nix");
+const DEFAULT_FLAKE_DOT_NIX: &str = include_str!("../../templates/default/flake.nix");
 
 // =============================================================================
 // Configuration Commands
@@ -82,7 +81,6 @@ pub async fn flake_exists(app: AppHandle) -> Result<bool, String> {
     Ok(Path::new(&dir).join("flake.nix").exists())
 }
 
-/// Creates a flake.nix and configuration.nix
 #[tauri::command]
 pub async fn bootstrap_default_config(app: AppHandle, hostname: String) -> Result<(), String> {
     let dir = store::get_config_dir(&app).map_err(|e| e.to_string())?;
@@ -92,23 +90,34 @@ pub async fn bootstrap_default_config(app: AppHandle, hostname: String) -> Resul
         return Err("Directory already contains flake.nix".to_string());
     }
 
-    // use entered hostname
+    // Create flake from /defaults/flake.nix
     let flake_content = DEFAULT_FLAKE_DOT_NIX.replace("macbook", &hostname);
     fs::write(path.join("flake.nix"), flake_content)
         .map_err(|e| format!("Failed to write flake.nix: {}", e))?;
 
-    fs::write(path.join("configuration.nix"), DEFAULT_CONFIGURATION_NIX)
-        .map_err(|e| format!("Failed to write configuration.nix: {}", e))?;
-
     git::init_if_needed(&dir).map_err(|e| e.to_string())?;
 
-    // Stage the new files
-    std::process::Command::new("git")
-        .args(["add", "flake.nix", "configuration.nix"])
+    git::stage_all(&dir).map_err(|e| e.to_string())?;
+
+    let flake_lock_result = Command::new("nix")
+        .args(["flake", "lock"])
         .current_dir(&dir)
         .env("PATH", crate::nix::get_nix_path())
         .output()
-        .map_err(|e| format!("Failed to stage files: {}", e))?;
+        .map_err(|e| format!("Failed to generate flake.lock: {}", e))?;
+
+    if !flake_lock_result.status.success() {
+        return Err(format!(
+            "Failed to generate flake.lock: {}",
+            String::from_utf8_lossy(&flake_lock_result.stderr)
+        ));
+    }
+
+    // Stage the newly created flake.lock
+    git::stage_all(&dir).map_err(|e| e.to_string())?;
+
+    // Commit all
+    git::commit_all(&dir, "Initial nix-darwin configuration").map_err(|e| e.to_string())?;
 
     Ok(())
 }
