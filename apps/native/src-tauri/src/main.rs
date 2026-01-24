@@ -159,12 +159,12 @@ fn main() {
                     .max_inner_size(max_width, max_height)
                     .resizable(true)
                     .maximizable(false)
-                    .minimizable(false)
+                    .minimizable(true)
                     .closable(true)
                     .decorations(true)
                     .transparent(true)
                     .visible(true)
-                    .always_on_top(true)
+                    .always_on_top(false)
                     .visible_on_all_workspaces(true)
                     .hidden_title(true)
                     .title_bar_style(tauri::TitleBarStyle::Overlay)
@@ -190,22 +190,29 @@ fn main() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {
-            // Handle window close events - hide instead of destroy for main window
+            // Handle window close events - hide window but keep app running
             if let RunEvent::WindowEvent {
                 label,
                 event: WindowEvent::CloseRequested { api, .. },
                 ..
-            } = event
+            } = &event
             {
                 if label == "main" {
                     // Prevent the window from being destroyed
                     api.prevent_close();
-                    // Hide it instead
                     if let Some(window) = app_handle.get_webview_window("main") {
                         let _ = window.hide();
                         // Update peek state
                         peek::unlock_and_hide();
                     }
+                }
+            }
+
+            // Click Nixmac icon to show
+            if let RunEvent::Reopen { .. } = &event {
+                if let Some(window) = app_handle.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
                 }
             }
         });

@@ -1,5 +1,5 @@
-import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Settings } from "lucide-react";
 import { APP_NAME } from "../../../shared/constants";
 
 export function Header(props: { onOpenSettings: () => void }) {
@@ -9,6 +9,8 @@ export function Header(props: { onOpenSettings: () => void }) {
       className="relative flex flex-shrink-0 cursor-move select-none items-center justify-center border-border border-b bg-card/50 px-3 pt-3 pb-3"
       data-tauri-drag-region
     >
+      <div className="absolute top-2 left-0 h-4 w-16 z-[9999] cursor-default" />
+
       <h3
         className="font-medium text-muted-foreground text-xs"
         data-tauri-drag-region
