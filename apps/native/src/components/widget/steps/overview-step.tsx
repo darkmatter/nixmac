@@ -16,35 +16,30 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import type {
-  EvolveEvent,
-  GitStatus,
-  SummaryState,
-} from "@/stores/widget-store";
+import { useWidgetStore } from "@/stores/widget-store";
+import { useEvolve } from "@/hooks/use-evolve";
 import { ChatInput } from "../chat-input";
 import { categorizeChanges } from "../utils";
 
-interface OverviewStepProps {
-  evolvePrompt: string;
-  setEvolvePrompt: (s: string) => void;
-  isProcessing: boolean;
-  isGenerating: boolean;
-  evolveEvents: EvolveEvent[];
-  handleEvolve: () => void;
-  gitStatus: GitStatus | null;
-  summary: SummaryState;
-}
+/**
+ * Overview step - shows prompt input or displays existing changes.
+ * Accesses state directly from the store instead of receiving props.
+ */
+export function OverviewStep() {
+  const evolvePrompt = useWidgetStore((s) => s.evolvePrompt);
+  const setEvolvePrompt = useWidgetStore((s) => s.setEvolvePrompt);
+  const isProcessing = useWidgetStore((s) => s.isProcessing);
+  const processingAction = useWidgetStore((s) => s.processingAction);
+  const isGenerating = useWidgetStore((s) => s.isGenerating);
+  const evolveEvents = useWidgetStore((s) => s.evolveEvents);
+  const gitStatus = useWidgetStore((s) => s.gitStatus);
+  const summary = useWidgetStore((s) => s.summary);
+  const { handleEvolve } = useEvolve();
 
-export function OverviewStep({
-  evolvePrompt,
-  setEvolvePrompt,
-  isProcessing,
-  isGenerating,
-  evolveEvents,
-  handleEvolve,
-  gitStatus,
-  summary,
-}: OverviewStepProps) {
+  // Check if currently processing evolve action
+  const isProcessingEvolve = isProcessing && processingAction === "evolve";
+
+  // Local UI state
   const [viewMode, setViewMode] = useState<"summary" | "diff">("summary");
   const changedFiles = gitStatus?.files || [];
   const categories = categorizeChanges(changedFiles);
@@ -216,7 +211,7 @@ export function OverviewStep({
 
       <div className="space-y-3">
         <ChatInput
-          isLoading={isProcessing}
+          isLoading={isProcessingEvolve}
           onChange={setEvolvePrompt}
           onSubmit={handleEvolve}
           value={evolvePrompt}

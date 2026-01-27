@@ -100,18 +100,7 @@ export function WidgetUI({
           {step === "setup" && <SetupStep />}
 
           {/* Step: Overview */}
-          {step === "overview" && (
-            <OverviewStep
-              evolveEvents={evolveEvents}
-              evolvePrompt={evolvePrompt}
-              gitStatus={gitStatus}
-              handleEvolve={onEvolve}
-              isGenerating={isGenerating}
-              isProcessing={isProcessing && processingAction === "evolve"}
-              setEvolvePrompt={onEvolvePromptChange}
-              summary={summary}
-            />
-          )}
+          {step === "overview" && <OverviewStep />}
 
           {/* Step: Evolving (shows summary) */}
           {step === "evolving" && !isPreviewActive && (
