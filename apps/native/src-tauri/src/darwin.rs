@@ -54,6 +54,15 @@ pub async fn start_evolve(
 }
 
 /// Runs `darwin-rebuild switch` with streaming output.
+/// It does this in two steps:
+/// 1. `darwin-rebuild build` as the user (no sudo)
+/// 2. `darwin-rebuild activate` as root via `osascript` to prompt for admin password
+///
+/// This pattern avoids Git ownership issues by keeping all file operations
+/// under the user's permissions during the build phase while still making system
+/// changes as sudo which is a nix-darwin requirement.
+/// This approach is discussed https://github.com/nix-darwin/nix-darwin/issues/1471#issuecomment-3104988438
+/// and in many other nix-darwin issues because it seems to be a common pain point.
 ///
 /// This spawns the rebuild in a background thread and emits events:
 /// - `darwin:apply:data`: Emitted for each line of output with `{"chunk": "..."}`
@@ -155,24 +164,44 @@ fn run_darwin_rebuild(
     info!("[darwin] Starting darwin-rebuild...");
     log_and_emit!("Starting darwin-rebuild switch...");
 
-    // Run darwin-rebuild with sudo
-    let mut child = Command::new("sudo")
+    // Step 1: build as user (no sudo, avoids Git ownership issues)
+    let build_status = Command::new("darwin-rebuild")
         .args([
-            "darwin-rebuild",
-            "switch",
+            "build",
             "--flake",
             &format!(".#{}", host_attr),
             "--show-trace",
             "--verbose",
         ])
         .env("PATH", crate::nix::get_nix_path())
+        .current_dir(config_dir)
+        .status()
+        .map_err(|e| anyhow::anyhow!("Failed to run darwin-rebuild build: {}", e))?;
+
+    if !build_status.success() {
+        anyhow::bail!(
+            "darwin-rebuild build failed with exit code {:?}",
+            build_status.code()
+        );
+    }
+    log_and_emit!("darwin-rebuild build (user) completed successfully.");
+
+    // Step 2: activate as root using osascript for GUI password prompt
+    let activate_path = format!("{}/result/activate", config_dir);
+    let applescript = format!(
+        "do shell script \"sudo '{}'\" with administrator privileges",
+        activate_path.replace('\'', "'\\''")
+    );
+
+    let mut child = Command::new("osascript")
+        .args(["-e", &applescript])
+        .env("PATH", crate::nix::get_nix_path())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .current_dir(config_dir)
         .spawn()
-        .map_err(|e| anyhow::anyhow!("Failed to start darwin-rebuild: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to run activate via osascript: {}", e))?;
 
-    info!("[darwin] darwin-rebuild process spawned, streaming output...");
+    info!("[darwin] darwin-rebuild activate process spawned, streaming output...");
 
     // Read stdout and stderr concurrently using threads
     // This is critical because nix/darwin-rebuild writes progress to stderr,
