@@ -5,41 +5,23 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import {
-  analyzeGitStatus,
-  type GitStatus,
-  type ProcessingAction,
-  type SummaryState,
-} from "@/stores/widget-store";
+import { analyzeGitStatus, useWidgetStore } from "@/stores/widget-store";
+import { useCommit } from "@/hooks/use-commit";
+import { useEvolve } from "@/hooks/use-evolve";
 import { Diff } from "../diff";
 
-interface CommitStepProps {
-  gitStatus: GitStatus | null;
-  commitMsg: string;
-  setCommitMsg: (s: string) => void;
-  isProcessing: boolean;
-  processingAction: ProcessingAction;
-  handleCommit: () => void;
-  handleCancel: () => void;
-  handleEvolve: () => void;
-  setEvolvePrompt: (s: string) => void;
-  evolvePrompt: string;
-  summary: SummaryState;
-}
+export function CommitStep() {
+  const gitStatus = useWidgetStore((s) => s.gitStatus);
+  const commitMsg = useWidgetStore((s) => s.commitMsg);
+  const setCommitMsg = useWidgetStore((s) => s.setCommitMsg);
+  const isProcessing = useWidgetStore((s) => s.isProcessing);
+  const processingAction = useWidgetStore((s) => s.processingAction);
+  const evolvePrompt = useWidgetStore((s) => s.evolvePrompt);
+  const setEvolvePrompt = useWidgetStore((s) => s.setEvolvePrompt);
+  const summary = useWidgetStore((s) => s.summary);
 
-export function CommitStep({
-  gitStatus,
-  commitMsg,
-  setCommitMsg,
-  isProcessing,
-  processingAction,
-  handleCommit,
-  handleCancel,
-  handleEvolve,
-  setEvolvePrompt,
-  evolvePrompt,
-  summary,
-}: CommitStepProps) {
+  const { handleCommit, handleCancel } = useCommit();
+  const { handleEvolve } = useEvolve();
   const { stagedFiles, allChangesStaged } = analyzeGitStatus(gitStatus);
   const [selectedAction, setSelectedAction] = useState<
     "commit" | "update" | "rollback" | null

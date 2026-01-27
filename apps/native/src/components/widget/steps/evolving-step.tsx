@@ -107,7 +107,6 @@ function getDirectory(path: string): string {
  * Accesses state directly from the store instead of receiving props.
  */
 export function EvolvingStep() {
-  // Get state directly from store
   const gitStatus = useWidgetStore((s) => s.gitStatus);
   const evolvePrompt = useWidgetStore((s) => s.evolvePrompt);
   const setEvolvePrompt = useWidgetStore((s) => s.setEvolvePrompt);
@@ -117,15 +116,12 @@ export function EvolvingStep() {
   const evolveEvents = useWidgetStore((s) => s.evolveEvents);
   const summary = useWidgetStore((s) => s.summary);
 
-  // Get operations from hooks
   const { handleEvolve } = useEvolve();
   const { handleApply } = useApply();
 
-  // Derived state
   const changedFiles = gitStatus?.files || [];
   const { hasUnstagedChanges } = analyzeGitStatus(gitStatus);
 
-  // Local UI state
   const [showDiff, setShowDiff] = useState(false);
 
   const diffContent = summary.diff || "";
