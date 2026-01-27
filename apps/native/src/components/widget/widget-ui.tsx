@@ -108,19 +108,7 @@ export function WidgetUI({
 
           {/* Step: Commit (action selection) */}
           {(step === "commit" || (step === "evolving" && isPreviewActive)) && (
-            <CommitStep
-              commitMsg={commitMsg}
-              evolvePrompt={evolvePrompt}
-              gitStatus={gitStatus}
-              handleCancel={onCancel}
-              handleCommit={onCommit}
-              handleEvolve={onEvolve}
-              isProcessing={isProcessing}
-              processingAction={processingAction}
-              setCommitMsg={onCommitMsgChange}
-              setEvolvePrompt={onEvolvePromptChange}
-              summary={summary}
-            />
+            <CommitStep />
           )}
         </div>
 

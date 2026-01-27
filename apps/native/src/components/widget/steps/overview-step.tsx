@@ -36,7 +36,6 @@ export function OverviewStep() {
   const summary = useWidgetStore((s) => s.summary);
   const { handleEvolve } = useEvolve();
 
-  // Check if currently processing evolve action
   const isProcessingEvolve = isProcessing && processingAction === "evolve";
 
   // Local UI state
