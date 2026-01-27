@@ -14,12 +14,7 @@ export type { EvolveEvent, EvolveEventType } from "@/tauri-api";
 export type AppState = "onboarding" | "idle" | "generating" | "preview";
 
 export type PeekState = "hidden" | "peeking" | "expanded";
-export type WidgetStep =
-  | "setup"
-  | "overview"
-  | "evolving"
-  | "rebuilding"
-  | "commit";
+export type WidgetStep = "setup" | "overview" | "evolving" | "rebuilding" | "commit";
 export type ProcessingAction = "evolve" | "apply" | "commit" | "cancel" | null;
 
 export interface GitFileStatus {
@@ -31,6 +26,9 @@ export interface GitFileStatus {
 export interface GitStatus {
   hasChanges?: boolean;
   files?: GitFileStatus[];
+  modified?: string[];
+  staged?: string[];
+  deleted?: string[];
 }
 
 /**
@@ -47,12 +45,8 @@ export function analyzeGitStatus(gitStatus: GitStatus | null): {
   stagedFiles: GitFileStatus[];
 } {
   const files = gitStatus?.files || [];
-  const unstagedFiles = files.filter(
-    (f) => f.working_tree && f.working_tree !== " "
-  );
-  const stagedFiles = files.filter(
-    (f) => f.index && f.index !== " " && f.index !== "?"
-  );
+  const unstagedFiles = files.filter((f) => f.working_tree && f.working_tree !== " ");
+  const stagedFiles = files.filter((f) => f.index && f.index !== " " && f.index !== "?");
 
   return {
     hasUnstagedChanges: unstagedFiles.length > 0,
@@ -282,7 +276,7 @@ export function computeAppState(state: WidgetState): AppState {
 export function appStateToStep(
   state: AppState,
   showCommitScreen: boolean,
-  isRebuilding?: boolean
+  isRebuilding?: boolean,
 ): WidgetStep {
   // Rebuilding takes priority over other states
   if (isRebuilding) {
@@ -353,8 +347,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
       }),
 
     // Console
-    appendLog: (text) =>
-      set((state) => ({ consoleLogs: state.consoleLogs + text })),
+    appendLog: (text) => set((state) => ({ consoleLogs: state.consoleLogs + text })),
     clearLogs: () => set({ consoleLogs: "" }),
 
     // Evolve events
@@ -403,11 +396,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     // Computed - app state is computed entirely client-side
     getAppState: () => computeAppState(get()),
     getStep: () =>
-      appStateToStep(
-        computeAppState(get()),
-        get().showCommitScreen,
-        get().rebuild.isRunning
-      ),
+      appStateToStep(computeAppState(get()), get().showCommitScreen, get().rebuild.isRunning),
 
     // Reset
     reset: () => set(initialWidgetState),
