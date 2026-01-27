@@ -5,8 +5,6 @@ import {
   CONFIG_CHANGED_CHANNEL,
   type ConfigChangedEvent,
   darwinAPI,
-  EVOLVE_EVENT_CHANNEL,
-  type EvolveEvent,
   ipcRenderer,
 } from "@/tauri-api";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -17,20 +15,8 @@ import { Console } from "./console";
 import { SettingsDialog } from "./settings-dialog";
 import { ErrorMessage } from "./error-message";
 import { getStepperStep } from "./utils";
+import { useGitOperations } from "@/hooks/use-git-operations";
 import { cn } from "@/lib/utils";
-
-// =============================================================================
-// Types
-// =============================================================================
-
-interface Config {
-  configDir: string;
-  hostAttr?: string;
-}
-
-// =============================================================================
-// Connected Widget Component
-// =============================================================================
 
 /**
  * Main widget component that connects to Tauri backend.
@@ -47,212 +33,16 @@ export function DarwinWidget() {
   storeRef.current = store;
   const intervalRef = useRef<number | null>(null);
   const [_updatedAt, setUpdatedAt] = useState(Date.now());
-
-  // Preferences state (kept for API loading, but SettingsDialog manages its own copy)
-  const [prefFloatingFooter, setPrefFloatingFooter] = useState(false);
-  const [prefWindowShadow, setPrefWindowShadow] = useState(false);
-  const [openaiApiKey, setOpenaiApiKey] = useState("");
-
-  // Compute app state from current store state
   const appState = computeAppState(store);
   const step = appStateToStep(appState, store.showCommitScreen);
-
-  // =============================================================================
-  // API Handlers
-  // =============================================================================
-
-  const refreshGitStatus = useCallback(async () => {
-    try {
-      const status = await darwinAPI.git.status();
-      storeRef.current.setGitStatus(status);
-      return status;
-    } catch {
-      return null;
-    }
-  }, []);
-  const gitStash = useCallback(async () => {
-    try {
-      await darwinAPI.git.stash("stashed changes from nixmac");
-      const status = await refreshGitStatus();
-      return status;
-    } catch {
-      return null;
-    }
-  }, [refreshGitStatus]);
-
-  const handleEvolve = useCallback(async () => {
-    const s = storeRef.current;
-    if (!s.evolvePrompt.trim()) {
-      return;
-    }
-
-    s.setProcessing(true, "evolve");
-    s.setGenerating(true);
-    s.setError(null);
-    s.clearEvolveEvents(); // Clear previous events
-    s.clearLogs();
-    s.appendLog(`\n> Evolving: "${s.evolvePrompt}"\n`);
-
-    // Set up evolve event listener
-    const unlistenEvolve = await ipcRenderer.on<EvolveEvent>(EVOLVE_EVENT_CHANNEL, (event) => {
-      if (event.payload) {
-        storeRef.current.appendEvolveEvent(event.payload);
-        // Also append raw log to console for debugging
-        if (event.payload.raw) {
-          storeRef.current.appendLog(`${event.payload.raw}\n`);
-        }
-      }
-    });
-
-    try {
-      await darwinAPI.darwin.evolve(s.evolvePrompt);
-      s.appendLog("✓ Evolution complete\n");
-      await refreshGitStatus();
-    } catch (e: unknown) {
-      const msg = (e as Error)?.message || String(e);
-      s.setError(msg);
-      s.appendLog(`✗ Error: ${msg}\n`);
-    } finally {
-      s.setProcessing(false);
-      s.setGenerating(false);
-      unlistenEvolve(); // Clean up listener
-    }
-  }, [refreshGitStatus]);
-
-  // Ref to track line IDs for rebuild
-  const rebuildLineIdRef = useRef(1);
-
-  const handleApply = useCallback(async () => {
-    const s = storeRef.current;
-    s.setProcessing(true, "apply");
-    s.startRebuild();
-    rebuildLineIdRef.current = 1;
-
-    // Listen to AI-summarized log events
-    const unlistenSummary = await ipcRenderer.on<{
-      text: string;
-      complete?: boolean;
-      success?: boolean;
-      error?: boolean;
-      error_type?: "infinite_recursion" | "evaluation_error" | "build_error" | "generic_error";
-    }>("darwin:apply:summary", (event) => {
-      const { text, complete, success, error, error_type } = event.payload;
-      const currentStore = storeRef.current;
-
-      if (complete) {
-        currentStore.appendRebuildLine({
-          id: rebuildLineIdRef.current++,
-          text,
-          type: success ? "info" : "stderr",
-        });
-        currentStore.setRebuildComplete(success ?? false);
-      } else if (error) {
-        currentStore.setRebuildError(error_type ?? "generic_error", text);
-        currentStore.appendRebuildLine({
-          id: rebuildLineIdRef.current++,
-          text,
-          type: "stderr",
-        });
-      } else {
-        currentStore.appendRebuildLine({
-          id: rebuildLineIdRef.current++,
-          text,
-          type: "info",
-        });
-      }
-    });
-
-    // Listen for rebuild end event
-    const unlistenEnd = await ipcRenderer.on<{ ok: boolean; code: number }>(
-      "darwin:apply:end",
-      async (event) => {
-        const currentStore = storeRef.current;
-        currentStore.setProcessing(false);
-        currentStore.setRebuildComplete(event.payload.ok, event.payload.code);
-        unlistenSummary();
-        unlistenEnd();
-
-        // If successful, stage all changes and auto-dismiss overlay
-        if (event.payload.ok) {
-          try {
-            await darwinAPI.git.stageAll();
-          } catch (e) {
-            console.error("Failed to stage changes:", e);
-          }
-          // Auto-dismiss overlay after success (short delay for user feedback)
-          setTimeout(() => {
-            storeRef.current.clearRebuild();
-          }, 1500);
-        }
-        // On failure, keep the overlay visible so user can see error and rollback
-
-        await refreshGitStatus();
-      },
-    );
-
-    try {
-      await darwinAPI.darwin.applyStreamStart();
-    } catch (e: unknown) {
-      const msg = (e as Error)?.message || String(e);
-      s.setRebuildError("generic_error", msg);
-      s.setRebuildComplete(false);
-      s.setProcessing(false);
-      unlistenSummary();
-      unlistenEnd();
-    }
-  }, [refreshGitStatus]);
-
-  const handleCommit = useCallback(async () => {
-    const s = storeRef.current;
-    if (!s.commitMsg.trim()) {
-      return;
-    }
-
-    s.setProcessing(true, "commit");
-    s.appendLog(`\n> Committing: "${s.commitMsg}"\n`);
-
-    try {
-      await darwinAPI.git.commit(s.commitMsg);
-      s.appendLog("✓ Committed successfully\n");
-      s.setCommitMsg("");
-      s.setEvolvePrompt("");
-      s.clearPreview(); // Clear preview state (client-side)
-      await refreshGitStatus();
-    } catch (e: unknown) {
-      const msg = (e as Error)?.message || String(e);
-      s.setError(msg);
-      s.appendLog(`✗ Error: ${msg}\n`);
-    } finally {
-      s.setProcessing(false);
-    }
-  }, [refreshGitStatus]);
-
-  const handleCancel = useCallback(async () => {
-    const s = storeRef.current;
-    s.setProcessing(true, "cancel");
-    s.appendLog("\n> Stashing changes...\n");
-
-    try {
-      await gitStash();
-      s.appendLog("✓ Changes stashed\n");
-      s.setEvolvePrompt("");
-      s.clearPreview(); // Clear preview state (client-side)
-      await refreshGitStatus();
-    } catch (e: unknown) {
-      const msg = (e as Error)?.message || String(e);
-      s.setError(msg);
-      s.appendLog(`✗ Error: ${msg}\n`);
-    } finally {
-      s.setProcessing(false);
-    }
-  }, [refreshGitStatus, gitStash]);
+  const { refreshGitStatus } = useGitOperations();
 
   // =============================================================================
   // Initialization Helpers
   // =============================================================================
 
   const loadConfig = useCallback(async () => {
-    const cfg = (await darwinAPI.config.get()) as Config | null;
+    const cfg = (await darwinAPI.config.get()) as { configDir: string; hostAttr?: string } | null;
     if (cfg?.configDir) {
       storeRef.current.setConfigDir(cfg.configDir);
     }
@@ -400,12 +190,6 @@ export function DarwinWidget() {
         await recoverFromGitState(gitStatus, mounted);
 
         // Load preferences
-        const prefs = await darwinAPI.ui.getPrefs();
-        if (prefs && mounted.current) {
-          setPrefFloatingFooter(prefs.floatingFooter ?? false);
-          setPrefWindowShadow(prefs.windowShadow ?? false);
-          setOpenaiApiKey(prefs.openaiApiKey ?? "");
-        }
       } catch (e: unknown) {
         if (mounted.current) {
           const errorMessage = (e as Error)?.message || String(e);
