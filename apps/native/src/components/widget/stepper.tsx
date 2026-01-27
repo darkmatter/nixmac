@@ -2,10 +2,8 @@
 
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface StepperProps {
-  currentStep: StepperStepId;
-}
+import { useWidgetStore, computeAppState, appStateToStep } from "@/stores/widget-store";
+import { getStepperStep } from "./utils";
 
 export const STEPPER_STEPS = [
   { id: 1 as const, name: "Evolve", description: "Make changes" },
@@ -15,8 +13,18 @@ export const STEPPER_STEPS = [
 
 export type StepperStepId = 1 | 2 | 3;
 
+export function Stepper() {
+  const store = useWidgetStore();
+  const appState = computeAppState(store);
+  const step = appStateToStep(appState, store.showCommitScreen);
 
-export function Stepper({ currentStep }: StepperProps) {
+  // Don't show stepper on setup step
+  if (step === "setup") {
+    return null;
+  }
+
+  const currentStep = getStepperStep(step);
+
   return (
     <div className="border-border border-b bg-muted/30 px-5 py-4">
       <div className="flex items-center justify-between">
