@@ -140,10 +140,6 @@ export const darwinAPI = {
     getState: () =>
       invoke<PreviewIndicatorState>("preview_indicator_get_state"),
   },
-  rebuildOverlay: {
-    show: () => invoke("rebuild_overlay_show"),
-    hide: () => invoke("rebuild_overlay_hide"),
-  },
   watcher: {
     start: () => invoke("watcher_start"),
     stop: () => invoke("watcher_stop"),
