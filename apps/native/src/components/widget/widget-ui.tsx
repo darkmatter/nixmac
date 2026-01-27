@@ -46,20 +46,31 @@ export function WidgetUI({
   ...props
 }: WidgetUIProps) {
   const staged =
+    gitStatus?.files?.filter((f) => f.index && f.index !== " " && f.index !== "?") || [];
+
+  // Consider a file "cleanly staged" only if its index shows changes and its worktree
+  // has no additional unstaged modifications.
+  const cleanlyStaged =
     gitStatus?.files?.filter(
-      (f) => f.index && f.index !== " " && f.index !== "?"
+      (f) =>
+        f.index &&
+        f.index !== " " &&
+        f.index !== "?" &&
+        (!f.working_tree || f.working_tree === " "),
     ) || [];
+
+  // Preview active only when every file is cleanly staged and there's at least one staged file.
   const isPreviewActive =
-    gitStatus?.files?.every(
-      (f) => f.index && f.index !== " " && f.index !== "?"
-    ) && staged.length > 0;
+    (gitStatus?.files?.length ?? 0) > 0 &&
+    cleanlyStaged.length === (gitStatus?.files?.length ?? 0) &&
+    staged.length > 0;
 
   return (
     <div
       {...props}
       className={cn(
         "flex h-full w-full flex-col bg-background/90 backdrop-blur-xl",
-        props.className
+        props.className,
       )}
     >
       {/* Header */}
@@ -70,9 +81,7 @@ export function WidgetUI({
 
       {/* Main Content */}
       <div className="flex min-h-0 flex-1 flex-col overflow-auto">
-        <div
-          className={cn("flex-1 p-5", step !== "evolving" && "overflow-auto")}
-        >
+        <div className={cn("flex-1 p-5", step !== "evolving" && "overflow-auto")}>
           {/* Error display */}
           {error && (
             <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-red-400 text-sm">
@@ -88,9 +97,7 @@ export function WidgetUI({
           )}
 
           {/* Step: Setup */}
-          {step === "setup" && (
-            <SetupStep />
-          )}
+          {step === "setup" && <SetupStep />}
 
           {/* Step: Overview */}
           {step === "overview" && (
