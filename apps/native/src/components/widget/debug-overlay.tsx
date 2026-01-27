@@ -20,7 +20,7 @@ export function DebugOverlay() {
 
   return (
     <div
-      className="pointer-events-none fixed bottom-2 right-2 z-50 rounded border-2 border-yellow-500 bg-black/80 px-2 py-1 font-mono text-xs text-yellow-400"
+      className="pointer-events-none absolute top-2 right-4 z-50 rounded bg-black/80 px-2 py-1 font-mono text-xs text-yellow-400"
       style={{ backdropFilter: "blur(4px)" }}
     >
       <div>step: {step}</div>
