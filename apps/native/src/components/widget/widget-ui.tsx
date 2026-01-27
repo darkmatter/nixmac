@@ -115,16 +115,7 @@ export function WidgetUI({
       <Console />
 
       {/* Settings Dialog */}
-      <SettingsDialog
-        isOpen={settingsOpen}
-        onClose={() => onSettingsOpenChange(false)}
-        openaiApiKey={openaiApiKey ?? ""}
-        prefFloatingFooter={prefFloatingFooter ?? false}
-        prefWindowShadow={prefWindowShadow ?? false}
-        setOpenaiApiKey={setOpenaiApiKey ?? (() => {})}
-        setPrefFloatingFooter={setPrefFloatingFooter ?? (() => {})}
-        setPrefWindowShadow={setPrefWindowShadow ?? (() => {})}
-      />
+      <SettingsDialog />
 
     </div>
   );
