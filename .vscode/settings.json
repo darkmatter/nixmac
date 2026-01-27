@@ -19,6 +19,12 @@
   "rust-analyzer.inlayHints.typeHints.enable": true,
   "rust-analyzer.inlayHints.chainingHints.enable": true,
   "rust-analyzer.diagnostics.experimental.enable": true,
+
+  "rust-analyzer.linkedProjects": [
+    "${workspaceFolder}/apps/native/src-tauri/Cargo.toml"
+  ],
+  "rust-analyzer.cargo.targetDir": "${workspaceFolder}/target",
+
   "nix.serverSettings": {
     "nixd": {
       "formatting": {
