@@ -4,7 +4,7 @@ import { useCallback, useEffect } from "react";
 import { useGitOperations } from "./use-git-operations";
 import { usePreviewIndicator } from "./use-preview-indicator";
 
-interface Config {
+export type Config = {
   configDir: string;
   hostAttr?: string;
 }

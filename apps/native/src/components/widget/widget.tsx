@@ -7,14 +7,15 @@ import {
   darwinAPI,
   ipcRenderer,
 } from "@/tauri-api";
+import type { Config } from "@/hooks/use-widget-initialization";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SetupStep, OverviewStep, EvolvingStep, CommitStep } from "./steps";
-import { Header } from "./header";
-import { Stepper } from "./stepper";
-import { Console } from "./console";
-import { SettingsDialog } from "./settings-dialog";
-import { ErrorMessage } from "./error-message";
-import { getStepperStep } from "./utils";
+import { Header } from "@/components/widget/header";
+import { Stepper } from "@/components/widget/stepper";
+import { Console } from "@/components/widget/console";
+import { SettingsDialog } from "@/components/widget/settings-dialog";
+import { ErrorMessage } from "@/components/widget/error-message";
+import { RebuildOverlay } from "@/components/rebuild-overlay";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +28,7 @@ import { cn } from "@/lib/utils";
  *
  * For UI-only testing, use WidgetUI directly with mocked props.
  */
+
 export function DarwinWidget() {
   const store = useWidgetStore();
   const storeRef = useRef(store);
@@ -42,7 +44,7 @@ export function DarwinWidget() {
   // =============================================================================
 
   const loadConfig = useCallback(async () => {
-    const cfg = (await darwinAPI.config.get()) as { configDir: string; hostAttr?: string } | null;
+    const cfg = (await darwinAPI.config.get()) as Config | null;
     if (cfg?.configDir) {
       storeRef.current.setConfigDir(cfg.configDir);
     }
@@ -396,20 +398,23 @@ export function DarwinWidget() {
   // =============================================================================
 
   return (
-    <div className="flex h-full w-full flex-col bg-background/90 backdrop-blur-xl">
-      <Header onOpenSettings={() => store.setSettingsOpen(true)} />
-      {step !== "setup" && <Stepper currentStep={getStepperStep(step)} />}
+    <>
+      <div className="flex h-full w-full flex-col bg-background/90 backdrop-blur-xl">
+        <Header />
+        <Stepper />
 
-      {/* Main Content */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-auto">
-        <div className={cn("flex-1 p-5", step !== "evolving" && "overflow-auto")}>
-          <ErrorMessage />
-          {getActiveStepComponent()}
+        {/* Main Content */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-auto">
+          <div className={cn("flex-1 p-5", step !== "evolving" && "overflow-auto")}>
+            <ErrorMessage />
+            {getActiveStepComponent()}
+          </div>
         </div>
-      </div>
 
-      <Console />
-      <SettingsDialog />
-    </div>
+        <Console />
+        <SettingsDialog />
+      </div>
+      <RebuildOverlay />
+    </>
   );
 }
