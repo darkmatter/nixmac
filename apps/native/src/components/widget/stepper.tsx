@@ -2,11 +2,19 @@
 
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { STEPPER_STEPS, type StepperStepId } from "./types";
 
 interface StepperProps {
   currentStep: StepperStepId;
 }
+
+export const STEPPER_STEPS = [
+  { id: 1 as const, name: "Evolve", description: "Make changes" },
+  { id: 2 as const, name: "Preview", description: "Review effects" },
+  { id: 3 as const, name: "Commit", description: "Save to git" },
+];
+
+export type StepperStepId = 1 | 2 | 3;
+
 
 export function Stepper({ currentStep }: StepperProps) {
   return (

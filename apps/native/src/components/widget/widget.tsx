@@ -10,7 +10,14 @@ import {
   ipcRenderer,
 } from "@/tauri-api";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { WidgetUI } from "./widget-ui";
+import { SetupStep, OverviewStep, EvolvingStep, CommitStep } from "./steps";
+import { Header } from "./header";
+import { Stepper } from "./stepper";
+import { Console } from "./console";
+import { SettingsDialog } from "./settings-dialog";
+import { ErrorMessage } from "./error-message";
+import { getStepperStep } from "./utils";
+import { cn } from "@/lib/utils";
 
 // =============================================================================
 // Types
@@ -36,13 +43,12 @@ interface Config {
  */
 export function DarwinWidget() {
   const store = useWidgetStore();
-  // Use a ref to access latest store state in callbacks without causing re-subscriptions
   const storeRef = useRef(store);
   storeRef.current = store;
   const intervalRef = useRef<number | null>(null);
-  const [_updatedAt, setUpdatedAt] = useState(Date.now()); // Used to trigger re-renders
+  const [_updatedAt, setUpdatedAt] = useState(Date.now());
 
-  // Preferences state
+  // Preferences state (kept for API loading, but SettingsDialog manages its own copy)
   const [prefFloatingFooter, setPrefFloatingFooter] = useState(false);
   const [prefWindowShadow, setPrefWindowShadow] = useState(false);
   const [openaiApiKey, setOpenaiApiKey] = useState("");
@@ -556,42 +562,70 @@ export function DarwinWidget() {
   }, []);
 
   // =============================================================================
-  // Render
+  // TEMPORARY Routing Logic TODO:ADD ROUTER
+  // =============================================================================
+
+  /**
+   * Determines if the preview is active (all files cleanly staged and ready to commit).
+   * This happens after a successful darwin-rebuild.
+   */
+  const isPreviewActive = () => {
+    const files = store.gitStatus?.files || [];
+
+    // Files with changes in the index (staged)
+    const staged = files.filter((f) => f.index && f.index !== " " && f.index !== "?");
+
+    // Staged files with NO additional unstaged modifications
+    const cleanlyStaged = files.filter(
+      (f) =>
+        f.index &&
+        f.index !== " " &&
+        f.index !== "?" &&
+        (!f.working_tree || f.working_tree === " ")
+    );
+
+    // Preview active when every file is cleanly staged and there's at least one staged file
+    return files.length > 0 && cleanlyStaged.length === files.length && staged.length > 0;
+  };
+
+  const getActiveStepComponent = () => {
+    switch (step) {
+      case "setup":
+        return <SetupStep />;
+
+      case "overview":
+        return <OverviewStep />;
+
+      case "commit":
+        return <CommitStep />;
+
+      case "evolving":
+        return isPreviewActive() ? <CommitStep /> : <EvolvingStep />;
+
+      default:
+        return <OverviewStep />;
+    }
+  };
+
+  // =============================================================================
+  // TEMPORARY Render TODO:ADD ROUTER
   // =============================================================================
 
   return (
-    <WidgetUI
-      appState={appState}
-      commitMsg={store.commitMsg}
-      consoleExpanded={store.consoleExpanded}
-      consoleLogs={store.consoleLogs}
-      error={store.error}
-      evolveEvents={store.evolveEvents}
-      evolvePrompt={store.evolvePrompt}
-      gitStatus={store.gitStatus}
-      isGenerating={store.isGenerating}
-      isProcessing={store.isProcessing}
-      onApply={handleApply}
-      onBackFromCommit={() => store.setShowCommitScreen(false)}
-      onCancel={handleCancel}
-      onCommit={handleCommit}
-      onCommitMsgChange={store.setCommitMsg}
-      onConsoleExpandedChange={store.setConsoleExpanded}
-      onErrorDismiss={() => store.setError(null)}
-      onEvolve={handleEvolve}
-      onEvolvePromptChange={store.setEvolvePrompt}
-      onSettingsOpenChange={store.setSettingsOpen}
-      onShowCommitScreen={() => store.setShowCommitScreen(true)}
-      openaiApiKey={openaiApiKey}
-      prefFloatingFooter={prefFloatingFooter}
-      prefWindowShadow={prefWindowShadow}
-      processingAction={store.processingAction}
-      setOpenaiApiKey={setOpenaiApiKey}
-      setPrefFloatingFooter={setPrefFloatingFooter}
-      setPrefWindowShadow={setPrefWindowShadow}
-      settingsOpen={store.settingsOpen}
-      step={step}
-      summary={store.summary}
-    />
+    <div className="flex h-full w-full flex-col bg-background/90 backdrop-blur-xl">
+      <Header onOpenSettings={() => store.setSettingsOpen(true)} />
+      {step !== "setup" && <Stepper currentStep={getStepperStep(step)} />}
+
+      {/* Main Content */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-auto">
+        <div className={cn("flex-1 p-5", step !== "evolving" && "overflow-auto")}>
+          <ErrorMessage />
+          {getActiveStepComponent()}
+        </div>
+      </div>
+
+      <Console />
+      <SettingsDialog />
+    </div>
   );
 }

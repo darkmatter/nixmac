@@ -1,6 +1,6 @@
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import type { GitFileStatus, WidgetStep } from "@/stores/widget-store";
-import type { StepperStepId } from "./types";
+import type { StepperStepId } from "@/components/widget/stepper";
 
 // Map widget steps to stepper steps
 export function getStepperStep(step: WidgetStep): StepperStepId {
