@@ -2,7 +2,6 @@
 
 import { cn } from "@/lib/utils";
 import { Console } from "./console";
-import { DebugOverlay } from "./debug-overlay";
 import { Header } from "./header";
 import { SettingsDialog } from "./settings-dialog";
 import { Stepper } from "./stepper";
@@ -111,37 +110,9 @@ export function WidgetUI({
             <CommitStep />
           )}
         </div>
-
-        {/* Collapsible Console */}
-        {/* <Console
-                  expanded={consoleExpanded}
-                  logs={consoleLogs}
-                  setExpanded={onConsoleExpandedChange}
-                /> */}
       </div>
 
-      {/* Footer Navigation - only show when not in setup */}
-      {/* {step !== "setup" && (
-                <FooterNav
-                  evolvePrompt={evolvePrompt}
-                  gitStatus={gitStatus}
-                  isProcessing={isProcessing}
-                  onBack={step === "commit" ? onBackFromCommit : undefined}
-                  onContinue={
-                    step === "overview"
-                      ? onEvolve
-                      : step === "evolving"
-                        ? onShowCommitScreen
-                        : undefined
-                  }
-                  step={step}
-                />
-              )} */}
-      <Console
-        expanded={consoleExpanded}
-        logs={consoleLogs}
-        setExpanded={onConsoleExpandedChange}
-      />
+      <Console />
 
       {/* Settings Dialog */}
       <SettingsDialog
@@ -155,8 +126,6 @@ export function WidgetUI({
         setPrefWindowShadow={setPrefWindowShadow ?? (() => {})}
       />
 
-      {/* Debug Overlay */}
-      <DebugOverlay />
     </div>
   );
 }
