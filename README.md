@@ -56,7 +56,7 @@ By default, nixmac expects to find a flake-enabled nix configuration at `~/.darw
    1. `sudo cp /etc/bashrc /etc/bashrc.before-nix-darwin`
    1. `sudo cp /etc/zshrc /etc/zshrc.before-nix-darwin`
    1. `sudo cp /etc/zshenv /etc/zshenv.before-nix-darwin`
-1. `sudo -i nix run nix-darwin/master#darwin-rebuild -- switch --flake /Users/smcmaster/.darwin#$HOSTNAME`
+1. `sudo -i nix run nix-darwin/master#darwin-rebuild -- switch --flake ~/.darwin#$HOSTNAME`
 1. Verify it "worked":
    1. `ls -l /nix/var/nix/profiles/system` should point to system link.
    1. `sudo -i nix run nix-darwin/master#darwin-rebuild --version` should return something, namely "Determinate Nix" if you're using Determinate.
