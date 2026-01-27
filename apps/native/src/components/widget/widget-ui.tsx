@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { Console } from "./console";
+import { DebugOverlay } from "./debug-overlay";
 import { Header } from "./header";
 import { SettingsDialog } from "./settings-dialog";
 import { Stepper } from "./stepper";
@@ -103,22 +104,7 @@ export function WidgetUI({
           {step === "overview" && <OverviewStep />}
 
           {/* Step: Evolving (shows summary) */}
-          {step === "evolving" && !isPreviewActive && (
-            <EvolvingStep
-              evolveEvents={evolveEvents}
-              evolvePrompt={evolvePrompt}
-              gitStatus={gitStatus}
-              handleApply={onApply}
-              handleCancel={onCancel}
-              handleEvolve={onEvolve}
-              handleShowCommit={onShowCommitScreen}
-              isGenerating={isGenerating}
-              isProcessing={isProcessing}
-              processingAction={processingAction}
-              setEvolvePrompt={onEvolvePromptChange}
-              summary={summary}
-            />
-          )}
+          {step === "evolving" && !isPreviewActive && <EvolvingStep />}
 
           {/* Step: Commit (action selection) */}
           {(step === "commit" || (step === "evolving" && isPreviewActive)) && (
@@ -180,6 +166,9 @@ export function WidgetUI({
         setPrefFloatingFooter={setPrefFloatingFooter ?? (() => {})}
         setPrefWindowShadow={setPrefWindowShadow ?? (() => {})}
       />
+
+      {/* Debug Overlay */}
+      <DebugOverlay />
     </div>
   );
 }

@@ -13,30 +13,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import {
-  analyzeGitStatus,
-  type EvolveEvent,
-  type GitStatus,
-  type ProcessingAction,
-  type SummaryState,
-} from "@/stores/widget-store";
+import { analyzeGitStatus, useWidgetStore } from "@/stores/widget-store";
+import { useEvolve } from "@/hooks/use-evolve";
+import { useApply } from "@/hooks/use-apply";
 import { ChatInput } from "../chat-input";
 import { Diff } from "../diff";
-
-interface EvolvingStepProps {
-  gitStatus: GitStatus | null;
-  evolvePrompt: string;
-  setEvolvePrompt: (s: string) => void;
-  isProcessing: boolean;
-  isGenerating: boolean;
-  processingAction: ProcessingAction;
-  evolveEvents: EvolveEvent[];
-  handleEvolve: () => void;
-  handleApply: () => void;
-  handleCancel: () => void;
-  handleShowCommit: () => void;
-  summary: SummaryState;
-}
 
 interface ParsedDiffSection {
   filename: string;
@@ -121,20 +102,30 @@ function getDirectory(path: string): string {
   return parts.slice(0, -1).join("/");
 }
 
-export function EvolvingStep({
-  gitStatus,
-  evolvePrompt,
-  setEvolvePrompt,
-  isProcessing,
-  isGenerating,
-  processingAction,
-  evolveEvents,
-  handleEvolve,
-  handleApply,
-  summary,
-}: EvolvingStepProps) {
+/**
+ * Evolving step - shows changes after evolution, allows preview/apply.
+ * Accesses state directly from the store instead of receiving props.
+ */
+export function EvolvingStep() {
+  // Get state directly from store
+  const gitStatus = useWidgetStore((s) => s.gitStatus);
+  const evolvePrompt = useWidgetStore((s) => s.evolvePrompt);
+  const setEvolvePrompt = useWidgetStore((s) => s.setEvolvePrompt);
+  const isProcessing = useWidgetStore((s) => s.isProcessing);
+  const processingAction = useWidgetStore((s) => s.processingAction);
+  const isGenerating = useWidgetStore((s) => s.isGenerating);
+  const evolveEvents = useWidgetStore((s) => s.evolveEvents);
+  const summary = useWidgetStore((s) => s.summary);
+
+  // Get operations from hooks
+  const { handleEvolve } = useEvolve();
+  const { handleApply } = useApply();
+
+  // Derived state
   const changedFiles = gitStatus?.files || [];
   const { hasUnstagedChanges } = analyzeGitStatus(gitStatus);
+
+  // Local UI state
   const [showDiff, setShowDiff] = useState(false);
 
   const diffContent = summary.diff || "";
