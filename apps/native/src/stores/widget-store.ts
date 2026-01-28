@@ -31,32 +31,6 @@ export interface GitStatus {
   deleted?: string[];
 }
 
-/**
- * Analyze git status to determine what state changes are in.
- * - hasUnstagedChanges: Files with working_tree changes (not yet previewed)
- * - hasStagedChanges: Files with index changes (previewed/applied)
- * - allChangesStaged: All changes are staged (ready to commit)
- */
-export function analyzeGitStatus(gitStatus: GitStatus | null): {
-  hasUnstagedChanges: boolean;
-  hasStagedChanges: boolean;
-  allChangesStaged: boolean;
-  unstagedFiles: GitFileStatus[];
-  stagedFiles: GitFileStatus[];
-} {
-  const files = gitStatus?.files || [];
-  const unstagedFiles = files.filter((f) => f.working_tree && f.working_tree !== " ");
-  const stagedFiles = files.filter((f) => f.index && f.index !== " " && f.index !== "?");
-
-  return {
-    hasUnstagedChanges: unstagedFiles.length > 0,
-    hasStagedChanges: stagedFiles.length > 0,
-    allChangesStaged: files.length > 0 && unstagedFiles.length === 0,
-    unstagedFiles,
-    stagedFiles,
-  };
-}
-
 export interface SummaryItem {
   title: string;
   description: string;

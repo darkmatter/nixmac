@@ -5,10 +5,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { analyzeGitStatus, useWidgetStore } from "@/stores/widget-store";
+import { useWidgetStore } from "@/stores/widget-store";
 import { useCommit } from "@/hooks/use-commit";
 import { useEvolve } from "@/hooks/use-evolve";
 import { Diff } from "../diff";
+import { analyzeGitStatus } from "@/components/widget/utils";
 
 export function CommitStep() {
   const gitStatus = useWidgetStore((s) => s.gitStatus);

@@ -13,7 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import { analyzeGitStatus, useWidgetStore } from "@/stores/widget-store";
+import { useWidgetStore } from "@/stores/widget-store";
+import { analyzeGitStatus } from "@/components/widget/utils";
 import { useEvolve } from "@/hooks/use-evolve";
 import { useApply } from "@/hooks/use-apply";
 import { ChatInput } from "../chat-input";
