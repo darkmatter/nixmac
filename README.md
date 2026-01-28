@@ -72,6 +72,24 @@ export SOPS_AGE_KEY={your_sops_key} devenv up
 or add `your_sops_key` to `~/.config/sops/age/keys.txt`
 Key doesn't have to be formatted a certain way (just the key on its own line somewhere)
 
+## AI Setup
+
+By default, summarization and configuration evolution is set up to use OpenAI.
+
+The summarization model (for both changes and commit messages) uses a pluggable "provider" model. Currently we have the following implementations:
+
+- OpenAI / OpenRouter (default)
+- Ollama
+
+### Ollama configuration
+
+Quick dev: `SUMMARIZE_AI_PROVIDER=ollama devenv up`
+
+Environment configuration:
+
+- `OLLAMA_MODEL` (default = "llama3")
+- `OLLAMA_API_BASE` (default = "http://localhost:11434")
+
 ## Database Setup
 
 This project uses PostgreSQL with Drizzle ORM.

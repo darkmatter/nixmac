@@ -8,25 +8,15 @@
 //! This solves timing issues where raw logs come in bursts causing janky animations.
 
 use anyhow::Result;
-use async_openai::{
-    config::OpenAIConfig,
-    types::{
-        ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestUserMessageArgs,
-        CreateChatCompletionRequestArgs,
-    },
-    Client,
-};
 use log::{debug, info, warn};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Runtime};
 
-/// OpenRouter API base URL
-const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
-/// Fast model for log summarization - needs to be very quick
-const LOG_MODEL: &str = "openai/gpt-4o-mini";
+use crate::providers::create_provider;
+
 const MAX_TOKENS: u32 = 100;
 const TEMPERATURE: f32 = 0.2;
 
@@ -238,12 +228,6 @@ fn summarizer_thread(app: AppHandle, rx: Receiver<LogMessage>) {
         }
     };
 
-    // Get API key from store at startup (fall back to env var)
-    let api_key = crate::store::get_openai_api_key(&app)
-        .ok()
-        .flatten()
-        .or_else(|| std::env::var("OPENAI_API_KEY").ok());
-
     let state = Arc::new(Mutex::new(SummarizerState::new()));
 
     // Emit initial "starting" message
@@ -346,11 +330,7 @@ fn summarizer_thread(app: AppHandle, rx: Receiver<LogMessage>) {
                 }
 
                 // Generate summary (use tokio runtime for async)
-                let summary = rt.block_on(generate_log_summary(
-                    &lines,
-                    &current_phase,
-                    api_key.as_deref(),
-                ));
+                let summary = rt.block_on(generate_log_summary(&lines, &current_phase, Some(&app)));
 
                 match summary {
                     Ok(text) => {
@@ -392,25 +372,16 @@ fn summarizer_thread(app: AppHandle, rx: Receiver<LogMessage>) {
 }
 
 /// Generate a summary of the log lines using AI
-async fn generate_log_summary(
+async fn generate_log_summary<R: Runtime>(
     lines: &[String],
     phase: &RebuildPhase,
-    api_key: Option<&str>,
+    app_handle: Option<&AppHandle<R>>,
 ) -> Result<String> {
     if lines.is_empty() {
         return Ok("Processing...".to_string());
     }
 
-    // Use provided API key, fall back to environment variable
-    let key = api_key
-        .map(|k| k.to_string())
-        .or_else(|| std::env::var("OPENROUTER_API_KEY").ok())
-        .ok_or_else(|| anyhow::anyhow!("No API key configured"))?;
-
-    let config = OpenAIConfig::new()
-        .with_api_key(&key)
-        .with_api_base(OPENROUTER_BASE_URL);
-    let client = Client::with_config(config);
+    let provider = create_provider(app_handle)?;
 
     // Take the most recent lines, limiting to MAX_LINES_PER_BATCH
     let recent_lines: Vec<&String> = lines.iter().rev().take(MAX_LINES_PER_BATCH).collect();
@@ -446,33 +417,28 @@ Guidelines:
         phase_hint
     );
 
-    let request = CreateChatCompletionRequestArgs::default()
-        .model(LOG_MODEL)
-        .messages(vec![
-            ChatCompletionRequestSystemMessageArgs::default()
-                .content(system_prompt)
-                .build()?
-                .into(),
-            ChatCompletionRequestUserMessageArgs::default()
-                .content(format!("Summarize this rebuild output:\n\n{}", log_content))
-                .build()?
-                .into(),
-        ])
-        .max_completion_tokens(MAX_TOKENS)
-        .temperature(TEMPERATURE)
-        .build()?;
+    let user_prompt = format!("Summarize this rebuild output:\n\n{}", log_content);
 
-    debug!("[log_summarizer] Requesting summary from {}", LOG_MODEL);
-    let response = client.chat().create(request).await?;
+    debug!(
+        "[log_summarizer] Requesting summary from {}",
+        provider.model()
+    );
+    let response = provider
+        .completion(&system_prompt, &user_prompt, MAX_TOKENS, TEMPERATURE)
+        .await?;
 
-    let summary = response
-        .choices
-        .first()
-        .and_then(|c| c.message.content.clone())
-        .map(|s| s.trim().to_string())
-        .unwrap_or_else(|| "Processing...".to_string());
+    let summary = response.trim().to_string();
+    let summary = if summary.is_empty() {
+        "Processing...".to_string()
+    } else {
+        summary
+    };
 
-    debug!("[log_summarizer] Generated summary: {}", summary);
+    debug!(
+        "[log_summarizer] Generated summary from {}: {}",
+        provider.model(),
+        summary
+    );
     Ok(summary)
 }
 
