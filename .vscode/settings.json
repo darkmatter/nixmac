@@ -5,10 +5,9 @@
   "[rust]": {
     "editor.defaultFormatter": "rust-lang.rust-analyzer"
   },
-  "rust-analyzer.server.path": "${workspaceFolder}/.devenv/profile/bin/rust-analyzer",
+  "rust-analyzer.server.path": "rust-analyzer",
   "rust-analyzer.cargo.extraEnv": {
-    "PATH": "${workspaceFolder}/.devenv/profile/bin:${env:PATH}",
-    "CARGO_HOME": "${workspaceFolder}/.devenv/profile"
+    "CARGO_HOME": "${workspaceFolder}/.cargo" 
   },
   "rust-analyzer.check.command": "clippy",
   "rust-analyzer.cargo.features": "all",
@@ -19,12 +18,6 @@
   "rust-analyzer.inlayHints.typeHints.enable": true,
   "rust-analyzer.inlayHints.chainingHints.enable": true,
   "rust-analyzer.diagnostics.experimental.enable": true,
-
-  "rust-analyzer.linkedProjects": [
-    "${workspaceFolder}/apps/native/src-tauri/Cargo.toml"
-  ],
-  "rust-analyzer.cargo.targetDir": "${workspaceFolder}/target",
-
   "nix.serverSettings": {
     "nixd": {
       "formatting": {
