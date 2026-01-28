@@ -346,7 +346,11 @@ fn summarizer_thread(app: AppHandle, rx: Receiver<LogMessage>) {
                 }
 
                 // Generate summary (use tokio runtime for async)
-                let summary = rt.block_on(generate_log_summary(&lines, &current_phase, api_key.as_deref()));
+                let summary = rt.block_on(generate_log_summary(
+                    &lines,
+                    &current_phase,
+                    api_key.as_deref(),
+                ));
 
                 match summary {
                     Ok(text) => {
@@ -388,7 +392,11 @@ fn summarizer_thread(app: AppHandle, rx: Receiver<LogMessage>) {
 }
 
 /// Generate a summary of the log lines using AI
-async fn generate_log_summary(lines: &[String], phase: &RebuildPhase, api_key: Option<&str>) -> Result<String> {
+async fn generate_log_summary(
+    lines: &[String],
+    phase: &RebuildPhase,
+    api_key: Option<&str>,
+) -> Result<String> {
     if lines.is_empty() {
         return Ok("Processing...".to_string());
     }

@@ -1,11 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  appStateToStep,
-  computeAppState,
-  useWidgetStore,
-} from "@/stores/widget-store";
+import { appStateToStep, computeAppState, useWidgetStore } from "@/stores/widget-store";
 import {
   CONFIG_CHANGED_CHANNEL,
   type ConfigChangedEvent,
@@ -14,6 +9,7 @@ import {
   type EvolveEvent,
   ipcRenderer,
 } from "@/tauri-api";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { WidgetUI } from "./widget-ui";
 
 // =============================================================================
@@ -59,32 +55,6 @@ export function DarwinWidget() {
   // API Handlers
   // =============================================================================
 
-  const handlePickDir = useCallback(async () => {
-    const dir = (await darwinAPI.config.pickDir()) as string | null;
-    if (dir) {
-      storeRef.current.setConfigDir(dir);
-      try {
-        const hosts = (await darwinAPI.flake.listHosts()) as string[];
-        if (Array.isArray(hosts)) {
-          storeRef.current.setHosts(hosts);
-        }
-      } catch {
-        // Ignore - hosts will remain empty
-      }
-      try {
-        const status = await darwinAPI.git.status();
-        storeRef.current.setGitStatus(status);
-      } catch {
-        // Ignore - git status will remain null
-      }
-    }
-  }, []);
-
-  const handleSaveHost = useCallback(async (host: string) => {
-    storeRef.current.setHost(host);
-    await darwinAPI.config.setHostAttr(host);
-  }, []);
-
   const refreshGitStatus = useCallback(async () => {
     try {
       const status = await darwinAPI.git.status();
@@ -118,18 +88,15 @@ export function DarwinWidget() {
     s.appendLog(`\n> Evolving: "${s.evolvePrompt}"\n`);
 
     // Set up evolve event listener
-    const unlistenEvolve = await ipcRenderer.on<EvolveEvent>(
-      EVOLVE_EVENT_CHANNEL,
-      (event) => {
-        if (event.payload) {
-          storeRef.current.appendEvolveEvent(event.payload);
-          // Also append raw log to console for debugging
-          if (event.payload.raw) {
-            storeRef.current.appendLog(`${event.payload.raw}\n`);
-          }
+    const unlistenEvolve = await ipcRenderer.on<EvolveEvent>(EVOLVE_EVENT_CHANNEL, (event) => {
+      if (event.payload) {
+        storeRef.current.appendEvolveEvent(event.payload);
+        // Also append raw log to console for debugging
+        if (event.payload.raw) {
+          storeRef.current.appendLog(`${event.payload.raw}\n`);
         }
       }
-    );
+    });
 
     try {
       await darwinAPI.darwin.evolve(s.evolvePrompt);
@@ -161,11 +128,7 @@ export function DarwinWidget() {
       complete?: boolean;
       success?: boolean;
       error?: boolean;
-      error_type?:
-        | "infinite_recursion"
-        | "evaluation_error"
-        | "build_error"
-        | "generic_error";
+      error_type?: "infinite_recursion" | "evaluation_error" | "build_error" | "generic_error";
     }>("darwin:apply:summary", (event) => {
       const { text, complete, success, error, error_type } = event.payload;
       const currentStore = storeRef.current;
@@ -218,7 +181,7 @@ export function DarwinWidget() {
         // On failure, keep the overlay visible so user can see error and rollback
 
         await refreshGitStatus();
-      }
+      },
     );
 
     try {
@@ -328,7 +291,7 @@ export function DarwinWidget() {
           // Ignore errors - window might not exist yet
         });
     },
-    []
+    [],
   );
 
   // Auto-recover state from git status on startup
@@ -337,7 +300,7 @@ export function DarwinWidget() {
   const recoverFromGitState = useCallback(
     async (
       gitStatus: Awaited<ReturnType<typeof darwinAPI.git.status>> | null,
-      mounted: { current: boolean }
+      mounted: { current: boolean },
     ) => {
       const currentStore = storeRef.current;
 
@@ -363,9 +326,7 @@ export function DarwinWidget() {
 
       if (currentStore.summary.items.length > 0) {
         // Already have summary - use first item's title for preview indicator
-        const summaryText = currentStore.summary.items
-          .map((i) => i.title)
-          .join(", ");
+        const summaryText = currentStore.summary.items.map((i) => i.title).join(", ");
         await updatePreviewIndicator({
           gitStatus,
           summaryText,
@@ -414,7 +375,7 @@ export function DarwinWidget() {
         }
       }
     },
-    [updatePreviewIndicator]
+    [updatePreviewIndicator],
   );
 
   // =============================================================================
@@ -441,7 +402,14 @@ export function DarwinWidget() {
         }
       } catch (e: unknown) {
         if (mounted.current) {
-          storeRef.current.setError((e as Error)?.message || String(e));
+          const errorMessage = (e as Error)?.message || String(e);
+          // Only set error for actual failures, not missing flake
+          console.log("step when mounted", step, errorMessage);
+          const supressFlakeError =
+            step === "setup" && errorMessage.includes("Failed to list hosts: path");
+          if (!supressFlakeError) {
+            storeRef.current.setError(errorMessage);
+          }
         }
       }
     })();
@@ -456,18 +424,15 @@ export function DarwinWidget() {
   useEffect(() => {
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const configSub = ipcRenderer.on<ConfigChangedEvent>(
-      CONFIG_CHANGED_CHANNEL,
-      (_event) => {
-        // Debounce refreshes so rapid filesystem events don't spam git.
-        if (debounceTimer) {
-          clearTimeout(debounceTimer);
-        }
-        debounceTimer = setTimeout(() => {
-          refreshGitStatus();
-        }, 300);
+    const configSub = ipcRenderer.on<ConfigChangedEvent>(CONFIG_CHANGED_CHANNEL, (_event) => {
+      // Debounce refreshes so rapid filesystem events don't spam git.
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
       }
-    );
+      debounceTimer = setTimeout(() => {
+        refreshGitStatus();
+      }, 300);
+    });
 
     return () => {
       if (debounceTimer) {
@@ -484,12 +449,22 @@ export function DarwinWidget() {
     const wasNotPreview = prevAppStateRef.current !== "preview";
     prevAppStateRef.current = appState;
 
+    // Consider the summary empty/stale if no items or we have modified files
+    // in the git status(simple heuristic).
+    const summaryEmpty = store.summary.items.length === 0;
+
+    const summaryStale =
+      !summaryEmpty &&
+      store.gitStatus &&
+      Array.isArray(store.gitStatus.modified) &&
+      store.gitStatus.modified.length > 0;
+
+    const shouldFetch =
+      (appState === "preview" && wasNotPreview && summaryEmpty) ||
+      (store.gitStatus?.hasChanges && (summaryEmpty || summaryStale));
+
     // Only fetch when transitioning INTO preview mode
-    if (
-      appState === "preview" &&
-      wasNotPreview &&
-      store.summary.items.length === 0
-    ) {
+    if (shouldFetch) {
       (async () => {
         storeRef.current.setSummary({ isLoading: true });
         try {
@@ -514,9 +489,7 @@ export function DarwinWidget() {
   // Update preview indicator window when state changes
   useEffect(() => {
     const summaryText =
-      store.summary.items.length > 0
-        ? store.summary.items.map((i) => i.title).join(", ")
-        : null;
+      store.summary.items.length > 0 ? store.summary.items.map((i) => i.title).join(", ") : null;
     updatePreviewIndicator({
       gitStatus: store.gitStatus,
       summaryText,
@@ -590,15 +563,12 @@ export function DarwinWidget() {
     <WidgetUI
       appState={appState}
       commitMsg={store.commitMsg}
-      configDir={store.configDir}
       consoleExpanded={store.consoleExpanded}
       consoleLogs={store.consoleLogs}
       error={store.error}
       evolveEvents={store.evolveEvents}
       evolvePrompt={store.evolvePrompt}
       gitStatus={store.gitStatus}
-      host={store.host}
-      hosts={store.hosts}
       isGenerating={store.isGenerating}
       isProcessing={store.isProcessing}
       onApply={handleApply}
@@ -610,9 +580,6 @@ export function DarwinWidget() {
       onErrorDismiss={() => store.setError(null)}
       onEvolve={handleEvolve}
       onEvolvePromptChange={store.setEvolvePrompt}
-      onHostsChange={store.setHosts}
-      onPickDir={handlePickDir}
-      onSaveHost={handleSaveHost}
       onSettingsOpenChange={store.setSettingsOpen}
       onShowCommitScreen={() => store.setShowCommitScreen(true)}
       openaiApiKey={openaiApiKey}

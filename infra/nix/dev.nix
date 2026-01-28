@@ -21,6 +21,7 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     pkgs.starship
     pkgs.lldb
     pkgs.llvmPackages.bintools
+    pkgs.nixfmt
   ]
   ++ lib.optionals (pkgs.stdenv.isDarwin) [
     pkgs.apple-sdk_15
