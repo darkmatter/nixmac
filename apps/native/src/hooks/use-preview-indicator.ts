@@ -12,7 +12,6 @@ export function usePreviewIndicator() {
       gitStatus: Awaited<ReturnType<typeof darwinAPI.git.status>> | null;
       summaryText: string | null;
       isLoading: boolean;
-      isExpanded: boolean;
       additions?: number;
       deletions?: number;
     }) => {
@@ -20,7 +19,7 @@ export function usePreviewIndicator() {
       const filesChanged = params.gitStatus?.files?.length ?? 0;
 
       // Show preview indicator when there are uncommitted changes and main window is NOT expanded
-      const shouldShow = hasChanges && !params.isExpanded;
+      const shouldShow = hasChanges
 
       await darwinAPI.previewIndicator
         .update({

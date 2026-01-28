@@ -1,6 +1,7 @@
 "use client";
 
-import { useWidgetStore, computeAppState, appStateToStep } from "@/stores/widget-store";
+import { appStateToStep, computeAppState } from "@/components/widget/utils";
+import { useWidgetStore } from "@/stores/widget-store";
 
 /**
  * Debug overlay for development - shows current widget state
@@ -8,7 +9,7 @@ import { useWidgetStore, computeAppState, appStateToStep } from "@/stores/widget
 export function DebugOverlay() {
   const store = useWidgetStore();
   const appState = computeAppState(store);
-  const step = appStateToStep(appState, store.showCommitScreen, store.rebuild.isRunning);
+  const step = appStateToStep(appState, store.gitStatus);
   // const appState = useWidgetStore((s) => s.appState);
   // const isProcessing = useWidgetStore((s) => s.isProcessing);
   // const processingAction = useWidgetStore((s) => s.processingAction);
