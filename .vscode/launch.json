@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "name": "Debug nixmac Tauri Rust (LLDB)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}/target/debug/nixmac",
+            "cwd": "${workspaceFolder}/apps/native/src-tauri",
+            "env": {
+                "RUST_LOG": "trace",
+                "PATH": "${workspaceFolder}/.devenv/profile/bin:${env:PATH}",
+                "DYLD_LIBRARY_PATH": "${workspaceFolder}/.devenv/profile/lib:${env:DYLD_LIBRARY_PATH}"
+            },
+        },
+        {
+            "name": "Attach to nixmac Rust (LLDB)",
+            "type": "lldb",
+            "request": "attach"
+        }
+    ]
+}
