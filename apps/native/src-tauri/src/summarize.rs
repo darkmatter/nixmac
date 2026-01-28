@@ -5,21 +5,12 @@
 //! - Commit message generation based on changes
 
 use anyhow::Result;
-use async_openai::{
-    config::OpenAIConfig,
-    types::{
-        ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestUserMessageArgs,
-        CreateChatCompletionRequestArgs,
-    },
-    Client,
-};
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
+use tauri::{AppHandle, Runtime};
 
-/// OpenRouter API base URL
-const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
-/// Fast model for summarization tasks - optimized for speed over reasoning
-const SUMMARY_MODEL: &str = "openai/gpt-4o-mini";
+use crate::providers::create_provider;
+
 const MAX_SUMMARY_TOKENS: u32 = 800;
 const TEMPERATURE: f32 = 0.3;
 
@@ -41,10 +32,10 @@ pub struct ChangeSummary {
 ///
 /// This creates a structured summary with friendly descriptions and
 /// suggestions for testing the changes.
-pub async fn summarize_changes(
+pub async fn summarize_changes<R: Runtime>(
     diff: &str,
     file_list: &[String],
-    api_key: Option<&str>,
+    app_handle: Option<&AppHandle<R>>,
 ) -> Result<ChangeSummary> {
     if diff.is_empty() && file_list.is_empty() {
         return Ok(ChangeSummary {
@@ -57,16 +48,7 @@ pub async fn summarize_changes(
         });
     }
 
-    // Use provided API key, fall back to environment variable
-    let key = api_key
-        .map(|k| k.to_string())
-        .or_else(|| std::env::var("OPENROUTER_API_KEY").ok())
-        .ok_or_else(|| anyhow::anyhow!("No API key configured"))?;
-
-    let config = OpenAIConfig::new()
-        .with_api_key(&key)
-        .with_api_base(OPENROUTER_BASE_URL);
-    let client = Client::with_config(config);
+    let provider = create_provider(app_handle)?;
 
     let file_summary = if file_list.is_empty() {
         String::new()
@@ -103,37 +85,23 @@ Guidelines:
 
 Respond with ONLY valid JSON, no markdown code blocks or extra text."#;
 
-    let request = CreateChatCompletionRequestArgs::default()
-        .model(SUMMARY_MODEL)
-        .messages(vec![
-            ChatCompletionRequestSystemMessageArgs::default()
-                .content(system_prompt)
-                .build()?
-                .into(),
-            ChatCompletionRequestUserMessageArgs::default()
-                .content(format!(
-                    "Summarize these nix-darwin configuration changes:\n\n\
-                    ```diff\n{}\n```{}",
-                    truncated_diff, file_summary
-                ))
-                .build()?
-                .into(),
-        ])
-        .max_completion_tokens(MAX_SUMMARY_TOKENS)
-        .temperature(TEMPERATURE)
-        .build()?;
+    let user_prompt = format!(
+        "Summarize these nix-darwin configuration changes:\n\n\
+        ```diff\n{}\n```{}",
+        truncated_diff, file_summary
+    );
 
-    debug!("Requesting change summary from {}", SUMMARY_MODEL);
-    let response = client.chat().create(request).await?;
-
-    let raw_response = response
-        .choices
-        .first()
-        .and_then(|c| c.message.content.clone())
-        .unwrap_or_else(|| "{}".to_string());
+    debug!("Requesting change summary from {}", provider.model());
+    let raw_response = provider
+        .completion(system_prompt, &user_prompt, MAX_SUMMARY_TOKENS, TEMPERATURE)
+        .await?;
 
     info!("Generated change summary ({} chars)", raw_response.len());
-    debug!("Raw summary response: {}", raw_response);
+    debug!(
+        "Raw change summary response from {}: {}",
+        provider.model(),
+        raw_response
+    );
 
     // Parse the JSON response
     match serde_json::from_str::<ChangeSummary>(&raw_response) {
@@ -156,25 +124,16 @@ Respond with ONLY valid JSON, no markdown code blocks or extra text."#;
 ///
 /// Returns a conventional commit style message that can be used as-is
 /// or edited by the user.
-pub async fn generate_commit_message(
+pub async fn generate_commit_message<R: Runtime>(
     diff: &str,
     file_list: &[String],
-    api_key: Option<&str>,
+    app_handle: Option<&AppHandle<R>>,
 ) -> Result<String> {
     if diff.is_empty() && file_list.is_empty() {
         return Ok("chore: no changes".to_string());
     }
 
-    // Use provided API key, fall back to environment variable
-    let key = api_key
-        .map(|k| k.to_string())
-        .or_else(|| std::env::var("OPENROUTER_API_KEY").ok())
-        .ok_or_else(|| anyhow::anyhow!("No API key configured"))?;
-
-    let config = OpenAIConfig::new()
-        .with_api_key(&key)
-        .with_api_base(OPENROUTER_BASE_URL);
-    let client = Client::with_config(config);
+    let provider = create_provider(app_handle)?;
 
     let file_summary = if file_list.is_empty() {
         String::new()
@@ -188,12 +147,7 @@ pub async fn generate_commit_message(
         diff.to_string()
     };
 
-    let request = CreateChatCompletionRequestArgs::default()
-        .model(SUMMARY_MODEL)
-        .messages(vec![
-            ChatCompletionRequestSystemMessageArgs::default()
-                .content(
-                    "You generate git commit messages following conventional commit format. \
+    let system_prompt = "You generate git commit messages following conventional commit format. \
                     Format: <type>(<scope>): <description>\n\n\
                     Types: feat, fix, chore, refactor, docs, style, test, perf\n\
                     Scope: optional, the area of the codebase (e.g., darwin, homebrew, git)\n\
@@ -202,48 +156,46 @@ pub async fn generate_commit_message(
                     - feat(darwin): add vim to system packages\n\
                     - fix(homebrew): correct Rectangle app cask name\n\
                     - chore: update flake inputs\n\n\
-                    Return ONLY the commit message, nothing else.",
-                )
-                .build()?
-                .into(),
-            ChatCompletionRequestUserMessageArgs::default()
-                .content(format!(
-                    "Generate a commit message for these nix-darwin changes:\n\n\
-                    ```diff\n{}\n```{}",
-                    truncated_diff, file_summary
-                ))
-                .build()?
-                .into(),
-        ])
-        .max_completion_tokens(100u32)
-        .temperature(0.2)
-        .build()?;
+                    Return ONLY the commit message, nothing else.";
 
-    debug!("Requesting commit message from {}", SUMMARY_MODEL);
-    let response = client.chat().create(request).await?;
+    let user_prompt = format!(
+        "Generate a commit message for these nix-darwin changes:\n\n\
+        ```diff\n{}\n```{}",
+        truncated_diff, file_summary
+    );
 
-    let message = response
-        .choices
-        .first()
-        .and_then(|c| c.message.content.clone())
-        .map(|s| s.trim().to_string())
-        .unwrap_or_else(|| "chore: update configuration".to_string());
+    debug!("Requesting commit message from {}", provider.model());
+    let response = provider
+        .completion(system_prompt, &user_prompt, 100u32, 0.2)
+        .await?;
 
+    let message = response.trim().to_string();
+    let message = if message.is_empty() {
+        "chore: update configuration".to_string()
+    } else {
+        message
+    };
+
+    debug!(
+        "Raw commit message response from {}: {}",
+        provider.model(),
+        response
+    );
     info!("Generated commit message: {}", message);
     Ok(message)
 }
 
 /// Batch summarize both changes and generate commit message.
 /// More efficient than calling each separately.
-pub async fn summarize_for_preview(
+pub async fn summarize_for_preview<R: Runtime>(
     diff: &str,
     file_list: &[String],
-    api_key: Option<&str>,
+    app_handle: Option<&AppHandle<R>>,
 ) -> Result<(ChangeSummary, String)> {
     // Run both in parallel
     let (summary, commit_msg) = tokio::join!(
-        summarize_changes(diff, file_list, api_key),
-        generate_commit_message(diff, file_list, api_key)
+        summarize_changes(diff, file_list, app_handle),
+        generate_commit_message(diff, file_list, app_handle)
     );
 
     Ok((summary?, commit_msg?))
@@ -257,7 +209,7 @@ mod tests {
     fn test_empty_changes() {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(async {
-            let summary = summarize_changes("", &[], None).await;
+            let summary = summarize_changes::<tauri::Wry>("", &[], None).await;
             assert!(summary.is_ok());
             let result = summary.unwrap();
             assert_eq!(result.items.len(), 1);
