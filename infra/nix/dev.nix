@@ -11,6 +11,7 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     pkgs.rustPackages.cargo
     pkgs.rustPackages.clippy
     pkgs.rustPackages.rustfmt
+    pkgs.rust-analyzer
     pkgs.clippy
     pkgs.cargo-watch
     pkgs.cargo-nextest

@@ -15,7 +15,8 @@
         {
             "name": "Attach to nixmac Rust (LLDB)",
             "type": "lldb",
-            "request": "attach"
+            "request": "attach",
+            "pid": "${command:pickProcess}"
         }
     ]
 }
