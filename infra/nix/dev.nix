@@ -51,6 +51,11 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     export LLDB_BIN=$(which lldb)
     export DYLD_LIBRARY_PATH=${pkgs.lldb}/lib:$DYLD_LIBRARY_PATH
 
+    # Inherit locale settings from host environment
+    export LANG=en_US.UTF-8
+    export LC_ALL=en_US.UTF-8
+    export LC_COLLATE=C
+    
     # eval "$(starship init $SHELL)"
   '';
 
