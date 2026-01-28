@@ -377,12 +377,9 @@ pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse,
     let status = git::status(&dir).map_err(|e| e.to_string())?;
     let file_list: Vec<String> = status.files.iter().map(|f| f.path.clone()).collect();
 
-    // Get API key from store
-    let api_key = store::get_openai_api_key(&app).map_err(|e| e.to_string())?;
-
     // Generate both summary and commit message in parallel
     let (change_summary, commit_message) =
-        summarize::summarize_for_preview(&diff, &file_list, api_key.as_deref())
+        summarize::summarize_for_preview(&diff, &file_list, Some(&app))
             .await
             .map_err(|e| e.to_string())?;
 
@@ -450,10 +447,7 @@ pub async fn suggest_commit_message(app: AppHandle) -> Result<String, String> {
     let status = git::status(&dir).map_err(|e| e.to_string())?;
     let file_list: Vec<String> = status.files.iter().map(|f| f.path.clone()).collect();
 
-    // Get API key from store
-    let api_key = store::get_openai_api_key(&app).map_err(|e| e.to_string())?;
-
-    let message = summarize::generate_commit_message(&diff, &file_list, api_key.as_deref())
+    let message = summarize::generate_commit_message(&diff, &file_list, Some(&app))
         .await
         .map_err(|e| e.to_string())?;
 

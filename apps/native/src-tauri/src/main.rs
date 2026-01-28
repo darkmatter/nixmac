@@ -14,6 +14,7 @@ mod git;
 mod log_summarizer;
 mod nix;
 mod peek;
+mod providers;
 mod store;
 mod summarize;
 mod types;
