@@ -1,14 +1,15 @@
 "use client";
 
-import { appStateToStep, computeAppState, useWidgetStore } from "@/stores/widget-store";
+import { useWidgetStore } from "@/stores/widget-store";
+import { computeAppState, appStateToStep } from "@/components/widget/utils";
 import {
   CONFIG_CHANGED_CHANNEL,
   type ConfigChangedEvent,
   darwinAPI,
   ipcRenderer,
 } from "@/tauri-api";
-import type { Config } from "@/hooks/use-widget-initialization";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { loadConfig, loadHosts, recoverFromGitState } from "@/hooks/use-widget-initialization";
+import { useEffect, useRef, useState } from "react";
 import { SetupStep, OverviewStep, EvolvingStep, CommitStep } from "./steps";
 import { Header } from "@/components/widget/header";
 import { Stepper } from "@/components/widget/stepper";
@@ -17,6 +18,7 @@ import { SettingsDialog } from "@/components/widget/settings-dialog";
 import { ErrorMessage } from "@/components/widget/error-message";
 import { RebuildOverlay } from "@/components/rebuild-overlay";
 import { useGitOperations } from "@/hooks/use-git-operations";
+import { usePreviewIndicator } from "@/hooks/use-preview-indicator";
 import { cn } from "@/lib/utils";
 
 /**
@@ -36,145 +38,9 @@ export function DarwinWidget() {
   const intervalRef = useRef<number | null>(null);
   const [_updatedAt, setUpdatedAt] = useState(Date.now());
   const appState = computeAppState(store);
-  const step = appStateToStep(appState, store.showCommitScreen);
+  const step = appStateToStep(appState, store.gitStatus);
   const { refreshGitStatus } = useGitOperations();
-
-  // =============================================================================
-  // Initialization Helpers
-  // =============================================================================
-
-  const loadConfig = useCallback(async () => {
-    const cfg = (await darwinAPI.config.get()) as Config | null;
-    if (cfg?.configDir) {
-      storeRef.current.setConfigDir(cfg.configDir);
-    }
-    if (cfg?.hostAttr) {
-      storeRef.current.setHost(cfg.hostAttr);
-    }
-  }, []);
-
-  const loadHosts = useCallback(async () => {
-    const hosts = (await darwinAPI.flake.listHosts()) as string[];
-    if (Array.isArray(hosts)) {
-      storeRef.current.setHosts(hosts);
-    }
-  }, []);
-
-  // Update preview indicator window
-  const updatePreviewIndicator = useCallback(
-    async (params: {
-      gitStatus: Awaited<ReturnType<typeof darwinAPI.git.status>> | null;
-      summaryText: string | null;
-      isLoading: boolean;
-      isExpanded: boolean;
-      additions?: number;
-      deletions?: number;
-    }) => {
-      const hasChanges = params.gitStatus?.hasChanges ?? false;
-      const filesChanged = params.gitStatus?.files?.length ?? 0;
-
-      // Show preview indicator when there are uncommitted changes and main window is NOT expanded
-      const shouldShow = hasChanges && !params.isExpanded;
-
-      await darwinAPI.previewIndicator
-        .update({
-          visible: shouldShow,
-          summary: params.summaryText,
-          filesChanged,
-          additions: params.additions,
-          deletions: params.deletions,
-          isLoading: params.isLoading,
-        })
-        .catch(() => {
-          // Ignore errors - window might not exist yet
-        });
-    },
-    [],
-  );
-
-  // Auto-recover state from git status on startup
-  // If there are staged changes, restore preview state
-  // If there are any uncommitted changes, fetch a summary
-  const recoverFromGitState = useCallback(
-    async (
-      gitStatus: Awaited<ReturnType<typeof darwinAPI.git.status>> | null,
-      mounted: { current: boolean },
-    ) => {
-      const currentStore = storeRef.current;
-
-      // Update preview indicator with initial state
-      await updatePreviewIndicator({
-        gitStatus,
-        summaryText: null,
-        isLoading: true,
-        isExpanded: currentStore.isExpanded,
-      });
-
-      // Fetch summary if there are uncommitted changes
-      if (!gitStatus?.hasChanges) {
-        // No changes - hide preview indicator
-        await updatePreviewIndicator({
-          gitStatus,
-          summaryText: null,
-          isLoading: false,
-          isExpanded: currentStore.isExpanded,
-        });
-        return;
-      }
-
-      if (currentStore.summary.items.length > 0) {
-        // Already have summary - use first item's title for preview indicator
-        const summaryText = currentStore.summary.items.map((i) => i.title).join(", ");
-        await updatePreviewIndicator({
-          gitStatus,
-          summaryText,
-          isLoading: false,
-          isExpanded: currentStore.isExpanded,
-          additions: currentStore.summary.additions,
-          deletions: currentStore.summary.deletions,
-        });
-        return;
-      }
-
-      currentStore.setSummary({ isLoading: true });
-      try {
-        const response = await darwinAPI.summarize.changes();
-        if (mounted.current) {
-          currentStore.setSummary({
-            items: response.items,
-            instructions: response.instructions,
-            commitMessage: response.commitMessage,
-            filesChanged: response.filesChanged,
-            additions: response.additions,
-            deletions: response.deletions,
-            diff: response.diff,
-            isLoading: false,
-          });
-          // Update preview indicator with summary (use item titles for text)
-          const summaryText = response.items.map((i) => i.title).join(", ");
-          await updatePreviewIndicator({
-            gitStatus,
-            summaryText,
-            isLoading: false,
-            isExpanded: currentStore.isExpanded,
-            additions: response.additions,
-            deletions: response.deletions,
-          });
-        }
-      } catch {
-        if (mounted.current) {
-          currentStore.setSummary({ isLoading: false });
-          await updatePreviewIndicator({
-            gitStatus,
-            summaryText: null,
-            isLoading: false,
-            isExpanded: currentStore.isExpanded,
-          });
-        }
-      }
-    },
-    [updatePreviewIndicator],
-  );
+  const { updatePreviewIndicator } = usePreviewIndicator();
 
   // =============================================================================
   // Effects
@@ -189,7 +55,7 @@ export function DarwinWidget() {
         await loadConfig();
         await loadHosts();
         const gitStatus = await refreshGitStatus();
-        await recoverFromGitState(gitStatus, mounted);
+        await recoverFromGitState(gitStatus, mounted, updatePreviewIndicator);
 
         // Load preferences
       } catch (e: unknown) {
@@ -209,7 +75,7 @@ export function DarwinWidget() {
     return () => {
       mounted.current = false;
     };
-  }, [loadConfig, loadHosts, refreshGitStatus, recoverFromGitState]);
+  }, [refreshGitStatus, updatePreviewIndicator]);
 
   // Listen for config file changes from the backend watcher
   // This auto-refreshes git status when files are modified externally
@@ -286,7 +152,6 @@ export function DarwinWidget() {
       gitStatus: store.gitStatus,
       summaryText,
       isLoading: store.summary.isLoading,
-      isExpanded: store.isExpanded,
       additions: store.summary.additions,
       deletions: store.summary.deletions,
     });
@@ -296,7 +161,6 @@ export function DarwinWidget() {
     store.summary.isLoading,
     store.summary.additions,
     store.summary.deletions,
-    store.isExpanded,
     updatePreviewIndicator,
   ]);
 
@@ -351,29 +215,6 @@ export function DarwinWidget() {
   // TEMPORARY Routing Logic TODO:ADD ROUTER
   // =============================================================================
 
-  /**
-   * Determines if the preview is active (all files cleanly staged and ready to commit).
-   * This happens after a successful darwin-rebuild.
-   */
-  const isPreviewActive = () => {
-    const files = store.gitStatus?.files || [];
-
-    // Files with changes in the index (staged)
-    const staged = files.filter((f) => f.index && f.index !== " " && f.index !== "?");
-
-    // Staged files with NO additional unstaged modifications
-    const cleanlyStaged = files.filter(
-      (f) =>
-        f.index &&
-        f.index !== " " &&
-        f.index !== "?" &&
-        (!f.working_tree || f.working_tree === " ")
-    );
-
-    // Preview active when every file is cleanly staged and there's at least one staged file
-    return files.length > 0 && cleanlyStaged.length === files.length && staged.length > 0;
-  };
-
   const getActiveStepComponent = () => {
     switch (step) {
       case "setup":
@@ -386,7 +227,7 @@ export function DarwinWidget() {
         return <CommitStep />;
 
       case "evolving":
-        return isPreviewActive() ? <CommitStep /> : <EvolvingStep />;
+        return <EvolvingStep />;
 
       default:
         return <OverviewStep />;

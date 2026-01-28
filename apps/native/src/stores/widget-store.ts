@@ -12,9 +12,7 @@ export type { EvolveEvent, EvolveEventType } from "@/tauri-api";
  * The server does NOT track UI state - it just exposes data endpoints.
  */
 export type AppState = "onboarding" | "idle" | "generating" | "preview";
-
-export type PeekState = "hidden" | "peeking" | "expanded";
-export type WidgetStep = "setup" | "overview" | "evolving" | "rebuilding" | "commit";
+export type WidgetStep = "setup" | "overview" | "evolving" | "commit";
 export type ProcessingAction = "evolve" | "apply" | "commit" | "cancel" | null;
 
 export interface GitFileStatus {
@@ -77,11 +75,6 @@ export interface WidgetState {
 
   // Git (from backend)
   gitStatus: GitStatus | null;
-
-  // Client-side UI state (NOT from backend)
-  isGenerating: boolean;
-  showCommitScreen: boolean;
-
   // Evolution
   evolvePrompt: string;
   commitMsg: string;
@@ -97,11 +90,9 @@ export interface WidgetState {
 
   // Console
   consoleLogs: string;
-  consoleExpanded: boolean;
 
   // UI
-  isExpanded: boolean;
-  peekState: PeekState;
+  isGenerating: boolean;
   settingsOpen: boolean;
   error: string | null;
 }
@@ -116,15 +107,11 @@ export interface WidgetActions {
   setCommitMsg: (msg: string) => void;
   setProcessing: (isProcessing: boolean, action?: ProcessingAction) => void;
   setSummary: (summary: Partial<SummaryState>) => void;
-  setExpanded: (expanded: boolean) => void;
-  setPeekState: (state: PeekState) => void;
   setSettingsOpen: (open: boolean) => void;
   setError: (error: string | null) => void;
-  setConsoleExpanded: (expanded: boolean) => void;
 
   // Client-side state (NOT from server)
   setGenerating: (generating: boolean) => void;
-  setShowCommitScreen: (show: boolean) => void;
   clearPreview: () => void;
 
   // Console
@@ -141,13 +128,6 @@ export interface WidgetActions {
   setRebuildError: (errorType: RebuildErrorType, errorMessage: string) => void;
   setRebuildComplete: (success: boolean, exitCode?: number) => void;
   clearRebuild: () => void;
-
-  // Computed
-  getAppState: () => AppState;
-  getStep: () => WidgetStep;
-
-  // Reset
-  reset: () => void;
 }
 
 export type WidgetStore = WidgetState & WidgetActions;
@@ -174,10 +154,6 @@ export const initialWidgetState: WidgetState = {
   // Git
   gitStatus: null,
 
-  // Client-side UI state
-  isGenerating: false,
-  showCommitScreen: false,
-
   // Evolution
   evolvePrompt: "",
   commitMsg: "",
@@ -199,76 +175,12 @@ export const initialWidgetState: WidgetState = {
 
   // Console
   consoleLogs: "",
-  consoleExpanded: false,
 
   // UI
-  isExpanded: false,
-  peekState: "hidden",
+  isGenerating: false,
   settingsOpen: false,
   error: null,
 };
-
-// =============================================================================
-// Helper: Compute app state from store state
-// =============================================================================
-
-/**
- * Computes the app state based on current conditions.
- * This is the client-side state machine - the server does NOT track this.
- *
- * Rules (in priority order):
- * 1. If missing configDir or host → Onboarding
- * 2. If generating → Generating
- * 3. If has uncommitted changes → Preview (shows evolving step)
- * 4. Otherwise → Idle
- */
-export function computeAppState(state: WidgetState): AppState {
-  const hasConfigDir = !!state.configDir;
-  const hasHostAttr = !!state.host;
-  const hasUncommittedChanges = state.gitStatus?.hasChanges ?? false;
-
-  // Rule 1: Missing configuration
-  if (!(hasConfigDir && hasHostAttr)) {
-    return "onboarding";
-  }
-
-  // Rule 2: Currently generating
-  if (state.isGenerating) {
-    return "generating";
-  }
-
-  // Rule 3: Has uncommitted changes - show evolving step
-  // (either pending preview or ready to commit)
-  if (hasUncommittedChanges) {
-    return "preview";
-  }
-
-  // Rule 4: Default idle state
-  return "idle";
-}
-
-export function appStateToStep(
-  state: AppState,
-  showCommitScreen: boolean,
-  isRebuilding?: boolean,
-): WidgetStep {
-  // Rebuilding takes priority over other states
-  if (isRebuilding) {
-    return "rebuilding";
-  }
-  if (showCommitScreen) {
-    return "commit";
-  }
-  switch (state) {
-    case "onboarding":
-      return "setup";
-    case "generating":
-    case "preview":
-      return "evolving";
-    default:
-      return "overview";
-  }
-}
 
 // =============================================================================
 // Store Factory
@@ -279,7 +191,7 @@ export function appStateToStep(
  * This factory pattern allows creating isolated stores for testing/Storybook.
  */
 export function createWidgetStore(initialState?: Partial<WidgetState>) {
-  return create<WidgetStore>((set, get) => ({
+  return create<WidgetStore>((set, _get) => ({
     ...initialWidgetState,
     ...initialState,
 
@@ -299,18 +211,13 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
       set((state) => ({
         summary: { ...state.summary, ...summary },
       })),
-    setExpanded: (isExpanded) => set({ isExpanded }),
-    setPeekState: (peekState) => set({ peekState }),
     setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
     setError: (error) => set({ error }),
-    setConsoleExpanded: (consoleExpanded) => set({ consoleExpanded }),
 
     // Client-side UI state (NOT from server)
     setGenerating: (isGenerating) => set({ isGenerating }),
-    setShowCommitScreen: (showCommitScreen) => set({ showCommitScreen }),
     clearPreview: () =>
       set({
-        showCommitScreen: false,
         summary: {
           items: [],
           instructions: null,
@@ -366,14 +273,6 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
         },
       })),
     clearRebuild: () => set({ rebuild: initialRebuildState }),
-
-    // Computed - app state is computed entirely client-side
-    getAppState: () => computeAppState(get()),
-    getStep: () =>
-      appStateToStep(computeAppState(get()), get().showCommitScreen, get().rebuild.isRunning),
-
-    // Reset
-    reset: () => set(initialWidgetState),
   }));
 }
 

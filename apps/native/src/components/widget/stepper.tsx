@@ -1,9 +1,9 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { appStateToStep, computeAppState, getStepperStep } from "@/components/widget/utils";
 import { cn } from "@/lib/utils";
-import { useWidgetStore, computeAppState, appStateToStep } from "@/stores/widget-store";
-import { getStepperStep } from "./utils";
+import { useWidgetStore } from "@/stores/widget-store";
+import { Check } from "lucide-react";
 
 export const STEPPER_STEPS = [
   { id: 1 as const, name: "Evolve", description: "Make changes" },
@@ -16,7 +16,7 @@ export type StepperStepId = 1 | 2 | 3;
 export function Stepper() {
   const store = useWidgetStore();
   const appState = computeAppState(store);
-  const step = appStateToStep(appState, store.showCommitScreen);
+  const step = appStateToStep(appState, store.gitStatus);
 
   // Don't show stepper on setup step
   if (step === "setup") {
