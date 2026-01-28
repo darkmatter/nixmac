@@ -39,6 +39,7 @@
     "postinstall": "bun2nix -o bun.nix"
   },
   "dependencies": {
+    "@biomejs/biome": "^2.3.13",
     "dotenv": "catalog:",
     "oxfmt": "^0.20.0",
     "znv": "workspace:*",
