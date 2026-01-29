@@ -1,12 +1,10 @@
 //! Tools used by AI
 
 use super::file_ops::apply_file_edits;
+use super::messages::Tool;
 use super::types::FileEdit;
 
 use anyhow::{anyhow, Result};
-use async_openai::types::{
-    ChatCompletionTool, ChatCompletionToolArgs, ChatCompletionToolType, FunctionObjectArgs,
-};
 use log::{debug, error, info};
 use std::path::Path;
 use std::process::Command;
@@ -15,222 +13,152 @@ use std::process::Command;
 // Tool Definitions
 // =============================================================================
 
-/// Creates the function calling tools for file operations.
-pub fn create_tools() -> Vec<ChatCompletionTool> {
+/// Creates provider-agnostic tools
+pub fn create_tools() -> Vec<Tool> {
     vec![
-        // THINK tool - should be used frequently for reasoning
-        ChatCompletionToolArgs::default()
-            .r#type(ChatCompletionToolType::Function)
-            .function(
-                FunctionObjectArgs::default()
-                    .name("think")
-                    .description(
-                        "Use this tool to think through problems step by step. You should use this \
+        Tool {
+            name: "think".to_string(),
+            description: "Use this tool to think through problems step by step. You should use this \
                          tool FREQUENTLY - before reading files, before making edits, when analyzing \
                          errors, and when planning your approach. Categories: 'planning' for initial \
                          strategy, 'analysis' for understanding code, 'debugging' for fixing errors, \
-                         'verification' for checking your work. Thorough thinking leads to better results.",
-                    )
-                    .parameters(serde_json::json!({
-                        "type": "object",
-                        "properties": {
-                            "category": {
-                                "type": "string",
-                                "enum": ["planning", "analysis", "debugging", "verification", "other"],
-                                "description": "Category of thinking"
-                            },
-                            "thought": {
-                                "type": "string",
-                                "description": "Your detailed reasoning, analysis, or plan. Be thorough."
-                            }
-                        },
-                        "required": ["category", "thought"]
-                    }))
-                    .build()
-                    .unwrap(),
-            )
-            .build()
-            .unwrap(),
-        ChatCompletionToolArgs::default()
-            .r#type(ChatCompletionToolType::Function)
-            .function(
-                FunctionObjectArgs::default()
-                    .name("read_file")
-                    .description("Read the contents of a file. Always read relevant files before making edits to understand the existing code structure and patterns.")
-                    .parameters(serde_json::json!({
-                        "type": "object",
-                        "properties": {
-                            "path": {
-                                "type": "string",
-                                "description": "Relative path to the file from the config directory"
-                            }
-                        },
-                        "required": ["path"]
-                    }))
-                    .build()
-                    .unwrap(),
-            )
-            .build()
-            .unwrap(),
-        ChatCompletionToolArgs::default()
-            .r#type(ChatCompletionToolType::Function)
-            .function(
-                FunctionObjectArgs::default()
-                    .name("edit_file")
-                    .description(
-                        "Edit a file by finding and replacing text. The search string must be \
+                         'verification' for checking your work. Thorough thinking leads to better results."
+                .to_string(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "category": {
+                        "type": "string",
+                        "enum": ["planning", "analysis", "debugging", "verification", "other"],
+                        "description": "Category of thinking"
+                    },
+                    "thought": {
+                        "type": "string",
+                        "description": "The thought content - be detailed and thorough"
+                    }
+                },
+                "required": ["category", "thought"]
+            }),
+        },
+        Tool {
+            name: "read_file".to_string(),
+            description: "Read the contents of a file. Always read relevant files before making edits to understand the existing code structure and patterns.".to_string(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Relative path to the file"
+                    }
+                },
+                "required": ["path"]
+            }),
+        },
+        Tool {
+            name: "edit_file".to_string(),
+            description: "Edit a file by finding and replacing text. The search string must be \
                          unique in the file. For new files, use empty search string. \
                          IMPORTANT: Always provide complete, production-ready code - never use \
-                         placeholders, TODOs, or abbreviated implementations.",
-                    )
-                    .parameters(serde_json::json!({
-                        "type": "object",
-                        "properties": {
-                            "path": {
-                                "type": "string",
-                                "description": "Relative path to the file"
-                            },
-                            "search": {
-                                "type": "string",
-                                "description": "Exact text to find (empty for new file)"
-                            },
-                            "replace": {
-                                "type": "string",
-                                "description": "Text to replace with (or full content for new file)"
-                            }
-                        },
-                        "required": ["path", "search", "replace"]
-                    }))
-                    .build()
-                    .unwrap(),
-            )
-            .build()
-            .unwrap(),
-        ChatCompletionToolArgs::default()
-            .r#type(ChatCompletionToolType::Function)
-            .function(
-                FunctionObjectArgs::default()
-                    .name("list_files")
-                    .description("List files in the config directory. Use glob patterns to find specific file types.")
-                    .parameters(serde_json::json!({
-                        "type": "object",
-                        "properties": {
-                            "pattern": {
-                                "type": "string",
-                                "description": "Optional glob pattern (e.g., '**/*.nix' for all nix files)"
-                            }
-                        }
-                    }))
-                    .build()
-                    .unwrap(),
-            )
-            .build()
-            .unwrap(),
-        ChatCompletionToolArgs::default()
-            .r#type(ChatCompletionToolType::Function)
-            .function(
-                FunctionObjectArgs::default()
-                    .name("build_check")
-                    .description(
-                        "Validate the Nix flake by running a dry-run build. This checks for syntax \
+                         placeholders, TODOs, or abbreviated implementations.".to_string(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Relative path to the file"
+                    },
+                    "search": {
+                        "type": "string",
+                        "description": "Exact text to find (empty for new file)"
+                    },
+                    "replace": {
+                        "type": "string",
+                        "description": "Text to replace with"
+                    }
+                },
+                "required": ["path", "search", "replace"]
+            }),
+        },
+        Tool {
+            name: "list_files".to_string(),
+            description: "List files in the config directory. Use glob patterns to find specific file types.".to_string(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "pattern": {
+                        "type": "string",
+                        "description": "Glob pattern (default: **/*)"
+                    }
+                }
+            }),
+        },
+        Tool {
+            name: "build_check".to_string(),
+            description: "Validate the Nix flake by running a dry-run build. This checks for syntax \
                          errors and evaluation errors WITHOUT actually building derivations. \
                          Call this BEFORE calling 'done' to ensure your changes are valid. \
-                         If the build fails, analyze the error and fix it before trying again.",
-                    )
-                    .parameters(serde_json::json!({
-                        "type": "object",
-                        "properties": {
-                            "host": {
-                                "type": "string",
-                                "description": "The darwin host configuration name to check (e.g., 'macbook-pro')"
-                            }
-                        },
-                        "required": ["host"]
-                    }))
-                    .build()
-                    .unwrap(),
-            )
-            .build()
-            .unwrap(),
-        ChatCompletionToolArgs::default()
-            .r#type(ChatCompletionToolType::Function)
-            .function(
-                FunctionObjectArgs::default()
-                    .name("run_command")
-                    .description(
-                        "Run a shell command in the config directory. Use sparingly - prefer \
+                         If the build fails, analyze the error and fix it before trying again.".to_string(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "host": {
+                        "type": "string",
+                        "description": "The host configuration to check (e.g., 'macbook')"
+                    }
+                },
+                "required": ["host"]
+            }),
+        },
+        Tool {
+            name: "run_command".to_string(),
+            description: "Run a shell command in the config directory. Use sparingly - prefer \
                          specific tools when available. Useful for checking nix syntax, \
-                         searching code, or other exploratory commands.",
-                    )
-                    .parameters(serde_json::json!({
-                        "type": "object",
-                        "properties": {
-                            "command": {
-                                "type": "string",
-                                "description": "The shell command to run"
-                            }
-                        },
-                        "required": ["command"]
-                    }))
-                    .build()
-                    .unwrap(),
-            )
-            .build()
-            .unwrap(),
-        ChatCompletionToolArgs::default()
-            .r#type(ChatCompletionToolType::Function)
-            .function(
-                FunctionObjectArgs::default()
-                    .name("search_code")
-                    .description(
-                        "Search for text patterns in the codebase using ripgrep. \
-                         Returns matching lines with file paths and line numbers. \
-                         Useful for understanding how existing code works before making changes.",
-                    )
-                    .parameters(serde_json::json!({
-                        "type": "object",
-                        "properties": {
-                            "pattern": {
-                                "type": "string",
-                                "description": "The regex pattern to search for"
-                            },
-                            "file_pattern": {
-                                "type": "string",
-                                "description": "Optional glob to filter files (e.g., '*.nix')"
-                            }
-                        },
-                        "required": ["pattern"]
-                    }))
-                    .build()
-                    .unwrap(),
-            )
-            .build()
-            .unwrap(),
-        ChatCompletionToolArgs::default()
-            .r#type(ChatCompletionToolType::Function)
-            .function(
-                FunctionObjectArgs::default()
-                    .name("done")
-                    .description(
-                        "Signal that all changes are complete. IMPORTANT: Only call this AFTER \
-                         successfully running build_check to verify your changes compile. \
-                         Provide a summary of what was changed.",
-                    )
-                    .parameters(serde_json::json!({
-                        "type": "object",
-                        "properties": {
-                            "summary": {
-                                "type": "string",
-                                "description": "Brief summary of changes made"
-                            }
-                        },
-                        "required": ["summary"]
-                    }))
-                    .build()
-                    .unwrap(),
-            )
-            .build()
-            .unwrap(),
+                         searching code, or other exploratory commands.".to_string(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "description": "Shell command to run"
+                    }
+                },
+                "required": ["command"]
+            }),
+        },
+        Tool {
+            name: "search_code".to_string(),
+            description: "Search for text patterns in the codebase using ripgrep. \
+                         This helps locate where functions or variables are defined or used.".to_string(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "pattern": {
+                        "type": "string",
+                        "description": "Regex pattern to search for"
+                    },
+                    "file_pattern": {
+                        "type": "string",
+                        "description": "Optional glob pattern for files to search in"
+                    }
+                },
+                "required": ["pattern"]
+            }),
+        },
+        Tool {
+            name: "done".to_string(),
+            description: "Signal that all changes are complete. IMPORTANT: Only call this AFTER \
+                         you have verified your changes with build_check and are confident they work.".to_string(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "summary": {
+                        "type": "string",
+                        "description": "Description of changes made"
+                    }
+                },
+                "required": ["summary"]
+            }),
+        },
     ]
 }
 

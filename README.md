@@ -74,21 +74,37 @@ Key doesn't have to be formatted a certain way (just the key on its own line som
 
 ## AI Setup
 
-By default, summarization and configuration evolution is set up to use OpenAI.
-
-The summarization model (for both changes and commit messages) uses a pluggable "provider" model. Currently we have the following implementations:
+We have a pluggable "provider" design for AI models. Currently we have the following implementations:
 
 - OpenAI / OpenRouter (default)
 - Ollama
 
-### Ollama configuration
+NOTE: By default, we use OpenAI with *anthropic/claude-sonnet-4* for configuration evolution and *openai/gpt-4o-mini* for summarization.
 
-Quick dev: `SUMMARIZE_AI_PROVIDER=ollama devenv up`
+### Configuration
 
-Environment configuration:
+We allow you to set the "summarize" (for commit and UI messages) and "evolve" messages separately, primarily because evolving your nix config is implemented as a "tool" and a lot of otherwise-good models don't do tools particularly well.
 
-- `OLLAMA_MODEL` (default = "llama3")
+Environment variables:
+
+- `SUMMARY_AI_PROVIDER` (default = openai)
+- `EVOLVE_PROVIDER` (default = openai)
+
+#### OpenAI Configuration:
+
+TODO get these from environment variables
+
+#### Ollama Configuration:
+
+Quick dev: `SUMMARY_AI_PROVIDER=ollama EVOLVE_PROVIDER=ollama devenv up`
+
+Environment variables:
+
 - `OLLAMA_API_BASE` (default = "http://localhost:11434")
+- `SUMMARY_MODEL` (default = "llama3.1")
+- `EVOLVE_MODEL` (default = "qwen2.5-coder:7b")
+
+**IMPORTANT NOTE**: Empirically, models under 70B parameters don't seem to do well with the Nix "evolve" tool workflow, either losing tool context and exiting or (if you're lucky) making suboptimal changes.
 
 ## Database Setup
 

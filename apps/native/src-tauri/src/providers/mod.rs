@@ -28,11 +28,11 @@ pub trait ChatCompletionProvider: Send + Sync {
 pub fn create_provider<R: Runtime>(
     app_handle: Option<&AppHandle<R>>,
 ) -> Result<Box<dyn ChatCompletionProvider>> {
-    let provider = std::env::var("SUMMARIZE_AI_PROVIDER").unwrap_or_else(|_| "openai".to_string());
+    let provider = std::env::var("SUMMARY_AI_PROVIDER").unwrap_or_else(|_| "openai".to_string());
 
     match provider.as_str() {
         "ollama" => {
-            let model = std::env::var("OLLAMA_MODEL").unwrap_or_else(|_| "llama3".to_string());
+            let model = std::env::var("SUMMARY_MODEL").unwrap_or_else(|_| "llama3.1".to_string());
             let base_url = std::env::var("OLLAMA_API_BASE")
                 .unwrap_or_else(|_| "http://localhost:11434".to_string());
             Ok(Box::new(OllamaClient::new(&base_url, &model)))
