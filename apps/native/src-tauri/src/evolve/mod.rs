@@ -66,7 +66,7 @@ fn log_api_error(
     let _ = writeln!(file, "Error: {}", error);
     let _ = writeln!(file, "Iteration: {}", iteration);
     let _ = writeln!(file, "Original Prompt: {}", prompt);
-    let _ = writeln!(file, "");
+    let _ = writeln!(file);
     let _ = writeln!(
         file,
         "═══════════════════════════════════════════════════════════════"
@@ -78,7 +78,7 @@ fn log_api_error(
     );
 
     for (i, msg) in messages.iter().enumerate() {
-        let _ = writeln!(file, "");
+        let _ = writeln!(file);
         let _ = writeln!(file, "--- Message {} ---", i + 1);
         match serde_json::to_string_pretty(msg) {
             Ok(json) => {
@@ -90,7 +90,7 @@ fn log_api_error(
         }
     }
 
-    let _ = writeln!(file, "");
+    let _ = writeln!(file);
     let _ = writeln!(
         file,
         "═══════════════════════════════════════════════════════════════"
@@ -253,7 +253,7 @@ pub async fn generate_evolution(
         debug!("Sending request to OpenAI API...");
         emit_evolve_event(app, EvolveEvent::api_request(start_time, iteration));
 
-        let response = client.chat().create(request).await.map_err(|e| {
+        let response = client.chat().create(request).await.inspect_err(|e| {
             let error_str = e.to_string();
             error!("OpenAI API error: {}", error_str);
 
@@ -264,7 +264,6 @@ pub async fn generate_evolution(
                 app,
                 EvolveEvent::error(start_time, Some(iteration), &error_str),
             );
-            e
         })?;
 
         let choice = response
@@ -363,7 +362,7 @@ pub async fn generate_evolution(
                                     );
                                 }
                             }
-                            ToolResult::Continue(content) => {
+                            ToolResult::Continue(_content) => {
                                 // Check if this was a read_file operation
                                 if tool_name == "read_file" {
                                     if let Some(path) = args.get("path").and_then(|v| v.as_str()) {
@@ -731,7 +730,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_evolution_creation() {
+    fn test_evolution_creation() -> Result<()> {
         // create template repo
         let dir = tempfile::tempdir().map_err(|e| anyhow!("Failed to create temp dir: {}", e))?;
         // copy template/minimal
@@ -739,5 +738,6 @@ mod tests {
         let config_dir = dir.path().to_str().unwrap();
         std::fs::create_dir_all(config_dir).unwrap();
         assert!(dir.path().join("flake.nix").exists());
+        Ok(())
     }
 }

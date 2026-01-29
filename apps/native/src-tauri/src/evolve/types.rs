@@ -4,22 +4,18 @@ use serde::{Deserialize, Serialize};
 /// This replaces the old EvolutionState which was manually assigned.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 pub enum AppState {
     /// Missing configuration (host, user, directory, etc.)
     Onboarding,
     /// Default state - configured and no pending changes
+    #[default]
     Idle,
     /// LLM is actively generating changes
     Generating,
     /// Working changes have been activated with `darwin-rebuild switch`
     /// but the changes are not committed yet
     Preview,
-}
-
-impl Default for AppState {
-    fn default() -> Self {
-        Self::Idle
-    }
 }
 
 /// Input data used to compute the current app state

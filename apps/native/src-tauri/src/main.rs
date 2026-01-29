@@ -176,13 +176,13 @@ fn main() {
             let _ = main_window;
 
             // Create the preview indicator window (persistent banner for uncommitted changes)
-            if let Err(e) = peek::create_preview_indicator_window(&handle) {
+            if let Err(e) = peek::create_preview_indicator_window(handle) {
                 eprintln!("[peek] ❌ Failed to create preview indicator window: {}", e);
             }
 
             // Start config watcher - monitors config directory for file changes
             // This emits config:changed events to the frontend when files are modified
-            if let Ok(config_dir) = store::get_config_dir(&handle) {
+            if let Ok(config_dir) = store::get_config_dir(handle) {
                 watcher::start_watching(handle.clone(), config_dir);
             }
 
