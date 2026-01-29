@@ -1,5 +1,5 @@
 import type { StepperStepId } from "@/components/widget/stepper";
-import type { AppState, GitFileStatus, GitStatus, WidgetState, WidgetStep } from "@/stores/widget-store";
+import type { GitFileStatus, WidgetState, WidgetStep } from "@/stores/widget-store";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
 // Map widget steps to stepper steps
@@ -73,99 +73,34 @@ export function getChangeType(
   return "edited";
 }
 
-/**
- * Analyze git status to determine what state changes are in.
- * - hasUnstagedChanges: Files with working_tree changes (not yet previewed)
- * - hasStagedChanges: Files with index changes (previewed/applied)
- * - allChangesStaged: All changes are staged (no unstaged changes exist)
- * - allChangesCleanlyStaged: All files are cleanly staged (staged with no working_tree modifications)
- *   This is the condition for showing the commit screen.
- */
-export function analyzeGitStatus(gitStatus: GitStatus | null): {
-  hasUnstagedChanges: boolean;
-  hasStagedChanges: boolean;
-  allChangesStaged: boolean;
-  allChangesCleanlyStaged: boolean;
-  unstagedFiles: GitFileStatus[];
-  stagedFiles: GitFileStatus[];
-  cleanlyStaged: GitFileStatus[];
-} {
-  const files = gitStatus?.files || [];
-  const unstagedFiles = files.filter((f) => f.working_tree && f.working_tree !== " ");
-  const stagedFiles = files.filter((f) => f.index && f.index !== " " && f.index !== "?");
+// Computes the current step based on widget state.
 
-  // Files that are cleanly staged (have index changes but no working_tree changes)
-  const cleanlyStaged = files.filter(
-    (f) =>
-      f.index &&
-      f.index !== " " &&
-      f.index !== "?" &&
-      (!f.working_tree || f.working_tree === " ")
-  );
-
-  return {
-    hasUnstagedChanges: unstagedFiles.length > 0,
-    hasStagedChanges: stagedFiles.length > 0,
-    allChangesStaged: files.length > 0 && unstagedFiles.length === 0,
-    allChangesCleanlyStaged: files.length > 0 && cleanlyStaged.length === files.length && stagedFiles.length > 0,
-    unstagedFiles,
-    stagedFiles,
-    cleanlyStaged,
-  };
-}
-
-/**
- * Computes the app state based on current conditions.
- * This is the client-side state machine - the server does NOT track this.
- *
- * Rules (in priority order):
- * 1. If missing configDir or host → Onboarding
- * 2. If generating → Generating
- * 3. If has uncommitted changes → Preview (shows evolving step)
- * 4. Otherwise → Idle
- */
-export function computeAppState(state: WidgetState): AppState {
+export function computeCurrentStep(state: WidgetState): WidgetStep {
   const hasConfigDir = !!state.configDir;
-  const hasHostAttr = !!state.host;
+  const hasHost = !!state.host;
   const hasUncommittedChanges = state.gitStatus?.hasChanges ?? false;
+  const allChangesCleanlyStaged = state.gitStatus?.allChangesCleanlyStaged ?? false;
 
   // Rule 1: Missing configuration
-  if (!(hasConfigDir && hasHostAttr)) {
-    return "onboarding";
+  if (!(hasConfigDir && hasHost)) {
+    return "setup";
   }
 
   // Rule 2: Currently generating
   if (state.isGenerating) {
-    return "generating";
+    return "evolving";
   }
 
-  // Rule 3: Has uncommitted changes - show evolving step
-  // (either pending preview or ready to commit)
+  // Rule 3: All changes staged and ready to commit
+  if (allChangesCleanlyStaged) {
+    return "commit";
+  }
+
+  // Rule 4: Has uncommitted changes (not all staged yet)
   if (hasUncommittedChanges) {
-    return "preview";
+    return "evolving";
   }
 
-  // Rule 4: Default idle state
-  return "idle";
-}
-
-export function appStateToStep(
-  state: AppState,
-  gitStatus: GitStatus | null,
-): WidgetStep {
-
-  // Check if all changes are clearly staged before showing commit step when in preview state
-  if (state === "preview") {
-    const { allChangesCleanlyStaged } = analyzeGitStatus(gitStatus);
-    return allChangesCleanlyStaged ? "commit" : "evolving";
-  }
-
-  switch (state) {
-    case "onboarding":
-      return "setup";
-    case "generating":
-      return "evolving";
-    default:
-      return "overview";
-  }
+  // Rule 5: Default idle state
+  return "overview";
 }

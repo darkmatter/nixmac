@@ -7,6 +7,7 @@ import {
 } from "@/tauri-api";
 import { useCallback } from "react";
 import { useGitOperations } from "./use-git-operations";
+import { useSummary } from "./use-summary";
 
 /**
  * Hook for the evolution operation.
@@ -14,6 +15,7 @@ import { useGitOperations } from "./use-git-operations";
  */
 export function useEvolve() {
   const { refreshGitStatus } = useGitOperations();
+  const { checkAndFetchSummary } = useSummary();
 
   const handleEvolve = useCallback(async () => {
     // Get fresh state each time
@@ -27,6 +29,7 @@ export function useEvolve() {
     store.setError(null);
     store.clearEvolveEvents();
     store.clearLogs();
+    store.clearPreview();
     store.appendLog(`\n> Evolving: "${store.evolvePrompt}"\n`);
 
     // Set up evolve event listener
@@ -46,6 +49,7 @@ export function useEvolve() {
       await darwinAPI.darwin.evolve(store.evolvePrompt);
       useWidgetStore.getState().appendLog("✓ Evolution complete\n");
       await refreshGitStatus();
+      await checkAndFetchSummary();
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
       useWidgetStore.getState().setError(msg);
@@ -55,7 +59,7 @@ export function useEvolve() {
       useWidgetStore.getState().setGenerating(false);
       unlistenEvolve();
     }
-  }, [refreshGitStatus]);
+  }, [refreshGitStatus, checkAndFetchSummary]);
 
   return { handleEvolve };
 }

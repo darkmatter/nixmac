@@ -23,7 +23,6 @@ import { categorizeChanges } from "../utils";
 
 /**
  * Overview step - shows prompt input or displays existing changes.
- * Accesses state directly from the store instead of receiving props.
  */
 export function OverviewStep() {
   const evolvePrompt = useWidgetStore((s) => s.evolvePrompt);

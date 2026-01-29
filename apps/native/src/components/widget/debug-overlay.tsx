@@ -1,6 +1,6 @@
 "use client";
 
-import { appStateToStep, computeAppState } from "@/components/widget/utils";
+import { computeCurrentStep } from "@/components/widget/utils";
 import { useWidgetStore } from "@/stores/widget-store";
 
 /**
@@ -8,9 +8,7 @@ import { useWidgetStore } from "@/stores/widget-store";
  */
 export function DebugOverlay() {
   const store = useWidgetStore();
-  const appState = computeAppState(store);
-  const step = appStateToStep(appState, store.gitStatus);
-  // const appState = useWidgetStore((s) => s.appState);
+  const step = computeCurrentStep(store);
   // const isProcessing = useWidgetStore((s) => s.isProcessing);
   // const processingAction = useWidgetStore((s) => s.processingAction);
   // const isGenerating = useWidgetStore((s) => s.isGenerating);
@@ -25,7 +23,6 @@ export function DebugOverlay() {
       style={{ backdropFilter: "blur(4px)" }}
     >
       <div>step: {step}</div>
-      {/* <div>appState: {appState}</div> */}
       {/* <div>isProcessing: {String(isProcessing)}</div> */}
       {/* <div>processingAction: {processingAction || "null"}</div> */}
       {/* <div>isGenerating: {String(isGenerating)}</div> */}

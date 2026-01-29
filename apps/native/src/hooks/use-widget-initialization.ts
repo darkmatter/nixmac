@@ -1,7 +1,5 @@
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
-import { useEffect } from "react";
-import { useGitOperations } from "./use-git-operations";
 import { usePreviewIndicator } from "./use-preview-indicator";
 
 export type Config = {
@@ -48,7 +46,6 @@ export async function recoverFromGitState(
     gitStatus,
     summaryText: null,
     isLoading: true,
-    isExpanded: currentStore.isExpanded,
   });
 
   // Fetch summary if there are uncommitted changes
@@ -57,7 +54,6 @@ export async function recoverFromGitState(
       gitStatus,
       summaryText: null,
       isLoading: false,
-      isExpanded: currentStore.isExpanded,
     });
     return;
   }
@@ -70,7 +66,6 @@ export async function recoverFromGitState(
       gitStatus,
       summaryText,
       isLoading: false,
-      isExpanded: currentStore.isExpanded,
       additions: currentStore.summary.additions,
       deletions: currentStore.summary.deletions,
     });
@@ -96,7 +91,6 @@ export async function recoverFromGitState(
         gitStatus,
         summaryText,
         isLoading: false,
-        isExpanded: currentStore.isExpanded,
         additions: response.additions,
         deletions: response.deletions,
       });
@@ -108,65 +102,7 @@ export async function recoverFromGitState(
         gitStatus,
         summaryText: null,
         isLoading: false,
-        isExpanded: currentStore.isExpanded,
       });
     }
   }
-}
-
-/**
- * Hook for widget initialization on startup.
- * Loads config, hosts, git status, and recovers preview state if changes exist.
- */
-export function useWidgetInitialization(
-  step: string,
-  setPrefFloatingFooter: (val: boolean) => void,
-  setPrefWindowShadow: (val: boolean) => void,
-  setOpenaiApiKey: (val: string) => void
-) {
-  const { refreshGitStatus } = useGitOperations();
-  const { updatePreviewIndicator } = usePreviewIndicator();
-
-  // Load initial data once on mount
-  useEffect(() => {
-    const mounted = { current: true };
-
-    (async () => {
-      try {
-        await loadConfig();
-        await loadHosts();
-        const gitStatus = await refreshGitStatus();
-        await recoverFromGitState(gitStatus, mounted, updatePreviewIndicator);
-
-        // Load preferences
-        const prefs = await darwinAPI.ui.getPrefs();
-        if (prefs && mounted.current) {
-          setPrefFloatingFooter(prefs.floatingFooter ?? false);
-          setPrefWindowShadow(prefs.windowShadow ?? false);
-          setOpenaiApiKey(prefs.openaiApiKey ?? "");
-        }
-      } catch (e: unknown) {
-        if (mounted.current) {
-          const errorMessage = (e as Error)?.message || String(e);
-          const supressFlakeError =
-            step === "setup" &&
-            errorMessage.includes("Failed to list hosts: path");
-          if (!supressFlakeError) {
-            useWidgetStore.getState().setError(errorMessage);
-          }
-        }
-      }
-    })();
-
-    return () => {
-      mounted.current = false;
-    };
-  }, [
-    refreshGitStatus,
-    updatePreviewIndicator,
-    step,
-    setPrefFloatingFooter,
-    setPrefWindowShadow,
-    setOpenaiApiKey,
-  ]);
 }

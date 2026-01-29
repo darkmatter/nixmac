@@ -1,33 +1,16 @@
 import { create } from "zustand";
-import type { EvolveEvent } from "@/tauri-api";
-
-export type { EvolveEvent, EvolveEventType } from "@/tauri-api";
+import type { EvolveEvent, GitStatus } from "@/tauri-api";
+export type { EvolveEvent, EvolveEventType, GitFileStatus, GitStatus } from "@/tauri-api";
 
 // =============================================================================
 // Types
 // =============================================================================
 
 /**
- * App state - computed entirely on the client based on local state.
- * The server does NOT track UI state - it just exposes data endpoints.
+ * Widget step state - updated by useEffect based on app state.
  */
-export type AppState = "onboarding" | "idle" | "generating" | "preview";
 export type WidgetStep = "setup" | "overview" | "evolving" | "commit";
 export type ProcessingAction = "evolve" | "apply" | "commit" | "cancel" | null;
-
-export interface GitFileStatus {
-  path: string;
-  index?: string;
-  working_tree?: string;
-}
-
-export interface GitStatus {
-  hasChanges?: boolean;
-  files?: GitFileStatus[];
-  modified?: string[];
-  staged?: string[];
-  deleted?: string[];
-}
 
 export interface SummaryItem {
   title: string;

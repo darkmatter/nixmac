@@ -57,6 +57,18 @@ pub struct GitStatus {
     /// Quick check for any uncommitted changes.
     #[serde(rename = "hasChanges")]
     pub has_changes: bool,
+
+    /// Files with working_tree changes (not yet staged).
+    #[serde(rename = "hasUnstagedChanges")]
+    pub has_unstaged_changes: bool,
+
+    /// All changes are staged (no unstaged changes exist).
+    #[serde(rename = "allChangesStaged")]
+    pub all_changes_staged: bool,
+
+    /// All files cleanly staged (ready to commit - no mixed staged/unstaged).
+    #[serde(rename = "allChangesCleanlyStaged")]
+    pub all_changes_cleanly_staged: bool,
 }
 
 /// Individual file status from `git status --porcelain`.
