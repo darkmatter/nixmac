@@ -66,7 +66,6 @@ export default defineConfig({
         main: path.resolve(__dirname, "index.html"),
         "preview-indicator": path.resolve(__dirname, "preview-indicator.html"),
         "peek-icon": path.resolve(__dirname, "src/peek-icon.html"),
-        "rebuild-overlay": path.resolve(__dirname, "rebuild-overlay.html"),
       },
     },
   },
