@@ -11,6 +11,7 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     pkgs.rustPackages.cargo
     pkgs.rustPackages.clippy
     pkgs.rustPackages.rustfmt
+    pkgs.rust-analyzer
     pkgs.clippy
     pkgs.cargo-watch
     pkgs.cargo-nextest
@@ -19,6 +20,9 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     pkgs.git
     pkgs.libiconv
     pkgs.starship
+    pkgs.lldb
+    pkgs.llvmPackages.bintools
+    pkgs.nixfmt
   ]
   ++ lib.optionals (pkgs.stdenv.isDarwin) [
     pkgs.apple-sdk_15
@@ -38,6 +42,20 @@ lib.mkIf (!(config.container.isBuilding or false)) {
   enterShell = ''
     echo "$(starship preset pure-preset)" > $DEVENV_STATE/starship.toml
     export STARSHIP_CONFIG=$DEVENV_STATE/starship.toml
+
+    # Rust dev settings
+    export RUST_BACKTRACE=1
+    export RUST_LOG=info
+
+    # For CodeLLDB
+    export LLDB_BIN=$(which lldb)
+    export DYLD_LIBRARY_PATH=${pkgs.lldb}/lib:$DYLD_LIBRARY_PATH
+
+    # Inherit locale settings from host environment
+    export LANG=en_US.UTF-8
+    export LC_ALL=en_US.UTF-8
+    export LC_COLLATE=C
+    
     # eval "$(starship init $SHELL)"
   '';
 

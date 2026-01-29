@@ -1,14 +1,17 @@
 "use client";
 
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { useState } from "react";
+import { useWidgetStore } from "@/stores/widget-store";
+import { DebugOverlay } from "./debug-overlay";
 
-interface ConsoleProps {
-  expanded: boolean;
-  setExpanded: (v: boolean) => void;
-  logs: string;
-}
+/**
+ * Console component that displays logs from operations.
+ */
+export function Console() {
+  const [expanded, setExpanded] = useState(false);
+  const logs = useWidgetStore((s) => s.consoleLogs);
 
-export function Console({ expanded, setExpanded, logs }: ConsoleProps) {
   return (
     <div className="flex flex-col border-border border-t">
       <button
@@ -25,10 +28,18 @@ export function Console({ expanded, setExpanded, logs }: ConsoleProps) {
       </button>
 
       {expanded && (
-        <div className="max-h-40 overflow-auto bg-black/40 p-3">
-          <pre className="whitespace-pre-wrap font-mono text-[11px] text-green-300/90">
-            {logs || "No output yet..."}
-          </pre>
+        <div className="flex max-h-40 flex-col bg-black/40">
+          {/* Debug Info */}
+          <div className="relative border-yellow-500/30 border-b">
+            <DebugOverlay />
+          </div>
+
+          {/* Logs */}
+          <div className="flex-1 overflow-auto p-3">
+            <pre className="whitespace-pre-wrap font-mono text-[11px] text-green-300/90">
+              {logs || "No output yet..."}
+            </pre>
+          </div>
         </div>
       )}
     </div>

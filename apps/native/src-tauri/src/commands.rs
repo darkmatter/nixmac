@@ -8,9 +8,14 @@
 //! preview mode, etc.) is computed and managed entirely by the client.
 
 use crate::{darwin, git, nix, peek, store, summarize, types, watcher};
+use std::fs;
+use std::path::Path;
 use std::process::Command;
 use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
+
+// Add these constants after your imports, before the functions
+const DEFAULT_FLAKE_DOT_NIX: &str = include_str!("../../templates/default/flake.nix");
 
 // =============================================================================
 // Configuration Commands
@@ -22,7 +27,7 @@ pub async fn config_get(app: AppHandle) -> Result<types::Config, String> {
     let config_dir = store::get_config_dir(&app).map_err(|e| e.to_string())?;
     let host_attr = store::get_host_attr(&app)
         .map_err(|e| e.to_string())?
-        .or_else(|| store::read_host_attr_from_file());
+        .or_else(store::read_host_attr_from_file);
 
     Ok(types::Config {
         config_dir,
@@ -54,7 +59,9 @@ pub async fn config_pick_dir(app: AppHandle) -> Result<Option<String>, String> {
     let dialog = app.dialog();
     let result = dialog
         .file()
-        .set_title("Select Configuration Directory")
+        .set_title(
+            "Select Configuration Directory - TIP: press '⌘'+'⇧'+'.' to show hidden directories",
+        )
         .blocking_pick_folder();
 
     if let Some(path) = result {
@@ -65,6 +72,54 @@ pub async fn config_pick_dir(app: AppHandle) -> Result<Option<String>, String> {
     }
 
     Ok(None)
+}
+
+/// Checks if a flake.nix exists in the config directory
+#[tauri::command]
+pub async fn flake_exists(app: AppHandle) -> Result<bool, String> {
+    let dir = store::get_config_dir(&app).map_err(|e| e.to_string())?;
+    Ok(Path::new(&dir).join("flake.nix").exists())
+}
+
+#[tauri::command]
+pub async fn bootstrap_default_config(app: AppHandle, hostname: String) -> Result<(), String> {
+    let dir = store::get_config_dir(&app).map_err(|e| e.to_string())?;
+    let path = Path::new(&dir);
+
+    if path.join("flake.nix").exists() {
+        return Err("Directory already contains flake.nix".to_string());
+    }
+
+    // Create flake from /defaults/flake.nix
+    let flake_content = DEFAULT_FLAKE_DOT_NIX.replace("macbook", &hostname);
+    fs::write(path.join("flake.nix"), flake_content)
+        .map_err(|e| format!("Failed to write flake.nix: {}", e))?;
+
+    git::init_if_needed(&dir).map_err(|e| e.to_string())?;
+
+    git::stage_all(&dir).map_err(|e| e.to_string())?;
+
+    let flake_lock_result = Command::new("nix")
+        .args(["flake", "lock"])
+        .current_dir(&dir)
+        .env("PATH", crate::nix::get_nix_path())
+        .output()
+        .map_err(|e| format!("Failed to generate flake.lock: {}", e))?;
+
+    if !flake_lock_result.status.success() {
+        return Err(format!(
+            "Failed to generate flake.lock: {}",
+            String::from_utf8_lossy(&flake_lock_result.stderr)
+        ));
+    }
+
+    // Stage the newly created flake.lock
+    git::stage_all(&dir).map_err(|e| e.to_string())?;
+
+    // Commit all
+    git::commit_all(&dir, "Initial nix-darwin configuration").map_err(|e| e.to_string())?;
+
+    Ok(())
 }
 
 // =============================================================================
@@ -322,13 +377,11 @@ pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse,
     let status = git::status(&dir).map_err(|e| e.to_string())?;
     let file_list: Vec<String> = status.files.iter().map(|f| f.path.clone()).collect();
 
-    // Get API key from store
-    let api_key = store::get_openai_api_key(&app).map_err(|e| e.to_string())?;
-
     // Generate both summary and commit message in parallel
-    let (change_summary, commit_message) = summarize::summarize_for_preview(&diff, &file_list, api_key.as_deref())
-        .await
-        .map_err(|e| e.to_string())?;
+    let (change_summary, commit_message) =
+        summarize::summarize_for_preview(&diff, &file_list, Some(&app))
+            .await
+            .map_err(|e| e.to_string())?;
 
     // Convert summarize::SummaryItem to types::SummaryItem
     let items: Vec<types::SummaryItem> = change_summary
@@ -394,10 +447,7 @@ pub async fn suggest_commit_message(app: AppHandle) -> Result<String, String> {
     let status = git::status(&dir).map_err(|e| e.to_string())?;
     let file_list: Vec<String> = status.files.iter().map(|f| f.path.clone()).collect();
 
-    // Get API key from store
-    let api_key = store::get_openai_api_key(&app).map_err(|e| e.to_string())?;
-
-    let message = summarize::generate_commit_message(&diff, &file_list, api_key.as_deref())
+    let message = summarize::generate_commit_message(&diff, &file_list, Some(&app))
         .await
         .map_err(|e| e.to_string())?;
 
@@ -501,24 +551,6 @@ pub async fn preview_indicator_get_state() -> Result<peek::PreviewIndicatorState
     let state = peek::get_preview_indicator_state();
     log::debug!("Current preview indicator state: {:?}", state);
     Ok(state)
-}
-
-// =============================================================================
-// Rebuild Overlay Commands
-// =============================================================================
-
-/// Shows the rebuild overlay window (full-screen semi-transparent overlay).
-#[tauri::command]
-pub async fn rebuild_overlay_show(app: AppHandle) -> Result<serde_json::Value, String> {
-    peek::show_rebuild_overlay(&app)?;
-    Ok(serde_json::json!({"ok": true}))
-}
-
-/// Hides the rebuild overlay window.
-#[tauri::command]
-pub async fn rebuild_overlay_hide(app: AppHandle) -> Result<serde_json::Value, String> {
-    peek::hide_rebuild_overlay(&app)?;
-    Ok(serde_json::json!({"ok": true}))
 }
 
 // =============================================================================

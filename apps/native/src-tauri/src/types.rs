@@ -57,6 +57,18 @@ pub struct GitStatus {
     /// Quick check for any uncommitted changes.
     #[serde(rename = "hasChanges")]
     pub has_changes: bool,
+
+    /// Files with working_tree changes (not yet staged).
+    #[serde(rename = "hasUnstagedChanges")]
+    pub has_unstaged_changes: bool,
+
+    /// All changes are staged (no unstaged changes exist).
+    #[serde(rename = "allChangesStaged")]
+    pub all_changes_staged: bool,
+
+    /// All files cleanly staged (ready to commit - no mixed staged/unstaged).
+    #[serde(rename = "allChangesCleanlyStaged")]
+    pub all_changes_cleanly_staged: bool,
 }
 
 /// Individual file status from `git status --porcelain`.
@@ -226,7 +238,7 @@ impl EvolveEvent {
                 "Starting evolution with model {} for prompt: {}",
                 model, prompt
             ),
-            format!("Starting AI evolution..."),
+            "Starting AI evolution...".to_string(),
             None,
             start_time,
         )
@@ -311,12 +323,12 @@ impl EvolveEvent {
 
     pub fn tool_call(start_time: i64, iter: usize, tool: &str, args_summary: &str) -> Self {
         let summary = match tool {
-            "read_file" => format!("Reading file..."),
-            "edit_file" => format!("Editing file..."),
-            "list_files" => format!("Listing files..."),
-            "build_check" => format!("Running build check..."),
-            "think" => format!("Thinking..."),
-            "done" => format!("Finishing up..."),
+            "read_file" => "Reading file...".to_string(),
+            "edit_file" => "Editing file...".to_string(),
+            "list_files" => "Listing files...".to_string(),
+            "build_check" => "Running build check...".to_string(),
+            "think" => "Thinking...".to_string(),
+            "done" => "Finishing up...".to_string(),
             _ => format!("Using {} tool...", tool),
         };
         Self::new(
