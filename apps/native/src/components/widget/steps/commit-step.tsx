@@ -1,49 +1,49 @@
 "use client";
 
 import { GitBranch, Loader2, RefreshCw, Undo2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import {
-  analyzeGitStatus,
-  type GitStatus,
-  type ProcessingAction,
-  type SummaryState,
-} from "@/stores/widget-store";
+import { useWidgetStore } from "@/stores/widget-store";
+import { useCommit } from "@/hooks/use-commit";
+import { useEvolve } from "@/hooks/use-evolve";
+import { useSummary } from "@/hooks/use-summary";
 import { Diff } from "../diff";
 
-interface CommitStepProps {
-  gitStatus: GitStatus | null;
-  commitMsg: string;
-  setCommitMsg: (s: string) => void;
-  isProcessing: boolean;
-  processingAction: ProcessingAction;
-  handleCommit: () => void;
-  handleCancel: () => void;
-  handleEvolve: () => void;
-  setEvolvePrompt: (s: string) => void;
-  evolvePrompt: string;
-  summary: SummaryState;
-}
+export function CommitStep() {
+  const gitStatus = useWidgetStore((s) => s.gitStatus);
+  const commitMsg = useWidgetStore((s) => s.commitMsg);
+  const setCommitMsg = useWidgetStore((s) => s.setCommitMsg);
+  const isProcessing = useWidgetStore((s) => s.isProcessing);
+  const processingAction = useWidgetStore((s) => s.processingAction);
+  const evolvePrompt = useWidgetStore((s) => s.evolvePrompt);
+  const setEvolvePrompt = useWidgetStore((s) => s.setEvolvePrompt);
+  const summary = useWidgetStore((s) => s.summary);
 
-export function CommitStep({
-  gitStatus,
-  commitMsg,
-  setCommitMsg,
-  isProcessing,
-  processingAction,
-  handleCommit,
-  handleCancel,
-  handleEvolve,
-  setEvolvePrompt,
-  evolvePrompt,
-  summary,
-}: CommitStepProps) {
-  const { stagedFiles, allChangesStaged } = analyzeGitStatus(gitStatus);
+  const { handleCommit, handleCancel } = useCommit();
+  const { handleEvolve } = useEvolve();
+  const { checkAndFetchSummary } = useSummary();
+
+  // Fetch summary as a fallback for manual changes
+  // When coming from evolve/apply flow, summary is already fetched
+  useEffect(() => {
+    checkAndFetchSummary();
+  }, [checkAndFetchSummary]);
+
+  // Auto-populate commit message from AI suggestion when available
+  useEffect(() => {
+    if (summary.commitMessage && !commitMsg) {
+      setCommitMsg(summary.commitMessage);
+    }
+  }, [summary.commitMessage, commitMsg, setCommitMsg]);
+
+  // When on commit step, allChangesCleanlyStaged is true, so all files are cleanly staged
+  const stagedFiles = gitStatus?.files || [];
+  const allChangesCleanlyStaged = gitStatus?.allChangesCleanlyStaged ?? false;
   const [selectedAction, setSelectedAction] = useState<
     "commit" | "update" | "rollback" | null
-  >(allChangesStaged && stagedFiles.length > 0 ? "commit" : null);
+  >(allChangesCleanlyStaged && stagedFiles.length > 0 ? "commit" : null);
 
   const actions = [
     {
@@ -52,7 +52,7 @@ export function CommitStep({
       icon: GitBranch,
       desc: "Save changes to git",
       color: "white",
-      disabled: !allChangesStaged || stagedFiles.length === 0,
+      disabled: !allChangesCleanlyStaged || stagedFiles.length === 0,
     },
     {
       id: "update" as const,

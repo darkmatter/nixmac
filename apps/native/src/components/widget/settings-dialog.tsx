@@ -22,20 +22,9 @@ import {
   Settings2,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 type SettingsTab = "general" | "appearance" | "api-keys";
-
-interface SettingsDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  prefFloatingFooter: boolean;
-  setPrefFloatingFooter: (enabled: boolean) => void;
-  prefWindowShadow: boolean;
-  setPrefWindowShadow: (enabled: boolean) => void;
-  openaiApiKey: string;
-  setOpenaiApiKey: (key: string) => void;
-}
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -64,17 +53,13 @@ function NavItem({ icon, label, active, onClick }: NavItemProps) {
 
 type ApiKeyStatus = "idle" | "verifying" | "valid" | "invalid";
 
-export function SettingsDialog(props: SettingsDialogProps) {
-  const {
-    isOpen,
-    onClose,
-    prefFloatingFooter,
-    setPrefFloatingFooter,
-    prefWindowShadow,
-    setPrefWindowShadow,
-    openaiApiKey,
-    setOpenaiApiKey,
-  } = props;
+/**
+ * Settings dialog component - manages all settings internally.
+ * Loads and saves preferences via Tauri API.
+ */
+export function SettingsDialog() {
+  const isOpen = useWidgetStore((state) => state.settingsOpen);
+  const setSettingsOpen = useWidgetStore((state) => state.setSettingsOpen);
 
   const configDir = useWidgetStore((state) => state.configDir);
   const hosts = useWidgetStore((state) => state.hosts);
@@ -83,11 +68,34 @@ export function SettingsDialog(props: SettingsDialogProps) {
 
   const { saveHost } = useDarwinConfig();
 
+  const [prefFloatingFooter, setPrefFloatingFooter] = useState(false);
+  const [prefWindowShadow, setPrefWindowShadow] = useState(false);
+  const [openaiApiKey, setOpenaiApiKey] = useState("");
+
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
-  const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus>(
-    openaiApiKey ? "valid" : "idle"
-  );
-  const [apiKeyInput, setApiKeyInput] = useState(openaiApiKey);
+  const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus>("idle");
+  const [apiKeyInput, setApiKeyInput] = useState("");
+
+  // Load preferences when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      (async () => {
+        try {
+          const prefs = await darwinAPI.ui.getPrefs();
+          if (prefs) {
+            setPrefFloatingFooter(prefs.floatingFooter ?? false);
+            setPrefWindowShadow(prefs.windowShadow ?? false);
+            const apiKey = prefs.openaiApiKey ?? "";
+            setOpenaiApiKey(apiKey);
+            setApiKeyInput(apiKey);
+            setApiKeyStatus(apiKey ? "valid" : "idle");
+          }
+        } catch {
+          // Ignore errors loading preferences
+        }
+      })();
+    }
+  }, [isOpen]);
 
   if (!isOpen) {
     return null;
@@ -162,7 +170,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
       <button
         aria-label="Close settings"
         className="absolute inset-0 bg-black/40"
-        onClick={onClose}
+        onClick={() => setSettingsOpen(false)}
         type="button"
       />
       <div className="relative z-10 flex h-[460px] w-[620px] max-w-[90vw] overflow-hidden rounded-xl border border-border bg-card/95 shadow-2xl backdrop-blur-xl">
@@ -195,7 +203,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
           <div className="mt-auto">
             <Button
               className="w-full"
-              onClick={onClose}
+              onClick={() => setSettingsOpen(false)}
               size="sm"
               variant="secondary"
             >
@@ -250,7 +258,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
                     configDir && (
                       <BootstrapConfig
                         label="Configuration"
-                        onSuccess={onClose}
+                        onSuccess={() => setSettingsOpen(false)}
                       />
                     )
                   )}

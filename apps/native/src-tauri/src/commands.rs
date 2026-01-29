@@ -554,24 +554,6 @@ pub async fn preview_indicator_get_state() -> Result<peek::PreviewIndicatorState
 }
 
 // =============================================================================
-// Rebuild Overlay Commands
-// =============================================================================
-
-/// Shows the rebuild overlay window (full-screen semi-transparent overlay).
-#[tauri::command]
-pub async fn rebuild_overlay_show(app: AppHandle) -> Result<serde_json::Value, String> {
-    peek::show_rebuild_overlay(&app)?;
-    Ok(serde_json::json!({"ok": true}))
-}
-
-/// Hides the rebuild overlay window.
-#[tauri::command]
-pub async fn rebuild_overlay_hide(app: AppHandle) -> Result<serde_json::Value, String> {
-    peek::hide_rebuild_overlay(&app)?;
-    Ok(serde_json::json!({"ok": true}))
-}
-
-// =============================================================================
 // Config Watcher Commands
 // =============================================================================
 

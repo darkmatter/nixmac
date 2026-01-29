@@ -1,9 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Settings } from "lucide-react";
 import { APP_NAME } from "../../../shared/constants";
+import { useWidgetStore } from "@/stores/widget-store";
 
-export function Header(props: { onOpenSettings: () => void }) {
-  const { onOpenSettings } = props;
+export function Header() {
+  const setSettingsOpen = useWidgetStore((s) => s.setSettingsOpen);
+
   return (
     <div
       className="relative flex flex-shrink-0 cursor-move select-none items-center justify-center border-border border-b bg-card/50 px-3 pt-3 pb-3"
@@ -20,7 +22,7 @@ export function Header(props: { onOpenSettings: () => void }) {
       <div className="absolute right-3 flex items-center gap-1">
         <Button
           className="h-8 w-8 p-0"
-          onClick={onOpenSettings}
+          onClick={() => setSettingsOpen(true)}
           size="sm"
           variant="ghost"
         >

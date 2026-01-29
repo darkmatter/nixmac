@@ -2,7 +2,7 @@
 //!
 //! Handles AI-assisted configuration evolution and system rebuilds.
 
-use crate::{evolve, log_summarizer, peek};
+use crate::{evolve, log_summarizer};
 use chrono::Local;
 use log::{debug, error, info};
 use std::fs::{self, File, OpenOptions};
@@ -98,8 +98,6 @@ pub fn apply_stream(
                     "error": e.to_string(),
                 }),
             );
-            // Hide the overlay on error
-            let _ = peek::hide_rebuild_overlay(&app_handle);
         }
     });
 

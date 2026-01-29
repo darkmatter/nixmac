@@ -1,7 +1,7 @@
 "use client";
 
 import { Eye, FileCode, Loader2, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { BundledLanguage } from "shiki";
 import { EvolveProgress } from "@/components/evolve-progress";
 import {
@@ -13,30 +13,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import {
-  analyzeGitStatus,
-  type EvolveEvent,
-  type GitStatus,
-  type ProcessingAction,
-  type SummaryState,
-} from "@/stores/widget-store";
+import { useWidgetStore } from "@/stores/widget-store";
+import { useEvolve } from "@/hooks/use-evolve";
+import { useApply } from "@/hooks/use-apply";
+import { useSummary } from "@/hooks/use-summary";
 import { ChatInput } from "../chat-input";
 import { Diff } from "../diff";
-
-interface EvolvingStepProps {
-  gitStatus: GitStatus | null;
-  evolvePrompt: string;
-  setEvolvePrompt: (s: string) => void;
-  isProcessing: boolean;
-  isGenerating: boolean;
-  processingAction: ProcessingAction;
-  evolveEvents: EvolveEvent[];
-  handleEvolve: () => void;
-  handleApply: () => void;
-  handleCancel: () => void;
-  handleShowCommit: () => void;
-  summary: SummaryState;
-}
 
 interface ParsedDiffSection {
   filename: string;
@@ -121,21 +103,35 @@ function getDirectory(path: string): string {
   return parts.slice(0, -1).join("/");
 }
 
-export function EvolvingStep({
-  gitStatus,
-  evolvePrompt,
-  setEvolvePrompt,
-  isProcessing,
-  isGenerating,
-  processingAction,
-  evolveEvents,
-  handleEvolve,
-  handleApply,
-  summary,
-}: EvolvingStepProps) {
+/**
+ * Evolving step - shows changes after evolution, allows preview/apply.
+ */
+export function EvolvingStep() {
+  const gitStatus = useWidgetStore((s) => s.gitStatus);
+  const evolvePrompt = useWidgetStore((s) => s.evolvePrompt);
+  const setEvolvePrompt = useWidgetStore((s) => s.setEvolvePrompt);
+  const isProcessing = useWidgetStore((s) => s.isProcessing);
+  const processingAction = useWidgetStore((s) => s.processingAction);
+  const isGenerating = useWidgetStore((s) => s.isGenerating);
+  const evolveEvents = useWidgetStore((s) => s.evolveEvents);
+  const summary = useWidgetStore((s) => s.summary);
+
+  const { handleEvolve } = useEvolve();
+  const { handleApply } = useApply();
+  const { checkAndFetchSummary } = useSummary();
+
   const changedFiles = gitStatus?.files || [];
-  const { hasUnstagedChanges } = analyzeGitStatus(gitStatus);
+  const hasUnstagedChanges = gitStatus?.hasUnstagedChanges ?? false;
+
   const [showDiff, setShowDiff] = useState(false);
+
+  // Fetch summary as a fallback for manual changes (not during evolution)
+  // During evolution, useEvolve hook handles the summary fetch
+  useEffect(() => {
+    if (!isGenerating) {
+      checkAndFetchSummary();
+    }
+  }, [checkAndFetchSummary, isGenerating]);
 
   const diffContent = summary.diff || "";
   const diffSections = parseDiffIntoSections(diffContent);
