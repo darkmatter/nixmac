@@ -84,9 +84,6 @@ fn main() {
             commands::watcher_start,
             commands::watcher_stop,
             commands::watcher_is_active,
-            // Rebuild overlay
-            commands::rebuild_overlay_show,
-            commands::rebuild_overlay_hide,
         ])
         .setup(|app| {
             let handle = app.handle();

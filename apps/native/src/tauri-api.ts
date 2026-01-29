@@ -22,9 +22,31 @@ export interface GitFileStatus {
   path: string;
 }
 
+/**
+ * Git status returned from the backend.
+ * All computed fields are calculated server-side for consistency.
+ */
 export interface GitStatus {
-  hasChanges?: boolean;
+  // File lists
   files?: GitFileStatus[];
+  created?: string[];
+  deleted?: string[];
+  modified?: string[];
+  staged?: string[];
+  notAdded?: string[];
+  conflicted?: string[];
+
+  // Branch info
+  current?: string;
+  tracking?: string;
+  ahead?: number;
+  behind?: number;
+
+  // Computed state 
+  hasChanges?: boolean;
+  hasUnstagedChanges?: boolean;
+  allChangesStaged?: boolean;
+  allChangesCleanlyStaged?: boolean;
 }
 
 export interface SummaryItem {
@@ -139,10 +161,6 @@ export const darwinAPI = {
       invoke("preview_indicator_update", { state }),
     getState: () =>
       invoke<PreviewIndicatorState>("preview_indicator_get_state"),
-  },
-  rebuildOverlay: {
-    show: () => invoke("rebuild_overlay_show"),
-    hide: () => invoke("rebuild_overlay_hide"),
   },
   watcher: {
     start: () => invoke("watcher_start"),

@@ -82,7 +82,7 @@ export function ChatInput({
         <Separator className="!h-4" orientation="vertical" />
         <InputGroupButton
           className="rounded-full"
-          disabled
+          disabled={isLoading || !value.trim()}
           onClick={() => onSubmit()}
           size="icon-xs"
           variant="default"
