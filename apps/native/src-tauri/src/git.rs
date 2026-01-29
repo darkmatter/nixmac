@@ -87,7 +87,7 @@ pub fn status(dir: &str) -> Result<GitStatus> {
             continue;
         }
 
-        let index_status = line.chars().nth(0).map(|c| c.to_string());
+        let index_status = line.chars().next().map(|c| c.to_string());
         let working_tree_status = line.chars().nth(1).map(|c| c.to_string());
         let path = line[3..].to_string();
 
