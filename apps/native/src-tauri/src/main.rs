@@ -14,6 +14,7 @@ mod git;
 mod log_summarizer;
 mod nix;
 mod peek;
+mod providers;
 mod store;
 mod summarize;
 mod types;
@@ -62,6 +63,8 @@ fn main() {
             commands::darwin_apply_stream_cancel,
             commands::flake_installed_apps,
             commands::flake_list_hosts,
+            commands::flake_exists,
+            commands::bootstrap_default_config,
             // Summarization
             commands::summarize_changes,
             commands::suggest_commit_message,
@@ -81,9 +84,6 @@ fn main() {
             commands::watcher_start,
             commands::watcher_stop,
             commands::watcher_is_active,
-            // Rebuild overlay
-            commands::rebuild_overlay_show,
-            commands::rebuild_overlay_hide,
         ])
         .setup(|app| {
             let handle = app.handle();
@@ -157,12 +157,12 @@ fn main() {
                     .max_inner_size(max_width, max_height)
                     .resizable(true)
                     .maximizable(false)
-                    .minimizable(false)
+                    .minimizable(true)
                     .closable(true)
                     .decorations(true)
                     .transparent(true)
                     .visible(true)
-                    .always_on_top(true)
+                    .always_on_top(false)
                     .visible_on_all_workspaces(true)
                     .hidden_title(true)
                     .title_bar_style(tauri::TitleBarStyle::Overlay)
@@ -173,13 +173,13 @@ fn main() {
             let _ = main_window;
 
             // Create the preview indicator window (persistent banner for uncommitted changes)
-            if let Err(e) = peek::create_preview_indicator_window(&handle) {
+            if let Err(e) = peek::create_preview_indicator_window(handle) {
                 eprintln!("[peek] ❌ Failed to create preview indicator window: {}", e);
             }
 
             // Start config watcher - monitors config directory for file changes
             // This emits config:changed events to the frontend when files are modified
-            if let Ok(config_dir) = store::get_config_dir(&handle) {
+            if let Ok(config_dir) = store::get_config_dir(handle) {
                 watcher::start_watching(handle.clone(), config_dir);
             }
 
@@ -188,22 +188,29 @@ fn main() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {
-            // Handle window close events - hide instead of destroy for main window
+            // Handle window close events - hide window but keep app running
             if let RunEvent::WindowEvent {
                 label,
                 event: WindowEvent::CloseRequested { api, .. },
                 ..
-            } = event
+            } = &event
             {
                 if label == "main" {
                     // Prevent the window from being destroyed
                     api.prevent_close();
-                    // Hide it instead
                     if let Some(window) = app_handle.get_webview_window("main") {
                         let _ = window.hide();
                         // Update peek state
                         peek::unlock_and_hide();
                     }
+                }
+            }
+
+            // Click Nixmac icon to show
+            if let RunEvent::Reopen { .. } = &event {
+                if let Some(window) = app_handle.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
                 }
             }
         });

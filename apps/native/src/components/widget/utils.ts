@@ -1,6 +1,6 @@
+import type { StepperStepId } from "@/components/widget/stepper";
+import type { GitFileStatus, WidgetState, WidgetStep } from "@/stores/widget-store";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import type { GitFileStatus, WidgetStep } from "@/stores/widget-store";
-import type { StepperStepId } from "./types";
 
 // Map widget steps to stepper steps
 export function getStepperStep(step: WidgetStep): StepperStepId {
@@ -71,4 +71,36 @@ export function getChangeType(
     return "renamed";
   }
   return "edited";
+}
+
+// Computes the current step based on widget state.
+
+export function computeCurrentStep(state: WidgetState): WidgetStep {
+  const hasConfigDir = !!state.configDir;
+  const hasHost = !!state.host;
+  const hasUncommittedChanges = state.gitStatus?.hasChanges ?? false;
+  const allChangesCleanlyStaged = state.gitStatus?.allChangesCleanlyStaged ?? false;
+
+  // Rule 1: Missing configuration
+  if (!(hasConfigDir && hasHost)) {
+    return "setup";
+  }
+
+  // Rule 2: Currently generating
+  if (state.isGenerating) {
+    return "evolving";
+  }
+
+  // Rule 3: All changes staged and ready to commit
+  if (allChangesCleanlyStaged) {
+    return "commit";
+  }
+
+  // Rule 4: Has uncommitted changes (not all staged yet)
+  if (hasUncommittedChanges) {
+    return "evolving";
+  }
+
+  // Rule 5: Default idle state
+  return "overview";
 }

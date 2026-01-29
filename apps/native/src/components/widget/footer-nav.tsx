@@ -4,7 +4,6 @@ import { ArrowLeft, ArrowRight, Eye, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-  analyzeGitStatus,
   type GitStatus,
   type WidgetStep,
 } from "@/stores/widget-store";
@@ -27,8 +26,8 @@ export function FooterNav({
   gitStatus,
 }: FooterNavProps) {
   const hasChanges = gitStatus?.files && gitStatus.files.length > 0;
-  const { allChangesStaged, stagedFiles } = analyzeGitStatus(gitStatus);
-  const showInlineCommitActions = allChangesStaged && stagedFiles.length > 0;
+  const allChangesCleanlyStaged = gitStatus?.allChangesCleanlyStaged ?? false;
+  const showInlineCommitActions = allChangesCleanlyStaged && hasChanges;
 
   // Determine if continue should be disabled
   const isContinueDisabled = (() => {

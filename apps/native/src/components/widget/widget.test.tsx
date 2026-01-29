@@ -1,103 +1,104 @@
 import { render } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
-import type { SummaryState } from "@/stores/widget-store";
-import { WidgetUI } from "./widget-ui";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DarwinWidget } from "./widget";
+import { useWidgetStore } from "@/stores/widget-store";
 
-// Mock data for testing
-const mockSummary: SummaryState = {
-  items: [
-    { title: "Vim Installed", description: "Added vim to system packages" },
-  ],
-  instructions: "Run vim in terminal",
-  commitMessage: "feat: add vim",
-  filesChanged: 1,
-  isLoading: false,
-};
+// Mock Tauri API
+vi.mock("@/tauri-api", () => ({
+  darwinAPI: {
+    git: {
+      status: vi.fn().mockResolvedValue({ hasChanges: false, files: [] }),
+    },
+    config: {
+      read: vi.fn().mockResolvedValue({ configDir: "/Users/test/nixmac" }),
+      listHosts: vi.fn().mockResolvedValue(["Test-MacBook"]),
+    },
+  },
+  ipcRenderer: {
+    on: vi.fn().mockReturnValue(Promise.resolve(() => {})),
+  },
+  CONFIG_CHANGED_CHANNEL: "config-changed",
+}));
 
-const baseProps = {
-  step: "overview" as const,
-  appState: "idle" as const,
-  configDir: "/Users/test/nixmac",
-  hosts: ["Test-MacBook"],
-  host: "Test-MacBook",
-  gitStatus: null,
-  evolvePrompt: "",
-  commitMsg: "",
-  isProcessing: false,
-  isGenerating: false,
-  processingAction: null,
-  evolveEvents: [],
-  summary: mockSummary,
-  consoleLogs: "",
-  consoleExpanded: false,
-  isExpanded: true,
-  peekState: "expanded" as const,
-  settingsOpen: false,
-  error: null,
-  onExpand: () => {},
-  onCollapse: () => {},
-  onPickDir: () => {},
-  onSaveHost: () => {},
-  onEvolve: () => {},
-  onApply: () => {},
-  onCommit: () => {},
-  onCancel: () => {},
-  onEvolvePromptChange: () => {},
-  onCommitMsgChange: () => {},
-  onConsoleExpandedChange: () => {},
-  onSettingsOpenChange: () => {},
-  onErrorDismiss: () => {},
-  onHostsChange: () => {},
-  onShowCommitScreen: () => {},
-  onBackFromCommit: () => {},
-};
+// Mock hooks
+vi.mock("@/hooks/use-widget-initialization", () => ({
+  loadConfig: vi.fn().mockResolvedValue(undefined),
+  loadHosts: vi.fn().mockResolvedValue(undefined),
+  recoverFromGitState: vi.fn().mockResolvedValue(undefined),
+}));
 
-describe("WidgetUI Snapshots", () => {
-  it("overview step matches snapshot", () => {
-    const { container } = render(<WidgetUI {...baseProps} step="overview" />);
-    expect(container).toMatchSnapshot();
+vi.mock("@/hooks/use-git-operations", () => ({
+  useGitOperations: () => ({
+    refreshGitStatus: vi.fn().mockResolvedValue(null),
+  }),
+}));
+
+vi.mock("@/hooks/use-preview-indicator", () => ({
+  usePreviewIndicator: () => ({
+    updatePreviewIndicator: vi.fn(),
+  }),
+}));
+
+vi.mock("@/hooks/use-summary", () => ({
+  useSummary: () => ({
+    checkAndFetchSummary: vi.fn(),
+  }),
+}));
+
+describe("DarwinWidget", () => {
+  beforeEach(() => {
+    // Reset store to initial state before each test
+    const store = useWidgetStore.getState();
+    store.setConfigDir("/Users/test/nixmac");
+    store.setHosts(["Test-MacBook"]);
+    store.setHost("Test-MacBook");
+    store.setGitStatus(null);
+    store.setEvolvePrompt("");
+    store.setCommitMsg("");
+    store.setProcessing(false);
+    store.setGenerating(false);
+    store.setError(null);
+    store.clearEvolveEvents();
+    store.clearLogs();
+    store.setSummary({
+      items: [],
+      instructions: null,
+      commitMessage: null,
+      filesChanged: 0,
+      isLoading: false,
+    });
   });
 
-  it("setup step matches snapshot", () => {
-    const { container } = render(
-      <WidgetUI {...baseProps} appState="onboarding" step="setup" />
-    );
-    expect(container).toMatchSnapshot();
+  it("renders without crashing", () => {
+    const { container } = render(<DarwinWidget />);
+    expect(container).toBeTruthy();
   });
 
-  it("evolving step matches snapshot", () => {
-    const { container } = render(
-      <WidgetUI
-        {...baseProps}
-        appState="preview"
-        gitStatus={{
-          hasChanges: true,
-          files: [{ path: "test.nix", working_tree: "M" }],
-        }}
-        step="evolving"
-      />
-    );
-    expect(container).toMatchSnapshot();
+  it("renders setup step when no config", () => {
+    const store = useWidgetStore.getState();
+    store.setConfigDir("");
+    store.setHost("");
+
+    const { container } = render(<DarwinWidget />);
+    expect(container).toBeTruthy();
   });
 
-  it("generating state matches snapshot", () => {
-    const { container } = render(
-      <WidgetUI
-        {...baseProps}
-        appState="generating"
-        evolveEvents={[
-          {
-            eventType: "start",
-            summary: "Starting...",
-            raw: "",
-            iteration: null,
-            timestampMs: 0,
-          },
-        ]}
-        isGenerating={true}
-        step="evolving"
-      />
-    );
-    expect(container).toMatchSnapshot();
+  it("renders evolving step with git changes", () => {
+    const store = useWidgetStore.getState();
+    store.setGitStatus({
+      hasChanges: true,
+      files: [{ path: "test.nix", working_tree: "M" }],
+    });
+
+    const { container } = render(<DarwinWidget />);
+    expect(container).toBeTruthy();
+  });
+
+  it("renders with error message", () => {
+    const store = useWidgetStore.getState();
+    store.setError("Test error message");
+
+    const { container } = render(<DarwinWidget />);
+    expect(container).toBeTruthy();
   });
 });

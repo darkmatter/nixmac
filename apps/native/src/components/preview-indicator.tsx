@@ -170,7 +170,7 @@ export function PreviewIndicator({
         onClick={handleClick}
         type="button"
       >
-        <span className="absolute inset-[-1000%] animate-[spin_3s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#E2CBFF_0%,#393BB2_50%,#E2CBFF_100%)]" />
+        <span className="absolute inset-[-35%] animate-[spin_3s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#E2CBFF_0%,#393BB2_50%,#E2CBFF_100%)]" />
         <span className="inline-flex h-full w-full cursor-pointer items-center justify-center gap-3 rounded-full bg-slate-950 px-5 py-1 font-medium text-sm text-white backdrop-blur-3xl">
           {/* <span>Preview Active</span> */}
           {/* <img src="/icon.png" alt="Preview Active" width={20} height={20} /> */}

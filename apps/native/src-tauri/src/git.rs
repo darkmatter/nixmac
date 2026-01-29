@@ -87,7 +87,7 @@ pub fn status(dir: &str) -> Result<GitStatus> {
             continue;
         }
 
-        let index_status = line.chars().nth(0).map(|c| c.to_string());
+        let index_status = line.chars().next().map(|c| c.to_string());
         let working_tree_status = line.chars().nth(1).map(|c| c.to_string());
         let path = line[3..].to_string();
 
@@ -123,6 +123,25 @@ pub fn status(dir: &str) -> Result<GitStatus> {
 
     let has_changes = !files.is_empty();
 
+    // Compute derived state
+    let has_unstaged_changes = files
+        .iter()
+        .any(|f| f.working_tree.as_ref().map_or(false, |wt| wt != " "));
+
+    let cleanly_staged_count = files
+        .iter()
+        .filter(|f| {
+            f.index
+                .as_ref()
+                .map_or(false, |idx| idx != " " && idx != "?")
+                && f.working_tree.as_ref().map_or(true, |wt| wt == " ")
+        })
+        .count();
+
+    let all_changes_staged = has_changes && !has_unstaged_changes;
+    let all_changes_cleanly_staged =
+        has_changes && cleanly_staged_count == files.len() && !staged.is_empty();
+
     Ok(GitStatus {
         files,
         created,
@@ -136,6 +155,9 @@ pub fn status(dir: &str) -> Result<GitStatus> {
         current,
         tracking,
         has_changes,
+        has_unstaged_changes,
+        all_changes_staged,
+        all_changes_cleanly_staged,
     })
 }
 
