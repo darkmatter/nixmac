@@ -96,7 +96,10 @@ export function StepperWizardStyle() {
         <div className="flex items-center justify-center gap-8">
           {steps.map((step, i) => (
             <div className="flex items-center" key={step.id}>
-              <div className="flex items-center gap-3">
+              <div
+                className="flex items-center gap-3 cursor-pointer"
+                onClick={() => setCurrentStep(step.id)}
+              >
                 <div
                   className={`flex h-8 w-8 items-center justify-center rounded-full font-medium text-sm transition-colors ${
                     currentStep > step.id
