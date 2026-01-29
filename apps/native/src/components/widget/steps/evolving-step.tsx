@@ -1,7 +1,7 @@
 "use client";
 
 import { Eye, FileCode, Loader2, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { BundledLanguage } from "shiki";
 import { EvolveProgress } from "@/components/evolve-progress";
 import {
@@ -14,9 +14,9 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { useWidgetStore } from "@/stores/widget-store";
-import { analyzeGitStatus } from "@/components/widget/utils";
 import { useEvolve } from "@/hooks/use-evolve";
 import { useApply } from "@/hooks/use-apply";
+import { useSummary } from "@/hooks/use-summary";
 import { ChatInput } from "../chat-input";
 import { Diff } from "../diff";
 
@@ -105,7 +105,6 @@ function getDirectory(path: string): string {
 
 /**
  * Evolving step - shows changes after evolution, allows preview/apply.
- * Accesses state directly from the store instead of receiving props.
  */
 export function EvolvingStep() {
   const gitStatus = useWidgetStore((s) => s.gitStatus);
@@ -119,11 +118,20 @@ export function EvolvingStep() {
 
   const { handleEvolve } = useEvolve();
   const { handleApply } = useApply();
+  const { checkAndFetchSummary } = useSummary();
 
   const changedFiles = gitStatus?.files || [];
-  const { hasUnstagedChanges } = analyzeGitStatus(gitStatus);
+  const hasUnstagedChanges = gitStatus?.hasUnstagedChanges ?? false;
 
   const [showDiff, setShowDiff] = useState(false);
+
+  // Fetch summary as a fallback for manual changes (not during evolution)
+  // During evolution, useEvolve hook handles the summary fetch
+  useEffect(() => {
+    if (!isGenerating) {
+      checkAndFetchSummary();
+    }
+  }, [checkAndFetchSummary, isGenerating]);
 
   const diffContent = summary.diff || "";
   const diffSections = parseDiffIntoSections(diffContent);

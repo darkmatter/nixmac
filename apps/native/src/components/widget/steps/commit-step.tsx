@@ -1,15 +1,15 @@
 "use client";
 
 import { GitBranch, Loader2, RefreshCw, Undo2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
 import { useCommit } from "@/hooks/use-commit";
 import { useEvolve } from "@/hooks/use-evolve";
+import { useSummary } from "@/hooks/use-summary";
 import { Diff } from "../diff";
-import { analyzeGitStatus } from "@/components/widget/utils";
 
 export function CommitStep() {
   const gitStatus = useWidgetStore((s) => s.gitStatus);
@@ -23,10 +23,27 @@ export function CommitStep() {
 
   const { handleCommit, handleCancel } = useCommit();
   const { handleEvolve } = useEvolve();
-  const { stagedFiles, allChangesStaged } = analyzeGitStatus(gitStatus);
+  const { checkAndFetchSummary } = useSummary();
+
+  // Fetch summary as a fallback for manual changes
+  // When coming from evolve/apply flow, summary is already fetched
+  useEffect(() => {
+    checkAndFetchSummary();
+  }, [checkAndFetchSummary]);
+
+  // Auto-populate commit message from AI suggestion when available
+  useEffect(() => {
+    if (summary.commitMessage && !commitMsg) {
+      setCommitMsg(summary.commitMessage);
+    }
+  }, [summary.commitMessage, commitMsg, setCommitMsg]);
+
+  // When on commit step, allChangesCleanlyStaged is true, so all files are cleanly staged
+  const stagedFiles = gitStatus?.files || [];
+  const allChangesCleanlyStaged = gitStatus?.allChangesCleanlyStaged ?? false;
   const [selectedAction, setSelectedAction] = useState<
     "commit" | "update" | "rollback" | null
-  >(allChangesStaged && stagedFiles.length > 0 ? "commit" : null);
+  >(allChangesCleanlyStaged && stagedFiles.length > 0 ? "commit" : null);
 
   const actions = [
     {
@@ -35,7 +52,7 @@ export function CommitStep() {
       icon: GitBranch,
       desc: "Save changes to git",
       color: "white",
-      disabled: !allChangesStaged || stagedFiles.length === 0,
+      disabled: !allChangesCleanlyStaged || stagedFiles.length === 0,
     },
     {
       id: "update" as const,

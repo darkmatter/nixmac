@@ -7,7 +7,6 @@ import {
   type GitStatus,
   type WidgetStep,
 } from "@/stores/widget-store";
-import { analyzeGitStatus } from "@/components/widget/utils";
 
 interface FooterNavProps {
   step: WidgetStep;
@@ -27,8 +26,8 @@ export function FooterNav({
   gitStatus,
 }: FooterNavProps) {
   const hasChanges = gitStatus?.files && gitStatus.files.length > 0;
-  const { allChangesStaged, stagedFiles } = analyzeGitStatus(gitStatus);
-  const showInlineCommitActions = allChangesStaged && stagedFiles.length > 0;
+  const allChangesCleanlyStaged = gitStatus?.allChangesCleanlyStaged ?? false;
+  const showInlineCommitActions = allChangesCleanlyStaged && hasChanges;
 
   // Determine if continue should be disabled
   const isContinueDisabled = (() => {
