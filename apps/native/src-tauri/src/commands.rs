@@ -27,7 +27,7 @@ pub async fn config_get(app: AppHandle) -> Result<types::Config, String> {
     let config_dir = store::get_config_dir(&app).map_err(|e| e.to_string())?;
     let host_attr = store::get_host_attr(&app)
         .map_err(|e| e.to_string())?
-        .or_else(|| store::read_host_attr_from_file());
+        .or_else(store::read_host_attr_from_file);
 
     Ok(types::Config {
         config_dir,
