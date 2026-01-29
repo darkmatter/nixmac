@@ -4,7 +4,7 @@
 
 use crate::{evolve, log_summarizer, peek};
 use chrono::Local;
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
@@ -145,7 +145,7 @@ fn run_darwin_rebuild(
     let _ = writeln!(log_file, "Config dir: {}", config_dir);
     let _ = writeln!(log_file, "Host attr: {}", host_attr);
     let _ = writeln!(log_file, "Log file: {:?}", log_path);
-    let _ = writeln!(log_file, "");
+    let _ = writeln!(log_file);
 
     info!("[darwin] Building darwin-rebuild command...");
 
@@ -159,7 +159,7 @@ fn run_darwin_rebuild(
 
     info!("[darwin] Command: {}", cmd_str);
     let _ = writeln!(log_file, "Command: {}", cmd_str);
-    let _ = writeln!(log_file, "");
+    let _ = writeln!(log_file);
 
     info!("[darwin] Starting darwin-rebuild...");
     log_and_emit!("Starting darwin-rebuild switch...");
@@ -280,7 +280,7 @@ fn run_darwin_rebuild(
     summarizer.complete(status.success());
 
     // Log completion
-    let _ = writeln!(log_file, "");
+    let _ = writeln!(log_file);
     let _ = writeln!(log_file, "=== darwin-rebuild completed ===");
     let _ = writeln!(log_file, "Exit code: {}", code);
     let _ = writeln!(log_file, "Success: {}", status.success());

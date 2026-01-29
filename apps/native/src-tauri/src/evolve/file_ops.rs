@@ -8,72 +8,6 @@
 use similar::TextDiff;
 use std::path::Path;
 
-// =============================================================================
-// Constants
-// =============================================================================
-
-const DEFAULT_MODEL: &str = "gpt-5.1";
-const MAX_TOKENS: u32 = 65_000;
-
-const SYSTEM_PROMPT: &str = r#"You are an expert at modifying Nix configurations for macOS systems using nix-darwin and home-manager. Your task is to edit the files in the given repository to make the changes requested by the user.
-
-## About the repository
-The repository is a Nix configuration for macOS systems using nix-darwin and home-manager.
-
-## Directory structure
-The repository is organized into the following directories:
-```
-.
-├── flake.nix                    # Flake configuration
-├── flake-modules/               # Flake-level configuration (outputs)
-│   ├── default.nix              # Imports all modules
-│   ├── darwin.nix               # Darwin configurations builder
-│   ├── home.nix                 # Home-manager configurations
-│   ├── packages.nix             # Custom packages/apps
-│   └── dev-shells.nix           # Dev shell setup
-├── users/
-│   └── default.nix              # User profiles (username, email, keys)
-├── hosts/                       # Machine configs (darwin + home together)
-│   ├── macbook-pro/
-│   │   ├── default.nix          # Darwin config
-│   │   └── home.nix             # Home-manager config
-│   └── coopers-mac-studio/
-│       ├── default.nix
-│       └── home.nix
-├── modules/
-│   ├── darwin/                  # nix-darwin modules
-│   │   ├── default.nix          # Imports all darwin modules
-│   │   ├── core.nix             # Nix config, users, security
-│   │   ├── packages.nix         # System packages + scripts
-│   │   ├── homebrew.nix         # Homebrew taps/brews/casks
-│   │   ├── fonts.nix            # Font packages
-│   │   ├── defaults.nix         # macOS preferences
-│   │   └── scripts/             # CLI scripts (darwin, pkg?)
-│   └── home/                    # home-manager modules
-│       ├── default.nix          # Imports all HM modules
-│       ├── xdg.nix              # XDG directories
-│       ├── theme.nix            # Theming
-│       └── programs/            # Individual programs as single files
-│           ├── git.nix
-│           ├── zsh.nix
-│           ├── nvim.nix
-│           └── ...
-```
-## About the changes
-The changes are requested by the user.
-
-## About the tools
-The tools are provided to read and edit files in the repository.
-
-## About the output
-When asked to make changes:
-1. Read the relevant files first using read_file
-2. Make precise, minimal edits using edit_file
-3. Prefer single-file changes when possible for composability
-4. Use proper Nix syntax and idioms
-
-Always use the provided tools to read and edit files. Do not output raw code."#;
-
 /// Apply an evolution's edits to the filesystem.
 pub fn apply_file_edits(config_dir: &str, edit: &super::types::FileEdit) -> anyhow::Result<()> {
     let full_path = Path::new(config_dir).join(&edit.path);
@@ -133,7 +67,7 @@ pub fn preview_evolution(
             previews.push(format!(
                 "EDIT {}\n{}",
                 edit.path,
-                diff.unified_diff().context_radius(2).to_string()
+                diff.unified_diff().context_radius(2)
             ));
         } else {
             previews.push(format!("MISSING {}", edit.path));

@@ -411,7 +411,7 @@ where
 
             // Periodic logging
             log_counter = log_counter.wrapping_add(1);
-            if option_held && log_counter % 40 == 0 {
+            if option_held && log_counter.is_multiple_of(40) {
                 peek_log!(
                     "🖱️ Cursor: ({:.0}, {:.0}) | In corner: {} | Main open: {}",
                     cursor_x,
@@ -439,10 +439,8 @@ where
                     if let Err(e) = show_icon(&app) {
                         peek_log!("❌ Failed to show icon: {}", e);
                     }
-                } else {
-                    if let Err(e) = hide_icon(&app) {
-                        peek_log!("❌ Failed to hide icon: {}", e);
-                    }
+                } else if let Err(e) = hide_icon(&app) {
+                    peek_log!("❌ Failed to hide icon: {}", e);
                 }
 
                 // Emit state change

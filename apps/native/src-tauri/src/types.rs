@@ -226,7 +226,7 @@ impl EvolveEvent {
                 "Starting evolution with model {} for prompt: {}",
                 model, prompt
             ),
-            format!("Starting AI evolution..."),
+            "Starting AI evolution...".to_string(),
             None,
             start_time,
         )
@@ -311,12 +311,12 @@ impl EvolveEvent {
 
     pub fn tool_call(start_time: i64, iter: usize, tool: &str, args_summary: &str) -> Self {
         let summary = match tool {
-            "read_file" => format!("Reading file..."),
-            "edit_file" => format!("Editing file..."),
-            "list_files" => format!("Listing files..."),
-            "build_check" => format!("Running build check..."),
-            "think" => format!("Thinking..."),
-            "done" => format!("Finishing up..."),
+            "read_file" => "Reading file...".to_string(),
+            "edit_file" => "Editing file...".to_string(),
+            "list_files" => "Listing files...".to_string(),
+            "build_check" => "Running build check...".to_string(),
+            "think" => "Thinking...".to_string(),
+            "done" => "Finishing up...".to_string(),
             _ => format!("Using {} tool...", tool),
         };
         Self::new(
