@@ -101,7 +101,7 @@ Quick dev: `SUMMARY_AI_PROVIDER=ollama EVOLVE_PROVIDER=ollama devenv up`
 Environment variables:
 
 - `OLLAMA_API_BASE` (default = "http://localhost:11434")
-- `SUMMARY_MODEL` (default = "llama3")
+- `SUMMARY_MODEL` (default = "llama3.1")
 - `EVOLVE_MODEL` (default = "qwen2.5-coder:7b")
 
 **IMPORTANT NOTE**: Empirically, models under 70B parameters don't seem to do well with the Nix "evolve" tool workflow, either losing tool context and exiting or (if you're lucky) making suboptimal changes.
