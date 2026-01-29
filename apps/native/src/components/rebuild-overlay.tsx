@@ -1,7 +1,8 @@
 import { AlertTriangle, RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MultiStepLoader } from "@/components/ui/multi-step-loader-overlay";
-import { cn } from "@/lib/utils";
+import { useWidgetStore } from "@/stores/widget-store";
+import { useRebuild } from "@/hooks/use-rebuild";
 
 export type ErrorType =
   | "infinite_recursion"
@@ -13,27 +14,6 @@ export interface RebuildLine {
   id: number;
   text: string;
   type: "stdout" | "stderr" | "info";
-}
-
-export interface RebuildOverlayProps {
-  /** Whether the rebuild is currently running */
-  isRunning: boolean;
-  /** Lines of output to display */
-  lines: RebuildLine[];
-  /** Exit code when complete */
-  exitCode?: number;
-  /** Whether the rebuild succeeded */
-  success?: boolean;
-  /** Optional className for the container */
-  className?: string;
-  /** Type of error if build failed */
-  errorType?: ErrorType;
-  /** Error message to display */
-  errorMessage?: string;
-  /** Callback when user clicks rollback */
-  onRollback?: () => void;
-  /** Callback when user dismisses the error */
-  onDismiss?: () => void;
 }
 
 /** Get a user-friendly title for the error type */
@@ -127,16 +107,24 @@ export function getLineType(text: string): "stdout" | "stderr" | "info" {
  * Lines are now pre-summarized by the server-side AI at ~500ms intervals,
  * so no client-side rate limiting is needed.
  */
-export function RebuildOverlay({
-  isRunning,
-  lines,
-  className,
-  success,
-  errorType,
-  errorMessage,
-  onRollback,
-  onDismiss,
-}: RebuildOverlayProps) {
+export function RebuildOverlay() {
+  // Read state from store
+  const rebuild = useWidgetStore((s) => s.rebuild);
+  const { handleRollback, handleDismiss } = useRebuild();
+
+  // Show overlay when rebuild is running OR when it finished (success/error) and hasn't been dismissed
+  const showOverlay = rebuild.isRunning || rebuild.success !== undefined;
+
+  if (!showOverlay) {
+    return null;
+  }
+
+  const isRunning = rebuild.isRunning;
+  const lines = rebuild.lines;
+  const success = rebuild.success;
+  const errorType = rebuild.errorType;
+  const errorMessage = rebuild.errorMessage;
+
   // Ensure we always have at least one line to display
   const displayLines =
     lines.length > 0
@@ -154,12 +142,7 @@ export function RebuildOverlay({
   const showErrorPanel = !isRunning && success === false;
 
   return (
-    <div
-      className={cn(
-        "fixed inset-0 flex items-center justify-center bg-black/50",
-        className
-      )}
-    >
+    <div className="fixed inset-0 flex items-center justify-center bg-black/50">
       {showErrorPanel ? (
         <div className="mx-4 flex max-w-lg flex-col items-center gap-6 rounded-2xl border border-red-500/30 bg-zinc-900/95 p-8 shadow-2xl backdrop-blur-xl">
           {/* Error Icon */}
@@ -188,7 +171,7 @@ export function RebuildOverlay({
           <div className="flex w-full gap-3">
             <Button
               className="flex-1 border-zinc-600 text-zinc-300 hover:bg-zinc-800"
-              onClick={onDismiss}
+              onClick={handleDismiss}
               variant="outline"
             >
               <X className="mr-2 h-4 w-4" />
@@ -196,7 +179,7 @@ export function RebuildOverlay({
             </Button>
             <Button
               className="flex-1 bg-red-600 text-white hover:bg-red-700"
-              onClick={onRollback}
+              onClick={handleRollback}
             >
               <RotateCcw className="mr-2 h-4 w-4" />
               Rollback Changes

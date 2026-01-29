@@ -11,6 +11,9 @@ target/
 src-tauri/target/
 src-tauri/gen/
 
+# Rust/Cargo files cache
+.cargo/
+
 # Test coverage
 coverage/
 gen

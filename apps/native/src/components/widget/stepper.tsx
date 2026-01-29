@@ -1,14 +1,29 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { computeCurrentStep, getStepperStep } from "@/components/widget/utils";
 import { cn } from "@/lib/utils";
-import { STEPPER_STEPS, type StepperStepId } from "./types";
+import { useWidgetStore } from "@/stores/widget-store";
+import { Check } from "lucide-react";
 
-interface StepperProps {
-  currentStep: StepperStepId;
-}
+export const STEPPER_STEPS = [
+  { id: 1 as const, name: "Evolve", description: "Make changes" },
+  { id: 2 as const, name: "Preview", description: "Review effects" },
+  { id: 3 as const, name: "Commit", description: "Save to git" },
+];
 
-export function Stepper({ currentStep }: StepperProps) {
+export type StepperStepId = 1 | 2 | 3;
+
+export function Stepper() {
+  const store = useWidgetStore();
+  const step = computeCurrentStep(store);
+
+  // Don't show stepper on setup step
+  if (step === "setup") {
+    return null;
+  }
+
+  const currentStep = getStepperStep(step);
+
   return (
     <div className="border-border border-b bg-muted/30 px-5 py-4">
       <div className="flex items-center justify-between">

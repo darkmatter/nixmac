@@ -5,10 +5,9 @@
   "[rust]": {
     "editor.defaultFormatter": "rust-lang.rust-analyzer"
   },
-  "rust-analyzer.server.path": "${workspaceFolder}/.devenv/profile/bin/rust-analyzer",
+  "rust-analyzer.server.path": "rust-analyzer",
   "rust-analyzer.cargo.extraEnv": {
-    "PATH": "${workspaceFolder}/.devenv/profile/bin:${env:PATH}",
-    "CARGO_HOME": "${workspaceFolder}/.devenv/profile"
+    "CARGO_HOME": "${workspaceFolder}/.cargo" 
   },
   "rust-analyzer.check.command": "clippy",
   "rust-analyzer.cargo.features": "all",
@@ -88,5 +87,16 @@
     "**/Cargo.lock": true,
     "**/node_modules": true,
     "**/devenv.lock": true
+  },
+  "lldb.server": "/nix/store/xbvgwkdz5q2rnr3d9nrd7rkznyq2n1h5-lldb-21.1.2/bin/lldb",
+  "lldb.evaluationTimeout": 30,
+  "github.copilot.chat.search.excludes": {
+    "**/target/**": true,
+    "**/node_modules/**": true,
+    "**/.next/**": true,
+    "**/.turbo/**": true,
+    "**/dist/**": true,
+    "**/.devenv/**": true,
+    "**/Cargo.lock": true
   }
 }
