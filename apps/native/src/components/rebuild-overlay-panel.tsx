@@ -15,6 +15,7 @@ export type ErrorType =
   | "infinite_recursion"
   | "evaluation_error"
   | "build_error"
+  | "full_disk_access"
   | "generic_error";
 
 export interface RebuildLine {
@@ -44,6 +45,8 @@ function getErrorTitle(errorType: ErrorType | undefined): string {
       return "Nix Evaluation Error";
     case "build_error":
       return "Build Failed";
+    case "full_disk_access":
+      return "Full Disk Access Required";
     default:
       return "Build Failed";
   }
@@ -58,6 +61,8 @@ function getErrorSuggestion(errorType: ErrorType | undefined): string {
       return "There's a syntax or evaluation error in your Nix files. Check the error message for details.";
     case "build_error":
       return "A package failed to build. You may need to update your flake or fix the package configuration.";
+    case "full_disk_access":
+      return "darwin-rebuild requires Full Disk Access to apply system changes. Grant access in System Settings → Privacy & Security → Full Disk Access.";
     default:
       return "The build encountered an error. You can rollback to your previous configuration or dismiss to investigate.";
   }

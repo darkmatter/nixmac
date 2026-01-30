@@ -292,13 +292,27 @@ fn run_darwin_rebuild(
     let payload = serde_json::json!({"chunk": format!("Log saved to: {:?}\n", log_path)});
     let _ = app.emit("darwin:apply:data", payload);
 
+    // Check if this was a Full Disk Access error by reading the log
+    let log_contents = fs::read_to_string(&log_path).unwrap_or_default();
+    let is_fda_error = log_contents
+        .contains("permission denied when trying to update apps over SSH")
+        || log_contents.contains("Full Disk Access")
+        || log_contents.contains("full disk access");
+
     // Emit completion event to all windows
+    let error_type: Option<&str> = if !status.success() && is_fda_error {
+        Some("full_disk_access")
+    } else {
+        None
+    };
+
     app.emit(
         "darwin:apply:end",
         serde_json::json!({
             "ok": status.success(),
             "code": code,
             "log_file": log_path.to_string_lossy(),
+            "error_type": error_type,
         }),
     )?;
 

@@ -44,6 +44,7 @@ fn main() {
         .plugin(tauri_plugin_sql::Builder::new().build())
         // .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_upload::init())
+        .plugin(tauri_plugin_macos_permissions::init())
         .invoke_handler(tauri::generate_handler![
             // Configuration
             commands::config_get,

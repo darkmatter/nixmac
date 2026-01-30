@@ -66,10 +66,35 @@ export function DarwinWidget() {
 
     (async () => {
       try {
-        // Check permissions first
+        // Check permissions first (including FDA via native plugin)
         const permissionsState = await darwinAPI.permissions.checkAll();
+
+        // Use native plugin to get accurate FDA status
+        // Note: This may return false positives in dev mode (checks terminal's FDA, not app's)
+        let fdaGranted = false;
+        try {
+          fdaGranted = await darwinAPI.permissions.checkFullDiskAccess();
+        } catch (e) {
+          // Plugin check failed, fall back to backend result
+        }
+
+        // Update FDA permission status based on native plugin result
+        const fdaStatus = fdaGranted ? "granted" : "denied";
+        const updatedPermissions = permissionsState.permissions.map((p) =>
+          p.id === "full-disk"
+            ? { ...p, status: fdaStatus as "granted" | "denied" }
+            : p,
+        );
+        const allRequiredGranted = updatedPermissions
+          .filter((p) => p.required)
+          .every((p) => p.status === "granted");
+
         if (mounted.current) {
-          storeRef.current.setPermissionsState(permissionsState);
+          storeRef.current.setPermissionsState({
+            ...permissionsState,
+            permissions: updatedPermissions,
+            allRequiredGranted,
+          });
           storeRef.current.setPermissionsChecked(true);
         }
 

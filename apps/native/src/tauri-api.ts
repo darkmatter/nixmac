@@ -1,5 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import { type Event, listen, once } from "@tauri-apps/api/event";
+import {
+  checkFullDiskAccessPermission,
+  requestFullDiskAccessPermission,
+} from "tauri-plugin-macos-permissions-api";
 
 export interface UnknownRecord {
   [key: string]: unknown;
@@ -207,6 +211,9 @@ export const darwinAPI = {
       invoke<Permission>("permissions_request", { permissionId }),
     allRequiredGranted: () =>
       invoke<boolean>("permissions_all_required_granted"),
+    // macOS-specific permission checks via tauri-plugin-macos-permissions
+    checkFullDiskAccess: () => checkFullDiskAccessPermission(),
+    requestFullDiskAccess: () => requestFullDiskAccessPermission(),
   },
 };
 

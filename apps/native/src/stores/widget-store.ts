@@ -15,7 +15,12 @@ export type {
 /**
  * Widget step state - updated by useEffect based on app state.
  */
-export type WidgetStep = "permissions" | "setup" | "overview" | "evolving" | "commit";
+export type WidgetStep =
+  | "permissions"
+  | "setup"
+  | "overview"
+  | "evolving"
+  | "commit";
 export type ProcessingAction = "evolve" | "apply" | "commit" | "cancel" | null;
 
 export interface SummaryItem {
@@ -39,6 +44,7 @@ export type RebuildErrorType =
   | "infinite_recursion"
   | "evaluation_error"
   | "build_error"
+  | "full_disk_access"
   | "generic_error";
 
 export interface RebuildLine {
@@ -236,7 +242,8 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
       }),
 
     // Console
-    appendLog: (text) => set((state) => ({ consoleLogs: state.consoleLogs + text })),
+    appendLog: (text) =>
+      set((state) => ({ consoleLogs: state.consoleLogs + text })),
     clearLogs: () => set({ consoleLogs: "" }),
 
     // Evolve events
