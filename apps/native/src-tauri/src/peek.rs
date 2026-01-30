@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! Peek behavior for the widget.
 //!
 //! Shows a small icon in the bottom-right corner of the RIGHT-MOST monitor
@@ -203,46 +204,6 @@ pub enum PeekState {
     Peeking,
     /// Main window is open
     Expanded,
-}
-
-/// Creates the peek icon window (call once during setup)
-pub fn create_icon_window<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
-    let monitor = get_rightmost_monitor(app)?;
-    let (icon_x, icon_y) = monitor.icon_position();
-
-    peek_log!(
-        "🎯 Creating peek icon window at ({}, {}) on monitor {}x{}",
-        icon_x,
-        icon_y,
-        monitor.width,
-        monitor.height
-    );
-
-    let window =
-        WebviewWindowBuilder::new(app, "peek-icon", WebviewUrl::App("peek-icon.html".into()))
-            .title("Peek")
-            .inner_size(ICON_SIZE, ICON_SIZE)
-            .position(icon_x, icon_y)
-            .resizable(false)
-            .maximizable(false)
-            .minimizable(false)
-            .closable(false)
-            .decorations(false)
-            .transparent(true)
-            .always_on_top(true)
-            .visible(false) // Start hidden
-            .visible_on_all_workspaces(true)
-            .skip_taskbar(true)
-            .build()
-            .map_err(|e| e.to_string())?;
-
-    // Disable shadow for the icon window
-    #[cfg(target_os = "macos")]
-    {
-        let _ = window.set_shadow(false);
-    }
-
-    Ok(())
 }
 
 /// Shows the peek icon
@@ -660,35 +621,4 @@ pub fn update_preview_indicator<R: Runtime>(
         }
     }
     Ok(())
-}
-
-// =============================================================================
-// Debug Zone Info
-// =============================================================================
-
-/// Debug info for the corner zone visualization
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct DebugZoneInfo {
-    pub enabled: bool,
-    pub corner_zone_size: f64,
-    pub screen_width: f64,
-    pub screen_height: f64,
-    pub scale_factor: f64,
-}
-
-/// Returns debug info for visualizing the corner zone
-pub fn get_debug_zone_info<R: Runtime>(app: &AppHandle<R>) -> Result<DebugZoneInfo, String> {
-    let monitor = get_rightmost_monitor(app)?;
-
-    let corner_zone_logical = CORNER_ZONE / monitor.scale_factor;
-    let screen_width_logical = monitor.width / monitor.scale_factor;
-    let screen_height_logical = monitor.height / monitor.scale_factor;
-
-    Ok(DebugZoneInfo {
-        enabled: false, // Disable debug overlay for now
-        corner_zone_size: corner_zone_logical,
-        screen_width: screen_width_logical,
-        screen_height: screen_height_logical,
-        scale_factor: monitor.scale_factor,
-    })
 }

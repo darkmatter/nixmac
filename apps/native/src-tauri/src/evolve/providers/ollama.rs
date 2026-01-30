@@ -62,6 +62,7 @@ struct OllamaToolFunction {
 }
 
 #[derive(Deserialize)]
+#[allow(dead_code)] // some fields may be unused
 struct ChatResponse {
     model: String,
     created_at: String,
