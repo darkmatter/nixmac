@@ -163,7 +163,7 @@ export function SettingsDialog() {
   const hasFlake = hosts.length > 0;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center" data-tauri-no-drag>
+    <div className="fixed inset-0 z-[40] flex items-center justify-center" data-tauri-no-drag>
       <button
         aria-label="Close settings"
         className="absolute inset-0 bg-black/40"
