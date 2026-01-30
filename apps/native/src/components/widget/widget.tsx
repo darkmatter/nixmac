@@ -8,19 +8,30 @@ import {
   darwinAPI,
   ipcRenderer,
 } from "@/tauri-api";
-import { loadConfig, loadHosts, recoverFromGitState } from "@/hooks/use-widget-initialization";
+import {
+  loadConfig,
+  loadHosts,
+  recoverFromGitState,
+} from "@/hooks/use-widget-initialization";
 import { useEffect, useRef, useState } from "react";
-import { SetupStep, OverviewStep, EvolvingStep, CommitStep } from "./steps";
+import {
+  SetupStep,
+  OverviewStep,
+  EvolvingStep,
+  CommitStep,
+  PermissionsStep,
+} from "./steps";
 import { Header } from "@/components/widget/header";
 import { Stepper } from "@/components/widget/stepper";
 import { Console } from "@/components/widget/console";
 import { SettingsDialog } from "@/components/widget/settings-dialog";
 import { ErrorMessage } from "@/components/widget/error-message";
-import { RebuildOverlay } from "@/components/rebuild-overlay";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { usePreviewIndicator } from "@/hooks/use-preview-indicator";
 import { cn } from "@/lib/utils";
 import { useSummary } from "@/hooks/use-summary";
+import { RebuildOverlayPanel } from "@/components/rebuild-overlay-panel";
+import { useRebuild } from "@/hooks/use-rebuild";
 
 /**
  * Main widget component that connects to Tauri backend.
@@ -39,6 +50,11 @@ export function DarwinWidget() {
   const { refreshGitStatus } = useGitOperations();
   const { updatePreviewIndicator } = usePreviewIndicator();
   const { checkAndFetchSummary } = useSummary();
+  const { handleRollback, handleDismiss } = useRebuild();
+
+  // Check if rebuild overlay should be shown
+  const showRebuildOverlay =
+    store.rebuild.isRunning || store.rebuild.success !== undefined;
 
   // =============================================================================
   // Global Widget Effects
@@ -50,6 +66,13 @@ export function DarwinWidget() {
 
     (async () => {
       try {
+        // Check permissions first
+        const permissionsState = await darwinAPI.permissions.checkAll();
+        if (mounted.current) {
+          storeRef.current.setPermissionsState(permissionsState);
+          storeRef.current.setPermissionsChecked(true);
+        }
+
         await loadConfig();
         await loadHosts();
         const gitStatus = await refreshGitStatus();
@@ -58,9 +81,13 @@ export function DarwinWidget() {
         // Load preferences
       } catch (e: unknown) {
         if (mounted.current) {
+          // Mark permissions as checked even if it failed
+          storeRef.current.setPermissionsChecked(true);
+
           const errorMessage = (e as Error)?.message || String(e);
           const supressFlakeError =
-            step === "setup" && errorMessage.includes("Failed to list hosts: path");
+            step === "setup" &&
+            errorMessage.includes("Failed to list hosts: path");
           if (!supressFlakeError) {
             storeRef.current.setError(errorMessage);
           }
@@ -77,16 +104,19 @@ export function DarwinWidget() {
   // This auto-refreshes git status when files are modified externally
   useEffect(() => {
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-    const configSub = ipcRenderer.on<ConfigChangedEvent>(CONFIG_CHANGED_CHANNEL, (_event) => {
-      // Debounce refreshes so rapid filesystem events don't spam git.
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
-      }
-      debounceTimer = setTimeout(async () => {
-        await refreshGitStatus();
-        checkAndFetchSummary();
-      }, 300);
-    });
+    const configSub = ipcRenderer.on<ConfigChangedEvent>(
+      CONFIG_CHANGED_CHANNEL,
+      (_event) => {
+        // Debounce refreshes so rapid filesystem events don't spam git.
+        if (debounceTimer) {
+          clearTimeout(debounceTimer);
+        }
+        debounceTimer = setTimeout(async () => {
+          await refreshGitStatus();
+          checkAndFetchSummary();
+        }, 300);
+      },
+    );
 
     return () => {
       if (debounceTimer) {
@@ -99,7 +129,9 @@ export function DarwinWidget() {
   // Update preview indicator window when state changes
   useEffect(() => {
     const summaryText =
-    store.summary.items.length > 0 ? store.summary.items.map((i) => i.title).join(", ") : null;
+      store.summary.items.length > 0
+        ? store.summary.items.map((i) => i.title).join(", ")
+        : null;
     updatePreviewIndicator({
       gitStatus: store.gitStatus,
       summaryText,
@@ -142,7 +174,8 @@ export function DarwinWidget() {
           checkAndFetchSummary();
           setUpdatedAt(Date.now()); // Trigger re-render
         }
-      } catch (error) {
+      } catch (_error) {
+        // Silently ignore polling errors
       }
 
       intervalRef.current = window.setTimeout(pollGitStatus, interval);
@@ -164,6 +197,9 @@ export function DarwinWidget() {
 
   const getActiveStepComponent = () => {
     switch (step) {
+      case "permissions":
+        return <PermissionsStep />;
+
       case "setup":
         return <SetupStep />;
 
@@ -193,16 +229,35 @@ export function DarwinWidget() {
 
         {/* Main Content */}
         <div className="flex min-h-0 flex-1 flex-col overflow-auto">
-          <div className={cn("flex-1 p-5", step !== "evolving" && "overflow-auto")}>
+          <div
+            className={cn("flex-1 p-5", step !== "evolving" && "overflow-auto")}
+          >
             <ErrorMessage />
-            {getActiveStepComponent()}
+            {showRebuildOverlay ? (
+              <div className="flex h-full items-center justify-center">
+                <div className="h-full w-full max-h-[600px] max-w-[800px]">
+                  <RebuildOverlayPanel
+                    isRunning={store.rebuild.isRunning}
+                    lines={store.rebuild.lines}
+                    rawLines={store.rebuild.rawLines}
+                    success={store.rebuild.success}
+                    errorType={store.rebuild.errorType}
+                    errorMessage={store.rebuild.errorMessage}
+                    onRollback={handleRollback}
+                    onDismiss={handleDismiss}
+                    onCancel={handleDismiss}
+                  />
+                </div>
+              </div>
+            ) : (
+              getActiveStepComponent()
+            )}
           </div>
         </div>
 
         <Console />
         <SettingsDialog />
       </div>
-      <RebuildOverlay />
     </>
   );
 }

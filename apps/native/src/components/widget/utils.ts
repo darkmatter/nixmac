@@ -1,10 +1,15 @@
 import type { StepperStepId } from "@/components/widget/stepper";
-import type { GitFileStatus, WidgetState, WidgetStep } from "@/stores/widget-store";
+import type {
+  GitFileStatus,
+  WidgetState,
+  WidgetStep,
+} from "@/stores/widget-store";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
 // Map widget steps to stepper steps
 export function getStepperStep(step: WidgetStep): StepperStepId {
   switch (step) {
+    case "permissions":
     case "setup":
     case "overview":
       return 1;
@@ -58,7 +63,7 @@ export function categorizeChanges(files: GitFileStatus[]) {
 
 // Helper to get change type from git status
 export function getChangeType(
-  f: GitFileStatus
+  f: GitFileStatus,
 ): "new" | "edited" | "removed" | "renamed" {
   const status = f.index || f.working_tree || "";
   if (status === "A" || status === "?") {
@@ -79,7 +84,18 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
   const hasConfigDir = !!state.configDir;
   const hasHost = !!state.host;
   const hasUncommittedChanges = state.gitStatus?.hasChanges ?? false;
-  const allChangesCleanlyStaged = state.gitStatus?.allChangesCleanlyStaged ?? false;
+  const allChangesCleanlyStaged =
+    state.gitStatus?.allChangesCleanlyStaged ?? false;
+
+  // Rule 0: Permissions not yet checked or not all required granted
+  // Only show permissions step if we've checked and they're not granted
+  if (
+    state.permissionsChecked &&
+    state.permissionsState &&
+    !state.permissionsState.allRequiredGranted
+  ) {
+    return "permissions";
+  }
 
   // Rule 1: Missing configuration
   if (!(hasConfigDir && hasHost)) {

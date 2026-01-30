@@ -40,6 +40,7 @@
   },
   "dependencies": {
     "@biomejs/biome": "^2.3.13",
+    "cmdk": "^1.1.1",
     "dotenv": "catalog:",
     "oxfmt": "^0.20.0",
     "znv": "workspace:*",

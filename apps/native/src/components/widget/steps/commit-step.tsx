@@ -89,7 +89,7 @@ export function CommitStep() {
                 ? "cursor-not-allowed border-border/50 opacity-50"
                 : selectedAction === action.id
                   ? "border-primary bg-primary/5"
-                  : "border-border hover:border-muted-foreground/50"
+                  : "border-border hover:border-muted-foreground/50",
             )}
             disabled={action.disabled}
             key={action.id}
@@ -101,7 +101,7 @@ export function CommitStep() {
                 action.color === "white" && "bg-white-500/10 text-white-500",
                 action.color === "teal" && "bg-teal-300/10 text-teal-300",
                 action.color === "blue" && "bg-teal-300/10 text-teal-300",
-                action.color === "amber" && "bg-rose-300/10 text-rose-300"
+                action.color === "amber" && "bg-rose-300/10 text-rose-300",
               )}
             >
               <action.icon className="h-6 w-6" />

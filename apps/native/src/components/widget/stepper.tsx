@@ -26,7 +26,7 @@ export function Stepper() {
 
   return (
     <div className="border-border border-b bg-muted/30 px-5 py-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-center gap-12">
         {STEPPER_STEPS.map((step, i) => (
           <div className="flex items-center" key={step.id}>
             <div className="flex items-center gap-3">
@@ -37,7 +37,7 @@ export function Stepper() {
                     ? "bg-teal-500 text-white"
                     : currentStep === step.id
                       ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground"
+                      : "bg-muted text-muted-foreground",
                 )}
               >
                 {currentStep > step.id ? (
@@ -52,7 +52,7 @@ export function Stepper() {
                     "font-medium text-sm",
                     currentStep >= step.id
                       ? "text-foreground"
-                      : "text-muted-foreground"
+                      : "text-muted-foreground",
                   )}
                 >
                   {step.name}
@@ -66,7 +66,7 @@ export function Stepper() {
               <div
                 className={cn(
                   "relative left-4 mx-4 h-0.5 w-12",
-                  currentStep > step.id ? "bg-teal-500" : "bg-border"
+                  currentStep > step.id ? "bg-teal-500" : "bg-border",
                 )}
               />
             )}

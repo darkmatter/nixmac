@@ -58,6 +58,7 @@ where
 
     std::thread::spawn(move || {
         let mut last_has_changes: Option<bool> = None;
+        let mut tick_count: u64 = 0;
 
         loop {
             if !WATCHER_ACTIVE.load(Ordering::SeqCst) {
@@ -72,15 +73,27 @@ where
             };
 
             if let Some(ref dir) = current_dir {
+                // Log every 20 ticks (~10 seconds) for debugging
+                tick_count += 1;
+                if tick_count % 20 == 0 {
+                    watcher_log!("Watcher tick {} - watching dir: {}", tick_count, dir);
+                }
+
                 // Fast check using git diff-index
                 let has_changes = git::has_changes_fast(dir);
+
+                // Log on first tick to confirm watcher is working
+                if tick_count == 1 {
+                    watcher_log!("Initial check: dir={}, has_changes={}", dir, has_changes);
+                }
 
                 // Only emit if state changed
                 if last_has_changes != Some(has_changes) {
                     watcher_log!(
-                        "Change detected: has_changes={} (was {:?})",
+                        "State change detected: has_changes={} (was {:?}), dir={}",
                         has_changes,
-                        last_has_changes
+                        last_has_changes,
+                        dir
                     );
 
                     last_has_changes = Some(has_changes);
@@ -88,10 +101,17 @@ where
                     // Emit event to frontend
                     if let Some(window) = app.get_webview_window("main") {
                         let event = ConfigChangedEvent { has_changes };
+                        watcher_log!("Emitting config:changed event: {:?}", event);
                         if let Err(e) = window.emit("config:changed", &event) {
                             watcher_log!("Failed to emit config:changed event: {}", e);
                         }
+                    } else {
+                        watcher_log!("Warning: main window not found, cannot emit event");
                     }
+                }
+            } else {
+                if tick_count % 20 == 0 {
+                    watcher_log!("Warning: No watch directory set");
                 }
             }
 

@@ -7,7 +7,7 @@
 //! NOTE: The server is stateless regarding UI state. All app state (generating,
 //! preview mode, etc.) is computed and managed entirely by the client.
 
-use crate::{darwin, git, nix, peek, store, summarize, types, watcher};
+use crate::{darwin, git, nix, peek, permissions, store, summarize, types, watcher};
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -203,6 +203,14 @@ pub async fn git_stage_all(app: AppHandle) -> Result<serde_json::Value, String> 
     Ok(serde_json::json!({"ok": true}))
 }
 
+/// Unstage all staged changes (keeps working directory changes)
+#[tauri::command]
+pub async fn git_unstage_all(app: AppHandle) -> Result<serde_json::Value, String> {
+    let dir = store::ensure_config_dir_exists(&app).map_err(|e| e.to_string())?;
+    git::unstage_all(&dir).map_err(|e| e.to_string())?;
+    Ok(serde_json::json!({"ok": true}))
+}
+
 /// Discard all uncommitted changes (restore to HEAD)
 #[tauri::command]
 pub async fn git_restore_all(app: AppHandle) -> Result<serde_json::Value, String> {
@@ -375,18 +383,56 @@ pub async fn flake_list_hosts(app: AppHandle) -> Result<Vec<String>, String> {
 /// Generates a human-readable summary of the current working changes.
 /// Uses a fast model for quick response times.
 #[tauri::command]
-pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(|e| e.to_string())?;
-
-    // Get git diff
+/// Gets a full diff including both tracked changes and untracked files.
+/// Untracked files are formatted as diffs showing the entire file as added.
+fn get_full_diff(dir: &str) -> Result<String, String> {
+    // Get git diff for tracked files
     let diff_output = Command::new("git")
         .args(["diff", "HEAD"])
-        .current_dir(&dir)
+        .current_dir(dir)
         .env("PATH", crate::nix::get_nix_path())
         .output()
         .map_err(|e| e.to_string())?;
 
-    let diff = String::from_utf8_lossy(&diff_output.stdout).to_string();
+    let mut diff = String::from_utf8_lossy(&diff_output.stdout).to_string();
+
+    // Also get untracked files and show their contents as diffs
+    let untracked_output = Command::new("git")
+        .args(["ls-files", "--others", "--exclude-standard"])
+        .current_dir(dir)
+        .env("PATH", crate::nix::get_nix_path())
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    let untracked_files = String::from_utf8_lossy(&untracked_output.stdout);
+
+    for file in untracked_files.lines() {
+        if file.is_empty() {
+            continue;
+        }
+        let file_path = std::path::Path::new(dir).join(file);
+        if let Ok(contents) = std::fs::read_to_string(&file_path) {
+            // Format as a diff showing the entire file as added
+            diff.push_str(&format!("\ndiff --git a/{} b/{}\n", file, file));
+            diff.push_str("new file mode 100644\n");
+            diff.push_str("--- /dev/null\n");
+            diff.push_str(&format!("+++ b/{}\n", file));
+            let line_count = contents.lines().count();
+            diff.push_str(&format!("@@ -0,0 +1,{} @@\n", line_count));
+            for line in contents.lines() {
+                diff.push_str(&format!("+{}\n", line));
+            }
+        }
+    }
+
+    Ok(diff)
+}
+
+#[tauri::command]
+pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse, String> {
+    let dir = store::ensure_config_dir_exists(&app).map_err(|e| e.to_string())?;
+
+    let diff = get_full_diff(&dir)?;
 
     // Count additions and deletions from diff
     let (additions, deletions) = count_diff_changes(&diff);
@@ -395,25 +441,30 @@ pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse,
     let status = git::status(&dir).map_err(|e| e.to_string())?;
     let file_list: Vec<String> = status.files.iter().map(|f| f.path.clone()).collect();
 
-    // Generate both summary and commit message in parallel
-    let (change_summary, commit_message) =
-        summarize::summarize_for_preview(&diff, &file_list, Some(&app))
-            .await
-            .map_err(|e| e.to_string())?;
-
-    // Convert summarize::SummaryItem to types::SummaryItem
-    let items: Vec<types::SummaryItem> = change_summary
-        .items
-        .into_iter()
-        .map(|item| types::SummaryItem {
-            title: item.title,
-            description: item.description,
-        })
-        .collect();
+    // Try to generate AI summary, but don't fail if it errors (e.g., no API key)
+    let (items, instructions, commit_message) =
+        match summarize::summarize_for_preview(&diff, &file_list, Some(&app)).await {
+            Ok((change_summary, msg)) => {
+                let items: Vec<types::SummaryItem> = change_summary
+                    .items
+                    .into_iter()
+                    .map(|item| types::SummaryItem {
+                        title: item.title,
+                        description: item.description,
+                    })
+                    .collect();
+                (items, change_summary.instructions, msg)
+            }
+            Err(e) => {
+                eprintln!("[summarize_changes] AI summarization failed: {}", e);
+                // Return empty summary but still include the diff
+                (Vec::new(), String::new(), String::new())
+            }
+        };
 
     Ok(types::SummaryResponse {
         items,
-        instructions: change_summary.instructions,
+        instructions,
         commit_message,
         files_changed: file_list.len(),
         diff_lines: diff.lines().count(),
@@ -451,15 +502,7 @@ fn count_diff_changes(diff: &str) -> (usize, usize) {
 pub async fn suggest_commit_message(app: AppHandle) -> Result<String, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(|e| e.to_string())?;
 
-    // Get git diff
-    let diff_output = Command::new("git")
-        .args(["diff", "HEAD"])
-        .current_dir(&dir)
-        .env("PATH", crate::nix::get_nix_path())
-        .output()
-        .map_err(|e| e.to_string())?;
-
-    let diff = String::from_utf8_lossy(&diff_output.stdout).to_string();
+    let diff = get_full_diff(&dir)?;
 
     // Get list of changed files
     let status = git::status(&dir).map_err(|e| e.to_string())?;
@@ -482,11 +525,19 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
     let floating_footer = store::get_floating_footer(&app).map_err(|e| e.to_string())?;
     let window_shadow = store::get_window_shadow(&app).map_err(|e| e.to_string())?;
     let openai_api_key = store::get_openai_api_key(&app).map_err(|e| e.to_string())?;
+    let evolve_provider = store::get_evolve_provider(&app).map_err(|e| e.to_string())?;
+    let evolve_model = store::get_evolve_model(&app).map_err(|e| e.to_string())?;
+    let summary_provider = store::get_summary_provider(&app).map_err(|e| e.to_string())?;
+    let summary_model = store::get_summary_model(&app).map_err(|e| e.to_string())?;
 
     Ok(types::UiPrefs {
         floating_footer,
         window_shadow,
         openai_api_key,
+        evolve_provider,
+        evolve_model,
+        summary_provider,
+        summary_model,
     })
 }
 
@@ -505,6 +556,18 @@ pub async fn ui_set_prefs(
     if let Some(openai_api_key) = prefs.get("openaiApiKey").and_then(|v| v.as_str()) {
         store::set_openai_api_key(&app, openai_api_key).map_err(|e| e.to_string())?;
     }
+    if let Some(evolve_provider) = prefs.get("evolveProvider").and_then(|v| v.as_str()) {
+        store::set_evolve_provider(&app, evolve_provider).map_err(|e| e.to_string())?;
+    }
+    if let Some(evolve_model) = prefs.get("evolveModel").and_then(|v| v.as_str()) {
+        store::set_evolve_model(&app, evolve_model).map_err(|e| e.to_string())?;
+    }
+    if let Some(summary_provider) = prefs.get("summaryProvider").and_then(|v| v.as_str()) {
+        store::set_summary_provider(&app, summary_provider).map_err(|e| e.to_string())?;
+    }
+    if let Some(summary_model) = prefs.get("summaryModel").and_then(|v| v.as_str()) {
+        store::set_summary_model(&app, summary_model).map_err(|e| e.to_string())?;
+    }
 
     Ok(serde_json::json!({"ok": true}))
 }
@@ -513,6 +576,26 @@ pub async fn ui_set_prefs(
 #[tauri::command]
 pub async fn ui_set_window_shadow(app: AppHandle, on: bool) -> Result<serde_json::Value, String> {
     store::set_window_shadow(&app, on).map_err(|e| e.to_string())?;
+    Ok(serde_json::json!({"ok": true}))
+}
+
+/// Gets the cached list of models for a provider.
+#[tauri::command]
+pub async fn get_cached_models(
+    app: AppHandle,
+    provider: String,
+) -> Result<Option<Vec<String>>, String> {
+    store::get_cached_models(&app, &provider).map_err(|e| e.to_string())
+}
+
+/// Sets the cached list of models for a provider.
+#[tauri::command]
+pub async fn set_cached_models(
+    app: AppHandle,
+    provider: String,
+    models: Vec<String>,
+) -> Result<serde_json::Value, String> {
+    store::set_cached_models(&app, &provider, &models).map_err(|e| e.to_string())?;
     Ok(serde_json::json!({"ok": true}))
 }
 
@@ -595,4 +678,28 @@ pub async fn watcher_stop() -> Result<serde_json::Value, String> {
 #[tauri::command]
 pub async fn watcher_is_active() -> Result<bool, String> {
     Ok(watcher::is_watching())
+}
+
+// =============================================================================
+// Permissions Commands
+// =============================================================================
+
+/// Check all macOS permissions and return their current status.
+#[tauri::command]
+pub async fn permissions_check_all() -> Result<permissions::PermissionsState, String> {
+    Ok(permissions::check_all_permissions())
+}
+
+/// Request a specific permission by ID.
+/// For programmatic permissions (desktop, documents), this triggers the OS prompt.
+/// For manual permissions (full-disk), this opens System Settings.
+#[tauri::command]
+pub async fn permissions_request(permission_id: String) -> Result<permissions::Permission, String> {
+    permissions::request_permission(&permission_id).map_err(|e| e.to_string())
+}
+
+/// Check if all required permissions are granted.
+#[tauri::command]
+pub async fn permissions_all_required_granted() -> Result<bool, String> {
+    Ok(permissions::all_required_permissions_granted())
 }
