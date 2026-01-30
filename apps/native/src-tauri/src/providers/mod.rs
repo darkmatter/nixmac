@@ -8,6 +8,9 @@ use tauri::{AppHandle, Runtime};
 
 use async_trait::async_trait;
 
+const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
+const DEFAULT_SUMMARY_MODEL: &str = "openai/gpt-4o-mini";
+
 /// Trait for pluggable chat completion providers
 #[async_trait]
 pub trait ChatCompletionProvider: Send + Sync {
@@ -38,8 +41,8 @@ pub fn create_provider<R: Runtime>(
             Ok(Box::new(OllamaClient::new(&base_url, &model)))
         }
         _ => {
-            const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
-            const SUMMARY_MODEL: &str = "openai/gpt-4o-mini";
+            let model = std::env::var("SUMMARY_MODEL")
+                .unwrap_or_else(|_| DEFAULT_SUMMARY_MODEL.to_string());
 
             // Try to get key from store first, then env var
             let store_key = app_handle
@@ -54,7 +57,7 @@ pub fn create_provider<R: Runtime>(
             Ok(Box::new(OpenAIClient::new(
                 &key,
                 OPENROUTER_BASE_URL,
-                SUMMARY_MODEL,
+                &model,
             )))
         }
     }
