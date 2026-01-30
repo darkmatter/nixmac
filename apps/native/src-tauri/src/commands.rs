@@ -11,11 +11,8 @@ use crate::{darwin, git, nix, peek, store, summarize, types, watcher};
 use std::fs;
 use std::path::Path;
 use std::process::Command;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use tauri_plugin_dialog::DialogExt;
-
-// Add these constants after your imports, before the functions
-const DEFAULT_FLAKE_DOT_NIX: &str = include_str!("../../templates/default/flake.nix");
 
 // =============================================================================
 // Configuration Commands
@@ -81,43 +78,82 @@ pub async fn flake_exists(app: AppHandle) -> Result<bool, String> {
     Ok(Path::new(&dir).join("flake.nix").exists())
 }
 
+/// Helper function to detect the Darwin platform (aarch64 or x86_64)
+fn detect_darwin_platform() -> &'static str {
+    #[cfg(target_arch = "aarch64")]
+    {
+        "aarch64-darwin"
+    }
+    #[cfg(not(target_arch = "aarch64"))]
+    {
+        "x86_64-darwin"
+    }
+}
+
 #[tauri::command]
 pub async fn bootstrap_default_config(app: AppHandle, hostname: String) -> Result<(), String> {
-    let dir = store::get_config_dir(&app).map_err(|e| e.to_string())?;
+    let dir = store::ensure_config_dir_exists(&app)
+        .map_err(|e| format!("Failed to ensure config dir: {}", e))?;
     let path = Path::new(&dir);
 
     if path.join("flake.nix").exists() {
         return Err("Directory already contains flake.nix".to_string());
     }
 
-    // Create flake from /defaults/flake.nix
-    let flake_content = DEFAULT_FLAKE_DOT_NIX.replace("macbook", &hostname);
-    fs::write(path.join("flake.nix"), flake_content)
-        .map_err(|e| format!("Failed to write flake.nix: {}", e))?;
+    let platform = detect_darwin_platform();
 
-    git::init_if_needed(&dir).map_err(|e| e.to_string())?;
+    // Try bundled templates first (production), then dev path
+    let resource_dir = app
+        .path()
+        .resource_dir()
+        .map_err(|e| format!("Failed to get resource directory: {}", e))?;
 
-    git::stage_all(&dir).map_err(|e| e.to_string())?;
+    let template_path = [
+        resource_dir.join("templates/nix-darwin-determinate"),
+        resource_dir.join("../../apps/native/templates/nix-darwin-determinate"),
+    ]
+    .into_iter()
+    .find(|p| p.exists())
+    .ok_or_else(|| "Template directory not found".to_string())?;
 
-    let flake_lock_result = Command::new("nix")
+    // Copy and process template files
+    for entry in fs::read_dir(&template_path)
+        .map_err(|e| format!("Failed to read template directory: {}", e))?
+    {
+        let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+        let filename = entry.file_name();
+
+        let content = fs::read_to_string(entry.path())
+            .map_err(|e| format!("Failed to read template file: {}", e))?
+            .replace("HOSTNAME_PLACEHOLDER", &hostname)
+            .replace("PLATFORM_PLACEHOLDER", platform);
+
+        fs::write(path.join(&filename), content)
+            .map_err(|e| format!("Failed to write {}: {}", filename.to_string_lossy(), e))?;
+    }
+
+    // Initialize git and create initial commit
+    git::init_if_needed(&dir).map_err(|e| format!("Failed to init git: {}", e))?;
+    git::stage_all(&dir).map_err(|e| format!("Failed to stage files: {}", e))?;
+
+    // Generate flake.lock
+    let result = Command::new("nix")
         .args(["flake", "lock"])
         .current_dir(&dir)
         .env("PATH", crate::nix::get_nix_path())
         .output()
-        .map_err(|e| format!("Failed to generate flake.lock: {}", e))?;
+        .map_err(|e| format!("Failed to run nix flake lock: {}", e))?;
 
-    if !flake_lock_result.status.success() {
+    if !result.status.success() {
         return Err(format!(
             "Failed to generate flake.lock: {}",
-            String::from_utf8_lossy(&flake_lock_result.stderr)
+            String::from_utf8_lossy(&result.stderr)
         ));
     }
 
-    // Stage the newly created flake.lock
-    git::stage_all(&dir).map_err(|e| e.to_string())?;
-
-    // Commit all
-    git::commit_all(&dir, "Initial nix-darwin configuration").map_err(|e| e.to_string())?;
+    git::stage_all(&dir).map_err(|e| format!("Failed to stage flake.lock: {}", e))?;
+    git::commit_all(&dir, "Initial nix-darwin configuration")
+        .map_err(|e| format!("Failed to commit: {}", e))?;
 
     Ok(())
 }
