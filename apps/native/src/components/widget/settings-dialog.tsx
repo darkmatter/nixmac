@@ -25,7 +25,7 @@ import {
   Settings2,
   X,
 } from "lucide-react";
-import { useState, useEffect, use, Suspense, useRef } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 
 type SettingsTab = "general" | "appearance" | "api-keys" | "ai-models";
 
@@ -78,16 +78,13 @@ export function SettingsDialog() {
 
   const { saveHost } = useDarwinConfig();
 
-  const [openaiApiKey, setOpenaiApiKey] = useState("");
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus>("idle");
-  const [apiKeyInput, setApiKeyInput] = useState("");
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const verifyApiKey = async (key: string) => {
     // Always save the key first, regardless of verification
     if (key && key.length > 10) {
-      setOpenaiApiKey(key);
       await darwinAPI.ui.setPrefs({ openaiApiKey: key });
     }
 
@@ -141,16 +138,6 @@ export function SettingsDialog() {
     return null;
   }
 
-  const handleApiKeyChange = (value: string) => {
-    setApiKeyInput(value);
-    setApiKeyStatus("idle");
-  };
-
-  const handleApiKeyBlur = () => {
-    if (apiKeyInput !== openaiApiKey) {
-      verifyApiKey(apiKeyInput);
-    }
-  };
 
   const handleRefreshHosts = async () => {
     try {
