@@ -98,11 +98,6 @@ const CheckFilled = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const SkeletonCircle = ({ className }: { className?: string }) => (
-  <div
-    className={cn("h-5 w-5 animate-pulse rounded-full bg-white/20", className)}
-  />
-);
 
 const SkeletonLine = ({ width = "w-32" }: { width?: string }) => (
   <div className={cn("h-3 animate-pulse rounded bg-white/20", width)} />
@@ -157,7 +152,6 @@ function LoaderCore({
               : Math.max(1 - distance * 0.3, 0.25);
 
           const isCompleted = index < value;
-          const isCurrent = index === value;
           const isMostRecentlyCompleted = index === mostRecentlyCompletedIndex;
 
           // Only the most recently completed step gets green
