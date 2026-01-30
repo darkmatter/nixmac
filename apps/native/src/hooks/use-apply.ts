@@ -71,32 +71,59 @@ export function useApply() {
     });
 
     // Listen for rebuild end event
-    const unlistenEnd = await ipcRenderer.on<{ ok: boolean; code: number }>(
-      "darwin:apply:end",
-      async (event) => {
-        const currentStore = useWidgetStore.getState();
-        currentStore.setProcessing(false);
-        currentStore.setRebuildComplete(event.payload.ok, event.payload.code);
-        unlistenData();
-        unlistenSummary();
-        unlistenEnd();
+    const unlistenEnd = await ipcRenderer.on<{
+      ok: boolean;
+      code: number;
+      error_type?: string;
+    }>("darwin:apply:end", async (event) => {
+      const currentStore = useWidgetStore.getState();
+      currentStore.setProcessing(false);
+      currentStore.setRebuildComplete(event.payload.ok, event.payload.code);
+      unlistenData();
+      unlistenSummary();
+      unlistenEnd();
 
-        // If successful, stage all changes and auto-dismiss after delay
-        if (event.payload.ok) {
-          try {
-            await darwinAPI.git.stageAll();
-          } catch (e) {
-            console.error("Failed to stage changes:", e);
-          }
-          // Auto-dismiss rebuild panel after success (short delay for user feedback)
-          setTimeout(() => {
-            useWidgetStore.getState().clearRebuild();
-          }, 2000);
+      // If Full Disk Access error, force FDA permission to denied and show permissions step
+      if (event.payload.error_type === "full_disk_access") {
+        try {
+          const permissionsState = await darwinAPI.permissions.checkAll();
+          // Force FDA permission to denied AND required since we know it failed
+          const updatedPermissions = permissionsState.permissions.map((p) =>
+            p.id === "full-disk"
+              ? { ...p, status: "denied" as const, required: true }
+              : p,
+          );
+          const updatedState = {
+            ...permissionsState,
+            permissions: updatedPermissions,
+            // Force allRequiredGranted to false since FDA is now required and denied
+            allRequiredGranted: false,
+          };
+          currentStore.setPermissionsState(updatedState);
+          // Clear rebuild state to allow user to see permissions step
+          currentStore.clearRebuild();
+        } catch (e) {
+          console.error("Failed to check permissions:", e);
         }
-
         await refreshGitStatus();
-      },
-    );
+        return;
+      }
+
+      // If successful, stage all changes and auto-dismiss after delay
+      if (event.payload.ok) {
+        try {
+          await darwinAPI.git.stageAll();
+        } catch (e) {
+          console.error("Failed to stage changes:", e);
+        }
+        // Auto-dismiss rebuild panel after success (short delay for user feedback)
+        setTimeout(() => {
+          useWidgetStore.getState().clearRebuild();
+        }, 2000);
+      }
+
+      await refreshGitStatus();
+    });
 
     try {
       await darwinAPI.darwin.applyStreamStart();

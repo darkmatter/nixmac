@@ -5,7 +5,7 @@
 //!
 //! Permissions checked:
 //! - Desktop folder access
-//! - Documents folder access  
+//! - Documents folder access
 //! - Full Disk Access (FDA) - required for darwin-rebuild over SSH
 //! - Administrator privileges (sudo access)
 
@@ -94,8 +94,8 @@ fn get_default_permissions() -> Vec<Permission> {
         Permission {
             id: "full-disk".to_string(),
             name: "Full Disk Access".to_string(),
-            description: "Recommended for complete system management capabilities".to_string(),
-            required: false,
+            description: "Required for darwin-rebuild to apply system changes".to_string(),
+            required: true,
             can_request_programmatically: false,
             status: PermissionStatus::Pending,
             instructions: Some(
@@ -152,7 +152,8 @@ fn check_folder_access(path: &PathBuf) -> PermissionStatus {
 }
 
 /// Check if we have Full Disk Access
-/// This is done by trying to access a restricted system file
+/// This is done by trying to access restricted system files/folders
+/// Note: This check is imperfect - the definitive check happens via JS plugin
 fn check_full_disk_access() -> PermissionStatus {
     // Try to access the TCC database (requires FDA)
     let tcc_path = PathBuf::from("/Library/Application Support/com.apple.TCC/TCC.db");
@@ -175,6 +176,7 @@ fn check_full_disk_access() -> PermissionStatus {
         PermissionStatus::Granted
     } else {
         // Can't determine - might be denied or just no Mail folder
+        // Keep as Pending - the JS plugin will give a definitive answer
         debug!("Full Disk Access check inconclusive");
         PermissionStatus::Pending
     }
@@ -335,7 +337,7 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
             Ok(Permission {
                 id: "full-disk".to_string(),
                 name: "Full Disk Access".to_string(),
-                description: "Recommended for complete system management capabilities".to_string(),
+                description: "Required for darwin-rebuild to apply system changes".to_string(),
                 required: false,
                 can_request_programmatically: false,
                 status: check_full_disk_access(),

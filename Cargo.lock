@@ -2775,6 +2775,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "macos-accessibility-client"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "edf7710fbff50c24124331760978fb9086d6de6288dcdb38b25a97f8b1bdebbb"
+dependencies = [
+ "core-foundation 0.9.4",
+ "core-foundation-sys",
+]
+
+[[package]]
 name = "malloc_buf"
 version = "0.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3009,6 +3019,7 @@ dependencies = [
  "tauri-plugin-dialog",
  "tauri-plugin-global-shortcut",
  "tauri-plugin-log",
+ "tauri-plugin-macos-permissions",
  "tauri-plugin-notification",
  "tauri-plugin-opener",
  "tauri-plugin-positioner",
@@ -5653,6 +5664,21 @@ dependencies = [
  "tauri-plugin",
  "thiserror 2.0.17",
  "time",
+]
+
+[[package]]
+name = "tauri-plugin-macos-permissions"
+version = "2.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5607e0707d37d7b20e287cf0ce396d1efebe7b833b8e9cbd2ea4257091d9c604"
+dependencies = [
+ "macos-accessibility-client",
+ "objc2",
+ "objc2-foundation",
+ "serde",
+ "tauri",
+ "tauri-plugin",
+ "thiserror 2.0.17",
 ]
 
 [[package]]

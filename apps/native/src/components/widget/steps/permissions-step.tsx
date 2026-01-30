@@ -8,12 +8,36 @@ import { Shield, Check, X, AlertCircle, Loader2 } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
 
 /**
+ * Check FDA permission using the native plugin and update the permissions state
+ */
+async function checkAndUpdateFDAPermission(
+  permissions: Permission[],
+): Promise<Permission[]> {
+  try {
+    const fdaGranted = await darwinAPI.permissions.checkFullDiskAccess();
+    return permissions.map((p) =>
+      p.id === "full-disk"
+        ? {
+            ...p,
+            status: (fdaGranted ? "granted" : "denied") as PermissionStatus,
+          }
+        : p,
+    );
+  } catch (error) {
+    console.error("Failed to check FDA via plugin:", error);
+    return permissions;
+  }
+}
+
+/**
  * Permissions step component - checks and requests macOS permissions
  * required for proper operation of nix-darwin.
  */
 export function PermissionsStep() {
   const permissionsState = useWidgetStore((state) => state.permissionsState);
-  const setPermissionsState = useWidgetStore((state) => state.setPermissionsState);
+  const setPermissionsState = useWidgetStore(
+    (state) => state.setPermissionsState,
+  );
   const [isLoading, setIsLoading] = useState<string | null>(null);
 
   // Refresh permissions when the component mounts
@@ -21,7 +45,18 @@ export function PermissionsStep() {
     const refreshPermissions = async () => {
       try {
         const state = await darwinAPI.permissions.checkAll();
-        setPermissionsState(state);
+        // Use the native plugin for accurate FDA check
+        const updatedPermissions = await checkAndUpdateFDAPermission(
+          state.permissions,
+        );
+        const allRequiredGranted = updatedPermissions
+          .filter((p) => p.required)
+          .every((p) => p.status === "granted");
+        setPermissionsState({
+          ...state,
+          permissions: updatedPermissions,
+          allRequiredGranted,
+        });
       } catch (error) {
         console.error("Failed to check permissions:", error);
       }
@@ -29,38 +64,84 @@ export function PermissionsStep() {
     refreshPermissions();
   }, [setPermissionsState]);
 
-  const handleRequestPermission = useCallback(async (permissionId: string) => {
-    setIsLoading(permissionId);
-    try {
-      const updatedPermission = await darwinAPI.permissions.request(permissionId);
-      
-      // Update the permission in the state
-      if (permissionsState) {
-        const updatedPermissions = permissionsState.permissions.map((p) =>
-          p.id === permissionId ? updatedPermission : p
-        );
-        const allRequiredGranted = updatedPermissions
-          .filter((p) => p.required)
-          .every((p) => p.status === "granted");
-        
-        setPermissionsState({
-          ...permissionsState,
-          permissions: updatedPermissions,
-          allRequiredGranted,
-        });
+  const handleRequestPermission = useCallback(
+    async (permissionId: string) => {
+      setIsLoading(permissionId);
+      try {
+        // For FDA, use the native plugin to request
+        if (permissionId === "full-disk") {
+          await darwinAPI.permissions.requestFullDiskAccess();
+          // Wait a bit for user to potentially grant access, then re-check
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          const fdaGranted = await darwinAPI.permissions.checkFullDiskAccess();
+
+          if (permissionsState) {
+            const updatedPermissions = permissionsState.permissions.map((p) =>
+              p.id === "full-disk"
+                ? {
+                    ...p,
+                    status: (fdaGranted
+                      ? "granted"
+                      : "denied") as PermissionStatus,
+                  }
+                : p,
+            );
+            const allRequiredGranted = updatedPermissions
+              .filter((p) => p.required)
+              .every((p) => p.status === "granted");
+
+            setPermissionsState({
+              ...permissionsState,
+              permissions: updatedPermissions,
+              allRequiredGranted,
+            });
+          }
+        } else {
+          // For other permissions, use the backend
+          const updatedPermission =
+            await darwinAPI.permissions.request(permissionId);
+
+          // Update the permission in the state
+          if (permissionsState) {
+            const updatedPermissions = permissionsState.permissions.map((p) =>
+              p.id === permissionId ? updatedPermission : p,
+            );
+            const allRequiredGranted = updatedPermissions
+              .filter((p) => p.required)
+              .every((p) => p.status === "granted");
+
+            setPermissionsState({
+              ...permissionsState,
+              permissions: updatedPermissions,
+              allRequiredGranted,
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Failed to request permission:", error);
+      } finally {
+        setIsLoading(null);
       }
-    } catch (error) {
-      console.error("Failed to request permission:", error);
-    } finally {
-      setIsLoading(null);
-    }
-  }, [permissionsState, setPermissionsState]);
+    },
+    [permissionsState, setPermissionsState],
+  );
 
   const handleRefreshAll = useCallback(async () => {
     setIsLoading("all");
     try {
       const state = await darwinAPI.permissions.checkAll();
-      setPermissionsState(state);
+      // Use the native plugin for accurate FDA check
+      const updatedPermissions = await checkAndUpdateFDAPermission(
+        state.permissions,
+      );
+      const allRequiredGranted = updatedPermissions
+        .filter((p) => p.required)
+        .every((p) => p.status === "granted");
+      setPermissionsState({
+        ...state,
+        permissions: updatedPermissions,
+        allRequiredGranted,
+      });
     } catch (error) {
       console.error("Failed to refresh permissions:", error);
     } finally {
@@ -131,7 +212,11 @@ interface PermissionCardProps {
   onRequest: () => void;
 }
 
-function PermissionCard({ permission, isLoading, onRequest }: PermissionCardProps) {
+function PermissionCard({
+  permission,
+  isLoading,
+  onRequest,
+}: PermissionCardProps) {
   const actionLabel = getActionLabel(permission.status);
   const isGranted = permission.status === "granted";
 
@@ -166,7 +251,13 @@ function PermissionCard({ permission, isLoading, onRequest }: PermissionCardProp
             disabled={isGranted || isLoading}
             onClick={onRequest}
             size="sm"
-            variant={isGranted ? "secondary" : permission.canRequestProgrammatically ? "default" : "outline"}
+            variant={
+              isGranted
+                ? "secondary"
+                : permission.canRequestProgrammatically
+                  ? "default"
+                  : "outline"
+            }
           >
             {isLoading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -181,7 +272,8 @@ function PermissionCard({ permission, isLoading, onRequest }: PermissionCardProp
 
 function PermissionStatusBadge({ status }: { status: PermissionStatus }) {
   const styles: Record<PermissionStatus, string> = {
-    granted: "bg-console-success/10 text-console-success border-console-success/20",
+    granted:
+      "bg-console-success/10 text-console-success border-console-success/20",
     denied: "bg-console-error/10 text-console-error border-console-error/20",
     pending: "bg-secondary text-muted-foreground border-border",
     unknown: "bg-secondary text-muted-foreground border-border",
