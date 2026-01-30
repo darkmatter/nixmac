@@ -131,9 +131,7 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     let cleanly_staged_count = files
         .iter()
         .filter(|f| {
-            f.index
-                .as_ref()
-                .map_or(false, |idx| idx != " " && idx != "?")
+            f.index.as_ref().is_some_and(|idx| idx != " " && idx != "?")
                 && f.working_tree.as_ref().map_or(true, |wt| wt == " ")
         })
         .count();
