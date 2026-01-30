@@ -14,6 +14,10 @@ export interface DarwinPrefs {
   floatingFooter?: boolean;
   windowShadow?: boolean;
   openaiApiKey?: string;
+  summaryProvider?: string;
+  summaryModel?: string;
+  evolveProvider?: string;
+  evolveModel?: string;
 }
 
 export interface GitFileStatus {
@@ -42,7 +46,7 @@ export interface GitStatus {
   ahead?: number;
   behind?: number;
 
-  // Computed state 
+  // Computed state
   hasChanges?: boolean;
   hasUnstagedChanges?: boolean;
   allChangesStaged?: boolean;
@@ -140,8 +144,7 @@ export const darwinAPI = {
     listHosts: () => invoke<string[]>("flake_list_hosts"),
     installedApps: () => invoke<unknown[]>("flake_installed_apps"),
     exists: () => invoke<boolean>("flake_exists"),
-    bootstrapDefault: (hostname: string) =>
-      invoke<void>("bootstrap_default_config", { hostname }),
+    bootstrapDefault: (hostname: string) => invoke<void>("bootstrap_default_config", { hostname }),
   },
   // Summarization with fast model
   summarize: {
@@ -157,10 +160,8 @@ export const darwinAPI = {
   previewIndicator: {
     show: () => invoke("preview_indicator_show"),
     hide: () => invoke("preview_indicator_hide"),
-    update: (state: PreviewIndicatorState) =>
-      invoke("preview_indicator_update", { state }),
-    getState: () =>
-      invoke<PreviewIndicatorState>("preview_indicator_get_state"),
+    update: (state: PreviewIndicatorState) => invoke("preview_indicator_update", { state }),
+    getState: () => invoke<PreviewIndicatorState>("preview_indicator_get_state"),
   },
   watcher: {
     start: () => invoke("watcher_start"),
