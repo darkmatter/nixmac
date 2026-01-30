@@ -688,21 +688,3 @@ fn process_tool_result(
 
     Ok((message, should_break))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[ignore]
-    #[test]
-    fn test_evolution_creation() -> Result<()> {
-        // create template repo
-        let dir = tempfile::tempdir().map_err(|e| anyhow!("Failed to create temp dir: {}", e))?;
-        // copy template/minimal
-        // std::fs::copy("template/minimal", dir.path()).unwrap();
-        // let config_dir = dir.path().to_str().unwrap();
-        // std::fs::create_dir_all(config_dir).unwrap();
-        // assert!(dir.path().join("flake.nix").exists());
-        Ok(())
-    }
-}

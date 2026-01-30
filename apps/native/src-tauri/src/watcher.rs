@@ -111,13 +111,6 @@ pub fn stop_watching() {
     *watch_dir = None;
 }
 
-/// Updates the directory being watched without restarting the watcher thread.
-pub fn set_watch_dir(dir: &str) {
-    let mut watch_dir = WATCH_DIR.lock().unwrap();
-    *watch_dir = Some(dir.to_string());
-    watcher_log!("Updated watch directory to: {}", dir);
-}
-
 /// Returns whether the watcher is currently active.
 pub fn is_watching() -> bool {
     WATCHER_ACTIVE.load(Ordering::SeqCst)
