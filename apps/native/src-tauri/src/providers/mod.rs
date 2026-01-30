@@ -31,18 +31,32 @@ pub trait ChatCompletionProvider: Send + Sync {
 pub fn create_provider<R: Runtime>(
     app_handle: Option<&AppHandle<R>>,
 ) -> Result<Box<dyn ChatCompletionProvider>> {
-    let provider = std::env::var("SUMMARY_AI_PROVIDER").unwrap_or_else(|_| "openai".to_string());
+    let store_provider = app_handle
+        .and_then(|app| crate::store::get_summary_provider(app).ok())
+        .flatten();
+
+    let provider = store_provider
+        .or_else(|| std::env::var("SUMMARY_AI_PROVIDER").ok())
+        .unwrap_or_else(|| "openai".to_string());
+
+    let store_model = app_handle
+        .and_then(|app| crate::store::get_summary_model(app).ok())
+        .flatten();
 
     match provider.as_str() {
         "ollama" => {
-            let model = std::env::var("SUMMARY_MODEL").unwrap_or_else(|_| "llama3.1".to_string());
+            let model = store_model
+                .or_else(|| std::env::var("SUMMARY_MODEL").ok())
+                .unwrap_or_else(|| "llama3.1".to_string());
+
             let base_url = std::env::var("OLLAMA_API_BASE")
                 .unwrap_or_else(|_| "http://localhost:11434".to_string());
             Ok(Box::new(OllamaClient::new(&base_url, &model)))
         }
         _ => {
-            let model = std::env::var("SUMMARY_MODEL")
-                .unwrap_or_else(|_| DEFAULT_SUMMARY_MODEL.to_string());
+            let model = store_model
+                .or_else(|| std::env::var("SUMMARY_MODEL").ok())
+                .unwrap_or_else(|| DEFAULT_SUMMARY_MODEL.to_string());
 
             // Try to get key from store first, then env var
             let store_key = app_handle

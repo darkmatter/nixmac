@@ -446,11 +446,19 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
     let floating_footer = store::get_floating_footer(&app).map_err(|e| e.to_string())?;
     let window_shadow = store::get_window_shadow(&app).map_err(|e| e.to_string())?;
     let openai_api_key = store::get_openai_api_key(&app).map_err(|e| e.to_string())?;
+    let summary_provider = store::get_summary_provider(&app).map_err(|e| e.to_string())?;
+    let summary_model = store::get_summary_model(&app).map_err(|e| e.to_string())?;
+    let evolve_provider = store::get_evolve_provider(&app).map_err(|e| e.to_string())?;
+    let evolve_model = store::get_evolve_model(&app).map_err(|e| e.to_string())?;
 
     Ok(types::UiPrefs {
         floating_footer,
         window_shadow,
         openai_api_key,
+        summary_provider,
+        summary_model,
+        evolve_provider,
+        evolve_model,
     })
 }
 
@@ -468,6 +476,18 @@ pub async fn ui_set_prefs(
     }
     if let Some(openai_api_key) = prefs.get("openaiApiKey").and_then(|v| v.as_str()) {
         store::set_openai_api_key(&app, openai_api_key).map_err(|e| e.to_string())?;
+    }
+    if let Some(summary_provider) = prefs.get("summaryProvider").and_then(|v| v.as_str()) {
+        store::set_summary_provider(&app, summary_provider).map_err(|e| e.to_string())?;
+    }
+    if let Some(summary_model) = prefs.get("summaryModel").and_then(|v| v.as_str()) {
+        store::set_summary_model(&app, summary_model).map_err(|e| e.to_string())?;
+    }
+    if let Some(evolve_provider) = prefs.get("evolveProvider").and_then(|v| v.as_str()) {
+        store::set_evolve_provider(&app, evolve_provider).map_err(|e| e.to_string())?;
+    }
+    if let Some(evolve_model) = prefs.get("evolveModel").and_then(|v| v.as_str()) {
+        store::set_evolve_model(&app, evolve_model).map_err(|e| e.to_string())?;
     }
 
     Ok(serde_json::json!({"ok": true}))

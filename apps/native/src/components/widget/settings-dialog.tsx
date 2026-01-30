@@ -13,18 +13,10 @@ import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
-import {
-  Check,
-  FolderOpen,
-  Key,
-  Loader2,
-  Palette,
-  Settings2,
-  X,
-} from "lucide-react";
+import { Bot, Check, FolderOpen, Key, Loader2, Palette, Settings2, X } from "lucide-react";
 import { useState, useEffect } from "react";
 
-type SettingsTab = "general" | "appearance" | "api-keys";
+type SettingsTab = "general" | "appearance" | "api-keys" | "ai-models";
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -40,7 +32,7 @@ function NavItem({ icon, label, active, onClick }: NavItemProps) {
         "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors",
         active
           ? "bg-primary/10 text-primary"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          : "text-muted-foreground hover:bg-muted hover:text-foreground",
       )}
       onClick={onClick}
       type="button"
@@ -71,6 +63,10 @@ export function SettingsDialog() {
   const [prefFloatingFooter, setPrefFloatingFooter] = useState(false);
   const [prefWindowShadow, setPrefWindowShadow] = useState(false);
   const [openaiApiKey, setOpenaiApiKey] = useState("");
+  const [summaryProvider, setSummaryProvider] = useState("openai");
+  const [summaryModel, setSummaryModel] = useState("");
+  const [evolveProvider, setEvolveProvider] = useState("openai");
+  const [evolveModel, setEvolveModel] = useState("");
 
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus>("idle");
@@ -89,6 +85,10 @@ export function SettingsDialog() {
             setOpenaiApiKey(apiKey);
             setApiKeyInput(apiKey);
             setApiKeyStatus(apiKey ? "valid" : "idle");
+            setSummaryProvider(prefs.summaryProvider ?? "openai");
+            setSummaryModel(prefs.summaryModel ?? "");
+            setEvolveProvider(prefs.evolveProvider ?? "openai");
+            setEvolveModel(prefs.evolveModel ?? "");
           }
         } catch {
           // Ignore errors loading preferences
@@ -163,10 +163,7 @@ export function SettingsDialog() {
   const hasFlake = hosts.length > 0;
 
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center"
-      data-tauri-no-drag
-    >
+    <div className="fixed inset-0 z-[60] flex items-center justify-center" data-tauri-no-drag>
       <button
         aria-label="Close settings"
         className="absolute inset-0 bg-black/40"
@@ -186,6 +183,12 @@ export function SettingsDialog() {
               icon={<FolderOpen className="h-4 w-4" />}
               label="General"
               onClick={() => setActiveTab("general")}
+            />
+            <NavItem
+              active={activeTab === "ai-models"}
+              icon={<Bot className="h-4 w-4" />}
+              label="AI Models"
+              onClick={() => setActiveTab("ai-models")}
             />
             <NavItem
               active={activeTab === "appearance"}
@@ -220,17 +223,17 @@ export function SettingsDialog() {
                 <h2 className="mb-4 font-semibold text-base">General</h2>
                 <div className="space-y-4">
                   {/* Config Directory */}
-                  <DirectoryPicker label="Configuration Directory" subLabel="Holds your nix-darwin flake" />
+                  <DirectoryPicker
+                    label="Configuration Directory"
+                    subLabel="Holds your nix-darwin flake"
+                  />
 
                   {/* Host Selection or Bootstrap */}
                   {hasFlake ? (
                     <div className="space-y-2">
                       <label className="font-medium text-sm">Host</label>
                       <div className="flex items-center gap-2">
-                        <Select
-                          onValueChange={saveHost}
-                          value={host || undefined}
-                        >
+                        <Select onValueChange={saveHost} value={host || undefined}>
                           <SelectTrigger className="w-full">
                             <SelectValue placeholder="Select a host" />
                           </SelectTrigger>
@@ -242,11 +245,7 @@ export function SettingsDialog() {
                             ))}
                           </SelectContent>
                         </Select>
-                        <Button
-                          onClick={handleRefreshHosts}
-                          size="sm"
-                          variant="outline"
-                        >
+                        <Button onClick={handleRefreshHosts} size="sm" variant="outline">
                           Refresh
                         </Button>
                       </div>
@@ -330,9 +329,7 @@ export function SettingsDialog() {
                 <div className="space-y-4">
                   {/* OpenRouter API Key */}
                   <div className="space-y-2">
-                    <label className="font-medium text-sm">
-                      OpenRouter API Key
-                    </label>
+                    <label className="font-medium text-sm">OpenRouter API Key</label>
                     <div className="relative">
                       <input
                         className={cn(
@@ -341,7 +338,7 @@ export function SettingsDialog() {
                             ? "border-green-500"
                             : apiKeyStatus === "invalid"
                               ? "border-red-500"
-                              : "border-border"
+                              : "border-border",
                         )}
                         onBlur={handleApiKeyBlur}
                         onChange={(e) => handleApiKeyChange(e.target.value)}
@@ -371,8 +368,7 @@ export function SettingsDialog() {
                       </div>
                     </div>
                     <p className="text-muted-foreground text-xs">
-                      Required for AI features like code evolution and
-                      summaries.{" "}
+                      Required for AI features like code evolution and summaries.{" "}
                       <a
                         className="text-primary underline hover:no-underline"
                         href="https://openrouter.ai/keys"
@@ -392,6 +388,109 @@ export function SettingsDialog() {
                         API key verified and saved successfully.
                       </p>
                     )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "ai-models" && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="mb-4 font-semibold text-base">AI Models</h2>
+                <div className="space-y-6">
+                  {/* Evolution Model */}
+                  <div className="space-y-4">
+                    <h3 className="font-medium text-sm">Evolution Model</h3>
+                    <p className="text-muted-foreground text-xs">
+                      Model used to plan and apply configuration changes in Nix
+                    </p>
+                    <div className="grid gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium text-muted-foreground">
+                          Provider
+                        </label>
+                        <Select
+                          onValueChange={async (value) => {
+                            setEvolveProvider(value);
+                            await darwinAPI.ui.setPrefs({ evolveProvider: value });
+                          }}
+                          value={evolveProvider}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select provider" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="openai">OpenAI / OpenRouter</SelectItem>
+                            <SelectItem value="ollama">Ollama</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium text-muted-foreground">
+                          Model Name
+                        </label>
+                        <input
+                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                          onBlur={async () => {
+                            await darwinAPI.ui.setPrefs({ evolveModel });
+                          }}
+                          onChange={(e) => setEvolveModel(e.target.value)}
+                          placeholder={
+                            evolveProvider === "ollama"
+                              ? "qwen3-coder:30b"
+                              : "anthropic/claude-sonnet-4"
+                          }
+                          value={evolveModel}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Summary Model */}
+                  <div className="space-y-4 pt-4 border-t border-border">
+                    <h3 className="font-medium text-sm">Summary Model</h3>
+                    <p className="text-muted-foreground text-xs">
+                      Model used to explain and summarize changes
+                    </p>
+                    <div className="grid gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium text-muted-foreground">
+                          Provider
+                        </label>
+                        <Select
+                          onValueChange={async (value) => {
+                            setSummaryProvider(value);
+                            await darwinAPI.ui.setPrefs({ summaryProvider: value });
+                          }}
+                          value={summaryProvider}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select provider" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="openai">OpenAI / OpenRouter</SelectItem>
+                            <SelectItem value="ollama">Ollama</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium text-muted-foreground">
+                          Model Name
+                        </label>
+                        <input
+                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                          onBlur={async () => {
+                            await darwinAPI.ui.setPrefs({ summaryModel });
+                          }}
+                          onChange={(e) => setSummaryModel(e.target.value)}
+                          placeholder={
+                            summaryProvider === "ollama" ? "llama3.1" : "openai/gpt-4o-mini"
+                          }
+                          value={summaryModel}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

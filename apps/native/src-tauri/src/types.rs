@@ -98,6 +98,22 @@ pub struct UiPrefs {
     /// OpenAI API key for AI features.
     #[serde(rename = "openaiApiKey")]
     pub openai_api_key: Option<String>,
+
+    /// Provider for summarization (openai/ollama).
+    #[serde(rename = "summaryProvider")]
+    pub summary_provider: Option<String>,
+
+    /// Model name for summarization.
+    #[serde(rename = "summaryModel")]
+    pub summary_model: Option<String>,
+
+    /// Provider for evolution (openai/ollama).
+    #[serde(rename = "evolveProvider")]
+    pub evolve_provider: Option<String>,
+
+    /// Model name for evolution.
+    #[serde(rename = "evolveModel")]
+    pub evolve_model: Option<String>,
 }
 
 /// Result of a darwin-rebuild operation.

@@ -142,22 +142,60 @@ pub fn set_floating_footer<R: Runtime>(app: &AppHandle<R>, footer: bool) -> Resu
 }
 
 // =============================================================================
+// AI Configuration
+// =============================================================================
+
+pub fn get_summary_provider<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
+    get_string_pref(app, "summaryProvider")
+}
+
+pub fn set_summary_provider<R: Runtime>(app: &AppHandle<R>, provider: &str) -> Result<()> {
+    let store = get_store(app)?;
+    store.set("summaryProvider", serde_json::json!(provider));
+    store.save()?;
+    Ok(())
+}
+
+pub fn get_summary_model<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
+    get_string_pref(app, "summaryModel")
+}
+
+pub fn set_summary_model<R: Runtime>(app: &AppHandle<R>, model: &str) -> Result<()> {
+    let store = get_store(app)?;
+    store.set("summaryModel", serde_json::json!(model));
+    store.save()?;
+    Ok(())
+}
+
+pub fn get_evolve_provider<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
+    get_string_pref(app, "evolveProvider")
+}
+
+pub fn set_evolve_provider<R: Runtime>(app: &AppHandle<R>, provider: &str) -> Result<()> {
+    let store = get_store(app)?;
+    store.set("evolveProvider", serde_json::json!(provider));
+    store.save()?;
+    Ok(())
+}
+
+pub fn get_evolve_model<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
+    get_string_pref(app, "evolveModel")
+}
+
+pub fn set_evolve_model<R: Runtime>(app: &AppHandle<R>, model: &str) -> Result<()> {
+    let store = get_store(app)?;
+    store.set("evolveModel", serde_json::json!(model));
+    store.save()?;
+    Ok(())
+}
+
+// =============================================================================
 // OpenAI API Key
 // =============================================================================
 
 /// Gets the stored OpenAI API key.
 pub fn get_openai_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
-    let store = get_store(app)?;
-
-    if let Some(key) = store.get("openaiApiKey") {
-        if let Some(key_str) = key.as_str() {
-            if !key_str.is_empty() {
-                return Ok(Some(key_str.to_string()));
-            }
-        }
-    }
-
-    Ok(None)
+    get_string_pref(app, "openaiApiKey")
 }
 
 pub fn set_openai_api_key<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<()> {
@@ -165,4 +203,16 @@ pub fn set_openai_api_key<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<(
     store.set("openaiApiKey", serde_json::json!(key));
     store.save()?;
     Ok(())
+}
+
+fn get_string_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<String>> {
+    let store = get_store(app)?;
+    if let Some(val) = store.get(key) {
+        if let Some(s) = val.as_str() {
+            if !s.is_empty() {
+                return Ok(Some(s.to_string()));
+            }
+        }
+    }
+    Ok(None)
 }
