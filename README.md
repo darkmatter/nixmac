@@ -79,7 +79,7 @@ We have a pluggable "provider" design for AI models. Currently we have the follo
 - OpenAI / OpenRouter (default)
 - Ollama
 
-NOTE: By default, we use OpenAI with *anthropic/claude-sonnet-4* for configuration evolution and *openai/gpt-4o-mini* for summarization.
+NOTE: By default, we use OpenAI with *anthropic/claude-sonnet-4* for configuration evolution and *openai/gpt-4o-mini* for summarization, and OpenRouter at https://openrouter.ai/api/v1.
 
 ### Configuration
 
@@ -92,7 +92,8 @@ Environment variables:
 
 #### OpenAI Configuration:
 
-TODO get these from environment variables
+- `SUMMARY_MODEL` (default = "openai/gpt-4o-mini")
+- `EVOLVE_MODEL` (default = "anthropic/claude-sonnet-4")
 
 #### Ollama Configuration:
 
