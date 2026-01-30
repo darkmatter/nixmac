@@ -166,6 +166,23 @@ pub fn status(dir: &str) -> Result<GitStatus> {
 /// Returns true if there are any uncommitted changes (staged or unstaged).
 /// Also detects untracked files.
 pub fn has_changes_fast(dir: &str) -> bool {
+    // Check if directory exists
+    if !std::path::Path::new(dir).exists() {
+        return false;
+    }
+
+    // Check if it's a git repo
+    let is_git_repo = git_command()
+        .args(["rev-parse", "--is-inside-work-tree"])
+        .current_dir(dir)
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+
+    if !is_git_repo {
+        return false;
+    }
+
     // If repo has no commits yet, diff-index against HEAD will fail.
     // Fall back to a cheap porcelain status check in that case.
     let has_head = git_command()
@@ -197,20 +214,28 @@ pub fn has_changes_fast(dir: &str) -> bool {
     }
 
     // Also check for untracked files (diff-index doesn't catch these)
-    let has_untracked = git_command()
+    git_command()
         .args(["ls-files", "--others", "--exclude-standard"])
         .current_dir(dir)
         .output()
         .map(|o| !o.stdout.is_empty())
-        .unwrap_or(false);
-
-    has_untracked
+        .unwrap_or(false)
 }
 
 /// Stages all changes (git add -A).
 pub fn stage_all(dir: &str) -> Result<()> {
     git_command()
         .args(["add", "-A"])
+        .current_dir(dir)
+        .output()?;
+    Ok(())
+}
+
+/// Unstages all staged changes (git reset HEAD).
+/// This keeps the working directory changes but removes them from the index.
+pub fn unstage_all(dir: &str) -> Result<()> {
+    git_command()
+        .args(["reset", "HEAD", "--"])
         .current_dir(dir)
         .output()?;
     Ok(())

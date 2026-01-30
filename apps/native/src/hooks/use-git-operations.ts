@@ -17,18 +17,15 @@ export function useGitOperations() {
     }
   }, []);
 
-  const gitStash = useCallback(
-    async () => {
-      try {
-        await darwinAPI.git.stash("stashed changes from nixmac");
-        const status = await refreshGitStatus();
-        return status;
-      } catch {
-        return null;
-      }
-    },
-    [refreshGitStatus]
-  );
+  const gitStash = useCallback(async () => {
+    try {
+      await darwinAPI.git.stash("stashed changes from nixmac");
+      const status = await refreshGitStatus();
+      return status;
+    } catch {
+      return null;
+    }
+  }, [refreshGitStatus]);
 
   return { refreshGitStatus, gitStash };
 }

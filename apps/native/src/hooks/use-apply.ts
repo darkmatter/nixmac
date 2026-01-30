@@ -6,6 +6,7 @@ import { useGitOperations } from "./use-git-operations";
 /**
  * Hook for the apply/rebuild operation.
  * Handles darwin-rebuild with streaming logs and auto-staging on success.
+ * Renders inline in the main widget instead of a separate window.
  */
 export function useApply() {
   const { refreshGitStatus } = useGitOperations();
@@ -16,6 +17,20 @@ export function useApply() {
     store.setProcessing(true, "apply");
     store.startRebuild();
     rebuildLineIdRef.current = 1;
+
+    // Listen to raw log data for console output
+    const unlistenData = await ipcRenderer.on<{ chunk: string }>(
+      "darwin:apply:data",
+      (event) => {
+        const { chunk } = event.payload;
+        // Split chunk into lines and add non-empty ones
+        const newLines = chunk.split("\n").filter((line) => line.trim() !== "");
+        const currentStore = useWidgetStore.getState();
+        for (const line of newLines) {
+          currentStore.appendRawLine(line);
+        }
+      },
+    );
 
     // Listen to AI-summarized log events
     const unlistenSummary = await ipcRenderer.on<{
@@ -62,24 +77,25 @@ export function useApply() {
         const currentStore = useWidgetStore.getState();
         currentStore.setProcessing(false);
         currentStore.setRebuildComplete(event.payload.ok, event.payload.code);
+        unlistenData();
         unlistenSummary();
         unlistenEnd();
 
-        // If successful, stage all changes and auto-dismiss overlay
+        // If successful, stage all changes and auto-dismiss after delay
         if (event.payload.ok) {
           try {
             await darwinAPI.git.stageAll();
           } catch (e) {
             console.error("Failed to stage changes:", e);
           }
-          // Auto-dismiss overlay after success (short delay for user feedback)
+          // Auto-dismiss rebuild panel after success (short delay for user feedback)
           setTimeout(() => {
             useWidgetStore.getState().clearRebuild();
-          }, 1500);
+          }, 2000);
         }
 
         await refreshGitStatus();
-      }
+      },
     );
 
     try {
@@ -89,6 +105,7 @@ export function useApply() {
       store.setRebuildError("generic_error", msg);
       store.setRebuildComplete(false);
       store.setProcessing(false);
+      unlistenData();
       unlistenSummary();
       unlistenEnd();
     }

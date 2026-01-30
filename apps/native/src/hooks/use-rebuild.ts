@@ -4,7 +4,7 @@ import { useCallback } from "react";
 
 /**
  * Hook for handling rebuild overlay operations.
- * Provides rollback and dismiss handlers for the rebuild overlay.
+ * Provides rollback and dismiss handlers for the inline rebuild panel.
  */
 export function useRebuild() {
   const handleRollback = useCallback(async () => {

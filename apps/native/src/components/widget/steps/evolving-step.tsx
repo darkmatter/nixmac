@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, FileCode, Loader2, Sparkles } from "lucide-react";
+import { Eye, FileCode, Loader2, Sparkles, Undo2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { BundledLanguage } from "shiki";
 import { EvolveProgress } from "@/components/evolve-progress";
@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { useWidgetStore } from "@/stores/widget-store";
 import { useEvolve } from "@/hooks/use-evolve";
 import { useApply } from "@/hooks/use-apply";
+import { useCommit } from "@/hooks/use-commit";
 import { useSummary } from "@/hooks/use-summary";
 import { ChatInput } from "../chat-input";
 import { Diff } from "../diff";
@@ -118,12 +119,21 @@ export function EvolvingStep() {
 
   const { handleEvolve } = useEvolve();
   const { handleApply } = useApply();
+  const { handleCancel } = useCommit();
   const { checkAndFetchSummary } = useSummary();
 
   const changedFiles = gitStatus?.files || [];
   const hasUnstagedChanges = gitStatus?.hasUnstagedChanges ?? false;
 
   const [showDiff, setShowDiff] = useState(false);
+
+  // Switch to diff view by default when there's no AI summary
+  const hasSummary = summary.items.length > 0;
+  useEffect(() => {
+    if (!summary.isLoading && !hasSummary) {
+      setShowDiff(true);
+    }
+  }, [summary.isLoading, hasSummary]);
 
   // Fetch summary as a fallback for manual changes (not during evolution)
   // During evolution, useEvolve hook handles the summary fetch
@@ -159,7 +169,7 @@ export function EvolvingStep() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4  px-4">
       <div className="flex flex-col items-center justify-center">
         <h3 className="mb-2 font-semibold text-lg">Ready to Apply?</h3>
         <p className="mb-6 text-center text-muted-foreground">
@@ -305,6 +315,19 @@ export function EvolvingStep() {
           onSubmit={handleEvolve}
           value={evolvePrompt}
         />
+      )}
+
+      {/* Discard changes button */}
+      {hasUnstagedChanges && (
+        <Button
+          className="w-full"
+          disabled={isProcessing}
+          onClick={handleCancel}
+          variant="ghost"
+        >
+          <Undo2 className="mr-2 h-4 w-4" />
+          Discard Changes
+        </Button>
       )}
     </div>
   );

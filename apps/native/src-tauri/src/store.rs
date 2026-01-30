@@ -166,3 +166,123 @@ pub fn set_openai_api_key<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<(
     store.save()?;
     Ok(())
 }
+
+// =============================================================================
+// Model Provider/Model Settings
+// =============================================================================
+
+pub fn get_evolve_provider<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
+    let store = get_store(app)?;
+    if let Some(provider) = store.get("evolveProvider") {
+        if let Some(provider_str) = provider.as_str() {
+            if !provider_str.is_empty() {
+                return Ok(Some(provider_str.to_string()));
+            }
+        }
+    }
+    Ok(None)
+}
+
+pub fn set_evolve_provider<R: Runtime>(app: &AppHandle<R>, provider: &str) -> Result<()> {
+    let store = get_store(app)?;
+    store.set("evolveProvider", serde_json::json!(provider));
+    store.save()?;
+    Ok(())
+}
+
+pub fn get_evolve_model<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
+    let store = get_store(app)?;
+    if let Some(model) = store.get("evolveModel") {
+        if let Some(model_str) = model.as_str() {
+            if !model_str.is_empty() {
+                return Ok(Some(model_str.to_string()));
+            }
+        }
+    }
+    Ok(None)
+}
+
+pub fn set_evolve_model<R: Runtime>(app: &AppHandle<R>, model: &str) -> Result<()> {
+    let store = get_store(app)?;
+    store.set("evolveModel", serde_json::json!(model));
+    store.save()?;
+    Ok(())
+}
+
+pub fn get_summary_provider<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
+    let store = get_store(app)?;
+    if let Some(provider) = store.get("summaryProvider") {
+        if let Some(provider_str) = provider.as_str() {
+            if !provider_str.is_empty() {
+                return Ok(Some(provider_str.to_string()));
+            }
+        }
+    }
+    Ok(None)
+}
+
+pub fn set_summary_provider<R: Runtime>(app: &AppHandle<R>, provider: &str) -> Result<()> {
+    let store = get_store(app)?;
+    store.set("summaryProvider", serde_json::json!(provider));
+    store.save()?;
+    Ok(())
+}
+
+pub fn get_summary_model<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
+    let store = get_store(app)?;
+    if let Some(model) = store.get("summaryModel") {
+        if let Some(model_str) = model.as_str() {
+            if !model_str.is_empty() {
+                return Ok(Some(model_str.to_string()));
+            }
+        }
+    }
+    Ok(None)
+}
+
+pub fn set_summary_model<R: Runtime>(app: &AppHandle<R>, model: &str) -> Result<()> {
+    let store = get_store(app)?;
+    store.set("summaryModel", serde_json::json!(model));
+    store.save()?;
+    Ok(())
+}
+
+// =============================================================================
+// Cached Models List
+// =============================================================================
+
+/// Gets the cached list of models for a provider.
+pub fn get_cached_models<R: Runtime>(
+    app: &AppHandle<R>,
+    provider: &str,
+) -> Result<Option<Vec<String>>> {
+    let store = get_store(app)?;
+    let key = format!("cachedModels_{}", provider);
+
+    if let Some(models) = store.get(&key) {
+        if let Some(models_arr) = models.as_array() {
+            let models: Vec<String> = models_arr
+                .iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect();
+            if !models.is_empty() {
+                return Ok(Some(models));
+            }
+        }
+    }
+
+    Ok(None)
+}
+
+/// Sets the cached list of models for a provider.
+pub fn set_cached_models<R: Runtime>(
+    app: &AppHandle<R>,
+    provider: &str,
+    models: &[String],
+) -> Result<()> {
+    let store = get_store(app)?;
+    let key = format!("cachedModels_{}", provider);
+    store.set(&key, serde_json::json!(models));
+    store.save()?;
+    Ok(())
+}

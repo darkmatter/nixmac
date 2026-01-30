@@ -14,6 +14,10 @@ export interface DarwinPrefs {
   floatingFooter?: boolean;
   windowShadow?: boolean;
   openaiApiKey?: string;
+  evolveProvider?: string;
+  evolveModel?: string;
+  summaryProvider?: string;
+  summaryModel?: string;
 }
 
 export interface GitFileStatus {
@@ -42,7 +46,7 @@ export interface GitStatus {
   ahead?: number;
   behind?: number;
 
-  // Computed state 
+  // Computed state
   hasChanges?: boolean;
   hasUnstagedChanges?: boolean;
   allChangesStaged?: boolean;
@@ -72,6 +76,28 @@ export interface PreviewIndicatorState {
   additions?: number;
   deletions?: number;
   isLoading: boolean;
+}
+
+// =============================================================================
+// Permissions Types
+// =============================================================================
+
+export type PermissionStatus = "granted" | "denied" | "pending" | "unknown";
+
+export interface Permission {
+  id: string;
+  name: string;
+  description: string;
+  required: boolean;
+  canRequestProgrammatically: boolean;
+  status: PermissionStatus;
+  instructions?: string;
+}
+
+export interface PermissionsState {
+  permissions: Permission[];
+  allRequiredGranted: boolean;
+  checkedAt: number | null;
 }
 
 // =============================================================================
@@ -127,6 +153,7 @@ export const darwinAPI = {
     commit: (message: string) => invoke("git_commit", { message }),
     stash: (message: string) => invoke("git_stash", { message }),
     stageAll: () => invoke("git_stage_all"),
+    unstageAll: () => invoke("git_unstage_all"),
     restoreAll: () => invoke("git_restore_all"),
   },
   darwin: {
@@ -153,6 +180,12 @@ export const darwinAPI = {
     setPrefs: (prefs: DarwinPrefs) => invoke("ui_set_prefs", { prefs }),
     setWindowShadow: (on: boolean) => invoke("ui_set_window_shadow", { on }),
   },
+  models: {
+    getCached: (provider: string) =>
+      invoke<string[] | null>("get_cached_models", { provider }),
+    setCached: (provider: string, models: string[]) =>
+      invoke("set_cached_models", { provider, models }),
+  },
 
   previewIndicator: {
     show: () => invoke("preview_indicator_show"),
@@ -162,10 +195,18 @@ export const darwinAPI = {
     getState: () =>
       invoke<PreviewIndicatorState>("preview_indicator_get_state"),
   },
+
   watcher: {
     start: () => invoke("watcher_start"),
     stop: () => invoke("watcher_stop"),
     isActive: () => invoke<boolean>("watcher_is_active"),
+  },
+  permissions: {
+    checkAll: () => invoke<PermissionsState>("permissions_check_all"),
+    request: (permissionId: string) =>
+      invoke<Permission>("permissions_request", { permissionId }),
+    allRequiredGranted: () =>
+      invoke<boolean>("permissions_all_required_granted"),
   },
 };
 

@@ -43,7 +43,7 @@ interface EventItemProps {
 function getEventIcon(eventType: EvolveEventType, isLatest: boolean) {
   const iconClassName = cn(
     "h-4 w-4 flex-shrink-0",
-    isLatest && "animate-pulse"
+    isLatest && "animate-pulse",
   );
 
   switch (eventType) {
@@ -150,7 +150,7 @@ function EventItem({ event, isLatest }: EventItemProps) {
                 "truncate text-sm",
                 isLatest
                   ? "font-medium text-foreground"
-                  : "text-muted-foreground"
+                  : "text-muted-foreground",
               )}
             >
               {event.summary}
@@ -163,7 +163,7 @@ function EventItem({ event, isLatest }: EventItemProps) {
                 <ChevronDown
                   className={cn(
                     "h-3 w-3 text-muted-foreground/40 transition-transform",
-                    !!expanded && "rotate-180"
+                    !!expanded && "rotate-180",
                   )}
                 />
               )}
@@ -196,7 +196,7 @@ function EventItem({ event, isLatest }: EventItemProps) {
         className={cn(
           "group w-full rounded-md border border-transparent px-2 py-1.5 text-left transition-all",
           !!isLatest && "border-primary/30 bg-primary/5",
-          "cursor-pointer hover:bg-muted/30"
+          "cursor-pointer hover:bg-muted/30",
         )}
         onClick={() => setExpanded(!expanded)}
         type="button"
@@ -210,7 +210,7 @@ function EventItem({ event, isLatest }: EventItemProps) {
     <div
       className={cn(
         "group rounded-md border border-transparent px-2 py-1.5 transition-all",
-        !!isLatest && "border-primary/30 bg-primary/5"
+        !!isLatest && "border-primary/30 bg-primary/5",
       )}
     >
       {content}
