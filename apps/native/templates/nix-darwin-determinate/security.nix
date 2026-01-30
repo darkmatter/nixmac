@@ -12,7 +12,19 @@
   # - When enabling servers (sshd) or services that expose ports, document
   #   why they are needed and any firewall rules that should accompany them.
 
+  # ============================================================================
+  # Touch ID for sudo (ENABLED BY DEFAULT)
+  # ============================================================================
+  # This allows you to use Touch ID instead of typing your password for sudo
+  # commands, including darwin-rebuild operations. This improves the user
+  # experience significantly and is safe on macOS.
+  #
+  # To disable this feature, comment out or remove the line below:
+  security.pam.enableSudoTouchIdAuth = true;
+
+  # ============================================================================
   # Security examples and guidance (macOS / nix-darwin)
+  # ============================================================================
   # - Keep secrets out of the repository; reference a secure store for
   #   credentials and private keys.
   #
