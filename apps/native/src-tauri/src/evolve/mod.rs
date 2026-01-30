@@ -171,7 +171,7 @@ pub async fn generate_evolution(
                 anyhow!("No API key configured. Please set your OpenRouter API key in Settings.")
             })?;
 
-        let model = DEFAULT_MODEL.to_string();
+        let model = std::env::var("EVOLVE_MODEL").unwrap_or_else(|_| DEFAULT_MODEL.to_string());
         info!("Using OpenRouter provider | Model: {}", model);
         Arc::new(OpenAIProvider::new(
             api_key,
