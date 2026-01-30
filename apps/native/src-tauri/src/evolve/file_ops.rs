@@ -5,7 +5,6 @@
 //!
 //! Uses OpenAI function calling to generate structured file edits.
 
-use similar::TextDiff;
 use std::path::Path;
 
 /// Apply an evolution's edits to the filesystem.
@@ -44,35 +43,4 @@ pub fn apply_file_edits(config_dir: &str, edit: &super::types::FileEdit) -> anyh
     }
 
     Ok(())
-}
-
-/// Preview what changes an evolution would make (dry run).
-pub fn preview_evolution(
-    config_dir: &str,
-    evolution: &super::types::Evolution,
-) -> anyhow::Result<Vec<String>> {
-    let mut previews = Vec::new();
-
-    for edit in &evolution.edits {
-        let full_path = Path::new(config_dir).join(&edit.path);
-
-        if edit.search.is_empty() {
-            previews.push(format!("CREATE {}\n{}", edit.path, &edit.replace));
-        } else if full_path.exists() {
-            let content = std::fs::read_to_string(&full_path)?;
-            let new_content = content.replace(&edit.search, &edit.replace);
-
-            // Generate proper unified diff
-            let diff = TextDiff::from_lines(&content, &new_content);
-            previews.push(format!(
-                "EDIT {}\n{}",
-                edit.path,
-                diff.unified_diff().context_radius(2)
-            ));
-        } else {
-            previews.push(format!("MISSING {}", edit.path));
-        }
-    }
-
-    Ok(previews)
 }

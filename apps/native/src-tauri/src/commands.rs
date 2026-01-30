@@ -304,24 +304,6 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<serde_json::Va
     Ok(serde_json::json!({"ok": true}))
 }
 
-pub async fn evaluate_flake(app: AppHandle) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(|e| e.to_string())?;
-    let output = Command::new("nix")
-        .args(["eval", "--json", ".#darwinConfigurations"])
-        .current_dir(dir)
-        .env("PATH", crate::nix::get_nix_path())
-        .output()
-        .map_err(|e| e.to_string())?;
-    if !output.status.success() {
-        return Err(format!(
-            "Failed to evaluate flake: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
-    let flake = serde_json::from_slice(&output.stdout).map_err(|e| e.to_string())?;
-    Ok(flake)
-}
-
 #[tauri::command]
 pub async fn flake_installed_apps(app: AppHandle) -> Result<Vec<serde_json::Value>, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(|e| e.to_string())?;

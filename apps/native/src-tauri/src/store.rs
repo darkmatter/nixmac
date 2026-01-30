@@ -92,18 +92,6 @@ pub fn read_host_attr_from_file() -> Option<String> {
 // evolve metadata
 // =============================================================================
 
-/// Gets the stored nix-darwin host attribute name.
-pub fn get_evolve_metadata<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
-    let store = get_store(app)?;
-
-    if let Some(metadata) = store.get("evolveMetadata") {
-        if let Some(metadata_str) = metadata.as_str() {
-            return Ok(Some(metadata_str.to_string()));
-        }
-    }
-    Ok(None)
-}
-
 pub fn set_evolve_metadata<R: Runtime>(app: &AppHandle<R>, metadata: &str) -> Result<()> {
     let store = get_store(app)?;
     store.set("evolveMetadata", serde_json::json!(metadata));

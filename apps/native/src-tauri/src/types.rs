@@ -291,16 +291,6 @@ impl EvolveEvent {
         )
     }
 
-    pub fn build_check(start_time: i64, iter: usize, host: &str) -> Self {
-        Self::new(
-            EvolveEventType::BuildCheck,
-            format!("Running build check for host: {}", host),
-            "Running build check...".to_string(),
-            Some(iter),
-            start_time,
-        )
-    }
-
     pub fn build_pass(start_time: i64, iter: usize) -> Self {
         Self::new(
             EvolveEventType::BuildPass,
