@@ -190,10 +190,22 @@ pub fn set_evolve_model<R: Runtime>(app: &AppHandle<R>, model: &str) -> Result<(
 }
 
 // =============================================================================
-// OpenAI API Key
+// API Keys
 // =============================================================================
 
-/// Gets the stored OpenAI API key.
+/// Gets the stored OpenRouter API key.
+pub fn get_openrouter_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
+    get_string_pref(app, "openrouterApiKey")
+}
+
+pub fn set_openrouter_api_key<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<()> {
+    let store = get_store(app)?;
+    store.set("openrouterApiKey", serde_json::json!(key));
+    store.save()?;
+    Ok(())
+}
+
+/// Gets the stored OpenAI API key (for direct OpenAI access).
 pub fn get_openai_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
     get_string_pref(app, "openaiApiKey")
 }
@@ -203,6 +215,25 @@ pub fn set_openai_api_key<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<(
     store.set("openaiApiKey", serde_json::json!(key));
     store.save()?;
     Ok(())
+}
+
+/// Gets the appropriate API key based on provider.
+/// For "openai" provider, prefers OpenRouter key, falls back to OpenAI key.
+/// For "ollama" provider, returns None (no key needed).
+pub fn get_api_key_for_provider<R: Runtime>(
+    app: &AppHandle<R>,
+    provider: &str,
+) -> Result<Option<String>> {
+    match provider {
+        "ollama" => Ok(None),
+        "openai" | _ => {
+            // Try OpenRouter key first, then fall back to OpenAI key
+            if let Some(key) = get_openrouter_api_key(app)? {
+                return Ok(Some(key));
+            }
+            get_openai_api_key(app)
+        }
+    }
 }
 
 fn get_string_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<String>> {
@@ -215,4 +246,43 @@ fn get_string_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<S
         }
     }
     Ok(None)
+}
+
+// =============================================================================
+// Model Cache
+// =============================================================================
+
+/// Gets the cached list of models for a provider.
+pub fn get_cached_models<R: Runtime>(
+    app: &AppHandle<R>,
+    provider: &str,
+) -> Result<Option<Vec<String>>> {
+    let store = get_store(app)?;
+    let key = format!("cachedModels_{}", provider);
+
+    if let Some(val) = store.get(&key) {
+        if let Some(arr) = val.as_array() {
+            let models: Vec<String> = arr
+                .iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect();
+            if !models.is_empty() {
+                return Ok(Some(models));
+            }
+        }
+    }
+    Ok(None)
+}
+
+/// Sets the cached list of models for a provider.
+pub fn set_cached_models<R: Runtime>(
+    app: &AppHandle<R>,
+    provider: &str,
+    models: &[String],
+) -> Result<()> {
+    let store = get_store(app)?;
+    let key = format!("cachedModels_{}", provider);
+    store.set(&key, serde_json::json!(models));
+    store.save()?;
+    Ok(())
 }

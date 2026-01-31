@@ -164,17 +164,24 @@ pub async fn generate_evolution(
         );
         Arc::new(OllamaProvider::new(base_url, model))
     } else {
-        // Init OpenAI / OpenRouter
-        let store_result = store::get_openai_api_key(app);
-        let api_key = store_result
+        // Init OpenAI / OpenRouter - try OpenRouter key first, then OpenAI key
+        let api_key = store::get_openrouter_api_key(app)
             .ok()
             .flatten()
+            .or_else(|| {
+                info!("OpenRouter key not found, trying OpenAI key from store");
+                store::get_openai_api_key(app).ok().flatten()
+            })
             .or_else(|| {
                 info!("Falling back to OPENROUTER_API_KEY environment variable");
                 std::env::var("OPENROUTER_API_KEY").ok()
             })
+            .or_else(|| {
+                info!("Falling back to OPENAI_API_KEY environment variable");
+                std::env::var("OPENAI_API_KEY").ok()
+            })
             .ok_or_else(|| {
-                anyhow!("No API key configured. Please set your OpenRouter API key in Settings.")
+                anyhow!("No API key configured. Please set your OpenRouter or OpenAI API key in Settings.")
             })?;
 
         let model = store_model

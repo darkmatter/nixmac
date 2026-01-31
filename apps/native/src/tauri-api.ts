@@ -1,5 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import { type Event, listen, once } from "@tauri-apps/api/event";
+import {
+  checkFullDiskAccessPermission,
+  requestFullDiskAccessPermission,
+} from "tauri-plugin-macos-permissions-api";
 
 export interface UnknownRecord {
   [key: string]: unknown;
@@ -13,6 +17,7 @@ export interface DarwinConfig {
 export interface DarwinPrefs {
   floatingFooter?: boolean;
   windowShadow?: boolean;
+  openrouterApiKey?: string;
   openaiApiKey?: string;
   summaryProvider?: string;
   summaryModel?: string;
@@ -79,6 +84,28 @@ export interface PreviewIndicatorState {
 }
 
 // =============================================================================
+// Permissions Types
+// =============================================================================
+
+export type PermissionStatus = "granted" | "denied" | "pending" | "unknown";
+
+export interface Permission {
+  id: string;
+  name: string;
+  description: string;
+  required: boolean;
+  canRequestProgrammatically: boolean;
+  status: PermissionStatus;
+  instructions?: string;
+}
+
+export interface PermissionsState {
+  permissions: Permission[];
+  allRequiredGranted: boolean;
+  checkedAt: number | null;
+}
+
+// =============================================================================
 // Evolve Streaming Events
 // =============================================================================
 
@@ -131,6 +158,7 @@ export const darwinAPI = {
     commit: (message: string) => invoke("git_commit", { message }),
     stash: (message: string) => invoke("git_stash", { message }),
     stageAll: () => invoke("git_stage_all"),
+    unstageAll: () => invoke("git_unstage_all"),
     restoreAll: () => invoke("git_restore_all"),
   },
   darwin: {
@@ -144,7 +172,8 @@ export const darwinAPI = {
     listHosts: () => invoke<string[]>("flake_list_hosts"),
     installedApps: () => invoke<unknown[]>("flake_installed_apps"),
     exists: () => invoke<boolean>("flake_exists"),
-    bootstrapDefault: (hostname: string) => invoke<void>("bootstrap_default_config", { hostname }),
+    bootstrapDefault: (hostname: string) =>
+      invoke<void>("bootstrap_default_config", { hostname }),
   },
   // Summarization with fast model
   summarize: {
@@ -156,17 +185,36 @@ export const darwinAPI = {
     setPrefs: (prefs: DarwinPrefs) => invoke("ui_set_prefs", { prefs }),
     setWindowShadow: (on: boolean) => invoke("ui_set_window_shadow", { on }),
   },
+  models: {
+    getCached: (provider: string) =>
+      invoke<string[] | null>("get_cached_models", { provider }),
+    setCached: (provider: string, models: string[]) =>
+      invoke("set_cached_models", { provider, models }),
+  },
 
   previewIndicator: {
     show: () => invoke("preview_indicator_show"),
     hide: () => invoke("preview_indicator_hide"),
-    update: (state: PreviewIndicatorState) => invoke("preview_indicator_update", { state }),
-    getState: () => invoke<PreviewIndicatorState>("preview_indicator_get_state"),
+    update: (state: PreviewIndicatorState) =>
+      invoke("preview_indicator_update", { state }),
+    getState: () =>
+      invoke<PreviewIndicatorState>("preview_indicator_get_state"),
   },
+
   watcher: {
     start: () => invoke("watcher_start"),
     stop: () => invoke("watcher_stop"),
     isActive: () => invoke<boolean>("watcher_is_active"),
+  },
+  permissions: {
+    checkAll: () => invoke<PermissionsState>("permissions_check_all"),
+    request: (permissionId: string) =>
+      invoke<Permission>("permissions_request", { permissionId }),
+    allRequiredGranted: () =>
+      invoke<boolean>("permissions_all_required_granted"),
+    // macOS-specific permission checks via tauri-plugin-macos-permissions
+    checkFullDiskAccess: () => checkFullDiskAccessPermission(),
+    requestFullDiskAccess: () => requestFullDiskAccessPermission(),
   },
 };
 

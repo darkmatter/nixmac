@@ -19,6 +19,9 @@
       "icons/128x128@2x.png",
       "icons/icon.ico"
     ],
+    "resources": [
+      "../templates/nix-darwin-determinate/*"
+    ],
     "macOS": {
       "minimumSystemVersion": "10.13",
       "entitlements": "entitlements.plist",

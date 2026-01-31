@@ -5,7 +5,9 @@
 //! when Option is held and the cursor is near that corner. Clicking the icon
 //! reveals the main widget window.
 
+use once_cell::sync::Lazy;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 use std::time::Duration;
 use tauri::{
     AppHandle, Emitter, Manager, PhysicalPosition, Runtime, WebviewUrl, WebviewWindowBuilder,
@@ -450,9 +452,6 @@ pub struct PreviewIndicatorState {
     pub is_loading: bool,
 }
 
-use once_cell::sync::Lazy;
-use std::sync::Mutex;
-
 /// Cache of the current preview indicator state (for late-mounting windows)
 static PREVIEW_INDICATOR_STATE: Lazy<Mutex<PreviewIndicatorState>> = Lazy::new(|| {
     Mutex::new(PreviewIndicatorState {
@@ -621,4 +620,35 @@ pub fn update_preview_indicator<R: Runtime>(
         }
     }
     Ok(())
+}
+
+// =============================================================================
+// Debug Zone Info
+// =============================================================================
+
+/// Debug info for the corner zone visualization
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct DebugZoneInfo {
+    pub enabled: bool,
+    pub corner_zone_size: f64,
+    pub screen_width: f64,
+    pub screen_height: f64,
+    pub scale_factor: f64,
+}
+
+/// Returns debug info for visualizing the corner zone
+pub fn get_debug_zone_info<R: Runtime>(app: &AppHandle<R>) -> Result<DebugZoneInfo, String> {
+    let monitor = get_rightmost_monitor(app)?;
+
+    let corner_zone_logical = CORNER_ZONE / monitor.scale_factor;
+    let screen_width_logical = monitor.width / monitor.scale_factor;
+    let screen_height_logical = monitor.height / monitor.scale_factor;
+
+    Ok(DebugZoneInfo {
+        enabled: false, // Disable debug overlay for now
+        corner_zone_size: corner_zone_logical,
+        screen_width: screen_width_logical,
+        screen_height: screen_height_logical,
+        scale_factor: monitor.scale_factor,
+    })
 }

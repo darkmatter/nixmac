@@ -1,6 +1,12 @@
 import { create } from "zustand";
-import type { EvolveEvent, GitStatus } from "@/tauri-api";
-export type { EvolveEvent, EvolveEventType, GitFileStatus, GitStatus } from "@/tauri-api";
+import type { EvolveEvent, GitStatus, PermissionsState } from "@/tauri-api";
+export type {
+  EvolveEvent,
+  EvolveEventType,
+  GitFileStatus,
+  GitStatus,
+  PermissionsState,
+} from "@/tauri-api";
 
 // =============================================================================
 // Types
@@ -9,7 +15,12 @@ export type { EvolveEvent, EvolveEventType, GitFileStatus, GitStatus } from "@/t
 /**
  * Widget step state - updated by useEffect based on app state.
  */
-export type WidgetStep = "setup" | "overview" | "evolving" | "commit";
+export type WidgetStep =
+  | "permissions"
+  | "setup"
+  | "overview"
+  | "evolving"
+  | "commit";
 export type ProcessingAction = "evolve" | "apply" | "commit" | "cancel" | null;
 
 export interface SummaryItem {
@@ -33,6 +44,7 @@ export type RebuildErrorType =
   | "infinite_recursion"
   | "evaluation_error"
   | "build_error"
+  | "full_disk_access"
   | "generic_error";
 
 export interface RebuildLine {
@@ -44,6 +56,7 @@ export interface RebuildLine {
 export interface RebuildState {
   isRunning: boolean;
   lines: RebuildLine[];
+  rawLines: string[];
   exitCode?: number;
   success?: boolean;
   errorType?: RebuildErrorType;
@@ -51,6 +64,10 @@ export interface RebuildState {
 }
 
 export interface WidgetState {
+  // Permissions (checked on startup)
+  permissionsState: PermissionsState | null;
+  permissionsChecked: boolean;
+
   // Config (from backend)
   configDir: string;
   hosts: string[];
@@ -81,6 +98,10 @@ export interface WidgetState {
 }
 
 export interface WidgetActions {
+  // Permissions
+  setPermissionsState: (state: PermissionsState | null) => void;
+  setPermissionsChecked: (checked: boolean) => void;
+
   // Setters
   setConfigDir: (dir: string) => void;
   setHosts: (hosts: string[]) => void;
@@ -108,6 +129,7 @@ export interface WidgetActions {
   // Rebuild state
   startRebuild: () => void;
   appendRebuildLine: (line: RebuildLine) => void;
+  appendRawLine: (line: string) => void;
   setRebuildError: (errorType: RebuildErrorType, errorMessage: string) => void;
   setRebuildComplete: (success: boolean, exitCode?: number) => void;
   clearRebuild: () => void;
@@ -122,6 +144,7 @@ export type WidgetStore = WidgetState & WidgetActions;
 export const initialRebuildState: RebuildState = {
   isRunning: false,
   lines: [],
+  rawLines: [],
   exitCode: undefined,
   success: undefined,
   errorType: undefined,
@@ -129,6 +152,10 @@ export const initialRebuildState: RebuildState = {
 };
 
 export const initialWidgetState: WidgetState = {
+  // Permissions
+  permissionsState: null,
+  permissionsChecked: false,
+
   // Config
   configDir: "",
   hosts: [],
@@ -178,6 +205,10 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     ...initialWidgetState,
     ...initialState,
 
+    // Permissions
+    setPermissionsState: (permissionsState) => set({ permissionsState }),
+    setPermissionsChecked: (permissionsChecked) => set({ permissionsChecked }),
+
     // Setters
     setConfigDir: (configDir) => set({ configDir }),
     setHosts: (hosts) => set({ hosts }),
@@ -211,7 +242,8 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
       }),
 
     // Console
-    appendLog: (text) => set((state) => ({ consoleLogs: state.consoleLogs + text })),
+    appendLog: (text) =>
+      set((state) => ({ consoleLogs: state.consoleLogs + text })),
     clearLogs: () => set({ consoleLogs: "" }),
 
     // Evolve events
@@ -225,6 +257,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
         rebuild: {
           isRunning: true,
           lines: [{ id: 0, text: "Preparing rebuild...", type: "info" }],
+          rawLines: [],
           exitCode: undefined,
           success: undefined,
           errorType: undefined,
@@ -236,6 +269,13 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
         rebuild: {
           ...state.rebuild,
           lines: [...state.rebuild.lines, line].slice(-50), // Keep last 50 lines
+        },
+      })),
+    appendRawLine: (line) =>
+      set((state) => ({
+        rebuild: {
+          ...state.rebuild,
+          rawLines: [...state.rebuild.rawLines, line].slice(-500), // Keep last 500 raw lines
         },
       })),
     setRebuildError: (errorType, errorMessage) =>
