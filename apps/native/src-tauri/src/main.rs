@@ -18,6 +18,7 @@ mod permissions;
 mod providers;
 mod store;
 mod summarize;
+mod template;
 mod types;
 mod watcher;
 
