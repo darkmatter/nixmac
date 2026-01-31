@@ -38,9 +38,7 @@ type LoadingState = {
 };
 
 const SkeletonCircle = ({ className }: { className?: string }) => (
-  <div
-    className={cn("h-6 w-6 animate-pulse rounded-full bg-white/20", className)}
-  />
+  <div className={cn("h-6 w-6 animate-pulse rounded-full bg-white/20", className)} />
 );
 
 const SkeletonLine = ({ width = "w-48" }: { width?: string }) => (
@@ -59,6 +57,9 @@ const LoaderCore = ({
   const skeletonWidths = ["w-32", "w-48", "w-40", "w-36", "w-44"];
   const itemHeight = 40; // Height of each item including margin
 
+  // Find the index of the most recently completed step (one before current)
+  const mostRecentlyCompletedIndex = value > 0 ? value - 1 : -1;
+
   return (
     <div className="relative flex h-full w-full items-center justify-center">
       <div className="relative" style={{ width: "500px" }}>
@@ -68,18 +69,31 @@ const LoaderCore = ({
           // Completed items (above) fade slower, pending items (below) fade faster
           const opacity =
             distance < 0
-              ? Math.max(1 - Math.abs(distance) * 0.25, 0) // Completed: fade to 0.3 min
+              ? Math.max(1 - Math.abs(distance) * 0.25, 0.3) // Completed: fade to 0.3 min
               : Math.max(1 - distance * 0.5, 0); // Pending: fade faster
 
           const isCompleted = index < value;
           const isCurrent = index === value;
-          const checkClass = isCompleted || isCurrent ? "text-lime-500" : "";
+          const isMostRecentlyCompleted = index === mostRecentlyCompletedIndex;
 
-          let textClass = "text-white";
+          // Only the most recently completed step and current step get green
+          let checkClass = "text-white/50";
+          if (isCurrent) {
+            checkClass = "text-lime-500";
+          } else if (isMostRecentlyCompleted) {
+            checkClass = "text-lime-500";
+          } else if (isCompleted) {
+            checkClass = "text-white/40";
+          }
+
+          // Text coloring: only current and most recently completed are green
+          let textClass = "text-white/50";
           if (isCurrent) {
             textClass = "text-lime-500";
+          } else if (isMostRecentlyCompleted) {
+            textClass = "text-lime-500";
           } else if (isCompleted) {
-            textClass = "text-lime-500/80";
+            textClass = "text-white/40";
           }
 
           // Position relative to current step - current step stays centered at y=0
@@ -95,7 +109,7 @@ const LoaderCore = ({
             >
               <div className="shrink-0">
                 {index > value ? (
-                  <CheckIcon className="text-white/50" />
+                  <CheckIcon className="text-white/30" />
                 ) : (
                   <CheckFilled className={checkClass} />
                 )}
@@ -103,7 +117,7 @@ const LoaderCore = ({
               <span
                 className={cn(
                   textClass,
-                  "block overflow-hidden text-ellipsis whitespace-nowrap"
+                  "block overflow-hidden text-ellipsis whitespace-nowrap",
                 )}
               >
                 {loadingState.text}
@@ -192,7 +206,7 @@ export const MultiStepLoaderInline = ({
   <div
     className={cn(
       "relative flex min-h-[200px] w-full items-center justify-center",
-      className
+      className,
     )}
   >
     <LoaderCore loadingStates={loadingStates} pendingCount={2} value={step} />

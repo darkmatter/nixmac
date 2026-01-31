@@ -14,9 +14,11 @@ mod git;
 mod log_summarizer;
 mod nix;
 mod peek;
+mod permissions;
 mod providers;
 mod store;
 mod summarize;
+mod template;
 mod types;
 mod watcher;
 
@@ -43,6 +45,7 @@ fn main() {
         .plugin(tauri_plugin_sql::Builder::new().build())
         // .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_upload::init())
+        .plugin(tauri_plugin_macos_permissions::init())
         .invoke_handler(tauri::generate_handler![
             // Configuration
             commands::config_get,
@@ -55,6 +58,7 @@ fn main() {
             commands::git_commit,
             commands::git_stash,
             commands::git_stage_all,
+            commands::git_unstage_all,
             commands::git_restore_all,
             // Darwin/Nix
             commands::darwin_evolve,
@@ -72,6 +76,9 @@ fn main() {
             commands::ui_get_prefs,
             commands::ui_set_prefs,
             commands::ui_set_window_shadow,
+            // Model cache
+            commands::get_cached_models,
+            commands::set_cached_models,
             // Window
             commands::show_main_window,
             // Preview indicator
@@ -84,6 +91,10 @@ fn main() {
             commands::watcher_start,
             commands::watcher_stop,
             commands::watcher_is_active,
+            // Permissions
+            commands::permissions_check_all,
+            commands::permissions_request,
+            commands::permissions_all_required_granted,
         ])
         .setup(|app| {
             let handle = app.handle();
@@ -145,7 +156,7 @@ fn main() {
             let initial_width = 800.0;
             let initial_height = 800.0;
             let min_width = 400.0;
-            let max_width = 1200.0;
+            let max_width = 1000.0;
             let min_height = 400.0;
             let max_height = 900.0;
 

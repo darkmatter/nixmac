@@ -6,6 +6,24 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     nix-darwin.url = "github:nix-darwin/nix-darwin/master";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+
+    # ============================================================================
+    # home-manager (OPTIONAL - currently commented out)
+    # ============================================================================
+    # home-manager manages user-level configuration files (dotfiles) declaratively.
+    # It's useful for managing configs like .zshrc, .gitconfig, vim settings, etc.
+    #
+    # To enable home-manager:
+    # 1. Uncomment the lines below
+    # 2. Add home-manager.darwinModules.home-manager to the modules list
+    # 3. Configure it in a separate home.nix or within your configuration
+    #
+    # See: https://nix-community.github.io/home-manager/
+    #
+    # inputs.home-manager = {
+    #   url = "github:nix-community/home-manager";
+    #   inputs.nixpkgs.follows = "nixpkgs";
+    # };
   };
 
   outputs =
@@ -18,7 +36,7 @@
       configuration =
         { pkgs, ... }:
         {
-          networking.hostName = "Scotts-MacBook-Pro-2";
+          networking.hostName = "HOSTNAME_PLACEHOLDER";
 
           # List packages installed in system profile. To search by name, run:
           # $ nix-env -qaP | grep wget
@@ -40,7 +58,8 @@
           system.stateVersion = 6;
 
           # The platform the configuration will be used on.
-          nixpkgs.hostPlatform = "aarch64-darwin";
+          # This will be automatically detected during bootstrap
+          nixpkgs.hostPlatform = "PLATFORM_PLACEHOLDER";
 
           # Required for Determinate:
           nix.enable = false; # Disable nix-darwin’s Nix management
@@ -48,8 +67,8 @@
     in
     {
       # Build darwin flake using:
-      # $ darwin-rebuild build --flake .#Scotts-MacBook-Pro-2
-      darwinConfigurations."Scotts-MacBook-Pro-2" = nix-darwin.lib.darwinSystem {
+      # $ darwin-rebuild build --flake .#HOSTNAME_PLACEHOLDER
+      darwinConfigurations."HOSTNAME_PLACEHOLDER" = nix-darwin.lib.darwinSystem {
         modules = [
           configuration
           ./homebrew.nix

@@ -18,7 +18,8 @@ export function useSummary() {
     // Consider the summary empty/stale if:
     // 1. No summary items AND no diff content
     // 2. File count doesn't match between summary and current git status
-    const summaryEmpty = store.summary.items.length === 0 && !store.summary.diff;
+    const summaryEmpty =
+      store.summary.items.length === 0 && !store.summary.diff;
     const summaryStale =
       !summaryEmpty &&
       store.gitStatus.files &&
@@ -41,7 +42,7 @@ export function useSummary() {
           diff: response.diff,
           isLoading: false,
         });
-      } catch (error) {
+      } catch {
         store.setSummary({ isLoading: false });
       }
     }

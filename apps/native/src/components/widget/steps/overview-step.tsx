@@ -78,7 +78,7 @@ export function OverviewStep() {
   // Show categorized changes if there are any
   if (totalChanges > 0) {
     return (
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4  max-w-2xl mx-auto">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-lg">What's Changed</h3>
           <div className="flex items-center gap-2">
@@ -116,7 +116,7 @@ export function OverviewStep() {
                         "rounded-lg p-2",
                         cat.color === "teal" && "bg-teal-500/10 text-teal-500",
                         cat.color === "blue" && "bg-blue-500/10 text-blue-500",
-                        cat.color === "red" && "bg-red-500/10 text-red-500"
+                        cat.color === "red" && "bg-red-500/10 text-red-500",
                       )}
                     >
                       <cat.icon className="h-4 w-4" />
@@ -226,7 +226,7 @@ export function OverviewStep() {
               >
                 {example}
               </button>
-            )
+            ),
           )}
         </div>
       </div>

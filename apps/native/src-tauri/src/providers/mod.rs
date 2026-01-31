@@ -58,15 +58,19 @@ pub fn create_provider<R: Runtime>(
                 .or_else(|| std::env::var("SUMMARY_MODEL").ok())
                 .unwrap_or_else(|| DEFAULT_SUMMARY_MODEL.to_string());
 
-            // Try to get key from store first, then env var
-            let store_key = app_handle
-                .and_then(|app| crate::store::get_openai_api_key(app).ok())
-                .flatten();
+            // Try to get key from store first (OpenRouter preferred), then env var
+            let store_key = app_handle.and_then(|app| {
+                // Try OpenRouter key first, then OpenAI key
+                crate::store::get_openrouter_api_key(app)
+                    .ok()
+                    .flatten()
+                    .or_else(|| crate::store::get_openai_api_key(app).ok().flatten())
+            });
 
             let key = store_key
                 .or_else(|| std::env::var("OPENROUTER_API_KEY").ok())
                 .or_else(|| std::env::var("OPENAI_API_KEY").ok())
-                .ok_or_else(|| anyhow::anyhow!("No API key configured"))?;
+                .ok_or_else(|| anyhow::anyhow!("No API key configured. Please set your OpenRouter or OpenAI API key in Settings."))?;
 
             Ok(Box::new(OpenAIClient::new(
                 &key,
