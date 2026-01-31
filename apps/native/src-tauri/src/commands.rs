@@ -7,7 +7,7 @@
 //! NOTE: The server is stateless regarding UI state. All app state (generating,
 //! preview mode, etc.) is computed and managed entirely by the client.
 
-use crate::{darwin, git, nix, peek, permissions, store, summarize, types, watcher};
+use crate::{darwin, git, nix, peek, permissions, store, summarize, template, types, watcher};
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -100,54 +100,64 @@ pub async fn bootstrap_default_config(app: AppHandle, hostname: String) -> Resul
         return Err("Directory already contains flake.nix".to_string());
     }
 
-    let platform = detect_darwin_platform();
+    // Initialize flake from template
+    let init_result = Command::new("nix")
+        .args(["flake", "init", "-t", "github:darkmatter/nixmac"])
+        .current_dir(&dir)
+        .env("PATH", crate::nix::get_nix_path())
+        .output()
+        .map_err(|e| format!("Failed to initialize flake: {}", e))?;
 
-    // Try bundled templates first (production), then dev path
-    let resource_dir = app
-        .path()
-        .resource_dir()
-        .map_err(|e| format!("Failed to get resource directory: {}", e))?;
-
-    let template_path = [
-        resource_dir.join("templates/nix-darwin-determinate"),
-        resource_dir.join("../../apps/native/templates/nix-darwin-determinate"),
-    ]
-    .into_iter()
-    .find(|p| p.exists())
-    .ok_or_else(|| "Template directory not found".to_string())?;
-
-    // Copy and process template files
-    for entry in fs::read_dir(&template_path)
-        .map_err(|e| format!("Failed to read template directory: {}", e))?
-    {
-        let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
-        let filename = entry.file_name();
-
-        let content = fs::read_to_string(entry.path())
-            .map_err(|e| format!("Failed to read template file: {}", e))?
-            .replace("HOSTNAME_PLACEHOLDER", &hostname)
-            .replace("PLATFORM_PLACEHOLDER", platform);
-
-        fs::write(path.join(&filename), content)
-            .map_err(|e| format!("Failed to write {}: {}", filename.to_string_lossy(), e))?;
+    if !init_result.status.success() {
+        return Err(format!(
+            "Failed to initialize flake: {}",
+            String::from_utf8_lossy(&init_result.stderr)
+        ));
     }
 
-    // Initialize git and create initial commit
-    git::init_if_needed(&dir).map_err(|e| format!("Failed to init git: {}", e))?;
-    git::stage_all(&dir).map_err(|e| format!("Failed to stage files: {}", e))?;
+    // Build template context with configuration values
+    let mut context = template::TemplateContext::new();
+    context
+        .insert_str("hostname", &hostname)
+        .insert_str("platform", detect_darwin_platform());
 
-    // Generate flake.lock
-    let result = Command::new("nix")
+    // Process all template files in the directory
+    for entry in fs::read_dir(path).map_err(|e| format!("Failed to read directory: {}", e))? {
+        let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+        let file_path = entry.path();
+
+        if file_path.is_file() {
+            if let Some(ext) = file_path.extension() {
+                if ext == "nix" {
+                    // Read and render the template
+                    let content = fs::read_to_string(&file_path)
+                        .map_err(|e| format!("Failed to read {}: {}", file_path.display(), e))?;
+
+                    let rendered = template::render_string(&content, &context)
+                        .map_err(|e| format!("Failed to render {}: {}", file_path.display(), e))?;
+
+                    fs::write(&file_path, rendered)
+                        .map_err(|e| format!("Failed to write {}: {}", file_path.display(), e))?;
+                }
+            }
+        }
+    }
+
+    git::init_if_needed(&dir).map_err(|e| e.to_string())?;
+
+    git::stage_all(&dir).map_err(|e| e.to_string())?;
+
+    let flake_lock_result = Command::new("nix")
         .args(["flake", "lock"])
         .current_dir(&dir)
         .env("PATH", crate::nix::get_nix_path())
         .output()
-        .map_err(|e| format!("Failed to run nix flake lock: {}", e))?;
+        .map_err(|e| format!("Failed to generate flake.lock: {}", e))?;
 
-    if !result.status.success() {
+    if !flake_lock_result.status.success() {
         return Err(format!(
             "Failed to generate flake.lock: {}",
-            String::from_utf8_lossy(&result.stderr)
+            String::from_utf8_lossy(&flake_lock_result.stderr)
         ));
     }
 
@@ -524,7 +534,9 @@ pub async fn suggest_commit_message(app: AppHandle) -> Result<String, String> {
 pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
     let floating_footer = store::get_floating_footer(&app).map_err(|e| e.to_string())?;
     let window_shadow = store::get_window_shadow(&app).map_err(|e| e.to_string())?;
+    let openrouter_api_key = store::get_openrouter_api_key(&app).map_err(|e| e.to_string())?;
     let openai_api_key = store::get_openai_api_key(&app).map_err(|e| e.to_string())?;
+
     let evolve_provider = store::get_evolve_provider(&app).map_err(|e| e.to_string())?;
     let evolve_model = store::get_evolve_model(&app).map_err(|e| e.to_string())?;
     let summary_provider = store::get_summary_provider(&app).map_err(|e| e.to_string())?;
@@ -533,7 +545,9 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
     Ok(types::UiPrefs {
         floating_footer,
         window_shadow,
+        openrouter_api_key,
         openai_api_key,
+
         evolve_provider,
         evolve_model,
         summary_provider,
@@ -552,6 +566,9 @@ pub async fn ui_set_prefs(
     }
     if let Some(window_shadow) = prefs.get("windowShadow").and_then(|v| v.as_bool()) {
         store::set_window_shadow(&app, window_shadow).map_err(|e| e.to_string())?;
+    }
+    if let Some(openrouter_api_key) = prefs.get("openrouterApiKey").and_then(|v| v.as_str()) {
+        store::set_openrouter_api_key(&app, openrouter_api_key).map_err(|e| e.to_string())?;
     }
     if let Some(openai_api_key) = prefs.get("openaiApiKey").and_then(|v| v.as_str()) {
         store::set_openai_api_key(&app, openai_api_key).map_err(|e| e.to_string())?;

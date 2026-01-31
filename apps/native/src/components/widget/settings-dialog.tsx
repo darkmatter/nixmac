@@ -1,33 +1,18 @@
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useForm } from "@tanstack/react-form";
-import { Switch } from "@/components/ui/switch";
-import { BootstrapConfig } from "@/components/widget/bootstrap-config";
-import { DirectoryPicker } from "@/components/widget/directory-picker";
-import { ModelCombobox } from "@/components/widget/model-combobox";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
-import {
-  Bot,
-  Check,
-  FolderOpen,
-  Key,
-  Loader2,
-  Palette,
-  Settings2,
-  X,
-} from "lucide-react";
-import { useState, useEffect, Suspense, useRef } from "react";
+import { useForm } from "@tanstack/react-form";
+import { Bot, FolderOpen, Key, Palette, Settings2 } from "lucide-react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { AiModelsTab } from "./settings/ai-models-tab";
+import { AppearanceTab } from "./settings/appearance-tab";
+import { ApiKeysTab } from "./settings/api-keys-tab";
+import { GeneralTab } from "./settings/general-tab";
 
 type SettingsTab = "general" | "appearance" | "api-keys" | "ai-models";
+type ApiKeyStatus = "idle" | "verifying" | "valid" | "invalid";
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -49,56 +34,38 @@ function NavItem({ icon, label, active, onClick }: NavItemProps) {
       type="button"
     >
       {icon}
-      {label}
+      <span>{label}</span>
     </button>
   );
 }
 
-type ApiKeyStatus = "idle" | "verifying" | "valid" | "invalid";
-
-/**
- * Settings dialog component - manages all settings internally.
- * Loads and saves preferences via Tauri API.
- */
 export function SettingsDialog() {
-  const isOpen = useWidgetStore((state) => state.settingsOpen);
-  const setSettingsOpen = useWidgetStore((state) => state.setSettingsOpen);
-  const [initialValues, setInitialValues] = useState<Awaited<
-    ReturnType<typeof darwinAPI.ui.getPrefs>
-  > | null>(null);
-
-  useEffect(() => {
-    darwinAPI.ui.getPrefs().then((v) => v && setInitialValues(v));
-  }, []);
-
-  const configDir = useWidgetStore((state) => state.configDir);
-  const hosts = useWidgetStore((state) => state.hosts);
-  const host = useWidgetStore((state) => state.host);
-  const setHosts = useWidgetStore((state) => state.setHosts);
+  const {
+    settingsOpen: isOpen,
+    setSettingsOpen,
+    configDir,
+    hosts,
+    host,
+    setHosts,
+  } = useWidgetStore();
+  const [activeTab, setActiveTab] = useState<SettingsTab>("general");
+  const [openrouterKeyStatus, setOpenrouterKeyStatus] =
+    useState<ApiKeyStatus>("idle");
+  const [openaiKeyStatus, setOpenaiKeyStatus] = useState<ApiKeyStatus>("idle");
+  const openrouterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const openaiTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { saveHost } = useDarwinConfig();
 
-  const [activeTab, setActiveTab] = useState<SettingsTab>("general");
-  const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus>("idle");
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const verifyApiKey = async (key: string) => {
-    // Always save the key first, regardless of verification
-    if (key && key.length > 10) {
-      await darwinAPI.ui.setPrefs({ openaiApiKey: key });
-    }
-
-    // If no key or too short, just clear status
-    if (!key || key.length < 10) {
-      setApiKeyStatus("idle");
+  const verifyOpenrouterKey = async (key: string) => {
+    if (!key) {
+      setOpenrouterKeyStatus("idle");
       return;
     }
 
-    setApiKeyStatus("verifying");
-
+    setOpenrouterKeyStatus("verifying");
     try {
-      // Make a simple API request to verify the key via OpenRouter
-      const response = await fetch("https://openrouter.ai/api/v1/models", {
+      const response = await fetch("https://openrouter.ai/api/v1/auth/key", {
         method: "GET",
         headers: {
           Authorization: `Bearer ${key}`,
@@ -106,51 +73,113 @@ export function SettingsDialog() {
       });
 
       if (response.ok) {
-        setApiKeyStatus("valid");
+        setOpenrouterKeyStatus("valid");
+        await darwinAPI.ui.setPrefs({ openrouterApiKey: key });
       } else {
-        // Key is saved but might be invalid - show warning but don't block
-        setApiKeyStatus("invalid");
+        setOpenrouterKeyStatus("invalid");
       }
-    } catch {
-      // Network error - key is saved, show as unverified
-      setApiKeyStatus("idle");
-      console.warn("Could not verify API key - network error");
+    } catch (error) {
+      console.error("Error verifying OpenRouter API key:", error);
+      setOpenrouterKeyStatus("invalid");
     }
   };
+
+  const verifyOpenaiKey = async (key: string) => {
+    if (!key) {
+      setOpenaiKeyStatus("idle");
+      return;
+    }
+
+    setOpenaiKeyStatus("verifying");
+    try {
+      const response = await fetch("https://api.openai.com/v1/models", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${key}`,
+        },
+      });
+
+      if (response.ok) {
+        setOpenaiKeyStatus("valid");
+        await darwinAPI.ui.setPrefs({ openaiApiKey: key });
+      } else {
+        setOpenaiKeyStatus("invalid");
+      }
+    } catch (error) {
+      console.error("Error verifying OpenAI API key:", error);
+      setOpenaiKeyStatus("invalid");
+    }
+  };
+
   const form = useForm({
     defaultValues: {
-      floatingFooter: initialValues?.floatingFooter ?? false,
-      windowShadow: initialValues?.windowShadow ?? false,
-      openaiApiKey: initialValues?.openaiApiKey ?? "",
-      apiKeyInput: initialValues?.openaiApiKey ?? "",
-      apiKeyStatus: initialValues?.openaiApiKey ? "valid" : "idle",
-      summaryProvider: initialValues?.summaryProvider ?? "openai",
-      summaryModel: initialValues?.summaryModel ?? "",
-      evolveProvider: initialValues?.evolveProvider ?? "openai",
-      evolveModel: initialValues?.evolveModel ?? "",
-    },
-    onSubmit: async ({ value }) => {
-      verifyApiKey(value.openaiApiKey);
+      floatingFooter: true,
+      windowShadow: false,
+      openrouterApiKey: "",
+      openaiApiKey: "",
+      summaryProvider: "openai",
+      summaryModel: "openai/gpt-4o-mini",
+      evolveProvider: "openai",
+      evolveModel: "anthropic/claude-sonnet-4",
     },
   });
 
-  if (!isOpen) {
-    return null;
-  }
+  // Load initial values
+  // biome-ignore lint/correctness/useExhaustiveDependencies: initial load only
+  useEffect(() => {
+    const loadPrefs = async () => {
+      try {
+        const prefs = await darwinAPI.ui.getPrefs();
+        if (prefs) {
+          form.setFieldValue("floatingFooter", prefs.floatingFooter ?? true);
+          form.setFieldValue("windowShadow", prefs.windowShadow ?? false);
+          form.setFieldValue("openrouterApiKey", prefs.openrouterApiKey ?? "");
+          form.setFieldValue("openaiApiKey", prefs.openaiApiKey ?? "");
+          form.setFieldValue(
+            "summaryProvider",
+            prefs.summaryProvider ?? "openai",
+          );
+          form.setFieldValue(
+            "summaryModel",
+            prefs.summaryModel ?? "openai/gpt-4o-mini",
+          );
+          form.setFieldValue(
+            "evolveProvider",
+            prefs.evolveProvider ?? "openai",
+          );
+          form.setFieldValue(
+            "evolveModel",
+            prefs.evolveModel ?? "anthropic/claude-sonnet-4",
+          );
 
+          if (prefs.openrouterApiKey) {
+            setOpenrouterKeyStatus("valid");
+          }
+          if (prefs.openaiApiKey) {
+            setOpenaiKeyStatus("valid");
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load settings:", err);
+      }
+    };
+    if (isOpen) {
+      loadPrefs();
+    }
+  }, [isOpen, form]);
 
   const handleRefreshHosts = async () => {
     try {
       const hs = await darwinAPI.flake.listHosts();
-      if (Array.isArray(hs)) {
-        setHosts(hs);
-      }
-    } catch {
-      // Ignore errors when refreshing hosts
+      setHosts(hs);
+    } catch (e) {
+      console.error("Failed to refresh hosts:", e);
     }
   };
 
   const hasFlake = hosts.length > 0;
+
+  if (!isOpen) return null;
 
   return (
     <Suspense fallback={<div>loading...</div>}>
@@ -212,372 +241,78 @@ export function SettingsDialog() {
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-4">
             {activeTab === "general" && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="mb-4 font-semibold text-base">General</h2>
-                  <div className="space-y-4">
-                    {/* Config Directory */}
-                    <DirectoryPicker
-                      label="Configuration Directory"
-                      subLabel="Holds your nix-darwin flake"
-                    />
-
-                    {/* Host Selection or Bootstrap */}
-                    {hasFlake ? (
-                      <div className="space-y-2">
-                        <label className="font-medium text-sm">Host</label>
-                        <div className="flex items-center gap-2">
-                          <Select
-                            onValueChange={saveHost}
-                            value={host || undefined}
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select a host" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {hosts.map((h) => (
-                                <SelectItem key={h} value={h}>
-                                  {h}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Button
-                            onClick={handleRefreshHosts}
-                            size="sm"
-                            variant="outline"
-                          >
-                            Refresh
-                          </Button>
-                        </div>
-                        <p className="text-muted-foreground text-xs">
-                          The darwin configuration to use for this machine
-                        </p>
-                      </div>
-                    ) : (
-                      configDir && (
-                        <BootstrapConfig
-                          label="Configuration"
-                          onSuccess={() => setSettingsOpen(false)}
-                        />
-                      )
-                    )}
-                  </div>
-                </div>
-              </div>
+              <GeneralTab
+                configDir={configDir}
+                handleRefreshHosts={handleRefreshHosts}
+                hasFlake={hasFlake}
+                host={host}
+                hosts={hosts}
+                saveHost={saveHost}
+                setSettingsOpen={setSettingsOpen}
+              />
             )}
 
             {activeTab === "appearance" && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="mb-4 font-semibold text-base">Appearance</h2>
-                  <div className="space-y-4">
-                    {/* Floating Footer */}
-                    <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                      <div className="space-y-0.5">
-                        <div className="font-medium text-sm">
-                          Floating Footer
-                        </div>
-                        <div className="text-muted-foreground text-xs">
-                          Show the footer floating above content
-                        </div>
-                      </div>
-                      <form.Field name="floatingFooter">
-                        {(field) => (
-                          <Switch
-                            checked={!!field.state.value}
-                            onCheckedChange={async (checked) => {
-                              field.handleChange(checked);
-                              try {
-                                await darwinAPI.ui.setPrefs({
-                                  floatingFooter: checked,
-                                });
-                              } catch {
-                                // Ignore errors
-                              }
-                            }}
-                          />
-                        )}
-                      </form.Field>
-                    </div>
-
-                    {/* Window Shadow */}
-                    <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                      <div className="space-y-0.5">
-                        <div className="font-medium text-sm">Window Shadow</div>
-                        <div className="text-muted-foreground text-xs">
-                          Add a shadow around the widget window
-                        </div>
-                      </div>
-                      <form.Field name="windowShadow">
-                        {(field) => (
-                          <Switch
-                            checked={!!field.state.value}
-                            onCheckedChange={async (checked) => {
-                              field.handleChange(checked);
-                              try {
-                                await darwinAPI.ui.setWindowShadow(checked);
-                                await darwinAPI.ui.setPrefs({
-                                  windowShadow: checked,
-                                });
-                              } catch {
-                                // Ignore errors
-                              }
-                            }}
-                          />
-                        )}
-                      </form.Field>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <form.Field name="floatingFooter">
+                {(floatingFooterField) => (
+                  <form.Field name="windowShadow">
+                    {(windowShadowField) => (
+                      <AppearanceTab
+                        floatingFooterField={floatingFooterField}
+                        windowShadowField={windowShadowField}
+                      />
+                    )}
+                  </form.Field>
+                )}
+              </form.Field>
             )}
 
             {activeTab === "api-keys" && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="mb-4 font-semibold text-base">API Keys</h2>
-                  <div className="space-y-4">
-                    {/* OpenRouter API Key */}
-                    <div className="space-y-2">
-                      <label className="font-medium text-sm">
-                        OpenRouter API Key
-                      </label>
-                      <div className="relative">
-                        <form.Field name="openaiApiKey">
-                          {(field) => (
-                            <input
-                              className={cn(
-                                "w-full rounded-md border bg-background px-3 py-2 pr-10 font-mono text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50",
-                                apiKeyStatus === "valid"
-                                  ? "border-green-500"
-                                  : apiKeyStatus === "invalid"
-                                    ? "border-red-500"
-                                    : "border-border",
-                              )}
-                              onBlur={field.handleBlur}
-                              onChange={(e) => {
-                                field.handleChange(e.target.value);
-                                if (timeoutRef.current)
-                                  clearTimeout(timeoutRef.current);
-                                timeoutRef.current = setTimeout(
-                                  () => verifyApiKey(e.target.value),
-                                  500,
-                                );
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  form.handleSubmit();
-                                }
-                              }}
-                              placeholder="sk-or-..."
-                              type="password"
-                              value={field.state.value}
-                            />
-                          )}
-                        </form.Field>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                          {apiKeyStatus === "verifying" && (
-                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                          )}
-                          {apiKeyStatus === "valid" && (
-                            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-green-500">
-                              <Check className="h-3 w-3 text-white" />
-                            </div>
-                          )}
-                          {apiKeyStatus === "invalid" && (
-                            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500">
-                              <X className="h-3 w-3 text-white" />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <p className="text-muted-foreground text-xs">
-                        Required for AI features like code evolution and
-                        summaries.{" "}
-                        <a
-                          className="text-primary underline hover:no-underline"
-                          href="https://openrouter.ai/keys"
-                          rel="noopener noreferrer"
-                          target="_blank"
-                        >
-                          Get an API key →
-                        </a>
-                      </p>
-                      {apiKeyStatus === "invalid" && (
-                        <p className="text-red-500 text-xs">
-                          Invalid API key. Please check and try again.
-                        </p>
-                      )}
-                      {apiKeyStatus === "valid" && (
-                        <p className="text-green-600 text-xs">
-                          API key verified and saved successfully.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <form.Field name="openrouterApiKey">
+                {(openrouterApiKeyField) => (
+                  <form.Field name="openaiApiKey">
+                    {(openaiApiKeyField) => (
+                      <ApiKeysTab
+                        openrouterApiKeyField={openrouterApiKeyField}
+                        openrouterKeyStatus={openrouterKeyStatus}
+                        verifyOpenrouterKey={verifyOpenrouterKey}
+                        openrouterTimeoutRef={openrouterTimeoutRef}
+                        openaiApiKeyField={openaiApiKeyField}
+                        openaiKeyStatus={openaiKeyStatus}
+                        verifyOpenaiKey={verifyOpenaiKey}
+                        openaiTimeoutRef={openaiTimeoutRef}
+                        form={form}
+                      />
+                    )}
+                  </form.Field>
+                )}
+              </form.Field>
             )}
 
             {activeTab === "ai-models" && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="mb-4 font-semibold text-base">AI Models</h2>
-                  <div className="space-y-6">
-                    {/* Evolution Model */}
-                    <div className="space-y-4">
-                      <h3 className="font-medium text-sm">Evolution Model</h3>
-                      <p className="text-muted-foreground text-xs">
-                        Model used to plan and apply configuration changes in
-                        Nix
-                      </p>
-                      <div className="grid gap-4">
-                        <div className="space-y-2">
-                          <label className="text-xs font-medium text-muted-foreground">
-                            Provider
-                          </label>
-                          <form.Field name="evolveProvider">
-                            {(field) => (
-                              <Select
-                                onValueChange={async (value) => {
-                                  field.handleChange(value);
-                                  await darwinAPI.ui.setPrefs({
-                                    evolveProvider: value,
-                                  });
-                                }}
-                                value={field.state.value}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select provider" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="openai">
-                                    OpenAI / OpenRouter
-                                  </SelectItem>
-                                  <SelectItem value="ollama">Ollama</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            )}
-                          </form.Field>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-xs font-medium text-muted-foreground">
-                            Model Name
-                          </label>
-                          <form.Field name="evolveModel">
-                            {(field) => (
-                              <form.Subscribe
-                                selector={(state) => [
-                                  state.values.evolveProvider,
-                                  state.values.openaiApiKey,
-                                ]}
-                              >
-                                {([evolveProvider, apiKey]) => (
-                                  <ModelCombobox
-                                    provider={
-                                      evolveProvider as "openai" | "ollama"
-                                    }
-                                    value={field.state.value}
-                                    onChange={async (value) => {
-                                      field.handleChange(value);
-                                      await darwinAPI.ui.setPrefs({
-                                        evolveModel: value,
-                                      });
-                                    }}
-                                    onBlur={field.handleBlur}
-                                    placeholder={
-                                      evolveProvider === "ollama"
-                                        ? "qwen3-coder:30b"
-                                        : "anthropic/claude-sonnet-4"
-                                    }
-                                    apiKey={apiKey}
-                                  />
-                                )}
-                              </form.Subscribe>
-                            )}
-                          </form.Field>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Summary Model */}
-                    <div className="space-y-4 pt-4 border-t border-border">
-                      <h3 className="font-medium text-sm">Summary Model</h3>
-                      <p className="text-muted-foreground text-xs">
-                        Model used to explain and summarize changes
-                      </p>
-                      <div className="grid gap-4">
-                        <div className="space-y-2">
-                          <label className="text-xs font-medium text-muted-foreground">
-                            Provider
-                          </label>
-                          <form.Field name="summaryProvider">
-                            {(field) => (
-                              <Select
-                                onValueChange={async (value) => {
-                                  field.handleChange(value);
-                                  await darwinAPI.ui.setPrefs({
-                                    summaryProvider: value,
-                                  });
-                                }}
-                                value={field.state.value}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select provider" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="openai">
-                                    OpenAI / OpenRouter
-                                  </SelectItem>
-                                  <SelectItem value="ollama">Ollama</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            )}
-                          </form.Field>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-xs font-medium text-muted-foreground">
-                            Model Name
-                          </label>
+              <form.Field name="evolveProvider">
+                {(evolveProviderField) => (
+                  <form.Field name="evolveModel">
+                    {(evolveModelField) => (
+                      <form.Field name="summaryProvider">
+                        {(summaryProviderField) => (
                           <form.Field name="summaryModel">
-                            {(field) => (
-                              <form.Subscribe
-                                selector={(state) => [
-                                  state.values.summaryProvider,
-                                  state.values.openaiApiKey,
-                                ]}
-                              >
-                                {([summaryProvider, apiKey]) => (
-                                  <ModelCombobox
-                                    provider={
-                                      summaryProvider as "openai" | "ollama"
-                                    }
-                                    value={field.state.value}
-                                    onChange={async (value) => {
-                                      field.handleChange(value);
-                                      await darwinAPI.ui.setPrefs({
-                                        summaryModel: value,
-                                      });
-                                    }}
-                                    onBlur={field.handleBlur}
-                                    placeholder={
-                                      summaryProvider === "ollama"
-                                        ? "llama3.1"
-                                        : "openai/gpt-4o-mini"
-                                    }
-                                    apiKey={apiKey}
-                                  />
-                                )}
-                              </form.Subscribe>
+                            {(summaryModelField) => (
+                              <AiModelsTab
+                                evolveModelField={evolveModelField}
+                                evolveProviderField={evolveProviderField}
+                                form={form}
+                                summaryModelField={summaryModelField}
+                                summaryProviderField={summaryProviderField}
+                              />
                             )}
                           </form.Field>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                        )}
+                      </form.Field>
+                    )}
+                  </form.Field>
+                )}
+              </form.Field>
             )}
           </div>
         </div>

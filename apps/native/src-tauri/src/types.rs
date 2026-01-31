@@ -95,25 +95,29 @@ pub struct UiPrefs {
     #[serde(rename = "windowShadow")]
     pub window_shadow: bool,
 
-    /// OpenAI API key for AI features.
+    /// OpenRouter API key for AI features via OpenRouter.
+    #[serde(rename = "openrouterApiKey")]
+    pub openrouter_api_key: Option<String>,
+
+    /// OpenAI API key for direct OpenAI access.
     #[serde(rename = "openaiApiKey")]
     pub openai_api_key: Option<String>,
 
-    /// Provider for evolution model (openai or ollama).
+    /// Provider for summarization (openai/ollama).
+    #[serde(rename = "summaryProvider")]
+    pub summary_provider: Option<String>,
+
+    /// Model name for summarization.
+    #[serde(rename = "summaryModel")]
+    pub summary_model: Option<String>,
+
+    /// Provider for evolution (openai/ollama).
     #[serde(rename = "evolveProvider")]
     pub evolve_provider: Option<String>,
 
     /// Model name for evolution.
     #[serde(rename = "evolveModel")]
     pub evolve_model: Option<String>,
-
-    /// Provider for summary model (openai or ollama).
-    #[serde(rename = "summaryProvider")]
-    pub summary_provider: Option<String>,
-
-    /// Model name for summaries.
-    #[serde(rename = "summaryModel")]
-    pub summary_model: Option<String>,
 }
 
 /// Result of a darwin-rebuild operation.

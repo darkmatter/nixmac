@@ -137,7 +137,10 @@ pub async fn generate_evolution(
     let start_time = chrono::Utc::now().timestamp();
 
     // Determine provider
-    let provider_type = std::env::var("EVOLVE_PROVIDER").unwrap_or_else(|_| "openai".to_string());
+    let store_provider = store::get_evolve_provider(app).ok().flatten();
+    let provider_type = store_provider
+        .or_else(|| std::env::var("EVOLVE_PROVIDER").ok())
+        .unwrap_or_else(|| "openai".to_string());
 
     info!("════════════════════════════════════════════════════════════════");
     info!("EVOLUTION STARTING");
@@ -146,10 +149,13 @@ pub async fn generate_evolution(
     info!("Config dir: {}", config_dir);
     info!("Prompt: {}", prompt);
 
+    let store_model = store::get_evolve_model(app).ok().flatten();
+
     // Select provider implementation
     let provider: Arc<dyn AiProvider> = if provider_type == "ollama" {
-        let model =
-            std::env::var("EVOLVE_MODEL").unwrap_or_else(|_| "qwen2.5-coder:7b".to_string());
+        let model = store_model
+            .or_else(|| std::env::var("EVOLVE_MODEL").ok())
+            .unwrap_or_else(|| "qwen3-coder:30b".to_string());
         let base_url =
             std::env::var("OLLAMA_HOST").unwrap_or_else(|_| "http://localhost:11434".to_string());
         info!(
@@ -158,20 +164,29 @@ pub async fn generate_evolution(
         );
         Arc::new(OllamaProvider::new(base_url, model))
     } else {
-        // Init OpenAI / OpenRouter
-        let store_result = store::get_openai_api_key(app);
-        let api_key = store_result
+        // Init OpenAI / OpenRouter - try OpenRouter key first, then OpenAI key
+        let api_key = store::get_openrouter_api_key(app)
             .ok()
             .flatten()
+            .or_else(|| {
+                info!("OpenRouter key not found, trying OpenAI key from store");
+                store::get_openai_api_key(app).ok().flatten()
+            })
             .or_else(|| {
                 info!("Falling back to OPENROUTER_API_KEY environment variable");
                 std::env::var("OPENROUTER_API_KEY").ok()
             })
+            .or_else(|| {
+                info!("Falling back to OPENAI_API_KEY environment variable");
+                std::env::var("OPENAI_API_KEY").ok()
+            })
             .ok_or_else(|| {
-                anyhow!("No API key configured. Please set your OpenRouter API key in Settings.")
+                anyhow!("No API key configured. Please set your OpenRouter or OpenAI API key in Settings.")
             })?;
 
-        let model = std::env::var("EVOLVE_MODEL").unwrap_or_else(|_| DEFAULT_MODEL.to_string());
+        let model = store_model
+            .or_else(|| std::env::var("EVOLVE_MODEL").ok())
+            .unwrap_or_else(|| DEFAULT_MODEL.to_string());
         info!("Using OpenRouter provider | Model: {}", model);
         Arc::new(OpenAIProvider::new(
             api_key,

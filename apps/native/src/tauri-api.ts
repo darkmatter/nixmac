@@ -17,11 +17,12 @@ export interface DarwinConfig {
 export interface DarwinPrefs {
   floatingFooter?: boolean;
   windowShadow?: boolean;
+  openrouterApiKey?: string;
   openaiApiKey?: string;
-  evolveProvider?: string;
-  evolveModel?: string;
   summaryProvider?: string;
   summaryModel?: string;
+  evolveProvider?: string;
+  evolveModel?: string;
 }
 
 export interface GitFileStatus {
