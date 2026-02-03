@@ -39,7 +39,6 @@ lib.mkIf (!(config.container.isBuilding or false)) {
   languages.nix.enable = true;
 
   # https://devenv.sh/basics/
-  # Rust unexpected_cfgs is needed to suppress some macro-related warnings because objc is ancient and uses old-style Rust.
   enterShell = ''
     echo "$(starship preset pure-preset)" > $DEVENV_STATE/starship.toml
     export STARSHIP_CONFIG=$DEVENV_STATE/starship.toml
@@ -47,7 +46,6 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     # Rust dev settings
     export RUST_BACKTRACE=1
     export RUST_LOG=info
-    export RUSTFLAGS="-A unexpected_cfgs"
 
     # For CodeLLDB
     export LLDB_BIN=$(which lldb)
