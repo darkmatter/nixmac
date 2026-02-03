@@ -118,6 +118,14 @@ pub struct UiPrefs {
     /// Model name for evolution.
     #[serde(rename = "evolveModel")]
     pub evolve_model: Option<String>,
+
+    /// Maximum iterations for evolution before giving up.
+    #[serde(rename = "maxIterations")]
+    pub max_iterations: Option<usize>,
+
+    /// Maximum build attempts for evolution before giving up.
+    #[serde(rename = "maxBuildAttempts")]
+    pub max_build_attempts: Option<usize>,
 }
 
 /// Result of a darwin-rebuild operation.

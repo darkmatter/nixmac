@@ -233,17 +233,41 @@ pub async fn git_restore_all(app: AppHandle) -> Result<serde_json::Value, String
 // Darwin/Nix Commands
 // =============================================================================
 
+/// Global flag to signal evolution cancellation.
+static EVOLVE_CANCELLED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Check if evolution has been cancelled.
+pub fn is_evolve_cancelled() -> bool {
+    EVOLVE_CANCELLED.load(std::sync::atomic::Ordering::SeqCst)
+}
+
+/// Reset the cancellation flag.
+fn reset_evolve_cancelled() {
+    EVOLVE_CANCELLED.store(false, std::sync::atomic::Ordering::SeqCst);
+}
+
 /// Uses AI (codex) to propose configuration changes based on a description.
 #[tauri::command]
 pub async fn darwin_evolve(
     app: AppHandle,
     description: String,
 ) -> Result<serde_json::Value, String> {
+    // Reset cancellation flag at the start of a new evolution
+    reset_evolve_cancelled();
+
     let dir = store::ensure_config_dir_exists(&app).map_err(|e| e.to_string())?;
     let evolution = darwin::start_evolve(&app, &dir, &description)
         .await
         .map_err(|e| e.to_string())?;
     Ok(serde_json::to_value(evolution).unwrap_or_default())
+}
+
+/// Cancel an in-progress evolution operation.
+#[tauri::command]
+pub async fn darwin_evolve_cancel() -> Result<serde_json::Value, String> {
+    EVOLVE_CANCELLED.store(true, std::sync::atomic::Ordering::SeqCst);
+    log::info!("Evolution cancellation requested");
+    Ok(serde_json::json!({"ok": true, "message": "Cancellation requested"}))
 }
 
 /// Legacy non-streaming apply command. Returns immediately with a hint to use streaming.
@@ -542,6 +566,9 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
     let summary_provider = store::get_summary_provider(&app).map_err(|e| e.to_string())?;
     let summary_model = store::get_summary_model(&app).map_err(|e| e.to_string())?;
 
+    let max_iterations = Some(store::get_max_iterations(&app).unwrap_or(50));
+    let max_build_attempts = Some(store::get_max_build_attempts(&app).unwrap_or(5));
+
     Ok(types::UiPrefs {
         floating_footer,
         window_shadow,
@@ -552,6 +579,9 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
         evolve_model,
         summary_provider,
         summary_model,
+
+        max_iterations,
+        max_build_attempts,
     })
 }
 
@@ -584,6 +614,13 @@ pub async fn ui_set_prefs(
     }
     if let Some(summary_model) = prefs.get("summaryModel").and_then(|v| v.as_str()) {
         store::set_summary_model(&app, summary_model).map_err(|e| e.to_string())?;
+    }
+    if let Some(max_iterations) = prefs.get("maxIterations").and_then(|v| v.as_u64()) {
+        store::set_max_iterations(&app, max_iterations as usize).map_err(|e| e.to_string())?;
+    }
+    if let Some(max_build_attempts) = prefs.get("maxBuildAttempts").and_then(|v| v.as_u64()) {
+        store::set_max_build_attempts(&app, max_build_attempts as usize)
+            .map_err(|e| e.to_string())?;
     }
 
     Ok(serde_json::json!({"ok": true}))

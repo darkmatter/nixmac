@@ -23,6 +23,8 @@ export interface DarwinPrefs {
   summaryModel?: string;
   evolveProvider?: string;
   evolveModel?: string;
+  maxIterations?: number;
+  maxBuildAttempts?: number;
 }
 
 export interface GitFileStatus {
@@ -163,6 +165,7 @@ export const darwinAPI = {
   },
   darwin: {
     evolve: (description: string) => invoke("darwin_evolve", { description }),
+    evolveCancel: () => invoke("darwin_evolve_cancel"),
     apply: (hostOverride?: string) => invoke("darwin_apply", { hostOverride }),
     applyStreamStart: (hostOverride?: string) =>
       invoke("darwin_apply_stream_start", { hostOverride }),

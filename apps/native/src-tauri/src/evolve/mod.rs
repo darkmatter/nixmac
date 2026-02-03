@@ -18,7 +18,7 @@ use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
 use tools::{create_tools, execute_tool, ToolResult};
 
-use crate::{nix, store, types::EvolveEvent};
+use crate::{commands, nix, store, types::EvolveEvent};
 use messages::Message;
 use providers::{AiProvider, OllamaProvider, OpenAIProvider};
 
@@ -98,8 +98,8 @@ fn log_api_error(error: &str, messages: &[Message], prompt: &str, iteration: usi
 // Use OpenRouter with Claude for evolution - better reasoning without strict content policies
 const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
-const MAX_ITERATIONS: usize = 50;
-const MAX_BUILD_ATTEMPTS: usize = 5;
+const DEFAULT_MAX_ITERATIONS: usize = 50;
+const DEFAULT_MAX_BUILD_ATTEMPTS: usize = 5;
 const SYSTEM_PROMPT: &str = include_str!("../../prompts/system.md");
 const EVOLVE_EVENT_CHANNEL: &str = "darwin:evolve:event";
 
@@ -211,6 +211,15 @@ pub async fn generate_evolution(
         EvolveEvent::info(start_time, None, &format!("Target host: {}", host_attr)),
     );
 
+    // Read configurable limits from store
+    let max_iterations = store::get_max_iterations(app).unwrap_or(DEFAULT_MAX_ITERATIONS);
+    let max_build_attempts =
+        store::get_max_build_attempts(app).unwrap_or(DEFAULT_MAX_BUILD_ATTEMPTS);
+    info!(
+        "Limits: max_iterations={}, max_build_attempts={}",
+        max_iterations, max_build_attempts
+    );
+
     let tools = create_tools();
     let mut evolution = Evolution::new(prompt);
     let mut iteration: usize = 0;
@@ -237,6 +246,16 @@ pub async fn generate_evolution(
 
     // Agentic loop - let the model use tools until done AND build passes
     loop {
+        // Check for cancellation at the start of each iteration
+        if commands::is_evolve_cancelled() {
+            warn!("⚠️ Evolution cancelled by user");
+            emit_evolve_event(
+                app,
+                EvolveEvent::error(start_time, Some(iteration), "Evolution cancelled by user"),
+            );
+            return Err(anyhow!("Evolution cancelled by user"));
+        }
+
         iteration += 1;
         info!("────────────────────────────────────────────────────────────────");
         info!(
@@ -244,7 +263,7 @@ pub async fn generate_evolution(
             iteration,
             messages.len(),
             build_attempts,
-            MAX_BUILD_ATTEMPTS
+            max_build_attempts
         );
         info!("────────────────────────────────────────────────────────────────");
 
@@ -460,34 +479,41 @@ pub async fn generate_evolution(
         }
 
         // Safety limits
-        if iteration > MAX_ITERATIONS {
+        if iteration > max_iterations {
             warn!(
                 "⚠️ Evolution exceeded maximum iterations ({}) - aborting",
-                MAX_ITERATIONS
-            );
-            emit_evolve_event(
-                app,
-                EvolveEvent::error(start_time, Some(iteration), "Maximum iterations exceeded"),
-            );
-            return Err(anyhow!("Evolution exceeded maximum iterations"));
-        }
-
-        if build_attempts >= MAX_BUILD_ATTEMPTS {
-            warn!(
-                "⚠️ Evolution exceeded maximum build attempts ({}) - aborting",
-                MAX_BUILD_ATTEMPTS
+                max_iterations
             );
             emit_evolve_event(
                 app,
                 EvolveEvent::error(
                     start_time,
                     Some(iteration),
-                    &format!("Failed after {} build attempts", MAX_BUILD_ATTEMPTS),
+                    &format!("Maximum iterations exceeded ({})", max_iterations),
+                ),
+            );
+            return Err(anyhow!(
+                "Evolution exceeded maximum iterations ({})",
+                max_iterations
+            ));
+        }
+
+        if build_attempts >= max_build_attempts {
+            warn!(
+                "⚠️ Evolution exceeded maximum build attempts ({}) - aborting",
+                max_build_attempts
+            );
+            emit_evolve_event(
+                app,
+                EvolveEvent::error(
+                    start_time,
+                    Some(iteration),
+                    &format!("Failed after {} build attempts", max_build_attempts),
                 ),
             );
             return Err(anyhow!(
                 "Failed to produce a valid configuration after {} build attempts",
-                MAX_BUILD_ATTEMPTS
+                max_build_attempts
             ));
         }
     }
@@ -649,7 +675,7 @@ fn process_tool_result(
                 *build_attempts += 1;
                 warn!(
                     "❌ BUILD CHECK FAILED (attempt {}/{})",
-                    build_attempts, MAX_BUILD_ATTEMPTS
+                    build_attempts, DEFAULT_MAX_BUILD_ATTEMPTS
                 );
                 for line in output.lines().take(20) {
                     warn!("   │ {}", line);
