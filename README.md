@@ -72,6 +72,14 @@ export SOPS_AGE_KEY={your_sops_key} devenv up
 or add `your_sops_key` to `~/.config/sops/age/keys.txt`
 Key doesn't have to be formatted a certain way (just the key on its own line somewhere)
 
+**Optional: Disable Mac Permissions Checks**
+
+The frontend will do a permissions check and block you if you aren't running with all permissions. For full disk access, this is problematic because you may not have installed the application such that it is available in System Settings. You can disable the permissions check with:
+
+```sh
+export VITE_NIXMAC_SKIP_PERMISSIONS=true
+```
+
 ## AI Setup
 
 We have a pluggable "provider" design for AI models. Currently we have the following implementations:
