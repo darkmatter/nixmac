@@ -18,6 +18,7 @@ import { useEvolve } from "@/hooks/use-evolve";
 import { useApply } from "@/hooks/use-apply";
 import { useCommit } from "@/hooks/use-commit";
 import { useSummary } from "@/hooks/use-summary";
+import { darwinAPI } from "@/tauri-api";
 import { ChatInput } from "../chat-input";
 import { Diff } from "../diff";
 
@@ -122,6 +123,14 @@ export function EvolvingStep() {
   const { handleCancel } = useCommit();
   const { checkAndFetchSummary } = useSummary();
 
+  const handleStopEvolution = async () => {
+    try {
+      await darwinAPI.darwin.evolveCancel();
+    } catch (e) {
+      console.error("Failed to cancel evolution:", e);
+    }
+  };
+
   const changedFiles = gitStatus?.files || [];
   const hasUnstagedChanges = gitStatus?.hasUnstagedChanges ?? false;
 
@@ -163,6 +172,7 @@ export function EvolvingStep() {
           className="rounded-lg border border-border bg-muted/20"
           events={evolveEvents}
           isGenerating={isGenerating}
+          onStop={handleStopEvolution}
         />
       </div>
     );
