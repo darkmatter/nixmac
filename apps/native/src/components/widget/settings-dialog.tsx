@@ -121,6 +121,8 @@ export function SettingsDialog() {
       summaryModel: "openai/gpt-4o-mini",
       evolveProvider: "openai",
       evolveModel: "anthropic/claude-sonnet-4",
+      maxIterations: 50,
+      maxBuildAttempts: 5,
     },
   });
 
@@ -151,6 +153,8 @@ export function SettingsDialog() {
             "evolveModel",
             prefs.evolveModel ?? "anthropic/claude-sonnet-4",
           );
+          form.setFieldValue("maxIterations", prefs.maxIterations ?? 50);
+          form.setFieldValue("maxBuildAttempts", prefs.maxBuildAttempts ?? 5);
 
           if (prefs.openrouterApiKey) {
             setOpenrouterKeyStatus("valid");
@@ -298,13 +302,23 @@ export function SettingsDialog() {
                         {(summaryProviderField) => (
                           <form.Field name="summaryModel">
                             {(summaryModelField) => (
-                              <AiModelsTab
-                                evolveModelField={evolveModelField}
-                                evolveProviderField={evolveProviderField}
-                                form={form}
-                                summaryModelField={summaryModelField}
-                                summaryProviderField={summaryProviderField}
-                              />
+                              <form.Field name="maxIterations">
+                                {(maxIterationsField) => (
+                                  <form.Field name="maxBuildAttempts">
+                                    {(maxBuildAttemptsField) => (
+                                      <AiModelsTab
+                                        evolveModelField={evolveModelField}
+                                        evolveProviderField={evolveProviderField}
+                                        form={form}
+                                        summaryModelField={summaryModelField}
+                                        summaryProviderField={summaryProviderField}
+                                        maxIterationsField={maxIterationsField}
+                                        maxBuildAttemptsField={maxBuildAttemptsField}
+                                      />
+                                    )}
+                                  </form.Field>
+                                )}
+                              </form.Field>
                             )}
                           </form.Field>
                         )}
