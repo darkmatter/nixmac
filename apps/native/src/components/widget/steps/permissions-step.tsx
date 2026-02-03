@@ -8,13 +8,15 @@ import { Shield, Check, X, AlertCircle, Loader2 } from "lucide-react";
 import { useState, useCallback, useEffect } from "react";
 
 /**
- * Check FDA permission using the native plugin and update the permissions state
+ * Check FDA permission using the native plugin and update the permissions state.
+ * For local development, set VITE_NIXMAC_SKIP_PERMISSIONS=true to skip the FDA check
+ * and assume Full Disk Access is granted.
  */
-async function checkAndUpdateFDAPermission(
-  permissions: Permission[],
-): Promise<Permission[]> {
+async function checkAndUpdateFDAPermission(permissions: Permission[]): Promise<Permission[]> {
   try {
-    const fdaGranted = await darwinAPI.permissions.checkFullDiskAccess();
+    // For local development: allow skipping FDA check via env var
+    const skipFDA = import.meta.env.VITE_NIXMAC_SKIP_PERMISSIONS === "true";
+    const fdaGranted = skipFDA || (await darwinAPI.permissions.checkFullDiskAccess());
     return permissions.map((p) =>
       p.id === "full-disk"
         ? {
@@ -35,9 +37,7 @@ async function checkAndUpdateFDAPermission(
  */
 export function PermissionsStep() {
   const permissionsState = useWidgetStore((state) => state.permissionsState);
-  const setPermissionsState = useWidgetStore(
-    (state) => state.setPermissionsState,
-  );
+  const setPermissionsState = useWidgetStore((state) => state.setPermissionsState);
   const [isLoading, setIsLoading] = useState<string | null>(null);
 
   // Refresh permissions when the component mounts
@@ -46,9 +46,7 @@ export function PermissionsStep() {
       try {
         const state = await darwinAPI.permissions.checkAll();
         // Use the native plugin for accurate FDA check
-        const updatedPermissions = await checkAndUpdateFDAPermission(
-          state.permissions,
-        );
+        const updatedPermissions = await checkAndUpdateFDAPermission(state.permissions);
         const allRequiredGranted = updatedPermissions
           .filter((p) => p.required)
           .every((p) => p.status === "granted");
@@ -73,19 +71,11 @@ export function PermissionsStep() {
           await darwinAPI.permissions.requestFullDiskAccess();
           // Wait a bit for user to potentially grant access, then re-check
           await new Promise((resolve) => setTimeout(resolve, 1000));
-          const fdaGranted = await darwinAPI.permissions.checkFullDiskAccess();
+          const updatedPermissions = await checkAndUpdateFDAPermission(
+            permissionsState?.permissions ?? [],
+          );
 
           if (permissionsState) {
-            const updatedPermissions = permissionsState.permissions.map((p) =>
-              p.id === "full-disk"
-                ? {
-                    ...p,
-                    status: (fdaGranted
-                      ? "granted"
-                      : "denied") as PermissionStatus,
-                  }
-                : p,
-            );
             const allRequiredGranted = updatedPermissions
               .filter((p) => p.required)
               .every((p) => p.status === "granted");
@@ -98,8 +88,7 @@ export function PermissionsStep() {
           }
         } else {
           // For other permissions, use the backend
-          const updatedPermission =
-            await darwinAPI.permissions.request(permissionId);
+          const updatedPermission = await darwinAPI.permissions.request(permissionId);
 
           // Update the permission in the state
           if (permissionsState) {
@@ -131,9 +120,7 @@ export function PermissionsStep() {
     try {
       const state = await darwinAPI.permissions.checkAll();
       // Use the native plugin for accurate FDA check
-      const updatedPermissions = await checkAndUpdateFDAPermission(
-        state.permissions,
-      );
+      const updatedPermissions = await checkAndUpdateFDAPermission(state.permissions);
       const allRequiredGranted = updatedPermissions
         .filter((p) => p.required)
         .every((p) => p.status === "granted");
@@ -160,9 +147,7 @@ export function PermissionsStep() {
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Shield className="h-6 w-6 text-primary" />
           </div>
-          <h2 className="font-semibold text-foreground text-lg">
-            System Permissions
-          </h2>
+          <h2 className="font-semibold text-foreground text-lg">System Permissions</h2>
           <p className="mt-1 text-muted-foreground text-sm">
             Grant the following permissions to continue
           </p>
@@ -190,9 +175,7 @@ export function PermissionsStep() {
             onClick={handleRefreshAll}
             disabled={isLoading === "all"}
           >
-            {isLoading === "all" ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
+            {isLoading === "all" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Refresh
           </Button>
           <p className="text-muted-foreground text-sm">
@@ -212,11 +195,7 @@ interface PermissionCardProps {
   onRequest: () => void;
 }
 
-function PermissionCard({
-  permission,
-  isLoading,
-  onRequest,
-}: PermissionCardProps) {
+function PermissionCard({ permission, isLoading, onRequest }: PermissionCardProps) {
   const actionLabel = getActionLabel(permission.status);
   const isGranted = permission.status === "granted";
 
@@ -225,9 +204,7 @@ function PermissionCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex flex-wrap items-center gap-2">
-            <h3 className="font-medium text-foreground text-sm">
-              {permission.name}
-            </h3>
+            <h3 className="font-medium text-foreground text-sm">{permission.name}</h3>
             {permission.required && (
               <span className="rounded-md bg-primary/10 px-2 py-0.5 font-medium text-primary text-xs">
                 Required
@@ -235,14 +212,10 @@ function PermissionCard({
             )}
             <PermissionStatusBadge status={permission.status} />
           </div>
-          <p className="text-muted-foreground text-sm">
-            {permission.description}
-          </p>
+          <p className="text-muted-foreground text-sm">{permission.description}</p>
           {permission.instructions && (
             <div className="mt-2 rounded-md border border-border bg-secondary/50 p-2">
-              <p className="font-mono text-muted-foreground text-xs">
-                {permission.instructions}
-              </p>
+              <p className="font-mono text-muted-foreground text-xs">{permission.instructions}</p>
             </div>
           )}
         </div>
@@ -259,9 +232,7 @@ function PermissionCard({
                   : "outline"
             }
           >
-            {isLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
+            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             {actionLabel}
           </Button>
         </div>
@@ -272,8 +243,7 @@ function PermissionCard({
 
 function PermissionStatusBadge({ status }: { status: PermissionStatus }) {
   const styles: Record<PermissionStatus, string> = {
-    granted:
-      "bg-console-success/10 text-console-success border-console-success/20",
+    granted: "bg-console-success/10 text-console-success border-console-success/20",
     denied: "bg-console-error/10 text-console-error border-console-error/20",
     pending: "bg-secondary text-muted-foreground border-border",
     unknown: "bg-secondary text-muted-foreground border-border",
