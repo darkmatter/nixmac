@@ -5,6 +5,10 @@ description = "Nixmac - macOS nix-darwin configuration manager"
 authors = ["you"]
 edition = "2021"
 
+[lints.rust]
+warnings = "deny"
+unexpected_cfgs = "allow"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
