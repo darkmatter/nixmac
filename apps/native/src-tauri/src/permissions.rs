@@ -155,6 +155,13 @@ fn check_folder_access(path: &PathBuf) -> PermissionStatus {
 /// This is done by trying to access restricted system files/folders
 /// Note: This check is imperfect - the definitive check happens via JS plugin
 fn check_full_disk_access() -> PermissionStatus {
+    // For local development with the frontend, set VITE_NIXMAC_SKIP_PERMISSIONS=true to skip this check
+    // and assume Full Disk Access is granted. not be formally installed such that the setting is available.
+    if std::env::var("VITE_NIXMAC_SKIP_PERMISSIONS").is_ok() {
+        debug!("VITE_NIXMAC_SKIP_PERMISSIONS is set, assuming Full Disk Access granted");
+        return PermissionStatus::Granted;
+    }
+
     // Try to access the TCC database (requires FDA)
     let tcc_path = PathBuf::from("/Library/Application Support/com.apple.TCC/TCC.db");
 
