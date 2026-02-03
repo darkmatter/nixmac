@@ -58,6 +58,7 @@ enum RebuildPhase {
     Downloading,
     Building,
     Activating,
+    #[allow(dead_code)]
     Complete,
     Error,
 }

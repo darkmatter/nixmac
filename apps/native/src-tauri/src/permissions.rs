@@ -351,20 +351,9 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
     }
 }
 
-/// Check if a specific permission is granted
-pub fn is_permission_granted(permission_id: &str) -> bool {
-    match permission_id {
-        "desktop" => check_desktop_access() == PermissionStatus::Granted,
-        "documents" => check_documents_access() == PermissionStatus::Granted,
-        "admin" => check_admin_privileges() == PermissionStatus::Granted,
-        "full-disk" => check_full_disk_access() == PermissionStatus::Granted,
-        _ => false,
-    }
-}
-
 /// Check if all required permissions are granted
 pub fn all_required_permissions_granted() -> bool {
-    let state = check_all_permissions();
+    let state: PermissionsState = check_all_permissions();
     state.all_required_granted
 }
 

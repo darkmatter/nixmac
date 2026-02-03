@@ -40,10 +40,7 @@ pub struct ConfigChangedEvent {
 
 /// Starts the config watcher for the given directory.
 /// If a watcher is already running, it will be stopped first.
-pub fn start_watching<R: Runtime>(app: AppHandle<R>, dir: String)
-where
-    R: 'static,
-{
+pub fn start_watching<R: Runtime + 'static>(app: AppHandle<R>, dir: String) {
     // Stop any existing watcher
     stop_watching();
 
@@ -75,7 +72,7 @@ where
             if let Some(ref dir) = current_dir {
                 // Log every 20 ticks (~10 seconds) for debugging
                 tick_count += 1;
-                if tick_count % 20 == 0 {
+                if tick_count.is_multiple_of(20) {
                     watcher_log!("Watcher tick {} - watching dir: {}", tick_count, dir);
                 }
 
@@ -109,10 +106,8 @@ where
                         watcher_log!("Warning: main window not found, cannot emit event");
                     }
                 }
-            } else {
-                if tick_count % 20 == 0 {
-                    watcher_log!("Warning: No watch directory set");
-                }
+            } else if tick_count.is_multiple_of(20) {
+                watcher_log!("Warning: No watch directory set");
             }
 
             std::thread::sleep(Duration::from_millis(POLL_INTERVAL_MS));
