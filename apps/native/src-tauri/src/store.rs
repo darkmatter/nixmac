@@ -217,25 +217,6 @@ pub fn set_openai_api_key<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<(
     Ok(())
 }
 
-/// Gets the appropriate API key based on provider.
-/// For "openai" provider, prefers OpenRouter key, falls back to OpenAI key.
-/// For "ollama" provider, returns None (no key needed).
-pub fn get_api_key_for_provider<R: Runtime>(
-    app: &AppHandle<R>,
-    provider: &str,
-) -> Result<Option<String>> {
-    match provider {
-        "ollama" => Ok(None),
-        "openai" | _ => {
-            // Try OpenRouter key first, then fall back to OpenAI key
-            if let Some(key) = get_openrouter_api_key(app)? {
-                return Ok(Some(key));
-            }
-            get_openai_api_key(app)
-        }
-    }
-}
-
 fn get_string_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<String>> {
     let store = get_store(app)?;
     if let Some(val) = store.get(key) {

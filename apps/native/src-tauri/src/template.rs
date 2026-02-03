@@ -1,3 +1,4 @@
+#![allow(dead_code)] // since we don't necessarily use all templating capabilities yet
 //! Tera-based templating system for Nix configuration files.
 //!
 //! This module provides a flexible templating system that can process
@@ -132,42 +133,42 @@ impl TemplateContext {
     }
 
     fn insert_value_into_context(&self, ctx: &mut Context, key: &str, value: &ContextValue) {
+        fn context_value_to_json(value: &ContextValue) -> serde_json::Value {
+            match value {
+                ContextValue::String(s) => serde_json::Value::String(s.clone()),
+                ContextValue::Bool(b) => serde_json::Value::Bool(*b),
+                ContextValue::Int(i) => serde_json::Value::Number((*i).into()),
+                ContextValue::Float(f) => serde_json::Number::from_f64(*f)
+                    .map(serde_json::Value::Number)
+                    .unwrap_or(serde_json::Value::Null),
+                ContextValue::List(list) => {
+                    serde_json::Value::Array(list.iter().map(context_value_to_json).collect())
+                }
+                ContextValue::Map(map) => {
+                    let obj: serde_json::Map<_, _> = map
+                        .iter()
+                        .map(|(k, v)| (k.clone(), context_value_to_json(v)))
+                        .collect();
+                    serde_json::Value::Object(obj)
+                }
+            }
+        }
+
         match value {
             ContextValue::String(s) => ctx.insert(key, s),
             ContextValue::Bool(b) => ctx.insert(key, b),
             ContextValue::Int(i) => ctx.insert(key, i),
             ContextValue::Float(f) => ctx.insert(key, f),
             ContextValue::List(list) => {
-                let values: Vec<_> = list.iter().map(|v| self.context_value_to_json(v)).collect();
+                let values: Vec<_> = list.iter().map(context_value_to_json).collect();
                 ctx.insert(key, &values);
             }
             ContextValue::Map(map) => {
                 let values: HashMap<_, _> = map
                     .iter()
-                    .map(|(k, v)| (k.clone(), self.context_value_to_json(v)))
+                    .map(|(k, v)| (k.clone(), context_value_to_json(v)))
                     .collect();
                 ctx.insert(key, &values);
-            }
-        }
-    }
-
-    fn context_value_to_json(&self, value: &ContextValue) -> serde_json::Value {
-        match value {
-            ContextValue::String(s) => serde_json::Value::String(s.clone()),
-            ContextValue::Bool(b) => serde_json::Value::Bool(*b),
-            ContextValue::Int(i) => serde_json::Value::Number((*i).into()),
-            ContextValue::Float(f) => serde_json::Number::from_f64(*f)
-                .map(serde_json::Value::Number)
-                .unwrap_or(serde_json::Value::Null),
-            ContextValue::List(list) => serde_json::Value::Array(
-                list.iter().map(|v| self.context_value_to_json(v)).collect(),
-            ),
-            ContextValue::Map(map) => {
-                let obj: serde_json::Map<_, _> = map
-                    .iter()
-                    .map(|(k, v)| (k.clone(), self.context_value_to_json(v)))
-                    .collect();
-                serde_json::Value::Object(obj)
             }
         }
     }

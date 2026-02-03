@@ -11,7 +11,7 @@ use crate::{darwin, git, nix, peek, permissions, store, summarize, template, typ
 use std::fs;
 use std::path::Path;
 use std::process::Command;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
 
 // =============================================================================

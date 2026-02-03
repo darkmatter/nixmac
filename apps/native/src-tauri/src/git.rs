@@ -126,13 +126,13 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     // Compute derived state
     let has_unstaged_changes = files
         .iter()
-        .any(|f| f.working_tree.as_ref().map_or(false, |wt| wt != " "));
+        .any(|f| f.working_tree.as_ref().is_some_and(|wt| wt != " "));
 
     let cleanly_staged_count = files
         .iter()
         .filter(|f| {
             f.index.as_ref().is_some_and(|idx| idx != " " && idx != "?")
-                && f.working_tree.as_ref().map_or(true, |wt| wt == " ")
+                && f.working_tree.as_ref().is_none_or(|wt| wt == " ")
         })
         .count();
 

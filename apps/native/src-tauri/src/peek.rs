@@ -1,4 +1,5 @@
 #![allow(deprecated)]
+#![allow(dead_code)]
 //! Peek behavior for the widget.
 //!
 //! Shows a small icon in the bottom-right corner of the RIGHT-MOST monitor
@@ -303,10 +304,7 @@ pub fn unlock_and_hide() {
 }
 
 /// Starts the background monitoring thread for peek behavior.
-pub fn start_monitoring<R: Runtime>(app: AppHandle<R>)
-where
-    R: 'static,
-{
+pub fn start_monitoring<R: Runtime + 'static>(app: AppHandle<R>) {
     if MONITORING_ACTIVE.swap(true, Ordering::SeqCst) {
         peek_log!("⚠️ Monitoring already active, skipping start");
         return;
