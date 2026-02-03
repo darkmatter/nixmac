@@ -248,6 +248,44 @@ fn get_string_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<S
     Ok(None)
 }
 
+fn get_usize_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<usize>> {
+    let store = get_store(app)?;
+    if let Some(val) = store.get(key) {
+        if let Some(n) = val.as_u64() {
+            return Ok(Some(n as usize));
+        }
+    }
+    Ok(None)
+}
+
+// =============================================================================
+// Evolution Limits
+// =============================================================================
+
+/// Gets the maximum iterations for evolution (default: 50).
+pub fn get_max_iterations<R: Runtime>(app: &AppHandle<R>) -> Result<usize> {
+    Ok(get_usize_pref(app, "maxIterations")?.unwrap_or(50))
+}
+
+pub fn set_max_iterations<R: Runtime>(app: &AppHandle<R>, max: usize) -> Result<()> {
+    let store = get_store(app)?;
+    store.set("maxIterations", serde_json::json!(max));
+    store.save()?;
+    Ok(())
+}
+
+/// Gets the maximum build attempts for evolution (default: 5).
+pub fn get_max_build_attempts<R: Runtime>(app: &AppHandle<R>) -> Result<usize> {
+    Ok(get_usize_pref(app, "maxBuildAttempts")?.unwrap_or(5))
+}
+
+pub fn set_max_build_attempts<R: Runtime>(app: &AppHandle<R>, max: usize) -> Result<()> {
+    let store = get_store(app)?;
+    store.set("maxBuildAttempts", serde_json::json!(max));
+    store.save()?;
+    Ok(())
+}
+
 // =============================================================================
 // Model Cache
 // =============================================================================

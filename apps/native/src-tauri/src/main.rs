@@ -62,6 +62,7 @@ fn main() {
             commands::git_restore_all,
             // Darwin/Nix
             commands::darwin_evolve,
+            commands::darwin_evolve_cancel,
             commands::darwin_apply,
             commands::darwin_apply_stream_start,
             commands::darwin_apply_stream_cancel,

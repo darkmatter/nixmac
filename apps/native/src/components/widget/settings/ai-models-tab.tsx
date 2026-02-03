@@ -1,3 +1,4 @@
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -19,6 +20,10 @@ interface AiModelsTabProps {
   // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
   summaryModelField: AnyFieldApi;
   // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
+  maxIterationsField: AnyFieldApi;
+  // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
+  maxBuildAttemptsField: AnyFieldApi;
+  // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
   form: any;
 }
 
@@ -27,6 +32,8 @@ export function AiModelsTab({
   evolveModelField,
   summaryProviderField,
   summaryModelField,
+  maxIterationsField,
+  maxBuildAttemptsField,
   form,
 }: AiModelsTabProps) {
   return (
@@ -168,6 +175,64 @@ export function AiModelsTab({
                     />
                   )}
                 </form.Subscribe>
+              </div>
+            </div>
+          </div>
+
+          {/* Evolution Limits */}
+          <div className="space-y-4 pt-4 border-t border-border">
+            <h3 className="font-medium text-sm">Evolution Limits</h3>
+            <p className="text-muted-foreground text-xs">
+              Control how long the AI will try before giving up
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label
+                  className="text-xs font-medium text-muted-foreground"
+                  htmlFor="maxIterations"
+                >
+                  Max Iterations
+                </label>
+                <Input
+                  id="maxIterations"
+                  type="number"
+                  min={10}
+                  max={200}
+                  value={maxIterationsField.state.value}
+                  onChange={async (e) => {
+                    const value = Number.parseInt(e.target.value, 10) || 50;
+                    maxIterationsField.handleChange(value);
+                    await darwinAPI.ui.setPrefs({ maxIterations: value });
+                  }}
+                  onBlur={maxIterationsField.handleBlur}
+                />
+                <p className="text-muted-foreground text-xs">
+                  API calls before stopping (default: 50)
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label
+                  className="text-xs font-medium text-muted-foreground"
+                  htmlFor="maxBuildAttempts"
+                >
+                  Max Build Attempts
+                </label>
+                <Input
+                  id="maxBuildAttempts"
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={maxBuildAttemptsField.state.value}
+                  onChange={async (e) => {
+                    const value = Number.parseInt(e.target.value, 10) || 5;
+                    maxBuildAttemptsField.handleChange(value);
+                    await darwinAPI.ui.setPrefs({ maxBuildAttempts: value });
+                  }}
+                  onBlur={maxBuildAttemptsField.handleBlur}
+                />
+                <p className="text-muted-foreground text-xs">
+                  Failed builds before stopping (default: 5)
+                </p>
               </div>
             </div>
           </div>

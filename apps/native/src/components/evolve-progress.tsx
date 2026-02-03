@@ -15,6 +15,7 @@ import {
   Play,
   Repeat,
   Send,
+  Square,
   XCircle,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -29,6 +30,7 @@ interface EvolveProgressProps {
   events: EvolveEvent[];
   isGenerating: boolean;
   className?: string;
+  onStop?: () => void;
 }
 
 interface EventItemProps {
@@ -226,6 +228,7 @@ export function EvolveProgress({
   events,
   isGenerating,
   className,
+  onStop,
 }: EvolveProgressProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
@@ -269,9 +272,21 @@ export function EvolveProgress({
             {isGenerating ? "Evolving..." : "Evolution Complete"}
           </span>
         </div>
-        <span className="text-muted-foreground text-xs">
-          {events.length} event{events.length !== 1 ? "s" : ""}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground text-xs">
+            {events.length} event{events.length !== 1 ? "s" : ""}
+          </span>
+          {isGenerating && onStop && (
+            <button
+              className="flex items-center gap-1 rounded-md bg-red-500/20 px-2 py-1 text-red-400 text-xs transition-colors hover:bg-red-500/30"
+              onClick={onStop}
+              type="button"
+            >
+              <Square className="h-3 w-3 fill-current" />
+              Stop
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Events List */}
