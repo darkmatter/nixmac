@@ -282,8 +282,8 @@ pub async fn generate_evolution(
         let response = match response_result {
             Ok(res) => res,
             Err(e) => {
-                let error_str = e.to_string();
-                error!("AI API error: {}", error_str);
+                let error_str = format!("{:#}", e);
+                error!("AI API error:\n{}", error_str);
                 log_api_error(&error_str, &messages, prompt, iteration);
                 emit_evolve_event(
                     app,
