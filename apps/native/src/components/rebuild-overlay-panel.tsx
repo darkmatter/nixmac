@@ -10,34 +10,15 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useRef, useEffect } from "react";
-
-export type ErrorType =
-  | "infinite_recursion"
-  | "evaluation_error"
-  | "build_error"
-  | "full_disk_access"
-  | "generic_error";
-
-export interface RebuildLine {
-  id: number;
-  text: string;
-  type: "stdout" | "stderr" | "info";
-}
-
-interface RebuildOverlayPanelProps {
-  isRunning: boolean;
-  lines: RebuildLine[];
-  rawLines?: string[];
-  success?: boolean;
-  errorType?: ErrorType;
-  errorMessage?: string;
-  onRollback: () => void;
-  onDismiss: () => void;
-  onCancel?: () => void;
-}
+import { useRebuild } from "@/hooks/use-rebuild";
+import {
+  useWidgetStore,
+  type RebuildLine,
+  type RebuildErrorType,
+} from "@/stores/widget-store";
 
 /** Get a user-friendly title for the error type */
-function getErrorTitle(errorType: ErrorType | undefined): string {
+function getErrorTitle(errorType: RebuildErrorType | undefined): string {
   switch (errorType) {
     case "infinite_recursion":
       return "Infinite Recursion Detected";
@@ -53,7 +34,7 @@ function getErrorTitle(errorType: ErrorType | undefined): string {
 }
 
 /** Get helpful suggestion text for the error type */
-function getErrorSuggestion(errorType: ErrorType | undefined): string {
+function getErrorSuggestion(errorType: RebuildErrorType | undefined): string {
   switch (errorType) {
     case "infinite_recursion":
       return "Your configuration has a circular dependency. Rolling back will restore your previous working configuration.";
@@ -172,21 +153,43 @@ function LoaderCore({
             <motion.div
               animate={{ opacity, y }}
               className="absolute right-0 left-0 flex items-center gap-3 px-2"
-              initial={{ opacity: 0, y }}
+              initial={{ opacity: 0, y: y + 8 }}
               key={loadingState.id}
-              transition={{ duration: 0.3 }}
+              transition={{
+                y: {
+                  type: "spring",
+                  stiffness: 120,
+                  damping: 20,
+                  mass: 1,
+                },
+                opacity: {
+                  duration: 0.4,
+                  ease: [0.4, 0, 0.2, 1],
+                },
+              }}
             >
-              <div className="shrink-0">
+              <motion.div
+                className="shrink-0"
+                initial={false}
+                animate={{
+                  scale: isMostRecentlyCompleted ? 1.15 : 1,
+                }}
+                transition={{
+                  type: "spring",
+                  stiffness: 200,
+                  damping: 15,
+                }}
+              >
                 {isCompleted ? (
                   <CheckFilled className={checkClass} />
                 ) : (
                   <CheckIcon className={checkClass} />
                 )}
-              </div>
+              </motion.div>
               <span
                 className={cn(
                   textClass,
-                  "block overflow-hidden text-ellipsis whitespace-nowrap text-sm font-normal",
+                  "block overflow-hidden text-ellipsis whitespace-nowrap text-sm font-normal transition-colors duration-500",
                 )}
               >
                 {loadingState.text}
@@ -206,9 +209,20 @@ function LoaderCore({
             <motion.div
               animate={{ opacity, y }}
               className="absolute right-0 left-0 flex items-center gap-3 px-2"
-              initial={{ opacity: 0, y }}
+              initial={{ opacity: 0, y: y + 8 }}
               key={`skeleton-${width}`}
-              transition={{ duration: 0.3 }}
+              transition={{
+                y: {
+                  type: "spring",
+                  stiffness: 120,
+                  damping: 20,
+                  mass: 1,
+                },
+                opacity: {
+                  duration: 0.4,
+                  ease: [0.4, 0, 0.2, 1],
+                },
+              }}
             >
               <div className="shrink-0">
                 <CheckIcon className="text-white/20" />
@@ -256,17 +270,11 @@ function RawConsoleOutput({ lines }: { lines: string[] }) {
   );
 }
 
-export function RebuildOverlayPanel({
-  isRunning,
-  lines,
-  rawLines = [],
-  success,
-  errorType,
-  errorMessage,
-  onRollback,
-  onDismiss,
-  onCancel,
-}: RebuildOverlayPanelProps) {
+export function RebuildOverlayPanel() {
+  const { handleRollback, handleDismiss } = useRebuild();
+  const { isRunning, lines, rawLines, success, errorType, errorMessage } =
+    useWidgetStore((state) => state.rebuild);
+
   const [showRawOutput, setShowRawOutput] = useState(false);
   const [hasAutoShownConsole, setHasAutoShownConsole] = useState(false);
 
@@ -294,14 +302,22 @@ export function RebuildOverlayPanel({
     ? Math.max(0, displayLines.length - 1)
     : displayLines.length;
 
+  // Only show when rebuild is running or has completed
+  const isVisible = isRunning || success !== undefined;
+  if (!isVisible) {
+    return null;
+  }
+
   return (
-    <div
-      className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-white/5 p-6"
-      style={{
-        background:
-          "radial-gradient(ellipse at 50% 100%, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 50%, transparent 100%)",
-      }}
-    >
+    <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/95 backdrop-blur-sm">
+      <div className="h-full w-full max-h-[600px] max-w-[800px] p-5">
+        <div
+          className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-white/10 p-6"
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 100%, rgba(30, 30, 30, 0.98) 0%, rgba(20, 20, 20, 0.95) 50%, rgba(15, 15, 15, 0.92) 100%)",
+          }}
+        >
       {/* Header with toggle */}
       <div className="mb-4 flex items-center justify-end">
         <div className="flex items-center gap-2">
@@ -328,17 +344,15 @@ export function RebuildOverlayPanel({
               </>
             )}
           </Button>
-          {onCancel && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 px-3 text-xs text-white/60 hover:bg-white/10 hover:text-white"
-              onClick={onCancel}
-            >
-              <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
-              Back
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-3 text-xs text-white/60 hover:bg-white/10 hover:text-white"
+            onClick={handleDismiss}
+          >
+            <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
+            Back
+          </Button>
         </div>
       </div>
 
@@ -379,7 +393,7 @@ export function RebuildOverlayPanel({
               <div className="flex gap-3">
                 <Button
                   className="border-white/20 text-white/80 hover:bg-white/10"
-                  onClick={onDismiss}
+                  onClick={handleDismiss}
                   variant="outline"
                   size="sm"
                 >
@@ -388,7 +402,7 @@ export function RebuildOverlayPanel({
                 </Button>
                 <Button
                   className="bg-red-600 text-white hover:bg-red-700"
-                  onClick={onRollback}
+                  onClick={handleRollback}
                   size="sm"
                 >
                   <RotateCcw className="mr-2 h-4 w-4" />
@@ -439,7 +453,7 @@ export function RebuildOverlayPanel({
         >
           <Button
             className="border-white/20 text-white/80 hover:bg-white/10"
-            onClick={onDismiss}
+            onClick={handleDismiss}
             variant="outline"
             size="sm"
           >
@@ -448,6 +462,8 @@ export function RebuildOverlayPanel({
           </Button>
         </motion.div>
       )}
+        </div>
+      </div>
     </div>
   );
 }
