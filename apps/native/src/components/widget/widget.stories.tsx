@@ -4,11 +4,7 @@ import type React from "react";
 import { useEffect } from "react";
 import preview from "#storybook/preview";
 import { PermissionsScreen } from "@/components/permissions-screen";
-import type {
-  EvolveEvent,
-  GitStatus,
-  SummaryState,
-} from "@/stores/widget-store";
+import type { EvolveEvent, GitStatus, SummaryState } from "@/stores/widget-store";
 import { useWidgetStore } from "@/stores/widget-store";
 import { DarwinWidget } from "./widget";
 
@@ -91,8 +87,7 @@ const mockSummary: SummaryState = {
     },
     {
       title: "Rectangle App Added",
-      description:
-        "Installed Rectangle window manager via Homebrew for better window management.",
+      description: "Installed Rectangle window manager via Homebrew for better window management.",
     },
   ],
   instructions:
@@ -120,7 +115,7 @@ const mockEvolveEvents: EvolveEvent[] = [
   {
     eventType: "apiRequest",
     summary: "Querying AI model...",
-    raw: "Sending request to OpenAI API",
+    raw: "Sending request to AI provider",
     iteration: 1,
     timestampMs: 550,
   },
@@ -176,25 +171,16 @@ function StoryWidget({ storeState }: { storeState?: StoreState }) {
     const store = useWidgetStore.getState();
 
     // Set store state
-    if (storeState?.configDir !== undefined)
-      store.setConfigDir(storeState.configDir);
+    if (storeState?.configDir !== undefined) store.setConfigDir(storeState.configDir);
     if (storeState?.hosts !== undefined) store.setHosts(storeState.hosts);
     if (storeState?.host !== undefined) store.setHost(storeState.host);
-    if (storeState?.gitStatus !== undefined)
-      store.setGitStatus(storeState.gitStatus);
-    if (storeState?.evolvePrompt !== undefined)
-      store.setEvolvePrompt(storeState.evolvePrompt);
-    if (storeState?.commitMsg !== undefined)
-      store.setCommitMsg(storeState.commitMsg);
+    if (storeState?.gitStatus !== undefined) store.setGitStatus(storeState.gitStatus);
+    if (storeState?.evolvePrompt !== undefined) store.setEvolvePrompt(storeState.evolvePrompt);
+    if (storeState?.commitMsg !== undefined) store.setCommitMsg(storeState.commitMsg);
     if (storeState?.isProcessing !== undefined)
-      store.setProcessing(
-        storeState.isProcessing,
-        storeState.processingAction || null
-      );
-    if (storeState?.isGenerating !== undefined)
-      store.setGenerating(storeState.isGenerating);
-    if (storeState?.settingsOpen !== undefined)
-      store.setSettingsOpen(storeState.settingsOpen);
+      store.setProcessing(storeState.isProcessing, storeState.processingAction || null);
+    if (storeState?.isGenerating !== undefined) store.setGenerating(storeState.isGenerating);
+    if (storeState?.settingsOpen !== undefined) store.setSettingsOpen(storeState.settingsOpen);
     if (storeState?.error !== undefined) store.setError(storeState.error);
 
     if (storeState?.evolveEvents !== undefined) {
@@ -371,8 +357,7 @@ export const Applying = meta.story({
         gitStatus: mockGitStatus,
         isProcessing: true,
         processingAction: "apply",
-        consoleLogs:
-          "> Running darwin-rebuild switch...\nbuilding the system configuration...\n",
+        consoleLogs: "> Running darwin-rebuild switch...\nbuilding the system configuration...\n",
       }}
     />
   ),
@@ -437,8 +422,7 @@ export const Committing = meta.story({
         isProcessing: true,
         processingAction: "commit",
         summary: mockSummary,
-        consoleLogs:
-          '> Committing: "feat(darwin): add vim and configure git"\n',
+        consoleLogs: '> Committing: "feat(darwin): add vim and configure git"\n',
       }}
     />
   ),
