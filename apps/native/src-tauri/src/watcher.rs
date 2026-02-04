@@ -1,65 +1,66 @@
-//! Config directory watcher for detecting file changes.
+//! Git status watcher for detecting config changes.
 //!
-//! Uses git's native diff-index command for efficient change detection.
-//! This is extremely low-overhead as git uses file stat metadata rather
-//! than reading file contents.
+//! Polls git status at a configurable interval and emits events with GitStatus payload
+//! Only one watcher thread runs at a time. When `start_watching` is called:
+//! Restarting gives us an immediate poll when window is focused.
 
 use crate::git;
+use crate::types::GitStatus;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
-use tauri::{AppHandle, Emitter, Manager, Runtime};
+use tauri::{AppHandle, Emitter, Runtime};
 
-/// Polling interval for checking changes (milliseconds)
-const POLL_INTERVAL_MS: u64 = 500;
-
-/// Enable debug logging
-const DEBUG_LOGGING: bool = false;
-
-macro_rules! watcher_log {
-    ($($arg:tt)*) => {
-        if DEBUG_LOGGING {
-            eprintln!("[watcher] {}", format!($($arg)*));
-        }
-    };
-}
-
-// Track if watcher is active
+/// Set to `false` by `start_watching` to stop the old thread before starting a new one.
 static WATCHER_ACTIVE: AtomicBool = AtomicBool::new(false);
 
-// Store the config directory being watched
+/// The directory being watched. Stored globally so we can access it from the thread.
 static WATCH_DIR: Mutex<Option<String>> = Mutex::new(None);
 
-/// Event payload sent to frontend when config changes are detected
+/// Holds handle to current watcher so we can wait for it to stop on restart.
+static WATCHER_THREAD: Mutex<Option<std::thread::JoinHandle<()>>> = Mutex::new(None);
+
+/// Event payload sent to frontend when git status changes.
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ConfigChangedEvent {
-    /// Whether there are any uncommitted changes
-    pub has_changes: bool,
+pub struct GitStatusChangedEvent {
+    pub status: GitStatus,
 }
 
-/// Starts the config watcher for the given directory.
-/// If a watcher is already running, it will be stopped first.
-pub fn start_watching<R: Runtime + 'static>(app: AppHandle<R>, dir: String) {
-    // Stop any existing watcher
-    stop_watching();
+/// Starts the git status watcher for the given directory.
+///
+/// ## Parameters
+/// - `app_handle`: Tauri's app handle, used to emit events to the frontend
+/// - `dir`: The git repository directory to watch
+/// - `interval_ms`: How often to poll git status (in milliseconds)
+pub fn start_watching<R>(app_handle: AppHandle<R>, dir: String, interval_ms: u64)
+where
+    R: Runtime + 'static,
+{
+    // Step 1: Stop any existing watcher and wait for it to fully exit.
+    {
+        let mut thread_guard = WATCHER_THREAD.lock().unwrap();
+        if let Some(old_thread) = thread_guard.take() {
+            WATCHER_ACTIVE.store(false, Ordering::SeqCst);
+            let _ = old_thread.join();
+        }
+    }
 
-    // Store the directory to watch
+    // Step 2: Store the directory to watch.
     {
         let mut watch_dir = WATCH_DIR.lock().unwrap();
         *watch_dir = Some(dir.clone());
     }
 
+    // Step 3: Signal that a watcher is now active and spawn the new thread.
     WATCHER_ACTIVE.store(true, Ordering::SeqCst);
-    watcher_log!("Starting config watcher for: {}", dir);
-
-    std::thread::spawn(move || {
-        let mut last_has_changes: Option<bool> = None;
-        let mut tick_count: u64 = 0;
+    let new_thread = std::thread::spawn(move || {
+        // Track the last status JSON to detect changes (only emit when different)
+        let mut last_status_json: Option<String> = None;
 
         loop {
+            // Check if we should stop (set by a new call to start_watching)
             if !WATCHER_ACTIVE.load(Ordering::SeqCst) {
-                watcher_log!("Watcher stopped");
                 break;
             }
 
@@ -70,58 +71,36 @@ pub fn start_watching<R: Runtime + 'static>(app: AppHandle<R>, dir: String) {
             };
 
             if let Some(ref dir) = current_dir {
-                // Log every 20 ticks (~10 seconds) for debugging
-                tick_count += 1;
-                if tick_count.is_multiple_of(20) {
-                    watcher_log!("Watcher tick {} - watching dir: {}", tick_count, dir);
-                }
-
-                // Fast check using git diff-index
-                let has_changes = git::has_changes_fast(dir);
-
-                // Log on first tick to confirm watcher is working
-                if tick_count == 1 {
-                    watcher_log!("Initial check: dir={}, has_changes={}", dir, has_changes);
-                }
-
-                // Only emit if state changed
-                if last_has_changes != Some(has_changes) {
-                    watcher_log!(
-                        "State change detected: has_changes={} (was {:?}), dir={}",
-                        has_changes,
-                        last_has_changes,
-                        dir
-                    );
-
-                    last_has_changes = Some(has_changes);
-
-                    // Emit event to frontend
-                    if let Some(window) = app.get_webview_window("main") {
-                        let event = ConfigChangedEvent { has_changes };
-                        watcher_log!("Emitting config:changed event: {:?}", event);
-                        if let Err(e) = window.emit("config:changed", &event) {
-                            watcher_log!("Failed to emit config:changed event: {}", e);
+                // Get full git status and emit if changed
+                if let Ok(status) = git::status(dir) {
+                    if let Ok(status_json) = serde_json::to_string(&status) {
+                        if Some(&status_json) != last_status_json.as_ref() {
+                            let _ = app_handle
+                                .emit("git:status-changed", GitStatusChangedEvent { status });
+                            last_status_json = Some(status_json);
                         }
-                    } else {
-                        watcher_log!("Warning: main window not found, cannot emit event");
                     }
                 }
-            } else if tick_count.is_multiple_of(20) {
-                watcher_log!("Warning: No watch directory set");
             }
 
-            std::thread::sleep(Duration::from_millis(POLL_INTERVAL_MS));
+            // Check periodically (100ms) to break if restart / stop was requested
+            let sleep_until = std::time::Instant::now() + Duration::from_millis(interval_ms);
+            while std::time::Instant::now() < sleep_until {
+                if !WATCHER_ACTIVE.load(Ordering::SeqCst) {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(100));
+            }
         }
     });
+
+    // Step 4: Store the new thread's handle so restart can join() it
+    *WATCHER_THREAD.lock().unwrap() = Some(new_thread);
 }
 
 /// Stops the config watcher if running.
 pub fn stop_watching() {
-    if WATCHER_ACTIVE.swap(false, Ordering::SeqCst) {
-        watcher_log!("Stopping config watcher");
-    }
-
-    // Clear the watch directory
+    WATCHER_ACTIVE.store(false, Ordering::SeqCst);
     let mut watch_dir = WATCH_DIR.lock().unwrap();
     *watch_dir = None;
 }

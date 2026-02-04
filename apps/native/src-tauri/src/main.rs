@@ -181,6 +181,17 @@ fn main() {
                     .build()
                     .unwrap();
 
+            // set up watcher with interval based on focus
+            let handle_for_focus = handle.clone();
+            main_window.on_window_event(move |event| {
+                if let WindowEvent::Focused(focused) = event {
+                    if let Ok(config_dir) = store::get_config_dir(&handle_for_focus) {
+                        let interval_ms = if *focused { 2500 } else { 15000 };
+                        watcher::start_watching(handle_for_focus.clone(), config_dir, interval_ms);
+                    }
+                }
+            });
+
             // Keep window shadow for visual polish (shadow doesn't cause click issues, Acrylic did)
             let _ = main_window;
 
@@ -192,7 +203,7 @@ fn main() {
             // Start config watcher - monitors config directory for file changes
             // This emits config:changed events to the frontend when files are modified
             if let Ok(config_dir) = store::get_config_dir(handle) {
-                watcher::start_watching(handle.clone(), config_dir);
+                watcher::start_watching(handle.clone(), config_dir, 2500);
             }
 
             Ok(())
