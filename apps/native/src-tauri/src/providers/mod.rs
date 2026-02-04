@@ -10,6 +10,7 @@ use async_trait::async_trait;
 
 const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
 const DEFAULT_SUMMARY_MODEL: &str = "openai/gpt-4o-mini";
+const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 
 /// Trait for pluggable chat completion providers
 #[async_trait]
@@ -49,8 +50,11 @@ pub fn create_provider<R: Runtime>(
                 .or_else(|| std::env::var("SUMMARY_MODEL").ok())
                 .unwrap_or_else(|| "llama3.1".to_string());
 
-            let base_url = std::env::var("OLLAMA_API_BASE")
-                .unwrap_or_else(|_| "http://localhost:11434".to_string());
+            let base_url = app_handle
+                .and_then(|app| crate::store::get_ollama_api_base_url(app).ok())
+                .flatten()
+                .or_else(|| std::env::var("OLLAMA_API_BASE").ok())
+                .unwrap_or_else(|| DEFAULT_OLLAMA_API_BASE.to_string());
             Ok(Box::new(OllamaClient::new(&base_url, &model)))
         }
         _ => {

@@ -568,6 +568,8 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
 
     let max_iterations = Some(store::get_max_iterations(&app).unwrap_or(50));
     let max_build_attempts = Some(store::get_max_build_attempts(&app).unwrap_or(5));
+    let ollama_api_base_url: Option<String> =
+        store::get_ollama_api_base_url(&app).map_err(|e| e.to_string())?;
 
     Ok(types::UiPrefs {
         floating_footer,
@@ -582,6 +584,8 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
 
         max_iterations,
         max_build_attempts,
+
+        ollama_api_base_url,
     })
 }
 
@@ -621,6 +625,9 @@ pub async fn ui_set_prefs(
     if let Some(max_build_attempts) = prefs.get("maxBuildAttempts").and_then(|v| v.as_u64()) {
         store::set_max_build_attempts(&app, max_build_attempts as usize)
             .map_err(|e| e.to_string())?;
+    }
+    if let Some(ollama_api_base_url) = prefs.get("ollamaApiBaseUrl").and_then(|v| v.as_str()) {
+        store::set_ollama_api_base_url(&app, ollama_api_base_url).map_err(|e| e.to_string())?;
     }
 
     Ok(serde_json::json!({"ok": true}))
@@ -717,7 +724,7 @@ pub async fn preview_indicator_get_state() -> Result<peek::PreviewIndicatorState
 #[tauri::command]
 pub async fn watcher_start(app: AppHandle) -> Result<serde_json::Value, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(|e| e.to_string())?;
-    watcher::start_watching(app, dir);
+    watcher::start_watching(app, dir, 2500);
     Ok(serde_json::json!({"ok": true}))
 }
 

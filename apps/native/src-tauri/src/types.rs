@@ -103,6 +103,10 @@ pub struct UiPrefs {
     #[serde(rename = "openaiApiKey")]
     pub openai_api_key: Option<String>,
 
+    /// Ollama API base URL for local model access.
+    #[serde(rename = "ollamaApiBaseUrl")]
+    pub ollama_api_base_url: Option<String>,
+
     /// Provider for summarization (openai/ollama).
     #[serde(rename = "summaryProvider")]
     pub summary_provider: Option<String>,
@@ -361,7 +365,7 @@ impl EvolveEvent {
     pub fn api_request(start_time: i64, iter: usize) -> Self {
         Self::new(
             EvolveEventType::ApiRequest,
-            "Sending request to OpenAI API".to_string(),
+            "Sending request to AI provider".to_string(),
             "Querying AI model...".to_string(),
             Some(iter),
             start_time,
