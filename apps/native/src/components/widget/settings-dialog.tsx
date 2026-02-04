@@ -49,8 +49,7 @@ export function SettingsDialog() {
     setHosts,
   } = useWidgetStore();
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
-  const [openrouterKeyStatus, setOpenrouterKeyStatus] =
-    useState<ApiKeyStatus>("idle");
+  const [openrouterKeyStatus, setOpenrouterKeyStatus] = useState<ApiKeyStatus>("idle");
   const [openaiKeyStatus, setOpenaiKeyStatus] = useState<ApiKeyStatus>("idle");
   const openrouterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const openaiTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -111,12 +110,19 @@ export function SettingsDialog() {
     }
   };
 
+  const saveOllamaUrl = async (url: string) => {
+    if (url) {
+      await darwinAPI.ui.setPrefs({ ollamaApiBaseUrl: url });
+    }
+  };
+
   const form = useForm({
     defaultValues: {
       floatingFooter: true,
       windowShadow: false,
       openrouterApiKey: "",
       openaiApiKey: "",
+      ollamaApiBaseUrl: "",
       summaryProvider: "openai",
       summaryModel: "openai/gpt-4o-mini",
       evolveProvider: "openai",
@@ -137,22 +143,11 @@ export function SettingsDialog() {
           form.setFieldValue("windowShadow", prefs.windowShadow ?? false);
           form.setFieldValue("openrouterApiKey", prefs.openrouterApiKey ?? "");
           form.setFieldValue("openaiApiKey", prefs.openaiApiKey ?? "");
-          form.setFieldValue(
-            "summaryProvider",
-            prefs.summaryProvider ?? "openai",
-          );
-          form.setFieldValue(
-            "summaryModel",
-            prefs.summaryModel ?? "openai/gpt-4o-mini",
-          );
-          form.setFieldValue(
-            "evolveProvider",
-            prefs.evolveProvider ?? "openai",
-          );
-          form.setFieldValue(
-            "evolveModel",
-            prefs.evolveModel ?? "anthropic/claude-sonnet-4",
-          );
+          form.setFieldValue("ollamaApiBaseUrl", prefs.ollamaApiBaseUrl ?? "");
+          form.setFieldValue("summaryProvider", prefs.summaryProvider ?? "openai");
+          form.setFieldValue("summaryModel", prefs.summaryModel ?? "openai/gpt-4o-mini");
+          form.setFieldValue("evolveProvider", prefs.evolveProvider ?? "openai");
+          form.setFieldValue("evolveModel", prefs.evolveModel ?? "anthropic/claude-sonnet-4");
           form.setFieldValue("maxIterations", prefs.maxIterations ?? 50);
           form.setFieldValue("maxBuildAttempts", prefs.maxBuildAttempts ?? 5);
 
@@ -187,10 +182,7 @@ export function SettingsDialog() {
 
   return (
     <Suspense fallback={<div>loading...</div>}>
-      <div
-        className="fixed inset-0 z-[40] flex items-center justify-center"
-        data-tauri-no-drag
-      >
+      <div className="fixed inset-0 z-[40] flex items-center justify-center" data-tauri-no-drag>
         <button
           aria-label="Close settings"
           className="absolute inset-0 bg-black/40"
@@ -276,17 +268,23 @@ export function SettingsDialog() {
                 {(openrouterApiKeyField) => (
                   <form.Field name="openaiApiKey">
                     {(openaiApiKeyField) => (
-                      <ApiKeysTab
-                        openrouterApiKeyField={openrouterApiKeyField}
-                        openrouterKeyStatus={openrouterKeyStatus}
-                        verifyOpenrouterKey={verifyOpenrouterKey}
-                        openrouterTimeoutRef={openrouterTimeoutRef}
-                        openaiApiKeyField={openaiApiKeyField}
-                        openaiKeyStatus={openaiKeyStatus}
-                        verifyOpenaiKey={verifyOpenaiKey}
-                        openaiTimeoutRef={openaiTimeoutRef}
-                        form={form}
-                      />
+                      <form.Field name="ollamaApiBaseUrl">
+                        {(ollamaApiBaseUrlField) => (
+                          <ApiKeysTab
+                            openrouterApiKeyField={openrouterApiKeyField}
+                            openrouterKeyStatus={openrouterKeyStatus}
+                            verifyOpenrouterKey={verifyOpenrouterKey}
+                            openrouterTimeoutRef={openrouterTimeoutRef}
+                            openaiApiKeyField={openaiApiKeyField}
+                            openaiKeyStatus={openaiKeyStatus}
+                            verifyOpenaiKey={verifyOpenaiKey}
+                            openaiTimeoutRef={openaiTimeoutRef}
+                            ollamaApiBaseUrlField={ollamaApiBaseUrlField}
+                            onSaveOllamaUrl={saveOllamaUrl}
+                            form={form}
+                          />
+                        )}
+                      </form.Field>
                     )}
                   </form.Field>
                 )}
