@@ -15,6 +15,9 @@ interface ApiKeysTabProps {
   openaiKeyStatus: ApiKeyStatus;
   verifyOpenaiKey: (key: string) => Promise<void>;
   openaiTimeoutRef: React.MutableRefObject<NodeJS.Timeout | null>;
+  // Ollama
+  ollamaApiBaseUrlField: AnyFieldApi;
+  onSaveOllamaUrl: (url: string) => Promise<void>;
   // Form
   form: AnyFormApi;
 }
@@ -66,10 +69,7 @@ function ApiKeyInput({
             if (timeoutRef.current) {
               clearTimeout(timeoutRef.current);
             }
-            timeoutRef.current = setTimeout(
-              () => verifyKey(e.target.value),
-              500,
-            );
+            timeoutRef.current = setTimeout(() => verifyKey(e.target.value), 500);
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -108,13 +108,57 @@ function ApiKeyInput({
         </a>
       </p>
       {status === "invalid" && (
-        <p className="text-red-500 text-xs">
-          Invalid API key. Please check and try again.
-        </p>
+        <p className="text-red-500 text-xs">Invalid API key. Please check and try again.</p>
       )}
-      {status === "valid" && (
-        <p className="text-green-600 text-xs">API key verified and saved.</p>
-      )}
+      {status === "valid" && <p className="text-green-600 text-xs">API key verified and saved.</p>}
+    </div>
+  );
+}
+
+function UrlInput({
+  id,
+  label,
+  description,
+  placeholder,
+  field,
+  form,
+  onSave,
+}: {
+  id: string;
+  label: string;
+  description: string;
+  placeholder: string;
+  field: AnyFieldApi;
+  form: AnyFormApi;
+  onSave: (value: string) => Promise<void>;
+}) {
+  return (
+    <div className="space-y-2">
+      <label className="font-medium text-sm" htmlFor={id}>
+        {label}
+      </label>
+      <input
+        id={id}
+        className={cn(
+          "w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50",
+        )}
+        onBlur={(e) => {
+          field.handleBlur();
+          onSave(e.target.value);
+        }}
+        onChange={(e) => {
+          field.handleChange(e.target.value);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            form.handleSubmit();
+          }
+        }}
+        placeholder={placeholder}
+        type="text"
+        value={field.state.value}
+      />
+      <p className="text-muted-foreground text-xs">{description}</p>
     </div>
   );
 }
@@ -128,6 +172,8 @@ export function ApiKeysTab({
   openaiKeyStatus,
   verifyOpenaiKey,
   openaiTimeoutRef,
+  ollamaApiBaseUrlField,
+  onSaveOllamaUrl,
   form,
 }: ApiKeysTabProps) {
   return (
@@ -191,13 +237,36 @@ export function ApiKeysTab({
             />
           </div>
 
+          {/* Ollama API Base URL */}
+          <div className="rounded-lg border border-border p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-amber-500 to-orange-500">
+                <span className="font-bold text-white text-xs">OL</span>
+              </div>
+              <div>
+                <h3 className="font-medium text-sm">Ollama</h3>
+                <p className="text-muted-foreground text-xs">
+                  Local AI models running on your machine
+                </p>
+              </div>
+            </div>
+            <UrlInput
+              id="ollamaApiBaseUrl"
+              label="API Base URL"
+              description="The URL where your Ollama instance is running."
+              placeholder="http://localhost:11434"
+              field={ollamaApiBaseUrlField}
+              form={form}
+              onSave={onSaveOllamaUrl}
+            />
+          </div>
+
           {/* Info box */}
           <div className="rounded-lg bg-muted/50 p-3">
             <p className="text-muted-foreground text-xs">
-              <strong className="text-foreground">Tip:</strong> OpenRouter is
-              recommended as it provides access to multiple AI providers
-              (OpenAI, Anthropic, Google, etc.) through a single API key. If you
-              have both keys configured, OpenRouter will be used by default.
+              <strong className="text-foreground">Tip:</strong> OpenRouter is recommended as it
+              provides access to multiple AI providers (OpenAI, Anthropic, Google, etc.) through a
+              single API key. If you have both keys configured, OpenRouter will be used by default.
             </p>
           </div>
         </div>

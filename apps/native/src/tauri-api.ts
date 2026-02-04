@@ -25,6 +25,7 @@ export interface DarwinPrefs {
   evolveModel?: string;
   maxIterations?: number;
   maxBuildAttempts?: number;
+  ollamaApiBaseUrl?: string;
 }
 
 export interface GitFileStatus {
@@ -175,8 +176,7 @@ export const darwinAPI = {
     listHosts: () => invoke<string[]>("flake_list_hosts"),
     installedApps: () => invoke<unknown[]>("flake_installed_apps"),
     exists: () => invoke<boolean>("flake_exists"),
-    bootstrapDefault: (hostname: string) =>
-      invoke<void>("bootstrap_default_config", { hostname }),
+    bootstrapDefault: (hostname: string) => invoke<void>("bootstrap_default_config", { hostname }),
   },
   // Summarization with fast model
   summarize: {
@@ -189,8 +189,7 @@ export const darwinAPI = {
     setWindowShadow: (on: boolean) => invoke("ui_set_window_shadow", { on }),
   },
   models: {
-    getCached: (provider: string) =>
-      invoke<string[] | null>("get_cached_models", { provider }),
+    getCached: (provider: string) => invoke<string[] | null>("get_cached_models", { provider }),
     setCached: (provider: string, models: string[]) =>
       invoke("set_cached_models", { provider, models }),
   },
@@ -198,10 +197,8 @@ export const darwinAPI = {
   previewIndicator: {
     show: () => invoke("preview_indicator_show"),
     hide: () => invoke("preview_indicator_hide"),
-    update: (state: PreviewIndicatorState) =>
-      invoke("preview_indicator_update", { state }),
-    getState: () =>
-      invoke<PreviewIndicatorState>("preview_indicator_get_state"),
+    update: (state: PreviewIndicatorState) => invoke("preview_indicator_update", { state }),
+    getState: () => invoke<PreviewIndicatorState>("preview_indicator_get_state"),
   },
 
   watcher: {
@@ -211,10 +208,8 @@ export const darwinAPI = {
   },
   permissions: {
     checkAll: () => invoke<PermissionsState>("permissions_check_all"),
-    request: (permissionId: string) =>
-      invoke<Permission>("permissions_request", { permissionId }),
-    allRequiredGranted: () =>
-      invoke<boolean>("permissions_all_required_granted"),
+    request: (permissionId: string) => invoke<Permission>("permissions_request", { permissionId }),
+    allRequiredGranted: () => invoke<boolean>("permissions_all_required_granted"),
     // macOS-specific permission checks via tauri-plugin-macos-permissions
     checkFullDiskAccess: () => checkFullDiskAccessPermission(),
     requestFullDiskAccess: () => requestFullDiskAccessPermission(),
