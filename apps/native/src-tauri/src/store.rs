@@ -217,6 +217,18 @@ pub fn set_openai_api_key<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<(
     Ok(())
 }
 
+/// Gets the stored Ollama API base URL.
+pub fn get_ollama_api_base_url<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
+    get_string_pref(app, "ollamaApiBaseUrl")
+}
+
+pub fn set_ollama_api_base_url<R: Runtime>(app: &AppHandle<R>, url: &str) -> Result<()> {
+    let store = get_store(app)?;
+    store.set("ollamaApiBaseUrl", serde_json::json!(url));
+    store.save()?;
+    Ok(())
+}
+
 fn get_string_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<String>> {
     let store = get_store(app)?;
     if let Some(val) = store.get(key) {

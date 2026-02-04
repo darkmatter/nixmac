@@ -103,6 +103,10 @@ pub struct UiPrefs {
     #[serde(rename = "openaiApiKey")]
     pub openai_api_key: Option<String>,
 
+    /// Ollama API base URL for local model access.
+    #[serde(rename = "ollamaApiBaseUrl")]
+    pub ollama_api_base_url: Option<String>,
+
     /// Provider for summarization (openai/ollama).
     #[serde(rename = "summaryProvider")]
     pub summary_provider: Option<String>,
