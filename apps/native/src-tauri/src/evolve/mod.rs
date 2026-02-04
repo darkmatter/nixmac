@@ -98,6 +98,7 @@ fn log_api_error(error: &str, messages: &[Message], prompt: &str, iteration: usi
 // Use OpenRouter with Claude for evolution - better reasoning without strict content policies
 const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
+const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 const DEFAULT_MAX_ITERATIONS: usize = 50;
 const DEFAULT_MAX_BUILD_ATTEMPTS: usize = 5;
 const SYSTEM_PROMPT: &str = include_str!("../../prompts/system.md");
@@ -156,8 +157,11 @@ pub async fn generate_evolution(
         let model = store_model
             .or_else(|| std::env::var("EVOLVE_MODEL").ok())
             .unwrap_or_else(|| "qwen3-coder:30b".to_string());
-        let base_url =
-            std::env::var("OLLAMA_HOST").unwrap_or_else(|_| "http://localhost:11434".to_string());
+        let base_url = store::get_ollama_api_base_url(app)
+            .ok()
+            .flatten()
+            .or_else(|| std::env::var("OLLAMA_API_BASE").ok())
+            .unwrap_or_else(|| DEFAULT_OLLAMA_API_BASE.to_string());
         info!(
             "Using Ollama provider | Model: {} | URL: {}",
             model, base_url
