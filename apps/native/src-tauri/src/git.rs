@@ -165,6 +165,8 @@ pub fn status(dir: &str) -> Result<GitStatus> {
 ///
 /// Returns true if there are any uncommitted changes (staged or unstaged).
 /// Also detects untracked files.
+/// allow dead_code while checking if status in watcher works better
+#[allow(dead_code)]
 pub fn has_changes_fast(dir: &str) -> bool {
     // Check if directory exists
     if !std::path::Path::new(dir).exists() {

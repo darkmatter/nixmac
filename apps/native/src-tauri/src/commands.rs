@@ -717,7 +717,7 @@ pub async fn preview_indicator_get_state() -> Result<peek::PreviewIndicatorState
 #[tauri::command]
 pub async fn watcher_start(app: AppHandle) -> Result<serde_json::Value, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(|e| e.to_string())?;
-    watcher::start_watching(app, dir);
+    watcher::start_watching(app, dir, 2500);
     Ok(serde_json::json!({"ok": true}))
 }
 
