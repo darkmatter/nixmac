@@ -46,12 +46,7 @@ export function DarwinWidget() {
   const step = computeCurrentStep(store);
   const { refreshGitStatus } = useGitOperations();
   const { updatePreviewIndicator } = usePreviewIndicator();
-  const { handleRollback, handleDismiss } = useRebuild();
-  const checkAndFetchSummary = useSummary().checkAndFetchSummary
-
-  // Check if rebuild overlay should be shown
-  const showRebuildOverlay =
-    store.rebuild.isRunning || store.rebuild.success !== undefined;
+  const { checkAndFetchSummary } = useSummary();
 
   // =============================================================================
   // Global Widget Effects
@@ -178,31 +173,14 @@ export function DarwinWidget() {
         <Stepper />
 
         {/* Main Content */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-auto">
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-auto">
           <div
             className={cn("flex-1 p-5", step !== "evolving" && "overflow-auto")}
           >
             <ErrorMessage />
-            {showRebuildOverlay ? (
-              <div className="flex h-full items-center justify-center">
-                <div className="h-full w-full max-h-[600px] max-w-[800px]">
-                  <RebuildOverlayPanel
-                    isRunning={store.rebuild.isRunning}
-                    lines={store.rebuild.lines}
-                    rawLines={store.rebuild.rawLines}
-                    success={store.rebuild.success}
-                    errorType={store.rebuild.errorType}
-                    errorMessage={store.rebuild.errorMessage}
-                    onRollback={handleRollback}
-                    onDismiss={handleDismiss}
-                    onCancel={handleDismiss}
-                  />
-                </div>
-              </div>
-            ) : (
-              getActiveStepComponent()
-            )}
+            {getActiveStepComponent()}
           </div>
+          <RebuildOverlayPanel />
         </div>
 
         <Console />
