@@ -66,7 +66,7 @@ const mockEventsInProgress: EvolveEvent[] = [
   {
     eventType: "apiRequest",
     summary: "Querying AI model...",
-    raw: "Sending request to OpenAI API",
+    raw: "Sending request to AI provider",
     iteration: 1,
     timestampMs: 550,
   },
@@ -101,7 +101,7 @@ const mockEventsInProgress: EvolveEvent[] = [
   {
     eventType: "apiRequest",
     summary: "Querying AI model...",
-    raw: "Sending request to OpenAI API",
+    raw: "Sending request to AI provider",
     iteration: 2,
     timestampMs: 2850,
   },
@@ -140,7 +140,7 @@ const mockEventsComplete: EvolveEvent[] = [
   {
     eventType: "apiRequest",
     summary: "Querying AI model...",
-    raw: "Sending request to OpenAI API",
+    raw: "Sending request to AI provider",
     iteration: 3,
     timestampMs: 5050,
   },
@@ -175,7 +175,7 @@ const mockEventsComplete: EvolveEvent[] = [
   {
     eventType: "apiRequest",
     summary: "Querying AI model...",
-    raw: "Sending request to OpenAI API",
+    raw: "Sending request to AI provider",
     iteration: 4,
     timestampMs: 7850,
   },
@@ -217,7 +217,7 @@ const mockEventsComplete: EvolveEvent[] = [
   {
     eventType: "apiRequest",
     summary: "Querying AI model...",
-    raw: "Sending request to OpenAI API",
+    raw: "Sending request to AI provider",
     iteration: 5,
     timestampMs: 15_550,
   },
@@ -255,7 +255,7 @@ const mockEventsWithBuildFailure: EvolveEvent[] = [
   {
     eventType: "apiRequest",
     summary: "Querying AI model...",
-    raw: "Sending request to OpenAI API",
+    raw: "Sending request to AI provider",
     iteration: 1,
     timestampMs: 550,
   },
@@ -283,7 +283,7 @@ const mockEventsWithBuildFailure: EvolveEvent[] = [
   {
     eventType: "apiRequest",
     summary: "Querying AI model...",
-    raw: "Sending request to OpenAI API",
+    raw: "Sending request to AI provider",
     iteration: 2,
     timestampMs: 2550,
   },
@@ -342,7 +342,7 @@ const mockEventsWithError: EvolveEvent[] = [
   {
     eventType: "apiRequest",
     summary: "Querying AI model...",
-    raw: "Sending request to OpenAI API",
+    raw: "Sending request to AI provider",
     iteration: 1,
     timestampMs: 550,
   },
@@ -414,7 +414,7 @@ function generateManyIterations(): EvolveEvent[] {
         raw: `[analysis] Analyzing iteration ${i + 1}`,
         iteration: i + 1,
         timestampMs: baseTime + 2500,
-      }
+      },
     );
   }
 
