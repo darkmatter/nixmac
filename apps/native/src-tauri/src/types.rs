@@ -361,7 +361,7 @@ impl EvolveEvent {
     pub fn api_request(start_time: i64, iter: usize) -> Self {
         Self::new(
             EvolveEventType::ApiRequest,
-            "Sending request to OpenAI API".to_string(),
+            "Sending request to AI provider".to_string(),
             "Querying AI model...".to_string(),
             Some(iter),
             start_time,
