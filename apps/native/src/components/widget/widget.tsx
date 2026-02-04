@@ -31,7 +31,6 @@ import { usePreviewIndicator } from "@/hooks/use-preview-indicator";
 import { cn } from "@/lib/utils";
 import { useSummary } from "@/hooks/use-summary";
 import { RebuildOverlayPanel } from "@/components/rebuild-overlay-panel";
-import { useRebuild } from "@/hooks/use-rebuild";
 
 /**
  * Main widget component that connects to Tauri backend.
@@ -50,11 +49,6 @@ export function DarwinWidget() {
   const { refreshGitStatus } = useGitOperations();
   const { updatePreviewIndicator } = usePreviewIndicator();
   const { checkAndFetchSummary } = useSummary();
-  const { handleRollback, handleDismiss } = useRebuild();
-
-  // Check if rebuild overlay should be shown
-  const showRebuildOverlay =
-    store.rebuild.isRunning || store.rebuild.success !== undefined;
 
   // =============================================================================
   // Global Widget Effects
@@ -253,31 +247,14 @@ export function DarwinWidget() {
         <Stepper />
 
         {/* Main Content */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-auto">
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-auto">
           <div
             className={cn("flex-1 p-5", step !== "evolving" && "overflow-auto")}
           >
             <ErrorMessage />
-            {showRebuildOverlay ? (
-              <div className="flex h-full items-center justify-center">
-                <div className="h-full w-full max-h-[600px] max-w-[800px]">
-                  <RebuildOverlayPanel
-                    isRunning={store.rebuild.isRunning}
-                    lines={store.rebuild.lines}
-                    rawLines={store.rebuild.rawLines}
-                    success={store.rebuild.success}
-                    errorType={store.rebuild.errorType}
-                    errorMessage={store.rebuild.errorMessage}
-                    onRollback={handleRollback}
-                    onDismiss={handleDismiss}
-                    onCancel={handleDismiss}
-                  />
-                </div>
-              </div>
-            ) : (
-              getActiveStepComponent()
-            )}
+            {getActiveStepComponent()}
           </div>
+          <RebuildOverlayPanel />
         </div>
 
         <Console />
