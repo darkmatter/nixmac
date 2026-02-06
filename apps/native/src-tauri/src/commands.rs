@@ -649,6 +649,16 @@ pub async fn get_cached_models(
     store::get_cached_models(&app, &provider).map_err(|e| e.to_string())
 }
 
+/// Clears the cached models for a provider.
+#[tauri::command]
+pub async fn clear_cached_models(
+    app: AppHandle,
+    provider: String,
+) -> Result<serde_json::Value, String> {
+    store::clear_cached_models(&app, &provider).map_err(|e| e.to_string())?;
+    Ok(serde_json::json!({"ok": true}))
+}
+
 /// Sets the cached list of models for a provider.
 #[tauri::command]
 pub async fn set_cached_models(

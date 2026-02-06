@@ -113,6 +113,8 @@ export function SettingsDialog() {
   const saveOllamaUrl = async (url: string) => {
     if (url) {
       await darwinAPI.ui.setPrefs({ ollamaApiBaseUrl: url });
+      // Clear cached Ollama models when the base URL changes
+      await darwinAPI.models.clearCached("ollama");
     }
   };
 

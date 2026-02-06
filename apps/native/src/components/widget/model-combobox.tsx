@@ -11,11 +11,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { darwinAPI } from "@/tauri-api";
 
@@ -59,17 +55,17 @@ async function fetchOpenRouterModels(apiKey: string): Promise<string[]> {
     const models: OpenRouterModel[] = data.data || [];
 
     // Sort by name and return IDs
-    return models
-      .map((m) => m.id)
-      .sort((a, b) => a.localeCompare(b));
+    return models.map((m) => m.id).sort((a, b) => a.localeCompare(b));
   } catch {
     return [];
   }
 }
 
-async function fetchOllamaModels(): Promise<string[]> {
+async function fetchOllamaModels(baseUrl?: string): Promise<string[]> {
+  console.log("Fetching Ollama models with base URL:", baseUrl);
+  const base = (baseUrl || "http://localhost:11434").replace(/\/$/, "");
   try {
-    const response = await fetch("http://localhost:11434/api/tags", {
+    const response = await fetch(`${base}/api/tags`, {
       method: "GET",
     });
 
@@ -108,6 +104,9 @@ export function ModelCombobox({
   const loadModels = useCallback(async () => {
     setIsLoading(true);
 
+    // Clear current list immediately when loading to avoid showing stale models
+    setModels([]);
+
     // First try to load from cache
     try {
       const cached = await darwinAPI.models.getCached(provider);
@@ -125,12 +124,17 @@ export function ModelCombobox({
       if (provider === "openai") {
         freshModels = await fetchOpenRouterModels(apiKey);
       } else if (provider === "ollama") {
-        freshModels = await fetchOllamaModels();
+        // Read the configured Ollama base URL from prefs
+        const prefs = await darwinAPI.ui.getPrefs();
+        const baseUrl = prefs?.ollamaApiBaseUrl || undefined;
+        freshModels = await fetchOllamaModels(baseUrl);
       }
 
+      // Update the models list with fresh results
+      setModels(freshModels);
+
+      // Cache the models when we got any
       if (freshModels.length > 0) {
-        setModels(freshModels);
-        // Cache the models
         try {
           await darwinAPI.models.setCached(provider, freshModels);
         } catch {
@@ -139,6 +143,7 @@ export function ModelCombobox({
       }
     } catch {
       // Silently fail - we'll use cached models or empty list
+      alert("Failed to fetch models for " + provider);
     }
 
     setIsLoading(false);
@@ -194,9 +199,7 @@ export function ModelCombobox({
           className="w-full justify-between font-normal"
           disabled={disabled}
         >
-          <span className="truncate">
-            {inputValue || placeholder}
-          </span>
+          <span className="truncate">{inputValue || placeholder}</span>
           {isLoading ? (
             <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-50" />
           ) : (
@@ -215,9 +218,7 @@ export function ModelCombobox({
             {isLoading && models.length === 0 ? (
               <div className="flex items-center justify-center py-6">
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                <span className="ml-2 text-sm text-muted-foreground">
-                  Loading models...
-                </span>
+                <span className="ml-2 text-sm text-muted-foreground">Loading models...</span>
               </div>
             ) : filteredModels.length === 0 && !showCustomOption ? (
               <CommandEmpty>
@@ -243,16 +244,9 @@ export function ModelCombobox({
                   </CommandItem>
                 )}
                 {filteredModels.map((model) => (
-                  <CommandItem
-                    key={model}
-                    value={model}
-                    onSelect={() => handleSelect(model)}
-                  >
+                  <CommandItem key={model} value={model} onSelect={() => handleSelect(model)}>
                     <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        value === model ? "opacity-100" : "opacity-0",
-                      )}
+                      className={cn("mr-2 h-4 w-4", value === model ? "opacity-100" : "opacity-0")}
                     />
                     <span className="truncate">{model}</span>
                   </CommandItem>

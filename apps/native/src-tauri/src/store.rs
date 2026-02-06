@@ -305,6 +305,15 @@ pub fn get_cached_models<R: Runtime>(
     Ok(None)
 }
 
+/// Clears the cached models for a provider.
+pub fn clear_cached_models<R: Runtime>(app: &AppHandle<R>, provider: &str) -> Result<()> {
+    let store = get_store(app)?;
+    let key = format!("cachedModels_{}", provider);
+    store.delete(&key);
+    store.save()?;
+    Ok(())
+}
+
 /// Sets the cached list of models for a provider.
 pub fn set_cached_models<R: Runtime>(
     app: &AppHandle<R>,
