@@ -192,6 +192,7 @@ export const darwinAPI = {
     getCached: (provider: string) => invoke<string[] | null>("get_cached_models", { provider }),
     setCached: (provider: string, models: string[]) =>
       invoke("set_cached_models", { provider, models }),
+    clearCached: (provider: string) => invoke("clear_cached_models", { provider }),
   },
 
   previewIndicator: {
