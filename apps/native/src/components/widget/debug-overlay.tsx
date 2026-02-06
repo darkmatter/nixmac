@@ -1,14 +1,12 @@
 "use client";
 
-import { computeCurrentStep } from "@/components/widget/utils";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useCurrentStep } from "@/stores/widget-store";
 
 /**
  * Debug overlay for development - shows current widget state
  */
 export function DebugOverlay() {
-  const store = useWidgetStore();
-  const step = computeCurrentStep(store);
+  const step = useCurrentStep();
   // const isProcessing = useWidgetStore((s) => s.isProcessing);
   // const processingAction = useWidgetStore((s) => s.processingAction);
   // const isGenerating = useWidgetStore((s) => s.isGenerating);

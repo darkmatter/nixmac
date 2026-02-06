@@ -1,15 +1,21 @@
 "use client";
 
-import { useWidgetStore } from "@/stores/widget-store";
+import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 
 /**
  * Error message component - displays errors from store.
+ * Filters out certain errors based on context (e.g., expected errors during setup).
  */
 export function ErrorMessage() {
   const error = useWidgetStore((s) => s.error);
   const setError = useWidgetStore((s) => s.setError);
+  const step = useCurrentStep();
 
-  if (!error) {
+  // Suppress expected errors during setup (no flake.nix yet)
+  const isSupressedError =
+    step === "setup" && error?.includes("Failed to list hosts: path");
+
+  if (!error || isSupressedError) {
     return null;
   }
 

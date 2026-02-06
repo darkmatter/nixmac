@@ -1,8 +1,8 @@
 "use client";
 
-import { computeCurrentStep, getStepperStep } from "@/components/widget/utils";
+import { getStepperStep } from "@/components/widget/utils";
 import { cn } from "@/lib/utils";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useCurrentStep } from "@/stores/widget-store";
 import { Check } from "lucide-react";
 
 export const STEPPER_STEPS = [
@@ -14,8 +14,7 @@ export const STEPPER_STEPS = [
 export type StepperStepId = 1 | 2 | 3;
 
 export function Stepper() {
-  const store = useWidgetStore();
-  const step = computeCurrentStep(store);
+  const step = useCurrentStep();
 
   // Don't show stepper on setup step
   if (step === "setup") {

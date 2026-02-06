@@ -36,7 +36,6 @@ export async function loadHosts() {
  */
 export async function recoverFromGitState(
   gitStatus: Awaited<ReturnType<typeof darwinAPI.git.status>> | null,
-  mounted: { current: boolean },
   updatePreviewIndicator: ReturnType<typeof usePreviewIndicator>["updatePreviewIndicator"]
 ) {
   const currentStore = useWidgetStore.getState();
@@ -75,34 +74,30 @@ export async function recoverFromGitState(
   currentStore.setSummary({ isLoading: true });
   try {
     const response = await darwinAPI.summarize.changes();
-    if (mounted.current) {
-      currentStore.setSummary({
-        items: response.items,
-        instructions: response.instructions,
-        commitMessage: response.commitMessage,
-        filesChanged: response.filesChanged,
-        additions: response.additions,
-        deletions: response.deletions,
-        diff: response.diff,
-        isLoading: false,
-      });
-      const summaryText = response.items.map((i) => i.title).join(", ");
-      await updatePreviewIndicator({
-        gitStatus,
-        summaryText,
-        isLoading: false,
-        additions: response.additions,
-        deletions: response.deletions,
-      });
-    }
+    currentStore.setSummary({
+      items: response.items,
+      instructions: response.instructions,
+      commitMessage: response.commitMessage,
+      filesChanged: response.filesChanged,
+      additions: response.additions,
+      deletions: response.deletions,
+      diff: response.diff,
+      isLoading: false,
+    });
+    const summaryText = response.items.map((i) => i.title).join(", ");
+    await updatePreviewIndicator({
+      gitStatus,
+      summaryText,
+      isLoading: false,
+      additions: response.additions,
+      deletions: response.deletions,
+    });
   } catch {
-    if (mounted.current) {
-      currentStore.setSummary({ isLoading: false });
-      await updatePreviewIndicator({
-        gitStatus,
-        summaryText: null,
-        isLoading: false,
-      });
-    }
+    currentStore.setSummary({ isLoading: false });
+    await updatePreviewIndicator({
+      gitStatus,
+      summaryText: null,
+      isLoading: false,
+    });
   }
 }

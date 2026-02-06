@@ -17,7 +17,7 @@ export function BootstrapConfig({ label, onSuccess }: BootstrapConfigProps) {
 
   const handleBootstrap = async (): Promise<void> => {
     await bootstrap(hostname);
-    window.location.reload();
+    // window.location.reload();
     onSuccess?.();
   };
 

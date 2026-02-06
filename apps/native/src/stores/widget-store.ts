@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { EvolveEvent, GitStatus, PermissionsState } from "@/tauri-api";
+import { computeCurrentStep } from "@/components/widget/utils";
 export type {
   EvolveEvent,
   EvolveEventType,
@@ -308,3 +309,11 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
  * Use createWidgetStore() for isolated testing instances.
  */
 export const useWidgetStore = createWidgetStore();
+
+/**
+ * Hook to get the current widget step.
+ * Uses a selector so components only re-render when the step actually changes.
+ */
+export function useCurrentStep(): WidgetStep {
+  return useWidgetStore((state) => computeCurrentStep(state));
+}

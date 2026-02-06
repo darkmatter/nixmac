@@ -1,22 +1,30 @@
 "use client";
 
-import { useWidgetStore } from "@/stores/widget-store";
-import { computeCurrentStep } from "@/components/widget/utils";
-import { darwinAPI, ipcRenderer } from "@/tauri-api";
-import type { GitStatus } from "@/tauri-api";
-import { loadConfig, loadHosts, recoverFromGitState } from "@/hooks/use-widget-initialization";
-import { useEffect, useRef } from "react";
-import { SetupStep, OverviewStep, EvolvingStep, CommitStep, PermissionsStep } from "./steps";
-import { Header } from "@/components/widget/header";
-import { Stepper } from "@/components/widget/stepper";
-import { Console } from "@/components/widget/console";
-import { SettingsDialog } from "@/components/widget/settings-dialog";
-import { ErrorMessage } from "@/components/widget/error-message";
-import { useGitOperations } from "@/hooks/use-git-operations";
-import { usePreviewIndicator } from "@/hooks/use-preview-indicator";
-import { cn } from "@/lib/utils";
 import { RebuildOverlayPanel } from "@/components/rebuild-overlay-panel";
-import { useSummary } from "@/hooks/use-summary";
+import { Console } from "@/components/widget/console";
+import { ErrorMessage } from "@/components/widget/error-message";
+import { Header } from "@/components/widget/header";
+import { SettingsDialog } from "@/components/widget/settings-dialog";
+import { Stepper } from "@/components/widget/stepper";
+import {
+  CommitStep,
+  EvolvingStep,
+  OverviewStep,
+  PermissionsStep,
+  SetupStep,
+} from "@/components/widget/steps";
+import { useGitOperations } from "@/hooks/use-git-operations";
+import { usePermissions } from "@/hooks/use-permissions";
+import { usePreviewIndicator } from "@/hooks/use-preview-indicator";
+import { useWatcher } from "@/hooks/use-watcher";
+import {
+  loadConfig,
+  loadHosts,
+  recoverFromGitState,
+} from "@/hooks/use-widget-initialization";
+import { cn } from "@/lib/utils";
+import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
+import { useEffect } from "react";
 
 /**
  * Main widget component that connects to Tauri backend.
@@ -26,94 +34,33 @@ import { useSummary } from "@/hooks/use-summary";
  */
 
 export function DarwinWidget() {
-  const store = useWidgetStore();
-  const storeRef = useRef(store);
-  storeRef.current = store;
-  const step = computeCurrentStep(store);
+  const step = useCurrentStep();
   const { refreshGitStatus } = useGitOperations();
+  const { checkPermissions } = usePermissions();
   const { updatePreviewIndicator } = usePreviewIndicator();
-  const { checkAndFetchSummary } = useSummary();
+  const { startWatching } = useWatcher();
 
   // =============================================================================
   // Global Widget Effects
   // =============================================================================
 
-  // Load initial data once on mount
+  // Load initial data once on mount, then start watching for changes
   useEffect(() => {
-    const mounted = { current: true };
 
     (async () => {
       try {
-        // Check permissions first (including FDA via native plugin)
-        const permissionsState = await darwinAPI.permissions.checkAll();
-
-        // Use native plugin to get accurate FDA status
-        // Note: This may return false positives in dev mode (checks terminal's FDA, not app's)
-        let fdaGranted = false;
-        try {
-          fdaGranted = await darwinAPI.permissions.checkFullDiskAccess();
-        } catch {
-          // Plugin check failed, fall back to backend result
-        }
-
-        // Update FDA permission status based on native plugin result
-        const fdaStatus = fdaGranted ? "granted" : "denied";
-        const updatedPermissions = permissionsState.permissions.map((p) =>
-          p.id === "full-disk" ? { ...p, status: fdaStatus as "granted" | "denied" } : p,
-        );
-        const allRequiredGranted = updatedPermissions
-          .filter((p) => p.required)
-          .every((p) => p.status === "granted");
-
-        if (mounted.current) {
-          storeRef.current.setPermissionsState({
-            ...permissionsState,
-            permissions: updatedPermissions,
-            allRequiredGranted,
-          });
-          storeRef.current.setPermissionsChecked(true);
-        }
-
+        await checkPermissions();
         await loadConfig();
         await loadHosts();
         const gitStatus = await refreshGitStatus();
-        await recoverFromGitState(gitStatus, mounted, updatePreviewIndicator);
-
-        // Load preferences
+        await recoverFromGitState(gitStatus, updatePreviewIndicator);
       } catch (e: unknown) {
-        if (mounted.current) {
-          // Mark permissions as checked even if it failed
-          storeRef.current.setPermissionsChecked(true);
-
-          const errorMessage = (e as Error)?.message || String(e);
-          const supressFlakeError =
-            step === "setup" && errorMessage.includes("Failed to list hosts: path");
-          if (!supressFlakeError) {
-            storeRef.current.setError(errorMessage);
-          }
-        }
+        useWidgetStore.getState().setError((e as Error)?.message || String(e));
       }
+
+      // After initial load
+      startWatching();
     })();
-
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
-
-  // Listen for git status changes from the backend watcher
-  useEffect(() => {
-    let isSubscribed = true;
-
-    const gitStatusSub = ipcRenderer.on<{ status: GitStatus }>("git:status-changed", (event) => {
-      if (!isSubscribed) return;
-      storeRef.current.setGitStatus(event.payload.status);
-      checkAndFetchSummary();
-    });
-
-    return () => {
-      isSubscribed = false;
-      gitStatusSub.then((unlisten) => unlisten());
-    };
   }, []);
 
   // =============================================================================
@@ -147,7 +94,6 @@ export function DarwinWidget() {
   // =============================================================================
 
   return (
-    <>
       <div className="flex h-full w-full flex-col bg-background/90 backdrop-blur-xl">
         <Header />
         <Stepper />
@@ -164,6 +110,5 @@ export function DarwinWidget() {
         <Console />
         <SettingsDialog />
       </div>
-    </>
   );
 }

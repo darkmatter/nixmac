@@ -86,14 +86,12 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
   const hasUncommittedChanges = state.gitStatus?.hasChanges ?? false;
   const allChangesCleanlyStaged =
     state.gitStatus?.allChangesCleanlyStaged ?? false;
-
-  // Rule 0: Permissions not yet checked or not all required granted
-  // Only show permissions step if we've checked and they're not granted
-  if (
-    state.permissionsChecked &&
+  const permissionsCheckedAndIncomplete = state.permissionsChecked &&
     state.permissionsState &&
-    !state.permissionsState.allRequiredGranted
-  ) {
+    !state.permissionsState.allRequiredGranted;
+
+  // Rule 0: Permission issues
+  if (permissionsCheckedAndIncomplete) {
     return "permissions";
   }
 
