@@ -2,24 +2,11 @@
 
 import { useWidgetStore } from "@/stores/widget-store";
 import { computeCurrentStep } from "@/components/widget/utils";
-import {
-  darwinAPI,
-  ipcRenderer,
-} from "@/tauri-api";
+import { darwinAPI, ipcRenderer } from "@/tauri-api";
 import type { GitStatus } from "@/tauri-api";
-import {
-  loadConfig,
-  loadHosts,
-  recoverFromGitState,
-} from "@/hooks/use-widget-initialization";
+import { loadConfig, loadHosts, recoverFromGitState } from "@/hooks/use-widget-initialization";
 import { useEffect, useRef } from "react";
-import {
-  SetupStep,
-  OverviewStep,
-  EvolvingStep,
-  CommitStep,
-  PermissionsStep,
-} from "./steps";
+import { SetupStep, OverviewStep, EvolvingStep, CommitStep, PermissionsStep } from "./steps";
 import { Header } from "@/components/widget/header";
 import { Stepper } from "@/components/widget/stepper";
 import { Console } from "@/components/widget/console";
@@ -29,7 +16,6 @@ import { useGitOperations } from "@/hooks/use-git-operations";
 import { usePreviewIndicator } from "@/hooks/use-preview-indicator";
 import { cn } from "@/lib/utils";
 import { RebuildOverlayPanel } from "@/components/rebuild-overlay-panel";
-import { useRebuild } from "@/hooks/use-rebuild";
 import { useSummary } from "@/hooks/use-summary";
 
 /**
@@ -73,9 +59,7 @@ export function DarwinWidget() {
         // Update FDA permission status based on native plugin result
         const fdaStatus = fdaGranted ? "granted" : "denied";
         const updatedPermissions = permissionsState.permissions.map((p) =>
-          p.id === "full-disk"
-            ? { ...p, status: fdaStatus as "granted" | "denied" }
-            : p,
+          p.id === "full-disk" ? { ...p, status: fdaStatus as "granted" | "denied" } : p,
         );
         const allRequiredGranted = updatedPermissions
           .filter((p) => p.required)
@@ -103,8 +87,7 @@ export function DarwinWidget() {
 
           const errorMessage = (e as Error)?.message || String(e);
           const supressFlakeError =
-            step === "setup" &&
-            errorMessage.includes("Failed to list hosts: path");
+            step === "setup" && errorMessage.includes("Failed to list hosts: path");
           if (!supressFlakeError) {
             storeRef.current.setError(errorMessage);
           }
@@ -121,14 +104,11 @@ export function DarwinWidget() {
   useEffect(() => {
     let isSubscribed = true;
 
-    const gitStatusSub = ipcRenderer.on<{ status: GitStatus }>(
-      "git:status-changed",
-      (event) => {
-        if (!isSubscribed) return;
-        storeRef.current.setGitStatus(event.payload.status);
-        checkAndFetchSummary();
-      }
-    );
+    const gitStatusSub = ipcRenderer.on<{ status: GitStatus }>("git:status-changed", (event) => {
+      if (!isSubscribed) return;
+      storeRef.current.setGitStatus(event.payload.status);
+      checkAndFetchSummary();
+    });
 
     return () => {
       isSubscribed = false;
@@ -174,9 +154,7 @@ export function DarwinWidget() {
 
         {/* Main Content */}
         <div className="relative flex min-h-0 flex-1 flex-col overflow-auto">
-          <div
-            className={cn("flex-1 p-5", step !== "evolving" && "overflow-auto")}
-          >
+          <div className={cn("flex-1 p-5", step !== "evolving" && "overflow-auto")}>
             <ErrorMessage />
             {getActiveStepComponent()}
           </div>
