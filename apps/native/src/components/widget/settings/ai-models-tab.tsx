@@ -84,7 +84,7 @@ export function AiModelsTab({
                     state.values.openaiApiKey,
                   ]}
                 >
-                  {([evolveProvider, apiKey]: [string, string]) => (
+                  {([evolveProvider]: [string, string]) => (
                     <ModelCombobox
                       provider={evolveProvider as "openai" | "ollama"}
                       value={evolveModelField.state.value}
@@ -96,7 +96,6 @@ export function AiModelsTab({
                       }}
                       onBlur={evolveModelField.handleBlur}
                       placeholder={evolveProvider === "ollama" ? "" : "anthropic/claude-sonnet-4"}
-                      apiKey={apiKey}
                     />
                   )}
                 </form.Subscribe>
@@ -147,7 +146,7 @@ export function AiModelsTab({
                     state.values.openaiApiKey,
                   ]}
                 >
-                  {([summaryProvider, apiKey]: [string, string]) => (
+                  {([summaryProvider]: [string, string]) => (
                     <ModelCombobox
                       provider={summaryProvider as "openai" | "ollama"}
                       value={summaryModelField.state.value}
@@ -159,7 +158,6 @@ export function AiModelsTab({
                       }}
                       onBlur={summaryModelField.handleBlur}
                       placeholder={summaryProvider === "ollama" ? "llama3.1" : "openai/gpt-4o-mini"}
-                      apiKey={apiKey}
                     />
                   )}
                 </form.Subscribe>
