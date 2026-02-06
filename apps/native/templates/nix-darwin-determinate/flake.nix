@@ -71,15 +71,18 @@
       darwinConfigurations."HOSTNAME_PLACEHOLDER" = nix-darwin.lib.darwinSystem {
         modules = [
           configuration
-          ./homebrew.nix
-          ./environment.nix
-          ./packages.nix
-          ./services.nix
-          ./users.nix
-          ./networking.nix
-          ./fonts.nix
-          ./security.nix
-          ./nix-overlays.nix
+          ./modules/darwin/fonts.nix
+          ./modules/darwin/homebrew.nix
+          ./modules/darwin/environment.nix
+          ./modules/darwin/networking.nix
+          ./modules/darwin/packages.nix
+          ./modules/darwin/security.nix
+          ./modules/darwin/services.nix
+          ./modules/darwin/users.nix
+        ];
+
+        overlays = [
+          ./overlays/nix-overlays.nix
         ];
       };
     };
