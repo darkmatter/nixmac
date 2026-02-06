@@ -52,7 +52,7 @@ export function DarwinWidget() {
         let fdaGranted = false;
         try {
           fdaGranted = await darwinAPI.permissions.checkFullDiskAccess();
-        } catch (e) {
+        } catch {
           // Plugin check failed, fall back to backend result
         }
 

@@ -22,7 +22,6 @@ interface ModelComboboxProps {
   onBlur?: () => void;
   placeholder?: string;
   disabled?: boolean;
-  apiKey?: string;
 }
 
 interface OpenRouterModel {
@@ -34,17 +33,10 @@ interface OllamaModel {
   name: string;
 }
 
-async function fetchOpenRouterModels(apiKey: string): Promise<string[]> {
-  if (!apiKey || apiKey.length < 10) {
-    return [];
-  }
-
+async function fetchOpenRouterModels(): Promise<string[]> {
   try {
     const response = await fetch("https://openrouter.ai/api/v1/models", {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
     });
 
     if (!response.ok) {
@@ -89,7 +81,6 @@ export function ModelCombobox({
   onBlur,
   placeholder = "Select model...",
   disabled = false,
-  apiKey = "",
 }: ModelComboboxProps) {
   const [open, setOpen] = useState(false);
   const [models, setModels] = useState<string[]>([]);
@@ -122,7 +113,7 @@ export function ModelCombobox({
       let freshModels: string[] = [];
 
       if (provider === "openai") {
-        freshModels = await fetchOpenRouterModels(apiKey);
+        freshModels = await fetchOpenRouterModels();
       } else if (provider === "ollama") {
         // Read the configured Ollama base URL from prefs
         const prefs = await darwinAPI.ui.getPrefs();
@@ -147,7 +138,7 @@ export function ModelCombobox({
     }
 
     setIsLoading(false);
-  }, [provider, apiKey]);
+  }, [provider]);
 
   // Load models when popover opens
   useEffect(() => {
