@@ -414,6 +414,12 @@ pub async fn flake_list_hosts(app: AppHandle) -> Result<Vec<String>, String> {
 // Summarization Commands
 // =============================================================================
 
+/// Returns the cached summary if available.
+#[tauri::command]
+pub async fn summary_get_cached(app: AppHandle) -> Result<Option<types::SummaryResponse>, String> {
+    store::get_cached_summary(&app).map_err(|e| e.to_string())
+}
+
 /// Generates a human-readable summary of the current working changes.
 /// Uses a fast model for quick response times.
 #[tauri::command]
@@ -496,7 +502,7 @@ pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse,
             }
         };
 
-    Ok(types::SummaryResponse {
+    let response = types::SummaryResponse {
         items,
         instructions,
         commit_message,
@@ -505,7 +511,14 @@ pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse,
         additions,
         deletions,
         diff,
-    })
+    };
+
+    // Cache the summary for future app launches
+    if let Err(e) = store::set_cached_summary(&app, &response) {
+        eprintln!("[summarize_changes] Failed to cache summary: {}", e);
+    }
+
+    Ok(response)
 }
 
 /// Count additions and deletions from a unified diff.

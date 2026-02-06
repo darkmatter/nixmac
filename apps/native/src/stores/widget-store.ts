@@ -1,7 +1,8 @@
 import { create } from "zustand";
-import type { EvolveEvent, GitStatus, PermissionsState } from "@/tauri-api";
+import type { ChangesSummary, EvolveEvent, GitStatus, PermissionsState } from "@/tauri-api";
 import { computeCurrentStep } from "@/components/widget/utils";
 export type {
+  ChangesSummary,
   EvolveEvent,
   EvolveEventType,
   GitFileStatus,
@@ -23,22 +24,6 @@ export type WidgetStep =
   | "evolving"
   | "commit";
 export type ProcessingAction = "evolve" | "apply" | "commit" | "cancel" | null;
-
-export interface SummaryItem {
-  title: string;
-  description: string;
-}
-
-export interface SummaryState {
-  items: SummaryItem[];
-  instructions: string | null;
-  commitMessage: string | null;
-  filesChanged: number;
-  additions?: number;
-  deletions?: number;
-  diff?: string;
-  isLoading: boolean;
-}
 
 // Rebuild state for showing progress inline in the widget
 export type RebuildErrorType =
@@ -84,7 +69,7 @@ export interface WidgetState {
   evolveEvents: EvolveEvent[];
 
   // Summary (AI-generated)
-  summary: SummaryState;
+  summary: ChangesSummary;
 
   // Rebuild state (for inline rebuild progress)
   rebuild: RebuildState;
@@ -93,6 +78,7 @@ export interface WidgetState {
   consoleLogs: string;
 
   // UI
+  summaryLoading: boolean;
   isGenerating: boolean;
   settingsOpen: boolean;
   error: string | null;
@@ -111,11 +97,12 @@ export interface WidgetActions {
   setEvolvePrompt: (prompt: string) => void;
   setCommitMsg: (msg: string) => void;
   setProcessing: (isProcessing: boolean, action?: ProcessingAction) => void;
-  setSummary: (summary: Partial<SummaryState>) => void;
+  setSummary: (summary: ChangesSummary) => void;
   setSettingsOpen: (open: boolean) => void;
   setError: (error: string | null) => void;
 
   // Client-side state (NOT from server)
+  setSummaryLoading: (loading: boolean) => void;
   setGenerating: (generating: boolean) => void;
   clearPreview: () => void;
 
@@ -152,6 +139,17 @@ export const initialRebuildState: RebuildState = {
   errorMessage: undefined,
 };
 
+export const initialSummaryState: ChangesSummary = {
+  items: [],
+  instructions: "",
+  commitMessage: "",
+  filesChanged: 0,
+  diffLines: 0,
+  additions: 0,
+  deletions: 0,
+  diff: "",
+};
+
 export const initialWidgetState: WidgetState = {
   // Permissions
   permissionsState: null,
@@ -173,13 +171,7 @@ export const initialWidgetState: WidgetState = {
   evolveEvents: [],
 
   // Summary
-  summary: {
-    items: [],
-    instructions: null,
-    commitMessage: null,
-    filesChanged: 0,
-    isLoading: false,
-  },
+  summary: initialSummaryState,
 
   // Rebuild
   rebuild: initialRebuildState,
@@ -188,6 +180,7 @@ export const initialWidgetState: WidgetState = {
   consoleLogs: "",
 
   // UI
+  summaryLoading: false,
   isGenerating: false,
   settingsOpen: false,
   error: null,
@@ -222,10 +215,8 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
         isProcessing,
         processingAction: isProcessing ? action : null,
       }),
-    setSummary: (summary) =>
-      set((state) => ({
-        summary: { ...state.summary, ...summary },
-      })),
+    setSummary: (summary) => set({ summary }),
+    setSummaryLoading: (summaryLoading) => set({ summaryLoading }),
     setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
     setError: (error) => set({ error }),
 
@@ -233,13 +224,8 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setGenerating: (isGenerating) => set({ isGenerating }),
     clearPreview: () =>
       set({
-        summary: {
-          items: [],
-          instructions: null,
-          commitMessage: null,
-          filesChanged: 0,
-          isLoading: false,
-        },
+        summary: initialSummaryState,
+        summaryLoading: false,
       }),
 
     // Console

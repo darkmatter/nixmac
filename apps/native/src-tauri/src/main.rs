@@ -72,6 +72,7 @@ fn main() {
             commands::bootstrap_default_config,
             // Summarization
             commands::summarize_changes,
+            commands::summary_get_cached,
             commands::suggest_commit_message,
             // UI preferences
             commands::ui_get_prefs,

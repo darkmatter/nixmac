@@ -66,7 +66,7 @@ export interface SummaryItem {
   description: string;
 }
 
-export interface SummaryResponse {
+export interface ChangesSummary {
   items: SummaryItem[];
   instructions: string;
   commitMessage: string;
@@ -76,6 +76,8 @@ export interface SummaryResponse {
   deletions: number;
   diff: string;
 }
+
+export type SummaryResponse = ChangesSummary;
 
 export interface PreviewIndicatorState {
   visible: boolean;
@@ -182,6 +184,7 @@ export const darwinAPI = {
   summarize: {
     changes: () => invoke<SummaryResponse>("summarize_changes"),
     commitMessage: () => invoke<string>("suggest_commit_message"),
+    getCached: () => invoke<SummaryResponse | null>("summary_get_cached"),
   },
   ui: {
     getPrefs: () => invoke<DarwinPrefs | null>("ui_get_prefs"),

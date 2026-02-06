@@ -4,7 +4,7 @@ import type React from "react";
 import { useEffect } from "react";
 import preview from "#storybook/preview";
 import { PermissionsScreen } from "@/components/permissions-screen";
-import type { EvolveEvent, GitStatus, SummaryState } from "@/stores/widget-store";
+import type { ChangesSummary, EvolveEvent, GitStatus } from "@/stores/widget-store";
 import { useWidgetStore } from "@/stores/widget-store";
 import { DarwinWidget } from "./widget";
 
@@ -74,7 +74,7 @@ const mockGitStatusAllStaged: GitStatus = {
   ],
 };
 
-const mockSummary: SummaryState = {
+const mockSummary: ChangesSummary = {
   items: [
     {
       title: "Vim Editor Installed",
@@ -94,7 +94,10 @@ const mockSummary: SummaryState = {
     "Run 'vim .' in your terminal to try out your new editor, or open Rectangle from your Applications folder.",
   commitMessage: "feat(darwin): add vim and configure git",
   filesChanged: 3,
-  isLoading: false,
+  diffLines: 42,
+  additions: 30,
+  deletions: 12,
+  diff: "",
 };
 
 const mockEvolveEvents: EvolveEvent[] = [
@@ -157,7 +160,8 @@ interface StoreState {
   isGenerating?: boolean;
   processingAction?: "evolve" | "apply" | "commit" | "cancel" | null;
   evolveEvents?: EvolveEvent[];
-  summary?: Partial<SummaryState>;
+  summary?: ChangesSummary;
+  summaryLoading?: boolean;
   consoleLogs?: string;
   settingsOpen?: boolean;
   error?: string | null;
@@ -192,6 +196,9 @@ function StoryWidget({ storeState }: { storeState?: StoreState }) {
 
     if (storeState?.summary !== undefined) {
       store.setSummary(storeState.summary);
+    }
+    if (storeState?.summaryLoading !== undefined) {
+      store.setSummaryLoading(storeState.summaryLoading);
     }
 
     if (storeState?.consoleLogs !== undefined) {
@@ -394,13 +401,7 @@ export const PreviewLoading = meta.story({
         host: "Demo-MacBook-Pro",
         hosts: ["Demo-MacBook-Pro", "Work-MacBook"],
         gitStatus: mockGitStatus,
-        summary: {
-          items: [],
-          instructions: null,
-          commitMessage: null,
-          filesChanged: 0,
-          isLoading: true,
-        },
+        summaryLoading: true,
         consoleLogs: "> Running darwin-rebuild switch...\n✓ Apply complete\n",
       }}
     />
@@ -475,6 +476,9 @@ export const ManyChangedFiles = meta.story({
         summary: {
           ...mockSummary,
           filesChanged: 8,
+          diffLines: 120,
+          additions: 85,
+          deletions: 35,
         },
       }}
     />

@@ -1,10 +1,10 @@
 import { ArrowLeft, Check, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { SummaryState } from "@/stores/widget-store";
+import type { ChangesSummary } from "@/stores/widget-store";
 import type { GitFileStatus } from "@/tauri-api";
 
 interface DiffProps {
-  summary: SummaryState;
+  summary: ChangesSummary;
   showAdvancedStats: boolean;
   changedFiles: GitFileStatus[];
   variant?: "default" | "outline";
@@ -94,7 +94,7 @@ export function Diff({
   );
 
   // Use the structured summary items from the API
-  const summaryItems: SummaryState["items"] = summary.items || [];
+  const summaryItems = summary.items;
 
   return (
     <div
