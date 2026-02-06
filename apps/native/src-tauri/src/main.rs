@@ -80,6 +80,7 @@ fn main() {
             // Model cache
             commands::get_cached_models,
             commands::set_cached_models,
+            commands::clear_cached_models,
             // Window
             commands::show_main_window,
             // Preview indicator

@@ -57,6 +57,7 @@ export function AiModelsTab({
                 </label>
                 <Select
                   onValueChange={async (value) => {
+                    await darwinAPI.models.clearCached(value);
                     evolveProviderField.handleChange(value);
                     await darwinAPI.ui.setPrefs({
                       evolveProvider: value,
@@ -74,10 +75,7 @@ export function AiModelsTab({
                 </Select>
               </div>
               <div className="space-y-2">
-                <label
-                  className="text-xs font-medium text-muted-foreground"
-                  htmlFor="evolveModel"
-                >
+                <label className="text-xs font-medium text-muted-foreground" htmlFor="evolveModel">
                   Model Name
                 </label>
                 <form.Subscribe
@@ -97,11 +95,7 @@ export function AiModelsTab({
                         });
                       }}
                       onBlur={evolveModelField.handleBlur}
-                      placeholder={
-                        evolveProvider === "ollama"
-                          ? "qwen3-coder:30b"
-                          : "anthropic/claude-sonnet-4"
-                      }
+                      placeholder={evolveProvider === "ollama" ? "" : "anthropic/claude-sonnet-4"}
                       apiKey={apiKey}
                     />
                   )}
@@ -126,6 +120,7 @@ export function AiModelsTab({
                 </label>
                 <Select
                   onValueChange={async (value) => {
+                    await darwinAPI.models.clearCached(value);
                     summaryProviderField.handleChange(value);
                     await darwinAPI.ui.setPrefs({
                       summaryProvider: value,
@@ -143,10 +138,7 @@ export function AiModelsTab({
                 </Select>
               </div>
               <div className="space-y-2">
-                <label
-                  className="text-xs font-medium text-muted-foreground"
-                  htmlFor="summaryModel"
-                >
+                <label className="text-xs font-medium text-muted-foreground" htmlFor="summaryModel">
                   Model Name
                 </label>
                 <form.Subscribe
@@ -166,11 +158,7 @@ export function AiModelsTab({
                         });
                       }}
                       onBlur={summaryModelField.handleBlur}
-                      placeholder={
-                        summaryProvider === "ollama"
-                          ? "llama3.1"
-                          : "openai/gpt-4o-mini"
-                      }
+                      placeholder={summaryProvider === "ollama" ? "llama3.1" : "openai/gpt-4o-mini"}
                       apiKey={apiKey}
                     />
                   )}
