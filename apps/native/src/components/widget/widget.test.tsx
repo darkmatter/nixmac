@@ -1,7 +1,7 @@
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DarwinWidget } from "./widget";
-import { useWidgetStore } from "@/stores/widget-store";
+import { initialSummaryState, useWidgetStore } from "@/stores/widget-store";
 
 // Mock Tauri API
 vi.mock("@/tauri-api", () => ({
@@ -60,13 +60,7 @@ describe("DarwinWidget", () => {
     store.setError(null);
     store.clearEvolveEvents();
     store.clearLogs();
-    store.setSummary({
-      items: [],
-      instructions: null,
-      commitMessage: null,
-      filesChanged: 0,
-      isLoading: false,
-    });
+    store.setSummary(initialSummaryState);
   });
 
   it("renders without crashing", () => {

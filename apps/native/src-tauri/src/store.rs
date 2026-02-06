@@ -3,6 +3,7 @@
 //! Settings are stored in a JSON file managed by tauri-plugin-store.
 //! This provides a simple key-value interface for preferences.
 
+use crate::types;
 use anyhow::Result;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -323,6 +324,35 @@ pub fn set_cached_models<R: Runtime>(
     let store = get_store(app)?;
     let key = format!("cachedModels_{}", provider);
     store.set(&key, serde_json::json!(models));
+    store.save()?;
+    Ok(())
+}
+
+// =============================================================================
+// Summary Cache
+// =============================================================================
+
+/// Gets the cached summary response.
+pub fn get_cached_summary<R: Runtime>(
+    app: &AppHandle<R>,
+) -> Result<Option<types::SummaryResponse>> {
+    let store = get_store(app)?;
+
+    if let Some(val) = store.get("cachedSummary") {
+        if let Ok(summary) = serde_json::from_value::<types::SummaryResponse>(val.clone()) {
+            return Ok(Some(summary));
+        }
+    }
+    Ok(None)
+}
+
+/// Sets the cached summary response.
+pub fn set_cached_summary<R: Runtime>(
+    app: &AppHandle<R>,
+    summary: &types::SummaryResponse,
+) -> Result<()> {
+    let store = get_store(app)?;
+    store.set("cachedSummary", serde_json::to_value(summary)?);
     store.save()?;
     Ok(())
 }

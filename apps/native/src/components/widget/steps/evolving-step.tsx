@@ -1,7 +1,7 @@
 "use client";
 
 import { Eye, FileCode, Loader2, Sparkles, Undo2 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { BundledLanguage } from "shiki";
 import { EvolveProgress } from "@/components/evolve-progress";
 import {
@@ -17,7 +17,6 @@ import { useWidgetStore } from "@/stores/widget-store";
 import { useEvolve } from "@/hooks/use-evolve";
 import { useApply } from "@/hooks/use-apply";
 import { useCommit } from "@/hooks/use-commit";
-import { useSummary } from "@/hooks/use-summary";
 import { darwinAPI } from "@/tauri-api";
 import { ChatInput } from "../chat-input";
 import { Diff } from "../diff";
@@ -117,11 +116,11 @@ export function EvolvingStep() {
   const isGenerating = useWidgetStore((s) => s.isGenerating);
   const evolveEvents = useWidgetStore((s) => s.evolveEvents);
   const summary = useWidgetStore((s) => s.summary);
+  const summaryLoading = useWidgetStore((s) => s.summaryLoading);
 
   const { handleEvolve } = useEvolve();
   const { handleApply } = useApply();
   const { handleCancel } = useCommit();
-  const { checkAndFetchSummary } = useSummary();
 
   const handleStopEvolution = async () => {
     try {
@@ -135,22 +134,6 @@ export function EvolvingStep() {
   const hasUnstagedChanges = gitStatus?.hasUnstagedChanges ?? false;
 
   const [showDiff, setShowDiff] = useState(false);
-
-  // Switch to diff view by default when there's no AI summary
-  const hasSummary = summary.items.length > 0;
-  useEffect(() => {
-    if (!summary.isLoading && !hasSummary) {
-      setShowDiff(true);
-    }
-  }, [summary.isLoading, hasSummary]);
-
-  // Fetch summary as a fallback for manual changes (not during evolution)
-  // During evolution, useEvolve hook handles the summary fetch
-  useEffect(() => {
-    if (!isGenerating) {
-      checkAndFetchSummary();
-    }
-  }, [checkAndFetchSummary, isGenerating]);
 
   const diffContent = summary.diff || "";
   const diffSections = parseDiffIntoSections(diffContent);
@@ -203,7 +186,7 @@ export function EvolvingStep() {
       </div>
 
       {/* Loading state */}
-      {summary.isLoading === true && (
+      {summaryLoading && (
         <div className="flex items-center gap-2 text-muted-foreground text-sm">
           <Loader2 className="h-4 w-4 animate-spin" />
           Summarizing changes...
@@ -285,7 +268,7 @@ export function EvolvingStep() {
       )}
 
       {/* Instructions for testing changes */}
-      {!summary.isLoading && summary.instructions && (
+      {!summaryLoading && summary.instructions && (
         <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
           <div className="flex items-start gap-2">
             <Sparkles className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
