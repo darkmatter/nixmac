@@ -7,7 +7,7 @@ export type {
   EvolveEventType,
   GitFileStatus,
   GitStatus,
-  PermissionsState,
+  PermissionsState
 } from "@/tauri-api";
 
 // =============================================================================
@@ -59,6 +59,9 @@ export interface WidgetState {
   hosts: string[];
   host: string;
 
+  // Bootstrap (creating default config)
+  isBootstrapping: boolean;
+
   // Git (from backend)
   gitStatus: GitStatus | null;
   // Evolution
@@ -93,6 +96,7 @@ export interface WidgetActions {
   setConfigDir: (dir: string) => void;
   setHosts: (hosts: string[]) => void;
   setHost: (host: string) => void;
+  setBootstrapping: (isBootstrapping: boolean) => void;
   setGitStatus: (status: GitStatus | null) => void;
   setEvolvePrompt: (prompt: string) => void;
   setCommitMsg: (msg: string) => void;
@@ -160,6 +164,7 @@ export const initialWidgetState: WidgetState = {
   hosts: [],
   host: "",
 
+
   // Git
   gitStatus: null,
 
@@ -181,6 +186,7 @@ export const initialWidgetState: WidgetState = {
 
   // UI
   summaryLoading: false,
+  isBootstrapping: false,
   isGenerating: false,
   settingsOpen: false,
   error: null,
@@ -221,6 +227,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setError: (error) => set({ error }),
 
     // Client-side UI state (NOT from server)
+    setBootstrapping: (isBootstrapping) => set({ isBootstrapping }),
     setGenerating: (isGenerating) => set({ isGenerating }),
     clearPreview: () =>
       set({

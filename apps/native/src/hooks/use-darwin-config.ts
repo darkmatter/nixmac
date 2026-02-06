@@ -1,9 +1,9 @@
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
 
 export function useDarwinConfig() {
-  const [isBootstrapping, setIsBootstrapping] = useState(false);
+  const isBootstrapping = useWidgetStore((state) => state.isBootstrapping);
   const storeRef = useRef(useWidgetStore.getState());
 
   const pickDir = useCallback(async () => {
@@ -57,7 +57,7 @@ export function useDarwinConfig() {
 
       const store = storeRef.current;
       store.setError(null);
-      setIsBootstrapping(true);
+      store.setBootstrapping(true);
 
       try {
         await darwinAPI.flake.bootstrapDefault(hostname);
@@ -75,7 +75,7 @@ export function useDarwinConfig() {
         const message = error instanceof Error ? error.message : String(error);
         store.setError(`Failed to create configuration: ${message}`);
       } finally {
-        setIsBootstrapping(false);
+        store.setBootstrapping(false);
       }
     },
     []
