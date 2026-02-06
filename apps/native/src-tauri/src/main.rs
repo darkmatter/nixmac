@@ -9,6 +9,7 @@
 
 mod commands;
 mod darwin;
+mod default_config;
 mod evolve;
 mod git;
 mod log_summarizer;
