@@ -54,6 +54,8 @@
     "@radix-ui/react-use-layout-effect": "^1.1.1",
     "@radix-ui/react-use-previous": "^1.1.1",
     "@radix-ui/react-visually-hidden": "^1.2.4",
+    "@sentry/browser": "^10.38.0",
+    "@sentry/react": "^10.38.0",
     "@shikijs/transformers": "^3.20.0",
     "@storybook/theming": "^8.6.14",
     "@tabler/icons-react": "^3.36.0",
