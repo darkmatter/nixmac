@@ -30,7 +30,7 @@ export function useSummary() {
   /**
    * Checks if the summary needs to be fetched (empty or stale) and fetches if needed.
    */
-  const checkAndFetchSummary = useCallback(async (skipCheck = false) => {
+  const checkAndFetchSummary = useCallback(async ({ skipCheck = false } = {}) => {
     const store = useWidgetStore.getState();
 
     if (!store.gitStatus?.hasChanges) {
