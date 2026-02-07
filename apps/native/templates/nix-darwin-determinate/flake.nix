@@ -79,10 +79,7 @@
           ./modules/darwin/security.nix
           ./modules/darwin/services.nix
           ./modules/darwin/users.nix
-        ];
-
-        overlays = [
-          ./overlays/nix-overlays.nix
+          ./nix-overlays.nix
         ];
       };
     };
