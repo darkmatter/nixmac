@@ -31,6 +31,7 @@ use tauri::{
 };
 
 fn main() {
+    let context = tauri::generate_context!();
     let mut sentry_guard = None;
 
     if let Ok(dsn) = env::var("SENTRY_DSN") {
@@ -51,13 +52,6 @@ fn main() {
 
     // Initialize logging - set RUST_LOG=debug for verbose output
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
-
-    // Log if Sentry is configured
-    if sentry_guard.is_some() {
-        log::info!("Sentry initialized successfully");
-    } else {
-        log::info!("Sentry not configured - set SENTRY_DSN environment variable to enable Sentry error reporting");
-    }
 
     let mut builder = tauri::Builder::default();
 
@@ -131,8 +125,18 @@ fn main() {
             commands::permissions_request,
             commands::permissions_all_required_granted,
         ])
-        .setup(|app| {
+        .setup(move |app| {
             let handle = app.handle();
+
+            let send_diagnostics = store::get_send_diagnostics(handle).unwrap_or(false);
+            if send_diagnostics {
+                log::info!("Sentry diagnostics enabled by user preference");
+            } else {
+                log::info!("Sentry diagnostics disabled by user preference");
+                if sentry_guard.is_some() {
+                    sentry::Hub::current().bind_client(None);
+                }
+            }
 
             // Build the system tray menu with navigation shortcuts
             let open_i = MenuItem::with_id(app, "open", "Open", true, None::<&str>)?;
@@ -248,7 +252,7 @@ fn main() {
 
             Ok(())
         })
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("error while building tauri application")
         .run(|app_handle, event| {
             // Handle window close events - hide window but keep app running

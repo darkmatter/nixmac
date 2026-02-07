@@ -578,6 +578,7 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
     let window_shadow = store::get_window_shadow(&app).map_err(capture_err)?;
     let openrouter_api_key = store::get_openrouter_api_key(&app).map_err(capture_err)?;
     let openai_api_key = store::get_openai_api_key(&app).map_err(capture_err)?;
+    let send_diagnostics = store::get_send_diagnostics(&app).map_err(capture_err)?;
 
     let evolve_provider = store::get_evolve_provider(&app).map_err(capture_err)?;
     let evolve_model = store::get_evolve_model(&app).map_err(capture_err)?;
@@ -604,6 +605,7 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
         max_build_attempts,
 
         ollama_api_base_url,
+        send_diagnostics,
     })
 }
 
@@ -645,6 +647,9 @@ pub async fn ui_set_prefs(
     }
     if let Some(ollama_api_base_url) = prefs.get("ollamaApiBaseUrl").and_then(|v| v.as_str()) {
         store::set_ollama_api_base_url(&app, ollama_api_base_url).map_err(capture_err)?;
+    }
+    if let Some(send_diagnostics) = prefs.get("sendDiagnostics").and_then(|v| v.as_bool()) {
+        store::set_send_diagnostics(&app, send_diagnostics).map_err(capture_err)?;
     }
 
     Ok(serde_json::json!({"ok": true}))

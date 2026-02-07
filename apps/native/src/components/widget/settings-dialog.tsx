@@ -131,6 +131,7 @@ export function SettingsDialog() {
       evolveModel: "anthropic/claude-sonnet-4",
       maxIterations: 50,
       maxBuildAttempts: 5,
+      sendDiagnostics: false,
     },
   });
 
@@ -152,6 +153,7 @@ export function SettingsDialog() {
           form.setFieldValue("evolveModel", prefs.evolveModel ?? "anthropic/claude-sonnet-4");
           form.setFieldValue("maxIterations", prefs.maxIterations ?? 50);
           form.setFieldValue("maxBuildAttempts", prefs.maxBuildAttempts ?? 5);
+          form.setFieldValue("sendDiagnostics", prefs.sendDiagnostics ?? false);
 
           if (prefs.openrouterApiKey) {
             setOpenrouterKeyStatus("valid");
@@ -239,15 +241,20 @@ export function SettingsDialog() {
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-4">
             {activeTab === "general" && (
-              <GeneralTab
-                configDir={configDir}
-                handleRefreshHosts={handleRefreshHosts}
-                hasFlake={hasFlake}
-                host={host}
-                hosts={hosts}
-                saveHost={saveHost}
-                setSettingsOpen={setSettingsOpen}
-              />
+              <form.Field name="sendDiagnostics">
+                {(sendDiagnosticsField) => (
+                  <GeneralTab
+                    configDir={configDir}
+                    handleRefreshHosts={handleRefreshHosts}
+                    hasFlake={hasFlake}
+                    host={host}
+                    hosts={hosts}
+                    saveHost={saveHost}
+                    sendDiagnosticsField={sendDiagnosticsField}
+                    setSettingsOpen={setSettingsOpen}
+                  />
+                )}
+              </form.Field>
             )}
 
             {activeTab === "appearance" && (
