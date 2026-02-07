@@ -49,7 +49,7 @@ export function useEvolve() {
       await darwinAPI.darwin.evolve(store.evolvePrompt);
       useWidgetStore.getState().appendLog("✓ Evolution complete\n");
       await refreshGitStatus();
-      await checkAndFetchSummary();
+      await checkAndFetchSummary({ skipCheck: true });
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
       useWidgetStore.getState().setError(msg);
