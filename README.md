@@ -72,6 +72,20 @@ export SOPS_AGE_KEY={your_sops_key} devenv up
 or add `your_sops_key` to `~/.config/sops/age/keys.txt`
 Key doesn't have to be formatted a certain way (just the key on its own line somewhere)
 
+**Optional: Set Up Sentry Integration**
+
+Sentry is disabled by default. If you want to enabling, set an environment variable as follows:
+
+```sh
+# To enable Rust-side integration:
+export SENTRY_DSN=http://<public_key_for_rust_project>@<host>:<port>/<project_id_for_rust_project>
+
+# To enable Typescript-side integration:
+export VITE_SENTRY_DSN=http://<public_key_for_react_project>@<host>:<port>/<project_id_for_react_project>
+```
+
+*Note that the recommended way to use Sentry is to have different projects for different "parts" of your application. Accordingly for the Tauri app it seems prudent to separate Rust and React.*
+
 **Optional: Disable Mac Permissions Checks**
 
 The frontend will do a permissions check and block you if you aren't running with all permissions. For full disk access, this is problematic because you may not have installed the application such that it is available in System Settings. You can disable the permissions check with:

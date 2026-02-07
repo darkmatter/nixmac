@@ -22,6 +22,7 @@ mod template;
 mod types;
 mod watcher;
 
+use std::env;
 use tauri::{
     image::Image,
     menu::{Menu, MenuItem},
@@ -30,10 +31,41 @@ use tauri::{
 };
 
 fn main() {
+    let mut sentry_guard = None;
+
+    if let Ok(dsn) = env::var("SENTRY_DSN") {
+        if !dsn.trim().is_empty() {
+            let client = sentry::init((
+                dsn,
+                sentry::ClientOptions {
+                    release: sentry::release_name!(),
+                    auto_session_tracking: true,
+                    send_default_pii: false,
+                    ..Default::default()
+                },
+            ));
+
+            sentry_guard = Some(client);
+        }
+    }
+
     // Initialize logging - set RUST_LOG=debug for verbose output
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
-    tauri::Builder::default()
+    // Log if Sentry is configured
+    if sentry_guard.is_some() {
+        log::info!("Sentry initialized successfully");
+    } else {
+        log::info!("Sentry not configured - set SENTRY_DSN environment variable to enable Sentry error reporting");
+    }
+
+    let mut builder = tauri::Builder::default();
+
+    if let Some(client) = sentry_guard.as_ref() {
+        builder = builder.plugin(tauri_plugin_sentry::init(client));
+    }
+
+    builder
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
