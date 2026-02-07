@@ -142,6 +142,25 @@ pub fn set_floating_footer<R: Runtime>(app: &AppHandle<R>, footer: bool) -> Resu
     Ok(())
 }
 
+pub fn get_send_diagnostics<R: Runtime>(app: &AppHandle<R>) -> Result<bool> {
+    let store = get_store(app)?;
+
+    if let Some(send) = store.get("sendDiagnostics") {
+        if let Some(send_bool) = send.as_bool() {
+            return Ok(send_bool);
+        }
+    }
+
+    Ok(false)
+}
+
+pub fn set_send_diagnostics<R: Runtime>(app: &AppHandle<R>, send: bool) -> Result<()> {
+    let store = get_store(app)?;
+    store.set("sendDiagnostics", serde_json::json!(send));
+    store.save()?;
+    Ok(())
+}
+
 // =============================================================================
 // AI Configuration
 // =============================================================================
