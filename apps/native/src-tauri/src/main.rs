@@ -213,7 +213,12 @@ fn main() {
                     .hidden_title(true)
                     .title_bar_style(tauri::TitleBarStyle::Overlay)
                     .build()
-                    .unwrap();
+                    .map_err(|e| {
+                        let msg = format!("Failed to create main window: {}", e);
+                        log::error!("{}", msg);
+                        sentry::capture_message(&msg, sentry::Level::Error);
+                        msg
+                    })?;
 
             // set up watcher with interval based on focus
             let handle_for_focus = handle.clone();
@@ -231,7 +236,8 @@ fn main() {
 
             // Create the preview indicator window (persistent banner for uncommitted changes)
             if let Err(e) = peek::create_preview_indicator_window(handle) {
-                eprintln!("[peek] ❌ Failed to create preview indicator window: {}", e);
+                log::error!("[peek] ❌ Failed to create preview indicator window: {}", e);
+                sentry::capture_message(&e.to_string(), sentry::Level::Error);
             }
 
             // Start config watcher - monitors config directory for file changes

@@ -28,7 +28,7 @@ const DEBUG_LOGGING: bool = true;
 macro_rules! peek_log {
     ($($arg:tt)*) => {
         if DEBUG_LOGGING {
-            eprintln!("[peek] {}", format!($($arg)*));
+            log::debug!("[peek] {}", format!($($arg)*));
         }
     };
 }
@@ -464,7 +464,23 @@ static PREVIEW_INDICATOR_STATE: Lazy<Mutex<PreviewIndicatorState>> = Lazy::new(|
 
 /// Get the current preview indicator state (for window to call on mount)
 pub fn get_preview_indicator_state() -> PreviewIndicatorState {
-    PREVIEW_INDICATOR_STATE.lock().unwrap().clone()
+    match PREVIEW_INDICATOR_STATE.lock() {
+        Ok(guard) => guard.clone(),
+        Err(e) => {
+            let msg = format!("PREVIEW_INDICATOR_STATE mutex poisoned: {}", e);
+            log::error!("{}", msg);
+            sentry::capture_message(&msg, sentry::Level::Error);
+            // Return a sensible default state to keep the app running
+            PreviewIndicatorState {
+                visible: false,
+                summary: None,
+                files_changed: 0,
+                additions: None,
+                deletions: None,
+                is_loading: false,
+            }
+        }
+    }
 }
 
 /// Creates the preview indicator window (call once during setup)
@@ -602,7 +618,19 @@ pub fn update_preview_indicator<R: Runtime>(
     set_has_uncommitted_changes(has_changes);
 
     // Cache the state for late-mounting windows
-    *PREVIEW_INDICATOR_STATE.lock().unwrap() = state.clone();
+    match PREVIEW_INDICATOR_STATE.lock() {
+        Ok(mut guard) => {
+            *guard = state.clone();
+        }
+        Err(e) => {
+            let msg = format!(
+                "PREVIEW_INDICATOR_STATE mutex poisoned while updating: {}",
+                e
+            );
+            log::error!("{}", msg);
+            sentry::capture_message(&msg, sentry::Level::Error);
+        }
+    }
 
     if let Some(window) = app.get_webview_window("preview-indicator") {
         window
