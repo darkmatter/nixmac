@@ -26,10 +26,13 @@ const initializeApp = async () => {
       dsn: sentryDsn,
       environment: import.meta.env.MODE,
       release: import.meta.env.VITE_APP_VERSION,
+      defaultIntegrations: false, // Disable default integrations to avoid issues in tauri
       integrations: [Sentry.browserTracingIntegration()],
       tracesSampleRate: 0.1,
     });
     console.info("Sentry initialized with DSN:", sentryDsn);
+  } else {
+    console.info("Sentry not enabled.");
   }
 
   ReactDOM.createRoot(rootElement).render(
