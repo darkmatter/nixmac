@@ -499,7 +499,8 @@ pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse,
                 (items, change_summary.instructions, msg)
             }
             Err(e) => {
-                eprintln!("[summarize_changes] AI summarization failed: {}", e);
+                log::error!("[summarize_changes] AI summarization failed: {}", e);
+                sentry::capture_message(&e.to_string(), sentry::Level::Error);
                 // Return empty summary but still include the diff
                 (Vec::new(), String::new(), String::new())
             }
@@ -518,7 +519,8 @@ pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse,
 
     // Cache the summary for future app launches
     if let Err(e) = store::set_cached_summary(&app, &response) {
-        eprintln!("[summarize_changes] Failed to cache summary: {}", e);
+        log::error!("[summarize_changes] Failed to cache summary: {}", e);
+        sentry::capture_message(&e.to_string(), sentry::Level::Error);
     }
 
     Ok(response)
