@@ -15,8 +15,6 @@ export interface DarwinConfig {
 }
 
 export interface DarwinPrefs {
-  floatingFooter?: boolean;
-  windowShadow?: boolean;
   openrouterApiKey?: string;
   openaiApiKey?: string;
   summaryProvider?: string;
@@ -190,7 +188,6 @@ export const darwinAPI = {
   ui: {
     getPrefs: () => invoke<DarwinPrefs | null>("ui_get_prefs"),
     setPrefs: (prefs: DarwinPrefs) => invoke("ui_set_prefs", { prefs }),
-    setWindowShadow: (on: boolean) => invoke("ui_set_window_shadow", { on }),
   },
   models: {
     getCached: (provider: string) => invoke<string[] | null>("get_cached_models", { provider }),
