@@ -101,48 +101,6 @@ pub fn set_evolve_metadata<R: Runtime>(app: &AppHandle<R>, metadata: &str) -> Re
 }
 
 // =============================================================================
-// UI Preferences
-// =============================================================================
-
-pub fn get_window_shadow<R: Runtime>(app: &AppHandle<R>) -> Result<bool> {
-    let store = get_store(app)?;
-
-    if let Some(shadow) = store.get("windowShadow") {
-        if let Some(shadow_bool) = shadow.as_bool() {
-            return Ok(shadow_bool);
-        }
-    }
-
-    Ok(false) // Default: no shadow for cleaner widget look
-}
-
-pub fn set_window_shadow<R: Runtime>(app: &AppHandle<R>, shadow: bool) -> Result<()> {
-    let store = get_store(app)?;
-    store.set("windowShadow", serde_json::json!(shadow));
-    store.save()?;
-    Ok(())
-}
-
-pub fn get_floating_footer<R: Runtime>(app: &AppHandle<R>) -> Result<bool> {
-    let store = get_store(app)?;
-
-    if let Some(footer) = store.get("floatingFooter") {
-        if let Some(footer_bool) = footer.as_bool() {
-            return Ok(footer_bool);
-        }
-    }
-
-    Ok(true) // Default: floating footer enabled
-}
-
-pub fn set_floating_footer<R: Runtime>(app: &AppHandle<R>, footer: bool) -> Result<()> {
-    let store = get_store(app)?;
-    store.set("floatingFooter", serde_json::json!(footer));
-    store.save()?;
-    Ok(())
-}
-
-// =============================================================================
 // AI Configuration
 // =============================================================================
 

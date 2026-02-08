@@ -78,7 +78,6 @@ fn main() {
             // UI preferences
             commands::ui_get_prefs,
             commands::ui_set_prefs,
-            commands::ui_set_window_shadow,
             // Model cache
             commands::get_cached_models,
             commands::set_cached_models,

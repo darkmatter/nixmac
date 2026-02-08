@@ -486,8 +486,6 @@ pub async fn suggest_commit_message(app: AppHandle) -> Result<String, String> {
 /// Returns all UI preferences.
 #[tauri::command]
 pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
-    let floating_footer = store::get_floating_footer(&app).map_err(|e| e.to_string())?;
-    let window_shadow = store::get_window_shadow(&app).map_err(|e| e.to_string())?;
     let openrouter_api_key = store::get_openrouter_api_key(&app).map_err(|e| e.to_string())?;
     let openai_api_key = store::get_openai_api_key(&app).map_err(|e| e.to_string())?;
 
@@ -502,8 +500,6 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
         store::get_ollama_api_base_url(&app).map_err(|e| e.to_string())?;
 
     Ok(types::UiPrefs {
-        floating_footer,
-        window_shadow,
         openrouter_api_key,
         openai_api_key,
 
@@ -525,12 +521,6 @@ pub async fn ui_set_prefs(
     app: AppHandle,
     prefs: serde_json::Value,
 ) -> Result<serde_json::Value, String> {
-    if let Some(floating_footer) = prefs.get("floatingFooter").and_then(|v| v.as_bool()) {
-        store::set_floating_footer(&app, floating_footer).map_err(|e| e.to_string())?;
-    }
-    if let Some(window_shadow) = prefs.get("windowShadow").and_then(|v| v.as_bool()) {
-        store::set_window_shadow(&app, window_shadow).map_err(|e| e.to_string())?;
-    }
     if let Some(openrouter_api_key) = prefs.get("openrouterApiKey").and_then(|v| v.as_str()) {
         store::set_openrouter_api_key(&app, openrouter_api_key).map_err(|e| e.to_string())?;
     }
@@ -560,13 +550,6 @@ pub async fn ui_set_prefs(
         store::set_ollama_api_base_url(&app, ollama_api_base_url).map_err(|e| e.to_string())?;
     }
 
-    Ok(serde_json::json!({"ok": true}))
-}
-
-/// Toggles the window shadow effect.
-#[tauri::command]
-pub async fn ui_set_window_shadow(app: AppHandle, on: bool) -> Result<serde_json::Value, String> {
-    store::set_window_shadow(&app, on).map_err(|e| e.to_string())?;
     Ok(serde_json::json!({"ok": true}))
 }
 

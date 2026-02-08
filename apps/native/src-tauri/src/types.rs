@@ -87,14 +87,6 @@ pub struct GitFileStatus {
 /// User interface preferences.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UiPrefs {
-    /// Whether the footer floats above content.
-    #[serde(rename = "floatingFooter")]
-    pub floating_footer: bool,
-
-    /// Whether to show window shadow.
-    #[serde(rename = "windowShadow")]
-    pub window_shadow: bool,
-
     /// OpenRouter API key for AI features via OpenRouter.
     #[serde(rename = "openrouterApiKey")]
     pub openrouter_api_key: Option<String>,
