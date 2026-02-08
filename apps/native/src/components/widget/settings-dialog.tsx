@@ -4,14 +4,13 @@ import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
 import { useForm } from "@tanstack/react-form";
-import { Bot, FolderOpen, Key, Palette, Settings2 } from "lucide-react";
+import { Bot, FolderOpen, Key, Settings2 } from "lucide-react";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { AiModelsTab } from "./settings/ai-models-tab";
-import { AppearanceTab } from "./settings/appearance-tab";
 import { ApiKeysTab } from "./settings/api-keys-tab";
 import { GeneralTab } from "./settings/general-tab";
 
-type SettingsTab = "general" | "appearance" | "api-keys" | "ai-models";
+type SettingsTab = "general" | "api-keys" | "ai-models";
 type ApiKeyStatus = "idle" | "verifying" | "valid" | "invalid";
 
 interface NavItemProps {
@@ -120,8 +119,6 @@ export function SettingsDialog() {
 
   const form = useForm({
     defaultValues: {
-      floatingFooter: true,
-      windowShadow: false,
       openrouterApiKey: "",
       openaiApiKey: "",
       ollamaApiBaseUrl: "",
@@ -141,8 +138,6 @@ export function SettingsDialog() {
       try {
         const prefs = await darwinAPI.ui.getPrefs();
         if (prefs) {
-          form.setFieldValue("floatingFooter", prefs.floatingFooter ?? true);
-          form.setFieldValue("windowShadow", prefs.windowShadow ?? false);
           form.setFieldValue("openrouterApiKey", prefs.openrouterApiKey ?? "");
           form.setFieldValue("openaiApiKey", prefs.openaiApiKey ?? "");
           form.setFieldValue("ollamaApiBaseUrl", prefs.ollamaApiBaseUrl ?? "");
@@ -212,12 +207,6 @@ export function SettingsDialog() {
                 onClick={() => setActiveTab("ai-models")}
               />
               <NavItem
-                active={activeTab === "appearance"}
-                icon={<Palette className="h-4 w-4" />}
-                label="Appearance"
-                onClick={() => setActiveTab("appearance")}
-              />
-              <NavItem
                 active={activeTab === "api-keys"}
                 icon={<Key className="h-4 w-4" />}
                 label="API Keys"
@@ -248,21 +237,6 @@ export function SettingsDialog() {
                 saveHost={saveHost}
                 setSettingsOpen={setSettingsOpen}
               />
-            )}
-
-            {activeTab === "appearance" && (
-              <form.Field name="floatingFooter">
-                {(floatingFooterField) => (
-                  <form.Field name="windowShadow">
-                    {(windowShadowField) => (
-                      <AppearanceTab
-                        floatingFooterField={floatingFooterField}
-                        windowShadowField={windowShadowField}
-                      />
-                    )}
-                  </form.Field>
-                )}
-              </form.Field>
             )}
 
             {activeTab === "api-keys" && (
