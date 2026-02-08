@@ -23,6 +23,7 @@ mod template;
 mod types;
 mod watcher;
 
+use std::env;
 use tauri::{
     image::Image,
     menu::{Menu, MenuItem},
@@ -31,10 +32,35 @@ use tauri::{
 };
 
 fn main() {
+    let context = tauri::generate_context!();
+    let mut sentry_guard = None;
+
+    if let Ok(dsn) = env::var("SENTRY_DSN") {
+        if !dsn.trim().is_empty() {
+            let client = sentry::init((
+                dsn,
+                sentry::ClientOptions {
+                    release: sentry::release_name!(),
+                    auto_session_tracking: false,
+                    send_default_pii: false,
+                    ..Default::default()
+                },
+            ));
+
+            sentry_guard = Some(client);
+        }
+    }
+
     // Initialize logging - set RUST_LOG=debug for verbose output
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+
+    if let Some(client) = sentry_guard.as_ref() {
+        builder = builder.plugin(tauri_plugin_sentry::init(client));
+    }
+
+    builder
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
@@ -99,8 +125,18 @@ fn main() {
             commands::permissions_request,
             commands::permissions_all_required_granted,
         ])
-        .setup(|app| {
+        .setup(move |app| {
             let handle = app.handle();
+
+            let send_diagnostics = store::get_send_diagnostics(handle).unwrap_or(false);
+            if send_diagnostics {
+                log::info!("Sentry diagnostics enabled by user preference");
+            } else {
+                log::info!("Sentry diagnostics disabled by user preference");
+                if sentry_guard.is_some() {
+                    sentry::Hub::current().bind_client(None);
+                }
+            }
 
             // Build the system tray menu with navigation shortcuts
             let open_i = MenuItem::with_id(app, "open", "Open", true, None::<&str>)?;
@@ -181,7 +217,12 @@ fn main() {
                     .hidden_title(true)
                     .title_bar_style(tauri::TitleBarStyle::Overlay)
                     .build()
-                    .unwrap();
+                    .map_err(|e| {
+                        let msg = format!("Failed to create main window: {}", e);
+                        log::error!("{}", msg);
+                        sentry::capture_message(&msg, sentry::Level::Error);
+                        msg
+                    })?;
 
             // set up watcher with interval based on focus
             let handle_for_focus = handle.clone();
@@ -199,7 +240,8 @@ fn main() {
 
             // Create the preview indicator window (persistent banner for uncommitted changes)
             if let Err(e) = peek::create_preview_indicator_window(handle) {
-                eprintln!("[peek] ❌ Failed to create preview indicator window: {}", e);
+                log::error!("[peek] ❌ Failed to create preview indicator window: {}", e);
+                sentry::capture_message(&e.to_string(), sentry::Level::Error);
             }
 
             // Start config watcher - monitors config directory for file changes
@@ -210,7 +252,7 @@ fn main() {
 
             Ok(())
         })
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("error while building tauri application")
         .run(|app_handle, event| {
             // Handle window close events - hide window but keep app running
