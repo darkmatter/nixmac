@@ -26,9 +26,9 @@ const POLL_INTERVAL_MS: u64 = 50;
 const DEBUG_LOGGING: bool = true;
 
 macro_rules! peek_log {
-    ($($arg:tt)*) => {
+    ($fmt:expr $(, $($arg:tt)*)?) => {
         if DEBUG_LOGGING {
-            log::debug!("[peek] {}", format!($($arg)*));
+            log::debug!(concat!("[peek] ", $fmt) $(, $($arg)*)?);
         }
     };
 }

@@ -84,11 +84,14 @@ export function GeneralTab({
             <Switch
               checked={!!sendDiagnosticsField.state.value}
               onCheckedChange={async (checked) => {
+                const previousValue = !!sendDiagnosticsField.state.value;
                 sendDiagnosticsField.handleChange(checked);
                 try {
                   await darwinAPI.ui.setPrefs({ sendDiagnostics: checked });
-                } catch {
-                  // Ignore errors
+                } catch (error) {
+                  // Revert the field value if persisting the preference fails
+                  sendDiagnosticsField.handleChange(previousValue);
+                  throw error;
                 }
               }}
             />
