@@ -7,8 +7,9 @@
 //! NOTE: The server is stateless regarding UI state. All app state (generating,
 //! preview mode, etc.) is computed and managed entirely by the client.
 
-use crate::{darwin, git, nix, peek, permissions, store, summarize, template, types, watcher};
-use std::fs;
+use crate::{
+    darwin, default_config, git, nix, peek, permissions, store, summarize, types, watcher,
+};
 use std::path::Path;
 use std::process::Command;
 use tauri::AppHandle;
@@ -86,89 +87,10 @@ pub async fn flake_exists(app: AppHandle) -> Result<bool, String> {
     Ok(Path::new(&dir).join("flake.nix").exists())
 }
 
-/// Helper function to detect the Darwin platform (aarch64 or x86_64)
-fn detect_darwin_platform() -> &'static str {
-    #[cfg(target_arch = "aarch64")]
-    {
-        "aarch64-darwin"
-    }
-    #[cfg(not(target_arch = "aarch64"))]
-    {
-        "x86_64-darwin"
-    }
-}
-
+/// Creates a new nix-darwin configuration from the bundled template.
 #[tauri::command]
 pub async fn bootstrap_default_config(app: AppHandle, hostname: String) -> Result<(), String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
-    let path = Path::new(&dir);
-
-    if path.join("flake.nix").exists() {
-        return Err("Directory already contains flake.nix".to_string());
-    }
-
-    // Initialize flake from template
-    let init_result = Command::new("nix")
-        .args(["flake", "init", "-t", "github:darkmatter/nixmac"])
-        .current_dir(&dir)
-        .env("PATH", crate::nix::get_nix_path())
-        .output()
-        .map_err(capture_err)?;
-
-    if !init_result.status.success() {
-        return Err(format!(
-            "Failed to initialize flake: {}",
-            String::from_utf8_lossy(&init_result.stderr)
-        ));
-    }
-
-    // Build template context with configuration values
-    let mut context = template::TemplateContext::new();
-    context
-        .insert_str("hostname", &hostname)
-        .insert_str("platform", detect_darwin_platform());
-
-    // Process all template files in the directory
-    for entry in fs::read_dir(path).map_err(capture_err)? {
-        let entry = entry.map_err(capture_err)?;
-        let file_path = entry.path();
-
-        if file_path.is_file() {
-            if let Some(ext) = file_path.extension() {
-                if ext == "nix" {
-                    // Read and render the template
-                    let content = fs::read_to_string(&file_path).map_err(capture_err)?;
-
-                    let rendered =
-                        template::render_string(&content, &context).map_err(capture_err)?;
-
-                    fs::write(&file_path, rendered).map_err(capture_err)?;
-                }
-            }
-        }
-    }
-
-    git::init_if_needed(&dir).map_err(capture_err)?;
-
-    git::stage_all(&dir).map_err(capture_err)?;
-
-    let flake_lock_result = Command::new("nix")
-        .args(["flake", "lock"])
-        .current_dir(&dir)
-        .env("PATH", crate::nix::get_nix_path())
-        .output()
-        .map_err(capture_err)?;
-    if !flake_lock_result.status.success() {
-        return Err(format!(
-            "Failed to generate flake.lock: {}",
-            String::from_utf8_lossy(&flake_lock_result.stderr)
-        ));
-    }
-
-    git::stage_all(&dir).map_err(capture_err)?;
-    git::commit_all(&dir, "Initial nix-darwin configuration").map_err(capture_err)?;
-
-    Ok(())
+    default_config::bootstrap(&app, &hostname)
 }
 
 // =============================================================================
@@ -655,14 +577,9 @@ pub async fn ui_set_prefs(
     Ok(serde_json::json!({"ok": true}))
 }
 
-/// Toggles the window shadow effect.
-#[tauri::command]
-pub async fn ui_set_window_shadow(app: AppHandle, on: bool) -> Result<serde_json::Value, String> {
-    store::set_window_shadow(&app, on).map_err(capture_err)?;
-    Ok(serde_json::json!({"ok": true}))
-}
-
-/// Gets the cached list of models for a provider.
+// =============================================================================
+// Window Commands
+// =============================================================================
 #[tauri::command]
 pub async fn get_cached_models(
     app: AppHandle,
