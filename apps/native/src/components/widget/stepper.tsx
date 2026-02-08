@@ -17,7 +17,7 @@ export function Stepper() {
   const step = useCurrentStep();
 
   // Don't show stepper on setup step
-  if (step === "setup") {
+  if (step === "setup" || step === "permissions") {
     return null;
   }
 
