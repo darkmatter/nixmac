@@ -19,6 +19,7 @@
     "global-shortcut:default",
     "global-shortcut:allow-register",
     "global-shortcut:allow-unregister",
-    "macos-permissions:default"
+    "macos-permissions:default",
+    "sentry:default"
   ]
 }
