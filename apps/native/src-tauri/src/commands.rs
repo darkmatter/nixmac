@@ -496,8 +496,6 @@ pub async fn suggest_commit_message(app: AppHandle) -> Result<String, String> {
 /// Returns all UI preferences.
 #[tauri::command]
 pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
-    let floating_footer = store::get_floating_footer(&app).map_err(capture_err)?;
-    let window_shadow = store::get_window_shadow(&app).map_err(capture_err)?;
     let openrouter_api_key = store::get_openrouter_api_key(&app).map_err(capture_err)?;
     let openai_api_key = store::get_openai_api_key(&app).map_err(capture_err)?;
     let send_diagnostics = store::get_send_diagnostics(&app).map_err(capture_err)?;
@@ -513,8 +511,6 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
         store::get_ollama_api_base_url(&app).map_err(capture_err)?;
 
     Ok(types::UiPrefs {
-        floating_footer,
-        window_shadow,
         openrouter_api_key,
         openai_api_key,
 
@@ -537,12 +533,6 @@ pub async fn ui_set_prefs(
     app: AppHandle,
     prefs: serde_json::Value,
 ) -> Result<serde_json::Value, String> {
-    if let Some(floating_footer) = prefs.get("floatingFooter").and_then(|v| v.as_bool()) {
-        store::set_floating_footer(&app, floating_footer).map_err(capture_err)?;
-    }
-    if let Some(window_shadow) = prefs.get("windowShadow").and_then(|v| v.as_bool()) {
-        store::set_window_shadow(&app, window_shadow).map_err(capture_err)?;
-    }
     if let Some(openrouter_api_key) = prefs.get("openrouterApiKey").and_then(|v| v.as_str()) {
         store::set_openrouter_api_key(&app, openrouter_api_key).map_err(capture_err)?;
     }
@@ -577,9 +567,7 @@ pub async fn ui_set_prefs(
     Ok(serde_json::json!({"ok": true}))
 }
 
-// =============================================================================
-// Window Commands
-// =============================================================================
+/// Gets the cached list of models for a provider.
 #[tauri::command]
 pub async fn get_cached_models(
     app: AppHandle,

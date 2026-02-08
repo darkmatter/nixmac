@@ -86,13 +86,20 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
   const hasUncommittedChanges = state.gitStatus?.hasChanges ?? false;
   const allChangesCleanlyStaged =
     state.gitStatus?.allChangesCleanlyStaged ?? false;
-  const permissionsCheckedAndIncomplete = state.permissionsChecked &&
+    const permissionsCheckedAndIncomplete = state.permissionsChecked &&
     state.permissionsState &&
     !state.permissionsState.allRequiredGranted;
+  const isBootstrapping = state.isBootstrapping;
 
   // Rule 0: Permission issues
   if (permissionsCheckedAndIncomplete) {
     return "permissions";
+  }
+
+  // Rule 0.5: Bootstrapping in progress - stay on setup step
+  // This prevents git watcher updates from changing the step during bootstrap
+  if (isBootstrapping) {
+    return "setup";
   }
 
   // Rule 1: Missing configuration
