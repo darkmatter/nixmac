@@ -30,7 +30,10 @@ const initializeApp = async () => {
       integrations: [Sentry.browserTracingIntegration()],
       tracesSampleRate: 0.1,
     });
-    console.info("Sentry initialized with DSN:", sentryDsn);
+    console.info("Sentry initialized.", {
+      environment: import.meta.env.MODE,
+      release: import.meta.env.VITE_APP_VERSION,
+    });
   } else {
     console.info("Sentry not enabled.");
   }
