@@ -40,7 +40,7 @@ fn main() {
                 dsn,
                 sentry::ClientOptions {
                     release: sentry::release_name!(),
-                    auto_session_tracking: true,
+                    auto_session_tracking: false,
                     send_default_pii: false,
                     ..Default::default()
                 },

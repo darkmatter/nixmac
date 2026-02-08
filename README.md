@@ -74,13 +74,13 @@ Key doesn't have to be formatted a certain way (just the key on its own line som
 
 **Optional: Set Up Sentry Integration**
 
-Sentry is disabled by default. If you want to enabling, set an environment variable as follows:
+Sentry is disabled by default. If you want to enable it, set an environment variable as follows:
 
 ```sh
 # To enable Rust-side integration:
 export SENTRY_DSN=http://<public_key_for_rust_project>@<host>:<port>/<project_id_for_rust_project>
 
-# To enable Typescript-side integration:
+# To enable TypeScript-side integration:
 export VITE_SENTRY_DSN=http://<public_key_for_react_project>@<host>:<port>/<project_id_for_react_project>
 ```
 

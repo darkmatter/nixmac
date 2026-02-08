@@ -28,7 +28,7 @@ const DEBUG_LOGGING: bool = true;
 macro_rules! peek_log {
     ($($arg:tt)*) => {
         if DEBUG_LOGGING {
-            log::debug!("[peek] {}", format!($($arg)*));
+            log::debug!("[peek] {}", format_args!($($arg)*));
         }
     };
 }
