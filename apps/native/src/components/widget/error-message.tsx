@@ -13,7 +13,8 @@ export function ErrorMessage() {
 
   // Suppress expected errors during setup (no flake.nix yet)
   const isSupressedError =
-    step === "setup" && error?.includes("Failed to list hosts: path");
+    step === "setup" && error?.includes("Failed to list hosts: path") ||
+    step === "evolving" && error?.includes("cancelled by user");
 
   if (!error || isSupressedError) {
     return null;

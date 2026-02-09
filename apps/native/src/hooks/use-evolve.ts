@@ -1,8 +1,8 @@
 import { useWidgetStore } from "@/stores/widget-store";
 import {
   darwinAPI,
-  ipcRenderer,
   EVOLVE_EVENT_CHANNEL,
+  ipcRenderer,
   type EvolveEvent,
 } from "@/tauri-api";
 import { useCallback } from "react";
@@ -47,13 +47,26 @@ export function useEvolve() {
 
     try {
       await darwinAPI.darwin.evolve(store.evolvePrompt);
+
       useWidgetStore.getState().appendLog("✓ Evolution complete\n");
+      store.setEvolvePrompt("");
+
       await refreshGitStatus();
       await checkAndFetchSummary({ skipCheck: true });
+
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
+
+      console.error("[useEvolve] Evolution failed:", {
+        error: e,
+        message: msg,
+        stack: (e as Error)?.stack,
+        timestamp: new Date().toISOString(),
+      });
+
       useWidgetStore.getState().setError(msg);
       useWidgetStore.getState().appendLog(`✗ Error: ${msg}\n`);
+
     } finally {
       useWidgetStore.getState().setProcessing(false);
       useWidgetStore.getState().setGenerating(false);
