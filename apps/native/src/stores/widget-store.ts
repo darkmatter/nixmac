@@ -20,7 +20,6 @@ export type {
 export type WidgetStep =
   | "permissions"
   | "setup"
-  | "overview"
   | "evolving"
   | "commit";
 export type ProcessingAction = "evolve" | "apply" | "commit" | "cancel" | null;
@@ -85,6 +84,7 @@ export interface WidgetState {
   isGenerating: boolean;
   settingsOpen: boolean;
   error: string | null;
+  suggestions: string[];
 }
 
 export interface WidgetActions {
@@ -190,6 +190,7 @@ export const initialWidgetState: WidgetState = {
   isGenerating: false,
   settingsOpen: false,
   error: null,
+  suggestions: ["Install vim", "Add Rectangle app", "Configure git"],
 };
 
 // =============================================================================

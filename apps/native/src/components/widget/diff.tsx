@@ -1,141 +1,161 @@
-import { ArrowLeft, Check, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import type { ChangesSummary } from "@/stores/widget-store";
-import type { GitFileStatus } from "@/tauri-api";
+"use client";
 
-interface DiffProps {
-  summary: ChangesSummary;
-  showAdvancedStats: boolean;
-  changedFiles: GitFileStatus[];
-  variant?: "default" | "outline";
+import { FileCode } from "lucide-react";
+import type { BundledLanguage } from "shiki";
+import {
+  CodeBlock,
+  CodeBlockBody,
+  CodeBlockContent,
+  CodeBlockItem,
+} from "@/components/kibo-ui/code-block";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { useWidgetStore } from "@/stores/widget-store";
+
+interface ParsedDiffSection {
+  filename: string;
+  hunks: string;
 }
 
-export function Diff({
-  summary,
-  showAdvancedStats,
-  changedFiles,
-  variant = "default",
-}: DiffProps) {
-  // Helper to get change type from git status
-  const getChangeType = (
-    f: GitFileStatus
-  ): "new" | "edited" | "removed" | "renamed" => {
-    const status = f.index || f.working_tree || "";
-    if (status === "A" || status === "?") {
-      return "new";
-    }
-    if (status === "D") {
-      return "removed";
-    }
-    if (status === "R") {
-      return "renamed";
-    }
-    return "edited";
-  };
+/**
+ * Parse a unified diff into sections per file
+ */
+function parseDiffIntoSections(diffContent: string): ParsedDiffSection[] {
+  const sections: ParsedDiffSection[] = [];
+  const lines = diffContent.split("\n");
 
-  // Helper to get filename from path
-  const getFileName = (path: string) => {
-    const parts = path.split("/");
-    // biome-ignore lint/style/useAtIndex: ES2022 .at() not available
-    return parts[parts.length - 1] || path;
-  };
+  let currentFilename = "";
+  let currentHunks: string[] = [];
 
-  // Helper to get directory from path
-  const getDirectory = (path: string) => {
-    const parts = path.split("/");
-    if (parts.length <= 1) {
-      return "";
+  for (const line of lines) {
+    // Match "diff --git a/path/to/file b/path/to/file"
+    const gitDiffMatch = line.match(/^diff --git a\/(.+?) b\/(.+)$/);
+    if (gitDiffMatch) {
+      // Save previous section if exists
+      if (currentFilename && currentHunks.length > 0) {
+        sections.push({
+          filename: currentFilename,
+          hunks: currentHunks.join("\n"),
+        });
+      }
+      currentFilename = gitDiffMatch[2];
+      currentHunks = [];
+      continue;
     }
-    return parts.slice(0, -1).join("/");
-  };
 
-  const renderListItem = ({
-    key,
-    changeType,
-    fileName,
-    directory,
-    isStaged,
-  }: {
-    key: string;
-    changeType: "new" | "edited" | "removed" | "renamed";
-    fileName: string;
-    directory?: string;
-    isStaged?: boolean;
-  }) => (
-    <div
-      className={cn(
-        "flex max-w-full items-center gap-3 py-4",
-        variant === "outline" && "border-border/50 border-b last:border-b-0"
-      )}
-      key={key}
-    >
-      <div
-        className={cn(
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-          changeType === "new" && "bg-green-500/15 text-green-400",
-          changeType === "edited" && "bg-amber-500/15 text-amber-400",
-          changeType === "removed" && "bg-red-500/15 text-red-400",
-          changeType === "renamed" && "bg-blue-500/15 text-blue-400"
-        )}
-      >
-        {changeType === "new" && <Plus className="h-4 w-4" />}
-        {changeType === "edited" && <Pencil className="h-4 w-4" />}
-        {changeType === "removed" && <Trash2 className="h-4 w-4" />}
-        {changeType === "renamed" && <ArrowLeft className="h-4 w-4" />}
+    // Skip --- and +++ lines (file markers)
+    if (line.startsWith("--- ") || line.startsWith("+++ ")) {
+      continue;
+    }
+
+    // Skip index lines
+    if (line.startsWith("index ")) {
+      continue;
+    }
+
+    // Skip "new file mode" or "deleted file mode" lines
+    if (
+      line.startsWith("new file mode") ||
+      line.startsWith("deleted file mode")
+    ) {
+      continue;
+    }
+
+    // Collect all other lines (hunks, additions, deletions)
+    if (currentFilename) {
+      currentHunks.push(line);
+    }
+  }
+
+  // Don't forget the last section
+  if (currentFilename && currentHunks.length > 0) {
+    sections.push({
+      filename: currentFilename,
+      hunks: currentHunks.join("\n"),
+    });
+  }
+
+  return sections;
+}
+
+// Get a short filename from a path
+function getShortFilename(path: string): string {
+  const parts = path.split("/");
+  return parts[parts.length - 1] || path;
+}
+
+// Get the directory from a path
+function getDirectory(path: string): string {
+  const parts = path.split("/");
+  if (parts.length <= 1) return "";
+  return parts.slice(0, -1).join("/");
+}
+
+export function Diff() {
+  const summary = useWidgetStore((s) => s.summary);
+
+  const diffContent = summary.diff || "";
+  const diffSections = parseDiffIntoSections(diffContent);
+
+  if (diffSections.length === 0) {
+    return (
+      <div className="flex items-center justify-center rounded-lg border border-border bg-muted/30 p-8 text-muted-foreground text-sm">
+        No diff available
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium text-sm">{fileName}</p>
-        {directory && (
-          <p className="truncate text-muted-foreground text-xs">{directory}</p>
-        )}
-      </div>
-      {isStaged && <Check className="h-4 w-4 shrink-0 text-green-400" />}
-    </div>
-  );
-
-  // Use the structured summary items from the API
-  const summaryItems = summary.items;
+    );
+  }
 
   return (
-    <div
-      className={cn(
-        "flex max-h-[400px] max-w-full shrink-0 flex-col rounded-lg",
-        variant === "outline" && "border border-border"
-      )}
-    >
-      <div className="flex shrink-0 items-center gap-2 border-border/50 border-b py-2">
-        <Sparkles className="h-4 w-4 text-primary" />
-        <span className="font-medium text-sm">
-          {showAdvancedStats ? "Files" : "What's Changed"}
-        </span>
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        {showAdvancedStats
-          ? changedFiles.map((f) => {
-              const changeType = getChangeType(f);
-              const fileName = getFileName(f.path);
-              const directory = getDirectory(f.path);
-              const isStaged = Boolean(
-                f.index && f.index !== " " && f.index !== "?"
-              );
+    <ScrollArea className="min-h-0 w-full flex-1 rounded-lg border border-border">
+      <div className="divide-y divide-border">
+        {diffSections.map((section, index) => {
+          const codeData = [
+            {
+              language: "diff",
+              filename: section.filename,
+              code: section.hunks,
+            },
+          ];
 
-              return renderListItem({
-                key: f.path,
-                changeType,
-                fileName,
-                directory,
-                isStaged,
-              });
-            })
-          : summaryItems.map((item, index) =>
-              renderListItem({
-                key: `summary-${index}`,
-                changeType: "edited",
-                fileName: item.title,
-                directory: item.description,
-              })
-            )}
+          return (
+            <div key={section.filename + index}>
+              {/* File divider header */}
+              <div className="sticky top-0 z-10 flex items-center gap-2 border-border border-b bg-muted/80 px-3 py-2 backdrop-blur-sm">
+                <FileCode className="h-4 w-4 text-primary" />
+                <div className="flex min-w-0 flex-1 items-baseline gap-2">
+                  <span className="truncate font-medium text-foreground text-sm">
+                    {getShortFilename(section.filename)}
+                  </span>
+                  {getDirectory(section.filename) && (
+                    <span className="truncate text-muted-foreground text-xs">
+                      {getDirectory(section.filename)}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Code diff for this file */}
+              <CodeBlock className="border-0" data={codeData} value="diff">
+                <CodeBlockBody>
+                  {(item) => (
+                    <CodeBlockItem
+                      className="w-max min-w-full"
+                      key={item.language}
+                      value={item.language}
+                    >
+                      <CodeBlockContent
+                        language={item.language as BundledLanguage}
+                      >
+                        {item.code}
+                      </CodeBlockContent>
+                    </CodeBlockItem>
+                  )}
+                </CodeBlockBody>
+              </CodeBlock>
+            </div>
+          );
+        })}
       </div>
-    </div>
+      <ScrollBar orientation="horizontal" />
+    </ScrollArea>
   );
 }
