@@ -7,19 +7,11 @@ import type {
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
 // Map widget steps to stepper steps
-export function getStepperStep(step: WidgetStep): StepperStepId {
-  switch (step) {
-    case "permissions":
-    case "setup":
-    case "overview":
-      return 1;
-    case "evolving":
-      return 2;
-    case "commit":
-      return 3;
-    default:
-      return 1;
-  }
+// Step position is based on state: Begin (no changes) → Evolving (has changes) → Commit
+export function getStepperStep(step: WidgetStep, hasChanges: boolean): StepperStepId {
+  if (step === "commit") return 3;
+  if (hasChanges) return 2; // "Evolving" - review changes
+  return 1; // "Begin" - no changes yet
 }
 
 // Categorize git changes for display
@@ -83,10 +75,10 @@ export function getChangeType(
 export function computeCurrentStep(state: WidgetState): WidgetStep {
   const hasConfigDir = !!state.configDir;
   const hasHost = !!state.host;
-  const hasUncommittedChanges = state.gitStatus?.hasChanges ?? false;
   const allChangesCleanlyStaged =
     state.gitStatus?.allChangesCleanlyStaged ?? false;
-    const permissionsCheckedAndIncomplete = state.permissionsChecked &&
+  const permissionsCheckedAndIncomplete =
+    state.permissionsChecked &&
     state.permissionsState &&
     !state.permissionsState.allRequiredGranted;
   const isBootstrapping = state.isBootstrapping;
@@ -107,21 +99,11 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
     return "setup";
   }
 
-  // Rule 2: Currently generating
-  if (state.isGenerating) {
-    return "evolving";
-  }
-
-  // Rule 3: All changes staged and ready to commit
+  // Rule 2: All changes staged and ready to commit
   if (allChangesCleanlyStaged) {
     return "commit";
   }
 
-  // Rule 4: Has uncommitted changes (not all staged yet)
-  if (hasUncommittedChanges) {
-    return "evolving";
-  }
-
-  // Rule 5: Default idle state
-  return "overview";
+  // Rule 3: Default - evolving handles both idle and has-changes states
+  return "evolving";
 }

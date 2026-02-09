@@ -1,5 +1,6 @@
 "use client";
 
+import { EvolveOverlayPanel } from "@/components/evolve-overlay-panel";
 import { RebuildOverlayPanel } from "@/components/rebuild-overlay-panel";
 import { Console } from "@/components/widget/console";
 import { ErrorMessage } from "@/components/widget/error-message";
@@ -8,8 +9,7 @@ import { SettingsDialog } from "@/components/widget/settings-dialog";
 import { Stepper } from "@/components/widget/stepper";
 import {
   CommitStep,
-  EvolvingStep,
-  OverviewStep,
+  EvolveStep,
   PermissionsStep,
   SetupStep,
 } from "@/components/widget/steps";
@@ -18,27 +18,19 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { useSummary } from "@/hooks/use-summary";
 import { useWatcher } from "@/hooks/use-watcher";
 import { loadConfig, loadHosts } from "@/hooks/use-widget-initialization";
-import { cn } from "@/lib/utils";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { useEffect } from "react";
 
 /**
  * Main widget component that connects to Tauri backend.
- *
- * State is computed entirely on the client - the server just exposes
- * data endpoints (config, git status, etc.) without tracking UI state.
+ * State is computed entirely on the client - the server just exposes.
  */
-
 export function DarwinWidget() {
   const step = useCurrentStep();
   const { refreshGitStatus } = useGitOperations();
   const { checkPermissions } = usePermissions();
   const { checkAndFetchSummary, loadCachedSummary } = useSummary();
   const { startWatching } = useWatcher();
-
-  // =============================================================================
-  // Global Widget Effects
-  // =============================================================================
 
   // Load initial data once on mount, then start watching for changes
   useEffect(() => {
@@ -54,15 +46,12 @@ export function DarwinWidget() {
         useWidgetStore.getState().setError((e as Error)?.message || String(e));
       }
 
-      // After initial load
+      // Start watching for git changes after initial load
       startWatching();
     })();
   }, []);
 
-  // =============================================================================
   // Routing mechanism
-  // =============================================================================
-
   const getActiveStepComponent = () => {
     switch (step) {
       case "permissions":
@@ -71,40 +60,28 @@ export function DarwinWidget() {
       case "setup":
         return <SetupStep />;
 
-      case "overview":
-        return <OverviewStep />;
+      case "evolving":
+        return <EvolveStep />;
 
       case "commit":
         return <CommitStep />;
-
-      case "evolving":
-        return <EvolvingStep />;
-
-      default:
-        return <OverviewStep />;
     }
   };
 
-  // =============================================================================
-  // Render
-  // =============================================================================
-
   return (
-      <div className="flex h-full w-full flex-col bg-background/90 backdrop-blur-xl">
-        <Header />
-        <Stepper />
+    <div className="flex h-full w-full flex-col bg-background/90 backdrop-blur-xl">
+      <Header />
+      <Stepper />
 
-        {/* Main Content */}
-        <div className="relative flex min-h-0 flex-1 flex-col overflow-auto">
-          <div className={cn("flex-1 p-5", step !== "evolving" && "overflow-auto")}>
-            <ErrorMessage />
-            {getActiveStepComponent()}
-          </div>
-          <RebuildOverlayPanel />
-        </div>
-
-        <Console />
-        <SettingsDialog />
+      <div className="relative flex min-h-0 flex-1 gap-4 flex-col overflow-auto p-4 xs:p-8 sm:px-12">
+        <ErrorMessage />
+        {getActiveStepComponent()}
+        <EvolveOverlayPanel />
+        <RebuildOverlayPanel />
       </div>
+
+      <Console />
+      <SettingsDialog />
+    </div>
   );
 }
