@@ -56,7 +56,7 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     export LC_ALL=en_US.UTF-8
     export LC_COLLATE=C
 
-    # Indicate local developement environent (for logging, etc.)
+    # Indicate local development environment (for logging, etc.)
     export NIXMAC_ENV=local
     export VITE_NIXMAC_ENV=local
     export NIXMAC_VERSION=local-$(whoami)
