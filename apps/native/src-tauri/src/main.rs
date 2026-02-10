@@ -33,22 +33,40 @@ use tauri::{
 
 fn main() {
     let context = tauri::generate_context!();
+
+    // Prefer compile-time embedded vars (set by build.rs via `cargo:rustc-env`),
+    // fall back to runtime environment variables.
+    let sentry_dsn = option_env!("SENTRY_DSN")
+        .map(|s| s.to_string())
+        .or_else(|| env::var("SENTRY_DSN").ok());
+
+    let nixmac_env = option_env!("NIXMAC_ENV")
+        .map(|s| s.to_string())
+        .or_else(|| env::var("NIXMAC_ENV").ok())
+        .unwrap_or_else(|| "prod".to_string());
+
+    let nixmac_version = option_env!("NIXMAC_VERSION")
+        .map(|s| s.to_string())
+        .or_else(|| env::var("NIXMAC_VERSION").ok())
+        .unwrap_or_else(|| "unknown".to_string());
+
     let mut sentry_guard = None;
 
-    if let Ok(dsn) = env::var("SENTRY_DSN") {
-        if !dsn.trim().is_empty() {
-            let client = sentry::init((
-                dsn,
-                sentry::ClientOptions {
-                    release: sentry::release_name!(),
-                    auto_session_tracking: false,
-                    send_default_pii: false,
-                    ..Default::default()
-                },
-            ));
+    if let Some(dsn) = sentry_dsn.filter(|s| !s.trim().is_empty()) {
+        // clone `nixmac_env`/`nixmac_version` so we don't move the original
+        // values and can use them again below for logging. Annoying Rust thing.
+        let client = sentry::init((
+            dsn,
+            sentry::ClientOptions {
+                environment: Some(nixmac_env.clone().into()),
+                release: Some(nixmac_version.clone().into()),
+                auto_session_tracking: false,
+                send_default_pii: false,
+                ..Default::default()
+            },
+        ));
 
-            sentry_guard = Some(client);
-        }
+        sentry_guard = Some(client);
     }
 
     // Initialize logging - set RUST_LOG=debug for verbose output
@@ -130,7 +148,11 @@ fn main() {
 
             let send_diagnostics = store::get_send_diagnostics(handle).unwrap_or(false);
             if send_diagnostics {
-                log::info!("Sentry diagnostics enabled by user preference");
+                log::info!(
+                    "Sentry diagnostics enabled by user preference (env: {}, version: {})",
+                    nixmac_env,
+                    nixmac_version
+                );
             } else {
                 log::info!("Sentry diagnostics disabled by user preference");
                 if sentry_guard.is_some() {
