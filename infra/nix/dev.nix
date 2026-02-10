@@ -59,8 +59,8 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     # Indicate local developement environent (for logging, etc.)
     export NIXMAC_ENV=local
     export VITE_NIXMAC_ENV=local
-    export NIXMAC_VERSION=local
-    export VITE_NIXMAC_VERSION=local
+    export NIXMAC_VERSION=local-$(whoami)
+    export VITE_NIXMAC_VERSION=local-$(whoami)
     
     # eval "$(starship init $SHELL)"
   '';
