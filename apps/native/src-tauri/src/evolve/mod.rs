@@ -15,7 +15,9 @@ use log::{debug, error, info, warn};
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::Arc;
+use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
+use tokio::time::sleep;
 use tools::{create_tools, execute_tool, ToolResult};
 
 use crate::{commands, nix, store, types::EvolveEvent};
@@ -280,7 +282,34 @@ pub async fn generate_evolution(
         debug!("Sending request to AI provider...");
         emit_evolve_event(app, EvolveEvent::api_request(start_time, iteration));
 
-        let response_result = provider.completion(&messages, &tools).await;
+        // Run provider completion but also watch for cancellation so we can
+        // interrupt while the model is thinking. If cancellation is requested
+        // we drop the provider future (cancelling the underlying request
+        // if the HTTP client supports it) and return immediately.
+        // Clone messages so the provider future doesn't hold an immutable
+        // borrow of `messages` while we later need to mutate it.
+        let messages_snapshot = messages.clone();
+        let provider_future = provider.completion(&messages_snapshot, &tools);
+        tokio::pin!(provider_future);
+
+        let response_result = tokio::select! {
+            res = &mut provider_future => res,
+            _ = async {
+                loop {
+                    if commands::is_evolve_cancelled() {
+                        break;
+                    }
+                    sleep(Duration::from_millis(100)).await;
+                }
+            } => {
+                warn!("⚠️ Evolution cancelled by user during provider call");
+                emit_evolve_event(
+                    app,
+                    EvolveEvent::error(start_time, Some(iteration), "Evolution cancelled by user"),
+                );
+                return Err(anyhow!("Evolution cancelled by user"));
+            }
+        };
 
         // Handle API failures
         let response = match response_result {
