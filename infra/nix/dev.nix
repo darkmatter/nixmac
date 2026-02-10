@@ -55,6 +55,12 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     export LANG=en_US.UTF-8
     export LC_ALL=en_US.UTF-8
     export LC_COLLATE=C
+
+    # Indicate local developement environent (for logging, etc.)
+    export NIXMAC_ENV=local
+    export VITE_NIXMAC_ENV=local
+    export NIXMAC_VERSION=local
+    export VITE_NIXMAC_VERSION=local
     
     # eval "$(starship init $SHELL)"
   '';

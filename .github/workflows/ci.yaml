@@ -17,6 +17,19 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Inject Sentry configuration into job env
+        run: |
+          SHORT_SHA=${GITHUB_SHA::8}
+          PKG_VERSION=$(node -p "require('./apps/native/package.json').version")
+          VERSION="${PKG_VERSION}-${SHORT_SHA}"
+
+          echo "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" >> $GITHUB_ENV
+          echo "NIXMAC_ENV=prod" >> $GITHUB_ENV
+          echo "NIXMAC_VERSION=${{ env.VERSION }}" >> $GITHUB_ENV
+
+          echo "VITE_SENTRY_DSN=${{ secrets.VITE_SENTRY_DSN }}" >> $GITHUB_ENV
+          echo "VITE_NIXMAC_ENV=prod" >> $GITHUB_ENV
+          echo "VITE_NIXMAC_VERSION=${{ env.VERSION }}" >> $GITHUB_ENV
       - name: setup pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -37,6 +50,13 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Pass DSNs and build metadata into the tauri action step so build.rs can read them
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          NIXMAC_ENV: prod
+          NIXMAC_VERSION: ${{ env.VERSION }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_NIXMAC_ENV: prod
+          VITE_NIXMAC_VERSION: ${{ env.VERSION }}
         with:
           tagName: app-v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
           releaseName: "App v__VERSION__"
