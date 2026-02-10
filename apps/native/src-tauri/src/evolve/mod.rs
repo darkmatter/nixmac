@@ -282,32 +282,32 @@ pub async fn generate_evolution(
         debug!("Sending request to AI provider...");
         emit_evolve_event(app, EvolveEvent::api_request(start_time, iteration));
 
-        // Run provider completion but also watch for cancellation so we can
-        // interrupt while the model is thinking. If cancellation is requested
-        // we drop the provider future (cancelling the underlying request
-        // if the HTTP client supports it) and return immediately.
-        // Clone messages so the provider future doesn't hold an immutable
-        // borrow of `messages` while we later need to mutate it.
-        let messages_snapshot = messages.clone();
-        let provider_future = provider.completion(&messages_snapshot, &tools);
-        tokio::pin!(provider_future);
+        // Run provider completion inside a short-lived block and select!
+        // on it plus a cancellation signal. This lets the future borrow
+        // `messages` only for the call so we can mutate `messages` after
+        // the block without deep-cloning the conversation.
+        let response_result = {
+            let fut = provider.completion(&messages, &tools);
+            tokio::pin!(fut);
 
-        let response_result = tokio::select! {
-            res = &mut provider_future => res,
-            _ = async {
-                loop {
-                    if commands::is_evolve_cancelled() {
-                        break;
+            tokio::select! {
+                res = &mut fut => res,
+                _ = async {
+                    loop {
+                        if commands::is_evolve_cancelled() {
+                            break;
+                        }
+                        // consider switching the cancellation mechanism to a tokio::sync::Notify or watch channel and select! directly on that signal instead of polling with sleep
+                        sleep(Duration::from_millis(100)).await;
                     }
-                    sleep(Duration::from_millis(100)).await;
+                } => {
+                    warn!("⚠️ Evolution cancelled by user during provider call");
+                    emit_evolve_event(
+                        app,
+                        EvolveEvent::error(start_time, Some(iteration), "Evolution cancelled by user"),
+                    );
+                    return Err(anyhow!("Evolution cancelled by user"));
                 }
-            } => {
-                warn!("⚠️ Evolution cancelled by user during provider call");
-                emit_evolve_event(
-                    app,
-                    EvolveEvent::error(start_time, Some(iteration), "Evolution cancelled by user"),
-                );
-                return Err(anyhow!("Evolution cancelled by user"));
             }
         };
 
