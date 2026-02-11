@@ -35,7 +35,7 @@ export function CommitStep() {
     {
       name: "Evolve",
       icon: RefreshCw,
-      color: "blue",
+      color: "teal",
       isActive: action === "amend",
       onAction: () => setAction("amend"),
     },
