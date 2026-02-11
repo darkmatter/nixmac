@@ -35,6 +35,11 @@ export function useSummary() {
   const checkAndFetchSummary = useCallback(async ({ skipCheck = false } = {}) => {
     const store = useWidgetStore.getState();
     console.log("Checking if summary fetch is needed...");
+    // Prevent concurrent summary fetches
+    if (store.summaryLoading) {
+      console.log("Summary fetch already in progress; skipping duplicate call.");
+      return;
+    }
     if (!store.gitStatus?.hasChanges) {
       console.log("No changes detected; skipping summary fetch.");
       return;

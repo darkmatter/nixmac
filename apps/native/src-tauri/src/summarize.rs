@@ -91,9 +91,20 @@ Respond with ONLY valid JSON, no markdown code blocks or extra text."#;
         truncated_diff, file_summary
     );
 
-    debug!("Requesting change summary from {}", provider.model());
+    let request_id = uuid::Uuid::new_v4().to_string();
+    debug!(
+        "Requesting change summary from {} [id: {}]",
+        provider.model(),
+        request_id
+    );
     let raw_response = provider
-        .completion(system_prompt, &user_prompt, MAX_SUMMARY_TOKENS, TEMPERATURE)
+        .completion(
+            system_prompt,
+            &user_prompt,
+            MAX_SUMMARY_TOKENS,
+            TEMPERATURE,
+            &request_id,
+        )
         .await?;
 
     info!("Generated change summary ({} chars)", raw_response.len());
@@ -164,9 +175,14 @@ pub async fn generate_commit_message<R: Runtime>(
         truncated_diff, file_summary
     );
 
-    debug!("Requesting commit message from {}", provider.model());
+    let request_id = uuid::Uuid::new_v4().to_string();
+    debug!(
+        "Requesting commit message from {} [id: {}]",
+        provider.model(),
+        request_id
+    );
     let response = provider
-        .completion(system_prompt, &user_prompt, 100u32, 0.2)
+        .completion(system_prompt, &user_prompt, 100u32, 0.2, &request_id)
         .await?;
 
     let message = response.trim().to_string();
