@@ -2,14 +2,12 @@ import { useWidgetStore } from "@/stores/widget-store";
 import { ipcRenderer } from "@/tauri-api";
 import type { GitStatus } from "@/tauri-api";
 import { useCallback, useRef } from "react";
-import { useSummary } from "./use-summary";
 
 /**
  * Hook that provides a function to start watching git status changes.
  * Call startWatching() after initialization to subscribe to backend events.
  */
 export function useWatcher() {
-  const { checkAndFetchSummary } = useSummary();
   const unlistenRef = useRef<(() => void) | null>(null);
 
   const startWatching = useCallback(() => {
@@ -19,8 +17,21 @@ export function useWatcher() {
     const gitStatusSub = ipcRenderer.on<{ status: GitStatus }>(
       "git:status-changed",
       (event) => {
-        useWidgetStore.getState().setGitStatus(event.payload.status);
-        checkAndFetchSummary();
+        const store = useWidgetStore.getState();
+
+        // Skip entirely if UI is actively making changes
+        // (evolve/apply/commit operations handle their own status refresh when complete)
+        if (store.isProcessing || store.isGenerating) {
+          console.log("Change event received, ignoring (UI operation in progress)");
+          return;
+        }
+
+        // Update git status
+        store.setGitStatus(event.payload.status);
+
+        // Mark summary as stale - UI decides when to refresh
+        console.log("Change event received, marking summary stale");
+        store.setSummaryStale(true);
       }
     );
 
@@ -28,7 +39,7 @@ export function useWatcher() {
     gitStatusSub.then((unlisten) => {
       unlistenRef.current = unlisten;
     });
-  }, [checkAndFetchSummary]);
+  }, []);
 
   const stopWatching = useCallback(() => {
     if (unlistenRef.current) {
