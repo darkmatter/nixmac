@@ -19,18 +19,14 @@ export function useWatcher() {
       (event) => {
         const store = useWidgetStore.getState();
 
-        // Skip entirely if UI is actively making changes
-        // (evolve/apply/commit operations handle their own status refresh when complete)
+        // Non-manual updates should refresh git status and summary independent of watcher
         if (store.isProcessing || store.isGenerating) {
-          console.log("Change event received, ignoring (UI operation in progress)");
           return;
         }
 
-        // Update git status
         store.setGitStatus(event.payload.status);
-
-        // Mark summary as stale - UI decides when to refresh
-        console.log("Change event received, marking summary stale");
+        
+        // We can notify the user to update their summary
         store.setSummaryStale(true);
       }
     );
