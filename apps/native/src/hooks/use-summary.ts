@@ -14,16 +14,13 @@ export function useSummary() {
    */
   const loadCachedSummary = useCallback(async (): Promise<ChangesSummary | null> => {
     const store = useWidgetStore.getState();
-    console.log("Loading cached summary...");
     // Don't override if we already have a summary in memory
     if (store.summary.items.length > 0) {
       return null;
     }
 
     const cached = await darwinAPI.summarize.getCached();
-    console.log("Cached summary:", cached);
     if (cached) {
-      console.log("Setting cached summary in store");
       useWidgetStore.getState().setSummary(cached);
     }
     return cached;
@@ -41,20 +38,17 @@ export function useSummary() {
       return;
     }
     if (!store.gitStatus?.hasChanges) {
-      console.log("No changes detected; skipping summary fetch.");
       return;
     }
 
     // Consider the summary empty/stale if:
-    // 1. No summary items AND no diff content
+    // 1. No summary items
     // 2. File count doesn't match between summary and current git status
     const summaryEmpty = store.summary.items.length === 0;
     const summaryStale =
       !summaryEmpty &&
       store.gitStatus.files &&
       store.summary.filesChanged !== store.gitStatus.files.length;
-
-    console.log("Summary empty:", summaryEmpty, "Summary stale:", summaryStale);
 
     const shouldFetch = skipCheck || summaryEmpty || summaryStale;
 

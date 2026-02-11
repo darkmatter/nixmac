@@ -291,7 +291,7 @@ export function EvolveProgress({
 
       {/* Events List */}
       <div
-        className="max-h-80 min-h-[120px] flex-1 overflow-y-auto p-2"
+        className="max-h-100 min-h-[120px] flex-1 overflow-y-auto p-2"
         onScroll={handleScroll}
         ref={scrollRef}
       >
