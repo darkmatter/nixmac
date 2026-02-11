@@ -62,6 +62,7 @@ impl ChatCompletionProvider for OllamaClient {
         user_prompt: &str,
         max_tokens: u32,
         temperature: f32,
+        request_id: &str,
     ) -> Result<String> {
         let url = format!("{}/api/chat", self.base_url);
 
@@ -84,7 +85,10 @@ impl ChatCompletionProvider for OllamaClient {
             },
         };
 
-        debug!("Requesting completion from Ollama {}", self.model);
+        debug!(
+            "Requesting completion from {} [id: {}]",
+            self.model, request_id
+        );
         let response = self.client.post(&url).json(&request).send().await?;
 
         if !response.status().is_success() {

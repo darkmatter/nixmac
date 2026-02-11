@@ -25,6 +25,7 @@ pub trait ChatCompletionProvider: Send + Sync {
         user_prompt: &str,
         max_tokens: u32,
         temperature: f32,
+        request_id: &str,
     ) -> Result<String>;
 }
 

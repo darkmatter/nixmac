@@ -131,17 +131,12 @@ fn check_documents_access() -> PermissionStatus {
 /// Check if we have access to a folder by trying to list its contents
 fn check_folder_access(path: &PathBuf) -> PermissionStatus {
     match fs::read_dir(path) {
-        Ok(_) => {
-            debug!("Access granted to {:?}", path);
-            PermissionStatus::Granted
-        }
+        Ok(_) => PermissionStatus::Granted,
         Err(e) => {
             if e.kind() == std::io::ErrorKind::PermissionDenied {
-                debug!("Access denied to {:?}", path);
                 PermissionStatus::Denied
             } else if e.kind() == std::io::ErrorKind::NotFound {
                 // Folder doesn't exist, consider this as granted (not a permission issue)
-                debug!("Folder {:?} does not exist, considering as granted", path);
                 PermissionStatus::Granted
             } else {
                 warn!("Unknown error checking access to {:?}: {}", path, e);
@@ -214,11 +209,10 @@ fn check_admin_privileges() -> PermissionStatus {
 
 /// Check all permissions and return the current state
 pub fn check_all_permissions() -> PermissionsState {
-    info!("Checking all permissions...");
-
     let mut permissions = get_default_permissions();
+    let mut all_required_granted = true; // assume true until proven otherwise
 
-    // Check each permission
+    // Fill in each permission status and update all_required_granted on the fly
     for perm in &mut permissions {
         perm.status = match perm.id.as_str() {
             "desktop" => check_desktop_access(),
@@ -227,15 +221,25 @@ pub fn check_all_permissions() -> PermissionsState {
             "full-disk" => check_full_disk_access(),
             _ => PermissionStatus::Unknown,
         };
-        info!("Permission '{}': {:?}", perm.id, perm.status);
+
+        // If this permission is required and not granted, mark all_required_granted as false
+        if perm.required && perm.status != PermissionStatus::Granted {
+            all_required_granted = false;
+        }
     }
 
-    let all_required_granted = permissions
+    // Single log summarizing all permissions
+    let summary: Vec<String> = permissions
         .iter()
-        .filter(|p| p.required)
-        .all(|p| p.status == PermissionStatus::Granted);
+        .map(|p| format!("{}={:?}", p.id, p.status))
+        .collect();
 
-    info!("All required permissions granted: {}", all_required_granted);
+    info!(
+        "Permissions checked at {}: {}. All required granted: {}",
+        chrono::Utc::now(),
+        summary.join(", "),
+        all_required_granted
+    );
 
     PermissionsState {
         permissions,
