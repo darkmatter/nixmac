@@ -42,6 +42,70 @@ pub fn init_if_needed(dir: &str) -> Result<()> {
     Ok(())
 }
 
+/// Gets the full diff including tracked changes and untracked file contents.
+/// Untracked files are formatted as diffs showing the entire file as added.
+pub fn get_full_diff(dir: &str) -> Result<String> {
+    // Get git diff for tracked files
+    let diff_output = git_command()
+        .args(["diff", "HEAD"])
+        .current_dir(dir)
+        .output()?;
+
+    let mut diff = String::from_utf8_lossy(&diff_output.stdout).to_string();
+
+    // Also get untracked files and show their contents as diffs
+    let untracked_output = git_command()
+        .args(["ls-files", "--others", "--exclude-standard"])
+        .current_dir(dir)
+        .output()?;
+
+    let untracked_files = String::from_utf8_lossy(&untracked_output.stdout);
+
+    for file in untracked_files.lines() {
+        if file.is_empty() {
+            continue;
+        }
+        let file_path = std::path::Path::new(dir).join(file);
+        if let Ok(contents) = std::fs::read_to_string(&file_path) {
+            // Format as a diff showing the entire file as added
+            diff.push_str(&format!("\ndiff --git a/{} b/{}\n", file, file));
+            diff.push_str("new file mode 100644\n");
+            diff.push_str("--- /dev/null\n");
+            diff.push_str(&format!("+++ b/{}\n", file));
+            let line_count = contents.lines().count();
+            diff.push_str(&format!("@@ -0,0 +1,{} @@\n", line_count));
+            for line in contents.lines() {
+                diff.push_str(&format!("+{}\n", line));
+            }
+        }
+    }
+
+    Ok(diff)
+}
+
+/// Counts additions and deletions from a diff string.
+pub fn count_diff_changes(diff: &str) -> (usize, usize) {
+    let mut additions = 0;
+    let mut deletions = 0;
+
+    for line in diff.lines() {
+        // Skip diff headers (--- and +++)
+        if line.starts_with("+++") || line.starts_with("---") {
+            continue;
+        }
+        // Count added lines
+        if line.starts_with('+') {
+            additions += 1;
+        }
+        // Count deleted lines
+        else if line.starts_with('-') {
+            deletions += 1;
+        }
+    }
+
+    (additions, deletions)
+}
+
 /// Parses `git status --porcelain=v1` output into a structured format.
 ///
 /// The porcelain format uses a two-character status code:
@@ -140,6 +204,10 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     let all_changes_cleanly_staged =
         has_changes && cleanly_staged_count == files.len() && !staged.is_empty();
 
+    // Compute diff and stats
+    let diff = get_full_diff(dir).unwrap_or_default();
+    let (additions, deletions) = count_diff_changes(&diff);
+
     Ok(GitStatus {
         files,
         created,
@@ -156,6 +224,9 @@ pub fn status(dir: &str) -> Result<GitStatus> {
         has_unstaged_changes,
         all_changes_staged,
         all_changes_cleanly_staged,
+        diff,
+        additions,
+        deletions,
     })
 }
 

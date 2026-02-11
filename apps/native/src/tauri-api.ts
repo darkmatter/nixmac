@@ -58,6 +58,11 @@ export interface GitStatus {
   hasUnstagedChanges?: boolean;
   allChangesStaged?: boolean;
   allChangesCleanlyStaged?: boolean;
+
+  // Diff content
+  diff?: string;
+  additions?: number;
+  deletions?: number;
 }
 
 export interface SummaryItem {
