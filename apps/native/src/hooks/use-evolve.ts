@@ -15,7 +15,7 @@ import { useSummary } from "./use-summary";
  */
 export function useEvolve() {
   const { refreshGitStatus } = useGitOperations();
-  const { checkAndFetchSummary } = useSummary();
+  const { fetchSummary } = useSummary();
 
   const handleEvolve = useCallback(async () => {
     // Get fresh state each time
@@ -52,7 +52,7 @@ export function useEvolve() {
       store.setEvolvePrompt("");
 
       await refreshGitStatus();
-      await checkAndFetchSummary({ skipCheck: true });
+      await fetchSummary();
 
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
@@ -72,7 +72,7 @@ export function useEvolve() {
       useWidgetStore.getState().setGenerating(false);
       unlistenEvolve();
     }
-  }, [refreshGitStatus, checkAndFetchSummary]);
+  }, [refreshGitStatus, fetchSummary]);
 
   return { handleEvolve };
 }
