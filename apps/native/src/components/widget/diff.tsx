@@ -11,34 +11,34 @@ import {
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useWidgetStore } from "@/stores/widget-store";
 
-interface ParsedDiffSection {
+interface FileDiff {
   filename: string;
-  hunks: string;
+  chunks: string;
 }
 
 /**
  * Parse a unified diff into sections per file
  */
-function parseDiffIntoSections(diffContent: string): ParsedDiffSection[] {
-  const sections: ParsedDiffSection[] = [];
+function parseDiffIntoSections(diffContent: string): FileDiff[] {
+  const sections: FileDiff[] = [];
   const lines = diffContent.split("\n");
 
   let currentFilename = "";
-  let currentHunks: string[] = [];
+  let currentChunks: string[] = [];
 
   for (const line of lines) {
     // Match "diff --git a/path/to/file b/path/to/file"
     const gitDiffMatch = line.match(/^diff --git a\/(.+?) b\/(.+)$/);
     if (gitDiffMatch) {
       // Save previous section if exists
-      if (currentFilename && currentHunks.length > 0) {
+      if (currentFilename && currentChunks.length > 0) {
         sections.push({
           filename: currentFilename,
-          hunks: currentHunks.join("\n"),
+          chunks: currentChunks.join("\n"),
         });
       }
       currentFilename = gitDiffMatch[2];
-      currentHunks = [];
+      currentChunks = [];
       continue;
     }
 
@@ -62,15 +62,15 @@ function parseDiffIntoSections(diffContent: string): ParsedDiffSection[] {
 
     // Collect all other lines (hunks, additions, deletions)
     if (currentFilename) {
-      currentHunks.push(line);
+      currentChunks.push(line);
     }
   }
 
   // Don't forget the last section
-  if (currentFilename && currentHunks.length > 0) {
+  if (currentFilename && currentChunks.length > 0) {
     sections.push({
       filename: currentFilename,
-      hunks: currentHunks.join("\n"),
+      chunks: currentChunks.join("\n"),
     });
   }
 
@@ -112,7 +112,7 @@ export function Diff() {
             {
               language: "diff",
               filename: section.filename,
-              code: section.hunks,
+              code: section.chunks,
             },
           ];
 
