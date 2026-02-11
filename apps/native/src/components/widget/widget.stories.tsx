@@ -93,11 +93,6 @@ const mockSummary: ChangesSummary = {
   instructions:
     "Run 'vim .' in your terminal to try out your new editor, or open Rectangle from your Applications folder.",
   commitMessage: "feat(darwin): add vim and configure git",
-  filesChanged: 3,
-  diffLines: 42,
-  additions: 30,
-  deletions: 12,
-  diff: "",
 };
 
 const mockEvolveEvents: EvolveEvent[] = [
@@ -473,13 +468,7 @@ export const ManyChangedFiles = meta.story({
             { path: "flake.lock", working_tree: "M" },
           ],
         },
-        summary: {
-          ...mockSummary,
-          filesChanged: 8,
-          diffLines: 120,
-          additions: 85,
-          deletions: 35,
-        },
+        summary: mockSummary,
       }}
     />
   ),

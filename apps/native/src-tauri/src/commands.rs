@@ -347,15 +347,15 @@ pub async fn summary_get_cached(app: AppHandle) -> Result<Option<types::SummaryR
 
 /// Generates a human-readable summary of the current working changes.
 /// Uses a fast model for quick response times.
+/// Returns only AI-generated content (items, instructions, commit message).
+/// Raw git data (diff, additions, deletions) comes from git_status instead.
 #[tauri::command]
 pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
 
-    // Get git status which now includes diff and stats
+    // Get git status for diff and file list
     let status = git::status(&dir).map_err(capture_err)?;
     let diff = &status.diff;
-    let additions = status.additions;
-    let deletions = status.deletions;
     let file_list: Vec<String> = status.files.iter().map(|f| f.path.clone()).collect();
 
     // Try to generate AI summary, but don't fail if it errors (e.g., no API key)
@@ -375,7 +375,7 @@ pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse,
             Err(e) => {
                 log::error!("[summarize_changes] AI summarization failed: {}", e);
                 sentry::capture_message(&e.to_string(), sentry::Level::Error);
-                // Return empty summary but still include the diff
+                // Return empty summary on error
                 (Vec::new(), String::new(), String::new())
             }
         };
@@ -384,10 +384,6 @@ pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse,
         items,
         instructions,
         commit_message,
-        files_changed: file_list.len(),
-        diff_lines: diff.lines().count(),
-        additions,
-        deletions,
     };
 
     // Cache the summary for future app launches
