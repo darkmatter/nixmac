@@ -9,7 +9,7 @@ export interface ActionTile {
   name: string;
   icon: IconComponent;
   iconSrc?: string;
-  color: "white" | "teal" | "blue" | "amber";
+  color: "white" | "teal" | "amber";
   disabled?: boolean;
   isActive?: boolean;
   onAction: () => void;
@@ -50,7 +50,6 @@ export function ActionTiles({ title, subtitle, tiles }: ActionTilesProps) {
                 "mb-1.5 rounded-full p-2",
                 tile.color === "white" && "bg-white-500/10 text-white-500",
                 tile.color === "teal" && "bg-teal-300/10 text-teal-300",
-                tile.color === "blue" && "bg-teal-300/10 text-teal-300",
                 tile.color === "amber" && "bg-rose-300/10 text-rose-300",
                 tile.iconSrc === "/outline-white.png" && "p-1"
               )}
