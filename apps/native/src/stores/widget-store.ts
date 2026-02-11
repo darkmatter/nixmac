@@ -81,6 +81,7 @@ export interface WidgetState {
 
   // UI
   summaryLoading: boolean;
+  summaryStale: boolean;
   isGenerating: boolean;
   settingsOpen: boolean;
   error: string | null;
@@ -107,6 +108,7 @@ export interface WidgetActions {
 
   // Client-side state (NOT from server)
   setSummaryLoading: (loading: boolean) => void;
+  setSummaryStale: (stale: boolean) => void;
   setGenerating: (generating: boolean) => void;
   clearPreview: () => void;
 
@@ -186,6 +188,7 @@ export const initialWidgetState: WidgetState = {
 
   // UI
   summaryLoading: false,
+  summaryStale: false,
   isBootstrapping: false,
   isGenerating: false,
   settingsOpen: false,
@@ -222,8 +225,9 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
         isProcessing,
         processingAction: isProcessing ? action : null,
       }),
-    setSummary: (summary) => set({ summary }),
+    setSummary: (summary) => set({ summary, summaryStale: false }),
     setSummaryLoading: (summaryLoading) => set({ summaryLoading }),
+    setSummaryStale: (summaryStale) => set({ summaryStale }),
     setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
     setError: (error) => set({ error }),
 
@@ -234,6 +238,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
       set({
         summary: initialSummaryState,
         summaryLoading: false,
+        summaryStale: false,
       }),
 
     // Console
