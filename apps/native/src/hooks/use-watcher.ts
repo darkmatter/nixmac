@@ -1,6 +1,6 @@
 import { useWidgetStore } from "@/stores/widget-store";
-import { ipcRenderer } from "@/tauri-api";
 import type { GitStatus } from "@/tauri-api";
+import { ipcRenderer } from "@/tauri-api";
 import { useCallback, useRef } from "react";
 
 /**
@@ -9,35 +9,33 @@ import { useCallback, useRef } from "react";
  */
 export function useWatcher() {
   const unlistenRef = useRef<(() => void) | null>(null);
+  const isSubscribingRef = useRef(false);
 
   const startWatching = useCallback(() => {
-    // Avoid duplicate subscriptions
-    if (unlistenRef.current) return;
+    // Avoid duplicate subscriptions (check both active and pending)
+    if (unlistenRef.current || isSubscribingRef.current) return;
+    isSubscribingRef.current = true;
 
     const gitStatusSub = ipcRenderer.on<{ status: GitStatus }>(
       "git:status-changed",
       (event) => {
         const store = useWidgetStore.getState();
-
-        // Non-manual updates should refresh git status and summary independent of watcher
-        if (store.isProcessing || store.isGenerating) {
-          return;
+        if (!store.isProcessing && !store.isGenerating) {
+          store.setGitStatus(event.payload.status);
+          store.setSummaryStale(true);
         }
-
-        store.setGitStatus(event.payload.status);
-        
-        // We can notify the user to update their summary
-        store.setSummaryStale(true);
       }
     );
 
     // Store unlisten for cleanup
     gitStatusSub.then((unlisten) => {
       unlistenRef.current = unlisten;
+      isSubscribingRef.current = false;
     });
   }, []);
 
   const stopWatching = useCallback(() => {
+    isSubscribingRef.current = false;
     if (unlistenRef.current) {
       unlistenRef.current();
       unlistenRef.current = null;

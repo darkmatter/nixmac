@@ -15,7 +15,6 @@ import {
 } from "@/components/widget/steps";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { usePermissions } from "@/hooks/use-permissions";
-import { useSummary } from "@/hooks/use-summary";
 import { useWatcher } from "@/hooks/use-watcher";
 import { loadConfig, loadHosts } from "@/hooks/use-widget-initialization";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
@@ -27,9 +26,8 @@ import { useEffect } from "react";
  */
 export function DarwinWidget() {
   const step = useCurrentStep();
-  const { refreshGitStatus } = useGitOperations();
+  const { getInitialStatusAndSummary } = useGitOperations();
   const { checkPermissions } = usePermissions();
-  const { loadCachedSummary } = useSummary();
   const { startWatching } = useWatcher();
 
   // Load initial data once on mount, then start watching for changes
@@ -39,8 +37,7 @@ export function DarwinWidget() {
         await checkPermissions();
         await loadConfig();
         await loadHosts();
-        await refreshGitStatus();
-        await loadCachedSummary();
+        await getInitialStatusAndSummary();
       } catch (e: unknown) {
         useWidgetStore.getState().setError((e as Error)?.message || String(e));
       }

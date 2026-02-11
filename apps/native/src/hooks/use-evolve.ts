@@ -51,7 +51,7 @@ export function useEvolve() {
       useWidgetStore.getState().appendLog("✓ Evolution complete\n");
       store.setEvolvePrompt("");
 
-      await refreshGitStatus();
+      await refreshGitStatus({ cache: true });
       await fetchSummary();
 
     } catch (e: unknown) {
@@ -68,6 +68,7 @@ export function useEvolve() {
       useWidgetStore.getState().appendLog(`✗ Error: ${msg}\n`);
 
     } finally {
+
       useWidgetStore.getState().setProcessing(false);
       useWidgetStore.getState().setGenerating(false);
       unlistenEvolve();
