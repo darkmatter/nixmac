@@ -95,6 +95,34 @@ fn log_api_error(error: &str, messages: &[Message], prompt: &str, iteration: usi
     );
 
     info!("API error logged to: {}", log_file.display());
+
+    // Build and send a truncated summary to Sentry.
+    let sentry_summary = build_sentry_summary(error, messages, iteration);
+    sentry::capture_message(&sentry_summary, sentry::Level::Error);
+}
+
+/// Create a brief Sentry-appropriate summary. Keep the full error string (truncated
+/// because some providers can return huge error strings) and avoid
+/// including the prompt or any message contents since they can be huge and may
+/// contain sensitive info.
+fn build_sentry_summary(error: &str, messages: &[Message], iteration: usize) -> String {
+    let max_visible = 300usize;
+    let visible = if error.len() <= max_visible {
+        error.to_string()
+    } else {
+        format!(
+            "{}... (truncated, {} bytes)",
+            &error[..max_visible],
+            error.len()
+        )
+    };
+
+    format!(
+        "AI API error: {} | iteration: {} | messages_count: {}",
+        visible,
+        iteration,
+        messages.len()
+    )
 }
 
 // Use OpenRouter with Claude for evolution - better reasoning without strict content policies
