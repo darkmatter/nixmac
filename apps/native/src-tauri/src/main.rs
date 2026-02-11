@@ -104,6 +104,8 @@ fn main() {
             // Git
             commands::git_init_if_needed,
             commands::git_status,
+            commands::git_status_and_cache,
+            commands::git_cached,
             commands::git_commit,
             commands::git_stash,
             commands::git_stage_all,

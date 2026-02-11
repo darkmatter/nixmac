@@ -163,6 +163,8 @@ export const darwinAPI = {
   git: {
     initIfNeeded: () => invoke("git_init_if_needed"),
     status: () => invoke<GitStatus | null>("git_status"),
+    statusAndCache: () => invoke<GitStatus | null>("git_status_and_cache"),
+    cached: () => invoke<GitStatus | null>("git_cached"),
     commit: (message: string) => invoke("git_commit", { message }),
     stash: (message: string) => invoke("git_stash", { message }),
     stageAll: () => invoke("git_stage_all"),

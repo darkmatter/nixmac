@@ -3,6 +3,7 @@
 import { ArrowLeft, Check, Pencil, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
+import { StaleSummaryNotice } from "@/components/widget/stale-summary-notice";
 import { getChangeType } from "./utils";
 import { getDirectory, getShortFilename } from "@/components/widget/utils";
 
@@ -65,6 +66,7 @@ export function SummaryItems({ variant = "default" }: SummaryItemsProps) {
   if (summaryItems.length > 0) {
     return (
       <div className="min-h-0 flex-1 overflow-y-auto">
+        <StaleSummaryNotice />
         {summaryItems.map((item, index) =>
           renderListItem({
             key: `summary-${index}`,
@@ -79,6 +81,7 @@ export function SummaryItems({ variant = "default" }: SummaryItemsProps) {
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
+      <StaleSummaryNotice />
       {changedFiles.map((f) => {
         const changeType = getChangeType(f);
         const fileName = getShortFilename(f.path);

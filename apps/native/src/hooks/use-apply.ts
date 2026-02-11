@@ -77,7 +77,6 @@ export function useApply() {
       error_type?: string;
     }>("darwin:apply:end", async (event) => {
       const currentStore = useWidgetStore.getState();
-      currentStore.setProcessing(false);
       currentStore.setRebuildComplete(event.payload.ok, event.payload.code);
       unlistenData();
       unlistenSummary();
@@ -105,7 +104,8 @@ export function useApply() {
         } catch (e) {
           console.error("Failed to check permissions:", e);
         }
-        await refreshGitStatus();
+        await refreshGitStatus({cache: true});
+        currentStore.setProcessing(false);
         return;
       }
 
@@ -122,7 +122,12 @@ export function useApply() {
         }, 2000);
       }
 
-      await refreshGitStatus();
+      await refreshGitStatus({cache: true});
+      // Delay setProcessing(false) to let any pending watcher events pass
+      // Watcher polls every 2.5s, so 3s ensures we catch any updates
+      setTimeout(() => {
+        useWidgetStore.getState().setProcessing(false);
+      }, 3000);
     });
 
     try {

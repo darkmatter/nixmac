@@ -336,3 +336,30 @@ pub fn set_cached_summary<R: Runtime>(
     store.save()?;
     Ok(())
 }
+
+// =============================================================================
+// Git Status Cache
+// =============================================================================
+
+/// Gets the cached git status.
+pub fn get_cached_git_status<R: Runtime>(app: &AppHandle<R>) -> Result<Option<types::GitStatus>> {
+    let store = get_store(app)?;
+
+    if let Some(val) = store.get("cachedGitStatus") {
+        if let Ok(status) = serde_json::from_value::<types::GitStatus>(val.clone()) {
+            return Ok(Some(status));
+        }
+    }
+    Ok(None)
+}
+
+/// Sets the cached git status.
+pub fn set_cached_git_status<R: Runtime>(
+    app: &AppHandle<R>,
+    status: &types::GitStatus,
+) -> Result<()> {
+    let store = get_store(app)?;
+    store.set("cachedGitStatus", serde_json::to_value(status)?);
+    store.save()?;
+    Ok(())
+}

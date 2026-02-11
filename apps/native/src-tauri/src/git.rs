@@ -6,6 +6,7 @@
 use crate::types::{GitFileStatus, GitStatus};
 use anyhow::Result;
 use std::process::Command;
+use tauri::AppHandle;
 
 /// Create a git command with proper PATH for macOS GUI apps
 fn git_command() -> Command {
@@ -105,7 +106,6 @@ pub fn count_diff_changes(diff: &str) -> (usize, usize) {
 
     (additions, deletions)
 }
-
 /// Parses `git status --porcelain=v1` output into a structured format.
 ///
 /// The porcelain format uses a two-character status code:
@@ -118,7 +118,10 @@ pub fn count_diff_changes(diff: &str) -> (usize, usize) {
 /// - `M ` = modified in index
 /// - ` M` = modified in working tree (not staged)
 /// - `D ` = deleted from index
+///
+/// If `cache` is true and `app` is provided, also stores it for later comparison.
 pub fn status(dir: &str) -> Result<GitStatus> {
+    // Get status output
     let output = git_command()
         .args(["status", "--porcelain=v1", "-b"])
         .current_dir(dir)
@@ -228,6 +231,23 @@ pub fn status(dir: &str) -> Result<GitStatus> {
         additions,
         deletions,
     })
+}
+
+/// Caches status before returning it,
+pub fn status_and_cache<R: tauri::Runtime>(dir: &str, app: &AppHandle<R>) -> Result<GitStatus> {
+    let status = status(dir)?;
+    cache_status(app, &status)?;
+    Ok(status)
+}
+
+/// Caches a git status for later comparison.
+pub fn cache_status<R: tauri::Runtime>(app: &AppHandle<R>, status: &GitStatus) -> Result<()> {
+    crate::store::set_cached_git_status(app, status)
+}
+
+/// Cached git status (currently used only to check summary stale on widget mount)
+pub fn cached<R: tauri::Runtime>(app: &AppHandle<R>) -> Result<Option<GitStatus>> {
+    crate::store::get_cached_git_status(app)
 }
 
 /// Fast check for any changes using git diff-index.

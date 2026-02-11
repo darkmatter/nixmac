@@ -114,6 +114,21 @@ pub async fn git_status(app: AppHandle) -> Result<types::GitStatus, String> {
     Ok(status)
 }
 
+/// Returns the current git status and caches it for later comparison.
+#[tauri::command]
+pub async fn git_status_and_cache(app: AppHandle) -> Result<types::GitStatus, String> {
+    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
+    git::init_if_needed(&dir).map_err(capture_err)?;
+    let status = git::status_and_cache(&dir, &app).map_err(capture_err)?;
+    Ok(status)
+}
+
+/// Returns the cached git status if available.
+#[tauri::command]
+pub async fn git_cached(app: AppHandle) -> Result<Option<types::GitStatus>, String> {
+    git::cached(&app).map_err(capture_err)
+}
+
 /// Stages all changes and creates a commit with the given message.
 #[tauri::command]
 pub async fn git_commit(app: AppHandle, message: String) -> Result<serde_json::Value, String> {
