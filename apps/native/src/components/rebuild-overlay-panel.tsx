@@ -4,7 +4,12 @@ import {
   X,
   Terminal,
   List,
-  ArrowLeft,
+  Play,
+  Brain,
+  Download,
+  CheckCircle,
+  Hammer,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -49,6 +54,34 @@ function getErrorSuggestion(errorType: RebuildErrorType | undefined): string {
   }
 }
 
+/** Map backend emoji to icon component and strip from text */
+const EMOJI_MAP: Record<string, (className: string) => React.ReactNode> = {
+  "🚀": (c) => <Play className={c} />,
+  "🔍": (c) => <Brain className={c} />,
+  "📦": (c) => <Download className={c} />,
+  "🔨": (c) => <Hammer className={c} />,
+  "⚡": (c) => <Sparkles className={c} />,
+  "✅": (c) => <CheckCircle className={c} />,
+  "❌": (c) => <AlertTriangle className={c} />,
+};
+
+/** Convert emoji prefix to icon and clean text */
+function convertEmoji(text: string, className: string): { icon: React.ReactNode; cleanText: string } {
+  for (const [emoji, iconFn] of Object.entries(EMOJI_MAP)) {
+    if (text.startsWith(emoji)) {
+      return {
+        icon: iconFn(className),
+        cleanText: text.slice(emoji.length).trimStart(),
+      };
+    }
+  }
+  // Default: no emoji found
+  return {
+    icon: <CheckCircle className={className} />,
+    cleanText: text,
+  };
+}
+
 const CheckIcon = ({ className }: { className?: string }) => (
   <svg
     aria-hidden="true"
@@ -62,23 +95,6 @@ const CheckIcon = ({ className }: { className?: string }) => (
     <path d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
   </svg>
 );
-
-const CheckFilled = ({ className }: { className?: string }) => (
-  <svg
-    aria-hidden="true"
-    className={cn("h-5 w-5", className)}
-    fill="currentColor"
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      clipRule="evenodd"
-      d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z"
-      fillRule="evenodd"
-    />
-  </svg>
-);
-
 
 const SkeletonLine = ({ width = "w-32" }: { width?: string }) => (
   <div className={cn("h-3 animate-pulse rounded bg-white/20", width)} />
@@ -132,19 +148,18 @@ function LoaderCore({
               ? Math.max(1 - Math.abs(distance) * 0.15, 0.4)
               : Math.max(1 - distance * 0.3, 0.25);
 
-          const isCompleted = index < value;
           const isMostRecentlyCompleted = index === mostRecentlyCompletedIndex;
 
-          // Only the most recently completed step gets green
+          // Only the most recently completed step gets highlighted
           let checkClass = "text-white/40";
           if (isMostRecentlyCompleted) {
-            checkClass = "text-lime-400";
+            checkClass = "text-teal-400";
           }
 
-          // Text coloring: only most recently completed is green
+          // Text coloring: only most recently completed is highlighted
           let textClass = "text-white/50";
           if (isMostRecentlyCompleted) {
-            textClass = "text-lime-400 font-medium";
+            textClass = "text-teal-400 font-medium";
           }
 
           const y = index * itemHeight;
@@ -168,32 +183,35 @@ function LoaderCore({
                 },
               }}
             >
-              <motion.div
-                className="shrink-0"
-                initial={false}
-                animate={{
-                  scale: isMostRecentlyCompleted ? 1.15 : 1,
-                }}
-                transition={{
-                  type: "spring",
-                  stiffness: 200,
-                  damping: 15,
-                }}
-              >
-                {isCompleted ? (
-                  <CheckFilled className={checkClass} />
-                ) : (
-                  <CheckIcon className={checkClass} />
-                )}
-              </motion.div>
-              <span
-                className={cn(
-                  textClass,
-                  "block overflow-hidden text-ellipsis whitespace-nowrap text-sm font-normal transition-colors duration-500",
-                )}
-              >
-                {loadingState.text}
-              </span>
+              {(() => {
+                const { icon, cleanText } = convertEmoji(loadingState.text, cn("h-5 w-5", checkClass));
+                return (
+                  <>
+                    <motion.div
+                      className="shrink-0"
+                      initial={false}
+                      animate={{
+                        scale: isMostRecentlyCompleted ? 1.15 : 1,
+                      }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 200,
+                        damping: 15,
+                      }}
+                    >
+                      {icon}
+                    </motion.div>
+                    <span
+                      className={cn(
+                        textClass,
+                        "block overflow-hidden text-ellipsis whitespace-nowrap text-sm font-normal transition-colors duration-500",
+                      )}
+                    >
+                      {cleanText}
+                    </span>
+                  </>
+                );
+              })()}
             </motion.div>
           );
         })}
@@ -293,7 +311,7 @@ export function RebuildOverlayPanel() {
   const displayLines =
     lines.length > 0
       ? lines
-      : [{ id: 0, text: "🚀 Starting rebuild...", type: "info" as const }];
+      : [{ id: 0, text: "Starting rebuild...", type: "info" as const }];
 
   // Step points to the current (most recent) line
   // - While running: last line is "in progress", previous lines are "completed"
@@ -343,15 +361,6 @@ export function RebuildOverlayPanel() {
                 Console
               </>
             )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 px-3 text-xs text-white/60 hover:bg-white/10 hover:text-white"
-            onClick={handleDismiss}
-          >
-            <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
-            Back
           </Button>
         </div>
       </div>

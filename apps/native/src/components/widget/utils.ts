@@ -1,26 +1,9 @@
-import type { StepperStepId } from "@/components/widget/stepper";
 import type {
   GitFileStatus,
   WidgetState,
   WidgetStep,
 } from "@/stores/widget-store";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-
-// Map widget steps to stepper steps
-export function getStepperStep(step: WidgetStep): StepperStepId {
-  switch (step) {
-    case "permissions":
-    case "setup":
-    case "overview":
-      return 1;
-    case "evolving":
-      return 2;
-    case "commit":
-      return 3;
-    default:
-      return 1;
-  }
-}
 
 // Categorize git changes for display
 export function categorizeChanges(files: GitFileStatus[]) {
@@ -83,10 +66,10 @@ export function getChangeType(
 export function computeCurrentStep(state: WidgetState): WidgetStep {
   const hasConfigDir = !!state.configDir;
   const hasHost = !!state.host;
-  const hasUncommittedChanges = state.gitStatus?.hasChanges ?? false;
   const allChangesCleanlyStaged =
     state.gitStatus?.allChangesCleanlyStaged ?? false;
-    const permissionsCheckedAndIncomplete = state.permissionsChecked &&
+  const permissionsCheckedAndIncomplete =
+    state.permissionsChecked &&
     state.permissionsState &&
     !state.permissionsState.allRequiredGranted;
   const isBootstrapping = state.isBootstrapping;
@@ -107,21 +90,22 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
     return "setup";
   }
 
-  // Rule 2: Currently generating
-  if (state.isGenerating) {
-    return "evolving";
-  }
-
-  // Rule 3: All changes staged and ready to commit
+  // Rule 2: All changes staged and ready to commit
   if (allChangesCleanlyStaged) {
     return "commit";
   }
 
-  // Rule 4: Has uncommitted changes (not all staged yet)
-  if (hasUncommittedChanges) {
-    return "evolving";
-  }
+  // Rule 3: Default - evolving handles both idle and has-changes states
+  return "evolving";
+}
 
-  // Rule 5: Default idle state
-  return "overview";
+export function getShortFilename(path: string): string {
+  const parts = path.split("/");
+  return parts[parts.length - 1] || path;
+}
+
+export function getDirectory(path: string): string {
+  const parts = path.split("/");
+  if (parts.length <= 1) return "";
+  return parts.slice(0, -1).join("/");
 }

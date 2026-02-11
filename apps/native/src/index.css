@@ -73,4 +73,22 @@
     margin: 0;
     @apply text-foreground;
   }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: hsl(173 80% 75% / 0.6);
+    border-radius: 4px;
+    width: 2px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(173 80% 75%);
+  }
 }
