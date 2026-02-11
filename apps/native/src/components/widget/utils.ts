@@ -98,3 +98,14 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
   // Rule 3: Default - evolving handles both idle and has-changes states
   return "evolving";
 }
+
+export function getShortFilename(path: string): string {
+  const parts = path.split("/");
+  return parts[parts.length - 1] || path;
+}
+
+export function getDirectory(path: string): string {
+  const parts = path.split("/");
+  if (parts.length <= 1) return "";
+  return parts.slice(0, -1).join("/");
+}
