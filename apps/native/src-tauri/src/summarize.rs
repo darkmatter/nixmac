@@ -107,10 +107,15 @@ Respond with ONLY valid JSON, no markdown code blocks or extra text."#;
         )
         .await?;
 
-    info!("Generated change summary ({} chars)", raw_response.len());
+    info!(
+        "Generated change summary ({} chars) [id: {}]",
+        raw_response.len(),
+        request_id
+    );
     debug!(
-        "Raw change summary response from {}: {}",
+        "Raw change summary response from {} [id: {}]: {}",
         provider.model(),
+        request_id,
         raw_response
     );
 
@@ -118,7 +123,10 @@ Respond with ONLY valid JSON, no markdown code blocks or extra text."#;
     match serde_json::from_str::<ChangeSummary>(&raw_response) {
         Ok(summary) => Ok(summary),
         Err(e) => {
-            warn!("Failed to parse summary JSON: {}. Raw: {}", e, raw_response);
+            warn!(
+                "Failed to parse summary JSON [id: {}]: {}. Raw: {}",
+                request_id, e, raw_response
+            );
             // Return a fallback summary
             Ok(ChangeSummary {
                 items: vec![SummaryItem {
@@ -193,11 +201,12 @@ pub async fn generate_commit_message<R: Runtime>(
     };
 
     debug!(
-        "Raw commit message response from {}: {}",
+        "Raw commit message response from {} [id: {}]: {}",
         provider.model(),
+        request_id,
         response
     );
-    info!("Generated commit message: {}", message);
+    info!("Generated commit message [id: {}]: {}", request_id, message);
     Ok(message)
 }
 

@@ -234,9 +234,10 @@ pub fn check_all_permissions() -> PermissionsState {
         .map(|p| format!("{}={:?}", p.id, p.status))
         .collect();
 
+    let now = chrono::Utc::now();
     info!(
         "Permissions checked at {}: {}. All required granted: {}",
-        chrono::Utc::now(),
+        now.to_rfc3339(),
         summary.join(", "),
         all_required_granted
     );
@@ -244,7 +245,7 @@ pub fn check_all_permissions() -> PermissionsState {
     PermissionsState {
         permissions,
         all_required_granted,
-        checked_at: Some(chrono::Utc::now().timestamp()),
+        checked_at: Some(now.timestamp()),
     }
 }
 
