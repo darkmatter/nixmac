@@ -1,18 +1,9 @@
-import type { StepperStepId } from "@/components/widget/stepper";
 import type {
   GitFileStatus,
   WidgetState,
   WidgetStep,
 } from "@/stores/widget-store";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-
-// Map widget steps to stepper steps
-// Step position is based on state: Begin (no changes) → Evolving (has changes) → Commit
-export function getStepperStep(step: WidgetStep, hasChanges: boolean): StepperStepId {
-  if (step === "commit") return 3;
-  if (hasChanges) return 2; // "Evolving" - review changes
-  return 1; // "Begin" - no changes yet
-}
 
 // Categorize git changes for display
 export function categorizeChanges(files: GitFileStatus[]) {
