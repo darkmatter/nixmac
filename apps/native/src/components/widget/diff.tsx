@@ -10,6 +10,7 @@ import {
 } from "@/components/kibo-ui/code-block";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useWidgetStore } from "@/stores/widget-store";
+import { getDirectory, getShortFilename } from "@/components/widget/utils";
 
 interface FileDiff {
   filename: string;
@@ -75,19 +76,6 @@ function parseDiffIntoSections(diffContent: string): FileDiff[] {
   }
 
   return sections;
-}
-
-// Get a short filename from a path
-function getShortFilename(path: string): string {
-  const parts = path.split("/");
-  return parts[parts.length - 1] || path;
-}
-
-// Get the directory from a path
-function getDirectory(path: string): string {
-  const parts = path.split("/");
-  if (parts.length <= 1) return "";
-  return parts.slice(0, -1).join("/");
 }
 
 export function Diff() {

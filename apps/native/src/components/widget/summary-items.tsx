@@ -4,17 +4,7 @@ import { ArrowLeft, Check, Pencil, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
 import { getChangeType } from "./utils";
-
-function getShortFilename(path: string): string {
-  const parts = path.split("/");
-  return parts[parts.length - 1] || path;
-}
-
-function getDirectory(path: string): string {
-  const parts = path.split("/");
-  if (parts.length <= 1) return "";
-  return parts.slice(0, -1).join("/");
-}
+import { getDirectory, getShortFilename } from "@/components/widget/utils";
 
 interface SummaryItemsProps {
   variant?: "default" | "outline";
