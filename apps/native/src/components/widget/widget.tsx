@@ -29,7 +29,7 @@ export function DarwinWidget() {
   const step = useCurrentStep();
   const { refreshGitStatus } = useGitOperations();
   const { checkPermissions } = usePermissions();
-  const { checkAndFetchSummary, loadCachedSummary } = useSummary();
+  const { loadCachedSummary } = useSummary();
   const { startWatching } = useWatcher();
 
   // Load initial data once on mount, then start watching for changes
@@ -41,7 +41,6 @@ export function DarwinWidget() {
         await loadHosts();
         await refreshGitStatus();
         await loadCachedSummary();
-        await checkAndFetchSummary();
       } catch (e: unknown) {
         useWidgetStore.getState().setError((e as Error)?.message || String(e));
       }

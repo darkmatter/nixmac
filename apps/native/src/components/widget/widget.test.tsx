@@ -1,7 +1,7 @@
+import { initialSummaryState, useWidgetStore } from "@/stores/widget-store";
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DarwinWidget } from "./widget";
-import { initialSummaryState, useWidgetStore } from "@/stores/widget-store";
 
 // Mock Tauri API
 vi.mock("@/tauri-api", () => ({
@@ -41,7 +41,7 @@ vi.mock("@/hooks/use-preview-indicator", () => ({
 
 vi.mock("@/hooks/use-summary", () => ({
   useSummary: () => ({
-    checkAndFetchSummary: vi.fn(),
+    fetchSummary: vi.fn(),
   }),
 }));
 
