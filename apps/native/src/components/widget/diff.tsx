@@ -79,9 +79,9 @@ function parseDiffIntoSections(diffContent: string): FileDiff[] {
 }
 
 export function Diff() {
-  const summary = useWidgetStore((s) => s.summary);
+  const gitStatus = useWidgetStore((s) => s.gitStatus);
 
-  const diffContent = summary.diff || "";
+  const diffContent = gitStatus?.diff || "";
   const diffSections = parseDiffIntoSections(diffContent);
 
   if (diffSections.length === 0) {
