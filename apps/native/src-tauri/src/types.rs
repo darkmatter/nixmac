@@ -69,6 +69,15 @@ pub struct GitStatus {
     /// All files cleanly staged (ready to commit - no mixed staged/unstaged).
     #[serde(rename = "allChangesCleanlyStaged")]
     pub all_changes_cleanly_staged: bool,
+
+    /// The raw unified diff content (git diff HEAD + untracked file contents).
+    pub diff: String,
+
+    /// Number of lines added.
+    pub additions: usize,
+
+    /// Number of lines deleted.
+    pub deletions: usize,
 }
 
 /// Individual file status from `git status --porcelain`.
@@ -178,9 +187,6 @@ pub struct SummaryResponse {
 
     /// Number of lines deleted
     pub deletions: usize,
-
-    /// The raw unified diff content
-    pub diff: String,
 }
 
 // =============================================================================

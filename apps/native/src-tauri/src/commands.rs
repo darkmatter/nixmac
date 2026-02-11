@@ -348,67 +348,19 @@ pub async fn summary_get_cached(app: AppHandle) -> Result<Option<types::SummaryR
 /// Generates a human-readable summary of the current working changes.
 /// Uses a fast model for quick response times.
 #[tauri::command]
-/// Gets a full diff including both tracked changes and untracked files.
-/// Untracked files are formatted as diffs showing the entire file as added.
-fn get_full_diff(dir: &str) -> Result<String, String> {
-    // Get git diff for tracked files
-    let diff_output = Command::new("git")
-        .args(["diff", "HEAD"])
-        .current_dir(dir)
-        .env("PATH", crate::nix::get_nix_path())
-        .output()
-        .map_err(capture_err)?;
-
-    let mut diff = String::from_utf8_lossy(&diff_output.stdout).to_string();
-
-    // Also get untracked files and show their contents as diffs
-    let untracked_output = Command::new("git")
-        .args(["ls-files", "--others", "--exclude-standard"])
-        .current_dir(dir)
-        .env("PATH", crate::nix::get_nix_path())
-        .output()
-        .map_err(capture_err)?;
-
-    let untracked_files = String::from_utf8_lossy(&untracked_output.stdout);
-
-    for file in untracked_files.lines() {
-        if file.is_empty() {
-            continue;
-        }
-        let file_path = std::path::Path::new(dir).join(file);
-        if let Ok(contents) = std::fs::read_to_string(&file_path) {
-            // Format as a diff showing the entire file as added
-            diff.push_str(&format!("\ndiff --git a/{} b/{}\n", file, file));
-            diff.push_str("new file mode 100644\n");
-            diff.push_str("--- /dev/null\n");
-            diff.push_str(&format!("+++ b/{}\n", file));
-            let line_count = contents.lines().count();
-            diff.push_str(&format!("@@ -0,0 +1,{} @@\n", line_count));
-            for line in contents.lines() {
-                diff.push_str(&format!("+{}\n", line));
-            }
-        }
-    }
-
-    Ok(diff)
-}
-
-#[tauri::command]
 pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
 
-    let diff = get_full_diff(&dir)?;
-
-    // Count additions and deletions from diff
-    let (additions, deletions) = count_diff_changes(&diff);
-
-    // Get list of changed files
+    // Get git status which now includes diff and stats
     let status = git::status(&dir).map_err(capture_err)?;
+    let diff = &status.diff;
+    let additions = status.additions;
+    let deletions = status.deletions;
     let file_list: Vec<String> = status.files.iter().map(|f| f.path.clone()).collect();
 
     // Try to generate AI summary, but don't fail if it errors (e.g., no API key)
     let (items, instructions, commit_message) =
-        match summarize::summarize_for_preview(&diff, &file_list, Some(&app)).await {
+        match summarize::summarize_for_preview(diff, &file_list, Some(&app)).await {
             Ok((change_summary, msg)) => {
                 let items: Vec<types::SummaryItem> = change_summary
                     .items
@@ -436,7 +388,6 @@ pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse,
         diff_lines: diff.lines().count(),
         additions,
         deletions,
-        diff,
     };
 
     // Cache the summary for future app launches
@@ -448,41 +399,16 @@ pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse,
     Ok(response)
 }
 
-/// Count additions and deletions from a unified diff.
-fn count_diff_changes(diff: &str) -> (usize, usize) {
-    let mut additions = 0;
-    let mut deletions = 0;
-
-    for line in diff.lines() {
-        // Skip diff headers (--- and +++)
-        if line.starts_with("+++") || line.starts_with("---") {
-            continue;
-        }
-        // Count added lines
-        if line.starts_with('+') {
-            additions += 1;
-        }
-        // Count deleted lines
-        else if line.starts_with('-') {
-            deletions += 1;
-        }
-    }
-
-    (additions, deletions)
-}
-
 /// Generates just a commit message suggestion based on current changes.
 #[tauri::command]
 pub async fn suggest_commit_message(app: AppHandle) -> Result<String, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
 
-    let diff = get_full_diff(&dir)?;
-
-    // Get list of changed files
+    // Get git status which includes diff
     let status = git::status(&dir).map_err(capture_err)?;
     let file_list: Vec<String> = status.files.iter().map(|f| f.path.clone()).collect();
 
-    let message = summarize::generate_commit_message(&diff, &file_list, Some(&app))
+    let message = summarize::generate_commit_message(&status.diff, &file_list, Some(&app))
         .await
         .map_err(capture_err)?;
 
