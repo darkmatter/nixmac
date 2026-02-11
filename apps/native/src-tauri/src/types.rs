@@ -164,6 +164,8 @@ pub struct SummaryItem {
 }
 
 /// Response for summarization requests.
+/// Contains only AI-generated content. Raw git data (diff, additions, deletions)
+/// comes from GitStatus instead.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SummaryResponse {
@@ -175,18 +177,6 @@ pub struct SummaryResponse {
 
     /// Suggested commit message
     pub commit_message: String,
-
-    /// Number of files changed
-    pub files_changed: usize,
-
-    /// Number of lines in the diff
-    pub diff_lines: usize,
-
-    /// Number of lines added
-    pub additions: usize,
-
-    /// Number of lines deleted
-    pub deletions: usize,
 }
 
 // =============================================================================

@@ -149,11 +149,6 @@ export const initialSummaryState: ChangesSummary = {
   items: [],
   instructions: "",
   commitMessage: "",
-  filesChanged: 0,
-  diffLines: 0,
-  additions: 0,
-  deletions: 0,
-  diff: "",
 };
 
 export const initialWidgetState: WidgetState = {

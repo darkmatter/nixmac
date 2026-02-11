@@ -70,15 +70,14 @@ export interface SummaryItem {
   description: string;
 }
 
+/**
+ * AI-generated summary of changes.
+ * Raw git data (diff, additions, deletions) comes from GitStatus instead.
+ */
 export interface ChangesSummary {
   items: SummaryItem[];
   instructions: string;
   commitMessage: string;
-  filesChanged: number;
-  diffLines: number;
-  additions: number;
-  deletions: number;
-  diff: string;
 }
 
 export type SummaryResponse = ChangesSummary;
