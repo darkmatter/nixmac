@@ -20,6 +20,9 @@ static WATCH_DIR: Mutex<Option<String>> = Mutex::new(None);
 /// Holds handle to current watcher so we can wait for it to stop on restart.
 static WATCHER_THREAD: Mutex<Option<std::thread::JoinHandle<()>>> = Mutex::new(None);
 
+/// Persists the last status JSON across thread restarts to avoid spurious events.
+static LAST_STATUS_JSON: Mutex<Option<String>> = Mutex::new(None);
+
 /// Event payload sent to frontend when git status changes.
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -55,9 +58,6 @@ where
     // Step 3: Signal that a watcher is now active and spawn the new thread.
     WATCHER_ACTIVE.store(true, Ordering::SeqCst);
     let new_thread = std::thread::spawn(move || {
-        // Track the last status JSON to detect changes (only emit when different)
-        let mut last_status_json: Option<String> = None;
-
         loop {
             // Check if we should stop (set by a new call to start_watching)
             if !WATCHER_ACTIVE.load(Ordering::SeqCst) {
@@ -74,10 +74,12 @@ where
                 // Get full git status and emit if changed
                 if let Ok(status) = git::status(dir) {
                     if let Ok(status_json) = serde_json::to_string(&status) {
-                        if Some(&status_json) != last_status_json.as_ref() {
+                        let is_changed =
+                            { LAST_STATUS_JSON.lock().unwrap().as_ref() != Some(&status_json) };
+                        if is_changed {
                             let _ = app_handle
                                 .emit("git:status-changed", GitStatusChangedEvent { status });
-                            last_status_json = Some(status_json);
+                            *LAST_STATUS_JSON.lock().unwrap() = Some(status_json);
                         }
                     }
                 }
