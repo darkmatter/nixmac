@@ -32,17 +32,6 @@ let
     cp -R ${builtins.filterSource (path: type: true) webOutputDir}/public $out/
   '';
 
-  secretsBundle = pkgs.stdenvNoCC.mkDerivation {
-    pname = "secrets-bundle";
-    version = "0.1.0";
-    src = ./..;
-    buildPhase = ''
-      runHook preBuild
-      mkdir -p $out
-      cp -r secrets $out/secrets
-      runHook postBuild
-    '';
-  };
   envname = if builtins.getEnv "NIXMAC_ENV" != "" then builtins.getEnv "NIXMAC_ENV" else "dev";
 
   # Equivalent to FROM alpine:latest. hash makes it reproducible. try "distroless"
@@ -238,7 +227,7 @@ in
     cwd = "${config.git.root}/apps/web";
     exec = ''
       ${pkgs.sops}/bin/sops exec-file \
-        ${secretsBundle}/secrets/web.''${NIXMAC_ENV:-dev}.yaml \
+        ${config.git.root}/.secrets.enc.yaml \
         '${pkgs.bun}/bin/bun --bun run dev'
     '';
   };
