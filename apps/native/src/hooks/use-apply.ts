@@ -1,7 +1,8 @@
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI, ipcRenderer } from "@/tauri-api";
 import { useCallback, useRef } from "react";
-import { useGitOperations } from "./use-git-operations";
+import { useGitOperations } from "@/hooks/use-git-operations";
+import { useSummary } from "@/hooks/use-summary";
 
 /**
  * Hook for the apply/rebuild operation.
@@ -10,6 +11,7 @@ import { useGitOperations } from "./use-git-operations";
  */
 export function useApply() {
   const { refreshGitStatus } = useGitOperations();
+  const { fetchSummary } = useSummary();
   const rebuildLineIdRef = useRef(1);
 
   const handleApply = useCallback(async () => {
@@ -123,6 +125,7 @@ export function useApply() {
       }
 
       await refreshGitStatus({cache: true});
+      await fetchSummary();
       // Delay setProcessing(false) to let any pending watcher events pass
       // Watcher polls every 2.5s, so 3s ensures we catch any updates
       setTimeout(() => {
