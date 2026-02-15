@@ -122,6 +122,10 @@ pub struct UiPrefs {
     /// Maximum build attempts for evolution before giving up.
     #[serde(rename = "maxBuildAttempts")]
     pub max_build_attempts: Option<usize>,
+
+    /// Whether to send diagnostics to the nixmac team.
+    #[serde(rename = "sendDiagnostics")]
+    pub send_diagnostics: bool,
 }
 
 /// Result of a darwin-rebuild operation.

@@ -209,7 +209,6 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
             info!("Reading file: {}", full_path.display());
             let content = std::fs::read_to_string(&full_path)
                 .map_err(|e| anyhow!("Failed to read {}: {}", path, e))?;
-            debug!("Read {} bytes from {}", content.len(), path);
             Ok(ToolResult::Continue(content))
         }
 

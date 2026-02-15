@@ -15,7 +15,9 @@ use log::{debug, error, info, warn};
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::Arc;
+use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
+use tokio::time::sleep;
 use tools::{create_tools, execute_tool, ToolResult};
 
 use crate::{commands, nix, store, types::EvolveEvent};
@@ -93,6 +95,34 @@ fn log_api_error(error: &str, messages: &[Message], prompt: &str, iteration: usi
     );
 
     info!("API error logged to: {}", log_file.display());
+
+    // Build and send a truncated summary to Sentry.
+    let sentry_summary = build_sentry_summary(error, messages, iteration);
+    sentry::capture_message(&sentry_summary, sentry::Level::Error);
+}
+
+/// Create a brief Sentry-appropriate summary. Keep the full error string (truncated
+/// because some providers can return huge error strings) and avoid
+/// including the prompt or any message contents since they can be huge and may
+/// contain sensitive info.
+fn build_sentry_summary(error: &str, messages: &[Message], iteration: usize) -> String {
+    let max_visible = 300usize;
+    let visible = if error.len() <= max_visible {
+        error.to_string()
+    } else {
+        format!(
+            "{}... (truncated, {} bytes)",
+            &error[..max_visible],
+            error.len()
+        )
+    };
+
+    format!(
+        "AI API error: {} | iteration: {} | messages_count: {}",
+        visible,
+        iteration,
+        messages.len()
+    )
 }
 
 // Use OpenRouter with Claude for evolution - better reasoning without strict content policies
@@ -283,7 +313,34 @@ pub async fn generate_evolution(
         debug!("Sending request to AI provider...");
         emit_evolve_event(app, EvolveEvent::api_request(start_time, iteration));
 
-        let response_result = provider.completion(&messages, &tools).await;
+        // Run provider completion inside a short-lived block and select!
+        // on it plus a cancellation signal. This lets the future borrow
+        // `messages` only for the call so we can mutate `messages` after
+        // the block without deep-cloning the conversation.
+        let response_result = {
+            let fut = provider.completion(&messages, &tools);
+            tokio::pin!(fut);
+
+            tokio::select! {
+                res = &mut fut => res,
+                _ = async {
+                    loop {
+                        if commands::is_evolve_cancelled() {
+                            break;
+                        }
+                        // consider switching the cancellation mechanism to a tokio::sync::Notify or watch channel and select! directly on that signal instead of polling with sleep
+                        sleep(Duration::from_millis(100)).await;
+                    }
+                } => {
+                    warn!("⚠️ Evolution cancelled by user during provider call");
+                    emit_evolve_event(
+                        app,
+                        EvolveEvent::error(start_time, Some(iteration), "Evolution cancelled by user"),
+                    );
+                    return Err(anyhow!("Evolution cancelled by user"));
+                }
+            }
+        };
 
         // Handle API failures
         let response = match response_result {

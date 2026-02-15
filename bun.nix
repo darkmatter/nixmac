@@ -2520,6 +2520,34 @@
     url = "https://registry.npmjs.org/@sec-ant/readable-stream/-/readable-stream-0.4.1.tgz";
     hash = "sha512-831qok9r2t8AlxLko40y2ebgSDhenenCatLVeW/uBtnHPyhHOvG0C7TvfgecV+wHzIm5KUICgzmVpWS+IMEAeg==";
   };
+  "@sentry-internal/browser-utils@10.38.0" = fetchurl {
+    url = "https://registry.npmjs.org/@sentry-internal/browser-utils/-/browser-utils-10.38.0.tgz";
+    hash = "sha512-UOJtYmdcxHCcV0NPfXFff/a95iXl/E0EhuQ1y0uE0BuZDMupWSF5t2BgC4HaE5Aw3RTjDF3XkSHWoIF6ohy7eA==";
+  };
+  "@sentry-internal/feedback@10.38.0" = fetchurl {
+    url = "https://registry.npmjs.org/@sentry-internal/feedback/-/feedback-10.38.0.tgz";
+    hash = "sha512-JXneg9zRftyfy1Fyfc39bBlF/Qd8g4UDublFFkVvdc1S6JQPlK+P6q22DKz3Pc8w3ySby+xlIq/eTu9Pzqi4KA==";
+  };
+  "@sentry-internal/replay-canvas@10.38.0" = fetchurl {
+    url = "https://registry.npmjs.org/@sentry-internal/replay-canvas/-/replay-canvas-10.38.0.tgz";
+    hash = "sha512-OXWM9jEqNYh4VTvrMu7v+z1anz+QKQ/fZXIZdsO7JTT2lGNZe58UUMeoq386M+Saxen8F9SUH7yTORy/8KI5qw==";
+  };
+  "@sentry-internal/replay@10.38.0" = fetchurl {
+    url = "https://registry.npmjs.org/@sentry-internal/replay/-/replay-10.38.0.tgz";
+    hash = "sha512-YWIkL6/dnaiQyFiZXJ/nN+NXGv/15z45ia86bE/TMq01CubX/DUOilgsFz0pk2v/pg3tp/U2MskLO9Hz0cnqeg==";
+  };
+  "@sentry/browser@10.38.0" = fetchurl {
+    url = "https://registry.npmjs.org/@sentry/browser/-/browser-10.38.0.tgz";
+    hash = "sha512-3phzp1YX4wcQr9mocGWKbjv0jwtuoDBv7+Y6Yfrys/kwyaL84mDLjjQhRf4gL5SX7JdYkhBp4WaiNlR0UC4kTA==";
+  };
+  "@sentry/core@10.38.0" = fetchurl {
+    url = "https://registry.npmjs.org/@sentry/core/-/core-10.38.0.tgz";
+    hash = "sha512-1pubWDZE5y5HZEPMAZERP4fVl2NH3Ihp1A+vMoVkb3Qc66Diqj1WierAnStlZP7tCx0TBa0dK85GTW/ZFYyB9g==";
+  };
+  "@sentry/react@10.38.0" = fetchurl {
+    url = "https://registry.npmjs.org/@sentry/react/-/react-10.38.0.tgz";
+    hash = "sha512-3UiKo6QsqTyPGUt0XWRY9KLaxc/cs6Kz4vlldBSOXEL6qPDL/EfpwNJT61osRo81VFWu8pKu7ZY2bvLPryrnBQ==";
+  };
   "@shikijs/core@3.20.0" = fetchurl {
     url = "https://registry.npmjs.org/@shikijs/core/-/core-3.20.0.tgz";
     hash = "sha512-f2ED7HYV4JEk827mtMDwe/yQ25pRiXZmtHjWF8uzZKuKiEsJR7Ce1nuQ+HhV9FzDcbIo4ObBCD9GPTzNuy9S1g==";
