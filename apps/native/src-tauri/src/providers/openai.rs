@@ -41,6 +41,7 @@ impl ChatCompletionProvider for OpenAIClient {
         user_prompt: &str,
         max_tokens: u32,
         temperature: f32,
+        request_id: &str,
     ) -> Result<String> {
         let request = CreateChatCompletionRequestArgs::default()
             .model(&self.model)
@@ -58,7 +59,10 @@ impl ChatCompletionProvider for OpenAIClient {
             .temperature(temperature)
             .build()?;
 
-        debug!("Requesting completion from {}", self.model);
+        debug!(
+            "Requesting completion from {} [id: {}]",
+            self.model, request_id
+        );
         let response = self.client.chat().create(request).await?;
 
         Ok(response

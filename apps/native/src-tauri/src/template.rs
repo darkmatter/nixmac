@@ -239,7 +239,11 @@ pub fn render_directory(
         let path = entry.path();
 
         if path.is_file() {
-            let filename = path.file_name().unwrap().to_string_lossy();
+            let filename = path
+                .file_name()
+                .ok_or_else(|| TemplateError::Io(std::io::Error::other("Invalid file name")))?
+                .to_string_lossy()
+                .to_string();
 
             // Check if it's a template file
             let output_filename = if filename.ends_with(".tera") {

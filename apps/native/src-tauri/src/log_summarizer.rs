@@ -420,12 +420,20 @@ Guidelines:
 
     let user_prompt = format!("Summarize this rebuild output:\n\n{}", log_content);
 
+    let request_id = uuid::Uuid::new_v4().to_string();
     debug!(
-        "[log_summarizer] Requesting summary from {}",
-        provider.model()
+        "[log_summarizer] Requesting summary from {} [id: {}]",
+        provider.model(),
+        request_id,
     );
     let response = provider
-        .completion(&system_prompt, &user_prompt, MAX_TOKENS, TEMPERATURE)
+        .completion(
+            &system_prompt,
+            &user_prompt,
+            MAX_TOKENS,
+            TEMPERATURE,
+            &request_id,
+        )
         .await?;
 
     let summary = response.trim().to_string();
@@ -436,9 +444,10 @@ Guidelines:
     };
 
     debug!(
-        "[log_summarizer] Generated summary from {}: {}",
+        "[log_summarizer] Generated summary from {}: {} [id: {}]",
         provider.model(),
-        summary
+        summary,
+        request_id,
     );
     Ok(summary)
 }

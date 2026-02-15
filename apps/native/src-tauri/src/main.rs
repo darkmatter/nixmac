@@ -23,6 +23,7 @@ mod template;
 mod types;
 mod watcher;
 
+use std::env;
 use tauri::{
     image::Image,
     menu::{Menu, MenuItem},
@@ -31,10 +32,53 @@ use tauri::{
 };
 
 fn main() {
+    let context = tauri::generate_context!();
+
+    // Prefer compile-time embedded vars (set by build.rs via `cargo:rustc-env`),
+    // fall back to runtime environment variables.
+    let sentry_dsn = option_env!("SENTRY_DSN")
+        .map(|s| s.to_string())
+        .or_else(|| env::var("SENTRY_DSN").ok());
+
+    let nixmac_env = option_env!("NIXMAC_ENV")
+        .map(|s| s.to_string())
+        .or_else(|| env::var("NIXMAC_ENV").ok())
+        .unwrap_or_else(|| "prod".to_string());
+
+    let nixmac_version = option_env!("NIXMAC_VERSION")
+        .map(|s| s.to_string())
+        .or_else(|| env::var("NIXMAC_VERSION").ok())
+        .unwrap_or_else(|| "unknown".to_string());
+
+    let mut sentry_guard = None;
+
+    if let Some(dsn) = sentry_dsn.filter(|s| !s.trim().is_empty()) {
+        // clone `nixmac_env`/`nixmac_version` so we don't move the original
+        // values and can use them again below for logging. Annoying Rust thing.
+        let client = sentry::init((
+            dsn,
+            sentry::ClientOptions {
+                environment: Some(nixmac_env.clone().into()),
+                release: Some(nixmac_version.clone().into()),
+                auto_session_tracking: false,
+                send_default_pii: false,
+                ..Default::default()
+            },
+        ));
+
+        sentry_guard = Some(client);
+    }
+
     // Initialize logging - set RUST_LOG=debug for verbose output
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+
+    if let Some(client) = sentry_guard.as_ref() {
+        builder = builder.plugin(tauri_plugin_sentry::init(client));
+    }
+
+    builder
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
@@ -103,8 +147,22 @@ fn main() {
             commands::permissions_request,
             commands::permissions_all_required_granted,
         ])
-        .setup(|app| {
+        .setup(move |app| {
             let handle = app.handle();
+
+            let send_diagnostics = store::get_send_diagnostics(handle).unwrap_or(false);
+            if send_diagnostics {
+                log::info!(
+                    "Sentry diagnostics enabled by user preference (env: {}, version: {})",
+                    nixmac_env,
+                    nixmac_version
+                );
+            } else {
+                log::info!("Sentry diagnostics disabled by user preference");
+                if sentry_guard.is_some() {
+                    sentry::Hub::current().bind_client(None);
+                }
+            }
 
             // Build the system tray menu with navigation shortcuts
             let open_i = MenuItem::with_id(app, "open", "Open", true, None::<&str>)?;
@@ -185,7 +243,12 @@ fn main() {
                     .hidden_title(true)
                     .title_bar_style(tauri::TitleBarStyle::Overlay)
                     .build()
-                    .unwrap();
+                    .map_err(|e| {
+                        let msg = format!("Failed to create main window: {}", e);
+                        log::error!("{}", msg);
+                        sentry::capture_message(&msg, sentry::Level::Error);
+                        msg
+                    })?;
 
             // set up watcher with interval based on focus
             let handle_for_focus = handle.clone();
@@ -203,7 +266,8 @@ fn main() {
 
             // Create the preview indicator window (persistent banner for uncommitted changes)
             if let Err(e) = peek::create_preview_indicator_window(handle) {
-                eprintln!("[peek] ❌ Failed to create preview indicator window: {}", e);
+                log::error!("[peek] ❌ Failed to create preview indicator window: {}", e);
+                sentry::capture_message(&e.to_string(), sentry::Level::Error);
             }
 
             // Start config watcher - monitors config directory for file changes
@@ -214,7 +278,7 @@ fn main() {
 
             Ok(())
         })
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("error while building tauri application")
         .run(|app_handle, event| {
             // Handle window close events - hide window but keep app running
