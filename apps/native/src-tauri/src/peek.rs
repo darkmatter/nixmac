@@ -469,7 +469,6 @@ pub fn get_preview_indicator_state() -> PreviewIndicatorState {
         Err(e) => {
             let msg = format!("PREVIEW_INDICATOR_STATE mutex poisoned: {}", e);
             log::error!("{}", msg);
-            sentry::capture_message(&msg, sentry::Level::Error);
             // Return a sensible default state to keep the app running
             PreviewIndicatorState {
                 visible: false,
@@ -628,7 +627,6 @@ pub fn update_preview_indicator<R: Runtime>(
                 e
             );
             log::error!("{}", msg);
-            sentry::capture_message(&msg, sentry::Level::Error);
         }
     }
 

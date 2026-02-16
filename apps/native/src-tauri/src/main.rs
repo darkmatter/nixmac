@@ -269,7 +269,6 @@ fn main() {
             // Create the preview indicator window (persistent banner for uncommitted changes)
             if let Err(e) = peek::create_preview_indicator_window(handle) {
                 log::error!("[peek] ❌ Failed to create preview indicator window: {}", e);
-                sentry::capture_message(&e.to_string(), sentry::Level::Error);
             }
 
             // Start config watcher - monitors config directory for file changes

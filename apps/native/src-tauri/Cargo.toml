@@ -52,6 +52,9 @@ tauri-plugin-upload = "2.0.0"
 tauri-plugin-macos-permissions = "2.3.0"
 sentry = "0.42.0"
 tauri-plugin-sentry = "0.5"
+sha2 = "0.10.9"
+hex = "0.4.3"
+regex = "1.12.3"
 
 [dependencies.tauri-plugin-sql]
 features = ["sqlite"] # or "postgres", or "mysql"
