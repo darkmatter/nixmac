@@ -59,6 +59,9 @@ export interface GitStatus {
   allChangesStaged?: boolean;
   allChangesCleanlyStaged?: boolean;
 
+  // Branch workflow state
+  headIsBuilt?: boolean;
+
   // Diff content
   diff?: string;
   additions?: number;

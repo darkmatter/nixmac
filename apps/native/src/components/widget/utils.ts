@@ -66,8 +66,9 @@ export function getChangeType(
 export function computeCurrentStep(state: WidgetState): WidgetStep {
   const hasConfigDir = !!state.configDir;
   const hasHost = !!state.host;
-  const allChangesCleanlyStaged =
-    state.gitStatus?.allChangesCleanlyStaged ?? false;
+  const isEvolveBranch =
+    state.gitStatus?.current?.startsWith("nixmac-evolve/") ?? false;
+  const headIsBuilt = state.gitStatus?.headIsBuilt ?? false;
   const permissionsCheckedAndIncomplete =
     state.permissionsChecked &&
     state.permissionsState &&
@@ -90,13 +91,15 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
     return "setup";
   }
 
-  // Rule 2: All changes staged and ready to commit
-  if (allChangesCleanlyStaged) {
+  // Rule 2: On nixmac-evolve/* branch with built tag → commit step
+  if (isEvolveBranch && headIsBuilt) {
     return "commit";
   }
 
-  // Rule 3: Default - evolving handles both idle and has-changes states
+  // Rule 3: Default - evolving
   return "evolving";
+
+  //TODO: add step for manual user branch unrelated to evolve workflow?
 }
 
 export function getShortFilename(path: string): string {
