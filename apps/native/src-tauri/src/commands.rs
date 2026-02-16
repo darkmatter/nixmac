@@ -175,6 +175,47 @@ pub async fn git_restore_all(app: AppHandle) -> Result<serde_json::Value, String
     Ok(serde_json::json!({"ok": true}))
 }
 
+/// Creates and checks out a new branch
+#[tauri::command]
+pub async fn git_checkout_new_branch(
+    app: AppHandle,
+    branch_name: String,
+) -> Result<serde_json::Value, String> {
+    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
+    git::checkout_new_branch(&dir, &branch_name).map_err(capture_err)?;
+    Ok(serde_json::json!({"ok": true}))
+}
+
+/// Checks out an existing branch
+#[tauri::command]
+pub async fn git_checkout_branch(
+    app: AppHandle,
+    branch_name: String,
+) -> Result<serde_json::Value, String> {
+    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
+    git::checkout_branch(&dir, &branch_name).map_err(capture_err)?;
+    Ok(serde_json::json!({"ok": true}))
+}
+
+/// Adds the nixmac-built tag to HEAD
+#[tauri::command]
+pub async fn git_tag_as_built(app: AppHandle) -> Result<serde_json::Value, String> {
+    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
+    git::tag_as_built(&dir).map_err(capture_err)?;
+    Ok(serde_json::json!({"ok": true}))
+}
+
+/// Finalizes an evolve by merging the branch to main
+#[tauri::command]
+pub async fn git_finalize_evolve(
+    app: AppHandle,
+    branch_name: String,
+) -> Result<serde_json::Value, String> {
+    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
+    git::finalize_evolve(&dir, &branch_name).map_err(capture_err)?;
+    Ok(serde_json::json!({"ok": true}))
+}
+
 // =============================================================================
 // Darwin/Nix Commands
 // =============================================================================

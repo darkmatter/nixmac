@@ -173,6 +173,13 @@ export const darwinAPI = {
     stageAll: () => invoke("git_stage_all"),
     unstageAll: () => invoke("git_unstage_all"),
     restoreAll: () => invoke("git_restore_all"),
+    checkoutNewBranch: (branchName: string) =>
+      invoke("git_checkout_new_branch", { branchName }),
+    checkoutBranch: (branchName: string) =>
+      invoke("git_checkout_branch", { branchName }),
+    tagAsBuilt: () => invoke("git_tag_as_built"),
+    finalizeEvolve: (branchName: string) =>
+      invoke("git_finalize_evolve", { branchName }),
   },
   darwin: {
     evolve: (description: string) => invoke("darwin_evolve", { description }),
