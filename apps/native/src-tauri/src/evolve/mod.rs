@@ -7,11 +7,12 @@ mod tools;
 mod types;
 
 // Re-export public API
-pub use types::{Evolution, EvolutionState};
-
 use anyhow::{anyhow, Result};
 use chrono::Utc;
 use log::{debug, error, info, warn};
+use regex::Regex;
+use serde_json::Value;
+use sha2::{Digest, Sha256};
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::Arc;
@@ -19,13 +20,124 @@ use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::time::sleep;
 use tools::{create_tools, execute_tool, ToolResult};
+pub use types::{Evolution, EvolutionState};
 
 use crate::{commands, nix, store, types::EvolveEvent};
 use messages::Message;
-use providers::{AiProvider, OllamaProvider, OpenAIProvider};
+use providers::{AiProvider, OllamaProvider, OpenAIProvider, ProviderError};
+
+/// Return short hex prefix for correlation of error messages without risking sensitive content exposure.
+fn short_hash(s: &str) -> String {
+    let mut h = Sha256::new();
+    h.update(s.as_bytes());
+    hex::encode(h.finalize())[..8].to_string()
+}
+
+/// Extract structured metadata from an error string without returning any user/chat text.
+/// This is a best-effort attempt to get useful info like status codes or error types for
+/// monitoring and alerting, while avoiding any risk of including sensitive content in
+/// Sentry events.
+fn extract_error_metadata(error: &str) -> (Option<u16>, Option<String>, Option<String>, usize) {
+    // Try parse JSON to extract common fields like status, code, type without taking message text.
+    if let Ok(json) = serde_json::from_str::<Value>(error) {
+        let status = json
+            .get("status")
+            .and_then(|v| v.as_u64())
+            .map(|v| v as u16);
+        let code = json
+            .get("code")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+        let typ = json
+            .get("type")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+        return (status, code, typ, error.len());
+    }
+
+    // Fallback: regex for "status: 400" or "statusCode=400"
+    static STATUS_RE: once_cell::sync::Lazy<Regex> = once_cell::sync::Lazy::new(|| {
+        Regex::new(r"(?i)\bstatus(?:Code|_code|:)?\s*[:=]?\s*(\d{3})\b").unwrap()
+    });
+    if let Some(cap) = STATUS_RE.captures(error) {
+        if let Some(m) = cap.get(1) {
+            if let Ok(s) = m.as_str().parse::<u16>() {
+                return (Some(s), None, None, error.len());
+            }
+        }
+    }
+
+    (None, None, None, error.len())
+}
+
+/// Report a ProviderError to Sentry using structured fields (no raw bodies).
+/// This is because ProviderError::Http contains the raw response body which may have sensitive info,
+/// (in the case of Ollama it definitely includes the prompt and response related to it)
+/// so we extract only metadata for Sentry.
+fn report_provider_error(
+    err: &ProviderError,
+    provider: &str,
+    model: &str,
+    messages: &[Message],
+    iteration: usize,
+) {
+    match err {
+        ProviderError::Http { status, body } => {
+            // compute short hash of body for correlation but never send body
+            let body_hash = short_hash(body);
+            sentry::with_scope(
+                |scope| {
+                    scope.set_tag("provider", provider);
+                    scope.set_tag("model", model);
+                    scope.set_tag("iteration", iteration.to_string());
+                    scope.set_tag("messages_count", messages.len().to_string());
+                    scope.set_extra("response_status", (status.as_u16() as u64).into());
+                    scope.set_extra("error_length", (body.len() as u64).into());
+                    scope.set_extra("error_hash", body_hash.into());
+                    sentry::capture_message("AI API HTTP error (redacted)", sentry::Level::Error);
+                },
+                || {},
+            );
+        }
+        ProviderError::Other(e) => {
+            let err_str = format!("{:#}", e);
+            // fallback: use parsing extractor to try to pull metadata
+            let (status, code, typ, len) = extract_error_metadata(&err_str);
+            let hash = short_hash(&err_str);
+            sentry::with_scope(
+                |scope| {
+                    scope.set_tag("provider", provider);
+                    scope.set_tag("model", model);
+                    scope.set_tag("iteration", iteration.to_string());
+                    scope.set_tag("messages_count", messages.len().to_string());
+                    if let Some(s) = status {
+                        scope.set_extra("response_status", (s as u64).into());
+                    }
+                    if let Some(c) = code {
+                        scope.set_extra("error_code", c.into());
+                    }
+                    if let Some(t) = typ {
+                        scope.set_extra("error_type", t.into());
+                    }
+                    scope.set_extra("error_length", (len as u64).into());
+                    scope.set_extra("error_hash", hash.into());
+                    sentry::capture_message("AI API error (redacted)", sentry::Level::Error);
+                },
+                || {},
+            );
+        }
+    }
+}
 
 /// Log API errors to a file for debugging content policy rejections
-fn log_api_error(error: &str, messages: &[Message], prompt: &str, iteration: usize) {
+fn log_api_error(
+    err: &ProviderError,
+    messages: &[Message],
+    prompt: &str,
+    iteration: usize,
+    provider: &str,
+    model: &str,
+) {
     let log_dir = dirs::data_local_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."))
         .join("nixmac")
@@ -56,7 +168,23 @@ fn log_api_error(error: &str, messages: &[Message], prompt: &str, iteration: usi
         file,
         "═══════════════════════════════════════════════════════════════"
     );
-    let _ = writeln!(file, "Error: {}", error);
+    match err {
+        ProviderError::Http { status, body } => {
+            let _ = writeln!(
+                file,
+                "HTTP Error: status={} len={}",
+                status.as_u16(),
+                body.len()
+            );
+            let _ = writeln!(file);
+            let _ = writeln!(file, "Response body:");
+            let _ = writeln!(file, "{}", body);
+        }
+        ProviderError::Other(e) => {
+            let err_str = format!("{:#}", e);
+            let _ = writeln!(file, "Error: {}", err_str);
+        }
+    }
     let _ = writeln!(file, "Iteration: {}", iteration);
     let _ = writeln!(file, "Original Prompt: {}", prompt);
     let _ = writeln!(file);
@@ -96,33 +224,8 @@ fn log_api_error(error: &str, messages: &[Message], prompt: &str, iteration: usi
 
     info!("API error logged to: {}", log_file.display());
 
-    // Build and send a truncated summary to Sentry.
-    let sentry_summary = build_sentry_summary(error, messages, iteration);
-    sentry::capture_message(&sentry_summary, sentry::Level::Error);
-}
-
-/// Create a brief Sentry-appropriate summary. Keep the full error string (truncated
-/// because some providers can return huge error strings) and avoid
-/// including the prompt or any message contents since they can be huge and may
-/// contain sensitive info.
-fn build_sentry_summary(error: &str, messages: &[Message], iteration: usize) -> String {
-    let max_visible = 300usize;
-    let visible = if error.len() <= max_visible {
-        error.to_string()
-    } else {
-        format!(
-            "{}... (truncated, {} bytes)",
-            &error[..max_visible],
-            error.len()
-        )
-    };
-
-    format!(
-        "AI API error: {} | iteration: {} | messages_count: {}",
-        visible,
-        iteration,
-        messages.len()
-    )
+    // Report structured summary to Sentry using ProviderError-aware helper.
+    report_provider_error(err, provider, model, messages, iteration);
 }
 
 // Use OpenRouter with Claude for evolution - better reasoning without strict content policies
@@ -343,15 +446,28 @@ pub async fn generate_evolution(
         let response = match response_result {
             Ok(res) => res,
             Err(e) => {
+                // Use structured ProviderError handling so we can log full body locally
+                // but only send redacted metadata to Sentry.
                 let error_str = format!("{:#}", e);
                 error!("AI API error:\n{}", error_str);
-                log_api_error(&error_str, &messages, prompt, iteration);
+
+                // Log full details locally and report redacted summary to Sentry
+                log_api_error(
+                    &e,
+                    &messages,
+                    prompt,
+                    iteration,
+                    &provider_type,
+                    &provider.model_name(),
+                );
+
                 emit_evolve_event(
                     app,
                     EvolveEvent::error(start_time, Some(iteration), &error_str),
                 );
-                // Return error to break loop or retry? Original code returned Err.
-                return Err(e);
+
+                // Return a generic error to the caller (avoid leaking raw body in the error message)
+                return Err(anyhow::anyhow!("AI provider failure"));
             }
         };
 

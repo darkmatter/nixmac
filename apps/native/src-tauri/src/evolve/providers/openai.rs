@@ -1,6 +1,6 @@
-use super::{AiProvider, ProviderResponse, TokenUsage};
+use super::{AiProvider, ProviderError, ProviderResponse, TokenUsage};
 use crate::evolve::messages::{Message, Tool as GenericTool, ToolCall};
-use anyhow::{anyhow, Result};
+use anyhow::anyhow;
 use async_openai::{
     config::OpenAIConfig,
     types::{
@@ -39,7 +39,7 @@ impl AiProvider for OpenAIProvider {
         &self,
         messages: &[Message],
         tools: &[GenericTool],
-    ) -> Result<ProviderResponse> {
+    ) -> std::result::Result<ProviderResponse, ProviderError> {
         let openai_messages = convert_to_openai_messages(messages);
         let openai_tools = convert_to_openai_tools(tools);
 
@@ -56,14 +56,21 @@ impl AiProvider for OpenAIProvider {
         // const MAX_TOKENS: u32 = 65_000;
         request_builder.max_completion_tokens(65000u32);
 
-        let request = request_builder.build()?;
+        let request = request_builder
+            .build()
+            .map_err(|e| ProviderError::Other(anyhow!(e)))?;
 
-        let response = self.client.chat().create(request).await?;
+        let response = self
+            .client
+            .chat()
+            .create(request)
+            .await
+            .map_err(|e| ProviderError::Other(anyhow!(e)))?;
 
         let choice = response
             .choices
             .first()
-            .ok_or_else(|| anyhow!("No response from OpenAI"))?;
+            .ok_or_else(|| ProviderError::Other(anyhow!("No response from OpenAI")))?;
 
         let message = convert_from_openai_response(choice);
 
