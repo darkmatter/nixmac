@@ -70,7 +70,11 @@ pub struct GitStatus {
     #[serde(rename = "allChangesCleanlyStaged")]
     pub all_changes_cleanly_staged: bool,
 
-    /// The raw unified diff content (git diff HEAD + untracked file contents).
+    /// Whether HEAD has the nixmac-built tag (changes have been built/applied).
+    #[serde(rename = "headIsBuilt")]
+    pub head_is_built: bool,
+
+    /// The raw unified diff content (git diff main + untracked file contents).
     pub diff: String,
 
     /// Number of lines added.
