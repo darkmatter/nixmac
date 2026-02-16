@@ -449,6 +449,7 @@ pub fn restore_all(dir: &str) -> Result<()> {
 }
 
 /// Creates and checks out a new branch.
+#[allow(dead_code)]
 pub fn checkout_new_branch(dir: &str, branch_name: &str) -> Result<()> {
     let output = git_command()
         .args(["checkout", "-b", branch_name])
@@ -464,6 +465,7 @@ pub fn checkout_new_branch(dir: &str, branch_name: &str) -> Result<()> {
 }
 
 /// Checks out an existing branch.
+#[allow(dead_code)]
 pub fn checkout_branch(dir: &str, branch_name: &str) -> Result<()> {
     let output = git_command()
         .args(["checkout", branch_name])
@@ -473,6 +475,50 @@ pub fn checkout_branch(dir: &str, branch_name: &str) -> Result<()> {
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         anyhow::bail!("Failed to checkout branch: {}", stderr);
+    }
+
+    Ok(())
+}
+
+/// Adds the nixmac-built tag to HEAD, replacing any existing tag.
+#[allow(dead_code)]
+pub fn tag_as_built(dir: &str) -> Result<()> {
+    let output = git_command()
+        .args(["tag", "-f", "nixmac-built", "HEAD"])
+        .current_dir(dir)
+        .output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("Failed to tag as built: {}", stderr);
+    }
+
+    Ok(())
+}
+
+/// Finalizes an evolve by merging the branch to main.
+#[allow(dead_code)]
+pub fn finalize_evolve(dir: &str, branch_name: &str) -> Result<()> {
+    // 1. Checkout main
+    let output = git_command()
+        .args(["checkout", "main"])
+        .current_dir(dir)
+        .output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("Failed to checkout main: {}", stderr);
+    }
+
+    // 2. Merge the evolve branch
+    let output = git_command()
+        .args(["merge", branch_name])
+        .current_dir(dir)
+        .output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("Failed to merge branch: {}", stderr);
     }
 
     Ok(())
