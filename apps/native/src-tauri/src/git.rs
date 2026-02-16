@@ -448,6 +448,36 @@ pub fn restore_all(dir: &str) -> Result<()> {
     Ok(())
 }
 
+/// Creates and checks out a new branch.
+pub fn checkout_new_branch(dir: &str, branch_name: &str) -> Result<()> {
+    let output = git_command()
+        .args(["checkout", "-b", branch_name])
+        .current_dir(dir)
+        .output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("Failed to create branch: {}", stderr);
+    }
+
+    Ok(())
+}
+
+/// Checks out an existing branch.
+pub fn checkout_branch(dir: &str, branch_name: &str) -> Result<()> {
+    let output = git_command()
+        .args(["checkout", branch_name])
+        .current_dir(dir)
+        .output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("Failed to checkout branch: {}", stderr);
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
