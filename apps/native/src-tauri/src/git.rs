@@ -43,12 +43,35 @@ pub fn init_if_needed(dir: &str) -> Result<()> {
     Ok(())
 }
 
-/// Gets the full diff including tracked changes and untracked file contents.
+/// Gets the full diff against main/master branch, including tracked changes and untracked file contents.
+/// This shows all changes since diverging from the default branch, which is used for AI summaries.
+/// Falls back to HEAD if neither main nor master exist.
 /// Untracked files are formatted as diffs showing the entire file as added.
 pub fn get_full_diff(dir: &str) -> Result<String> {
+    // Try main, then master, then fall back to HEAD
+    let base = if git_command()
+        .args(["rev-parse", "--verify", "main"])
+        .current_dir(dir)
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+    {
+        "main"
+    } else if git_command()
+        .args(["rev-parse", "--verify", "master"])
+        .current_dir(dir)
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+    {
+        "master"
+    } else {
+        "HEAD"
+    };
+
     // Get git diff for tracked files
     let diff_output = git_command()
-        .args(["diff", "HEAD"])
+        .args(["diff", base])
         .current_dir(dir)
         .output()?;
 
@@ -106,6 +129,39 @@ pub fn count_diff_changes(diff: &str) -> (usize, usize) {
 
     (additions, deletions)
 }
+
+/// Checks if HEAD has the nixmac-built tag.
+/// Returns true if HEAD is tagged with nixmac-built.
+pub fn head_is_built(dir: &str) -> bool {
+    // Get the commit that nixmac-built points to
+    let tag_output = git_command()
+        .args(["rev-parse", "--verify", "refs/tags/nixmac-built"])
+        .current_dir(dir)
+        .output();
+
+    let tag_commit = match tag_output {
+        Ok(output) if output.status.success() => {
+            String::from_utf8_lossy(&output.stdout).trim().to_string()
+        }
+        _ => return false,
+    };
+
+    // Get HEAD commit
+    let head_output = git_command()
+        .args(["rev-parse", "HEAD"])
+        .current_dir(dir)
+        .output();
+
+    let head_commit = match head_output {
+        Ok(output) if output.status.success() => {
+            String::from_utf8_lossy(&output.stdout).trim().to_string()
+        }
+        _ => return false,
+    };
+
+    tag_commit == head_commit
+}
+
 /// Parses `git status --porcelain=v1` output into a structured format.
 ///
 /// The porcelain format uses a two-character status code:
@@ -207,6 +263,9 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     let all_changes_cleanly_staged =
         has_changes && cleanly_staged_count == files.len() && !staged.is_empty();
 
+    // Check if HEAD has the nixmac-built tag
+    let head_is_built = head_is_built(dir);
+
     // Compute diff and stats
     let diff = get_full_diff(dir).unwrap_or_default();
     let (additions, deletions) = count_diff_changes(&diff);
@@ -227,6 +286,7 @@ pub fn status(dir: &str) -> Result<GitStatus> {
         has_unstaged_changes,
         all_changes_staged,
         all_changes_cleanly_staged,
+        head_is_built,
         diff,
         additions,
         deletions,
