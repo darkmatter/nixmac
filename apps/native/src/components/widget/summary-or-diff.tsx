@@ -7,6 +7,8 @@ import { Switch } from "@/components/ui/switch";
 import { useWidgetStore } from "@/stores/widget-store";
 import { SummaryItems } from "@/components/widget/summary-items";
 import { Diff } from "@/components/widget/diff";
+import { checkIsEvolving } from "@/components/widget/utils";
+
 
 interface SummaryOrDiffProps {
   variant?: "default" | "outline";
@@ -17,9 +19,9 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   const gitStatus = useWidgetStore((s) => s.gitStatus);
   const [showDiff, setShowDiff] = useState(false);
 
-  const hasChanges = (gitStatus?.files?.length ?? 0) > 0;
+  const isEvolving = checkIsEvolving(gitStatus);
 
-  if (!hasChanges) {
+  if (!isEvolving) {
     return null;
   }
 

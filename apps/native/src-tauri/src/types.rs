@@ -74,6 +74,10 @@ pub struct GitStatus {
     #[serde(rename = "headIsBuilt")]
     pub head_is_built: bool,
 
+    /// Whether the current branch is main or master.
+    #[serde(rename = "isMainBranch")]
+    pub is_main_branch: bool,
+
     /// The raw unified diff content (git diff main + untracked file contents).
     pub diff: String,
 

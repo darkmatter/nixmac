@@ -3,6 +3,7 @@ import type {
   WidgetState,
   WidgetStep,
 } from "@/stores/widget-store";
+import type { GitStatus } from "@/tauri-api";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
 // Categorize git changes for display
@@ -66,8 +67,7 @@ export function getChangeType(
 export function computeCurrentStep(state: WidgetState): WidgetStep {
   const hasConfigDir = !!state.configDir;
   const hasHost = !!state.host;
-  const isEvolveBranch =
-    state.gitStatus?.current?.startsWith("nixmac-evolve/") ?? false;
+  const notMainBranch = !(state.gitStatus?.isMainBranch ?? true);
   const headIsBuilt = state.gitStatus?.headIsBuilt ?? false;
   const permissionsCheckedAndIncomplete =
     state.permissionsChecked &&
@@ -92,7 +92,7 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
   }
 
   // Rule 2: On nixmac-evolve/* branch with built tag → commit step
-  if (isEvolveBranch && headIsBuilt) {
+  if (notMainBranch && headIsBuilt) {
     return "commit";
   }
 
@@ -111,4 +111,26 @@ export function getDirectory(path: string): string {
   const parts = path.split("/");
   if (parts.length <= 1) return "";
   return parts.slice(0, -1).join("/");
+}
+
+/**
+ * Checks if the app is in "evolving" mode (not on main, or has manual changes on main).
+ */
+export function checkIsEvolving(gitStatus?: GitStatus | null): boolean {
+  const isNotMain = !(gitStatus?.isMainBranch ?? true);
+  const manualChangesOnMain = gitStatus?.isMainBranch && gitStatus?.hasChanges;
+  return isNotMain || !!manualChangesOnMain;
+}
+
+/**
+ * Converts a string into a URL-safe slug for branch names.
+ */
+export function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 40);
 }
