@@ -6,7 +6,7 @@ use super::types::FileEdit;
 
 use anyhow::{anyhow, Result};
 use log::{debug, error, info};
-use std::path::Path;
+use std::path::{Component, Path};
 use std::process::Command;
 
 // =============================================================================
@@ -217,14 +217,21 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
             let full_pattern = Path::new(config_dir).join(pattern);
             info!("Listing files matching: {}", full_pattern.display());
 
+            let ignored_dirs = [".git", "result"];
             let files: Vec<String> = glob::glob(full_pattern.to_str().unwrap())
                 .map_err(|e| anyhow!("Invalid glob pattern: {}", e))?
                 .filter_map(|p| p.ok())
                 .filter(|p| p.is_file())
                 .filter_map(|p| {
-                    p.strip_prefix(config_dir)
-                        .ok()
-                        .map(|rel| rel.to_string_lossy().to_string())
+                    let rel = p.strip_prefix(config_dir).ok()?;
+
+                    if let Some(Component::Normal(name)) = rel.components().next() {
+                        if ignored_dirs.contains(&name.to_string_lossy().as_ref()) {
+                            return None;
+                        }
+                    }
+
+                    Some(rel.to_string_lossy().to_string())
                 })
                 .collect();
 

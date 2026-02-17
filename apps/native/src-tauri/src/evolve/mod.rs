@@ -264,16 +264,19 @@ pub async fn generate_evolution(
     info!("Evolution ID: {}", evolution.id);
     info!("════════════════════════════════════════════════════════════════");
 
-    // Initialize conversation with system prompt and user message
+    // Initialize conversation with system prompt (inject config values) and user message
+    let system_prompt = SYSTEM_PROMPT
+        .replace("{{CONFIG_DIR}}", config_dir)
+        .replace("{{HOST_ATTR}}", &host_attr);
+
     let mut messages: Vec<Message> = vec![
         Message::System {
-            content: format!("{}{}", SYSTEM_PROMPT, THINKING_INSTRUCTIONS),
+            content: format!("{}{}", system_prompt, THINKING_INSTRUCTIONS),
         },
         Message::User {
             content: format!(
-                "{}\n\nNote: The target host configuration is '{}'. Use this for build_check.\n\n\
-                 Start by using the 'think' tool to plan your approach.",
-                prompt, host_attr
+                "{}\n\nStart by using the 'think' tool to plan your approach.",
+                prompt
             ),
         },
     ];
