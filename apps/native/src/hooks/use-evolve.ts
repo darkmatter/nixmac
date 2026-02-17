@@ -27,7 +27,7 @@ export function useEvolve() {
     }
 
     // Check if we need to create a branch (only if on main)
-    const currentBranch = store.gitStatus?.current;
+    const currentBranch = store.gitStatus?.branch;
     const isOnMain = currentBranch === "main" || currentBranch === "master";
     const promptForBranch = store.evolvePrompt;
 

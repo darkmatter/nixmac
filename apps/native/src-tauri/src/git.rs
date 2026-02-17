@@ -130,6 +130,49 @@ pub fn count_diff_changes(diff: &str) -> (usize, usize) {
     (additions, deletions)
 }
 
+/// Gets commit messages on the current branch since diverging from main.
+/// Returns commits in reverse chronological order (newest first).
+fn get_commit_messages_since_main(dir: &str) -> Vec<String> {
+    // Try main, then master for base branch
+    let base = if git_command()
+        .args(["rev-parse", "--verify", "main"])
+        .current_dir(dir)
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+    {
+        "main"
+    } else if git_command()
+        .args(["rev-parse", "--verify", "master"])
+        .current_dir(dir)
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+    {
+        "master"
+    } else {
+        return vec![];
+    };
+
+    let range = format!("{}..HEAD", base);
+    let output = git_command()
+        .args(["log", &range, "--pretty=format:%s"])
+        .current_dir(dir)
+        .output();
+
+    match output {
+        Ok(o) if o.status.success() => {
+            let stdout = String::from_utf8_lossy(&o.stdout);
+            stdout
+                .lines()
+                .filter(|line| !line.is_empty())
+                .map(String::from)
+                .collect()
+        }
+        _ => vec![],
+    }
+}
+
 /// Checks if HEAD has the nixmac-last-build tag.
 /// Returns true if HEAD is the most recently built commit.
 pub fn head_is_built(dir: &str) -> bool {
@@ -192,7 +235,7 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     let mut staged = Vec::new();
     let mut not_added = Vec::new();
     let mut conflicted = Vec::new();
-    let mut current = None;
+    let mut branch = None;
     let tracking = None;
 
     for line in status_str.lines() {
@@ -200,7 +243,7 @@ pub fn status(dir: &str) -> Result<GitStatus> {
         if line.starts_with("##") {
             let branch_info = line.trim_start_matches("##").trim();
             if let Some(branch_name) = branch_info.split("...").next() {
-                current = Some(branch_name.trim().to_string());
+                branch = Some(branch_name.trim().to_string());
             }
             continue;
         }
@@ -267,7 +310,7 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     let head_is_built = head_is_built(dir);
 
     // Check if on main or master branch
-    let is_main_branch = current
+    let is_main_branch = branch
         .as_ref()
         .map(|b| b == "main" || b == "master")
         .unwrap_or(false);
@@ -275,6 +318,13 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     // Compute diff and stats
     let diff = get_full_diff(dir).unwrap_or_default();
     let (additions, deletions) = count_diff_changes(&diff);
+
+    // Get commit messages since main (only if not on main branch)
+    let branch_commit_messages = if is_main_branch {
+        vec![]
+    } else {
+        get_commit_messages_since_main(dir)
+    };
 
     Ok(GitStatus {
         files,
@@ -286,7 +336,7 @@ pub fn status(dir: &str) -> Result<GitStatus> {
         conflicted,
         ahead: 0,
         behind: 0,
-        current,
+        branch,
         tracking,
         has_changes,
         has_unstaged_changes,
@@ -297,6 +347,7 @@ pub fn status(dir: &str) -> Result<GitStatus> {
         diff,
         additions,
         deletions,
+        branch_commit_messages,
     })
 }
 
@@ -521,7 +572,37 @@ pub fn tag_as_built(dir: &str) -> Result<()> {
 }
 
 /// Finalizes an evolve by merging the branch to main.
-pub fn finalize_evolve(dir: &str, branch_name: &str) -> Result<()> {
+/// If squash is true, squashes all commits into one with the provided message.
+pub fn finalize_evolve(
+    dir: &str,
+    branch_name: &str,
+    squash: bool,
+    commit_message: Option<&str>,
+) -> Result<()> {
+    // If squashing, reset soft to main and create a new commit on the branch
+    if squash {
+        let output = git_command()
+            .args(["reset", "--soft", "main"])
+            .current_dir(dir)
+            .output()?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            anyhow::bail!("Failed to reset to main: {}", stderr);
+        }
+
+        let msg = commit_message.unwrap_or("chore: squash evolve commits");
+        let output = git_command()
+            .args(["commit", "-m", msg])
+            .current_dir(dir)
+            .output()?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            anyhow::bail!("Failed to create squash commit: {}", stderr);
+        }
+    }
+
     // 1. Checkout main
     let output = git_command()
         .args(["checkout", "main"])
@@ -533,7 +614,7 @@ pub fn finalize_evolve(dir: &str, branch_name: &str) -> Result<()> {
         anyhow::bail!("Failed to checkout main: {}", stderr);
     }
 
-    // 2. Merge the evolve branch
+    // 2. Merge the evolve branch (fast-forward if squashed)
     let output = git_command()
         .args(["merge", branch_name])
         .current_dir(dir)

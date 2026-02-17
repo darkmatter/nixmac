@@ -5,7 +5,7 @@ import { ConfirmationDialog } from "@/components/widget/confirmation-dialog";
 import { PromptInputSection } from "@/components/widget/prompt-input-section";
 import { SummaryOrDiff } from "@/components/widget/summary-or-diff";
 import { useApply } from "@/hooks/use-apply";
-import { useCommit } from "@/hooks/use-commit";
+import { useRollback } from "@/hooks/use-rollback";
 import { useWidgetStore } from "@/stores/widget-store";
 import { Eraser, MessageSquare, Wrench } from "lucide-react";
 import { useState } from "react";
@@ -17,7 +17,7 @@ export function EvolveStep() {
   const gitStatus = useWidgetStore((s) => s.gitStatus);
 
   const { handleApply } = useApply();
-  const { handleCancel } = useCommit();
+  const { handleRollback } = useRollback();
 
   const [showRebuildDialog, setShowRebuildDialog] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
@@ -49,6 +49,10 @@ export function EvolveStep() {
     },
   ];
 
+  if (!gitStatus) {
+    return null;
+  }
+
   return (
     <>
       <ActionTiles
@@ -75,7 +79,7 @@ export function EvolveStep() {
         open={showClearDialog}
         onOpenChange={setShowClearDialog}
         message="Discard all current changes?"
-        onConfirm={handleCancel}
+        onConfirm={handleRollback}
         color="amber"
       />
     </>

@@ -21,8 +21,8 @@ export type WidgetStep =
   | "permissions"
   | "setup"
   | "evolving"
-  | "commit";
-export type ProcessingAction = "evolve" | "apply" | "commit" | "cancel" | null;
+  | "merge";
+export type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
 
 // Rebuild state for showing progress inline in the widget
 export type RebuildErrorType =

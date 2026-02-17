@@ -1,12 +1,12 @@
 "use client";
 
-import { Loader2, Sparkles } from "lucide-react";
-import { useState } from "react";
-import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
-import { useWidgetStore } from "@/stores/widget-store";
-import { SummaryItems } from "@/components/widget/summary-items";
 import { Diff } from "@/components/widget/diff";
+import { SummaryItems } from "@/components/widget/summary-items";
+import { cn } from "@/lib/utils";
+import { useWidgetStore } from "@/stores/widget-store";
+import { Loader2, Sparkles, Wrench } from "lucide-react";
+import { useState } from "react";
 
 
 interface SummaryOrDiffProps {
@@ -32,8 +32,8 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-border/50 border-b py-2">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" />
-          <h2 className="font-medium text-sm">What's Changed</h2>
+          {gitStatus.headIsBuilt ?  <Wrench className="h-4 w-4 text-primary" /> :<Sparkles className="h-4 w-4 text-primary" />}
+          <h2 className="font-medium text-sm">{gitStatus.headIsBuilt ? "Active Changes" : "What's changed"}</h2>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground text-xs">

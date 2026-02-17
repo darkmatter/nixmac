@@ -92,7 +92,7 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
 
   // Rule 2: On nixmac-evolve/* branch with built tag → commit step
   if (notMainBranch && headIsBuilt) {
-    return "commit";
+    return "merge";
   }
 
   // Rule 3: Default - evolving
