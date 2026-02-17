@@ -49,10 +49,14 @@ pub struct GitStatus {
     pub behind: i32,
 
     /// Current branch name.
-    pub current: Option<String>,
+    pub branch: Option<String>,
 
     /// Remote tracking branch name.
     pub tracking: Option<String>,
+
+    /// Commit messages on current branch since diverging from main.
+    #[serde(rename = "branchCommitMessages")]
+    pub branch_commit_messages: Vec<String>,
 
     /// Quick check for any uncommitted changes.
     #[serde(rename = "hasChanges")]

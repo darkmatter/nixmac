@@ -48,10 +48,13 @@ export interface GitStatus {
   conflicted?: string[];
 
   // Branch info
-  current?: string;
+  branch?: string;
   tracking?: string;
   ahead?: number;
   behind?: number;
+
+  // Commit messages on current branch since main
+  branchCommitMessages?: string[];
 
   // Computed state
   hasChanges?: boolean;
@@ -179,8 +182,8 @@ export const darwinAPI = {
     checkoutBranch: (branchName: string) =>
       invoke("git_checkout_branch", { branchName }),
     tagAsBuilt: () => invoke("git_tag_as_built"),
-    finalizeEvolve: (branchName: string) =>
-      invoke("git_finalize_evolve", { branchName }),
+    finalizeEvolve: (branchName: string, squash?: boolean, commitMessage?: string) =>
+      invoke("git_finalize_evolve", { branchName, squash, commitMessage }),
   },
   darwin: {
     evolve: (description: string) => invoke("darwin_evolve", { description }),

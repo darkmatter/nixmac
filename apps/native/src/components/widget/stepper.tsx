@@ -20,7 +20,7 @@ export function Stepper() {
 	}
 
 	// Determine current step index based on widget state
-	const currentStepIndex = step === "commit" ? 2 : hasChanges ? 1 : 0;
+	const currentStepIndex = step === "merge" ? 2 : hasChanges ? 1 : 0;
 
 	return (
 		<div className="border-border border-b bg-muted/30 px-5 py-4">

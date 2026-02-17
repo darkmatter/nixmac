@@ -65,5 +65,35 @@ export function useGitOperations() {
     [refreshGitStatus],
   );
 
-  return { refreshGitStatus, getInitialStatusAndSummary, gitStash };
+  const handleMerge = useCallback(
+    async (squash = false, commitMessage?: string) => {
+      const store = useWidgetStore.getState();
+      const currentBranch = store.gitStatus?.branch;
+
+      if (!currentBranch) {
+        return;
+      }
+
+      store.setProcessing(true, "merge");
+      store.appendLog(`\n> Merging ${currentBranch} to main...\n`);
+
+      try {
+        await darwinAPI.git.finalizeEvolve(currentBranch, squash, commitMessage);
+        useWidgetStore.getState().appendLog("✓ Merged successfully\n");
+        useWidgetStore.getState().setCommitMsg("");
+        useWidgetStore.getState().setEvolvePrompt("");
+        useWidgetStore.getState().clearPreview();
+        await refreshGitStatus();
+      } catch (e: unknown) {
+        const msg = (e as Error)?.message || String(e);
+        useWidgetStore.getState().setError(msg);
+        useWidgetStore.getState().appendLog(`✗ Error: ${msg}\n`);
+      } finally {
+        useWidgetStore.getState().setProcessing(false);
+      }
+    },
+    [refreshGitStatus],
+  );
+
+  return { refreshGitStatus, getInitialStatusAndSummary, gitStash, handleMerge };
 }

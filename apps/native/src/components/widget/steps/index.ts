@@ -1,4 +1,4 @@
-export { CommitStep } from "./commit-step";
+export { MergeStep } from "./merge-step";
 export { EvolveStep } from "./evolve-step";
 export { PermissionsStep } from "./permissions-step";
 export { SetupStep } from "./setup-step";

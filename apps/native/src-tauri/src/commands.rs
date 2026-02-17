@@ -210,9 +210,17 @@ pub async fn git_tag_as_built(app: AppHandle) -> Result<serde_json::Value, Strin
 pub async fn git_finalize_evolve(
     app: AppHandle,
     branch_name: String,
+    squash: Option<bool>,
+    commit_message: Option<String>,
 ) -> Result<serde_json::Value, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
-    git::finalize_evolve(&dir, &branch_name).map_err(capture_err)?;
+    git::finalize_evolve(
+        &dir,
+        &branch_name,
+        squash.unwrap_or(false),
+        commit_message.as_deref(),
+    )
+    .map_err(capture_err)?;
     Ok(serde_json::json!({"ok": true}))
 }
 
