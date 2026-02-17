@@ -1,3 +1,4 @@
+import { slugify } from "@/components/widget/utils";
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI, ipcRenderer } from "@/tauri-api";
 import { useCallback, useRef } from "react";
@@ -111,12 +112,33 @@ export function useApply() {
         return;
       }
 
-      // If successful, stage all changes and auto-dismiss after delay
+      // If successful, handle branch/commit/tag workflow
       if (event.payload.ok) {
         try {
-          await darwinAPI.git.stageAll();
+          const gitStatus = currentStore.gitStatus;
+
+          // If on main with manual changes, create branch and commit first
+          if (gitStatus?.isMainBranch ?? true) {
+            // Fetch summary to get a commit message
+            await fetchSummary();
+            const summary = useWidgetStore.getState().summary;
+            const commitMessage = summary?.commitMessage
+              ? `${summary.commitMessage} (manual changes)`
+              : "chore: manual configuration changes";
+
+            // Create a branch for manual changes using slugified commit message
+            const branchSlug = slugify(commitMessage);
+            const branchName = `nixmac-evolve/${branchSlug || "manual-changes"}`;
+            await darwinAPI.git.checkoutNewBranch(branchName);
+
+            // Commit the changes
+            await darwinAPI.git.commit(commitMessage);
+          }
+
+          // Tag HEAD as built
+          await darwinAPI.git.tagAsBuilt();
         } catch (e) {
-          console.error("Failed to stage changes:", e);
+          console.error("Failed to complete build workflow:", e);
         }
         // Auto-dismiss rebuild panel after success (short delay for user feedback)
         setTimeout(() => {

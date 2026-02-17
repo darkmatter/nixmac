@@ -13,7 +13,7 @@ const STEPS = [
 export function Stepper() {
 	const step = useCurrentStep();
 	const gitStatus = useWidgetStore((s) => s.gitStatus);
-	const hasChanges = gitStatus?.hasChanges ?? false;
+	const hasChanges = Boolean(gitStatus?.diff);
 
 	if (step === "setup" || step === "permissions") {
 		return null;
