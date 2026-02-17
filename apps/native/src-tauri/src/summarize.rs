@@ -10,6 +10,36 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Runtime};
 
 use crate::providers::create_provider;
+use sha2::{Digest, Sha256};
+
+/// Report a provider error to Sentry in a safe, redacted way (no message bodies).
+fn report_provider_error(
+    source: &str,
+    provider_model: &str,
+    request_id: &str,
+    err_str: &str,
+    context: &str,
+) {
+    let mut h = Sha256::new();
+    h.update(err_str.as_bytes());
+    let hash = hex::encode(h.finalize())[..8].to_string();
+
+    sentry::with_scope(
+        |scope| {
+            scope.set_tag("source", source);
+            scope.set_tag("provider", provider_model);
+            scope.set_tag("model", provider_model);
+            scope.set_extra("request_id", request_id.into());
+            scope.set_extra("error_length", (err_str.len() as u64).into());
+            scope.set_extra("error_hash", hash.into());
+            sentry::capture_message(
+                &format!("{}: provider completion failed", context),
+                sentry::Level::Error,
+            );
+        },
+        || {},
+    );
+}
 
 const MAX_SUMMARY_TOKENS: u32 = 800;
 const TEMPERATURE: f32 = 0.3;
@@ -97,7 +127,9 @@ Respond with ONLY valid JSON, no markdown code blocks or extra text."#;
         provider.model(),
         request_id
     );
-    let raw_response = provider
+
+    // Call provider completion and capture sanitized error details to Sentry on failure.
+    let raw_response = match provider
         .completion(
             system_prompt,
             &user_prompt,
@@ -105,7 +137,28 @@ Respond with ONLY valid JSON, no markdown code blocks or extra text."#;
             TEMPERATURE,
             &request_id,
         )
-        .await?;
+        .await
+    {
+        Ok(s) => s,
+        Err(e) => {
+            let err_str = format!("{:#}", e);
+            warn!(
+                "[summarize_changes] provider completion failed: {}",
+                err_str
+            );
+
+            // Short hash for correlation and report to Sentry (handled in helper).
+            report_provider_error(
+                "change_summary",
+                provider.model(),
+                &request_id,
+                &err_str,
+                "summarize_changes",
+            );
+
+            return Err(e);
+        }
+    };
 
     info!(
         "Generated change summary ({} chars) [id: {}]",
@@ -189,9 +242,27 @@ pub async fn generate_commit_message<R: Runtime>(
         provider.model(),
         request_id
     );
-    let response = provider
+    let response = match provider
         .completion(system_prompt, &user_prompt, 100u32, 0.2, &request_id)
-        .await?;
+        .await
+    {
+        Ok(s) => s,
+        Err(e) => {
+            let err_str = format!("{:#}", e);
+            warn!(
+                "[generate_commit_message] provider completion failed: {}",
+                err_str
+            );
+            report_provider_error(
+                "commit_message",
+                provider.model(),
+                &request_id,
+                &err_str,
+                "generate_commit_message",
+            );
+            return Err(e);
+        }
+    };
 
     let message = response.trim().to_string();
     let message = if message.is_empty() {

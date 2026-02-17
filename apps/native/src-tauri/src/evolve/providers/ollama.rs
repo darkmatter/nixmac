@@ -1,6 +1,6 @@
-use super::{AiProvider, ProviderResponse, TokenUsage};
+use super::{AiProvider, ProviderError, ProviderResponse, TokenUsage};
 use crate::evolve::messages::{Message, Tool as GenericTool, ToolCall};
-use anyhow::{anyhow, Result};
+use anyhow::anyhow;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
@@ -86,7 +86,7 @@ impl AiProvider for OllamaProvider {
         &self,
         messages: &[Message],
         tools: &[GenericTool],
-    ) -> Result<ProviderResponse> {
+    ) -> std::result::Result<ProviderResponse, ProviderError> {
         let ollama_messages = convert_to_ollama_messages(messages);
         let ollama_tools = convert_to_ollama_tools(tools);
 
@@ -98,14 +98,30 @@ impl AiProvider for OllamaProvider {
         };
 
         let url = format!("{}/api/chat", self.base_url);
-        let response = self.client.post(&url).json(&request).send().await?;
+        let response = self
+            .client
+            .post(&url)
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| ProviderError::Other(anyhow!(e)))?;
 
         if !response.status().is_success() {
-            let error_text = response.text().await?;
-            return Err(anyhow!("Ollama API error: {}", error_text));
+            let status = response.status();
+            let error_text = response
+                .text()
+                .await
+                .map_err(|e| ProviderError::Other(anyhow!(e)))?;
+            return Err(ProviderError::Http {
+                status,
+                body: error_text,
+            });
         }
 
-        let chat_response: ChatResponse = response.json().await?;
+        let chat_response: ChatResponse = response
+            .json()
+            .await
+            .map_err(|e| ProviderError::Other(anyhow!(e)))?;
 
         // Debug: Log the raw response to understand what we're getting
         log::debug!(

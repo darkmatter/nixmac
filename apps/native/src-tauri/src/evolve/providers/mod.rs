@@ -1,6 +1,9 @@
 use super::messages::{Message, Tool};
-use anyhow::Result;
+use anyhow::Error as AnyhowError;
 use async_trait::async_trait;
+use reqwest::StatusCode;
+use std::error::Error as StdError;
+use std::fmt;
 
 pub mod ollama;
 pub mod openai;
@@ -23,7 +26,65 @@ pub struct ProviderResponse {
 
 #[async_trait]
 pub trait AiProvider: Send + Sync {
-    async fn completion(&self, messages: &[Message], tools: &[Tool]) -> Result<ProviderResponse>;
+    async fn completion(
+        &self,
+        messages: &[Message],
+        tools: &[Tool],
+    ) -> std::result::Result<ProviderResponse, ProviderError>;
 
     fn model_name(&self) -> String;
+}
+
+/// Errors returned by AI providers in the evolve subsystem.
+///
+/// Purpose:
+/// - Represent provider-level failures while preserving useful debug data for
+///   local diagnostics and UI display (HTTP status and provider response body).
+///
+/// Security & privacy rules:
+/// - `Http { status, body }` intentionally keeps the full response `body` for
+///   *local* debugging and UI only. Depending on the AI provider,
+///   the body may contain sensitive data (prompts, completions, or user content)
+///   and MUST NOT be sent to remote diagnostics (Sentry, analytics) in raw form.
+/// - Before sending anything to remote telemetry, use a redaction/summary helper
+///   to send only non-sensitive metadata such as status code, error type, length,
+///   and a correlation hash. Never send `body` itself.
+///
+/// API guidance for callers:
+/// - Prefer matching on `ProviderError` directly when you need `status` or the
+///   full `body` for local handling:
+///     - `ProviderError::Http { status, body }` — safe to inspect for local logs/UI.
+///     - `ProviderError::Other(e)` — wrapper for non-HTTP errors (keeps original error).
+/// - If a public API returns `anyhow::Error` (error erasure), callers that need
+///   `ProviderError` can downcast the `anyhow::Error` with `err.downcast_ref::<ProviderError>()`
+///   or `err.downcast::<ProviderError>()` to recover the concrete error and inspect `status`.
+/// - Avoid `format!("{}", e)` or `e.to_string()` for remote reporting because
+///   `Display` includes the raw body for `Http` variants.
+///
+/// See `report_provider_error` in `evolve/mod.rs` for an example of safe telemetry
+/// reporting and `extract_error_metadata` for extracting non-sensitive fields.
+#[derive(Debug)]
+pub enum ProviderError {
+    /// HTTP-style error with status code and body
+    Http { status: StatusCode, body: String },
+    /// Other error (wrapped anyhow::Error)
+    Other(AnyhowError),
+}
+
+impl fmt::Display for ProviderError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ProviderError::Http { status, body } => write!(f, "http error {}: {}", status, body),
+            ProviderError::Other(e) => write!(f, "{}", e),
+        }
+    }
+}
+
+impl StdError for ProviderError {
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
+        match self {
+            ProviderError::Other(e) => e.source(),
+            _ => None,
+        }
+    }
 }
