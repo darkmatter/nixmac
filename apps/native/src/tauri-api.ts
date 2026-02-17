@@ -61,6 +61,7 @@ export interface GitStatus {
 
   // Branch workflow state
   headIsBuilt?: boolean;
+  isMainBranch?: boolean;
 
   // Diff content
   diff?: string;

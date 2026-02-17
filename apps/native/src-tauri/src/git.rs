@@ -266,6 +266,12 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     // Check if HEAD has the nixmac-built tag
     let head_is_built = head_is_built(dir);
 
+    // Check if on main or master branch
+    let is_main_branch = current
+        .as_ref()
+        .map(|b| b == "main" || b == "master")
+        .unwrap_or(false);
+
     // Compute diff and stats
     let diff = get_full_diff(dir).unwrap_or_default();
     let (additions, deletions) = count_diff_changes(&diff);
@@ -287,6 +293,7 @@ pub fn status(dir: &str) -> Result<GitStatus> {
         all_changes_staged,
         all_changes_cleanly_staged,
         head_is_built,
+        is_main_branch,
         diff,
         additions,
         deletions,

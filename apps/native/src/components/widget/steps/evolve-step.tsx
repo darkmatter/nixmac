@@ -1,9 +1,10 @@
 "use client";
 
 import { ActionTiles, type ActionTile } from "@/components/widget/action-tiles";
-import { PromptInputSection } from "@/components/widget/prompt-input-section";
 import { ConfirmationDialog } from "@/components/widget/confirmation-dialog";
+import { PromptInputSection } from "@/components/widget/prompt-input-section";
 import { SummaryOrDiff } from "@/components/widget/summary-or-diff";
+import { checkIsEvolving } from "@/components/widget/utils";
 import { useApply } from "@/hooks/use-apply";
 import { useCommit } from "@/hooks/use-commit";
 import { useWidgetStore } from "@/stores/widget-store";
@@ -22,11 +23,11 @@ export function EvolveStep() {
   const [showRebuildDialog, setShowRebuildDialog] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
 
-  const hasChanges = (gitStatus?.files?.length ?? 0) > 0;
+  const isEvolving = checkIsEvolving(gitStatus);
 
   const tiles: ActionTile[] = [
     {
-      name: hasChanges ? "Evolve" : "Begin",
+      name: isEvolving ? "Evolve" : "Begin",
       icon: MessageSquare,
       iconSrc: "/outline-white.png",
       color: "white",
@@ -37,14 +38,14 @@ export function EvolveStep() {
       name: "Build",
       icon: Wrench,
       color: "teal",
-      disabled: !hasChanges,
+      disabled: !isEvolving,
       onAction: () => setShowRebuildDialog(true),
     },
     {
       name: "Clear",
       icon: Eraser,
       color: "white",
-      disabled: !hasChanges,
+      disabled: !isEvolving,
       onAction: () => setShowClearDialog(true),
     },
   ];
@@ -53,9 +54,9 @@ export function EvolveStep() {
     <>
       <ActionTiles
         tiles={tiles}
-        title={hasChanges ? "Evolve changes" : "Get started"}
+        title={isEvolving ? "Evolve changes" : "Get started"}
         subtitle={
-          hasChanges
+          isEvolving
             ? "or hit build when you're ready for a test-drive"
             : "ask nixmac to help modify your configuration"
         }
