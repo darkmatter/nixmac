@@ -466,8 +466,8 @@ pub async fn generate_evolution(
                     EvolveEvent::error(start_time, Some(iteration), &error_str),
                 );
 
-                // Return a generic error to the caller (avoid leaking raw body in the error message)
-                return Err(anyhow::anyhow!("AI provider failure"));
+                // Return a downcastable error in case the caller needs to see the ProviderError.
+                return Err(e.into());
             }
         };
 
