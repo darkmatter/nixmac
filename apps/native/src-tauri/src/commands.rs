@@ -18,8 +18,9 @@ use tauri_plugin_dialog::DialogExt;
 // =============================================================================
 // Helpers
 // =============================================================================
-fn capture_err<E: std::fmt::Display>(e: E) -> String {
-    sentry::capture_message(&e.to_string(), sentry::Level::Error);
+fn capture_err<E: std::fmt::Display>(cmd: &str, e: E) -> String {
+    // Only send the command name to Sentry to avoid leaking chat or user data.
+    sentry::capture_message(cmd, sentry::Level::Error);
     e.to_string()
 }
 
@@ -30,9 +31,9 @@ fn capture_err<E: std::fmt::Display>(e: E) -> String {
 /// Returns the current configuration including the flake directory and host attribute.
 #[tauri::command]
 pub async fn config_get(app: AppHandle) -> Result<types::Config, String> {
-    let config_dir = store::get_config_dir(&app).map_err(capture_err)?;
+    let config_dir = store::get_config_dir(&app).map_err(|e| capture_err("config_get", e))?;
     let host_attr = store::get_host_attr(&app)
-        .map_err(capture_err)?
+        .map_err(|e| capture_err("config_get", e))?
         .or_else(store::read_host_attr_from_file);
 
     Ok(types::Config {
@@ -47,15 +48,15 @@ pub async fn config_set_host_attr(
     app: AppHandle,
     host: String,
 ) -> Result<serde_json::Value, String> {
-    store::set_host_attr(&app, &host).map_err(capture_err)?;
+    store::set_host_attr(&app, &host).map_err(|e| capture_err("config_set_host_attr", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
 /// Sets the flake configuration directory path.
 #[tauri::command]
 pub async fn config_set_dir(app: AppHandle, dir: String) -> Result<serde_json::Value, String> {
-    store::set_config_dir(&app, &dir).map_err(capture_err)?;
-    store::ensure_config_dir_exists(&app).map_err(capture_err)?;
+    store::set_config_dir(&app, &dir).map_err(|e| capture_err("config_set_dir", e))?;
+    store::ensure_config_dir_exists(&app).map_err(|e| capture_err("config_set_dir", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
@@ -72,8 +73,8 @@ pub async fn config_pick_dir(app: AppHandle) -> Result<Option<String>, String> {
 
     if let Some(path) = result {
         let dir = path.to_string();
-        store::set_config_dir(&app, &dir).map_err(capture_err)?;
-        store::ensure_config_dir_exists(&app).map_err(capture_err)?;
+        store::set_config_dir(&app, &dir).map_err(|e| capture_err("config_pick_dir", e))?;
+        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("config_pick_dir", e))?;
         return Ok(Some(dir));
     }
 
@@ -83,7 +84,7 @@ pub async fn config_pick_dir(app: AppHandle) -> Result<Option<String>, String> {
 /// Checks if a flake.nix exists in the config directory
 #[tauri::command]
 pub async fn flake_exists(app: AppHandle) -> Result<bool, String> {
-    let dir = store::get_config_dir(&app).map_err(capture_err)?;
+    let dir = store::get_config_dir(&app).map_err(|e| capture_err("flake_exists", e))?;
     Ok(Path::new(&dir).join("flake.nix").exists())
 }
 
@@ -100,72 +101,77 @@ pub async fn bootstrap_default_config(app: AppHandle, hostname: String) -> Resul
 /// Initializes a git repository in the config directory if one doesn't exist.
 #[tauri::command]
 pub async fn git_init_if_needed(app: AppHandle) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
-    git::init_if_needed(&dir).map_err(capture_err)?;
+    let dir =
+        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_init_if_needed", e))?;
+    git::init_if_needed(&dir).map_err(|e| capture_err("git_init_if_needed", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
 /// Returns the current git status of the config directory.
 #[tauri::command]
 pub async fn git_status(app: AppHandle) -> Result<types::GitStatus, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
-    git::init_if_needed(&dir).map_err(capture_err)?;
-    let status = git::status(&dir).map_err(capture_err)?;
+    let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_status", e))?;
+    git::init_if_needed(&dir).map_err(|e| capture_err("git_status", e))?;
+    let status = git::status(&dir).map_err(|e| capture_err("git_status", e))?;
     Ok(status)
 }
 
 /// Returns the current git status and caches it for later comparison.
 #[tauri::command]
 pub async fn git_status_and_cache(app: AppHandle) -> Result<types::GitStatus, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
-    git::init_if_needed(&dir).map_err(capture_err)?;
-    let status = git::status_and_cache(&dir, &app).map_err(capture_err)?;
+    let dir = store::ensure_config_dir_exists(&app)
+        .map_err(|e| capture_err("git_status_and_cache", e))?;
+    git::init_if_needed(&dir).map_err(|e| capture_err("git_status_and_cache", e))?;
+    let status =
+        git::status_and_cache(&dir, &app).map_err(|e| capture_err("git_status_and_cache", e))?;
     Ok(status)
 }
 
 /// Returns the cached git status if available.
 #[tauri::command]
 pub async fn git_cached(app: AppHandle) -> Result<Option<types::GitStatus>, String> {
-    git::cached(&app).map_err(capture_err)
+    git::cached(&app).map_err(|e| capture_err("git_cached", e))
 }
 
 /// Stages all changes and creates a commit with the given message.
 #[tauri::command]
 pub async fn git_commit(app: AppHandle, message: String) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
-    git::commit_all(&dir, &message).map_err(capture_err)?;
+    let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_commit", e))?;
+    git::commit_all(&dir, &message).map_err(|e| capture_err("git_commit", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
 /// Stash changes
 #[tauri::command]
 pub async fn git_stash(app: AppHandle, message: String) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
-    git::stash(&dir, &message).map_err(capture_err)?;
+    let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_stash", e))?;
+    git::stash(&dir, &message).map_err(|e| capture_err("git_stash", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
 /// Stage all changes (git add -A)
 #[tauri::command]
 pub async fn git_stage_all(app: AppHandle) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
-    git::stage_all(&dir).map_err(capture_err)?;
+    let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_stage_all", e))?;
+    git::stage_all(&dir).map_err(|e| capture_err("git_stage_all", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
 /// Unstage all staged changes (keeps working directory changes)
 #[tauri::command]
 pub async fn git_unstage_all(app: AppHandle) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
-    git::unstage_all(&dir).map_err(capture_err)?;
+    let dir =
+        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_unstage_all", e))?;
+    git::unstage_all(&dir).map_err(|e| capture_err("git_unstage_all", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
 /// Discard all uncommitted changes (restore to HEAD)
 #[tauri::command]
 pub async fn git_restore_all(app: AppHandle) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
-    git::restore_all(&dir).map_err(capture_err)?;
+    let dir =
+        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_restore_all", e))?;
+    git::restore_all(&dir).map_err(|e| capture_err("git_restore_all", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
@@ -195,10 +201,10 @@ pub async fn darwin_evolve(
     // Reset cancellation flag at the start of a new evolution
     reset_evolve_cancelled();
 
-    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
+    let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("darwin_evolve", e))?;
     let evolution = darwin::start_evolve(&app, &dir, &description)
         .await
-        .map_err(capture_err)?;
+        .map_err(|e| capture_err("darwin_evolve", e))?;
     Ok(serde_json::to_value(evolution).unwrap_or_default())
 }
 
@@ -216,7 +222,7 @@ pub async fn darwin_apply(
     app: AppHandle,
     host_override: Option<String>,
 ) -> Result<types::ApplyResult, String> {
-    let _dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
+    let _dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("darwin_apply", e))?;
     let _host = host_override
         .or_else(|| nix::determine_host_attr(&app))
         .ok_or_else(|| "Host attribute not found".to_string())?;
@@ -236,7 +242,8 @@ pub async fn darwin_apply_stream_start(
     app: AppHandle,
     host_override: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
+    let dir = store::ensure_config_dir_exists(&app)
+        .map_err(|e| capture_err("darwin_apply_stream_start", e))?;
 
     // Determine which host to build for:
     // 1. Use explicit override if provided
@@ -254,21 +261,23 @@ pub async fn darwin_apply_stream_start(
         })
         .ok_or_else(|| "Host attribute not found".to_string())?;
 
-    darwin::apply_stream(&app, &dir, &host).map_err(capture_err)?;
+    darwin::apply_stream(&app, &dir, &host)
+        .map_err(|e| capture_err("darwin_apply_stream_start", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
 /// Placeholder for canceling an in-progress apply operation.
 #[tauri::command]
 pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
+    let dir = store::ensure_config_dir_exists(&app)
+        .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
 
     let output = Command::new("git")
         .args(["add", "."])
         .current_dir(&dir)
         .env("PATH", crate::nix::get_nix_path())
         .output()
-        .map_err(capture_err)?;
+        .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
     if !output.status.success() {
         return Err(format!(
             "Failed to add files to git: {}",
@@ -282,7 +291,7 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<serde_json::Va
         .current_dir(&dir)
         .env("PATH", crate::nix::get_nix_path())
         .output()
-        .map_err(capture_err)?;
+        .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
     if !output.status.success() {
         return Err(format!(
             "Failed to checkout canceled commit: {}",
@@ -296,7 +305,7 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<serde_json::Va
         .current_dir(&dir)
         .env("PATH", crate::nix::get_nix_path())
         .output()
-        .map_err(capture_err)?;
+        .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
     if !output.status.success() {
         return Err(format!(
             "Failed to commit canceled commit: {}",
@@ -310,7 +319,7 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<serde_json::Va
         .current_dir(&dir)
         .env("PATH", crate::nix::get_nix_path())
         .output()
-        .map_err(capture_err)?;
+        .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
     if !output.status.success() {
         return Err(format!(
             "Failed to checkout previous branch: {}",
@@ -324,7 +333,8 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<serde_json::Va
 
 #[tauri::command]
 pub async fn flake_installed_apps(app: AppHandle) -> Result<Vec<serde_json::Value>, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
+    let dir = store::ensure_config_dir_exists(&app)
+        .map_err(|e| capture_err("flake_installed_apps", e))?;
 
     // Same host resolution logic as apply
     let host = nix::determine_host_attr(&app)
@@ -338,15 +348,17 @@ pub async fn flake_installed_apps(app: AppHandle) -> Result<Vec<serde_json::Valu
         })
         .ok_or_else(|| "Host attribute not found".to_string())?;
 
-    let apps = nix::evaluate_installed_apps(&dir, &host).map_err(capture_err)?;
+    let apps = nix::evaluate_installed_apps(&dir, &host)
+        .map_err(|e| capture_err("flake_installed_apps", e))?;
     Ok(apps)
 }
 
 /// Lists all darwinConfigurations defined in the flake.
 #[tauri::command]
 pub async fn flake_list_hosts(app: AppHandle) -> Result<Vec<String>, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
-    let hosts = nix::list_darwin_hosts(&dir).map_err(capture_err)?;
+    let dir =
+        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("flake_list_hosts", e))?;
+    let hosts = nix::list_darwin_hosts(&dir).map_err(|e| capture_err("flake_list_hosts", e))?;
     Ok(hosts)
 }
 
@@ -360,16 +372,13 @@ pub async fn summary_get_cached(app: AppHandle) -> Result<Option<types::SummaryR
     store::get_cached_summary(&app).map_err(|e| e.to_string())
 }
 
-/// Generates a human-readable summary of the current working changes.
-/// Uses a fast model for quick response times.
-/// Returns only AI-generated content (items, instructions, commit message).
-/// Raw git data (diff, additions, deletions) comes from git_status instead.
 #[tauri::command]
 pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
+    let dir =
+        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("summarize_changes", e))?;
 
     // Get git status for diff and file list
-    let status = git::status(&dir).map_err(capture_err)?;
+    let status = git::status(&dir).map_err(|e| capture_err("summarize_changes", e))?;
     let diff = &status.diff;
     let file_list: Vec<String> = status.files.iter().map(|f| f.path.clone()).collect();
 
@@ -389,7 +398,6 @@ pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse,
             }
             Err(e) => {
                 log::error!("[summarize_changes] AI summarization failed: {}", e);
-                sentry::capture_message(&e.to_string(), sentry::Level::Error);
                 // Return empty summary on error
                 (Vec::new(), String::new(), String::new())
             }
@@ -404,7 +412,6 @@ pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse,
     // Cache the summary for future app launches
     if let Err(e) = store::set_cached_summary(&app, &response) {
         log::error!("[summarize_changes] Failed to cache summary: {}", e);
-        sentry::capture_message(&e.to_string(), sentry::Level::Error);
     }
 
     Ok(response)
@@ -413,15 +420,16 @@ pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse,
 /// Generates just a commit message suggestion based on current changes.
 #[tauri::command]
 pub async fn suggest_commit_message(app: AppHandle) -> Result<String, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
+    let dir = store::ensure_config_dir_exists(&app)
+        .map_err(|e| capture_err("suggest_commit_message", e))?;
 
     // Get git status which includes diff
-    let status = git::status(&dir).map_err(capture_err)?;
+    let status = git::status(&dir).map_err(|e| capture_err("suggest_commit_message", e))?;
     let file_list: Vec<String> = status.files.iter().map(|f| f.path.clone()).collect();
 
     let message = summarize::generate_commit_message(&status.diff, &file_list, Some(&app))
         .await
-        .map_err(capture_err)?;
+        .map_err(|e| capture_err("suggest_commit_message", e))?;
 
     Ok(message)
 }
@@ -433,19 +441,25 @@ pub async fn suggest_commit_message(app: AppHandle) -> Result<String, String> {
 /// Returns all UI preferences.
 #[tauri::command]
 pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
-    let openrouter_api_key = store::get_openrouter_api_key(&app).map_err(capture_err)?;
-    let openai_api_key = store::get_openai_api_key(&app).map_err(capture_err)?;
-    let send_diagnostics = store::get_send_diagnostics(&app).map_err(capture_err)?;
+    let openrouter_api_key =
+        store::get_openrouter_api_key(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+    let openai_api_key =
+        store::get_openai_api_key(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+    let send_diagnostics =
+        store::get_send_diagnostics(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
 
-    let evolve_provider = store::get_evolve_provider(&app).map_err(capture_err)?;
-    let evolve_model = store::get_evolve_model(&app).map_err(capture_err)?;
-    let summary_provider = store::get_summary_provider(&app).map_err(capture_err)?;
-    let summary_model = store::get_summary_model(&app).map_err(capture_err)?;
+    let evolve_provider =
+        store::get_evolve_provider(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+    let evolve_model = store::get_evolve_model(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+    let summary_provider =
+        store::get_summary_provider(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+    let summary_model =
+        store::get_summary_model(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
 
     let max_iterations = Some(store::get_max_iterations(&app).unwrap_or(50));
     let max_build_attempts = Some(store::get_max_build_attempts(&app).unwrap_or(5));
     let ollama_api_base_url: Option<String> =
-        store::get_ollama_api_base_url(&app).map_err(capture_err)?;
+        store::get_ollama_api_base_url(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
 
     Ok(types::UiPrefs {
         openrouter_api_key,
@@ -471,34 +485,43 @@ pub async fn ui_set_prefs(
     prefs: serde_json::Value,
 ) -> Result<serde_json::Value, String> {
     if let Some(openrouter_api_key) = prefs.get("openrouterApiKey").and_then(|v| v.as_str()) {
-        store::set_openrouter_api_key(&app, openrouter_api_key).map_err(capture_err)?;
+        store::set_openrouter_api_key(&app, openrouter_api_key)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
     if let Some(openai_api_key) = prefs.get("openaiApiKey").and_then(|v| v.as_str()) {
-        store::set_openai_api_key(&app, openai_api_key).map_err(capture_err)?;
+        store::set_openai_api_key(&app, openai_api_key)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
     if let Some(evolve_provider) = prefs.get("evolveProvider").and_then(|v| v.as_str()) {
-        store::set_evolve_provider(&app, evolve_provider).map_err(capture_err)?;
+        store::set_evolve_provider(&app, evolve_provider)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
     if let Some(evolve_model) = prefs.get("evolveModel").and_then(|v| v.as_str()) {
-        store::set_evolve_model(&app, evolve_model).map_err(capture_err)?;
+        store::set_evolve_model(&app, evolve_model).map_err(|e| capture_err("ui_set_prefs", e))?;
     }
     if let Some(summary_provider) = prefs.get("summaryProvider").and_then(|v| v.as_str()) {
-        store::set_summary_provider(&app, summary_provider).map_err(capture_err)?;
+        store::set_summary_provider(&app, summary_provider)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
     if let Some(summary_model) = prefs.get("summaryModel").and_then(|v| v.as_str()) {
-        store::set_summary_model(&app, summary_model).map_err(capture_err)?;
+        store::set_summary_model(&app, summary_model)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
     if let Some(max_iterations) = prefs.get("maxIterations").and_then(|v| v.as_u64()) {
-        store::set_max_iterations(&app, max_iterations as usize).map_err(capture_err)?;
+        store::set_max_iterations(&app, max_iterations as usize)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
     if let Some(max_build_attempts) = prefs.get("maxBuildAttempts").and_then(|v| v.as_u64()) {
-        store::set_max_build_attempts(&app, max_build_attempts as usize).map_err(capture_err)?;
+        store::set_max_build_attempts(&app, max_build_attempts as usize)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
     if let Some(ollama_api_base_url) = prefs.get("ollamaApiBaseUrl").and_then(|v| v.as_str()) {
-        store::set_ollama_api_base_url(&app, ollama_api_base_url).map_err(capture_err)?;
+        store::set_ollama_api_base_url(&app, ollama_api_base_url)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
     if let Some(send_diagnostics) = prefs.get("sendDiagnostics").and_then(|v| v.as_bool()) {
-        store::set_send_diagnostics(&app, send_diagnostics).map_err(capture_err)?;
+        store::set_send_diagnostics(&app, send_diagnostics)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
 
     Ok(serde_json::json!({"ok": true}))
@@ -510,7 +533,7 @@ pub async fn get_cached_models(
     app: AppHandle,
     provider: String,
 ) -> Result<Option<Vec<String>>, String> {
-    store::get_cached_models(&app, &provider).map_err(capture_err)
+    store::get_cached_models(&app, &provider).map_err(|e| capture_err("get_cached_models", e))
 }
 
 /// Clears the cached models for a provider.
@@ -519,7 +542,8 @@ pub async fn clear_cached_models(
     app: AppHandle,
     provider: String,
 ) -> Result<serde_json::Value, String> {
-    store::clear_cached_models(&app, &provider).map_err(capture_err)?;
+    store::clear_cached_models(&app, &provider)
+        .map_err(|e| capture_err("clear_cached_models", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
@@ -530,7 +554,8 @@ pub async fn set_cached_models(
     provider: String,
     models: Vec<String>,
 ) -> Result<serde_json::Value, String> {
-    store::set_cached_models(&app, &provider, &models).map_err(capture_err)?;
+    store::set_cached_models(&app, &provider, &models)
+        .map_err(|e| capture_err("set_cached_models", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
@@ -541,7 +566,7 @@ pub async fn set_cached_models(
 /// Shows and focuses the main window (used by preview indicator).
 #[tauri::command]
 pub async fn show_main_window(app: AppHandle) -> Result<serde_json::Value, String> {
-    peek::show_main_window(&app).map_err(capture_err)?;
+    peek::show_main_window(&app).map_err(|e| capture_err("show_main_window", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
@@ -552,14 +577,14 @@ pub async fn show_main_window(app: AppHandle) -> Result<serde_json::Value, Strin
 /// Shows the preview indicator window.
 #[tauri::command]
 pub async fn preview_indicator_show(app: AppHandle) -> Result<serde_json::Value, String> {
-    peek::show_preview_indicator(&app).map_err(capture_err)?;
+    peek::show_preview_indicator(&app).map_err(|e| capture_err("preview_indicator_show", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
 /// Hides the preview indicator window.
 #[tauri::command]
 pub async fn preview_indicator_hide(app: AppHandle) -> Result<serde_json::Value, String> {
-    peek::hide_preview_indicator(&app).map_err(capture_err)?;
+    peek::hide_preview_indicator(&app).map_err(|e| capture_err("preview_indicator_hide", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
@@ -569,7 +594,8 @@ pub async fn preview_indicator_update(
     app: AppHandle,
     state: peek::PreviewIndicatorState,
 ) -> Result<serde_json::Value, String> {
-    peek::update_preview_indicator(&app, state).map_err(capture_err)?;
+    peek::update_preview_indicator(&app, state)
+        .map_err(|e| capture_err("preview_indicator_update", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
@@ -597,7 +623,7 @@ pub async fn preview_indicator_get_state() -> Result<peek::PreviewIndicatorState
 /// Emits `config:changed` events when files are modified.
 #[tauri::command]
 pub async fn watcher_start(app: AppHandle) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
+    let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("watcher_start", e))?;
     watcher::start_watching(app, dir, 2500);
     Ok(serde_json::json!({"ok": true}))
 }
@@ -630,7 +656,8 @@ pub async fn permissions_check_all() -> Result<permissions::PermissionsState, St
 /// For manual permissions (full-disk), this opens System Settings.
 #[tauri::command]
 pub async fn permissions_request(permission_id: String) -> Result<permissions::Permission, String> {
-    permissions::request_permission(&permission_id).map_err(capture_err)
+    permissions::request_permission(&permission_id)
+        .map_err(|e| capture_err("permissions_request", e))
 }
 
 /// Check if all required permissions are granted.
