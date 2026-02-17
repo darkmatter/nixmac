@@ -4,7 +4,6 @@ import { ActionTiles, type ActionTile } from "@/components/widget/action-tiles";
 import { ConfirmationDialog } from "@/components/widget/confirmation-dialog";
 import { PromptInputSection } from "@/components/widget/prompt-input-section";
 import { SummaryOrDiff } from "@/components/widget/summary-or-diff";
-import { checkIsEvolving } from "@/components/widget/utils";
 import { useApply } from "@/hooks/use-apply";
 import { useCommit } from "@/hooks/use-commit";
 import { useWidgetStore } from "@/stores/widget-store";
@@ -23,7 +22,7 @@ export function EvolveStep() {
   const [showRebuildDialog, setShowRebuildDialog] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
 
-  const isEvolving = checkIsEvolving(gitStatus);
+  const isEvolving = Boolean(gitStatus?.diff)
 
   const tiles: ActionTile[] = [
     {

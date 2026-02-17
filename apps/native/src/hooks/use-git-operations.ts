@@ -42,7 +42,7 @@ export function useGitOperations() {
         useWidgetStore.getState().setSummaryStale(true);
       }
       // if there are changes but no summary, mark summary stale
-      if (currentStatus?.hasChanges && summary?.items.length === 0) {
+      if (currentStatus?.diff && summary?.items.length === 0) {
         useWidgetStore.getState().setSummaryStale(true);
       }
 

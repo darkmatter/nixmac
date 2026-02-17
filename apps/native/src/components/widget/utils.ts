@@ -3,7 +3,6 @@ import type {
   WidgetState,
   WidgetStep,
 } from "@/stores/widget-store";
-import type { GitStatus } from "@/tauri-api";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
 // Categorize git changes for display
@@ -114,23 +113,19 @@ export function getDirectory(path: string): string {
 }
 
 /**
- * Checks if the app is in "evolving" mode (not on main, or has manual changes on main).
- */
-export function checkIsEvolving(gitStatus?: GitStatus | null): boolean {
-  const isNotMain = !(gitStatus?.isMainBranch ?? true);
-  const manualChangesOnMain = gitStatus?.isMainBranch && gitStatus?.hasChanges;
-  return isNotMain || !!manualChangesOnMain;
-}
-
-/**
  * Converts a string into a URL-safe slug for branch names.
+ * Strips conventional commit prefixes (feat:, fix:, chore:, etc.)
+ * and internal suffixes like "(manual changes)".
  */
 export function slugify(text: string): string {
   return text
     .toLowerCase()
     .trim()
+    .replace(/^\s*(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)(\([^)]*\))?:\s*/i, "")
+    .replace(/\s*\(manual changes\)\s*$/i, "")
     .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
-    .slice(0, 40);
+    .replace(/^-|-$/g, "")
+    .slice(0, 50);
 }

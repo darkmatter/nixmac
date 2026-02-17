@@ -130,12 +130,12 @@ pub fn count_diff_changes(diff: &str) -> (usize, usize) {
     (additions, deletions)
 }
 
-/// Checks if HEAD has the nixmac-built tag.
-/// Returns true if HEAD is tagged with nixmac-built.
+/// Checks if HEAD has the nixmac-last-build tag.
+/// Returns true if HEAD is the most recently built commit.
 pub fn head_is_built(dir: &str) -> bool {
-    // Get the commit that nixmac-built points to
+    // Get the commit that nixmac-last-build points to
     let tag_output = git_command()
-        .args(["rev-parse", "--verify", "refs/tags/nixmac-built"])
+        .args(["rev-parse", "--verify", "refs/tags/nixmac-last-build"])
         .current_dir(dir)
         .output();
 
@@ -485,16 +485,36 @@ pub fn checkout_branch(dir: &str, branch_name: &str) -> Result<()> {
     Ok(())
 }
 
-/// Adds the nixmac-built tag to HEAD, replacing any existing tag.
+/// Adds build tags to HEAD:
+/// - `nixmac-built-<timestamp>` - permanent tag for build history
+/// - `nixmac-last-build` - moving tag that always points to latest build
 pub fn tag_as_built(dir: &str) -> Result<()> {
+    // Create timestamped tag for history (e.g., nixmac-built-1708123456)
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let timestamped_tag = format!("nixmac-built-{}", timestamp);
+
     let output = git_command()
-        .args(["tag", "-f", "nixmac-built", "HEAD"])
+        .args(["tag", &timestamped_tag, "HEAD"])
         .current_dir(dir)
         .output()?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("Failed to tag as built: {}", stderr);
+        anyhow::bail!("Failed to create timestamped tag: {}", stderr);
+    }
+
+    // Create/move the "last build" tag for easy checking
+    let output = git_command()
+        .args(["tag", "-f", "nixmac-last-build", "HEAD"])
+        .current_dir(dir)
+        .output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("Failed to update last-build tag: {}", stderr);
     }
 
     Ok(())

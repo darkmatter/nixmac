@@ -6,10 +6,10 @@ import { useWidgetStore } from "@/stores/widget-store";
 export function PromptInputSection() {
   const gitStatus = useWidgetStore((s) => s.gitStatus);
 
-  const hasChanges = (gitStatus?.files?.length ?? 0) > 0;
-  const allChangesCleanlyStaged = gitStatus?.allChangesCleanlyStaged ?? false;
+  const hasChanges = Boolean(gitStatus?.diff);
+  const isCommitStep = !(gitStatus!.isMainBranch) && gitStatus!.headIsBuilt;
 
-  const title = allChangesCleanlyStaged
+  const title = isCommitStep
     ? "Back to the drawing board!" // commit
     : hasChanges
       ? "What else can I change for you?" // evolve
