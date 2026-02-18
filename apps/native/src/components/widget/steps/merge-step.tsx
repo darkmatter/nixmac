@@ -14,6 +14,7 @@ import { useState } from "react";
  */
 export function MergeStep() {
   const { handleRollback } = useRollback();
+
   const [showRollbackDialog, setShowRollbackDialog] = useState(false);
   const [action, setAction] = useState<"merge" | "amend">("merge");
 

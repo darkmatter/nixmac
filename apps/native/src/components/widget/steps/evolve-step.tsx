@@ -7,7 +7,7 @@ import { SummaryOrDiff } from "@/components/widget/summary-or-diff";
 import { useApply } from "@/hooks/use-apply";
 import { useRollback } from "@/hooks/use-rollback";
 import { useWidgetStore } from "@/stores/widget-store";
-import { Eraser, MessageSquare, Wrench } from "lucide-react";
+import { Eraser, MessageSquare, Undo2, Wrench } from "lucide-react";
 import { useState } from "react";
 
 /**
@@ -19,10 +19,14 @@ export function EvolveStep() {
   const { handleApply } = useApply();
   const { handleRollback } = useRollback();
 
+
   const [showRebuildDialog, setShowRebuildDialog] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
 
   const isEvolving = Boolean(gitStatus?.diff)
+
+  // On a branch with builds, clearing will trigger a rebuild to restore main's config
+  const needsRebuild = !gitStatus?.isMainBranch && gitStatus?.branchHasBuiltCommit;
 
   const tiles: ActionTile[] = [
     {
@@ -41,9 +45,9 @@ export function EvolveStep() {
       onAction: () => setShowRebuildDialog(true),
     },
     {
-      name: "Clear",
-      icon: Eraser,
-      color: "white",
+      name: needsRebuild ? "Rollback" : "Clear",
+      icon: needsRebuild ? Undo2 : Eraser,
+      color: needsRebuild ? "amber" : "white",
       disabled: !isEvolving,
       onAction: () => setShowClearDialog(true),
     },
@@ -78,7 +82,7 @@ export function EvolveStep() {
       <ConfirmationDialog
         open={showClearDialog}
         onOpenChange={setShowClearDialog}
-        message="Discard all current changes?"
+        message={needsRebuild ? "Discard changes and rebuild to previous state?" : "Discard all current changes?"}
         onConfirm={handleRollback}
         color="amber"
       />

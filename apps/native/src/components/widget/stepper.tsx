@@ -13,9 +13,11 @@ const STEPS = [
 export function Stepper() {
 	const step = useCurrentStep();
 	const gitStatus = useWidgetStore((s) => s.gitStatus);
+	const isGenerating = useWidgetStore((s) => s.isGenerating);
+	const isRebuilding = useWidgetStore((s) => s.rebuild.isRunning);
 	const hasChanges = Boolean(gitStatus?.diff);
 
-	if (step === "setup" || step === "permissions") {
+	if (step === "setup" || step === "permissions" || isGenerating || isRebuilding) {
 		return null;
 	}
 

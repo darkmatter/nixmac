@@ -113,6 +113,7 @@ fn main() {
             commands::git_restore_all,
             commands::git_checkout_new_branch,
             commands::git_checkout_branch,
+            commands::git_checkout_main_branch,
             commands::git_tag_as_built,
             commands::git_finalize_evolve,
             // Darwin/Nix
