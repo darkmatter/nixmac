@@ -133,7 +133,6 @@ export function useApply() {
       await darwinAPI.darwin.applyStreamStart();
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
-      console.error("applyStreamStart failed:", msg);
       store.setRebuildError("generic_error", msg);
       store.setRebuildComplete(false);
       store.setProcessing(false);
