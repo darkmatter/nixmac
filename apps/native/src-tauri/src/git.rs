@@ -647,6 +647,19 @@ pub fn finalize_evolve(
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
+
+        // Abort the failed merge to clean up
+        let _ = git_command()
+            .args(["merge", "--abort"])
+            .current_dir(dir)
+            .output();
+
+        // Checkout the branch again so user stays on their working branch
+        let _ = git_command()
+            .args(["checkout", branch_name])
+            .current_dir(dir)
+            .output();
+
         anyhow::bail!("Failed to merge branch: {}", stderr);
     }
 
