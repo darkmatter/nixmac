@@ -4,11 +4,11 @@
 
 use crate::{evolve, log_summarizer};
 use chrono::Local;
-use log::{debug, error, info};
+use log::{error, info};
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
-use std::process::{Child, Command, Stdio};
+use std::process::{Command, Stdio};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 
@@ -31,88 +31,6 @@ fn create_log_file() -> anyhow::Result<(File, PathBuf)> {
         .truncate(true)
         .open(&log_path)?;
     Ok((file, log_path))
-}
-
-/// Streams stdout and stderr from a child process to the frontend via events,
-/// while also feeding lines to the log summarizer. Returns collected lines
-/// prefixed with their stream name for writing to the log file.
-fn stream_child_output(
-    child: &mut Child,
-    app: &AppHandle,
-    summarizer: &Arc<log_summarizer::LogSummarizerHandle>,
-    label: &str,
-) -> (Vec<String>, Vec<String>) {
-    let stdout = child.stdout.take();
-    let stderr = child.stderr.take();
-
-    let app_out = app.clone();
-    let app_err = app.clone();
-    let sum_out = summarizer.clone();
-    let sum_err = summarizer.clone();
-    let label_out = label.to_owned();
-    let label_err = label.to_owned();
-
-    let stdout_handle = std::thread::spawn(move || {
-        let mut lines = Vec::new();
-        if let Some(stdout) = stdout {
-            for line in BufReader::new(stdout).lines().map_while(Result::ok) {
-                debug!("[darwin] {} stdout: {}", label_out, line);
-                let _ = app_out.emit(
-                    "darwin:apply:data",
-                    serde_json::json!({"chunk": format!("{}\n", line)}),
-                );
-                sum_out.send_line(&line);
-                lines.push(line);
-            }
-        }
-        lines
-    });
-
-    let stderr_handle = std::thread::spawn(move || {
-        let mut lines = Vec::new();
-        if let Some(stderr) = stderr {
-            for line in BufReader::new(stderr).lines().map_while(Result::ok) {
-                debug!("[darwin] {} stderr: {}", label_err, line);
-                let _ = app_err.emit(
-                    "darwin:apply:data",
-                    serde_json::json!({"chunk": format!("{}\n", line)}),
-                );
-                sum_err.send_line(&line);
-                lines.push(line);
-            }
-        }
-        lines
-    });
-
-    let stdout_lines = stdout_handle.join().unwrap_or_default();
-    let stderr_lines = stderr_handle.join().unwrap_or_default();
-    (stdout_lines, stderr_lines)
-}
-
-/// Extracts the last N lines from a list of stderr lines as an error summary.
-fn extract_error_summary(stderr_lines: &[String], max_lines: usize) -> String {
-    stderr_lines
-        .iter()
-        .rev()
-        .take(max_lines)
-        .collect::<Vec<_>>()
-        .into_iter()
-        .rev()
-        .cloned()
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
-/// Writes collected output lines to a log file under a section header.
-fn write_output_to_log(log_file: &mut File, header: &str, stdout: &[String], stderr: &[String]) {
-    let _ = writeln!(log_file, "--- {} ---", header);
-    for line in stdout {
-        let _ = writeln!(log_file, "[stdout] {}", line);
-    }
-    for line in stderr {
-        let _ = writeln!(log_file, "[stderr] {}", line);
-    }
-    let _ = log_file.flush();
 }
 
 /// Uses AI to propose configuration changes based on a natural language description.
@@ -239,9 +157,43 @@ fn run_darwin_rebuild(
         .spawn()
         .map_err(|e| anyhow::anyhow!("Failed to spawn darwin-rebuild build: {}", e))?;
 
-    let (build_stdout, build_stderr) =
-        stream_child_output(&mut build_child, app, &summarizer, "build");
-    write_output_to_log(&mut log_file, "build output", &build_stdout, &build_stderr);
+    let stdout = build_child.stdout.take();
+    let stderr = build_child.stderr.take();
+    let app_out = app.clone();
+    let app_err = app.clone();
+    let sum_out = summarizer.clone();
+    let sum_err = summarizer.clone();
+
+    let stdout_handle = std::thread::spawn(move || {
+        let mut lines = Vec::new();
+        if let Some(stdout) = stdout {
+            for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+                let _ = app_out.emit(
+                    "darwin:apply:data",
+                    serde_json::json!({"chunk": format!("{}\n", line)}),
+                );
+                sum_out.send_line(&line);
+                lines.push(line);
+            }
+        }
+        lines
+    });
+    let stderr_handle = std::thread::spawn(move || {
+        let mut lines = Vec::new();
+        if let Some(stderr) = stderr {
+            for line in BufReader::new(stderr).lines().map_while(Result::ok) {
+                let _ = app_err.emit(
+                    "darwin:apply:data",
+                    serde_json::json!({"chunk": format!("{}\n", line)}),
+                );
+                sum_err.send_line(&line);
+                lines.push(line);
+            }
+        }
+        lines
+    });
+    let _ = stdout_handle.join();
+    let build_stderr = stderr_handle.join().unwrap_or_default();
 
     let build_status = build_child
         .wait()
@@ -255,10 +207,11 @@ fn run_darwin_rebuild(
     );
 
     if !build_status.success() {
-        let summary = extract_error_summary(&build_stderr, 10);
+        let tail = &build_stderr[build_stderr.len().saturating_sub(10)..];
         let err_msg = format!(
             "darwin-rebuild build failed (exit code {}):\n{}",
-            build_code, summary
+            build_code,
+            tail.join("\n")
         );
         log_and_emit!(format!("Build failed (exit code {})", build_code));
         summarizer.complete(false);
@@ -343,14 +296,7 @@ fn run_darwin_rebuild(
         }
     }
 
-    let activate_stdout: Vec<String> = stdout_str.lines().map(|l| l.to_string()).collect();
     let activate_stderr: Vec<String> = stderr_str.lines().map(|l| l.to_string()).collect();
-    write_output_to_log(
-        &mut log_file,
-        "activate output",
-        &activate_stdout,
-        &activate_stderr,
-    );
 
     let code = output.status.code().unwrap_or(-1);
 
@@ -392,7 +338,8 @@ fn run_darwin_rebuild(
     };
 
     let activate_error = if !output.status.success() {
-        let summary = extract_error_summary(&activate_stderr, 10);
+        let tail = &activate_stderr[activate_stderr.len().saturating_sub(10)..];
+        let summary = tail.join("\n");
         if summary.is_empty() {
             Some(format!(
                 "darwin-rebuild activate failed with exit code {}",
