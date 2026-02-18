@@ -82,6 +82,15 @@ pub struct GitStatus {
     #[serde(rename = "isMainBranch")]
     pub is_main_branch: bool,
 
+    /// SHA of commit with nixmac-last-build tag, None if no tag exists.
+    #[serde(rename = "lastBuiltCommitSha")]
+    pub last_built_commit_sha: Option<String>,
+
+    /// True if nixmac-last-build tag points to a commit on current branch
+    /// (i.e., the built commit is an ancestor of HEAD).
+    #[serde(rename = "branchHasBuiltCommit")]
+    pub branch_has_built_commit: bool,
+
     /// The raw unified diff content (git diff main + untracked file contents).
     pub diff: String,
 

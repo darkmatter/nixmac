@@ -66,6 +66,10 @@ export interface GitStatus {
   headIsBuilt?: boolean;
   isMainBranch?: boolean;
 
+  // Build tracking
+  lastBuiltCommitSha?: string;
+  branchHasBuiltCommit?: boolean;
+
   // Diff content
   diff?: string;
   additions?: number;
@@ -181,6 +185,7 @@ export const darwinAPI = {
       invoke("git_checkout_new_branch", { branchName }),
     checkoutBranch: (branchName: string) =>
       invoke("git_checkout_branch", { branchName }),
+    checkoutMainBranch: () => invoke("git_checkout_main_branch"),
     tagAsBuilt: () => invoke("git_tag_as_built"),
     finalizeEvolve: (branchName: string, squash?: boolean, commitMessage?: string) =>
       invoke("git_finalize_evolve", { branchName, squash, commitMessage }),

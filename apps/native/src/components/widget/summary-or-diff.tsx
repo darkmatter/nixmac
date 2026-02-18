@@ -4,6 +4,7 @@ import { Switch } from "@/components/ui/switch";
 import { Diff } from "@/components/widget/diff";
 import { SummaryItems } from "@/components/widget/summary-items";
 import { cn } from "@/lib/utils";
+import { useSummary } from "@/hooks/use-summary";
 import { useWidgetStore } from "@/stores/widget-store";
 import { Loader2, Sparkles, Wrench } from "lucide-react";
 import { useState } from "react";
@@ -17,6 +18,8 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   const summaryLoading = useWidgetStore((s) => s.summaryLoading);
   const gitStatus = useWidgetStore((s) => s.gitStatus);
   const [showDiff, setShowDiff] = useState(false);
+  const { useLoadCachedSummaryOnMount } = useSummary();
+  useLoadCachedSummaryOnMount();
 
 
   if (!gitStatus?.diff) {

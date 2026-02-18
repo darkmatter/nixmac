@@ -43,20 +43,16 @@ pub fn init_if_needed(dir: &str) -> Result<()> {
     Ok(())
 }
 
-/// Gets the full diff against main/master branch, including tracked changes and untracked file contents.
-/// This shows all changes since diverging from the default branch, which is used for AI summaries.
-/// Falls back to HEAD if neither main nor master exist.
-/// Untracked files are formatted as diffs showing the entire file as added.
-pub fn get_full_diff(dir: &str) -> Result<String> {
-    // Try main, then master, then fall back to HEAD
-    let base = if git_command()
+/// Gets the default branch name (main or master), if it exists.
+fn get_default_branch(dir: &str) -> Option<&'static str> {
+    if git_command()
         .args(["rev-parse", "--verify", "main"])
         .current_dir(dir)
         .output()
         .map(|o| o.status.success())
         .unwrap_or(false)
     {
-        "main"
+        Some("main")
     } else if git_command()
         .args(["rev-parse", "--verify", "master"])
         .current_dir(dir)
@@ -64,10 +60,18 @@ pub fn get_full_diff(dir: &str) -> Result<String> {
         .map(|o| o.status.success())
         .unwrap_or(false)
     {
-        "master"
+        Some("master")
     } else {
-        "HEAD"
-    };
+        None
+    }
+}
+
+/// Gets the full diff against main/master branch, including tracked changes and untracked file contents.
+/// This shows all changes since diverging from the default branch, which is used for AI summaries.
+/// Falls back to HEAD if neither main nor master exist.
+/// Untracked files are formatted as diffs showing the entire file as added.
+pub fn get_full_diff(dir: &str) -> Result<String> {
+    let base = get_default_branch(dir).unwrap_or("HEAD");
 
     // Get git diff for tracked files
     let diff_output = git_command()
@@ -133,24 +137,7 @@ pub fn count_diff_changes(diff: &str) -> (usize, usize) {
 /// Gets commit messages on the current branch since diverging from main.
 /// Returns commits in reverse chronological order (newest first).
 fn get_commit_messages_since_main(dir: &str) -> Vec<String> {
-    // Try main, then master for base branch
-    let base = if git_command()
-        .args(["rev-parse", "--verify", "main"])
-        .current_dir(dir)
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
-    {
-        "main"
-    } else if git_command()
-        .args(["rev-parse", "--verify", "master"])
-        .current_dir(dir)
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
-    {
-        "master"
-    } else {
+    let Some(base) = get_default_branch(dir) else {
         return vec![];
     };
 
@@ -173,36 +160,57 @@ fn get_commit_messages_since_main(dir: &str) -> Vec<String> {
     }
 }
 
+/// Gets the SHA of the commit with the nixmac-last-build tag.
+/// Returns None if the tag doesn't exist.
+pub fn get_last_built_commit_sha(dir: &str) -> Option<String> {
+    let output = git_command()
+        .args(["rev-parse", "--verify", "refs/tags/nixmac-last-build"])
+        .current_dir(dir)
+        .output()
+        .ok()?;
+
+    if output.status.success() {
+        Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    } else {
+        None
+    }
+}
+
+/// Gets the SHA of the current HEAD commit.
+fn get_head_sha(dir: &str) -> Option<String> {
+    let output = git_command()
+        .args(["rev-parse", "HEAD"])
+        .current_dir(dir)
+        .output()
+        .ok()?;
+
+    if output.status.success() {
+        Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    } else {
+        None
+    }
+}
+
 /// Checks if HEAD has the nixmac-last-build tag.
 /// Returns true if HEAD is the most recently built commit.
 pub fn head_is_built(dir: &str) -> bool {
-    // Get the commit that nixmac-last-build points to
-    let tag_output = git_command()
-        .args(["rev-parse", "--verify", "refs/tags/nixmac-last-build"])
-        .current_dir(dir)
-        .output();
-
-    let tag_commit = match tag_output {
-        Ok(output) if output.status.success() => {
-            String::from_utf8_lossy(&output.stdout).trim().to_string()
-        }
-        _ => return false,
+    let Some(built_sha) = get_last_built_commit_sha(dir) else {
+        return false;
     };
-
-    // Get HEAD commit
-    let head_output = git_command()
-        .args(["rev-parse", "HEAD"])
-        .current_dir(dir)
-        .output();
-
-    let head_commit = match head_output {
-        Ok(output) if output.status.success() => {
-            String::from_utf8_lossy(&output.stdout).trim().to_string()
-        }
-        _ => return false,
+    let Some(head_sha) = get_head_sha(dir) else {
+        return false;
     };
+    built_sha == head_sha
+}
 
-    tag_commit == head_commit
+/// Checks if the built commit is on the current branch (is an ancestor of HEAD).
+fn built_commit_on_branch(dir: &str, built_sha: &str) -> bool {
+    git_command()
+        .args(["merge-base", "--is-ancestor", built_sha, "HEAD"])
+        .current_dir(dir)
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
 }
 
 /// Parses `git status --porcelain=v1` output into a structured format.
@@ -309,6 +317,13 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     // Check if HEAD has the nixmac-built tag
     let head_is_built = head_is_built(dir);
 
+    // Get the last built commit SHA and check if it's on current branch
+    let last_built_commit_sha = get_last_built_commit_sha(dir);
+    let branch_has_built_commit = last_built_commit_sha
+        .as_ref()
+        .map(|sha| built_commit_on_branch(dir, sha))
+        .unwrap_or(false);
+
     // Check if on main or master branch
     let is_main_branch = branch
         .as_ref()
@@ -344,6 +359,8 @@ pub fn status(dir: &str) -> Result<GitStatus> {
         all_changes_cleanly_staged,
         head_is_built,
         is_main_branch,
+        last_built_commit_sha,
+        branch_has_built_commit,
         diff,
         additions,
         deletions,
@@ -534,6 +551,14 @@ pub fn checkout_branch(dir: &str, branch_name: &str) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Checks out the main branch (tries main, falls back to master).
+pub fn checkout_main_branch(dir: &str) -> Result<()> {
+    let Some(branch) = get_default_branch(dir) else {
+        anyhow::bail!("No main or master branch found");
+    };
+    checkout_branch(dir, branch)
 }
 
 /// Adds build tags to HEAD:

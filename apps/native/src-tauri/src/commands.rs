@@ -197,6 +197,14 @@ pub async fn git_checkout_branch(
     Ok(serde_json::json!({"ok": true}))
 }
 
+/// Checks out the main branch (tries main, falls back to master)
+#[tauri::command]
+pub async fn git_checkout_main_branch(app: AppHandle) -> Result<serde_json::Value, String> {
+    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
+    git::checkout_main_branch(&dir).map_err(capture_err)?;
+    Ok(serde_json::json!({"ok": true}))
+}
+
 /// Adds the nixmac-built tag to HEAD
 #[tauri::command]
 pub async fn git_tag_as_built(app: AppHandle) -> Result<serde_json::Value, String> {
