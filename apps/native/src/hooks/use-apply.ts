@@ -1,4 +1,4 @@
-import { useWidgetStore } from "@/stores/widget-store";
+import { useWidgetStore, type RebuildErrorType } from "@/stores/widget-store";
 import { darwinAPI, ipcRenderer } from "@/tauri-api";
 import { useCallback, useRef } from "react";
 import { useGitOperations } from "@/hooks/use-git-operations";
@@ -20,12 +20,10 @@ export function useApply() {
     store.startRebuild();
     rebuildLineIdRef.current = 1;
 
-    // Listen to raw log data for console output
     const unlistenData = await ipcRenderer.on<{ chunk: string }>(
       "darwin:apply:data",
       (event) => {
         const { chunk } = event.payload;
-        // Split chunk into lines and add non-empty ones
         const newLines = chunk.split("\n").filter((line) => line.trim() !== "");
         const currentStore = useWidgetStore.getState();
         for (const line of newLines) {
@@ -34,7 +32,6 @@ export function useApply() {
       },
     );
 
-    // Listen to AI-summarized log events
     const unlistenSummary = await ipcRenderer.on<{
       text: string;
       complete?: boolean;
@@ -72,36 +69,37 @@ export function useApply() {
       }
     });
 
-    // Listen for rebuild end event
     const unlistenEnd = await ipcRenderer.on<{
       ok: boolean;
       code: number;
       error_type?: string;
+      error?: string;
     }>("darwin:apply:end", async (event) => {
       const currentStore = useWidgetStore.getState();
       currentStore.setRebuildComplete(event.payload.ok, event.payload.code);
+
+      if (!event.payload.ok && event.payload.error) {
+        const errorType = (event.payload.error_type ?? "build_error") as RebuildErrorType;
+        currentStore.setRebuildError(errorType, event.payload.error);
+      }
+
       unlistenData();
       unlistenSummary();
       unlistenEnd();
 
-      // If Full Disk Access error, force FDA permission to denied and show permissions step
       if (event.payload.error_type === "full_disk_access") {
         try {
           const permissionsState = await darwinAPI.permissions.checkAll();
-          // Force FDA permission to denied AND required since we know it failed
           const updatedPermissions = permissionsState.permissions.map((p) =>
             p.id === "full-disk"
               ? { ...p, status: "denied" as const, required: true }
               : p,
           );
-          const updatedState = {
+          currentStore.setPermissionsState({
             ...permissionsState,
             permissions: updatedPermissions,
-            // Force allRequiredGranted to false since FDA is now required and denied
             allRequiredGranted: false,
-          };
-          currentStore.setPermissionsState(updatedState);
-          // Clear rebuild state to allow user to see permissions step
+          });
           currentStore.clearRebuild();
         } catch (e) {
           console.error("Failed to check permissions:", e);
@@ -111,14 +109,12 @@ export function useApply() {
         return;
       }
 
-      // If successful, stage all changes and auto-dismiss after delay
       if (event.payload.ok) {
         try {
           await darwinAPI.git.stageAll();
         } catch (e) {
           console.error("Failed to stage changes:", e);
         }
-        // Auto-dismiss rebuild panel after success (short delay for user feedback)
         setTimeout(() => {
           useWidgetStore.getState().clearRebuild();
         }, 2000);
@@ -137,6 +133,7 @@ export function useApply() {
       await darwinAPI.darwin.applyStreamStart();
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
+      console.error("applyStreamStart failed:", msg);
       store.setRebuildError("generic_error", msg);
       store.setRebuildComplete(false);
       store.setProcessing(false);
