@@ -5,11 +5,42 @@
 //!
 //! Uses OpenAI function calling to generate structured file edits.
 
-use std::path::Path;
+use std::path::{Component, Path, PathBuf};
+
+/// Join a relative path into `base`, rejecting absolute paths and any path
+/// that would escape `base` using `..` components.
+pub(crate) fn join_in_dir(base: &Path, rel: &str) -> anyhow::Result<PathBuf> {
+    let rel_path = Path::new(rel);
+
+    if rel_path.is_absolute() {
+        return Err(anyhow::anyhow!("Absolute paths are not allowed"));
+    }
+
+    // Detect attempts to escape the base via `..`
+    let mut depth: isize = 0;
+    for comp in rel_path.components() {
+        match comp {
+            Component::Normal(_) => depth += 1,
+            Component::CurDir => {}
+            Component::ParentDir => {
+                if depth <= 0 {
+                    return Err(anyhow::anyhow!("Path escapes the config directory"));
+                }
+                depth -= 1;
+            }
+            other => {
+                return Err(anyhow::anyhow!("Unsupported path component: {:?}", other));
+            }
+        }
+    }
+
+    Ok(base.join(rel_path))
+}
 
 /// Apply an evolution's edits to the filesystem.
 pub fn apply_file_edits(config_dir: &str, edit: &super::types::FileEdit) -> anyhow::Result<()> {
-    let full_path = Path::new(config_dir).join(&edit.path);
+    let base = Path::new(config_dir);
+    let full_path = join_in_dir(base, &edit.path)?;
 
     if edit.search.is_empty() {
         // New file
