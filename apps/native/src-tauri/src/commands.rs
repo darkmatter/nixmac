@@ -181,8 +181,10 @@ pub async fn git_checkout_new_branch(
     app: AppHandle,
     branch_name: String,
 ) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
-    git::checkout_new_branch(&dir, &branch_name).map_err(capture_err)?;
+    let dir = store::ensure_config_dir_exists(&app)
+        .map_err(|e| capture_err("git_checkout_new_branch", e))?;
+    git::checkout_new_branch(&dir, &branch_name)
+        .map_err(|e| capture_err("git_checkout_new_branch", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
@@ -192,24 +194,27 @@ pub async fn git_checkout_branch(
     app: AppHandle,
     branch_name: String,
 ) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
-    git::checkout_branch(&dir, &branch_name).map_err(capture_err)?;
+    let dir =
+        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_checkout_branch", e))?;
+    git::checkout_branch(&dir, &branch_name).map_err(|e| capture_err("git_checkout_branch", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
 /// Checks out the main branch (tries main, falls back to master)
 #[tauri::command]
 pub async fn git_checkout_main_branch(app: AppHandle) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
-    git::checkout_main_branch(&dir).map_err(capture_err)?;
+    let dir = store::ensure_config_dir_exists(&app)
+        .map_err(|e| capture_err("git_checkout_main_branch", e))?;
+    git::checkout_main_branch(&dir).map_err(|e| capture_err("git_checkout_main_branch", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
 /// Adds the nixmac-built tag to HEAD
 #[tauri::command]
 pub async fn git_tag_as_built(app: AppHandle) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
-    git::tag_as_built(&dir).map_err(capture_err)?;
+    let dir =
+        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_tag_as_built", e))?;
+    git::tag_as_built(&dir).map_err(|e| capture_err("git_tag_as_built", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
@@ -221,14 +226,15 @@ pub async fn git_finalize_evolve(
     squash: Option<bool>,
     commit_message: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(capture_err)?;
+    let dir =
+        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_finalize_evolve", e))?;
     git::finalize_evolve(
         &dir,
         &branch_name,
         squash.unwrap_or(false),
         commit_message.as_deref(),
     )
-    .map_err(capture_err)?;
+    .map_err(|e| capture_err("git_finalize_evolve", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
