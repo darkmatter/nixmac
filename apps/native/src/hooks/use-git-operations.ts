@@ -2,6 +2,7 @@ import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
 import { useCallback } from "react";
 import { useSummary } from "@/hooks/use-summary";
+import { toast } from "sonner";
 
 /**
  * Hook for git operations.
@@ -80,6 +81,8 @@ export function useGitOperations() {
       try {
         await darwinAPI.git.finalizeEvolve(currentBranch, squash, commitMessage);
         useWidgetStore.getState().appendLog("✓ Merged successfully\n");
+        useWidgetStore.getState().setError(null);
+        toast.success("Merged successfully", { description: `${currentBranch} merged to main` });
         useWidgetStore.getState().setCommitMsg("");
         useWidgetStore.getState().setEvolvePrompt("");
         useWidgetStore.getState().clearPreview();
