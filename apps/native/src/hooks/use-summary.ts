@@ -1,6 +1,10 @@
-import { useWidgetStore, type ChangesSummary } from "@/stores/widget-store";
+import {
+  initialSummaryState,
+  useWidgetStore,
+  type ChangesSummary,
+} from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 
 /**
  * Hook for fetching and managing the AI-generated summary of changes.
@@ -45,5 +49,17 @@ export function useSummary() {
     }
   }, []);
 
-  return { fetchSummary, loadCachedSummary };
+  /**
+   * Loads cached summary on mount if the current summary is in initial state.
+   */
+  const useLoadCachedSummaryOnMount = () => {
+    useEffect(() => {
+      const { summary } = useWidgetStore.getState();
+      if (JSON.stringify(summary) === JSON.stringify(initialSummaryState)) {
+        loadCachedSummary();
+      }
+    }, []);
+  };
+
+  return { fetchSummary, loadCachedSummary, useLoadCachedSummaryOnMount };
 }

@@ -15,10 +15,11 @@ export function usePreviewIndicator() {
       additions?: number;
       deletions?: number;
     }) => {
-      const hasChanges = params.gitStatus?.hasChanges ?? false;
-      const filesChanged = params.gitStatus?.files?.length ?? 0;
+      const hasChanges = Boolean(params.gitStatus?.diff);
+      // Use additions + deletions as a proxy for "files changed" since we're diff-based now
+      const filesChanged = (params.additions ?? 0) + (params.deletions ?? 0) > 0 ? 1 : 0;
 
-      // Show preview indicator when there are uncommitted changes and main window is NOT expanded
+      // Show preview indicator when there are changes vs main and main window is NOT expanded
       const shouldShow = hasChanges
 
       await darwinAPI.previewIndicator

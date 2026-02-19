@@ -2,6 +2,7 @@ import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
 import { useCallback } from "react";
 import { useSummary } from "@/hooks/use-summary";
+import { toast } from "sonner";
 
 /**
  * Hook for git operations.
@@ -42,7 +43,7 @@ export function useGitOperations() {
         useWidgetStore.getState().setSummaryStale(true);
       }
       // if there are changes but no summary, mark summary stale
-      if (currentStatus?.hasChanges && summary?.items.length === 0) {
+      if (currentStatus?.diff && summary?.items.length === 0) {
         useWidgetStore.getState().setSummaryStale(true);
       }
 
@@ -65,5 +66,37 @@ export function useGitOperations() {
     [refreshGitStatus],
   );
 
-  return { refreshGitStatus, getInitialStatusAndSummary, gitStash };
+  const handleMerge = useCallback(
+    async (squash = false, commitMessage?: string) => {
+      const store = useWidgetStore.getState();
+      const currentBranch = store.gitStatus?.branch;
+
+      if (!currentBranch) {
+        return;
+      }
+
+      store.setProcessing(true, "merge");
+      store.appendLog(`\n> Merging ${currentBranch} to main...\n`);
+
+      try {
+        await darwinAPI.git.finalizeEvolve(currentBranch, squash, commitMessage);
+        useWidgetStore.getState().appendLog("✓ Merged successfully\n");
+        useWidgetStore.getState().setError(null);
+        toast.success("Merged successfully", { description: `${currentBranch} merged to main` });
+        useWidgetStore.getState().setCommitMsg("");
+        useWidgetStore.getState().setEvolvePrompt("");
+        useWidgetStore.getState().clearPreview();
+        await refreshGitStatus();
+      } catch (e: unknown) {
+        const msg = (e as Error)?.message || String(e);
+        useWidgetStore.getState().setError(msg);
+        useWidgetStore.getState().appendLog(`✗ Error: ${msg}\n`);
+      } finally {
+        useWidgetStore.getState().setProcessing(false);
+      }
+    },
+    [refreshGitStatus],
+  );
+
+  return { refreshGitStatus, getInitialStatusAndSummary, gitStash, handleMerge };
 }

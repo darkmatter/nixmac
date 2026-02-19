@@ -1,36 +1,30 @@
 "use client";
 
 import { ActionTiles, type ActionTile } from "@/components/widget/action-tiles";
-import { PromptInputSection } from "@/components/widget/prompt-input-section";
-import { CommitSection } from "@/components/widget/commit-section";
 import { ConfirmationDialog } from "@/components/widget/confirmation-dialog";
+import { MergeSection } from "@/components/widget/merge-section";
+import { PromptInputSection } from "@/components/widget/prompt-input-section";
 import { SummaryOrDiff } from "@/components/widget/summary-or-diff";
-import { useCommit } from "@/hooks/use-commit";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useRollback } from "@/hooks/use-rollback";
 import { GitBranch, RefreshCw, Undo2 } from "lucide-react";
 import { useState } from "react";
 
 /**
  * Commit Step component, allowing users to commit their changes, evolve further or roll back.
  */
-export function CommitStep() {
-  const gitStatus = useWidgetStore((s) => s.gitStatus);
+export function MergeStep() {
+  const { handleRollback } = useRollback();
 
-  const { handleCancel } = useCommit();
   const [showRollbackDialog, setShowRollbackDialog] = useState(false);
-  const [action, setAction] = useState<"commit" | "amend">("commit");
-
-  const stagedFiles = gitStatus?.files || [];
-  const allChangesCleanlyStaged = gitStatus?.allChangesCleanlyStaged ?? false;
+  const [action, setAction] = useState<"merge" | "amend">("merge");
 
   const tiles: ActionTile[] = [
     {
-      name: "Commit",
+      name: "Merge",
       icon: GitBranch,
       color: "white",
-      disabled: !allChangesCleanlyStaged || stagedFiles.length === 0,
-      isActive: action === "commit",
-      onAction: () => setAction("commit"),
+      isActive: action === "merge",
+      onAction: () => setAction("merge"),
     },
     {
       name: "Evolve",
@@ -51,18 +45,18 @@ export function CommitStep() {
     <>
       <ActionTiles
         tiles={tiles}
-        title="Test your changes!"
-        subtitle="Commit to make them final, evolve further or roll back"
+        title="All changes active!"
+        subtitle="Don't forget to merge your changes if you are satisfied"
       />
       <SummaryOrDiff />
-      {action === "commit" && (<CommitSection />)}
+      {action === "merge" && (<MergeSection />)}
       {action === "amend" && <PromptInputSection />}
 
       <ConfirmationDialog
         open={showRollbackDialog}
         onOpenChange={setShowRollbackDialog}
         message="Discard changes and rebuild to previous commit?"
-        onConfirm={handleCancel}
+        onConfirm={handleRollback}
         color="amber"
       />
     </>

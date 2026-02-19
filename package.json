@@ -51,6 +51,7 @@
     "@types/bun": "catalog:",
     "bun2nix": "^2.0.6",
     "oxlint": "^1.0.0",
+    "sonner": "^2.0.7",
     "turbo": "^2.7.2",
     "typescript": "^5",
     "ultracite": "6.4.0"
