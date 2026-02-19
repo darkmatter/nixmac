@@ -660,7 +660,11 @@ pub fn finalize_evolve(
             .current_dir(dir)
             .output();
 
-        anyhow::bail!("Failed to merge branch: {}", stderr);
+        // Provide helpful error message suggesting squash for conflicts
+        anyhow::bail!(
+            "Merge conflict detected. Try 'Squash' to succesfully merge your changes . Details: {}",
+            stderr
+        );
     }
 
     Ok(())
