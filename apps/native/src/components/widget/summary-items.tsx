@@ -18,6 +18,7 @@ export function SummaryItems({ variant = "default" }: SummaryItemsProps) {
   const changedFiles = gitStatus?.files || [];
   const summaryItems = summary.items;
 
+
   const renderListItem = ({
     key,
     changeType,

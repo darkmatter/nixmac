@@ -15,12 +15,13 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useRef, useEffect } from "react";
-import { useRebuild } from "@/hooks/use-rebuild";
+import { useRollback } from "@/hooks/use-rollback";
 import {
   useWidgetStore,
   type RebuildLine,
   type RebuildErrorType,
 } from "@/stores/widget-store";
+import { useCallback } from "react";
 
 /** Get a user-friendly title for the error type */
 function getErrorTitle(errorType: RebuildErrorType | undefined): string {
@@ -289,9 +290,15 @@ function RawConsoleOutput({ lines }: { lines: string[] }) {
 }
 
 export function RebuildOverlayPanel() {
-  const { handleRollback, handleDismiss } = useRebuild();
+  const { handleRollback } = useRollback();
   const { isRunning, lines, rawLines, success, errorType, errorMessage } =
     useWidgetStore((state) => state.rebuild);
+  const processingAction = useWidgetStore((state) => state.processingAction);
+  const isRollback = processingAction === "cancel";
+
+  const handleDismiss = useCallback(() => {
+    useWidgetStore.getState().clearRebuild();
+  }, []);
 
   const [showRawOutput, setShowRawOutput] = useState(false);
   const [hasAutoShownConsole, setHasAutoShownConsole] = useState(false);
@@ -311,7 +318,7 @@ export function RebuildOverlayPanel() {
   const displayLines =
     lines.length > 0
       ? lines
-      : [{ id: 0, text: "Starting rebuild...", type: "info" as const }];
+      : [{ id: 0, text: isRollback ? "Rolling back..." : "Starting rebuild...", type: "info" as const }];
 
   // Step points to the current (most recent) line
   // - While running: last line is "in progress", previous lines are "completed"

@@ -43,12 +43,39 @@ pub fn init_if_needed(dir: &str) -> Result<()> {
     Ok(())
 }
 
-/// Gets the full diff including tracked changes and untracked file contents.
+/// Gets the default branch name (main or master), if it exists.
+fn get_default_branch(dir: &str) -> Option<&'static str> {
+    if git_command()
+        .args(["rev-parse", "--verify", "main"])
+        .current_dir(dir)
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+    {
+        Some("main")
+    } else if git_command()
+        .args(["rev-parse", "--verify", "master"])
+        .current_dir(dir)
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+    {
+        Some("master")
+    } else {
+        None
+    }
+}
+
+/// Gets the full diff against main/master branch, including tracked changes and untracked file contents.
+/// This shows all changes since diverging from the default branch, which is used for AI summaries.
+/// Falls back to HEAD if neither main nor master exist.
 /// Untracked files are formatted as diffs showing the entire file as added.
 pub fn get_full_diff(dir: &str) -> Result<String> {
+    let base = get_default_branch(dir).unwrap_or("HEAD");
+
     // Get git diff for tracked files
     let diff_output = git_command()
-        .args(["diff", "HEAD"])
+        .args(["diff", base])
         .current_dir(dir)
         .output()?;
 
@@ -106,6 +133,86 @@ pub fn count_diff_changes(diff: &str) -> (usize, usize) {
 
     (additions, deletions)
 }
+
+/// Gets commit messages on the current branch since diverging from main.
+/// Returns commits in reverse chronological order (newest first).
+fn get_commit_messages_since_main(dir: &str) -> Vec<String> {
+    let Some(base) = get_default_branch(dir) else {
+        return vec![];
+    };
+
+    let range = format!("{}..HEAD", base);
+    let output = git_command()
+        .args(["log", &range, "--pretty=format:%s"])
+        .current_dir(dir)
+        .output();
+
+    match output {
+        Ok(o) if o.status.success() => {
+            let stdout = String::from_utf8_lossy(&o.stdout);
+            stdout
+                .lines()
+                .filter(|line| !line.is_empty())
+                .map(String::from)
+                .collect()
+        }
+        _ => vec![],
+    }
+}
+
+/// Gets the SHA of the commit with the nixmac-last-build tag.
+/// Returns None if the tag doesn't exist.
+pub fn get_last_built_commit_sha(dir: &str) -> Option<String> {
+    let output = git_command()
+        .args(["rev-parse", "--verify", "refs/tags/nixmac-last-build"])
+        .current_dir(dir)
+        .output()
+        .ok()?;
+
+    if output.status.success() {
+        Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    } else {
+        None
+    }
+}
+
+/// Gets the SHA of the current HEAD commit.
+fn get_head_sha(dir: &str) -> Option<String> {
+    let output = git_command()
+        .args(["rev-parse", "HEAD"])
+        .current_dir(dir)
+        .output()
+        .ok()?;
+
+    if output.status.success() {
+        Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    } else {
+        None
+    }
+}
+
+/// Checks if HEAD has the nixmac-last-build tag.
+/// Returns true if HEAD is the most recently built commit.
+pub fn head_is_built(dir: &str) -> bool {
+    let Some(built_sha) = get_last_built_commit_sha(dir) else {
+        return false;
+    };
+    let Some(head_sha) = get_head_sha(dir) else {
+        return false;
+    };
+    built_sha == head_sha
+}
+
+/// Checks if the built commit is on the current branch (is an ancestor of HEAD).
+fn built_commit_on_branch(dir: &str, built_sha: &str) -> bool {
+    git_command()
+        .args(["merge-base", "--is-ancestor", built_sha, "HEAD"])
+        .current_dir(dir)
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+
 /// Parses `git status --porcelain=v1` output into a structured format.
 ///
 /// The porcelain format uses a two-character status code:
@@ -136,7 +243,7 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     let mut staged = Vec::new();
     let mut not_added = Vec::new();
     let mut conflicted = Vec::new();
-    let mut current = None;
+    let mut branch = None;
     let tracking = None;
 
     for line in status_str.lines() {
@@ -144,7 +251,7 @@ pub fn status(dir: &str) -> Result<GitStatus> {
         if line.starts_with("##") {
             let branch_info = line.trim_start_matches("##").trim();
             if let Some(branch_name) = branch_info.split("...").next() {
-                current = Some(branch_name.trim().to_string());
+                branch = Some(branch_name.trim().to_string());
             }
             continue;
         }
@@ -207,9 +314,32 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     let all_changes_cleanly_staged =
         has_changes && cleanly_staged_count == files.len() && !staged.is_empty();
 
+    // Check if HEAD has the nixmac-built tag
+    let head_is_built = head_is_built(dir);
+
+    // Get the last built commit SHA and check if it's on current branch
+    let last_built_commit_sha = get_last_built_commit_sha(dir);
+    let branch_has_built_commit = last_built_commit_sha
+        .as_ref()
+        .map(|sha| built_commit_on_branch(dir, sha))
+        .unwrap_or(false);
+
+    // Check if on main or master branch
+    let is_main_branch = branch
+        .as_ref()
+        .map(|b| b == "main" || b == "master")
+        .unwrap_or(false);
+
     // Compute diff and stats
     let diff = get_full_diff(dir).unwrap_or_default();
     let (additions, deletions) = count_diff_changes(&diff);
+
+    // Get commit messages since main (only if not on main branch)
+    let branch_commit_messages = if is_main_branch {
+        vec![]
+    } else {
+        get_commit_messages_since_main(dir)
+    };
 
     Ok(GitStatus {
         files,
@@ -221,15 +351,20 @@ pub fn status(dir: &str) -> Result<GitStatus> {
         conflicted,
         ahead: 0,
         behind: 0,
-        current,
+        branch,
         tracking,
         has_changes,
         has_unstaged_changes,
         all_changes_staged,
         all_changes_cleanly_staged,
+        head_is_built,
+        is_main_branch,
+        last_built_commit_sha,
+        branch_has_built_commit,
         diff,
         additions,
         deletions,
+        branch_commit_messages,
     })
 }
 
@@ -384,6 +519,153 @@ pub fn restore_all(dir: &str) -> Result<()> {
         .args(["clean", "-fd"])
         .current_dir(dir)
         .output()?;
+
+    Ok(())
+}
+
+/// Creates and checks out a new branch.
+pub fn checkout_new_branch(dir: &str, branch_name: &str) -> Result<()> {
+    let output = git_command()
+        .args(["checkout", "-b", branch_name])
+        .current_dir(dir)
+        .output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("Failed to create branch: {}", stderr);
+    }
+
+    Ok(())
+}
+
+/// Checks out an existing branch.
+pub fn checkout_branch(dir: &str, branch_name: &str) -> Result<()> {
+    let output = git_command()
+        .args(["checkout", branch_name])
+        .current_dir(dir)
+        .output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("Failed to checkout branch: {}", stderr);
+    }
+
+    Ok(())
+}
+
+/// Checks out the main branch (tries main, falls back to master).
+pub fn checkout_main_branch(dir: &str) -> Result<()> {
+    let Some(branch) = get_default_branch(dir) else {
+        anyhow::bail!("No main or master branch found");
+    };
+    checkout_branch(dir, branch)
+}
+
+/// Adds build tags to HEAD:
+/// - `nixmac-built-<timestamp>` - permanent tag for build history
+/// - `nixmac-last-build` - moving tag that always points to latest build
+pub fn tag_as_built(dir: &str) -> Result<()> {
+    // Create timestamped tag for history (e.g., nixmac-built-1708123456)
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let timestamped_tag = format!("nixmac-built-{}", timestamp);
+
+    let output = git_command()
+        .args(["tag", &timestamped_tag, "HEAD"])
+        .current_dir(dir)
+        .output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("Failed to create timestamped tag: {}", stderr);
+    }
+
+    // Create/move the "last build" tag for easy checking
+    let output = git_command()
+        .args(["tag", "-f", "nixmac-last-build", "HEAD"])
+        .current_dir(dir)
+        .output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("Failed to update last-build tag: {}", stderr);
+    }
+
+    Ok(())
+}
+
+/// Finalizes an evolve by merging the branch to main.
+/// If squash is true, squashes all commits into one with the provided message.
+pub fn finalize_evolve(
+    dir: &str,
+    branch_name: &str,
+    squash: bool,
+    commit_message: Option<&str>,
+) -> Result<()> {
+    // If squashing, reset soft to main and create a new commit on the branch
+    if squash {
+        let output = git_command()
+            .args(["reset", "--soft", "main"])
+            .current_dir(dir)
+            .output()?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            anyhow::bail!("Failed to reset to main: {}", stderr);
+        }
+
+        let msg = commit_message.unwrap_or("chore: squash evolve commits");
+        let output = git_command()
+            .args(["commit", "-m", msg])
+            .current_dir(dir)
+            .output()?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            anyhow::bail!("Failed to create squash commit: {}", stderr);
+        }
+    }
+
+    // 1. Checkout main
+    let output = git_command()
+        .args(["checkout", "main"])
+        .current_dir(dir)
+        .output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("Failed to checkout main: {}", stderr);
+    }
+
+    // 2. Merge the evolve branch (fast-forward if squashed)
+    let output = git_command()
+        .args(["merge", branch_name])
+        .current_dir(dir)
+        .output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        // Abort the failed merge to clean up
+        let _ = git_command()
+            .args(["merge", "--abort"])
+            .current_dir(dir)
+            .output();
+
+        // Checkout the branch again so user stays on their working branch
+        let _ = git_command()
+            .args(["checkout", branch_name])
+            .current_dir(dir)
+            .output();
+
+        // Provide helpful error message suggesting squash for conflicts
+        anyhow::bail!(
+            "Merge conflict detected. Try 'Squash' to succesfully merge your changes . Details: {}",
+            stderr
+        );
+    }
 
     Ok(())
 }

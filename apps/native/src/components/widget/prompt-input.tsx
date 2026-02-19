@@ -24,7 +24,7 @@ export function PromptInput() {
   const { handleEvolve } = useEvolve();
 
   const isLoading = isProcessing && processingAction === "evolve";
-  const hasChanges = (gitStatus?.files?.length ?? 0) > 0;
+  const hasChanges = Boolean(gitStatus?.diff);
 
   const placeholder = hasChanges
     ? "Describe additional changes or refinements..."

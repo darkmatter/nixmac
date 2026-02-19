@@ -13,14 +13,16 @@ const STEPS = [
 export function Stepper() {
 	const step = useCurrentStep();
 	const gitStatus = useWidgetStore((s) => s.gitStatus);
-	const hasChanges = gitStatus?.hasChanges ?? false;
+	const isGenerating = useWidgetStore((s) => s.isGenerating);
+	const isRebuilding = useWidgetStore((s) => s.rebuild.isRunning);
+	const hasChanges = Boolean(gitStatus?.diff);
 
-	if (step === "setup" || step === "permissions") {
+	if (step === "setup" || step === "permissions" || isGenerating || isRebuilding) {
 		return null;
 	}
 
 	// Determine current step index based on widget state
-	const currentStepIndex = step === "commit" ? 2 : hasChanges ? 1 : 0;
+	const currentStepIndex = step === "merge" ? 2 : hasChanges ? 1 : 0;
 
 	return (
 		<div className="border-border border-b bg-muted/30 px-5 py-4">

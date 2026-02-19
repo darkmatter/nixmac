@@ -8,7 +8,7 @@ import { Header } from "@/components/widget/header";
 import { SettingsDialog } from "@/components/widget/settings-dialog";
 import { Stepper } from "@/components/widget/stepper";
 import {
-  CommitStep,
+  MergeStep,
   EvolveStep,
   PermissionsStep,
   SetupStep,
@@ -59,8 +59,8 @@ export function DarwinWidget() {
       case "evolving":
         return <EvolveStep />;
 
-      case "commit":
-        return <CommitStep />;
+      case "merge":
+        return <MergeStep />;
     }
   };
 

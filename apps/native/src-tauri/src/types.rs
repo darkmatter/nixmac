@@ -49,10 +49,14 @@ pub struct GitStatus {
     pub behind: i32,
 
     /// Current branch name.
-    pub current: Option<String>,
+    pub branch: Option<String>,
 
     /// Remote tracking branch name.
     pub tracking: Option<String>,
+
+    /// Commit messages on current branch since diverging from main.
+    #[serde(rename = "branchCommitMessages")]
+    pub branch_commit_messages: Vec<String>,
 
     /// Quick check for any uncommitted changes.
     #[serde(rename = "hasChanges")]
@@ -70,7 +74,24 @@ pub struct GitStatus {
     #[serde(rename = "allChangesCleanlyStaged")]
     pub all_changes_cleanly_staged: bool,
 
-    /// The raw unified diff content (git diff HEAD + untracked file contents).
+    /// Whether HEAD has the nixmac-built tag (changes have been built/applied).
+    #[serde(rename = "headIsBuilt")]
+    pub head_is_built: bool,
+
+    /// Whether the current branch is main or master.
+    #[serde(rename = "isMainBranch")]
+    pub is_main_branch: bool,
+
+    /// SHA of commit with nixmac-last-build tag, None if no tag exists.
+    #[serde(rename = "lastBuiltCommitSha")]
+    pub last_built_commit_sha: Option<String>,
+
+    /// True if nixmac-last-build tag points to a commit on current branch
+    /// (i.e., the built commit is an ancestor of HEAD).
+    #[serde(rename = "branchHasBuiltCommit")]
+    pub branch_has_built_commit: bool,
+
+    /// The raw unified diff content (git diff main + untracked file contents).
     pub diff: String,
 
     /// Number of lines added.

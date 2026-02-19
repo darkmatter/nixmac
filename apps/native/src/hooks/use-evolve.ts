@@ -1,3 +1,4 @@
+import { slugify } from "@/components/widget/utils";
 import { useWidgetStore } from "@/stores/widget-store";
 import {
   darwinAPI,
@@ -12,6 +13,7 @@ import { useSummary } from "./use-summary";
 /**
  * Hook for the evolution operation.
  * Handles AI-driven configuration evolution with event streaming.
+ * Creates a nixmac-evolve/* branch on first evolve and commits after each evolution.
  */
 export function useEvolve() {
   const { refreshGitStatus } = useGitOperations();
@@ -23,6 +25,11 @@ export function useEvolve() {
     if (!store.evolvePrompt.trim()) {
       return;
     }
+
+    // Check if we need to create a branch (only if on main)
+    const currentBranch = store.gitStatus?.branch;
+    const isOnMain = currentBranch === "main" || currentBranch === "master";
+    const promptForBranch = store.evolvePrompt;
 
     store.setProcessing(true, "evolve");
     store.setGenerating(true);
@@ -46,14 +53,33 @@ export function useEvolve() {
     );
 
     try {
+      // Run the evolution
       await darwinAPI.darwin.evolve(store.evolvePrompt);
 
       useWidgetStore.getState().appendLog("✓ Evolution complete\n");
-      store.setEvolvePrompt("");
 
-      await refreshGitStatus({ cache: true });
+      // Fetch summary first to get the commit message
       await fetchSummary();
 
+      // Get the commit message from summary
+      const summary = useWidgetStore.getState().summary;
+      const commitMessage =
+        summary?.commitMessage || "chore: evolve configuration";
+
+      // Create branch if we're on main
+      if (isOnMain) {
+        const branchName = `nixmac-evolve/${slugify(promptForBranch)}`;
+        useWidgetStore.getState().appendLog(`> Creating branch: ${branchName}\n`);
+        await darwinAPI.git.checkoutNewBranch(branchName);
+      }
+
+      // Commit the changes
+      useWidgetStore.getState().appendLog(`> Committing: ${commitMessage}\n`);
+      await darwinAPI.git.commit(commitMessage);
+      useWidgetStore.getState().appendLog("✓ Changes committed\n");
+
+      store.setEvolvePrompt("");
+      await refreshGitStatus({ cache: true });
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
 
@@ -66,12 +92,14 @@ export function useEvolve() {
 
       useWidgetStore.getState().setError(msg);
       useWidgetStore.getState().appendLog(`✗ Error: ${msg}\n`);
-
     } finally {
-
-      useWidgetStore.getState().setProcessing(false);
       useWidgetStore.getState().setGenerating(false);
       unlistenEvolve();
+      // Delay setProcessing(false) to let any pending watcher events pass
+      // Watcher polls every 2.5s, so 3s ensures we catch any updates
+      setTimeout(() => {
+        useWidgetStore.getState().setProcessing(false);
+      }, 3000);
     }
   }, [refreshGitStatus, fetchSummary]);
 

@@ -111,6 +111,11 @@ fn main() {
             commands::git_stage_all,
             commands::git_unstage_all,
             commands::git_restore_all,
+            commands::git_checkout_new_branch,
+            commands::git_checkout_branch,
+            commands::git_checkout_main_branch,
+            commands::git_tag_as_built,
+            commands::git_finalize_evolve,
             // Darwin/Nix
             commands::darwin_evolve,
             commands::darwin_evolve_cancel,

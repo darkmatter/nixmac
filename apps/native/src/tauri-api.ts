@@ -48,16 +48,27 @@ export interface GitStatus {
   conflicted?: string[];
 
   // Branch info
-  current?: string;
+  branch?: string;
   tracking?: string;
   ahead?: number;
   behind?: number;
+
+  // Commit messages on current branch since main
+  branchCommitMessages?: string[];
 
   // Computed state
   hasChanges?: boolean;
   hasUnstagedChanges?: boolean;
   allChangesStaged?: boolean;
   allChangesCleanlyStaged?: boolean;
+
+  // Branch workflow state
+  headIsBuilt?: boolean;
+  isMainBranch?: boolean;
+
+  // Build tracking
+  lastBuiltCommitSha?: string;
+  branchHasBuiltCommit?: boolean;
 
   // Diff content
   diff?: string;
@@ -170,6 +181,14 @@ export const darwinAPI = {
     stageAll: () => invoke("git_stage_all"),
     unstageAll: () => invoke("git_unstage_all"),
     restoreAll: () => invoke("git_restore_all"),
+    checkoutNewBranch: (branchName: string) =>
+      invoke("git_checkout_new_branch", { branchName }),
+    checkoutBranch: (branchName: string) =>
+      invoke("git_checkout_branch", { branchName }),
+    checkoutMainBranch: () => invoke("git_checkout_main_branch"),
+    tagAsBuilt: () => invoke("git_tag_as_built"),
+    finalizeEvolve: (branchName: string, squash?: boolean, commitMessage?: string) =>
+      invoke("git_finalize_evolve", { branchName, squash, commitMessage }),
   },
   darwin: {
     evolve: (description: string) => invoke("darwin_evolve", { description }),
