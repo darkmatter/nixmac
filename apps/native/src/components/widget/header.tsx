@@ -1,10 +1,17 @@
 import { Button } from "@/components/ui/button";
 import { Settings } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { APP_NAME } from "../../../shared/constants";
 import { useWidgetStore } from "@/stores/widget-store";
 
 export function Header() {
   const setSettingsOpen = useWidgetStore((s) => s.setSettingsOpen);
+  const setFeedbackOpen = useWidgetStore((s) => s.setFeedbackOpen);
 
   return (
     <div
@@ -20,14 +27,22 @@ export function Header() {
         {APP_NAME}
       </h3>
       <div className="absolute right-3 flex items-center gap-1">
-        <Button
-          className="h-8 w-8 p-0"
-          onClick={() => setSettingsOpen(true)}
-          size="sm"
-          variant="ghost"
-        >
-          <Settings className="h-4 w-4" />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button className="h-8 w-8 p-0" size="sm" variant="ghost">
+              <Settings className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent sideOffset={6} align="end">
+            <DropdownMenuItem onSelect={() => setFeedbackOpen(true)}>
+              Give Feedback
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setSettingsOpen(true)}>
+              Settings
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
