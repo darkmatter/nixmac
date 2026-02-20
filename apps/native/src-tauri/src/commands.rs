@@ -308,21 +308,26 @@ pub async fn darwin_apply_stream_start(
     let dir = store::ensure_config_dir_exists(&app)
         .map_err(|e| capture_err("darwin_apply_stream_start", e))?;
 
-    // Determine which host to build for:
-    // 1. Use explicit override if provided
-    // 2. Fall back to stored host attribute
-    // 3. Auto-select if there's only one host defined in the flake
+    let stored_attr = nix::determine_host_attr(&app);
+    let discovered_hosts = nix::list_darwin_hosts(&dir).ok();
+
+    log::info!(
+        "[apply] config_dir={}, host_override={:?}, stored={:?}, discovered={:?}",
+        dir,
+        host_override,
+        stored_attr,
+        discovered_hosts
+    );
+
     let host = host_override
-        .or_else(|| nix::determine_host_attr(&app))
+        .or(stored_attr)
         .or_else(|| {
-            let hosts = nix::list_darwin_hosts(&dir).ok()?;
-            if hosts.len() == 1 {
-                Some(hosts[0].clone())
-            } else {
-                None
-            }
+            let hosts = discovered_hosts.as_ref()?;
+            (hosts.len() == 1).then(|| hosts[0].clone())
         })
-        .ok_or_else(|| "Host attribute not found".to_string())?;
+        .ok_or_else(|| {
+            "Host attribute not found. Set a host in Settings or ensure your flake defines exactly one darwinConfiguration.".to_string()
+        })?;
 
     darwin::apply_stream(&app, &dir, &host)
         .map_err(|e| capture_err("darwin_apply_stream_start", e))?;
