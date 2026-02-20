@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TodosRouteImport } from './routes/todos'
 import { Route as SuccessRouteImport } from './routes/success'
+import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as Lp2RouteImport } from './routes/lp2'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DocsRouteImport } from './routes/docs'
@@ -27,6 +28,11 @@ const TodosRoute = TodosRouteImport.update({
 const SuccessRoute = SuccessRouteImport.update({
   id: '/success',
   path: '/success',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
+  id: '/privacy-policy',
+  path: '/privacy-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const Lp2Route = Lp2RouteImport.update({
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/docs': typeof DocsRoute
   '/login': typeof LoginRoute
   '/lp2': typeof Lp2Route
+  '/privacy-policy': typeof PrivacyPolicyRoute
   '/success': typeof SuccessRoute
   '/todos': typeof TodosRoute
   '/api/$': typeof ApiSplatRoute
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/docs': typeof DocsRoute
   '/login': typeof LoginRoute
   '/lp2': typeof Lp2Route
+  '/privacy-policy': typeof PrivacyPolicyRoute
   '/success': typeof SuccessRoute
   '/todos': typeof TodosRoute
   '/api/$': typeof ApiSplatRoute
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/docs': typeof DocsRoute
   '/login': typeof LoginRoute
   '/lp2': typeof Lp2Route
+  '/privacy-policy': typeof PrivacyPolicyRoute
   '/success': typeof SuccessRoute
   '/todos': typeof TodosRoute
   '/api/$': typeof ApiSplatRoute
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
     | '/docs'
     | '/login'
     | '/lp2'
+    | '/privacy-policy'
     | '/success'
     | '/todos'
     | '/api/$'
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/docs'
     | '/login'
     | '/lp2'
+    | '/privacy-policy'
     | '/success'
     | '/todos'
     | '/api/$'
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
     | '/docs'
     | '/login'
     | '/lp2'
+    | '/privacy-policy'
     | '/success'
     | '/todos'
     | '/api/$'
@@ -141,6 +153,7 @@ export interface RootRouteChildren {
   DocsRoute: typeof DocsRoute
   LoginRoute: typeof LoginRoute
   Lp2Route: typeof Lp2Route
+  PrivacyPolicyRoute: typeof PrivacyPolicyRoute
   SuccessRoute: typeof SuccessRoute
   TodosRoute: typeof TodosRoute
   ApiSplatRoute: typeof ApiSplatRoute
@@ -161,6 +174,13 @@ declare module '@tanstack/react-router' {
       path: '/success'
       fullPath: '/success'
       preLoaderRoute: typeof SuccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy-policy': {
+      id: '/privacy-policy'
+      path: '/privacy-policy'
+      fullPath: '/privacy-policy'
+      preLoaderRoute: typeof PrivacyPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lp2': {
@@ -221,6 +241,7 @@ const rootRouteChildren: RootRouteChildren = {
   DocsRoute: DocsRoute,
   LoginRoute: LoginRoute,
   Lp2Route: Lp2Route,
+  PrivacyPolicyRoute: PrivacyPolicyRoute,
   SuccessRoute: SuccessRoute,
   TodosRoute: TodosRoute,
   ApiSplatRoute: ApiSplatRoute,

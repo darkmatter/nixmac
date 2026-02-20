@@ -428,6 +428,12 @@ export function LandingPage() {
               >
                 Documentation
               </a>
+              <a
+                className="transition-colors hover:text-zinc-300"
+                href="/privacy-policy"
+              >
+                Privacy Policy
+              </a>
               {/* <a
                 className="transition-colors hover:text-zinc-300"
                 href="https://twitter.com"
