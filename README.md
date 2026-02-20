@@ -186,3 +186,10 @@ nixmac/
 - `cd apps/web && bun run desktop:build`: Build Tauri desktop app
 - `cd apps/docs && bun run dev`: Start documentation site
 - `cd apps/docs && bun run build`: Build documentation site
+
+
+## Release a Build
+
+There's a CI/CD pipeline that will create a release build for any tagged commit. To create a 
+release, run `npx release-it` and follow the instructions to push a versioned tag. This will 
+automatically create a release on Github that can be downloaded and installed via a .dmg bundle.
