@@ -10,6 +10,8 @@ import {
 import { BootstrapConfig } from "@/components/widget/bootstrap-config";
 import { DirectoryPicker } from "@/components/widget/directory-picker";
 import { darwinAPI } from "@/tauri-api";
+import { open } from '@tauri-apps/plugin-shell';
+import { getWebSiteUrl } from "@/lib/env";
 import type { AnyFieldApi } from "@tanstack/react-form";
 
 interface GeneralTabProps {
@@ -79,6 +81,24 @@ export function GeneralTab({
               <div className="font-medium text-sm">Send diagnostics to the nixmac team</div>
               <div className="text-muted-foreground text-xs">
                 Share anonymized crash and error reports to improve stability. Restart required.
+                <div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const base = getWebSiteUrl().replace(/\/$/, "");
+                      const url = `${base}/privacy-policy`;
+                      try {
+                        await open(url);
+                      } catch (err) {
+                        // Fallback to window.open if Tauri shell fails for some reason (e.g. during direct development in the web app)
+                        window.open(url, "_blank");
+                      }
+                    }}
+                    className="mt-2 text-xs text-zinc-400 underline hover:text-zinc-200"
+                  >
+                    Privacy policy
+                  </button>
+                </div>
               </div>
             </div>
             <Switch
