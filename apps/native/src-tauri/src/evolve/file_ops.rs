@@ -16,25 +16,29 @@ pub(crate) fn join_in_dir(base: &Path, rel: &str) -> anyhow::Result<PathBuf> {
         return Err(anyhow::anyhow!("Absolute paths are not allowed"));
     }
 
-    // Detect attempts to escape the base via `..`
-    let mut depth: isize = 0;
+    // Build a normalized relative path while validating components. This
+    // prevents inputs like `a/../b` from leaving `..` components present
+    // and avoids creating unnecessary intermediate directories.
+    // In other words, base="base" and rel="a/../b" will yield "base/b", not "base/a/../b".
+    let mut normalized = PathBuf::new();
     for comp in rel_path.components() {
         match comp {
-            Component::Normal(_) => depth += 1,
+            Component::Normal(s) => normalized.push(s),
             Component::CurDir => {}
             Component::ParentDir => {
-                if depth <= 0 {
+                if !normalized.pop() {
                     return Err(anyhow::anyhow!("Path escapes the config directory"));
                 }
-                depth -= 1;
             }
-            other => {
-                return Err(anyhow::anyhow!("Unsupported path component: {:?}", other));
+            Component::Prefix(_) | Component::RootDir => {
+                return Err(anyhow::anyhow!(
+                    "Path prefixes or root components are not allowed in relative paths"
+                ));
             }
         }
     }
 
-    Ok(base.join(rel_path))
+    Ok(base.join(normalized))
 }
 
 /// Apply an evolution's edits to the filesystem.

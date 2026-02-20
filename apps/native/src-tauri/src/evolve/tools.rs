@@ -354,13 +354,23 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
             cmd.args(["--line-number", "--no-heading", pattern]);
 
             if let Some(fp) = file_pattern {
-                // Validate and normalize `file_pattern` so it cannot escape `base`
-                // and so any `..` components are resolved before passing to rg.
-                let glob_path = join_in_dir(base, fp)?;
-                let glob_str = glob_path
-                    .to_str()
-                    .ok_or_else(|| anyhow!("Invalid glob pattern: {:?}", glob_path))?;
-                cmd.arg("--glob").arg(glob_str);
+                // Validate `file_pattern` so it cannot escape `base`, but keep it as a
+                // relative glob pattern for ripgrep instead of converting it to an
+                // absolute filesystem path.
+                let fp_path = Path::new(fp);
+                if fp_path.is_absolute() {
+                    return Err(anyhow!(
+                        "search_code: absolute paths are not allowed in file_pattern"
+                    ));
+                }
+                for component in fp_path.components() {
+                    if let Component::ParentDir = component {
+                        return Err(anyhow!(
+                            "search_code: parent directory segments ('..') are not allowed in file_pattern"
+                        ));
+                    }
+                }
+                cmd.arg("--glob").arg(fp);
             }
 
             let output = cmd.current_dir(config_dir).output();
