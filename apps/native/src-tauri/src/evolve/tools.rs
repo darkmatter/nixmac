@@ -1,6 +1,6 @@
 //! Tools used by AI
 
-use super::file_ops::apply_file_edits;
+use super::file_ops::{apply_file_edits, join_in_dir};
 use super::messages::Tool;
 use super::types::FileEdit;
 
@@ -183,6 +183,7 @@ pub enum ToolResult {
 
 /// Execute a tool call and return the result
 pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> Result<ToolResult> {
+    let base = Path::new(config_dir);
     match name {
         "think" => {
             let category = args["category"].as_str().unwrap_or("other").to_string();
@@ -205,7 +206,7 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
             let path = args["path"]
                 .as_str()
                 .ok_or_else(|| anyhow!("read_file: missing path"))?;
-            let full_path = Path::new(config_dir).join(path);
+            let full_path = join_in_dir(base, path)?;
             info!("Reading file: {}", full_path.display());
             let content = std::fs::read_to_string(&full_path)
                 .map_err(|e| anyhow!("Failed to read {}: {}", path, e))?;
@@ -214,7 +215,10 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
 
         "list_files" => {
             let pattern = args["pattern"].as_str().unwrap_or("**/*");
-            let full_pattern = Path::new(config_dir).join(pattern);
+            // Validate and normalize the provided glob pattern so it cannot
+            // escape `base` (reject absolute/prefix components) and so any
+            // `..`/`.` components are resolved before we run the glob.
+            let full_pattern = join_in_dir(base, pattern)?;
             info!("Listing files matching: {}", full_pattern.display());
 
             let ignored_dirs = [".git", "result"];
@@ -223,7 +227,9 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
                 .filter_map(|p| p.ok())
                 .filter(|p| p.is_file())
                 .filter_map(|p| {
-                    let rel = p.strip_prefix(config_dir).ok()?;
+                    // Strip the normalized `base` so results are returned
+                    // relative to the same directory we validated above.
+                    let rel = p.strip_prefix(base).ok()?;
 
                     if let Some(Component::Normal(name)) = rel.components().next() {
                         if ignored_dirs.contains(&name.to_string_lossy().as_ref()) {
@@ -252,7 +258,7 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
 
             info!("Editing file: {}", path);
             apply_file_edits(
-                config_dir,
+                base,
                 &FileEdit {
                     path: path.to_string(),
                     search: search.to_string(),
@@ -348,7 +354,13 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
             cmd.args(["--line-number", "--no-heading", pattern]);
 
             if let Some(fp) = file_pattern {
-                cmd.args(["--glob", fp]);
+                // Validate and normalize `file_pattern` so it cannot escape `base`
+                // and so any `..` components are resolved before passing to rg.
+                let glob_path = join_in_dir(base, fp)?;
+                let glob_str = glob_path
+                    .to_str()
+                    .ok_or_else(|| anyhow!("Invalid glob pattern: {:?}", glob_path))?;
+                cmd.arg("--glob").arg(glob_str);
             }
 
             let output = cmd.current_dir(config_dir).output();
