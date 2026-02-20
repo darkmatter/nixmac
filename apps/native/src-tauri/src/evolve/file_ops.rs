@@ -38,8 +38,7 @@ pub(crate) fn join_in_dir(base: &Path, rel: &str) -> anyhow::Result<PathBuf> {
 }
 
 /// Apply an evolution's edits to the filesystem.
-pub fn apply_file_edits(config_dir: &str, edit: &super::types::FileEdit) -> anyhow::Result<()> {
-    let base = Path::new(config_dir);
+pub fn apply_file_edits(base: &Path, edit: &super::types::FileEdit) -> anyhow::Result<()> {
     let full_path = join_in_dir(base, &edit.path)?;
 
     if edit.search.is_empty() {
