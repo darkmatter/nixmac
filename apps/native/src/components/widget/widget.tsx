@@ -6,6 +6,7 @@ import { Console } from "@/components/widget/console";
 import { ErrorMessage } from "@/components/widget/error-message";
 import { Header } from "@/components/widget/header";
 import { SettingsDialog } from "@/components/widget/settings-dialog";
+import { FeedbackDialog } from "@/components/widget/feedback-dialog";
 import { Stepper } from "@/components/widget/stepper";
 import {
   MergeStep,
@@ -78,6 +79,7 @@ export function DarwinWidget() {
 
       <Console />
       <SettingsDialog />
+      <FeedbackDialog />
     </div>
   );
 }

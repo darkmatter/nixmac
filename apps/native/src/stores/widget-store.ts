@@ -84,6 +84,7 @@ export interface WidgetState {
   summaryStale: boolean;
   isGenerating: boolean;
   settingsOpen: boolean;
+  feedbackOpen: boolean;
   error: string | null;
   suggestions: string[];
 }
@@ -104,6 +105,7 @@ export interface WidgetActions {
   setProcessing: (isProcessing: boolean, action?: ProcessingAction) => void;
   setSummary: (summary: ChangesSummary) => void;
   setSettingsOpen: (open: boolean) => void;
+  setFeedbackOpen: (open: boolean) => void;
   setError: (error: string | null) => void;
 
   // Client-side state (NOT from server)
@@ -187,6 +189,7 @@ export const initialWidgetState: WidgetState = {
   isBootstrapping: false,
   isGenerating: false,
   settingsOpen: false,
+  feedbackOpen: false,
   error: null,
   suggestions: ["Install vim", "Add Rectangle app", "Configure git"],
 };
@@ -224,6 +227,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setSummaryLoading: (summaryLoading) => set({ summaryLoading }),
     setSummaryStale: (summaryStale) => set({ summaryStale }),
     setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
+    setFeedbackOpen: (feedbackOpen) => set({ feedbackOpen }),
     setError: (error) => set({ error }),
 
     // Client-side UI state (NOT from server)
