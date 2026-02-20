@@ -699,7 +699,7 @@ mod tests {
         assert!(status.staged.is_empty());
         assert!(status.not_added.is_empty());
         assert!(status.conflicted.is_empty());
-        assert!(status.current.is_some());
+        assert!(status.branch.is_some());
         assert!(status.tracking.is_some());
     }
 }
