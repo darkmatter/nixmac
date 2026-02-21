@@ -5,6 +5,7 @@
 //! for JavaScript/TypeScript consumption.
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 /// Application configuration returned by `config_get`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -172,6 +173,66 @@ pub struct ApplyResult {
 
     /// Captured stderr output.
     pub stderr: Option<String>,
+}
+
+// =============================================================================
+// Feedback Metadata
+// =============================================================================
+
+/// Options indicating which feedback artifacts the user allows sharing.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeedbackShareOptions {
+    pub last_prompt: bool,
+    pub current_app_state: bool,
+    pub system_info: bool,
+    pub usage_stats: bool,
+    pub evolution_log: bool,
+    pub nix_config: bool,
+    pub app_logs: bool,
+}
+
+/// System information captured from the runtime.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeedbackSystemInfo {
+    pub os_name: Option<String>,
+    pub os_version: Option<String>,
+    pub arch: Option<String>,
+    pub nix_version: Option<String>,
+    pub app_version: Option<String>,
+}
+
+/// Aggregated usage stats for feedback.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeedbackUsageStats {
+    pub total_evolutions: Option<u64>,
+    pub success_rate: Option<f64>,
+    pub avg_iterations: Option<f64>,
+    pub last_computed_at: Option<String>,
+    pub extra: Option<Value>,
+}
+
+/// Request payload for gathering feedback metadata.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeedbackMetadataRequest {
+    pub feedback_type: String,
+    pub share: FeedbackShareOptions,
+}
+
+/// Metadata collected for feedback submission based on user opt-in.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeedbackMetadata {
+    pub last_prompt_text: Option<String>,
+    pub current_app_state_snapshot: Option<Value>,
+    pub system_info: Option<FeedbackSystemInfo>,
+    pub usage_stats: Option<FeedbackUsageStats>,
+    pub evolution_log_content: Option<String>,
+    pub nix_config_snapshot: Option<String>,
+    pub app_logs_content: Option<String>,
 }
 
 /// A single summary item with a title and description
