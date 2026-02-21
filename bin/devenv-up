@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Ensure Postgres docker service is running, then run `devenv up`
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+COMPOSE_FILE="$ROOT_DIR/docker-compose.devenv.yml"
+
+echo "Using compose file: $COMPOSE_FILE"
+
+if ! command -v docker >/dev/null 2>&1; then
+  echo "docker is not installed or not on PATH. Please install Docker Desktop." >&2
+  exit 1
+fi
+
+CONTAINER_NAME="nixmac-postgres"
+
+echo "Ensuring Postgres container '$CONTAINER_NAME' is running..."
+
+# If a container with that name exists, start it if stopped.
+container_running_id=$(docker ps -q -f "name=^/${CONTAINER_NAME}$" 2>/dev/null || true)
+container_any_id=$(docker ps -aq -f "name=^/${CONTAINER_NAME}$" 2>/dev/null || true)
+started=false
+
+if [ -n "$container_running_id" ]; then
+  echo "Container $CONTAINER_NAME already running"
+else
+  if [ -n "$container_any_id" ]; then
+    echo "Starting existing container $CONTAINER_NAME"
+    docker start "$CONTAINER_NAME"
+    started=true
+  else
+    echo "No container named $CONTAINER_NAME found; bringing up via docker compose"
+    docker compose -f "$COMPOSE_FILE" up -d postgres
+    started=true
+  fi
+fi
+
+if [ "$started" = true ]; then
+  echo "Waiting briefly for Postgres to initialize (3s)"
+  sleep 3
+fi
+
+echo "Running: devenv up $*"
+devenv up "$@"
