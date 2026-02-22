@@ -105,7 +105,7 @@ pub async fn feedback_gather_metadata(
     app: AppHandle,
     request: types::FeedbackMetadataRequest,
 ) -> Result<types::FeedbackMetadata, String> {
-    feedback::gather_metadata(&app, request)
+    feedback::gather_metadata(&app, request).map_err(|e| capture_err("feedback_gather_metadata", e))
 }
 
 // =============================================================================
