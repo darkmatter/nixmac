@@ -704,6 +704,27 @@ pub async fn set_cached_models(
 }
 
 // =============================================================================
+// Prompt History Commands
+// =============================================================================
+
+/// Gets the prompt history in reverse chron order.
+#[tauri::command]
+pub async fn get_prompt_history(app: AppHandle) -> Result<Vec<String>, String> {
+    store::get_prompt_history(&app).map_err(|e| capture_err("get_prompt_history", e))
+}
+
+/// Adds a prompt to the history.
+#[tauri::command]
+pub async fn add_to_prompt_history(
+    app: AppHandle,
+    prompt: String,
+) -> Result<serde_json::Value, String> {
+    store::add_to_prompt_history(&app, &prompt)
+        .map_err(|e| capture_err("add_to_prompt_history", e))?;
+    Ok(serde_json::json!({"ok": true}))
+}
+
+// =============================================================================
 // Window Commands
 // =============================================================================
 
