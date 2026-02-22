@@ -103,6 +103,46 @@ export interface PreviewIndicatorState {
 }
 
 // =============================================================================
+// Feedback Types
+// =============================================================================
+
+export interface FeedbackShareOptions {
+  lastPrompt: boolean;
+  currentAppState: boolean;
+  systemInfo: boolean;
+  usageStats: boolean;
+  evolutionLog: boolean;
+  nixConfig: boolean;
+  appLogs: boolean;
+}
+
+export interface FeedbackSystemInfo {
+  osName?: string;
+  osVersion?: string;
+  arch?: string;
+  nixVersion?: string;
+  appVersion?: string;
+}
+
+export interface FeedbackUsageStats {
+  totalEvolutions?: number;
+  successRate?: number;
+  avgIterations?: number;
+  lastComputedAt?: string;
+  extra?: Record<string, unknown>;
+}
+
+export interface FeedbackMetadata {
+  lastPromptText?: string;
+  currentAppStateSnapshot?: unknown;
+  systemInfo?: FeedbackSystemInfo;
+  usageStats?: FeedbackUsageStats;
+  evolutionLogContent?: string;
+  nixConfigSnapshot?: string;
+  appLogsContent?: string;
+}
+
+// =============================================================================
 // Permissions Types
 // =============================================================================
 
@@ -209,6 +249,10 @@ export const darwinAPI = {
     changes: () => invoke<SummaryResponse>("summarize_changes"),
     commitMessage: () => invoke<string>("suggest_commit_message"),
     getCached: () => invoke<SummaryResponse | null>("summary_get_cached"),
+  },
+  feedback: {
+    gatherMetadata: (feedbackType: string, share: FeedbackShareOptions) =>
+      invoke<FeedbackMetadata>("feedback_gather_metadata", { request: { feedbackType, share } }),
   },
   ui: {
     getPrefs: () => invoke<DarwinPrefs | null>("ui_get_prefs"),

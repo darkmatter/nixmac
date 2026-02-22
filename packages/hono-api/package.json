@@ -10,6 +10,7 @@
     "@hono/trpc-server": "^0.4.0",
     "@nixmac/api": "workspace:*",
     "@nixmac/auth": "workspace:*",
+    "@nixmac/db": "workspace:*",
     "hono": "catalog:"
   },
   "devDependencies": {

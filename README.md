@@ -145,8 +145,15 @@ bun run db:push
 
 Then, run the development server:
 
-```bash
-bun run dev
+```sh
+# bun run dev
+devenv up
+```
+
+Alternatively, there is a separate script that ensures that the nixmac postgres database is running:
+
+```sh
+./bin/devenv-up
 ```
 
 Open [http://localhost:3001](http://localhost:3001) in your browser to see the web application.
@@ -187,9 +194,8 @@ nixmac/
 - `cd apps/docs && bun run dev`: Start documentation site
 - `cd apps/docs && bun run build`: Build documentation site
 
-
 ## Release a Build
 
-There's a CI/CD pipeline that will create a release build for any tagged commit. To create a 
-release, run `npx release-it` and follow the instructions to push a versioned tag. This will 
+There's a CI/CD pipeline that will create a release build for any tagged commit. To create a
+release, run `npx release-it` and follow the instructions to push a versioned tag. This will
 automatically create a release on Github that can be downloaded and installed via a .dmg bundle.

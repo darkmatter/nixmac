@@ -72,7 +72,7 @@ fn main() {
     // Initialize logging - set RUST_LOG=debug for verbose output
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
-    let mut builder = tauri::Builder::default();
+    let mut builder = tauri::Builder::default().plugin(tauri_plugin_http::init());
 
     if let Some(client) = sentry_guard.as_ref() {
         builder = builder.plugin(tauri_plugin_sentry::init(client));
@@ -101,6 +101,8 @@ fn main() {
             commands::config_set_host_attr,
             commands::config_set_dir,
             commands::config_pick_dir,
+            // Feedback
+            commands::feedback_gather_metadata,
             // Git
             commands::git_init_if_needed,
             commands::git_status,

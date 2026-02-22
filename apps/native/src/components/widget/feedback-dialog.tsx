@@ -13,28 +13,22 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Lightbulb, Bug, MessageCircle } from "lucide-react";
-import { Feedback as FeedbackModel, FeedbackType as FeedbackTypeEnum } from "@/types/feedback";
-
-type FeedbackType = "suggestion" | "bug" | "general";
-
-interface ShareOptions {
-  lastPrompt: boolean;
-  currentAppState: boolean;
-  systemInfo: boolean;
-  usageStats: boolean;
-  evolutionLog: boolean;
-  nixConfig: boolean;
-  appLogs: boolean;
-}
+import { Feedback as FeedbackModel, FeedbackType, ShareOptions} from "@/types/feedback";
+import { getFeedbackUrl } from "@/lib/env";
+import { darwinAPI } from "@/tauri-api";
+import { fetch } from '@tauri-apps/plugin-http';
+import { toast } from "sonner";
 
 export function FeedbackDialog() {
   const feedbackOpen = useWidgetStore((s) => s.feedbackOpen);
   const setFeedbackOpen = useWidgetStore((s) => s.setFeedbackOpen);
 
-  const [feedbackType, setFeedbackType] = useState<FeedbackType>("suggestion");
+  const [feedbackType, setFeedbackType] = useState<FeedbackType>(FeedbackType.Suggestion);
   const [feedbackText, setFeedbackText] = useState("");
   const [expectedText, setExpectedText] = useState("");
+  const [email, setEmail] = useState("");
   const [shareOptions, setShareOptions] = useState<ShareOptions>({
     lastPrompt: true,
     currentAppState: true,
@@ -48,7 +42,7 @@ export function FeedbackDialog() {
   const handleClose = () => {
     setFeedbackOpen(false);
     // Reset state
-    setFeedbackType("suggestion");
+    setFeedbackType(FeedbackType.Suggestion);
     setFeedbackText("");
     setExpectedText("");
     setShareOptions({
@@ -62,28 +56,37 @@ export function FeedbackDialog() {
     });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    let metadata: Awaited<ReturnType<typeof darwinAPI.feedback.gatherMetadata>> | null = null;
+    try {
+      metadata = await darwinAPI.feedback.gatherMetadata(feedbackType, shareOptions);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("Failed to gather feedback metadata:", err);
+    }
+
     // Build a typed Feedback model and log it (replace with submission later)
     const modelType =
       feedbackType === "suggestion"
-        ? FeedbackTypeEnum.Suggestion
+        ? FeedbackType.Suggestion
         : feedbackType === "bug"
-        ? FeedbackTypeEnum.Bug
-        : FeedbackTypeEnum.General;
+        ? FeedbackType.Bug
+        : FeedbackType.General;
 
     const feedbackModel = new FeedbackModel({
       type: modelType,
       text: feedbackText,
+      email: email || undefined,
       expectedText: feedbackType === "bug" ? expectedText : undefined,
       share: shareOptions,
       // artifact fields left empty for now; will be populated by caller when collecting logs
-      lastPromptText: undefined,
-      currentAppStateSnapshot: undefined,
-      systemInfoFull: undefined,
-      usageStatsSnapshot: undefined,
-      evolutionLogContent: undefined,
-      nixConfigSnapshot: undefined,
-      appLogsContent: undefined,
+      lastPromptText: metadata?.lastPromptText,
+      currentAppStateSnapshot: metadata?.currentAppStateSnapshot,
+      systemInfo: metadata?.systemInfo,
+      usageStats: metadata?.usageStats,
+      evolutionLogContent: metadata?.evolutionLogContent,
+      nixConfigSnapshot: metadata?.nixConfigSnapshot,
+      appLogsContent: metadata?.appLogsContent,
     });
 
     const validation = feedbackModel.validate();
@@ -91,22 +94,80 @@ export function FeedbackDialog() {
       console.warn("Feedback validation failed:", validation.errors);
     }
 
-    console.log("Feedback submitted:", feedbackModel.toJSON());
+    try {
+      const feedbackUrl = getFeedbackUrl();
+      const payload = feedbackModel.toJSON();
+      const json = JSON.stringify(payload);
+
+      const resp = await fetch(feedbackUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: json,
+      });
+
+      let body: any = null;
+      try {
+        body = await resp.json();
+      } catch (e) {
+        // ignore
+      }
+
+      if (!resp.ok) {
+        const serverErr = body?.error ?? null;
+        const details = body?.details;
+
+        // Only surface errors we intentionally add in the API handler.
+        if (serverErr === "rate_limited") {
+          toast.error("You're sending feedback too quickly — please wait a minute and try again.");
+        } else if (serverErr === "validation_failed") {
+          if (Array.isArray(details) && details.length > 0) {
+            toast.error(`Validation error: ${details.join('; ')}`);
+          } else {
+            toast.error("Validation failed — please check your input.");
+          }
+        } else if (serverErr === "dsn missing") {
+          toast.error("Feedback DSN missing in request.");
+        } else if (serverErr === "invalid dsn") {
+          toast.error("Invalid feedback DSN — submission rejected.");
+        } else if (serverErr === "db_error") {
+          toast.error("Server error saving feedback. Please try again later.");
+        } else if (typeof serverErr === "string") {
+          // If it's some other string, show it directly (fallback).
+          toast.error(serverErr);
+        } else {
+          toast.error("Failed to send feedback. Please try again.");
+        }
+      } else {
+        const id = body?.id ?? undefined;
+        toast.success(id ? `Thanks — feedback sent (id: ${id})` : "Thanks — feedback sent");
+        const info = body?.info ?? body?.message ?? null;
+        if (typeof info === "string" && info.length > 0) {
+          // show any friendly informational message from the server
+          toast(info);
+        }
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("Error posting feedback:", err);
+    }
+
     handleClose();
   };
 
   const getTextboxLabel = () => {
     switch (feedbackType) {
-      case "suggestion":
+      case FeedbackType.Suggestion:
         return "WHAT WOULD YOU LIKE TO SEE";
-      case "general":
+      case FeedbackType.General:
         return "WHAT'S ON YOUR MIND";
-      case "bug":
+      case FeedbackType.Bug:
         return "WHAT HAPPENED";
     }
   };
 
-  const showLastPrompt = feedbackType === "suggestion";
+  const showLastPrompt = feedbackType === FeedbackType.Suggestion || feedbackType === FeedbackType.Bug;
 
   return (
     <Dialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
@@ -173,6 +234,21 @@ export function FeedbackDialog() {
               rows={3}
               className="resize-none"
             />
+
+            {/* Email input (optional) */}
+            <div className="mt-2 flex items-center gap-3">
+              <Label htmlFor="feedback-email" className="text-muted-foreground text-sm">
+                Email (optional)
+              </Label>
+              <Input
+                id="feedback-email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="max-w-xs"
+              />
+            </div>
           </div>
 
           {/* Expected Text (Bug only) */}

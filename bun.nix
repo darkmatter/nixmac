@@ -3092,6 +3092,10 @@
     url = "https://registry.npmjs.org/@tanstack/virtual-file-routes/-/virtual-file-routes-1.141.0.tgz";
     hash = "sha512-CJrWtr6L9TVzEImm9S7dQINx+xJcYP/aDkIi6gnaWtIgbZs1pnzsE0yJc2noqXZ+yAOqLx3TBGpBEs9tS0P9/A==";
   };
+  "@tauri-apps/api@2.10.1" = fetchurl {
+    url = "https://registry.npmjs.org/@tauri-apps/api/-/api-2.10.1.tgz";
+    hash = "sha512-hKL/jWf293UDSUN09rR69hrToyIXBb8CjGaWC7gfinvnQrBVvnLr08FeFi38gxtugAVyVcTa5/FD/Xnkb1siBw==";
+  };
   "@tauri-apps/api@2.9.1" = fetchurl {
     url = "https://registry.npmjs.org/@tauri-apps/api/-/api-2.9.1.tgz";
     hash = "sha512-IGlhP6EivjXHepbBic618GOmiWe4URJiIeZFlB7x3czM0yDHHYviH1Xvoiv4FefdkQtn6v7TuwWCRfOGdnVUGw==";
@@ -3143,6 +3147,10 @@
   "@tauri-apps/cli@2.9.6" = fetchurl {
     url = "https://registry.npmjs.org/@tauri-apps/cli/-/cli-2.9.6.tgz";
     hash = "sha512-3xDdXL5omQ3sPfBfdC8fCtDKcnyV7OqyzQgfyT5P3+zY6lcPqIYKQBvUasNvppi21RSdfhy44ttvJmftb0PCDw==";
+  };
+  "@tauri-apps/plugin-http@2.5.7" = fetchurl {
+    url = "https://registry.npmjs.org/@tauri-apps/plugin-http/-/plugin-http-2.5.7.tgz";
+    hash = "sha512-+F2lEH/c9b0zSsOXKq+5hZNcd9F4IIKCK1T17RqMwpCmVnx2aoqY8yIBccCd25HTYUb3j6NPVbRax/m00hKG8A==";
   };
   "@tauri-apps/plugin-log@2.7.1" = fetchurl {
     url = "https://registry.npmjs.org/@tauri-apps/plugin-log/-/plugin-log-2.7.1.tgz";
