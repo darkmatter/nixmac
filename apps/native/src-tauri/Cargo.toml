@@ -55,6 +55,7 @@ tauri-plugin-sentry = "0.5"
 sha2 = "0.10.9"
 hex = "0.4.3"
 regex = "1.12.3"
+tauri-plugin-http = "2"
 
 [dependencies.tauri-plugin-sql]
 features = ["sqlite"] # or "postgres", or "mysql"

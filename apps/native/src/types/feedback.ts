@@ -77,7 +77,7 @@ export interface FeedbackPayload {
   currentAppStateSnapshot?: unknown;
   /** Structured system info when available */
   systemInfo?: SystemInfo;
-  systemInfoFull?: string;
+
   /** Structured usage statistics when available */
   usageStats?: UsageStats;
   usageStatsSnapshot?: unknown;
@@ -85,7 +85,9 @@ export interface FeedbackPayload {
   nixConfigSnapshot?: string;
   appLogsContent?: string;
 
-  /** Optional structured user information */
+  /** Optional user email (if the user chooses to provide it) */
+  email?: string;
+
   /** ISO timestamp when the feedback was created */
   createdAt: string;
 }
@@ -105,6 +107,7 @@ export class Feedback {
   public expectedText?: string;
   public share: ShareOptions;
   public createdAt: string;
+  public email?: string;
   
   // Optional collected artifacts (populated later by caller)
   public lastPromptText?: string;
@@ -126,6 +129,7 @@ export class Feedback {
     this.type = payload.type;
     this.text = payload.text ?? "";
     this.expectedText = payload.expectedText;
+    this.email = payload.email;
     this.share = payload.share ?? {
       lastPrompt: true,
       currentAppState: true,
@@ -154,6 +158,7 @@ export class Feedback {
       type: this.type,
       text: this.text,
       expectedText: this.expectedText,
+      email: this.email,
       share: this.share,
       lastPromptText: this.lastPromptText,
       currentAppStateSnapshot: this.currentAppStateSnapshot,

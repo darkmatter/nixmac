@@ -36,7 +36,8 @@
     "db:studio": "turbo -F @nixmac/db db:studio",
     "db:generate": "turbo -F @nixmac/db db:generate",
     "db:migrate": "turbo -F @nixmac/db db:migrate",
-    "postinstall": "bun2nix -o bun.nix"
+    "postinstall": "bun2nix -o bun.nix",
+    "devenv:up": "bash ./bin/devenv-up"
   },
   "dependencies": {
     "@biomejs/biome": "^2.3.13",
