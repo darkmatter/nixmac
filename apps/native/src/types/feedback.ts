@@ -77,7 +77,7 @@ export interface FeedbackPayload {
   currentAppStateSnapshot?: unknown;
   /** Structured system info when available */
   systemInfo?: SystemInfo;
-  systemInfoFull?: string;
+
   /** Structured usage statistics when available */
   usageStats?: UsageStats;
   usageStatsSnapshot?: unknown;
@@ -87,7 +87,7 @@ export interface FeedbackPayload {
 
   /** Optional user email (if the user chooses to provide it) */
   email?: string;
-  
+
   /** ISO timestamp when the feedback was created */
   createdAt: string;
 }

@@ -6,8 +6,8 @@
     {
       "identifier": "http:default",
       "allow": [
-        { "url": "*://**:*/**"}
-      ]
+        { "url": "http://localhost:*/**" },
+        { "url": "https://localhost:*/**" }      ]
     }
   ]
 }

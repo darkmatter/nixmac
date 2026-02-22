@@ -3,7 +3,7 @@ import { createContext } from "@nixmac/api/context";
 import { appRouter } from "@nixmac/api/routers/index";
 import { auth } from "@nixmac/auth";
 import { Hono } from "hono";
-import { cors } from "hono/cors";
+//import { cors } from "hono/cors";
 import { insertFeedback } from "./services/feedback";
 
 export const apiApp = new Hono();
@@ -12,19 +12,21 @@ export const apiApp = new Hono();
 // native client to allow posting feedback. Can replace with an env var
 // or more complex DSN structure later to support rotation or other
 // features.
+// NOTE: If you change this here, you should also change it in the
+// native app, env.ts getFeedbackUrl.
 const FEEDBACK_DSN = "dsn_6f4b9a5e8c2d4f1a9b3c7e2d5a1f0b4c";
 
 // Auth (better-auth)
 apiApp.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
-apiApp.use(
-  "*",
-  cors({
-    origin: "*",
-    allowMethods: ["POST", "OPTIONS"],
-    allowHeaders: ["Content-Type"],
-  })
-);
+// apiApp.use(
+//   "*",
+//   cors({
+//     origin: "*",
+//     allowMethods: ["POST", "OPTIONS"],
+//     allowHeaders: ["Content-Type"],
+//   })
+// );
 
 apiApp.use("*", async (c, next) => {
   console.log("Incoming method:", c.req.method, "URL:", c.req.url);
@@ -85,9 +87,7 @@ const feedbackRateLimit = async (c: any, next: () => Promise<any>) => {
 
 // Attach per-IP limiter as middleware for the feedback route.
 apiApp.post("/api/feedback/:dsn", feedbackRateLimit, async (c) => {
-  console.log("Raw body text:", await c.req.text());
   try {
-    // @ts-ignore - Hono provides `req.param` at runtime
     const dsn: string | undefined = (c.req as any).param?.("dsn");
     if (!dsn) {
       return c.json({ ok: false, error: "dsn missing" }, 400);
@@ -99,8 +99,38 @@ apiApp.post("/api/feedback/:dsn", feedbackRateLimit, async (c) => {
     }
 
     const payload = await c.req.json();
+
+    // Basic validation for expected feedback payload fields.
+    const errors: string[] = [];
+    const allowedTypes = ["suggestion", "bug", "general"];
+    const type = (payload?.type as string) ?? "general";
+    if (!allowedTypes.includes(type)) {
+      errors.push(`type must be one of: ${allowedTypes.join(", ")}`);
+    }
+
+    const text = typeof payload?.text === "string" ? payload.text.trim() : "";
+    if (type === "bug") {
+      if (text.length === 0 && !(typeof payload?.expectedText === "string" && payload.expectedText.trim().length > 0)) {
+        errors.push("bug reports must include a description in 'text' or 'expectedText'");
+      }
+    } else {
+      if (text.length === 0) {
+        errors.push("please provide some text for your feedback");
+      }
+    }
+
+    if (payload?.email && typeof payload.email === "string") {
+      // simple email sanity check
+      const e = payload.email as string;
+      const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+      if (!emailRegex.test(e)) errors.push("email appears invalid");
+    }
+
+    if (errors.length > 0) {
+      return c.json({ ok: false, error: "validation_failed", details: errors }, 400);
+    }
     // persist to DB using the shared db package
-    const id = (globalThis.crypto as any)?.randomUUID?.() ?? Date.now().toString();
+    const id = crypto.randomUUID?.() ?? Date.now().toString();
     try {
       await insertFeedback({ id, type: (payload.type as any) ?? "general", email: payload.email, payload });
     } catch (dbErr) {
