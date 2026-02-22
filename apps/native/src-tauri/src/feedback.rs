@@ -37,35 +37,13 @@ fn get_macos_version() -> Option<String> {
     }
 }
 
-/// Get Nix version by running `nix --version`
-fn get_nix_version() -> Option<String> {
-    for nix_path in nix::get_nix_path().split(':') {
-        if Path::new(nix_path).exists() {
-            if let Ok(output) = Command::new(nix_path).arg("--version").output() {
-                if output.status.success() {
-                    if let Ok(version) = String::from_utf8(output.stdout) {
-                        // Output is like "nix (Nix) 2.24.1"
-                        // Extract just the version number
-                        let parts: Vec<&str> = version.split_whitespace().collect();
-                        if let Some(v) = parts.last() {
-                            return Some(v.trim().to_string());
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    None
-}
-
 /// Gather system information
 pub fn gather_system_info(app: &AppHandle) -> types::FeedbackSystemInfo {
     let app_version = app.package_info().version.to_string();
     let os_name = Some(std::env::consts::OS.to_string());
     let arch = Some(std::env::consts::ARCH.to_string());
     let os_version = get_macos_version();
-    let nix_version = get_nix_version();
+    let nix_version = nix::get_nix_version();
 
     types::FeedbackSystemInfo {
         os_name,
