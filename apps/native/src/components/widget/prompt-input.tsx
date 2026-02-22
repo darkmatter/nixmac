@@ -44,9 +44,7 @@ export function PromptInput() {
       await darwinAPI.promptHistory.add(evolvePrompt.trim()).catch(console.error);
       // Refresh history
       const updated = await darwinAPI.promptHistory.get().catch(() => []);
-      if (updated) {
-        setPromptHistory(updated);
-      }
+      setPromptHistory(updated);
       handleEvolve();
     }
   };
@@ -98,11 +96,8 @@ export function PromptInput() {
                 </InputGroupButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="[--radius:0.95rem] max-w-md" side="top">
-                {promptHistory.map((prompt, index) => (
-                  <DropdownMenuItem
-                    key={`${prompt}-${index}`}
-                    onClick={() => setEvolvePrompt(prompt)}
-                  >
+                {promptHistory.map((prompt) => (
+                  <DropdownMenuItem key={prompt} onClick={() => setEvolvePrompt(prompt)}>
                     <span className="line-clamp-2 text-sm">{prompt}</span>
                   </DropdownMenuItem>
                 ))}
