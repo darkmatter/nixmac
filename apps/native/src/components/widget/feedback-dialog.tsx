@@ -115,10 +115,38 @@ export function FeedbackDialog() {
       }
 
       if (!resp.ok) {
-        toast.error("Failed to send feedback. Please try again.");
+        const serverErr = body?.error ?? null;
+        const details = body?.details;
+
+        // Only surface errors we intentionally add in the API handler.
+        if (serverErr === "rate_limited") {
+          toast.error("You're sending feedback too quickly — please wait a minute and try again.");
+        } else if (serverErr === "validation_failed") {
+          if (Array.isArray(details) && details.length > 0) {
+            toast.error(`Validation error: ${details.join('; ')}`);
+          } else {
+            toast.error("Validation failed — please check your input.");
+          }
+        } else if (serverErr === "dsn missing") {
+          toast.error("Feedback DSN missing in request.");
+        } else if (serverErr === "invalid dsn") {
+          toast.error("Invalid feedback DSN — submission rejected.");
+        } else if (serverErr === "db_error") {
+          toast.error("Server error saving feedback. Please try again later.");
+        } else if (typeof serverErr === "string") {
+          // If it's some other string, show it directly (fallback).
+          toast.error(serverErr);
+        } else {
+          toast.error("Failed to send feedback. Please try again.");
+        }
       } else {
         const id = body?.id ?? undefined;
         toast.success(id ? `Thanks — feedback sent (id: ${id})` : "Thanks — feedback sent");
+        const info = body?.info ?? body?.message ?? null;
+        if (typeof info === "string" && info.length > 0) {
+          // show any friendly informational message from the server
+          toast(info);
+        }
       }
     } catch (err) {
       // eslint-disable-next-line no-console
