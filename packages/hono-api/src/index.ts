@@ -3,7 +3,6 @@ import { createContext } from "@nixmac/api/context";
 import { appRouter } from "@nixmac/api/routers/index";
 import { auth } from "@nixmac/auth";
 import { Hono } from "hono";
-//import { cors } from "hono/cors";
 import { insertFeedback } from "./services/feedback";
 
 export const apiApp = new Hono();
@@ -19,14 +18,8 @@ const FEEDBACK_DSN = "dsn_6f4b9a5e8c2d4f1a9b3c7e2d5a1f0b4c";
 // Auth (better-auth)
 apiApp.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
-// apiApp.use(
-//   "*",
-//   cors({
-//     origin: "*",
-//     allowMethods: ["POST", "OPTIONS"],
-//     allowHeaders: ["Content-Type"],
-//   })
-// );
+// TODO: Calling this from the native app may result in a CORS error.
+// Figure out how to solve this kind of thing with the tauri app.
 
 apiApp.use("*", async (c, next) => {
   console.log("Incoming method:", c.req.method, "URL:", c.req.url);
