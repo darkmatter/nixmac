@@ -124,6 +124,7 @@ fn main() {
             commands::darwin_apply,
             commands::darwin_apply_stream_start,
             commands::darwin_apply_stream_cancel,
+            commands::nix_install_start,
             commands::flake_installed_apps,
             commands::flake_list_hosts,
             commands::flake_exists,
