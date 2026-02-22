@@ -4,7 +4,7 @@
 //! from the frontend.
 //! All collection respects the ShareOptions flags provided by the user.
 
-use crate::{store, types};
+use crate::{nix, store, types};
 use anyhow::{Context, Result};
 use chrono::Utc;
 use log::{debug, warn};
@@ -39,16 +39,7 @@ fn get_macos_version() -> Option<String> {
 
 /// Get Nix version by running `nix --version`
 fn get_nix_version() -> Option<String> {
-    // Try common Nix paths since GUI apps don't inherit shell PATH on macOS
-    let nix_paths = [
-        "/run/current-system/sw/bin/nix",
-        "/nix/var/nix/profiles/default/bin/nix",
-        "/etc/profiles/per-user/root/bin/nix",
-        "/usr/local/bin/nix",
-        "/opt/homebrew/bin/nix",
-    ];
-
-    for nix_path in &nix_paths {
+    for nix_path in nix::get_nix_path().split(':') {
         if Path::new(nix_path).exists() {
             if let Ok(output) = Command::new(nix_path).arg("--version").output() {
                 if output.status.success() {
@@ -127,10 +118,23 @@ fn find_most_recent_darwin_log() -> Option<PathBuf> {
         })
         .collect();
 
-    // Sort by modification time, most recent first
-    log_files.sort_by_key(|entry| entry.metadata().and_then(|m| m.modified()).ok());
+    // Sort by modification time, most recent first. Use a comparator that
+    // handles `Option<SystemTime>` explicitly so entries with metadata
+    // errors (None) don't sort ahead of valid files.
+    log_files.sort_by(|a, b| {
+        let ma = a.metadata().and_then(|m| m.modified()).ok();
+        let mb = b.metadata().and_then(|m| m.modified()).ok();
 
-    log_files.last().map(|entry| entry.path())
+        match (ma, mb) {
+            (Some(ta), Some(tb)) => tb.cmp(&ta),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => std::cmp::Ordering::Equal,
+        }
+    });
+
+    // After sorting most-recent-first, take the first entry if present
+    log_files.first().map(|entry| entry.path())
 }
 
 /// Gather app logs - collects last 200 lines from the most recent darwin-rebuild log
@@ -197,15 +201,22 @@ pub fn extract_last_prompt(app: &AppHandle) -> Option<String> {
 // Nix Config Snapshot
 // =============================================================================
 
-/// Recursively find all .nix files in a directory
+/// Recursively find all .nix files in a directory (bounded recursion)
 fn find_nix_files(dir: &Path) -> Result<Vec<PathBuf>> {
+    const MAX_RECURSION_DEPTH: usize = 20;
+
     let mut nix_files = Vec::new();
 
     if !dir.exists() {
         return Ok(nix_files);
     }
 
-    fn visit_dir(path: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
+    fn visit_dir(path: &Path, files: &mut Vec<PathBuf>, depth: usize) -> Result<()> {
+        if depth >= MAX_RECURSION_DEPTH {
+            // Stop descending further to avoid potential infinite recursion
+            return Ok(());
+        }
+
         if !path.is_dir() {
             return Ok(());
         }
@@ -215,7 +226,7 @@ fn find_nix_files(dir: &Path) -> Result<Vec<PathBuf>> {
             let path = entry.path();
 
             if path.is_dir() {
-                visit_dir(&path, files)?;
+                visit_dir(&path, files, depth + 1)?;
             } else if path.extension().and_then(|s| s.to_str()) == Some("nix") {
                 files.push(path);
             }
@@ -223,7 +234,7 @@ fn find_nix_files(dir: &Path) -> Result<Vec<PathBuf>> {
         Ok(())
     }
 
-    visit_dir(dir, &mut nix_files)?;
+    visit_dir(dir, &mut nix_files, 0)?;
     Ok(nix_files)
 }
 
