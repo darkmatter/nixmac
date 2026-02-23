@@ -69,6 +69,7 @@ export interface WidgetState {
   isProcessing: boolean;
   processingAction: ProcessingAction;
   evolveEvents: EvolveEvent[];
+  promptHistory: string[];
 
   // Summary (AI-generated)
   summary: ChangesSummary;
@@ -107,6 +108,7 @@ export interface WidgetActions {
   setSettingsOpen: (open: boolean) => void;
   setFeedbackOpen: (open: boolean) => void;
   setError: (error: string | null) => void;
+  setPromptHistory: (history: string[]) => void;
 
   // Client-side state (NOT from server)
   setSummaryLoading: (loading: boolean) => void;
@@ -173,6 +175,7 @@ export const initialWidgetState: WidgetState = {
   isProcessing: false,
   processingAction: null,
   evolveEvents: [],
+  promptHistory: [],
 
   // Summary
   summary: initialSummaryState,
@@ -229,6 +232,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
     setFeedbackOpen: (feedbackOpen) => set({ feedbackOpen }),
     setError: (error) => set({ error }),
+    setPromptHistory: (promptHistory) => set({ promptHistory }),
 
     // Client-side UI state (NOT from server)
     setBootstrapping: (isBootstrapping) => set({ isBootstrapping }),
