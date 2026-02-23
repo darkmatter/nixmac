@@ -219,7 +219,7 @@ export function FeedbackDialog() {
         return "WHAT'S ON YOUR MIND";
       case FeedbackType.Bug:
         return "WHAT HAPPENED";
-      case FeedbackType.Issue:
+      case (FeedbackType.Issue, FeedbackType.Error):
         return "DESCRIBE WHAT HAPPENED";
       default:
         return "WHAT'S ON YOUR MIND";
@@ -255,7 +255,7 @@ export function FeedbackDialog() {
 
         <div className="space-y-6">
           {/* Type Selection */}
-          {!isIssue && (
+          {!isIssue && !isError && (
             <div className="space-y-3">
               <Label className="text-muted-foreground">TYPE</Label>
               <RadioGroup
@@ -316,7 +316,7 @@ export function FeedbackDialog() {
             {/* Email input (optional) */}
           </div>
 
-          {isIssue && (
+          {(isIssue || isError) && (
             <div className="space-y-2">
               <Label className="text-muted-foreground">RELATED PROMPT</Label>
               <Select value={relatedPrompt} onValueChange={setRelatedPrompt}>
