@@ -221,10 +221,8 @@ export const darwinAPI = {
     stageAll: () => invoke("git_stage_all"),
     unstageAll: () => invoke("git_unstage_all"),
     restoreAll: () => invoke("git_restore_all"),
-    checkoutNewBranch: (branchName: string) =>
-      invoke("git_checkout_new_branch", { branchName }),
-    checkoutBranch: (branchName: string) =>
-      invoke("git_checkout_branch", { branchName }),
+    checkoutNewBranch: (branchName: string) => invoke("git_checkout_new_branch", { branchName }),
+    checkoutBranch: (branchName: string) => invoke("git_checkout_branch", { branchName }),
     checkoutMainBranch: () => invoke("git_checkout_main_branch"),
     tagAsBuilt: () => invoke("git_tag_as_built"),
     finalizeEvolve: (branchName: string, squash?: boolean, commitMessage?: string) =>
@@ -263,6 +261,11 @@ export const darwinAPI = {
     setCached: (provider: string, models: string[]) =>
       invoke("set_cached_models", { provider, models }),
     clearCached: (provider: string) => invoke("clear_cached_models", { provider }),
+  },
+
+  promptHistory: {
+    get: () => invoke<string[]>("get_prompt_history"),
+    add: (prompt: string) => invoke("add_to_prompt_history", { prompt }),
   },
 
   previewIndicator: {
