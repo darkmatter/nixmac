@@ -1,5 +1,14 @@
 import { pgEnum, pgTable, text, json, timestamp } from "drizzle-orm/pg-core";
 
+// Example query to get all bugs to JSON:
+/*
+psql "$DATABASE_URL" -t -A \
+  -c "SELECT jsonb_pretty(payload) 
+      FROM public.feedback 
+      WHERE type = 'bug';" \
+  > bugs.json
+*/
+
 export const feedbackType = pgEnum("feedback_type", ["bug", "suggestion", "general"]);
 
 export const feedback = pgTable("feedback", {

@@ -8,9 +8,8 @@
 //! preview mode, etc.) is computed and managed entirely by the client.
 
 use crate::{
-    darwin, default_config, git, nix, peek, permissions, store, summarize, types, watcher,
+    darwin, default_config, feedback, git, nix, peek, permissions, store, summarize, types, watcher,
 };
-use chrono::Utc;
 use std::path::Path;
 use std::process::Command;
 use tauri::AppHandle;
@@ -100,74 +99,13 @@ pub async fn bootstrap_default_config(app: AppHandle, hostname: String) -> Resul
 // =============================================================================
 
 /// Gathers feedback metadata based on user opt-in flags.
-/// TODO: A lot of these aren't filled in, some of them it's not clear
-/// HOW to fill them in, and others it might not be WISE to fill them in...
+/// Delegates to the feedback module for comprehensive data collection.
 #[tauri::command]
 pub async fn feedback_gather_metadata(
     app: AppHandle,
     request: types::FeedbackMetadataRequest,
 ) -> Result<types::FeedbackMetadata, String> {
-    let share = request.share;
-    let mut metadata = types::FeedbackMetadata {
-        last_prompt_text: None,
-        current_app_state_snapshot: None,
-        system_info: None,
-        usage_stats: None,
-        evolution_log_content: None,
-        nix_config_snapshot: None,
-        app_logs_content: None,
-    };
-
-    if share.system_info {
-        let app_version = app.package_info().version.to_string();
-        metadata.system_info = Some(types::FeedbackSystemInfo {
-            os_name: Some(std::env::consts::OS.to_string()),
-            os_version: None,
-            arch: Some(std::env::consts::ARCH.to_string()),
-            nix_version: None,
-            app_version: Some(app_version),
-        });
-    }
-
-    if share.current_app_state {
-        let config_dir = store::get_config_dir(&app).ok();
-        let host_attr = store::get_host_attr(&app).ok().flatten();
-        metadata.current_app_state_snapshot = Some(serde_json::json!({
-            "configDir": config_dir,
-            "hostAttr": host_attr,
-            "feedbackType": request.feedback_type,
-        }));
-    }
-
-    if share.usage_stats {
-        metadata.usage_stats = Some(types::FeedbackUsageStats {
-            total_evolutions: None,
-            success_rate: None,
-            avg_iterations: None,
-            last_computed_at: Some(Utc::now().to_rfc3339()),
-            extra: Some(serde_json::json!({
-                "status": "unavailable",
-            })),
-        });
-    }
-
-    if share.last_prompt {
-        metadata.last_prompt_text = None;
-    }
-
-    if share.evolution_log {
-        metadata.evolution_log_content = None;
-    }
-
-    if share.nix_config {
-        metadata.nix_config_snapshot = None;
-    }
-
-    if share.app_logs {
-        metadata.app_logs_content = None;
-    }
-
-    Ok(metadata)
+    feedback::gather_metadata(&app, request).map_err(|e| capture_err("feedback_gather_metadata", e))
 }
 
 // =============================================================================

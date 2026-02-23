@@ -4,6 +4,7 @@
 
 use anyhow::Result;
 use serde_json::Value;
+use std::path::Path;
 use std::process::Command;
 
 /// Common Nix binary paths on macOS (GUI apps don't inherit shell PATH)
@@ -20,6 +21,28 @@ pub fn get_nix_path() -> String {
     let base_path = std::env::var("PATH").unwrap_or_default();
     let nix_paths = NIX_PATHS.join(":");
     format!("{}:{}", nix_paths, base_path)
+}
+
+/// Get Nix version by running `nix --version`
+pub fn get_nix_version() -> Option<String> {
+    for nix_path in get_nix_path().split(':') {
+        if Path::new(nix_path).exists() {
+            if let Ok(output) = Command::new(nix_path).arg("--version").output() {
+                if output.status.success() {
+                    if let Ok(version) = String::from_utf8(output.stdout) {
+                        // Output is like "nix (Nix) 2.24.1"
+                        // Extract just the version number
+                        let parts: Vec<&str> = version.split_whitespace().collect();
+                        if let Some(v) = parts.last() {
+                            return Some(v.trim().to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    None
 }
 
 /// Determines the host attribute to use for darwin-rebuild.
