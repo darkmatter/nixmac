@@ -6,6 +6,12 @@
 			"when": 1771632000000,
 			"tag": "20260221_create_feedback",
 			"breakpoints": false
+		},
+		{
+			"idx": 2,
+			"when": 1771776000000,
+			"tag": "20260223_add_feedback_type_issue_error",
+			"breakpoints": false
 		}
 	]
 }

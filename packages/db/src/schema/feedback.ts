@@ -9,7 +9,13 @@ psql "$DATABASE_URL" -t -A \
   > bugs.json
 */
 
-export const feedbackType = pgEnum("feedback_type", ["bug", "suggestion", "general"]);
+export const feedbackType = pgEnum("feedback_type", [
+  "bug",
+  "suggestion",
+  "general",
+  "issue",
+  "error",
+]);
 
 export const feedback = pgTable("feedback", {
   id: text("id").primaryKey(),

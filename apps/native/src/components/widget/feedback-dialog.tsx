@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useEffect, useState } from "react";
+import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import {
   Dialog,
   DialogContent,
@@ -14,30 +14,85 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Lightbulb, Bug, MessageCircle } from "lucide-react";
-import { Feedback as FeedbackModel, FeedbackType, ShareOptions} from "@/types/feedback";
+import { Feedback as FeedbackModel, FeedbackType, ShareOptions } from "@/types/feedback";
 import { getFeedbackUrl } from "@/lib/env";
 import { darwinAPI } from "@/tauri-api";
-import { fetch } from '@tauri-apps/plugin-http';
+import { fetch } from "@tauri-apps/plugin-http";
 import { toast } from "sonner";
+
+const DEFAULT_SHARE_OPTIONS: ShareOptions = {
+  lastPrompt: true,
+  currentAppState: true,
+  systemInfo: true,
+  usageStats: true,
+  evolutionLog: true,
+  changedNixFiles: true,
+  aiProviderModelInfo: true,
+  buildErrorOutput: true,
+  flakeInputsSnapshot: true,
+  nixConfig: true,
+  appLogs: true,
+};
+
+const ISSUE_SHARE_OPTIONS: ShareOptions = {
+  lastPrompt: true,
+  currentAppState: true,
+  systemInfo: true,
+  usageStats: true,
+  evolutionLog: true,
+  changedNixFiles: true,
+  aiProviderModelInfo: true,
+  buildErrorOutput: true,
+  flakeInputsSnapshot: true,
+  nixConfig: true,
+  appLogs: true,
+};
 
 export function FeedbackDialog() {
   const feedbackOpen = useWidgetStore((s) => s.feedbackOpen);
   const setFeedbackOpen = useWidgetStore((s) => s.setFeedbackOpen);
+  const feedbackTypeOverride = useWidgetStore((s) => s.feedbackTypeOverride);
+  const setFeedbackTypeOverride = useWidgetStore((s) => s.setFeedbackTypeOverride);
+  const gitStatus = useWidgetStore((s) => s.gitStatus);
+  const step = useCurrentStep();
 
   const [feedbackType, setFeedbackType] = useState<FeedbackType>(FeedbackType.Suggestion);
   const [feedbackText, setFeedbackText] = useState("");
   const [expectedText, setExpectedText] = useState("");
   const [email, setEmail] = useState("");
-  const [shareOptions, setShareOptions] = useState<ShareOptions>({
-    lastPrompt: true,
-    currentAppState: true,
-    systemInfo: true,
-    usageStats: true,
-    evolutionLog: true,
-    nixConfig: true,
-    appLogs: true,
-  });
+  const [promptHistory, setPromptHistory] = useState<string[]>([]);
+  const [relatedPrompt, setRelatedPrompt] = useState("");
+  const [shareOptions, setShareOptions] = useState<ShareOptions>(DEFAULT_SHARE_OPTIONS);
+
+  useEffect(() => {
+    if (!feedbackOpen) {
+      return;
+    }
+
+    darwinAPI.promptHistory.get().then(setPromptHistory).catch(console.error);
+  }, [feedbackOpen]);
+
+  useEffect(() => {
+    if (!feedbackOpen || !feedbackTypeOverride) {
+      return;
+    }
+
+    setFeedbackType(feedbackTypeOverride);
+    if (
+      feedbackTypeOverride === FeedbackType.Issue ||
+      feedbackTypeOverride === FeedbackType.Error
+    ) {
+      setShareOptions(ISSUE_SHARE_OPTIONS);
+    }
+  }, [feedbackOpen, feedbackTypeOverride]);
 
   const handleClose = () => {
     setFeedbackOpen(false);
@@ -45,15 +100,10 @@ export function FeedbackDialog() {
     setFeedbackType(FeedbackType.Suggestion);
     setFeedbackText("");
     setExpectedText("");
-    setShareOptions({
-      lastPrompt: true,
-      currentAppState: true,
-      systemInfo: true,
-      usageStats: true,
-      evolutionLog: true,
-      nixConfig: true,
-      appLogs: true,
-    });
+    setEmail("");
+    setRelatedPrompt("");
+    setShareOptions(DEFAULT_SHARE_OPTIONS);
+    setFeedbackTypeOverride(null);
   };
 
   const handleSubmit = async () => {
@@ -66,25 +116,29 @@ export function FeedbackDialog() {
     }
 
     // Build a typed Feedback model and log it (replace with submission later)
-    const modelType =
-      feedbackType === "suggestion"
-        ? FeedbackType.Suggestion
-        : feedbackType === "bug"
-        ? FeedbackType.Bug
-        : FeedbackType.General;
+    const modelType = feedbackType;
+    const relatedPromptText =
+      feedbackType === FeedbackType.Issue && relatedPrompt
+        ? relatedPrompt
+        : metadata?.lastPromptText;
+    const selectedPromptText = shareOptions.lastPrompt ? relatedPromptText : undefined;
 
     const feedbackModel = new FeedbackModel({
       type: modelType,
       text: feedbackText,
       email: email || undefined,
-      expectedText: feedbackType === "bug" ? expectedText : undefined,
+      expectedText: feedbackType === FeedbackType.Bug ? expectedText : undefined,
       share: shareOptions,
       // artifact fields left empty for now; will be populated by caller when collecting logs
-      lastPromptText: metadata?.lastPromptText,
+      lastPromptText: selectedPromptText,
       currentAppStateSnapshot: metadata?.currentAppStateSnapshot,
       systemInfo: metadata?.systemInfo,
       usageStats: metadata?.usageStats,
       evolutionLogContent: metadata?.evolutionLogContent,
+      changedNixFilesDiff: metadata?.changedNixFilesDiff,
+      aiProviderModelInfo: metadata?.aiProviderModelInfo,
+      buildErrorOutput: metadata?.buildErrorOutput,
+      flakeInputsSnapshot: metadata?.flakeInputsSnapshot,
       nixConfigSnapshot: metadata?.nixConfigSnapshot,
       appLogsContent: metadata?.appLogsContent,
     });
@@ -110,6 +164,7 @@ export function FeedbackDialog() {
       let body: any = null;
       try {
         body = await resp.json();
+        // oxlint-disable-next-line no-unused-vars
       } catch (e) {
         // ignore
       }
@@ -123,7 +178,7 @@ export function FeedbackDialog() {
           toast.error("You're sending feedback too quickly — please wait a minute and try again.");
         } else if (serverErr === "validation_failed") {
           if (Array.isArray(details) && details.length > 0) {
-            toast.error(`Validation error: ${details.join('; ')}`);
+            toast.error(`Validation error: ${details.join("; ")}`);
           } else {
             toast.error("Validation failed — please check your input.");
           }
@@ -164,62 +219,85 @@ export function FeedbackDialog() {
         return "WHAT'S ON YOUR MIND";
       case FeedbackType.Bug:
         return "WHAT HAPPENED";
+      case FeedbackType.Issue:
+        return "DESCRIBE WHAT HAPPENED";
+      default:
+        return "WHAT'S ON YOUR MIND";
     }
   };
 
-  const showLastPrompt = feedbackType === FeedbackType.Suggestion || feedbackType === FeedbackType.Bug;
+  const isIssue = feedbackType === FeedbackType.Issue;
+  const isError = feedbackType === FeedbackType.Error;
+  const isReportMode = isIssue || isError;
+  const isEvolveStep = step === "evolving";
+  const isCommitStep = step === "merge";
+  const hasChanges = Boolean(gitStatus?.diff);
+  const showEvolveCommitOptions = isCommitStep || (isEvolveStep && hasChanges);
+  const showEvolveOnlyOptions = isEvolveStep && hasChanges;
+  const dialogTitle = isIssue ? "Report an issue" : isError ? "Report an error" : "Give feedback";
 
   return (
-    <Dialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
+    <Dialog
+      open={feedbackOpen}
+      onOpenChange={(open: boolean) => {
+        if (!open) {
+          handleClose();
+          return;
+        }
+        setFeedbackOpen(true);
+      }}
+    >
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Give feedback</DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
           <DialogDescription>Help us make nixmac better</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Type Selection */}
-          <div className="space-y-3">
-            <Label className="text-muted-foreground">TYPE</Label>
-            <RadioGroup
-              value={feedbackType}
-              onValueChange={(value: string) => setFeedbackType(value as FeedbackType)}
-              className="grid grid-cols-3 gap-4"
-            >
-              <Label
-                className={`flex cursor-pointer flex-row items-center gap-3 rounded-lg border border-input bg-transparent p-3 hover:bg-accent transition-opacity ${
-                  feedbackType === "suggestion" ? "opacity-100" : "opacity-40"
-                }`}
-                htmlFor="suggestion"
+          {!isIssue && (
+            <div className="space-y-3">
+              <Label className="text-muted-foreground">TYPE</Label>
+              <RadioGroup
+                value={feedbackType}
+                onValueChange={(value: string) => setFeedbackType(value as FeedbackType)}
+                className="grid grid-cols-3 gap-4"
               >
-                <RadioGroupItem className="sr-only" value="suggestion" id="suggestion" />
-                <Lightbulb className="h-5 w-5 text-muted-foreground" />
-                <span className="font-medium text-sm">Suggestion</span>
-              </Label>
+                <Label
+                  className={`flex cursor-pointer flex-row items-center gap-3 rounded-lg border border-input bg-transparent p-3 hover:bg-accent transition-opacity ${
+                    feedbackType === FeedbackType.Suggestion ? "opacity-100" : "opacity-40"
+                  }`}
+                  htmlFor="suggestion"
+                >
+                  <RadioGroupItem className="sr-only" value="suggestion" id="suggestion" />
+                  <Lightbulb className="h-5 w-5 text-muted-foreground" />
+                  <span className="font-medium text-sm">Suggestion</span>
+                </Label>
 
-              <Label
-                className={`flex cursor-pointer flex-row items-center gap-3 rounded-lg border border-input bg-transparent p-3 hover:bg-accent transition-opacity ${
-                  feedbackType === "bug" ? "opacity-100" : "opacity-40"
-                }`}
-                htmlFor="bug"
-              >
-                <RadioGroupItem className="sr-only" value="bug" id="bug" />
-                <Bug className="h-5 w-5 text-muted-foreground" />
-                <span className="font-medium text-sm">Bug</span>
-              </Label>
+                <Label
+                  className={`flex cursor-pointer flex-row items-center gap-3 rounded-lg border border-input bg-transparent p-3 hover:bg-accent transition-opacity ${
+                    feedbackType === FeedbackType.Bug ? "opacity-100" : "opacity-40"
+                  }`}
+                  htmlFor="bug"
+                >
+                  <RadioGroupItem className="sr-only" value="bug" id="bug" />
+                  <Bug className="h-5 w-5 text-muted-foreground" />
+                  <span className="font-medium text-sm">Bug</span>
+                </Label>
 
-              <Label
-                className={`flex cursor-pointer flex-row items-center gap-3 rounded-lg border border-input bg-transparent p-3 hover:bg-accent transition-opacity ${
-                  feedbackType === "general" ? "opacity-100" : "opacity-40"
-                }`}
-                htmlFor="general"
-              >
-                <RadioGroupItem className="sr-only" value="general" id="general" />
-                <MessageCircle className="h-5 w-5 text-muted-foreground" />
-                <span className="font-medium text-sm">General</span>
-              </Label>
-            </RadioGroup>
-          </div>
+                <Label
+                  className={`flex cursor-pointer flex-row items-center gap-3 rounded-lg border border-input bg-transparent p-3 hover:bg-accent transition-opacity ${
+                    feedbackType === FeedbackType.General ? "opacity-100" : "opacity-40"
+                  }`}
+                  htmlFor="general"
+                >
+                  <RadioGroupItem className="sr-only" value="general" id="general" />
+                  <MessageCircle className="h-5 w-5 text-muted-foreground" />
+                  <span className="font-medium text-sm">General</span>
+                </Label>
+              </RadioGroup>
+            </div>
+          )}
 
           {/* Feedback Text */}
           <div className="space-y-2">
@@ -236,23 +314,49 @@ export function FeedbackDialog() {
             />
 
             {/* Email input (optional) */}
-            <div className="mt-2 flex items-center gap-3">
-              <Label htmlFor="feedback-email" className="text-muted-foreground text-sm">
-                Email (optional)
-              </Label>
-              <Input
-                id="feedback-email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="max-w-xs"
-              />
+          </div>
+
+          {isIssue && (
+            <div className="space-y-2">
+              <Label className="text-muted-foreground">RELATED PROMPT</Label>
+              <Select value={relatedPrompt} onValueChange={setRelatedPrompt}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a prompt" />
+                </SelectTrigger>
+                <SelectContent>
+                  {promptHistory.length > 0 ? (
+                    promptHistory.map((prompt) => (
+                      <SelectItem key={prompt} value={prompt}>
+                        <span className="line-clamp-2">{prompt}</span>
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem disabled value="__empty__">
+                      No prompt history
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
+          )}
+
+          {/* Email input (optional) - moved below RELATED PROMPT for issue flow */}
+          <div className="mt-2 flex items-center gap-3">
+            <Label htmlFor="feedback-email" className="text-muted-foreground text-sm">
+              Email (optional)
+            </Label>
+            <Input
+              id="feedback-email"
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="max-w-xs"
+            />
           </div>
 
           {/* Expected Text (Bug only) */}
-          {feedbackType === "bug" && (
+          {feedbackType === FeedbackType.Bug && (
             <div className="space-y-2">
               <Label htmlFor="expected-text" className="text-muted-foreground">
                 WHAT DID YOU EXPECT
@@ -272,31 +376,27 @@ export function FeedbackDialog() {
           <div className="space-y-2">
             <Label className="text-muted-foreground">SHARE WITH THE TEAM</Label>
             <div className="space-y-2">
-              {showLastPrompt && (
-                <div className="flex items-start gap-2">
-                  <Checkbox
-                    id="share-prompt"
-                    checked={shareOptions.lastPrompt}
-                    onCheckedChange={(checked: boolean | "indeterminate") =>
-                      setShareOptions({
-                        ...shareOptions,
-                        lastPrompt: checked === true,
-                      })
-                    }
-                  />
-                  <div className="grid gap-1 leading-none">
-                    <Label
-                      htmlFor="share-prompt"
-                      className="cursor-pointer font-medium text-sm text-muted-foreground"
-                    >
-                      Last Prompt
-                    </Label>
-                    <p className="text-muted-foreground text-xs">
-                      "Make the dock autohide with no delay"
-                    </p>
-                  </div>
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  id="share-selected-prompt"
+                  checked={shareOptions.lastPrompt}
+                  onCheckedChange={(checked: boolean | "indeterminate") =>
+                    setShareOptions({
+                      ...shareOptions,
+                      lastPrompt: checked === true,
+                    })
+                  }
+                />
+                <div className="grid gap-1 leading-none">
+                  <Label
+                    htmlFor="share-selected-prompt"
+                    className="cursor-pointer font-medium text-sm text-muted-foreground"
+                  >
+                    Selected prompt text
+                  </Label>
+                  <p className="text-muted-foreground text-xs">The prompt shown above</p>
                 </div>
-              )}
+              </div>
 
               <div className="flex items-start gap-2">
                 <Checkbox
@@ -370,7 +470,7 @@ export function FeedbackDialog() {
                 </div>
               </div>
 
-              {feedbackType === "bug" && (
+              {showEvolveCommitOptions && (
                 <>
                   <div className="flex items-start gap-2">
                     <Checkbox
@@ -388,7 +488,7 @@ export function FeedbackDialog() {
                         htmlFor="share-evolution-log"
                         className="cursor-pointer font-medium text-sm text-muted-foreground"
                       >
-                        Most recent evolution log
+                        Evolution log
                       </Label>
                       <p className="text-muted-foreground text-xs">
                         Full agent trace -- iterations, file reads, edits, build checks
@@ -396,6 +496,110 @@ export function FeedbackDialog() {
                     </div>
                   </div>
 
+                  <div className="flex items-start gap-2">
+                    <Checkbox
+                      id="share-changed-nix-files"
+                      checked={shareOptions.changedNixFiles}
+                      onCheckedChange={(checked: boolean | "indeterminate") =>
+                        setShareOptions({
+                          ...shareOptions,
+                          changedNixFiles: checked === true,
+                        })
+                      }
+                    />
+                    <div className="grid gap-1 leading-none">
+                      <Label
+                        htmlFor="share-changed-nix-files"
+                        className="cursor-pointer font-medium text-sm text-muted-foreground"
+                      >
+                        Changed nix files
+                      </Label>
+                      <p className="text-muted-foreground text-xs">
+                        Contents as currently modified, git diff
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-2">
+                    <Checkbox
+                      id="share-ai-provider-model-info"
+                      checked={shareOptions.aiProviderModelInfo}
+                      onCheckedChange={(checked: boolean | "indeterminate") =>
+                        setShareOptions({
+                          ...shareOptions,
+                          aiProviderModelInfo: checked === true,
+                        })
+                      }
+                    />
+                    <div className="grid gap-1 leading-none">
+                      <Label
+                        htmlFor="share-ai-provider-model-info"
+                        className="cursor-pointer font-medium text-sm text-muted-foreground"
+                      >
+                        AI provider and model info
+                      </Label>
+                      <p className="text-muted-foreground text-xs">
+                        OpenRouter, Claude Sonnet 4, token usage, latency
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {showEvolveOnlyOptions && (
+                <>
+                  <div className="flex items-start gap-2">
+                    <Checkbox
+                      id="share-build-error-output"
+                      checked={shareOptions.buildErrorOutput}
+                      onCheckedChange={(checked: boolean | "indeterminate") =>
+                        setShareOptions({
+                          ...shareOptions,
+                          buildErrorOutput: checked === true,
+                        })
+                      }
+                    />
+                    <div className="grid gap-1 leading-none">
+                      <Label
+                        htmlFor="share-build-error-output"
+                        className="cursor-pointer font-medium text-sm text-muted-foreground"
+                      >
+                        Build error output
+                      </Label>
+                      <p className="text-muted-foreground text-xs">
+                        nix flake check status error (if any)
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-2">
+                    <Checkbox
+                      id="share-flake-inputs-snapshot"
+                      checked={shareOptions.flakeInputsSnapshot}
+                      onCheckedChange={(checked: boolean | "indeterminate") =>
+                        setShareOptions({
+                          ...shareOptions,
+                          flakeInputsSnapshot: checked === true,
+                        })
+                      }
+                    />
+                    <div className="grid gap-1 leading-none">
+                      <Label
+                        htmlFor="share-flake-inputs-snapshot"
+                        className="cursor-pointer font-medium text-sm text-muted-foreground"
+                      >
+                        Flake inputs snapshot
+                      </Label>
+                      <p className="text-muted-foreground text-xs">
+                        nix pkgs/nix darwin/home-manager revs from flake.lock
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {feedbackType === FeedbackType.Bug && (
+                <>
                   <div className="flex items-start gap-2">
                     <Checkbox
                       id="share-nix-config"
@@ -438,9 +642,7 @@ export function FeedbackDialog() {
                       >
                         App logs
                       </Label>
-                      <p className="text-muted-foreground text-xs">
-                        Last 200 lines of nixmac.log
-                      </p>
+                      <p className="text-muted-foreground text-xs">Last 200 lines of nixmac.log</p>
                     </div>
                   </div>
                 </>
@@ -453,7 +655,7 @@ export function FeedbackDialog() {
           <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit}>Send Feedback</Button>
+          <Button onClick={handleSubmit}>{isReportMode ? "Send Report" : "Send Feedback"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -112,6 +112,10 @@ export interface FeedbackShareOptions {
   systemInfo: boolean;
   usageStats: boolean;
   evolutionLog: boolean;
+  changedNixFiles: boolean;
+  aiProviderModelInfo: boolean;
+  buildErrorOutput: boolean;
+  flakeInputsSnapshot: boolean;
   nixConfig: boolean;
   appLogs: boolean;
 }
@@ -132,12 +136,39 @@ export interface FeedbackUsageStats {
   extra?: Record<string, unknown>;
 }
 
+export interface FeedbackAiProviderModelInfo {
+  evolveProvider?: string;
+  evolveModel?: string;
+  summaryProvider?: string;
+  summaryModel?: string;
+  totalTokens?: number;
+  latencyMs?: number;
+  iterations?: number;
+  buildAttempts?: number;
+}
+
+export interface FeedbackFlakeInputEntry {
+  rev?: string;
+  lastModified?: number;
+  narHash?: string;
+}
+
+export interface FeedbackFlakeInputsSnapshot {
+  nixpkgs?: FeedbackFlakeInputEntry;
+  "nix-darwin"?: FeedbackFlakeInputEntry;
+  "home-manager"?: FeedbackFlakeInputEntry;
+}
+
 export interface FeedbackMetadata {
   lastPromptText?: string;
   currentAppStateSnapshot?: unknown;
   systemInfo?: FeedbackSystemInfo;
   usageStats?: FeedbackUsageStats;
   evolutionLogContent?: string;
+  changedNixFilesDiff?: string;
+  aiProviderModelInfo?: FeedbackAiProviderModelInfo;
+  buildErrorOutput?: string;
+  flakeInputsSnapshot?: FeedbackFlakeInputsSnapshot;
   nixConfigSnapshot?: string;
   appLogsContent?: string;
 }
