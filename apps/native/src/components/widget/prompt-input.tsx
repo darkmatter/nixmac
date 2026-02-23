@@ -1,5 +1,6 @@
 "use client";
 
+import { BadgeButton } from "@/components/ui/badge-button";
 import {
   InputGroup,
   InputGroupAddon,
@@ -7,16 +8,11 @@ import {
   InputGroupText,
   InputGroupTextarea,
 } from "@/components/ui/input-group";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { PromptHistoryBadge } from "@/components/widget/prompt-history-badge";
 import { useEvolve } from "@/hooks/use-evolve";
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
-import { ArrowUpIcon, ClockIcon } from "lucide-react";
+import { ArrowUpIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const MAX_CONTEXT_LENGTH = 1000;
@@ -81,30 +77,6 @@ export function PromptInput() {
         "dropdown" for selecting context mode (auto/agent/manual) */}
 
         <InputGroupAddon align="block-end">
-          {/* Prompt History Dropdown */}
-          {promptHistory.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <InputGroupButton
-                  className="rounded-full"
-                  disabled={isLoading}
-                  size="icon-xs"
-                  variant="ghost"
-                >
-                  <ClockIcon />
-                  <span className="sr-only">Prompt history</span>
-                </InputGroupButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="[--radius:0.95rem] max-w-md" side="top">
-                {promptHistory.map((prompt) => (
-                  <DropdownMenuItem key={prompt} onClick={() => setEvolvePrompt(prompt)}>
-                    <span className="line-clamp-2 text-sm">{prompt}</span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-
           {/* <InputGroupButton
             className="rounded-full"
             size="icon-xs"
@@ -141,20 +113,22 @@ export function PromptInput() {
         </InputGroupAddon>
       </InputGroup>
 
-      {suggestions.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {suggestions.map((suggestion) => (
-            <button
-              className="rounded-full border border-border bg-muted/50 px-3 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground"
-              key={suggestion}
-              onClick={() => setEvolvePrompt(suggestion)}
-              type="button"
-            >
-              {suggestion}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="flex flex-wrap gap-1">
+        {suggestions.map((suggestion) => (
+          <BadgeButton
+            key={suggestion}
+            onClick={() => setEvolvePrompt(suggestion)}
+          >
+            {suggestion}
+          </BadgeButton>
+        ))}
+        <PromptHistoryBadge
+          history={promptHistory}
+          onSelect={setEvolvePrompt}
+          disabled={isLoading}
+          currentValue={evolvePrompt}
+        />
+      </div>
     </div>
   );
 }
