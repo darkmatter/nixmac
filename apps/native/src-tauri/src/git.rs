@@ -134,6 +134,54 @@ pub fn count_diff_changes(diff: &str) -> (usize, usize) {
     (additions, deletions)
 }
 
+/// Parses file information from diff output.
+/// Extracts file paths and change types from diff headers.
+/// Uses the same pattern as diff.tsx: `diff --git a/<path> b/<path>`
+fn parse_files_from_diff(diff: &str) -> Vec<GitFileStatus> {
+    let mut files = Vec::new();
+    let mut current_file: Option<String> = None;
+    let mut current_change_type = "edited";
+
+    for line in diff.lines() {
+        // Match "diff --git a/path b/path" - same pattern as diff.tsx
+        if line.starts_with("diff --git a/") {
+            // Save previous file if any
+            if let Some(path) = current_file.take() {
+                files.push(GitFileStatus {
+                    path,
+                    change_type: current_change_type.to_string(),
+                });
+            }
+
+            // Extract path from "diff --git a/path b/path"
+            // Find " b/" and take everything after it (matching diff.tsx regex group 2)
+            if let Some(b_index) = line.find(" b/") {
+                let path = &line[b_index + 3..]; // Skip " b/"
+                current_file = Some(path.to_string());
+                current_change_type = "edited"; // Default, may be overridden
+            }
+        }
+        // Detect change type from subsequent lines
+        else if line.starts_with("new file mode") {
+            current_change_type = "new";
+        } else if line.starts_with("deleted file mode") {
+            current_change_type = "removed";
+        } else if line.starts_with("rename from") {
+            current_change_type = "renamed";
+        }
+    }
+
+    // Don't forget the last file
+    if let Some(path) = current_file {
+        files.push(GitFileStatus {
+            path,
+            change_type: current_change_type.to_string(),
+        });
+    }
+
+    files
+}
+
 /// Gets commit messages on the current branch since diverging from main.
 /// Returns commits in reverse chronological order (newest first).
 fn get_commit_messages_since_main(dir: &str) -> Vec<String> {
@@ -213,116 +261,30 @@ fn built_commit_on_branch(dir: &str, built_sha: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// Parses `git status --porcelain=v1` output into a structured format.
-///
-/// The porcelain format uses a two-character status code:
-/// - First char: index (staging area) status
-/// - Second char: working tree status
-///
-/// Common codes:
-/// - `??` = untracked file
-/// - `A ` = added to index
-/// - `M ` = modified in index
-/// - ` M` = modified in working tree (not staged)
-/// - `D ` = deleted from index
-///
-/// If `cache` is true and `app` is provided, also stores it for later comparison.
-pub fn status(dir: &str) -> Result<GitStatus> {
-    // Get status output
+/// Returns the current branch name.
+fn get_current_branch(dir: &str) -> Option<String> {
     let output = git_command()
-        .args(["status", "--porcelain=v1", "-b"])
+        .args(["rev-parse", "--abbrev-ref", "HEAD"])
         .current_dir(dir)
-        .output()?;
+        .output()
+        .ok()?;
 
-    let status_str = String::from_utf8_lossy(&output.stdout);
-
-    let mut files = Vec::new();
-    let mut created = Vec::new();
-    let mut deleted = Vec::new();
-    let mut modified = Vec::new();
-    let mut staged = Vec::new();
-    let mut not_added = Vec::new();
-    let mut conflicted = Vec::new();
-    let mut branch = None;
-    let tracking = None;
-
-    for line in status_str.lines() {
-        // Branch info line starts with "##"
-        if line.starts_with("##") {
-            let branch_info = line.trim_start_matches("##").trim();
-            if let Some(branch_name) = branch_info.split("...").next() {
-                branch = Some(branch_name.trim().to_string());
-            }
-            continue;
+    if output.status.success() {
+        let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if branch != "HEAD" {
+            Some(branch)
+        } else {
+            None
         }
-
-        // Skip malformed lines (need at least "XY path")
-        if line.len() < 3 {
-            continue;
-        }
-
-        let index_status = line.chars().next().map(|c| c.to_string());
-        let working_tree_status = line.chars().nth(1).map(|c| c.to_string());
-        let path = line[3..].to_string();
-
-        files.push(GitFileStatus {
-            path: path.clone(),
-            index: index_status.clone(),
-            working_tree: working_tree_status.clone(),
-        });
-
-        // Categorize files by their status
-        match (index_status.as_deref(), working_tree_status.as_deref()) {
-            (Some("A"), _) => {
-                created.push(path.clone());
-                staged.push(path.clone());
-            }
-            (Some("D"), _) => {
-                deleted.push(path.clone());
-                staged.push(path.clone());
-            }
-            (Some("M"), _) => {
-                modified.push(path.clone());
-                staged.push(path.clone());
-            }
-            (Some("?"), Some("?")) => {
-                not_added.push(path.clone());
-            }
-            (Some("U"), _) | (_, Some("U")) => {
-                conflicted.push(path.clone());
-            }
-            _ => {}
-        }
+    } else {
+        None
     }
+}
 
-    let has_changes = !files.is_empty();
-
-    // Compute derived state
-    let has_unstaged_changes = files
-        .iter()
-        .any(|f| f.working_tree.as_ref().is_some_and(|wt| wt != " "));
-
-    let cleanly_staged_count = files
-        .iter()
-        .filter(|f| {
-            f.index.as_ref().is_some_and(|idx| idx != " " && idx != "?")
-                && f.working_tree.as_ref().is_none_or(|wt| wt == " ")
-        })
-        .count();
-
-    let all_changes_staged = has_changes && !has_unstaged_changes;
-    let all_changes_cleanly_staged =
-        has_changes && cleanly_staged_count == files.len() && !staged.is_empty();
-
-    // Check if HEAD has the nixmac-built tag
-    let head_is_built = head_is_built(dir);
-
-    // Get the last built commit SHA and check if it's on current branch
-    let last_built_commit_sha = get_last_built_commit_sha(dir);
-    let branch_has_built_commit = last_built_commit_sha
-        .as_ref()
-        .map(|sha| built_commit_on_branch(dir, sha))
-        .unwrap_or(false);
+/// Gets comprehensive git status by parsing the diff against main/master.
+pub fn status(dir: &str) -> Result<GitStatus> {
+    // Get current branch
+    let branch = get_current_branch(dir);
 
     // Check if on main or master branch
     let is_main_branch = branch
@@ -334,6 +296,19 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     let diff = get_full_diff(dir).unwrap_or_default();
     let (additions, deletions) = count_diff_changes(&diff);
 
+    // Parse files from diff
+    let files = parse_files_from_diff(&diff);
+
+    // Check if HEAD has the nixmac-built tag
+    let head_is_built = head_is_built(dir);
+
+    // Get the last built commit SHA and check if it's on current branch
+    let last_built_commit_sha = get_last_built_commit_sha(dir);
+    let branch_has_built_commit = last_built_commit_sha
+        .as_ref()
+        .map(|sha| built_commit_on_branch(dir, sha))
+        .unwrap_or(false);
+
     // Get commit messages since main (only if not on main branch)
     let branch_commit_messages = if is_main_branch {
         vec![]
@@ -343,28 +318,14 @@ pub fn status(dir: &str) -> Result<GitStatus> {
 
     Ok(GitStatus {
         files,
-        created,
-        deleted,
-        modified,
-        staged,
-        not_added,
-        conflicted,
-        ahead: 0,
-        behind: 0,
         branch,
-        tracking,
-        has_changes,
-        has_unstaged_changes,
-        all_changes_staged,
-        all_changes_cleanly_staged,
+        branch_commit_messages,
         head_is_built,
         is_main_branch,
-        last_built_commit_sha,
         branch_has_built_commit,
         diff,
         additions,
         deletions,
-        branch_commit_messages,
     })
 }
 
@@ -692,14 +653,40 @@ mod tests {
         init_if_needed(&repo_dir.to_string_lossy()).unwrap();
         fs::write(repo_dir.join("file.txt"), "hello").unwrap();
         let status = status(&repo_dir.to_string_lossy()).unwrap();
-        assert!(status.has_changes);
-        assert!(status.created.is_empty());
-        assert!(status.deleted.is_empty());
-        assert!(status.modified.is_empty());
-        assert!(status.staged.is_empty());
-        assert!(status.not_added.is_empty());
-        assert!(status.conflicted.is_empty());
+        // New file should appear in diff and files list
+        assert!(!status.diff.is_empty());
+        assert!(!status.files.is_empty());
         assert!(status.branch.is_some());
-        assert!(status.tracking.is_some());
+    }
+
+    #[test]
+    fn test_parse_files_from_diff() {
+        let diff = r#"diff --git a/new-file.txt b/new-file.txt
+new file mode 100644
+--- /dev/null
++++ b/new-file.txt
+@@ -0,0 +1 @@
++hello
+diff --git a/existing.txt b/existing.txt
+--- a/existing.txt
++++ b/existing.txt
+@@ -1 +1 @@
+-old
++new
+diff --git a/removed.txt b/removed.txt
+deleted file mode 100644
+--- a/removed.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-goodbye"#;
+
+        let files = parse_files_from_diff(diff);
+        assert_eq!(files.len(), 3);
+        assert_eq!(files[0].path, "new-file.txt");
+        assert_eq!(files[0].change_type, "new");
+        assert_eq!(files[1].path, "existing.txt");
+        assert_eq!(files[1].change_type, "edited");
+        assert_eq!(files[2].path, "removed.txt");
+        assert_eq!(files[2].change_type, "removed");
     }
 }
