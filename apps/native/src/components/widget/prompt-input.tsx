@@ -11,9 +11,7 @@ import {
 import { PromptHistoryBadge } from "@/components/widget/prompt-history-badge";
 import { useEvolve } from "@/hooks/use-evolve";
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI } from "@/tauri-api";
 import { ArrowUpIcon } from "lucide-react";
-import { useEffect, useState } from "react";
 
 const MAX_CONTEXT_LENGTH = 1000;
 
@@ -24,23 +22,11 @@ export function PromptInput() {
   const processingAction = useWidgetStore((s) => s.processingAction);
   const gitStatus = useWidgetStore((s) => s.gitStatus);
   const suggestions = useWidgetStore((s) => s.suggestions);
-
-  const [promptHistory, setPromptHistory] = useState<string[]>([]);
-
   const { handleEvolve } = useEvolve();
 
-  // Load prompt history on mount
-  useEffect(() => {
-    darwinAPI.promptHistory.get().then(setPromptHistory).catch(console.error);
-  }, []);
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (evolvePrompt.trim()) {
-      // Add to history
-      await darwinAPI.promptHistory.add(evolvePrompt.trim()).catch(console.error);
-      // Refresh history
-      const updated = await darwinAPI.promptHistory.get().catch(() => []);
-      setPromptHistory(updated);
       handleEvolve();
     }
   };
@@ -122,12 +108,7 @@ export function PromptInput() {
             {suggestion}
           </BadgeButton>
         ))}
-        <PromptHistoryBadge
-          history={promptHistory}
-          onSelect={setEvolvePrompt}
-          disabled={isLoading}
-          currentValue={evolvePrompt}
-        />
+        <PromptHistoryBadge />
       </div>
     </div>
   );

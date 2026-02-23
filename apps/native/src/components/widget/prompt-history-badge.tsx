@@ -11,22 +11,18 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { useWidgetStore } from "@/stores/widget-store";
 import { ClockIcon } from "lucide-react";
 import { useState } from "react";
 
-interface PromptHistoryBadgeProps {
-  history: string[];
-  onSelect: (prompt: string) => void;
-  disabled?: boolean;
-  currentValue?: string;
-}
+export function PromptHistoryBadge() {
+  const history = useWidgetStore((s) => s.promptHistory);
+  const evolvePrompt = useWidgetStore((s) => s.evolvePrompt);
+  const setEvolvePrompt = useWidgetStore((s) => s.setEvolvePrompt);
+  const isProcessing = useWidgetStore((s) => s.isProcessing);
+  const processingAction = useWidgetStore((s) => s.processingAction);
 
-export function PromptHistoryBadge({
-  history,
-  onSelect,
-  disabled,
-  currentValue = "",
-}: PromptHistoryBadgeProps) {
+  const disabled = isProcessing && processingAction === "evolve";
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
@@ -35,7 +31,7 @@ export function PromptHistoryBadge({
   }
 
   const handleSelect = (prompt: string) => {
-    onSelect(prompt);
+    setEvolvePrompt(prompt);
     setOpen(false);
     setSearchValue("");
   };
@@ -78,7 +74,7 @@ export function PromptHistoryBadge({
                     onSelect={() => handleSelect(prompt)}
                     className={cn(
                       "cursor-pointer",
-                      currentValue === prompt && "bg-teal-500/10",
+                      evolvePrompt === prompt && "bg-teal-500/10",
                     )}
                   >
                     <span className="line-clamp-2 text-sm">{prompt}</span>
