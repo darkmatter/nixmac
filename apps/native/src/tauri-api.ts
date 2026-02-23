@@ -28,49 +28,21 @@ export interface DarwinPrefs {
 }
 
 export interface GitFileStatus {
-  working_tree?: string;
-  index?: string;
   path: string;
+  changeType: "new" | "edited" | "removed" | "renamed";
 }
 
 /**
  * Git status returned from the backend.
- * All computed fields are calculated server-side for consistency.
+ * Files are parsed from diff headers against main/master.
  */
 export interface GitStatus {
-  // File lists
   files?: GitFileStatus[];
-  created?: string[];
-  deleted?: string[];
-  modified?: string[];
-  staged?: string[];
-  notAdded?: string[];
-  conflicted?: string[];
-
-  // Branch info
   branch?: string;
-  tracking?: string;
-  ahead?: number;
-  behind?: number;
-
-  // Commit messages on current branch since main
   branchCommitMessages?: string[];
-
-  // Computed state
-  hasChanges?: boolean;
-  hasUnstagedChanges?: boolean;
-  allChangesStaged?: boolean;
-  allChangesCleanlyStaged?: boolean;
-
-  // Branch workflow state
   headIsBuilt?: boolean;
   isMainBranch?: boolean;
-
-  // Build tracking
-  lastBuiltCommitSha?: string;
   branchHasBuiltCommit?: boolean;
-
-  // Diff content
   diff?: string;
   additions?: number;
   deletions?: number;

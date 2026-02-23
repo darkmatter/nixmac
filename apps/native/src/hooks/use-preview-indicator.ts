@@ -16,8 +16,7 @@ export function usePreviewIndicator() {
       deletions?: number;
     }) => {
       const hasChanges = Boolean(params.gitStatus?.diff);
-      // Use additions + deletions as a proxy for "files changed" since we're diff-based now
-      const filesChanged = (params.additions ?? 0) + (params.deletions ?? 0) > 0 ? 1 : 0;
+      const filesChanged = params.gitStatus?.files?.length ?? 0;
 
       // Show preview indicator when there are changes vs main and main window is NOT expanded
       const shouldShow = hasChanges
