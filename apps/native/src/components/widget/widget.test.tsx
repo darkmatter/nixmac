@@ -80,8 +80,7 @@ describe("DarwinWidget", () => {
   it("renders evolving step with git changes", () => {
     const store = useWidgetStore.getState();
     store.setGitStatus({
-      hasChanges: true,
-      files: [{ path: "test.nix", working_tree: "M" }],
+      files: [{ path: "test.nix", changeType: "edited" }],
     });
 
     const { container } = render(<DarwinWidget />);

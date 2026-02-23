@@ -1,11 +1,11 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
-import { fn } from "@storybook/test";
-import type React from "react";
-import { useEffect } from "react";
 import preview from "#storybook/preview";
 import { PermissionsScreen } from "@/components/permissions-screen";
 import type { ChangesSummary, EvolveEvent, GitStatus } from "@/stores/widget-store";
 import { useWidgetStore } from "@/stores/widget-store";
+import { fn } from "@storybook/test";
+import type React from "react";
+import { useEffect } from "react";
 import { DarwinWidget } from "./widget";
 
 // Mock Tauri API for Storybook
@@ -14,7 +14,7 @@ if (typeof window !== "undefined") {
     invoke: async (cmd: string) => {
       console.log("Mock Tauri invoke:", cmd);
       if (cmd === "plugin:darwin|git_status") {
-        return { hasChanges: false, files: [] };
+        return { files: [], diff: "" };
       }
       if (cmd === "plugin:darwin|read_config") {
         return { configDir: "/Users/demo/.darwin" };
@@ -56,22 +56,27 @@ export default meta;
 // =============================================================================
 
 const mockGitStatus: GitStatus = {
-  hasChanges: true,
   files: [
-    { path: "modules/darwin/default.nix", working_tree: "M" },
-    { path: "modules/home/default.nix", working_tree: "M" },
-    { path: "modules/darwin/vim.nix", index: "A" },
+    { path: "modules/darwin/default.nix", changeType: "edited" },
+    { path: "modules/home/default.nix", changeType: "edited" },
+    { path: "modules/darwin/vim.nix", changeType: "new" },
   ],
+  diff: "diff --git a/modules/darwin/default.nix b/modules/darwin/default.nix\n...",
+  additions: 25,
+  deletions: 3,
 };
 
 // All changes staged (ready for commit after preview)
 const mockGitStatusAllStaged: GitStatus = {
-  hasChanges: true,
   files: [
-    { path: "modules/darwin/default.nix", index: "M" },
-    { path: "modules/home/default.nix", index: "M" },
-    { path: "modules/darwin/vim.nix", index: "A" },
+    { path: "modules/darwin/default.nix", changeType: "edited" },
+    { path: "modules/home/default.nix", changeType: "edited" },
+    { path: "modules/darwin/vim.nix", changeType: "new" },
   ],
+  diff: "diff --git a/modules/darwin/default.nix b/modules/darwin/default.nix\n...",
+  additions: 25,
+  deletions: 3,
+  headIsBuilt: true,
 };
 
 const mockSummary: ChangesSummary = {
@@ -456,17 +461,19 @@ export const ManyChangedFiles = meta.story({
         hosts: ["Demo-MacBook-Pro", "Work-MacBook"],
         commitMsg: "feat: comprehensive system setup",
         gitStatus: {
-          hasChanges: true,
           files: [
-            { path: "modules/darwin/default.nix", working_tree: "M" },
-            { path: "modules/home/default.nix", working_tree: "M" },
-            { path: "modules/darwin/vim.nix", index: "A" },
-            { path: "modules/darwin/git.nix", index: "A" },
-            { path: "modules/darwin/homebrew.nix", working_tree: "M" },
-            { path: "modules/home/shell.nix", working_tree: "M" },
-            { path: "flake.nix", working_tree: "M" },
-            { path: "flake.lock", working_tree: "M" },
+            { path: "modules/darwin/default.nix", changeType: "edited" },
+            { path: "modules/home/default.nix", changeType: "edited" },
+            { path: "modules/darwin/vim.nix", changeType: "new" },
+            { path: "modules/darwin/git.nix", changeType: "new" },
+            { path: "modules/darwin/homebrew.nix", changeType: "edited" },
+            { path: "modules/home/shell.nix", changeType: "edited" },
+            { path: "flake.nix", changeType: "edited" },
+            { path: "flake.lock", changeType: "edited" },
           ],
+          diff: "diff --git a/modules/darwin/default.nix b/modules/darwin/default.nix\n...",
+          additions: 120,
+          deletions: 15,
         },
         summary: mockSummary,
       }}
