@@ -7,9 +7,17 @@ import {
   InputGroupText,
   InputGroupTextarea,
 } from "@/components/ui/input-group";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useEvolve } from "@/hooks/use-evolve";
 import { useWidgetStore } from "@/stores/widget-store";
-import { ArrowUpIcon } from "lucide-react";
+import { darwinAPI } from "@/tauri-api";
+import { ArrowUpIcon, ClockIcon } from "lucide-react";
+import { useEffect, useState } from "react";
 
 const MAX_CONTEXT_LENGTH = 1000;
 
@@ -21,7 +29,25 @@ export function PromptInput() {
   const gitStatus = useWidgetStore((s) => s.gitStatus);
   const suggestions = useWidgetStore((s) => s.suggestions);
 
+  const [promptHistory, setPromptHistory] = useState<string[]>([]);
+
   const { handleEvolve } = useEvolve();
+
+  // Load prompt history on mount
+  useEffect(() => {
+    darwinAPI.promptHistory.get().then(setPromptHistory).catch(console.error);
+  }, []);
+
+  const handleSubmit = async () => {
+    if (evolvePrompt.trim()) {
+      // Add to history
+      await darwinAPI.promptHistory.add(evolvePrompt.trim()).catch(console.error);
+      // Refresh history
+      const updated = await darwinAPI.promptHistory.get().catch(() => []);
+      setPromptHistory(updated);
+      handleEvolve();
+    }
+  };
 
   const isLoading = isProcessing && processingAction === "evolve";
   const hasChanges = Boolean(gitStatus?.diff);
@@ -33,11 +59,7 @@ export function PromptInput() {
   const words = evolvePrompt.split(" ").length;
   const percentage = words / MAX_CONTEXT_LENGTH;
   const contextUsage =
-    percentage >= 1
-      ? "100% used"
-      : percentage < 0.1
-        ? ""
-        : `${Math.floor(percentage * 100)}% used`;
+    percentage >= 1 ? "100% used" : percentage < 0.1 ? "" : `${Math.floor(percentage * 100)}% used`;
 
   return (
     <div className="space-y-3">
@@ -47,7 +69,7 @@ export function PromptInput() {
           onChange={(e) => setEvolvePrompt(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && evolvePrompt.trim() && !isLoading) {
-              handleEvolve();
+              handleSubmit();
             }
           }}
           placeholder={placeholder}
@@ -59,6 +81,30 @@ export function PromptInput() {
         "dropdown" for selecting context mode (auto/agent/manual) */}
 
         <InputGroupAddon align="block-end">
+          {/* Prompt History Dropdown */}
+          {promptHistory.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <InputGroupButton
+                  className="rounded-full"
+                  disabled={isLoading}
+                  size="icon-xs"
+                  variant="ghost"
+                >
+                  <ClockIcon />
+                  <span className="sr-only">Prompt history</span>
+                </InputGroupButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="[--radius:0.95rem] max-w-md" side="top">
+                {promptHistory.map((prompt) => (
+                  <DropdownMenuItem key={prompt} onClick={() => setEvolvePrompt(prompt)}>
+                    <span className="line-clamp-2 text-sm">{prompt}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
           {/* <InputGroupButton
             className="rounded-full"
             size="icon-xs"
@@ -85,7 +131,7 @@ export function PromptInput() {
           <InputGroupButton
             className="rounded-full"
             disabled={isLoading || !evolvePrompt.trim()}
-            onClick={() => handleEvolve()}
+            onClick={handleSubmit}
             size="icon-xs"
             variant="default"
           >
