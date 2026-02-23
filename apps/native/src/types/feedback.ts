@@ -277,7 +277,10 @@ export class Feedback {
     if (this.type === FeedbackType.Bug && this.text.trim().length === 0) {
       errors.push("bug reports should include a description in 'text'");
     }
-    if (this.type === FeedbackType.Issue && this.text.trim().length === 0) {
+    if (
+      (this.type === FeedbackType.Issue || this.type === FeedbackType.Error) &&
+      this.text.trim().length === 0
+    ) {
       errors.push("issue reports should include a description in 'text'");
     }
     if (
