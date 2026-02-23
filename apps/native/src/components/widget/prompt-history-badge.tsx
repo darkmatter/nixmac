@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { Check, ClockIcon } from "lucide-react";
+import { ClockIcon } from "lucide-react";
 import { useState } from "react";
 
 interface PromptHistoryBadgeProps {
@@ -76,14 +76,11 @@ export function PromptHistoryBadge({
                     key={prompt}
                     value={prompt}
                     onSelect={() => handleSelect(prompt)}
-                    className="cursor-pointer"
+                    className={cn(
+                      "cursor-pointer",
+                      currentValue === prompt && "bg-teal-500/10",
+                    )}
                   >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4 shrink-0",
-                        currentValue === prompt ? "opacity-100" : "opacity-0",
-                      )}
-                    />
                     <span className="line-clamp-2 text-sm">{prompt}</span>
                   </CommandItem>
                 ))}
