@@ -7,6 +7,8 @@ import { ErrorMessage } from "@/components/widget/error-message";
 import { Header } from "@/components/widget/header";
 import { SettingsDialog } from "@/components/widget/settings-dialog";
 import { FeedbackDialog } from "@/components/widget/feedback-dialog";
+import { ReportIssueButton } from "@/components/widget/report-issue-button";
+import { StepContentWrapper } from "@/components/widget/step-content-wrapper";
 import { Stepper } from "@/components/widget/stepper";
 import {
   MergeStep,
@@ -73,12 +75,13 @@ export function DarwinWidget() {
       <Header />
       <Stepper />
 
-      <div className="relative flex min-h-0 flex-1 gap-4 flex-col overflow-auto p-4 xs:p-8 sm:px-12">
+      <StepContentWrapper>
         <ErrorMessage />
         {getActiveStepComponent()}
         <EvolveOverlayPanel />
         <RebuildOverlayPanel />
-      </div>
+        <ReportIssueButton />
+      </StepContentWrapper>
 
       <Console />
       <SettingsDialog />
