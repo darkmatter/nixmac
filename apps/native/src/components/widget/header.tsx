@@ -1,11 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Settings } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
+import { Settings, MessageSquare } from "lucide-react";
 import { APP_NAME } from "../../../shared/constants";
 import { useWidgetStore } from "@/stores/widget-store";
 
@@ -20,29 +14,31 @@ export function Header() {
     >
       <div className="absolute top-2 left-0 h-4 w-16 z-[9999] cursor-default" />
 
-      <h3
-        className="font-medium text-muted-foreground text-xs"
-        data-tauri-drag-region
-      >
+      <h3 className="font-medium text-muted-foreground text-xs" data-tauri-drag-region>
         {APP_NAME}
       </h3>
-      <div className="absolute right-3 flex items-center gap-1">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button className="h-8 w-8 p-0" size="sm" variant="ghost">
-              <Settings className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
+      <div className="absolute right-3 flex items-center gap-2">
+        <Button
+          className="h-8 w-8 p-0"
+          size="sm"
+          variant="ghost"
+          onClick={() => setFeedbackOpen(true)}
+          aria-label="Give feedback"
+          title="Give feedback"
+        >
+          <MessageSquare className="h-4 w-4" />
+        </Button>
 
-          <DropdownMenuContent sideOffset={6} align="end">
-            <DropdownMenuItem onSelect={() => setFeedbackOpen(true)}>
-              Give Feedback
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setSettingsOpen(true)}>
-              Settings
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button
+          className="h-8 w-8 p-0"
+          size="sm"
+          variant="ghost"
+          onClick={() => setSettingsOpen(true)}
+          aria-label="Settings"
+          title="Settings"
+        >
+          <Settings className="h-4 w-4" />
+        </Button>
       </div>
     </div>
   );

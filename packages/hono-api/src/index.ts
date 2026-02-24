@@ -4,7 +4,7 @@ import { appRouter } from "@nixmac/api/routers/index";
 import { auth } from "@nixmac/auth";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { insertFeedback } from "./services/feedback";
+import { allowedFeedbackTypes, insertFeedback } from "./services/feedback";
 
 export const apiApp = new Hono();
 
@@ -26,7 +26,7 @@ apiApp.use(
     origin: "tauri://localhost",
     allowMethods: ["POST", "OPTIONS"],
     allowHeaders: ["Content-Type"],
-  })
+  }),
 );
 
 apiApp.use("*", async (c, next) => {
@@ -40,7 +40,7 @@ apiApp.use(
   trpcServer({
     router: appRouter,
     createContext: (_opts, context) => createContext({ context }),
-  })
+  }),
 );
 
 // Simple feedback endpoint - accepts POSTed JSON and responds with an id.
@@ -78,7 +78,9 @@ const feedbackRateLimit = async (c: any, next: () => Promise<any>) => {
   };
 
   const rawHeaders = c?.req?.headers ?? c?.req?.raw?.headers ?? null;
-  const forwarded = extractHeaderValue(rawHeaders, "x-forwarded-for") || extractHeaderValue(rawHeaders, "x-real-ip");
+  const forwarded =
+    extractHeaderValue(rawHeaders, "x-forwarded-for") ||
+    extractHeaderValue(rawHeaders, "x-real-ip");
   const ip = (forwarded || "unknown").split(",")[0].trim();
   if (!checkAndIncrement(rateLimitByIp, ip)) {
     return c.json({ ok: false, error: "rate_limited" }, 429);
@@ -103,15 +105,17 @@ apiApp.post("/api/feedback/:dsn", feedbackRateLimit, async (c) => {
 
     // Basic validation for expected feedback payload fields.
     const errors: string[] = [];
-    const allowedTypes = ["suggestion", "bug", "general"];
     const type = (payload?.type as string) ?? "general";
-    if (!allowedTypes.includes(type)) {
-      errors.push(`type must be one of: ${allowedTypes.join(", ")}`);
+    if (!allowedFeedbackTypes.includes(type as any)) {
+      errors.push(`type must be one of: ${allowedFeedbackTypes.join(", ")}`);
     }
 
     const text = typeof payload?.text === "string" ? payload.text.trim() : "";
     if (type === "bug") {
-      if (text.length === 0 && !(typeof payload?.expectedText === "string" && payload.expectedText.trim().length > 0)) {
+      if (
+        text.length === 0 &&
+        !(typeof payload?.expectedText === "string" && payload.expectedText.trim().length > 0)
+      ) {
         errors.push("bug reports must include a description in 'text' or 'expectedText'");
       }
     } else {
@@ -133,7 +137,12 @@ apiApp.post("/api/feedback/:dsn", feedbackRateLimit, async (c) => {
     // persist to DB using the shared db package
     const id = crypto.randomUUID?.() ?? Date.now().toString();
     try {
-      await insertFeedback({ id, type: (payload.type as any) ?? "general", email: payload.email, payload });
+      await insertFeedback({
+        id,
+        type: (payload.type as any) ?? "general",
+        email: payload.email,
+        payload,
+      });
     } catch (dbErr) {
       console.error("DB error inserting feedback:", dbErr);
       return c.json({ ok: false, error: "db_error" }, 500);

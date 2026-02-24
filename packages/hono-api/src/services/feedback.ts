@@ -1,9 +1,11 @@
 import { db } from "@nixmac/db";
 import { feedback as feedbackTable } from "@nixmac/db/schema/feedback";
 
+export const allowedFeedbackTypes = ["bug", "suggestion", "general", "issue", "error"] as const;
+
 export type FeedbackRecord = {
   id: string;
-  type: "bug" | "suggestion" | "general";
+  type: (typeof allowedFeedbackTypes)[number];
   email?: string | null;
   payload: any;
 };

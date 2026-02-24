@@ -4,7 +4,7 @@
 //! from the frontend.
 //! All collection respects the ShareOptions flags provided by the user.
 
-use crate::{nix, store, types};
+use crate::{git, nix, store, types};
 use anyhow::{Context, Result};
 use chrono::Utc;
 use log::{debug, warn};
@@ -160,6 +160,120 @@ pub fn gather_evolution_log(app: &AppHandle) -> Option<String> {
     }
 }
 
+/// Extract build check error output from evolution metadata (if available).
+///
+/// Note: this scans stored evolution messages for build-check failures, so it
+/// will be empty if no evolve metadata exists or no build check failed.
+pub fn extract_build_error_output(app: &AppHandle) -> Option<String> {
+    let store = store::get_store(app).ok()?;
+
+    let metadata = store.get("evolveMetadata")?;
+    let metadata_str = metadata.as_str()?;
+
+    let json: Value = serde_json::from_str(metadata_str).ok()?;
+    let messages = json.get("messages")?.as_array()?;
+
+    let mut last_error: Option<String> = None;
+    for message in messages {
+        if let Some(content) = message.get("content").and_then(|v| v.as_str()) {
+            if content.contains("Build check FAILED") || content.contains("Build check failed") {
+                last_error = Some(content.to_string());
+            }
+        }
+    }
+
+    last_error
+}
+
+fn extract_evolution_stats(
+    app: &AppHandle,
+) -> (Option<u32>, Option<i64>, Option<usize>, Option<usize>) {
+    let store = match store::get_store(app) {
+        Ok(store) => store,
+        Err(_) => return (None, None, None, None),
+    };
+
+    let metadata = match store.get("evolveMetadata") {
+        Some(metadata) => metadata,
+        None => return (None, None, None, None),
+    };
+    let metadata_str = match metadata.as_str() {
+        Some(metadata_str) => metadata_str,
+        None => return (None, None, None, None),
+    };
+
+    let json: Value = match serde_json::from_str(metadata_str) {
+        Ok(json) => json,
+        Err(_) => return (None, None, None, None),
+    };
+
+    let total_tokens = json
+        .get("totalTokens")
+        .and_then(|v| v.as_u64())
+        .map(|v| v as u32);
+    let iterations = json
+        .get("iterations")
+        .and_then(|v| v.as_u64())
+        .map(|v| v as usize);
+    let build_attempts = json
+        .get("buildAttempts")
+        .and_then(|v| v.as_u64())
+        .map(|v| v as usize);
+
+    let mut max_timestamp_ms: Option<i64> = None;
+    for key in ["toolCalls", "thinking"] {
+        if let Some(entries) = json.get(key).and_then(|v| v.as_array()) {
+            for entry in entries {
+                if let Some(timestamp_ms) = entry.get("timestampMs").and_then(|v| v.as_i64()) {
+                    max_timestamp_ms = Some(
+                        max_timestamp_ms.map_or(timestamp_ms, |current| current.max(timestamp_ms)),
+                    );
+                }
+            }
+        }
+    }
+
+    (total_tokens, max_timestamp_ms, iterations, build_attempts)
+}
+
+/// Gather AI provider/model details and basic usage/latency stats.
+///
+/// Note: provider/model come from stored prefs; usage/latency are derived from
+/// evolve metadata. If those are missing, this returns None or partial data.
+pub fn gather_ai_provider_model_info(
+    app: &AppHandle,
+) -> Option<types::FeedbackAiProviderModelInfo> {
+    let evolve_provider = store::get_evolve_provider(app).ok().flatten();
+    let evolve_model = store::get_evolve_model(app).ok().flatten();
+    let summary_provider = store::get_summary_provider(app).ok().flatten();
+    let summary_model = store::get_summary_model(app).ok().flatten();
+
+    let (total_tokens, latency_ms, iterations, build_attempts) = extract_evolution_stats(app);
+
+    if evolve_provider.is_none()
+        && evolve_model.is_none()
+        && summary_provider.is_none()
+        && summary_model.is_none()
+        && total_tokens.is_none()
+        && latency_ms.is_none()
+        && iterations.is_none()
+        && build_attempts.is_none()
+    {
+        return None;
+    }
+
+    Some(types::FeedbackAiProviderModelInfo {
+        evolve_provider,
+        evolve_model,
+        summary_provider,
+        summary_model,
+        total_tokens,
+        latency_ms,
+        iterations,
+        build_attempts,
+    })
+}
+
 /// Extract the last prompt text from evolution metadata
 pub fn extract_last_prompt(app: &AppHandle) -> Option<String> {
     let store = store::get_store(app).ok()?;
@@ -271,6 +385,73 @@ pub fn gather_nix_config_snapshot(app: &AppHandle) -> Option<String> {
     }
 }
 
+/// Gather a git diff containing only .nix file changes (including untracked).
+///
+/// Note: this depends on git status/diff; it will be empty when there are no
+/// changes, or if the repo hasn't been initialized.
+pub fn gather_changed_nix_files_diff(app: &AppHandle) -> Option<String> {
+    let config_dir = store::get_config_dir(app).ok()?;
+    let diff = git::get_nix_diff(&config_dir).ok()?;
+    if diff.trim().is_empty() {
+        None
+    } else {
+        Some(diff)
+    }
+}
+
+/// Gather a snapshot of key flake.lock input revisions.
+///
+/// Note: this only includes nixpkgs, nix-darwin, and home-manager entries, and
+/// returns None if flake.lock is missing or those nodes are absent.
+pub fn gather_flake_inputs_snapshot(app: &AppHandle) -> Option<types::FeedbackFlakeInputsSnapshot> {
+    let config_dir = store::get_config_dir(app).ok()?;
+    let lock_path = PathBuf::from(config_dir).join("flake.lock");
+    let content = fs::read_to_string(lock_path).ok()?;
+    let json: Value = serde_json::from_str(&content).ok()?;
+
+    let nodes = json.get("nodes")?.as_object()?;
+
+    let mut nixpkgs: Option<types::FeedbackFlakeInputEntry> = None;
+    let mut nix_darwin: Option<types::FeedbackFlakeInputEntry> = None;
+    let mut home_manager: Option<types::FeedbackFlakeInputEntry> = None;
+
+    let extract_entry = |locked: &Value| types::FeedbackFlakeInputEntry {
+        rev: locked.get("rev").and_then(|v| v.as_str()).map(String::from),
+        last_modified: locked.get("lastModified").and_then(|v| v.as_i64()),
+        nar_hash: locked
+            .get("narHash")
+            .and_then(|v| v.as_str())
+            .map(String::from),
+    };
+
+    for name in ["nixpkgs", "nix-darwin", "home-manager"] {
+        if let Some(node) = nodes.get(name) {
+            if let Some(locked) = node.get("locked") {
+                let entry = extract_entry(locked);
+                if entry.rev.is_some() || entry.last_modified.is_some() || entry.nar_hash.is_some()
+                {
+                    match name {
+                        "nixpkgs" => nixpkgs = Some(entry),
+                        "nix-darwin" => nix_darwin = Some(entry),
+                        "home-manager" => home_manager = Some(entry),
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
+
+    if nixpkgs.is_none() && nix_darwin.is_none() && home_manager.is_none() {
+        None
+    } else {
+        Some(types::FeedbackFlakeInputsSnapshot {
+            nixpkgs,
+            nix_darwin,
+            home_manager,
+        })
+    }
+}
+
 // =============================================================================
 // Current App State
 // =============================================================================
@@ -339,6 +520,10 @@ pub fn gather_metadata(
         system_info: None,
         usage_stats: None,
         evolution_log_content: None,
+        changed_nix_files_diff: None,
+        ai_provider_model_info: None,
+        build_error_output: None,
+        flake_inputs_snapshot: None,
         nix_config_snapshot: None,
         app_logs_content: None,
     };
@@ -366,6 +551,22 @@ pub fn gather_metadata(
     // Gather full evolution log
     if share.evolution_log {
         metadata.evolution_log_content = gather_evolution_log(app);
+    }
+
+    if share.changed_nix_files {
+        metadata.changed_nix_files_diff = gather_changed_nix_files_diff(app);
+    }
+
+    if share.ai_provider_model_info {
+        metadata.ai_provider_model_info = gather_ai_provider_model_info(app);
+    }
+
+    if share.build_error_output {
+        metadata.build_error_output = extract_build_error_output(app);
+    }
+
+    if share.flake_inputs_snapshot {
+        metadata.flake_inputs_snapshot = gather_flake_inputs_snapshot(app);
     }
 
     // Gather nix configuration snapshot
