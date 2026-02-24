@@ -71,6 +71,7 @@ export function FeedbackDialog() {
   const [promptHistory, setPromptHistory] = useState<string[]>([]);
   const [relatedPrompt, setRelatedPrompt] = useState("");
   const [shareOptions, setShareOptions] = useState<ShareOptions>(DEFAULT_SHARE_OPTIONS);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!feedbackOpen) {
@@ -107,105 +108,115 @@ export function FeedbackDialog() {
   };
 
   const handleSubmit = async () => {
-    let metadata: Awaited<ReturnType<typeof darwinAPI.feedback.gatherMetadata>> | null = null;
-    try {
-      metadata = await darwinAPI.feedback.gatherMetadata(feedbackType, shareOptions);
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.warn("Failed to gather feedback metadata:", err);
-    }
-
-    // Build a typed Feedback model and log it (replace with submission later)
-    const modelType = feedbackType;
-    const relatedPromptText =
-      (feedbackType === FeedbackType.Issue || feedbackType === FeedbackType.Error) && relatedPrompt
-        ? relatedPrompt
-        : metadata?.lastPromptText;
-    const selectedPromptText = shareOptions.lastPrompt ? relatedPromptText : undefined;
-
-    const feedbackModel = new FeedbackModel({
-      type: modelType,
-      text: feedbackText,
-      email: email || undefined,
-      expectedText: feedbackType === FeedbackType.Bug ? expectedText : undefined,
-      share: shareOptions,
-      // artifact fields left empty for now; will be populated by caller when collecting logs
-      lastPromptText: selectedPromptText,
-      currentAppStateSnapshot: metadata?.currentAppStateSnapshot,
-      systemInfo: metadata?.systemInfo,
-      usageStats: metadata?.usageStats,
-      evolutionLogContent: metadata?.evolutionLogContent,
-      changedNixFilesDiff: metadata?.changedNixFilesDiff,
-      aiProviderModelInfo: metadata?.aiProviderModelInfo,
-      buildErrorOutput: metadata?.buildErrorOutput,
-      flakeInputsSnapshot: metadata?.flakeInputsSnapshot,
-      nixConfigSnapshot: metadata?.nixConfigSnapshot,
-      appLogsContent: metadata?.appLogsContent,
-    });
-
-    const validation = feedbackModel.validate();
-    if (!validation.ok) {
-      console.warn("Feedback validation failed:", validation.errors);
-    }
+    if (submitting) return;
+    setSubmitting(true);
 
     try {
-      const feedbackUrl = getFeedbackUrl();
-      const payload = feedbackModel.toJSON();
-      const json = JSON.stringify(payload);
+      let metadata: Awaited<ReturnType<typeof darwinAPI.feedback.gatherMetadata>> | null = null;
+      try {
+        metadata = await darwinAPI.feedback.gatherMetadata(feedbackType, shareOptions);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn("Failed to gather feedback metadata:", err);
+      }
 
-      const resp = await fetch(feedbackUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: json,
+      // Build a typed Feedback model and log it (replace with submission later)
+      const modelType = feedbackType;
+      const relatedPromptText =
+        (feedbackType === FeedbackType.Issue || feedbackType === FeedbackType.Error) &&
+        relatedPrompt
+          ? relatedPrompt
+          : metadata?.lastPromptText;
+      const selectedPromptText = shareOptions.lastPrompt ? relatedPromptText : undefined;
+
+      const feedbackModel = new FeedbackModel({
+        type: modelType,
+        text: feedbackText,
+        email: email || undefined,
+        expectedText: feedbackType === FeedbackType.Bug ? expectedText : undefined,
+        share: shareOptions,
+        // artifact fields left empty for now; will be populated by caller when collecting logs
+        lastPromptText: selectedPromptText,
+        currentAppStateSnapshot: metadata?.currentAppStateSnapshot,
+        systemInfo: metadata?.systemInfo,
+        usageStats: metadata?.usageStats,
+        evolutionLogContent: metadata?.evolutionLogContent,
+        changedNixFilesDiff: metadata?.changedNixFilesDiff,
+        aiProviderModelInfo: metadata?.aiProviderModelInfo,
+        buildErrorOutput: metadata?.buildErrorOutput,
+        flakeInputsSnapshot: metadata?.flakeInputsSnapshot,
+        nixConfigSnapshot: metadata?.nixConfigSnapshot,
+        appLogsContent: metadata?.appLogsContent,
       });
 
-      let body: any = null;
+      const validation = feedbackModel.validate();
+      if (!validation.ok) {
+        console.warn("Feedback validation failed:", validation.errors);
+      }
+
       try {
-        body = await resp.json();
-        // oxlint-disable-next-line no-unused-vars
-      } catch (e) {
-        // ignore
-      }
+        const feedbackUrl = getFeedbackUrl();
+        const payload = feedbackModel.toJSON();
+        const json = JSON.stringify(payload);
 
-      if (!resp.ok) {
-        const serverErr = body?.error ?? null;
-        const details = body?.details;
+        const resp = await fetch(feedbackUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: json,
+        });
 
-        // Only surface errors we intentionally add in the API handler.
-        if (serverErr === "rate_limited") {
-          toast.error("You're sending feedback too quickly — please wait a minute and try again.");
-        } else if (serverErr === "validation_failed") {
-          if (Array.isArray(details) && details.length > 0) {
-            toast.error(`Validation error: ${details.join("; ")}`);
+        let body: any = null;
+        try {
+          body = await resp.json();
+          // oxlint-disable-next-line no-unused-vars
+        } catch (e) {
+          // ignore
+        }
+
+        if (!resp.ok) {
+          const serverErr = body?.error ?? null;
+          const details = body?.details;
+
+          // Only surface errors we intentionally add in the API handler.
+          if (serverErr === "rate_limited") {
+            toast.error(
+              "You're sending feedback too quickly — please wait a minute and try again.",
+            );
+          } else if (serverErr === "validation_failed") {
+            if (Array.isArray(details) && details.length > 0) {
+              toast.error(`Validation error: ${details.join("; ")}`);
+            } else {
+              toast.error("Validation failed — please check your input.");
+            }
+          } else if (serverErr === "dsn missing") {
+            toast.error("Feedback DSN missing in request.");
+          } else if (serverErr === "invalid dsn") {
+            toast.error("Invalid feedback DSN — submission rejected.");
+          } else if (serverErr === "db_error") {
+            toast.error("Server error saving feedback. Please try again later.");
+          } else if (typeof serverErr === "string") {
+            // If it's some other string, show it directly (fallback).
+            toast.error(serverErr);
           } else {
-            toast.error("Validation failed — please check your input.");
+            toast.error("Failed to send feedback. Please try again.");
           }
-        } else if (serverErr === "dsn missing") {
-          toast.error("Feedback DSN missing in request.");
-        } else if (serverErr === "invalid dsn") {
-          toast.error("Invalid feedback DSN — submission rejected.");
-        } else if (serverErr === "db_error") {
-          toast.error("Server error saving feedback. Please try again later.");
-        } else if (typeof serverErr === "string") {
-          // If it's some other string, show it directly (fallback).
-          toast.error(serverErr);
         } else {
-          toast.error("Failed to send feedback. Please try again.");
+          const id = body?.id ?? undefined;
+          toast.success(id ? `Thanks — feedback sent (id: ${id})` : "Thanks — feedback sent");
+          const info = body?.info ?? body?.message ?? null;
+          if (typeof info === "string" && info.length > 0) {
+            // show any friendly informational message from the server
+            toast(info);
+          }
         }
-      } else {
-        const id = body?.id ?? undefined;
-        toast.success(id ? `Thanks — feedback sent (id: ${id})` : "Thanks — feedback sent");
-        const info = body?.info ?? body?.message ?? null;
-        if (typeof info === "string" && info.length > 0) {
-          // show any friendly informational message from the server
-          toast(info);
-        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("Error posting feedback:", err);
       }
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error("Error posting feedback:", err);
+    } finally {
+      setSubmitting(false);
     }
 
     handleClose();
@@ -655,7 +666,9 @@ export function FeedbackDialog() {
           <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit}>{isReportMode ? "Send Report" : "Send Feedback"}</Button>
+          <Button onClick={handleSubmit} disabled={submitting}>
+            {isReportMode ? "Send Report" : "Send Feedback"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

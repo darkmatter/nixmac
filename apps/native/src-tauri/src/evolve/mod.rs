@@ -22,7 +22,7 @@ use tokio::time::sleep;
 use tools::{create_tools, execute_tool, ToolResult};
 pub use types::{Evolution, EvolutionState};
 
-use crate::{commands, nix, store, types::EvolveEvent};
+use crate::{commands, nix, statistics, store, types::EvolveEvent};
 use messages::Message;
 use providers::{AiProvider, OllamaProvider, OpenAIProvider, ProviderError};
 
@@ -393,6 +393,10 @@ pub async fn generate_evolution(
                 app,
                 EvolveEvent::error(start_time, Some(iteration), "Evolution cancelled by user"),
             );
+            // Track failure
+            if let Err(e) = statistics::record_evolution_failure(app, iteration) {
+                warn!("Failed to record evolution failure stats: {}", e);
+            }
             return Err(anyhow!("Evolution cancelled by user"));
         }
 
@@ -440,6 +444,10 @@ pub async fn generate_evolution(
                         app,
                         EvolveEvent::error(start_time, Some(iteration), "Evolution cancelled by user"),
                     );
+                    // Track failure
+                    if let Err(e) = statistics::record_evolution_failure(app, iteration) {
+                        warn!("Failed to record evolution failure stats: {}", e);
+                    }
                     return Err(anyhow!("Evolution cancelled by user"));
                 }
             }
@@ -468,6 +476,11 @@ pub async fn generate_evolution(
                     app,
                     EvolveEvent::error(start_time, Some(iteration), &error_str),
                 );
+
+                // Track failure
+                if let Err(e) = statistics::record_evolution_failure(app, iteration) {
+                    warn!("Failed to record evolution failure stats: {}", e);
+                }
 
                 // Return a downcastable error in case the caller needs to see the ProviderError.
                 return Err(e.into());
@@ -672,6 +685,10 @@ pub async fn generate_evolution(
                     &format!("Maximum iterations exceeded ({})", max_iterations),
                 ),
             );
+            // Track failure
+            if let Err(e) = statistics::record_evolution_failure(app, iteration) {
+                warn!("Failed to record evolution failure stats: {}", e);
+            }
             return Err(anyhow!(
                 "Evolution exceeded maximum iterations ({})",
                 max_iterations
@@ -691,6 +708,10 @@ pub async fn generate_evolution(
                     &format!("Failed after {} build attempts", max_build_attempts),
                 ),
             );
+            // Track failure
+            if let Err(e) = statistics::record_evolution_failure(app, iteration) {
+                warn!("Failed to record evolution failure stats: {}", e);
+            }
             return Err(anyhow!(
                 "Failed to produce a valid configuration after {} build attempts",
                 max_build_attempts
@@ -724,6 +745,11 @@ pub async fn generate_evolution(
 
     let evolution_json = serde_json::to_string(&evolution).unwrap_or_default();
     store::set_evolve_metadata(app, &evolution_json)?;
+
+    // Track successful evolution
+    if let Err(e) = statistics::record_evolution_success(app, evolution.iterations) {
+        warn!("Failed to record evolution success stats: {}", e);
+    }
 
     Ok(evolution)
 }

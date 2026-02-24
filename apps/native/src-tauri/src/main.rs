@@ -18,6 +18,7 @@ mod nix;
 mod peek;
 mod permissions;
 mod providers;
+mod statistics;
 mod store;
 mod summarize;
 mod template;
