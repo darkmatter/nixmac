@@ -111,6 +111,45 @@ pub fn get_full_diff(dir: &str) -> Result<String> {
     Ok(diff)
 }
 
+/// Gets a diff containing only .nix files (including untracked .nix files).
+pub fn get_nix_diff(dir: &str) -> Result<String> {
+    let base = get_default_branch(dir).unwrap_or("HEAD");
+
+    let diff_output = git_command()
+        .args(["diff", base, "--", "*.nix"])
+        .current_dir(dir)
+        .output()?;
+
+    let mut diff = String::from_utf8_lossy(&diff_output.stdout).to_string();
+
+    let untracked_output = git_command()
+        .args(["ls-files", "--others", "--exclude-standard", "--", "*.nix"])
+        .current_dir(dir)
+        .output()?;
+
+    let untracked_files = String::from_utf8_lossy(&untracked_output.stdout);
+
+    for file in untracked_files.lines() {
+        if file.is_empty() {
+            continue;
+        }
+        let file_path = std::path::Path::new(dir).join(file);
+        if let Ok(contents) = std::fs::read_to_string(&file_path) {
+            diff.push_str(&format!("\ndiff --git a/{} b/{}\n", file, file));
+            diff.push_str("new file mode 100644\n");
+            diff.push_str("--- /dev/null\n");
+            diff.push_str(&format!("+++ b/{}\n", file));
+            let line_count = contents.lines().count();
+            diff.push_str(&format!("@@ -0,0 +1,{} @@\n", line_count));
+            for line in contents.lines() {
+                diff.push_str(&format!("+{}\n", line));
+            }
+        }
+    }
+
+    Ok(diff)
+}
+
 /// Counts additions and deletions from a diff string.
 pub fn count_diff_changes(diff: &str) -> (usize, usize) {
     let mut additions = 0;

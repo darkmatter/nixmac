@@ -37,7 +37,7 @@ export function StaleSummaryNotice() {
           onClick={handleDismiss}
           className="text-muted-foreground hover:text-foreground"
         >
-          dismiss
+          Dismiss
         </button>
       </span>
       <button

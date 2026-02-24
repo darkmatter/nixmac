@@ -4,11 +4,15 @@
  * - `Suggestion`: feature request or UX improvement
  * - `Bug`: an unexpected behavior or error
  * - `General`: other feedback or commentary
+ * - `Issue`: a specific issue or problem
+ * - `Error`: an error encountered in the application
  */
 export enum FeedbackType {
   Suggestion = "suggestion",
   Bug = "bug",
   General = "general",
+  Issue = "issue",
+  Error = "error",
 }
 
 /**
@@ -21,6 +25,10 @@ export interface ShareOptions {
   systemInfo: boolean;
   usageStats: boolean;
   evolutionLog: boolean;
+  changedNixFiles: boolean;
+  aiProviderModelInfo: boolean;
+  buildErrorOutput: boolean;
+  flakeInputsSnapshot: boolean;
   nixConfig: boolean;
   appLogs: boolean;
 }
@@ -55,6 +63,36 @@ export interface UsageStats {
 }
 
 /**
+ * AI provider/model details and usage signals captured from the app.
+ * Fields are optional and may be partially populated.
+ */
+export interface AiProviderModelInfo {
+  evolveProvider?: string;
+  evolveModel?: string;
+  summaryProvider?: string;
+  summaryModel?: string;
+  totalTokens?: number;
+  latencyMs?: number;
+  iterations?: number;
+  buildAttempts?: number;
+}
+
+/**
+ * Flake.lock input metadata (subset) captured from the user's configuration.
+ */
+export interface FlakeInputEntry {
+  rev?: string;
+  lastModified?: number;
+  narHash?: string;
+}
+
+export interface FlakeInputsSnapshot {
+  nixpkgs?: FlakeInputEntry;
+  "nix-darwin"?: FlakeInputEntry;
+  "home-manager"?: FlakeInputEntry;
+}
+
+/**
  * The serializable shape of feedback that will be sent to the server.
  * This intentionally keeps collected artifacts as optional
  * so they can be attached later when the runtime gathers logs / snapshots.
@@ -65,13 +103,13 @@ export interface FeedbackPayload {
 
   /** Primary freeform feedback text from the user */
   text: string;
-  
+
   /** Optional second textbox used for bug reports (what the user expected) */
   expectedText?: string;
-  
+
   /** User opt-in flags for which artifacts may be attached */
   share: ShareOptions;
-  
+
   /** Optional collected artifacts */
   lastPromptText?: string;
   currentAppStateSnapshot?: unknown;
@@ -82,6 +120,10 @@ export interface FeedbackPayload {
   usageStats?: UsageStats;
   usageStatsSnapshot?: unknown;
   evolutionLogContent?: string;
+  changedNixFilesDiff?: string;
+  aiProviderModelInfo?: AiProviderModelInfo;
+  buildErrorOutput?: string;
+  flakeInputsSnapshot?: FlakeInputsSnapshot;
   nixConfigSnapshot?: string;
   appLogsContent?: string;
 
@@ -108,11 +150,15 @@ export class Feedback {
   public share: ShareOptions;
   public createdAt: string;
   public email?: string;
-  
+
   // Optional collected artifacts (populated later by caller)
   public lastPromptText?: string;
   public currentAppStateSnapshot?: unknown;
   public evolutionLogContent?: string;
+  public changedNixFilesDiff?: string;
+  public aiProviderModelInfo?: AiProviderModelInfo;
+  public buildErrorOutput?: string;
+  public flakeInputsSnapshot?: FlakeInputsSnapshot;
   public nixConfigSnapshot?: string;
   public appLogsContent?: string;
   public systemInfo?: SystemInfo;
@@ -136,6 +182,10 @@ export class Feedback {
       systemInfo: true,
       usageStats: true,
       evolutionLog: true,
+      changedNixFiles: true,
+      aiProviderModelInfo: true,
+      buildErrorOutput: true,
+      flakeInputsSnapshot: true,
       nixConfig: true,
       appLogs: true,
     };
@@ -145,6 +195,10 @@ export class Feedback {
     this.systemInfo = payload.systemInfo;
     this.usageStats = payload.usageStats;
     this.evolutionLogContent = payload.evolutionLogContent;
+    this.changedNixFilesDiff = payload.changedNixFilesDiff;
+    this.aiProviderModelInfo = payload.aiProviderModelInfo;
+    this.buildErrorOutput = payload.buildErrorOutput;
+    this.flakeInputsSnapshot = payload.flakeInputsSnapshot;
     this.nixConfigSnapshot = payload.nixConfigSnapshot;
     this.appLogsContent = payload.appLogsContent;
   }
@@ -165,6 +219,10 @@ export class Feedback {
       systemInfo: this.systemInfo,
       usageStats: this.usageStats,
       evolutionLogContent: this.evolutionLogContent,
+      changedNixFilesDiff: this.changedNixFilesDiff,
+      aiProviderModelInfo: this.aiProviderModelInfo,
+      buildErrorOutput: this.buildErrorOutput,
+      flakeInputsSnapshot: this.flakeInputsSnapshot,
       nixConfigSnapshot: this.nixConfigSnapshot,
       appLogsContent: this.appLogsContent,
       createdAt: this.createdAt,
@@ -187,6 +245,10 @@ export class Feedback {
         systemInfo: true,
         usageStats: true,
         evolutionLog: true,
+        changedNixFiles: true,
+        aiProviderModelInfo: true,
+        buildErrorOutput: true,
+        flakeInputsSnapshot: true,
         nixConfig: true,
         appLogs: true,
       },
@@ -195,6 +257,10 @@ export class Feedback {
       systemInfo: input.systemInfo,
       usageStats: input.usageStats,
       evolutionLogContent: input.evolutionLogContent,
+      changedNixFilesDiff: input.changedNixFilesDiff,
+      aiProviderModelInfo: input.aiProviderModelInfo,
+      buildErrorOutput: input.buildErrorOutput,
+      flakeInputsSnapshot: input.flakeInputsSnapshot,
       nixConfigSnapshot: input.nixConfigSnapshot,
       appLogsContent: input.appLogsContent,
       createdAt: input.createdAt,
@@ -211,7 +277,16 @@ export class Feedback {
     if (this.type === FeedbackType.Bug && this.text.trim().length === 0) {
       errors.push("bug reports should include a description in 'text'");
     }
-    if ((this.type === FeedbackType.Suggestion || this.type === FeedbackType.General) && this.text.trim().length === 0) {
+    if (
+      (this.type === FeedbackType.Issue || this.type === FeedbackType.Error) &&
+      this.text.trim().length === 0
+    ) {
+      errors.push("issue reports should include a description in 'text'");
+    }
+    if (
+      (this.type === FeedbackType.Suggestion || this.type === FeedbackType.General) &&
+      this.text.trim().length === 0
+    ) {
       errors.push("please provide some text for your feedback");
     }
     return { ok: errors.length === 0, errors };
