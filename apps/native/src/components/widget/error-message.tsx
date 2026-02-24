@@ -28,15 +28,14 @@ export function ErrorMessage() {
       <p>{error}</p>
       <div className="mt-2 flex flex-wrap items-center gap-3">
         <button
-          className="flex items-center gap-1 rounded-md bg-red-500/20 px-2 py-1 text-red-400 text-xs transition-colors hover:bg-red-500/30"
+          className="text-red-300 underline"
           onClick={() => openFeedback(FeedbackType.Error)}
           type="button"
         >
-          <AlertTriangle className="h-3 w-3" />
           Report Error
         </button>
         <button className="text-red-300 underline" onClick={() => setError(null)} type="button">
-          dismiss
+          Dismiss
         </button>
       </div>
     </div>

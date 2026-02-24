@@ -93,11 +93,10 @@ export function Stepper() {
           })}
         </div>
         <button
-          className="flex items-center gap-1 rounded-md bg-red-500/20 px-2 py-1 text-red-400 text-xs transition-colors hover:bg-red-500/30"
+          className="text-red-300 underline text-xs"
           onClick={() => openFeedback(FeedbackType.Issue)}
           type="button"
         >
-          <AlertTriangle className="h-3 w-3" />
           Report Issue
         </button>
       </div>
