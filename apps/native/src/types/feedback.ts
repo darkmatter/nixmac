@@ -53,7 +53,7 @@ export interface SystemInfo {
 export interface UsageStats {
   /** Total number of evolutions the user has run */
   totalEvolutions?: number;
-  /** Fractional success rate (0.0 - 1.0) of evolutions */
+  /** Success rate as a percentage (0.0 - 100.0) of evolutions */
   successRate?: number;
   /** Average number of iterations per evolution */
   avgIterations?: number;

@@ -488,20 +488,22 @@ pub fn gather_app_state(app: &AppHandle, feedback_type: &str) -> Value {
 // Usage Stats Collection
 // =============================================================================
 
-/// Gather usage statistics
-/// NOTE: The app does not currently track usage stats persistently.
-/// This returns a placeholder structure for future implementation.
-pub fn gather_usage_stats() -> types::FeedbackUsageStats {
-    types::FeedbackUsageStats {
-        total_evolutions: None,
-        success_rate: None,
-        avg_iterations: None,
-        last_computed_at: Some(Utc::now().to_rfc3339()),
-        extra: Some(serde_json::json!({
-            "status": "not_implemented",
-            "note": "Usage statistics tracking not yet implemented"
-        })),
-    }
+/// Gather usage statistics from persistent storage.
+/// Returns current evolution counts, success rate, and average iterations.
+pub fn gather_usage_stats(app: &AppHandle) -> types::FeedbackUsageStats {
+    crate::statistics::get_usage_statistics(app).unwrap_or_else(|e| {
+        warn!("Failed to retrieve usage statistics: {}", e);
+        // Return default stats on error
+        types::FeedbackUsageStats {
+            total_evolutions: None,
+            success_rate: None,
+            avg_iterations: None,
+            last_computed_at: Some(Utc::now().to_rfc3339()),
+            extra: Some(serde_json::json!({
+                "error": format!("Failed to load stats: {}", e)
+            })),
+        }
+    })
 }
 
 // =============================================================================
@@ -538,9 +540,9 @@ pub fn gather_metadata(
         metadata.current_app_state_snapshot = Some(gather_app_state(app, &request.feedback_type));
     }
 
-    // Gather usage statistics (currently not implemented, returns placeholder)
+    // Gather usage statistics from persistent store
     if share.usage_stats {
-        metadata.usage_stats = Some(gather_usage_stats());
+        metadata.usage_stats = Some(gather_usage_stats(app));
     }
 
     // Gather last prompt text from evolution metadata

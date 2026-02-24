@@ -7,6 +7,12 @@ psql "$DATABASE_URL" -t -A \
       FROM public.feedback 
       WHERE type = 'bug';" \
   > bugs.json
+
+psql "$DATABASE_URL" -t -A \
+  -c "SELECT jsonb_pretty(payload) 
+      FROM public.feedback 
+      WHERE id = '"870018c7-f723-45b9-9d33-10512c6eb406"';" \
+  > issue.json
 */
 
 export const feedbackType = pgEnum("feedback_type", [
