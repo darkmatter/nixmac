@@ -111,6 +111,7 @@ export function FeedbackDialog() {
     if (submitting) return;
     setSubmitting(true);
 
+    let sentSuccessfully = false;
     try {
       let metadata: Awaited<ReturnType<typeof darwinAPI.feedback.gatherMetadata>> | null = null;
       try {
@@ -210,16 +211,20 @@ export function FeedbackDialog() {
             // show any friendly informational message from the server
             toast(info);
           }
+          sentSuccessfully = true;
         }
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error("Error posting feedback:", err);
+        toast.error("Network error sending feedback — please check your connection and try again.");
       }
     } finally {
       setSubmitting(false);
     }
 
-    handleClose();
+    if (sentSuccessfully) {
+      handleClose();
+    }
   };
 
   const getTextboxLabel = () => {
