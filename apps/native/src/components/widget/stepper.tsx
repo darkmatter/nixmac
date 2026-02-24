@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { FeedbackType } from "@/types/feedback";
-import { AlertTriangle, Check } from "lucide-react";
+import { Check } from "lucide-react";
 
 const STEPS = [
   { name: "Begin", description: "Make a change" },
