@@ -141,8 +141,10 @@ fn resolve_template_path(app: &AppHandle) -> Result<std::path::PathBuf, String> 
 /// 1. Validates the target directory is empty (safety check)
 /// 2. Copies template files, processing .nix files to replace placeholders
 /// 3. Initializes a git repository
-/// 4. Generates flake.lock
-/// 5. Creates an initial commit
+/// 4. Creates an initial commit (without flake.lock)
+///
+/// Note: `finalize_flake_lock()` should be called after Nix is confirmed
+/// installed to generate flake.lock and create a follow-up commit.
 ///
 /// # Arguments
 /// * `app` - Tauri app handle for accessing resources and storage
@@ -153,7 +155,7 @@ fn resolve_template_path(app: &AppHandle) -> Result<std::path::PathBuf, String> 
 /// - The target directory is not empty
 /// - Template directory cannot be found
 /// - File operations fail
-/// - Git or nix commands fail
+/// - Git commands fail
 pub fn bootstrap(app: &AppHandle, hostname: &str) -> Result<(), String> {
     let dir = store::ensure_config_dir_exists(app)
         .map_err(|e| format!("Failed to ensure config dir: {}", e))?;
@@ -175,9 +177,23 @@ pub fn bootstrap(app: &AppHandle, hostname: &str) -> Result<(), String> {
     // Copy and process all template files recursively
     copy_template_dir(&template_path, dest_path, hostname, platform)?;
 
-    // Initialize git repository
+    // Initialize git repository and commit templates (without flake.lock)
     git::init_if_needed(&dir).map_err(|e| format!("Failed to init git: {}", e))?;
     git::stage_all(&dir).map_err(|e| format!("Failed to stage files: {}", e))?;
+    git::commit_all(&dir, "Initial nix-darwin configuration")
+        .map_err(|e| format!("Failed to commit: {}", e))?;
+
+    Ok(())
+}
+
+/// Generates flake.lock and commits it as a follow-up to bootstrap.
+///
+/// This should be called after Nix is confirmed installed. It runs
+/// `nix flake lock` in the config directory, then stages and commits
+/// the generated flake.lock file.
+pub fn finalize_flake_lock(app: &AppHandle) -> Result<(), String> {
+    let dir = store::ensure_config_dir_exists(app)
+        .map_err(|e| format!("Failed to ensure config dir: {}", e))?;
 
     // Generate flake.lock
     let flake_lock_result = Command::new("nix")
@@ -194,10 +210,10 @@ pub fn bootstrap(app: &AppHandle, hostname: &str) -> Result<(), String> {
         ));
     }
 
-    // Stage lock file and create initial commit
+    // Stage lock file and commit
     git::stage_all(&dir).map_err(|e| format!("Failed to stage flake.lock: {}", e))?;
-    git::commit_all(&dir, "Initial nix-darwin configuration")
-        .map_err(|e| format!("Failed to commit: {}", e))?;
+    git::commit_all(&dir, "Add flake.lock")
+        .map_err(|e| format!("Failed to commit flake.lock: {}", e))?;
 
     Ok(())
 }

@@ -238,11 +238,16 @@ export const darwinAPI = {
       invoke("darwin_apply_stream_start", { hostOverride }),
     applyStreamCancel: () => invoke("darwin_apply_stream_cancel"),
   },
+  nix: {
+    check: () => invoke<{ installed: boolean; version?: string }>("nix_check"),
+    installStart: () => invoke("nix_install_start"),
+  },
   flake: {
     listHosts: () => invoke<string[]>("flake_list_hosts"),
     installedApps: () => invoke<unknown[]>("flake_installed_apps"),
     exists: () => invoke<boolean>("flake_exists"),
     bootstrapDefault: (hostname: string) => invoke<void>("bootstrap_default_config", { hostname }),
+    finalizeFlakeLock: () => invoke("finalize_flake_lock"),
   },
   // Summarization with fast model
   summarize: {

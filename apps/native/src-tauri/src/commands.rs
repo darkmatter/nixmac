@@ -497,11 +497,26 @@ pub async fn flake_installed_apps(app: AppHandle) -> Result<Vec<serde_json::Valu
     Ok(apps)
 }
 
-/// Starts a streaming Nix installation using the Determinate Systems installer.
-/// Progress is emitted via `nix:install:data` events, completion via `nix:install:end`.
+#[tauri::command]
+pub async fn nix_check() -> Result<serde_json::Value, String> {
+    let installed = nix::is_nix_installed();
+    let version = if installed {
+        nix::get_nix_version()
+    } else {
+        None
+    };
+    Ok(serde_json::json!({ "installed": installed, "version": version }))
+}
+
 #[tauri::command]
 pub async fn nix_install_start(app: AppHandle) -> Result<serde_json::Value, String> {
     nix::install_nix_stream(&app).map_err(|e| capture_err("nix_install_start", e))?;
+    Ok(serde_json::json!({"ok": true}))
+}
+
+#[tauri::command]
+pub async fn finalize_flake_lock(app: AppHandle) -> Result<serde_json::Value, String> {
+    default_config::finalize_flake_lock(&app)?;
     Ok(serde_json::json!({"ok": true}))
 }
 
