@@ -4,7 +4,6 @@ import { ArrowLeft, Check, Pencil, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
 import { StaleSummaryNotice } from "@/components/widget/stale-summary-notice";
-import { getChangeType } from "./utils";
 import { getDirectory, getShortFilename } from "@/components/widget/utils";
 
 interface SummaryItemsProps {
@@ -12,12 +11,15 @@ interface SummaryItemsProps {
 }
 
 export function SummaryItems({ variant = "default" }: SummaryItemsProps) {
+  console.log("[SummaryItems] rendering, variant:", variant);
   const gitStatus = useWidgetStore((s) => s.gitStatus);
   const summary = useWidgetStore((s) => s.summary);
 
   const changedFiles = gitStatus?.files || [];
+  console.log("[ChangedFiles] changedFiles:", changedFiles);
   const summaryItems = summary.items;
 
+  console.log("[SummaryItems] gitStatus files:", summaryItems);
 
   const renderListItem = ({
     key,
@@ -80,23 +82,19 @@ export function SummaryItems({ variant = "default" }: SummaryItemsProps) {
     );
   }
 
+
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
       <StaleSummaryNotice />
       {changedFiles.map((f) => {
-        const changeType = getChangeType(f);
         const fileName = getShortFilename(f.path);
         const directory = getDirectory(f.path);
-        const isStaged = Boolean(
-          f.index && f.index !== " " && f.index !== "?"
-        );
 
         return renderListItem({
           key: f.path,
-          changeType,
+          changeType: f.changeType,
           fileName,
           directory,
-          isStaged,
         });
       })}
     </div>

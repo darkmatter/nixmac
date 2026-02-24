@@ -363,3 +363,44 @@ pub fn set_cached_git_status<R: Runtime>(
     store.save()?;
     Ok(())
 }
+
+// =============================================================================
+// Prompt History
+// =============================================================================
+
+const MAX_PROMPT_HISTORY: usize = 20;
+
+/// Gets the prompt history (most recent first).
+pub fn get_prompt_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<String>> {
+    let store = get_store(app)?;
+
+    if let Some(val) = store.get("promptHistory") {
+        if let Some(arr) = val.as_array() {
+            let history: Vec<String> = arr
+                .iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect();
+            return Ok(history);
+        }
+    }
+    Ok(Vec::new())
+}
+
+/// Adds a prompt to the history. Maintains max of 20 entries, most recent first.
+pub fn add_to_prompt_history<R: Runtime>(app: &AppHandle<R>, prompt: &str) -> Result<()> {
+    let store = get_store(app)?;
+    let mut history = get_prompt_history(app)?;
+
+    // Remove if it already exists
+    history.retain(|p| p != prompt);
+
+    // Add to front
+    history.insert(0, prompt.to_string());
+
+    // Trim
+    history.truncate(MAX_PROMPT_HISTORY);
+
+    store.set("promptHistory", serde_json::json!(history));
+    store.save()?;
+    Ok(())
+}

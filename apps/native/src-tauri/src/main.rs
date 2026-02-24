@@ -11,6 +11,7 @@ mod commands;
 mod darwin;
 mod default_config;
 mod evolve;
+mod feedback;
 mod git;
 mod log_summarizer;
 mod nix;
@@ -142,6 +143,9 @@ fn main() {
             commands::get_cached_models,
             commands::set_cached_models,
             commands::clear_cached_models,
+            // Prompt history
+            commands::get_prompt_history,
+            commands::add_to_prompt_history,
             // Window
             commands::show_main_window,
             // Preview indicator

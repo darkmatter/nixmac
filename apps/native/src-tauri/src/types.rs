@@ -21,75 +21,25 @@ pub struct Config {
 
 /// Comprehensive git repository status.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GitStatus {
-    /// All files with changes, including detailed status codes.
+    /// All files with changes, parsed from diff headers.
     pub files: Vec<GitFileStatus>,
-
-    /// Newly created files (staged with 'A').
-    pub created: Vec<String>,
-
-    /// Deleted files (staged with 'D').
-    pub deleted: Vec<String>,
-
-    /// Modified files (staged with 'M').
-    pub modified: Vec<String>,
-
-    /// All staged files (ready to commit).
-    pub staged: Vec<String>,
-
-    /// Untracked files (not yet added to git).
-    pub not_added: Vec<String>,
-
-    /// Files with merge conflicts.
-    pub conflicted: Vec<String>,
-
-    /// Commits ahead of tracking branch (not currently implemented).
-    pub ahead: i32,
-
-    /// Commits behind tracking branch (not currently implemented).
-    pub behind: i32,
 
     /// Current branch name.
     pub branch: Option<String>,
 
-    /// Remote tracking branch name.
-    pub tracking: Option<String>,
-
     /// Commit messages on current branch since diverging from main.
-    #[serde(rename = "branchCommitMessages")]
     pub branch_commit_messages: Vec<String>,
 
-    /// Quick check for any uncommitted changes.
-    #[serde(rename = "hasChanges")]
-    pub has_changes: bool,
-
-    /// Files with working_tree changes (not yet staged).
-    #[serde(rename = "hasUnstagedChanges")]
-    pub has_unstaged_changes: bool,
-
-    /// All changes are staged (no unstaged changes exist).
-    #[serde(rename = "allChangesStaged")]
-    pub all_changes_staged: bool,
-
-    /// All files cleanly staged (ready to commit - no mixed staged/unstaged).
-    #[serde(rename = "allChangesCleanlyStaged")]
-    pub all_changes_cleanly_staged: bool,
-
     /// Whether HEAD has the nixmac-built tag (changes have been built/applied).
-    #[serde(rename = "headIsBuilt")]
     pub head_is_built: bool,
 
     /// Whether the current branch is main or master.
-    #[serde(rename = "isMainBranch")]
     pub is_main_branch: bool,
-
-    /// SHA of commit with nixmac-last-build tag, None if no tag exists.
-    #[serde(rename = "lastBuiltCommitSha")]
-    pub last_built_commit_sha: Option<String>,
 
     /// True if nixmac-last-build tag points to a commit on current branch
     /// (i.e., the built commit is an ancestor of HEAD).
-    #[serde(rename = "branchHasBuiltCommit")]
     pub branch_has_built_commit: bool,
 
     /// The raw unified diff content (git diff main + untracked file contents).
@@ -102,17 +52,15 @@ pub struct GitStatus {
     pub deletions: usize,
 }
 
-/// Individual file status from `git status --porcelain`.
+/// Individual file status parsed from diff headers.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GitFileStatus {
     /// Relative path to the file.
     pub path: String,
 
-    /// Index (staging area) status character.
-    pub index: Option<String>,
-
-    /// Working tree status character.
-    pub working_tree: Option<String>,
+    /// Type of change: "new", "edited", "removed", or "renamed".
+    pub change_type: String,
 }
 
 /// User interface preferences.

@@ -18,6 +18,7 @@ import {
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useNixInstall } from "@/hooks/use-nix-install";
 import { usePermissions } from "@/hooks/use-permissions";
+import { usePromptHistory } from "@/hooks/use-prompt-history";
 import { useWatcher } from "@/hooks/use-watcher";
 import { loadConfig, loadHosts } from "@/hooks/use-widget-initialization";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
@@ -32,6 +33,7 @@ export function DarwinWidget() {
   const { getInitialStatusAndSummary } = useGitOperations();
   const { checkNix } = useNixInstall();
   const { checkPermissions } = usePermissions();
+  const { refreshPromptHistory } = usePromptHistory();
   const { startWatching } = useWatcher();
 
   // Load initial data once on mount, then start watching for changes
@@ -43,6 +45,7 @@ export function DarwinWidget() {
         await checkNix();
         await loadHosts();
         await getInitialStatusAndSummary();
+        refreshPromptHistory();
       } catch (e: unknown) {
         useWidgetStore.getState().setError((e as Error)?.message || String(e));
       }

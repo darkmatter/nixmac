@@ -1,5 +1,6 @@
 "use client";
 
+import { BadgeButton } from "@/components/ui/badge-button";
 import {
   InputGroup,
   InputGroupAddon,
@@ -7,6 +8,7 @@ import {
   InputGroupText,
   InputGroupTextarea,
 } from "@/components/ui/input-group";
+import { PromptHistoryBadge } from "@/components/widget/prompt-history-badge";
 import { useEvolve } from "@/hooks/use-evolve";
 import { useWidgetStore } from "@/stores/widget-store";
 import { ArrowUpIcon } from "lucide-react";
@@ -20,8 +22,14 @@ export function PromptInput() {
   const processingAction = useWidgetStore((s) => s.processingAction);
   const gitStatus = useWidgetStore((s) => s.gitStatus);
   const suggestions = useWidgetStore((s) => s.suggestions);
-
   const { handleEvolve } = useEvolve();
+
+
+  const handleSubmit = () => {
+    if (evolvePrompt.trim()) {
+      handleEvolve();
+    }
+  };
 
   const isLoading = isProcessing && processingAction === "evolve";
   const hasChanges = Boolean(gitStatus?.diff);
@@ -33,11 +41,7 @@ export function PromptInput() {
   const words = evolvePrompt.split(" ").length;
   const percentage = words / MAX_CONTEXT_LENGTH;
   const contextUsage =
-    percentage >= 1
-      ? "100% used"
-      : percentage < 0.1
-        ? ""
-        : `${Math.floor(percentage * 100)}% used`;
+    percentage >= 1 ? "100% used" : percentage < 0.1 ? "" : `${Math.floor(percentage * 100)}% used`;
 
   return (
     <div className="space-y-3">
@@ -47,7 +51,7 @@ export function PromptInput() {
           onChange={(e) => setEvolvePrompt(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && evolvePrompt.trim() && !isLoading) {
-              handleEvolve();
+              handleSubmit();
             }
           }}
           placeholder={placeholder}
@@ -85,7 +89,7 @@ export function PromptInput() {
           <InputGroupButton
             className="rounded-full"
             disabled={isLoading || !evolvePrompt.trim()}
-            onClick={() => handleEvolve()}
+            onClick={handleSubmit}
             size="icon-xs"
             variant="default"
           >
@@ -95,20 +99,17 @@ export function PromptInput() {
         </InputGroupAddon>
       </InputGroup>
 
-      {suggestions.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {suggestions.map((suggestion) => (
-            <button
-              className="rounded-full border border-border bg-muted/50 px-3 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground"
-              key={suggestion}
-              onClick={() => setEvolvePrompt(suggestion)}
-              type="button"
-            >
-              {suggestion}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="flex flex-wrap gap-1">
+        {suggestions.map((suggestion) => (
+          <BadgeButton
+            key={suggestion}
+            onClick={() => setEvolvePrompt(suggestion)}
+          >
+            {suggestion}
+          </BadgeButton>
+        ))}
+        <PromptHistoryBadge />
+      </div>
     </div>
   );
 }
