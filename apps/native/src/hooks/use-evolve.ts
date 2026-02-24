@@ -8,6 +8,7 @@ import {
 } from "@/tauri-api";
 import { useCallback } from "react";
 import { useGitOperations } from "./use-git-operations";
+import { usePromptHistory } from "./use-prompt-history";
 import { useSummary } from "./use-summary";
 
 /**
@@ -17,6 +18,7 @@ import { useSummary } from "./use-summary";
  */
 export function useEvolve() {
   const { refreshGitStatus } = useGitOperations();
+  const { refreshPromptHistory } = usePromptHistory();
   const { fetchSummary } = useSummary();
 
   const handleEvolve = useCallback(async () => {
@@ -25,6 +27,8 @@ export function useEvolve() {
     if (!store.evolvePrompt.trim()) {
       return;
     }
+
+    await refreshPromptHistory(store.evolvePrompt.trim());
 
     // Check if we need to create a branch (only if on main)
     const currentBranch = store.gitStatus?.branch;
@@ -101,7 +105,7 @@ export function useEvolve() {
         useWidgetStore.getState().setProcessing(false);
       }, 3000);
     }
-  }, [refreshGitStatus, fetchSummary]);
+  }, [refreshGitStatus, refreshPromptHistory, fetchSummary]);
 
   return { handleEvolve };
 }

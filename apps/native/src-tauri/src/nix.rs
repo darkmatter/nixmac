@@ -194,11 +194,17 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
     loop {
         std::thread::sleep(poll_interval);
         poll_count += 1;
-        info!("[nix] Poll #{}: checking if nix is installed...", poll_count);
+        info!(
+            "[nix] Poll #{}: checking if nix is installed...",
+            poll_count
+        );
 
         if is_nix_installed() {
             let version = get_nix_version().unwrap_or_default();
-            info!("[nix] Poll #{}: nix detected! version: {}", poll_count, version);
+            info!(
+                "[nix] Poll #{}: nix detected! version: {}",
+                poll_count, version
+            );
             app.emit(
                 "nix:install:end",
                 serde_json::json!({
