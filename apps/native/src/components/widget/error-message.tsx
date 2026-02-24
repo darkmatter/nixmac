@@ -2,7 +2,6 @@
 
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { FeedbackType } from "@/types/feedback";
-import { AlertTriangle } from "lucide-react";
 
 /**
  * Error message component - displays errors from store.
