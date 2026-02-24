@@ -118,7 +118,7 @@ export function FeedbackDialog() {
     // Build a typed Feedback model and log it (replace with submission later)
     const modelType = feedbackType;
     const relatedPromptText =
-      feedbackType === FeedbackType.Issue && relatedPrompt
+      (feedbackType === FeedbackType.Issue || feedbackType === FeedbackType.Error) && relatedPrompt
         ? relatedPrompt
         : metadata?.lastPromptText;
     const selectedPromptText = shareOptions.lastPrompt ? relatedPromptText : undefined;
