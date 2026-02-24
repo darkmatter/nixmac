@@ -136,6 +136,10 @@ pub struct FeedbackShareOptions {
     pub system_info: bool,
     pub usage_stats: bool,
     pub evolution_log: bool,
+    pub changed_nix_files: bool,
+    pub ai_provider_model_info: bool,
+    pub build_error_output: bool,
+    pub flake_inputs_snapshot: bool,
     pub nix_config: bool,
     pub app_logs: bool,
 }
@@ -162,6 +166,39 @@ pub struct FeedbackUsageStats {
     pub extra: Option<Value>,
 }
 
+/// AI provider/model info and usage signals.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeedbackAiProviderModelInfo {
+    pub evolve_provider: Option<String>,
+    pub evolve_model: Option<String>,
+    pub summary_provider: Option<String>,
+    pub summary_model: Option<String>,
+    pub total_tokens: Option<u32>,
+    pub latency_ms: Option<i64>,
+    pub iterations: Option<usize>,
+    pub build_attempts: Option<usize>,
+}
+
+/// Flake input metadata captured from flake.lock.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeedbackFlakeInputEntry {
+    pub rev: Option<String>,
+    pub last_modified: Option<i64>,
+    pub nar_hash: Option<String>,
+}
+
+/// Snapshot of selected flake inputs.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FeedbackFlakeInputsSnapshot {
+    pub nixpkgs: Option<FeedbackFlakeInputEntry>,
+    #[serde(rename = "nix-darwin")]
+    pub nix_darwin: Option<FeedbackFlakeInputEntry>,
+    #[serde(rename = "home-manager")]
+    pub home_manager: Option<FeedbackFlakeInputEntry>,
+}
+
 /// Request payload for gathering feedback metadata.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -179,6 +216,10 @@ pub struct FeedbackMetadata {
     pub system_info: Option<FeedbackSystemInfo>,
     pub usage_stats: Option<FeedbackUsageStats>,
     pub evolution_log_content: Option<String>,
+    pub changed_nix_files_diff: Option<String>,
+    pub ai_provider_model_info: Option<FeedbackAiProviderModelInfo>,
+    pub build_error_output: Option<String>,
+    pub flake_inputs_snapshot: Option<FeedbackFlakeInputsSnapshot>,
     pub nix_config_snapshot: Option<String>,
     pub app_logs_content: Option<String>,
 }

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { FeedbackType } from "@/types/feedback";
 import type { ChangesSummary, EvolveEvent, GitStatus, PermissionsState } from "@/tauri-api";
 import { computeCurrentStep } from "@/components/widget/utils";
 export type {
@@ -7,7 +8,7 @@ export type {
   EvolveEventType,
   GitFileStatus,
   GitStatus,
-  PermissionsState
+  PermissionsState,
 } from "@/tauri-api";
 
 // =============================================================================
@@ -17,12 +18,7 @@ export type {
 /**
  * Widget step state - updated by useEffect based on app state.
  */
-export type WidgetStep =
-  | "permissions"
-  | "nix-setup"
-  | "setup"
-  | "evolving"
-  | "merge";
+export type WidgetStep = "permissions" | "nix-setup" | "setup" | "evolving" | "merge";
 export type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
 
 // Rebuild state for showing progress inline in the widget
@@ -93,6 +89,7 @@ export interface WidgetState {
   isGenerating: boolean;
   settingsOpen: boolean;
   feedbackOpen: boolean;
+  feedbackTypeOverride: FeedbackType | null;
   error: string | null;
   suggestions: string[];
 }
@@ -127,6 +124,8 @@ export interface WidgetActions {
   setSummaryStale: (stale: boolean) => void;
   setGenerating: (generating: boolean) => void;
   clearPreview: () => void;
+  setFeedbackTypeOverride: (type: FeedbackType | null) => void;
+  openFeedback: (type?: FeedbackType) => void;
 
   // Console
   appendLog: (text: string) => void;
@@ -211,6 +210,7 @@ export const initialWidgetState: WidgetState = {
   isGenerating: false,
   settingsOpen: false,
   feedbackOpen: false,
+  feedbackTypeOverride: null,
   error: null,
   suggestions: ["Install vim", "Add Rectangle app", "Configure git"],
 };
@@ -249,6 +249,12 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setSummaryStale: (summaryStale) => set({ summaryStale }),
     setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
     setFeedbackOpen: (feedbackOpen) => set({ feedbackOpen }),
+    setFeedbackTypeOverride: (feedbackTypeOverride) => set({ feedbackTypeOverride }),
+    openFeedback: (type) =>
+      set({
+        feedbackOpen: true,
+        feedbackTypeOverride: type ?? null,
+      }),
     setError: (error) => set({ error }),
     setPromptHistory: (promptHistory) => set({ promptHistory }),
 
@@ -271,8 +277,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
       }),
 
     // Console
-    appendLog: (text) =>
-      set((state) => ({ consoleLogs: state.consoleLogs + text })),
+    appendLog: (text) => set((state) => ({ consoleLogs: state.consoleLogs + text })),
     clearLogs: () => set({ consoleLogs: "" }),
 
     // Evolve events
