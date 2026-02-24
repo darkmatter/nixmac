@@ -5,7 +5,6 @@ import type {
 } from "@/stores/widget-store";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
-// Categorize git changes for display
 export function categorizeChanges(files: GitFileStatus[]) {
   const categories = [
     {
@@ -44,7 +43,6 @@ export function categorizeChanges(files: GitFileStatus[]) {
   return categories.filter((c) => c.items.length > 0);
 }
 
-// Helper to get change type from git status
 export function getChangeType(
   f: GitFileStatus,
 ): "new" | "edited" | "removed" | "renamed" {
@@ -61,8 +59,6 @@ export function getChangeType(
   return "edited";
 }
 
-// Computes the current step based on widget state.
-
 export function computeCurrentStep(state: WidgetState): WidgetStep {
   const hasConfigDir = !!state.configDir;
   const hasHost = !!state.host;
@@ -74,31 +70,31 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
     !state.permissionsState.allRequiredGranted;
   const isBootstrapping = state.isBootstrapping;
 
-  // Rule 0: Permission issues
   if (permissionsCheckedAndIncomplete) {
     return "permissions";
   }
 
-  // Rule 0.5: Bootstrapping in progress - stay on setup step
-  // This prevents git watcher updates from changing the step during bootstrap
+  if (state.nixInstalled === false || (state.nixInstalled === null && !state.nixInstalling)) {
+    return "nix-setup";
+  }
+
+  if (state.nixInstalling) {
+    return "nix-setup";
+  }
+
   if (isBootstrapping) {
     return "setup";
   }
 
-  // Rule 1: Missing configuration
   if (!(hasConfigDir && hasHost)) {
     return "setup";
   }
 
-  // Rule 2: On nixmac-evolve/* branch with built tag → commit step
   if (notMainBranch && headIsBuilt) {
     return "merge";
   }
 
-  // Rule 3: Default - evolving
   return "evolving";
-
-  //TODO: add step for manual user branch unrelated to evolve workflow?
 }
 
 export function getShortFilename(path: string): string {

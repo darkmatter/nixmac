@@ -19,6 +19,7 @@ export type {
  */
 export type WidgetStep =
   | "permissions"
+  | "nix-setup"
   | "setup"
   | "evolving"
   | "merge";
@@ -61,6 +62,12 @@ export interface WidgetState {
   // Bootstrap (creating default config)
   isBootstrapping: boolean;
 
+  // Nix installation
+  nixInstalled: boolean | null; // null = not checked yet
+  nixInstalling: boolean;
+  nixInstallLines: string[];
+  nixInstallError: string | null;
+
   // Git (from backend)
   gitStatus: GitStatus | null;
   // Evolution
@@ -99,6 +106,11 @@ export interface WidgetActions {
   setHosts: (hosts: string[]) => void;
   setHost: (host: string) => void;
   setBootstrapping: (isBootstrapping: boolean) => void;
+  setNixInstalled: (installed: boolean | null) => void;
+  setNixInstalling: (installing: boolean) => void;
+  setNixInstallError: (error: string | null) => void;
+  appendNixInstallLine: (line: string) => void;
+  clearNixInstallLines: () => void;
   setGitStatus: (status: GitStatus | null) => void;
   setEvolvePrompt: (prompt: string) => void;
   setCommitMsg: (msg: string) => void;
@@ -163,6 +175,12 @@ export const initialWidgetState: WidgetState = {
   hosts: [],
   host: "",
 
+
+  // Nix
+  nixInstalled: null,
+  nixInstalling: false,
+  nixInstallLines: [],
+  nixInstallError: null,
 
   // Git
   gitStatus: null,
@@ -232,6 +250,14 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
 
     // Client-side UI state (NOT from server)
     setBootstrapping: (isBootstrapping) => set({ isBootstrapping }),
+    setNixInstalled: (nixInstalled) => set({ nixInstalled }),
+    setNixInstalling: (nixInstalling) => set({ nixInstalling }),
+    setNixInstallError: (nixInstallError) => set({ nixInstallError }),
+    appendNixInstallLine: (line) =>
+      set((state) => ({
+        nixInstallLines: [...state.nixInstallLines, line].slice(-200),
+      })),
+    clearNixInstallLines: () => set({ nixInstallLines: [] }),
     setGenerating: (isGenerating) => set({ isGenerating }),
     clearPreview: () =>
       set({
