@@ -79,7 +79,6 @@ export interface PreviewIndicatorState {
 // =============================================================================
 
 export interface FeedbackShareOptions {
-  lastPrompt: boolean;
   currentAppState: boolean;
   systemInfo: boolean;
   usageStats: boolean;
