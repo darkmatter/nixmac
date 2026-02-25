@@ -61,8 +61,6 @@ export interface WidgetState {
   // Nix installation
   nixInstalled: boolean | null; // null = not checked yet
   nixInstalling: boolean;
-  nixInstallLines: string[];
-  nixInstallError: string | null;
 
   // Git (from backend)
   gitStatus: GitStatus | null;
@@ -106,9 +104,6 @@ export interface WidgetActions {
   setBootstrapping: (isBootstrapping: boolean) => void;
   setNixInstalled: (installed: boolean | null) => void;
   setNixInstalling: (installing: boolean) => void;
-  setNixInstallError: (error: string | null) => void;
-  appendNixInstallLine: (line: string) => void;
-  clearNixInstallLines: () => void;
   setGitStatus: (status: GitStatus | null) => void;
   setEvolvePrompt: (prompt: string) => void;
   setCommitMsg: (msg: string) => void;
@@ -180,8 +175,6 @@ export const initialWidgetState: WidgetState = {
   // Nix
   nixInstalled: null,
   nixInstalling: false,
-  nixInstallLines: [],
-  nixInstallError: null,
 
   // Git
   gitStatus: null,
@@ -262,12 +255,6 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setBootstrapping: (isBootstrapping) => set({ isBootstrapping }),
     setNixInstalled: (nixInstalled) => set({ nixInstalled }),
     setNixInstalling: (nixInstalling) => set({ nixInstalling }),
-    setNixInstallError: (nixInstallError) => set({ nixInstallError }),
-    appendNixInstallLine: (line) =>
-      set((state) => ({
-        nixInstallLines: [...state.nixInstallLines, line].slice(-200),
-      })),
-    clearNixInstallLines: () => set({ nixInstallLines: [] }),
     setGenerating: (isGenerating) => set({ isGenerating }),
     clearPreview: () =>
       set({

@@ -18,11 +18,7 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
     return "permissions";
   }
 
-  if (state.nixInstalled === false || (state.nixInstalled === null && !state.nixInstalling)) {
-    return "nix-setup";
-  }
-
-  if (state.nixInstalling) {
+  if (state.nixInstalled !== true) {
     return "nix-setup";
   }
 

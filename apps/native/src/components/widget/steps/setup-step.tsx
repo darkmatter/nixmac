@@ -11,37 +11,17 @@ import { BootstrapConfig } from "@/components/widget/bootstrap-config";
 import { DirectoryPicker } from "@/components/widget/directory-picker";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI } from "@/tauri-api";
-import { loadHosts } from "@/hooks/use-widget-initialization";
 import { Monitor, Sparkles } from "lucide-react";
-import { useEffect } from "react";
 
 export function SetupStep() {
   const configDir = useWidgetStore((state) => state.configDir);
   const hosts = useWidgetStore((state) => state.hosts);
   const host = useWidgetStore((state) => state.host);
-  const nixInstalled = useWidgetStore((state) => state.nixInstalled);
 
   const { saveHost } = useDarwinConfig();
 
   const hasConfigDir = Boolean(configDir);
   const hasFlake = hasConfigDir && hosts.length > 0;
-
-  useEffect(() => {
-    if (nixInstalled && host) {
-      (async () => {
-        try {
-          const flakeExists = await darwinAPI.flake.exists();
-          if (flakeExists) {
-            await darwinAPI.flake.finalizeFlakeLock();
-            await loadHosts();
-          }
-        } catch {
-          // ignore — flake.lock may already exist
-        }
-      })();
-    }
-  }, [nixInstalled, host]);
 
   return (
     <div className="flex flex-col items-center justify-center space-y-6 py-8">
