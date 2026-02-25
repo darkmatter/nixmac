@@ -29,7 +29,6 @@ import { fetch } from "@tauri-apps/plugin-http";
 import { toast } from "sonner";
 
 const DEFAULT_SHARE_OPTIONS: ShareOptions = {
-  lastPrompt: true,
   currentAppState: true,
   systemInfo: true,
   usageStats: true,
@@ -43,7 +42,6 @@ const DEFAULT_SHARE_OPTIONS: ShareOptions = {
 };
 
 const ISSUE_SHARE_OPTIONS: ShareOptions = {
-  lastPrompt: true,
   currentAppState: true,
   systemInfo: true,
   usageStats: true,
@@ -94,6 +92,23 @@ export function FeedbackDialog() {
     }
   }, [feedbackOpen, feedbackTypeOverride]);
 
+  // When the user actively selects a feedback type, reset the evolutionLog
+  // share option to the sensible default for that type. It's acceptable to
+  // reset this if the user moves between radio buttons while in the dialog.
+  useEffect(() => {
+    if (!feedbackOpen) return;
+
+    if (feedbackType === FeedbackType.Suggestion || feedbackType === FeedbackType.General) {
+      setShareOptions((prev) => ({ ...prev, evolutionLog: false }));
+    } else if (
+      feedbackType === FeedbackType.Bug ||
+      feedbackType === FeedbackType.Issue ||
+      feedbackType === FeedbackType.Error
+    ) {
+      setShareOptions((prev) => ({ ...prev, evolutionLog: true }));
+    }
+  }, [feedbackType, feedbackOpen]);
+
   const handleClose = () => {
     setFeedbackOpen(false);
     // Reset state
@@ -117,11 +132,8 @@ export function FeedbackDialog() {
 
     // Build a typed Feedback model and log it (replace with submission later)
     const modelType = feedbackType;
-    const relatedPromptText =
-      (feedbackType === FeedbackType.Issue || feedbackType === FeedbackType.Error) && relatedPrompt
-        ? relatedPrompt
-        : metadata?.lastPromptText;
-    const selectedPromptText = shareOptions.lastPrompt ? relatedPromptText : undefined;
+    // Always use relatedPrompt if the user selected one from the dialog
+    const selectedPromptText = relatedPrompt || undefined;
 
     const feedbackModel = new FeedbackModel({
       type: modelType,
@@ -233,6 +245,7 @@ export function FeedbackDialog() {
   const isCommitStep = step === "merge";
   const hasChanges = Boolean(gitStatus?.diff);
   const showEvolveCommitOptions = isCommitStep || (isEvolveStep && hasChanges);
+  const showEvolutionLogOption = showEvolveCommitOptions || feedbackType === FeedbackType.Bug;
   const showEvolveOnlyOptions = isEvolveStep && hasChanges;
   const dialogTitle = isIssue ? "Report an issue" : isError ? "Report an error" : "Give feedback";
 
@@ -316,29 +329,28 @@ export function FeedbackDialog() {
             {/* Email input (optional) */}
           </div>
 
-          {(isIssue || isError) && (
-            <div className="space-y-2">
-              <Label className="text-muted-foreground">RELATED PROMPT</Label>
-              <Select value={relatedPrompt} onValueChange={setRelatedPrompt}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a prompt" />
-                </SelectTrigger>
-                <SelectContent>
-                  {promptHistory.length > 0 ? (
-                    promptHistory.map((prompt) => (
-                      <SelectItem key={prompt} value={prompt}>
-                        <span className="line-clamp-2">{prompt}</span>
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem disabled value="__empty__">
-                      No prompt history
+          {/* Prompt selector - visible for all feedback types */}
+          <div className="space-y-2">
+            <Label className="text-muted-foreground">PROMPT (optional)</Label>
+            <Select value={relatedPrompt} onValueChange={setRelatedPrompt}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a prompt (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                {promptHistory.length > 0 ? (
+                  promptHistory.map((prompt) => (
+                    <SelectItem key={prompt} value={prompt}>
+                      <span className="line-clamp-2">{prompt}</span>
                     </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+                  ))
+                ) : (
+                  <SelectItem disabled value="__empty__">
+                    No prompt history
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Email input (optional) - moved below RELATED PROMPT for issue flow */}
           <div className="mt-2 flex items-center gap-3">
@@ -376,28 +388,6 @@ export function FeedbackDialog() {
           <div className="space-y-2">
             <Label className="text-muted-foreground">SHARE WITH THE TEAM</Label>
             <div className="space-y-2">
-              <div className="flex items-start gap-2">
-                <Checkbox
-                  id="share-selected-prompt"
-                  checked={shareOptions.lastPrompt}
-                  onCheckedChange={(checked: boolean | "indeterminate") =>
-                    setShareOptions({
-                      ...shareOptions,
-                      lastPrompt: checked === true,
-                    })
-                  }
-                />
-                <div className="grid gap-1 leading-none">
-                  <Label
-                    htmlFor="share-selected-prompt"
-                    className="cursor-pointer font-medium text-sm text-muted-foreground"
-                  >
-                    Selected prompt text
-                  </Label>
-                  <p className="text-muted-foreground text-xs">The prompt shown above</p>
-                </div>
-              </div>
-
               <div className="flex items-start gap-2">
                 <Checkbox
                   id="share-app-state"
@@ -470,32 +460,34 @@ export function FeedbackDialog() {
                 </div>
               </div>
 
+              {showEvolutionLogOption && (
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="share-evolution-log"
+                    checked={shareOptions.evolutionLog}
+                    onCheckedChange={(checked: boolean | "indeterminate") =>
+                      setShareOptions({
+                        ...shareOptions,
+                        evolutionLog: checked === true,
+                      })
+                    }
+                  />
+                  <div className="grid gap-1 leading-none">
+                    <Label
+                      htmlFor="share-evolution-log"
+                      className="cursor-pointer font-medium text-sm text-muted-foreground"
+                    >
+                      Evolution log
+                    </Label>
+                    <p className="text-muted-foreground text-xs">
+                      Full agent trace -- iterations, file reads, edits, build checks
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {showEvolveCommitOptions && (
                 <>
-                  <div className="flex items-start gap-2">
-                    <Checkbox
-                      id="share-evolution-log"
-                      checked={shareOptions.evolutionLog}
-                      onCheckedChange={(checked: boolean | "indeterminate") =>
-                        setShareOptions({
-                          ...shareOptions,
-                          evolutionLog: checked === true,
-                        })
-                      }
-                    />
-                    <div className="grid gap-1 leading-none">
-                      <Label
-                        htmlFor="share-evolution-log"
-                        className="cursor-pointer font-medium text-sm text-muted-foreground"
-                      >
-                        Evolution log
-                      </Label>
-                      <p className="text-muted-foreground text-xs">
-                        Full agent trace -- iterations, file reads, edits, build checks
-                      </p>
-                    </div>
-                  </div>
-
                   <div className="flex items-start gap-2">
                     <Checkbox
                       id="share-changed-nix-files"
@@ -616,11 +608,9 @@ export function FeedbackDialog() {
                         htmlFor="share-nix-config"
                         className="cursor-pointer font-medium text-sm text-muted-foreground"
                       >
-                        Nix config files (current state)
+                        Nix config file diffs
                       </Label>
-                      <p className="text-muted-foreground text-xs">
-                        All .nix files in modules/ as currently on disk
-                      </p>
+                      <p className="text-muted-foreground text-xs">Current nix file changes</p>
                     </div>
                   </div>
 
