@@ -7,13 +7,10 @@ import { ErrorMessage } from "@/components/widget/error-message";
 import { Header } from "@/components/widget/header";
 import { SettingsDialog } from "@/components/widget/settings-dialog";
 import { FeedbackDialog } from "@/components/widget/feedback-dialog";
+import { ReportIssueButton } from "@/components/widget/report-issue-button";
+import { StepContentWrapper } from "@/components/widget/step-content-wrapper";
 import { Stepper } from "@/components/widget/stepper";
-import {
-  MergeStep,
-  EvolveStep,
-  PermissionsStep,
-  SetupStep,
-} from "@/components/widget/steps";
+import { MergeStep, EvolveStep, PermissionsStep, SetupStep } from "@/components/widget/steps";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { usePermissions } from "@/hooks/use-permissions";
 import { usePromptHistory } from "@/hooks/use-prompt-history";
@@ -68,21 +65,29 @@ export function DarwinWidget() {
     }
   };
 
+  // Compute the visible error (if any, respecting suppression rules)
+  const error = useWidgetStore((s) => s.error);
+  const isErrorSuppressed =
+    (step === "setup" && error?.includes("Failed to list hosts: path")) ||
+    (step === "evolving" && error?.includes("cancelled by user"));
+  const visibleError = error && !isErrorSuppressed ? error : undefined;
+
   return (
     <div className="flex h-full w-full flex-col bg-background/90 backdrop-blur-xl">
       <Header />
       <Stepper />
 
-      <div className="relative flex min-h-0 flex-1 gap-4 flex-col overflow-auto p-4 xs:p-8 sm:px-12">
+      <StepContentWrapper>
         <ErrorMessage />
         {getActiveStepComponent()}
         <EvolveOverlayPanel />
         <RebuildOverlayPanel />
-      </div>
+        <ReportIssueButton />
+      </StepContentWrapper>
 
       <Console />
       <SettingsDialog />
-      <FeedbackDialog />
+      <FeedbackDialog mainWindowError={visibleError} />
     </div>
   );
 }

@@ -274,21 +274,6 @@ pub fn gather_ai_provider_model_info(
     })
 }
 
-/// Extract the last prompt text from evolution metadata
-pub fn extract_last_prompt(app: &AppHandle) -> Option<String> {
-    let store = store::get_store(app).ok()?;
-
-    let metadata = store.get("evolveMetadata")?;
-    let metadata_str = metadata.as_str()?;
-
-    let json: Value = serde_json::from_str(metadata_str).ok()?;
-
-    // Extract the prompt field from the Evolution object
-    json.get("prompt")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string())
-}
-
 // =============================================================================
 // Nix Config Snapshot
 // =============================================================================
@@ -517,7 +502,6 @@ pub fn gather_metadata(
 ) -> Result<types::FeedbackMetadata, String> {
     let share = request.share;
     let mut metadata = types::FeedbackMetadata {
-        last_prompt_text: None,
         current_app_state_snapshot: None,
         system_info: None,
         usage_stats: None,
@@ -545,10 +529,7 @@ pub fn gather_metadata(
         metadata.usage_stats = Some(gather_usage_stats(app));
     }
 
-    // Gather last prompt text from evolution metadata
-    if share.last_prompt {
-        metadata.last_prompt_text = extract_last_prompt(app);
-    }
+    // Note: prompt text is now collected from the feedback dialog, not gathered from evolution metadata
 
     // Gather full evolution log
     if share.evolution_log {
