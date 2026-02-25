@@ -54,12 +54,244 @@ const ISSUE_SHARE_OPTIONS: ShareOptions = {
   appLogs: true,
 };
 
+// Visibility helper functions for share options checkboxes
+// Each function returns a boolean indicating whether the checkbox should be visible
+// Parameters: feedbackType, step, isIssue, isError
+
+function shouldShowCurrentAppState(
+  _feedbackType: FeedbackType,
+  _step: string,
+  _isIssue: boolean,
+  _isError: boolean,
+): boolean {
+  return true;
+}
+
+function shouldShowSystemInfo(
+  _feedbackType: FeedbackType,
+  _step: string,
+  _isIssue: boolean,
+  _isError: boolean,
+): boolean {
+  return true;
+}
+
+function shouldShowUsageStats(
+  _feedbackType: FeedbackType,
+  _step: string,
+  _isIssue: boolean,
+  _isError: boolean,
+): boolean {
+  return true;
+}
+
+function shouldShowEvolutionLog(
+  feedbackType: FeedbackType,
+  step: string,
+  _isIssue: boolean,
+  _isError: boolean,
+): boolean {
+  switch (feedbackType) {
+    case FeedbackType.Suggestion:
+    case FeedbackType.General:
+      return false;
+    case FeedbackType.Bug:
+      return true;
+    case FeedbackType.Issue:
+      switch (step) {
+        case "setup":
+          return false;
+        case "evolving":
+          return true;
+        case "merge":
+          return true;
+        default:
+          return false;
+      }
+    case FeedbackType.Error:
+      return true;
+    default:
+      return false;
+  }
+}
+
+function shouldShowChangedNixFiles(
+  feedbackType: FeedbackType,
+  step: string,
+  _isIssue: boolean,
+  _isError: boolean,
+): boolean {
+  switch (feedbackType) {
+    case FeedbackType.Suggestion:
+    case FeedbackType.General:
+      return false;
+    case FeedbackType.Bug:
+    case FeedbackType.Error:
+      return true;
+    case FeedbackType.Issue:
+      switch (step) {
+        case "setup":
+          return false;
+        case "evolving":
+          return true;
+        case "merge":
+          return true;
+        default:
+          return false;
+      }
+    default:
+      return false;
+  }
+}
+
+function shouldShowAiProviderModelInfo(
+  feedbackType: FeedbackType,
+  step: string,
+  _isIssue: boolean,
+  _isError: boolean,
+): boolean {
+  switch (feedbackType) {
+    case FeedbackType.Suggestion:
+    case FeedbackType.General:
+    case FeedbackType.Bug:
+      return false;
+    case FeedbackType.Issue:
+      switch (step) {
+        case "setup":
+          return false;
+        case "evolving":
+          return true;
+        case "merge":
+          return true;
+        default:
+          return false;
+      }
+    case FeedbackType.Error:
+      return true;
+    default:
+      return false;
+  }
+}
+
+function shouldShowBuildErrorOutput(
+  feedbackType: FeedbackType,
+  step: string,
+  _isIssue: boolean,
+  _isError: boolean,
+): boolean {
+  switch (feedbackType) {
+    case FeedbackType.Suggestion:
+    case FeedbackType.General:
+    case FeedbackType.Bug:
+      return false;
+    case FeedbackType.Issue:
+      switch (step) {
+        case "setup":
+          return false;
+        case "evolving":
+          return false;
+        case "merge":
+          return false;
+        default:
+          return false;
+      }
+    case FeedbackType.Error:
+      return true;
+    default:
+      return false;
+  }
+}
+
+function shouldShowFlakeInputsSnapshot(
+  feedbackType: FeedbackType,
+  step: string,
+  _isIssue: boolean,
+  _isError: boolean,
+): boolean {
+  switch (feedbackType) {
+    case FeedbackType.Suggestion:
+    case FeedbackType.General:
+    case FeedbackType.Bug:
+      return false;
+    case FeedbackType.Issue:
+      switch (step) {
+        case "setup":
+          return false;
+        case "evolving":
+          return false;
+        case "merge":
+          return false;
+        default:
+          return false;
+      }
+    case FeedbackType.Error:
+      return true;
+    default:
+      return false;
+  }
+}
+
+function shouldShowNixConfig(
+  feedbackType: FeedbackType,
+  step: string,
+  _isIssue: boolean,
+  _isError: boolean,
+): boolean {
+  switch (feedbackType) {
+    case FeedbackType.Suggestion:
+    case FeedbackType.General:
+      return false;
+    case FeedbackType.Issue:
+      switch (step) {
+        case "setup":
+          return false;
+        case "evolving":
+          return true;
+        case "merge":
+          return false;
+        default:
+          return false;
+      }
+    case FeedbackType.Bug:
+      return true;
+    default:
+      return false;
+  }
+}
+
+function shouldShowAppLogs(
+  feedbackType: FeedbackType,
+  step: string,
+  _isIssue: boolean,
+  _isError: boolean,
+): boolean {
+  switch (feedbackType) {
+    case FeedbackType.Suggestion:
+    case FeedbackType.General:
+      return false;
+    case FeedbackType.Issue:
+      switch (step) {
+        case "setup":
+          return false;
+        case "evolving":
+          return true;
+        case "merge":
+          return true;
+        default:
+          return false;
+      }
+    case FeedbackType.Bug:
+      return true;
+    default:
+      return false;
+  }
+}
+
 export function FeedbackDialog() {
   const feedbackOpen = useWidgetStore((s) => s.feedbackOpen);
   const setFeedbackOpen = useWidgetStore((s) => s.setFeedbackOpen);
   const feedbackTypeOverride = useWidgetStore((s) => s.feedbackTypeOverride);
   const setFeedbackTypeOverride = useWidgetStore((s) => s.setFeedbackTypeOverride);
-  const gitStatus = useWidgetStore((s) => s.gitStatus);
   const step = useCurrentStep();
 
   const [feedbackType, setFeedbackType] = useState<FeedbackType>(FeedbackType.Suggestion);
@@ -122,9 +354,44 @@ export function FeedbackDialog() {
   };
 
   const handleSubmit = async () => {
+    if (feedbackText.trim().length === 0) {
+      toast.error("Feedback text is required.");
+      return;
+    }
+
+    const isIssue = feedbackType === FeedbackType.Issue;
+    const isError = feedbackType === FeedbackType.Error;
+    const maskedShareOptions: ShareOptions = {
+      ...shareOptions,
+      currentAppState:
+        shareOptions.currentAppState &&
+        shouldShowCurrentAppState(feedbackType, step, isIssue, isError),
+      systemInfo:
+        shareOptions.systemInfo && shouldShowSystemInfo(feedbackType, step, isIssue, isError),
+      usageStats:
+        shareOptions.usageStats && shouldShowUsageStats(feedbackType, step, isIssue, isError),
+      evolutionLog:
+        shareOptions.evolutionLog && shouldShowEvolutionLog(feedbackType, step, isIssue, isError),
+      changedNixFiles:
+        shareOptions.changedNixFiles &&
+        shouldShowChangedNixFiles(feedbackType, step, isIssue, isError),
+      aiProviderModelInfo:
+        shareOptions.aiProviderModelInfo &&
+        shouldShowAiProviderModelInfo(feedbackType, step, isIssue, isError),
+      buildErrorOutput:
+        shareOptions.buildErrorOutput &&
+        shouldShowBuildErrorOutput(feedbackType, step, isIssue, isError),
+      flakeInputsSnapshot:
+        shareOptions.flakeInputsSnapshot &&
+        shouldShowFlakeInputsSnapshot(feedbackType, step, isIssue, isError),
+      nixConfig:
+        shareOptions.nixConfig && shouldShowNixConfig(feedbackType, step, isIssue, isError),
+      appLogs: shareOptions.appLogs && shouldShowAppLogs(feedbackType, step, isIssue, isError),
+    };
+
     let metadata: Awaited<ReturnType<typeof darwinAPI.feedback.gatherMetadata>> | null = null;
     try {
-      metadata = await darwinAPI.feedback.gatherMetadata(feedbackType, shareOptions);
+      metadata = await darwinAPI.feedback.gatherMetadata(feedbackType, maskedShareOptions);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.warn("Failed to gather feedback metadata:", err);
@@ -140,7 +407,7 @@ export function FeedbackDialog() {
       text: feedbackText,
       email: email || undefined,
       expectedText: feedbackType === FeedbackType.Bug ? expectedText : undefined,
-      share: shareOptions,
+      share: maskedShareOptions,
       // artifact fields left empty for now; will be populated by caller when collecting logs
       lastPromptText: selectedPromptText,
       currentAppStateSnapshot: metadata?.currentAppStateSnapshot,
@@ -241,12 +508,6 @@ export function FeedbackDialog() {
   const isIssue = feedbackType === FeedbackType.Issue;
   const isError = feedbackType === FeedbackType.Error;
   const isReportMode = isIssue || isError;
-  const isEvolveStep = step === "evolving";
-  const isCommitStep = step === "merge";
-  const hasChanges = Boolean(gitStatus?.diff);
-  const showEvolveCommitOptions = isCommitStep || (isEvolveStep && hasChanges);
-  const showEvolutionLogOption = showEvolveCommitOptions || feedbackType === FeedbackType.Bug;
-  const showEvolveOnlyOptions = isEvolveStep && hasChanges;
   const dialogTitle = isIssue ? "Report an issue" : isError ? "Report an error" : "Give feedback";
 
   return (
@@ -388,79 +649,85 @@ export function FeedbackDialog() {
           <div className="space-y-2">
             <Label className="text-muted-foreground">SHARE WITH THE TEAM</Label>
             <div className="space-y-2">
-              <div className="flex items-start gap-2">
-                <Checkbox
-                  id="share-app-state"
-                  checked={shareOptions.currentAppState}
-                  onCheckedChange={(checked: boolean | "indeterminate") =>
-                    setShareOptions({
-                      ...shareOptions,
-                      currentAppState: checked === true,
-                    })
-                  }
-                />
-                <div className="grid gap-1 leading-none">
-                  <Label
-                    htmlFor="share-app-state"
-                    className="cursor-pointer font-medium text-sm text-muted-foreground"
-                  >
-                    Current app state
-                  </Label>
-                  <p className="text-muted-foreground text-xs">
-                    Which stage you're on, active view, feature flags
-                  </p>
+              {shouldShowCurrentAppState(feedbackType, step, isIssue, isError) && (
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="share-app-state"
+                    checked={shareOptions.currentAppState}
+                    onCheckedChange={(checked: boolean | "indeterminate") =>
+                      setShareOptions({
+                        ...shareOptions,
+                        currentAppState: checked === true,
+                      })
+                    }
+                  />
+                  <div className="grid gap-1 leading-none">
+                    <Label
+                      htmlFor="share-app-state"
+                      className="cursor-pointer font-medium text-sm text-muted-foreground"
+                    >
+                      Current app state
+                    </Label>
+                    <p className="text-muted-foreground text-xs">
+                      Which stage you're on, active view, feature flags
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="flex items-start gap-2">
-                <Checkbox
-                  id="share-system-info"
-                  checked={shareOptions.systemInfo}
-                  onCheckedChange={(checked: boolean | "indeterminate") =>
-                    setShareOptions({
-                      ...shareOptions,
-                      systemInfo: checked === true,
-                    })
-                  }
-                />
-                <div className="grid gap-1 leading-none">
-                  <Label
-                    htmlFor="share-system-info"
-                    className="cursor-pointer font-medium text-sm text-muted-foreground"
-                  >
-                    System info
-                  </Label>
-                  <p className="text-muted-foreground text-xs">
-                    macOS 15.3, nixmac v0.1.0, nix 2.24.1, aarch64-darwin
-                  </p>
+              {shouldShowSystemInfo(feedbackType, step, isIssue, isError) && (
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="share-system-info"
+                    checked={shareOptions.systemInfo}
+                    onCheckedChange={(checked: boolean | "indeterminate") =>
+                      setShareOptions({
+                        ...shareOptions,
+                        systemInfo: checked === true,
+                      })
+                    }
+                  />
+                  <div className="grid gap-1 leading-none">
+                    <Label
+                      htmlFor="share-system-info"
+                      className="cursor-pointer font-medium text-sm text-muted-foreground"
+                    >
+                      System info
+                    </Label>
+                    <p className="text-muted-foreground text-xs">
+                      macOS 15.3, nixmac v0.1.0, nix 2.24.1, aarch64-darwin
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="flex items-start gap-2">
-                <Checkbox
-                  id="share-usage-stats"
-                  checked={shareOptions.usageStats}
-                  onCheckedChange={(checked: boolean | "indeterminate") =>
-                    setShareOptions({
-                      ...shareOptions,
-                      usageStats: checked === true,
-                    })
-                  }
-                />
-                <div className="grid gap-1 leading-none">
-                  <Label
-                    htmlFor="share-usage-stats"
-                    className="cursor-pointer font-medium text-sm text-muted-foreground"
-                  >
-                    Usage stats
-                  </Label>
-                  <p className="text-muted-foreground text-xs">
-                    Total evolutions run, success rate, avg iterations
-                  </p>
+              {shouldShowUsageStats(feedbackType, step, isIssue, isError) && (
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="share-usage-stats"
+                    checked={shareOptions.usageStats}
+                    onCheckedChange={(checked: boolean | "indeterminate") =>
+                      setShareOptions({
+                        ...shareOptions,
+                        usageStats: checked === true,
+                      })
+                    }
+                  />
+                  <div className="grid gap-1 leading-none">
+                    <Label
+                      htmlFor="share-usage-stats"
+                      className="cursor-pointer font-medium text-sm text-muted-foreground"
+                    >
+                      Usage stats
+                    </Label>
+                    <p className="text-muted-foreground text-xs">
+                      Total evolutions run, success rate, avg iterations
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {showEvolutionLogOption && (
+              {shouldShowEvolutionLog(feedbackType, step, isIssue, isError) && (
                 <div className="flex items-start gap-2">
                   <Checkbox
                     id="share-evolution-log"
@@ -486,156 +753,156 @@ export function FeedbackDialog() {
                 </div>
               )}
 
-              {showEvolveCommitOptions && (
-                <>
-                  <div className="flex items-start gap-2">
-                    <Checkbox
-                      id="share-changed-nix-files"
-                      checked={shareOptions.changedNixFiles}
-                      onCheckedChange={(checked: boolean | "indeterminate") =>
-                        setShareOptions({
-                          ...shareOptions,
-                          changedNixFiles: checked === true,
-                        })
-                      }
-                    />
-                    <div className="grid gap-1 leading-none">
-                      <Label
-                        htmlFor="share-changed-nix-files"
-                        className="cursor-pointer font-medium text-sm text-muted-foreground"
-                      >
-                        Changed nix files
-                      </Label>
-                      <p className="text-muted-foreground text-xs">
-                        Contents as currently modified, git diff
-                      </p>
-                    </div>
+              {shouldShowChangedNixFiles(feedbackType, step, isIssue, isError) && (
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="share-changed-nix-files"
+                    checked={shareOptions.changedNixFiles}
+                    onCheckedChange={(checked: boolean | "indeterminate") =>
+                      setShareOptions({
+                        ...shareOptions,
+                        changedNixFiles: checked === true,
+                      })
+                    }
+                  />
+                  <div className="grid gap-1 leading-none">
+                    <Label
+                      htmlFor="share-changed-nix-files"
+                      className="cursor-pointer font-medium text-sm text-muted-foreground"
+                    >
+                      Changed nix files
+                    </Label>
+                    <p className="text-muted-foreground text-xs">
+                      Contents as currently modified, git diff
+                    </p>
                   </div>
-
-                  <div className="flex items-start gap-2">
-                    <Checkbox
-                      id="share-ai-provider-model-info"
-                      checked={shareOptions.aiProviderModelInfo}
-                      onCheckedChange={(checked: boolean | "indeterminate") =>
-                        setShareOptions({
-                          ...shareOptions,
-                          aiProviderModelInfo: checked === true,
-                        })
-                      }
-                    />
-                    <div className="grid gap-1 leading-none">
-                      <Label
-                        htmlFor="share-ai-provider-model-info"
-                        className="cursor-pointer font-medium text-sm text-muted-foreground"
-                      >
-                        AI provider and model info
-                      </Label>
-                      <p className="text-muted-foreground text-xs">
-                        OpenRouter, Claude Sonnet 4, token usage, latency
-                      </p>
-                    </div>
-                  </div>
-                </>
+                </div>
               )}
 
-              {showEvolveOnlyOptions && (
-                <>
-                  <div className="flex items-start gap-2">
-                    <Checkbox
-                      id="share-build-error-output"
-                      checked={shareOptions.buildErrorOutput}
-                      onCheckedChange={(checked: boolean | "indeterminate") =>
-                        setShareOptions({
-                          ...shareOptions,
-                          buildErrorOutput: checked === true,
-                        })
-                      }
-                    />
-                    <div className="grid gap-1 leading-none">
-                      <Label
-                        htmlFor="share-build-error-output"
-                        className="cursor-pointer font-medium text-sm text-muted-foreground"
-                      >
-                        Build error output
-                      </Label>
-                      <p className="text-muted-foreground text-xs">
-                        nix flake check status error (if any)
-                      </p>
-                    </div>
+              {shouldShowAiProviderModelInfo(feedbackType, step, isIssue, isError) && (
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="share-ai-provider-model-info"
+                    checked={shareOptions.aiProviderModelInfo}
+                    onCheckedChange={(checked: boolean | "indeterminate") =>
+                      setShareOptions({
+                        ...shareOptions,
+                        aiProviderModelInfo: checked === true,
+                      })
+                    }
+                  />
+                  <div className="grid gap-1 leading-none">
+                    <Label
+                      htmlFor="share-ai-provider-model-info"
+                      className="cursor-pointer font-medium text-sm text-muted-foreground"
+                    >
+                      AI provider and model info
+                    </Label>
+                    <p className="text-muted-foreground text-xs">
+                      OpenRouter, Claude Sonnet 4, token usage, latency
+                    </p>
                   </div>
-
-                  <div className="flex items-start gap-2">
-                    <Checkbox
-                      id="share-flake-inputs-snapshot"
-                      checked={shareOptions.flakeInputsSnapshot}
-                      onCheckedChange={(checked: boolean | "indeterminate") =>
-                        setShareOptions({
-                          ...shareOptions,
-                          flakeInputsSnapshot: checked === true,
-                        })
-                      }
-                    />
-                    <div className="grid gap-1 leading-none">
-                      <Label
-                        htmlFor="share-flake-inputs-snapshot"
-                        className="cursor-pointer font-medium text-sm text-muted-foreground"
-                      >
-                        Flake inputs snapshot
-                      </Label>
-                      <p className="text-muted-foreground text-xs">
-                        nix pkgs/nix darwin/home-manager revs from flake.lock
-                      </p>
-                    </div>
-                  </div>
-                </>
+                </div>
               )}
 
-              {feedbackType === FeedbackType.Bug && (
-                <>
-                  <div className="flex items-start gap-2">
-                    <Checkbox
-                      id="share-nix-config"
-                      checked={shareOptions.nixConfig}
-                      onCheckedChange={(checked: boolean | "indeterminate") =>
-                        setShareOptions({
-                          ...shareOptions,
-                          nixConfig: checked === true,
-                        })
-                      }
-                    />
-                    <div className="grid gap-1 leading-none">
-                      <Label
-                        htmlFor="share-nix-config"
-                        className="cursor-pointer font-medium text-sm text-muted-foreground"
-                      >
-                        Nix config file diffs
-                      </Label>
-                      <p className="text-muted-foreground text-xs">Current nix file changes</p>
-                    </div>
+              {shouldShowBuildErrorOutput(feedbackType, step, isIssue, isError) && (
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="share-build-error-output"
+                    checked={shareOptions.buildErrorOutput}
+                    onCheckedChange={(checked: boolean | "indeterminate") =>
+                      setShareOptions({
+                        ...shareOptions,
+                        buildErrorOutput: checked === true,
+                      })
+                    }
+                  />
+                  <div className="grid gap-1 leading-none">
+                    <Label
+                      htmlFor="share-build-error-output"
+                      className="cursor-pointer font-medium text-sm text-muted-foreground"
+                    >
+                      Build error output
+                    </Label>
+                    <p className="text-muted-foreground text-xs">
+                      nix flake check status error (if any)
+                    </p>
                   </div>
+                </div>
+              )}
 
-                  <div className="flex items-start gap-2">
-                    <Checkbox
-                      id="share-app-logs"
-                      checked={shareOptions.appLogs}
-                      onCheckedChange={(checked: boolean | "indeterminate") =>
-                        setShareOptions({
-                          ...shareOptions,
-                          appLogs: checked === true,
-                        })
-                      }
-                    />
-                    <div className="grid gap-1 leading-none">
-                      <Label
-                        htmlFor="share-app-logs"
-                        className="cursor-pointer font-medium text-sm text-muted-foreground"
-                      >
-                        App logs
-                      </Label>
-                      <p className="text-muted-foreground text-xs">Last 200 lines of nixmac.log</p>
-                    </div>
+              {shouldShowFlakeInputsSnapshot(feedbackType, step, isIssue, isError) && (
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="share-flake-inputs-snapshot"
+                    checked={shareOptions.flakeInputsSnapshot}
+                    onCheckedChange={(checked: boolean | "indeterminate") =>
+                      setShareOptions({
+                        ...shareOptions,
+                        flakeInputsSnapshot: checked === true,
+                      })
+                    }
+                  />
+                  <div className="grid gap-1 leading-none">
+                    <Label
+                      htmlFor="share-flake-inputs-snapshot"
+                      className="cursor-pointer font-medium text-sm text-muted-foreground"
+                    >
+                      Flake inputs snapshot
+                    </Label>
+                    <p className="text-muted-foreground text-xs">
+                      nix pkgs/nix darwin/home-manager revs from flake.lock
+                    </p>
                   </div>
-                </>
+                </div>
+              )}
+
+              {shouldShowNixConfig(feedbackType, step, isIssue, isError) && (
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="share-nix-config"
+                    checked={shareOptions.nixConfig}
+                    onCheckedChange={(checked: boolean | "indeterminate") =>
+                      setShareOptions({
+                        ...shareOptions,
+                        nixConfig: checked === true,
+                      })
+                    }
+                  />
+                  <div className="grid gap-1 leading-none">
+                    <Label
+                      htmlFor="share-nix-config"
+                      className="cursor-pointer font-medium text-sm text-muted-foreground"
+                    >
+                      Nix config file diffs
+                    </Label>
+                    <p className="text-muted-foreground text-xs">Current nix file changes</p>
+                  </div>
+                </div>
+              )}
+
+              {shouldShowAppLogs(feedbackType, step, isIssue, isError) && (
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="share-app-logs"
+                    checked={shareOptions.appLogs}
+                    onCheckedChange={(checked: boolean | "indeterminate") =>
+                      setShareOptions({
+                        ...shareOptions,
+                        appLogs: checked === true,
+                      })
+                    }
+                  />
+                  <div className="grid gap-1 leading-none">
+                    <Label
+                      htmlFor="share-app-logs"
+                      className="cursor-pointer font-medium text-sm text-muted-foreground"
+                    >
+                      App logs
+                    </Label>
+                    <p className="text-muted-foreground text-xs">Last 200 lines of nixmac.log</p>
+                  </div>
+                </div>
               )}
             </div>
           </div>
