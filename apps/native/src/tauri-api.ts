@@ -79,7 +79,6 @@ export interface PreviewIndicatorState {
 // =============================================================================
 
 export interface FeedbackShareOptions {
-  lastPrompt: boolean;
   currentAppState: boolean;
   systemInfo: boolean;
   usageStats: boolean;
@@ -132,7 +131,6 @@ export interface FeedbackFlakeInputsSnapshot {
 }
 
 export interface FeedbackMetadata {
-  lastPromptText?: string;
   currentAppStateSnapshot?: unknown;
   systemInfo?: FeedbackSystemInfo;
   usageStats?: FeedbackUsageStats;
@@ -224,7 +222,8 @@ export const darwinAPI = {
     stageAll: () => invoke("git_stage_all"),
     unstageAll: () => invoke("git_unstage_all"),
     restoreAll: () => invoke("git_restore_all"),
-    checkoutNewBranch: (branchName: string) => invoke("git_checkout_new_branch", { branchName }),
+    checkoutNewBranch: (branchName: string) =>
+      invoke<{ ok: boolean; branch: string }>("git_checkout_new_branch", { branchName }),
     checkoutBranch: (branchName: string) => invoke("git_checkout_branch", { branchName }),
     checkoutMainBranch: () => invoke("git_checkout_main_branch"),
     tagAsBuilt: () => invoke("git_tag_as_built"),
