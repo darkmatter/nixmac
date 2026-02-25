@@ -141,6 +141,7 @@ export interface FeedbackMetadata {
   flakeInputsSnapshot?: FeedbackFlakeInputsSnapshot;
   nixConfigSnapshot?: string;
   appLogsContent?: string;
+  lastPromptText?: string;
 }
 
 // =============================================================================
