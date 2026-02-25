@@ -61,16 +61,13 @@ export function useDarwinConfig() {
 
       try {
         await darwinAPI.flake.bootstrapDefault(hostname);
-        const hosts = await darwinAPI.flake.listHosts();
 
-        if (Array.isArray(hosts) && hosts.length > 0) {
-          store.setHosts(hosts);
-
-          if (hosts[0]) {
-            await darwinAPI.config.setHostAttr(hosts[0]);
-            store.setHost(hosts[0]);
-          }
-        }
+        // Set the host directly from the hostname used for bootstrap.
+        // We can't call listHosts() here because Nix may not be installed yet
+        // (listHosts requires `nix eval` which needs Nix).
+        store.setHosts([hostname]);
+        await darwinAPI.config.setHostAttr(hostname);
+        store.setHost(hostname);
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
         store.setError(`Failed to create configuration: ${message}`);

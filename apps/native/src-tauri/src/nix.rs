@@ -1,14 +1,10 @@
-//! Nix flake operations for querying configuration data.
-//!
-//! Uses `nix eval` to extract information from the user's flake without building it.
-
 use anyhow::Result;
+use log::{error, info};
 use serde_json::Value;
-use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Stdio};
+use tauri::{AppHandle, Emitter};
 
-/// Common Nix binary paths on macOS (GUI apps don't inherit shell PATH)
-const NIX_PATHS: &[&str] = &[
+const NIX_PATHS_FALLBACK: &[&str] = &[
     "/run/current-system/sw/bin",
     "/nix/var/nix/profiles/default/bin",
     "/etc/profiles/per-user/root/bin",
@@ -16,40 +12,25 @@ const NIX_PATHS: &[&str] = &[
     "/opt/homebrew/bin",
 ];
 
-/// Get the PATH with Nix directories prepended
+/// Resolves PATH using a login shell so GUI apps can find Nix binaries.
 pub fn get_nix_path() -> String {
-    let base_path = std::env::var("PATH").unwrap_or_default();
-    let nix_paths = NIX_PATHS.join(":");
-    format!("{}:{}", nix_paths, base_path)
-}
-
-/// Get Nix version by running `nix --version`
-pub fn get_nix_version() -> Option<String> {
-    for nix_path in get_nix_path().split(':') {
-        if Path::new(nix_path).exists() {
-            if let Ok(output) = Command::new(nix_path).arg("--version").output() {
-                if output.status.success() {
-                    if let Ok(version) = String::from_utf8(output.stdout) {
-                        // Output is like "nix (Nix) 2.24.1"
-                        // Extract just the version number
-                        let parts: Vec<&str> = version.split_whitespace().collect();
-                        if let Some(v) = parts.last() {
-                            return Some(v.trim().to_string());
-                        }
-                    }
-                }
-            }
+    if let Ok(output) = Command::new("/bin/bash")
+        .args(["-l", "-c", "echo $PATH"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output()
+    {
+        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if output.status.success() && !path.is_empty() {
+            return path;
         }
     }
 
-    None
+    let base_path = std::env::var("PATH").unwrap_or_default();
+    let nix_paths = NIX_PATHS_FALLBACK.join(":");
+    format!("{}:{}", nix_paths, base_path)
 }
 
-/// Determines the host attribute to use for darwin-rebuild.
-///
-/// Resolution order:
-/// 1. Stored preference in app settings
-/// 2. Legacy file at ~/.config/darwin/host (for backwards compatibility)
 pub fn determine_host_attr<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<String> {
     if let Ok(Some(attr)) = crate::store::get_host_attr(app) {
         return Some(attr);
@@ -58,10 +39,6 @@ pub fn determine_host_attr<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Opti
     crate::store::read_host_attr_from_file()
 }
 
-/// Evaluates the flake to get the list of system packages for a host.
-///
-/// This uses `nix eval --json` to introspect the darwinConfiguration
-/// without actually building anything.
 pub fn evaluate_installed_apps(config_dir: &str, host_attr: &str) -> Result<Vec<Value>> {
     let attr = format!(
         ".#darwinConfigurations.{}.config.environment.systemPackages",
@@ -87,10 +64,6 @@ pub fn evaluate_installed_apps(config_dir: &str, host_attr: &str) -> Result<Vec<
     Ok(apps)
 }
 
-/// Lists all host names defined in the flake's darwinConfigurations.
-///
-/// Uses `builtins.attrNames` to get just the keys without evaluating
-/// the full configuration.
 pub fn list_darwin_hosts(config_dir: &str) -> Result<Vec<String>> {
     let output = Command::new("nix")
         .args([
@@ -115,4 +88,144 @@ pub fn list_darwin_hosts(config_dir: &str) -> Result<Vec<String>> {
     let stdout = String::from_utf8(output.stdout)?;
     let hosts: Vec<String> = serde_json::from_str(&stdout)?;
     Ok(hosts)
+}
+
+pub fn is_nix_installed() -> bool {
+    Command::new("/bin/bash")
+        .args(["-l", "-c", "nix --version"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+
+pub fn get_nix_version() -> Option<String> {
+    let output = Command::new("nix")
+        .arg("--version")
+        .env("PATH", get_nix_path())
+        .output()
+        .ok()?;
+
+    if output.status.success() {
+        Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    } else {
+        None
+    }
+}
+
+pub fn install_nix_stream(app: &AppHandle) -> Result<()> {
+    info!("[nix] install_nix_stream called");
+
+    let app_handle = app.clone();
+
+    std::thread::spawn(move || {
+        if let Err(e) = run_nix_install(&app_handle) {
+            error!("[nix] install failed: {}", e);
+            let _ = app_handle.emit(
+                "nix:install:end",
+                serde_json::json!({
+                    "ok": false,
+                    "code": -1,
+                    "error_type": "internal",
+                    "error": e.to_string(),
+                }),
+            );
+        }
+    });
+
+    info!("[nix] install_nix_stream started background thread");
+    Ok(())
+}
+
+fn run_nix_install(app: &AppHandle) -> Result<()> {
+    if is_nix_installed() {
+        let version = get_nix_version().unwrap_or_default();
+        info!("[nix] already installed: {}", version);
+        app.emit(
+            "nix:install:end",
+            serde_json::json!({
+                "ok": true,
+                "code": 0,
+                "nix_version": version,
+            }),
+        )?;
+        return Ok(());
+    }
+
+    // Terminal provides the TTY and Full Disk Access the installer needs.
+    let install_cmd = "curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --no-confirm; exit";
+    let applescript = format!(
+        "tell application \"Terminal\"\n  activate\n  do script \"{}\"\nend tell",
+        install_cmd
+    );
+
+    info!("[nix] Opening Terminal for Nix installation");
+    let status = Command::new("osascript")
+        .args(["-e", &applescript])
+        .output()?;
+
+    if !status.status.success() {
+        let stderr = String::from_utf8_lossy(&status.stderr).to_string();
+        error!("[nix] Failed to open Terminal: {}", stderr);
+        app.emit(
+            "nix:install:end",
+            serde_json::json!({
+                "ok": false,
+                "code": -1,
+                "error_type": "terminal",
+                "error": format!("Failed to open Terminal: {}", stderr),
+            }),
+        )?;
+        return Ok(());
+    }
+
+    let max_wait = std::time::Duration::from_secs(600); // 10 min timeout
+    let poll_interval = std::time::Duration::from_secs(3);
+    let start = std::time::Instant::now();
+
+    let mut poll_count = 0u32;
+    loop {
+        std::thread::sleep(poll_interval);
+        poll_count += 1;
+        info!(
+            "[nix] Poll #{}: checking if nix is installed...",
+            poll_count
+        );
+
+        if is_nix_installed() {
+            let version = get_nix_version().unwrap_or_default();
+            info!(
+                "[nix] Poll #{}: nix detected! version: {}",
+                poll_count, version
+            );
+
+            if let Err(e) = crate::default_config::finalize_flake_lock(app) {
+                info!("[nix] Could not finalize flake.lock: {}", e);
+            }
+
+            app.emit(
+                "nix:install:end",
+                serde_json::json!({
+                    "ok": true,
+                    "code": 0,
+                    "nix_version": version,
+                }),
+            )?;
+            return Ok(());
+        }
+
+        if start.elapsed() > max_wait {
+            app.emit(
+                "nix:install:end",
+                serde_json::json!({
+                    "ok": false,
+                    "code": -1,
+                    "error_type": "timeout",
+                    "error": "Nix installation timed out. Please try installing manually in Terminal.",
+                }),
+            )?;
+            return Ok(());
+        }
+    }
 }

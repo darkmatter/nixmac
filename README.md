@@ -44,6 +44,15 @@ devenv shell
 bun install
 ```
 
+### Build nixmac
+
+```bash
+devenv shell
+
+cd apps/native && tauri build --bundles app
+```
+
+
 ### Install and Use nix-darwin
 
 By default, nixmac expects to find a flake-enabled nix configuration at `~/.darwin`. Here is how you can create a minimalist one if you don't already have such a thing *assuming you are using Determinate* since non-Determinate steps will be slightly different:

@@ -35,12 +35,10 @@ export function SetupStep() {
         </p>
       </div>
 
-      {/* Step 1: Choose Directory */}
       <div className="w-full max-w-sm">
         <DirectoryPicker label="1. Configuration Directory" />
       </div>
 
-      {/* Step 2: Host Configuration */}
       {hasConfigDir && (
         <div className="w-full max-w-sm space-y-2">
           {hasFlake ? (

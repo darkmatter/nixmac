@@ -10,8 +10,15 @@ import { FeedbackDialog } from "@/components/widget/feedback-dialog";
 import { ReportIssueButton } from "@/components/widget/report-issue-button";
 import { StepContentWrapper } from "@/components/widget/step-content-wrapper";
 import { Stepper } from "@/components/widget/stepper";
-import { MergeStep, EvolveStep, PermissionsStep, SetupStep } from "@/components/widget/steps";
+import {
+  MergeStep,
+  EvolveStep,
+  NixSetupStep,
+  PermissionsStep,
+  SetupStep,
+} from "@/components/widget/steps";
 import { useGitOperations } from "@/hooks/use-git-operations";
+import { useNixInstall } from "@/hooks/use-nix-install";
 import { usePermissions } from "@/hooks/use-permissions";
 import { usePromptHistory } from "@/hooks/use-prompt-history";
 import { useWatcher } from "@/hooks/use-watcher";
@@ -26,6 +33,7 @@ import { useEffect } from "react";
 export function DarwinWidget() {
   const step = useCurrentStep();
   const { getInitialStatusAndSummary } = useGitOperations();
+  const { checkNix } = useNixInstall();
   const { checkPermissions } = usePermissions();
   const { refreshPromptHistory } = usePromptHistory();
   const { startWatching } = useWatcher();
@@ -36,6 +44,7 @@ export function DarwinWidget() {
       try {
         await checkPermissions();
         await loadConfig();
+        await checkNix();
         await loadHosts();
         await getInitialStatusAndSummary();
         refreshPromptHistory();
@@ -53,6 +62,9 @@ export function DarwinWidget() {
     switch (step) {
       case "permissions":
         return <PermissionsStep />;
+
+      case "nix-setup":
+        return <NixSetupStep />;
 
       case "setup":
         return <SetupStep />;
