@@ -197,9 +197,9 @@ pub async fn git_checkout_new_branch(
 ) -> Result<serde_json::Value, String> {
     let dir = store::ensure_config_dir_exists(&app)
         .map_err(|e| capture_err("git_checkout_new_branch", e))?;
-    git::checkout_new_branch(&dir, &branch_name)
+    let created_branch = git::checkout_new_branch(&dir, &branch_name)
         .map_err(|e| capture_err("git_checkout_new_branch", e))?;
-    Ok(serde_json::json!({"ok": true}))
+    Ok(serde_json::json!({"ok": true, "branch": created_branch}))
 }
 
 /// Checks out an existing branch

@@ -1,11 +1,23 @@
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Settings, MessageSquare } from "lucide-react";
+import { Settings, CircleAlert } from "lucide-react";
 import { APP_NAME } from "../../../shared/constants";
 import { useWidgetStore } from "@/stores/widget-store";
 
 export function Header() {
   const setSettingsOpen = useWidgetStore((s) => s.setSettingsOpen);
   const setFeedbackOpen = useWidgetStore((s) => s.setFeedbackOpen);
+  const [isPulsing, setIsPulsing] = useState(false);
+
+  // Flash the feedback icon when an error occurs (subscribe to detect all changes)
+  useEffect(() => {
+    return useWidgetStore.subscribe((state, prevState) => {
+      if (state.error && state.error !== prevState.error) {
+        setIsPulsing(true);
+        setTimeout(() => setIsPulsing(false), 2000);
+      }
+    });
+  }, []);
 
   return (
     <div
@@ -17,20 +29,21 @@ export function Header() {
       <h3 className="font-medium text-muted-foreground text-xs" data-tauri-drag-region>
         {APP_NAME}
       </h3>
-      <div className="absolute right-3 flex items-center gap-2">
+      <div className="absolute right-3 flex items-center">
         <Button
-          className="h-8 w-8 p-0"
+          className="h-7 w-7 p-0"
           size="sm"
           variant="ghost"
           onClick={() => setFeedbackOpen(true)}
           aria-label="Give feedback"
           title="Give feedback"
         >
-          <MessageSquare className="h-4 w-4" />
+          <CircleAlert
+            className={`h-4 w-4 transition-all duration-500 ${isPulsing ? "text-red-400 scale-125" : ""}`}
+          />
         </Button>
-
         <Button
-          className="h-8 w-8 p-0"
+          className="h-7 w-7 p-0"
           size="sm"
           variant="ghost"
           onClick={() => setSettingsOpen(true)}
