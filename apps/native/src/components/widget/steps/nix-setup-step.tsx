@@ -5,42 +5,34 @@ import { Card } from "@/components/ui/card";
 import { useNixInstall } from "@/hooks/use-nix-install";
 import { useWidgetStore } from "@/stores/widget-store";
 import { CheckCircle2, Download, ExternalLink, Loader2, Terminal } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 type NixSetupState = "idle" | "installing" | "success" | "error";
 
 function getNixSetupState(store: {
   nixInstalled: boolean | null;
   nixInstalling: boolean;
-  nixInstallError: string | null;
+  error: string | null;
 }): NixSetupState {
   if (store.nixInstalled === true) return "success";
   if (store.nixInstalling) return "installing";
-  if (store.nixInstallError) return "error";
+  if (store.error) return "error";
   return "idle";
 }
 
 export function NixSetupStep() {
   const nixInstalled = useWidgetStore((s) => s.nixInstalled);
   const nixInstalling = useWidgetStore((s) => s.nixInstalling);
-  const nixInstallError = useWidgetStore((s) => s.nixInstallError);
-  const nixInstallLines = useWidgetStore((s) => s.nixInstallLines);
+  const error = useWidgetStore((s) => s.error);
   const { checkNix, installNix } = useNixInstall();
-  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const state = getNixSetupState({ nixInstalled, nixInstalling, nixInstallError });
+  const state = getNixSetupState({ nixInstalled, nixInstalling, error });
 
   useEffect(() => {
     if (nixInstalled === null && !nixInstalling) {
       checkNix();
     }
   }, [nixInstalled, nixInstalling, checkNix]);
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [nixInstallLines]);
 
   return (
     <div className="flex h-full flex-col items-center justify-center p-4">
@@ -87,18 +79,6 @@ export function NixSetupStep() {
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Installing Nix...
               </div>
-              {nixInstallLines.length > 0 && (
-                <div
-                  ref={scrollRef}
-                  className="max-h-40 overflow-y-auto rounded border border-border bg-background p-2 font-mono text-xs"
-                >
-                  {nixInstallLines.map((line, i) => (
-                    <div key={`${i}-${line.slice(0, 20)}`} className="whitespace-pre-wrap text-muted-foreground">
-                      {line}
-                    </div>
-                  ))}
-                </div>
-              )}
               <p className="text-center text-muted-foreground text-xs">
                 Follow the instructions in the Terminal window. This page will update automatically.
               </p>
@@ -114,7 +94,7 @@ export function NixSetupStep() {
 
           {state === "error" && (
             <div className="space-y-4">
-              <p className="text-destructive text-sm">{nixInstallError}</p>
+              <p className="text-destructive text-sm">{error}</p>
               <div className="space-y-2">
                 <p className="text-muted-foreground text-sm">
                   To install manually, run in Terminal:

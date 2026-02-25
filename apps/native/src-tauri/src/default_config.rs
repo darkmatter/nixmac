@@ -183,6 +183,12 @@ pub fn bootstrap(app: &AppHandle, hostname: &str) -> Result<(), String> {
     git::commit_all(&dir, "Initial nix-darwin configuration")
         .map_err(|e| format!("Failed to commit: {}", e))?;
 
+    if nix::is_nix_installed() {
+        if let Err(e) = finalize_flake_lock(app) {
+            log::info!("Could not finalize flake.lock during bootstrap: {}", e);
+        }
+    }
+
     Ok(())
 }
 

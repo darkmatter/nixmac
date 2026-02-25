@@ -12,11 +12,10 @@ const NIX_PATHS_FALLBACK: &[&str] = &[
     "/opt/homebrew/bin",
 ];
 
-/// Resolves PATH with Nix directories. GUI apps don't inherit shell PATH,
-/// so we source /etc/bashrc where the Determinate installer sets it up.
+/// Resolves PATH using a login shell so GUI apps can find Nix binaries.
 pub fn get_nix_path() -> String {
     if let Ok(output) = Command::new("/bin/bash")
-        .args(["-c", "source /etc/bashrc 2>/dev/null; echo $PATH"])
+        .args(["-l", "-c", "echo $PATH"])
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .output()
@@ -93,7 +92,7 @@ pub fn list_darwin_hosts(config_dir: &str) -> Result<Vec<String>> {
 
 pub fn is_nix_installed() -> bool {
     Command::new("/bin/bash")
-        .args(["-c", "source /etc/bashrc 2>/dev/null; nix --version"])
+        .args(["-l", "-c", "nix --version"])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
@@ -154,10 +153,8 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
         return Ok(());
     }
 
-    let payload = serde_json::json!({"chunk": "Opening Terminal to install Nix...\n"});
-    let _ = app.emit("nix:install:data", payload);
-
-    let install_cmd = "curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install; exit";
+    // Terminal provides the TTY and Full Disk Access the installer needs.
+    let install_cmd = "curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --no-confirm; exit";
     let applescript = format!(
         "tell application \"Terminal\"\n  activate\n  do script \"{}\"\nend tell",
         install_cmd
@@ -183,9 +180,6 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
         return Ok(());
     }
 
-    let payload = serde_json::json!({"chunk": "Waiting for Nix installation to complete...\n"});
-    let _ = app.emit("nix:install:data", payload);
-
     let max_wait = std::time::Duration::from_secs(600); // 10 min timeout
     let poll_interval = std::time::Duration::from_secs(3);
     let start = std::time::Instant::now();
@@ -205,6 +199,11 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
                 "[nix] Poll #{}: nix detected! version: {}",
                 poll_count, version
             );
+
+            if let Err(e) = crate::default_config::finalize_flake_lock(app) {
+                info!("[nix] Could not finalize flake.lock: {}", e);
+            }
+
             app.emit(
                 "nix:install:end",
                 serde_json::json!({

@@ -15,20 +15,7 @@ export function useNixInstall() {
   const installNix = useCallback(async () => {
     const store = useWidgetStore.getState();
     store.setNixInstalling(true);
-    store.setNixInstallError(null);
-    store.clearNixInstallLines();
-
-    const unlistenData = await ipcRenderer.on<{ chunk: string }>(
-      "nix:install:data",
-      (event) => {
-        const { chunk } = event.payload;
-        const lines = chunk.split("\n").filter((l) => l.trim() !== "");
-        const current = useWidgetStore.getState();
-        for (const line of lines) {
-          current.appendNixInstallLine(line);
-        }
-      },
-    );
+    store.setError(null);
 
     const unlistenEnd = await ipcRenderer.on<{
       ok: boolean;
@@ -42,12 +29,11 @@ export function useNixInstall() {
       current.setNixInstalled(event.payload.ok);
 
       if (!event.payload.ok) {
-        current.setNixInstallError(
+        current.setError(
           event.payload.error ?? "Installation failed. Please install manually.",
         );
       }
 
-      unlistenData();
       unlistenEnd();
     });
 
@@ -56,8 +42,7 @@ export function useNixInstall() {
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
       store.setNixInstalling(false);
-      store.setNixInstallError(msg);
-      unlistenData();
+      store.setError(msg);
       unlistenEnd();
     }
   }, []);
