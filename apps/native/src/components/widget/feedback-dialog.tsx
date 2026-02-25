@@ -56,13 +56,12 @@ const ISSUE_SHARE_OPTIONS: ShareOptions = {
 
 // Visibility helper functions for share options checkboxes
 // Each function returns a boolean indicating whether the checkbox should be visible
-// Parameters: feedbackType, step, isIssue, isError
+// Parameters: feedbackType, step, mainWindowError
 
 function shouldShowCurrentAppState(
   _feedbackType: FeedbackType,
   _step: string,
-  _isIssue: boolean,
-  _isError: boolean,
+  _mainWindowError?: string,
 ): boolean {
   return true;
 }
@@ -70,8 +69,7 @@ function shouldShowCurrentAppState(
 function shouldShowSystemInfo(
   _feedbackType: FeedbackType,
   _step: string,
-  _isIssue: boolean,
-  _isError: boolean,
+  _mainWindowError?: string,
 ): boolean {
   return true;
 }
@@ -79,8 +77,7 @@ function shouldShowSystemInfo(
 function shouldShowUsageStats(
   _feedbackType: FeedbackType,
   _step: string,
-  _isIssue: boolean,
-  _isError: boolean,
+  _mainWindowError?: string,
 ): boolean {
   return true;
 }
@@ -88,8 +85,7 @@ function shouldShowUsageStats(
 function shouldShowEvolutionLog(
   feedbackType: FeedbackType,
   step: string,
-  _isIssue: boolean,
-  _isError: boolean,
+  _mainWindowError?: string,
 ): boolean {
   switch (feedbackType) {
     case FeedbackType.Suggestion:
@@ -118,8 +114,7 @@ function shouldShowEvolutionLog(
 function shouldShowChangedNixFiles(
   feedbackType: FeedbackType,
   step: string,
-  _isIssue: boolean,
-  _isError: boolean,
+  _mainWindowError?: string,
 ): boolean {
   switch (feedbackType) {
     case FeedbackType.Suggestion:
@@ -147,8 +142,7 @@ function shouldShowChangedNixFiles(
 function shouldShowAiProviderModelInfo(
   feedbackType: FeedbackType,
   step: string,
-  _isIssue: boolean,
-  _isError: boolean,
+  _mainWindowError?: string,
 ): boolean {
   switch (feedbackType) {
     case FeedbackType.Suggestion:
@@ -176,8 +170,7 @@ function shouldShowAiProviderModelInfo(
 function shouldShowBuildErrorOutput(
   feedbackType: FeedbackType,
   step: string,
-  _isIssue: boolean,
-  _isError: boolean,
+  mainWindowError?: string,
 ): boolean {
   switch (feedbackType) {
     case FeedbackType.Suggestion:
@@ -189,7 +182,7 @@ function shouldShowBuildErrorOutput(
         case "setup":
           return false;
         case "evolving":
-          return false;
+          return !!mainWindowError; // only show if there's an error in the main window
         case "merge":
           return false;
         default:
@@ -205,8 +198,7 @@ function shouldShowBuildErrorOutput(
 function shouldShowFlakeInputsSnapshot(
   feedbackType: FeedbackType,
   step: string,
-  _isIssue: boolean,
-  _isError: boolean,
+  mainWindowError?: string,
 ): boolean {
   switch (feedbackType) {
     case FeedbackType.Suggestion:
@@ -220,7 +212,7 @@ function shouldShowFlakeInputsSnapshot(
         case "evolving":
           return false;
         case "merge":
-          return false;
+          return !!mainWindowError; // only show if there's an error in the main window
         default:
           return false;
       }
@@ -234,8 +226,7 @@ function shouldShowFlakeInputsSnapshot(
 function shouldShowNixConfig(
   feedbackType: FeedbackType,
   step: string,
-  _isIssue: boolean,
-  _isError: boolean,
+  _mainWindowError?: string,
 ): boolean {
   switch (feedbackType) {
     case FeedbackType.Suggestion:
@@ -262,8 +253,7 @@ function shouldShowNixConfig(
 function shouldShowAppLogs(
   feedbackType: FeedbackType,
   step: string,
-  _isIssue: boolean,
-  _isError: boolean,
+  _mainWindowError?: string,
 ): boolean {
   switch (feedbackType) {
     case FeedbackType.Suggestion:
@@ -287,7 +277,11 @@ function shouldShowAppLogs(
   }
 }
 
-export function FeedbackDialog() {
+interface FeedbackDialogProps {
+  mainWindowError?: string;
+}
+
+export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
   const feedbackOpen = useWidgetStore((s) => s.feedbackOpen);
   const setFeedbackOpen = useWidgetStore((s) => s.setFeedbackOpen);
   const feedbackTypeOverride = useWidgetStore((s) => s.feedbackTypeOverride);
@@ -359,34 +353,31 @@ export function FeedbackDialog() {
       return;
     }
 
-    const isIssue = feedbackType === FeedbackType.Issue;
-    const isError = feedbackType === FeedbackType.Error;
     const maskedShareOptions: ShareOptions = {
       ...shareOptions,
       currentAppState:
         shareOptions.currentAppState &&
-        shouldShowCurrentAppState(feedbackType, step, isIssue, isError),
+        shouldShowCurrentAppState(feedbackType, step, mainWindowError),
       systemInfo:
-        shareOptions.systemInfo && shouldShowSystemInfo(feedbackType, step, isIssue, isError),
+        shareOptions.systemInfo && shouldShowSystemInfo(feedbackType, step, mainWindowError),
       usageStats:
-        shareOptions.usageStats && shouldShowUsageStats(feedbackType, step, isIssue, isError),
+        shareOptions.usageStats && shouldShowUsageStats(feedbackType, step, mainWindowError),
       evolutionLog:
-        shareOptions.evolutionLog && shouldShowEvolutionLog(feedbackType, step, isIssue, isError),
+        shareOptions.evolutionLog && shouldShowEvolutionLog(feedbackType, step, mainWindowError),
       changedNixFiles:
         shareOptions.changedNixFiles &&
-        shouldShowChangedNixFiles(feedbackType, step, isIssue, isError),
+        shouldShowChangedNixFiles(feedbackType, step, mainWindowError),
       aiProviderModelInfo:
         shareOptions.aiProviderModelInfo &&
-        shouldShowAiProviderModelInfo(feedbackType, step, isIssue, isError),
+        shouldShowAiProviderModelInfo(feedbackType, step, mainWindowError),
       buildErrorOutput:
         shareOptions.buildErrorOutput &&
-        shouldShowBuildErrorOutput(feedbackType, step, isIssue, isError),
+        shouldShowBuildErrorOutput(feedbackType, step, mainWindowError),
       flakeInputsSnapshot:
         shareOptions.flakeInputsSnapshot &&
-        shouldShowFlakeInputsSnapshot(feedbackType, step, isIssue, isError),
-      nixConfig:
-        shareOptions.nixConfig && shouldShowNixConfig(feedbackType, step, isIssue, isError),
-      appLogs: shareOptions.appLogs && shouldShowAppLogs(feedbackType, step, isIssue, isError),
+        shouldShowFlakeInputsSnapshot(feedbackType, step, mainWindowError),
+      nixConfig: shareOptions.nixConfig && shouldShowNixConfig(feedbackType, step, mainWindowError),
+      appLogs: shareOptions.appLogs && shouldShowAppLogs(feedbackType, step, mainWindowError),
     };
 
     let metadata: Awaited<ReturnType<typeof darwinAPI.feedback.gatherMetadata>> | null = null;
@@ -649,7 +640,7 @@ export function FeedbackDialog() {
           <div className="space-y-2">
             <Label className="text-muted-foreground">SHARE WITH THE TEAM</Label>
             <div className="space-y-2">
-              {shouldShowCurrentAppState(feedbackType, step, isIssue, isError) && (
+              {shouldShowCurrentAppState(feedbackType, step, mainWindowError) && (
                 <div className="flex items-start gap-2">
                   <Checkbox
                     id="share-app-state"
@@ -675,7 +666,7 @@ export function FeedbackDialog() {
                 </div>
               )}
 
-              {shouldShowSystemInfo(feedbackType, step, isIssue, isError) && (
+              {shouldShowSystemInfo(feedbackType, step, mainWindowError) && (
                 <div className="flex items-start gap-2">
                   <Checkbox
                     id="share-system-info"
@@ -701,7 +692,7 @@ export function FeedbackDialog() {
                 </div>
               )}
 
-              {shouldShowUsageStats(feedbackType, step, isIssue, isError) && (
+              {shouldShowUsageStats(feedbackType, step, mainWindowError) && (
                 <div className="flex items-start gap-2">
                   <Checkbox
                     id="share-usage-stats"
@@ -727,7 +718,7 @@ export function FeedbackDialog() {
                 </div>
               )}
 
-              {shouldShowEvolutionLog(feedbackType, step, isIssue, isError) && (
+              {shouldShowEvolutionLog(feedbackType, step, mainWindowError) && (
                 <div className="flex items-start gap-2">
                   <Checkbox
                     id="share-evolution-log"
@@ -753,7 +744,7 @@ export function FeedbackDialog() {
                 </div>
               )}
 
-              {shouldShowChangedNixFiles(feedbackType, step, isIssue, isError) && (
+              {shouldShowChangedNixFiles(feedbackType, step, mainWindowError) && (
                 <div className="flex items-start gap-2">
                   <Checkbox
                     id="share-changed-nix-files"
@@ -779,7 +770,7 @@ export function FeedbackDialog() {
                 </div>
               )}
 
-              {shouldShowAiProviderModelInfo(feedbackType, step, isIssue, isError) && (
+              {shouldShowAiProviderModelInfo(feedbackType, step, mainWindowError) && (
                 <div className="flex items-start gap-2">
                   <Checkbox
                     id="share-ai-provider-model-info"
@@ -805,7 +796,7 @@ export function FeedbackDialog() {
                 </div>
               )}
 
-              {shouldShowBuildErrorOutput(feedbackType, step, isIssue, isError) && (
+              {shouldShowBuildErrorOutput(feedbackType, step, mainWindowError) && (
                 <div className="flex items-start gap-2">
                   <Checkbox
                     id="share-build-error-output"
@@ -831,7 +822,7 @@ export function FeedbackDialog() {
                 </div>
               )}
 
-              {shouldShowFlakeInputsSnapshot(feedbackType, step, isIssue, isError) && (
+              {shouldShowFlakeInputsSnapshot(feedbackType, step, mainWindowError) && (
                 <div className="flex items-start gap-2">
                   <Checkbox
                     id="share-flake-inputs-snapshot"
@@ -857,7 +848,7 @@ export function FeedbackDialog() {
                 </div>
               )}
 
-              {shouldShowNixConfig(feedbackType, step, isIssue, isError) && (
+              {shouldShowNixConfig(feedbackType, step, mainWindowError) && (
                 <div className="flex items-start gap-2">
                   <Checkbox
                     id="share-nix-config"
@@ -881,7 +872,7 @@ export function FeedbackDialog() {
                 </div>
               )}
 
-              {shouldShowAppLogs(feedbackType, step, isIssue, isError) && (
+              {shouldShowAppLogs(feedbackType, step, mainWindowError) && (
                 <div className="flex items-start gap-2">
                   <Checkbox
                     id="share-app-logs"

@@ -10,12 +10,7 @@ import { FeedbackDialog } from "@/components/widget/feedback-dialog";
 import { ReportIssueButton } from "@/components/widget/report-issue-button";
 import { StepContentWrapper } from "@/components/widget/step-content-wrapper";
 import { Stepper } from "@/components/widget/stepper";
-import {
-  MergeStep,
-  EvolveStep,
-  PermissionsStep,
-  SetupStep,
-} from "@/components/widget/steps";
+import { MergeStep, EvolveStep, PermissionsStep, SetupStep } from "@/components/widget/steps";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { usePermissions } from "@/hooks/use-permissions";
 import { usePromptHistory } from "@/hooks/use-prompt-history";
@@ -70,6 +65,13 @@ export function DarwinWidget() {
     }
   };
 
+  // Compute the visible error (if any, respecting suppression rules)
+  const error = useWidgetStore((s) => s.error);
+  const isErrorSuppressed =
+    (step === "setup" && error?.includes("Failed to list hosts: path")) ||
+    (step === "evolving" && error?.includes("cancelled by user"));
+  const visibleError = error && !isErrorSuppressed ? error : undefined;
+
   return (
     <div className="flex h-full w-full flex-col bg-background/90 backdrop-blur-xl">
       <Header />
@@ -85,7 +87,7 @@ export function DarwinWidget() {
 
       <Console />
       <SettingsDialog />
-      <FeedbackDialog />
+      <FeedbackDialog mainWindowError={visibleError} />
     </div>
   );
 }
