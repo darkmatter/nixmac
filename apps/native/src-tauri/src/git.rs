@@ -459,18 +459,32 @@ pub fn restore_all(dir: &str) -> Result<()> {
 }
 
 /// Creates and checks out a new branch.
-pub fn checkout_new_branch(dir: &str, branch_name: &str) -> Result<()> {
-    let output = git_command()
-        .args(["checkout", "-b", branch_name])
-        .current_dir(dir)
-        .output()?;
+/// If the branch already exists, appends -v2, -v3, etc. until a unique name is found.
+/// Returns the branch name that was created.
+pub fn checkout_new_branch(dir: &str, branch_name: &str) -> Result<String> {
+    for version in 1..=100 {
+        let name = if version == 1 {
+            branch_name.to_string()
+        } else {
+            format!("{}-v{}", branch_name, version)
+        };
 
-    if !output.status.success() {
+        let output = git_command()
+            .args(["checkout", "-b", &name])
+            .current_dir(dir)
+            .output()?;
+
+        if output.status.success() {
+            return Ok(name);
+        }
+
         let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("Failed to create branch: {}", stderr);
+        if !stderr.contains("already exists") {
+            anyhow::bail!("Failed to create branch: {}", stderr);
+        }
     }
 
-    Ok(())
+    anyhow::bail!("Too many versions of branch {}", branch_name)
 }
 
 /// Checks out an existing branch.

@@ -131,7 +131,6 @@ pub struct ApplyResult {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FeedbackShareOptions {
-    pub last_prompt: bool,
     pub current_app_state: bool,
     pub system_info: bool,
     pub usage_stats: bool,
@@ -211,7 +210,6 @@ pub struct FeedbackMetadataRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FeedbackMetadata {
-    pub last_prompt_text: Option<String>,
     pub current_app_state_snapshot: Option<Value>,
     pub system_info: Option<FeedbackSystemInfo>,
     pub usage_stats: Option<FeedbackUsageStats>,

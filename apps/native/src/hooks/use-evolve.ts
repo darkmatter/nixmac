@@ -72,9 +72,9 @@ export function useEvolve() {
 
       // Create branch if we're on main
       if (isOnMain) {
-        const branchName = `nixmac-evolve/${slugify(promptForBranch)}`;
-        useWidgetStore.getState().appendLog(`> Creating branch: ${branchName}\n`);
-        await darwinAPI.git.checkoutNewBranch(branchName);
+        const baseName = `nixmac-evolve/${slugify(promptForBranch)}`;
+        const { branch } = await darwinAPI.git.checkoutNewBranch(baseName);
+        useWidgetStore.getState().appendLog(`> Created branch: ${branch}\n`);
       }
 
       // Commit the changes

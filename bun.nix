@@ -3152,9 +3152,9 @@
     url = "https://registry.npmjs.org/@tauri-apps/plugin-http/-/plugin-http-2.5.7.tgz";
     hash = "sha512-+F2lEH/c9b0zSsOXKq+5hZNcd9F4IIKCK1T17RqMwpCmVnx2aoqY8yIBccCd25HTYUb3j6NPVbRax/m00hKG8A==";
   };
-  "@tauri-apps/plugin-log@2.7.1" = fetchurl {
-    url = "https://registry.npmjs.org/@tauri-apps/plugin-log/-/plugin-log-2.7.1.tgz";
-    hash = "sha512-jdb+o0wxQc8PjnLktgGpOs9Dh1YupaOGDXzO+Y8peA1UZ1ep3eXv4E1oiJ7nIQVN0XUFDDhnn3aBszl8ijhR+A==";
+  "@tauri-apps/plugin-log@2.8.0" = fetchurl {
+    url = "https://registry.npmjs.org/@tauri-apps/plugin-log/-/plugin-log-2.8.0.tgz";
+    hash = "sha512-a+7rOq3MJwpTOLLKbL8d0qGZ85hgHw5pNOWusA9o3cf7cEgtYHiGY/+O8fj8MvywQIGqFv0da2bYQDlrqLE7rw==";
   };
   "@tauri-apps/plugin-notification@2.3.3" = fetchurl {
     url = "https://registry.npmjs.org/@tauri-apps/plugin-notification/-/plugin-notification-2.3.3.tgz";
@@ -3184,13 +3184,13 @@
     url = "https://registry.npmjs.org/@tauri-apps/plugin-stronghold/-/plugin-stronghold-2.3.1.tgz";
     hash = "sha512-zFbD1Apk/VFdWaoGaoKcouRrZnzLFiNY9b1KDeBaN47sMaMHRYIa+ZDhvbzMOyH314+OHCQBXfe8I/ph59Lp9g==";
   };
-  "@tauri-apps/plugin-updater@2.9.0" = fetchurl {
-    url = "https://registry.npmjs.org/@tauri-apps/plugin-updater/-/plugin-updater-2.9.0.tgz";
-    hash = "sha512-j++sgY8XpeDvzImTrzWA08OqqGqgkNyxczLD7FjNJJx/uXxMZFz5nDcfkyoI/rCjYuj2101Tci/r/HFmOmoxCg==";
+  "@tauri-apps/plugin-updater@2.10.0" = fetchurl {
+    url = "https://registry.npmjs.org/@tauri-apps/plugin-updater/-/plugin-updater-2.10.0.tgz";
+    hash = "sha512-ljN8jPlnT0aSn8ecYhuBib84alxfMx6Hc8vJSKMJyzGbTPFZAC44T2I1QNFZssgWKrAlofvJqCC6Rr472JWfkQ==";
   };
-  "@tauri-apps/plugin-upload@2.3.2" = fetchurl {
-    url = "https://registry.npmjs.org/@tauri-apps/plugin-upload/-/plugin-upload-2.3.2.tgz";
-    hash = "sha512-h/V8RqsbVpJStfW5YVRsFzJF/AYJ3e1RTe3SgtPv9jX5B0suLUExSHlkhvbF3iXlt6qt4Pfi5RqpUr0Dk9DuGA==";
+  "@tauri-apps/plugin-upload@2.4.0" = fetchurl {
+    url = "https://registry.npmjs.org/@tauri-apps/plugin-upload/-/plugin-upload-2.4.0.tgz";
+    hash = "sha512-ebhsqXmiELnpKu2p46EZG14UKxvbVP28BpJBiHzR+quWVrMxm40518PXTDlXXcJUW5CkbmP/6RL5ERSVXBL8sQ==";
   };
   "@tauri-apps/plugin-websocket@2.4.1" = fetchurl {
     url = "https://registry.npmjs.org/@tauri-apps/plugin-websocket/-/plugin-websocket-2.4.1.tgz";

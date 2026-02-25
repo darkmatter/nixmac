@@ -20,7 +20,6 @@ export enum FeedbackType {
  * when submitting feedback.
  */
 export interface ShareOptions {
-  lastPrompt: boolean;
   currentAppState: boolean;
   systemInfo: boolean;
   usageStats: boolean;
@@ -177,7 +176,6 @@ export class Feedback {
     this.expectedText = payload.expectedText;
     this.email = payload.email;
     this.share = payload.share ?? {
-      lastPrompt: true,
       currentAppState: true,
       systemInfo: true,
       usageStats: true,
@@ -240,7 +238,6 @@ export class Feedback {
       text: input.text ?? "",
       expectedText: input.expectedText,
       share: input.share ?? {
-        lastPrompt: true,
         currentAppState: true,
         systemInfo: true,
         usageStats: true,
