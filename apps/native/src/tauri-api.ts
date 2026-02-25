@@ -131,7 +131,6 @@ export interface FeedbackFlakeInputsSnapshot {
 }
 
 export interface FeedbackMetadata {
-  lastPromptText?: string;
   currentAppStateSnapshot?: unknown;
   systemInfo?: FeedbackSystemInfo;
   usageStats?: FeedbackUsageStats;
