@@ -500,7 +500,6 @@ pub fn gather_metadata(
 ) -> Result<types::FeedbackMetadata, String> {
     let share = request.share;
     let mut metadata = types::FeedbackMetadata {
-        last_prompt_text: None,
         current_app_state_snapshot: None,
         system_info: None,
         usage_stats: None,
