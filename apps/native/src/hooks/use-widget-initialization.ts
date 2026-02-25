@@ -21,10 +21,15 @@ export async function loadConfig() {
 
 /**
  * Loads available hosts from flake and updates store.
+ * Silently sets hosts to [] if Nix isn't installed or flake isn't found.
  */
 export async function loadHosts() {
-  const hosts = (await darwinAPI.flake.listHosts()) as string[];
-  if (Array.isArray(hosts)) {
-    useWidgetStore.getState().setHosts(hosts);
+  try {
+    const hosts = (await darwinAPI.flake.listHosts()) as string[];
+    if (Array.isArray(hosts)) {
+      useWidgetStore.getState().setHosts(hosts);
+    }
+  } catch {
+    useWidgetStore.getState().setHosts([]);
   }
 }

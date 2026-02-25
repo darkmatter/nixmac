@@ -18,7 +18,7 @@ export type {
 /**
  * Widget step state - updated by useEffect based on app state.
  */
-export type WidgetStep = "permissions" | "setup" | "evolving" | "merge";
+export type WidgetStep = "permissions" | "nix-setup" | "setup" | "evolving" | "merge";
 export type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
 
 // Rebuild state for showing progress inline in the widget
@@ -57,6 +57,10 @@ export interface WidgetState {
 
   // Bootstrap (creating default config)
   isBootstrapping: boolean;
+
+  // Nix installation
+  nixInstalled: boolean | null; // null = not checked yet
+  nixInstalling: boolean;
 
   // Git (from backend)
   gitStatus: GitStatus | null;
@@ -98,6 +102,8 @@ export interface WidgetActions {
   setHosts: (hosts: string[]) => void;
   setHost: (host: string) => void;
   setBootstrapping: (isBootstrapping: boolean) => void;
+  setNixInstalled: (installed: boolean | null) => void;
+  setNixInstalling: (installing: boolean) => void;
   setGitStatus: (status: GitStatus | null) => void;
   setEvolvePrompt: (prompt: string) => void;
   setCommitMsg: (msg: string) => void;
@@ -164,6 +170,11 @@ export const initialWidgetState: WidgetState = {
   configDir: "",
   hosts: [],
   host: "",
+
+
+  // Nix
+  nixInstalled: null,
+  nixInstalling: false,
 
   // Git
   gitStatus: null,
@@ -242,6 +253,8 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
 
     // Client-side UI state (NOT from server)
     setBootstrapping: (isBootstrapping) => set({ isBootstrapping }),
+    setNixInstalled: (nixInstalled) => set({ nixInstalled }),
+    setNixInstalling: (nixInstalling) => set({ nixInstalling }),
     setGenerating: (isGenerating) => set({ isGenerating }),
     clearPreview: () =>
       set({
