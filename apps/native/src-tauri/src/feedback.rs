@@ -4,7 +4,7 @@
 //! from the frontend.
 //! All collection respects the ShareOptions flags provided by the user.
 
-use crate::{git, nix, store, types};
+use crate::{git, nix, secret_scanner, store, types};
 use anyhow::{Context, Result};
 use chrono::Utc;
 use log::{debug, warn};
@@ -150,7 +150,7 @@ pub fn gather_evolution_log(app: &AppHandle) -> Option<String> {
     // We'll parse it to validate it's proper JSON and return it formatted
     match serde_json::from_str::<Value>(metadata_str) {
         Ok(json) => {
-            // Return pretty-printed JSON for readability
+            // Return pretty-printed JSON for readability (will be redacted in gather_metadata)
             serde_json::to_string_pretty(&json).ok()
         }
         Err(e) => {
@@ -182,6 +182,7 @@ pub fn extract_build_error_output(app: &AppHandle) -> Option<String> {
         }
     }
 
+    // Will be redacted in gather_metadata
     last_error
 }
 
@@ -361,6 +362,7 @@ pub fn gather_nix_config_snapshot(app: &AppHandle) -> Option<String> {
                 }
             }
 
+            // Will be redacted in gather_metadata
             Some(snapshot)
         }
         Err(e) => {
@@ -380,6 +382,7 @@ pub fn gather_changed_nix_files_diff(app: &AppHandle) -> Option<String> {
     if diff.trim().is_empty() {
         None
     } else {
+        // Will be redacted in gather_metadata
         Some(diff)
     }
 }
@@ -460,6 +463,7 @@ pub fn gather_app_state(app: &AppHandle, feedback_type: &str) -> Value {
             })
         });
 
+    // Will be redacted in gather_metadata
     serde_json::json!({
         "configDir": config_dir,
         "hostAttr": host_attr,
@@ -489,6 +493,92 @@ pub fn gather_usage_stats(app: &AppHandle) -> types::FeedbackUsageStats {
             })),
         }
     })
+}
+
+// =============================================================================
+// Redaction Helper
+// =============================================================================
+
+/// Redact all sensitive information from the feedback metadata struct
+fn redact_metadata(metadata: types::FeedbackMetadata, app: &AppHandle) -> types::FeedbackMetadata {
+    let scanner = secret_scanner::SecretScanner::global(app);
+    let (metadata, redacted_fields) = redact_metadata_with_scanner(metadata, scanner);
+
+    if !redacted_fields.is_empty() {
+        debug!(
+            "Redacted sensitive fields from feedback metadata: {:?}",
+            redacted_fields
+        );
+    }
+
+    metadata
+}
+
+fn redact_metadata_with_scanner(
+    mut metadata: types::FeedbackMetadata,
+    scanner: &secret_scanner::SecretScanner,
+) -> (types::FeedbackMetadata, Vec<&'static str>) {
+    let mut redacted_fields: Vec<&'static str> = Vec::new();
+
+    // Redact all string fields
+    if let Some(ref mut content) = metadata.evolution_log_content {
+        let (redacted, changed) = scanner.redact_string(content);
+        if changed {
+            redacted_fields.push("evolution_log_content");
+        }
+        *content = redacted;
+    }
+    if let Some(ref mut content) = metadata.changed_nix_files_diff {
+        let (redacted, changed) = scanner.redact_string(content);
+        if changed {
+            redacted_fields.push("changed_nix_files_diff");
+        }
+        *content = redacted;
+    }
+    if let Some(ref mut content) = metadata.nix_config_snapshot {
+        let (redacted, changed) = scanner.redact_string(content);
+        if changed {
+            redacted_fields.push("nix_config_snapshot");
+        }
+        *content = redacted;
+    }
+    if let Some(ref mut content) = metadata.build_error_output {
+        let (redacted, changed) = scanner.redact_string(content);
+        if changed {
+            redacted_fields.push("build_error_output");
+        }
+        *content = redacted;
+    }
+    if let Some(ref mut content) = metadata.app_logs_content {
+        let (redacted, changed) = scanner.redact_string(content);
+        if changed {
+            redacted_fields.push("app_logs_content");
+        }
+        *content = redacted;
+    }
+
+    // Redact JSON fields
+    if let Some(ref mut state) = metadata.current_app_state_snapshot {
+        let (redacted, changed) = scanner.redact_json(state.clone());
+        if changed {
+            redacted_fields.push("current_app_state_snapshot");
+        }
+        *state = redacted;
+    }
+    if let Some(ref mut info) = metadata.ai_provider_model_info {
+        // Convert to JSON, redact, convert back
+        if let Ok(json) = serde_json::to_value(&*info) {
+            let (redacted, changed) = scanner.redact_json(json);
+            if changed {
+                redacted_fields.push("ai_provider_model_info");
+            }
+            if let Ok(redacted_info) = serde_json::from_value(redacted) {
+                *info = redacted_info;
+            }
+        }
+    }
+
+    (metadata, redacted_fields)
 }
 
 // =============================================================================
@@ -562,5 +652,168 @@ pub fn gather_metadata(
         metadata.app_logs_content = gather_app_logs();
     }
 
+    // Redact all collected metadata
+    let metadata = redact_metadata(metadata, app);
     Ok(metadata)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{redact_metadata_with_scanner, types};
+    use crate::secret_scanner::SecretScanner;
+    use serde_json::json;
+
+    fn test_scanner() -> SecretScanner {
+        let toml = r#"
+[[rules]]
+id = "test-token"
+regex = "token=([A-Za-z0-9]+)"
+"#;
+        SecretScanner::from_toml(toml)
+    }
+
+    fn test_scanner_no_rules() -> SecretScanner {
+        let toml = r#"rules = []"#;
+        SecretScanner::from_toml(toml)
+    }
+
+    fn empty_metadata() -> types::FeedbackMetadata {
+        types::FeedbackMetadata {
+            current_app_state_snapshot: None,
+            system_info: None,
+            usage_stats: None,
+            evolution_log_content: None,
+            changed_nix_files_diff: None,
+            ai_provider_model_info: None,
+            build_error_output: None,
+            flake_inputs_snapshot: None,
+            nix_config_snapshot: None,
+            app_logs_content: None,
+        }
+    }
+
+    #[test]
+    fn redacts_string_fields() {
+        let scanner = test_scanner();
+        let mut metadata = empty_metadata();
+        metadata.evolution_log_content = Some("token=abc123".to_string());
+        metadata.changed_nix_files_diff = Some("no secrets here".to_string());
+        metadata.build_error_output = Some("token=xyz".to_string());
+
+        let (metadata, redacted_fields) = redact_metadata_with_scanner(metadata, &scanner);
+
+        assert!(redacted_fields.contains(&"evolution_log_content"));
+        assert!(redacted_fields.contains(&"build_error_output"));
+        assert!(!redacted_fields.contains(&"changed_nix_files_diff"));
+        assert!(metadata
+            .evolution_log_content
+            .unwrap()
+            .contains("[REDACTED]"));
+        assert_eq!(metadata.changed_nix_files_diff.unwrap(), "no secrets here");
+        assert!(metadata.build_error_output.unwrap().contains("[REDACTED]"));
+    }
+
+    #[test]
+    fn redacts_json_fields() {
+        let scanner = test_scanner();
+        let mut metadata = empty_metadata();
+        metadata.current_app_state_snapshot = Some(json!({
+            "token": "token=abc123",
+            "nested": { "value": "token=xyz" }
+        }));
+        metadata.ai_provider_model_info = Some(types::FeedbackAiProviderModelInfo {
+            evolve_provider: Some("token=abc123".to_string()),
+            evolve_model: None,
+            summary_provider: None,
+            summary_model: None,
+            total_tokens: None,
+            latency_ms: None,
+            iterations: None,
+            build_attempts: None,
+        });
+
+        let (metadata, redacted_fields) = redact_metadata_with_scanner(metadata, &scanner);
+
+        assert!(redacted_fields.contains(&"current_app_state_snapshot"));
+        assert!(redacted_fields.contains(&"ai_provider_model_info"));
+
+        let state = metadata.current_app_state_snapshot.unwrap();
+        assert!(state
+            .get("token")
+            .and_then(|v| v.as_str())
+            .unwrap()
+            .contains("[REDACTED]"));
+        assert!(state
+            .get("nested")
+            .and_then(|v| v.get("value"))
+            .and_then(|v| v.as_str())
+            .unwrap()
+            .contains("[REDACTED]"));
+
+        let info = metadata.ai_provider_model_info.unwrap();
+        assert!(info.evolve_provider.unwrap().contains("[REDACTED]"));
+    }
+
+    #[test]
+    fn no_redaction_returns_empty_list() {
+        let scanner = test_scanner();
+        let mut metadata = empty_metadata();
+        metadata.evolution_log_content = Some("safe text".to_string());
+
+        let (metadata, redacted_fields) = redact_metadata_with_scanner(metadata, &scanner);
+
+        assert!(redacted_fields.is_empty());
+        assert_eq!(metadata.evolution_log_content.unwrap(), "safe text");
+    }
+
+    #[test]
+    fn redacts_high_entropy_strings() {
+        let scanner = test_scanner_no_rules();
+        let mut metadata = empty_metadata();
+        let token = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        let high_entropy = format!("This log has a secret in it: {token} see how that works?");
+        metadata.evolution_log_content = Some(high_entropy.to_string());
+
+        let (metadata, redacted_fields) = redact_metadata_with_scanner(metadata, &scanner);
+
+        assert!(redacted_fields.contains(&"evolution_log_content"));
+        let content = metadata.evolution_log_content.unwrap();
+        assert!(content.contains("High Entropy"));
+        assert!(!content.contains(token));
+        assert_eq!(
+            content,
+            "This log has a secret in it: [REDACTED (High Entropy)] see how that works?"
+        );
+    }
+
+    #[test]
+    fn redacts_high_entropy_json_values() {
+        let scanner = test_scanner_no_rules();
+        let mut metadata = empty_metadata();
+        let token = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        let message = format!("prefix {token} suffix");
+
+        metadata.current_app_state_snapshot = Some(json!({
+            "message": message,
+            "nested": { "note": format!("before {token} after") }
+        }));
+
+        let (metadata, redacted_fields) = redact_metadata_with_scanner(metadata, &scanner);
+
+        assert!(redacted_fields.contains(&"current_app_state_snapshot"));
+
+        let state = metadata.current_app_state_snapshot.unwrap();
+        assert_eq!(
+            state.get("message").and_then(|v| v.as_str()).unwrap(),
+            "prefix [REDACTED (High Entropy)] suffix"
+        );
+        assert_eq!(
+            state
+                .get("nested")
+                .and_then(|v| v.get("note"))
+                .and_then(|v| v.as_str())
+                .unwrap(),
+            "before [REDACTED (High Entropy)] after"
+        );
+    }
 }
