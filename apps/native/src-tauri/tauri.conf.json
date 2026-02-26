@@ -20,7 +20,8 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "../templates/nix-darwin-determinate/**/*"
+      "../templates/nix-darwin-determinate/**/*",
+      "resources/gitleaks.toml"
     ],
     "macOS": {
       "minimumSystemVersion": "10.13",
