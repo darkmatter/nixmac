@@ -21,7 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Lightbulb, Bug, MessageCircle } from "lucide-react";
+import { Lightbulb, Bug, MessageCircle, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Feedback as FeedbackModel, FeedbackType, ShareOptions } from "@/types/feedback";
 import { getFeedbackUrl } from "@/lib/env";
 import { darwinAPI } from "@/tauri-api";
@@ -81,6 +82,30 @@ function shouldShowUsageStats(
 ): boolean {
   return true;
 }
+
+// Tooltip helpers for share options
+const shareOptionTooltips: Record<string, string> = {
+  currentAppState:
+    "Current step in the workflow (permissions, setup, evolving, merge), active view, any feature flags, and evolution progress if applicable.",
+  systemInfo:
+    "macOS version, nixmac version, Nix version, and system architecture to understand your environment.",
+  usageStats:
+    "Total evolutions run, success rate, and average iterations per evolution to track your usage patterns.",
+  evolutionLog:
+    "Full agent trace including all iterations, AI requests/responses, file operations, build checks, and reasoning steps from the most recent evolution.",
+  changedNixFiles:
+    "Git diff of all modified Nix files, including both staged and unstaged changes, to see exactly what was modified.",
+  aiProviderModelInfo:
+    "AI model provider and model name being used for evolutions and summaries, plus token usage statistics and latency metrics from the most recent evolution.",
+  buildErrorOutput:
+    "Output from the most recent build check failure, if any occurred during evolution.",
+  flakeInputsSnapshot:
+    "Current revisions of nixpkgs, nix-darwin, and home-manager from your flake.lock to reproduce the exact environment.",
+  nixConfig:
+    "Complete snapshot of all .nix configuration files in your modules/ directory with timestamp and file list.",
+  appLogs:
+    "Last 200 lines from the most recent darwin-rebuild log file to see recent system events and errors.",
+};
 
 function shouldShowEvolutionLog(
   feedbackType: FeedbackType,
@@ -553,7 +578,7 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
 
           {/* Feedback Text */}
           <div className="space-y-2">
-            <Label htmlFor="feedback-text" className="text-muted-foreground">
+            <Label htmlFor="feedback-text" className="text-foreground">
               {getTextboxLabel()}
             </Label>
             <Textarea
@@ -570,7 +595,7 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
 
           {/* Prompt selector - visible for all feedback types */}
           <div className="space-y-2">
-            <Label className="text-muted-foreground">PROMPT (optional)</Label>
+            <Label className="text-foreground">PROMPT (optional)</Label>
             <Select value={relatedPrompt} onValueChange={setRelatedPrompt}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select a prompt (optional)" />
@@ -593,7 +618,7 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
 
           {/* Email input (optional) - moved below RELATED PROMPT for issue flow */}
           <div className="mt-2 flex items-center gap-3">
-            <Label htmlFor="feedback-email" className="text-muted-foreground text-sm">
+            <Label htmlFor="feedback-email" className="text-foreground text-sm">
               Email (optional)
             </Label>
             <Input
@@ -609,7 +634,7 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
           {/* Expected Text (Bug only) */}
           {feedbackType === FeedbackType.Bug && (
             <div className="space-y-2">
-              <Label htmlFor="expected-text" className="text-muted-foreground">
+              <Label htmlFor="expected-text" className="text-foreground">
                 WHAT DID YOU EXPECT
               </Label>
               <Textarea
@@ -625,10 +650,10 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
 
           {/* Share with team */}
           <div className="space-y-2">
-            <Label className="text-muted-foreground">SHARE WITH THE TEAM</Label>
+            <Label className="text-foreground">SHARE WITH THE TEAM</Label>
             <div className="space-y-2">
               {shouldShowCurrentAppState(feedbackType, step, mainWindowError) && (
-                <div className="flex items-start gap-2">
+                <div className="flex items-center gap-2">
                   <Checkbox
                     id="share-app-state"
                     checked={shareOptions.currentAppState}
@@ -639,22 +664,31 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
                       })
                     }
                   />
-                  <div className="grid gap-1 leading-none">
-                    <Label
-                      htmlFor="share-app-state"
-                      className="cursor-pointer font-medium text-sm text-muted-foreground"
-                    >
-                      Current app state
-                    </Label>
-                    <p className="text-muted-foreground text-xs">
-                      Which stage you're on, active view, feature flags
-                    </p>
-                  </div>
+                  <Label
+                    htmlFor="share-app-state"
+                    className="cursor-pointer font-medium text-sm text-foreground flex-1"
+                  >
+                    Current app state
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                        aria-label="More information"
+                      >
+                        <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-sm text-sm">
+                      {shareOptionTooltips.currentAppState}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               )}
 
               {shouldShowSystemInfo(feedbackType, step, mainWindowError) && (
-                <div className="flex items-start gap-2">
+                <div className="flex items-center gap-2">
                   <Checkbox
                     id="share-system-info"
                     checked={shareOptions.systemInfo}
@@ -665,22 +699,31 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
                       })
                     }
                   />
-                  <div className="grid gap-1 leading-none">
-                    <Label
-                      htmlFor="share-system-info"
-                      className="cursor-pointer font-medium text-sm text-muted-foreground"
-                    >
-                      System info
-                    </Label>
-                    <p className="text-muted-foreground text-xs">
-                      macOS 15.3, nixmac v0.1.0, nix 2.24.1, aarch64-darwin
-                    </p>
-                  </div>
+                  <Label
+                    htmlFor="share-system-info"
+                    className="cursor-pointer font-medium text-sm text-foreground flex-1"
+                  >
+                    System info
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                        aria-label="More information"
+                      >
+                        <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-sm text-sm">
+                      {shareOptionTooltips.systemInfo}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               )}
 
               {shouldShowUsageStats(feedbackType, step, mainWindowError) && (
-                <div className="flex items-start gap-2">
+                <div className="flex items-center gap-2">
                   <Checkbox
                     id="share-usage-stats"
                     checked={shareOptions.usageStats}
@@ -691,22 +734,31 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
                       })
                     }
                   />
-                  <div className="grid gap-1 leading-none">
-                    <Label
-                      htmlFor="share-usage-stats"
-                      className="cursor-pointer font-medium text-sm text-muted-foreground"
-                    >
-                      Usage stats
-                    </Label>
-                    <p className="text-muted-foreground text-xs">
-                      Total evolutions run, success rate, avg iterations
-                    </p>
-                  </div>
+                  <Label
+                    htmlFor="share-usage-stats"
+                    className="cursor-pointer font-medium text-sm text-foreground flex-1"
+                  >
+                    Usage stats
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                        aria-label="More information"
+                      >
+                        <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-sm text-sm">
+                      {shareOptionTooltips.usageStats}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               )}
 
               {shouldShowEvolutionLog(feedbackType, step, mainWindowError) && (
-                <div className="flex items-start gap-2">
+                <div className="flex items-center gap-2">
                   <Checkbox
                     id="share-evolution-log"
                     checked={shareOptions.evolutionLog}
@@ -717,22 +769,31 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
                       })
                     }
                   />
-                  <div className="grid gap-1 leading-none">
-                    <Label
-                      htmlFor="share-evolution-log"
-                      className="cursor-pointer font-medium text-sm text-muted-foreground"
-                    >
-                      Evolution log
-                    </Label>
-                    <p className="text-muted-foreground text-xs">
-                      Full agent trace -- iterations, file reads, edits, build checks
-                    </p>
-                  </div>
+                  <Label
+                    htmlFor="share-evolution-log"
+                    className="cursor-pointer font-medium text-sm text-foreground flex-1"
+                  >
+                    Evolution log
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                        aria-label="More information"
+                      >
+                        <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-sm text-sm">
+                      {shareOptionTooltips.evolutionLog}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               )}
 
               {shouldShowChangedNixFiles(feedbackType, step, mainWindowError) && (
-                <div className="flex items-start gap-2">
+                <div className="flex items-center gap-2">
                   <Checkbox
                     id="share-changed-nix-files"
                     checked={shareOptions.changedNixFiles}
@@ -743,22 +804,31 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
                       })
                     }
                   />
-                  <div className="grid gap-1 leading-none">
-                    <Label
-                      htmlFor="share-changed-nix-files"
-                      className="cursor-pointer font-medium text-sm text-muted-foreground"
-                    >
-                      Changed nix files
-                    </Label>
-                    <p className="text-muted-foreground text-xs">
-                      Contents as currently modified, git diff
-                    </p>
-                  </div>
+                  <Label
+                    htmlFor="share-changed-nix-files"
+                    className="cursor-pointer font-medium text-sm text-foreground flex-1"
+                  >
+                    Changed nix files
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                        aria-label="More information"
+                      >
+                        <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-sm text-sm">
+                      {shareOptionTooltips.changedNixFiles}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               )}
 
               {shouldShowAiProviderModelInfo(feedbackType, step, mainWindowError) && (
-                <div className="flex items-start gap-2">
+                <div className="flex items-center gap-2">
                   <Checkbox
                     id="share-ai-provider-model-info"
                     checked={shareOptions.aiProviderModelInfo}
@@ -769,22 +839,31 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
                       })
                     }
                   />
-                  <div className="grid gap-1 leading-none">
-                    <Label
-                      htmlFor="share-ai-provider-model-info"
-                      className="cursor-pointer font-medium text-sm text-muted-foreground"
-                    >
-                      AI provider and model info
-                    </Label>
-                    <p className="text-muted-foreground text-xs">
-                      OpenRouter, Claude Sonnet 4, token usage, latency
-                    </p>
-                  </div>
+                  <Label
+                    htmlFor="share-ai-provider-model-info"
+                    className="cursor-pointer font-medium text-sm text-foreground flex-1"
+                  >
+                    AI provider and model info
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                        aria-label="More information"
+                      >
+                        <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-sm text-sm">
+                      {shareOptionTooltips.aiProviderModelInfo}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               )}
 
               {shouldShowBuildErrorOutput(feedbackType, step, mainWindowError) && (
-                <div className="flex items-start gap-2">
+                <div className="flex items-center gap-2">
                   <Checkbox
                     id="share-build-error-output"
                     checked={shareOptions.buildErrorOutput}
@@ -795,22 +874,31 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
                       })
                     }
                   />
-                  <div className="grid gap-1 leading-none">
-                    <Label
-                      htmlFor="share-build-error-output"
-                      className="cursor-pointer font-medium text-sm text-muted-foreground"
-                    >
-                      Build error output
-                    </Label>
-                    <p className="text-muted-foreground text-xs">
-                      nix flake check status error (if any)
-                    </p>
-                  </div>
+                  <Label
+                    htmlFor="share-build-error-output"
+                    className="cursor-pointer font-medium text-sm text-foreground flex-1"
+                  >
+                    Build error output
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                        aria-label="More information"
+                      >
+                        <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-sm text-sm">
+                      {shareOptionTooltips.buildErrorOutput}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               )}
 
               {shouldShowFlakeInputsSnapshot(feedbackType, step, mainWindowError) && (
-                <div className="flex items-start gap-2">
+                <div className="flex items-center gap-2">
                   <Checkbox
                     id="share-flake-inputs-snapshot"
                     checked={shareOptions.flakeInputsSnapshot}
@@ -821,22 +909,31 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
                       })
                     }
                   />
-                  <div className="grid gap-1 leading-none">
-                    <Label
-                      htmlFor="share-flake-inputs-snapshot"
-                      className="cursor-pointer font-medium text-sm text-muted-foreground"
-                    >
-                      Flake inputs snapshot
-                    </Label>
-                    <p className="text-muted-foreground text-xs">
-                      nix pkgs/nix darwin/home-manager revs from flake.lock
-                    </p>
-                  </div>
+                  <Label
+                    htmlFor="share-flake-inputs-snapshot"
+                    className="cursor-pointer font-medium text-sm text-foreground flex-1"
+                  >
+                    Flake inputs snapshot
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                        aria-label="More information"
+                      >
+                        <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-sm text-sm">
+                      {shareOptionTooltips.flakeInputsSnapshot}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               )}
 
               {shouldShowNixConfig(feedbackType, step, mainWindowError) && (
-                <div className="flex items-start gap-2">
+                <div className="flex items-center gap-2">
                   <Checkbox
                     id="share-nix-config"
                     checked={shareOptions.nixConfig}
@@ -847,20 +944,31 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
                       })
                     }
                   />
-                  <div className="grid gap-1 leading-none">
-                    <Label
-                      htmlFor="share-nix-config"
-                      className="cursor-pointer font-medium text-sm text-muted-foreground"
-                    >
-                      Nix config file diffs
-                    </Label>
-                    <p className="text-muted-foreground text-xs">Current nix file changes</p>
-                  </div>
+                  <Label
+                    htmlFor="share-nix-config"
+                    className="cursor-pointer font-medium text-sm text-foreground flex-1"
+                  >
+                    Nix config file diffs
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                        aria-label="More information"
+                      >
+                        <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-sm text-sm">
+                      {shareOptionTooltips.nixConfig}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               )}
 
               {shouldShowAppLogs(feedbackType, step, mainWindowError) && (
-                <div className="flex items-start gap-2">
+                <div className="flex items-center gap-2">
                   <Checkbox
                     id="share-app-logs"
                     checked={shareOptions.appLogs}
@@ -871,15 +979,26 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
                       })
                     }
                   />
-                  <div className="grid gap-1 leading-none">
-                    <Label
-                      htmlFor="share-app-logs"
-                      className="cursor-pointer font-medium text-sm text-muted-foreground"
-                    >
-                      App logs
-                    </Label>
-                    <p className="text-muted-foreground text-xs">Last 200 lines of nixmac.log</p>
-                  </div>
+                  <Label
+                    htmlFor="share-app-logs"
+                    className="cursor-pointer font-medium text-sm text-foreground flex-1"
+                  >
+                    App logs
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                        aria-label="More information"
+                      >
+                        <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-sm text-sm">
+                      {shareOptionTooltips.appLogs}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               )}
             </div>
