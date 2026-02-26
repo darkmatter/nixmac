@@ -18,6 +18,7 @@ mod nix;
 mod peek;
 mod permissions;
 mod providers;
+mod secret_scanner;
 mod statistics;
 mod store;
 mod summarize;
@@ -166,6 +167,8 @@ fn main() {
         ])
         .setup(move |app| {
             let handle = app.handle();
+
+            let _ = secret_scanner::SecretScanner::global(handle);
 
             let send_diagnostics = store::get_send_diagnostics(handle).unwrap_or(false);
             if send_diagnostics {
