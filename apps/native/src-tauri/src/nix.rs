@@ -1,7 +1,34 @@
+//! Nix command execution and PATH resolution for macOS GUI apps.
+//!
+//! This module provides two approaches for resolving PATH when executing Nix commands:
+//!
+//! ## 1. Regular PATH (`get_nix_path()`)
+//! - Uses process environment + fallback Nix paths
+//! - **Fast:** No shell spawning
+//! - **Use for:** Frequent operations (git polling, nix eval)
+//! - **Trade-off:** May not find Nix if app launched from Finder without shell environment
+//!
+//! ## 2. Login Shell PATH (`get_nix_path_with_login_shell()`)
+//! - Spawns `/bin/bash -l` to source shell init files
+//! - **Reliable:** Finds Nix even in GUI contexts
+//! - **Use for:** One-time checks (is_nix_installed, initial detection)
+//! - **Warning:** Triggers shell init which may invoke `xcrun` from Nix's `xcbuild`,
+//!   causing repeated `warning: unhandled Platform key FamilyDisplayName` in logs
+//!
+//! ## Why Two Approaches?
+//!
+//! The git watcher polls status every 2.5 seconds, executing multiple git commands per poll.
+//! If each command spawned a login shell, we'd get hundreds of xcrun warnings per minute.
+//! By using the simple PATH for frequent operations and login shell only for initial detection,
+//! we get reliability where needed without polluting logs.
+//!
+//! See: <https://github.com/NixOS/nixpkgs/issues/376958>
+
 use anyhow::Result;
 use log::{error, info};
 use serde_json::Value;
 use std::process::{Command, Stdio};
+use std::sync::OnceLock;
 use tauri::{AppHandle, Emitter};
 
 const NIX_PATHS_FALLBACK: &[&str] = &[
@@ -12,8 +39,39 @@ const NIX_PATHS_FALLBACK: &[&str] = &[
     "/opt/homebrew/bin",
 ];
 
-/// Resolves PATH using a login shell so GUI apps can find Nix binaries.
+static NIX_PATH_CACHE: OnceLock<String> = OnceLock::new();
+
+/// Resolves PATH for Nix commands by prepending known Nix paths to the current environment.
+///
+/// **Important:** This version uses the process environment PATH directly without spawning
+/// a login shell. This is the correct choice for high-frequency operations like git polling
+/// (which happens every 2.5 seconds).
+///
+/// The result is computed once and cached for the lifetime of the process.
+///
+/// See: https://github.com/NixOS/nixpkgs/issues/376958
 pub fn get_nix_path() -> String {
+    NIX_PATH_CACHE
+        .get_or_init(|| {
+            let base_path = std::env::var("PATH").unwrap_or_default();
+            let nix_paths = NIX_PATHS_FALLBACK.join(":");
+            if base_path.is_empty() {
+                nix_paths
+            } else {
+                format!("{}:{}", nix_paths, base_path)
+            }
+        })
+        .clone()
+}
+
+/// Resolves PATH using a login shell to find Nix binaries in GUI app contexts.
+///
+/// **Warning:** Do NOT use this for repeated/frequent operations!
+/// - Each call spawns a bash process and sources shell init files
+/// - Shell init may trigger `xcrun` from Nix's `xcbuild`, causing warning spam
+/// - For frequent operations, use `get_nix_path()` instead
+///
+pub fn get_nix_path_with_login_shell() -> String {
     if let Ok(output) = Command::new("/bin/bash")
         .args(["-l", "-c", "echo $PATH"])
         .stdout(Stdio::piped())
@@ -26,9 +84,8 @@ pub fn get_nix_path() -> String {
         }
     }
 
-    let base_path = std::env::var("PATH").unwrap_or_default();
-    let nix_paths = NIX_PATHS_FALLBACK.join(":");
-    format!("{}:{}", nix_paths, base_path)
+    // Fallback to environment PATH if login shell fails
+    get_nix_path()
 }
 
 pub fn determine_host_attr<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<String> {
@@ -90,6 +147,7 @@ pub fn list_darwin_hosts(config_dir: &str) -> Result<Vec<String>> {
     Ok(hosts)
 }
 
+/// Checks if Nix is installed by attempting to run `nix --version`.
 pub fn is_nix_installed() -> bool {
     Command::new("/bin/bash")
         .args(["-l", "-c", "nix --version"])
@@ -100,10 +158,14 @@ pub fn is_nix_installed() -> bool {
         .unwrap_or(false)
 }
 
+/// Gets the installed Nix version string.
+///
+/// Uses the login shell because it's typically called in contexts where we want to reliably detect Nix
+/// even if launched from Finder. The original use case is for nix-install.
 pub fn get_nix_version() -> Option<String> {
     let output = Command::new("nix")
         .arg("--version")
-        .env("PATH", get_nix_path())
+        .env("PATH", get_nix_path_with_login_shell())
         .output()
         .ok()?;
 
