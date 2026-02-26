@@ -404,8 +404,15 @@ pub fn unstage_all(dir: &str) -> Result<()> {
     Ok(())
 }
 
+/// Info about a created commit.
+pub struct CommitInfo {
+    pub hash: String,
+    pub tree_hash: String,
+}
+
 /// Stages all changes and commits with the given message.
-pub fn commit_all(dir: &str, message: &str) -> Result<()> {
+/// Returns the commit hash and tree hash on success.
+pub fn commit_all(dir: &str, message: &str) -> Result<CommitInfo> {
     git_command()
         .args(["add", "-A"])
         .current_dir(dir)
@@ -416,7 +423,25 @@ pub fn commit_all(dir: &str, message: &str) -> Result<()> {
         .current_dir(dir)
         .output()?;
 
-    Ok(())
+    // Get the commit hash
+    let hash_output = git_command()
+        .args(["rev-parse", "HEAD"])
+        .current_dir(dir)
+        .output()?;
+    let hash = String::from_utf8_lossy(&hash_output.stdout)
+        .trim()
+        .to_string();
+
+    // Get the tree hash
+    let tree_output = git_command()
+        .args(["rev-parse", "HEAD^{tree}"])
+        .current_dir(dir)
+        .output()?;
+    let tree_hash = String::from_utf8_lossy(&tree_output.stdout)
+        .trim()
+        .to_string();
+
+    Ok(CommitInfo { hash, tree_hash })
 }
 
 /// Stages all changes and commits with the given message.
