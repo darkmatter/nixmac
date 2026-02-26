@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Lightbulb, Bug, MessageCircle, Info } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Feedback as FeedbackModel, FeedbackType, ShareOptions } from "@/types/feedback";
 import { getFeedbackUrl } from "@/lib/env";
 import { darwinAPI } from "@/tauri-api";
@@ -651,359 +651,357 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
           {/* Share with team */}
           <div className="space-y-2">
             <Label className="text-foreground">SHARE WITH THE TEAM</Label>
-            <TooltipProvider>
-              <div className="space-y-2">
-                {shouldShowCurrentAppState(feedbackType, step, mainWindowError) && (
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="share-app-state"
-                      checked={shareOptions.currentAppState}
-                      onCheckedChange={(checked: boolean | "indeterminate") =>
-                        setShareOptions({
-                          ...shareOptions,
-                          currentAppState: checked === true,
-                        })
-                      }
-                    />
-                    <Label
-                      htmlFor="share-app-state"
-                      className="cursor-pointer font-medium text-sm text-foreground flex-1"
-                    >
-                      Current app state
-                    </Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
-                          aria-label="More information"
-                        >
-                          <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="max-w-sm text-sm">
-                        {shareOptionTooltips.currentAppState}
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                )}
+            <div className="space-y-2">
+              {shouldShowCurrentAppState(feedbackType, step, mainWindowError) && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="share-app-state"
+                    checked={shareOptions.currentAppState}
+                    onCheckedChange={(checked: boolean | "indeterminate") =>
+                      setShareOptions({
+                        ...shareOptions,
+                        currentAppState: checked === true,
+                      })
+                    }
+                  />
+                  <Label
+                    htmlFor="share-app-state"
+                    className="cursor-pointer font-medium text-sm text-foreground flex-1"
+                  >
+                    Current app state
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                        aria-label="More information"
+                      >
+                        <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-sm text-sm">
+                      {shareOptionTooltips.currentAppState}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
 
-                {shouldShowSystemInfo(feedbackType, step, mainWindowError) && (
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="share-system-info"
-                      checked={shareOptions.systemInfo}
-                      onCheckedChange={(checked: boolean | "indeterminate") =>
-                        setShareOptions({
-                          ...shareOptions,
-                          systemInfo: checked === true,
-                        })
-                      }
-                    />
-                    <Label
-                      htmlFor="share-system-info"
-                      className="cursor-pointer font-medium text-sm text-foreground flex-1"
-                    >
-                      System info
-                    </Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
-                          aria-label="More information"
-                        >
-                          <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="max-w-sm text-sm">
-                        {shareOptionTooltips.systemInfo}
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                )}
+              {shouldShowSystemInfo(feedbackType, step, mainWindowError) && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="share-system-info"
+                    checked={shareOptions.systemInfo}
+                    onCheckedChange={(checked: boolean | "indeterminate") =>
+                      setShareOptions({
+                        ...shareOptions,
+                        systemInfo: checked === true,
+                      })
+                    }
+                  />
+                  <Label
+                    htmlFor="share-system-info"
+                    className="cursor-pointer font-medium text-sm text-foreground flex-1"
+                  >
+                    System info
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                        aria-label="More information"
+                      >
+                        <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-sm text-sm">
+                      {shareOptionTooltips.systemInfo}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
 
-                {shouldShowUsageStats(feedbackType, step, mainWindowError) && (
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="share-usage-stats"
-                      checked={shareOptions.usageStats}
-                      onCheckedChange={(checked: boolean | "indeterminate") =>
-                        setShareOptions({
-                          ...shareOptions,
-                          usageStats: checked === true,
-                        })
-                      }
-                    />
-                    <Label
-                      htmlFor="share-usage-stats"
-                      className="cursor-pointer font-medium text-sm text-foreground flex-1"
-                    >
-                      Usage stats
-                    </Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
-                          aria-label="More information"
-                        >
-                          <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="max-w-sm text-sm">
-                        {shareOptionTooltips.usageStats}
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                )}
+              {shouldShowUsageStats(feedbackType, step, mainWindowError) && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="share-usage-stats"
+                    checked={shareOptions.usageStats}
+                    onCheckedChange={(checked: boolean | "indeterminate") =>
+                      setShareOptions({
+                        ...shareOptions,
+                        usageStats: checked === true,
+                      })
+                    }
+                  />
+                  <Label
+                    htmlFor="share-usage-stats"
+                    className="cursor-pointer font-medium text-sm text-foreground flex-1"
+                  >
+                    Usage stats
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                        aria-label="More information"
+                      >
+                        <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-sm text-sm">
+                      {shareOptionTooltips.usageStats}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
 
-                {shouldShowEvolutionLog(feedbackType, step, mainWindowError) && (
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="share-evolution-log"
-                      checked={shareOptions.evolutionLog}
-                      onCheckedChange={(checked: boolean | "indeterminate") =>
-                        setShareOptions({
-                          ...shareOptions,
-                          evolutionLog: checked === true,
-                        })
-                      }
-                    />
-                    <Label
-                      htmlFor="share-evolution-log"
-                      className="cursor-pointer font-medium text-sm text-foreground flex-1"
-                    >
-                      Evolution log
-                    </Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
-                          aria-label="More information"
-                        >
-                          <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="max-w-sm text-sm">
-                        {shareOptionTooltips.evolutionLog}
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                )}
+              {shouldShowEvolutionLog(feedbackType, step, mainWindowError) && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="share-evolution-log"
+                    checked={shareOptions.evolutionLog}
+                    onCheckedChange={(checked: boolean | "indeterminate") =>
+                      setShareOptions({
+                        ...shareOptions,
+                        evolutionLog: checked === true,
+                      })
+                    }
+                  />
+                  <Label
+                    htmlFor="share-evolution-log"
+                    className="cursor-pointer font-medium text-sm text-foreground flex-1"
+                  >
+                    Evolution log
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                        aria-label="More information"
+                      >
+                        <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-sm text-sm">
+                      {shareOptionTooltips.evolutionLog}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
 
-                {shouldShowChangedNixFiles(feedbackType, step, mainWindowError) && (
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="share-changed-nix-files"
-                      checked={shareOptions.changedNixFiles}
-                      onCheckedChange={(checked: boolean | "indeterminate") =>
-                        setShareOptions({
-                          ...shareOptions,
-                          changedNixFiles: checked === true,
-                        })
-                      }
-                    />
-                    <Label
-                      htmlFor="share-changed-nix-files"
-                      className="cursor-pointer font-medium text-sm text-foreground flex-1"
-                    >
-                      Changed nix files
-                    </Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
-                          aria-label="More information"
-                        >
-                          <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="max-w-sm text-sm">
-                        {shareOptionTooltips.changedNixFiles}
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                )}
+              {shouldShowChangedNixFiles(feedbackType, step, mainWindowError) && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="share-changed-nix-files"
+                    checked={shareOptions.changedNixFiles}
+                    onCheckedChange={(checked: boolean | "indeterminate") =>
+                      setShareOptions({
+                        ...shareOptions,
+                        changedNixFiles: checked === true,
+                      })
+                    }
+                  />
+                  <Label
+                    htmlFor="share-changed-nix-files"
+                    className="cursor-pointer font-medium text-sm text-foreground flex-1"
+                  >
+                    Changed nix files
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                        aria-label="More information"
+                      >
+                        <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-sm text-sm">
+                      {shareOptionTooltips.changedNixFiles}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
 
-                {shouldShowAiProviderModelInfo(feedbackType, step, mainWindowError) && (
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="share-ai-provider-model-info"
-                      checked={shareOptions.aiProviderModelInfo}
-                      onCheckedChange={(checked: boolean | "indeterminate") =>
-                        setShareOptions({
-                          ...shareOptions,
-                          aiProviderModelInfo: checked === true,
-                        })
-                      }
-                    />
-                    <Label
-                      htmlFor="share-ai-provider-model-info"
-                      className="cursor-pointer font-medium text-sm text-foreground flex-1"
-                    >
-                      AI provider and model info
-                    </Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
-                          aria-label="More information"
-                        >
-                          <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="max-w-sm text-sm">
-                        {shareOptionTooltips.aiProviderModelInfo}
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                )}
+              {shouldShowAiProviderModelInfo(feedbackType, step, mainWindowError) && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="share-ai-provider-model-info"
+                    checked={shareOptions.aiProviderModelInfo}
+                    onCheckedChange={(checked: boolean | "indeterminate") =>
+                      setShareOptions({
+                        ...shareOptions,
+                        aiProviderModelInfo: checked === true,
+                      })
+                    }
+                  />
+                  <Label
+                    htmlFor="share-ai-provider-model-info"
+                    className="cursor-pointer font-medium text-sm text-foreground flex-1"
+                  >
+                    AI provider and model info
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                        aria-label="More information"
+                      >
+                        <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-sm text-sm">
+                      {shareOptionTooltips.aiProviderModelInfo}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
 
-                {shouldShowBuildErrorOutput(feedbackType, step, mainWindowError) && (
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="share-build-error-output"
-                      checked={shareOptions.buildErrorOutput}
-                      onCheckedChange={(checked: boolean | "indeterminate") =>
-                        setShareOptions({
-                          ...shareOptions,
-                          buildErrorOutput: checked === true,
-                        })
-                      }
-                    />
-                    <Label
-                      htmlFor="share-build-error-output"
-                      className="cursor-pointer font-medium text-sm text-foreground flex-1"
-                    >
-                      Build error output
-                    </Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
-                          aria-label="More information"
-                        >
-                          <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="max-w-sm text-sm">
-                        {shareOptionTooltips.buildErrorOutput}
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                )}
+              {shouldShowBuildErrorOutput(feedbackType, step, mainWindowError) && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="share-build-error-output"
+                    checked={shareOptions.buildErrorOutput}
+                    onCheckedChange={(checked: boolean | "indeterminate") =>
+                      setShareOptions({
+                        ...shareOptions,
+                        buildErrorOutput: checked === true,
+                      })
+                    }
+                  />
+                  <Label
+                    htmlFor="share-build-error-output"
+                    className="cursor-pointer font-medium text-sm text-foreground flex-1"
+                  >
+                    Build error output
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                        aria-label="More information"
+                      >
+                        <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-sm text-sm">
+                      {shareOptionTooltips.buildErrorOutput}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
 
-                {shouldShowFlakeInputsSnapshot(feedbackType, step, mainWindowError) && (
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="share-flake-inputs-snapshot"
-                      checked={shareOptions.flakeInputsSnapshot}
-                      onCheckedChange={(checked: boolean | "indeterminate") =>
-                        setShareOptions({
-                          ...shareOptions,
-                          flakeInputsSnapshot: checked === true,
-                        })
-                      }
-                    />
-                    <Label
-                      htmlFor="share-flake-inputs-snapshot"
-                      className="cursor-pointer font-medium text-sm text-foreground flex-1"
-                    >
-                      Flake inputs snapshot
-                    </Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
-                          aria-label="More information"
-                        >
-                          <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="max-w-sm text-sm">
-                        {shareOptionTooltips.flakeInputsSnapshot}
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                )}
+              {shouldShowFlakeInputsSnapshot(feedbackType, step, mainWindowError) && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="share-flake-inputs-snapshot"
+                    checked={shareOptions.flakeInputsSnapshot}
+                    onCheckedChange={(checked: boolean | "indeterminate") =>
+                      setShareOptions({
+                        ...shareOptions,
+                        flakeInputsSnapshot: checked === true,
+                      })
+                    }
+                  />
+                  <Label
+                    htmlFor="share-flake-inputs-snapshot"
+                    className="cursor-pointer font-medium text-sm text-foreground flex-1"
+                  >
+                    Flake inputs snapshot
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                        aria-label="More information"
+                      >
+                        <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-sm text-sm">
+                      {shareOptionTooltips.flakeInputsSnapshot}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
 
-                {shouldShowNixConfig(feedbackType, step, mainWindowError) && (
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="share-nix-config"
-                      checked={shareOptions.nixConfig}
-                      onCheckedChange={(checked: boolean | "indeterminate") =>
-                        setShareOptions({
-                          ...shareOptions,
-                          nixConfig: checked === true,
-                        })
-                      }
-                    />
-                    <Label
-                      htmlFor="share-nix-config"
-                      className="cursor-pointer font-medium text-sm text-foreground flex-1"
-                    >
-                      Nix config file diffs
-                    </Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
-                          aria-label="More information"
-                        >
-                          <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="max-w-sm text-sm">
-                        {shareOptionTooltips.nixConfig}
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                )}
+              {shouldShowNixConfig(feedbackType, step, mainWindowError) && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="share-nix-config"
+                    checked={shareOptions.nixConfig}
+                    onCheckedChange={(checked: boolean | "indeterminate") =>
+                      setShareOptions({
+                        ...shareOptions,
+                        nixConfig: checked === true,
+                      })
+                    }
+                  />
+                  <Label
+                    htmlFor="share-nix-config"
+                    className="cursor-pointer font-medium text-sm text-foreground flex-1"
+                  >
+                    Nix config file diffs
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                        aria-label="More information"
+                      >
+                        <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-sm text-sm">
+                      {shareOptionTooltips.nixConfig}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
 
-                {shouldShowAppLogs(feedbackType, step, mainWindowError) && (
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="share-app-logs"
-                      checked={shareOptions.appLogs}
-                      onCheckedChange={(checked: boolean | "indeterminate") =>
-                        setShareOptions({
-                          ...shareOptions,
-                          appLogs: checked === true,
-                        })
-                      }
-                    />
-                    <Label
-                      htmlFor="share-app-logs"
-                      className="cursor-pointer font-medium text-sm text-foreground flex-1"
-                    >
-                      App logs
-                    </Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
-                          aria-label="More information"
-                        >
-                          <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="max-w-sm text-sm">
-                        {shareOptionTooltips.appLogs}
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                )}
-              </div>
-            </TooltipProvider>
+              {shouldShowAppLogs(feedbackType, step, mainWindowError) && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="share-app-logs"
+                    checked={shareOptions.appLogs}
+                    onCheckedChange={(checked: boolean | "indeterminate") =>
+                      setShareOptions({
+                        ...shareOptions,
+                        appLogs: checked === true,
+                      })
+                    }
+                  />
+                  <Label
+                    htmlFor="share-app-logs"
+                    className="cursor-pointer font-medium text-sm text-foreground flex-1"
+                  >
+                    App logs
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
+                        aria-label="More information"
+                      >
+                        <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-sm text-sm">
+                      {shareOptionTooltips.appLogs}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
