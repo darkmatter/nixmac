@@ -30,6 +30,7 @@ export interface ShareOptions {
   flakeInputsSnapshot: boolean;
   nixConfig: boolean;
   appLogs: boolean;
+  lastPrompt?: boolean;
 }
 
 /**
