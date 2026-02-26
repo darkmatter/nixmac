@@ -8,7 +8,8 @@
 //! preview mode, etc.) is computed and managed entirely by the client.
 
 use crate::{
-    darwin, default_config, feedback, git, nix, peek, permissions, store, summarize, types, watcher,
+    darwin, db, default_config, feedback, git, nix, peek, permissions, store, summarize, types,
+    watcher,
 };
 use std::path::Path;
 use std::process::Command;
@@ -151,8 +152,26 @@ pub async fn git_cached(app: AppHandle) -> Result<Option<types::GitStatus>, Stri
 #[tauri::command]
 pub async fn git_commit(app: AppHandle, message: String) -> Result<serde_json::Value, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_commit", e))?;
-    git::commit_all(&dir, &message).map_err(|e| capture_err("git_commit", e))?;
-    Ok(serde_json::json!({"ok": true}))
+    let commit_info = git::commit_all(&dir, &message).map_err(|e| capture_err("git_commit", e))?;
+
+    // Save commit to database
+    if let Ok(db_path) = db::get_db_path(&app) {
+        match db::commits::insert_commit(
+            &db_path,
+            &commit_info.hash,
+            &commit_info.tree_hash,
+            &message,
+        ) {
+            Ok(id) => log::info!(
+                "[git_commit] Saved commit to database (id={}, hash={})",
+                id,
+                &commit_info.hash[..8]
+            ),
+            Err(e) => log::error!("[git_commit] Failed to save commit: {}", e),
+        }
+    }
+
+    Ok(serde_json::json!({"ok": true, "hash": commit_info.hash}))
 }
 
 /// Stash changes
