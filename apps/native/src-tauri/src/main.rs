@@ -9,6 +9,7 @@
 
 mod commands;
 mod darwin;
+mod db;
 mod default_config;
 mod evolve;
 mod feedback;
@@ -167,6 +168,16 @@ fn main() {
         ])
         .setup(move |app| {
             let handle = app.handle();
+
+            // Initialize SQLite database
+            let db_handle = handle.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = db::init(&db_handle).await {
+                    log::error!("Failed to initialize database: {}", e);
+                } else {
+                    log::info!("Database initialized successfully");
+                }
+            });
 
             let _ = secret_scanner::SecretScanner::global(handle);
 
