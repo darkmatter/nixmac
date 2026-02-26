@@ -1,5 +1,7 @@
 //! SQLite database for persisting evolution history, summaries, and prompts.
 
+pub mod commits;
+pub mod prompts;
 mod schema;
 
 use anyhow::Result;
