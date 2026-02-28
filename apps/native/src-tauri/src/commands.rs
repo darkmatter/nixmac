@@ -110,6 +110,23 @@ pub async fn feedback_gather_metadata(
 }
 
 // =============================================================================
+// TESTING / DEBUG Commands
+// TODO: Consider removing or gating behind a debug flag in production builds.
+// =============================================================================
+
+/// Test command to trigger a panic and verify the panic handler works.
+/// This will cause a controlled panic that should be caught by the panic handler
+/// and trigger the feedback dialog.
+///
+/// You can run it like this from the JS debug console:
+/// window.__TAURI_INTERNALS__.invoke("trigger_test_panic");
+#[tauri::command]
+pub async fn trigger_test_panic() -> Result<(), String> {
+    log::warn!("Test panic triggered by user");
+    panic!("This is a test panic to verify the panic handler works correctly");
+}
+
+// =============================================================================
 // Git Commands
 // =============================================================================
 

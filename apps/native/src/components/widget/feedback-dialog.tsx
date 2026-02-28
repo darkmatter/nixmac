@@ -310,6 +310,8 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
   const feedbackOpen = useWidgetStore((s) => s.feedbackOpen);
   const setFeedbackOpen = useWidgetStore((s) => s.setFeedbackOpen);
   const feedbackTypeOverride = useWidgetStore((s) => s.feedbackTypeOverride);
+  const feedbackInitialText = useWidgetStore((s) => s.feedbackInitialText);
+  const panicDetails = useWidgetStore((s) => s.panicDetails);
   const setFeedbackTypeOverride = useWidgetStore((s) => s.setFeedbackTypeOverride);
   const step = useCurrentStep();
 
@@ -344,6 +346,15 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
     }
   }, [feedbackOpen, feedbackTypeOverride]);
 
+  // Pre-populate feedback text when opening with initial text (e.g., from panic)
+  useEffect(() => {
+    if (!feedbackOpen || !feedbackInitialText) {
+      return;
+    }
+
+    setFeedbackText(feedbackInitialText);
+  }, [feedbackOpen, feedbackInitialText]);
+
   // When the user actively selects a feedback type, reset the evolutionLog
   // share option to the sensible default for that type. It's acceptable to
   // reset this if the user moves between radio buttons while in the dialog.
@@ -371,6 +382,7 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
     setRelatedPrompt("");
     setShareOptions(DEFAULT_SHARE_OPTIONS);
     setFeedbackTypeOverride(null);
+    useWidgetStore.setState({ feedbackInitialText: null, panicDetails: null });
   };
 
   const handleSubmit = async () => {
@@ -414,6 +426,7 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
         flakeInputsSnapshot: metadata?.flakeInputsSnapshot,
         nixConfigSnapshot: metadata?.nixConfigSnapshot,
         appLogsContent: metadata?.appLogsContent,
+        panicDetails: feedbackType === FeedbackType.Error ? (panicDetails ?? undefined) : undefined,
       });
 
       const validation = feedbackModel.validate();
@@ -512,6 +525,10 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
   const isError = feedbackType === FeedbackType.Error;
   const isReportMode = isIssue || isError;
   const dialogTitle = isIssue ? "Report an issue" : isError ? "Report an error" : "Give feedback";
+  const hasAutoFilledError = feedbackInitialText && isError;
+  const dialogDescription = hasAutoFilledError
+    ? "An error was detected. The details have been pre-filled below. Please review and submit to help us fix this issue."
+    : "Help us make nixmac better";
 
   return (
     <Dialog
@@ -526,8 +543,11 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
     >
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{dialogTitle}</DialogTitle>
-          <DialogDescription>Help us make nixmac better</DialogDescription>
+          <DialogTitle className={hasAutoFilledError ? "flex items-center gap-2" : ""}>
+            {hasAutoFilledError && <span className="text-red-500">⚠️</span>}
+            {dialogTitle}
+          </DialogTitle>
+          <DialogDescription>{dialogDescription}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">

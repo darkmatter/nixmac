@@ -59,6 +59,7 @@ regex = "1.12.3"
 tauri-plugin-http = "2"
 fancy-regex = "0.17.0"
 toml = "1.0.3"
+backtrace = "0.3"
 
 [dependencies.tauri-plugin-sql]
 features = ["sqlite"] # or "postgres", or "mysql"
