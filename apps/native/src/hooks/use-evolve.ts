@@ -1,4 +1,3 @@
-import { slugify } from "@/components/widget/utils";
 import { useWidgetStore } from "@/stores/widget-store";
 import {
   darwinAPI,
@@ -9,17 +8,22 @@ import {
 import { useCallback } from "react";
 import { useGitOperations } from "./use-git-operations";
 import { usePromptHistory } from "./use-prompt-history";
-import { useSummary } from "./use-summary";
 
 /**
  * Hook for the evolution operation.
  * Handles AI-driven configuration evolution with event streaming.
- * Creates a nixmac-evolve/* branch on first evolve and commits after each evolution.
+ *
+ * The backend now handles the complete workflow:
+ * - AI evolution
+ * - Summary generation
+ * - Branch creation (if on main)
+ * - Committing changes
+ * - Database storage
+ * - Returns summary and final git status
  */
 export function useEvolve() {
   const { refreshGitStatus } = useGitOperations();
   const { refreshPromptHistory } = usePromptHistory();
-  const { fetchSummary } = useSummary();
 
   const handleEvolve = useCallback(async () => {
     // Get fresh state each time
@@ -29,11 +33,6 @@ export function useEvolve() {
     }
 
     await refreshPromptHistory(store.evolvePrompt.trim());
-
-    // Check if we need to create a branch (only if on main)
-    const currentBranch = store.gitStatus?.branch;
-    const isOnMain = currentBranch === "main" || currentBranch === "master";
-    const promptForBranch = store.evolvePrompt;
 
     store.setProcessing(true, "evolve");
     store.setGenerating(true);
@@ -57,33 +56,21 @@ export function useEvolve() {
     );
 
     try {
-      // Run the evolution
-      await darwinAPI.darwin.evolve(store.evolvePrompt);
+      // Run the unified evolution workflow
+      // Backend handles: AI + summary + branch + commit + DB
+      const result = await darwinAPI.darwin.evolve(store.evolvePrompt);
 
       useWidgetStore.getState().appendLog("✓ Evolution complete\n");
 
-      // Fetch summary first to get the commit message
-      await fetchSummary();
-
-      // Get the commit message from summary
-      const summary = useWidgetStore.getState().summary;
-      const commitMessage =
-        summary?.commitMessage || "chore: evolve configuration";
-
-      // Create branch if we're on main
-      if (isOnMain) {
-        const baseName = `nixmac-evolve/${slugify(promptForBranch)}`;
-        const { branch } = await darwinAPI.git.checkoutNewBranch(baseName);
-        useWidgetStore.getState().appendLog(`> Created branch: ${branch}\n`);
+      // Set the summary and git status from the result
+      if (result?.summary) {
+        useWidgetStore.getState().setSummary(result.summary);
+      }
+      if (result?.gitStatus) {
+        useWidgetStore.getState().setGitStatus(result.gitStatus);
       }
 
-      // Commit the changes
-      useWidgetStore.getState().appendLog(`> Committing: ${commitMessage}\n`);
-      await darwinAPI.git.commit(commitMessage);
-      useWidgetStore.getState().appendLog("✓ Changes committed\n");
-
       store.setEvolvePrompt("");
-      await refreshGitStatus({ cache: true });
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
 
@@ -105,7 +92,7 @@ export function useEvolve() {
         useWidgetStore.getState().setProcessing(false);
       }, 3000);
     }
-  }, [refreshGitStatus, refreshPromptHistory, fetchSummary]);
+  }, [refreshGitStatus, refreshPromptHistory]);
 
   return { handleEvolve };
 }

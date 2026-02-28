@@ -1,8 +1,10 @@
 //! SQLite database for persisting evolution history, summaries, and prompts.
 
 pub mod commits;
-pub mod prompts;
+pub mod operations;
 mod schema;
+pub mod squashed_commits;
+pub mod summaries;
 
 use anyhow::Result;
 use std::path::PathBuf;

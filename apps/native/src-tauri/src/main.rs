@@ -11,6 +11,7 @@ mod commands;
 mod darwin;
 mod db;
 mod default_config;
+mod evolution;
 mod evolve;
 mod feedback;
 mod git;
