@@ -34,7 +34,7 @@ use tauri::{
     image::Image,
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent,
+    Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
 
 fn main() {
@@ -202,22 +202,14 @@ fn main() {
                 }
             }
 
-            // Build the system tray menu with navigation shortcuts
+            // Build the system tray menu
             let open_i = MenuItem::with_id(app, "open", "Open", true, None::<&str>)?;
-            let overview_i = MenuItem::with_id(app, "overview", "Overview", true, None::<&str>)?;
-            let evolve_i = MenuItem::with_id(app, "evolve", "Evolve", true, None::<&str>)?;
-            let commit_i = MenuItem::with_id(app, "commit", "Commit", true, None::<&str>)?;
-            let apply_i = MenuItem::with_id(app, "apply", "Apply", true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
 
             let menu = Menu::with_items(
                 app,
                 &[
                     &open_i,
-                    &overview_i,
-                    &evolve_i,
-                    &commit_i,
-                    &apply_i,
                     &quit_i,
                 ],
             )?;
@@ -238,14 +230,6 @@ fn main() {
                         if let Some(window) = app.get_webview_window("main") {
                             let _ = window.show();
                             let _ = window.set_focus();
-                        }
-                    }
-                    // Navigation items emit events to the frontend to switch tabs
-                    "overview" | "evolve" | "commit" | "apply" => {
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                            window.emit("navigate", event.id().as_ref()).ok();
                         }
                     }
                     "quit" => {
