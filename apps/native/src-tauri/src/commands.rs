@@ -8,8 +8,8 @@
 //! preview mode, etc.) is computed and managed entirely by the client.
 
 use crate::{
-    darwin, db, default_config, feedback, git, nix, peek, permissions, store, summarize, types,
-    watcher,
+    darwin, db, default_config, evolution, feedback, git, nix, peek, permissions, store, summarize,
+    types, watcher,
 };
 use std::path::Path;
 use std::process::Command;
@@ -288,7 +288,7 @@ fn reset_evolve_cancelled() {
     EVOLVE_CANCELLED.store(false, std::sync::atomic::Ordering::SeqCst);
 }
 
-/// Uses AI (codex) to propose configuration changes based on a description.
+/// Handles the complete evolution cycle returning the git status and summary to react
 #[tauri::command]
 pub async fn darwin_evolve(
     app: AppHandle,
@@ -297,11 +297,11 @@ pub async fn darwin_evolve(
     // Reset cancellation flag at the start of a new evolution
     reset_evolve_cancelled();
 
-    let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("darwin_evolve", e))?;
-    let evolution = darwin::start_evolve(&app, &dir, &description)
+    let result = evolution::evolve_and_commit(&app, &description)
         .await
         .map_err(|e| capture_err("darwin_evolve", e))?;
-    Ok(serde_json::to_value(evolution).unwrap_or_default())
+
+    Ok(serde_json::to_value(result).unwrap_or_default())
 }
 
 /// Cancel an in-progress evolution operation.

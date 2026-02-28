@@ -17,12 +17,15 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::Arc;
 use std::time::Duration;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::AppHandle;
 use tokio::time::sleep;
 use tools::{create_tools, execute_tool, ToolResult};
 pub use types::{Evolution, EvolutionState};
 
-use crate::{commands, nix, statistics, store, types::EvolveEvent};
+use crate::{
+    commands, nix, statistics, store,
+    types::{emit_evolve_event, EvolveEvent},
+};
 use messages::Message;
 use providers::{AiProvider, OllamaProvider, OpenAIProvider, ProviderError};
 
@@ -235,7 +238,6 @@ const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 const DEFAULT_MAX_ITERATIONS: usize = 50;
 const DEFAULT_MAX_BUILD_ATTEMPTS: usize = 5;
 const SYSTEM_PROMPT: &str = include_str!("../../prompts/system.md");
-const EVOLVE_EVENT_CHANNEL: &str = "darwin:evolve:event";
 
 /// Additional instructions to encourage thinking
 const THINKING_INSTRUCTIONS: &str = r#"
@@ -248,15 +250,6 @@ IMPORTANT: You have a 'think' tool available. Use it FREQUENTLY to reason throug
 5. BEFORE calling done - verify your work is complete
 
 Thorough thinking leads to better, more complete implementations. Don't rush."#;
-
-/// Helper to emit evolve events to the frontend
-fn emit_evolve_event(app: &AppHandle, event: EvolveEvent) {
-    if let Some(window) = app.get_webview_window("main") {
-        if let Err(e) = window.emit(EVOLVE_EVENT_CHANNEL, &event) {
-            warn!("Failed to emit evolve event: {}", e);
-        }
-    }
-}
 
 /// Generate an evolution from a user prompt using OpenAI function calling.
 ///
