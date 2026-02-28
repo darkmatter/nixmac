@@ -19,11 +19,14 @@ import {
 } from "@/components/widget/steps";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useNixInstall } from "@/hooks/use-nix-install";
+import { useErrorHandler } from "@/hooks/use-error-handler";
+import { usePanicHandler } from "@/hooks/use-panic-handler";
 import { usePermissions } from "@/hooks/use-permissions";
 import { usePromptHistory } from "@/hooks/use-prompt-history";
 import { useWatcher } from "@/hooks/use-watcher";
 import { loadConfig, loadHosts } from "@/hooks/use-widget-initialization";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
+import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
 import { useEffect } from "react";
 
 /**
@@ -37,6 +40,19 @@ export function DarwinWidget() {
   const { checkPermissions } = usePermissions();
   const { refreshPromptHistory } = usePromptHistory();
   const { startWatching } = useWatcher();
+
+  // Set up panic handler to catch Rust crashes and show feedback dialog
+  usePanicHandler();
+
+  // Set up error handler to catch unhandled JavaScript errors and promise rejections
+  useErrorHandler();
+
+  // Set up test helpers for error handlers (development only)
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      setupErrorTestHelpers();
+    }
+  }, []);
 
   // Load initial data once on mount, then start watching for changes
   useEffect(() => {

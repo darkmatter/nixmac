@@ -4,12 +4,6 @@ import { Button } from "@/components/ui/button";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { FeedbackType } from "@/types/feedback";
 
-// run __testError() in the console to simulate an error and see the feedback icon pulse
-if (import.meta.env.DEV) {
-  // @ts-expect-error dev helper
-  window.__testError = () => useWidgetStore.getState().setError("Test error, argh! This is only a test, no worries.");
-}
-
 /**
  * Error message component - displays errors from store.
  * Filters out certain errors based on context (e.g., expected errors during setup).
@@ -30,14 +24,16 @@ export function ErrorMessage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl rounded-lg border
-     border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
-      {error}{" "}
+    <div
+      className="mx-auto max-w-2xl rounded-lg border
+     border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400"
+    >
+      <span className="whitespace-pre-wrap">{error}</span>{" "}
       <Button
         variant="link"
         size="sm"
         className="ml-2 h-auto p-0 text-red-300 underline text-xs -translate-y-[1px]"
-        onClick={() => openFeedback(FeedbackType.Error)}
+        onClick={() => openFeedback(FeedbackType.Error, error)}
         type="button"
       >
         Report Error

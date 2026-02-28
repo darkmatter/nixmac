@@ -17,6 +17,7 @@ mod feedback;
 mod git;
 mod log_summarizer;
 mod nix;
+mod panic_handler;
 mod peek;
 mod permissions;
 mod providers;
@@ -37,6 +38,9 @@ use tauri::{
 };
 
 fn main() {
+    // Initialize logging dead-first.
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+
     let context = tauri::generate_context!();
 
     // Prefer compile-time embedded vars (set by build.rs via `cargo:rustc-env`),
@@ -74,9 +78,6 @@ fn main() {
         sentry_guard = Some(client);
     }
 
-    // Initialize logging - set RUST_LOG=debug for verbose output
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
-
     let mut builder = tauri::Builder::default().plugin(tauri_plugin_http::init());
 
     if let Some(client) = sentry_guard.as_ref() {
@@ -108,6 +109,8 @@ fn main() {
             commands::config_pick_dir,
             // Feedback
             commands::feedback_gather_metadata,
+            #[cfg(debug_assertions)]
+            commands::trigger_test_panic,
             // Git
             commands::git_init_if_needed,
             commands::git_status,
@@ -169,6 +172,9 @@ fn main() {
         ])
         .setup(move |app| {
             let handle = app.handle();
+
+            // Set up panic handler to catch crashes and show feedback dialog
+            panic_handler::setup_panic_hook(handle.clone());
 
             // Initialize SQLite database
             let db_handle = handle.clone();
