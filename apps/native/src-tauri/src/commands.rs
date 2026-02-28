@@ -120,6 +120,9 @@ pub async fn feedback_gather_metadata(
 ///
 /// You can run it like this from the JS debug console:
 /// window.__TAURI_INTERNALS__.invoke("trigger_test_panic");
+///
+/// Only available in debug builds.
+#[cfg(debug_assertions)]
 #[tauri::command]
 pub async fn trigger_test_panic() -> Result<(), String> {
     log::warn!("Test panic triggered by user");

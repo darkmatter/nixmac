@@ -1,10 +1,15 @@
-//! Panic handler for capturing and recovering from Rust panics.
+//! Panic handler for capturing and reporting Rust panics before the process terminates.
 //!
 //! This module sets up a custom panic hook that:
 //! 1. Captures panic information including backtrace
 //! 2. Reports to Sentry if configured
 //! 3. Emits an event to the frontend to show the feedback dialog
-//! 4. Attempts graceful recovery instead of immediate crash
+//! 4. Calls the default panic hook (unwinding proceeds normally)
+//!
+//! Note: The panic hook itself does not prevent crashes. Panics in Tauri command handlers
+//! are caught and contained by Tauri's `#[tauri::command]` wrapper (which uses `catch_unwind`).
+//! Panics outside of command contexts will still crash the process, but the user will see
+//! the feedback dialog and error details before the crash occurs.
 
 use log::error;
 use std::panic;
@@ -43,10 +48,9 @@ pub fn setup_panic_hook(app_handle: AppHandle) {
             .map(|loc| format!("{}:{}:{}", loc.file(), loc.line(), loc.column()));
 
         // Capture backtrace if RUST_BACKTRACE is set
-        let backtrace = if std::env::var("RUST_BACKTRACE").is_ok() {
-            Some(format!("{:?}", backtrace::Backtrace::new()))
-        } else {
-            None
+        let backtrace = match std::env::var("RUST_BACKTRACE") {
+            Ok(val) if val != "0" => Some(format!("{:?}", backtrace::Backtrace::new())),
+            _ => None,
         };
 
         let timestamp = chrono::Utc::now().to_rfc3339();
@@ -98,8 +102,9 @@ pub fn setup_panic_hook(app_handle: AppHandle) {
             error!("❌ Could not get main window to emit panic event");
         }
 
-        // Call the default hook for any additional system-level handling
-        // Apparently there is a chance this MAY still kill the app, but we did our best.
+        // Call the default hook to let Rust proceed with its normal panic unwinding.
+        // If this panic happened in a Tauri command handler, the `#[tauri::command]` wrapper
+        // will catch the unwind and return an error response. Otherwise, the process will terminate.
         default_hook(panic_info);
     }));
 

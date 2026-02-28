@@ -2,6 +2,7 @@
 
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -133,8 +134,8 @@ export function ModelCombobox({
         }
       }
     } catch {
-      // Silently fail - we'll use cached models or empty list
-      alert("Failed to fetch models for " + provider);
+      // We'll use cached models or empty list
+      toast.error(`Failed to fetch models for ${provider}`);
     }
 
     setIsLoading(false);

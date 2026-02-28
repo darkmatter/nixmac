@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Lightbulb, Bug, MessageCircle, Info } from "lucide-react";
+import { Lightbulb, Bug, MessageCircle, Info, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Feedback as FeedbackModel, FeedbackType, ShareOptions } from "@/types/feedback";
 import { getFeedbackUrl } from "@/lib/env";
@@ -514,7 +514,8 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
         return "WHAT'S ON YOUR MIND";
       case FeedbackType.Bug:
         return "WHAT HAPPENED";
-      case (FeedbackType.Issue, FeedbackType.Error):
+      case FeedbackType.Issue:
+      case FeedbackType.Error:
         return "DESCRIBE WHAT HAPPENED";
       default:
         return "WHAT'S ON YOUR MIND";
@@ -1026,10 +1027,11 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
+          <Button variant="outline" onClick={handleClose} disabled={submitting}>
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={submitting}>
+            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isReportMode ? "Send Report" : "Send Feedback"}
           </Button>
         </DialogFooter>

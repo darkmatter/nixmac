@@ -19,8 +19,8 @@ import {
 } from "@/components/widget/steps";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useNixInstall } from "@/hooks/use-nix-install";
-import { useErrorHandler } from "@/hooks/useErrorHandler";
-import { usePanicHandler } from "@/hooks/usePanicHandler";
+import { useErrorHandler } from "@/hooks/use-error-handler";
+import { usePanicHandler } from "@/hooks/use-panic-handler";
 import { usePermissions } from "@/hooks/use-permissions";
 import { usePromptHistory } from "@/hooks/use-prompt-history";
 import { useWatcher } from "@/hooks/use-watcher";
