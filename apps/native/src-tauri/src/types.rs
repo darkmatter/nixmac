@@ -6,6 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tauri::Manager;
 
 /// Application configuration returned by `config_get`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -304,6 +305,8 @@ pub enum EvolveEventType {
     Error,
     /// Generic info message
     Info,
+    /// Generating summary
+    Summarizing,
 }
 
 impl EvolveEvent {
@@ -472,6 +475,16 @@ impl EvolveEvent {
             start_time,
         )
     }
+
+    pub fn summarizing(start_time: i64, iter: Option<usize>) -> Self {
+        Self::new(
+            EvolveEventType::Summarizing,
+            "Summarizing changes...".to_string(),
+            "Summarizing changes...".to_string(),
+            iter,
+            start_time,
+        )
+    }
 }
 
 /// Truncate a string to max length with ellipsis
@@ -486,4 +499,60 @@ fn truncate(s: &str, max_len: usize) -> String {
 /// Shorten a file path to just the filename or last path component
 fn shorten_path(path: &str) -> &str {
     path.rsplit('/').next().unwrap_or(path)
+}
+
+/// Event channel for evolve events
+pub const EVOLVE_EVENT_CHANNEL: &str = "darwin:evolve:event";
+
+/// Helper to emit evolve events to the frontend
+pub fn emit_evolve_event<R: tauri::Runtime>(app: &tauri::AppHandle<R>, event: EvolveEvent) {
+    if let Some(window) = app.get_webview_window("main") {
+        if let Err(e) = tauri::Emitter::emit(&window, EVOLVE_EVENT_CHANNEL, &event) {
+            log::warn!("Failed to emit evolve event: {}", e);
+        }
+    }
+}
+
+/// Convert text to a URL-safe slug for branch names.
+/// Mirrors the frontend slugify function from widget/utils.ts.
+pub fn slugify(text: &str) -> String {
+    use regex::Regex;
+
+    // Start with lowercase trimmed text
+    let mut result = text.to_lowercase().trim().to_string();
+
+    // Remove conventional commit prefixes like "feat(scope): " or "fix: "
+    let commit_prefix_re = Regex::new(
+        r"^\s*(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)(\([^)]*\))?:\s*",
+    )
+    .unwrap();
+    result = commit_prefix_re.replace(&result, "").to_string();
+
+    // Remove "(manual changes)" suffix
+    let manual_suffix_re = Regex::new(r"\s*\(manual changes\)\s*$").unwrap();
+    result = manual_suffix_re.replace(&result, "").to_string();
+
+    // Keep only alphanumeric, spaces, and hyphens
+    let non_alphanum_re = Regex::new(r"[^a-z0-9\s-]").unwrap();
+    result = non_alphanum_re.replace_all(&result, "").to_string();
+
+    // Replace whitespace with hyphens
+    let whitespace_re = Regex::new(r"\s+").unwrap();
+    result = whitespace_re.replace_all(&result, "-").to_string();
+
+    // Collapse multiple hyphens
+    let multi_hyphen_re = Regex::new(r"-+").unwrap();
+    result = multi_hyphen_re.replace_all(&result, "-").to_string();
+
+    // Trim leading/trailing hyphens
+    result = result.trim_matches('-').to_string();
+
+    // Limit to 50 characters
+    if result.len() > 50 {
+        result.truncate(50);
+        // Don't end with a hyphen after truncation
+        result = result.trim_end_matches('-').to_string();
+    }
+
+    result
 }
