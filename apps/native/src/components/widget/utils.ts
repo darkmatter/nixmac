@@ -49,7 +49,7 @@ export function getDirectory(path: string): string {
 }
 
 /**
- * Converts a string into a URL-safe slug for branch names.
+ * STILL USED IN APPLY, REMOVE ONCE FULLY IMPLEMENTED IN RUST CODE
  * Strips conventional commit prefixes (feat:, fix:, chore:, etc.)
  * and internal suffixes like "(manual changes)".
  */

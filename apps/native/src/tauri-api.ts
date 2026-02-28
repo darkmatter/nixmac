@@ -184,7 +184,19 @@ export type EvolveEventType =
   | "apiResponse"
   | "complete"
   | "error"
-  | "info";
+  | "info"
+  | "summarizing";
+
+/**
+ * Result of a complete evolution operation.
+ * Returns the summary and final git status for the frontend to display.
+ */
+export interface EvolutionResult {
+  /** AI-generated summary */
+  summary: SummaryResponse;
+  /** Git status after evolution completes */
+  gitStatus: GitStatus;
+}
 
 export interface EvolveEvent {
   /** Raw log output (detailed technical information) */
@@ -232,7 +244,7 @@ export const darwinAPI = {
       invoke("git_finalize_evolve", { branchName, squash, commitMessage }),
   },
   darwin: {
-    evolve: (description: string) => invoke("darwin_evolve", { description }),
+    evolve: (description: string) => invoke<EvolutionResult>("darwin_evolve", { description }),
     evolveCancel: () => invoke("darwin_evolve_cancel"),
     apply: (hostOverride?: string) => invoke("darwin_apply", { hostOverride }),
     applyStreamStart: (hostOverride?: string) =>

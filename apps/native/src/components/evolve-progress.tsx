@@ -9,6 +9,7 @@ import {
   Code,
   FileEdit,
   FileSearch,
+  FileText,
   Hammer,
   Loader2,
   MessageSquare,
@@ -75,6 +76,8 @@ function getEventIcon(eventType: EvolveEventType, isLatest: boolean) {
       return <CheckCircle className={cn(iconClassName, "text-green-400")} />;
     case "error":
       return <XCircle className={cn(iconClassName, "text-red-400")} />;
+    case "summarizing":
+      return <FileText className={iconClassName} />;
     default:
       return <CircleDot className={iconClassName} />;
   }
@@ -108,6 +111,8 @@ function getEventColor(eventType: EvolveEventType): string {
       return "text-green-400";
     case "error":
       return "text-red-400";
+    case "summarizing":
+      return "text-pink-400";
     default:
       return "text-muted-foreground";
   }
