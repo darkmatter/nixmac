@@ -2,7 +2,7 @@
 //!
 //! Handles AI-assisted configuration evolution and system rebuilds.
 
-use crate::{evolve, log_summarizer};
+use crate::log_summarizer;
 use chrono::Local;
 use log::{error, info};
 use std::fs::{self, File, OpenOptions};
@@ -31,26 +31,6 @@ fn create_log_file() -> anyhow::Result<(File, PathBuf)> {
         .truncate(true)
         .open(&log_path)?;
     Ok((file, log_path))
-}
-
-/// Uses AI to propose configuration changes based on a natural language description.
-///
-/// Workflow:
-/// 1. Ensures the config directory is a git repo (for safe rollback)
-/// 2. Invokes `codex` CLI to generate a unified diff based on the prompt
-///
-/// The patch is written to /tmp/darwin-evolve.patch by codex.
-pub async fn start_evolve(
-    app: &AppHandle,
-    config_dir: &str,
-    description: &str,
-) -> anyhow::Result<serde_json::Value> {
-    let result = evolve::generate_evolution(app, config_dir, description).await;
-
-    match result {
-        Ok(evolution) => Ok(serde_json::to_value(evolution).unwrap_or_default()),
-        Err(e) => Err(e),
-    }
 }
 
 /// Runs `darwin-rebuild switch` with streaming output in two steps:
