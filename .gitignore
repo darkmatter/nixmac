@@ -104,5 +104,8 @@ temp
 /WARP.md.bak
 # END Ruler Generated Files
 
+# Claude Code local settings
+.claude/settings.local.json
+
 .output
 .stackpanel-root
