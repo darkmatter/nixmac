@@ -7,6 +7,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Insert a summary into the database.
 /// Returns the inserted summary's ID.
+///
+/// Note: For the main evolution workflow, use `operations::save_evolution_complete`
+/// which handles all related inserts in a single transaction.
 #[allow(dead_code)]
 pub fn insert_summary(
     db_path: &Path,
