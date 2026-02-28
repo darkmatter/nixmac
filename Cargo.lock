@@ -3637,6 +3637,7 @@ dependencies = [
  "anyhow",
  "async-openai",
  "async-trait",
+ "backtrace",
  "chrono",
  "cocoa",
  "dirs 5.0.1",

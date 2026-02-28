@@ -126,6 +126,12 @@ export interface FeedbackPayload {
   flakeInputsSnapshot?: FlakeInputsSnapshot;
   nixConfigSnapshot?: string;
   appLogsContent?: string;
+  panicDetails?: {
+    message: string;
+    location?: string;
+    backtrace?: string;
+    timestamp: string;
+  };
 
   /** Optional user email (if the user chooses to provide it) */
   email?: string;
@@ -163,6 +169,12 @@ export class Feedback {
   public appLogsContent?: string;
   public systemInfo?: SystemInfo;
   public usageStats?: UsageStats;
+  public panicDetails?: {
+    message: string;
+    location?: string;
+    backtrace?: string;
+    timestamp: string;
+  };
 
   /**
    * Create a new Feedback model.
@@ -200,6 +212,7 @@ export class Feedback {
     this.flakeInputsSnapshot = payload.flakeInputsSnapshot;
     this.nixConfigSnapshot = payload.nixConfigSnapshot;
     this.appLogsContent = payload.appLogsContent;
+    this.panicDetails = payload.panicDetails;
   }
 
   /**
@@ -224,6 +237,7 @@ export class Feedback {
       flakeInputsSnapshot: this.flakeInputsSnapshot,
       nixConfigSnapshot: this.nixConfigSnapshot,
       appLogsContent: this.appLogsContent,
+      panicDetails: this.panicDetails,
       createdAt: this.createdAt,
     };
   }

@@ -88,6 +88,13 @@ export interface WidgetState {
   settingsOpen: boolean;
   feedbackOpen: boolean;
   feedbackTypeOverride: FeedbackType | null;
+  feedbackInitialText: string | null;
+  panicDetails: {
+    message: string;
+    location?: string;
+    backtrace?: string;
+    timestamp: string;
+  } | null;
   error: string | null;
   suggestions: string[];
 }
@@ -112,6 +119,9 @@ export interface WidgetActions {
   setSettingsOpen: (open: boolean) => void;
   setFeedbackOpen: (open: boolean) => void;
   setError: (error: string | null) => void;
+  setPanicDetails: (
+    details: { message: string; location?: string; backtrace?: string; timestamp: string } | null,
+  ) => void;
   setPromptHistory: (history: string[]) => void;
 
   // Client-side state (NOT from server)
@@ -120,7 +130,7 @@ export interface WidgetActions {
   setGenerating: (generating: boolean) => void;
   clearPreview: () => void;
   setFeedbackTypeOverride: (type: FeedbackType | null) => void;
-  openFeedback: (type?: FeedbackType) => void;
+  openFeedback: (type?: FeedbackType, initialText?: string) => void;
 
   // Console
   appendLog: (text: string) => void;
@@ -171,7 +181,6 @@ export const initialWidgetState: WidgetState = {
   hosts: [],
   host: "",
 
-
   // Nix
   nixInstalled: null,
   nixInstalling: false,
@@ -204,6 +213,8 @@ export const initialWidgetState: WidgetState = {
   settingsOpen: false,
   feedbackOpen: false,
   feedbackTypeOverride: null,
+  feedbackInitialText: null,
+  panicDetails: null,
   error: null,
   suggestions: ["Install vim", "Add Rectangle app", "Configure git"],
 };
@@ -243,12 +254,14 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
     setFeedbackOpen: (feedbackOpen) => set({ feedbackOpen }),
     setFeedbackTypeOverride: (feedbackTypeOverride) => set({ feedbackTypeOverride }),
-    openFeedback: (type) =>
+    openFeedback: (type, initialText) =>
       set({
         feedbackOpen: true,
         feedbackTypeOverride: type ?? null,
+        feedbackInitialText: initialText ?? null,
       }),
     setError: (error) => set({ error }),
+    setPanicDetails: (panicDetails) => set({ panicDetails }),
     setPromptHistory: (promptHistory) => set({ promptHistory }),
 
     // Client-side UI state (NOT from server)

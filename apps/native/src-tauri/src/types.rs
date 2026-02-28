@@ -220,6 +220,17 @@ pub struct FeedbackMetadata {
     pub flake_inputs_snapshot: Option<FeedbackFlakeInputsSnapshot>,
     pub nix_config_snapshot: Option<String>,
     pub app_logs_content: Option<String>,
+    pub panic_details: Option<FeedbackPanicDetails>,
+}
+
+/// Panic/crash information captured when a Rust panic occurs
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeedbackPanicDetails {
+    pub message: String,
+    pub location: Option<String>,
+    pub backtrace: Option<String>,
+    pub timestamp: String,
 }
 
 /// A single summary item with a title and description

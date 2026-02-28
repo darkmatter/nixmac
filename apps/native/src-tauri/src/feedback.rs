@@ -602,6 +602,7 @@ pub fn gather_metadata(
         flake_inputs_snapshot: None,
         nix_config_snapshot: None,
         app_logs_content: None,
+        panic_details: None, // Panic details are captured on the frontend
     };
 
     // Gather system information
@@ -689,6 +690,7 @@ regex = "token=([A-Za-z0-9]+)"
             flake_inputs_snapshot: None,
             nix_config_snapshot: None,
             app_logs_content: None,
+            panic_details: None,
         }
     }
 
