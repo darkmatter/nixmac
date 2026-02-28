@@ -4,7 +4,8 @@
  */
 
 export interface ErrorTestHelpers {
-  throwSyncError: () => void;
+  // Sync errors get eaten by React error boundaries and won't trigger
+  // the global error handler, so we need to throw async errors to test it.
   throwAsyncError: () => void;
   throwUnhandledRejection: () => void;
 }
@@ -16,16 +17,6 @@ export function setupErrorTestHelpers() {
   if (typeof window === "undefined") return;
 
   const helpers: ErrorTestHelpers = {
-    /**
-     * Throw a synchronous error that should trigger window.onerror
-     * Usage: window.__testError.throwSyncError()
-     */
-    throwSyncError: () => {
-      setTimeout(() => {
-        throw new Error("Test synchronous error from setTimeout");
-      }, 0);
-    },
-
     /**
      * Throw an async error that should trigger window.onerror
      * Usage: window.__testError.throwAsyncError()
@@ -45,13 +36,13 @@ export function setupErrorTestHelpers() {
     },
   };
 
-  // @ts-ignore - Expose to window for testing
+  // Expose to window for testing
   window.__testError = helpers;
 }
 
 // Expose as window extension
 declare global {
   interface Window {
-    __testError: ErrorTestHelpers;
+    __testError?: ErrorTestHelpers;
   }
 }

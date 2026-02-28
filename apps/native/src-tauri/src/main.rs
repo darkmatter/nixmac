@@ -108,7 +108,8 @@ fn main() {
             commands::config_pick_dir,
             // Feedback
             commands::feedback_gather_metadata,
-            commands::trigger_test_panic, // TODO: Consider removing in production or gating behind a debug flag
+            #[cfg(debug_assertions)]
+            commands::trigger_test_panic,
             // Git
             commands::git_init_if_needed,
             commands::git_status,
