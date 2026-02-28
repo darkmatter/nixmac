@@ -1,13 +1,13 @@
 "use client";
 
-import { ActionTiles, type ActionTile } from "@/components/widget/action-tiles";
+import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/widget/confirmation-dialog";
 import { KeepBranchCheckbox } from "@/components/widget/keep-branch-checkbox";
 import { MergeSection } from "@/components/widget/merge-section";
 import { PromptInputSection } from "@/components/widget/prompt-input-section";
 import { SummaryOrDiff } from "@/components/widget/summary-or-diff";
 import { useRollback } from "@/hooks/use-rollback";
-import { GitBranch, RefreshCw, Undo2 } from "lucide-react";
+import { RefreshCw, Undo2 } from "lucide-react";
 import { useState } from "react";
 
 /**
@@ -20,38 +20,36 @@ export function MergeStep() {
   const [keepBranch, setKeepBranch] = useState(false);
   const [action, setAction] = useState<"merge" | "amend">("merge");
 
-  const tiles: ActionTile[] = [
-    {
-      name: "Merge",
-      icon: GitBranch,
-      color: "white",
-      isActive: action === "merge",
-      onAction: () => setAction("merge"),
-    },
-    {
-      name: "Evolve",
-      icon: RefreshCw,
-      color: "teal",
-      isActive: action === "amend",
-      onAction: () => setAction("amend"),
-    },
-    {
-      name: "Rollback",
-      icon: Undo2,
-      color: "amber",
-      onAction: () => setShowRollbackDialog(true),
-    },
-  ];
-
   return (
     <>
-      <ActionTiles
-        tiles={tiles}
-        title="All changes active!"
-        subtitle="Don't forget to merge your changes if you are satisfied"
-      />
+      <div className="flex items-center justify-between py-3">
+        <p className="text-muted-foreground text-sm">
+          All changes active!
+        </p>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-rose-400 hover:text-rose-300 hover:bg-rose-400/10"
+            onClick={() => setShowRollbackDialog(true)}
+          >
+            <Undo2 className="h-3.5 w-3.5" />
+            Rollback
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-foreground"
+            onClick={() => setAction(action === "merge" ? "amend" : "merge")}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            {action === "merge" ? "Continue editing" : "Back to merge"}
+          </Button>
+        </div>
+      </div>
+
       <SummaryOrDiff />
-      {action === "merge" && (<MergeSection />)}
+      {action === "merge" && <MergeSection />}
       {action === "amend" && <PromptInputSection />}
 
       <ConfirmationDialog
