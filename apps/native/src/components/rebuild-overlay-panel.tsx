@@ -1,27 +1,26 @@
-import {
-  AlertTriangle,
-  RotateCcw,
-  X,
-  Terminal,
-  List,
-  Play,
-  Brain,
-  Download,
-  CheckCircle,
-  Hammer,
-  Sparkles,
-} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "motion/react";
-import { useState, useRef, useEffect } from "react";
 import { useRollback } from "@/hooks/use-rollback";
+import { cn } from "@/lib/utils";
 import {
   useWidgetStore,
-  type RebuildLine,
   type RebuildErrorType,
+  type RebuildLine,
 } from "@/stores/widget-store";
-import { useCallback } from "react";
+import {
+  AlertTriangle,
+  Brain,
+  CheckCircle,
+  Download,
+  Hammer,
+  List,
+  Play,
+  RotateCcw,
+  Sparkles,
+  Terminal,
+  X,
+} from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { Activity, useCallback, useEffect, useRef, useState } from "react";
 
 /** Get a user-friendly title for the error type */
 function getErrorTitle(errorType: RebuildErrorType | undefined): string {
@@ -101,14 +100,35 @@ const SkeletonLine = ({ width = "w-32" }: { width?: string }) => (
   <div className={cn("h-3 animate-pulse rounded bg-white/20", width)} />
 );
 
+const ViewToggleButton = ({
+  onClick,
+  children,
+}: {
+  onClick: () => void;
+  children: React.ReactNode;
+}) => (
+  <div className="mb-4 flex items-center justify-end">
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-8 px-3 text-xs text-white/60 hover:bg-white/10 hover:text-white"
+      onClick={onClick}
+    >
+      {children}
+    </Button>
+  </div>
+);
+
 function LoaderCore({
   loadingStates,
   value = 0,
   pendingCount = 3,
+  children,
 }: {
   loadingStates: RebuildLine[];
   value?: number;
   pendingCount?: number;
+  children?: React.ReactNode;
 }) {
   const skeletonWidths = ["w-24", "w-32", "w-28"];
   const itemHeight = 36;
@@ -121,141 +141,154 @@ function LoaderCore({
   const gradientRange = itemHeight * 3; // How many items to show clearly
 
   return (
-    <div className="relative flex w-full flex-col items-center">
-      <div
-        className="relative w-full max-w-xs"
-        style={{
-          minHeight: `${(loadingStates.length + pendingCount) * itemHeight}px`,
-          maskImage: `linear-gradient(to bottom,
-            transparent 0%,
-            rgba(0,0,0,0.3) ${Math.max(0, centerY - gradientRange)}px,
-            rgba(0,0,0,1) ${centerY}px,
-            rgba(0,0,0,0.3) ${centerY + gradientRange}px,
-            transparent 100%
-          )`,
-          WebkitMaskImage: `linear-gradient(to bottom,
-            transparent 0%,
-            rgba(0,0,0,0.3) ${Math.max(0, centerY - gradientRange)}px,
-            rgba(0,0,0,1) ${centerY}px,
-            rgba(0,0,0,0.3) ${centerY + gradientRange}px,
-            transparent 100%
-          )`,
-        }}
-      >
-        {loadingStates.map((loadingState, index) => {
-          const distance = index - value;
-          const opacity =
-            distance < 0
-              ? Math.max(1 - Math.abs(distance) * 0.15, 0.4)
-              : Math.max(1 - distance * 0.3, 0.25);
-
-          const isMostRecentlyCompleted = index === mostRecentlyCompletedIndex;
-
-          // Only the most recently completed step gets highlighted
-          let checkClass = "text-white/40";
-          if (isMostRecentlyCompleted) {
-            checkClass = "text-teal-400";
-          }
-
-          // Text coloring: only most recently completed is highlighted
-          let textClass = "text-white/50";
-          if (isMostRecentlyCompleted) {
-            textClass = "text-teal-400 font-medium";
-          }
-
-          const y = index * itemHeight;
-
-          return (
-            <motion.div
-              animate={{ opacity, y }}
-              className="absolute right-0 left-0 flex items-center gap-3 px-2"
-              initial={{ opacity: 0, y: y + 8 }}
-              key={loadingState.id}
-              transition={{
-                y: {
-                  type: "spring",
-                  stiffness: 120,
-                  damping: 20,
-                  mass: 1,
-                },
-                opacity: {
-                  duration: 0.4,
-                  ease: [0.4, 0, 0.2, 1],
-                },
+    <div className="flex h-full w-full flex-col">
+      {children}
+      <div className="flex min-h-0 flex-1 items-center justify-center">
+        <div className="w-full max-w-xs">
+          <div className="relative flex w-full flex-col items-center">
+            <div
+              className="relative w-full max-w-xs"
+              style={{
+                minHeight: `${(loadingStates.length + pendingCount) * itemHeight}px`,
+                maskImage: `linear-gradient(to bottom,
+                  transparent 0%,
+                  rgba(0,0,0,0.3) ${Math.max(0, centerY - gradientRange)}px,
+                  rgba(0,0,0,1) ${centerY}px,
+                  rgba(0,0,0,0.3) ${centerY + gradientRange}px,
+                  transparent 100%
+                )`,
+                WebkitMaskImage: `linear-gradient(to bottom,
+                  transparent 0%,
+                  rgba(0,0,0,0.3) ${Math.max(0, centerY - gradientRange)}px,
+                  rgba(0,0,0,1) ${centerY}px,
+                  rgba(0,0,0,0.3) ${centerY + gradientRange}px,
+                  transparent 100%
+                )`,
               }}
             >
-              {(() => {
-                const { icon, cleanText } = convertEmoji(loadingState.text, cn("h-5 w-5", checkClass));
+              {loadingStates.map((loadingState, index) => {
+                const distance = index - value;
+                const opacity =
+                  distance < 0
+                    ? Math.max(1 - Math.abs(distance) * 0.15, 0.4)
+                    : Math.max(1 - distance * 0.3, 0.25);
+
+                const isMostRecentlyCompleted = index === mostRecentlyCompletedIndex;
+
+                // Only the most recently completed step gets highlighted
+                let checkClass = "text-white/40";
+                if (isMostRecentlyCompleted) {
+                  checkClass = "text-teal-400";
+                }
+
+                // Text coloring: only most recently completed is highlighted
+                let textClass = "text-white/50";
+                if (isMostRecentlyCompleted) {
+                  textClass = "text-teal-400 font-medium";
+                }
+
+                const y = index * itemHeight;
+
                 return (
-                  <>
-                    <motion.div
-                      className="shrink-0"
-                      initial={false}
-                      animate={{
-                        scale: isMostRecentlyCompleted ? 1.15 : 1,
-                      }}
-                      transition={{
+                  <motion.div
+                    animate={{ opacity, y }}
+                    className="absolute right-0 left-0 flex items-center gap-3 px-2"
+                    initial={{ opacity: 0, y: y + 8 }}
+                    key={loadingState.id}
+                    transition={{
+                      y: {
                         type: "spring",
-                        stiffness: 200,
-                        damping: 15,
-                      }}
-                    >
-                      {icon}
-                    </motion.div>
-                    <span
-                      className={cn(
-                        textClass,
-                        "block overflow-hidden text-ellipsis whitespace-nowrap text-sm font-normal transition-colors duration-500",
-                      )}
-                    >
-                      {cleanText}
-                    </span>
-                  </>
+                        stiffness: 120,
+                        damping: 20,
+                        mass: 1,
+                      },
+                      opacity: {
+                        duration: 0.4,
+                        ease: [0.4, 0, 0.2, 1],
+                      },
+                    }}
+                  >
+                    {(() => {
+                      const { icon, cleanText } = convertEmoji(loadingState.text, cn("h-5 w-5", checkClass));
+                      return (
+                        <>
+                          <motion.div
+                            className="shrink-0"
+                            initial={false}
+                            animate={{
+                              scale: isMostRecentlyCompleted ? 1.15 : 1,
+                            }}
+                            transition={{
+                              type: "spring",
+                              stiffness: 200,
+                              damping: 15,
+                            }}
+                          >
+                            {icon}
+                          </motion.div>
+                          <span
+                            className={cn(
+                              textClass,
+                              "block overflow-hidden text-ellipsis whitespace-nowrap text-sm font-normal transition-colors duration-500",
+                            )}
+                          >
+                            {cleanText}
+                          </span>
+                        </>
+                      );
+                    })()}
+                  </motion.div>
                 );
-              })()}
-            </motion.div>
-          );
-        })}
+              })}
 
-        {/* Skeleton placeholders for pending items */}
-        {skeletonWidths.slice(0, pendingCount).map((width, i) => {
-          const skeletonIndex = loadingStates.length + i;
-          const distance = skeletonIndex - value;
-          const opacity = Math.max(0.4 - distance * 0.06, 0.1);
-          const y = skeletonIndex * itemHeight;
+              {/* Skeleton placeholders for pending items */}
+              {skeletonWidths.slice(0, pendingCount).map((width, i) => {
+                const skeletonIndex = loadingStates.length + i;
+                const distance = skeletonIndex - value;
+                const opacity = Math.max(0.4 - distance * 0.06, 0.1);
+                const y = skeletonIndex * itemHeight;
 
-          return (
-            <motion.div
-              animate={{ opacity, y }}
-              className="absolute right-0 left-0 flex items-center gap-3 px-2"
-              initial={{ opacity: 0, y: y + 8 }}
-              key={`skeleton-${width}`}
-              transition={{
-                y: {
-                  type: "spring",
-                  stiffness: 120,
-                  damping: 20,
-                  mass: 1,
-                },
-                opacity: {
-                  duration: 0.4,
-                  ease: [0.4, 0, 0.2, 1],
-                },
-              }}
-            >
-              <div className="shrink-0">
-                <CheckIcon className="text-white/20" />
-              </div>
-              <SkeletonLine width={width} />
-            </motion.div>
-          );
-        })}
+                return (
+                  <motion.div
+                    animate={{ opacity, y }}
+                    className="absolute right-0 left-0 flex items-center gap-3 px-2"
+                    initial={{ opacity: 0, y: y + 8 }}
+                    key={`skeleton-${width}`}
+                    transition={{
+                      y: {
+                        type: "spring",
+                        stiffness: 120,
+                        damping: 20,
+                        mass: 1,
+                      },
+                      opacity: {
+                        duration: 0.4,
+                        ease: [0.4, 0, 0.2, 1],
+                      },
+                    }}
+                  >
+                    <div className="shrink-0">
+                      <CheckIcon className="text-white/20" />
+                    </div>
+                    <SkeletonLine width={width} />
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-function RawConsoleOutput({ lines }: { lines: string[] }) {
+function RawConsoleOutput({
+  lines,
+  children,
+}: {
+  lines: string[];
+  children?: React.ReactNode;
+}) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -265,26 +298,29 @@ function RawConsoleOutput({ lines }: { lines: string[] }) {
   }, [lines]);
 
   return (
-    <div
-      ref={scrollRef}
-      className="h-full overflow-auto rounded-lg bg-black/40 p-4 font-mono text-xs"
-    >
-      {lines.map((line, index) => (
-        <div
-          key={index}
-          className={cn(
-            "whitespace-pre-wrap break-all leading-relaxed",
-            line.toLowerCase().includes("error") ||
-              line.toLowerCase().includes("failed")
-              ? "text-red-400"
-              : line.toLowerCase().includes("warning")
-                ? "text-yellow-400"
-                : "text-white/80",
-          )}
-        >
-          {line || " "}
-        </div>
-      ))}
+    <div className="flex h-full flex-col">
+      {children}
+      <div
+        ref={scrollRef}
+        className="min-h-0 flex-1 overflow-auto rounded-lg bg-black/40 p-4 font-mono text-xs"
+      >
+        {lines.map((line, index) => (
+          <div
+            key={index}
+            className={cn(
+              "whitespace-pre-wrap break-all leading-relaxed",
+              line.toLowerCase().includes("error") ||
+                line.toLowerCase().includes("failed")
+                ? "text-red-400"
+                : line.toLowerCase().includes("warning")
+                  ? "text-yellow-400"
+                  : "text-white/80",
+            )}
+          >
+            {line || " "}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -300,20 +336,23 @@ export function RebuildOverlayPanel() {
     useWidgetStore.getState().clearRebuild();
   }, []);
 
-  const [showRawOutput, setShowRawOutput] = useState(false);
-  const [hasAutoShownConsole, setHasAutoShownConsole] = useState(false);
+  const [showConsole, setShowConsole] = useState(false);
 
-  // Auto-show console on failure
   const showErrorPanel = !isRunning && success === false;
-  if (showErrorPanel && !hasAutoShownConsole) {
-    setShowRawOutput(true);
-    setHasAutoShownConsole(true);
-  }
 
-  // Reset auto-show flag when a new build starts
-  if (isRunning && hasAutoShownConsole) {
-    setHasAutoShownConsole(false);
-  }
+  // Reset to summary view when new build starts
+  useEffect(() => {
+    if (isRunning) {
+      setShowConsole(false);
+    }
+  }, [isRunning]);
+
+  // On failure, switch from console to error panel (if console was shown)
+  useEffect(() => {
+    if (showErrorPanel) {
+      setShowConsole(false);
+    }
+  }, [showErrorPanel]);
 
   const displayLines =
     lines.length > 0
@@ -343,39 +382,11 @@ export function RebuildOverlayPanel() {
               "radial-gradient(ellipse at 50% 100%, rgba(30, 30, 30, 0.98) 0%, rgba(20, 20, 20, 0.95) 50%, rgba(15, 15, 15, 0.92) 100%)",
           }}
         >
-      {/* Header with toggle */}
-      <div className="mb-4 flex items-center justify-end">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn(
-              "h-8 px-3 text-xs",
-              showRawOutput
-                ? "bg-white/10 text-white"
-                : "text-white/60 hover:bg-white/10 hover:text-white",
-            )}
-            onClick={() => setShowRawOutput(!showRawOutput)}
-          >
-            {showRawOutput ? (
-              <>
-                <List className="mr-1.5 h-3.5 w-3.5" />
-                Summary
-              </>
-            ) : (
-              <>
-                <Terminal className="mr-1.5 h-3.5 w-3.5" />
-                Console
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-
       {/* Main content */}
       <div className="min-h-0 flex-1">
-        <AnimatePresence mode="wait">
-          {showErrorPanel && !showRawOutput ? (
+        {/* Error panel - conditional, only on failure when not viewing console */}
+        <AnimatePresence>
+          {showErrorPanel && !showConsole && (
             <motion.div
               key="error"
               initial={{ opacity: 0 }}
@@ -384,8 +395,8 @@ export function RebuildOverlayPanel() {
               className="flex h-full flex-col items-center justify-center gap-5"
             >
               {/* Error Icon */}
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-500/20">
-                <AlertTriangle className="h-7 w-7 text-red-400" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-300/10">
+                <AlertTriangle className="h-7 w-7 text-rose-300" />
               </div>
 
               {/* Error Title */}
@@ -404,68 +415,43 @@ export function RebuildOverlayPanel() {
               <p className="max-w-md text-center text-sm text-zinc-300">
                 {getErrorSuggestion(errorType)}
               </p>
-
-              {/* Action Buttons */}
-              <div className="flex gap-3">
-                <Button
-                  className="border-white/20 text-white/80 hover:bg-white/10"
-                  onClick={handleDismiss}
-                  variant="outline"
-                  size="sm"
-                >
-                  <X className="mr-2 h-4 w-4" />
-                  Dismiss
-                </Button>
-                <Button
-                  className="bg-red-600 text-white hover:bg-red-700"
-                  onClick={handleRollback}
-                  size="sm"
-                >
-                  <RotateCcw className="mr-2 h-4 w-4" />
-                  Rollback
-                </Button>
-              </div>
-            </motion.div>
-          ) : showRawOutput ? (
-            <motion.div
-              key="raw"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="h-full"
-            >
-              <RawConsoleOutput
-                lines={
-                  rawLines.length > 0 ? rawLines : lines.map((l) => l.text)
-                }
-              />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="loading"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex h-full w-full flex-col items-center justify-center"
-            >
-              <div className="w-full max-w-xs">
-                <LoaderCore
-                  loadingStates={displayLines}
-                  value={step}
-                  pendingCount={isRunning ? 3 : 0}
-                />
-              </div>
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Summary view - stays mounted via Activity to preserve animation state */}
+        <Activity mode={showConsole || showErrorPanel ? "hidden" : "visible"}>
+          <LoaderCore
+            loadingStates={displayLines}
+            value={step}
+            pendingCount={isRunning ? 3 : 0}
+          >
+            <ViewToggleButton onClick={() => setShowConsole(true)}>
+              <Terminal className="mr-1.5 h-3.5 w-3.5" />
+              Console
+            </ViewToggleButton>
+          </LoaderCore>
+        </Activity>
+
+        {/* Console view - stays mounted via Activity to preserve scroll position */}
+        <Activity mode={showConsole ? "visible" : "hidden"}>
+          <RawConsoleOutput
+            lines={rawLines.length > 0 ? rawLines : lines.map((l) => l.text)}
+          >
+            <ViewToggleButton onClick={() => setShowConsole(false)}>
+              <List className="mr-1.5 h-3.5 w-3.5" />
+              Summary
+            </ViewToggleButton>
+          </RawConsoleOutput>
+        </Activity>
       </div>
 
-      {/* Footer with dismiss button when complete and successful */}
-      {!isRunning && success === true && (
+      {/* Footer with action buttons when complete */}
+      {!isRunning && success !== undefined && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-4 flex justify-end"
+          className="mt-4 flex justify-end gap-3"
         >
           <Button
             className="border-white/20 text-white/80 hover:bg-white/10"
@@ -476,6 +462,18 @@ export function RebuildOverlayPanel() {
             <X className="mr-2 h-4 w-4" />
             Dismiss
           </Button>
+          {success === false && (
+            <Button
+              className="bg-rose-300/10 text-rose-300 hover:bg-rose-300/20"
+              onClick={handleRollback}
+              size="sm"
+              // NOT IMPLEMENTED
+              disabled={true}
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Rollback
+            </Button>
+          )}
         </motion.div>
       )}
         </div>
