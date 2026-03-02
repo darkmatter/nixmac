@@ -113,7 +113,7 @@ export function useRebuildStream() {
           // Auto-dismiss rebuild panel after success
           setTimeout(() => {
             useWidgetStore.getState().clearRebuild();
-          }, 2000);
+          }, 3000);
         }
 
         await refreshGitStatus({ cache: true });
