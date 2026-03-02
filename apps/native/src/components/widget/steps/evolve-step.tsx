@@ -4,6 +4,7 @@ import { ActionTiles, type ActionTile } from "@/components/widget/action-tiles";
 import { ConfirmationDialog } from "@/components/widget/confirmation-dialog";
 import { PromptInputSection } from "@/components/widget/prompt-input-section";
 import { SummaryOrDiff } from "@/components/widget/summary-or-diff";
+import { SystemDefaultsCTA } from "@/components/widget/system-defaults-cta";
 import { useApply } from "@/hooks/use-apply";
 import { useRollback } from "@/hooks/use-rollback";
 import { useWidgetStore } from "@/stores/widget-store";
@@ -70,6 +71,7 @@ export function EvolveStep() {
       />
       <SummaryOrDiff />
       <PromptInputSection />
+      <SystemDefaultsCTA />
 
       <ConfirmationDialog
         open={showRebuildDialog}
