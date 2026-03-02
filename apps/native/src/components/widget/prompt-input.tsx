@@ -100,7 +100,7 @@ export function PromptInput() {
         </InputGroupAddon>
       </InputGroup>
 
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         {suggestions.map((suggestion) => (
           <BadgeButton
             key={suggestion}
@@ -110,7 +110,9 @@ export function PromptInput() {
           </BadgeButton>
         ))}
         <SystemDefaultsCTA />
-        <PromptHistoryBadge />
+        <div className="ml-auto">
+          <PromptHistoryBadge />
+        </div>
       </div>
     </div>
   );
