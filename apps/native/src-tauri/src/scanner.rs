@@ -477,13 +477,30 @@ pub fn scan_system_defaults() -> SystemDefaultsScan {
 ///
 /// Groups settings by their nix-darwin category and uses correct Nix value
 /// syntax (bools lowercase, strings quoted, numbers unquoted).
+/// Find the last `.` that is not inside double quotes.
+/// e.g. `system.defaults.NSGlobalDomain."com.apple.sound.beep.feedback"`
+///   → splits at the dot before the opening `"`, not inside it.
+fn rfind_unquoted_dot(s: &str) -> Option<usize> {
+    let mut in_quotes = false;
+    let mut last_dot = None;
+    for (i, ch) in s.char_indices() {
+        match ch {
+            '"' => in_quotes = !in_quotes,
+            '.' if !in_quotes => last_dot = Some(i),
+            _ => {}
+        }
+    }
+    last_dot
+}
+
 pub fn generate_system_defaults_nix(defaults: &[SystemDefault]) -> String {
     // Group by nix-darwin attribute path prefix
     // e.g. "system.defaults.dock.autohide" → group key "system.defaults.dock"
+    // Quoted segments (e.g. "com.apple.sound.beep.feedback") are kept intact.
     let mut groups: BTreeMap<String, Vec<(&str, &str)>> = BTreeMap::new();
 
     for d in defaults {
-        if let Some(last_dot) = d.nix_key.rfind('.') {
+        if let Some(last_dot) = rfind_unquoted_dot(&d.nix_key) {
             let group = &d.nix_key[..last_dot];
             let attr = &d.nix_key[last_dot + 1..];
             groups
@@ -493,12 +510,20 @@ pub fn generate_system_defaults_nix(defaults: &[SystemDefault]) -> String {
         }
     }
 
+    // Detect the current macOS username for system.primaryUser
+    let username = std::env::var("USER").unwrap_or_else(|_| "unknown".to_string());
+
     let mut out = String::new();
     out.push_str("{ config, ... }:\n\n{\n");
     out.push_str("  # macOS system defaults\n");
     out.push_str(
         "  # Detected by nixmac system scanner \u{2014} these settings differ from macOS factory defaults.\n",
     );
+    out.push('\n');
+    out.push_str(&format!(
+        "  # Required by nix-darwin for system.defaults.* options.\n  system.primaryUser = \"{}\";\n",
+        username
+    ));
 
     for (group, attrs) in &groups {
         out.push('\n');
@@ -559,7 +584,7 @@ fn to_nix_value(value: &str, group: &str, attr: &str) -> String {
 fn find_val_type(group: &str, attr: &str) -> Option<ValType> {
     for (_, key_defs) in KEY_DEFS {
         for def in *key_defs {
-            if let Some(last_dot) = def.nix_key.rfind('.') {
+            if let Some(last_dot) = rfind_unquoted_dot(def.nix_key) {
                 let def_group = &def.nix_key[..last_dot];
                 let def_attr = &def.nix_key[last_dot + 1..];
                 if def_group == group && def_attr == attr {
