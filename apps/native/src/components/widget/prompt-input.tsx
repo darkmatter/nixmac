@@ -9,6 +9,7 @@ import {
   InputGroupTextarea,
 } from "@/components/ui/input-group";
 import { PromptHistoryBadge } from "@/components/widget/prompt-history-badge";
+import { SystemDefaultsCTA } from "@/components/widget/system-defaults-cta";
 import { useEvolve } from "@/hooks/use-evolve";
 import { useWidgetStore } from "@/stores/widget-store";
 import { ArrowUpIcon } from "lucide-react";
@@ -108,6 +109,7 @@ export function PromptInput() {
             {suggestion}
           </BadgeButton>
         ))}
+        <SystemDefaultsCTA />
         <PromptHistoryBadge />
       </div>
     </div>

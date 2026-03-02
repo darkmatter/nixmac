@@ -1,51 +1,59 @@
 "use client";
 
+import { BadgeButton } from "@/components/ui/badge-button";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useWidgetStore } from "@/stores/widget-store";
 import type { SystemDefault, SystemDefaultsScan } from "@/tauri-api";
 import { darwinAPI } from "@/tauri-api";
-import { Monitor } from "lucide-react";
+import { Monitor, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-/**
- * Shuffle an array using Fisher-Yates and return a new array.
- */
-function shuffle<T>(arr: T[]): T[] {
-  const out = [...arr];
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [out[i], out[j]] = [out[j], out[i]];
+const DISMISS_KEY = "nixmac:system-defaults-dismissed";
+
+function groupByCategory(
+  defaults: SystemDefault[],
+): Map<string, SystemDefault[]> {
+  const map = new Map<string, SystemDefault[]>();
+  for (const d of defaults) {
+    const group = map.get(d.category);
+    if (group) {
+      group.push(d);
+    } else {
+      map.set(d.category, [d]);
+    }
   }
-  return out;
+  return map;
+}
+
+function formatValue(value: string): string {
+  const lower = value.toLowerCase();
+  if (lower === "true" || lower === "1") return "on";
+  if (lower === "false" || lower === "0") return "off";
+  if (value.length > 24) return `${value.slice(0, 24)}...`;
+  return value;
 }
 
 /**
- * CTA button that appears below the prompt input when non-default macOS
- * system settings are detected. On click it writes a system-defaults.nix
- * module, creates a git branch + commit, and refreshes the UI.
- *
- * Only visible when:
- * - On main branch with no uncommitted changes
- * - Scan found >0 non-default settings
- * - system-defaults.nix hasn't been applied yet (checked by backend scan)
+ * Badge + popover for untracked macOS system defaults.
+ * Appears in the prompt badge row when non-default settings are detected.
  */
 export function SystemDefaultsCTA() {
   const gitStatus = useWidgetStore((s) => s.gitStatus);
   const [scan, setScan] = useState<SystemDefaultsScan | null>(null);
   const [applying, setApplying] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [dismissed, setDismissed] = useState(
+    () => localStorage.getItem(DISMISS_KEY) === "true",
+  );
 
-  // Whether the CTA is eligible to show — on main with no diff.
   const eligible = Boolean(gitStatus?.isMainBranch && !gitStatus?.diff);
 
   // Re-scan whenever we land on main with a clean working tree.
-  // Fires on: initial mount, returning after evolve→clear, and
-  // returning after apply→clear. The backend checks if the nix file
-  // already exists on disk and returns an empty scan if so.
-  // The scan is fast (~90ms) so re-running is fine.
+  // The backend returns an empty scan if system-defaults.nix already exists.
   useEffect(() => {
     if (!eligible) {
       setScan(null);
@@ -67,64 +75,106 @@ export function SystemDefaultsCTA() {
   const handleApply = useCallback(async (defaults: SystemDefault[]) => {
     const store = useWidgetStore.getState();
     setApplying(true);
-
-    // Suppress watcher events during apply — same pattern as evolve/rollback.
     store.setProcessing(true, "apply");
 
     try {
       const result = await darwinAPI.scanner.applyDefaults(defaults);
-
-      // Set summary and git status atomically from the response.
-      // gitStatus will now have a diff (on the scan branch), so
-      // eligible becomes false and the CTA hides naturally.
-      store.setSummary(result.summary);
-      store.setGitStatus(result.gitStatus);
-    } catch (err) {
-      console.error("Failed to apply system defaults:", err);
+      useWidgetStore.getState().setSummary(result.summary);
+      useWidgetStore.getState().setGitStatus(result.gitStatus);
+    } catch (e: unknown) {
+      const msg = (e as Error)?.message || String(e);
+      console.error("[SystemDefaultsCTA] apply failed:", msg);
     } finally {
       setApplying(false);
+      setOpen(false);
       useWidgetStore.getState().setProcessing(false);
     }
   }, []);
 
-  // Randomised preview for tooltip — stable across re-renders via useMemo
-  const tooltipText = useMemo(() => {
-    if (!scan || scan.defaults.length === 0) return "";
-    const shuffled = shuffle(scan.defaults);
-    const labels = shuffled.slice(0, 5).map((d) => d.label);
-    const remaining =
-      scan.defaults.length > 5 ? `\n...and ${scan.defaults.length - 5} more` : "";
-    return labels.join("\n") + remaining;
+  const handleDismiss = () => {
+    localStorage.setItem(DISMISS_KEY, "true");
+    setDismissed(true);
+    setOpen(false);
+  };
+
+  const categories = useMemo(() => {
+    if (!scan) return new Map<string, SystemDefault[]>();
+    return groupByCategory(scan.defaults);
   }, [scan]);
 
-  // Visibility: on main, no diff, scan found results
+  if (dismissed) return null;
   if (!eligible) return null;
   if (!scan || scan.defaults.length === 0) return null;
 
   const count = scan.defaults.length;
 
   return (
-    <div className="mt-3">
-      <Tooltip>
-        <TooltipTrigger asChild>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <BadgeButton icon={Monitor} badgeVariant="default">
+          {count} untracked customization{count === 1 ? "" : "s"}
+        </BadgeButton>
+      </PopoverTrigger>
+      <PopoverContent className="w-[340px] p-0" align="start">
+        {/* Header */}
+        <div className="flex items-center justify-between px-3 py-2.5">
+          <span className="font-medium text-sm">
+            {count} untracked Mac customization{count === 1 ? "" : "s"}
+          </span>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="rounded-md p-1 text-muted-foreground/50 transition-colors hover:bg-muted/60 hover:text-muted-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        {/* Category list */}
+        <div className="max-h-52 overflow-y-auto border-border/50 border-t px-3 py-2">
+          {[...categories.entries()].map(([cat, items]) => (
+            <div key={cat} className="py-2 first:pt-0 last:pb-0">
+              <div className="mb-1 font-medium text-muted-foreground text-xs">
+                {cat} ({items.length})
+              </div>
+              <div className="space-y-0.5">
+                {items.map((d) => (
+                  <div
+                    key={d.nixKey}
+                    className="flex items-center justify-between text-xs"
+                  >
+                    <span className="truncate text-foreground/80">
+                      {d.label}
+                    </span>
+                    <span className="ml-2 shrink-0 text-muted-foreground">
+                      {formatValue(d.currentValue)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col gap-1.5 border-border/50 border-t px-3 py-2">
           <button
             type="button"
             disabled={applying}
             onClick={() => handleApply(scan.defaults)}
-            className="flex w-full items-center gap-2.5 rounded-lg border border-border/50 bg-muted/30 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/60 disabled:opacity-50"
+            className="w-full rounded-md bg-primary/10 py-1.5 font-medium text-primary text-sm transition-colors hover:bg-primary/20 disabled:opacity-50"
           >
-            <Monitor className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className="text-muted-foreground">
-              {applying
-                ? "Applying..."
-                : `Add your ${count} Mac customization${count === 1 ? "" : "s"}`}
-            </span>
+            {applying ? "Applying..." : "Add to config"}
           </button>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-xs whitespace-pre-line">
-          {tooltipText}
-        </TooltipContent>
-      </Tooltip>
-    </div>
+          <button
+            type="button"
+            onClick={handleDismiss}
+            className="w-full py-1 text-muted-foreground/60 text-xs transition-colors hover:text-muted-foreground"
+          >
+            Don't track
+          </button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
