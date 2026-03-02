@@ -21,6 +21,7 @@ mod panic_handler;
 mod peek;
 mod permissions;
 mod providers;
+mod scanner;
 mod secret_scanner;
 mod statistics;
 mod store;
@@ -169,6 +170,9 @@ fn main() {
             commands::permissions_check_all,
             commands::permissions_request,
             commands::permissions_all_required_granted,
+            // System defaults scanner
+            commands::scan_system_defaults,
+            commands::apply_system_defaults,
         ])
         .setup(move |app| {
             let handle = app.handle();
