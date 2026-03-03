@@ -482,7 +482,21 @@ pub async fn nix_check() -> Result<serde_json::Value, String> {
     } else {
         None
     };
-    Ok(serde_json::json!({ "installed": installed, "version": version }))
+    let darwin_rebuild_available = if installed {
+        nix::is_darwin_rebuild_available()
+    } else {
+        false
+    };
+    Ok(
+        serde_json::json!({ "installed": installed, "version": version, "darwin_rebuild_available": darwin_rebuild_available }),
+    )
+}
+
+#[tauri::command]
+pub async fn darwin_rebuild_prefetch(app: AppHandle) -> Result<serde_json::Value, String> {
+    nix::prefetch_darwin_rebuild_stream(&app)
+        .map_err(|e| capture_err("darwin_rebuild_prefetch", e))?;
+    Ok(serde_json::json!({"ok": true}))
 }
 
 #[tauri::command]

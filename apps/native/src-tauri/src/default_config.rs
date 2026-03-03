@@ -113,16 +113,31 @@ fn resolve_template_path(app: &AppHandle) -> Result<std::path::PathBuf, String> 
     let resource_dir = app
         .path()
         .resource_dir()
+        .or_else(|_| {
+            // Fallback: resolve from executable path
+            // Binary is at App.app/Contents/MacOS/nixmac
+            // Resources are at App.app/Contents/Resources/
+            std::env::current_exe()
+                .map_err(tauri::Error::Io)
+                .map(|exe| exe.parent().unwrap().parent().unwrap().join("Resources"))
+        })
         .map_err(|e| format!("Failed to get resource directory: {}", e))?;
 
-    let candidates = [
+    #[allow(unused_mut)]
+    let mut candidates = vec![
         resource_dir.join("nix-darwin-determinate"),
         resource_dir.join("templates/nix-darwin-determinate"),
-        // Dev fallback: relative to the src-tauri directory
+        // Legacy bundling path (Tauri encodes `../` as `_up_/`)
+        resource_dir.join("_up_/templates/nix-darwin-determinate"),
+    ];
+
+    // Dev fallback: only available in debug builds to avoid masking bundling issues
+    #[cfg(debug_assertions)]
+    candidates.push(
         Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../templates/nix-darwin-determinate")
             .to_path_buf(),
-    ];
+    );
 
     candidates
         .into_iter()

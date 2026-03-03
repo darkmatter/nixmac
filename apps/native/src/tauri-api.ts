@@ -252,8 +252,12 @@ export const darwinAPI = {
     applyStreamCancel: () => invoke("darwin_apply_stream_cancel"),
   },
   nix: {
-    check: () => invoke<{ installed: boolean; version?: string }>("nix_check"),
+    check: () =>
+      invoke<{ installed: boolean; version?: string; darwin_rebuild_available: boolean }>(
+        "nix_check",
+      ),
     installStart: () => invoke("nix_install_start"),
+    prefetchDarwinRebuild: () => invoke("darwin_rebuild_prefetch"),
   },
   flake: {
     listHosts: () => invoke<string[]>("flake_list_hosts"),
