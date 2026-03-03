@@ -199,6 +199,7 @@ fn main() {
             commands::flake_exists,
             commands::bootstrap_default_config,
             // Summarization
+            commands::find_summary,
             commands::summarize_changes,
             commands::summary_get_cached,
             commands::suggest_commit_message,
