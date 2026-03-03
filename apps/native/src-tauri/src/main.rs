@@ -206,13 +206,7 @@ fn main() {
             let open_i = MenuItem::with_id(app, "open", "Open", true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
 
-            let menu = Menu::with_items(
-                app,
-                &[
-                    &open_i,
-                    &quit_i,
-                ],
-            )?;
+            let menu = Menu::with_items(app, &[&open_i, &quit_i])?;
 
             let _tray = TrayIconBuilder::new()
                 .icon(

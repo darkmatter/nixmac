@@ -76,10 +76,11 @@ export function MergeSection() {
             {summary.commitMessage && commitMsg !== summary.commitMessage && (
               <button
                 type="button"
-                className="text-muted-foreground text-xs hover:text-foreground"
+                className="block w-full text-left text-muted-foreground text-xs hover:text-foreground break-words whitespace-normal"
                 onClick={() => setCommitMsg(summary.commitMessage || "")}
               >
-                Use suggested: "{summary.commitMessage}"
+                Use suggested: "
+                <span className="break-words whitespace-normal">{summary.commitMessage}</span>"
               </button>
             )}
           </div>
