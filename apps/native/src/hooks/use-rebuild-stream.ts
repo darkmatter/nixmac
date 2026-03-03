@@ -111,16 +111,12 @@ export function useRebuildStream() {
             await options.onSuccess();
           }
           // Auto-dismiss rebuild panel after success
-          setTimeout(() => {
-            useWidgetStore.getState().clearRebuild();
-          }, 3000);
+          useWidgetStore.getState().clearRebuild();
+          currentStore.setProcessing(false);
+        } else {
+          await refreshGitStatus({ cache: true });
+          currentStore.setProcessing(false);
         }
-
-        await refreshGitStatus({ cache: true });
-        // Delay setProcessing to let watcher events settle
-        setTimeout(() => {
-          useWidgetStore.getState().setProcessing(false);
-        }, 3000);
       });
 
       try {

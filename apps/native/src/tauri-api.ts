@@ -275,6 +275,7 @@ export const darwinAPI = {
     applyStreamStart: (hostOverride?: string) =>
       invoke("darwin_apply_stream_start", { hostOverride }),
     applyStreamCancel: () => invoke("darwin_apply_stream_cancel"),
+    finalizeApply: () => invoke<EvolutionResult>("finalize_apply"),
   },
   nix: {
     check: () =>
