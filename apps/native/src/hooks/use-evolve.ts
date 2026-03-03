@@ -64,6 +64,7 @@ export function useEvolve() {
 
       // Set the summary and git status from the result
       if (result?.summary) {
+        store.setSummaryAvailable(true);
         useWidgetStore.getState().setSummary(result.summary);
       }
       if (result?.gitStatus) {
@@ -85,6 +86,7 @@ export function useEvolve() {
       useWidgetStore.getState().appendLog(`✗ Error: ${msg}\n`);
     } finally {
       useWidgetStore.getState().setGenerating(false);
+      useWidgetStore.getState().setProcessing(false, "evolve");
       unlistenEvolve();
     }
   }, [refreshGitStatus, refreshPromptHistory]);

@@ -122,8 +122,10 @@ export function ModelCombobox({
         freshModels = await fetchOllamaModels(baseUrl);
       }
 
-      // Update the models list with fresh results
-      setModels(freshModels);
+      // Update the models list with fresh results (only if we got any, to avoid wiping the cache-populated list)
+      if (freshModels.length > 0) {
+        setModels(freshModels);
+      }
 
       // Cache the models when we got any
       if (freshModels.length > 0) {
