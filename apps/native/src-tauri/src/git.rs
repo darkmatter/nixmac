@@ -111,6 +111,48 @@ pub fn get_full_diff(dir: &str) -> Result<String> {
     Ok(diff)
 }
 
+/// Gets the diff of uncommitted changes against HEAD (staged + unstaged + untracked).
+/// This shows only local changes that haven't been committed yet.
+/// Used to determine if the working tree is clean.
+pub fn get_head_diff(dir: &str) -> Result<String> {
+    // Get diff for tracked files (both staged and unstaged)
+    let diff_output = git_command()
+        .args(["diff", "HEAD"])
+        .current_dir(dir)
+        .output()?;
+
+    let mut diff = String::from_utf8_lossy(&diff_output.stdout).to_string();
+
+    // Also get untracked files and show their contents as diffs
+    let untracked_output = git_command()
+        .args(["ls-files", "--others", "--exclude-standard"])
+        .current_dir(dir)
+        .output()?;
+
+    let untracked_files = String::from_utf8_lossy(&untracked_output.stdout);
+
+    for file in untracked_files.lines() {
+        if file.is_empty() {
+            continue;
+        }
+        let file_path = std::path::Path::new(dir).join(file);
+        if let Ok(contents) = std::fs::read_to_string(&file_path) {
+            // Format as a diff showing the entire file as added
+            diff.push_str(&format!("\ndiff --git a/{} b/{}\n", file, file));
+            diff.push_str("new file mode 100644\n");
+            diff.push_str("--- /dev/null\n");
+            diff.push_str(&format!("+++ b/{}\n", file));
+            let line_count = contents.lines().count();
+            diff.push_str(&format!("@@ -0,0 +1,{} @@\n", line_count));
+            for line in contents.lines() {
+                diff.push_str(&format!("+{}\n", line));
+            }
+        }
+    }
+
+    Ok(diff)
+}
+
 /// Gets a diff containing only .nix files (including untracked .nix files).
 pub fn get_nix_diff(dir: &str) -> Result<String> {
     let base = get_default_branch(dir).unwrap_or("HEAD");
@@ -355,6 +397,13 @@ pub fn status(dir: &str) -> Result<GitStatus> {
         get_commit_messages_since_main(dir)
     };
 
+    // Get HEAD commit hash
+    let head_commit_hash = get_head_sha(dir);
+
+    // Determine if working tree is clean (no uncommitted changes)
+    let head_diff = get_head_diff(dir).unwrap_or_default();
+    let clean_head = head_diff.is_empty();
+
     Ok(GitStatus {
         files,
         branch,
@@ -365,6 +414,8 @@ pub fn status(dir: &str) -> Result<GitStatus> {
         diff,
         additions,
         deletions,
+        head_commit_hash,
+        clean_head,
     })
 }
 

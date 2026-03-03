@@ -51,6 +51,12 @@ pub struct GitStatus {
 
     /// Number of lines deleted.
     pub deletions: usize,
+
+    /// SHA hash of the current HEAD commit.
+    pub head_commit_hash: Option<String>,
+
+    /// Whether the working tree is clean (no uncommitted changes).
+    pub clean_head: bool,
 }
 
 /// Individual file status parsed from diff headers.
