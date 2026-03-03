@@ -243,7 +243,7 @@ pub async fn generate_commit_message<R: Runtime>(
         request_id
     );
     let response = match provider
-        .completion(system_prompt, &user_prompt, 100u32, 0.2, &request_id)
+        .completion(system_prompt, &user_prompt, 200u32, 0.2, &request_id)
         .await
     {
         Ok(s) => s,
