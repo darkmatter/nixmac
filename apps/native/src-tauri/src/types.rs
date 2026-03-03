@@ -264,6 +264,9 @@ pub struct SummaryResponse {
 
     /// Suggested commit message
     pub commit_message: String,
+
+    /// The diff this summary was generated for (used for cache validation)
+    pub diff: String,
 }
 
 // =============================================================================
