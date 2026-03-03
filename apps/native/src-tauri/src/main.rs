@@ -14,6 +14,7 @@ mod default_config;
 mod evolution;
 mod evolve;
 mod feedback;
+mod finalize_apply;
 mod find_summary;
 mod git;
 mod log_summarizer;
@@ -190,6 +191,7 @@ fn main() {
             commands::darwin_apply,
             commands::darwin_apply_stream_start,
             commands::darwin_apply_stream_cancel,
+            commands::finalize_apply,
             commands::nix_check,
             commands::nix_install_start,
             commands::darwin_rebuild_prefetch,

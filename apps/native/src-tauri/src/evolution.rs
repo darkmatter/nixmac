@@ -119,7 +119,7 @@ pub async fn evolve_and_commit(app: &AppHandle, description: &str) -> Result<Evo
             branch: branch_for_db,
             summary_json,
             diff: status.diff.clone(),
-            prompt: description.to_string(),
+            prompt: Some(description.to_string()),
         },
     )
     .map_err(|e| {
