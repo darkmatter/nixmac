@@ -542,7 +542,7 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
         setFeedbackOpen(true);
       }}
     >
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className={hasAutoFilledError ? "flex items-center gap-2" : ""}>
             {hasAutoFilledError && <span className="text-red-500">⚠️</span>}
@@ -551,7 +551,7 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
           <DialogDescription>{dialogDescription}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-6 flex-1 overflow-y-auto pr-2">
           {/* Type Selection */}
           {!isIssue && !isError && (
             <div className="space-y-3">
@@ -672,7 +672,7 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
           {/* Share with team */}
           <div className="space-y-2">
             <Label className="text-foreground">SHARE WITH THE TEAM</Label>
-            <div className="space-y-2">
+            <div className="space-y-2 max-h-[28vh] overflow-y-auto pr-2">
               {shouldShowCurrentAppState(feedbackType, step, mainWindowError) && (
                 <div className="flex items-center gap-2">
                   <Checkbox
@@ -969,7 +969,7 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
                     htmlFor="share-nix-config"
                     className="cursor-pointer font-medium text-sm text-foreground flex-1"
                   >
-                    Nix config file diffs
+                    Nix config snapshot
                   </Label>
                   <Tooltip>
                     <TooltipTrigger asChild>
