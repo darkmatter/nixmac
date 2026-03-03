@@ -1,35 +1,41 @@
 import {
-  initialSummaryState,
   useWidgetStore,
   type ChangesSummary,
 } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 
 /**
  * Hook for fetching and managing the AI-generated summary of changes.
  */
 export function useSummary() {
   /**
-   * Loads a previously cached summary from the Rust backend.
-   * Only loads if the store doesn't already have a summary (to avoid overwriting in-memory data).
+   * Finds the relevant summary for the current git state.
+   * Looks up from DB (clean commit) or cache (uncommitted, if diff matches).
+   * Does NOT generate - just finds existing ones.
    */
-  const loadCachedSummary = useCallback(async (): Promise<ChangesSummary | null> => {
-    const { setSummary } = useWidgetStore.getState();
+  const findSummary = useCallback(async (): Promise<ChangesSummary | null> => {
+    const { setSummary, summaryLoading, setSummaryLoading, setSummaryAvailable } = useWidgetStore.getState();
 
-    const cached = await darwinAPI.summarize.getCached();
-    if (cached) {
-      setSummary(cached);
+    if (summaryLoading) {
+      return null;
     }
-    return cached;
+
+    const available = await darwinAPI.summary.find();
+    if (available) {
+      setSummary(available);
+      setSummaryAvailable(true);
+      setSummaryLoading(false);
+    }
+    return available;
   }, []);
 
   /**
    * Fetches a fresh AI summary of current changes.
    * Skips if already loading
    */
-  const fetchSummary = useCallback(async () => {
-    const { summaryLoading, setSummaryLoading, setSummary, setSummaryStale } =
+  const generateSummary = useCallback(async () => {
+    const { summaryLoading, setSummaryLoading, setSummary, setSummaryAvailable } =
       useWidgetStore.getState();
 
     if (summaryLoading) {
@@ -38,28 +44,16 @@ export function useSummary() {
 
     setSummaryLoading(true);
     try {
-      const response = await darwinAPI.summarize.changes();
+      const response = await darwinAPI.summary.generate();
       await darwinAPI.git.statusAndCache();
       setSummary(response);
     } catch {
       // Keep existing summary on error
     } finally {
-      setSummaryStale(false);
+      setSummaryAvailable(true);
       setSummaryLoading(false);
     }
   }, []);
 
-  /**
-   * Loads cached summary on mount if the current summary is in initial state.
-   */
-  const useLoadCachedSummaryOnMount = () => {
-    useEffect(() => {
-      const { summary } = useWidgetStore.getState();
-      if (JSON.stringify(summary) === JSON.stringify(initialSummaryState)) {
-        loadCachedSummary();
-      }
-    }, []);
-  };
-
-  return { fetchSummary, loadCachedSummary, useLoadCachedSummaryOnMount };
+  return { generateSummary, findSummary };
 }

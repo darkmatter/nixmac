@@ -1,7 +1,6 @@
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
 import { useCallback } from "react";
-import { useSummary } from "@/hooks/use-summary";
 import { toast } from "sonner";
 
 /**
@@ -9,7 +8,6 @@ import { toast } from "sonner";
  * Provides functions for refreshing git status and stashing changes.
  */
 export function useGitOperations() {
-  const { loadCachedSummary } = useSummary();
   const refreshGitStatus = useCallback(
     async (options?: { cache?: boolean }) => {
       try {
@@ -28,25 +26,10 @@ export function useGitOperations() {
     [],
   );
 
-  // runs on widget mount once, to check if summary might be stale
-  const getInitialStatusAndSummary = useCallback(async () => {
+  // runs on widget mount once, to get the current git status
+  const getInitialStatus = useCallback(async () => {
     try {
-      // get the summary from cache
-      const summary = await loadCachedSummary();
-
-      // get the last cached git status ()
-      const cachedStatus = await darwinAPI.git.cached();
       const currentStatus = await darwinAPI.git.statusAndCache();
-
-      // if the cache is different on mount, mark summary stale
-      if (JSON.stringify(cachedStatus) !== JSON.stringify(currentStatus)) {
-        useWidgetStore.getState().setSummaryStale(true);
-      }
-      // if there are changes but no summary, mark summary stale
-      if (currentStatus?.diff && summary?.items.length === 0) {
-        useWidgetStore.getState().setSummaryStale(true);
-      }
-
       useWidgetStore.getState().setGitStatus(currentStatus);
     } catch {
       return null;
@@ -79,7 +62,7 @@ export function useGitOperations() {
       store.appendLog(`\n> Merging ${currentBranch} to main...\n`);
 
       try {
-        await darwinAPI.git.finalizeEvolve(currentBranch, squash, commitMessage);
+        await darwinAPI.git.mergeBranch(currentBranch, squash, commitMessage);
         useWidgetStore.getState().appendLog("✓ Merged successfully\n");
         useWidgetStore.getState().setError(null);
         toast.success("Merged successfully", { description: `${currentBranch} merged to main` });
@@ -98,5 +81,5 @@ export function useGitOperations() {
     [refreshGitStatus],
   );
 
-  return { refreshGitStatus, getInitialStatusAndSummary, gitStash, handleMerge };
+  return { refreshGitStatus, getInitialStatus, gitStash, handleMerge };
 }

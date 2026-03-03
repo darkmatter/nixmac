@@ -6,13 +6,13 @@ import { useWidgetStore } from "@/stores/widget-store";
 import { useSummary } from "@/hooks/use-summary";
 
 export function StaleSummaryNotice() {
-  const summaryStale = useWidgetStore((s) => s.summaryStale);
+  const summaryAvailable = useWidgetStore((s) => s.summaryAvailable);
   const summaryLoading = useWidgetStore((s) => s.summaryLoading);
   const configDir = useWidgetStore((s) => s.configDir);
-  const setSummaryStale = useWidgetStore((s) => s.setSummaryStale);
-  const { fetchSummary } = useSummary();
+  const setSummaryAvailable = useWidgetStore((s) => s.setSummaryAvailable);
+  const { generateSummary } = useSummary();
 
-  if (!summaryStale || summaryLoading) {
+  if (summaryAvailable || summaryLoading) {
     return null;
   }
 
@@ -20,7 +20,7 @@ export function StaleSummaryNotice() {
 
   const handleDismiss = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setSummaryStale(false);
+    setSummaryAvailable(true);
   };
 
   return (
@@ -42,7 +42,7 @@ export function StaleSummaryNotice() {
       </span>
       <button
         type="button"
-        onClick={fetchSummary}
+        onClick={generateSummary}
         className="flex items-center gap-1 text-teal-300 hover:text-teal-200"
       >
         <RefreshCw className="h-3 w-3" />

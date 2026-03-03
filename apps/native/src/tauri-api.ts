@@ -46,6 +46,8 @@ export interface GitStatus {
   diff?: string;
   additions?: number;
   deletions?: number;
+  headCommitHash: string | null;
+  cleanHead: boolean;
 }
 
 export interface SummaryItem {
@@ -55,15 +57,21 @@ export interface SummaryItem {
 
 /**
  * AI-generated summary of changes.
- * Raw git data (diff, additions, deletions) comes from GitStatus instead.
+ * Raw git data (additions, deletions) comes from GitStatus instead.
  */
 export interface ChangesSummary {
   items: SummaryItem[];
   instructions: string;
   commitMessage: string;
+  diff: string;
 }
 
 export type SummaryResponse = ChangesSummary;
+
+export interface WatcherEvent {
+  status: GitStatus;
+  summary: SummaryResponse | null;
+}
 
 export interface PreviewIndicatorState {
   visible: boolean;
@@ -257,7 +265,7 @@ export const darwinAPI = {
     checkoutBranch: (branchName: string) => invoke("git_checkout_branch", { branchName }),
     checkoutMainBranch: () => invoke("git_checkout_main_branch"),
     tagAsBuilt: () => invoke("git_tag_as_built"),
-    finalizeEvolve: (branchName: string, squash?: boolean, commitMessage?: string) =>
+    mergeBranch: (branchName: string, squash?: boolean, commitMessage?: string) =>
       invoke("git_finalize_evolve", { branchName, squash, commitMessage }),
   },
   darwin: {
@@ -283,11 +291,9 @@ export const darwinAPI = {
     bootstrapDefault: (hostname: string) => invoke<void>("bootstrap_default_config", { hostname }),
     finalizeFlakeLock: () => invoke("finalize_flake_lock"),
   },
-  // Summarization with fast model
-  summarize: {
-    changes: () => invoke<SummaryResponse>("summarize_changes"),
-    commitMessage: () => invoke<string>("suggest_commit_message"),
-    getCached: () => invoke<SummaryResponse | null>("summary_get_cached"),
+  summary: {
+    find: () => invoke<SummaryResponse | null>("find_summary"),
+    generate: () => invoke<SummaryResponse>("summarize_changes"),
   },
   feedback: {
     gatherMetadata: (feedbackType: string, share: FeedbackShareOptions) =>

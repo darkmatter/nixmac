@@ -87,7 +87,7 @@ export interface WidgetState {
 
   // UI
   summaryLoading: boolean;
-  summaryStale: boolean;
+  summaryAvailable: boolean;
   isGenerating: boolean;
   settingsOpen: boolean;
   feedbackOpen: boolean;
@@ -132,7 +132,7 @@ export interface WidgetActions {
 
   // Client-side state (NOT from server)
   setSummaryLoading: (loading: boolean) => void;
-  setSummaryStale: (stale: boolean) => void;
+  setSummaryAvailable: (available: boolean) => void;
   setGenerating: (generating: boolean) => void;
   clearPreview: () => void;
   setFeedbackTypeOverride: (type: FeedbackType | null) => void;
@@ -175,6 +175,7 @@ export const initialSummaryState: ChangesSummary = {
   items: [],
   instructions: "",
   commitMessage: "",
+  diff: "",
 };
 
 export const initialWidgetState: WidgetState = {
@@ -217,7 +218,7 @@ export const initialWidgetState: WidgetState = {
 
   // UI
   summaryLoading: false,
-  summaryStale: false,
+  summaryAvailable: false,
   isBootstrapping: false,
   isGenerating: false,
   settingsOpen: false,
@@ -258,9 +259,9 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
         isProcessing,
         processingAction: isProcessing ? action : null,
       }),
-    setSummary: (summary) => set({ summary, summaryStale: false }),
+    setSummary: (summary) => set({ summary, summaryAvailable: true }),
     setSummaryLoading: (summaryLoading) => set({ summaryLoading }),
-    setSummaryStale: (summaryStale) => set({ summaryStale }),
+    setSummaryAvailable: (summaryAvailable) => set({ summaryAvailable }),
     setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
     setFeedbackOpen: (feedbackOpen) => set({ feedbackOpen }),
     setFeedbackTypeOverride: (feedbackTypeOverride) => set({ feedbackTypeOverride }),
@@ -285,7 +286,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
       set({
         summary: initialSummaryState,
         summaryLoading: false,
-        summaryStale: false,
+        summaryAvailable: false,
       }),
 
     // Console

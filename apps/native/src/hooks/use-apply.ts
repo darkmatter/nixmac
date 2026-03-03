@@ -11,7 +11,7 @@ import { useRebuildStream } from "@/hooks/use-rebuild-stream";
  * Renders inline in the main widget instead of a separate window.
  */
 export function useApply() {
-  const { fetchSummary } = useSummary();
+  const { generateSummary } = useSummary();
   const { triggerRebuild } = useRebuildStream();
 
   const handleApply = useCallback(async () => {
@@ -27,7 +27,7 @@ export function useApply() {
           // If on main with manual changes, create branch and commit first
           if (gitStatus?.isMainBranch ?? true) {
             // Fetch summary to get a commit message
-            await fetchSummary();
+            await generateSummary();
             const summary = useWidgetStore.getState().summary;
             const commitMessage = summary?.commitMessage
               ? `${summary.commitMessage} (manual changes)`
@@ -49,10 +49,10 @@ export function useApply() {
         }
 
         // Refresh summary after successful build
-        await fetchSummary();
+        await generateSummary();
       },
     });
-  }, [triggerRebuild, fetchSummary]);
+  }, [triggerRebuild, generateSummary]);
 
   return { handleApply };
 }
