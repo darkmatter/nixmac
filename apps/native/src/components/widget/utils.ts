@@ -18,7 +18,7 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
     return "permissions";
   }
 
-  if (state.nixInstalled !== true) {
+  if (state.nixInstalled !== true || state.darwinRebuildAvailable !== true) {
     return "nix-setup";
   }
 
