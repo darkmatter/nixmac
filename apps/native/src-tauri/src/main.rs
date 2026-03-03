@@ -14,6 +14,7 @@ mod default_config;
 mod evolution;
 mod evolve;
 mod feedback;
+mod find_summary;
 mod git;
 mod log_summarizer;
 mod nix;
