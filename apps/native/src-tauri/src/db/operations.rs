@@ -16,7 +16,8 @@ pub struct EvolutionData {
     pub branch: String,
     pub summary_json: String,
     pub diff: String,
-    pub prompt: String,
+    /// function reused for straggling manual changes - prompt optional
+    pub prompt: Option<String>,
 }
 
 /// Save a complete evolution with all related data in a single transaction.
@@ -70,11 +71,13 @@ pub fn save_evolution_complete(db_path: &Path, data: EvolutionData) -> Result<i6
         (commit_id, Option::<i64>::None, &data.summary_json, &data.diff, now),
     )?;
 
-    // Insert prompt (linked to commit)
-    tx.execute(
-        "INSERT INTO prompts (text, commit_id, created_at) VALUES (?1, ?2, ?3)",
-        (&data.prompt, Some(commit_id), now),
-    )?;
+    // Insert prompt (linked to commit) — omitted for manual changes
+    if let Some(ref prompt) = data.prompt {
+        tx.execute(
+            "INSERT INTO prompts (text, commit_id, created_at) VALUES (?1, ?2, ?3)",
+            (prompt, Some(commit_id), now),
+        )?;
+    }
 
     // Commit the transaction
     tx.commit()?;

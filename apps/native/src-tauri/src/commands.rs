@@ -452,6 +452,17 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<serde_json::Va
     Ok(serde_json::json!({"ok": true}))
 }
 
+/// Finalize a successful darwin-rebuild.
+/// Tags HEAD as built; if uncommitted changes were present, also branches (when
+/// on main), commits, and registers them in the DB. Safe to call unconditionally.
+#[tauri::command]
+pub async fn finalize_apply(app: AppHandle) -> Result<serde_json::Value, String> {
+    let result = crate::finalize_apply::finalize_apply(&app)
+        .await
+        .map_err(|e| capture_err("finalize_apply", e))?;
+    Ok(serde_json::to_value(result).unwrap_or_default())
+}
+
 #[tauri::command]
 pub async fn flake_installed_apps(app: AppHandle) -> Result<Vec<serde_json::Value>, String> {
     let dir = store::ensure_config_dir_exists(&app)
