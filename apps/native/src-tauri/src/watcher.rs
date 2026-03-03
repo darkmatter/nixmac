@@ -1,11 +1,13 @@
 //! Git status watcher for detecting config changes.
 //!
-//! Polls git status at a configurable interval and emits events with GitStatus payload
+//! Polls git status at a configurable interval and emits `WatcherEvent` to the frontend.
+//! Change detection compares current git status against the persisted store cache,
+//! which is kept in sync by both this watcher and the evolution/summarize handlers.
 //! Only one watcher thread runs at a time. When `start_watching` is called:
 //! Restarting gives us an immediate poll when window is focused.
 
-use crate::git;
-use crate::types::GitStatus;
+use crate::types::{GitStatus, SummaryResponse};
+use crate::{find_summary, git, store};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
@@ -20,14 +22,13 @@ static WATCH_DIR: Mutex<Option<String>> = Mutex::new(None);
 /// Holds handle to current watcher so we can wait for it to stop on restart.
 static WATCHER_THREAD: Mutex<Option<std::thread::JoinHandle<()>>> = Mutex::new(None);
 
-/// Persists the last status JSON across thread restarts to avoid spurious events.
-static LAST_STATUS_JSON: Mutex<Option<String>> = Mutex::new(None);
-
 /// Event payload sent to frontend when git status changes.
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct GitStatusChangedEvent {
+pub struct WatcherEvent {
     pub status: GitStatus,
+    /// The relevant summary for this state, or `None` if not available.
+    pub summary: Option<SummaryResponse>,
 }
 
 /// Starts the git status watcher for the given directory.
@@ -71,16 +72,26 @@ where
             };
 
             if let Some(ref dir) = current_dir {
-                // Get full git status and emit if changed
                 if let Ok(status) = git::status(dir) {
-                    if let Ok(status_json) = serde_json::to_string(&status) {
-                        let is_changed =
-                            { LAST_STATUS_JSON.lock().unwrap().as_ref() != Some(&status_json) };
-                        if is_changed {
-                            let _ = app_handle
-                                .emit("git:status-changed", GitStatusChangedEvent { status });
-                            *LAST_STATUS_JSON.lock().unwrap() = Some(status_json);
-                        }
+                    // Compare against the store-persisted cache (source of truth).
+                    // Both this watcher and evolution/summarize keep the cache in sync.
+                    let cached_json = store::get_cached_git_status(&app_handle)
+                        .ok()
+                        .flatten()
+                        .and_then(|s| serde_json::to_string(&s).ok());
+                    let current_json = serde_json::to_string(&status).ok();
+
+                    if current_json != cached_json {
+                        let summary = find_summary::find_summary(&app_handle).unwrap_or(None);
+                        let _ = store::set_summary_available(&app_handle, summary.is_some());
+                        let _ = app_handle.emit(
+                            "git:status-changed",
+                            WatcherEvent {
+                                status: status.clone(),
+                                summary,
+                            },
+                        );
+                        let _ = store::set_cached_git_status(&app_handle, &status);
                     }
                 }
             }
