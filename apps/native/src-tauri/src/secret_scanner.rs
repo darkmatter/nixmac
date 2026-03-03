@@ -29,11 +29,17 @@ impl SecretScanner {
         SECRET_SCANNER.get_or_init(|| {
             let resource_path = app_handle
                 .path()
-                .resolve(
-                    "resources/gitleaks.toml",
-                    tauri::path::BaseDirectory::Resource,
-                )
-                .expect("Failed to resolve resource path");
+                .resource_dir()
+                .or_else(|_| {
+                    // Fallback: resolve from executable path
+                    // Binary is at App.app/Contents/MacOS/nixmac
+                    // Resources are at App.app/Contents/Resources/
+                    std::env::current_exe()
+                        .map_err(tauri::Error::Io)
+                        .map(|exe| exe.parent().unwrap().parent().unwrap().join("Resources"))
+                })
+                .expect("Failed to get resource directory")
+                .join("resources/gitleaks.toml");
 
             let toml_content = std::fs::read_to_string(resource_path)
                 .expect("Could not read gitleaks.toml from bundle");

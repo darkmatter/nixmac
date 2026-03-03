@@ -62,6 +62,10 @@ export interface WidgetState {
   nixInstalled: boolean | null; // null = not checked yet
   nixInstalling: boolean;
 
+  // nix-darwin (darwin-rebuild availability)
+  darwinRebuildAvailable: boolean | null; // null = not checked yet
+  darwinRebuildPrefetching: boolean;
+
   // Git (from backend)
   gitStatus: GitStatus | null;
   // Evolution
@@ -111,6 +115,8 @@ export interface WidgetActions {
   setBootstrapping: (isBootstrapping: boolean) => void;
   setNixInstalled: (installed: boolean | null) => void;
   setNixInstalling: (installing: boolean) => void;
+  setDarwinRebuildAvailable: (available: boolean | null) => void;
+  setDarwinRebuildPrefetching: (prefetching: boolean) => void;
   setGitStatus: (status: GitStatus | null) => void;
   setEvolvePrompt: (prompt: string) => void;
   setCommitMsg: (msg: string) => void;
@@ -184,6 +190,10 @@ export const initialWidgetState: WidgetState = {
   // Nix
   nixInstalled: null,
   nixInstalling: false,
+
+  // nix-darwin
+  darwinRebuildAvailable: null,
+  darwinRebuildPrefetching: false,
 
   // Git
   gitStatus: null,
@@ -268,6 +278,8 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setBootstrapping: (isBootstrapping) => set({ isBootstrapping }),
     setNixInstalled: (nixInstalled) => set({ nixInstalled }),
     setNixInstalling: (nixInstalling) => set({ nixInstalling }),
+    setDarwinRebuildAvailable: (darwinRebuildAvailable) => set({ darwinRebuildAvailable }),
+    setDarwinRebuildPrefetching: (darwinRebuildPrefetching) => set({ darwinRebuildPrefetching }),
     setGenerating: (isGenerating) => set({ isGenerating }),
     clearPreview: () =>
       set({

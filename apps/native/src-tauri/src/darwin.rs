@@ -108,11 +108,25 @@ fn run_darwin_rebuild(
     let _ = writeln!(log_file, "Log file: {:?}", log_path);
     let _ = writeln!(log_file);
 
-    let cmd_str = format!(
-        "cd '{}' && darwin-rebuild switch --flake '.#{}' --show-trace --verbose",
-        config_dir.replace('\'', "'\\''"),
-        host_attr
-    );
+    let use_fallback = !crate::nix::is_darwin_rebuild_available();
+    if use_fallback {
+        info!("[darwin] darwin-rebuild not found in PATH, using nix run fallback");
+    }
+
+    let flake_arg = format!(".#{}", host_attr);
+    let cmd_str = if use_fallback {
+        format!(
+            "cd '{}' && nix run nix-darwin/master#darwin-rebuild -- build --flake '{}' --show-trace --verbose",
+            config_dir.replace('\'', "'\\''"),
+            flake_arg
+        )
+    } else {
+        format!(
+            "cd '{}' && darwin-rebuild build --flake '{}' --show-trace --verbose",
+            config_dir.replace('\'', "'\\''"),
+            flake_arg
+        )
+    };
     info!("[darwin] Command: {}", cmd_str);
     let _ = writeln!(log_file, "Command: {}", cmd_str);
     let _ = writeln!(log_file);
@@ -122,14 +136,27 @@ fn run_darwin_rebuild(
     // =========================================================================
     log_and_emit!("Starting darwin-rebuild build (as user)...");
 
-    let mut build_child = Command::new("darwin-rebuild")
-        .args([
+    let mut build_cmd = if use_fallback {
+        let mut cmd = Command::new("nix");
+        cmd.args([
+            "run",
+            "nix-darwin/master#darwin-rebuild",
+            "--",
             "build",
             "--flake",
-            &format!(".#{}", host_attr),
+            &flake_arg,
             "--show-trace",
             "--verbose",
-        ])
+        ]);
+        cmd.env("NIX_CONFIG", "experimental-features = nix-command flakes");
+        cmd
+    } else {
+        let mut cmd = Command::new("darwin-rebuild");
+        cmd.args(["build", "--flake", &flake_arg, "--show-trace", "--verbose"]);
+        cmd
+    };
+
+    let mut build_child = build_cmd
         .env("PATH", crate::nix::get_nix_path())
         .current_dir(config_dir)
         .stdout(Stdio::piped())
