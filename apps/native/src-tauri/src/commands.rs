@@ -565,6 +565,7 @@ pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse,
         items,
         instructions,
         commit_message,
+        diff: status.diff.clone(),
     };
 
     // Cache the summary for future app launches

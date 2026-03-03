@@ -326,6 +326,25 @@ pub fn get_cached_summary<R: Runtime>(
     Ok(None)
 }
 
+/// Gets whether a relevant summary is currently available.
+#[allow(dead_code)]
+pub fn get_summary_available<R: Runtime>(app: &AppHandle<R>) -> Result<bool> {
+    let store = get_store(app)?;
+    Ok(store
+        .get("summaryAvailable")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false))
+}
+
+/// Sets whether a relevant summary is currently available.
+#[allow(dead_code)]
+pub fn set_summary_available<R: Runtime>(app: &AppHandle<R>, available: bool) -> Result<()> {
+    let store = get_store(app)?;
+    store.set("summaryAvailable", serde_json::json!(available));
+    store.save()?;
+    Ok(())
+}
+
 /// Sets the cached summary response.
 pub fn set_cached_summary<R: Runtime>(
     app: &AppHandle<R>,
