@@ -19,11 +19,11 @@ export function EvolveStep() {
   const { handleApply } = useApply();
   const { handleRollback } = useRollback();
 
-
   const [showRebuildDialog, setShowRebuildDialog] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
 
-  const isEvolving = Boolean(gitStatus?.diff)
+  const cleanOnMain = gitStatus?.cleanHead && gitStatus?.isMainBranch;
+  const isEvolving = !cleanOnMain
 
   // On a branch with builds, clearing will trigger a rebuild to restore main's config
   const needsRebuild = !gitStatus?.isMainBranch && gitStatus?.branchHasBuiltCommit;

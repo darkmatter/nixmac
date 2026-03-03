@@ -1,25 +1,25 @@
 "use client";
 
-import { ArrowLeft, Check, Pencil, Plus, Trash2 } from "lucide-react";
+import { StaleSummaryNotice } from "@/components/widget/stale-summary-notice";
+import {
+  getChangeTypeFromChunks,
+  getDirectory,
+  getShortFilename,
+  type FileDiff,
+} from "@/components/widget/utils";
 import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
-import { StaleSummaryNotice } from "@/components/widget/stale-summary-notice";
-import { getDirectory, getShortFilename } from "@/components/widget/utils";
+import { ArrowLeft, Check, Pencil, Plus, Trash2 } from "lucide-react";
 
 interface SummaryItemsProps {
   variant?: "default" | "outline";
+  diffSections: FileDiff[];
 }
 
-export function SummaryItems({ variant = "default" }: SummaryItemsProps) {
-  console.log("[SummaryItems] rendering, variant:", variant);
-  const gitStatus = useWidgetStore((s) => s.gitStatus);
+export function SummaryItems({ variant = "default", diffSections }: SummaryItemsProps) {
   const summary = useWidgetStore((s) => s.summary);
-
-  const changedFiles = gitStatus?.files || [];
-  console.log("[ChangedFiles] changedFiles:", changedFiles);
+  const summaryAvailable = useWidgetStore((s) => s.summaryAvailable);
   const summaryItems = summary.items;
-
-  console.log("[SummaryItems] gitStatus files:", summaryItems);
 
   const renderListItem = ({
     key,
@@ -65,38 +65,32 @@ export function SummaryItems({ variant = "default" }: SummaryItemsProps) {
     </div>
   );
 
-  // Show AI summary items if available, otherwise show file list
-  if (summaryItems.length > 0) {
+  if (!summaryAvailable || summaryItems.length === 0) {
     return (
       <div className="min-h-0 flex-1 overflow-y-auto">
         <StaleSummaryNotice />
-        {summaryItems.map((item, index) =>
+        {diffSections.map((section) =>
           renderListItem({
-            key: `summary-${index}`,
-            changeType: "edited",
-            fileName: item.title,
-            directory: item.description,
+            key: section.filename,
+            changeType: getChangeTypeFromChunks(section.chunks),
+            fileName: getShortFilename(section.filename),
+            directory: getDirectory(section.filename),
           })
         )}
       </div>
     );
   }
 
-
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
-      <StaleSummaryNotice />
-      {changedFiles.map((f) => {
-        const fileName = getShortFilename(f.path);
-        const directory = getDirectory(f.path);
-
-        return renderListItem({
-          key: f.path,
-          changeType: f.changeType,
-          fileName,
-          directory,
-        });
-      })}
+      {summaryItems.map((item, index) =>
+        renderListItem({
+          key: `summary-${index}`,
+          changeType: "edited",
+          fileName: item.title,
+          directory: item.description,
+        })
+      )}
     </div>
   );
 }

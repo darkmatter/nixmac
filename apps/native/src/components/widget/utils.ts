@@ -7,6 +7,7 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
   const hasConfigDir = !!state.configDir;
   const hasHost = !!state.host;
   const notMainBranch = !(state.gitStatus?.isMainBranch ?? true);
+  const headIsClean = state.gitStatus?.cleanHead ?? false;
   const headIsBuilt = state.gitStatus?.headIsBuilt ?? false;
   const permissionsCheckedAndIncomplete =
     state.permissionsChecked &&
@@ -30,7 +31,7 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
     return "setup";
   }
 
-  if (notMainBranch && headIsBuilt) {
+  if (notMainBranch && headIsBuilt && headIsClean) {
     return "merge";
   }
 
@@ -46,6 +47,67 @@ export function getDirectory(path: string): string {
   const parts = path.split("/");
   if (parts.length <= 1) return "";
   return parts.slice(0, -1).join("/");
+}
+
+export interface FileDiff {
+  filename: string;
+  chunks: string;
+}
+
+/**
+ * Parse a unified diff into sections per file
+ */
+export function parseDiffIntoSections(diffContent: string): FileDiff[] {
+  const sections: FileDiff[] = [];
+  const lines = diffContent.split("\n");
+
+  let currentFilename = "";
+  let currentChunks: string[] = [];
+
+  for (const line of lines) {
+    const gitDiffMatch = line.match(/^diff --git a\/(.+?) b\/(.+)$/);
+    if (gitDiffMatch) {
+      if (currentFilename && currentChunks.length > 0) {
+        sections.push({ filename: currentFilename, chunks: currentChunks.join("\n") });
+      }
+      currentFilename = gitDiffMatch[2];
+      currentChunks = [];
+      continue;
+    }
+
+    if (
+      line.startsWith("--- ") ||
+      line.startsWith("+++ ") ||
+      line.startsWith("index ") ||
+      line.startsWith("new file mode") ||
+      line.startsWith("deleted file mode")
+    ) {
+      continue;
+    }
+
+    if (currentFilename) {
+      currentChunks.push(line);
+    }
+  }
+
+  if (currentFilename && currentChunks.length > 0) {
+    sections.push({ filename: currentFilename, chunks: currentChunks.join("\n") });
+  }
+
+  return sections;
+}
+
+/**
+ * Infer change type from diff chunk content.
+ */
+export function getChangeTypeFromChunks(chunks: string): "new" | "edited" | "removed" {
+  const contentLines = chunks.split("\n").filter((l) => l.startsWith("+") || l.startsWith("-"));
+  if (contentLines.length === 0) return "edited";
+  const hasAdditions = contentLines.some((l) => l.startsWith("+"));
+  const hasDeletions = contentLines.some((l) => l.startsWith("-"));
+  if (hasAdditions && !hasDeletions) return "new";
+  if (!hasAdditions && hasDeletions) return "removed";
+  return "edited";
 }
 
 /**

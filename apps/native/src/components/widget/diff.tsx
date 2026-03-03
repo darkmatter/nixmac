@@ -9,81 +9,14 @@ import {
   CodeBlockItem,
 } from "@/components/kibo-ui/code-block";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { useWidgetStore } from "@/stores/widget-store";
+import type { FileDiff } from "@/components/widget/utils";
 import { getDirectory, getShortFilename } from "@/components/widget/utils";
 
-interface FileDiff {
-  filename: string;
-  chunks: string;
+interface DiffProps {
+  diffSections: FileDiff[];
 }
 
-/**
- * Parse a unified diff into sections per file
- */
-function parseDiffIntoSections(diffContent: string): FileDiff[] {
-  const sections: FileDiff[] = [];
-  const lines = diffContent.split("\n");
-
-  let currentFilename = "";
-  let currentChunks: string[] = [];
-
-  for (const line of lines) {
-    // Match "diff --git a/path/to/file b/path/to/file"
-    const gitDiffMatch = line.match(/^diff --git a\/(.+?) b\/(.+)$/);
-    if (gitDiffMatch) {
-      // Save previous section if exists
-      if (currentFilename && currentChunks.length > 0) {
-        sections.push({
-          filename: currentFilename,
-          chunks: currentChunks.join("\n"),
-        });
-      }
-      currentFilename = gitDiffMatch[2];
-      currentChunks = [];
-      continue;
-    }
-
-    // Skip --- and +++ lines (file markers)
-    if (line.startsWith("--- ") || line.startsWith("+++ ")) {
-      continue;
-    }
-
-    // Skip index lines
-    if (line.startsWith("index ")) {
-      continue;
-    }
-
-    // Skip "new file mode" or "deleted file mode" lines
-    if (
-      line.startsWith("new file mode") ||
-      line.startsWith("deleted file mode")
-    ) {
-      continue;
-    }
-
-    // Collect all other lines (hunks, additions, deletions)
-    if (currentFilename) {
-      currentChunks.push(line);
-    }
-  }
-
-  // Don't forget the last section
-  if (currentFilename && currentChunks.length > 0) {
-    sections.push({
-      filename: currentFilename,
-      chunks: currentChunks.join("\n"),
-    });
-  }
-
-  return sections;
-}
-
-export function Diff() {
-  const gitStatus = useWidgetStore((s) => s.gitStatus);
-
-  const diffContent = gitStatus?.diff || "";
-  const diffSections = parseDiffIntoSections(diffContent);
-
+export function Diff({ diffSections }: DiffProps) {
   if (diffSections.length === 0) {
     return (
       <div className="flex items-center justify-center rounded-lg border border-border bg-muted/30 p-8 text-muted-foreground text-sm">
