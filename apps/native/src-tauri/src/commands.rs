@@ -8,8 +8,8 @@
 //! preview mode, etc.) is computed and managed entirely by the client.
 
 use crate::{
-    darwin, db, default_config, evolution, feedback, git, nix, peek, permissions, scanner, store,
-    summarize, types, watcher,
+    darwin, db, default_config, evolution, feedback, find_summary, git, nix, peek, permissions,
+    scanner, store, summarize, types, watcher,
 };
 use std::path::Path;
 use std::process::Command;
@@ -528,6 +528,16 @@ pub async fn flake_list_hosts(app: AppHandle) -> Result<Vec<String>, String> {
 #[tauri::command]
 pub async fn summary_get_cached(app: AppHandle) -> Result<Option<types::SummaryResponse>, String> {
     store::get_cached_summary(&app).map_err(|e| e.to_string())
+}
+
+/// Finds the relevant summary for the current git state without generating a new one.
+/// Looks up by commit hash (clean head) or validates the cached summary's diff (uncommitted changes).
+/// Also updates the `summaryAvailable` store flag based on the result.
+#[tauri::command]
+pub async fn find_summary(app: AppHandle) -> Result<Option<types::SummaryResponse>, String> {
+    let result = find_summary::find_summary(&app).map_err(|e| e.to_string())?;
+    let _ = store::set_summary_available(&app, result.is_some());
+    Ok(result)
 }
 
 #[tauri::command]
