@@ -158,6 +158,16 @@ pub fn is_nix_installed() -> bool {
         .unwrap_or(false)
 }
 
+/// Checks if `darwin-rebuild` is available in the Nix PATH.
+pub fn is_darwin_rebuild_available() -> bool {
+    for dir in get_nix_path().split(':') {
+        if std::path::Path::new(dir).join("darwin-rebuild").exists() {
+            return true;
+        }
+    }
+    false
+}
+
 /// Gets the installed Nix version string.
 ///
 /// Uses the login shell because it's typically called in contexts where we want to reliably detect Nix
@@ -174,6 +184,51 @@ pub fn get_nix_version() -> Option<String> {
     } else {
         None
     }
+}
+
+/// Prefetches darwin-rebuild by running `nix build --no-link nix-darwin/master#darwin-rebuild`.
+/// This caches the derivation in the nix store so the `nix run` fallback in darwin.rs is fast.
+/// Emits `nix:darwin-rebuild:end` with `{ ok: bool, error?: string }` on completion.
+pub fn prefetch_darwin_rebuild_stream(app: &AppHandle) -> Result<()> {
+    info!("[nix] prefetch_darwin_rebuild_stream called");
+
+    let app_handle = app.clone();
+
+    std::thread::spawn(move || {
+        let result = Command::new("nix")
+            .args(["build", "--no-link", "nix-darwin/master#darwin-rebuild"])
+            .env("PATH", get_nix_path_with_login_shell())
+            .env("NIX_CONFIG", "experimental-features = nix-command flakes")
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output();
+
+        match result {
+            Ok(output) if output.status.success() => {
+                info!("[nix] darwin-rebuild prefetch succeeded");
+                let _ =
+                    app_handle.emit("nix:darwin-rebuild:end", serde_json::json!({ "ok": true }));
+            }
+            Ok(output) => {
+                let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+                error!("[nix] darwin-rebuild prefetch failed: {}", stderr);
+                let _ = app_handle.emit(
+                    "nix:darwin-rebuild:end",
+                    serde_json::json!({ "ok": false, "error": stderr }),
+                );
+            }
+            Err(e) => {
+                error!("[nix] darwin-rebuild prefetch error: {}", e);
+                let _ = app_handle.emit(
+                    "nix:darwin-rebuild:end",
+                    serde_json::json!({ "ok": false, "error": e.to_string() }),
+                );
+            }
+        }
+    });
+
+    info!("[nix] prefetch_darwin_rebuild_stream started background thread");
+    Ok(())
 }
 
 pub fn install_nix_stream(app: &AppHandle) -> Result<()> {
@@ -200,94 +255,204 @@ pub fn install_nix_stream(app: &AppHandle) -> Result<()> {
     Ok(())
 }
 
+/// Sentinel file paths used to detect when Terminal commands complete.
+fn sentinel_paths() -> (std::path::PathBuf, std::path::PathBuf) {
+    let tmp = std::env::temp_dir();
+    (tmp.join(".nixmac-setup-ok"), tmp.join(".nixmac-setup-fail"))
+}
+
+fn cleanup_sentinels() {
+    let (ok, fail) = sentinel_paths();
+    let _ = std::fs::remove_file(&ok);
+    let _ = std::fs::remove_file(&fail);
+}
+
+/// Opens a Terminal window with the given command via osascript.
+fn open_terminal(cmd: &str) -> Result<()> {
+    let applescript = format!(
+        "tell application \"Terminal\"\n  activate\n  do script \"{}\"\nend tell",
+        cmd
+    );
+    let status = Command::new("osascript")
+        .args(["-e", &applescript])
+        .output()?;
+    if !status.status.success() {
+        anyhow::bail!(
+            "Failed to open Terminal: {}",
+            String::from_utf8_lossy(&status.stderr)
+        );
+    }
+    Ok(())
+}
+
 fn run_nix_install(app: &AppHandle) -> Result<()> {
-    if is_nix_installed() {
+    let nix_installed = is_nix_installed();
+    let dr_available = nix_installed && is_darwin_rebuild_available();
+
+    // Both already available — nothing to do
+    if nix_installed && dr_available {
         let version = get_nix_version().unwrap_or_default();
-        info!("[nix] already installed: {}", version);
+        info!(
+            "[nix] already installed, darwin-rebuild available: {}",
+            version
+        );
         app.emit(
             "nix:install:end",
             serde_json::json!({
                 "ok": true,
                 "code": 0,
                 "nix_version": version,
+                "darwin_rebuild_available": true,
             }),
         )?;
         return Ok(());
     }
 
-    // Terminal provides the TTY and Full Disk Access the installer needs.
-    let install_cmd = "curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --no-confirm; exit";
-    let applescript = format!(
-        "tell application \"Terminal\"\n  activate\n  do script \"{}\"\nend tell",
-        install_cmd
+    if !nix_installed {
+        // Phase 1: Install Nix via Terminal
+        let install_cmd = "curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --no-confirm; exit";
+
+        info!("[nix] Opening Terminal for Nix installation");
+        if let Err(e) = open_terminal(install_cmd) {
+            app.emit(
+                "nix:install:end",
+                serde_json::json!({
+                    "ok": false,
+                    "code": -1,
+                    "error_type": "terminal",
+                    "error": e.to_string(),
+                }),
+            )?;
+            return Ok(());
+        }
+
+        // Poll until Nix is installed
+        let max_wait = std::time::Duration::from_secs(600);
+        let poll_interval = std::time::Duration::from_secs(3);
+        let start = std::time::Instant::now();
+        let mut poll_count = 0u32;
+
+        loop {
+            std::thread::sleep(poll_interval);
+            poll_count += 1;
+            info!(
+                "[nix] Poll #{}: checking if nix is installed...",
+                poll_count
+            );
+
+            if is_nix_installed() {
+                info!("[nix] Poll #{}: nix detected!", poll_count);
+                if let Err(e) = crate::default_config::finalize_flake_lock(app) {
+                    info!("[nix] Could not finalize flake.lock: {}", e);
+                }
+                break;
+            }
+
+            if start.elapsed() > max_wait {
+                app.emit(
+                    "nix:install:end",
+                    serde_json::json!({
+                        "ok": false,
+                        "code": -1,
+                        "error_type": "timeout",
+                        "error": "Nix installation timed out. Please try installing manually in Terminal.",
+                    }),
+                )?;
+                return Ok(());
+            }
+        }
+    }
+
+    // Phase 2: Prefetch darwin-rebuild via a fresh Terminal session.
+    // A new Terminal window gets nix on PATH from /etc/zshrc automatically.
+    cleanup_sentinels();
+    let (sentinel_ok, sentinel_fail) = sentinel_paths();
+    let sentinel_ok_str = sentinel_ok.display().to_string();
+    let sentinel_fail_str = sentinel_fail.display().to_string();
+
+    let prefetch_cmd = format!(
+        "echo Preparing nix-darwin... && NIX_CONFIG='experimental-features = nix-command flakes' nix build --no-link nix-darwin/master#darwin-rebuild && touch {} || touch {}; exit",
+        sentinel_ok_str, sentinel_fail_str
     );
 
-    info!("[nix] Opening Terminal for Nix installation");
-    let status = Command::new("osascript")
-        .args(["-e", &applescript])
-        .output()?;
-
-    if !status.status.success() {
-        let stderr = String::from_utf8_lossy(&status.stderr).to_string();
-        error!("[nix] Failed to open Terminal: {}", stderr);
+    info!("[nix] Opening Terminal for nix-darwin prefetch");
+    if let Err(e) = open_terminal(&prefetch_cmd) {
+        cleanup_sentinels();
         app.emit(
             "nix:install:end",
             serde_json::json!({
                 "ok": false,
                 "code": -1,
                 "error_type": "terminal",
-                "error": format!("Failed to open Terminal: {}", stderr),
+                "error": e.to_string(),
             }),
         )?;
         return Ok(());
     }
 
-    let max_wait = std::time::Duration::from_secs(600); // 10 min timeout
+    // Poll until darwin-rebuild prefetch completes (sentinel file)
+    let max_wait = std::time::Duration::from_secs(600);
     let poll_interval = std::time::Duration::from_secs(3);
     let start = std::time::Instant::now();
-
     let mut poll_count = 0u32;
+
     loop {
         std::thread::sleep(poll_interval);
         poll_count += 1;
-        info!(
-            "[nix] Poll #{}: checking if nix is installed...",
-            poll_count
-        );
 
-        if is_nix_installed() {
-            let version = get_nix_version().unwrap_or_default();
+        if sentinel_ok.exists() {
             info!(
-                "[nix] Poll #{}: nix detected! version: {}",
-                poll_count, version
+                "[nix] Poll #{}: darwin-rebuild prefetch succeeded",
+                poll_count
             );
+            cleanup_sentinels();
+            break;
+        }
 
-            if let Err(e) = crate::default_config::finalize_flake_lock(app) {
-                info!("[nix] Could not finalize flake.lock: {}", e);
-            }
-
+        if sentinel_fail.exists() {
+            info!("[nix] Poll #{}: darwin-rebuild prefetch failed", poll_count);
+            cleanup_sentinels();
             app.emit(
                 "nix:install:end",
                 serde_json::json!({
-                    "ok": true,
-                    "code": 0,
-                    "nix_version": version,
+                    "ok": false,
+                    "code": -1,
+                    "error_type": "darwin_rebuild",
+                    "error": "Failed to set up nix-darwin. Please try again.",
                 }),
             )?;
             return Ok(());
         }
 
         if start.elapsed() > max_wait {
+            cleanup_sentinels();
             app.emit(
                 "nix:install:end",
                 serde_json::json!({
                     "ok": false,
                     "code": -1,
                     "error_type": "timeout",
-                    "error": "Nix installation timed out. Please try installing manually in Terminal.",
+                    "error": "nix-darwin setup timed out. Please try again.",
                 }),
             )?;
             return Ok(());
         }
     }
+
+    // Both ready
+    let version = get_nix_version().unwrap_or_default();
+    info!(
+        "[nix] Setup complete: nix={}, darwin-rebuild cached",
+        version
+    );
+    app.emit(
+        "nix:install:end",
+        serde_json::json!({
+            "ok": true,
+            "code": 0,
+            "nix_version": version,
+            "darwin_rebuild_available": true,
+        }),
+    )?;
+    Ok(())
 }
