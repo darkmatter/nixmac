@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useWidgetStore } from "@/stores/widget-store";
 import { GitMerge, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export function MergeSection() {
   const [squash, setSquash] = useState(true);
@@ -20,6 +20,15 @@ export function MergeSection() {
   const { handleMerge } = useGitOperations();
 
   const commits = gitStatus?.branchCommitMessages ?? [];
+
+  useEffect(() => {
+    // Update the commit message whenever `summary.commitMessage` is present and differs
+    // from the current input. This will overwrite any existing input so the latest
+    // suggestion is always reflected.
+    if (summary?.commitMessage && commitMsg !== summary.commitMessage) {
+      setCommitMsg(summary.commitMessage);
+    }
+  }, [summary?.commitMessage, commitMsg, setCommitMsg]);
 
   return (
     <div className="flex flex-col">
@@ -73,16 +82,6 @@ export function MergeSection() {
               placeholder="Squash commit message..."
               value={commitMsg}
             />
-            {summary.commitMessage && commitMsg !== summary.commitMessage && (
-              <button
-                type="button"
-                className="block w-full text-left text-muted-foreground text-xs hover:text-foreground break-words whitespace-normal"
-                onClick={() => setCommitMsg(summary.commitMessage || "")}
-              >
-                Use suggested: "
-                <span className="break-words whitespace-normal">{summary.commitMessage}</span>"
-              </button>
-            )}
           </div>
         )}
 
