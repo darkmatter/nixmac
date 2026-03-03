@@ -4,27 +4,28 @@ import { EvolveOverlayPanel } from "@/components/evolve-overlay-panel";
 import { RebuildOverlayPanel } from "@/components/rebuild-overlay-panel";
 import { Console } from "@/components/widget/console";
 import { ErrorMessage } from "@/components/widget/error-message";
-import { Header } from "@/components/widget/header";
-import { SettingsDialog } from "@/components/widget/settings-dialog";
 import { FeedbackDialog } from "@/components/widget/feedback-dialog";
+import { Header } from "@/components/widget/header";
 import { ReportIssueButton } from "@/components/widget/report-issue-button";
+import { SettingsDialog } from "@/components/widget/settings-dialog";
 import { StepContentWrapper } from "@/components/widget/step-content-wrapper";
 import { Stepper } from "@/components/widget/stepper";
 import {
-  MergeStep,
-  EvolveStep,
-  NixSetupStep,
-  PermissionsStep,
-  SetupStep,
+    EvolveStep,
+    MergeStep,
+    NixSetupStep,
+    PermissionsStep,
+    SetupStep,
 } from "@/components/widget/steps";
+import { useErrorHandler } from "@/hooks/use-error-handler";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useNixInstall } from "@/hooks/use-nix-install";
-import { useErrorHandler } from "@/hooks/use-error-handler";
 import { usePanicHandler } from "@/hooks/use-panic-handler";
 import { usePermissions } from "@/hooks/use-permissions";
 import { usePromptHistory } from "@/hooks/use-prompt-history";
 import { useWatcher } from "@/hooks/use-watcher";
 import { loadConfig, loadHosts } from "@/hooks/use-widget-initialization";
+import { useSummary } from "@/hooks/use-summary";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
 import { useEffect } from "react";
@@ -35,11 +36,12 @@ import { useEffect } from "react";
  */
 export function DarwinWidget() {
   const step = useCurrentStep();
-  const { getInitialStatusAndSummary } = useGitOperations();
+  const { getInitialStatus } = useGitOperations();
   const { checkNix } = useNixInstall();
   const { checkPermissions } = usePermissions();
   const { refreshPromptHistory } = usePromptHistory();
   const { startWatching } = useWatcher();
+  const { findSummary } = useSummary();
 
   // Set up panic handler to catch Rust crashes and show feedback dialog
   usePanicHandler();
@@ -62,7 +64,8 @@ export function DarwinWidget() {
         await loadConfig();
         await checkNix();
         await loadHosts();
-        await getInitialStatusAndSummary();
+        await getInitialStatus();
+        await findSummary();
         refreshPromptHistory();
       } catch (e: unknown) {
         useWidgetStore.getState().setError((e as Error)?.message || String(e));

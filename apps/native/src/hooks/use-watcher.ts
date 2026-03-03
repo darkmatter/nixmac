@@ -1,5 +1,5 @@
 import { useWidgetStore } from "@/stores/widget-store";
-import type { GitStatus } from "@/tauri-api";
+import type { WatcherEvent } from "@/tauri-api";
 import { ipcRenderer } from "@/tauri-api";
 import { useCallback, useRef } from "react";
 
@@ -16,13 +16,16 @@ export function useWatcher() {
     if (unlistenRef.current || isSubscribingRef.current) return;
     isSubscribingRef.current = true;
 
-    const gitStatusSub = ipcRenderer.on<{ status: GitStatus }>(
+    const gitStatusSub = ipcRenderer.on<WatcherEvent>(
       "git:status-changed",
       (event) => {
         const store = useWidgetStore.getState();
         if (!store.isProcessing && !store.isGenerating) {
           store.setGitStatus(event.payload.status);
-          store.setSummaryStale(true);
+          store.setSummaryAvailable(event.payload.summary !== null);
+          if (event.payload.summary) {
+            store.setSummary(event.payload.summary);
+          }
         }
       }
     );

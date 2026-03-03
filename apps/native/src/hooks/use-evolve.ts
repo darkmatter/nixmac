@@ -86,11 +86,6 @@ export function useEvolve() {
     } finally {
       useWidgetStore.getState().setGenerating(false);
       unlistenEvolve();
-      // Delay setProcessing(false) to let any pending watcher events pass
-      // Watcher polls every 2.5s, so 3s ensures we catch any updates
-      setTimeout(() => {
-        useWidgetStore.getState().setProcessing(false);
-      }, 3000);
     }
   }, [refreshGitStatus, refreshPromptHistory]);
 
