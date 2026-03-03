@@ -568,10 +568,9 @@ pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse,
         diff: status.diff.clone(),
     };
 
-    // Cache the summary for future app launches
-    if let Err(e) = store::set_cached_summary(&app, &response) {
-        log::error!("[summarize_changes] Failed to cache summary: {}", e);
-    }
+    // Cache the summary and mark it as available
+    let _ = store::set_cached_summary(&app, &response);
+    let _ = store::set_summary_available(&app, true);
 
     Ok(response)
 }
