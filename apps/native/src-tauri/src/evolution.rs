@@ -158,9 +158,8 @@ pub async fn evolve_and_commit(app: &AppHandle, description: &str) -> Result<Evo
     // Get final git status to return to frontend
     let final_status = git::status(&config_dir).context("Failed to get final git status")?;
 
-    // Sync watcher cache so its next poll finds an already-up-to-date state
+    // Sync the watcher's change-detection cache so its next poll doesn't spuriously emit
     let _ = store::set_cached_git_status(app, &final_status);
-    let _ = store::set_cached_summary(app, &summary);
 
     Ok(EvolutionResult {
         summary,
