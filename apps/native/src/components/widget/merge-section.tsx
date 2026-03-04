@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useWidgetStore } from "@/stores/widget-store";
 import { GitMerge, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export function MergeSection() {
   const [squash, setSquash] = useState(true);
@@ -18,8 +18,25 @@ export function MergeSection() {
   const summary = useWidgetStore((s) => s.summary);
 
   const { handleMerge } = useGitOperations();
+  const lastAppliedSuggestion = useRef<string | null>(null);
+  const commitMsgRef = useRef(commitMsg);
+  commitMsgRef.current = commitMsg;
 
   const commits = gitStatus?.branchCommitMessages ?? [];
+
+  useEffect(() => {
+    // Only auto-populate when a new suggestion arrives and the user hasn't manually
+    // edited the field (i.e. the current value is empty or still matches the last
+    // suggestion we applied). This prevents overwriting intentional user edits.
+    if (
+      summary?.commitMessage &&
+      summary.commitMessage !== lastAppliedSuggestion.current &&
+      (commitMsgRef.current === "" || commitMsgRef.current === lastAppliedSuggestion.current)
+    ) {
+      setCommitMsg(summary.commitMessage);
+      lastAppliedSuggestion.current = summary.commitMessage;
+    }
+  }, [summary?.commitMessage, setCommitMsg]);
 
   return (
     <div className="flex flex-col">
@@ -73,14 +90,14 @@ export function MergeSection() {
               placeholder="Squash commit message..."
               value={commitMsg}
             />
-            {summary.commitMessage && commitMsg !== summary.commitMessage && (
+            {summary?.commitMessage && !commitMsg.includes(summary.commitMessage) && (
               <button
+                aria-label="Use suggested commit message"
                 type="button"
                 className="block w-full text-left text-muted-foreground text-xs hover:text-foreground break-words whitespace-normal"
-                onClick={() => setCommitMsg(summary.commitMessage || "")}
+                onClick={() => setCommitMsg(summary.commitMessage)}
               >
-                Use suggested: "
-                <span className="break-words whitespace-normal">{summary.commitMessage}</span>"
+                Use suggested: <span>"{summary.commitMessage}"</span>
               </button>
             )}
           </div>
