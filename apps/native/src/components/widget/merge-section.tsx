@@ -90,6 +90,16 @@ export function MergeSection() {
               placeholder="Squash commit message..."
               value={commitMsg}
             />
+            {summary?.commitMessage && !commitMsg.includes(summary.commitMessage) && (
+              <button
+                type="button"
+                className="block w-full text-left text-muted-foreground text-xs hover:text-foreground break-words whitespace-normal"
+                onClick={() => setCommitMsg(summary.commitMessage)}
+              >
+                Use suggested: "
+                <span className="break-words whitespace-normal">{summary.commitMessage}</span>"
+              </button>
+            )}
           </div>
         )}
 
