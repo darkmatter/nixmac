@@ -607,21 +607,37 @@ fn escape_nix_string(s: &str) -> String {
 
 /// Inject a module import into an existing `flake.nix` file.
 ///
-/// Looks for the `modules = [` list and adds the new module path before the
-/// closing `];`. Returns the modified content or an error if the pattern
-/// is not found.
+/// Locates the `modules` list assignment (tolerating any whitespace around `=`,
+/// including newlines, e.g. `modules=[`, `modules = [`, `modules\n=\n[`) and
+/// adds the new module path before the closing `]`.  Returns an error when no
+/// `modules` assignment is found or its value is not a list literal (e.g.
+/// `modules = myVar`).
 pub fn inject_module_import(content: &str, module_path: &str) -> Result<String, String> {
+    use once_cell::sync::Lazy;
+    use regex::Regex;
+
     // Already imported — return unchanged
     if content.contains(module_path) {
         return Ok(content.to_string());
     }
 
-    let Some(modules_kw) = content.find("modules = [") else {
-        return Err("Could not find 'modules = [' block".to_string());
+    // Match `modules` with any whitespace (including newlines) around `=`.
+    static MODULES_RE: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"\bmodules\s*=\s*").expect("valid regex"));
+
+    let Some(m) = MODULES_RE.find(content) else {
+        return Err("Could not find 'modules' assignment".to_string());
     };
 
-    // Find the opening `[` of `modules = [`
-    let open_bracket = modules_kw + "modules = ".len();
+    // The value must be a list literal; a bare identifier (e.g. `modules = myVar`)
+    // cannot be modified in place.
+    let open_bracket = m.end();
+    if !content[open_bracket..].starts_with('[') {
+        return Err(
+            "modules value is not a list literal — cannot inject import automatically"
+                .to_string(),
+        );
+    }
 
     // Walk forward tracking bracket depth to find the matching `]`.
     // This correctly skips nested lists like `extra-experimental-features = [ ... ];`
@@ -641,7 +657,7 @@ pub fn inject_module_import(content: &str, module_path: &str) -> Result<String, 
         }
     }
 
-    let close = close_bracket.ok_or("Unmatched 'modules = [' — no closing ']' found")?;
+    let close = close_bracket.ok_or("Unmatched modules list — no closing ']' found")?;
 
     // Determine indentation by looking for a top-level entry in the modules list.
     // Scan lines between the opening `[` and closing `]` for a recognisable entry.
@@ -901,6 +917,34 @@ mod tests {
         let modules_start = result.find("modules = [").unwrap();
         let import_pos = result.find("../modules/darwin/system-defaults.nix").unwrap();
         assert!(import_pos > modules_start, "Import should be after modules = [");
+    }
+
+    #[test]
+    fn test_inject_module_compact_syntax() {
+        // `modules=[` with no spaces around `=`
+        let flake = "darwinConfigurations.test = nix-darwin.lib.darwinSystem { modules=[\n  ./fonts.nix\n]; };";
+        let result = inject_module_import(flake, "./system-defaults.nix").unwrap();
+        assert!(result.contains("./system-defaults.nix"));
+        assert!(result.contains("./fonts.nix"));
+    }
+
+    #[test]
+    fn test_inject_module_newlines_around_equals() {
+        // `modules \n= \n[` — newlines between the keyword, `=`, and `[`
+        let flake = "darwinConfigurations.test = nix-darwin.lib.darwinSystem {\n  modules\n  =\n  [\n    ./fonts.nix\n  ];\n};";
+        let result = inject_module_import(flake, "./system-defaults.nix").unwrap();
+        assert!(result.contains("./system-defaults.nix"));
+    }
+
+    #[test]
+    fn test_inject_module_variable_value_errors() {
+        // `modules = someVariable` — cannot inject into a non-list value
+        let flake = "darwinConfigurations.test = nix-darwin.lib.darwinSystem { modules = myModules; };";
+        let err = inject_module_import(flake, "./system-defaults.nix").unwrap_err();
+        assert!(
+            err.contains("not a list literal"),
+            "Expected 'not a list literal' error, got: {err}"
+        );
     }
 
     #[test]
