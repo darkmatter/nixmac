@@ -90,6 +90,16 @@ export function MergeSection() {
               placeholder="Squash commit message..."
               value={commitMsg}
             />
+            {summary?.commitMessage && !commitMsg.includes(summary.commitMessage) && (
+              <button
+                aria-label="Use suggested commit message"
+                type="button"
+                className="block w-full text-left text-muted-foreground text-xs hover:text-foreground break-words whitespace-normal"
+                onClick={() => setCommitMsg(summary.commitMessage)}
+              >
+                Use suggested: <span>"{summary.commitMessage}"</span>
+              </button>
+            )}
           </div>
         )}
 
