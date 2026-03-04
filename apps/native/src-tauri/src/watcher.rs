@@ -111,3 +111,12 @@ pub fn stop_watching() {
 pub fn is_watching() -> bool {
     WATCHER_ACTIVE.load(Ordering::SeqCst)
 }
+
+/// Updates the watcher's internal status cache so it won't fire a spurious
+/// change event on the next poll. Call this after programmatically changing
+/// git state (e.g. creating a branch + committing from the scanner).
+pub fn sync_last_status(status: &GitStatus) {
+    if let Ok(json) = serde_json::to_string(status) {
+        *LAST_STATUS_JSON.lock().unwrap() = Some(json);
+    }
+}

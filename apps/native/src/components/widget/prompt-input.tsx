@@ -9,6 +9,7 @@ import {
   InputGroupTextarea,
 } from "@/components/ui/input-group";
 import { PromptHistoryBadge } from "@/components/widget/prompt-history-badge";
+import { SystemDefaultsCTA } from "@/components/widget/system-defaults-cta";
 import { useEvolve } from "@/hooks/use-evolve";
 import { useWidgetStore } from "@/stores/widget-store";
 import { ArrowUpIcon } from "lucide-react";
@@ -99,7 +100,7 @@ export function PromptInput() {
         </InputGroupAddon>
       </InputGroup>
 
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         {suggestions.map((suggestion) => (
           <BadgeButton
             key={suggestion}
@@ -108,7 +109,10 @@ export function PromptInput() {
             {suggestion}
           </BadgeButton>
         ))}
-        <PromptHistoryBadge />
+        <SystemDefaultsCTA />
+        <div className="ml-auto">
+          <PromptHistoryBadge />
+        </div>
       </div>
     </div>
   );

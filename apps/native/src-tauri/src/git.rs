@@ -368,10 +368,12 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     })
 }
 
-/// Caches status before returning it,
+/// Caches status before returning it and syncs the watcher so it won't
+/// fire a spurious change event on the next poll.
 pub fn status_and_cache<R: tauri::Runtime>(dir: &str, app: &AppHandle<R>) -> Result<GitStatus> {
     let status = status(dir)?;
     cache_status(app, &status)?;
+    crate::watcher::sync_last_status(&status);
     Ok(status)
 }
 

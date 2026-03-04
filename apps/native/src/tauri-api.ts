@@ -167,6 +167,23 @@ export interface PermissionsState {
 }
 
 // =============================================================================
+// System Defaults Scanner Types
+// =============================================================================
+
+export interface SystemDefault {
+  nixKey: string;
+  label: string;
+  category: string;
+  currentValue: string;
+  defaultValue: string;
+}
+
+export interface SystemDefaultsScan {
+  defaults: SystemDefault[];
+  totalScanned: number;
+}
+
+// =============================================================================
 // Evolve Streaming Events
 // =============================================================================
 
@@ -303,6 +320,16 @@ export const darwinAPI = {
     start: () => invoke("watcher_start"),
     stop: () => invoke("watcher_stop"),
     isActive: () => invoke<boolean>("watcher_is_active"),
+  },
+  scanner: {
+    scanDefaults: () => invoke<SystemDefaultsScan>("scan_system_defaults"),
+    applyDefaults: (defaults: SystemDefault[]) =>
+      invoke<{
+        ok: boolean;
+        count: number;
+        summary: SummaryResponse;
+        gitStatus: GitStatus;
+      }>("apply_system_defaults", { defaults }),
   },
   permissions: {
     checkAll: () => invoke<PermissionsState>("permissions_check_all"),
