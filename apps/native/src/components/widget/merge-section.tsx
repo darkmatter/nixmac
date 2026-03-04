@@ -92,12 +92,12 @@ export function MergeSection() {
             />
             {summary?.commitMessage && !commitMsg.includes(summary.commitMessage) && (
               <button
+                aria-label="Use suggested commit message"
                 type="button"
                 className="block w-full text-left text-muted-foreground text-xs hover:text-foreground break-words whitespace-normal"
                 onClick={() => setCommitMsg(summary.commitMessage)}
               >
-                Use suggested: "
-                <span className="break-words whitespace-normal">{summary.commitMessage}</span>"
+                Use suggested: <span>"{summary.commitMessage}"</span>
               </button>
             )}
           </div>
