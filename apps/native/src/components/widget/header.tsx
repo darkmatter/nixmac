@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Settings, CircleAlert } from "lucide-react";
+import { Settings, MessageSquarePlus } from "lucide-react";
 import { APP_NAME } from "../../../shared/constants";
 import { useWidgetStore } from "@/stores/widget-store";
 
@@ -38,7 +38,7 @@ export function Header() {
           aria-label="Give feedback"
           title="Give feedback"
         >
-          <CircleAlert
+          <MessageSquarePlus
             className={`h-4 w-4 transition-all duration-500 ${isPulsing ? "text-red-400 scale-125" : ""}`}
           />
         </Button>
