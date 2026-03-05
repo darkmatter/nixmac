@@ -330,14 +330,24 @@ pub fn head_is_built(dir: &str) -> bool {
     built_sha == head_sha
 }
 
-/// Checks if the built commit is on the current branch (is an ancestor of HEAD).
-fn built_commit_on_branch(dir: &str, built_sha: &str) -> bool {
-    git_command()
-        .args(["merge-base", "--is-ancestor", built_sha, "HEAD"])
+/// Returns true if `built_sha` appears in the commits between main and HEAD.
+/// Walks HEAD backwards and stops at main's tip, so only branch-exclusive
+/// commits are considered. A commit shared with main does not count.
+fn built_sha_on_branch_since_main(dir: &str, built_sha: &str) -> bool {
+    let Some(main_ref) = get_default_branch(dir) else {
+        return false;
+    };
+    let range = format!("{}..HEAD", main_ref);
+    let Ok(output) = git_command()
+        .args(["log", &range, "--format=%H"])
         .current_dir(dir)
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false)
+        .output()
+    else {
+        return false;
+    };
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .any(|hash| hash.trim() == built_sha)
 }
 
 /// Returns the current branch name.
@@ -381,11 +391,12 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     // Check if HEAD has the nixmac-built tag
     let head_is_built = head_is_built(dir);
 
-    // Get the last built commit SHA and check if it's on current branch
+    // Get the last built commit SHA and check if it appears in the commits
+    // exclusive to this branch (between main and HEAD).
     let last_built_commit_sha = get_last_built_commit_sha(dir);
     let branch_has_built_commit = last_built_commit_sha
         .as_ref()
-        .map(|sha| built_commit_on_branch(dir, sha))
+        .map(|sha| built_sha_on_branch_since_main(dir, sha))
         .unwrap_or(false);
 
     // Get commit messages since main (only if not on main branch)

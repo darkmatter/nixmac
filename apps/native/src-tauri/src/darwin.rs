@@ -367,6 +367,15 @@ fn run_darwin_rebuild(
         None
     };
 
+    // Tag HEAD as built on success. For the rollback-rebuild flow this is the
+    // final tag (main is clean). For the apply flow, finalize_apply will
+    // overwrite nixmac-last-build with the post-commit SHA.
+    if output.status.success() {
+        if let Err(e) = crate::git::tag_as_built(config_dir) {
+            error!("[darwin] Failed to tag HEAD as built: {}", e);
+        }
+    }
+
     app.emit(
         "darwin:apply:end",
         serde_json::json!({
