@@ -65,7 +65,6 @@
     "@tanstack/react-form": "^1.28.0",
     "@tauri-apps/api": "2.10.1",
     "@tauri-apps/plugin-http": "^2.5.7",
-    "@tauri-apps/plugin-log": "2.8.0",
     "@tauri-apps/plugin-notification": "^2.3.3",
     "@tauri-apps/plugin-opener": "^2.5.2",
     "@tauri-apps/plugin-positioner": "^2.3.1",

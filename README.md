@@ -52,7 +52,6 @@ devenv shell
 cd apps/native && tauri build --bundles app
 ```
 
-
 ### Install and Use nix-darwin
 
 By default, nixmac expects to find a flake-enabled nix configuration at `~/.darwin`. Here is how you can create a minimalist one if you don't already have such a thing *assuming you are using Determinate* since non-Determinate steps will be slightly different:
@@ -101,6 +100,18 @@ The frontend will do a permissions check and block you if you aren't running wit
 
 ```sh
 export VITE_NIXMAC_SKIP_PERMISSIONS=true
+```
+
+### Logs
+
+`darwin-rebuild` logs are written to `~/Library/Logs/nixmac/*`.
+
+Application logs go to stdout/stderr by default. If you want to log them to a file, set the `NIXMAC_LOGFILE` environment variable. Pro tip: If you set this to a relative path on the command line in which you execute `devenv up` it will resolve under `apps/native/src-tauri`.
+
+To get a merged tail of both the app logs and darwin-rebuild logs, run this in a separate terminal:
+
+```sh
+tail -F ${NIXMAC_LOGFILE} ~/Library/Logs/nixmac/*
 ```
 
 ## AI Setup
