@@ -607,6 +607,22 @@ pub fn checkout_main_branch(dir: &str) -> Result<()> {
     checkout_branch(dir, branch)
 }
 
+/// Deletes a local branch by name. Must not be the currently checked-out branch.
+pub fn delete_branch(dir: &str, branch: &str) -> Result<()> {
+    let output = git_command()
+        .args(["branch", "-D", branch])
+        .current_dir(dir)
+        .output()?;
+    if !output.status.success() {
+        anyhow::bail!(
+            "Failed to delete branch {}: {}",
+            branch,
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
 /// Adds build tags to HEAD:
 /// - `nixmac-built-<timestamp>` - permanent tag for build history
 /// - `nixmac-last-build` - moving tag that always points to latest build

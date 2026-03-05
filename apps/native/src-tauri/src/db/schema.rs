@@ -70,7 +70,7 @@ fn create_tables(conn: &Connection) -> Result<()> {
         CREATE TABLE IF NOT EXISTS prompts (
             id INTEGER PRIMARY KEY,
             text TEXT NOT NULL,
-            commit_id INTEGER REFERENCES commits(id),
+            commit_id INTEGER REFERENCES commits(id) ON DELETE SET NULL,
             created_at INTEGER NOT NULL
         );
 
