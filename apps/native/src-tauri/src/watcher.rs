@@ -24,7 +24,7 @@ static WATCHER_THREAD: Mutex<Option<std::thread::JoinHandle<()>>> = Mutex::new(N
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WatcherEvent {
-    pub status: GitStatus,
+    pub git_status: GitStatus,
     /// The relevant summary for this state, or `None` if not available.
     pub summary: Option<SummaryResponse>,
 }
@@ -85,7 +85,7 @@ where
                         let _ = app_handle.emit(
                             "git:status-changed",
                             WatcherEvent {
-                                status: status.clone(),
+                                git_status: status.clone(),
                                 summary,
                             },
                         );
