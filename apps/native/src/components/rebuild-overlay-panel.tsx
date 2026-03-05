@@ -465,7 +465,7 @@ export function RebuildOverlayPanel() {
           {success === false && (
             <Button
               className="bg-rose-300/10 text-rose-300 hover:bg-rose-300/20"
-              onClick={handleRollback}
+              onClick={() => handleRollback()}
               size="sm"
               // NOT IMPLEMENTED
               disabled={true}
