@@ -445,6 +445,28 @@ pub fn stage_all(dir: &str) -> Result<()> {
     Ok(())
 }
 
+/// Registers all untracked files as intent-to-add in the git index.
+/// This makes new files visible to `git ls-files` (and therefore Nix flakes)
+/// without fully staging them. No-op if there are no untracked files.
+pub fn intent_add_untracked(dir: &str) -> Result<()> {
+    let output = git_command()
+        .args(["ls-files", "--others", "--exclude-standard"])
+        .current_dir(dir)
+        .output()?;
+
+    let untracked = String::from_utf8_lossy(&output.stdout);
+    let files: Vec<&str> = untracked.lines().filter(|l| !l.is_empty()).collect();
+
+    if files.is_empty() {
+        return Ok(());
+    }
+
+    let mut args = vec!["add", "-N", "--"];
+    args.extend(files);
+    git_command().args(&args).current_dir(dir).output()?;
+    Ok(())
+}
+
 /// Unstages all staged changes (git reset HEAD).
 /// This keeps the working directory changes but removes them from the index.
 pub fn unstage_all(dir: &str) -> Result<()> {
