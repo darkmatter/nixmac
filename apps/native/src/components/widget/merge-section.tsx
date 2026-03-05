@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useWidgetStore } from "@/stores/widget-store";
 import { GitMerge, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export function MergeSection() {
   const [squash, setSquash] = useState(true);
@@ -15,14 +15,6 @@ export function MergeSection() {
   const isProcessing = useWidgetStore((s) => s.isProcessing);
   const processingAction = useWidgetStore((s) => s.processingAction);
   const gitStatus = useWidgetStore((s) => s.gitStatus);
-  const summary = useWidgetStore((s) => s.summary);
-
-  // Pre-fill commit message with AI suggestion when available
-  useEffect(() => {
-    if (summary.commitMessage && !commitMsg) {
-      setCommitMsg(summary.commitMessage);
-    }
-  }, [summary.commitMessage, commitMsg, setCommitMsg]);
 
   const { handleMerge } = useGitOperations();
 
