@@ -134,6 +134,11 @@ fn run_darwin_rebuild(
     // =========================================================================
     // Step 1: build as user (no sudo, avoids Git ownership issues)
     // =========================================================================
+    // Ensure untracked files are visible to Nix flake evaluation
+    if let Err(e) = crate::git::intent_add_untracked(config_dir) {
+        info!("[darwin] intent_add_untracked warning: {}", e);
+    }
+
     log_and_emit!("Starting darwin-rebuild build (as user)...");
 
     let mut build_cmd = if use_fallback {
