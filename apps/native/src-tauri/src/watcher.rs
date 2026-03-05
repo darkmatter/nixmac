@@ -108,24 +108,3 @@ where
     // Step 4: Store the new thread's handle so restart can join() it
     *WATCHER_THREAD.lock().unwrap() = Some(new_thread);
 }
-
-/// Stops the config watcher if running.
-pub fn stop_watching() {
-    WATCHER_ACTIVE.store(false, Ordering::SeqCst);
-    let mut watch_dir = WATCH_DIR.lock().unwrap();
-    *watch_dir = None;
-}
-
-/// Returns whether the watcher is currently active.
-pub fn is_watching() -> bool {
-    WATCHER_ACTIVE.load(Ordering::SeqCst)
-}
-
-/// Updates the watcher's internal status cache so it won't fire a spurious
-/// change event on the next poll. Call this after programmatically changing
-/// git state (e.g. creating a branch + committing from the scanner).
-pub fn sync_last_status(status: &GitStatus) {
-    if let Ok(json) = serde_json::to_string(status) {
-        *LAST_STATUS_JSON.lock().unwrap() = Some(json);
-    }
-}

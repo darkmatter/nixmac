@@ -322,11 +322,6 @@ export const darwinAPI = {
     getState: () => invoke<PreviewIndicatorState>("preview_indicator_get_state"),
   },
 
-  watcher: {
-    start: () => invoke("watcher_start"),
-    stop: () => invoke("watcher_stop"),
-    isActive: () => invoke<boolean>("watcher_is_active"),
-  },
   scanner: {
     scanDefaults: () => invoke<SystemDefaultsScan>("scan_system_defaults"),
     applyDefaults: (defaults: SystemDefault[]) =>
