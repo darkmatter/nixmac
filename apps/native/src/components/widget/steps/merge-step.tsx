@@ -2,11 +2,11 @@
 
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/widget/confirmation-dialog";
-import { KeepBranchCheckbox } from "@/components/widget/keep-branch-checkbox";
 import { MergeSection } from "@/components/widget/merge-section";
 import { PromptInputSection } from "@/components/widget/prompt-input-section";
 import { SummaryOrDiff } from "@/components/widget/summary-or-diff";
 import { useRollback } from "@/hooks/use-rollback";
+import { useWidgetStore } from "@/stores/widget-store";
 import { RefreshCw, Undo2 } from "lucide-react";
 import { useState } from "react";
 
@@ -15,9 +15,9 @@ import { useState } from "react";
  */
 export function MergeStep() {
   const { handleRollback } = useRollback();
+  const confirmRollback = useWidgetStore((s) => s.confirmRollback);
 
   const [showRollbackDialog, setShowRollbackDialog] = useState(false);
-  const [keepBranch, setKeepBranch] = useState(false);
   const [action, setAction] = useState<"merge" | "amend">("merge");
 
   return (
@@ -56,11 +56,11 @@ export function MergeStep() {
         open={showRollbackDialog}
         onOpenChange={setShowRollbackDialog}
         message="Discard changes and rebuild to previous commit?"
-        onConfirm={() => handleRollback(keepBranch)}
+        onConfirm={() => handleRollback()}
         color="amber"
-      >
-        <KeepBranchCheckbox checked={keepBranch} onCheckedChange={setKeepBranch} />
-      </ConfirmationDialog>
+        onDontAskAgain={() => useWidgetStore.getState().persistConfirmPref("confirmRollback", false)}
+        showDontAskAgain
+      />
     </>
   );
 }

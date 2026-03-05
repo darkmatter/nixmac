@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/widget/confirmation-dialog";
-import { KeepBranchCheckbox } from "@/components/widget/keep-branch-checkbox";
 import { PromptInputSection } from "@/components/widget/prompt-input-section";
 import { SummaryOrDiff } from "@/components/widget/summary-or-diff";
 import { useApply } from "@/hooks/use-apply";
@@ -16,13 +15,14 @@ import { useState } from "react";
  */
 export function EvolveStep() {
   const gitStatus = useWidgetStore((s) => s.gitStatus);
+  const confirmBuild = useWidgetStore((s) => s.confirmBuild);
+  const confirmClear = useWidgetStore((s) => s.confirmClear);
 
   const { handleApply } = useApply();
   const { handleRollback } = useRollback();
 
   const [showRebuildDialog, setShowRebuildDialog] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
-  const [keepBranch, setKeepBranch] = useState(false);
 
   const cleanOnMain = gitStatus?.cleanHead && gitStatus?.isMainBranch;
   const isEvolving = !cleanOnMain
@@ -87,18 +87,20 @@ export function EvolveStep() {
         onOpenChange={setShowRebuildDialog}
         message="Rebuild with these configuration changes?"
         onConfirm={handleApply}
+        onDontAskAgain={() => useWidgetStore.getState().persistConfirmPref("confirmBuild", false)}
         color="teal"
+        showDontAskAgain
       />
 
       <ConfirmationDialog
         open={showClearDialog}
         onOpenChange={setShowClearDialog}
         message={needsRebuild ? "Discard changes and rebuild to previous state?" : "Discard all current changes?"}
-        onConfirm={() => handleRollback(keepBranch)}
+        onConfirm={() => handleRollback()}
         color="amber"
-      >
-        <KeepBranchCheckbox checked={keepBranch} onCheckedChange={setKeepBranch} />
-      </ConfirmationDialog>
+        onDontAskAgain={() => useWidgetStore.getState().persistConfirmPref("confirmClear", false)}
+        showDontAskAgain
+      />
     </>
   );
 }

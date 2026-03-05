@@ -15,7 +15,7 @@ export function useRollback() {
   const { triggerRebuild } = useRebuildStream();
 
   const handleRollback = useCallback(
-    async (keepBranch = false) => {
+    async (keepBranch = true) => {
       const store = useWidgetStore.getState();
       const evolveBranchHadBuiltCommit = store.gitStatus?.branchHasBuiltCommit;
 

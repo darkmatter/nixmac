@@ -25,6 +25,9 @@ export interface DarwinPrefs {
   maxBuildAttempts?: number;
   ollamaApiBaseUrl?: string;
   sendDiagnostics?: boolean;
+  confirmBuild?: boolean;
+  confirmClear?: boolean;
+  confirmRollback?: boolean;
 }
 
 export interface GitFileStatus {
