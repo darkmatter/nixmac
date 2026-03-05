@@ -9,7 +9,7 @@
 
 use crate::{
     darwin, db, default_config, evolution, feedback, find_summary, git, nix, peek, permissions,
-    scanner, store, summarize, types, watcher,
+    scanner, store, summarize, types,
 };
 use std::path::Path;
 use std::process::Command;
@@ -812,32 +812,6 @@ pub async fn preview_indicator_get_state() -> Result<peek::PreviewIndicatorState
 }
 
 // =============================================================================
-// Config Watcher Commands
-// =============================================================================
-
-/// Starts watching the config directory for changes.
-/// Emits `config:changed` events when files are modified.
-#[tauri::command]
-pub async fn watcher_start(app: AppHandle) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("watcher_start", e))?;
-    watcher::start_watching(app, dir, 2500);
-    Ok(serde_json::json!({"ok": true}))
-}
-
-/// Stops watching the config directory.
-#[tauri::command]
-pub async fn watcher_stop() -> Result<serde_json::Value, String> {
-    watcher::stop_watching();
-    Ok(serde_json::json!({"ok": true}))
-}
-
-/// Returns whether the watcher is currently active.
-#[tauri::command]
-pub async fn watcher_is_active() -> Result<bool, String> {
-    Ok(watcher::is_watching())
-}
-
-// =============================================================================
 // Permissions Commands
 // =============================================================================
 
@@ -893,180 +867,7 @@ pub async fn apply_system_defaults(
     app: AppHandle,
     defaults: Vec<scanner::SystemDefault>,
 ) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app)
-        .map_err(|e| capture_err("apply_system_defaults", e))?;
-
-    // 1. Generate nix file content
-    log::info!(
-        "[apply_system_defaults] Generating nix content for {} defaults",
-        defaults.len()
-    );
-    let nix_content = scanner::generate_system_defaults_nix(&defaults);
-
-    // 2. Ensure modules/darwin directory exists
-    let modules_dir = std::path::Path::new(&dir).join("modules").join("darwin");
-    std::fs::create_dir_all(&modules_dir).map_err(|e| {
-        log::error!(
-            "[apply_system_defaults] Failed to create modules dir: {}",
-            e
-        );
-        capture_err("apply_system_defaults", e)
-    })?;
-
-    // 3. Write system-defaults.nix
-    let nix_path = modules_dir.join("system-defaults.nix");
-    std::fs::write(&nix_path, &nix_content).map_err(|e| {
-        log::error!("[apply_system_defaults] Failed to write nix file: {}", e);
-        capture_err("apply_system_defaults", e)
-    })?;
-    log::info!(
-        "[apply_system_defaults] Wrote {} defaults to {:?}",
-        defaults.len(),
-        nix_path
-    );
-
-    // 4. Inject import into the file that contains `modules = [`.
-    //    - nix-darwin-determinate template: `flake.nix` with `./modules/darwin/...`
-    //    - flake-parts template: `flake-modules/darwin.nix` with `../modules/darwin/...`
-    let flake_path = std::path::Path::new(&dir).join("flake.nix");
-    let flake_content = std::fs::read_to_string(&flake_path).map_err(|e| {
-        log::error!("[apply_system_defaults] Failed to read flake.nix: {}", e);
-        capture_err("apply_system_defaults", e)
-    })?;
-
-    let (target_path, module_ref) = if flake_content.contains("modules = [") {
-        // Direct template — modules list is in flake.nix
-        log::info!("[apply_system_defaults] Found modules list in flake.nix");
-        (
-            flake_path,
-            "./modules/darwin/system-defaults.nix".to_string(),
-        )
-    } else {
-        // Flake-parts template — modules list is in flake-modules/darwin.nix
-        let darwin_mod = std::path::Path::new(&dir)
-            .join("flake-modules")
-            .join("darwin.nix");
-        if darwin_mod.exists() {
-            log::info!("[apply_system_defaults] Found modules list in flake-modules/darwin.nix");
-            (
-                darwin_mod,
-                "../modules/darwin/system-defaults.nix".to_string(),
-            )
-        } else {
-            let msg = "Could not find 'modules = [' in flake.nix or flake-modules/darwin.nix";
-            log::error!("[apply_system_defaults] {}", msg);
-            return Err(msg.to_string());
-        }
-    };
-
-    let target_content = std::fs::read_to_string(&target_path).map_err(|e| {
-        log::error!(
-            "[apply_system_defaults] Failed to read {:?}: {}",
-            target_path,
-            e
-        );
-        capture_err("apply_system_defaults", e)
-    })?;
-
-    let updated_content =
-        scanner::inject_module_import(&target_content, &module_ref).map_err(|e| {
-            log::error!(
-                "[apply_system_defaults] Failed to inject module import: {}",
-                e
-            );
-            e
-        })?;
-
-    std::fs::write(&target_path, &updated_content).map_err(|e| {
-        log::error!(
-            "[apply_system_defaults] Failed to write {:?}: {}",
-            target_path,
-            e
-        );
-        capture_err("apply_system_defaults", e)
-    })?;
-    log::info!(
-        "[apply_system_defaults] Injected module import into {:?}",
-        target_path
-    );
-
-    // 5. Create git branch and commit
-    let branch = git::checkout_new_branch(&dir, "nixmac-scan/system-defaults").map_err(|e| {
-        log::error!("[apply_system_defaults] Failed to create branch: {}", e);
-        capture_err("apply_system_defaults", e)
-    })?;
-    log::info!("[apply_system_defaults] Created branch: {}", branch);
-
-    // Stage and commit — check if there's actually something to commit
-    let status_output = std::process::Command::new("git")
-        .args(["status", "--porcelain"])
-        .current_dir(&dir)
-        .env("PATH", crate::nix::get_nix_path())
-        .output()
-        .map_err(|e| {
-            log::error!(
-                "[apply_system_defaults] git status --porcelain failed: {}",
-                e
-            );
-            capture_err("apply_system_defaults", e)
-        })?;
-
-    let porcelain = String::from_utf8_lossy(&status_output.stdout);
-    let has_changes = !porcelain.trim().is_empty();
-
-    if has_changes {
-        git::commit_all(&dir, "feat: add detected macOS system defaults").map_err(|e| {
-            log::error!("[apply_system_defaults] Failed to commit: {}", e);
-            capture_err("apply_system_defaults", e)
-        })?;
-        log::info!("[apply_system_defaults] Committed system defaults");
-    } else {
-        log::warn!("[apply_system_defaults] No new changes to commit (porcelain was empty)");
-    }
-
-    // 6. Build and cache a summary so the frontend "What's changed" view
-    //    shows meaningful descriptions instead of the raw file list.
-    let summary = scanner::build_summary(&defaults);
-    let summary_response = types::SummaryResponse {
-        items: summary
-            .iter()
-            .map(|(title, desc)| types::SummaryItem {
-                title: title.clone(),
-                description: desc.clone(),
-            })
-            .collect(),
-        instructions: "Review the changes, then hit Build to apply them to your system."
-            .to_string(),
-        commit_message: "feat: add detected macOS system defaults".to_string(),
-    };
-
-    if let Err(e) = store::set_cached_summary(&app, &summary_response) {
-        log::error!("[apply_system_defaults] Failed to cache summary: {}", e);
-    }
-    log::info!(
-        "[apply_system_defaults] Cached summary with {} items",
-        summary_response.items.len()
-    );
-
-    // Cache git status AND sync the watcher so it won't fire a spurious
-    // change event that would re-mark the summary as stale.
-    let git_status = git::status_and_cache(&dir, &app).map_err(|e| {
-        log::error!("[apply_system_defaults] Failed to cache git status: {}", e);
-        capture_err("apply_system_defaults", e)
-    })?;
-    log::info!("[apply_system_defaults] Cached git status and synced watcher");
-
-    log::info!(
-        "[apply_system_defaults] Complete — {} defaults applied",
-        defaults.len()
-    );
-
-    // Return summary + git status directly so the frontend can set them
-    // atomically, avoiding race conditions with the watcher.
-    Ok(serde_json::json!({
-        "ok": true,
-        "count": defaults.len(),
-        "summary": summary_response,
-        "gitStatus": git_status,
-    }))
+    crate::apply_system_defaults::apply_system_defaults(&app, defaults)
+        .await
+        .map_err(|e| capture_err("apply_system_defaults", e))
 }

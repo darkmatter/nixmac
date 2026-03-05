@@ -7,6 +7,7 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod apply_system_defaults;
 mod commands;
 mod darwin;
 mod db;
@@ -223,10 +224,6 @@ fn main() {
             commands::preview_indicator_update,
             commands::preview_indicator_get_state,
             commands::set_has_uncommitted_changes,
-            // Config watcher
-            commands::watcher_start,
-            commands::watcher_stop,
-            commands::watcher_is_active,
             // Permissions
             commands::permissions_check_all,
             commands::permissions_request,
