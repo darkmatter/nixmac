@@ -58,19 +58,21 @@ export interface SummaryItem {
 /**
  * AI-generated summary of changes.
  */
-export interface ChangesSummary {
+export interface SummaryResponse {
   items: SummaryItem[];
   instructions: string;
   commitMessage: string;
   diff: string;
 }
 
-export type SummaryResponse = ChangesSummary;
-
-export interface WatcherEvent {
-  status: GitStatus;
-  summary: SummaryResponse | null;
+export interface GitStatusWithSummary<S = SummaryResponse> {
+  gitStatus: GitStatus;
+  summary: S;
 }
+
+export type EvolutionResult = GitStatusWithSummary;
+export type WatcherEvent = GitStatusWithSummary<SummaryResponse | null>;
+export type RollbackResult = GitStatusWithSummary<SummaryResponse | null>;
 
 export interface PreviewIndicatorState {
   visible: boolean;
@@ -211,16 +213,6 @@ export type EvolveEventType =
   | "info"
   | "summarizing";
 
-/**
- * Result of a complete evolution operation.
- * Returns the summary and final git status for the frontend to display.
- */
-export interface EvolutionResult {
-  /** AI-generated summary */
-  summary: SummaryResponse;
-  /** Git status after evolution completes */
-  gitStatus: GitStatus;
-}
 
 export interface EvolveEvent {
   /** Raw log output (detailed technical information) */
@@ -275,6 +267,8 @@ export const darwinAPI = {
       invoke("darwin_apply_stream_start", { hostOverride }),
     applyStreamCancel: () => invoke("darwin_apply_stream_cancel"),
     finalizeApply: () => invoke<EvolutionResult>("finalize_apply"),
+    rollbackErase: (keepBranch?: boolean) =>
+      invoke<RollbackResult>("rollback_erase", { keepBranch }),
   },
   nix: {
     check: () =>
