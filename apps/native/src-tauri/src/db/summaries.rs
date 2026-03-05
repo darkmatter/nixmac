@@ -8,10 +8,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::types::SummaryResponse;
 
 /// Insert a summary into the database.
-/// Returns the inserted summary's ID.
-///
-/// Note: For the main evolution workflow, use `operations::save_evolution_complete`
-/// which handles all related inserts in a single transaction.
+/// Evolve now uses operation and not this. May remove this dead code at some point if unused.
 #[allow(dead_code)]
 pub fn insert_summary(
     db_path: &Path,
@@ -35,8 +32,6 @@ pub fn insert_summary(
 }
 
 /// Get summary for a commit by its hash.
-/// Returns None if no summary exists for this commit.
-#[allow(dead_code)]
 pub fn get_summary_by_commit_hash(
     db_path: &Path,
     commit_hash: &str,

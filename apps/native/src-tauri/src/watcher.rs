@@ -3,8 +3,6 @@
 //! Polls git status at a configurable interval and emits `WatcherEvent` to the frontend.
 //! Change detection compares current git status against the persisted store cache,
 //! which is kept in sync by both this watcher and the evolution/summarize handlers.
-//! Only one watcher thread runs at a time. When `start_watching` is called:
-//! Restarting gives us an immediate poll when window is focused.
 
 use crate::types::{GitStatus, SummaryResponse};
 use crate::{find_summary, git, store};

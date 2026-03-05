@@ -101,7 +101,7 @@ async fn record_uncommitted_built_changes(
         &commit_info.hash[..8]
     );
 
-    // Register in DB (prompt: None — no user description for manual changes).
+    // Save data as if this were a normal evolution commit, ensuring we end on merge step with summary and other change metadata.
     let db_path = db::get_db_path(app).context("Failed to get database path")?;
     let summary_json =
         serde_json::to_string(&change_summary).context("Failed to serialize summary")?;

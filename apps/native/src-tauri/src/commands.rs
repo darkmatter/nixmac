@@ -452,9 +452,7 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<serde_json::Va
     Ok(serde_json::json!({"ok": true}))
 }
 
-/// Finalize a successful darwin-rebuild.
-/// Tags HEAD as built; if uncommitted changes were present, also branches (when
-/// on main), commits, and registers them in the DB. Safe to call unconditionally.
+/// Finalize a successful darwin-rebuild, commits and records manual changes when detected.
 #[tauri::command]
 pub async fn finalize_apply(app: AppHandle) -> Result<serde_json::Value, String> {
     let result = crate::finalize_apply::finalize_apply(&app)
@@ -541,9 +539,7 @@ pub async fn summary_get_cached(app: AppHandle) -> Result<Option<types::SummaryR
     store::get_cached_summary(&app).map_err(|e| e.to_string())
 }
 
-/// Finds the relevant summary for the current git state without generating a new one.
-/// Looks up by commit hash (clean head) or validates the cached summary's diff (uncommitted changes).
-/// Also updates the `summaryAvailable` store flag based on the result.
+/// Finds the relevant summary for the current git state, flags availability.
 #[tauri::command]
 pub async fn find_summary(app: AppHandle) -> Result<Option<types::SummaryResponse>, String> {
     let result = find_summary::find_summary(&app).map_err(|e| e.to_string())?;
