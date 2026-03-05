@@ -2,6 +2,7 @@
 
 import { ActionTiles, type ActionTile } from "@/components/widget/action-tiles";
 import { ConfirmationDialog } from "@/components/widget/confirmation-dialog";
+import { KeepBranchCheckbox } from "@/components/widget/keep-branch-checkbox";
 import { PromptInputSection } from "@/components/widget/prompt-input-section";
 import { SummaryOrDiff } from "@/components/widget/summary-or-diff";
 import { useApply } from "@/hooks/use-apply";
@@ -21,6 +22,7 @@ export function EvolveStep() {
 
   const [showRebuildDialog, setShowRebuildDialog] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
+  const [keepBranch, setKeepBranch] = useState(false);
 
   const cleanOnMain = gitStatus?.cleanHead && gitStatus?.isMainBranch;
   const isEvolving = !cleanOnMain
@@ -83,9 +85,11 @@ export function EvolveStep() {
         open={showClearDialog}
         onOpenChange={setShowClearDialog}
         message={needsRebuild ? "Discard changes and rebuild to previous state?" : "Discard all current changes?"}
-        onConfirm={handleRollback}
+        onConfirm={() => handleRollback(keepBranch)}
         color="amber"
-      />
+      >
+        <KeepBranchCheckbox checked={keepBranch} onCheckedChange={setKeepBranch} />
+      </ConfirmationDialog>
     </>
   );
 }
