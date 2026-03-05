@@ -25,6 +25,7 @@ mod panic_handler;
 mod peek;
 mod permissions;
 mod providers;
+mod rollback;
 mod scanner;
 mod secret_scanner;
 mod statistics;
@@ -304,6 +305,7 @@ fn run_gui_mode(
             commands::darwin_apply_stream_start,
             commands::darwin_apply_stream_cancel,
             commands::finalize_apply,
+            commands::rollback_erase,
             commands::nix_check,
             commands::nix_install_start,
             commands::darwin_rebuild_prefetch,

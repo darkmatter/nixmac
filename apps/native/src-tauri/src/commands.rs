@@ -9,7 +9,7 @@
 
 use crate::{
     darwin, db, default_config, evolution, feedback, find_summary, git, nix, peek, permissions,
-    scanner, store, summarize, types,
+    rollback, scanner, store, summarize, types,
 };
 use std::path::Path;
 use std::process::Command;
@@ -870,4 +870,18 @@ pub async fn apply_system_defaults(
     crate::apply_system_defaults::apply_system_defaults(&app, defaults)
         .await
         .map_err(|e| capture_err("apply_system_defaults", e))
+}
+
+// =============================================================================
+// Rollback Commands
+// =============================================================================
+
+/// Restore uncommitted changes, return to main, and optionally purge branch DB records.
+#[tauri::command]
+pub async fn rollback_erase(
+    app: AppHandle,
+    keep_branch: Option<bool>,
+) -> Result<rollback::RollbackResult, String> {
+    rollback::rollback_erase(&app, keep_branch.unwrap_or(false))
+        .map_err(|e| capture_err("rollback_erase", e))
 }
