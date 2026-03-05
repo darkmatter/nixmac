@@ -880,13 +880,19 @@ pub async fn apply_system_defaults(
         .map_err(|e| capture_err("apply_system_defaults", e))?;
 
     // 1. Generate nix file content
-    log::info!("[apply_system_defaults] Generating nix content for {} defaults", defaults.len());
+    log::info!(
+        "[apply_system_defaults] Generating nix content for {} defaults",
+        defaults.len()
+    );
     let nix_content = scanner::generate_system_defaults_nix(&defaults);
 
     // 2. Ensure modules/darwin directory exists
     let modules_dir = std::path::Path::new(&dir).join("modules").join("darwin");
     std::fs::create_dir_all(&modules_dir).map_err(|e| {
-        log::error!("[apply_system_defaults] Failed to create modules dir: {}", e);
+        log::error!(
+            "[apply_system_defaults] Failed to create modules dir: {}",
+            e
+        );
         capture_err("apply_system_defaults", e)
     })?;
 
@@ -896,7 +902,11 @@ pub async fn apply_system_defaults(
         log::error!("[apply_system_defaults] Failed to write nix file: {}", e);
         capture_err("apply_system_defaults", e)
     })?;
-    log::info!("[apply_system_defaults] Wrote {} defaults to {:?}", defaults.len(), nix_path);
+    log::info!(
+        "[apply_system_defaults] Wrote {} defaults to {:?}",
+        defaults.len(),
+        nix_path
+    );
 
     // 4. Inject import into the file that contains `modules = [`.
     //    - nix-darwin-determinate template: `flake.nix` with `./modules/darwin/...`
@@ -910,7 +920,10 @@ pub async fn apply_system_defaults(
     let (target_path, module_ref) = if flake_content.contains("modules = [") {
         // Direct template — modules list is in flake.nix
         log::info!("[apply_system_defaults] Found modules list in flake.nix");
-        (flake_path, "./modules/darwin/system-defaults.nix".to_string())
+        (
+            flake_path,
+            "./modules/darwin/system-defaults.nix".to_string(),
+        )
     } else {
         // Flake-parts template — modules list is in flake-modules/darwin.nix
         let darwin_mod = std::path::Path::new(&dir)
@@ -918,7 +931,10 @@ pub async fn apply_system_defaults(
             .join("darwin.nix");
         if darwin_mod.exists() {
             log::info!("[apply_system_defaults] Found modules list in flake-modules/darwin.nix");
-            (darwin_mod, "../modules/darwin/system-defaults.nix".to_string())
+            (
+                darwin_mod,
+                "../modules/darwin/system-defaults.nix".to_string(),
+            )
         } else {
             let msg = "Could not find 'modules = [' in flake.nix or flake-modules/darwin.nix";
             log::error!("[apply_system_defaults] {}", msg);
@@ -927,21 +943,35 @@ pub async fn apply_system_defaults(
     };
 
     let target_content = std::fs::read_to_string(&target_path).map_err(|e| {
-        log::error!("[apply_system_defaults] Failed to read {:?}: {}", target_path, e);
+        log::error!(
+            "[apply_system_defaults] Failed to read {:?}: {}",
+            target_path,
+            e
+        );
         capture_err("apply_system_defaults", e)
     })?;
 
     let updated_content =
         scanner::inject_module_import(&target_content, &module_ref).map_err(|e| {
-            log::error!("[apply_system_defaults] Failed to inject module import: {}", e);
+            log::error!(
+                "[apply_system_defaults] Failed to inject module import: {}",
+                e
+            );
             e
         })?;
 
     std::fs::write(&target_path, &updated_content).map_err(|e| {
-        log::error!("[apply_system_defaults] Failed to write {:?}: {}", target_path, e);
+        log::error!(
+            "[apply_system_defaults] Failed to write {:?}: {}",
+            target_path,
+            e
+        );
         capture_err("apply_system_defaults", e)
     })?;
-    log::info!("[apply_system_defaults] Injected module import into {:?}", target_path);
+    log::info!(
+        "[apply_system_defaults] Injected module import into {:?}",
+        target_path
+    );
 
     // 5. Create git branch and commit
     let branch = git::checkout_new_branch(&dir, "nixmac-scan/system-defaults").map_err(|e| {
@@ -957,7 +987,10 @@ pub async fn apply_system_defaults(
         .env("PATH", crate::nix::get_nix_path())
         .output()
         .map_err(|e| {
-            log::error!("[apply_system_defaults] git status --porcelain failed: {}", e);
+            log::error!(
+                "[apply_system_defaults] git status --porcelain failed: {}",
+                e
+            );
             capture_err("apply_system_defaults", e)
         })?;
 
@@ -993,7 +1026,10 @@ pub async fn apply_system_defaults(
     if let Err(e) = store::set_cached_summary(&app, &summary_response) {
         log::error!("[apply_system_defaults] Failed to cache summary: {}", e);
     }
-    log::info!("[apply_system_defaults] Cached summary with {} items", summary_response.items.len());
+    log::info!(
+        "[apply_system_defaults] Cached summary with {} items",
+        summary_response.items.len()
+    );
 
     // Cache git status AND sync the watcher so it won't fire a spurious
     // change event that would re-mark the summary as stale.
@@ -1003,7 +1039,10 @@ pub async fn apply_system_defaults(
     })?;
     log::info!("[apply_system_defaults] Cached git status and synced watcher");
 
-    log::info!("[apply_system_defaults] Complete — {} defaults applied", defaults.len());
+    log::info!(
+        "[apply_system_defaults] Complete — {} defaults applied",
+        defaults.len()
+    );
 
     // Return summary + git status directly so the frontend can set them
     // atomically, avoiding race conditions with the watcher.

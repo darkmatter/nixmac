@@ -31,16 +31,72 @@ mod types;
 mod watcher;
 
 use std::env;
+use std::sync::{Arc, Mutex};
 use tauri::{
     image::Image,
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
     Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 fn main() {
-    // Initialize logging dead-first.
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    // Initialize tracing subscriber with optional file logging
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+
+    // Keep the WorkerGuard alive for the lifetime of `main()` so drops flush buffered logs
+    let log_guard: Arc<Mutex<Option<tracing_appender::non_blocking::WorkerGuard>>> =
+        Arc::new(Mutex::new(None));
+
+    if let Ok(log_path) = env::var("NIXMAC_LOGFILE") {
+        // Set up dual logging: console + file
+        match std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&log_path)
+        {
+            Ok(file) => {
+                // Create a non-blocking file writer and keep the WorkerGuard in `log_guard`
+                let (non_blocking, guard) = tracing_appender::non_blocking(file);
+
+                // Store the guard so it lives until the end of `main()` (or until explicitly dropped)
+                {
+                    let mut g = log_guard.lock().unwrap();
+                    *g = Some(guard);
+                }
+
+                tracing_subscriber::registry()
+                    .with(env_filter)
+                    .with(fmt::layer().with_writer(std::io::stderr)) // Console output
+                    .with(fmt::layer().with_writer(non_blocking).with_ansi(false)) // File output (no ANSI)
+                    .init();
+
+                let full_path = std::fs::canonicalize(&log_path)
+                    .unwrap_or_else(|_| std::path::PathBuf::from(&log_path));
+                eprintln!(
+                    "[nixmac] Logging to both console and {}",
+                    full_path.display()
+                );
+            }
+            Err(e) => {
+                eprintln!("[nixmac] Failed to open NIXMAC_LOGFILE {}: {}", log_path, e);
+                // Fall back to console-only logging (write to stderr to match env_logger behavior)
+                tracing_subscriber::registry()
+                    .with(env_filter)
+                    .with(fmt::layer().with_writer(std::io::stderr))
+                    .init();
+            }
+        }
+    } else {
+        // Console-only logging (write to stderr to match env_logger behavior)
+        tracing_subscriber::registry()
+            .with(env_filter)
+            .with(fmt::layer().with_writer(std::io::stderr))
+            .init();
+    }
+
+    // Bridge log crate to tracing (for compatibility with existing log:: calls)
+    let _ = tracing_log::LogTracer::init();
 
     let context = tauri::generate_context!();
 
@@ -213,6 +269,9 @@ fn main() {
 
             let menu = Menu::with_items(app, &[&open_i, &quit_i])?;
 
+            // Clone a handle to the guard for use in menu callbacks (so we can flush on quit)
+            let log_guard_for_menu = log_guard.clone();
+
             let _tray = TrayIconBuilder::new()
                 .icon(
                     Image::from_path("icons/outline@2x.png")
@@ -232,6 +291,10 @@ fn main() {
                         }
                     }
                     "quit" => {
+                        // Explicitly drop the WorkerGuard (flush logs) before exiting.
+                        if let Some(_g) = log_guard_for_menu.lock().unwrap().take() {
+                            // `_g` dropped here
+                        }
                         std::process::exit(0);
                     }
                     _ => {}
