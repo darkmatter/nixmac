@@ -34,7 +34,7 @@ export function MergeStep() {
             onClick={() => setShowRollbackDialog(true)}
           >
             <Undo2 className="h-3.5 w-3.5" />
-            Rollback
+            Undo All
           </Button>
           <Button
             variant="ghost"

@@ -270,7 +270,7 @@ export function LandingPage() {
                   </h3>
                   <p className="text-zinc-400 leading-relaxed">
                     nixmac shows you exactly what will change before applying.
-                    Click "Evolve" and watch as your system transforms to match
+                    Click "Review" and watch as your system transforms to match
                     your configuration. Every change is tracked and reversible.
                   </p>
                 </div>

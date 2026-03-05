@@ -66,7 +66,7 @@ export function EvolveStep() {
             ) : (
               <Eraser className="h-3.5 w-3.5" />
             )}
-            {needsRebuild ? "Rollback" : "Clear"}
+            {needsRebuild ? "Undo All" : "Discard"}
           </Button>
           <Button
             size="sm"
@@ -74,7 +74,7 @@ export function EvolveStep() {
             onClick={() => setShowRebuildDialog(true)}
           >
             <Wrench className="h-3.5 w-3.5" />
-            Build
+            Build & Test
           </Button>
         </div>
       </div>
