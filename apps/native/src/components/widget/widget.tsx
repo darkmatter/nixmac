@@ -26,6 +26,7 @@ import { usePromptHistory } from "@/hooks/use-prompt-history";
 import { useWatcher } from "@/hooks/use-watcher";
 import { loadConfig, loadHosts } from "@/hooks/use-widget-initialization";
 import { useSummary } from "@/hooks/use-summary";
+import { darwinAPI } from "@/tauri-api";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
 import { useEffect } from "react";
@@ -65,6 +66,10 @@ export function DarwinWidget() {
         await checkNix();
         await loadHosts();
         await getInitialStatus();
+        const prefs = await darwinAPI.ui.getPrefs();
+        if (prefs) {
+          useWidgetStore.getState().initConfirmPrefs(prefs);
+        }
         await findSummary();
         refreshPromptHistory();
       } catch (e: unknown) {

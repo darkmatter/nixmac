@@ -12,6 +12,11 @@ use tauri_plugin_store::{Store, StoreExt};
 
 const STORE_PATH: &str = "settings.json";
 
+// Confirmation dialog preference keys (shared between store and commands)
+pub const CONFIRM_BUILD_KEY: &str = "confirmBuild";
+pub const CONFIRM_CLEAR_KEY: &str = "confirmClear";
+pub const CONFIRM_ROLLBACK_KEY: &str = "confirmRollback";
+
 /// Gets a handle to the settings store.
 pub fn get_store<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<Store<R>>> {
     let store = app.store(STORE_PATH)?;
@@ -230,6 +235,23 @@ fn get_usize_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<us
         }
     }
     Ok(None)
+}
+
+pub fn get_bool_pref<R: Runtime>(app: &AppHandle<R>, key: &str, default: bool) -> Result<bool> {
+    let store = get_store(app)?;
+    if let Some(val) = store.get(key) {
+        if let Some(b) = val.as_bool() {
+            return Ok(b);
+        }
+    }
+    Ok(default)
+}
+
+pub fn set_bool_pref<R: Runtime>(app: &AppHandle<R>, key: &str, value: bool) -> Result<()> {
+    let store = get_store(app)?;
+    store.set(key, serde_json::json!(value));
+    store.save()?;
+    Ok(())
 }
 
 // =============================================================================

@@ -112,6 +112,18 @@ pub struct UiPrefs {
     /// Whether to send diagnostics to the nixmac team.
     #[serde(rename = "sendDiagnostics")]
     pub send_diagnostics: bool,
+
+    /// Whether to show a confirmation dialog before building.
+    #[serde(rename = "confirmBuild")]
+    pub confirm_build: bool,
+
+    /// Whether to show a confirmation dialog before clearing/discarding.
+    #[serde(rename = "confirmClear")]
+    pub confirm_clear: bool,
+
+    /// Whether to show a confirmation dialog before rolling back.
+    #[serde(rename = "confirmRollback")]
+    pub confirm_rollback: bool,
 }
 
 /// Result of a darwin-rebuild operation.
