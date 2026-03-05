@@ -112,8 +112,6 @@ pub fn get_full_diff(dir: &str) -> Result<String> {
 }
 
 /// Gets the diff of uncommitted changes against HEAD (staged + unstaged + untracked).
-/// This shows only local changes that haven't been committed yet.
-/// Used to determine if the working tree is clean.
 pub fn get_head_diff(dir: &str) -> Result<String> {
     // Get diff for tracked files (both staged and unstaged)
     let diff_output = git_command()
@@ -400,7 +398,7 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     // Get HEAD commit hash
     let head_commit_hash = get_head_sha(dir);
 
-    // Determine if working tree is clean (no uncommitted changes)
+    // Determine clean_head (no changes)
     let head_diff = get_head_diff(dir).unwrap_or_default();
     let clean_head = head_diff.is_empty();
 

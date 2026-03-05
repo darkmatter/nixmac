@@ -1,24 +1,15 @@
-//! Find the appropriate summary for the current git state.
-//!
-//! Used by:
-//! - The `find_summary` Tauri command (frontend API)
-//! - The watcher on change detection (to check if reverted to a known commit)
-//!
-//! Does NOT generate summaries — only finds existing ones.
-
 use anyhow::Result;
 use tauri::{AppHandle, Runtime};
 
 use crate::{db, git, store, types::SummaryResponse};
 
-/// Find the appropriate summary for the current git state.
+/// Find the appropriate summary for the current git state in sqlite or cache.
 ///
 /// Logic:
 /// - Clean head (no uncommitted changes): look up summary in DB by HEAD commit hash
-/// - Uncommitted changes: return cached summary only if its diff matches the current diff
+/// - Uncommitted changes: return cached summary if its diff matches.
 ///
 /// Returns `None` if no relevant summary exists.
-#[allow(dead_code)]
 pub fn find_summary<R: Runtime>(app: &AppHandle<R>) -> Result<Option<SummaryResponse>> {
     let config_dir = store::get_config_dir(app)?;
     let db_path = db::get_db_path(app)?;
@@ -31,7 +22,6 @@ pub fn find_summary<R: Runtime>(app: &AppHandle<R>) -> Result<Option<SummaryResp
         return Ok(None);
     }
 
-    // Uncommitted changes — cached summary is valid only if its diff still matches
     if let Some(cached) = store::get_cached_summary(app).ok().flatten() {
         if cached.diff == status.diff {
             return Ok(Some(cached));

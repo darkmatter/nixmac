@@ -57,7 +57,6 @@ export interface SummaryItem {
 
 /**
  * AI-generated summary of changes.
- * Raw git data (additions, deletions) comes from GitStatus instead.
  */
 export interface ChangesSummary {
   items: SummaryItem[];

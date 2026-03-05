@@ -19,20 +19,15 @@ use crate::{
     types::{emit_evolve_event, slugify, EvolveEvent, SummaryItem, SummaryResponse},
 };
 
-/// Result of a complete evolution operation.
-/// Returns the summary and final git status for the frontend to display.
+/// Evolution returns final git status and summary to frontend when done.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EvolutionResult {
-    /// AI-generated summary
     pub summary: SummaryResponse,
-    /// Git status after evolution completes
     pub git_status: crate::types::GitStatus,
 }
 
 /// Run a complete evolution workflow: AI generation + summary + branch + commit + DB.
-///
-/// This is the main entry point for the unified evolution API.
 pub async fn evolve_and_commit(app: &AppHandle, description: &str) -> Result<EvolutionResult> {
     let start_time = chrono::Utc::now().timestamp();
 

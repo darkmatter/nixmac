@@ -11,8 +11,6 @@ import { useCallback } from "react";
 export function useSummary() {
   /**
    * Finds the relevant summary for the current git state.
-   * Looks up from DB (clean commit) or cache (uncommitted, if diff matches).
-   * Does NOT generate - just finds existing ones.
    */
   const findSummary = useCallback(async (): Promise<ChangesSummary | null> => {
     const { setSummary, summaryLoading, setSummaryLoading, setSummaryAvailable } = useWidgetStore.getState();

@@ -129,10 +129,10 @@ export interface WidgetActions {
     details: { message: string; location?: string; backtrace?: string; timestamp: string } | null,
   ) => void;
   setPromptHistory: (history: string[]) => void;
+  setSummaryAvailable: (available: boolean) => void;
 
   // Client-side state (NOT from server)
   setSummaryLoading: (loading: boolean) => void;
-  setSummaryAvailable: (available: boolean) => void;
   setGenerating: (generating: boolean) => void;
   clearPreview: () => void;
   setFeedbackTypeOverride: (type: FeedbackType | null) => void;
@@ -209,6 +209,7 @@ export const initialWidgetState: WidgetState = {
 
   // Summary
   summary: initialSummaryState,
+  summaryAvailable: false,
 
   // Rebuild
   rebuild: initialRebuildState,
@@ -218,7 +219,6 @@ export const initialWidgetState: WidgetState = {
 
   // UI
   summaryLoading: false,
-  summaryAvailable: false,
   isBootstrapping: false,
   isGenerating: false,
   settingsOpen: false,

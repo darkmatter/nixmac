@@ -327,6 +327,7 @@ pub fn get_cached_summary<R: Runtime>(
 }
 
 /// Gets whether a relevant summary is currently available.
+/// Frontend handles this itself, but we might need to sync on startup.
 #[allow(dead_code)]
 pub fn get_summary_available<R: Runtime>(app: &AppHandle<R>) -> Result<bool> {
     let store = get_store(app)?;
@@ -337,7 +338,6 @@ pub fn get_summary_available<R: Runtime>(app: &AppHandle<R>) -> Result<bool> {
 }
 
 /// Sets whether a relevant summary is currently available.
-#[allow(dead_code)]
 pub fn set_summary_available<R: Runtime>(app: &AppHandle<R>, available: bool) -> Result<()> {
     let store = get_store(app)?;
     store.set("summaryAvailable", serde_json::json!(available));

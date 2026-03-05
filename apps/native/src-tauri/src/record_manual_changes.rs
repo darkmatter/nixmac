@@ -1,8 +1,6 @@
-//! Post-build handler for uncommitted manual changes.
+//! Runs when building manual changes with nixmac UI.
 //!
-//! Called after a successful `darwin-rebuild` when changes were present but never
-//! committed. Mirrors the `evolution.rs` workflow (summary → branch → commit → DB)
-//! without an AI-driven prompt.
+//! Ensures merge step loads with summary, and preserves metadata.
 
 use anyhow::{Context, Result};
 use log::info;
@@ -13,16 +11,14 @@ use crate::{
     types::{slugify, SummaryItem, SummaryResponse},
 };
 
-/// If HEAD is already clean, just tags it as built and returns.
+/// Always tags last commit as built.
 ///
-/// Otherwise: generates an AI summary, branches off main if needed, commits,
-/// tags, and registers everything in the database.
+/// Summarizes, branches, and commits any manual changes if need be first.
 pub async fn handle_uncommitted_built_changes(app: &AppHandle) -> Result<EvolutionResult> {
     let config_dir =
         store::ensure_config_dir_exists(app).context("Failed to get config directory")?;
 
-    // Step 1: Capture current status before any git operations.
-    // Must happen before branching/committing — after commit the diff is empty.
+    // Step 1: Capture current status while diff is available.
     let status = git::status(&config_dir).context("Failed to get git status")?;
 
     // If HEAD is already clean, just tag and return early.
@@ -41,7 +37,7 @@ pub async fn handle_uncommitted_built_changes(app: &AppHandle) -> Result<Evoluti
             git_status: final_status,
         });
     }
-
+    // If HEAD is not clean, mimic evolution flow.
     let is_on_main = status
         .branch
         .as_ref()
@@ -54,7 +50,6 @@ pub async fn handle_uncommitted_built_changes(app: &AppHandle) -> Result<Evoluti
     );
 
     // Step 2: Generate AI summary from the pre-commit diff.
-    // Mirrors evolution.rs step 2: summarize_for_preview called before commit_all.
     let file_list: Vec<String> = status.files.iter().map(|f| f.path.clone()).collect();
     let (change_summary, commit_message) =
         summarize::summarize_for_preview(&status.diff, &file_list, Some(app))
@@ -67,7 +62,6 @@ pub async fn handle_uncommitted_built_changes(app: &AppHandle) -> Result<Evoluti
     );
 
     // Step 3: Branch if on main.
-    // Mirrors evolution.rs step 3: checkout_new_branch before commit_all.
     let branch_name = if is_on_main {
         let base_name = format!("nixmac-evolve/{}", slugify(&commit_message));
         let created = git::checkout_new_branch(&config_dir, &base_name)
@@ -90,8 +84,7 @@ pub async fn handle_uncommitted_built_changes(app: &AppHandle) -> Result<Evoluti
     // Step 5: Tag HEAD as built.
     git::tag_as_built(&config_dir).context("Failed to tag HEAD as built")?;
 
-    // Step 6: Register in DB. Mirrors evolution.rs step 5: save_evolution_complete.
-    // prompt: None — no user description for manual changes.
+    // Step 6: Save to DB. Mirrors evolution.rs step 5: save_evolution_complete (prompt excluded).
     let db_path = db::get_db_path(app).context("Failed to get database path")?;
     let summary_json =
         serde_json::to_string(&change_summary).context("Failed to serialize summary")?;
