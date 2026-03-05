@@ -39,9 +39,9 @@ use std::env;
 use std::sync::{Arc, Mutex};
 use tauri::{
     image::Image,
-    menu::{Menu, MenuItem},
+    menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
-    Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent,
+    Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
@@ -378,10 +378,26 @@ fn run_gui_mode(
             }
 
             // Build the system tray menu
-            let open_i = MenuItem::with_id(app, "open", "Open", true, None::<&str>)?;
-            let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            let open_i = MenuItem::with_id(app, "open", "Open nixmac", true, None::<&str>)?;
+            let sep1 = PredefinedMenuItem::separator(app)?;
+            let feedback_i =
+                MenuItem::with_id(app, "send_feedback", "Send Feedback...", true, None::<&str>)?;
+            let settings_i =
+                MenuItem::with_id(app, "settings", "Settings...", true, None::<&str>)?;
+            let sep2 = PredefinedMenuItem::separator(app)?;
+            let quit_i = MenuItem::with_id(app, "quit", "Quit nixmac", true, None::<&str>)?;
 
-            let menu = Menu::with_items(app, &[&open_i, &quit_i])?;
+            let menu = Menu::with_items(
+                app,
+                &[
+                    &open_i,
+                    &sep1,
+                    &feedback_i,
+                    &settings_i,
+                    &sep2,
+                    &quit_i,
+                ],
+            )?;
 
             // Clone a handle to the guard for use in menu callbacks (so we can flush on quit)
             let log_guard_for_menu = log_guard.clone();
@@ -402,6 +418,20 @@ fn run_gui_mode(
                         if let Some(window) = app.get_webview_window("main") {
                             let _ = window.show();
                             let _ = window.set_focus();
+                        }
+                    }
+                    "send_feedback" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                            let _ = window.emit("tray:open-feedback", ());
+                        }
+                    }
+                    "settings" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                            let _ = window.emit("tray:open-settings", ());
                         }
                     }
                     "quit" => {
