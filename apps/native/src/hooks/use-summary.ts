@@ -1,6 +1,6 @@
 import {
   useWidgetStore,
-  type ChangesSummary,
+  type SummaryResponse,
 } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
 import { useCallback } from "react";
@@ -12,7 +12,7 @@ export function useSummary() {
   /**
    * Finds the relevant summary for the current git state.
    */
-  const findSummary = useCallback(async (): Promise<ChangesSummary | null> => {
+  const findSummary = useCallback(async (): Promise<SummaryResponse | null> => {
     const { setSummary, summaryLoading, setSummaryLoading, setSummaryAvailable } = useWidgetStore.getState();
 
     if (summaryLoading) {

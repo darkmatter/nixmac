@@ -84,3 +84,77 @@ pub fn save_evolution_complete(db_path: &Path, data: EvolutionData) -> Result<i6
 
     Ok(evolution_id)
 }
+
+/// Delete all evolution records for a branch, callable on rollback.
+///
+/// Only removes commits that belong exclusively to this branch's evolutions.
+pub fn delete_evolution_by_branch(db_path: &Path, branch: &str) -> Result<()> {
+    let mut conn = Connection::open(db_path)?;
+    let tx = conn.transaction()?;
+
+    // Collect evolution IDs for this branch
+    let evolution_ids: Vec<i64> = {
+        let mut stmt = tx.prepare("SELECT id FROM evolutions WHERE branch = ?1")?;
+        let mut rows = stmt.query([branch])?;
+        let mut ids = Vec::new();
+        while let Some(row) = rows.next()? {
+            ids.push(row.get(0)?);
+        }
+        ids
+    };
+
+    if evolution_ids.is_empty() {
+        return Ok(());
+    }
+
+    // Collect commit IDs linked to these evolutions
+    let placeholders = evolution_ids
+        .iter()
+        .map(|_| "?")
+        .collect::<Vec<_>>()
+        .join(",");
+    let commit_ids: Vec<i64> = {
+        let mut stmt = tx.prepare(&format!(
+            "SELECT commit_id FROM evolution_commits WHERE evolution_id IN ({placeholders})"
+        ))?;
+        let mut rows = stmt.query(rusqlite::params_from_iter(&evolution_ids))?;
+        let mut ids = Vec::new();
+        while let Some(row) = rows.next()? {
+            ids.push(row.get(0)?);
+        }
+        ids
+    };
+
+    // Delete dependents first (FK order) — prompts are intentionally kept
+    if !commit_ids.is_empty() {
+        let cp = commit_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+        tx.execute(
+            &format!("DELETE FROM summaries WHERE commit_id IN ({cp})"),
+            rusqlite::params_from_iter(&commit_ids),
+        )?;
+        tx.execute(
+            &format!(
+                "DELETE FROM squashed_commits WHERE source_id IN ({cp}) OR target_id IN ({cp})"
+            ),
+            rusqlite::params_from_iter(commit_ids.iter().chain(&commit_ids)),
+        )?;
+    }
+
+    tx.execute(
+        &format!("DELETE FROM evolution_commits WHERE evolution_id IN ({placeholders})"),
+        rusqlite::params_from_iter(&evolution_ids),
+    )?;
+
+    tx.execute("DELETE FROM evolutions WHERE branch = ?1", [branch])?;
+
+    if !commit_ids.is_empty() {
+        let cp = commit_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+        tx.execute(
+            &format!("DELETE FROM commits WHERE id IN ({cp})"),
+            rusqlite::params_from_iter(&commit_ids),
+        )?;
+    }
+
+    tx.commit()?;
+    Ok(())
+}

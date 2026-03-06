@@ -1,9 +1,9 @@
 import { create } from "zustand";
 import { FeedbackType } from "@/types/feedback";
-import type { ChangesSummary, EvolveEvent, GitStatus, PermissionsState } from "@/tauri-api";
+import type { SummaryResponse, EvolveEvent, GitStatus, PermissionsState } from "@/tauri-api";
 import { computeCurrentStep } from "@/components/widget/utils";
 export type {
-  ChangesSummary,
+  SummaryResponse,
   EvolveEvent,
   EvolveEventType,
   GitFileStatus,
@@ -79,7 +79,7 @@ export interface WidgetState {
   promptHistory: string[];
 
   // Summary (AI-generated)
-  summary: ChangesSummary;
+  summary: SummaryResponse;
 
   // Rebuild state (for inline rebuild progress)
   rebuild: RebuildState;
@@ -123,7 +123,7 @@ export interface WidgetActions {
   setEvolvePrompt: (prompt: string) => void;
   setCommitMsg: (msg: string) => void;
   setProcessing: (isProcessing: boolean, action?: ProcessingAction) => void;
-  setSummary: (summary: ChangesSummary) => void;
+  setSummary: (summary: SummaryResponse) => void;
   setSettingsOpen: (open: boolean) => void;
   setFeedbackOpen: (open: boolean) => void;
   setError: (error: string | null) => void;
@@ -173,7 +173,7 @@ export const initialRebuildState: RebuildState = {
   errorMessage: undefined,
 };
 
-export const initialSummaryState: ChangesSummary = {
+export const initialSummaryState: SummaryResponse = {
   items: [],
   instructions: "",
   commitMessage: "",

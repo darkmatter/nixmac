@@ -1,7 +1,7 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
 import { PermissionsScreen } from "@/components/permissions-screen";
-import type { ChangesSummary, EvolveEvent, GitStatus } from "@/stores/widget-store";
+import type { SummaryResponse, EvolveEvent, GitStatus } from "@/stores/widget-store";
 import { useWidgetStore } from "@/stores/widget-store";
 import { fn } from "@storybook/test";
 import type React from "react";
@@ -79,7 +79,7 @@ const mockGitStatusAllStaged: GitStatus = {
   headIsBuilt: true,
 };
 
-const mockSummary: ChangesSummary = {
+const mockSummary: SummaryResponse = {
   items: [
     {
       title: "Vim Editor Installed",
@@ -160,7 +160,7 @@ interface StoreState {
   isGenerating?: boolean;
   processingAction?: "evolve" | "apply" | "commit" | "cancel" | null;
   evolveEvents?: EvolveEvent[];
-  summary?: ChangesSummary;
+  summary?: SummaryResponse;
   summaryLoading?: boolean;
   consoleLogs?: string;
   settingsOpen?: boolean;
