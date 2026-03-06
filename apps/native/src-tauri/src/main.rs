@@ -8,6 +8,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod apply_system_defaults;
+mod cli;
 mod commands;
 mod darwin;
 mod db;
@@ -103,6 +104,116 @@ fn main() {
 
     let context = tauri::generate_context!();
 
+    // Check if running in CLI mode
+    if cli::should_run_cli() {
+        let exit_code = run_cli_mode(context);
+        // Ensure the WorkerGuard is dropped (flush logs) before exiting.
+        drop(log_guard);
+        std::process::exit(exit_code);
+    }
+
+    run_gui_mode(context, log_guard);
+}
+
+fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
+    let cli = match cli::parse_cli() {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("Failed to parse CLI arguments: {}", e);
+            return 1;
+        }
+    };
+
+    match cli.command {
+        Some(cli::Commands::Evolve {
+            prompt,
+            config,
+            max_iterations,
+            evolve_provider,
+            evolve_model,
+            summary_provider,
+            summary_model,
+            openai_key,
+            openrouter_key,
+            ollama_url,
+            host,
+            out,
+        }) => {
+            // For CLI mode, we need to create a Tauri app instance to access store functionality
+            let runtime = match tokio::runtime::Runtime::new() {
+                Ok(rt) => rt,
+                Err(e) => {
+                    eprintln!("Failed to create async runtime: {}", e);
+                    return 1;
+                }
+            };
+
+            let result = runtime.block_on(async {
+                let app = match tauri::Builder::default()
+                    // Ensure store plugin (and its managed state) is initialized so we can load settings
+                    .plugin(tauri_plugin_store::Builder::default().build())
+                    .invoke_handler(tauri::generate_handler![])
+                    .setup(|_app| Ok(()))
+                    .build(context)
+                {
+                    Ok(app) => app,
+                    Err(e) => {
+                        eprintln!("Failed to initialize Tauri: {}", e);
+                        return Err(String::from("Tauri initialization failed"));
+                    }
+                };
+
+                let app_handle = app.handle();
+
+                // Initialize DB schema for CLI mode so commands depending on tables succeed
+                if let Err(e) = db::init(app_handle).await {
+                    eprintln!("Failed to initialize database: {}", e);
+                    return Err(format!("DB init failed: {}", e));
+                }
+
+                let cfg = cli::EvolveConfig {
+                    prompt,
+                    config,
+                    max_iterations,
+                    evolve_provider,
+                    evolve_model,
+                    summary_provider,
+                    summary_model,
+                    openai_key,
+                    openrouter_key,
+                    ollama_url,
+                    host,
+                    out,
+                };
+
+                cli::handle_evolve_command(app_handle, cfg).await
+            });
+
+            match result {
+                Ok(_) => {
+                    log::info!("CLI evolution completed successfully");
+                    0
+                }
+                Err(e) => {
+                    eprintln!("Evolution failed: {}", e);
+                    log::error!("CLI evolution failed: {}", e);
+                    1
+                }
+            }
+        }
+        None => {
+            eprintln!("No command specified. Use 'nixmac evolve --help' for usage information.");
+            1
+        }
+    }
+}
+
+fn run_gui_mode(
+    context: tauri::Context<tauri::Wry>,
+    log_guard: std::sync::Arc<
+        std::sync::Mutex<Option<tracing_appender::non_blocking::WorkerGuard>>,
+    >,
+) {
     // Prefer compile-time embedded vars (set by build.rs via `cargo:rustc-env`),
     // fall back to runtime environment variables.
     let sentry_dsn = option_env!("SENTRY_DSN")
