@@ -179,6 +179,44 @@ Alternatively, there is a separate script that ensures that the nixmac postgres 
 Open [http://localhost:3001](http://localhost:3001) in your browser to see the web application.
 The API is running at [http://localhost:3000](http://localhost:3000).
 
+## CLI
+
+Basic (only `evolve` required):
+
+```sh
+./target/debug/nixmac evolve "your prompt here"
+```
+
+Dump config and evolution results to file:
+
+```sh
+./target/debug/nixmac evolve "your prompt here" --out evolution_result.json
+```
+
+Optional settings overrides
+
+```sh
+./target/debug/nixmac evolve "your prompt" \
+  --config /path/to/config \
+  --max-iterations 50 \
+  --evolve-provider openai \
+  --evolve-model gpt-4 \
+  --summary-provider openai \
+  --summary-model gpt-4 \
+  --openai-key YOUR_KEY \
+  --openrouter-key YOUR_KEY \
+  --ollama-url http://localhost:11434 \
+  --host your-mac
+```
+
+## Useful Tips
+
+Delete dangling local `nixmac-evolve/` git branches:
+
+```sh
+git branch --list 'nixmac-evolve*' | awk '{print $NF}' | while read -r br; do git branch -D "$br"; done
+```
+
 ## Deployment (Alchemy)
 
 - Web dev: cd apps/web && bun run dev

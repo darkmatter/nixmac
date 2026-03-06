@@ -15,7 +15,9 @@ use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 
 use crate::{
-    db, evolve, git, store, summarize,
+    db,
+    evolve::{self, EvolutionState},
+    git, store, summarize,
     types::{emit_evolve_event, slugify, EvolveEvent, SummaryItem, SummaryResponse},
 };
 
@@ -25,6 +27,22 @@ use crate::{
 pub struct EvolutionResult {
     pub summary: SummaryResponse,
     pub git_status: crate::types::GitStatus,
+    /// Evolution state
+    pub state: EvolutionState,
+    /// Number of iterations performed
+    pub iterations: usize,
+    /// Number of build attempts
+    pub build_attempts: usize,
+    /// Total tokens consumed by the evolution
+    pub total_tokens: u32,
+    /// Number of file edits produced by the evolution
+    pub edits_count: usize,
+    /// Number of thinking / reasoning entries
+    pub thinking_count: usize,
+    /// Number of tool call activity records
+    pub tool_calls_count: usize,
+    /// Elapsed time for the evolution operation in milliseconds
+    pub duration_ms: i64,
 }
 
 /// Run a complete evolution workflow: AI generation + summary + branch + commit + DB.
@@ -159,5 +177,13 @@ pub async fn evolve_and_commit(app: &AppHandle, description: &str) -> Result<Evo
     Ok(EvolutionResult {
         summary,
         git_status: final_status,
+        state: evolution.state,
+        iterations: evolution.iterations,
+        build_attempts: evolution.build_attempts,
+        total_tokens: evolution.total_tokens,
+        edits_count: evolution.edits.len(),
+        thinking_count: evolution.thinking.len(),
+        tool_calls_count: evolution.tool_calls.len(),
+        duration_ms: chrono::Utc::now().timestamp_millis() - (start_time * 1000),
     })
 }
