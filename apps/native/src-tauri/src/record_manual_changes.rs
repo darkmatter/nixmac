@@ -38,15 +38,9 @@ pub async fn handle_uncommitted_built_changes(app: &AppHandle) -> Result<Evoluti
         });
     }
     // If HEAD is not clean, mimic evolution flow.
-    let is_on_main = status
-        .branch
-        .as_ref()
-        .map(|b| b == "main" || b == "master")
-        .unwrap_or(false);
-
     info!(
         "[record_manual_changes] Uncommitted changes present | branch={:?} | is_main={}",
-        status.branch, is_on_main
+        status.branch, status.is_main_branch
     );
 
     // Step 2: Generate AI summary from the pre-commit diff.
@@ -62,7 +56,7 @@ pub async fn handle_uncommitted_built_changes(app: &AppHandle) -> Result<Evoluti
     );
 
     // Step 3: Branch if on main.
-    let branch_name = if is_on_main {
+    let branch_name = if status.is_main_branch {
         let base_name = format!("nixmac-evolve/{}", slugify(&commit_message));
         let created = git::checkout_new_branch(&config_dir, &base_name)
             .context("Failed to create branch")?;
@@ -88,7 +82,7 @@ pub async fn handle_uncommitted_built_changes(app: &AppHandle) -> Result<Evoluti
     let db_path = db::get_db_path(app).context("Failed to get database path")?;
     let summary_json =
         serde_json::to_string(&change_summary).context("Failed to serialize summary")?;
-    let branch_for_db = branch_name.as_deref().unwrap_or("main").to_string();
+    let branch_for_db = branch_name.context("Failed to determine branch for DB record")?;
 
     db::operations::save_evolution_complete(
         &db_path,

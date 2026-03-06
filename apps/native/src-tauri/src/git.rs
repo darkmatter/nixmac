@@ -43,8 +43,8 @@ pub fn init_if_needed(dir: &str) -> Result<()> {
     Ok(())
 }
 
-/// Gets the default branch name (main or master), if it exists.
-fn get_default_branch(dir: &str) -> Option<&'static str> {
+/// Probes in order: local main, local master, then remote HEAD as a last resort
+pub fn get_default_branch(dir: &str) -> Option<String> {
     if git_command()
         .args(["rev-parse", "--verify", "main"])
         .current_dir(dir)
@@ -52,18 +52,42 @@ fn get_default_branch(dir: &str) -> Option<&'static str> {
         .map(|o| o.status.success())
         .unwrap_or(false)
     {
-        Some("main")
-    } else if git_command()
+        return Some("main".to_string());
+    }
+    if git_command()
         .args(["rev-parse", "--verify", "master"])
         .current_dir(dir)
         .output()
         .map(|o| o.status.success())
         .unwrap_or(false)
     {
-        Some("master")
-    } else {
-        None
+        return Some("master".to_string());
     }
+    // Only reached if neither main nor master exist locally.
+    if let Ok(output) = git_command()
+        .args(["symbolic-ref", "refs/remotes/origin/HEAD"])
+        .current_dir(dir)
+        .output()
+    {
+        if output.status.success() {
+            let refname = String::from_utf8_lossy(&output.stdout);
+            if let Some(branch) = refname.trim().strip_prefix("refs/remotes/origin/") {
+                return Some(branch.to_string());
+            }
+        }
+    }
+    None
+}
+
+/// For write operations that MUST act on the default branch.
+fn require_default_branch(dir: &str) -> Result<String> {
+    get_default_branch(dir).ok_or_else(|| {
+        anyhow::anyhow!(
+            "No default branch (main or master) found in this repository. \
+             Ensure the repository has at least one commit on a main or master branch, \
+             or that a remote is configured with a default branch."
+        )
+    })
 }
 
 /// Gets the full diff against main/master branch, including tracked changes and untracked file contents.
@@ -71,11 +95,11 @@ fn get_default_branch(dir: &str) -> Option<&'static str> {
 /// Falls back to HEAD if neither main nor master exist.
 /// Untracked files are formatted as diffs showing the entire file as added.
 pub fn get_full_diff(dir: &str) -> Result<String> {
-    let base = get_default_branch(dir).unwrap_or("HEAD");
+    let base = get_default_branch(dir).unwrap_or_else(|| "HEAD".to_string());
 
     // Get git diff for tracked files
     let diff_output = git_command()
-        .args(["diff", base])
+        .args(["diff", &base])
         .current_dir(dir)
         .output()?;
 
@@ -153,10 +177,10 @@ pub fn get_head_diff(dir: &str) -> Result<String> {
 
 /// Gets a diff containing only .nix files (including untracked .nix files).
 pub fn get_nix_diff(dir: &str) -> Result<String> {
-    let base = get_default_branch(dir).unwrap_or("HEAD");
+    let base = get_default_branch(dir).unwrap_or_else(|| "HEAD".to_string());
 
     let diff_output = git_command()
-        .args(["diff", base, "--", "*.nix"])
+        .args(["diff", &base, "--", "*.nix"])
         .current_dir(dir)
         .output()?;
 
@@ -375,10 +399,12 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     // Get current branch
     let branch = get_current_branch(dir);
 
-    // Check if on main or master branch
+    // Check if on the default branch
+    let default_branch = get_default_branch(dir);
     let is_main_branch = branch
         .as_ref()
-        .map(|b| b == "main" || b == "master")
+        .zip(default_branch.as_ref())
+        .map(|(b, d)| b == d)
         .unwrap_or(false);
 
     // Compute diff and stats
@@ -615,7 +641,7 @@ pub fn checkout_main_branch(dir: &str) -> Result<()> {
     let Some(branch) = get_default_branch(dir) else {
         anyhow::bail!("No main or master branch found");
     };
-    checkout_branch(dir, branch)
+    checkout_branch(dir, &branch)
 }
 
 /// Deletes a local branch by name. Must not be the currently checked-out branch.
@@ -677,16 +703,18 @@ pub fn finalize_evolve(
     squash: bool,
     commit_message: Option<&str>,
 ) -> Result<()> {
-    // If squashing, reset soft to main and create a new commit on the branch
+    let default_branch = require_default_branch(dir)?;
+
+    // If squashing, reset soft to the default branch and create a new commit on the branch
     if squash {
         let output = git_command()
-            .args(["reset", "--soft", "main"])
+            .args(["reset", "--soft", &default_branch])
             .current_dir(dir)
             .output()?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            anyhow::bail!("Failed to reset to main: {}", stderr);
+            anyhow::bail!("Failed to reset to {}: {}", default_branch, stderr);
         }
 
         let msg = commit_message.unwrap_or("chore: squash evolve commits");
@@ -701,15 +729,15 @@ pub fn finalize_evolve(
         }
     }
 
-    // 1. Checkout main
+    // 1. Checkout default branch
     let output = git_command()
-        .args(["checkout", "main"])
+        .args(["checkout", &default_branch])
         .current_dir(dir)
         .output()?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("Failed to checkout main: {}", stderr);
+        anyhow::bail!("Failed to checkout {}: {}", default_branch, stderr);
     }
 
     // 2. Merge the evolve branch (fast-forward if squashed)
