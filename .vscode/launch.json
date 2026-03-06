@@ -17,6 +17,15 @@
             "type": "lldb",
             "request": "attach",
             "pid": "${command:pickProcess}"
+        },
+        {
+            "name": "Debug AI Engine Eval (Python)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/apps/eval/run_evals.py",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/apps/ai-engine-eval:${env:PYTHONPATH}"
+            }
         }
     ]
 }

@@ -23,6 +23,9 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     pkgs.lldb
     pkgs.llvmPackages.bintools
     pkgs.nixfmt
+    pkgs.uv
+    pkgs.pyright
+    pkgs.ruff
   ]
   ++ lib.optionals (pkgs.stdenv.isDarwin) [
     pkgs.apple-sdk_15
@@ -37,6 +40,10 @@ lib.mkIf (!(config.container.isBuilding or false)) {
   languages.rust.channel = "stable";
   languages.typescript.enable = true;
   languages.nix.enable = true;
+  languages.python = {
+    enable = true;
+    version = "3.12";
+  };
 
   # https://devenv.sh/basics/
   enterShell = ''

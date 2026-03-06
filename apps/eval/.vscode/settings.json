@@ -1,0 +1,8 @@
+{
+  "python.pythonPath": ".venv/bin/python",
+  "python.venvPath": ".",
+  "python.languageServer": "Pylance",
+  "python.analysis.extraPaths": [
+    ".venv/lib/python3.12/site-packages"
+  ]
+}
