@@ -56,15 +56,9 @@ pub async fn evolve_and_commit(app: &AppHandle, description: &str) -> Result<Evo
     // Check initial git status
     let initial_status = git::status(&config_dir).context("Failed to get initial git status")?;
 
-    let is_on_main = initial_status
-        .branch
-        .as_ref()
-        .map(|b| b == "main" || b == "master")
-        .unwrap_or(false);
-
     info!(
         "[evolution] Starting evolve_and_commit | branch={:?} | is_main={}",
-        initial_status.branch, is_on_main
+        initial_status.branch, initial_status.is_main_branch
     );
 
     // Step 1: Run AI evolution (this already emits its own events)
@@ -96,7 +90,7 @@ pub async fn evolve_and_commit(app: &AppHandle, description: &str) -> Result<Evo
     );
 
     // Step 3: Create branch if on main
-    let branch_name = if is_on_main {
+    let branch_name = if initial_status.is_main_branch {
         let base_name = format!("nixmac-evolve/{}", slugify(description));
         let created_branch = git::checkout_new_branch(&config_dir, &base_name)?;
         info!("[evolution] Created branch: {}", created_branch);
@@ -121,7 +115,7 @@ pub async fn evolve_and_commit(app: &AppHandle, description: &str) -> Result<Evo
     let summary_json =
         serde_json::to_string(&change_summary).context("Failed to serialize summary to JSON")?;
 
-    let branch_for_db = branch_name.as_deref().unwrap_or("main").to_string();
+    let branch_for_db = branch_name.context("Failed to determine branch for DB record")?;
 
     let evolution_id = db::operations::save_evolution_complete(
         &db_path,
