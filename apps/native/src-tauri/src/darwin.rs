@@ -9,7 +9,7 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter};
 
 /// Get the log directory path, creating it if needed.
@@ -43,7 +43,7 @@ fn create_log_file() -> anyhow::Result<(File, PathBuf)> {
 ///
 /// This spawns the rebuild in a background thread and emits events:
 /// - `darwin:apply:data`: Emitted for each line of output with `{"chunk": "..."}`
-/// - `darwin:apply:end`: Emitted on completion with `{"ok": bool, "code": int}`
+/// - `darwin:apply:end`: Emitted on completion with `{"ok": bool, "code": int, "error_type": string, "error": string, "log_file": string}`
 pub fn apply_stream(
     app: &AppHandle,
     config_dir: &str,
@@ -103,6 +103,7 @@ fn run_build_step(
     config_dir: &str,
     host_attr: &str,
     summarizer: &Arc<log_summarizer::LogSummarizerHandle>,
+    log_writer: Arc<Mutex<File>>,
 ) -> Result<BuildResult, anyhow::Error> {
     // Ensure untracked files are visible to Nix flake evaluation
     if let Err(e) = crate::git::intent_add_untracked(config_dir) {
@@ -146,6 +147,8 @@ fn run_build_step(
     let app_err = app.clone();
     let sum_out = summarizer.clone();
     let sum_err = summarizer.clone();
+    let log_for_out = log_writer.clone();
+    let log_for_err = log_writer.clone();
 
     let stdout_handle = std::thread::spawn(move || {
         let mut lines = Vec::new();
@@ -156,6 +159,11 @@ fn run_build_step(
                     serde_json::json!({"chunk": format!("{}\n", line)}),
                 );
                 sum_out.send_line(&line);
+                // Also write stdout lines to the main log file
+                if let Ok(mut f) = log_for_out.lock() {
+                    let _ = writeln!(f, "{}", line);
+                    let _ = f.flush();
+                }
                 lines.push(line);
             }
         }
@@ -170,6 +178,11 @@ fn run_build_step(
                     serde_json::json!({"chunk": format!("{}\n", line)}),
                 );
                 sum_err.send_line(&line);
+                // Also write stderr lines to the main log file
+                if let Ok(mut f) = log_for_err.lock() {
+                    let _ = writeln!(f, "{}", line);
+                    let _ = f.flush();
+                }
                 lines.push(line);
             }
         }
@@ -332,7 +345,7 @@ fn run_darwin_rebuild(
     config_dir: &str,
     host_attr: &str,
 ) -> Result<serde_json::Value, serde_json::Value> {
-    let (mut log_file, log_path) = create_log_file().map_err(|e| {
+    let (log_file, log_path) = create_log_file().map_err(|e| {
         serde_json::json!({
             "ok": false,
             "code": -1,
@@ -340,6 +353,7 @@ fn run_darwin_rebuild(
             "error": format!("Failed to create log file: {}", e),
         })
     })?;
+    let log_file = Arc::new(Mutex::new(log_file));
     info!("[darwin] Logging to: {:?}", log_path);
 
     let summarizer = Arc::new(log_summarizer::start(app.clone()));
@@ -347,8 +361,11 @@ fn run_darwin_rebuild(
     macro_rules! log_and_emit {
         ($msg:expr) => {
             let msg = $msg;
-            let _ = writeln!(log_file, "{}", msg);
-            let _ = log_file.flush();
+            {
+                let mut f = log_file.lock().unwrap();
+                let _ = writeln!(f, "{}", msg);
+                let _ = f.flush();
+            }
             let _ = app.emit(
                 "darwin:apply:data",
                 serde_json::json!({"chunk": format!("{}\n", msg)}),
@@ -359,26 +376,31 @@ fn run_darwin_rebuild(
 
     // Log header
     let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S");
-    let _ = writeln!(log_file, "=== darwin-rebuild started at {} ===", timestamp);
-    let _ = writeln!(log_file, "Config dir: {}", config_dir);
-    let _ = writeln!(log_file, "Host attr: {}", host_attr);
-    let _ = writeln!(log_file, "Log file: {:?}", log_path);
-    let _ = writeln!(log_file);
+    {
+        let mut f = log_file.lock().unwrap();
+        let _ = writeln!(f, "=== darwin-rebuild started at {} ===", timestamp);
+        let _ = writeln!(f, "Config dir: {}", config_dir);
+        let _ = writeln!(f, "Host attr: {}", host_attr);
+        let _ = writeln!(f, "Log file: {:?}", log_path);
+        let _ = writeln!(f);
+        let _ = f.flush();
+    }
 
     // =========================================================================
     // Step 1: build as user (no sudo, avoids Git ownership issues)
     // =========================================================================
     log_and_emit!("Starting darwin-rebuild build (as user)...");
 
-    let build_result = run_build_step(app, config_dir, host_attr, &summarizer).map_err(|e| {
-        serde_json::json!({
-            "ok": false,
-            "code": -1,
-            "log_file": log_path.to_string_lossy(),
-            "error_type": "generic_error",
-            "error": format!("Build step failed to execute: {}", e),
-        })
-    })?;
+    let build_result = run_build_step(app, config_dir, host_attr, &summarizer, log_file.clone())
+        .map_err(|e| {
+            serde_json::json!({
+                "ok": false,
+                "code": -1,
+                "log_file": log_path.to_string_lossy(),
+                "error_type": "generic_error",
+                "error": format!("Build step failed to execute: {}", e),
+            })
+        })?;
 
     if !build_result.success {
         let tail = &build_result.stderr[build_result.stderr.len().saturating_sub(10)..];
@@ -390,8 +412,13 @@ fn run_darwin_rebuild(
         log_and_emit!(format!("Build failed (exit code {})", build_result.code));
         summarizer.complete(false);
 
-        let _ = writeln!(log_file, "\n=== darwin-rebuild build FAILED ===");
-        let _ = writeln!(log_file, "Exit code: {}", build_result.code);
+        {
+            if let Ok(mut f) = log_file.lock() {
+                let _ = writeln!(f, "\n=== darwin-rebuild build FAILED ===");
+                let _ = writeln!(f, "Exit code: {}", build_result.code);
+                let _ = f.flush();
+            }
+        }
 
         return Err(serde_json::json!({
             "ok": false,
@@ -420,10 +447,68 @@ fn run_darwin_rebuild(
     })?;
 
     if !activate_result.success {
-        log_and_emit!("Activation failed");
         summarizer.complete(false);
+        // Write and emit activation output (osascript uses `2>&1`, so useful details are often in stdout)
+        let mut stdout_lines: Vec<String> = Vec::new();
+        for line in activate_result.stdout.lines() {
+            if !line.is_empty() {
+                if let Ok(mut f) = log_file.lock() {
+                    let _ = writeln!(f, "{}", line);
+                    let _ = f.flush();
+                }
+                let _ = app.emit(
+                    "darwin:apply:data",
+                    serde_json::json!({"chunk": format!("{}\n", line)}),
+                );
+                summarizer.send_line(line);
+                stdout_lines.push(line.to_string());
+            }
+        }
 
-        let error_response = handle_activation_error(&activate_result, &log_path);
+        // Include a tail of stdout in the returned error payload for easier debugging
+        let stdout_tail = stdout_lines
+            .iter()
+            .rev()
+            .take(20)
+            .cloned()
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let mut error_response = handle_activation_error(&activate_result, &log_path);
+        if !stdout_tail.is_empty() {
+            if let Some(obj) = error_response.as_object_mut() {
+                obj.insert(
+                    "stdout_tail".to_string(),
+                    serde_json::Value::String(stdout_tail.clone()),
+                );
+                if let Some(err_val) = obj.get_mut("error") {
+                    if let Some(s) = err_val.as_str() {
+                        let new_err =
+                            format!("{}\n\nActivation output (last lines):\n{}", s, stdout_tail);
+                        *err_val = serde_json::Value::String(new_err);
+                    }
+                } else {
+                    obj.insert(
+                        "error".to_string(),
+                        serde_json::Value::String(format!("Activation output:\n{}", stdout_tail)),
+                    );
+                }
+            } else {
+                error_response = serde_json::json!({
+                    "stdout_tail": stdout_tail,
+                    "error": error_response,
+                });
+            }
+        }
+
+        log_and_emit!(format!(
+            "Activation failed: {} ({})",
+            error_response, stdout_tail
+        ));
+
         return Err(error_response);
     }
 
@@ -432,8 +517,10 @@ fn run_darwin_rebuild(
     // Emit captured output to frontend
     for line in activate_result.stdout.lines() {
         if !line.is_empty() {
-            let _ = writeln!(log_file, "{}", line);
-            let _ = log_file.flush();
+            if let Ok(mut f) = log_file.lock() {
+                let _ = writeln!(f, "{}", line);
+                let _ = f.flush();
+            }
             let _ = app.emit(
                 "darwin:apply:data",
                 serde_json::json!({"chunk": format!("{}\n", line)}),
@@ -445,16 +532,21 @@ fn run_darwin_rebuild(
     summarizer.complete(true);
 
     // Log completion
-    let _ = writeln!(log_file);
-    let _ = writeln!(log_file, "=== darwin-rebuild completed ===");
-    let _ = writeln!(log_file, "Exit code: {}", activate_result.code);
-    let _ = writeln!(log_file, "Success: true");
-    let _ = writeln!(
-        log_file,
-        "Finished at: {}",
-        Local::now().format("%Y-%m-%d %H:%M:%S")
-    );
-    let _ = writeln!(log_file, "Log saved to: {:?}", log_path);
+    {
+        if let Ok(mut f) = log_file.lock() {
+            let _ = writeln!(f);
+            let _ = writeln!(f, "=== darwin-rebuild completed ===");
+            let _ = writeln!(f, "Exit code: {}", activate_result.code);
+            let _ = writeln!(f, "Success: true");
+            let _ = writeln!(
+                f,
+                "Finished at: {}",
+                Local::now().format("%Y-%m-%d %H:%M:%S")
+            );
+            let _ = writeln!(f, "Log saved to: {:?}", log_path);
+            let _ = f.flush();
+        }
+    }
     let _ = app.emit(
         "darwin:apply:data",
         serde_json::json!({"chunk": format!("Log saved to: {:?}\n", log_path)}),
@@ -474,10 +566,18 @@ fn run_darwin_rebuild(
     };
 
     info!("[darwin] apply_stream completed");
-    Ok(serde_json::json!({
+    let mut success_payload = serde_json::json!({
         "ok": true,
         "code": activate_result.code,
         "log_file": log_path.to_string_lossy(),
-        "error_type": error_type,
-    }))
+    });
+    if let Some(et) = error_type {
+        if let Some(obj) = success_payload.as_object_mut() {
+            obj.insert(
+                "error_type".to_string(),
+                serde_json::Value::String(et.to_string()),
+            );
+        }
+    }
+    Ok(success_payload)
 }
