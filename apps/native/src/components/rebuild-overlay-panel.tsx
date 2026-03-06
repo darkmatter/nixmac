@@ -29,6 +29,10 @@ function getErrorTitle(errorType: RebuildErrorType | undefined): string {
       return "Build Failed";
     case "full_disk_access":
       return "Full Disk Access Required";
+    case "user_cancelled":
+      return "Activation Cancelled";
+    case "authorization_denied":
+      return "Authorization Denied";
     default:
       return "Build Failed";
   }
