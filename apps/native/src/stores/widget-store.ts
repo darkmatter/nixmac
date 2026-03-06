@@ -27,6 +27,8 @@ export type RebuildErrorType =
   | "evaluation_error"
   | "build_error"
   | "full_disk_access"
+  | "user_cancelled"
+  | "authorization_denied"
   | "generic_error";
 
 export interface RebuildLine {
