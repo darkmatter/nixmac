@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,6 +18,7 @@ interface ConfirmationDialogProps {
   message: string;
   onConfirm: () => void;
   color?: "white" | "teal" | "blue" | "amber";
+  children?: React.ReactNode;
 }
 
 export function ConfirmationDialog({
@@ -25,6 +27,7 @@ export function ConfirmationDialog({
   message,
   onConfirm,
   color = "teal",
+  children,
 }: ConfirmationDialogProps) {
   const handleConfirm = () => {
     onConfirm();
@@ -69,6 +72,7 @@ export function ConfirmationDialog({
             {message}
           </DialogDescription>
         </DialogHeader>
+        {children}
         <DialogFooter className="gap-3">
           <Button
             variant="outline"

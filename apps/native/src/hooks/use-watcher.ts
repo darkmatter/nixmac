@@ -21,7 +21,7 @@ export function useWatcher() {
       (event) => {
         const store = useWidgetStore.getState();
         if (!store.isProcessing && !store.isGenerating) {
-          store.setGitStatus(event.payload.status);
+          store.setGitStatus(event.payload.gitStatus);
           store.setSummaryAvailable(event.payload.summary !== null);
           if (event.payload.summary) {
             store.setSummary(event.payload.summary);

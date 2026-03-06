@@ -2,6 +2,7 @@
 
 import { ActionTiles, type ActionTile } from "@/components/widget/action-tiles";
 import { ConfirmationDialog } from "@/components/widget/confirmation-dialog";
+import { KeepBranchCheckbox } from "@/components/widget/keep-branch-checkbox";
 import { MergeSection } from "@/components/widget/merge-section";
 import { PromptInputSection } from "@/components/widget/prompt-input-section";
 import { SummaryOrDiff } from "@/components/widget/summary-or-diff";
@@ -16,6 +17,7 @@ export function MergeStep() {
   const { handleRollback } = useRollback();
 
   const [showRollbackDialog, setShowRollbackDialog] = useState(false);
+  const [keepBranch, setKeepBranch] = useState(false);
   const [action, setAction] = useState<"merge" | "amend">("merge");
 
   const tiles: ActionTile[] = [
@@ -56,9 +58,11 @@ export function MergeStep() {
         open={showRollbackDialog}
         onOpenChange={setShowRollbackDialog}
         message="Discard changes and rebuild to previous commit?"
-        onConfirm={handleRollback}
+        onConfirm={() => handleRollback(keepBranch)}
         color="amber"
-      />
+      >
+        <KeepBranchCheckbox checked={keepBranch} onCheckedChange={setKeepBranch} />
+      </ConfirmationDialog>
     </>
   );
 }
