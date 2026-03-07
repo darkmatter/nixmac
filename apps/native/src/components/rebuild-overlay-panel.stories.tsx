@@ -13,6 +13,7 @@ import {
 const withRebuildState = (rebuildState: Partial<RebuildState>) => {
   const defaults: RebuildState = {
     isRunning: false,
+    context: "apply",
     lines: [],
     rawLines: [],
     exitCode: undefined,

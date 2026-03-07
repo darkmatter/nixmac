@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useRollback } from "@/hooks/use-rollback";
 import { cn } from "@/lib/utils";
 import { useWidgetStore, type RebuildErrorType, type RebuildLine } from "@/stores/widget-store";
@@ -10,6 +11,7 @@ import {
   Hammer,
   List,
   Play,
+  RefreshCw,
   RotateCcw,
   Sparkles,
   Terminal,
@@ -330,11 +332,16 @@ function RawConsoleOutput({ lines, children }: { lines: string[]; children?: Rea
 
 export function RebuildOverlayPanel() {
   const { handleRollback } = useRollback();
-  const { isRunning, lines, rawLines, success, errorType, errorMessage } = useWidgetStore(
+  const { triggerRebuild } = useRebuildStream();
+  const { isRunning, lines, rawLines, success, errorType, errorMessage, context } = useWidgetStore(
     (state) => state.rebuild,
   );
-  const processingAction = useWidgetStore((state) => state.processingAction);
-  const isRollback = processingAction === "cancel";
+  const isRollback = context === "rollback";
+
+  const handleRetry = useCallback(async () => {
+    useWidgetStore.getState().setProcessing(true, "cancel");
+    await triggerRebuild({ context: "rollback" });
+  }, [triggerRebuild]);
 
   const handleDismiss = useCallback(() => {
     useWidgetStore.getState().clearRebuild();
@@ -468,6 +475,16 @@ export function RebuildOverlayPanel() {
                 <X className="mr-2 h-4 w-4" />
                 Dismiss
               </Button>
+              {success === false && isRollback && (
+                <Button
+                  className="bg-white/5 text-white/80 hover:bg-white/10"
+                  onClick={handleRetry}
+                  size="sm"
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Retry
+                </Button>
+              )}
               {success === false && (
                 <Button
                   className="bg-rose-300/10 text-rose-300 hover:bg-rose-300/20"
