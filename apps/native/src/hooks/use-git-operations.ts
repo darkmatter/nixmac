@@ -66,7 +66,6 @@ export function useGitOperations() {
         useWidgetStore.getState().appendLog("✓ Merged successfully\n");
         useWidgetStore.getState().setError(null);
         toast.success("Merged successfully", { description: `${currentBranch} merged to main` });
-        useWidgetStore.getState().setCommitMsg("");
         useWidgetStore.getState().setEvolvePrompt("");
         useWidgetStore.getState().clearPreview();
         await refreshGitStatus();

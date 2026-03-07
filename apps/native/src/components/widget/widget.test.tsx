@@ -54,7 +54,6 @@ describe("DarwinWidget", () => {
     store.setHost("Test-MacBook");
     store.setGitStatus(null);
     store.setEvolvePrompt("");
-    store.setCommitMsg("");
     store.setProcessing(false);
     store.setGenerating(false);
     store.setError(null);
