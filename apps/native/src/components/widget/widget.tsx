@@ -22,11 +22,11 @@ import { useGitOperations } from "@/hooks/use-git-operations";
 import { useNixInstall } from "@/hooks/use-nix-install";
 import { usePanicHandler } from "@/hooks/use-panic-handler";
 import { usePermissions } from "@/hooks/use-permissions";
+import { usePrefs } from "@/hooks/use-prefs";
 import { usePromptHistory } from "@/hooks/use-prompt-history";
 import { useWatcher } from "@/hooks/use-watcher";
 import { loadConfig, loadHosts } from "@/hooks/use-widget-initialization";
 import { useSummary } from "@/hooks/use-summary";
-import { darwinAPI } from "@/tauri-api";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
 import { useEffect } from "react";
@@ -40,6 +40,7 @@ export function DarwinWidget() {
   const { getInitialStatus } = useGitOperations();
   const { checkNix } = useNixInstall();
   const { checkPermissions } = usePermissions();
+  const { loadPrefs } = usePrefs();
   const { refreshPromptHistory } = usePromptHistory();
   const { startWatching } = useWatcher();
   const { findSummary } = useSummary();
@@ -66,10 +67,7 @@ export function DarwinWidget() {
         await checkNix();
         await loadHosts();
         await getInitialStatus();
-        const prefs = await darwinAPI.ui.getPrefs();
-        if (prefs) {
-          useWidgetStore.getState().initConfirmPrefs(prefs);
-        }
+        await loadPrefs();
         await findSummary();
         refreshPromptHistory();
       } catch (e: unknown) {

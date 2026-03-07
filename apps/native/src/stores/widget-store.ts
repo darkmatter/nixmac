@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { FeedbackType } from "@/types/feedback";
 import type { SummaryResponse, EvolveEvent, GitStatus, PermissionsState } from "@/tauri-api";
-import { darwinAPI } from "@/tauri-api";
 import { computeCurrentStep } from "@/components/widget/utils";
 export type {
   SummaryResponse,
@@ -143,7 +142,6 @@ export interface WidgetActions {
 
   // Confirmation preferences
   setConfirmPref: (key: ConfirmPrefKey, value: boolean) => void;
-  persistConfirmPref: (key: ConfirmPrefKey, value: boolean) => void;
   initConfirmPrefs: (prefs: Partial<Record<ConfirmPrefKey, boolean>>) => void;
 
   // Client-side state (NOT from server)
@@ -282,13 +280,6 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setSummaryLoading: (summaryLoading) => set({ summaryLoading }),
     setSummaryAvailable: (summaryAvailable) => set({ summaryAvailable }),
     setConfirmPref: (key, value) => set({ [key]: value }),
-    persistConfirmPref: (key, value) => {
-      const previous = _get()[key];
-      set({ [key]: value });
-      darwinAPI.ui.setPrefs({ [key]: value }).catch(() => {
-        set({ [key]: previous });
-      });
-    },
     initConfirmPrefs: (prefs) =>
       set({
         confirmBuild: prefs.confirmBuild ?? true,

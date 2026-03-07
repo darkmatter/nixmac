@@ -4,13 +4,14 @@ import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
 import { useForm } from "@tanstack/react-form";
-import { Bot, FolderOpen, Key, Settings2 } from "lucide-react";
+import { Bot, FolderOpen, Key, Settings2, SlidersHorizontal } from "lucide-react";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { AiModelsTab } from "./settings/ai-models-tab";
 import { ApiKeysTab } from "./settings/api-keys-tab";
 import { GeneralTab } from "./settings/general-tab";
+import { PreferencesTab } from "./settings/preferences-tab";
 
-type SettingsTab = "general" | "api-keys" | "ai-models";
+type SettingsTab = "general" | "api-keys" | "ai-models" | "preferences";
 type ApiKeyStatus = "idle" | "verifying" | "valid" | "invalid";
 
 interface NavItemProps {
@@ -214,6 +215,12 @@ export function SettingsDialog() {
                 label="API Keys"
                 onClick={() => setActiveTab("api-keys")}
               />
+              <NavItem
+                active={activeTab === "preferences"}
+                icon={<SlidersHorizontal className="h-4 w-4" />}
+                label="Preferences"
+                onClick={() => setActiveTab("preferences")}
+              />
             </nav>
             <div className="mt-auto">
               <Button
@@ -273,6 +280,8 @@ export function SettingsDialog() {
                 )}
               </form.Field>
             )}
+
+            {activeTab === "preferences" && <PreferencesTab />}
 
             {activeTab === "ai-models" && (
               <form.Field name="evolveProvider">
