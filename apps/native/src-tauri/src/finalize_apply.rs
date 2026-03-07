@@ -110,7 +110,9 @@ async fn record_uncommitted_built_changes(
     let db_path = db::get_db_path(app).context("Failed to get database path")?;
     let summary_json =
         serde_json::to_string(&change_summary).context("Failed to serialize summary")?;
-    let branch_for_db = branch_name.context("Failed to determine branch for DB record")?;
+    let branch_for_db = branch_name
+        .or_else(|| status.branch.clone())
+        .context("Failed to determine branch for DB record")?;
 
     db::operations::save_evolution_complete(
         &db_path,

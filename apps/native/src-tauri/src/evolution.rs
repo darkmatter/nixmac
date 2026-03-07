@@ -115,7 +115,9 @@ pub async fn evolve_and_commit(app: &AppHandle, description: &str) -> Result<Evo
     let summary_json =
         serde_json::to_string(&change_summary).context("Failed to serialize summary to JSON")?;
 
-    let branch_for_db = branch_name.context("Failed to determine branch for DB record")?;
+    let branch_for_db = branch_name
+        .or_else(|| initial_status.branch.clone())
+        .context("Failed to determine branch for DB record")?;
 
     let evolution_id = db::operations::save_evolution_complete(
         &db_path,
