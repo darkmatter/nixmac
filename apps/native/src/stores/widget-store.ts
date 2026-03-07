@@ -37,8 +37,11 @@ export interface RebuildLine {
   type: "stdout" | "stderr" | "info";
 }
 
+export type RebuildContext = "rollback" | "apply";
+
 export interface RebuildState {
   isRunning: boolean;
+  context: RebuildContext;
   lines: RebuildLine[];
   rawLines: string[];
   exitCode?: number;
@@ -149,7 +152,7 @@ export interface WidgetActions {
   clearEvolveEvents: () => void;
 
   // Rebuild state
-  startRebuild: () => void;
+  startRebuild: (context: RebuildContext) => void;
   appendRebuildLine: (line: RebuildLine) => void;
   appendRawLine: (line: string) => void;
   setRebuildError: (errorType: RebuildErrorType, errorMessage: string) => void;
@@ -165,6 +168,7 @@ export type WidgetStore = WidgetState & WidgetActions;
 
 export const initialRebuildState: RebuildState = {
   isRunning: false,
+  context: "apply",
   lines: [],
   rawLines: [],
   exitCode: undefined,
@@ -301,10 +305,11 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     clearEvolveEvents: () => set({ evolveEvents: [] }),
 
     // Rebuild state
-    startRebuild: () =>
+    startRebuild: (context) =>
       set({
         rebuild: {
           isRunning: true,
+          context,
           lines: [{ id: 0, text: "Preparing rebuild...", type: "info" }],
           rawLines: [],
           exitCode: undefined,

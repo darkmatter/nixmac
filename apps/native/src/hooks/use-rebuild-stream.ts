@@ -1,9 +1,10 @@
-import { useWidgetStore, type RebuildErrorType } from "@/stores/widget-store";
+import { useWidgetStore, type RebuildContext, type RebuildErrorType } from "@/stores/widget-store";
 import { darwinAPI, ipcRenderer } from "@/tauri-api";
 import { useCallback, useRef } from "react";
 import { useGitOperations } from "./use-git-operations";
 
 interface RebuildOptions {
+  context: RebuildContext;
   /** Called after successful rebuild (before auto-dismiss) */
   onSuccess?: () => Promise<void>;
 }
@@ -17,9 +18,9 @@ export function useRebuildStream() {
   const rebuildLineIdRef = useRef(1);
 
   const triggerRebuild = useCallback(
-    async (options?: RebuildOptions) => {
+    async (options: RebuildOptions) => {
       const store = useWidgetStore.getState();
-      store.startRebuild();
+      store.startRebuild(options.context);
       rebuildLineIdRef.current = 1;
 
       // Listen to raw log data for console output
