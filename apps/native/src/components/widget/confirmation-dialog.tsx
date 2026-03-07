@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -11,16 +10,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import type { ReactNode } from "react";
 
 interface ConfirmationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   message: string;
   onConfirm: () => void;
-  onDontAskAgain?: () => void;
   color?: "white" | "teal" | "blue" | "amber";
-  showDontAskAgain?: boolean;
+  children?: ReactNode;
 }
 
 export function ConfirmationDialog({
@@ -28,49 +26,32 @@ export function ConfirmationDialog({
   onOpenChange,
   message,
   onConfirm,
-  onDontAskAgain,
   color = "teal",
-  showDontAskAgain = false,
+  children,
 }: ConfirmationDialogProps) {
-  const [dontAskAgain, setDontAskAgain] = useState(false);
-
-  const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) {
-      setDontAskAgain(false);
-    }
-    onOpenChange(nextOpen);
-  };
-
   const handleConfirm = () => {
-    if (dontAskAgain && onDontAskAgain) {
-      onDontAskAgain();
-    }
     onConfirm();
-    handleOpenChange(false);
+    onOpenChange(false);
   };
 
   const colorClasses = {
     white: {
       border: "border-white-500/30",
-      text: "text-white-500",
       buttonBg: "bg-white-500 hover:bg-white-600",
       buttonBorder: "border-white-500/30",
     },
     teal: {
       border: "border-teal-300/30",
-      text: "text-teal-300",
       buttonBg: "bg-teal-300 hover:bg-teal-400",
       buttonBorder: "border-teal-300/30",
     },
     blue: {
       border: "border-teal-300/30",
-      text: "text-teal-300",
       buttonBg: "bg-teal-300 hover:bg-teal-400",
       buttonBorder: "border-teal-300/30",
     },
     amber: {
       border: "border-rose-300/30",
-      text: "text-rose-300",
       buttonBg: "bg-rose-300 hover:bg-rose-400",
       buttonBorder: "border-rose-300/30",
     },
@@ -79,7 +60,7 @@ export function ConfirmationDialog({
   const colors = colorClasses[color];
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={cn("max-w-md gap-6 border-2", colors.border)}>
         <DialogHeader>
           <DialogTitle className="sr-only">Confirm Action</DialogTitle>
@@ -87,25 +68,11 @@ export function ConfirmationDialog({
             {message}
           </DialogDescription>
         </DialogHeader>
-        {showDontAskAgain && (
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="dont-ask-again"
-              checked={dontAskAgain}
-              onCheckedChange={(checked) => setDontAskAgain(checked === true)}
-            />
-            <label
-              htmlFor="dont-ask-again"
-              className="cursor-pointer text-muted-foreground text-sm"
-            >
-              Don't ask again
-            </label>
-          </div>
-        )}
+        {children}
         <DialogFooter className="gap-3">
           <Button
             variant="outline"
-            onClick={() => handleOpenChange(false)}
+            onClick={() => onOpenChange(false)}
             className="border-border/50 hover:border-border"
           >
             Cancel
