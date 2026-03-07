@@ -11,7 +11,6 @@ import {
   Hammer,
   List,
   Play,
-  RefreshCw,
   RotateCcw,
   Sparkles,
   Terminal,
@@ -475,26 +474,16 @@ export function RebuildOverlayPanel() {
                 <X className="mr-2 h-4 w-4" />
                 Dismiss
               </Button>
-              {success === false && isRollback && (
-                <Button
-                  className="bg-white/5 text-white/80 hover:bg-white/10"
-                  onClick={handleRetry}
-                  size="sm"
-                >
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Retry
-                </Button>
-              )}
               {success === false && (
                 <Button
                   className="bg-rose-300/10 text-rose-300 hover:bg-rose-300/20"
-                  onClick={() => handleRollback()}
+                  onClick={isRollback ? handleRetry : () => handleRollback()}
                   size="sm"
-                  // NOT IMPLEMENTED
-                  disabled={true}
+                  // only implemented for rollback
+                  disabled={!isRollback}
                 >
                   <RotateCcw className="mr-2 h-4 w-4" />
-                  Rollback
+                  {isRollback ? "Retry Rollback" : "Rollback"}
                 </Button>
               )}
             </motion.div>
