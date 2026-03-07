@@ -75,7 +75,6 @@ export interface WidgetState {
   gitStatus: GitStatus | null;
   // Evolution
   evolvePrompt: string;
-  commitMsg: string;
   isProcessing: boolean;
   processingAction: ProcessingAction;
   evolveEvents: EvolveEvent[];
@@ -124,7 +123,6 @@ export interface WidgetActions {
   setDarwinRebuildPrefetching: (prefetching: boolean) => void;
   setGitStatus: (status: GitStatus | null) => void;
   setEvolvePrompt: (prompt: string) => void;
-  setCommitMsg: (msg: string) => void;
   setProcessing: (isProcessing: boolean, action?: ProcessingAction) => void;
   setSummary: (summary: SummaryResponse) => void;
   setSettingsOpen: (open: boolean) => void;
@@ -207,7 +205,6 @@ export const initialWidgetState: WidgetState = {
 
   // Evolution
   evolvePrompt: "",
-  commitMsg: "",
   isProcessing: false,
   processingAction: null,
   evolveEvents: [],
@@ -259,7 +256,6 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setHost: (host) => set({ host }),
     setGitStatus: (gitStatus) => set({ gitStatus }),
     setEvolvePrompt: (evolvePrompt) => set({ evolvePrompt }),
-    setCommitMsg: (commitMsg) => set({ commitMsg }),
     setProcessing: (isProcessing, action = null) =>
       set({
         isProcessing,
