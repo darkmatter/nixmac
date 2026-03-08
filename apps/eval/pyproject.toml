@@ -4,5 +4,7 @@ version = "1.0.0"
 description = "AI Evolution Engine Evaluation runner for nixmac"
 requires-python = ">=3.8"
 dependencies = [
+    "gitpython>=3.1.46",
     "openpyxl>=3.0.0",
+    "types-openpyxl>=3.1.5.20241225",
 ]

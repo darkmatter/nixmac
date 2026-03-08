@@ -23,6 +23,7 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/apps/eval/run_evals.py",
+            "args": ["--rows", "1,2,3", "--ollama-url", "http://localhost:11434"],
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/apps/ai-engine-eval:${env:PYTHONPATH}"
             }
