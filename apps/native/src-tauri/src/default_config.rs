@@ -28,11 +28,13 @@ pub fn detect_darwin_platform() -> &'static str {
 /// Template placeholders replaced:
 /// - `HOSTNAME_PLACEHOLDER` -> the provided hostname
 /// - `PLATFORM_PLACEHOLDER` -> the detected platform (aarch64-darwin or x86_64-darwin)
+/// - `USERNAME_PLACEHOLDER` -> the current macOS username
 fn copy_template_dir(
     src: &Path,
     dest: &Path,
     hostname: &str,
     platform: &str,
+    username: &str,
 ) -> Result<(), String> {
     fs::create_dir_all(dest)
         .map_err(|e| format!("Failed to create directory {}: {}", dest.display(), e))?;
@@ -47,7 +49,7 @@ fn copy_template_dir(
 
         if src_path.is_dir() {
             // Recursively copy subdirectories
-            copy_template_dir(&src_path, &dest_path, hostname, platform)?;
+            copy_template_dir(&src_path, &dest_path, hostname, platform, username)?;
         } else if src_path.is_file() {
             // Check if it's a .nix file that needs template processing
             let is_nix_file = src_path
@@ -62,7 +64,8 @@ fn copy_template_dir(
 
                 let processed = content
                     .replace("HOSTNAME_PLACEHOLDER", hostname)
-                    .replace("PLATFORM_PLACEHOLDER", platform);
+                    .replace("PLATFORM_PLACEHOLDER", platform)
+                    .replace("USERNAME_PLACEHOLDER", username);
 
                 fs::write(&dest_path, processed)
                     .map_err(|e| format!("Failed to write {}: {}", dest_path.display(), e))?;
@@ -185,12 +188,13 @@ pub fn bootstrap(app: &AppHandle, hostname: &str) -> Result<(), String> {
     }
 
     let platform = detect_darwin_platform();
+    let username = std::env::var("USER").unwrap_or_else(|_| "unknown".to_string());
     let template_path = resolve_template_path(app)?;
 
     log::info!("Using template from: {}", template_path.display());
 
     // Copy and process all template files recursively
-    copy_template_dir(&template_path, dest_path, hostname, platform)?;
+    copy_template_dir(&template_path, dest_path, hostname, platform, &username)?;
 
     // Initialize git repository and commit templates (without flake.lock)
     git::init_if_needed(&dir).map_err(|e| format!("Failed to init git: {}", e))?;

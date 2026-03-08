@@ -382,21 +382,13 @@ fn run_gui_mode(
             let sep1 = PredefinedMenuItem::separator(app)?;
             let feedback_i =
                 MenuItem::with_id(app, "send_feedback", "Send Feedback...", true, None::<&str>)?;
-            let settings_i =
-                MenuItem::with_id(app, "settings", "Settings...", true, None::<&str>)?;
+            let settings_i = MenuItem::with_id(app, "settings", "Settings...", true, None::<&str>)?;
             let sep2 = PredefinedMenuItem::separator(app)?;
             let quit_i = MenuItem::with_id(app, "quit", "Quit nixmac", true, None::<&str>)?;
 
             let menu = Menu::with_items(
                 app,
-                &[
-                    &open_i,
-                    &sep1,
-                    &feedback_i,
-                    &settings_i,
-                    &sep2,
-                    &quit_i,
-                ],
+                &[&open_i, &sep1, &feedback_i, &settings_i, &sep2, &quit_i],
             )?;
 
             // Clone a handle to the guard for use in menu callbacks (so we can flush on quit)
