@@ -636,12 +636,12 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
     let ollama_api_base_url: Option<String> =
         store::get_ollama_api_base_url(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
 
-    let confirm_build =
-        store::get_bool_pref(&app, store::CONFIRM_BUILD_KEY, true).map_err(|e| capture_err("ui_get_prefs", e))?;
-    let confirm_clear =
-        store::get_bool_pref(&app, store::CONFIRM_CLEAR_KEY, true).map_err(|e| capture_err("ui_get_prefs", e))?;
-    let confirm_rollback =
-        store::get_bool_pref(&app, store::CONFIRM_ROLLBACK_KEY, true).map_err(|e| capture_err("ui_get_prefs", e))?;
+    let confirm_build = store::get_bool_pref(&app, store::CONFIRM_BUILD_KEY, true)
+        .map_err(|e| capture_err("ui_get_prefs", e))?;
+    let confirm_clear = store::get_bool_pref(&app, store::CONFIRM_CLEAR_KEY, true)
+        .map_err(|e| capture_err("ui_get_prefs", e))?;
+    let confirm_rollback = store::get_bool_pref(&app, store::CONFIRM_ROLLBACK_KEY, true)
+        .map_err(|e| capture_err("ui_get_prefs", e))?;
 
     Ok(types::UiPrefs {
         openrouter_api_key,
@@ -709,15 +709,24 @@ pub async fn ui_set_prefs(
         store::set_send_diagnostics(&app, send_diagnostics)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
-    if let Some(confirm_build) = prefs.get(store::CONFIRM_BUILD_KEY).and_then(|v| v.as_bool()) {
+    if let Some(confirm_build) = prefs
+        .get(store::CONFIRM_BUILD_KEY)
+        .and_then(|v| v.as_bool())
+    {
         store::set_bool_pref(&app, store::CONFIRM_BUILD_KEY, confirm_build)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
-    if let Some(confirm_clear) = prefs.get(store::CONFIRM_CLEAR_KEY).and_then(|v| v.as_bool()) {
+    if let Some(confirm_clear) = prefs
+        .get(store::CONFIRM_CLEAR_KEY)
+        .and_then(|v| v.as_bool())
+    {
         store::set_bool_pref(&app, store::CONFIRM_CLEAR_KEY, confirm_clear)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
-    if let Some(confirm_rollback) = prefs.get(store::CONFIRM_ROLLBACK_KEY).and_then(|v| v.as_bool()) {
+    if let Some(confirm_rollback) = prefs
+        .get(store::CONFIRM_ROLLBACK_KEY)
+        .and_then(|v| v.as_bool())
+    {
         store::set_bool_pref(&app, store::CONFIRM_ROLLBACK_KEY, confirm_rollback)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
