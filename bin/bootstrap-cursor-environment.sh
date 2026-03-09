@@ -42,11 +42,17 @@ source_nix() {
     "/etc/profile.d/nix.sh"
   do
     if [ -r "$candidate" ]; then
+      unset __ETC_PROFILE_NIX_SOURCED
       # shellcheck disable=SC1090
       . "$candidate"
       ensure_path_entries
     fi
   done
+}
+
+daemon_ready() {
+  source_nix
+  nix store ping >/dev/null 2>&1
 }
 
 ensure_nix() {
@@ -64,6 +70,40 @@ ensure_nix() {
     log "Failed to make nix available after installation"
     exit 1
   fi
+}
+
+ensure_nix_daemon() {
+  source_nix
+
+  if daemon_ready; then
+    log "Nix daemon already ready"
+    return
+  fi
+
+  if command -v systemctl >/dev/null 2>&1 && systemctl show-environment >/dev/null 2>&1; then
+    log "Attempting to restart the Nix daemon via systemd"
+    restart_nix_daemon
+  else
+    log "systemd unavailable; starting Determinate Nixd manually"
+    sudo /usr/local/bin/determinate-nixd init
+
+    if ! pgrep -af "determinate-nixd daemon" >/dev/null 2>&1; then
+      sudo sh -c "nohup /usr/local/bin/determinate-nixd daemon >/var/log/determinate-nixd.log 2>&1 &"
+    fi
+  fi
+
+  local attempts
+  for attempts in 1 2 3 4 5 6 7 8 9 10; do
+    if daemon_ready; then
+      log "Nix daemon is ready"
+      return
+    fi
+
+    sleep 1
+  done
+
+  log "Nix daemon did not become ready"
+  exit 1
 }
 
 write_trusted_users_config() {
@@ -149,8 +189,8 @@ ensure_devenv() {
 }
 
 warm_devenv_shell() {
-  log "Evaluating devenv shell"
-  run_as_workspace_user bash -lc "cd \"$ROOT_DIR\" && PATH=\"$PATH\" devenv shell -- true"
+  log "Evaluating devenv environment"
+  run_as_workspace_user bash -lc "cd \"$ROOT_DIR\" && PATH=\"$PATH\" devenv info >/dev/null"
 }
 
 ensure_dependencies() {
@@ -167,6 +207,7 @@ main() {
   log "Preparing environment for workspace user '$WORKSPACE_USER'"
   ensure_nix
   write_trusted_users_config
+  ensure_nix_daemon
   ensure_devenv
   warm_devenv_shell
   ensure_dependencies
