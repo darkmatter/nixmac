@@ -60,6 +60,7 @@ By default, nixmac expects to find a flake-enabled nix configuration at `~/.darw
 1. `git init`.
    1. Add `result` to `.gitignore`.
 1. Copy a `flake.nix` to `~/.darwin`, you can find a basic one [here](./apps/native/templates/nix-darwin-determinate/flake.nix).
+   1. For cross-platform (Linux + macOS) testing, use the unified template at [`./apps/native/templates/nixos-unified`](./apps/native/templates/nixos-unified).
 1. This nix setup is going to take over management of your shell files in `/etc` and you need to back them up first or else the following command will fail:
    1. `sudo cp /etc/bashrc /etc/bashrc.before-nix-darwin`
    1. `sudo cp /etc/zshrc /etc/zshrc.before-nix-darwin`
