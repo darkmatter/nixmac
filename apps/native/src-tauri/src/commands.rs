@@ -547,6 +547,19 @@ pub async fn summary_get_cached(app: AppHandle) -> Result<Option<types::SummaryR
     store::get_cached_summary(&app).map_err(|e| e.to_string())
 }
 
+/// Walks back `number` commits from `commit_hash`,
+/// upserts missing metadata (commits and summaries).
+#[tauri::command]
+pub async fn generate_history_from(
+    app: AppHandle,
+    commit_hash: String,
+    number: usize,
+) -> Result<(), String> {
+    crate::generate_history_from::generate_history_from(&app, &commit_hash, number)
+        .await
+        .map_err(|e| capture_err("generate_history_from", e))
+}
+
 /// Finds the relevant summary for the current git state, flags availability.
 #[tauri::command]
 pub async fn find_summary(app: AppHandle) -> Result<Option<types::SummaryResponse>, String> {

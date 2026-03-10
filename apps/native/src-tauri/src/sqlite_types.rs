@@ -15,6 +15,7 @@ pub struct CommitRow {
     pub created_at: i64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SummaryRow {
@@ -26,6 +27,7 @@ pub struct SummaryRow {
     pub created_at: i64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct HistoricCommitAndSummary {

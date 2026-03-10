@@ -31,6 +31,25 @@ pub fn insert_summary(
     Ok(conn.last_insert_rowid())
 }
 
+///  for `commit_id` from `base_commit_id`
+pub fn get_summary_for_from(
+    db_path: &Path,
+    commit_id: i64,
+    base_commit_id: i64,
+) -> Result<Option<SummaryResponse>> {
+    let conn = Connection::open(db_path)?;
+    let result = conn.query_row(
+        "SELECT content_json FROM summaries WHERE commit_id = ?1 AND base_commit_id = ?2",
+        [commit_id, base_commit_id],
+        |row| row.get::<_, String>(0),
+    );
+    match result {
+        Ok(json) => Ok(Some(serde_json::from_str(&json)?)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(e.into()),
+    }
+}
+
 /// Get summary for a commit by its hash.
 pub fn get_summary_by_commit_hash(
     db_path: &Path,
