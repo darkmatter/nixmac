@@ -196,19 +196,30 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
 
     // DO IT!
     println!("Starting evolution with prompt: {}", prompt);
-    let output = crate::commands::darwin_evolve(app.clone(), prompt.clone())
-        .await
-        .map_err(|e| format!("Evolution failed: {}", e))?;
+    let outcome = crate::evolution::evolve_and_commit(app, &prompt).await;
 
-    println!("Evolution completed successfully");
+    let (ok, output_value, failure_message) = match outcome {
+        Ok(output) => {
+            println!("Evolution completed successfully");
+            let output_value = match serde_json::to_value(&output) {
+                Ok(v) => v,
+                Err(_) => json!({ "raw": format!("{:#?}", output) }),
+            };
+            (true, output_value, None)
+        }
+        Err(failure) => {
+            println!("Evolution failed: {}", failure.error);
+            let output_value = match serde_json::to_value(&failure) {
+                Ok(v) => v,
+                Err(_) => json!({ "error": failure.error.clone() }),
+            };
+            (false, output_value, Some(failure.error))
+        }
+    };
 
     if let Some(out_path) = out {
-        let output_value = match serde_json::to_value(&output) {
-            Ok(v) => v,
-            Err(_) => json!({ "raw": format!("{:#?}", output) }),
-        };
-
         let combined = json!({
+            "ok": ok,
             "prompt": prompt,
             "maxIterations": effective_max_iterations,
             "evolveProvider": effective_evolve_provider,
@@ -224,6 +235,10 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
         std::fs::write(&out_path, serialized)
             .map_err(|e| format!("Failed to write output file {}: {}", out_path.display(), e))?;
         println!("Wrote output to {}", out_path.display());
+    }
+
+    if let Some(message) = failure_message {
+        return Err(format!("Evolution failed: {}", message));
     }
 
     Ok(())

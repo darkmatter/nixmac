@@ -10,7 +10,7 @@ use tauri::AppHandle;
 
 use crate::{
     db,
-    evolution::EvolutionResult,
+    evolution::{EvolutionResult, EvolutionTelemetry},
     evolve::EvolutionState,
     find_summary, git, store, summarize,
     types::{slugify, GitStatus, SummaryItem, SummaryResponse},
@@ -55,16 +55,18 @@ pub async fn finalize_apply(app: &AppHandle) -> Result<EvolutionResult> {
     Ok(EvolutionResult {
         summary,
         git_status: final_status,
-        // We don't have evolution run metadata here; this is a post-build finalizer.
-        // Use `Applied` to indicate the build step completed (commit may have been recorded).
-        state: EvolutionState::Applied,
-        iterations: 0,
-        build_attempts: 0,
-        total_tokens: 0,
-        edits_count: 0,
-        thinking_count: 0,
-        tool_calls_count: 0,
-        duration_ms: 0,
+        telemetry: EvolutionTelemetry {
+            // We don't have evolution run metadata here; this is a post-build finalizer.
+            // Use `Applied` to indicate the build step completed (commit may have been recorded).
+            state: EvolutionState::Applied,
+            iterations: 0,
+            build_attempts: 0,
+            total_tokens: 0,
+            edits_count: 0,
+            thinking_count: 0,
+            tool_calls_count: 0,
+            duration_ms: 0,
+        },
     })
 }
 
