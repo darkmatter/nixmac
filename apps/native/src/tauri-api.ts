@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { type Event, listen, once } from "@tauri-apps/api/event";
+import type { HistoricCommitAndSummary } from "./types/sqlite";
+export type { CommitRow, SummaryRow, HistoricCommitAndSummary } from "./types/sqlite";
 import {
   checkFullDiskAccessPermission,
   requestFullDiskAccessPermission,
@@ -336,6 +338,12 @@ export const darwinAPI = {
     // macOS-specific permission checks via tauri-plugin-macos-permissions
     checkFullDiskAccess: () => checkFullDiskAccessPermission(),
     requestFullDiskAccess: () => requestFullDiskAccessPermission(),
+  },
+
+  history: {
+    get: () => invoke<HistoricCommitAndSummary[]>("get_history"),
+    generateFrom: (commitHash: string, number: number) =>
+      invoke<void>("generate_history_from", { commitHash, number }),
   },
 };
 

@@ -18,6 +18,7 @@ mod evolve;
 mod feedback;
 mod finalize_apply;
 mod find_summary;
+mod generate_history_from;
 mod git;
 mod log_summarizer;
 mod nix;
@@ -28,6 +29,7 @@ mod providers;
 mod rollback;
 mod scanner;
 mod secret_scanner;
+mod sqlite_types;
 mod statistics;
 mod store;
 mod summarize;
@@ -316,6 +318,7 @@ fn run_gui_mode(
             commands::bootstrap_default_config,
             // Summarization
             commands::find_summary,
+            commands::generate_history_from,
             commands::summarize_changes,
             commands::summary_get_cached,
             commands::suggest_commit_message,

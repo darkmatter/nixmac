@@ -240,7 +240,7 @@ pub fn count_diff_changes(diff: &str) -> (usize, usize) {
 /// Parses file information from diff output.
 /// Extracts file paths and change types from diff headers.
 /// Uses the same pattern as diff.tsx: `diff --git a/<path> b/<path>`
-fn parse_files_from_diff(diff: &str) -> Vec<GitFileStatus> {
+pub fn parse_files_from_diff(diff: &str) -> Vec<GitFileStatus> {
     let mut files = Vec::new();
     let mut current_file: Option<String> = None;
     let mut current_change_type = "edited";
@@ -517,6 +517,62 @@ pub fn unstage_all(dir: &str) -> Result<()> {
 pub struct CommitInfo {
     pub hash: String,
     pub tree_hash: String,
+}
+
+/// Fetch up to `limit` commits starting from `start_hash` going backwards.
+/// Returns CommitRow values with id = 0 (placeholder; real id assigned on DB upsert).
+pub fn log(
+    dir: &str,
+    start_hash: &str,
+    limit: usize,
+) -> Result<Vec<crate::sqlite_types::CommitRow>> {
+    let output = git_command()
+        .args([
+            "log",
+            "--format=%H%n%T%n%at%n%s",
+            "-n",
+            &limit.to_string(),
+            start_hash,
+        ])
+        .current_dir(dir)
+        .output()?;
+
+    let text = String::from_utf8_lossy(&output.stdout);
+    let mut commits = Vec::new();
+    let mut lines = text.lines();
+
+    loop {
+        let hash = match lines.next() {
+            Some(h) if !h.is_empty() => h.to_string(),
+            _ => break,
+        };
+        let tree_hash = lines.next().unwrap_or("").to_string();
+        let timestamp: i64 = lines.next().unwrap_or("0").trim().parse().unwrap_or(0);
+        let subject = lines.next().unwrap_or("").to_string();
+
+        commits.push(crate::sqlite_types::CommitRow {
+            id: 0,
+            hash,
+            tree_hash,
+            message: if subject.is_empty() {
+                None
+            } else {
+                Some(subject)
+            },
+            created_at: timestamp,
+        });
+    }
+
+    Ok(commits)
+}
+
+/// Get the unified diff between parent_hash and commit_hash.
+pub fn commit_diff(dir: &str, parent_hash: &str, commit_hash: &str) -> Result<String> {
+    let output = git_command()
+        .args(["diff", parent_hash, commit_hash])
+        .current_dir(dir)
+        .output()?;
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
 /// Stages all changes and commits with the given message.
