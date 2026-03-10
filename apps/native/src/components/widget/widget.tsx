@@ -12,6 +12,7 @@ import { StepContentWrapper } from "@/components/widget/step-content-wrapper";
 import { Stepper } from "@/components/widget/stepper";
 import {
     EvolveStep,
+    HistoryStep,
     MergeStep,
     NixSetupStep,
     PermissionsStep,
@@ -100,6 +101,9 @@ export function DarwinWidget() {
 
       case "merge":
         return <MergeStep />;
+
+      case "history":
+        return <HistoryStep />;
     }
   };
 

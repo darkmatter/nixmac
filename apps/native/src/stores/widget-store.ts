@@ -18,7 +18,7 @@ export type {
 /**
  * Widget step state - updated by useEffect based on app state.
  */
-export type WidgetStep = "permissions" | "nix-setup" | "setup" | "evolving" | "merge";
+export type WidgetStep = "permissions" | "nix-setup" | "setup" | "evolving" | "merge" | "history";
 export type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
 export type ConfirmPrefKey = "confirmBuild" | "confirmClear" | "confirmRollback";
 
@@ -95,6 +95,7 @@ export interface WidgetState {
   summaryAvailable: boolean;
   isGenerating: boolean;
   settingsOpen: boolean;
+  showHistory: boolean;
   feedbackOpen: boolean;
   feedbackTypeOverride: FeedbackType | null;
   feedbackInitialText: string | null;
@@ -132,6 +133,7 @@ export interface WidgetActions {
   setProcessing: (isProcessing: boolean, action?: ProcessingAction) => void;
   setSummary: (summary: SummaryResponse) => void;
   setSettingsOpen: (open: boolean) => void;
+  setShowHistory: (show: boolean) => void;
   setFeedbackOpen: (open: boolean) => void;
   setError: (error: string | null) => void;
   setPanicDetails: (
@@ -235,6 +237,7 @@ export const initialWidgetState: WidgetState = {
   isBootstrapping: false,
   isGenerating: false,
   settingsOpen: false,
+  showHistory: false,
   feedbackOpen: false,
   feedbackTypeOverride: null,
   feedbackInitialText: null,
@@ -287,6 +290,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
         confirmRollback: prefs.confirmRollback ?? true,
       }),
     setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
+    setShowHistory: (showHistory) => set({ showHistory }),
     setFeedbackOpen: (feedbackOpen) => set({ feedbackOpen }),
     setFeedbackTypeOverride: (feedbackTypeOverride) => set({ feedbackTypeOverride }),
     openFeedback: (type, initialText) =>

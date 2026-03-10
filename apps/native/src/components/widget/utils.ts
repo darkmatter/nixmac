@@ -31,6 +31,10 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
     return "setup";
   }
 
+  if (state.showHistory) {
+    return "history";
+  }
+
   if (notMainBranch && headIsBuilt && headIsClean) {
     return "merge";
   }
