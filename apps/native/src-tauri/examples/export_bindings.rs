@@ -15,8 +15,11 @@ fn main() {
     let mut collection = TypeCollection::default();
     let types = collection
         .register::<sqlite_types::CommitRow>()
+        .register::<sqlite_types::SquashedCommitRow>()
+        .register::<sqlite_types::EvolutionRow>()
+        .register::<sqlite_types::EvolutionCommitRow>()
         .register::<sqlite_types::SummaryRow>()
-        .register::<sqlite_types::HistoricCommitAndSummary>();
+        .register::<sqlite_types::PromptRow>();
 
     let output_path = "../src/types/sqlite.ts";
 

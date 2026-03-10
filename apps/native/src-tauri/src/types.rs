@@ -284,6 +284,26 @@ pub struct SummaryResponse {
 }
 
 // =============================================================================
+// History
+// =============================================================================
+
+/// A git commit from the log, with optional DB metadata and summary.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryItem {
+    /// Commit hash (always from git log).
+    pub hash: String,
+    /// Commit message (always from git log).
+    pub message: Option<String>,
+    /// Unix timestamp (always from git log).
+    pub created_at: i64,
+    /// DB record — present only if metadata has been generated for this commit.
+    pub commit: Option<crate::sqlite_types::CommitRow>,
+    /// AI summary — present only if a summary has been generated.
+    pub summary: Option<crate::sqlite_types::SummaryRow>,
+}
+
+// =============================================================================
 // Evolve Streaming Events
 // =============================================================================
 

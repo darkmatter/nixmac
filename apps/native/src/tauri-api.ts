@@ -1,7 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
 import { type Event, listen, once } from "@tauri-apps/api/event";
-import type { HistoricCommitAndSummary } from "./types/sqlite";
-export type { CommitRow, SummaryRow, HistoricCommitAndSummary } from "./types/sqlite";
+import type { CommitRow, SummaryRow } from "./types/sqlite";
+export type { CommitRow, SummaryRow } from "./types/sqlite";
+
+export interface HistoryItem {
+  hash: string;
+  message: string | null;
+  createdAt: number;
+  commit: CommitRow | null;
+  summary: SummaryRow | null;
+}
 import {
   checkFullDiskAccessPermission,
   requestFullDiskAccessPermission,
@@ -341,7 +349,7 @@ export const darwinAPI = {
   },
 
   history: {
-    get: () => invoke<HistoricCommitAndSummary[]>("get_history"),
+    get: () => invoke<HistoryItem[]>("get_history"),
     generateFrom: (commitHash: string, number: number) =>
       invoke<void>("generate_history_from", { commitHash, number }),
   },

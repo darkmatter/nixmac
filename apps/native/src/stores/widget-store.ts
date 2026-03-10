@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { FeedbackType } from "@/types/feedback";
-import type { SummaryResponse, EvolveEvent, GitStatus, PermissionsState } from "@/tauri-api";
+import type { HistoryItem, SummaryResponse, EvolveEvent, GitStatus, PermissionsState } from "@/tauri-api";
 import { computeCurrentStep } from "@/components/widget/utils";
 export type {
   SummaryResponse,
@@ -90,6 +90,10 @@ export interface WidgetState {
   // Console
   consoleLogs: string;
 
+  // History
+  history: HistoryItem[];
+  historyLoading: boolean;
+
   // UI
   summaryLoading: boolean;
   summaryAvailable: boolean;
@@ -141,6 +145,10 @@ export interface WidgetActions {
   ) => void;
   setPromptHistory: (history: string[]) => void;
   setSummaryAvailable: (available: boolean) => void;
+
+  // History
+  setHistory: (history: HistoryItem[]) => void;
+  setHistoryLoading: (loading: boolean) => void;
 
   // Confirmation preferences
   setConfirmPref: (key: ConfirmPrefKey, value: boolean) => void;
@@ -222,6 +230,10 @@ export const initialWidgetState: WidgetState = {
   evolveEvents: [],
   promptHistory: [],
 
+  // History
+  history: [],
+  historyLoading: false,
+
   // Summary
   summary: initialSummaryState,
   summaryAvailable: false,
@@ -289,6 +301,8 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
         confirmClear: prefs.confirmClear ?? true,
         confirmRollback: prefs.confirmRollback ?? true,
       }),
+    setHistory: (history) => set({ history }),
+    setHistoryLoading: (historyLoading) => set({ historyLoading }),
     setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
     setShowHistory: (showHistory) => set({ showHistory }),
     setFeedbackOpen: (feedbackOpen) => set({ feedbackOpen }),
