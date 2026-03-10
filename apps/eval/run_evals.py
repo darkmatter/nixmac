@@ -434,7 +434,9 @@ if __name__ == "__main__":
         help="Comma-delimited list of test case numbers to run (e.g., --rows 1,3,5)",
     )
     parser.add_argument(
-        "--priority", type=str, help="Filter test cases by priority (e.g., --priority High)"
+        "--priority",
+        type=str,
+        help="Filter test cases by priority (e.g., --priority High), doesn't work for CSV input which doesn't have a priority column",
     )
     parser.add_argument(
         "--persona", type=str, help="Filter test cases by persona (e.g., --persona Developer)"
