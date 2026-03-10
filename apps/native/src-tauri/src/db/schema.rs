@@ -1,4 +1,6 @@
 //! Database schema initialization and migrations.
+//!
+//! Keep table definitions here in sync with the Rust structs in `src/sqlite_types.rs`
 
 use anyhow::Result;
 use rusqlite::Connection;
