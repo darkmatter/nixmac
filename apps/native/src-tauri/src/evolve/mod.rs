@@ -11,6 +11,7 @@ use anyhow::{anyhow, Result};
 use chrono::Utc;
 use log::{debug, error, info, warn};
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::fs::OpenOptions;
@@ -251,6 +252,57 @@ IMPORTANT: You have a 'think' tool available. Use it FREQUENTLY to reason throug
 
 Thorough thinking leads to better, more complete implementations. Don't rush."#;
 
+/// Partial evolution telemetry captured on failed runs.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EvolutionProgress {
+    pub state: EvolutionState,
+    pub iterations: usize,
+    pub build_attempts: usize,
+    pub total_tokens: u32,
+    pub edits_count: usize,
+    pub thinking_count: usize,
+    pub tool_calls_count: usize,
+}
+
+/// Error for failed evolution generation that still carries partial progress.
+#[derive(Debug, Clone)]
+pub struct EvolutionRunError {
+    pub message: String,
+    pub progress: EvolutionProgress,
+}
+
+impl EvolutionRunError {
+    fn from_state(
+        message: impl Into<String>,
+        evolution: &Evolution,
+        iterations: usize,
+        build_attempts: usize,
+        total_tokens: u32,
+    ) -> Self {
+        Self {
+            message: message.into(),
+            progress: EvolutionProgress {
+                state: EvolutionState::Failed,
+                iterations,
+                build_attempts,
+                total_tokens,
+                edits_count: evolution.edits.len(),
+                thinking_count: evolution.thinking.len(),
+                tool_calls_count: evolution.tool_calls.len(),
+            },
+        }
+    }
+}
+
+impl std::fmt::Display for EvolutionRunError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for EvolutionRunError {}
+
 /// Generate an evolution from a user prompt using OpenAI function calling.
 ///
 /// This runs an agentic loop where the model can read files, make edits,
@@ -382,6 +434,7 @@ pub async fn generate_evolution(
         // Check for cancellation at the start of each iteration
         if commands::is_evolve_cancelled() {
             warn!("⚠️ Evolution cancelled by user");
+            evolution.state = EvolutionState::Failed;
             emit_evolve_event(
                 app,
                 EvolveEvent::error(start_time, Some(iteration), "Evolution cancelled by user"),
@@ -390,7 +443,14 @@ pub async fn generate_evolution(
             if let Err(e) = statistics::record_evolution_failure(app, iteration) {
                 warn!("Failed to record evolution failure stats: {}", e);
             }
-            return Err(anyhow!("Evolution cancelled by user"));
+            return Err(EvolutionRunError::from_state(
+                "Evolution cancelled by user",
+                &evolution,
+                iteration,
+                build_attempts,
+                total_tokens,
+            )
+            .into());
         }
 
         iteration += 1;
@@ -433,6 +493,7 @@ pub async fn generate_evolution(
                     }
                 } => {
                     warn!("⚠️ Evolution cancelled by user during provider call");
+                    evolution.state = EvolutionState::Failed;
                     emit_evolve_event(
                         app,
                         EvolveEvent::error(start_time, Some(iteration), "Evolution cancelled by user"),
@@ -441,7 +502,14 @@ pub async fn generate_evolution(
                     if let Err(e) = statistics::record_evolution_failure(app, iteration) {
                         warn!("Failed to record evolution failure stats: {}", e);
                     }
-                    return Err(anyhow!("Evolution cancelled by user"));
+                    return Err(EvolutionRunError::from_state(
+                        "Evolution cancelled by user",
+                        &evolution,
+                        iteration,
+                        build_attempts,
+                        total_tokens,
+                    )
+                    .into());
                 }
             }
         };
@@ -476,7 +544,15 @@ pub async fn generate_evolution(
                 }
 
                 // Return a downcastable error in case the caller needs to see the ProviderError.
-                return Err(e.into());
+                evolution.state = EvolutionState::Failed;
+                return Err(EvolutionRunError::from_state(
+                    error_str,
+                    &evolution,
+                    iteration,
+                    build_attempts,
+                    total_tokens,
+                )
+                .into());
             }
         };
 
@@ -601,7 +677,7 @@ pub async fn generate_evolution(
                                 }
                             }
 
-                            let (msg, break_signal) = process_tool_result(
+                            let (msg, break_signal) = match process_tool_result(
                                 &tool_call.id,
                                 res,
                                 &mut evolution,
@@ -610,7 +686,20 @@ pub async fn generate_evolution(
                                 &host_attr,
                                 start_time,
                                 iteration,
-                            )?;
+                            ) {
+                                Ok(v) => v,
+                                Err(e) => {
+                                    evolution.state = EvolutionState::Failed;
+                                    return Err(EvolutionRunError::from_state(
+                                        e.to_string(),
+                                        &evolution,
+                                        iteration,
+                                        build_attempts,
+                                        total_tokens,
+                                    )
+                                    .into());
+                                }
+                            };
                             messages.push(msg);
 
                             match break_signal {
@@ -670,6 +759,7 @@ pub async fn generate_evolution(
                 "⚠️ Evolution exceeded maximum iterations ({}) - aborting",
                 max_iterations
             );
+            evolution.state = EvolutionState::Failed;
             emit_evolve_event(
                 app,
                 EvolveEvent::error(
@@ -682,10 +772,14 @@ pub async fn generate_evolution(
             if let Err(e) = statistics::record_evolution_failure(app, iteration) {
                 warn!("Failed to record evolution failure stats: {}", e);
             }
-            return Err(anyhow!(
-                "Evolution exceeded maximum iterations ({})",
-                max_iterations
-            ));
+            return Err(EvolutionRunError::from_state(
+                format!("Evolution exceeded maximum iterations ({})", max_iterations),
+                &evolution,
+                iteration,
+                build_attempts,
+                total_tokens,
+            )
+            .into());
         }
 
         if build_attempts >= max_build_attempts {
@@ -693,6 +787,7 @@ pub async fn generate_evolution(
                 "⚠️ Evolution exceeded maximum build attempts ({}) - aborting",
                 max_build_attempts
             );
+            evolution.state = EvolutionState::Failed;
             emit_evolve_event(
                 app,
                 EvolveEvent::error(
@@ -705,10 +800,17 @@ pub async fn generate_evolution(
             if let Err(e) = statistics::record_evolution_failure(app, iteration) {
                 warn!("Failed to record evolution failure stats: {}", e);
             }
-            return Err(anyhow!(
-                "Failed to produce a valid configuration after {} build attempts",
-                max_build_attempts
-            ));
+            return Err(EvolutionRunError::from_state(
+                format!(
+                    "Failed to produce a valid configuration after {} build attempts",
+                    max_build_attempts
+                ),
+                &evolution,
+                iteration,
+                build_attempts,
+                total_tokens,
+            )
+            .into());
         }
     }
 
