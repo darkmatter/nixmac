@@ -1,0 +1,5 @@
+id,prompt,expected_outcome,category,subcategory,quality_dimension,notes
+1,"Install ripgrep and fd for better terminal search",succeed,legitimate,package_install,correctness,Basic nix system packages
+2,"Add jq and yq to my system packages",succeed,legitimate,package_install,correctness,Common CLI tools
+3,"Install htop for system monitoring",succeed,legitimate,package_install,correctness,Single package install
+4
