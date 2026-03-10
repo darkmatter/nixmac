@@ -1,5 +1,4 @@
 import argparse
-import csv
 import json
 import os
 import shlex
@@ -82,69 +81,6 @@ def read_test_cases(
         if case.request:
             cases.append(case)
     wb.close()
-    return cases
-
-
-def read_test_cases_from_csv(
-    csv_path: Path,
-    rows: list[int] | None = None,
-    priority: str | None = None,
-    persona: str | None = None,
-) -> list[EvalTestCase]:
-    """Read test cases from a CSV file.
-
-    Expected CSV columns:
-    - id: test case number
-    - prompt: the user request
-    - expected_outcome: expected result (succeed/fail_gracefully/refuse)
-    - category: high-level category
-    - subcategory: more specific scenario
-    - quality_dimension: quality aspect being tested
-    - notes: additional notes
-    """
-    cases: list[EvalTestCase] = []
-
-    with open(csv_path, newline="", encoding="utf-8") as csvfile:
-        reader = csv.DictReader(csvfile)
-        for idx, row_data in enumerate(reader, start=2):  # Start at 2 (header is row 1)
-            try:
-                case_id = row_data.get("id", "")
-                if not case_id:
-                    continue
-
-                # Try to parse id as integer
-                num: Any
-                try:
-                    num = int(case_id)
-                except ValueError:
-                    num = case_id
-
-                # Map CSV columns to EvalTestCase fields
-                case = EvalTestCase(
-                    row=idx,
-                    num=num,
-                    feature=row_data.get("category", ""),
-                    scenario=row_data.get("subcategory", ""),
-                    persona=row_data.get("quality_dimension", ""),
-                    priority="",  # Not in CSV, could be derived from category if needed
-                    request=row_data.get("prompt", ""),
-                    expected=row_data.get("expected_outcome", ""),
-                    status=row_data.get("notes", ""),
-                )
-
-                # Apply filters
-                if rows and num not in rows:
-                    continue
-                if priority and case.priority != priority:
-                    continue
-                if persona and case.persona != persona:
-                    continue
-                if case.request:
-                    cases.append(case)
-            except Exception as e:
-                print(f"Warning: Skipping row {idx} in CSV due to error: {e}")
-                continue
-
     return cases
 
 
@@ -353,19 +289,9 @@ def main(parsed_args: argparse.Namespace) -> None:
         else:
             rows = None
 
-        # Read test cases from CSV if specified, otherwise use Excel spreadsheet
-        cases: list[EvalTestCase]
-        if parsed_args.csv:
-            csv_path = Path(parsed_args.csv)
-            if not csv_path.exists():
-                raise FileNotFoundError(f"CSV file not found: {csv_path}")
-            cases = read_test_cases_from_csv(
-                csv_path, rows=rows, priority=parsed_args.priority, persona=parsed_args.persona
-            )
-        else:
-            cases = read_test_cases(
-                rows=rows, priority=parsed_args.priority, persona=parsed_args.persona
-            )
+        cases: list[EvalTestCase] = read_test_cases(
+            rows=rows, priority=parsed_args.priority, persona=parsed_args.persona
+        )
         print(f"Running {len(cases)} test cases...")
         for case in cases:
             print(f"Running case {case.num}: {case.scenario}...")
@@ -422,21 +348,13 @@ if __name__ == "__main__":
     parser.add_argument("--host", type=str, default=None, help="Host name for your Mac")
 
     parser.add_argument(
-        "--csv",
-        type=str,
-        default=None,
-        help="Path to CSV file containing test prompts (alternative to Excel spreadsheet)",
-    )
-    parser.add_argument(
         "--rows",
         type=str,
         default=None,
         help="Comma-delimited list of test case numbers to run (e.g., --rows 1,3,5)",
     )
     parser.add_argument(
-        "--priority",
-        type=str,
-        help="Filter test cases by priority (e.g., --priority High), doesn't work for CSV input which doesn't have a priority column",
+        "--priority", type=str, help="Filter test cases by priority (e.g., --priority High)"
     )
     parser.add_argument(
         "--persona", type=str, help="Filter test cases by persona (e.g., --persona Developer)"
