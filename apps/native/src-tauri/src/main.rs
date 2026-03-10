@@ -318,6 +318,7 @@ fn run_gui_mode(
             commands::bootstrap_default_config,
             // Summarization
             commands::find_summary,
+            commands::get_history,
             commands::generate_history_from,
             commands::summarize_changes,
             commands::summary_get_cached,

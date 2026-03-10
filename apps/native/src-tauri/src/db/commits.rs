@@ -32,6 +32,32 @@ pub fn upsert_commit(
     Ok(conn.last_insert_rowid())
 }
 
+/// Returns the full commit row for a given hash, or `None` if not in the DB.
+pub fn get_commit_by_hash(
+    db_path: &Path,
+    hash: &str,
+) -> Result<Option<crate::sqlite_types::CommitRow>> {
+    let conn = Connection::open(db_path)?;
+    let result = conn.query_row(
+        "SELECT id, hash, tree_hash, message, created_at FROM commits WHERE hash = ?1",
+        [hash],
+        |row| {
+            Ok(crate::sqlite_types::CommitRow {
+                id: row.get(0)?,
+                hash: row.get(1)?,
+                tree_hash: row.get(2)?,
+                message: row.get(3)?,
+                created_at: row.get(4)?,
+            })
+        },
+    );
+    match result {
+        Ok(row) => Ok(Some(row)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(e.into()),
+    }
+}
+
 /// Insert a commit into the database.
 /// Returns the inserted commit's ID.
 pub fn insert_commit(db_path: &Path, hash: &str, tree_hash: &str, message: &str) -> Result<i64> {
