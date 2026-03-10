@@ -17,7 +17,24 @@ export function useNixInstall() {
   const installNix = useCallback(async () => {
     const store = useWidgetStore.getState();
     store.setNixInstalling(true);
+    store.setNixInstallPhase(null);
+    store.setNixDownloadProgress(null);
     store.setError(null);
+
+    const unlistenProgress = await ipcRenderer.on<{
+      phase: "downloading" | "waiting-for-installer" | "prefetching";
+      downloaded?: number;
+      total?: number;
+    }>("nix:install:progress", (event) => {
+      const current = useWidgetStore.getState();
+      current.setNixInstallPhase(event.payload.phase);
+      if (event.payload.phase === "downloading" && event.payload.downloaded != null) {
+        current.setNixDownloadProgress({
+          downloaded: event.payload.downloaded,
+          total: event.payload.total ?? 0,
+        });
+      }
+    });
 
     const unlistenEnd = await ipcRenderer.on<{
       ok: boolean;
@@ -29,6 +46,8 @@ export function useNixInstall() {
     }>("nix:install:end", (event) => {
       const current = useWidgetStore.getState();
       current.setNixInstalling(false);
+      current.setNixInstallPhase(null);
+      current.setNixDownloadProgress(null);
       current.setNixInstalled(event.payload.ok);
       current.setDarwinRebuildAvailable(event.payload.darwin_rebuild_available ?? false);
 
@@ -38,6 +57,7 @@ export function useNixInstall() {
         );
       }
 
+      unlistenProgress();
       unlistenEnd();
     });
 
@@ -46,7 +66,10 @@ export function useNixInstall() {
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
       store.setNixInstalling(false);
+      store.setNixInstallPhase(null);
+      store.setNixDownloadProgress(null);
       store.setError(msg);
+      unlistenProgress();
       unlistenEnd();
     }
   }, []);
