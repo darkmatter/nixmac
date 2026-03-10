@@ -17,7 +17,7 @@ export function Stepper() {
 	const isRebuilding = useWidgetStore((s) => s.rebuild.isRunning);
 	const hasChanges = Boolean(gitStatus?.diff);
 
-	if (step === "setup" || step === "permissions" || step === "nix-setup" || isGenerating || isRebuilding) {
+	if (step === "setup" || step === "permissions" || step === "nix-setup" || step === "history" || isGenerating || isRebuilding) {
 		return null;
 	}
 

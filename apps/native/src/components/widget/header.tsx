@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Settings, MessageSquarePlus } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Clock, Settings, MessageSquarePlus } from "lucide-react";
 import { APP_NAME } from "../../../shared/constants";
 import { useWidgetStore } from "@/stores/widget-store";
 
 export function Header() {
   const setSettingsOpen = useWidgetStore((s) => s.setSettingsOpen);
   const setFeedbackOpen = useWidgetStore((s) => s.setFeedbackOpen);
+  const showHistory = useWidgetStore((s) => s.showHistory);
+  const setShowHistory = useWidgetStore((s) => s.setShowHistory);
   const [isPulsing, setIsPulsing] = useState(false);
 
   // Flash the feedback icon when an error occurs (subscribe to detect all changes)
@@ -29,9 +32,22 @@ export function Header() {
       <h3 className="font-medium text-muted-foreground text-xs" data-tauri-drag-region>
         {APP_NAME}
       </h3>
-      <div className="absolute right-3 flex items-center">
+      <div className="absolute right-3 flex items-center gap-1">
         <Button
-          className="h-7 w-7 p-0"
+          className={cn(
+            "h-6 w-6 p-0 mr-[2px]",
+            showHistory && "border border-teal-500/50 text-teal-400 hover:text-teal-300 hover:border-teal-500/70",
+          )}
+          size="sm"
+          variant="ghost"
+          onClick={() => setShowHistory(!showHistory)}
+          aria-label="History"
+          title="History"
+        >
+          <Clock className="h-4 w-4" />
+        </Button>
+        <Button
+          className="h-6 w-6 p-0"
           size="sm"
           variant="ghost"
           onClick={() => setFeedbackOpen(true)}
@@ -43,7 +59,7 @@ export function Header() {
           />
         </Button>
         <Button
-          className="h-7 w-7 p-0"
+          className="h-6 w-6 p-0"
           size="sm"
           variant="ghost"
           onClick={() => setSettingsOpen(true)}
