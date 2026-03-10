@@ -68,7 +68,7 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     export VITE_NIXMAC_ENV=local
     export NIXMAC_VERSION=local-$(whoami)
     export VITE_NIXMAC_VERSION=local-$(whoami)
-    
+
     # eval "$(starship init $SHELL)"
   '';
 
@@ -81,7 +81,7 @@ lib.mkIf (!(config.container.isBuilding or false)) {
   # https://devenv.sh/processes/
   processes.tauri = {
     cwd = "${config.git.root}/apps/native";
-    exec = "${pkgs.sops}/bin/sops exec-env ${config.git.root}/.secrets.enc.yaml 'RUST_LOG=nixmac=debug tauri dev'";
+    exec = "${pkgs.sops}/bin/sops exec-env ${config.git.root}/.secrets.enc.yaml 'cd ${config.git.root}/apps/native/src-tauri && cargo run --example export_bindings && cd ${config.git.root}/apps/native && RUST_LOG=nixmac=debug tauri dev'";
   };
 
   # processes.server = {
