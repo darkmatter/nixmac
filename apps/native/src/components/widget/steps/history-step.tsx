@@ -1,6 +1,10 @@
 import { useHistory } from "@/hooks/use-history";
 import { useWidgetStore } from "@/stores/widget-store";
-import type { SummaryResponse } from "@/tauri-api";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { groupByDay } from "@/components/widget/utils";
+import { HistoryDayLabel } from "@/components/widget/history-day-label";
+import { HistoryHeader } from "@/components/widget/history-header";
+import { HistoryItemCard } from "@/components/widget/history-item-card";
 
 export function HistoryStep() {
   const { generateFrom } = useHistory();
@@ -10,40 +14,24 @@ export function HistoryStep() {
   if (historyLoading) return <p>Loading...</p>;
 
   const newest = history[0];
+  const historyByDay = groupByDay(history);
 
   return (
-    <div>
-      {newest && (
-        <button type="button" onClick={() => generateFrom(newest.hash, history.length)}>
-          Generate all
-        </button>
-      )}
-      {history.map((item) => {
-        const summary = item.summary
-          ? (JSON.parse(item.summary.contentJson) as SummaryResponse)
-          : null;
-
-        return (
-          <div key={item.hash}>
-            <p>{item.hash}</p>
-            <p>{item.message ?? "(no message)"}</p>
-            <p>{new Date(item.createdAt * 1000).toLocaleString()}</p>
-            {summary ? (
-              <div>
-                {summary.items.map((si) => (
-                  <p key={si.title}>
-                    {si.title}: {si.description}
-                  </p>
-                ))}
-              </div>
-            ) : (
-              <button type="button" onClick={() => generateFrom(item.hash, 1)}>
-                Generate summary
-              </button>
-            )}
+    <>
+      <HistoryHeader
+        count={history.length}
+        onGenerateAll={newest ? () => generateFrom(newest.hash, 10) : null}
+      />
+      <ScrollArea className="flex-1 pb-3">
+        {historyByDay.map(({ label, items }) => (
+          <div key={label}>
+            <HistoryDayLabel label={label} />
+            {items.map((item) => (
+              <HistoryItemCard key={item.hash} item={item} onGenerateFrom={generateFrom} />
+            ))}
           </div>
-        );
-      })}
-    </div>
+        ))}
+      </ScrollArea>
+    </>
   );
 }
