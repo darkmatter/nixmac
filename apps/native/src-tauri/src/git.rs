@@ -768,6 +768,21 @@ pub fn finalize_evolve(
 ) -> Result<()> {
     let default_branch = require_default_branch(dir)?;
 
+    // If a commit message is provided without squashing, amend the latest commit before merging
+    if !squash {
+        if let Some(msg) = commit_message {
+            let output = git_command()
+                .args(["commit", "--amend", "-m", msg])
+                .current_dir(dir)
+                .output()?;
+
+            if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                anyhow::bail!("Failed to amend commit message: {}", stderr);
+            }
+        }
+    }
+
     // If squashing, reset soft to the default branch and create a new commit on the branch
     if squash {
         let output = git_command()
