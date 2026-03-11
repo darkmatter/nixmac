@@ -446,6 +446,8 @@ impl EvolveEvent {
             "read_file" => "Reading file...".to_string(),
             "edit_file" => "Editing file...".to_string(),
             "list_files" => "Listing files...".to_string(),
+            "search_code" => "Searching code...".to_string(),
+            "search_packages" => "Searching packages...".to_string(),
             "build_check" => "Running build check...".to_string(),
             "think" => "Thinking...".to_string(),
             "done" => "Finishing up...".to_string(),
