@@ -110,6 +110,13 @@ def create_nix_config_git_repo():
         content = content.replace("PLATFORM_PLACEHOLDER", "aarch64-darwin")
         flake_path.write_text(content)
 
+    # Ignore flake.lock so nix operations don't dirty the git tree
+    # Normally we would want to commit the lockfile, but for AI evolve engine
+    # testing doing a lock upfront wastes time and having it always
+    # a part of dirty changes is noisy and obfuscates the actual changes
+    # made by the evolve engine during test runs.
+    (tmpdir / ".gitignore").write_text("flake.lock\n")
+
     # Initialize git repo
     repo = Repo.init(str(tmpdir))
 
