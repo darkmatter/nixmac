@@ -3,8 +3,11 @@
 mod file_ops;
 pub mod messages;
 pub mod providers;
+mod run_command;
+mod search_packages;
 mod tools;
 mod types;
+mod utils;
 
 // Re-export public API
 use anyhow::{anyhow, Result};
