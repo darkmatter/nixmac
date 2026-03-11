@@ -7,6 +7,7 @@ export function useHistory() {
   const setHistoryLoading = useWidgetStore((state) => state.setHistoryLoading);
   const addAnalyzingHistoryHash = useWidgetStore((state) => state.addAnalyzingHistoryHash);
   const removeAnalyzingHistoryHash = useWidgetStore((state) => state.removeAnalyzingHistoryHash);
+  const setError = useWidgetStore((state) => state.setError);
 
   const loadHistory = useCallback(async () => {
     setHistoryLoading(true);
@@ -22,10 +23,14 @@ export function useHistory() {
 
   const analyzeOne = useCallback(
     async (hash: string) => {
-      await darwinAPI.history.generateFrom(hash, 1);
-      await loadHistory();
+      try {
+        await darwinAPI.history.generateFrom(hash, 1);
+        await loadHistory();
+      } catch (e) {
+        setError(`Failed to analyze changes: ${e}`);
+      }
     },
-    [loadHistory],
+    [loadHistory, setError],
   );
 
   const analyzeMany = useCallback(
@@ -38,12 +43,16 @@ export function useHistory() {
         try {
           await darwinAPI.history.generateFrom(hash, 1);
           await loadHistory();
+        } catch (e) {
+          useWidgetStore.setState({ analyzingHistoryForHashes: new Set() });
+          setError(`Failed to analyze changes: ${e}`);
+          return;
         } finally {
           removeAnalyzingHistoryHash(hash);
         }
       }
     },
-    [addAnalyzingHistoryHash, removeAnalyzingHistoryHash, loadHistory],
+    [addAnalyzingHistoryHash, removeAnalyzingHistoryHash, loadHistory, setError],
   );
 
   const stopAnalyzing = useCallback(() => {
