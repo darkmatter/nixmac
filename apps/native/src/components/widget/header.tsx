@@ -10,6 +10,8 @@ export function Header() {
   const setFeedbackOpen = useWidgetStore((s) => s.setFeedbackOpen);
   const showHistory = useWidgetStore((s) => s.showHistory);
   const setShowHistory = useWidgetStore((s) => s.setShowHistory);
+  const isProcessing = useWidgetStore((s) => s.isProcessing);
+  const isGenerating = useWidgetStore((s) => s.isGenerating);
   const [isPulsing, setIsPulsing] = useState(false);
 
   // Flash the feedback icon when an error occurs (subscribe to detect all changes)
@@ -40,7 +42,10 @@ export function Header() {
           )}
           size="sm"
           variant="ghost"
-          onClick={() => setShowHistory(!showHistory)}
+          onClick={() => {
+            if (isProcessing || isGenerating) return;
+            setShowHistory(!showHistory);
+          }}
           aria-label="History"
           title="History"
         >

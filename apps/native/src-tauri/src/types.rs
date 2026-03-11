@@ -297,6 +297,8 @@ pub struct HistoryItem {
     pub message: Option<String>,
     /// Unix timestamp (always from git log).
     pub created_at: i64,
+    /// True if this commit has the `nixmac-last-build` tag (most recently built).
+    pub is_built: bool,
     /// DB record — present only if metadata has been generated for this commit.
     pub commit: Option<crate::sqlite_types::CommitRow>,
     /// AI summary — present only if a summary has been generated.

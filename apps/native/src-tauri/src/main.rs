@@ -19,6 +19,7 @@ mod feedback;
 mod finalize_apply;
 mod find_summary;
 mod generate_history_from;
+mod get_history;
 mod git;
 mod log_summarizer;
 mod nix;
@@ -320,6 +321,7 @@ fn run_gui_mode(
             commands::find_summary,
             commands::get_history,
             commands::generate_history_from,
+            commands::restore_to_commit,
             commands::summarize_changes,
             commands::summary_get_cached,
             commands::suggest_commit_message,

@@ -15,7 +15,7 @@ pub async fn generate_history_from<R: Runtime>(
     let db_path = crate::db::get_db_path(app)?;
 
     // Fetch number+1 commits so we have the parent of the oldest commit we want to summarise.
-    let commits = crate::git::log(&config_dir, commit_hash, number + 1)?;
+    let commits = crate::git::log(&config_dir, commit_hash, Some(number + 1))?;
 
     if commits.is_empty() {
         return Ok(());

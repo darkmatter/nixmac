@@ -560,53 +560,27 @@ pub async fn generate_history_from(
         .map_err(|e| capture_err("generate_history_from", e))
 }
 
-/// Returns the most recent commits from the main branch, each paired with optional DB metadata and summary.
+/// Returns all commits on the main branch, each paired with optional DB metadata, summary,
+/// and build/head status.
 #[tauri::command]
 pub async fn get_history(app: AppHandle) -> Result<Vec<types::HistoryItem>, String> {
-    const LIMIT: usize = 10;
+    crate::get_history::get_history(&app)
+        .await
+        .map_err(|e| capture_err("get_history", e))
+}
 
-    let config_dir = store::get_config_dir(&app).map_err(|e| capture_err("get_history", e))?;
-    let db_path = db::get_db_path(&app).map_err(|e| capture_err("get_history", e))?;
-
-    let main_branch = git::get_default_branch(&config_dir).unwrap_or_else(|| "main".to_string());
-
-    // Fetch LIMIT+1 so we have the parent of the last commit for summary lookup.
-    let git_commits = git::log(&config_dir, &main_branch, LIMIT + 1)
-        .map_err(|e| capture_err("get_history", e))?;
-
-    let display_count = git_commits.len().min(LIMIT);
-    let mut entries = Vec::with_capacity(display_count);
-
-    for i in 0..display_count {
-        let git_commit = &git_commits[i];
-
-        let db_commit = db::commits::get_commit_by_hash(&db_path, &git_commit.hash).unwrap_or(None);
-
-        let summary = if let Some(ref commit) = db_commit {
-            git_commits.get(i + 1).and_then(|parent| {
-                db::commits::get_commit_by_hash(&db_path, &parent.hash)
-                    .ok()
-                    .flatten()
-                    .and_then(|parent_db| {
-                        db::summaries::get_summary_for_from(&db_path, commit.id, parent_db.id)
-                            .ok()
-                            .flatten()
-                    })
-            })
-        } else {
-            None
-        };
-
-        entries.push(types::HistoryItem {
-            hash: git_commit.hash.clone(),
-            message: git_commit.message.clone(),
-            created_at: git_commit.created_at,
-            commit: db_commit,
-            summary,
-        });
-    }
-
-    Ok(entries)
+/// Restores the working tree to `target_hash` by checking out its files and
+/// creating a new forward commit on main. Rebuild is triggered by the frontend.
+#[tauri::command]
+pub async fn restore_to_commit(app: AppHandle, target_hash: String) -> Result<(), String> {
+    let config_dir =
+        store::get_config_dir(&app).map_err(|e| capture_err("restore_to_commit", e))?;
+    let label = &target_hash[..target_hash.len().min(8)];
+    git::restore_files_at_commit(&config_dir, &target_hash)
+        .map_err(|e| capture_err("restore_to_commit", e))?;
+    git::commit_all(&config_dir, &format!("nixmac: restore {label}"))
+        .map_err(|e| capture_err("restore_to_commit", e))?;
+    Ok(())
 }
 
 /// Finds the relevant summary for the current git state, flags availability.
