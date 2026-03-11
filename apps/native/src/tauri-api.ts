@@ -7,6 +7,7 @@ export interface HistoryItem {
   hash: string;
   message: string | null;
   createdAt: number;
+  isBuilt: boolean;
   commit: CommitRow | null;
   summary: SummaryRow | null;
 }
@@ -282,6 +283,8 @@ export const darwinAPI = {
     finalizeApply: () => invoke<EvolutionResult>("finalize_apply"),
     rollbackErase: (keepBranch?: boolean) =>
       invoke<RollbackResult>("rollback_erase", { keepBranch }),
+    restoreToCommit: (targetHash: string) =>
+      invoke<void>("restore_to_commit", { targetHash }),
   },
   nix: {
     check: () =>

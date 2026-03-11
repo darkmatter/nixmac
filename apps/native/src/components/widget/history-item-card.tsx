@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { HistoryItem, SummaryResponse } from "@/tauri-api";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AnalyzeHistoryItemButton } from "@/components/widget/analyze-history-item-button";
+import { HistoryRestoreItemButton } from "@/components/widget/history-restore-item-button";
 
 type CategoryStyle = {
   text: string;
@@ -50,16 +50,19 @@ export function HistoryItemCard({ item }: HistoryItemCardProps) {
   return (
     <div
       className={cn(
-        "rounded-[10px] border border-white/10 bg-[#111111] px-[14px] py-3 mb-2 cursor-pointer select-none transition-colors duration-150",
-        "hover:border-white/20 hover:bg-[#141414]",
-        expanded && "border-white/30 bg-[#151515]",
+        "group rounded-[10px] border-2 bg-[#111111] px-[14px] py-3 mb-2 select-none transition-colors duration-150",
+        item.isBuilt ? "border-teal-400/40" : "border-white/[0.12]",
+        summary
+          ? cn("cursor-pointer", !item.isBuilt && "hover:border-white/25 hover:bg-[#141414]")
+          : "cursor-default",
+        expanded && cn("bg-[#151515]", item.isBuilt ? "border-teal-400/50" : "border-white/35"),
       )}
-      onClick={toggle}
-      onKeyDown={(e) => {
+      onClick={summary ? toggle : undefined}
+      onKeyDown={summary ? (e) => {
         if (e.key === "Enter" || e.key === " ") toggle();
-      }}
-      role="button"
-      tabIndex={0}
+      } : undefined}
+      role={summary ? "button" : undefined}
+      tabIndex={summary ? 0 : undefined}
     >
       {/* Collapsed body: left content + right actions */}
       <div className="flex items-start justify-between gap-[10px]">
@@ -100,31 +103,13 @@ export function HistoryItemCard({ item }: HistoryItemCardProps) {
 
         {/* Right: action buttons */}
         <div className="flex shrink-0 flex-col items-end gap-1">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-auto whitespace-nowrap border-white/10 bg-white/[0.06] px-[10px] py-1 text-[10px] text-neutral-400 hover:border-white/30"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
-              <path
-                d="M2 8a6 6 0 1 1 1.5 3.96"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-              <path
-                d="M2 12V8h4"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            Restore
-          </Button>
-          {!summary && <AnalyzeHistoryItemButton hash={item.hash} />}
+          <HistoryRestoreItemButton hash={item.hash} isBuilt={item.isBuilt} />
+          {!summary && (
+            <AnalyzeHistoryItemButton
+              hash={item.hash}
+              className="group-hover:bg-accent group-hover:text-accent-foreground"
+            />
+          )}
         </div>
       </div>
 

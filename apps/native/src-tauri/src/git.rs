@@ -519,23 +519,21 @@ pub struct CommitInfo {
     pub tree_hash: String,
 }
 
-/// Fetch up to `limit` commits starting from `start_hash` going backwards.
+/// Fetch commits starting from `start_hash` going backwards.
+/// `limit` caps the number returned; pass `None` to return all commits.
 /// Returns CommitRow values with id = 0 (placeholder; real id assigned on DB upsert).
 pub fn log(
     dir: &str,
     start_hash: &str,
-    limit: usize,
+    limit: Option<usize>,
 ) -> Result<Vec<crate::sqlite_types::CommitRow>> {
-    let output = git_command()
-        .args([
-            "log",
-            "--format=%H%n%T%n%at%n%s",
-            "-n",
-            &limit.to_string(),
-            start_hash,
-        ])
-        .current_dir(dir)
-        .output()?;
+    let mut cmd = git_command();
+    cmd.arg("log").arg("--format=%H%n%T%n%at%n%s");
+    if let Some(n) = limit {
+        cmd.arg("-n").arg(n.to_string());
+    }
+    cmd.arg(start_hash);
+    let output = cmd.current_dir(dir).output()?;
 
     let text = String::from_utf8_lossy(&output.stdout);
     let mut commits = Vec::new();
@@ -607,6 +605,15 @@ pub fn commit_all(dir: &str, message: &str) -> Result<CommitInfo> {
         .to_string();
 
     Ok(CommitInfo { hash, tree_hash })
+}
+
+/// Checks out all files from `target_hash` into the working tree without moving HEAD.
+pub fn restore_files_at_commit(dir: &str, target_hash: &str) -> Result<()> {
+    git_command()
+        .args(["checkout", target_hash, "--", "."])
+        .current_dir(dir)
+        .output()?;
+    Ok(())
 }
 
 /// Stages all changes and commits with the given message.
