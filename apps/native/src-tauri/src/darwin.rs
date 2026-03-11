@@ -214,18 +214,27 @@ fn run_build_step(
 fn run_activate_step(config_dir: &str) -> Result<ActivateResult, anyhow::Error> {
     let activate_path = format!("{}/result/activate", config_dir);
     let nix_path = crate::nix::get_nix_path();
+    let home = std::env::var("HOME").unwrap_or_default();
+    let ssh_sock = std::env::var("SSH_AUTH_SOCK").unwrap_or_default();
+
+    // Construct a shell command that preserves the environment for sudo
     let shell_script = format!(
-        "export PATH='{}' && '{}' 2>&1",
+        "export PATH='{}'; export HOME='{}'; export SSH_AUTH_SOCK='{}'; sudo -E '{}' 2>&1",
         nix_path.replace('\'', "'\\''"),
+        home.replace('\'', "'\\''"),
+        ssh_sock.replace('\'', "'\\''"),
         activate_path.replace('\'', "'\\''"),
     );
+
     let escaped_script = shell_script.replace('\\', "\\\\").replace('"', "\\\"");
+
+    // Wrap in osascript to get native macOS password / Touch ID dialog
     let osascript_cmd = format!(
         "do shell script \"{}\" with administrator privileges",
         escaped_script
     );
 
-    info!("[darwin] Running osascript for activation");
+    info!("[darwin] Running osascript for activation with sudo -E");
 
     let output = Command::new("osascript")
         .args(["-e", &osascript_cmd])
