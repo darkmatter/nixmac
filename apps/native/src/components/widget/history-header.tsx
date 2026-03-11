@@ -1,12 +1,11 @@
-import { Button } from "@/components/ui/button";
 import { Clock } from "lucide-react";
+import { AnalyzeHistoryButton } from "@/components/widget/analyze-history-button";
 
 interface HistoryHeaderProps {
   count: number;
-  onGenerateAll: (() => void) | null;
 }
 
-export function HistoryHeader({ count, onGenerateAll }: HistoryHeaderProps) {
+export function HistoryHeader({ count }: HistoryHeaderProps) {
   return (
     <div className="grid grid-cols-2 items-center border-b border-[#2a2a2a] pb-3">
       <div className="flex items-center gap-2">
@@ -17,16 +16,7 @@ export function HistoryHeader({ count, onGenerateAll }: HistoryHeaderProps) {
         </span>
       </div>
       <div className="flex justify-end">
-        {onGenerateAll && (
-          <Button
-            type="button"
-            size="sm"
-            className="bg-teal-600 text-white hover:bg-teal-500"
-            onClick={onGenerateAll}
-          >
-            Generate 10
-          </Button>
-        )}
+        <AnalyzeHistoryButton />
       </div>
     </div>
   );

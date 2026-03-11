@@ -93,6 +93,7 @@ export interface WidgetState {
   // History
   history: HistoryItem[];
   historyLoading: boolean;
+  analyzingHistoryForHashes: Set<string>;
 
   // UI
   summaryLoading: boolean;
@@ -149,6 +150,8 @@ export interface WidgetActions {
   // History
   setHistory: (history: HistoryItem[]) => void;
   setHistoryLoading: (loading: boolean) => void;
+  addAnalyzingHistoryHash: (hash: string) => void;
+  removeAnalyzingHistoryHash: (hash: string) => void;
 
   // Confirmation preferences
   setConfirmPref: (key: ConfirmPrefKey, value: boolean) => void;
@@ -233,6 +236,7 @@ export const initialWidgetState: WidgetState = {
   // History
   history: [],
   historyLoading: false,
+  analyzingHistoryForHashes: new Set<string>(),
 
   // Summary
   summary: initialSummaryState,
@@ -303,6 +307,14 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
       }),
     setHistory: (history) => set({ history }),
     setHistoryLoading: (historyLoading) => set({ historyLoading }),
+    addAnalyzingHistoryHash: (hash) =>
+      set((state) => ({ analyzingHistoryForHashes: new Set([...state.analyzingHistoryForHashes, hash]) })),
+    removeAnalyzingHistoryHash: (hash) =>
+      set((state) => {
+        const next = new Set(state.analyzingHistoryForHashes);
+        next.delete(hash);
+        return { analyzingHistoryForHashes: next };
+      }),
     setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
     setShowHistory: (showHistory) => set({ showHistory }),
     setFeedbackOpen: (feedbackOpen) => set({ feedbackOpen }),
