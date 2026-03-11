@@ -114,20 +114,51 @@ export function getChangeTypeFromChunks(chunks: string): "new" | "edited" | "rem
   return "edited";
 }
 
-/**
- * STILL USED IN APPLY, REMOVE ONCE FULLY IMPLEMENTED IN RUST CODE
- * Strips conventional commit prefixes (feat:, fix:, chore:, etc.)
- * and internal suffixes like "(manual changes)".
- */
-export function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/^\s*(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)(\([^)]*\))?:\s*/i, "")
-    .replace(/\s*\(manual changes\)\s*$/i, "")
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 50);
+
+// =============================================================================
+// HISTORY UTILS
+// =============================================================================
+
+import type { HistoryItem } from "@/tauri-api";
+
+export interface HistoryDayGroup {
+  label: string;
+  items: HistoryItem[];
+}
+
+function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+export function getDayLabel(unixSeconds: number): string {
+  const date = new Date(unixSeconds * 1000);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  if (isSameDay(date, today)) return "Today";
+  if (isSameDay(date, yesterday)) return "Yesterday";
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+}
+
+export function groupByDay(items: HistoryItem[]): HistoryDayGroup[] {
+  const historyByDay: HistoryDayGroup[] = [];
+  const seen = new Map<string, number>();
+
+  for (const item of items) {
+    const label = getDayLabel(item.createdAt);
+    const idx = seen.get(label);
+    if (idx !== undefined) {
+      historyByDay[idx].items.push(item);
+    } else {
+      seen.set(label, historyByDay.length);
+      historyByDay.push({ label, items: [item] });
+    }
+  }
+
+  return historyByDay;
 }
