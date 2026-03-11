@@ -176,11 +176,16 @@ pub async fn git_commit(app: AppHandle, message: String) -> Result<serde_json::V
 
     // Save commit to database
     if let Ok(db_path) = db::get_db_path(&app) {
-        match db::commits::insert_commit(
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64;
+        match db::commits::upsert_commit(
             &db_path,
             &commit_info.hash,
             &commit_info.tree_hash,
-            &message,
+            Some(&message),
+            now,
         ) {
             Ok(id) => log::info!(
                 "[git_commit] Saved commit to database (id={}, hash={})",

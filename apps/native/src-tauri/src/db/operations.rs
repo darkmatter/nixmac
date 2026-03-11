@@ -40,9 +40,9 @@ pub fn save_evolution_complete(db_path: &Path, data: EvolutionData) -> Result<i6
         .unwrap_or_default()
         .as_secs() as i64;
 
-    // Insert commit
+    // Upsert commit (hash is unique; same hash = same commit, safe to ignore duplicates)
     tx.execute(
-        "INSERT INTO commits (hash, tree_hash, message, created_at) VALUES (?1, ?2, ?3, ?4)",
+        "INSERT OR IGNORE INTO commits (hash, tree_hash, message, created_at) VALUES (?1, ?2, ?3, ?4)",
         (
             &data.commit_hash,
             &data.tree_hash,
@@ -50,7 +50,11 @@ pub fn save_evolution_complete(db_path: &Path, data: EvolutionData) -> Result<i6
             now,
         ),
     )?;
-    let commit_id = tx.last_insert_rowid();
+    let commit_id: i64 = tx.query_row(
+        "SELECT id FROM commits WHERE hash = ?1",
+        [&data.commit_hash],
+        |row| row.get(0),
+    )?;
 
     // Insert evolution record
     tx.execute(
