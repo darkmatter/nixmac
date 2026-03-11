@@ -63,7 +63,7 @@ pub async fn generate_history_from<R: Runtime>(
                         commits[i].hash,
                         e
                     );
-                    continue;
+                    return Err(e);
                 }
             };
 
