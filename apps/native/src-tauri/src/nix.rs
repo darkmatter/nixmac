@@ -316,9 +316,14 @@ fn download_nix_pkg(app: &AppHandle) -> Result<std::path::PathBuf> {
     Ok(pkg_path)
 }
 
+/// Timeout for each installation phase — nix install and nix-darwin prefetch (5 minutes each).
+const INSTALL_PHASE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(300);
+
 fn run_nix_install(app: &AppHandle) -> Result<()> {
     let nix_installed = is_nix_installed();
     let dr_available = nix_installed && is_darwin_rebuild_available();
+    // Each phase gets its own 5-minute deadline.
+    let mut deadline;
 
     // Both already available — nothing to do
     if nix_installed && dr_available {
@@ -383,10 +388,11 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
             return Ok(());
         }
 
+        // Start the 5-minute deadline for nix installation (download time doesn't count)
+        deadline = std::time::Instant::now() + INSTALL_PHASE_TIMEOUT;
+
         // Poll until Nix is installed (user completes the macOS Installer wizard)
-        let max_wait = std::time::Duration::from_secs(600);
         let poll_interval = std::time::Duration::from_secs(3);
-        let start = std::time::Instant::now();
         let mut poll_count = 0u32;
 
         loop {
@@ -407,7 +413,7 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
                 break;
             }
 
-            if start.elapsed() > max_wait {
+            if std::time::Instant::now() >= deadline {
                 let _ = std::fs::remove_file(&pkg_path);
                 app.emit(
                     "nix:install:end",
@@ -415,7 +421,7 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
                         "ok": false,
                         "code": -1,
                         "error_type": "timeout",
-                        "error": "Nix installation timed out. Please try again.",
+                        "error": "Installation timed out after 5 minutes. Please try again.",
                     }),
                 )?;
                 return Ok(());
@@ -424,27 +430,64 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
     }
 
     // Phase 2: Prefetch darwin-rebuild directly (no Terminal needed)
+    // Fresh 5-minute deadline for this phase
+    deadline = std::time::Instant::now() + INSTALL_PHASE_TIMEOUT;
     let _ = app.emit(
         "nix:install:progress",
         serde_json::json!({ "phase": "prefetching" }),
     );
 
     info!("[nix] Prefetching darwin-rebuild in background");
-    let output = Command::new("nix")
+    let mut child = match Command::new("nix")
         .args(["build", "--no-link", "nix-darwin/master#darwin-rebuild"])
         .env("PATH", get_nix_path_with_login_shell())
         .env("NIX_CONFIG", "experimental-features = nix-command flakes")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .output();
+        .spawn()
+    {
+        Ok(child) => child,
+        Err(e) => {
+            error!("[nix] darwin-rebuild prefetch error: {}", e);
+            app.emit(
+                "nix:install:end",
+                serde_json::json!({
+                    "ok": false,
+                    "code": -1,
+                    "error_type": "darwin_rebuild",
+                    "error": format!("Failed to set up nix-darwin: {}", e),
+                }),
+            )?;
+            return Ok(());
+        }
+    };
 
-    match output {
-        Ok(o) if o.status.success() => {
+    // Poll until the child exits or the deadline is reached
+    let poll_interval = std::time::Duration::from_secs(1);
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break Ok(status),
+            Ok(None) => {
+                if std::time::Instant::now() >= deadline {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    break Err("timed out");
+                }
+                std::thread::sleep(poll_interval);
+            }
+            Err(e) => {
+                error!("[nix] darwin-rebuild wait error: {}", e);
+                break Err("wait failed");
+            }
+        }
+    };
+
+    match status {
+        Ok(s) if s.success() => {
             info!("[nix] darwin-rebuild prefetch succeeded");
         }
-        Ok(o) => {
-            let stderr = String::from_utf8_lossy(&o.stderr).to_string();
-            error!("[nix] darwin-rebuild prefetch failed: {}", stderr);
+        Ok(_) => {
+            error!("[nix] darwin-rebuild prefetch failed");
             app.emit(
                 "nix:install:end",
                 serde_json::json!({
@@ -456,15 +499,15 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
             )?;
             return Ok(());
         }
-        Err(e) => {
-            error!("[nix] darwin-rebuild prefetch error: {}", e);
+        Err(_) => {
+            error!("[nix] darwin-rebuild prefetch timed out");
             app.emit(
                 "nix:install:end",
                 serde_json::json!({
                     "ok": false,
                     "code": -1,
-                    "error_type": "darwin_rebuild",
-                    "error": format!("Failed to set up nix-darwin: {}", e),
+                    "error_type": "timeout",
+                    "error": "Installation timed out after 5 minutes. Please try again.",
                 }),
             )?;
             return Ok(());
