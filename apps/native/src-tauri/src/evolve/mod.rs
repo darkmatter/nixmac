@@ -964,6 +964,7 @@ fn process_tool_result(
         }
 
         ToolResult::BuildResult { success, output } => {
+            *build_attempts += 1;
             if *success {
                 info!("✅ BUILD CHECK PASSED");
                 *build_verified = true;
@@ -976,7 +977,6 @@ fn process_tool_result(
                 };
                 (msg, Some(false))
             } else {
-                *build_attempts += 1;
                 warn!(
                     "❌ BUILD CHECK FAILED (attempt {}/{})",
                     build_attempts, DEFAULT_MAX_BUILD_ATTEMPTS
