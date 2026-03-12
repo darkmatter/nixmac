@@ -299,7 +299,11 @@ def main(parsed_args: argparse.Namespace) -> None:
         cases: list[EvalTestCase] = read_test_cases(
             rows=rows, priority=parsed_args.priority, persona=parsed_args.persona
         )
-        print(f"Running {len(cases)} test cases...")
+        total_matching = len(cases)
+        if parsed_args.limit is not None:
+            # keep rows filtering behavior, then apply a maximum count
+            cases = cases[: parsed_args.limit]
+        print(f"Running {len(cases)} test cases (from {total_matching} matching)...")
         for case in cases:
             print(f"Running case {case.num}: {case.scenario}...")
             nixmac_path = Path(parsed_args.nixmac)
@@ -359,6 +363,12 @@ if __name__ == "__main__":
         type=str,
         default=None,
         help="Comma-delimited list of test case numbers to run (e.g., --rows 1,3,5)",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Maximum number of test cases to run (default: all matching cases)",
     )
     parser.add_argument(
         "--priority", type=str, help="Filter test cases by priority (e.g., --priority High)"
