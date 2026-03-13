@@ -36,6 +36,7 @@ mod store;
 mod summarize;
 mod template;
 mod types;
+mod utils;
 mod watcher;
 
 use std::env;
