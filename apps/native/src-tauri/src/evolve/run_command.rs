@@ -12,6 +12,7 @@ use std::process::Command;
 /// to inspect the repository state without making changes. Dangerous commands that can modify
 /// the system or the repository (e.g., git commit, git push, rm, mv, etc.) are explicitly blocked
 /// in the validation function, even if they are common utilities.
+#[allow(dead_code)]
 fn get_allowed_run_commands() -> Vec<&'static str> {
     vec![
         // Nix ecosystem commands
@@ -76,6 +77,7 @@ fn get_allowed_run_commands() -> Vec<&'static str> {
 }
 
 /// Validates git command to ensure only read-only operations are allowed
+#[allow(dead_code)]
 fn validate_git_command(trimmed: &str) -> Result<(), String> {
     let git_allowed_subcommands = [
         "status",
@@ -104,6 +106,7 @@ fn validate_git_command(trimmed: &str) -> Result<(), String> {
 }
 
 /// Validates nix command to ensure only safe read-only operations are allowed
+#[allow(dead_code)]
 fn validate_nix_command(base_cmd: &str, trimmed: &str) -> Result<(), String> {
     // Block dangerous flags that can execute commands
     let dangerous_nix_flags = ["-c", "--command", "--run"];
@@ -189,6 +192,7 @@ fn validate_nix_command(base_cmd: &str, trimmed: &str) -> Result<(), String> {
 }
 
 /// Validates find command to block execution flags
+#[allow(dead_code)]
 fn validate_find_command(trimmed: &str) -> Result<(), String> {
     let dangerous_find_flags = ["-exec", "-execdir", "-ok", "-okdir"];
     for flag in &dangerous_find_flags {
@@ -205,6 +209,7 @@ fn validate_find_command(trimmed: &str) -> Result<(), String> {
 
 /// Validates a single command for the run_command tool with no pipes.
 /// Checks that the base command is on the allow-list and that git commands are read-only.
+#[allow(dead_code)]
 fn validate_single_run_command(cmd: &str, allowed_commands: &[&str]) -> Result<(), String> {
     let trimmed = cmd.trim();
 
@@ -242,6 +247,7 @@ fn validate_single_run_command(cmd: &str, allowed_commands: &[&str]) -> Result<(
 
 /// Validates that a command is safe and necessary for nix-darwin configuration management.
 /// Returns Ok(()) if allowed, Err with reason if blocked.
+#[allow(dead_code)]
 fn is_command_allowed(command: &str) -> Result<(), String> {
     let trimmed = command.trim();
 
@@ -288,6 +294,7 @@ fn is_command_allowed(command: &str) -> Result<(), String> {
 }
 
 /// Execute a run_command tool call
+#[allow(dead_code)]
 pub fn execute_run_command(config_dir: &str, command: &str) -> Result<String> {
     // Validate command against allow-list for security
     if let Err(reason) = is_command_allowed(command) {

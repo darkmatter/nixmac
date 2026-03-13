@@ -29,6 +29,7 @@ pub use types::{Evolution, EvolutionState};
 use crate::{
     commands, nix, statistics, store,
     types::{emit_evolve_event, EvolveEvent},
+    utils as global_utils,
 };
 use messages::Message;
 use providers::{AiProvider, OllamaProvider, OpenAIProvider, ProviderError};
@@ -75,6 +76,19 @@ fn extract_error_metadata(error: &str) -> (Option<u16>, Option<String>, Option<S
     }
 
     (None, None, None, error.len())
+}
+
+// Identify a potentially easily recoverable-via-retry error from Ollama
+// where the model returns malformed tool call JSON that fails to parse.
+// In this case we want to retry with a clarifying user message to encourage
+// the model to return strictly valid tool_calls without mixing prose in
+// content or inventing tool names as it is so prone to doing.
+fn is_ollama_tool_call_parse_error(err: &ProviderError) -> bool {
+    matches!(
+        err,
+        ProviderError::Http { status, body }
+            if status.as_u16() == 500 && body.contains("error parsing tool call")
+    )
 }
 
 /// Report a ProviderError to Sentry using structured fields (no raw bodies).
@@ -241,6 +255,7 @@ const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 const DEFAULT_MAX_ITERATIONS: usize = 50;
 const DEFAULT_MAX_BUILD_ATTEMPTS: usize = 5;
+const DEFAULT_OLLAMA_TOOL_PARSE_RETRIES: usize = 1;
 const SYSTEM_PROMPT: &str = include_str!("../../prompts/system.md");
 
 /// Additional instructions to encourage thinking
@@ -253,7 +268,22 @@ IMPORTANT: You have a 'think' tool available. Use it FREQUENTLY to reason throug
 4. WHEN debugging - analyze errors step by step
 5. BEFORE calling done - verify your work is complete
 
-Thorough thinking leads to better, more complete implementations. Don't rush."#;
+TOOL-CALL CONTRACT (STRICT):
+- Use `tool_calls` for tool invocations only. Never encode tool invocations inside assistant `content`.
+- Treat assistant `content` as natural-language text only (status, rationale, questions, summaries).
+- Never invent tool names. Call only tools that exist in the provided tool schema.
+- If a tool call fails due to unknown tool name, immediately retry using only valid tool names.
+- If returning both `content` and `tool_calls`, keep `content` brief and non-executable.
+
+If you choose NOT to call any tools during an iteration, you MUST return a non-empty assistant `content` message that:
+- explains what you considered (brief reasoning),
+- explains why existing files/config are sufficient or why changes are not needed,
+- states the next steps you would take (or why none are needed), and
+- does not include serialized tool payloads or invented tool names.
+
+When calling `think`, keep `thought` concise: 1-2 sentences and ideally <= 200 characters.
+
+Think clearly, but keep outputs concise and actionable."#;
 
 /// Partial evolution telemetry captured on failed runs.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -305,6 +335,50 @@ impl std::fmt::Display for EvolutionRunError {
 }
 
 impl std::error::Error for EvolutionRunError {}
+
+/// Build a short single-line preview from the conversation messages to help with
+/// troubleshooting.
+fn build_preview(messages: &[Message]) -> String {
+    let preview_raw: String = messages
+        .iter()
+        .rev()
+        .filter_map(|m| match m {
+            // user messages and system prompts are always relevant
+            Message::User { content } | Message::System { content } => {
+                let c = content.trim();
+                if c.is_empty() {
+                    None
+                } else {
+                    Some(c.to_string())
+                }
+            }
+            // tool outputs can be included if non-empty
+            Message::Tool { content, .. } => {
+                let c = content.trim();
+                if c.is_empty() {
+                    None
+                } else {
+                    Some(c.to_string())
+                }
+            }
+            // skip assistant messages
+            Message::Assistant { .. } => None,
+        })
+        .take(3)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect::<Vec<_>>()
+        .join(" \n\n ");
+
+    // replace newlines with spaces and truncate
+    let mut preview = preview_raw.replace(['\n', '\r'], " ");
+    if preview.len() > 100 {
+        global_utils::truncate_utf8(&mut preview, 100);
+        preview.push_str("...");
+    }
+    preview
+}
 
 /// Generate an evolution from a user prompt using OpenAI function calling.
 ///
@@ -406,6 +480,11 @@ pub async fn generate_evolution(
     );
 
     let tools = create_tools();
+    let allowed_tool_names = tools
+        .iter()
+        .map(|tool| tool.name.as_str())
+        .collect::<Vec<_>>();
+    let allowed_tool_names_display = allowed_tool_names.join(", ");
     let mut evolution = Evolution::new(prompt);
     let mut iteration: usize = 0;
     let mut build_attempts: usize = 0;
@@ -419,10 +498,17 @@ pub async fn generate_evolution(
     let system_prompt = SYSTEM_PROMPT
         .replace("{{CONFIG_DIR}}", config_dir)
         .replace("{{HOST_ATTR}}", &host_attr);
+    let tool_contract = format!(
+        "\n\nVALID TOOL NAMES (call only these): {}\n",
+        allowed_tool_names_display.as_str()
+    );
 
     let mut messages: Vec<Message> = vec![
         Message::System {
-            content: format!("{}{}", system_prompt, THINKING_INSTRUCTIONS),
+            content: format!(
+                "{}{}{}",
+                system_prompt, THINKING_INSTRUCTIONS, tool_contract
+            ),
         },
         Message::User {
             content: format!(
@@ -473,7 +559,10 @@ pub async fn generate_evolution(
             EvolveEvent::iteration(start_time, iteration, messages.len()),
         );
 
-        debug!("Sending request to AI provider...");
+        // Capture the messages that most directly drive the agent's next action
+        let preview = build_preview(&messages);
+
+        debug!("Sending request to AI provider, preview: {}", preview);
         emit_evolve_event(app, EvolveEvent::api_request(start_time, iteration));
 
         // Run provider completion inside a short-lived block and select!
@@ -481,39 +570,73 @@ pub async fn generate_evolution(
         // `messages` only for the call so we can mutate `messages` after
         // the block without deep-cloning the conversation.
         let response_result = {
-            let fut = provider.completion(&messages, &tools);
-            tokio::pin!(fut);
+            let mut ollama_parse_retry_count = 0usize;
+            loop {
+                let completion_result = {
+                    let fut = provider.completion(&messages, &tools);
+                    tokio::pin!(fut);
 
-            tokio::select! {
-                res = &mut fut => res,
-                _ = async {
-                    loop {
-                        if commands::is_evolve_cancelled() {
-                            break;
+                    tokio::select! {
+                        res = &mut fut => res,
+                        _ = async {
+                            loop {
+                                if commands::is_evolve_cancelled() {
+                                    break;
+                                }
+                                // consider switching the cancellation mechanism to a tokio::sync::Notify or watch channel and select! directly on that signal instead of polling with sleep
+                                sleep(Duration::from_millis(100)).await;
+                            }
+                        } => {
+                            warn!("⚠️ Evolution cancelled by user during provider call");
+                            evolution.state = EvolutionState::Failed;
+                            emit_evolve_event(
+                                app,
+                                EvolveEvent::error(start_time, Some(iteration), "Evolution cancelled by user"),
+                            );
+                            // Track failure
+                            if let Err(e) = statistics::record_evolution_failure(app, iteration) {
+                                warn!("Failed to record evolution failure stats: {}", e);
+                            }
+                            return Err(EvolutionRunError::from_state(
+                                "Evolution cancelled by user",
+                                &evolution,
+                                iteration,
+                                build_attempts,
+                                total_tokens,
+                            )
+                            .into());
                         }
-                        // consider switching the cancellation mechanism to a tokio::sync::Notify or watch channel and select! directly on that signal instead of polling with sleep
-                        sleep(Duration::from_millis(100)).await;
                     }
-                } => {
-                    warn!("⚠️ Evolution cancelled by user during provider call");
-                    evolution.state = EvolutionState::Failed;
-                    emit_evolve_event(
-                        app,
-                        EvolveEvent::error(start_time, Some(iteration), "Evolution cancelled by user"),
-                    );
-                    // Track failure
-                    if let Err(e) = statistics::record_evolution_failure(app, iteration) {
-                        warn!("Failed to record evolution failure stats: {}", e);
+                };
+
+                if let Err(ref err) = completion_result {
+                    let should_retry_ollama_parse_error = provider_type == "ollama"
+                        && is_ollama_tool_call_parse_error(err)
+                        && ollama_parse_retry_count < DEFAULT_OLLAMA_TOOL_PARSE_RETRIES;
+
+                    if should_retry_ollama_parse_error {
+                        ollama_parse_retry_count += 1;
+                        warn!(
+                            "⚠️ Ollama returned malformed tool-call JSON; retrying completion ({}/{})",
+                            ollama_parse_retry_count,
+                            DEFAULT_OLLAMA_TOOL_PARSE_RETRIES
+                        );
+                        emit_evolve_event(
+                            app,
+                            EvolveEvent::info(
+                                start_time,
+                                Some(iteration),
+                                "Provider parse error on tool call; retrying once with concise structured tool args guidance",
+                            ),
+                        );
+                        messages.push(Message::User {
+                            content: "Retry the previous step. Use strictly valid structured tool_calls only; do not mix prose with JSON in arguments. If using think, keep thought concise (1-2 sentences, <=200 chars).".to_string(),
+                        });
+                        continue;
                     }
-                    return Err(EvolutionRunError::from_state(
-                        "Evolution cancelled by user",
-                        &evolution,
-                        iteration,
-                        build_attempts,
-                        total_tokens,
-                    )
-                    .into());
                 }
+
+                break completion_result;
             }
         };
 
@@ -574,12 +697,21 @@ pub async fn generate_evolution(
 
         let assistant_msg = response.message;
 
-        // Log assistant text response if any
+        // Log assistant text response if any. If tool calls are present, treat tool_calls as
+        // the sole executable source and only log content as an optional side note.
         if let Message::Assistant {
             content: Some(ref text),
-            ..
+            ref tool_calls,
         } = assistant_msg
         {
+            let has_tool_calls = tool_calls.as_ref().is_some_and(|calls| !calls.is_empty());
+            if has_tool_calls {
+                debug!(
+                    "Assistant returned content alongside tool_calls; content treated as non-executable text | content_preview={}"
+                    ,
+                    truncate_for_log(text, 300)
+                );
+            }
             info!("💬 Assistant: {}", truncate_for_log(text, 500));
         }
 
@@ -728,9 +860,21 @@ pub async fn generate_evolution(
                                 &format!("ERROR: {}", e),
                                 false,
                             );
+
+                            let tool_error = e.to_string();
+                            let recovery_message = if tool_error.starts_with("Unknown tool:") {
+                                format!(
+                                    "Unknown tool '{}'. Retry with one of the allowed tools only: {}. \
+Do not invent tool names and do not place tool invocations in assistant content.",
+                                    tool_name, allowed_tool_names_display
+                                )
+                            } else {
+                                format!("Error: {}. Please try a different approach.", tool_error)
+                            };
+
                             messages.push(Message::Tool {
                                 tool_call_id: tool_call.id.clone(),
-                                content: format!("Error: {}. Please try a different approach.", e),
+                                content: recovery_message,
                             });
                         }
                     }
@@ -757,7 +901,7 @@ pub async fn generate_evolution(
         }
 
         // Safety limits
-        if iteration > max_iterations {
+        if iteration >= max_iterations {
             warn!(
                 "⚠️ Evolution exceeded maximum iterations ({}) - aborting",
                 max_iterations
