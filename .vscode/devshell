@@ -65,8 +65,5 @@ cd "$ROOT"
 # Force bash shell to avoid starship prompt issues with zsh
 # (devenv enterShell runs starship init for bash, so we need to stay in bash)
 
-if command -v devenv >/dev/null 2>&1; then
-  exec devenv shell
-fi
-
-exec nix run --accept-flake-config github:cachix/devenv/v1.11.1 -- shell
+DEVENV_FLAKE="github:cachix/devenv/v1.11.1"
+exec nix run --accept-flake-config "$DEVENV_FLAKE" -- shell
