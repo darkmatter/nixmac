@@ -302,6 +302,17 @@ function shouldShowAppLogs(
   }
 }
 
+async function savePendingFeedback(json: string, reason: string): Promise<boolean> {
+  try {
+    await darwinAPI.feedback.savePending(json, reason);
+    toast.info("Failed to send, we'll try sending it again next time you open the app.");
+    return true;
+  } catch {
+    toast.error("Failed to save feedback for later.");
+    return false;
+  }
+}
+
 interface FeedbackDialogProps {
   mainWindowError?: string;
 }
@@ -434,10 +445,11 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
         console.warn("Feedback validation failed:", validation.errors);
       }
 
+      const payload = feedbackModel.toJSON();
+      const json = JSON.stringify(payload);
+
       try {
         const feedbackUrl = getFeedbackUrl();
-        const payload = feedbackModel.toJSON();
-        const json = JSON.stringify(payload);
 
         const resp = await fetch(feedbackUrl, {
           method: "POST",
@@ -459,7 +471,7 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
           const serverErr = body?.error ?? null;
           const details = body?.details;
 
-          // Only surface errors we intentionally add in the API handler.
+          // Rate limit and validation errors are user-actionable — don't queue these.
           if (serverErr === "rate_limited") {
             toast.error(
               "You're sending feedback too quickly — please wait a minute and try again.",
@@ -470,32 +482,31 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
             } else {
               toast.error("Validation failed — please check your input.");
             }
-          } else if (serverErr === "dsn missing") {
-            toast.error("Feedback DSN missing in request.");
-          } else if (serverErr === "invalid dsn") {
-            toast.error("Invalid feedback DSN — submission rejected.");
-          } else if (serverErr === "db_error") {
-            toast.error("Server error saving feedback. Please try again later.");
-          } else if (typeof serverErr === "string") {
-            // If it's some other string, show it directly (fallback).
-            toast.error(serverErr);
           } else {
-            toast.error("Failed to send feedback. Please try again.");
+            // Non-recoverable server error — save for retry on next launch.
+            const reason = typeof serverErr === "string" ? serverErr : "server error";
+            if (await savePendingFeedback(json, reason)) {
+              sentSuccessfully = true;
+            }
           }
         } else {
           const id = body?.id ?? undefined;
           toast.success(id ? `Thanks — feedback sent (id: ${id})` : "Thanks — feedback sent");
           const info = body?.info ?? body?.message ?? null;
           if (typeof info === "string" && info.length > 0) {
-            // show any friendly informational message from the server
             toast(info);
           }
           sentSuccessfully = true;
+          // Also flush any previously failed reports
+          darwinAPI.feedback.retryPending().catch(() => {});
         }
       } catch (err) {
+        // Network error — save for retry on next launch.
         // eslint-disable-next-line no-console
         console.error("Error posting feedback:", err);
-        toast.error("Network error sending feedback — please check your connection and try again.");
+        if (await savePendingFeedback(json, "network error")) {
+          sentSuccessfully = true;
+        }
       }
     } finally {
       setSubmitting(false);
@@ -1031,8 +1042,7 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={submitting}>
-            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isReportMode ? "Send Report" : "Send Feedback"}
+            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : isReportMode ? "Send Report" : "Send Feedback"}
           </Button>
         </DialogFooter>
       </DialogContent>

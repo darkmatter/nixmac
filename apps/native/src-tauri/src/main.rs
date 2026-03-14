@@ -285,6 +285,8 @@ fn run_gui_mode(
             commands::config_pick_dir,
             // Feedback
             commands::feedback_gather_metadata,
+            commands::feedback_save_pending,
+            commands::feedback_retry_pending,
             #[cfg(debug_assertions)]
             commands::trigger_test_panic,
             // Git
@@ -365,6 +367,18 @@ fn run_gui_mode(
                     log::error!("Failed to initialize database: {}", e);
                 } else {
                     log::info!("Database initialized successfully");
+                }
+            });
+
+            // Retry any pending feedback reports from previous failed submissions
+            let retry_handle = handle.clone();
+            tauri::async_runtime::spawn(async move {
+                match feedback::retry_pending(&retry_handle).await {
+                    Ok(n) if n > 0 => {
+                        log::info!("Retried and sent {} pending feedback report(s)", n)
+                    }
+                    Err(e) => log::warn!("Failed to retry pending feedback: {}", e),
+                    _ => {}
                 }
             });
 
