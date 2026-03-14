@@ -109,6 +109,26 @@ pub async fn feedback_gather_metadata(
     feedback::gather_metadata(&app, request).map_err(|e| capture_err("feedback_gather_metadata", e))
 }
 
+/// Saves a failed feedback payload to disk for later retry.
+#[tauri::command]
+pub async fn feedback_save_pending(
+    app: AppHandle,
+    payload: String,
+    failure_reason: String,
+) -> Result<serde_json::Value, String> {
+    feedback::save_pending(&app, payload, failure_reason)
+        .map_err(|e| capture_err("feedback_save_pending", e))?;
+    Ok(serde_json::json!({"ok": true}))
+}
+
+/// Retries all pending feedback reports.
+#[tauri::command]
+pub async fn feedback_retry_pending(app: AppHandle) -> Result<usize, String> {
+    feedback::retry_pending(&app)
+        .await
+        .map_err(|e| capture_err("feedback_retry_pending", e))
+}
+
 // =============================================================================
 // TESTING / DEBUG Commands
 // TODO: Consider removing or gating behind a debug flag in production builds.

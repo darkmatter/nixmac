@@ -12,7 +12,7 @@ use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 // Number of lines to include when attaching app logs
 const APP_LOG_LAST_LINES: usize = 200;
@@ -579,6 +579,121 @@ fn redact_metadata_with_scanner(
     }
 
     (metadata, redacted_fields)
+}
+
+// =============================================================================
+// Pending Report Queue
+// =============================================================================
+
+/// Get the path to the pending feedback report file
+fn get_report_path(app: &AppHandle) -> Result<PathBuf> {
+    let app_data = app
+        .path()
+        .app_data_dir()
+        .context("Failed to get app data directory")?;
+    fs::create_dir_all(&app_data)?;
+    Ok(app_data.join("report.json"))
+}
+
+/// Save a failed feedback payload to the pending report queue
+pub fn save_pending(app: &AppHandle, payload: String, failure_reason: String) -> Result<()> {
+    let path = get_report_path(app)?;
+
+    let mut entries: Vec<Value> = if path.exists() {
+        let content = fs::read_to_string(&path)?;
+        serde_json::from_str(&content).unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+
+    let parsed_payload: Value = serde_json::from_str(&payload).unwrap_or(Value::String(payload));
+
+    let entry = serde_json::json!({
+        "payload": parsed_payload,
+        "timestamp": Utc::now().to_rfc3339(),
+        "failureReason": failure_reason,
+    });
+
+    entries.push(entry);
+    fs::write(&path, serde_json::to_string_pretty(&entries)?)?;
+    Ok(())
+}
+
+const FEEDBACK_DSN: &str = "dsn_6f4b9a5e8c2d4f1a9b3c7e2d5a1f0b4c";
+
+fn get_feedback_url() -> String {
+    let base = option_env!("VITE_SERVER_URL")
+        .map(|s| s.to_string())
+        .or_else(|| std::env::var("VITE_SERVER_URL").ok())
+        .unwrap_or_else(|| "http://localhost:3001".to_string());
+    format!("{}/api/feedback/{}", base, FEEDBACK_DSN)
+}
+
+/// Retry all pending feedback reports in the background.
+/// Reads report.json, POSTs each entry, removes successes.
+pub async fn retry_pending(app: &AppHandle) -> Result<usize> {
+    let path = get_report_path(app)?;
+
+    if !path.exists() {
+        return Ok(0);
+    }
+
+    let content = fs::read_to_string(&path)?;
+    let entries: Vec<Value> = serde_json::from_str(&content).unwrap_or_default();
+
+    if entries.is_empty() {
+        let _ = fs::remove_file(&path);
+        return Ok(0);
+    }
+
+    let feedback_url = get_feedback_url();
+    log::info!(
+        "[feedback] Found {} pending report(s), sending to {}",
+        entries.len(),
+        feedback_url
+    );
+    let client = reqwest::Client::new();
+    let mut remaining = Vec::new();
+    let mut sent = 0usize;
+
+    for entry in entries {
+        let payload = match entry.get("payload") {
+            Some(p) => p.clone(),
+            None => continue,
+        };
+
+        match client
+            .post(&feedback_url)
+            .header("Content-Type", "application/json")
+            .json(&payload)
+            .send()
+            .await
+        {
+            Ok(resp) if resp.status().is_success() => {
+                log::info!("[feedback] Successfully sent pending report");
+                sent += 1;
+            }
+            Ok(resp) => {
+                log::warn!(
+                    "[feedback] Server rejected pending report: {}",
+                    resp.status()
+                );
+                remaining.push(entry);
+            }
+            Err(e) => {
+                log::warn!("[feedback] Failed to send pending report: {}", e);
+                remaining.push(entry);
+            }
+        }
+    }
+
+    if remaining.is_empty() {
+        let _ = fs::remove_file(&path);
+    } else {
+        fs::write(&path, serde_json::to_string_pretty(&remaining)?)?;
+    }
+
+    Ok(sent)
 }
 
 // =============================================================================
