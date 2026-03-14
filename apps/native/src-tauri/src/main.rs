@@ -285,8 +285,7 @@ fn run_gui_mode(
             commands::config_pick_dir,
             // Feedback
             commands::feedback_gather_metadata,
-            commands::feedback_save_pending,
-            commands::feedback_retry_pending,
+            commands::feedback_submit,
             #[cfg(debug_assertions)]
             commands::trigger_test_panic,
             // Git

@@ -595,8 +595,43 @@ fn get_report_path(app: &AppHandle) -> Result<PathBuf> {
     Ok(app_data.join("report.json"))
 }
 
-/// Save a failed feedback payload to the pending report queue
-pub fn save_pending(app: &AppHandle, payload: String, failure_reason: String) -> Result<()> {
+/// Submit feedback: try to POST, save to disk on failure, also flush any pending reports.
+/// Returns true if the new submission was sent successfully.
+pub async fn submit(app: &AppHandle, payload: String) -> Result<bool> {
+    let feedback_url = get_feedback_url();
+    let parsed: Value = serde_json::from_str(&payload).unwrap_or(Value::String(payload.clone()));
+    let client = reqwest::Client::new();
+
+    let sent = match client
+        .post(&feedback_url)
+        .header("Content-Type", "application/json")
+        .json(&parsed)
+        .send()
+        .await
+    {
+        Ok(resp) if resp.status().is_success() => true,
+        Ok(resp) => {
+            log::warn!("[feedback] Server rejected submission: {}", resp.status());
+            save_to_queue(app, &parsed, "server error")?;
+            false
+        }
+        Err(e) => {
+            log::warn!("[feedback] Failed to submit: {}", e);
+            save_to_queue(app, &parsed, "network error")?;
+            false
+        }
+    };
+
+    // Also flush any previously pending reports
+    if let Err(e) = retry_pending(app).await {
+        log::warn!("[feedback] Failed to retry pending reports: {}", e);
+    }
+
+    Ok(sent)
+}
+
+/// Append a payload to the pending report queue on disk.
+fn save_to_queue(app: &AppHandle, payload: &Value, failure_reason: &str) -> Result<()> {
     let path = get_report_path(app)?;
 
     let mut entries: Vec<Value> = if path.exists() {
@@ -606,15 +641,12 @@ pub fn save_pending(app: &AppHandle, payload: String, failure_reason: String) ->
         Vec::new()
     };
 
-    let parsed_payload: Value = serde_json::from_str(&payload).unwrap_or(Value::String(payload));
-
-    let entry = serde_json::json!({
-        "payload": parsed_payload,
+    entries.push(serde_json::json!({
+        "payload": payload,
         "timestamp": Utc::now().to_rfc3339(),
         "failureReason": failure_reason,
-    });
+    }));
 
-    entries.push(entry);
     fs::write(&path, serde_json::to_string_pretty(&entries)?)?;
     Ok(())
 }

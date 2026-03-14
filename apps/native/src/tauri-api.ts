@@ -308,9 +308,7 @@ export const darwinAPI = {
   feedback: {
     gatherMetadata: (feedbackType: string, share: FeedbackShareOptions) =>
       invoke<FeedbackMetadata>("feedback_gather_metadata", { request: { feedbackType, share } }),
-    savePending: (payload: string, failureReason: string) =>
-      invoke("feedback_save_pending", { payload, failureReason }),
-    retryPending: () => invoke<number>("feedback_retry_pending"),
+    submit: (payload: string) => invoke<boolean>("feedback_submit", { payload }),
   },
   ui: {
     getPrefs: () => invoke<DarwinPrefs | null>("ui_get_prefs"),

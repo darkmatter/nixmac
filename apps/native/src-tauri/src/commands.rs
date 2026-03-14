@@ -109,24 +109,12 @@ pub async fn feedback_gather_metadata(
     feedback::gather_metadata(&app, request).map_err(|e| capture_err("feedback_gather_metadata", e))
 }
 
-/// Saves a failed feedback payload to disk for later retry.
+/// Submits feedback: tries to POST, saves to disk on failure, flushes pending.
 #[tauri::command]
-pub async fn feedback_save_pending(
-    app: AppHandle,
-    payload: String,
-    failure_reason: String,
-) -> Result<serde_json::Value, String> {
-    feedback::save_pending(&app, payload, failure_reason)
-        .map_err(|e| capture_err("feedback_save_pending", e))?;
-    Ok(serde_json::json!({"ok": true}))
-}
-
-/// Retries all pending feedback reports.
-#[tauri::command]
-pub async fn feedback_retry_pending(app: AppHandle) -> Result<usize, String> {
-    feedback::retry_pending(&app)
+pub async fn feedback_submit(app: AppHandle, payload: String) -> Result<bool, String> {
+    feedback::submit(&app, payload)
         .await
-        .map_err(|e| capture_err("feedback_retry_pending", e))
+        .map_err(|e| capture_err("feedback_submit", e))
 }
 
 // =============================================================================
