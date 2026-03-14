@@ -24,9 +24,7 @@ import {
 import { Lightbulb, Bug, MessageCircle, Info, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Feedback as FeedbackModel, FeedbackType, ShareOptions } from "@/types/feedback";
-import { getFeedbackUrl } from "@/lib/env";
 import { darwinAPI } from "@/tauri-api";
-import { fetch } from "@tauri-apps/plugin-http";
 import { toast } from "sonner";
 
 const DEFAULT_SHARE_OPTIONS: ShareOptions = {
@@ -302,17 +300,6 @@ function shouldShowAppLogs(
   }
 }
 
-async function savePendingFeedback(json: string, reason: string): Promise<boolean> {
-  try {
-    await darwinAPI.feedback.savePending(json, reason);
-    toast.info("Failed to send, we'll try sending it again next time you open the app.");
-    return true;
-  } catch {
-    toast.error("Failed to save feedback for later.");
-    return false;
-  }
-}
-
 interface FeedbackDialogProps {
   mainWindowError?: string;
 }
@@ -445,69 +432,15 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
         console.warn("Feedback validation failed:", validation.errors);
       }
 
-      const payload = feedbackModel.toJSON();
-      const json = JSON.stringify(payload);
+      const json = JSON.stringify(feedbackModel.toJSON());
+      const sent = await darwinAPI.feedback.submit(json);
 
-      try {
-        const feedbackUrl = getFeedbackUrl();
-
-        const resp = await fetch(feedbackUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: json,
-        });
-
-        let body: any = null;
-        try {
-          body = await resp.json();
-          // oxlint-disable-next-line no-unused-vars
-        } catch (e) {
-          // ignore
-        }
-
-        if (!resp.ok) {
-          const serverErr = body?.error ?? null;
-          const details = body?.details;
-
-          // Rate limit and validation errors are user-actionable — don't queue these.
-          if (serverErr === "rate_limited") {
-            toast.error(
-              "You're sending feedback too quickly — please wait a minute and try again.",
-            );
-          } else if (serverErr === "validation_failed") {
-            if (Array.isArray(details) && details.length > 0) {
-              toast.error(`Validation error: ${details.join("; ")}`);
-            } else {
-              toast.error("Validation failed — please check your input.");
-            }
-          } else {
-            // Non-recoverable server error — save for retry on next launch.
-            const reason = typeof serverErr === "string" ? serverErr : "server error";
-            if (await savePendingFeedback(json, reason)) {
-              sentSuccessfully = true;
-            }
-          }
-        } else {
-          const id = body?.id ?? undefined;
-          toast.success(id ? `Thanks — feedback sent (id: ${id})` : "Thanks — feedback sent");
-          const info = body?.info ?? body?.message ?? null;
-          if (typeof info === "string" && info.length > 0) {
-            toast(info);
-          }
-          sentSuccessfully = true;
-          // Also flush any previously failed reports
-          darwinAPI.feedback.retryPending().catch(() => {});
-        }
-      } catch (err) {
-        // Network error — save for retry on next launch.
-        // eslint-disable-next-line no-console
-        console.error("Error posting feedback:", err);
-        if (await savePendingFeedback(json, "network error")) {
-          sentSuccessfully = true;
-        }
+      if (sent) {
+        toast.success("Thanks — feedback sent");
+      } else {
+        toast.info("Failed to send, we'll try again next time you open the app.");
       }
+      sentSuccessfully = true;
     } finally {
       setSubmitting(false);
     }
