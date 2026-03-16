@@ -364,6 +364,7 @@ fn run_gui_mode(
             commands::permissions_request,
             commands::permissions_all_required_granted,
             // System defaults scanner
+            commands::get_recommended_prompt,
             commands::scan_system_defaults,
             commands::apply_system_defaults,
         ])
