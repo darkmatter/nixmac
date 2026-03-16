@@ -206,6 +206,11 @@ export interface SystemDefaultsScan {
   totalScanned: number;
 }
 
+export interface RecommendedPrompt {
+  id: string;
+  promptText: string;
+}
+
 // =============================================================================
 // Evolve Streaming Events
 // =============================================================================
@@ -333,6 +338,7 @@ export const darwinAPI = {
   },
 
   scanner: {
+    getRecommendedPrompt: () => invoke<RecommendedPrompt | null>("get_recommended_prompt"),
     scanDefaults: () => invoke<SystemDefaultsScan>("scan_system_defaults"),
     applyDefaults: (defaults: SystemDefault[]) =>
       invoke<{
