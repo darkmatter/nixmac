@@ -18,6 +18,8 @@ mod evolve;
 mod feedback;
 mod finalize_apply;
 mod find_summary;
+mod generate_history_from;
+mod get_history;
 mod git;
 mod log_summarizer;
 mod nix;
@@ -28,11 +30,13 @@ mod providers;
 mod rollback;
 mod scanner;
 mod secret_scanner;
+mod sqlite_types;
 mod statistics;
 mod store;
 mod summarize;
 mod template;
 mod types;
+mod utils;
 mod watcher;
 
 use std::env;
@@ -316,6 +320,9 @@ fn run_gui_mode(
             commands::bootstrap_default_config,
             // Summarization
             commands::find_summary,
+            commands::get_history,
+            commands::generate_history_from,
+            commands::restore_to_commit,
             commands::summarize_changes,
             commands::summary_get_cached,
             commands::suggest_commit_message,
@@ -485,9 +492,9 @@ fn run_gui_mode(
             let _ = main_window;
 
             // Create the preview indicator window (persistent banner for uncommitted changes)
-            if let Err(e) = peek::create_preview_indicator_window(handle) {
-                log::error!("[peek] ❌ Failed to create preview indicator window: {}", e);
-            }
+            // if let Err(e) = peek::create_preview_indicator_window(handle) {
+            //     log::error!("[peek] ❌ Failed to create preview indicator window: {}", e);
+            // }
 
             // Start config watcher - monitors config directory for file changes
             // This emits config:changed events to the frontend when files are modified

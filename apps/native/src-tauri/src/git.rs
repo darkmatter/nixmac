@@ -240,7 +240,7 @@ pub fn count_diff_changes(diff: &str) -> (usize, usize) {
 /// Parses file information from diff output.
 /// Extracts file paths and change types from diff headers.
 /// Uses the same pattern as diff.tsx: `diff --git a/<path> b/<path>`
-fn parse_files_from_diff(diff: &str) -> Vec<GitFileStatus> {
+pub fn parse_files_from_diff(diff: &str) -> Vec<GitFileStatus> {
     let mut files = Vec::new();
     let mut current_file: Option<String> = None;
     let mut current_change_type = "edited";
@@ -519,6 +519,60 @@ pub struct CommitInfo {
     pub tree_hash: String,
 }
 
+/// Fetch commits starting from `start_hash` going backwards.
+/// `limit` caps the number returned; pass `None` to return all commits.
+/// Returns CommitRow values with id = 0 (placeholder; real id assigned on DB upsert).
+pub fn log(
+    dir: &str,
+    start_hash: &str,
+    limit: Option<usize>,
+) -> Result<Vec<crate::sqlite_types::CommitRow>> {
+    let mut cmd = git_command();
+    cmd.arg("log").arg("--format=%H%n%T%n%at%n%s");
+    if let Some(n) = limit {
+        cmd.arg("-n").arg(n.to_string());
+    }
+    cmd.arg(start_hash);
+    let output = cmd.current_dir(dir).output()?;
+
+    let text = String::from_utf8_lossy(&output.stdout);
+    let mut commits = Vec::new();
+    let mut lines = text.lines();
+
+    loop {
+        let hash = match lines.next() {
+            Some(h) if !h.is_empty() => h.to_string(),
+            _ => break,
+        };
+        let tree_hash = lines.next().unwrap_or("").to_string();
+        let timestamp: i64 = lines.next().unwrap_or("0").trim().parse().unwrap_or(0);
+        let subject = lines.next().unwrap_or("").to_string();
+
+        commits.push(crate::sqlite_types::CommitRow {
+            id: 0,
+            hash,
+            tree_hash,
+            message: if subject.is_empty() {
+                None
+            } else {
+                Some(subject)
+            },
+            created_at: timestamp,
+        });
+    }
+
+    Ok(commits)
+}
+
+/// Get the unified diff between parent_hash and commit_hash.
+pub fn commit_diff(dir: &str, parent_hash: &str, commit_hash: &str) -> Result<String> {
+    let output = git_command()
+        .args(["diff", parent_hash, commit_hash])
+        .current_dir(dir)
+        .output()?;
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+}
+
 /// Stages all changes and commits with the given message.
 /// Returns the commit hash and tree hash on success.
 pub fn commit_all(dir: &str, message: &str) -> Result<CommitInfo> {
@@ -551,6 +605,15 @@ pub fn commit_all(dir: &str, message: &str) -> Result<CommitInfo> {
         .to_string();
 
     Ok(CommitInfo { hash, tree_hash })
+}
+
+/// Checks out all files from `target_hash` into the working tree without moving HEAD.
+pub fn restore_files_at_commit(dir: &str, target_hash: &str) -> Result<()> {
+    git_command()
+        .args(["checkout", target_hash, "--", "."])
+        .current_dir(dir)
+        .output()?;
+    Ok(())
 }
 
 /// Stages all changes and commits with the given message.
@@ -704,6 +767,21 @@ pub fn finalize_evolve(
     commit_message: Option<&str>,
 ) -> Result<()> {
     let default_branch = require_default_branch(dir)?;
+
+    // If a commit message is provided without squashing, amend the latest commit before merging
+    if !squash {
+        if let Some(msg) = commit_message {
+            let output = git_command()
+                .args(["commit", "--amend", "-m", msg])
+                .current_dir(dir)
+                .output()?;
+
+            if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                anyhow::bail!("Failed to amend commit message: {}", stderr);
+            }
+        }
+    }
 
     // If squashing, reset soft to the default branch and create a new commit on the branch
     if squash {

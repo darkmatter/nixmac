@@ -1,8 +1,9 @@
 "use client";
 
+import { AnimatedTabsList, AnimatedTabsTrigger } from "@/components/ui/animated-tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
+import { Tabs } from "@/components/ui/tabs";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useWidgetStore } from "@/stores/widget-store";
 import { GitMerge, Loader2 } from "lucide-react";
@@ -23,8 +24,8 @@ export function MergeSection() {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const squash = commits.length > 1 && !keepCommits;
-    const msg = new FormData(e.currentTarget).get("commitMsg") as string;
-    handleMerge(squash, squash ? msg : undefined);
+    const msg = new FormData(e.currentTarget).get("commitMsg")?.toString() ?? "";
+    handleMerge(squash, msg || undefined);
   }
 
   return (
@@ -35,10 +36,18 @@ export function MergeSection() {
           <h2 className="font-medium text-sm">Merge Changes</h2>
         </div>
         {commits.length > 1 && (
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground text-xs">Keep commits</span>
-            <Switch checked={keepCommits} onCheckedChange={setKeepCommits} />
-          </div>
+        <Tabs
+          value={keepCommits ? "keep" : "squash"}
+          onValueChange={(v) => setKeepCommits(v === "keep")}
+        >
+          <AnimatedTabsList
+            value={keepCommits ? "keep" : "squash"}
+            hidden={commits.length <= 1}
+          >
+            <AnimatedTabsTrigger value="squash">Squash</AnimatedTabsTrigger>
+            <AnimatedTabsTrigger value="keep">Keep commits</AnimatedTabsTrigger>
+          </AnimatedTabsList>
+        </Tabs>
         )}
       </div>
 
@@ -61,6 +70,7 @@ export function MergeSection() {
         {!keepCommits && (
           <div className="mb-4">
             <Input
+              key={defaultCommitMsg}
               className="border-border bg-background mb-2"
               defaultValue={defaultCommitMsg}
               disabled={isProcessing}

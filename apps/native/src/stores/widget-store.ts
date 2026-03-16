@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { FeedbackType } from "@/types/feedback";
-import type { SummaryResponse, EvolveEvent, GitStatus, PermissionsState } from "@/tauri-api";
+import type { HistoryItem, SummaryResponse, EvolveEvent, GitStatus, PermissionsState } from "@/tauri-api";
 import { computeCurrentStep } from "@/components/widget/utils";
 export type {
   SummaryResponse,
@@ -18,7 +18,7 @@ export type {
 /**
  * Widget step state - updated by useEffect based on app state.
  */
-export type WidgetStep = "permissions" | "nix-setup" | "setup" | "evolving" | "merge";
+export type WidgetStep = "permissions" | "nix-setup" | "setup" | "evolving" | "merge" | "history";
 export type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
 export type ConfirmPrefKey = "confirmBuild" | "confirmClear" | "confirmRollback";
 
@@ -92,11 +92,17 @@ export interface WidgetState {
   // Console
   consoleLogs: string;
 
+  // History
+  history: HistoryItem[];
+  historyLoading: boolean;
+  analyzingHistoryForHashes: Set<string>;
+
   // UI
   summaryLoading: boolean;
   summaryAvailable: boolean;
   isGenerating: boolean;
   settingsOpen: boolean;
+  showHistory: boolean;
   feedbackOpen: boolean;
   feedbackTypeOverride: FeedbackType | null;
   feedbackInitialText: string | null;
@@ -136,6 +142,7 @@ export interface WidgetActions {
   setProcessing: (isProcessing: boolean, action?: ProcessingAction) => void;
   setSummary: (summary: SummaryResponse) => void;
   setSettingsOpen: (open: boolean) => void;
+  setShowHistory: (show: boolean) => void;
   setFeedbackOpen: (open: boolean) => void;
   setError: (error: string | null) => void;
   setPanicDetails: (
@@ -143,6 +150,12 @@ export interface WidgetActions {
   ) => void;
   setPromptHistory: (history: string[]) => void;
   setSummaryAvailable: (available: boolean) => void;
+
+  // History
+  setHistory: (history: HistoryItem[]) => void;
+  setHistoryLoading: (loading: boolean) => void;
+  addAnalyzingHistoryHash: (hash: string) => void;
+  removeAnalyzingHistoryHash: (hash: string) => void;
 
   // Confirmation preferences
   setConfirmPref: (key: ConfirmPrefKey, value: boolean) => void;
@@ -226,6 +239,11 @@ export const initialWidgetState: WidgetState = {
   evolveEvents: [],
   promptHistory: [],
 
+  // History
+  history: [],
+  historyLoading: false,
+  analyzingHistoryForHashes: new Set<string>(),
+
   // Summary
   summary: initialSummaryState,
   summaryAvailable: false,
@@ -241,6 +259,7 @@ export const initialWidgetState: WidgetState = {
   isBootstrapping: false,
   isGenerating: false,
   settingsOpen: false,
+  showHistory: false,
   feedbackOpen: false,
   feedbackTypeOverride: null,
   feedbackInitialText: null,
@@ -292,7 +311,18 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
         confirmClear: prefs.confirmClear ?? true,
         confirmRollback: prefs.confirmRollback ?? true,
       }),
+    setHistory: (history) => set({ history }),
+    setHistoryLoading: (historyLoading) => set({ historyLoading }),
+    addAnalyzingHistoryHash: (hash) =>
+      set((state) => ({ analyzingHistoryForHashes: new Set([...state.analyzingHistoryForHashes, hash]) })),
+    removeAnalyzingHistoryHash: (hash) =>
+      set((state) => {
+        const next = new Set(state.analyzingHistoryForHashes);
+        next.delete(hash);
+        return { analyzingHistoryForHashes: next };
+      }),
     setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
+    setShowHistory: (showHistory) => set({ showHistory }),
     setFeedbackOpen: (feedbackOpen) => set({ feedbackOpen }),
     setFeedbackTypeOverride: (feedbackTypeOverride) => set({ feedbackTypeOverride }),
     openFeedback: (type, initialText) =>
