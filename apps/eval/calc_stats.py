@@ -21,8 +21,8 @@ class ResultMetrics:
     build_attempts: int
     edits_count: int
     total_tokens: int
-    thinking_count: int
-    tool_calls_count: int
+    thinking_count: int | None
+    tool_calls_count: int | None
     branch_has_built_commit: bool
     commit_message: str
 
@@ -37,6 +37,11 @@ def extract_metrics(result_path: Path) -> ResultMetrics | None:
         case_num = int(result_path.stem.split("_")[1])
 
         result = data.get("result", {})
+
+        def optional_int(d: dict[str, Any], key: str) -> int | None:
+            value = d.get(key)
+            return value if isinstance(value, int) else None
+
         # prefer top-level summary, fall back to result.summary
         commit_message = (
             (data.get("summary") or {}).get("commitMessage")
@@ -52,8 +57,8 @@ def extract_metrics(result_path: Path) -> ResultMetrics | None:
             build_attempts=result.get("buildAttempts", 0),
             edits_count=result.get("editsCount", 0),
             total_tokens=result.get("totalTokens", 0),
-            thinking_count=result.get("thinkingCount", 0),
-            tool_calls_count=result.get("toolCallsCount", 0),
+            thinking_count=optional_int(result, "thinkingCount"),
+            tool_calls_count=optional_int(result, "toolCallsCount"),
             branch_has_built_commit=result.get("gitStatus", {}).get("branchHasBuiltCommit", False),
             commit_message=commit_message,
         )
@@ -90,8 +95,8 @@ class Statistics:
     min_tokens: int
     max_tokens: int
     stddev_tokens: float
-    avg_thinking_count: float
-    avg_tool_calls: float
+    avg_thinking_count: float | None
+    avg_tool_calls: float | None
     built_commit_rate: float
 
 
@@ -108,8 +113,8 @@ def calculate_stats(metrics_list: list[ResultMetrics]) -> Statistics:
     build_attempts = [m.build_attempts for m in metrics_list]
     edits = [m.edits_count for m in metrics_list]
     tokens = [m.total_tokens for m in metrics_list]
-    thinking = [m.thinking_count for m in metrics_list]
-    tool_calls = [m.tool_calls_count for m in metrics_list]
+    thinking = [m.thinking_count for m in metrics_list if m.thinking_count is not None]
+    tool_calls = [m.tool_calls_count for m in metrics_list if m.tool_calls_count is not None]
     built_commits = [m.branch_has_built_commit for m in metrics_list]
 
     def safe_stdev(values: list[float]) -> float:
@@ -141,8 +146,8 @@ def calculate_stats(metrics_list: list[ResultMetrics]) -> Statistics:
         min_tokens=min(tokens),
         max_tokens=max(tokens),
         stddev_tokens=safe_stdev([float(t) for t in tokens]),
-        avg_thinking_count=statistics.mean(thinking),
-        avg_tool_calls=statistics.mean(tool_calls),
+        avg_thinking_count=statistics.mean(thinking) if thinking else None,
+        avg_tool_calls=statistics.mean(tool_calls) if tool_calls else None,
         built_commit_rate=sum(built_commits) / len(built_commits) * 100 if built_commits else 0,
     )
 
@@ -179,10 +184,16 @@ def print_summary_table(stats: Statistics) -> None:
         ["  Min / Max", f"{stats.min_tokens} / {stats.max_tokens}"],
         ["  Std Dev", f"{stats.stddev_tokens:.0f}"],
         ["", ""],
-        ["Edits (Average)", f"{stats.avg_edits:.2f}"],
-        ["Thinking Count (Average)", f"{stats.avg_thinking_count:.2f}"],
-        ["Tool Calls (Average)", f"{stats.avg_tool_calls:.2f}"],
-        ["Built Commits Rate", f"{stats.built_commit_rate:.1f}%"],
+        ["Edits", f"{stats.avg_edits:.2f}"],
+        [
+            "Thinking (Avg)",
+            f"{stats.avg_thinking_count:.2f}" if stats.avg_thinking_count is not None else "n/a",
+        ],
+        [
+            "Tool Calls (Avg)",
+            f"{stats.avg_tool_calls:.2f}" if stats.avg_tool_calls is not None else "n/a",
+        ],
+        ["Built %", f"{stats.built_commit_rate:.1f}%"],
     ]
 
     print("\n" + "=" * 65)
@@ -211,21 +222,14 @@ def print_cases_table(metrics_list: list[ResultMetrics]) -> None:
                 m.build_attempts,
                 f"{m.duration_ms // 1000}s",
                 m.total_tokens,
+                m.thinking_count if m.thinking_count is not None else "-",
+                m.tool_calls_count if m.tool_calls_count is not None else "-",
                 m.edits_count,
                 commit_msg_display,
             ]
         )
 
-    headers = [
-        "Case",
-        "Status",
-        "Iterations",
-        "Builds",
-        "Duration",
-        "Tokens",
-        "Edits",
-        "Commit Message",
-    ]
+    headers = ["#", "Status", "Iters", "Blds", "Dur", "Toks", "Think", "Tools", "Edits", "Commit"]
     print("\n" + "=" * 95)
     print("INDIVIDUAL CASE RESULTS")
     print("=" * 95)
