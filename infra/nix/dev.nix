@@ -119,7 +119,7 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     hooks.clippy.enable = true;
     hooks.mdformat.enable = true;
     excludes = [
-      "^.*\/?(\.git|\.direnv|\.devenv|\.vscode|\.idea|\.DS_Store|\.env|\.envrc).*$"
+      "^.*\/?(\.git|\.direnv|\.devenv|\.vscode|\.idea|\.DS_Store|\.env|\.envrc|\.github).*$"
     ];
   };
 }

@@ -1,5 +1,6 @@
 //! Evolution module for AI-assisted configuration changes.
 
+mod config_dir_context;
 mod file_ops;
 pub mod messages;
 pub mod providers;
@@ -31,6 +32,7 @@ use crate::{
     types::{emit_evolve_event, EvolveEvent},
     utils as global_utils,
 };
+use config_dir_context::format_config_dir_context;
 use messages::Message;
 use providers::{AiProvider, OllamaProvider, OpenAIProvider, ProviderError};
 
@@ -76,19 +78,6 @@ fn extract_error_metadata(error: &str) -> (Option<u16>, Option<String>, Option<S
     }
 
     (None, None, None, error.len())
-}
-
-// Identify a potentially easily recoverable-via-retry error from Ollama
-// where the model returns malformed tool call JSON that fails to parse.
-// In this case we want to retry with a clarifying user message to encourage
-// the model to return strictly valid tool_calls without mixing prose in
-// content or inventing tool names as it is so prone to doing.
-fn is_ollama_tool_call_parse_error(err: &ProviderError) -> bool {
-    matches!(
-        err,
-        ProviderError::Http { status, body }
-            if status.as_u16() == 500 && body.contains("error parsing tool call")
-    )
 }
 
 /// Report a ProviderError to Sentry using structured fields (no raw bodies).
@@ -255,35 +244,7 @@ const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 const DEFAULT_MAX_ITERATIONS: usize = 50;
 const DEFAULT_MAX_BUILD_ATTEMPTS: usize = 5;
-const DEFAULT_OLLAMA_TOOL_PARSE_RETRIES: usize = 1;
 const SYSTEM_PROMPT: &str = include_str!("../../prompts/system.md");
-
-/// Additional instructions to encourage thinking
-const THINKING_INSTRUCTIONS: &str = r#"
-
-IMPORTANT: You have a 'think' tool available. Use it FREQUENTLY to reason through problems:
-1. BEFORE reading files - think about what you need to understand
-2. AFTER reading files - analyze what you learned
-3. BEFORE making edits - plan your changes carefully
-4. WHEN debugging - analyze errors step by step
-5. BEFORE calling done - verify your work is complete
-
-TOOL-CALL CONTRACT (STRICT):
-- Use `tool_calls` for tool invocations only. Never encode tool invocations inside assistant `content`.
-- Treat assistant `content` as natural-language text only (status, rationale, questions, summaries).
-- Never invent tool names. Call only tools that exist in the provided tool schema.
-- If a tool call fails due to unknown tool name, immediately retry using only valid tool names.
-- If returning both `content` and `tool_calls`, keep `content` brief and non-executable.
-
-If you choose NOT to call any tools during an iteration, you MUST return a non-empty assistant `content` message that:
-- explains what you considered (brief reasoning),
-- explains why existing files/config are sufficient or why changes are not needed,
-- states the next steps you would take (or why none are needed), and
-- does not include serialized tool payloads or invented tool names.
-
-When calling `think`, keep `thought` concise: 1-2 sentences and ideally <= 200 characters.
-
-Think clearly, but keep outputs concise and actionable."#;
 
 /// Partial evolution telemetry captured on failed runs.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -378,6 +339,13 @@ fn build_preview(messages: &[Message]) -> String {
         preview.push_str("...");
     }
     preview
+}
+
+fn escape_user_query(input: &str) -> String {
+    input
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
 }
 
 /// Generate an evolution from a user prompt using OpenAI function calling.
@@ -498,22 +466,26 @@ pub async fn generate_evolution(
     let system_prompt = SYSTEM_PROMPT
         .replace("{{CONFIG_DIR}}", config_dir)
         .replace("{{HOST_ATTR}}", &host_attr);
-    let tool_contract = format!(
-        "\n\nVALID TOOL NAMES (call only these): {}\n",
-        allowed_tool_names_display.as_str()
-    );
+    let config_dir_context = match format_config_dir_context(config_dir) {
+        Ok(tree) => tree,
+        Err(e) => {
+            warn!(
+                "Failed to build config_dir context for prompt ({}): {}",
+                config_dir, e
+            );
+            "(Failed to render config directory tree)".to_string()
+        }
+    };
 
     let mut messages: Vec<Message> = vec![
         Message::System {
-            content: format!(
-                "{}{}{}",
-                system_prompt, THINKING_INSTRUCTIONS, tool_contract
-            ),
+            content: system_prompt.clone(),
         },
         Message::User {
             content: format!(
-                "{}\n\nStart by using the 'think' tool to plan your approach.",
-                prompt
+                "<user_query>{}</user_query>\n\n<config_dir>\n{}\n</config_dir>\n\nStart by using the 'think' tool to plan your approach.",
+                escape_user_query(prompt),
+                config_dir_context
             ),
         },
     ];
@@ -570,73 +542,39 @@ pub async fn generate_evolution(
         // `messages` only for the call so we can mutate `messages` after
         // the block without deep-cloning the conversation.
         let response_result = {
-            let mut ollama_parse_retry_count = 0usize;
-            loop {
-                let completion_result = {
-                    let fut = provider.completion(&messages, &tools);
-                    tokio::pin!(fut);
+            let fut = provider.completion(&messages, &tools);
+            tokio::pin!(fut);
 
-                    tokio::select! {
-                        res = &mut fut => res,
-                        _ = async {
-                            loop {
-                                if commands::is_evolve_cancelled() {
-                                    break;
-                                }
-                                // consider switching the cancellation mechanism to a tokio::sync::Notify or watch channel and select! directly on that signal instead of polling with sleep
-                                sleep(Duration::from_millis(100)).await;
-                            }
-                        } => {
-                            warn!("⚠️ Evolution cancelled by user during provider call");
-                            evolution.state = EvolutionState::Failed;
-                            emit_evolve_event(
-                                app,
-                                EvolveEvent::error(start_time, Some(iteration), "Evolution cancelled by user"),
-                            );
-                            // Track failure
-                            if let Err(e) = statistics::record_evolution_failure(app, iteration) {
-                                warn!("Failed to record evolution failure stats: {}", e);
-                            }
-                            return Err(EvolutionRunError::from_state(
-                                "Evolution cancelled by user",
-                                &evolution,
-                                iteration,
-                                build_attempts,
-                                total_tokens,
-                            )
-                            .into());
+            tokio::select! {
+                res = &mut fut => res,
+                _ = async {
+                    loop {
+                        if commands::is_evolve_cancelled() {
+                            break;
                         }
+                        // consider switching the cancellation mechanism to a tokio::sync::Notify or watch channel and select! directly on that signal instead of polling with sleep
+                        sleep(Duration::from_millis(100)).await;
                     }
-                };
-
-                if let Err(ref err) = completion_result {
-                    let should_retry_ollama_parse_error = provider_type == "ollama"
-                        && is_ollama_tool_call_parse_error(err)
-                        && ollama_parse_retry_count < DEFAULT_OLLAMA_TOOL_PARSE_RETRIES;
-
-                    if should_retry_ollama_parse_error {
-                        ollama_parse_retry_count += 1;
-                        warn!(
-                            "⚠️ Ollama returned malformed tool-call JSON; retrying completion ({}/{})",
-                            ollama_parse_retry_count,
-                            DEFAULT_OLLAMA_TOOL_PARSE_RETRIES
-                        );
-                        emit_evolve_event(
-                            app,
-                            EvolveEvent::info(
-                                start_time,
-                                Some(iteration),
-                                "Provider parse error on tool call; retrying once with concise structured tool args guidance",
-                            ),
-                        );
-                        messages.push(Message::User {
-                            content: "Retry the previous step. Use strictly valid structured tool_calls only; do not mix prose with JSON in arguments. If using think, keep thought concise (1-2 sentences, <=200 chars).".to_string(),
-                        });
-                        continue;
+                } => {
+                    warn!("⚠️ Evolution cancelled by user during provider call");
+                    evolution.state = EvolutionState::Failed;
+                    emit_evolve_event(
+                        app,
+                        EvolveEvent::error(start_time, Some(iteration), "Evolution cancelled by user"),
+                    );
+                    // Track failure
+                    if let Err(e) = statistics::record_evolution_failure(app, iteration) {
+                        warn!("Failed to record evolution failure stats: {}", e);
                     }
+                    return Err(EvolutionRunError::from_state(
+                        "Evolution cancelled by user",
+                        &evolution,
+                        iteration,
+                        build_attempts,
+                        total_tokens,
+                    )
+                    .into());
                 }
-
-                break completion_result;
             }
         };
 
@@ -707,8 +645,7 @@ pub async fn generate_evolution(
             let has_tool_calls = tool_calls.as_ref().is_some_and(|calls| !calls.is_empty());
             if has_tool_calls {
                 debug!(
-                    "Assistant returned content alongside tool_calls; content treated as non-executable text | content_preview={}"
-                    ,
+                    "Assistant returned content alongside tool_calls; content treated as non-executable text | content_preview={}",
                     truncate_for_log(text, 300)
                 );
             }

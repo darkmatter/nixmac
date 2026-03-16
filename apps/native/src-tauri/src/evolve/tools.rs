@@ -155,7 +155,11 @@ pub fn create_tools() -> Vec<Tool> {
         Tool {
             name: "search_packages".to_string(),
             description: "Search for Nix packages by name or description. This is a convenient \
-                         wrapper around 'nix search' that returns formatted, filtered results. \
+                         wrapper around 'nix search' that returns compact structured JSON results. \
+                         Output format: JSON object keyed by package name. Each value must include \
+                         {\"attr_path\": string, \"version\": string, \"description\": string, \"channel\": string}. \
+                         Example: {\"wget\": {\"attr_path\": \"wget\", \"version\": \"1.21.3\", \"description\": \"retrieves files from the web\", \"channel\": \"nixpkgs-unstable\"}}. \
+                         Return JSON only (no prose). \
                          Use this instead of run_command for package discovery. \
                          Parameters: search_type controls where to search (names, descriptions, or both); \
                          use_regex enables regex patterns for advanced matching; \
