@@ -167,7 +167,7 @@ pub async fn evolve_and_commit(
                 format!("Failed to get config directory: {}", e),
                 None,
                 elapsed_since(start_time_ms),
-            ))
+            ));
         }
     };
 
@@ -179,7 +179,7 @@ pub async fn evolve_and_commit(
                 format!("Failed to get initial git status: {}", e),
                 None,
                 elapsed_since(start_time_ms),
-            ))
+            ));
         }
     };
 
@@ -227,7 +227,7 @@ pub async fn evolve_and_commit(
                 None,
                 &evolution,
                 elapsed_since(start_time_ms),
-            ))
+            ));
         }
     };
 
@@ -242,7 +242,7 @@ pub async fn evolve_and_commit(
                     Some(status.clone()),
                     &evolution,
                     elapsed_since(start_time_ms),
-                ))
+                ));
             }
         };
 
@@ -262,7 +262,7 @@ pub async fn evolve_and_commit(
                     Some(status.clone()),
                     &evolution,
                     elapsed_since(start_time_ms),
-                ))
+                ));
             }
         };
         info!("[evolution] Created branch: {}", created_branch);
@@ -280,7 +280,7 @@ pub async fn evolve_and_commit(
                 Some(status.clone()),
                 &evolution,
                 elapsed_since(start_time_ms),
-            ))
+            ));
         }
     };
 
@@ -299,7 +299,7 @@ pub async fn evolve_and_commit(
                 Some(status.clone()),
                 &evolution,
                 elapsed_since(start_time_ms),
-            ))
+            ));
         }
     };
 
@@ -311,7 +311,7 @@ pub async fn evolve_and_commit(
                 Some(status.clone()),
                 &evolution,
                 elapsed_since(start_time_ms),
-            ))
+            ));
         }
     };
 
@@ -384,7 +384,7 @@ pub async fn evolve_and_commit(
                 Some(status),
                 &evolution,
                 elapsed_since(start_time_ms),
-            ))
+            ));
         }
     };
 

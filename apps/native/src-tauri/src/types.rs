@@ -4,6 +4,7 @@
 //! The `#[serde(rename = "...")]` attributes ensure camelCase naming
 //! for JavaScript/TypeScript consumption.
 
+use crate::utils as global_utils;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::Manager;
@@ -284,6 +285,28 @@ pub struct SummaryResponse {
 }
 
 // =============================================================================
+// History
+// =============================================================================
+
+/// A git commit from the log, with optional DB metadata and summary.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryItem {
+    /// Commit hash (always from git log).
+    pub hash: String,
+    /// Commit message (always from git log).
+    pub message: Option<String>,
+    /// Unix timestamp (always from git log).
+    pub created_at: i64,
+    /// True if this commit has the `nixmac-last-build` tag (most recently built).
+    pub is_built: bool,
+    /// DB record — present only if metadata has been generated for this commit.
+    pub commit: Option<crate::sqlite_types::CommitRow>,
+    /// AI summary — present only if a summary has been generated.
+    pub summary: Option<crate::sqlite_types::SummaryRow>,
+}
+
+// =============================================================================
 // Evolve Streaming Events
 // =============================================================================
 
@@ -446,6 +469,8 @@ impl EvolveEvent {
             "read_file" => "Reading file...".to_string(),
             "edit_file" => "Editing file...".to_string(),
             "list_files" => "Listing files...".to_string(),
+            "search_code" => "Searching code...".to_string(),
+            "search_packages" => "Searching packages...".to_string(),
             "build_check" => "Running build check...".to_string(),
             "think" => "Thinking...".to_string(),
             "done" => "Finishing up...".to_string(),
@@ -491,10 +516,12 @@ impl EvolveEvent {
     }
 
     pub fn error(start_time: i64, iter: Option<usize>, error: &str) -> Self {
+        let mut error = error.to_string();
+        global_utils::truncate_utf8(&mut error, 100);
         Self::new(
             EvolveEventType::Error,
             format!("Error: {}", error),
-            format!("Error: {}", truncate(error, 100)),
+            format!("Error: {}", error),
             iter,
             start_time,
         )
@@ -583,7 +610,7 @@ pub fn slugify(text: &str) -> String {
 
     // Limit to 50 characters
     if result.len() > 50 {
-        result.truncate(50);
+        global_utils::truncate_utf8(&mut result, 50);
         // Don't end with a hyphen after truncation
         result = result.trim_end_matches('-').to_string();
     }

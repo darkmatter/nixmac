@@ -176,11 +176,16 @@ pub async fn git_commit(app: AppHandle, message: String) -> Result<serde_json::V
 
     // Save commit to database
     if let Ok(db_path) = db::get_db_path(&app) {
-        match db::commits::insert_commit(
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64;
+        match db::commits::upsert_commit(
             &db_path,
             &commit_info.hash,
             &commit_info.tree_hash,
-            &message,
+            Some(&message),
+            now,
         ) {
             Ok(id) => log::info!(
                 "[git_commit] Saved commit to database (id={}, hash={})",
@@ -545,6 +550,42 @@ pub async fn flake_list_hosts(app: AppHandle) -> Result<Vec<String>, String> {
 #[tauri::command]
 pub async fn summary_get_cached(app: AppHandle) -> Result<Option<types::SummaryResponse>, String> {
     store::get_cached_summary(&app).map_err(|e| e.to_string())
+}
+
+/// Walks back `number` commits from `commit_hash`,
+/// upserts missing metadata (commits and summaries).
+#[tauri::command]
+pub async fn generate_history_from(
+    app: AppHandle,
+    commit_hash: String,
+    number: usize,
+) -> Result<(), String> {
+    crate::generate_history_from::generate_history_from(&app, &commit_hash, number)
+        .await
+        .map_err(|e| capture_err("generate_history_from", e))
+}
+
+/// Returns all commits on the main branch, each paired with optional DB metadata, summary,
+/// and build/head status.
+#[tauri::command]
+pub async fn get_history(app: AppHandle) -> Result<Vec<types::HistoryItem>, String> {
+    crate::get_history::get_history(&app)
+        .await
+        .map_err(|e| capture_err("get_history", e))
+}
+
+/// Restores the working tree to `target_hash` by checking out its files and
+/// creating a new forward commit on main. Rebuild is triggered by the frontend.
+#[tauri::command]
+pub async fn restore_to_commit(app: AppHandle, target_hash: String) -> Result<(), String> {
+    let config_dir =
+        store::get_config_dir(&app).map_err(|e| capture_err("restore_to_commit", e))?;
+    let label = &target_hash[..target_hash.len().min(8)];
+    git::restore_files_at_commit(&config_dir, &target_hash)
+        .map_err(|e| capture_err("restore_to_commit", e))?;
+    git::commit_all(&config_dir, &format!("nixmac: restore {label}"))
+        .map_err(|e| capture_err("restore_to_commit", e))?;
+    Ok(())
 }
 
 /// Finds the relevant summary for the current git state, flags availability.

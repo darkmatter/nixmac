@@ -1,6 +1,8 @@
----
-applyTo: "**/*.{ts,tsx,js,jsx}"
----
+______________________________________________________________________
+
+______________________________________________________________________
+
+## applyTo: "\*\*/\*.{ts,tsx,js,jsx}"
 
 # Ultracite Code Standards
 
@@ -14,7 +16,7 @@ This project uses **Ultracite**, a zero-config Biome preset that enforces strict
 
 Biome (the underlying engine) provides extremely fast Rust-based linting and formatting. Most issues are automatically fixable.
 
----
+______________________________________________________________________
 
 ## Core Principles
 
@@ -105,7 +107,7 @@ Write code that is **accessible, performant, type-safe, and maintainable**. Focu
 
 - Use `class` and `for` attributes (not `className` or `htmlFor`)
 
----
+______________________________________________________________________
 
 ## Testing
 
@@ -119,12 +121,12 @@ Write code that is **accessible, performant, type-safe, and maintainable**. Focu
 Biome's linter will catch most issues automatically. Focus your attention on:
 
 1. **Business logic correctness** - Biome can't validate your algorithms
-2. **Meaningful naming** - Use descriptive names for functions, variables, and types
-3. **Architecture decisions** - Component structure, data flow, and API design
-4. **Edge cases** - Handle boundary conditions and error states
-5. **User experience** - Accessibility, performance, and usability considerations
-6. **Documentation** - Add comments for complex logic, but prefer self-documenting code
+1. **Meaningful naming** - Use descriptive names for functions, variables, and types
+1. **Architecture decisions** - Component structure, data flow, and API design
+1. **Edge cases** - Handle boundary conditions and error states
+1. **User experience** - Accessibility, performance, and usability considerations
+1. **Documentation** - Add comments for complex logic, but prefer self-documenting code
 
----
+______________________________________________________________________
 
 Most formatting and common issues are automatically fixed by Biome. Run `npx ultracite fix` before committing to ensure compliance.

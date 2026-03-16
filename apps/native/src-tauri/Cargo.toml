@@ -63,6 +63,9 @@ fancy-regex = "0.17.0"
 toml = "1.0.3"
 backtrace = "0.3"
 clap = { version = "4", features = ["derive"] }
+specta = { version = "=2.0.0-rc.22", features = ["derive"] }
+specta-typescript = "0.0.9"
+tauri-specta = { version = "2.0.0-rc.21", features = ["derive", "typescript"] }
 
 [dependencies.tauri-plugin-sql]
 features = ["sqlite"] # or "postgres", or "mysql"

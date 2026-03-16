@@ -27,6 +27,16 @@
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/apps/ai-engine-eval:${env:PYTHONPATH}"
             }
+        },
+        {
+            "name": "Calculate AI Engine Eval Stats (Python)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/apps/eval/calc_stats.py",
+            "args": ["-i", "${workspaceFolder}/apps/eval/data/results"],
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/apps/ai-engine-eval:${env:PYTHONPATH}"
+            }
         }
     ]
 }

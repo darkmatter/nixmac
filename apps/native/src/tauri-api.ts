@@ -1,5 +1,16 @@
 import { invoke } from "@tauri-apps/api/core";
 import { type Event, listen, once } from "@tauri-apps/api/event";
+import type { CommitRow, SummaryRow } from "./types/sqlite";
+export type { CommitRow, SummaryRow } from "./types/sqlite";
+
+export interface HistoryItem {
+  hash: string;
+  message: string | null;
+  createdAt: number;
+  isBuilt: boolean;
+  commit: CommitRow | null;
+  summary: SummaryRow | null;
+}
 import {
   checkFullDiskAccessPermission,
   requestFullDiskAccessPermission,
@@ -272,6 +283,8 @@ export const darwinAPI = {
     finalizeApply: () => invoke<EvolutionResult>("finalize_apply"),
     rollbackErase: (keepBranch?: boolean) =>
       invoke<RollbackResult>("rollback_erase", { keepBranch }),
+    restoreToCommit: (targetHash: string) =>
+      invoke<void>("restore_to_commit", { targetHash }),
   },
   nix: {
     check: () =>
@@ -336,6 +349,12 @@ export const darwinAPI = {
     // macOS-specific permission checks via tauri-plugin-macos-permissions
     checkFullDiskAccess: () => checkFullDiskAccessPermission(),
     requestFullDiskAccess: () => requestFullDiskAccessPermission(),
+  },
+
+  history: {
+    get: () => invoke<HistoryItem[]>("get_history"),
+    generateFrom: (commitHash: string, number: number) =>
+      invoke<void>("generate_history_from", { commitHash, number }),
   },
 };
 
