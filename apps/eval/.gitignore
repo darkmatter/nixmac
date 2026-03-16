@@ -1,4 +1,4 @@
-data/results/
-
-# Excel file temp junk
+data/results
+data/results_*
 ~$*
+*.out

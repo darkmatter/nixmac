@@ -2,7 +2,7 @@
 
 use super::file_ops::{apply_file_edits, join_in_dir};
 use super::messages::Tool;
-use super::run_command::execute_run_command;
+//use super::run_command::execute_run_command;
 use super::search_packages::execute_search_packages;
 use super::types::FileEdit;
 
@@ -25,7 +25,8 @@ pub fn create_tools() -> Vec<Tool> {
                          tool FREQUENTLY - before reading files, before making edits, when analyzing \
                          errors, and when planning your approach. Categories: 'planning' for initial \
                          strategy, 'analysis' for understanding code, 'debugging' for fixing errors, \
-                         'verification' for checking your work. Thorough thinking leads to better results."
+                         'verification' for checking your work. Keep thought concise and actionable \
+                         (prefer 1-2 sentences, <= 200 characters)."
                 .to_string(),
             parameters: serde_json::json!({
                 "type": "object",
@@ -37,7 +38,7 @@ pub fn create_tools() -> Vec<Tool> {
                     },
                     "thought": {
                         "type": "string",
-                        "description": "The thought content - be detailed and thorough"
+                        "description": "Brief thought content, ideally 1-2 sentences and <= 200 characters"
                     }
                 },
                 "required": ["category", "thought"]
@@ -112,22 +113,26 @@ pub fn create_tools() -> Vec<Tool> {
                 "required": ["host"]
             }),
         },
-        Tool {
-            name: "run_command".to_string(),
-            description: "Run a shell command in the config directory. Use sparingly - prefer \
-                         specific tools when available. Useful for checking nix syntax, \
-                         searching code, or other exploratory commands.".to_string(),
-            parameters: serde_json::json!({
-                "type": "object",
-                "properties": {
-                    "command": {
-                        "type": "string",
-                        "description": "Shell command to run"
-                    }
-                },
-                "required": ["command"]
-            }),
-        },
+        // TODO: Remove this when we're confident we can run without run_command.
+        // It's a powerful escape hatch for complex operations that don't fit other tools,
+        // but it can lead to sloppy agent work if overused.
+        // And it's a security risk if the agent is compromised.
+        // Tool {
+        //     name: "run_command".to_string(),
+        //     description: "Run a shell command in the config directory. Use sparingly - prefer \
+        //                  specific tools when available. Useful for checking nix syntax, \
+        //                  searching code, or other exploratory commands.".to_string(),
+        //     parameters: serde_json::json!({
+        //         "type": "object",
+        //         "properties": {
+        //             "command": {
+        //                 "type": "string",
+        //                 "description": "Shell command to run"
+        //             }
+        //         },
+        //         "required": ["command"]
+        //     }),
+        // },
         Tool {
             name: "search_code".to_string(),
             description: "Search for text patterns in the codebase using ripgrep. \
@@ -150,7 +155,11 @@ pub fn create_tools() -> Vec<Tool> {
         Tool {
             name: "search_packages".to_string(),
             description: "Search for Nix packages by name or description. This is a convenient \
-                         wrapper around 'nix search' that returns formatted, filtered results. \
+                         wrapper around 'nix search' that returns compact structured JSON results. \
+                         Output format: JSON object keyed by package name. Each value must include \
+                         {\"attr_path\": string, \"version\": string, \"description\": string, \"channel\": string}. \
+                         Example: {\"wget\": {\"attr_path\": \"wget\", \"version\": \"1.21.3\", \"description\": \"retrieves files from the web\", \"channel\": \"nixpkgs-unstable\"}}. \
+                         Return JSON only (no prose). \
                          Use this instead of run_command for package discovery. \
                          Parameters: search_type controls where to search (names, descriptions, or both); \
                          use_regex enables regex patterns for advanced matching; \
@@ -356,15 +365,15 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
             }
         }
 
-        "run_command" => {
-            let command = args["command"]
-                .as_str()
-                .ok_or_else(|| anyhow!("run_command: missing command"))?;
+        // TODO: Remove when we know we can run without it. See previous comment at tool definitions.
+        // "run_command" => {
+        //     let command = args["command"]
+        //         .as_str()
+        //         .ok_or_else(|| anyhow!("run_command: missing command"))?;
 
-            let result = execute_run_command(config_dir, command)?;
-            Ok(ToolResult::Continue(result))
-        }
-
+        //     let result = execute_run_command(config_dir, command)?;
+        //     Ok(ToolResult::Continue(result))
+        // }
         "search_code" => {
             let pattern = args["pattern"]
                 .as_str()

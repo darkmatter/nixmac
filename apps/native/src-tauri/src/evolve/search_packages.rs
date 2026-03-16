@@ -3,6 +3,7 @@
 use super::utils::truncate_error;
 use anyhow::Result;
 use log::info;
+use serde_json::{Map, Value};
 use std::process::Command;
 
 /// Execute a search_packages tool call with smart fallback logic
@@ -14,7 +15,7 @@ pub fn execute_search_packages(
     use_regex: bool,
     channel: &str,
 ) -> Result<String> {
-    let mut search_type = search_type.to_string();
+    let search_type = search_type.to_string();
 
     info!(
         "Searching for packages matching: '{}' (type: {}, regex: {}, channel: {})",
@@ -22,9 +23,7 @@ pub fn execute_search_packages(
     );
 
     // Helper function to execute a single search
-    let execute_search = |query_term: &str,
-                          st: &str|
-     -> Result<Option<serde_json::Map<String, serde_json::Value>>> {
+    let execute_search = |query_term: &str, st: &str| -> Result<Option<Map<String, Value>>> {
         let search_query = match st {
             "name" => format!("^{}", query_term), // Search in attr path (package name)
             "description" => query_term.to_string(),
@@ -96,7 +95,6 @@ pub fn execute_search_packages(
             );
             if let Ok(Some(found)) = execute_search(fallback_query, fallback_type) {
                 results = Some(found);
-                search_type = fallback_type.to_string();
                 break;
             }
         }
@@ -110,42 +108,48 @@ pub fn execute_search_packages(
                 );
                 if let Ok(Some(found)) = execute_search(first_word, "both") {
                     results = Some(found);
-                    search_type = "both".to_string();
                 }
             }
         }
     }
 
-    // Format results
+    // Return compact structured JSON keyed by package name.
     let message = match results {
         Some(obj) => {
-            let mut formatted_results = Vec::new();
+            let mut structured = Map::new();
 
             for (package_name, info) in obj.iter().take(limit as usize) {
-                let description = info["description"].as_str().unwrap_or("No description");
-                let version = info["version"].as_str().unwrap_or("unknown");
+                let attr_path = info
+                    .get("attrPath")
+                    .and_then(|v| v.as_str())
+                    .map(ToString::to_string)
+                    .or_else(|| package_name.split('.').next_back().map(ToString::to_string))
+                    .unwrap_or_else(|| package_name.to_string());
 
-                formatted_results.push(format!(
-                    "• {} ({})\n  {}",
-                    package_name, version, description
-                ));
+                let version = info
+                    .get("version")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown");
+
+                let description = info
+                    .get("description")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("No description");
+
+                let compact = serde_json::json!({
+                    "attr_path": attr_path,
+                    "version": version,
+                    "description": description,
+                    "channel": channel,
+                });
+
+                let map_key = package_name.split('.').next_back().unwrap_or(package_name);
+                structured.insert(map_key.to_string(), compact);
             }
 
-            let summary = format!(
-                "Found {} package(s) matching '{}' in {} (type: {}, showing {}):\n\n{}",
-                obj.len(),
-                query,
-                channel,
-                search_type,
-                formatted_results.len(),
-                formatted_results.join("\n\n")
-            );
-
-            truncate_error(&summary, 8000)
+            truncate_error(&serde_json::to_string_pretty(&structured)?, 8000)
         }
-        None => {
-            format!("No packages found matching '{}' in {}", query, channel)
-        }
+        None => "{}".to_string(),
     };
 
     Ok(message)
