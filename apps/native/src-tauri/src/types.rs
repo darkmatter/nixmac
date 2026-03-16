@@ -4,6 +4,7 @@
 //! The `#[serde(rename = "...")]` attributes ensure camelCase naming
 //! for JavaScript/TypeScript consumption.
 
+use crate::utils as global_utils;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::Manager;
@@ -515,10 +516,12 @@ impl EvolveEvent {
     }
 
     pub fn error(start_time: i64, iter: Option<usize>, error: &str) -> Self {
+        let mut error = error.to_string();
+        global_utils::truncate_utf8(&mut error, 100);
         Self::new(
             EvolveEventType::Error,
             format!("Error: {}", error),
-            format!("Error: {}", truncate(error, 100)),
+            format!("Error: {}", error),
             iter,
             start_time,
         )
@@ -607,7 +610,7 @@ pub fn slugify(text: &str) -> String {
 
     // Limit to 50 characters
     if result.len() > 50 {
-        result.truncate(50);
+        global_utils::truncate_utf8(&mut result, 50);
         // Don't end with a hyphen after truncation
         result = result.trim_end_matches('-').to_string();
     }

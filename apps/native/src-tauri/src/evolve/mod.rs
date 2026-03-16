@@ -1,5 +1,6 @@
 //! Evolution module for AI-assisted configuration changes.
 
+mod config_dir_context;
 mod file_ops;
 pub mod messages;
 pub mod providers;
@@ -29,7 +30,9 @@ pub use types::{Evolution, EvolutionState};
 use crate::{
     commands, nix, statistics, store,
     types::{emit_evolve_event, EvolveEvent},
+    utils as global_utils,
 };
+use config_dir_context::format_config_dir_context;
 use messages::Message;
 use providers::{AiProvider, OllamaProvider, OpenAIProvider, ProviderError};
 
@@ -243,18 +246,6 @@ const DEFAULT_MAX_ITERATIONS: usize = 50;
 const DEFAULT_MAX_BUILD_ATTEMPTS: usize = 5;
 const SYSTEM_PROMPT: &str = include_str!("../../prompts/system.md");
 
-/// Additional instructions to encourage thinking
-const THINKING_INSTRUCTIONS: &str = r#"
-
-IMPORTANT: You have a 'think' tool available. Use it FREQUENTLY to reason through problems:
-1. BEFORE reading files - think about what you need to understand
-2. AFTER reading files - analyze what you learned
-3. BEFORE making edits - plan your changes carefully
-4. WHEN debugging - analyze errors step by step
-5. BEFORE calling done - verify your work is complete
-
-Thorough thinking leads to better, more complete implementations. Don't rush."#;
-
 /// Partial evolution telemetry captured on failed runs.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -305,6 +296,57 @@ impl std::fmt::Display for EvolutionRunError {
 }
 
 impl std::error::Error for EvolutionRunError {}
+
+/// Build a short single-line preview from the conversation messages to help with
+/// troubleshooting.
+fn build_preview(messages: &[Message]) -> String {
+    let preview_raw: String = messages
+        .iter()
+        .rev()
+        .filter_map(|m| match m {
+            // user messages and system prompts are always relevant
+            Message::User { content } | Message::System { content } => {
+                let c = content.trim();
+                if c.is_empty() {
+                    None
+                } else {
+                    Some(c.to_string())
+                }
+            }
+            // tool outputs can be included if non-empty
+            Message::Tool { content, .. } => {
+                let c = content.trim();
+                if c.is_empty() {
+                    None
+                } else {
+                    Some(c.to_string())
+                }
+            }
+            // skip assistant messages
+            Message::Assistant { .. } => None,
+        })
+        .take(3)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect::<Vec<_>>()
+        .join(" \n\n ");
+
+    // replace newlines with spaces and truncate
+    let mut preview = preview_raw.replace(['\n', '\r'], " ");
+    if preview.len() > 100 {
+        global_utils::truncate_utf8(&mut preview, 100);
+        preview.push_str("...");
+    }
+    preview
+}
+
+fn escape_user_query(input: &str) -> String {
+    input
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
 
 /// Generate an evolution from a user prompt using OpenAI function calling.
 ///
@@ -406,6 +448,11 @@ pub async fn generate_evolution(
     );
 
     let tools = create_tools();
+    let allowed_tool_names = tools
+        .iter()
+        .map(|tool| tool.name.as_str())
+        .collect::<Vec<_>>();
+    let allowed_tool_names_display = allowed_tool_names.join(", ");
     let mut evolution = Evolution::new(prompt);
     let mut iteration: usize = 0;
     let mut build_attempts: usize = 0;
@@ -419,15 +466,26 @@ pub async fn generate_evolution(
     let system_prompt = SYSTEM_PROMPT
         .replace("{{CONFIG_DIR}}", config_dir)
         .replace("{{HOST_ATTR}}", &host_attr);
+    let config_dir_context = match format_config_dir_context(config_dir) {
+        Ok(tree) => tree,
+        Err(e) => {
+            warn!(
+                "Failed to build config_dir context for prompt ({}): {}",
+                config_dir, e
+            );
+            "(Failed to render config directory tree)".to_string()
+        }
+    };
 
     let mut messages: Vec<Message> = vec![
         Message::System {
-            content: format!("{}{}", system_prompt, THINKING_INSTRUCTIONS),
+            content: system_prompt.clone(),
         },
         Message::User {
             content: format!(
-                "{}\n\nStart by using the 'think' tool to plan your approach.",
-                prompt
+                "<user_query>{}</user_query>\n\n<config_dir>\n{}\n</config_dir>\n\nStart by using the 'think' tool to plan your approach.",
+                escape_user_query(prompt),
+                config_dir_context
             ),
         },
     ];
@@ -473,7 +531,10 @@ pub async fn generate_evolution(
             EvolveEvent::iteration(start_time, iteration, messages.len()),
         );
 
-        debug!("Sending request to AI provider...");
+        // Capture the messages that most directly drive the agent's next action
+        let preview = build_preview(&messages);
+
+        debug!("Sending request to AI provider, preview: {}", preview);
         emit_evolve_event(app, EvolveEvent::api_request(start_time, iteration));
 
         // Run provider completion inside a short-lived block and select!
@@ -574,12 +635,20 @@ pub async fn generate_evolution(
 
         let assistant_msg = response.message;
 
-        // Log assistant text response if any
+        // Log assistant text response if any. If tool calls are present, treat tool_calls as
+        // the sole executable source and only log content as an optional side note.
         if let Message::Assistant {
             content: Some(ref text),
-            ..
+            ref tool_calls,
         } = assistant_msg
         {
+            let has_tool_calls = tool_calls.as_ref().is_some_and(|calls| !calls.is_empty());
+            if has_tool_calls {
+                debug!(
+                    "Assistant returned content alongside tool_calls; content treated as non-executable text | content_preview={}",
+                    truncate_for_log(text, 300)
+                );
+            }
             info!("💬 Assistant: {}", truncate_for_log(text, 500));
         }
 
@@ -728,9 +797,21 @@ pub async fn generate_evolution(
                                 &format!("ERROR: {}", e),
                                 false,
                             );
+
+                            let tool_error = e.to_string();
+                            let recovery_message = if tool_error.starts_with("Unknown tool:") {
+                                format!(
+                                    "Unknown tool '{}'. Retry with one of the allowed tools only: {}. \
+Do not invent tool names and do not place tool invocations in assistant content.",
+                                    tool_name, allowed_tool_names_display
+                                )
+                            } else {
+                                format!("Error: {}. Please try a different approach.", tool_error)
+                            };
+
                             messages.push(Message::Tool {
                                 tool_call_id: tool_call.id.clone(),
-                                content: format!("Error: {}. Please try a different approach.", e),
+                                content: recovery_message,
                             });
                         }
                     }
@@ -757,7 +838,7 @@ pub async fn generate_evolution(
         }
 
         // Safety limits
-        if iteration > max_iterations {
+        if iteration >= max_iterations {
             warn!(
                 "⚠️ Evolution exceeded maximum iterations ({}) - aborting",
                 max_iterations

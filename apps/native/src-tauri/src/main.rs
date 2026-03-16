@@ -36,6 +36,7 @@ mod store;
 mod summarize;
 mod template;
 mod types;
+mod utils;
 mod watcher;
 
 use std::env;
@@ -491,9 +492,9 @@ fn run_gui_mode(
             let _ = main_window;
 
             // Create the preview indicator window (persistent banner for uncommitted changes)
-            if let Err(e) = peek::create_preview_indicator_window(handle) {
-                log::error!("[peek] ❌ Failed to create preview indicator window: {}", e);
-            }
+            // if let Err(e) = peek::create_preview_indicator_window(handle) {
+            //     log::error!("[peek] ❌ Failed to create preview indicator window: {}", e);
+            // }
 
             // Start config watcher - monitors config directory for file changes
             // This emits config:changed events to the frontend when files are modified
