@@ -83,7 +83,35 @@ jobs:
       # Sign the app bundle (required for notarization)
       - name: Sign app bundle
         if: startsWith(github.ref, 'refs/tags/') && steps.check-secrets.outputs.has_certificate == 'true'
-        run: "APP_PATH=$(find target/release/bundle/macos -name \"*.app\" -type d | head -1)\nif [ -n \"$APP_PATH\" ]; then\n  echo \"Signing $APP_PATH...\"\n  \n  # Get the signing identity from the keychain\n  KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db\n  IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH | grep \"Developer ID Application\" | head -1 | sed 's/.*\"\\(.*\\)\".*/\\1/')\n  \n  if [ -z \"$IDENTITY\" ]; then\n    echo \"ERROR: No Developer ID Application identity found in keychain\"\n    security find-identity -v -p codesigning $KEYCHAIN_PATH\n    exit 1\n  fi\n  \n  echo \"Using identity: $IDENTITY\"\n  \n  # Sign with hardened runtime (required for notarization)\n  codesign --force --deep --options runtime \\\n    --entitlements apps/native/src-tauri/entitlements.plist \\\n    --sign \"$IDENTITY\" \\\n    \"$APP_PATH\"\n  \n  echo \"Verifying signature...\"\n  codesign --verify --verbose \"$APP_PATH\"\nelse\n  echo \"No .app found to sign\"\n  exit 1\nfi\n"
+        run: |
+          APP_PATH=$(find target/release/bundle/macos -name "*.app" -type d | head -1)
+          if [ -n "$APP_PATH" ]; then
+            echo "Signing $APP_PATH..."
+            
+            # Get the signing identity from the keychain
+            KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+            IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+            
+            if [ -z "$IDENTITY" ]; then
+              echo "ERROR: No Developer ID Application identity found in keychain"
+              security find-identity -v -p codesigning $KEYCHAIN_PATH
+              exit 1
+            fi
+            
+            echo "Using identity: $IDENTITY"
+            
+            # Sign with hardened runtime (required for notarization)
+            codesign --force --deep --options runtime \
+              --entitlements apps/native/src-tauri/entitlements.plist \
+              --sign "$IDENTITY" \
+              "$APP_PATH"
+            
+            echo "Verifying signature..."
+            codesign --verify --verbose "$APP_PATH"
+          else
+            echo "No .app found to sign"
+            exit 1
+          fi
       # Rebuild DMG with signed app
       - name: Rebuild DMG with signed app
         if: startsWith(github.ref, 'refs/tags/') && steps.check-secrets.outputs.has_certificate == 'true'
