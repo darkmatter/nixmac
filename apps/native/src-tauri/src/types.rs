@@ -302,6 +302,8 @@ pub struct HistoryItem {
     pub commit: Option<crate::sqlite_types::CommitRow>,
     /// AI summary — present only if a summary has been generated.
     pub summary: Option<crate::sqlite_types::SummaryRow>,
+    /// Change set with granular changes and summaries — present only if the pipeline has run.
+    pub change_set: Option<crate::query_return_types::SummarizedChanges>,
 }
 
 // =============================================================================

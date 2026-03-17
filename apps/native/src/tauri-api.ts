@@ -2,6 +2,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { type Event, listen, once } from "@tauri-apps/api/event";
 import type { CommitRow, SummaryRow } from "./types/sqlite";
 export type { CommitRow, SummaryRow } from "./types/sqlite";
+import type { SummarizedChanges } from "./types/queries";
+export type { SummarizedChanges } from "./types/queries";
 
 export interface HistoryItem {
   hash: string;
@@ -10,6 +12,7 @@ export interface HistoryItem {
   isBuilt: boolean;
   commit: CommitRow | null;
   summary: SummaryRow | null;
+  changeSet: SummarizedChanges | null;
 }
 import {
   checkFullDiskAccessPermission,
