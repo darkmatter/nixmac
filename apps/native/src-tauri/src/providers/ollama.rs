@@ -1,4 +1,4 @@
-use super::ChatCompletionProvider;
+use super::{ChatCompletionProvider, TokenUsage};
 use anyhow::Result;
 use async_trait::async_trait;
 use log::debug;
@@ -26,6 +26,8 @@ struct OllamaRequest<'a> {
     messages: Vec<OllamaMessage<'a>>,
     stream: bool,
     options: OllamaOptions,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    format: Option<&'a str>,
 }
 
 #[derive(Serialize)]
@@ -38,11 +40,15 @@ struct OllamaMessage<'a> {
 struct OllamaOptions {
     temperature: f32,
     num_predict: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    num_ctx: Option<u32>,
 }
 
 #[derive(Deserialize)]
 struct OllamaResponse {
     message: OllamaMessageResponse,
+    eval_count: Option<u32>,
+    prompt_eval_count: Option<u32>,
 }
 
 #[derive(Deserialize)]
@@ -61,9 +67,10 @@ impl ChatCompletionProvider for OllamaClient {
         system_prompt: &str,
         user_prompt: &str,
         max_tokens: u32,
+        num_ctx: Option<u32>,
         temperature: f32,
         request_id: &str,
-    ) -> Result<String> {
+    ) -> Result<(String, TokenUsage)> {
         let url = format!("{}/api/chat", self.base_url);
 
         let request = OllamaRequest {
@@ -82,7 +89,9 @@ impl ChatCompletionProvider for OllamaClient {
             options: OllamaOptions {
                 temperature,
                 num_predict: max_tokens,
+                num_ctx,
             },
+            format: None,
         };
 
         debug!(
@@ -96,7 +105,76 @@ impl ChatCompletionProvider for OllamaClient {
             return Err(anyhow::anyhow!("Ollama API error: {}", error_text));
         }
 
-        let response_json: OllamaResponse = response.json().await?;
-        Ok(response_json.message.content)
+        let r: OllamaResponse = response.json().await?;
+        Ok((
+            r.message.content,
+            TokenUsage {
+                input: r.prompt_eval_count,
+                output: r.eval_count,
+            },
+        ))
+    }
+
+    async fn json_completion(
+        &self,
+        system_prompt: &str,
+        user_prompt: &str,
+        max_tokens: u32,
+        num_ctx: Option<u32>,
+        temperature: f32,
+        request_id: &str,
+    ) -> Result<(String, TokenUsage)> {
+        let url = format!("{}/api/chat", self.base_url);
+
+        log::info!(
+            "json_completion called: model={} format=json max_tokens={} num_ctx={:?} [id: {}]",
+            self.model,
+            max_tokens,
+            num_ctx,
+            request_id
+        );
+
+        let request = OllamaRequest {
+            model: &self.model,
+            messages: vec![
+                OllamaMessage {
+                    role: "system",
+                    content: system_prompt,
+                },
+                OllamaMessage {
+                    role: "user",
+                    content: user_prompt,
+                },
+            ],
+            stream: false,
+            options: OllamaOptions {
+                temperature,
+                num_predict: max_tokens,
+                num_ctx,
+            },
+            format: Some("json"),
+        };
+
+        let response = self.client.post(&url).json(&request).send().await?;
+
+        if !response.status().is_success() {
+            let error_text = response.text().await?;
+            return Err(anyhow::anyhow!("Ollama API error: {}", error_text));
+        }
+
+        let r: OllamaResponse = response.json().await?;
+        log::info!(
+            "json_completion done: in={:?} out={:?} [id: {}]",
+            r.prompt_eval_count,
+            r.eval_count,
+            request_id
+        );
+        Ok((
+            r.message.content,
+            TokenUsage {
+                input: r.prompt_eval_count,
+                output: r.eval_count,
+            },
+        ))
     }
 }

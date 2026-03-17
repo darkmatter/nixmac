@@ -8,6 +8,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod apply_system_defaults;
+mod changes_from_diff;
 mod cli;
 mod commands;
 mod darwin;
@@ -34,6 +35,10 @@ mod sqlite_types;
 mod statistics;
 mod store;
 mod summarize;
+mod summarize_changes;
+mod summarize_pipeline;
+mod summarize_pipeline_logging;
+mod summarize_token_budgets;
 mod template;
 mod types;
 mod utils;
