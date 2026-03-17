@@ -41,6 +41,8 @@ export interface DarwinPrefs {
   confirmRollback?: boolean;
 }
 
+export const DEFAULT_MAX_ITERATIONS = 25;
+
 export interface GitFileStatus {
   path: string;
   changeType: "new" | "edited" | "removed" | "renamed";

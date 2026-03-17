@@ -242,7 +242,6 @@ fn log_api_error(
 const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
-const DEFAULT_MAX_ITERATIONS: usize = 50;
 const DEFAULT_MAX_BUILD_ATTEMPTS: usize = 5;
 const SYSTEM_PROMPT: &str = include_str!("../../prompts/system.md");
 
@@ -439,7 +438,8 @@ pub async fn generate_evolution(
     );
 
     // Read configurable limits from store
-    let max_iterations = store::get_max_iterations(app).unwrap_or(DEFAULT_MAX_ITERATIONS);
+    let max_iterations =
+        store::get_max_iterations(app).unwrap_or(store::DEFAULT_MAX_ITERATIONS);
     let max_build_attempts =
         store::get_max_build_attempts(app).unwrap_or(DEFAULT_MAX_BUILD_ATTEMPTS);
     info!(
