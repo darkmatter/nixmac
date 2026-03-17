@@ -2,11 +2,15 @@
 //!
 //! Run with: cargo run --example export_bindings
 //! Output: apps/native/src/types/sqlite.ts
+//!         apps/native/src/types/queries.ts
 //!
-//! Re-run whenever sqlite_types.rs changes.
+//! Re-run whenever sqlite_types.rs or query_return_types.rs changes.
 
 #[path = "../src/sqlite_types.rs"]
 mod sqlite_types;
+
+#[path = "../src/query_return_types.rs"]
+mod query_return_types;
 
 use specta::TypeCollection;
 use specta_typescript::Typescript;
@@ -32,4 +36,19 @@ fn main() {
         .unwrap();
 
     println!("Exported history types to {output_path}");
+
+    let mut qrt_collection = TypeCollection::default();
+    let qrt_types = qrt_collection
+        .register::<query_return_types::SummarizedChange>()
+        .register::<query_return_types::SummarizedChanges>()
+        .register::<query_return_types::FoundChanges>();
+
+    let qrt_output_path = "../src/types/queries.ts";
+
+    Typescript::default()
+        .bigint(specta_typescript::BigIntExportBehavior::Number)
+        .export_to(qrt_output_path, qrt_types)
+        .unwrap();
+
+    println!("Exported query return types to {qrt_output_path}");
 }
