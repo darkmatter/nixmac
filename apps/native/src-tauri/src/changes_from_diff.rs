@@ -120,6 +120,18 @@ pub fn is_sensitive_or_opaque(change: &Change) -> bool {
     if change.diff.contains("-----BEGIN ") {
         return true;
     }
+    // Source maps — never meaningful content
+    if fname.ends_with(".js.map") || fname.ends_with(".ts.map") {
+        return true;
+    }
+    // Minified JS/CSS
+    if fname.ends_with(".min.js") || fname.ends_with(".min.css") {
+        return true;
+    }
+    // Raycast extension bundles (files/config/raycast/extensions/<uuid>/...)
+    if fname.contains("/raycast/extensions/") {
+        return true;
+    }
     // Any line that is a long opaque base64/hex blob (data URIs, raw binary, etc.).
     // Ollama's JSON mode can latch onto JSON containing these and output it verbatim,
     // exhausting the token budget mid-string.
