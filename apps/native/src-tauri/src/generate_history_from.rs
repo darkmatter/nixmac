@@ -9,7 +9,14 @@ pub async fn generate_history_from<R: Runtime>(
     let config_dir = crate::store::get_config_dir(app)?;
     let db_path = crate::db::get_db_path(app)?;
 
-    let commits = crate::git::log(&config_dir, commit_hash, Some(number + 1))?;
+    let main_branch =
+        crate::git::get_default_branch(&config_dir).unwrap_or_else(|| "main".to_string());
+    let all_commits = crate::git::log(&config_dir, &main_branch, None)?;
+    let start = match all_commits.iter().position(|c| c.hash == commit_hash) {
+        Some(i) => i,
+        None => return Ok(()),
+    };
+    let commits: Vec<_> = all_commits.into_iter().skip(start).take(number + 1).collect();
 
     if commits.is_empty() {
         return Ok(());
@@ -32,8 +39,13 @@ pub async fn generate_history_from<R: Runtime>(
         let commit_id = db_ids[i];
         let base_commit_id = db_ids[i + 1];
 
-        if crate::db::summaries::get_summary_for_from(&db_path, commit_id, base_commit_id)?
-            .is_some()
+        let conn = rusqlite::Connection::open(&db_path)?;
+        if crate::db::changesets::query_change_set_for_commit_pair(
+            &conn,
+            commit_id,
+            base_commit_id,
+        )?
+        .is_some()
         {
             continue;
         }

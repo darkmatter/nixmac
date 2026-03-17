@@ -1,14 +1,11 @@
 //! Optional box-drawing debug logs for the summarization pipeline.
-//!
-//! Flip `VERBOSE` to `true` to re-enable; all output is suppressed at `false`.
-//! These will eventually be replaced by DB-stored pipeline traces.
 
 use crate::providers::TokenUsage;
 use crate::sqlite_types::Change;
 use crate::summarize_changes::{SemanticChangeSummary, SemanticMap};
 use crate::summarize_pipeline::{SummarizedSemanticChange};
 
-// Set this to 'true' or 'false' to enable/disable logging for the pipeline
+// TURN THIS ON / OFF HERE:
 pub const VERBOSE: bool = true;
 
 fn token_label(usage: &TokenUsage, max_output: u32) -> String {
@@ -26,6 +23,7 @@ pub fn log_changes_from_diff(changes: &[Change], sensitive_or_opaque: &[Change])
     if !VERBOSE {
         return;
     }
+    log::warn!("╔══ TURN OFF IN: summarize_pipeline_logging.rs ══════════════════╗");
     log::info!("╔══════════════════════════════════════════════════════════════╗");
     log::info!(
         "║  CHANGES_FROM_DIFF  ({} total, {} sensitive/opaque, {} to pipeline)",
@@ -158,4 +156,5 @@ pub fn log_all_changes(
     }
 
     log::info!("╚══════════════════════════════════════════════════════════════╝");
+    log::warn!("╚══ TURN OFF IN: summarize_pipeline_logging.rs ══════════════════╝");
 }

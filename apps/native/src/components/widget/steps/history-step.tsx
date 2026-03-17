@@ -16,13 +16,6 @@ export function HistoryStep() {
     loadHistory();
   }, [loadHistory]);
 
-  useEffect(() => {
-    const withChangeSet = history.filter((item) => item.changeSet != null);
-    if (withChangeSet.length > 0) {
-      console.log("[history] items with changeSet:", withChangeSet);
-    }
-  }, [history]);
-
   if (historyLoading) return <p>Loading...</p>;
 
   const historyByDay = groupByDay(history);
