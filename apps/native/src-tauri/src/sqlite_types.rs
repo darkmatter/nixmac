@@ -97,8 +97,8 @@ pub struct ChangeSummary {
 pub struct ChangeSet {
     pub id: i64,
     pub commit_id: Option<i64>,
-    pub base_commit_id: Option<i64>,
-    pub commit_message: String,
+    pub base_commit_id: i64,
+    pub commit_message: Option<String>,
     pub generated_commit_message: Option<String>,
     pub created_at: i64,
 }

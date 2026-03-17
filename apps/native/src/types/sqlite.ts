@@ -6,7 +6,7 @@ export type Change = { id: number; hash: string; filename: string; diff: string;
  * Groups Changes for a commit→base_commit pair. `commit_id` is NULL for speculative
  * (uncommitted) changesets. Membership is stored in the `set_changes` join table.
  */
-export type ChangeSet = { id: number; commitId: number | null; baseCommitId: number | null; commitMessage: string; generatedCommitMessage: string | null; createdAt: number }
+export type ChangeSet = { id: number; commitId: number | null; baseCommitId: number; commitMessage: string | null; generatedCommitMessage: string | null; createdAt: number }
 
 export type ChangeSummary = { id: number; title: string; description: string; groupSummaryFor: string | null; createdAt: number }
 

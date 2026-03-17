@@ -14,8 +14,8 @@ use crate::summarize_pipeline::SummarizePipelineResult;
 pub fn store_change_set(
     db_path: &Path,
     commit_id: Option<i64>,
-    base_commit_id: Option<i64>,
-    commit_message: &str,
+    base_commit_id: i64,
+    commit_message: Option<&str>,
     result: &SummarizePipelineResult,
 ) -> Result<i64> {
     let mut conn = Connection::open(db_path)?;
