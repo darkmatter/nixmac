@@ -106,8 +106,8 @@ lib.mkIf (!(config.container.isBuilding or false)) {
   # Formatting and git-hooks are dev-only; don't ship them into containers.
   treefmt.enable = true;
   treefmt.config = {
-    programs.rustfmt.enable = true;
-    programs.yamlfmt.enable = true;
+    programs.rustfmt.enable = false;
+    programs.yamlfmt.enable = false;
     programs.mdformat.enable = true;
   };
 
@@ -115,8 +115,8 @@ lib.mkIf (!(config.container.isBuilding or false)) {
   git-hooks = {
     # hooks.biome.enable = true;
     hooks.shellcheck.enable = true;
-    hooks.rustfmt.enable = true;
-    hooks.clippy.enable = true;
+    hooks.rustfmt.enable = false;
+    hooks.clippy.enable = false;
     hooks.mdformat.enable = true;
     excludes = [
       "^.*\/?(\.git|\.direnv|\.devenv|\.vscode|\.idea|\.DS_Store|\.env|\.envrc|\.github).*$"

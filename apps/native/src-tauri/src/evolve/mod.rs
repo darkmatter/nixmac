@@ -680,7 +680,7 @@ pub async fn generate_evolution(
                         EvolveEvent::tool_call(start_time, iteration, tool_name, &args_summary),
                     );
 
-                    let result = execute_tool(config_dir, tool_name, &args);
+                    let result = execute_tool(config_dir, host_attr.as_str(), tool_name, &args);
 
                     match result {
                         Ok(ref res) => {
