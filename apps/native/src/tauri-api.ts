@@ -110,7 +110,6 @@ export interface FeedbackShareOptions {
   aiProviderModelInfo: boolean;
   buildErrorOutput: boolean;
   flakeInputsSnapshot: boolean;
-  nixConfig: boolean;
   appLogs: boolean;
 }
 
@@ -162,7 +161,6 @@ export interface FeedbackMetadata {
   aiProviderModelInfo?: FeedbackAiProviderModelInfo;
   buildErrorOutput?: string;
   flakeInputsSnapshot?: FeedbackFlakeInputsSnapshot;
-  nixConfigSnapshot?: string;
   appLogsContent?: string;
   lastPromptText?: string;
 }
@@ -227,7 +225,6 @@ export type EvolveEventType =
   | "info"
   | "summarizing";
 
-
 export interface EvolveEvent {
   /** Raw log output (detailed technical information) */
   raw: string;
@@ -283,8 +280,7 @@ export const darwinAPI = {
     finalizeApply: () => invoke<EvolutionResult>("finalize_apply"),
     rollbackErase: (keepBranch?: boolean) =>
       invoke<RollbackResult>("rollback_erase", { keepBranch }),
-    restoreToCommit: (targetHash: string) =>
-      invoke<void>("restore_to_commit", { targetHash }),
+    restoreToCommit: (targetHash: string) => invoke<void>("restore_to_commit", { targetHash }),
   },
   nix: {
     check: () =>

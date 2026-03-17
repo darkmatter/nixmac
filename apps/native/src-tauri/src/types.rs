@@ -159,7 +159,6 @@ pub struct FeedbackShareOptions {
     pub ai_provider_model_info: bool,
     pub build_error_output: bool,
     pub flake_inputs_snapshot: bool,
-    pub nix_config: bool,
     pub app_logs: bool,
 }
 
@@ -238,7 +237,6 @@ pub struct FeedbackMetadata {
     pub ai_provider_model_info: Option<FeedbackAiProviderModelInfo>,
     pub build_error_output: Option<String>,
     pub flake_inputs_snapshot: Option<FeedbackFlakeInputsSnapshot>,
-    pub nix_config_snapshot: Option<String>,
     pub app_logs_content: Option<String>,
     pub panic_details: Option<FeedbackPanicDetails>,
 }
