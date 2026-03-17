@@ -42,13 +42,13 @@ pub async fn generate_history_from<R: Runtime>(
 
         let all_changes = crate::changes_from_diff::changes_from_diff(&diff, commits[i].created_at);
 
-        let (excluded, changes): (Vec<_>, Vec<_>) = all_changes
+        let (sensitive_or_opaque, changes): (Vec<_>, Vec<_>) = all_changes
             .into_iter()
             .partition(crate::changes_from_diff::is_sensitive_or_opaque);
 
-        let _result = match crate::summarize_pipeline::run(
+        let result = match crate::summarize_pipeline::run(
             changes,
-            excluded,
+            sensitive_or_opaque,
             commits[i].message.as_deref(),
             Some(app),
         )
@@ -64,6 +64,20 @@ pub async fn generate_history_from<R: Runtime>(
                 continue;
             }
         };
+
+        if let Err(e) = crate::store_changeset::store_change_set(
+            &db_path,
+            Some(commit_id),
+            Some(base_commit_id),
+            commits[i].message.as_deref().unwrap_or(""),
+            &result,
+        ) {
+            log::error!(
+                "[generate_history_from] store_change_set failed for {}: {}",
+                commits[i].hash,
+                e
+            );
+        }
     }
 
     Ok(())
