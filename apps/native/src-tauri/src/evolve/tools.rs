@@ -105,10 +105,6 @@ pub fn create_tools() -> Vec<Tool> {
             parameters: serde_json::json!({
                 "type": "object",
                 "properties": {
-                    "host": {
-                        "type": "string",
-                        "description": "The host configuration to check (e.g., 'macbook')"
-                    }
                 },
                 "required": ["host"]
             }),
@@ -230,7 +226,12 @@ pub enum ToolResult {
 }
 
 /// Execute a tool call and return the result
-pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> Result<ToolResult> {
+pub fn execute_tool(
+    config_dir: &str,
+    host_attr: &str,
+    name: &str,
+    args: &serde_json::Value,
+) -> Result<ToolResult> {
     let base = Path::new(config_dir);
     match name {
         "think" => {
@@ -322,17 +323,13 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
         }
 
         "build_check" => {
-            let host = args["host"]
-                .as_str()
-                .ok_or_else(|| anyhow!("build_check: missing host"))?;
-
-            info!("Running build check for host: {}", host);
+            info!("Running build check for host: {}", host_attr);
 
             // Use nix build --dry-run to check without actually building
             let output = Command::new("nix")
                 .args([
                     "build",
-                    &format!(".#darwinConfigurations.{}.system", host),
+                    &format!(".#darwinConfigurations.{}.system", host_attr),
                     "--dry-run",
                     "--show-trace",
                 ])
@@ -346,19 +343,19 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
             let combined = format!("{}\n{}", stdout, stderr);
 
             if output.status.success() {
-                info!("Build check passed for host: {}", host);
+                info!("Build check passed for host: {}", host_attr);
                 Ok(ToolResult::BuildResult {
                     success: true,
-                    output: format!("✓ Build check passed for '{}'", host),
+                    output: format!("✓ Build check passed for '{}'", host_attr),
                 })
             } else {
-                error!("Build check failed for host: {}", host);
+                error!("Build check failed for host: {}", host_attr);
                 debug!("Build error output: {}", combined);
                 Ok(ToolResult::BuildResult {
                     success: false,
                     output: format!(
                         "✗ Build check FAILED for '{}':\n\n{}",
-                        host,
+                        host_attr,
                         truncate_error(&combined, 4000)
                     ),
                 })
