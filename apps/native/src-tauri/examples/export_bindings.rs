@@ -19,7 +19,10 @@ fn main() {
         .register::<sqlite_types::EvolutionRow>()
         .register::<sqlite_types::EvolutionCommitRow>()
         .register::<sqlite_types::SummaryRow>()
-        .register::<sqlite_types::PromptRow>();
+        .register::<sqlite_types::PromptRow>()
+        .register::<sqlite_types::Change>()
+        .register::<sqlite_types::ChangeSummary>()
+        .register::<sqlite_types::ChangeSet>();
 
     let output_path = "../src/types/sqlite.ts";
 
