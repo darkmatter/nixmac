@@ -6,10 +6,10 @@
 use crate::providers::TokenUsage;
 use crate::sqlite_types::Change;
 use crate::summarize_changes::{SemanticChangeSummary, SemanticMap};
-use crate::summarize_pipeline::SummarizedHunk;
+use crate::summarize_pipeline::{SummarizedSemanticChange};
 
 // Set this to 'true' or 'false' to enable/disable logging for the pipeline
-pub const VERBOSE: bool = false;
+pub const VERBOSE: bool = true;
 
 fn token_label(usage: &TokenUsage, max_output: u32) -> String {
     let out = match usage.output {
@@ -22,21 +22,21 @@ fn token_label(usage: &TokenUsage, max_output: u32) -> String {
     }
 }
 
-pub fn log_changes_from_diff(changes: &[Change], excluded: &[Change]) {
+pub fn log_changes_from_diff(changes: &[Change], sensitive_or_opaque: &[Change]) {
     if !VERBOSE {
         return;
     }
     log::info!("╔══════════════════════════════════════════════════════════════╗");
     log::info!(
-        "║  CHANGES_FROM_DIFF  ({} total, {} excluded, {} to pipeline)",
-        changes.len() + excluded.len(),
-        excluded.len(),
+        "║  CHANGES_FROM_DIFF  ({} total, {} sensitive/opaque, {} to pipeline)",
+        changes.len() + sensitive_or_opaque.len(),
+        sensitive_or_opaque.len(),
         changes.len()
     );
     log::info!("╠══════════════════════════════════════════════════════════════╣");
-    if !excluded.is_empty() {
-        log::info!("║  excluded (sensitive/opaque):");
-        for change in excluded {
+    if !sensitive_or_opaque.is_empty() {
+        log::info!("║  sensitive/opaque (skipped by pipeline):");
+        for change in sensitive_or_opaque {
             log::info!("║    - {} [{}]", change.filename, change.hash);
         }
         log::info!("╠──────────────────────────────────────────────────────────────╣");
@@ -72,28 +72,21 @@ pub fn log_semantic_map(map: &SemanticMap, max_output: u32, usage: &TokenUsage) 
     log::info!("╚══════════════════════════════════════════════════════════════╝");
 }
 
-pub fn log_stage2_results(
-    results: &[(
-        usize,
-        String,
-        u32,
-        TokenUsage,
-        anyhow::Result<SemanticChangeSummary>,
-    )],
+pub fn log_stage2_result(
+    title: &str,
+    max_output: u32,
+    usage: &TokenUsage,
+    summary: &SemanticChangeSummary,
 ) {
     if !VERBOSE {
         return;
     }
+    let label = token_label(usage, max_output);
     log::info!("╔══════════════════════════════════════════════════════════════╗");
-    log::info!("║  STAGE 2 — GROUP SUMMARIES  ({} groups)", results.len());
+    log::info!("║  STAGE 2  [{}]  ({})", title, label);
     log::info!("╠══════════════════════════════════════════════════════════════╣");
-    for (_, title, max_output, usage, result) in results {
-        let label = token_label(usage, *max_output);
-        match result {
-            Ok(s) => log::info!("║  [{}] {} — {}", label, s.group.title, s.group.description),
-            Err(e) => log::error!("║  [{}] {} — ERROR: {}", label, title, e),
-        }
-    }
+    log::info!("║  {} — {}", summary.group.title, summary.group.description);
+    log::info!("║  {} hunk summaries", summary.own_summaries.len());
     log::info!("╚══════════════════════════════════════════════════════════════╝");
 }
 
@@ -122,37 +115,47 @@ pub fn log_generated_commit_message(
     log::info!("╚══════════════════════════════════════════════════════════════╝");
 }
 
-pub fn log_all_changes(hunks: &[SummarizedHunk], excluded: &[Change]) {
+pub fn log_all_changes(
+    semantic_changes: &[SummarizedSemanticChange],
+    sensitive_or_opaque: &[Change],
+) {
     if !VERBOSE {
         return;
     }
     log::info!("╔══════════════════════════════════════════════════════════════╗");
     log::info!("║  ALL CHANGES — READY FOR DB");
     log::info!("╠══════════════════════════════════════════════════════════════╣");
-    for change in excluded {
+
+    for change in sensitive_or_opaque {
         let hash_prefix = &change.hash[..8.min(change.hash.len())];
         log::info!(
-            "║  [{}] {} (EXCLUDED — sensitive/opaque)",
+            "║  [{}] {} (sensitive/opaque — no summary)",
             hash_prefix,
             change.filename
         );
-        log::info!(
-            "║    own: Sensitive or Opaque — Changes were made to {}",
-            change.filename
-        );
         log::info!("╠──────────────────────────────────────────────────────────────╣");
     }
-    for hunk in hunks {
-        let hash_prefix = &hunk.change.hash[..8.min(hunk.change.hash.len())];
-        log::info!("║  [{}] {}", hash_prefix, hunk.change.filename);
-        if let Some(gs) = &hunk.group_summary {
-            log::info!("║    group: {} — {}", gs.title, gs.description);
+
+    for sc in semantic_changes {
+        if let Some(gs) = &sc.group_summary {
+            log::info!("║  ┌─ GROUP: {} — {}", gs.title, gs.description);
+            log::info!(
+                "║  │  hashes: [{}]",
+                sc.hashes.iter().map(|h| &h[..8.min(h.len())]).collect::<Vec<_>>().join(", ")
+            );
+        } else {
+            log::info!("║  ┌─ (single-hunk SC — no group summary)");
         }
-        match &hunk.own_summary {
-            Some(s) => log::info!("║    own:   {} — {}", s.title, s.description),
-            None => log::info!("║    own:   (not generated)"),
+        for hunk in &sc.hunks {
+            let hash_prefix = &hunk.change.hash[..8.min(hunk.change.hash.len())];
+            log::info!("║  │  [{}] {}", hash_prefix, hunk.change.filename);
+            match &hunk.own_summary {
+                Some(s) => log::info!("║  │    own: {} — {}", s.title, s.description),
+                None => log::info!("║  │    own: (not generated)"),
+            }
         }
         log::info!("╠──────────────────────────────────────────────────────────────╣");
     }
+
     log::info!("╚══════════════════════════════════════════════════════════════╝");
 }

@@ -3,43 +3,44 @@
 //! See `temp/ai/sr-guide-summarization.md` for the design rationale.
 
 use anyhow::Result;
+use std::collections::{BTreeSet, HashMap, HashSet};
 use tauri::{AppHandle, Runtime};
 
 use crate::providers::TokenUsage;
 use crate::sqlite_types::Change;
-use crate::summarize_changes::{HunkSummary, SemanticMap};
+use crate::summarize_changes::HunkSummary;
 use crate::summarize_pipeline_logging as dbg;
 use crate::summarize_token_budgets as budgets;
 
 pub struct SummarizedHunk {
     pub change: Change,
-    pub group_summary: Option<HunkSummary>,
     pub own_summary: Option<HunkSummary>,
 }
 
-#[allow(dead_code)]
-pub struct SummarizePipelineResult {
+pub struct SummarizedSemanticChange {
+    pub group_summary: Option<HunkSummary>,
+    pub hashes: BTreeSet<String>,
     pub hunks: Vec<SummarizedHunk>,
-    pub excluded: Vec<Change>,
-    pub semantic_map: SemanticMap,
+}
+
+pub struct SummarizePipelineResult {
+    pub semantic_changes: Vec<SummarizedSemanticChange>,
+    pub sensitive_or_opaque: Vec<Change>,
     pub generated_commit_message: String,
 }
 
 pub async fn run<R: Runtime>(
     changes: Vec<Change>,
-    excluded: Vec<Change>,
+    sensitive_or_opaque: Vec<Change>,
     commit_message: Option<&str>,
     app_handle: Option<&AppHandle<R>>,
 ) -> Result<SummarizePipelineResult> {
-    dbg::log_changes_from_diff(&changes, &excluded);
+    dbg::log_changes_from_diff(&changes, &sensitive_or_opaque);
 
     if changes.is_empty() {
         return Ok(SummarizePipelineResult {
-            hunks: vec![],
-            excluded,
-            semantic_map: SemanticMap {
-                semantic_changes: vec![],
-            },
+            semantic_changes: vec![],
+            sensitive_or_opaque,
             generated_commit_message: String::new(),
         });
     }
@@ -103,14 +104,8 @@ pub async fn run<R: Runtime>(
     let change_index: std::collections::HashMap<&str, &Change> =
         changes.iter().map(|c| (c.hash.as_str(), c)).collect();
 
-    // JoinSet tuple: (sc_idx, title, max_output_tokens, usage, Result<SemanticChangeSummary>)
-    let mut group_set: tokio::task::JoinSet<(
-        usize,
-        String,
-        u32,
-        TokenUsage,
-        anyhow::Result<crate::summarize_changes::SemanticChangeSummary>,
-    )> = tokio::task::JoinSet::new();
+    let mut group_set: tokio::task::JoinSet<(usize, SummarizedSemanticChange)> =
+        tokio::task::JoinSet::new();
 
     for (sc_idx, sc) in map.semantic_changes.iter().enumerate() {
         let main_with_reasoning: Vec<_> = sc
@@ -148,172 +143,120 @@ pub async fn run<R: Runtime>(
         let title = sc.title.clone();
         let app_clone = app_handle.map(|a| a.clone());
         group_set.spawn(async move {
-            match crate::summarize_changes::summarize_semantic_change(
-                main_with_reasoning,
-                sub_changes,
-                title.clone(),
-                group_budget.max_output_tokens,
-                Some(group_budget.num_ctx),
-                app_clone,
-            )
-            .await
-            {
-                Ok((summary, usage)) => (
-                    sc_idx,
-                    title,
+            let is_single_hunk = main_with_reasoning.len() + sub_changes.len() == 1;
+
+            // Save everything needed for fallbacks and hunk assembly before consuming the vecs.
+            let all_changes: Vec<Change> = main_with_reasoning
+                .iter()
+                .chain(sub_changes.iter())
+                .map(|(c, _)| c.clone())
+                .collect();
+            let hashes: BTreeSet<String> =
+                all_changes.iter().map(|c| c.hash.clone()).collect();
+            let fallback_group_desc: String = main_with_reasoning
+                .first()
+                .or_else(|| sub_changes.first())
+                .map(|(_, r)| r.clone())
+                .unwrap_or_default();
+            let fallback_own: HashMap<String, HunkSummary> = main_with_reasoning
+                .iter()
+                .chain(sub_changes.iter())
+                .map(|(c, r)| {
+                    (
+                        c.hash.clone(),
+                        HunkSummary {
+                            title: title.clone(),
+                            description: r.clone(),
+                        },
+                    )
+                })
+                .collect();
+
+            let (group_summary, own_summaries) =
+                match crate::summarize_changes::summarize_semantic_change(
+                    main_with_reasoning,
+                    sub_changes,
+                    title.clone(),
                     group_budget.max_output_tokens,
-                    usage,
-                    Ok(summary),
-                ),
-                Err(e) => (
-                    sc_idx,
-                    title,
-                    group_budget.max_output_tokens,
-                    TokenUsage::default(),
-                    Err(e),
-                ),
-            }
+                    Some(group_budget.num_ctx),
+                    app_clone,
+                )
+                .await
+                {
+                    Ok((summary, usage)) => {
+                        dbg::log_stage2_result(
+                            &title,
+                            group_budget.max_output_tokens,
+                            &usage,
+                            &summary,
+                        );
+                        (summary.group, summary.own_summaries)
+                    }
+                    Err(e) => {
+                        log::warn!(
+                            "[summarize_pipeline] stage 2 failed for '{}': {}",
+                            title,
+                            e
+                        );
+                        (
+                            HunkSummary {
+                                title: title.clone(),
+                                description: fallback_group_desc,
+                            },
+                            fallback_own,
+                        )
+                    }
+                };
+
+            let group_summary = if is_single_hunk { None } else { Some(group_summary) };
+
+            let hunks: Vec<SummarizedHunk> = all_changes
+                .into_iter()
+                .map(|c| {
+                    let own_summary = own_summaries.get(&c.hash).cloned();
+                    SummarizedHunk { change: c, own_summary }
+                })
+                .collect();
+
+            (sc_idx, SummarizedSemanticChange { group_summary, hashes, hunks })
         });
     }
 
-    // Warn about hunks not assigned to any semantic change
-    let assigned: std::collections::HashSet<&str> = map
-        .semantic_changes
-        .iter()
-        .flat_map(|sc| {
-            sc.main_summary_hunks
-                .iter()
-                .chain(sc.sub_summary_hunks.iter())
-        })
-        .map(|ha| ha.hash.as_str())
-        .collect();
-
-    for c in changes
-        .iter()
-        .filter(|c| !assigned.contains(c.hash.as_str()))
-    {
-        log::warn!(
-            "[summarize_pipeline] hunk not assigned to any semantic change: {} [{}]",
-            c.filename,
-            c.hash
-        );
-    }
-
     // Drain group results
-    let mut stage2_results: Vec<(
-        usize,
-        String,
-        u32,
-        TokenUsage,
-        anyhow::Result<crate::summarize_changes::SemanticChangeSummary>,
-    )> = Vec::new();
+    let mut stage2_results: Vec<(usize, SummarizedSemanticChange)> = Vec::new();
     while let Some(join_result) = group_set.join_next().await {
         if let Ok(item) = join_result {
             stage2_results.push(item);
         }
     }
+    stage2_results.sort_by_key(|(idx, _)| *idx);
+    let mut semantic_changes: Vec<SummarizedSemanticChange> =
+        stage2_results.into_iter().map(|(_, sc)| sc).collect();
 
-    dbg::log_stage2_results(&stage2_results);
-
-    // ── Build lookup structures ──────────────────────────────────────────
-    let single_hunk_scs: std::collections::HashSet<usize> = map
-        .semantic_changes
+    // Warn about and collect hunks not assigned to any semantic change
+    let assigned: HashSet<String> = semantic_changes
         .iter()
-        .enumerate()
-        .filter(|(_, sc)| sc.main_summary_hunks.len() + sc.sub_summary_hunks.len() == 1)
-        .map(|(idx, _)| idx)
+        .flat_map(|sc| sc.hunks.iter())
+        .map(|h| h.change.hash.clone())
         .collect();
 
-    // hash → sc_idx (owned keys to avoid lifetime issues when map moves later)
-    let mut hash_to_sc_idx: std::collections::HashMap<String, usize> =
-        std::collections::HashMap::new();
-    for (sc_idx, sc) in map.semantic_changes.iter().enumerate() {
-        for ha in &sc.main_summary_hunks {
-            hash_to_sc_idx.entry(ha.hash.clone()).or_insert(sc_idx);
-        }
-        for ha in &sc.sub_summary_hunks {
-            hash_to_sc_idx.entry(ha.hash.clone()).or_insert(sc_idx);
-        }
-    }
-
-    // sc_idx → SemanticChangeSummary (borrowed from stage2_results)
-    let result_by_idx: std::collections::HashMap<
-        usize,
-        &crate::summarize_changes::SemanticChangeSummary,
-    > = stage2_results
-        .iter()
-        .filter_map(|(idx, _, _, _, r)| r.as_ref().ok().map(|s| (*idx, s)))
-        .collect();
-
-    // hash → own HunkSummary (cloned — stage2_results dropped after this block)
-    let mut own_by_hash: std::collections::HashMap<String, HunkSummary> = result_by_idx
-        .values()
-        .flat_map(|sc_result| {
-            sc_result
-                .own_summaries
-                .iter()
-                .map(|(h, s)| (h.clone(), s.clone()))
-        })
-        .collect();
-
-    // sc_idx → group HunkSummary (cloned)
-    let mut group_by_sc_idx: std::collections::HashMap<usize, HunkSummary> = result_by_idx
-        .iter()
-        .map(|(&idx, s)| (idx, s.group.clone()))
-        .collect();
-
-    // Patch in Stage 1 fallbacks for any SC whose Stage 2 call failed.
-    // Own: (sc.title, hunk.reasoning). Group: (sc.title, first main → first sub reasoning).
-    for (sc_idx, sc) in map.semantic_changes.iter().enumerate() {
-        if !single_hunk_scs.contains(&sc_idx) {
-            group_by_sc_idx
-                .entry(sc_idx)
-                .or_insert_with(|| HunkSummary {
-                    title: sc.title.clone(),
-                    description: sc
-                        .main_summary_hunks
-                        .first()
-                        .or_else(|| sc.sub_summary_hunks.first())
-                        .map(|ha| ha.reasoning.clone())
-                        .unwrap_or_default(),
-                });
-        }
-        for ha in sc
-            .main_summary_hunks
-            .iter()
-            .chain(sc.sub_summary_hunks.iter())
-        {
-            own_by_hash
-                .entry(ha.hash.clone())
-                .or_insert_with(|| HunkSummary {
-                    title: sc.title.clone(),
-                    description: ha.reasoning.clone(),
-                });
-        }
-    }
-
-    // ── Assemble SummarizedHunk vec ──────────────────────────────────────
-    let hunks: Vec<SummarizedHunk> = changes
-        .into_iter()
-        .map(|change| {
-            let sc_idx = hash_to_sc_idx.get(&change.hash).copied();
-            let group_summary = sc_idx.and_then(|idx| {
-                if single_hunk_scs.contains(&idx) {
-                    None
-                } else {
-                    group_by_sc_idx.get(&idx).cloned()
-                }
+    for (hash, change) in &change_index {
+        if !assigned.contains(*hash) {
+            log::warn!(
+                "[summarize_pipeline] hunk not assigned to any semantic change: {} [{}]",
+                change.filename,
+                hash
+            );
+            semantic_changes.push(SummarizedSemanticChange {
+                group_summary: None,
+                hashes: BTreeSet::from([hash.to_string()]),
+                hunks: vec![SummarizedHunk {
+                    change: (*change).clone(),
+                    own_summary: None,
+                }],
             });
-            let own_summary = own_by_hash.get(&change.hash).cloned();
-            SummarizedHunk {
-                change,
-                group_summary,
-                own_summary,
-            }
-        })
-        .collect();
-
-    dbg::log_all_changes(&hunks, &excluded);
+        }
+    }
 
     let generation_attempted = commit_msg_task.is_some();
     let (generated_commit_message, commit_usage) = if let Some(handle) = commit_msg_task {
@@ -335,10 +278,11 @@ pub async fn run<R: Runtime>(
         &commit_usage,
     );
 
+    dbg::log_all_changes(&semantic_changes, &sensitive_or_opaque);
+
     Ok(SummarizePipelineResult {
-        hunks,
-        excluded,
-        semantic_map: map,
+        semantic_changes,
+        sensitive_or_opaque,
         generated_commit_message,
     })
 }

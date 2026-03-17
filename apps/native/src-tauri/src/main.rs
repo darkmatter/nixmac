@@ -34,6 +34,7 @@ mod secret_scanner;
 mod sqlite_types;
 mod statistics;
 mod store;
+mod store_changeset;
 mod summarize;
 mod summarize_changes;
 mod summarize_pipeline;
