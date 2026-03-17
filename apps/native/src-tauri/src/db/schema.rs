@@ -93,8 +93,8 @@ fn create_tables(conn: &Connection) -> Result<()> {
         CREATE TABLE IF NOT EXISTS change_sets (
             id INTEGER PRIMARY KEY,
             commit_id INTEGER REFERENCES commits(id),
-            base_commit_id INTEGER REFERENCES commits(id),
-            commit_message TEXT NOT NULL,
+            base_commit_id INTEGER NOT NULL REFERENCES commits(id),
+            commit_message TEXT,
             generated_commit_message TEXT,
             created_at INTEGER NOT NULL
         );

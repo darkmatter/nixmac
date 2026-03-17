@@ -64,8 +64,8 @@ pub fn insert_change_or_ignore(
 pub fn insert_change_set(
     tx: &Transaction,
     commit_id: Option<i64>,
-    base_commit_id: Option<i64>,
-    commit_message: &str,
+    base_commit_id: i64,
+    commit_message: Option<&str>,
     generated_commit_message: Option<&str>,
     created_at: i64,
 ) -> Result<i64> {

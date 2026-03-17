@@ -68,8 +68,8 @@ pub async fn generate_history_from<R: Runtime>(
         if let Err(e) = crate::store_changeset::store_change_set(
             &db_path,
             Some(commit_id),
-            Some(base_commit_id),
-            commits[i].message.as_deref().unwrap_or(""),
+            base_commit_id,
+            commits[i].message.as_deref(),
             &result,
         ) {
             log::error!(
