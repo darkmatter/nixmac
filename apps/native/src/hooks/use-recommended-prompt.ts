@@ -15,7 +15,7 @@ export function useRecommendedPrompt() {
   }, []);
 
   useEffect(() => {
-    if (recommendation === null) {
+    if (recommendation === undefined) {
       refresh();
     }
   }, [recommendation, refresh]);
