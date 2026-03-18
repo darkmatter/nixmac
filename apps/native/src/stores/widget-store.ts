@@ -121,7 +121,8 @@ export interface WidgetState {
     timestamp: string;
   } | null;
   error: string | null;
-  recommendedPrompt: RecommendedPrompt | null;
+  // `undefined` means "stale/unfetched", while `null` means "fetched and none found".
+  recommendedPrompt: RecommendedPrompt | null | undefined;
 
   // Confirmation preferences
   confirmBuild: boolean;
@@ -160,7 +161,7 @@ export interface WidgetActions {
   ) => void;
   setPromptHistory: (history: string[]) => void;
   setSummaryAvailable: (available: boolean) => void;
-  setRecommendedPrompt: (prompt: RecommendedPrompt | null) => void;
+  setRecommendedPrompt: (prompt: RecommendedPrompt | null | undefined) => void;
 
   // History
   setHistory: (history: HistoryItem[]) => void;
@@ -279,7 +280,7 @@ export const initialWidgetState: WidgetState = {
   feedbackInitialText: null,
   panicDetails: null,
   error: null,
-  recommendedPrompt: null,
+  recommendedPrompt: undefined,
 
   // Confirmation preferences
   confirmBuild: true,
