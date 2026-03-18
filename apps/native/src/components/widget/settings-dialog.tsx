@@ -2,15 +2,16 @@ import { Button } from "@/components/ui/button";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI } from "@/tauri-api";
+import { darwinAPI, DEFAULT_MAX_ITERATIONS } from "@/tauri-api";
 import { useForm } from "@tanstack/react-form";
-import { Bot, FolderOpen, Key, Settings2 } from "lucide-react";
+import { Bot, FolderOpen, Key, Settings2, SlidersHorizontal } from "lucide-react";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { AiModelsTab } from "./settings/ai-models-tab";
 import { ApiKeysTab } from "./settings/api-keys-tab";
 import { GeneralTab } from "./settings/general-tab";
+import { PreferencesTab } from "./settings/preferences-tab";
 
-type SettingsTab = "general" | "api-keys" | "ai-models";
+type SettingsTab = "general" | "api-keys" | "ai-models" | "preferences";
 type ApiKeyStatus = "idle" | "verifying" | "valid" | "invalid";
 
 interface NavItemProps {
@@ -126,7 +127,7 @@ export function SettingsDialog() {
       summaryModel: "openai/gpt-4o-mini",
       evolveProvider: "openai",
       evolveModel: "anthropic/claude-sonnet-4",
-      maxIterations: 50,
+      maxIterations: DEFAULT_MAX_ITERATIONS,
       maxBuildAttempts: 5,
       sendDiagnostics: false,
     },
@@ -146,7 +147,7 @@ export function SettingsDialog() {
           form.setFieldValue("summaryModel", prefs.summaryModel ?? "openai/gpt-4o-mini");
           form.setFieldValue("evolveProvider", prefs.evolveProvider ?? "openai");
           form.setFieldValue("evolveModel", prefs.evolveModel ?? "anthropic/claude-sonnet-4");
-          form.setFieldValue("maxIterations", prefs.maxIterations ?? 50);
+          form.setFieldValue("maxIterations", prefs.maxIterations ?? DEFAULT_MAX_ITERATIONS);
           form.setFieldValue("maxBuildAttempts", prefs.maxBuildAttempts ?? 5);
           form.setFieldValue("sendDiagnostics", prefs.sendDiagnostics ?? false);
 
@@ -214,6 +215,12 @@ export function SettingsDialog() {
                 label="API Keys"
                 onClick={() => setActiveTab("api-keys")}
               />
+              <NavItem
+                active={activeTab === "preferences"}
+                icon={<SlidersHorizontal className="h-4 w-4" />}
+                label="Preferences"
+                onClick={() => setActiveTab("preferences")}
+              />
             </nav>
             <div className="mt-auto">
               <Button
@@ -273,6 +280,8 @@ export function SettingsDialog() {
                 )}
               </form.Field>
             )}
+
+            {activeTab === "preferences" && <PreferencesTab />}
 
             {activeTab === "ai-models" && (
               <form.Field name="evolveProvider">

@@ -1,0 +1,154 @@
+import { useState } from "react";
+import type { HistoryItem } from "@/tauri-api";
+import type { SummarizedChange } from "@/types/queries";
+import { cn } from "@/lib/utils";
+import { AnalyzeHistoryItemButton } from "@/components/widget/analyze-history-item-button";
+import { HistoryRestoreItemButton } from "@/components/widget/history-restore-item-button";
+
+type CategoryStyle = {
+  text: string;
+  bg: string;
+  dot: string;
+};
+
+const CATEGORY_STYLES: Record<string, CategoryStyle> = {
+  packages: { text: "text-emerald-500", bg: "bg-emerald-500/[0.08]", dot: "bg-emerald-500" },
+  settings: { text: "text-blue-500", bg: "bg-blue-500/[0.08]", dot: "bg-blue-500" },
+  shell: { text: "text-amber-500", bg: "bg-amber-500/[0.08]", dot: "bg-amber-500" },
+  home: { text: "text-violet-500", bg: "bg-violet-500/[0.08]", dot: "bg-violet-500" },
+  system: { text: "text-gray-500", bg: "bg-gray-500/[0.08]", dot: "bg-gray-500" },
+};
+
+function getCategoryStyle(title: string): CategoryStyle {
+  const key = title.toLowerCase();
+  for (const [k, v] of Object.entries(CATEGORY_STYLES)) {
+    if (key.includes(k)) return v;
+  }
+  return { text: "text-gray-500", bg: "bg-gray-500/[0.08]", dot: "bg-gray-500" };
+}
+
+function formatRelativeTime(unixSeconds: number): string {
+  const diff = Math.floor(Date.now() / 1000 - unixSeconds);
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} hr ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+interface SummaryBadge {
+  title: string;
+  description: string;
+}
+
+function getSummaryBadges(changes: SummarizedChange[]): SummaryBadge[] {
+  const seen = new Set<number>();
+  const badges: SummaryBadge[] = [];
+  for (const sc of changes) {
+    if (sc.groupSummary) {
+      if (!seen.has(sc.groupSummary.id)) {
+        seen.add(sc.groupSummary.id);
+        badges.push({ title: sc.groupSummary.title, description: sc.groupSummary.description });
+      }
+    } else if (sc.ownSummary) {
+      badges.push({ title: sc.ownSummary.title, description: sc.ownSummary.description });
+    }
+  }
+  return badges;
+}
+
+interface HistoryItemCardProps {
+  item: HistoryItem;
+}
+
+export function HistoryItemCard({ item }: HistoryItemCardProps) {
+  const [expanded, setExpanded] = useState(false);
+
+  const changeSet = item.changeSet;
+  const badges = changeSet ? getSummaryBadges(changeSet.changes) : [];
+
+  const toggle = () => setExpanded((prev) => !prev);
+
+  return (
+    <div
+      className={cn(
+        "group rounded-[10px] border-2 bg-[#111111] px-[14px] py-3 mb-2 select-none transition-colors duration-150",
+        item.isBuilt ? "border-teal-400/40" : "border-white/[0.12]",
+        changeSet
+          ? cn("cursor-pointer", !item.isBuilt && "hover:border-white/25 hover:bg-[#141414]")
+          : "cursor-default",
+        expanded && cn("bg-[#151515]", item.isBuilt ? "border-teal-400/50" : "border-white/35"),
+      )}
+      onClick={changeSet ? toggle : undefined}
+      onKeyDown={changeSet ? (e) => {
+        if (e.key === "Enter" || e.key === " ") toggle();
+      } : undefined}
+      role={changeSet ? "button" : undefined}
+      tabIndex={changeSet ? 0 : undefined}
+    >
+      {/* Collapsed body: left content + right actions */}
+      <div className="flex items-start justify-between gap-[10px]">
+        {/* Left: message, meta, badges */}
+        <div className="min-w-0 flex-1">
+          <span className="text-[13px] font-medium leading-[1.4] text-white">
+            {item.message ?? "(no message)"}
+          </span>
+          <div className="mt-[6px] flex w-fit flex-wrap items-center gap-2">
+            <span className="rounded bg-teal-400/[0.08] px-[7px] py-0.5 font-mono text-[10px] text-teal-400">
+              {item.hash.slice(0, 7)}
+            </span>
+            <span className="text-[10px] text-neutral-500">
+              {formatRelativeTime(item.createdAt)}
+            </span>
+          </div>
+          {badges.length > 0 && (
+            <div className="mt-[6px] flex flex-wrap gap-1">
+              {badges.map((badge) => {
+                const style = getCategoryStyle(badge.title);
+                return (
+                  <span
+                    key={badge.title}
+                    className={cn(
+                      "inline-flex items-center gap-[3px] rounded px-[7px] py-0.5 text-[10px]",
+                      style.text,
+                      style.bg,
+                    )}
+                  >
+                    <span className={cn("h-[5px] w-[5px] shrink-0 rounded-full", style.dot)} />
+                    {badge.title}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Right: action buttons */}
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <HistoryRestoreItemButton hash={item.hash} isBuilt={item.isBuilt} />
+          {!changeSet && (
+            <AnalyzeHistoryItemButton
+              hash={item.hash}
+              className="group-hover:bg-accent group-hover:text-accent-foreground"
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Expanded detail lines */}
+      {expanded && badges.length > 0 && (
+        <div className="mt-[10px] border-t border-white/10 pt-[10px]">
+          <p className="mb-[5px] text-[11px] font-medium text-neutral-400">Changes</p>
+          {badges.map((badge) => (
+            <div
+              key={badge.title}
+              className="my-[3px] rounded border-l-2 border-white/20 bg-white/[0.02] px-2 py-1 text-[11px] text-neutral-500"
+            >
+              {badge.description}
+            </div>
+          ))}
+        </div>
+      )}
+
+    </div>
+  );
+}

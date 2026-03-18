@@ -155,7 +155,6 @@ interface StoreState {
   host?: string;
   gitStatus?: GitStatus | null;
   evolvePrompt?: string;
-  commitMsg?: string;
   isProcessing?: boolean;
   isGenerating?: boolean;
   processingAction?: "evolve" | "apply" | "commit" | "cancel" | null;
@@ -180,7 +179,6 @@ function StoryWidget({ storeState }: { storeState?: StoreState }) {
     if (storeState?.host !== undefined) store.setHost(storeState.host);
     if (storeState?.gitStatus !== undefined) store.setGitStatus(storeState.gitStatus);
     if (storeState?.evolvePrompt !== undefined) store.setEvolvePrompt(storeState.evolvePrompt);
-    if (storeState?.commitMsg !== undefined) store.setCommitMsg(storeState.commitMsg);
     if (storeState?.isProcessing !== undefined)
       store.setProcessing(storeState.isProcessing, storeState.processingAction || null);
     if (storeState?.isGenerating !== undefined) store.setGenerating(storeState.isGenerating);
@@ -381,7 +379,6 @@ export const Preview = meta.story({
         host: "Demo-MacBook-Pro",
         hosts: ["Demo-MacBook-Pro", "Work-MacBook"],
         gitStatus: mockGitStatus,
-        commitMsg: "feat(darwin): add vim and configure git",
         summary: mockSummary,
         consoleLogs:
           "> Running darwin-rebuild switch...\n✓ Apply complete\n\nChanges are now active. Commit to save or discard to revert.\n",
@@ -419,7 +416,6 @@ export const Committing = meta.story({
         host: "Demo-MacBook-Pro",
         hosts: ["Demo-MacBook-Pro", "Work-MacBook"],
         gitStatus: mockGitStatus,
-        commitMsg: "feat(darwin): add vim and configure git",
         isProcessing: true,
         processingAction: "commit",
         summary: mockSummary,
@@ -459,7 +455,6 @@ export const ManyChangedFiles = meta.story({
         configDir: "/Users/demo/.darwin",
         host: "Demo-MacBook-Pro",
         hosts: ["Demo-MacBook-Pro", "Work-MacBook"],
-        commitMsg: "feat: comprehensive system setup",
         gitStatus: {
           files: [
             { path: "modules/darwin/default.nix", changeType: "edited" },
@@ -576,7 +571,6 @@ export const CommitScreen = meta.story({
         host: "Demo-MacBook-Pro",
         hosts: ["Demo-MacBook-Pro", "Work-MacBook"],
         gitStatus: mockGitStatusAllStaged,
-        commitMsg: "",
         summary: mockSummary,
       }}
     />
@@ -594,7 +588,6 @@ export const CommitScreenWithMessage = meta.story({
         host: "Demo-MacBook-Pro",
         hosts: ["Demo-MacBook-Pro", "Work-MacBook"],
         gitStatus: mockGitStatusAllStaged,
-        commitMsg: "feat(darwin): add vim and configure git settings",
         summary: mockSummary,
       }}
     />

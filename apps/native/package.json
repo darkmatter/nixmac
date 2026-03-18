@@ -82,7 +82,7 @@
     "detect-node-es": "^1.1.0",
     "execa": "^9.6.0",
     "lucide-react": "^0.562.0",
-    "motion": "^12.24.7",
+    "motion": "^12.35.2",
     "openai": "^6.9.1",
     "react": "^19.2.3",
     "react-dom": "^19.1.0",

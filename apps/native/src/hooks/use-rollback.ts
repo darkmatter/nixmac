@@ -15,7 +15,7 @@ export function useRollback() {
   const { triggerRebuild } = useRebuildStream();
 
   const handleRollback = useCallback(
-    async (keepBranch = false) => {
+    async (keepBranch = true) => {
       const store = useWidgetStore.getState();
       const evolveBranchHadBuiltCommit = store.gitStatus?.branchHasBuiltCommit;
 
@@ -34,7 +34,7 @@ export function useRollback() {
         store.appendLog("✓ Changes discarded\n");
         if (evolveBranchHadBuiltCommit) {
           store.appendLog("> Rebuilding to activate main configuration...\n");
-          await triggerRebuild();
+          await triggerRebuild({ context: "rollback" });
           // Note: processing state cleared by rebuild stream
         } else {
           store.setProcessing(false);

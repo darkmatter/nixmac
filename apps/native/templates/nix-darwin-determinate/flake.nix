@@ -63,6 +63,12 @@
 
           # Required for Determinate:
           nix.enable = false; # Disable nix-darwin’s Nix management
+
+          # Primary user (required by nix-darwin for homebrew, system.defaults, etc.)
+          system.primaryUser = "USERNAME_PLACEHOLDER";
+
+          # Enable Homebrew management through nix-darwin
+          homebrew.enable = true;
         };
     in
     {

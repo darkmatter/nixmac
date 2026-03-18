@@ -4,6 +4,9 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
+const DEFAULT_RETRY_ATTEMPTS: usize = 1;
+const RETRY_GUIDANCE: &str = "Retry the previous step. Return either valid structured tool_calls or concise assistant content. Do not emit empty content with no tool_calls. If using tool_calls, keep arguments as strict JSON only.";
+
 pub struct OllamaProvider {
     client: reqwest::Client,
     base_url: String,
@@ -29,7 +32,7 @@ struct ChatRequest {
     tools: Vec<OllamaTool>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct OllamaMessage {
     role: String,
     content: String,
@@ -37,24 +40,24 @@ struct OllamaMessage {
     tool_calls: Option<Vec<OllamaToolCall>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct OllamaToolCall {
     function: OllamaFunctionCall,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct OllamaFunctionCall {
     name: String,
     arguments: serde_json::Value,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 struct OllamaTool {
     r#type: String,
     function: OllamaToolFunction,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 struct OllamaToolFunction {
     name: String,
     description: String,
@@ -87,63 +90,115 @@ impl AiProvider for OllamaProvider {
         messages: &[Message],
         tools: &[GenericTool],
     ) -> std::result::Result<ProviderResponse, ProviderError> {
-        let ollama_messages = convert_to_ollama_messages(messages);
+        let mut ollama_messages = convert_to_ollama_messages(messages);
         let ollama_tools = convert_to_ollama_tools(tools);
-
-        let request = ChatRequest {
-            model: self.model.clone(),
-            messages: ollama_messages,
-            stream: false,
-            tools: ollama_tools,
-        };
-
         let url = format!("{}/api/chat", self.base_url);
-        let response = self
-            .client
-            .post(&url)
-            .json(&request)
-            .send()
-            .await
-            .map_err(|e| ProviderError::Other(anyhow!(e)))?;
+        let mut retry_attempt = 0usize;
 
-        if !response.status().is_success() {
-            let status = response.status();
-            let error_text = response
-                .text()
+        loop {
+            let request = ChatRequest {
+                model: self.model.clone(),
+                messages: ollama_messages.clone(),
+                stream: false,
+                tools: ollama_tools.clone(),
+            };
+
+            let response = self
+                .client
+                .post(&url)
+                .json(&request)
+                .send()
                 .await
                 .map_err(|e| ProviderError::Other(anyhow!(e)))?;
-            return Err(ProviderError::Http {
-                status,
-                body: error_text,
-            });
+
+            if !response.status().is_success() {
+                let status = response.status();
+                let error_text = response
+                    .text()
+                    .await
+                    .map_err(|e| ProviderError::Other(anyhow!(e)))?;
+
+                let should_retry = retry_attempt < DEFAULT_RETRY_ATTEMPTS
+                    && is_ollama_tool_call_parse_error(status, &error_text);
+
+                if should_retry {
+                    retry_attempt += 1;
+                    log::warn!(
+                        "Ollama parse error response; retrying completion ({}/{})",
+                        retry_attempt,
+                        DEFAULT_RETRY_ATTEMPTS
+                    );
+                    append_retry_guidance(&mut ollama_messages);
+                    continue;
+                }
+
+                return Err(ProviderError::Http {
+                    status,
+                    body: error_text,
+                });
+            }
+
+            let chat_response: ChatResponse = response
+                .json()
+                .await
+                .map_err(|e| ProviderError::Other(anyhow!(e)))?;
+
+            // Debug: Log the raw response to understand what we're getting
+            log::debug!(
+                "Ollama raw response - content: {:?}, tool_calls: {:?}",
+                chat_response.message.content,
+                chat_response.message.tool_calls
+            );
+
+            if retry_attempt < DEFAULT_RETRY_ATTEMPTS
+                && is_empty_assistant_response(&chat_response.message)
+            {
+                retry_attempt += 1;
+                log::warn!(
+                    "Ollama returned empty assistant message without tool calls; retrying completion ({}/{})",
+                    retry_attempt,
+                    DEFAULT_RETRY_ATTEMPTS
+                );
+                append_retry_guidance(&mut ollama_messages);
+                continue;
+            }
+
+            let message = convert_from_ollama_response(&chat_response);
+
+            let usage = if let Some(eval_count) = chat_response.eval_count {
+                Some(TokenUsage {
+                    input: chat_response.prompt_eval_count.unwrap_or(0),
+                    output: eval_count,
+                    total: chat_response.prompt_eval_count.unwrap_or(0) + eval_count,
+                })
+            } else {
+                None
+            };
+
+            return Ok(ProviderResponse { message, usage });
         }
-
-        let chat_response: ChatResponse = response
-            .json()
-            .await
-            .map_err(|e| ProviderError::Other(anyhow!(e)))?;
-
-        // Debug: Log the raw response to understand what we're getting
-        log::debug!(
-            "Ollama raw response - content: {:?}, tool_calls: {:?}",
-            chat_response.message.content,
-            chat_response.message.tool_calls
-        );
-
-        let message = convert_from_ollama_response(&chat_response);
-
-        let usage = if let Some(eval_count) = chat_response.eval_count {
-            Some(TokenUsage {
-                input: chat_response.prompt_eval_count.unwrap_or(0),
-                output: eval_count,
-                total: chat_response.prompt_eval_count.unwrap_or(0) + eval_count,
-            })
-        } else {
-            None
-        };
-
-        Ok(ProviderResponse { message, usage })
     }
+}
+
+fn is_ollama_tool_call_parse_error(status: reqwest::StatusCode, body: &str) -> bool {
+    status.as_u16() == 500 && body.contains("error parsing tool call")
+}
+
+fn is_empty_assistant_response(message: &OllamaMessage) -> bool {
+    let no_content = message.content.trim().is_empty();
+    let no_tool_calls = message
+        .tool_calls
+        .as_ref()
+        .is_none_or(|tool_calls| tool_calls.is_empty());
+    no_content && no_tool_calls
+}
+
+fn append_retry_guidance(messages: &mut Vec<OllamaMessage>) {
+    messages.push(OllamaMessage {
+        role: "user".to_string(),
+        content: RETRY_GUIDANCE.to_string(),
+        tool_calls: None,
+    });
 }
 
 fn convert_to_ollama_tools(tools: &[GenericTool]) -> Vec<OllamaTool> {

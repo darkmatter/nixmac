@@ -38,7 +38,6 @@ const DEFAULT_SHARE_OPTIONS: ShareOptions = {
   aiProviderModelInfo: true,
   buildErrorOutput: true,
   flakeInputsSnapshot: true,
-  nixConfig: true,
   appLogs: true,
 };
 
@@ -51,7 +50,6 @@ const ISSUE_SHARE_OPTIONS: ShareOptions = {
   aiProviderModelInfo: true,
   buildErrorOutput: true,
   flakeInputsSnapshot: true,
-  nixConfig: true,
   appLogs: true,
 };
 
@@ -248,33 +246,6 @@ function shouldShowFlakeInputsSnapshot(
   }
 }
 
-function shouldShowNixConfig(
-  feedbackType: FeedbackType,
-  step: string,
-  _mainWindowError?: string,
-): boolean {
-  switch (feedbackType) {
-    case FeedbackType.Suggestion:
-    case FeedbackType.General:
-      return false;
-    case FeedbackType.Issue:
-      switch (step) {
-        case "setup":
-          return false;
-        case "evolving":
-          return true;
-        case "merge":
-          return false;
-        default:
-          return false;
-      }
-    case FeedbackType.Bug:
-      return true;
-    default:
-      return false;
-  }
-}
-
 function shouldShowAppLogs(
   feedbackType: FeedbackType,
   step: string,
@@ -424,7 +395,6 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
         aiProviderModelInfo: metadata?.aiProviderModelInfo,
         buildErrorOutput: metadata?.buildErrorOutput,
         flakeInputsSnapshot: metadata?.flakeInputsSnapshot,
-        nixConfigSnapshot: metadata?.nixConfigSnapshot,
         appLogsContent: metadata?.appLogsContent,
         panicDetails: feedbackType === FeedbackType.Error ? (panicDetails ?? undefined) : undefined,
       });
@@ -948,41 +918,6 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
                     </TooltipTrigger>
                     <TooltipContent side="right" className="max-w-sm text-sm">
                       {shareOptionTooltips.flakeInputsSnapshot}
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              )}
-
-              {shouldShowNixConfig(feedbackType, step, mainWindowError) && (
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="share-nix-config"
-                    checked={shareOptions.nixConfig}
-                    onCheckedChange={(checked: boolean | "indeterminate") =>
-                      setShareOptions({
-                        ...shareOptions,
-                        nixConfig: checked === true,
-                      })
-                    }
-                  />
-                  <Label
-                    htmlFor="share-nix-config"
-                    className="cursor-pointer font-medium text-sm text-foreground flex-1"
-                  >
-                    Nix config snapshot
-                  </Label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
-                        aria-label="More information"
-                      >
-                        <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="max-w-sm text-sm">
-                      {shareOptionTooltips.nixConfig}
                     </TooltipContent>
                   </Tooltip>
                 </div>

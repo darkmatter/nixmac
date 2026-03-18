@@ -1,9 +1,10 @@
-import { useWidgetStore } from "@/stores/widget-store";
+import { useWidgetStore, type RebuildContext, type RebuildErrorType } from "@/stores/widget-store";
 import { darwinAPI, ipcRenderer } from "@/tauri-api";
 import { useCallback, useRef } from "react";
 import { useGitOperations } from "./use-git-operations";
 
 interface RebuildOptions {
+  context: RebuildContext;
   /** Called after successful rebuild (before auto-dismiss) */
   onSuccess?: () => Promise<void>;
 }
@@ -17,23 +18,20 @@ export function useRebuildStream() {
   const rebuildLineIdRef = useRef(1);
 
   const triggerRebuild = useCallback(
-    async (options?: RebuildOptions) => {
+    async (options: RebuildOptions) => {
       const store = useWidgetStore.getState();
-      store.startRebuild();
+      store.startRebuild(options.context);
       rebuildLineIdRef.current = 1;
 
       // Listen to raw log data for console output
-      const unlistenData = await ipcRenderer.on<{ chunk: string }>(
-        "darwin:apply:data",
-        (event) => {
-          const { chunk } = event.payload;
-          const newLines = chunk.split("\n").filter((line) => line.trim() !== "");
-          const currentStore = useWidgetStore.getState();
-          for (const line of newLines) {
-            currentStore.appendRawLine(line);
-          }
-        },
-      );
+      const unlistenData = await ipcRenderer.on<{ chunk: string }>("darwin:apply:data", (event) => {
+        const { chunk } = event.payload;
+        const newLines = chunk.split("\n").filter((line) => line.trim() !== "");
+        const currentStore = useWidgetStore.getState();
+        for (const line of newLines) {
+          currentStore.appendRawLine(line);
+        }
+      });
 
       // Listen to AI-summarized log events
       const unlistenSummary = await ipcRenderer.on<{
@@ -73,10 +71,18 @@ export function useRebuildStream() {
       const unlistenEnd = await ipcRenderer.on<{
         ok: boolean;
         code: number;
-        error_type?: string;
+        error_type?: RebuildErrorType;
+        error?: string;
       }>("darwin:apply:end", async (event) => {
         const currentStore = useWidgetStore.getState();
         currentStore.setRebuildComplete(event.payload.ok, event.payload.code);
+
+        if (!event.payload.ok) {
+          const errorType = event.payload.error_type ?? "generic_error";
+          const errorMessage = event.payload.error ?? "Rebuild failed";
+          currentStore.setRebuildError(errorType, errorMessage);
+        }
+
         unlistenData();
         unlistenSummary();
         unlistenEnd();
@@ -86,9 +92,7 @@ export function useRebuildStream() {
           try {
             const permissionsState = await darwinAPI.permissions.checkAll();
             const updatedPermissions = permissionsState.permissions.map((p) =>
-              p.id === "full-disk"
-                ? { ...p, status: "denied" as const, required: true }
-                : p,
+              p.id === "full-disk" ? { ...p, status: "denied" as const, required: true } : p,
             );
             const updatedState = {
               ...permissionsState,

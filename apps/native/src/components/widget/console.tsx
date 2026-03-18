@@ -35,7 +35,7 @@ export function Console() {
           </div>
 
           {/* Logs */}
-          <div className="flex-1 overflow-auto p-3">
+          <div className="flex-1 overflow-auto p-3 pt-6">
             <pre className="whitespace-pre-wrap font-mono text-[11px] text-green-300/90">
               {logs || "No output yet..."}
             </pre>

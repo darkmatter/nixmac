@@ -1,9 +1,14 @@
 //! Tools used by AI
 
-use super::file_ops::{apply_file_edits, join_in_dir};
+use super::file_ops::{
+    apply_file_edits, ensure_path_under_base, join_in_dir, resolve_existing_path_in_dir,
+};
 use super::messages::Tool;
+//use super::run_command::execute_run_command;
+use super::search_packages::execute_search_packages;
 use super::types::FileEdit;
 
+use super::utils::truncate_error;
 use anyhow::{anyhow, Result};
 use log::{debug, error, info};
 use std::path::{Component, Path};
@@ -22,7 +27,8 @@ pub fn create_tools() -> Vec<Tool> {
                          tool FREQUENTLY - before reading files, before making edits, when analyzing \
                          errors, and when planning your approach. Categories: 'planning' for initial \
                          strategy, 'analysis' for understanding code, 'debugging' for fixing errors, \
-                         'verification' for checking your work. Thorough thinking leads to better results."
+                         'verification' for checking your work. Keep thought concise and actionable \
+                         (prefer 1-2 sentences, <= 200 characters)."
                 .to_string(),
             parameters: serde_json::json!({
                 "type": "object",
@@ -34,7 +40,7 @@ pub fn create_tools() -> Vec<Tool> {
                     },
                     "thought": {
                         "type": "string",
-                        "description": "The thought content - be detailed and thorough"
+                        "description": "Brief thought content, ideally 1-2 sentences and <= 200 characters"
                     }
                 },
                 "required": ["category", "thought"]
@@ -101,30 +107,30 @@ pub fn create_tools() -> Vec<Tool> {
             parameters: serde_json::json!({
                 "type": "object",
                 "properties": {
-                    "host": {
-                        "type": "string",
-                        "description": "The host configuration to check (e.g., 'macbook')"
-                    }
                 },
                 "required": ["host"]
             }),
         },
-        Tool {
-            name: "run_command".to_string(),
-            description: "Run a shell command in the config directory. Use sparingly - prefer \
-                         specific tools when available. Useful for checking nix syntax, \
-                         searching code, or other exploratory commands.".to_string(),
-            parameters: serde_json::json!({
-                "type": "object",
-                "properties": {
-                    "command": {
-                        "type": "string",
-                        "description": "Shell command to run"
-                    }
-                },
-                "required": ["command"]
-            }),
-        },
+        // TODO: Remove this when we're confident we can run without run_command.
+        // It's a powerful escape hatch for complex operations that don't fit other tools,
+        // but it can lead to sloppy agent work if overused.
+        // And it's a security risk if the agent is compromised.
+        // Tool {
+        //     name: "run_command".to_string(),
+        //     description: "Run a shell command in the config directory. Use sparingly - prefer \
+        //                  specific tools when available. Useful for checking nix syntax, \
+        //                  searching code, or other exploratory commands.".to_string(),
+        //     parameters: serde_json::json!({
+        //         "type": "object",
+        //         "properties": {
+        //             "command": {
+        //                 "type": "string",
+        //                 "description": "Shell command to run"
+        //             }
+        //         },
+        //         "required": ["command"]
+        //     }),
+        // },
         Tool {
             name: "search_code".to_string(),
             description: "Search for text patterns in the codebase using ripgrep. \
@@ -142,6 +148,46 @@ pub fn create_tools() -> Vec<Tool> {
                     }
                 },
                 "required": ["pattern"]
+            }),
+        },
+        Tool {
+            name: "search_packages".to_string(),
+            description: "Search for Nix packages by name or description. This is a convenient \
+                         wrapper around 'nix search' that returns compact structured JSON results. \
+                         Output format: JSON object keyed by package name. Each value must include \
+                         {\"attr_path\": string, \"version\": string, \"description\": string, \"channel\": string}. \
+                         Example: {\"wget\": {\"attr_path\": \"wget\", \"version\": \"1.21.3\", \"description\": \"retrieves files from the web\", \"channel\": \"nixpkgs-unstable\"}}. \
+                         Return JSON only (no prose). \
+                         Use this instead of run_command for package discovery. \
+                         Parameters: search_type controls where to search (names, descriptions, or both); \
+                         use_regex enables regex patterns for advanced matching; \
+                         channel lets you search in different flakes (nixpkgs, nixpkgs-unstable, etc.)".to_string(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query (package name, description keywords, or regex pattern)"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results to return (default: 20)"
+                    },
+                    "search_type": {
+                        "type": "string",
+                        "enum": ["name", "description", "both"],
+                        "description": "What to search in: 'name' for package names only, 'description' for descriptions only, 'both' for all fields (default: 'both')"
+                    },
+                    "use_regex": {
+                        "type": "boolean",
+                        "description": "Whether to interpret query as a regex pattern (default: false). Use for complex patterns like 'python[0-9]+'"
+                    },
+                    "channel": {
+                        "type": "string",
+                        "description": "Flake/channel to search in: 'nixpkgs' (default), 'nixpkgs-unstable', 'nixpkgs-master', etc."
+                    }
+                },
+                "required": ["query"]
             }),
         },
         Tool {
@@ -182,7 +228,12 @@ pub enum ToolResult {
 }
 
 /// Execute a tool call and return the result
-pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> Result<ToolResult> {
+pub fn execute_tool(
+    config_dir: &str,
+    host_attr: &str,
+    name: &str,
+    args: &serde_json::Value,
+) -> Result<ToolResult> {
     let base = Path::new(config_dir);
     match name {
         "think" => {
@@ -206,7 +257,7 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
             let path = args["path"]
                 .as_str()
                 .ok_or_else(|| anyhow!("read_file: missing path"))?;
-            let full_path = join_in_dir(base, path)?;
+            let full_path = resolve_existing_path_in_dir(base, path)?;
             info!("Reading file: {}", full_path.display());
             let content = std::fs::read_to_string(&full_path)
                 .map_err(|e| anyhow!("Failed to read {}: {}", path, e))?;
@@ -222,24 +273,51 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
             info!("Listing files matching: {}", full_pattern.display());
 
             let ignored_dirs = [".git", "result"];
-            let files: Vec<String> = glob::glob(full_pattern.to_str().unwrap())
+            let matched_files = glob::glob(full_pattern.to_str().unwrap())
                 .map_err(|e| anyhow!("Invalid glob pattern: {}", e))?
                 .filter_map(|p| p.ok())
                 .filter(|p| p.is_file())
-                .filter_map(|p| {
-                    // Strip the normalized `base` so results are returned
-                    // relative to the same directory we validated above.
-                    let rel = p.strip_prefix(base).ok()?;
+                .collect::<Vec<_>>();
 
-                    if let Some(Component::Normal(name)) = rel.components().next() {
-                        if ignored_dirs.contains(&name.to_string_lossy().as_ref()) {
-                            return None;
-                        }
+            let mut files: Vec<String> = Vec::new();
+            let mut escaped_matches: Vec<String> = Vec::new();
+
+            for p in matched_files {
+                if ensure_path_under_base(base, &p).is_err() {
+                    escaped_matches.push(p.display().to_string());
+                    continue;
+                }
+
+                // Strip the normalized `base` so results are returned
+                // relative to the same directory we validated above.
+                let Some(rel) = p.strip_prefix(base).ok() else {
+                    continue;
+                };
+
+                if let Some(Component::Normal(name)) = rel.components().next() {
+                    if ignored_dirs.contains(&name.to_string_lossy().as_ref()) {
+                        continue;
                     }
+                }
 
-                    Some(rel.to_string_lossy().to_string())
-                })
-                .collect();
+                files.push(rel.to_string_lossy().to_string());
+            }
+
+            if !escaped_matches.is_empty() {
+                let sample = escaped_matches
+                    .iter()
+                    .take(3)
+                    .cloned()
+                    .collect::<Vec<_>>()
+                    .join(", ");
+
+                return Err(anyhow!(
+                    "list_files matched one or more files outside config_dir after symlink resolution. pattern='{}' config_dir='{}'. Example match(es): {}. Fix: narrow the pattern to files under config_dir and avoid symlink targets outside config_dir.",
+                    pattern,
+                    base.display(),
+                    sample
+                ));
+            }
 
             debug!("Found {} files", files.len());
             Ok(ToolResult::Continue(files.join("\n")))
@@ -274,17 +352,21 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
         }
 
         "build_check" => {
-            let host = args["host"]
-                .as_str()
-                .ok_or_else(|| anyhow!("build_check: missing host"))?;
+            info!("Running build check for host: {}", host_attr);
 
-            info!("Running build check for host: {}", host);
+            // First make sure we have all new add-files
+            crate::git::intent_add_untracked(config_dir).map_err(|e| {
+                anyhow::anyhow!(
+                    "Failed to register new files with git for flake visibility: {}",
+                    e
+                )
+            })?;
 
             // Use nix build --dry-run to check without actually building
             let output = Command::new("nix")
                 .args([
                     "build",
-                    &format!(".#darwinConfigurations.{}.system", host),
+                    &format!(".#darwinConfigurations.{}.system", host_attr),
                     "--dry-run",
                     "--show-trace",
                 ])
@@ -298,50 +380,34 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
             let combined = format!("{}\n{}", stdout, stderr);
 
             if output.status.success() {
-                info!("Build check passed for host: {}", host);
+                info!("Build check passed for host: {}", host_attr);
                 Ok(ToolResult::BuildResult {
                     success: true,
-                    output: format!("✓ Build check passed for '{}'", host),
+                    output: format!("✓ Build check passed for '{}'", host_attr),
                 })
             } else {
-                error!("Build check failed for host: {}", host);
+                error!("Build check failed for host: {}", host_attr);
                 debug!("Build error output: {}", combined);
                 Ok(ToolResult::BuildResult {
                     success: false,
                     output: format!(
                         "✗ Build check FAILED for '{}':\n\n{}",
-                        host,
+                        host_attr,
                         truncate_error(&combined, 4000)
                     ),
                 })
             }
         }
 
-        "run_command" => {
-            let command = args["command"]
-                .as_str()
-                .ok_or_else(|| anyhow!("run_command: missing command"))?;
+        // TODO: Remove when we know we can run without it. See previous comment at tool definitions.
+        // "run_command" => {
+        //     let command = args["command"]
+        //         .as_str()
+        //         .ok_or_else(|| anyhow!("run_command: missing command"))?;
 
-            info!("Running command: {}", command);
-
-            let output = Command::new("sh")
-                .args(["-c", command])
-                .current_dir(config_dir)
-                .env("PATH", crate::nix::get_nix_path())
-                .output()?;
-
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            let exit_code = output.status.code().unwrap_or(-1);
-
-            let result = format!(
-                "Exit code: {}\n\nSTDOUT:\n{}\n\nSTDERR:\n{}",
-                exit_code, stdout, stderr
-            );
-
-            Ok(ToolResult::Continue(truncate_error(&result, 8000)))
-        }
-
+        //     let result = execute_run_command(config_dir, command)?;
+        //     Ok(ToolResult::Continue(result))
+        // }
         "search_code" => {
             let pattern = args["pattern"]
                 .as_str()
@@ -396,6 +462,22 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
             }
         }
 
+        "search_packages" => {
+            let query = args["query"]
+                .as_str()
+                .ok_or_else(|| anyhow!("search_packages: missing query"))?;
+            // Clamp `limit` between 1 and 50 (default 20). Use as_i64 so negative
+            // and crazy-large values provided by callers are handled gracefully.
+            let limit = args["limit"].as_i64().unwrap_or(20).clamp(1, 50) as u64;
+            let search_type = args["search_type"].as_str().unwrap_or("both");
+            let use_regex = args["use_regex"].as_bool().unwrap_or(false);
+            let channel = args["channel"].as_str().unwrap_or("nixpkgs");
+
+            let result =
+                execute_search_packages(config_dir, query, limit, search_type, use_regex, channel)?;
+            Ok(ToolResult::Continue(result))
+        }
+
         "done" => {
             let summary = args["summary"]
                 .as_str()
@@ -409,26 +491,7 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
     }
 }
 
-/// Truncate error output to a maximum length, keeping the most relevant parts
-fn truncate_error(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
-        return s.to_string();
-    }
-
-    // Keep the beginning and end, which usually have the most relevant info
-    let half = max_len / 2;
-    let start = &s[..half];
-    let end = &s[s.len() - half..];
-
-    format!(
-        "{}\n\n... [truncated {} bytes] ...\n\n{}",
-        start,
-        s.len() - max_len,
-        end
-    )
-}
-
-/// Truncate string for logging (single line preview)
+// Truncate string for logging (single line preview)
 fn truncate_for_log(s: &str, max_len: usize) -> String {
     let s = s.replace('\n', " ").replace('\r', "");
     if s.len() <= max_len {

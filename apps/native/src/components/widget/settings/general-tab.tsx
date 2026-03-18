@@ -9,9 +9,9 @@ import {
 } from "@/components/ui/select";
 import { BootstrapConfig } from "@/components/widget/bootstrap-config";
 import { DirectoryPicker } from "@/components/widget/directory-picker";
+import { getWebSiteUrl } from "@/lib/env";
 import { darwinAPI } from "@/tauri-api";
 import { open } from '@tauri-apps/plugin-shell';
-import { getWebSiteUrl } from "@/lib/env";
 import type { AnyFieldApi } from "@tanstack/react-form";
 
 interface GeneralTabProps {

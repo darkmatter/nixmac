@@ -4,6 +4,7 @@
 //! The `#[serde(rename = "...")]` attributes ensure camelCase naming
 //! for JavaScript/TypeScript consumption.
 
+use crate::utils as global_utils;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::Manager;
@@ -112,6 +113,18 @@ pub struct UiPrefs {
     /// Whether to send diagnostics to the nixmac team.
     #[serde(rename = "sendDiagnostics")]
     pub send_diagnostics: bool,
+
+    /// Whether to show a confirmation dialog before building.
+    #[serde(rename = "confirmBuild")]
+    pub confirm_build: bool,
+
+    /// Whether to show a confirmation dialog before clearing/discarding.
+    #[serde(rename = "confirmClear")]
+    pub confirm_clear: bool,
+
+    /// Whether to show a confirmation dialog before rolling back.
+    #[serde(rename = "confirmRollback")]
+    pub confirm_rollback: bool,
 }
 
 /// Result of a darwin-rebuild operation.
@@ -146,7 +159,6 @@ pub struct FeedbackShareOptions {
     pub ai_provider_model_info: bool,
     pub build_error_output: bool,
     pub flake_inputs_snapshot: bool,
-    pub nix_config: bool,
     pub app_logs: bool,
 }
 
@@ -225,7 +237,6 @@ pub struct FeedbackMetadata {
     pub ai_provider_model_info: Option<FeedbackAiProviderModelInfo>,
     pub build_error_output: Option<String>,
     pub flake_inputs_snapshot: Option<FeedbackFlakeInputsSnapshot>,
-    pub nix_config_snapshot: Option<String>,
     pub app_logs_content: Option<String>,
     pub panic_details: Option<FeedbackPanicDetails>,
 }
@@ -269,6 +280,30 @@ pub struct SummaryResponse {
     /// The diff this summary was generated for (used for cache validation)
     #[serde(default)]
     pub diff: String,
+}
+
+// =============================================================================
+// History
+// =============================================================================
+
+/// A git commit from the log, with optional DB metadata and summary.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryItem {
+    /// Commit hash (always from git log).
+    pub hash: String,
+    /// Commit message (always from git log).
+    pub message: Option<String>,
+    /// Unix timestamp (always from git log).
+    pub created_at: i64,
+    /// True if this commit has the `nixmac-last-build` tag (most recently built).
+    pub is_built: bool,
+    /// DB record — present only if metadata has been generated for this commit.
+    pub commit: Option<crate::sqlite_types::CommitRow>,
+    /// AI summary — present only if a summary has been generated.
+    pub summary: Option<crate::sqlite_types::SummaryRow>,
+    /// Change set with granular changes and summaries — present only if the pipeline has run.
+    pub change_set: Option<crate::query_return_types::SummarizedChanges>,
 }
 
 // =============================================================================
@@ -434,6 +469,8 @@ impl EvolveEvent {
             "read_file" => "Reading file...".to_string(),
             "edit_file" => "Editing file...".to_string(),
             "list_files" => "Listing files...".to_string(),
+            "search_code" => "Searching code...".to_string(),
+            "search_packages" => "Searching packages...".to_string(),
             "build_check" => "Running build check...".to_string(),
             "think" => "Thinking...".to_string(),
             "done" => "Finishing up...".to_string(),
@@ -479,10 +516,12 @@ impl EvolveEvent {
     }
 
     pub fn error(start_time: i64, iter: Option<usize>, error: &str) -> Self {
+        let mut error = error.to_string();
+        global_utils::truncate_utf8(&mut error, 100);
         Self::new(
             EvolveEventType::Error,
             format!("Error: {}", error),
-            format!("Error: {}", truncate(error, 100)),
+            format!("Error: {}", error),
             iter,
             start_time,
         )
@@ -511,11 +550,7 @@ impl EvolveEvent {
 
 /// Truncate a string to max length with ellipsis
 fn truncate(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
-        s.to_string()
-    } else {
-        format!("{}...", &s[..max_len])
-    }
+    global_utils::truncate_with_ellipsis(s, max_len)
 }
 
 /// Shorten a file path to just the filename or last path component
@@ -570,11 +605,9 @@ pub fn slugify(text: &str) -> String {
     result = result.trim_matches('-').to_string();
 
     // Limit to 50 characters
-    if result.len() > 50 {
-        result.truncate(50);
-        // Don't end with a hyphen after truncation
-        result = result.trim_end_matches('-').to_string();
-    }
+    global_utils::truncate_utf8(&mut result, 50);
+    // Don't end with a hyphen after truncation
+    result = result.trim_end_matches('-').to_string();
 
     result
 }

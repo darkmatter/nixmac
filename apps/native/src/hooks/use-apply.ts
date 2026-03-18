@@ -16,6 +16,7 @@ export function useApply() {
     store.setProcessing(true, "apply");
 
     await triggerRebuild({
+      context: "apply",
       onSuccess: async () => {
         try {
           const result = await darwinAPI.darwin.finalizeApply();
