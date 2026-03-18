@@ -490,6 +490,13 @@ pub fn intent_add_untracked(dir: &str) -> Result<()> {
         .current_dir(dir)
         .output()?;
 
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(anyhow::anyhow!(
+            "failed to run `git ls-files --others --exclude-standard` in `{dir}`: {stderr}"
+        ));
+    }
+
     let untracked = String::from_utf8_lossy(&output.stdout);
     let files: Vec<&str> = untracked.lines().filter(|l| !l.is_empty()).collect();
 
@@ -499,7 +506,13 @@ pub fn intent_add_untracked(dir: &str) -> Result<()> {
 
     let mut args = vec!["add", "-N", "--"];
     args.extend(files);
-    git_command().args(&args).current_dir(dir).output()?;
+    let add_output = git_command().args(&args).current_dir(dir).output()?;
+    if !add_output.status.success() {
+        let stderr = String::from_utf8_lossy(&add_output.stderr);
+        return Err(anyhow::anyhow!(
+            "failed to run `git add -N -- <untracked files>` in `{dir}`: {stderr}"
+        ));
+    }
     Ok(())
 }
 
