@@ -275,103 +275,6 @@ pub fn gather_ai_provider_model_info(
     })
 }
 
-// =============================================================================
-// Nix Config Snapshot
-// =============================================================================
-
-/// Recursively find all .nix files in a directory (bounded recursion)
-fn find_nix_files(dir: &Path) -> Result<Vec<PathBuf>> {
-    const MAX_RECURSION_DEPTH: usize = 20;
-
-    let mut nix_files = Vec::new();
-
-    if !dir.exists() {
-        return Ok(nix_files);
-    }
-
-    fn visit_dir(path: &Path, files: &mut Vec<PathBuf>, depth: usize) -> Result<()> {
-        if depth >= MAX_RECURSION_DEPTH {
-            // Stop descending further to avoid potential infinite recursion
-            return Ok(());
-        }
-
-        if !path.is_dir() {
-            return Ok(());
-        }
-
-        for entry in fs::read_dir(path)? {
-            let entry = entry?;
-            let path = entry.path();
-
-            if path.is_dir() {
-                visit_dir(&path, files, depth + 1)?;
-            } else if path.extension().and_then(|s| s.to_str()) == Some("nix") {
-                files.push(path);
-            }
-        }
-        Ok(())
-    }
-
-    visit_dir(dir, &mut nix_files, 0)?;
-    Ok(nix_files)
-}
-
-/// Read and concatenate all .nix files from the config directory's modules/ folder
-pub fn gather_nix_config_snapshot(app: &AppHandle) -> Option<String> {
-    let config_dir = store::get_config_dir(app).ok()?;
-    let modules_dir = PathBuf::from(&config_dir).join("modules");
-
-    if !modules_dir.exists() {
-        debug!("No modules directory found at {:?}", modules_dir);
-        return None;
-    }
-
-    match find_nix_files(&modules_dir) {
-        Ok(nix_files) => {
-            if nix_files.is_empty() {
-                debug!("No .nix files found in modules directory");
-                return None;
-            }
-
-            let mut snapshot = String::new();
-            snapshot.push_str("# Nix Configuration Snapshot\n");
-            snapshot.push_str(&format!("# Collected at: {}\n", Utc::now().to_rfc3339()));
-            snapshot.push_str(&format!("# Total files: {}\n\n", nix_files.len()));
-
-            for (idx, file_path) in nix_files.iter().enumerate() {
-                // Get relative path from config_dir for cleaner output
-                let rel_path = file_path.strip_prefix(&config_dir).unwrap_or(file_path);
-
-                snapshot.push_str(&format!("\n{}\n", "=".repeat(70)));
-                snapshot.push_str(&format!(
-                    "File {}/{}: {}\n",
-                    idx + 1,
-                    nix_files.len(),
-                    rel_path.display()
-                ));
-                snapshot.push_str(&format!("{}\n\n", "=".repeat(70)));
-
-                match fs::read_to_string(file_path) {
-                    Ok(content) => {
-                        snapshot.push_str(&content);
-                        snapshot.push('\n');
-                    }
-                    Err(e) => {
-                        snapshot.push_str(&format!("// ERROR: Failed to read file: {}\n", e));
-                    }
-                }
-            }
-
-            // Will be redacted in gather_metadata
-            Some(snapshot)
-        }
-        Err(e) => {
-            warn!("Failed to find nix files: {}", e);
-            None
-        }
-    }
-}
-
 /// Gather a git diff containing only .nix file changes (including untracked).
 ///
 /// Note: this depends on git status/diff; it will be empty when there are no
@@ -535,13 +438,6 @@ fn redact_metadata_with_scanner(
         }
         *content = redacted;
     }
-    if let Some(ref mut content) = metadata.nix_config_snapshot {
-        let (redacted, changed) = scanner.redact_string(content);
-        if changed {
-            redacted_fields.push("nix_config_snapshot");
-        }
-        *content = redacted;
-    }
     if let Some(ref mut content) = metadata.build_error_output {
         let (redacted, changed) = scanner.redact_string(content);
         if changed {
@@ -600,7 +496,6 @@ pub fn gather_metadata(
         ai_provider_model_info: None,
         build_error_output: None,
         flake_inputs_snapshot: None,
-        nix_config_snapshot: None,
         app_logs_content: None,
         panic_details: None, // Panic details are captured on the frontend
     };
@@ -643,11 +538,6 @@ pub fn gather_metadata(
         metadata.flake_inputs_snapshot = gather_flake_inputs_snapshot(app);
     }
 
-    // Gather nix configuration snapshot
-    if share.nix_config {
-        metadata.nix_config_snapshot = gather_nix_config_snapshot(app);
-    }
-
     // Gather application logs
     if share.app_logs {
         metadata.app_logs_content = gather_app_logs();
@@ -688,7 +578,6 @@ regex = "token=([A-Za-z0-9]+)"
             ai_provider_model_info: None,
             build_error_output: None,
             flake_inputs_snapshot: None,
-            nix_config_snapshot: None,
             app_logs_content: None,
             panic_details: None,
         }

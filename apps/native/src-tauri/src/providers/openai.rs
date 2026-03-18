@@ -1,10 +1,10 @@
-use super::ChatCompletionProvider;
+use super::{ChatCompletionProvider, TokenUsage};
 use anyhow::Result;
 use async_openai::{
     config::OpenAIConfig,
     types::{
         ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestUserMessageArgs,
-        CreateChatCompletionRequestArgs,
+        CreateChatCompletionRequestArgs, ResponseFormat,
     },
     Client,
 };
@@ -40,9 +40,10 @@ impl ChatCompletionProvider for OpenAIClient {
         system_prompt: &str,
         user_prompt: &str,
         max_tokens: u32,
+        _num_ctx: Option<u32>,
         temperature: f32,
         request_id: &str,
-    ) -> Result<String> {
+    ) -> Result<(String, TokenUsage)> {
         let request = CreateChatCompletionRequestArgs::default()
             .model(&self.model)
             .messages(vec![
@@ -64,11 +65,69 @@ impl ChatCompletionProvider for OpenAIClient {
             self.model, request_id
         );
         let response = self.client.chat().create(request).await?;
+        let usage = TokenUsage {
+            input: response.usage.as_ref().map(|u| u.prompt_tokens),
+            output: response.usage.as_ref().map(|u| u.completion_tokens),
+        };
 
-        Ok(response
-            .choices
-            .first()
-            .and_then(|c| c.message.content.clone())
-            .unwrap_or_default())
+        Ok((
+            response
+                .choices
+                .first()
+                .and_then(|c| c.message.content.clone())
+                .unwrap_or_default(),
+            usage,
+        ))
+    }
+
+    async fn json_completion(
+        &self,
+        system_prompt: &str,
+        user_prompt: &str,
+        max_tokens: u32,
+        _num_ctx: Option<u32>,
+        temperature: f32,
+        request_id: &str,
+    ) -> Result<(String, TokenUsage)> {
+        log::info!(
+            "json_completion called: model={} response_format=json_object [id: {}]",
+            self.model,
+            request_id
+        );
+        let request = CreateChatCompletionRequestArgs::default()
+            .model(&self.model)
+            .messages(vec![
+                ChatCompletionRequestSystemMessageArgs::default()
+                    .content(system_prompt)
+                    .build()?
+                    .into(),
+                ChatCompletionRequestUserMessageArgs::default()
+                    .content(user_prompt)
+                    .build()?
+                    .into(),
+            ])
+            .max_completion_tokens(max_tokens)
+            .temperature(temperature)
+            .response_format(ResponseFormat::JsonObject)
+            .build()?;
+
+        debug!(
+            "Requesting JSON completion from {} [id: {}]",
+            self.model, request_id
+        );
+        let response = self.client.chat().create(request).await?;
+        let usage = TokenUsage {
+            input: response.usage.as_ref().map(|u| u.prompt_tokens),
+            output: response.usage.as_ref().map(|u| u.completion_tokens),
+        };
+
+        Ok((
+            response
+                .choices
+                .first()
+                .and_then(|c| c.message.content.clone())
+                .unwrap_or_default(),
+            usage,
+        ))
     }
 }
