@@ -438,8 +438,7 @@ pub async fn generate_evolution(
     );
 
     // Read configurable limits from store
-    let max_iterations =
-        store::get_max_iterations(app).unwrap_or(store::DEFAULT_MAX_ITERATIONS);
+    let max_iterations = store::get_max_iterations(app).unwrap_or(store::DEFAULT_MAX_ITERATIONS);
     let max_build_attempts =
         store::get_max_build_attempts(app).unwrap_or(DEFAULT_MAX_BUILD_ATTEMPTS);
     info!(
@@ -646,10 +645,13 @@ pub async fn generate_evolution(
             if has_tool_calls {
                 debug!(
                     "Assistant returned content alongside tool_calls; content treated as non-executable text | content_preview={}",
-                    truncate_for_log(text, 300)
+                    global_utils::truncate_with_ellipsis(text, 300)
                 );
             }
-            info!("💬 Assistant: {}", truncate_for_log(text, 500));
+            info!(
+                "💬 Assistant: {}",
+                global_utils::truncate_with_ellipsis(text, 500)
+            );
         }
 
         // Add assistant message to history
@@ -933,15 +935,6 @@ Do not invent tool names and do not place tool invocations in assistant content.
     Ok(evolution)
 }
 
-/// Truncate string for logging
-fn truncate_for_log(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
-        s.to_string()
-    } else {
-        format!("{}...", &s[..max_len])
-    }
-}
-
 /// Summarize tool arguments for logging
 fn summarize_args(args: &serde_json::Value) -> String {
     match args {
@@ -951,11 +944,7 @@ fn summarize_args(args: &serde_json::Value) -> String {
                 .map(|(k, v)| {
                     let v_str = match v {
                         serde_json::Value::String(s) => {
-                            if s.len() > 50 {
-                                format!("\"{}...\"", &s[..50])
-                            } else {
-                                format!("\"{}\"", s)
-                            }
+                            format!("\"{}\"", global_utils::truncate_with_ellipsis(s, 50))
                         }
                         _ => v.to_string(),
                     };
@@ -983,7 +972,10 @@ fn summarize_result(result: &ToolResult) -> (String, bool) {
                 ("FAILED".to_string(), false)
             }
         }
-        ToolResult::Done(s) => (format!("done: {}", truncate_for_log(s, 50)), true),
+        ToolResult::Done(s) => (
+            format!("done: {}", global_utils::truncate_with_ellipsis(s, 50)),
+            true,
+        ),
     }
 }
 
