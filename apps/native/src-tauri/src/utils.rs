@@ -4,3 +4,13 @@
 pub fn truncate_utf8(s: &mut String, max: usize) {
     s.truncate(s.floor_char_boundary(max));
 }
+
+pub fn truncate_with_ellipsis(s: &str, max: usize) -> String {
+    let mut truncated = s.to_string();
+    let original_len = truncated.len();
+    truncate_utf8(&mut truncated, max);
+    if truncated.len() < original_len {
+        truncated.push_str("...");
+    }
+    truncated
+}

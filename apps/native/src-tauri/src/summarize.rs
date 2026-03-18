@@ -134,12 +134,13 @@ Respond with ONLY valid JSON, no markdown code blocks or extra text."#;
             system_prompt,
             &user_prompt,
             MAX_SUMMARY_TOKENS,
+            None,
             TEMPERATURE,
             &request_id,
         )
         .await
     {
-        Ok(s) => s,
+        Ok((s, _)) => s,
         Err(e) => {
             let err_str = format!("{:#}", e);
             warn!(
@@ -243,10 +244,10 @@ pub async fn generate_commit_message<R: Runtime>(
         request_id
     );
     let response = match provider
-        .completion(system_prompt, &user_prompt, 200u32, 0.2, &request_id)
+        .completion(system_prompt, &user_prompt, 200u32, None, 0.2, &request_id)
         .await
     {
-        Ok(s) => s,
+        Ok((s, _)) => s,
         Err(e) => {
             let err_str = format!("{:#}", e);
             warn!(

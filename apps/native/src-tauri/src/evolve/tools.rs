@@ -1,6 +1,8 @@
 //! Tools used by AI
 
-use super::file_ops::{apply_file_edits, join_in_dir};
+use super::file_ops::{
+    apply_file_edits, ensure_path_under_base, join_in_dir, resolve_existing_path_in_dir,
+};
 use super::messages::Tool;
 //use super::run_command::execute_run_command;
 use super::search_packages::execute_search_packages;
@@ -105,10 +107,6 @@ pub fn create_tools() -> Vec<Tool> {
             parameters: serde_json::json!({
                 "type": "object",
                 "properties": {
-                    "host": {
-                        "type": "string",
-                        "description": "The host configuration to check (e.g., 'macbook')"
-                    }
                 },
                 "required": ["host"]
             }),
@@ -230,7 +228,12 @@ pub enum ToolResult {
 }
 
 /// Execute a tool call and return the result
-pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> Result<ToolResult> {
+pub fn execute_tool(
+    config_dir: &str,
+    host_attr: &str,
+    name: &str,
+    args: &serde_json::Value,
+) -> Result<ToolResult> {
     let base = Path::new(config_dir);
     match name {
         "think" => {
@@ -254,7 +257,7 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
             let path = args["path"]
                 .as_str()
                 .ok_or_else(|| anyhow!("read_file: missing path"))?;
-            let full_path = join_in_dir(base, path)?;
+            let full_path = resolve_existing_path_in_dir(base, path)?;
             info!("Reading file: {}", full_path.display());
             let content = std::fs::read_to_string(&full_path)
                 .map_err(|e| anyhow!("Failed to read {}: {}", path, e))?;
@@ -270,24 +273,51 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
             info!("Listing files matching: {}", full_pattern.display());
 
             let ignored_dirs = [".git", "result"];
-            let files: Vec<String> = glob::glob(full_pattern.to_str().unwrap())
+            let matched_files = glob::glob(full_pattern.to_str().unwrap())
                 .map_err(|e| anyhow!("Invalid glob pattern: {}", e))?
                 .filter_map(|p| p.ok())
                 .filter(|p| p.is_file())
-                .filter_map(|p| {
-                    // Strip the normalized `base` so results are returned
-                    // relative to the same directory we validated above.
-                    let rel = p.strip_prefix(base).ok()?;
+                .collect::<Vec<_>>();
 
-                    if let Some(Component::Normal(name)) = rel.components().next() {
-                        if ignored_dirs.contains(&name.to_string_lossy().as_ref()) {
-                            return None;
-                        }
+            let mut files: Vec<String> = Vec::new();
+            let mut escaped_matches: Vec<String> = Vec::new();
+
+            for p in matched_files {
+                if ensure_path_under_base(base, &p).is_err() {
+                    escaped_matches.push(p.display().to_string());
+                    continue;
+                }
+
+                // Strip the normalized `base` so results are returned
+                // relative to the same directory we validated above.
+                let Some(rel) = p.strip_prefix(base).ok() else {
+                    continue;
+                };
+
+                if let Some(Component::Normal(name)) = rel.components().next() {
+                    if ignored_dirs.contains(&name.to_string_lossy().as_ref()) {
+                        continue;
                     }
+                }
 
-                    Some(rel.to_string_lossy().to_string())
-                })
-                .collect();
+                files.push(rel.to_string_lossy().to_string());
+            }
+
+            if !escaped_matches.is_empty() {
+                let sample = escaped_matches
+                    .iter()
+                    .take(3)
+                    .cloned()
+                    .collect::<Vec<_>>()
+                    .join(", ");
+
+                return Err(anyhow!(
+                    "list_files matched one or more files outside config_dir after symlink resolution. pattern='{}' config_dir='{}'. Example match(es): {}. Fix: narrow the pattern to files under config_dir and avoid symlink targets outside config_dir.",
+                    pattern,
+                    base.display(),
+                    sample
+                ));
+            }
 
             debug!("Found {} files", files.len());
             Ok(ToolResult::Continue(files.join("\n")))
@@ -322,17 +352,21 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
         }
 
         "build_check" => {
-            let host = args["host"]
-                .as_str()
-                .ok_or_else(|| anyhow!("build_check: missing host"))?;
+            info!("Running build check for host: {}", host_attr);
 
-            info!("Running build check for host: {}", host);
+            // First make sure we have all new add-files
+            crate::git::intent_add_untracked(config_dir).map_err(|e| {
+                anyhow::anyhow!(
+                    "Failed to register new files with git for flake visibility: {}",
+                    e
+                )
+            })?;
 
             // Use nix build --dry-run to check without actually building
             let output = Command::new("nix")
                 .args([
                     "build",
-                    &format!(".#darwinConfigurations.{}.system", host),
+                    &format!(".#darwinConfigurations.{}.system", host_attr),
                     "--dry-run",
                     "--show-trace",
                 ])
@@ -346,19 +380,19 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
             let combined = format!("{}\n{}", stdout, stderr);
 
             if output.status.success() {
-                info!("Build check passed for host: {}", host);
+                info!("Build check passed for host: {}", host_attr);
                 Ok(ToolResult::BuildResult {
                     success: true,
-                    output: format!("✓ Build check passed for '{}'", host),
+                    output: format!("✓ Build check passed for '{}'", host_attr),
                 })
             } else {
-                error!("Build check failed for host: {}", host);
+                error!("Build check failed for host: {}", host_attr);
                 debug!("Build error output: {}", combined);
                 Ok(ToolResult::BuildResult {
                     success: false,
                     output: format!(
                         "✗ Build check FAILED for '{}':\n\n{}",
-                        host,
+                        host_attr,
                         truncate_error(&combined, 4000)
                     ),
                 })

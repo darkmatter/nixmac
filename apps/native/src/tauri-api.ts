@@ -2,6 +2,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { type Event, listen, once } from "@tauri-apps/api/event";
 import type { CommitRow, SummaryRow } from "./types/sqlite";
 export type { CommitRow, SummaryRow } from "./types/sqlite";
+import type { SummarizedChanges } from "./types/queries";
+export type { SummarizedChanges } from "./types/queries";
 
 export interface HistoryItem {
   hash: string;
@@ -10,6 +12,7 @@ export interface HistoryItem {
   isBuilt: boolean;
   commit: CommitRow | null;
   summary: SummaryRow | null;
+  changeSet: SummarizedChanges | null;
 }
 import {
   checkFullDiskAccessPermission,
@@ -40,6 +43,8 @@ export interface DarwinPrefs {
   confirmClear?: boolean;
   confirmRollback?: boolean;
 }
+
+export const DEFAULT_MAX_ITERATIONS = 25;
 
 export interface GitFileStatus {
   path: string;
@@ -110,7 +115,6 @@ export interface FeedbackShareOptions {
   aiProviderModelInfo: boolean;
   buildErrorOutput: boolean;
   flakeInputsSnapshot: boolean;
-  nixConfig: boolean;
   appLogs: boolean;
 }
 
@@ -162,7 +166,6 @@ export interface FeedbackMetadata {
   aiProviderModelInfo?: FeedbackAiProviderModelInfo;
   buildErrorOutput?: string;
   flakeInputsSnapshot?: FeedbackFlakeInputsSnapshot;
-  nixConfigSnapshot?: string;
   appLogsContent?: string;
   lastPromptText?: string;
 }
@@ -227,7 +230,6 @@ export type EvolveEventType =
   | "info"
   | "summarizing";
 
-
 export interface EvolveEvent {
   /** Raw log output (detailed technical information) */
   raw: string;
@@ -283,8 +285,7 @@ export const darwinAPI = {
     finalizeApply: () => invoke<EvolutionResult>("finalize_apply"),
     rollbackErase: (keepBranch?: boolean) =>
       invoke<RollbackResult>("rollback_erase", { keepBranch }),
-    restoreToCommit: (targetHash: string) =>
-      invoke<void>("restore_to_commit", { targetHash }),
+    restoreToCommit: (targetHash: string) => invoke<void>("restore_to_commit", { targetHash }),
   },
   nix: {
     check: () =>

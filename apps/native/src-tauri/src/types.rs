@@ -159,7 +159,6 @@ pub struct FeedbackShareOptions {
     pub ai_provider_model_info: bool,
     pub build_error_output: bool,
     pub flake_inputs_snapshot: bool,
-    pub nix_config: bool,
     pub app_logs: bool,
 }
 
@@ -238,7 +237,6 @@ pub struct FeedbackMetadata {
     pub ai_provider_model_info: Option<FeedbackAiProviderModelInfo>,
     pub build_error_output: Option<String>,
     pub flake_inputs_snapshot: Option<FeedbackFlakeInputsSnapshot>,
-    pub nix_config_snapshot: Option<String>,
     pub app_logs_content: Option<String>,
     pub panic_details: Option<FeedbackPanicDetails>,
 }
@@ -304,6 +302,8 @@ pub struct HistoryItem {
     pub commit: Option<crate::sqlite_types::CommitRow>,
     /// AI summary — present only if a summary has been generated.
     pub summary: Option<crate::sqlite_types::SummaryRow>,
+    /// Change set with granular changes and summaries — present only if the pipeline has run.
+    pub change_set: Option<crate::query_return_types::SummarizedChanges>,
 }
 
 // =============================================================================
@@ -550,11 +550,7 @@ impl EvolveEvent {
 
 /// Truncate a string to max length with ellipsis
 fn truncate(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
-        s.to_string()
-    } else {
-        format!("{}...", &s[..max_len])
-    }
+    global_utils::truncate_with_ellipsis(s, max_len)
 }
 
 /// Shorten a file path to just the filename or last path component
@@ -609,11 +605,9 @@ pub fn slugify(text: &str) -> String {
     result = result.trim_matches('-').to_string();
 
     // Limit to 50 characters
-    if result.len() > 50 {
-        global_utils::truncate_utf8(&mut result, 50);
-        // Don't end with a hyphen after truncation
-        result = result.trim_end_matches('-').to_string();
-    }
+    global_utils::truncate_utf8(&mut result, 50);
+    // Don't end with a hyphen after truncation
+    result = result.trim_end_matches('-').to_string();
 
     result
 }

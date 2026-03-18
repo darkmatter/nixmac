@@ -1,0 +1,9 @@
+{
+  "install": "bash ./bin/bootstrap-cursor-environment.sh",
+  "terminals": [
+    {
+      "name": "native dev (devenv)",
+      "command": "devenv shell -- bun run -F native dev"
+    }
+  ]
+}
