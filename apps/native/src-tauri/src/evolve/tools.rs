@@ -354,6 +354,14 @@ pub fn execute_tool(
         "build_check" => {
             info!("Running build check for host: {}", host_attr);
 
+            // First make sure we have all new add-files
+            crate::git::intent_add_untracked(config_dir).map_err(|e| {
+                anyhow::anyhow!(
+                    "Failed to register new files with git for flake visibility: {}",
+                    e
+                )
+            })?;
+
             // Use nix build --dry-run to check without actually building
             let output = Command::new("nix")
                 .args([
