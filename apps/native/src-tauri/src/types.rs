@@ -550,11 +550,7 @@ impl EvolveEvent {
 
 /// Truncate a string to max length with ellipsis
 fn truncate(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
-        s.to_string()
-    } else {
-        format!("{}...", &s[..max_len])
-    }
+    global_utils::truncate_with_ellipsis(s, max_len)
 }
 
 /// Shorten a file path to just the filename or last path component
@@ -609,11 +605,9 @@ pub fn slugify(text: &str) -> String {
     result = result.trim_matches('-').to_string();
 
     // Limit to 50 characters
-    if result.len() > 50 {
-        global_utils::truncate_utf8(&mut result, 50);
-        // Don't end with a hyphen after truncation
-        result = result.trim_end_matches('-').to_string();
-    }
+    global_utils::truncate_utf8(&mut result, 50);
+    // Don't end with a hyphen after truncation
+    result = result.trim_end_matches('-').to_string();
 
     result
 }
