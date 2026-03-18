@@ -12,6 +12,7 @@ import { StepContentWrapper } from "@/components/widget/step-content-wrapper";
 import { Stepper } from "@/components/widget/stepper";
 import {
     EvolveStep,
+    HistoryStep,
     MergeStep,
     NixSetupStep,
     PermissionsStep,
@@ -22,7 +23,9 @@ import { useGitOperations } from "@/hooks/use-git-operations";
 import { useNixInstall } from "@/hooks/use-nix-install";
 import { usePanicHandler } from "@/hooks/use-panic-handler";
 import { usePermissions } from "@/hooks/use-permissions";
+import { usePrefs } from "@/hooks/use-prefs";
 import { usePromptHistory } from "@/hooks/use-prompt-history";
+import { useTrayEvents } from "@/hooks/use-tray-events";
 import { useWatcher } from "@/hooks/use-watcher";
 import { loadConfig, loadHosts } from "@/hooks/use-widget-initialization";
 import { useSummary } from "@/hooks/use-summary";
@@ -39,12 +42,16 @@ export function DarwinWidget() {
   const { getInitialStatus } = useGitOperations();
   const { checkNix } = useNixInstall();
   const { checkPermissions } = usePermissions();
+  const { loadPrefs } = usePrefs();
   const { refreshPromptHistory } = usePromptHistory();
   const { startWatching } = useWatcher();
   const { findSummary } = useSummary();
 
   // Set up panic handler to catch Rust crashes and show feedback dialog
   usePanicHandler();
+
+  // Listen for tray menu events (Send Feedback, Settings)
+  useTrayEvents();
 
   // Set up error handler to catch unhandled JavaScript errors and promise rejections
   useErrorHandler();
@@ -65,6 +72,7 @@ export function DarwinWidget() {
         await checkNix();
         await loadHosts();
         await getInitialStatus();
+        await loadPrefs();
         await findSummary();
         refreshPromptHistory();
       } catch (e: unknown) {
@@ -93,6 +101,9 @@ export function DarwinWidget() {
 
       case "merge":
         return <MergeStep />;
+
+      case "history":
+        return <HistoryStep />;
     }
   };
 

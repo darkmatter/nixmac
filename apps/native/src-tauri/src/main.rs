@@ -8,6 +8,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod apply_system_defaults;
+mod changes_from_diff;
 mod cli;
 mod commands;
 mod darwin;
@@ -17,7 +18,10 @@ mod evolution;
 mod evolve;
 mod feedback;
 mod finalize_apply;
+mod find_change_summaries;
 mod find_summary;
+mod generate_history_from;
+mod get_history;
 mod git;
 mod log_summarizer;
 mod nix;
@@ -28,20 +32,28 @@ mod providers;
 mod rollback;
 mod scanner;
 mod secret_scanner;
+mod query_return_types;
+mod sqlite_types;
 mod statistics;
 mod store;
+mod store_changeset;
 mod summarize;
+mod summarize_changes;
+mod summarize_pipeline;
+mod summarize_pipeline_logging;
+mod summarize_token_budgets;
 mod template;
 mod types;
+mod utils;
 mod watcher;
 
 use std::env;
 use std::sync::{Arc, Mutex};
 use tauri::{
     image::Image,
-    menu::{Menu, MenuItem},
+    menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
-    Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent,
+    Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
@@ -316,6 +328,9 @@ fn run_gui_mode(
             commands::bootstrap_default_config,
             // Summarization
             commands::find_summary,
+            commands::get_history,
+            commands::generate_history_from,
+            commands::restore_to_commit,
             commands::summarize_changes,
             commands::summary_get_cached,
             commands::suggest_commit_message,
@@ -378,10 +393,18 @@ fn run_gui_mode(
             }
 
             // Build the system tray menu
-            let open_i = MenuItem::with_id(app, "open", "Open", true, None::<&str>)?;
-            let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            let open_i = MenuItem::with_id(app, "open", "Open nixmac", true, None::<&str>)?;
+            let sep1 = PredefinedMenuItem::separator(app)?;
+            let feedback_i =
+                MenuItem::with_id(app, "send_feedback", "Send Feedback...", true, None::<&str>)?;
+            let settings_i = MenuItem::with_id(app, "settings", "Settings...", true, None::<&str>)?;
+            let sep2 = PredefinedMenuItem::separator(app)?;
+            let quit_i = MenuItem::with_id(app, "quit", "Quit nixmac", true, None::<&str>)?;
 
-            let menu = Menu::with_items(app, &[&open_i, &quit_i])?;
+            let menu = Menu::with_items(
+                app,
+                &[&open_i, &sep1, &feedback_i, &settings_i, &sep2, &quit_i],
+            )?;
 
             // Clone a handle to the guard for use in menu callbacks (so we can flush on quit)
             let log_guard_for_menu = log_guard.clone();
@@ -402,6 +425,20 @@ fn run_gui_mode(
                         if let Some(window) = app.get_webview_window("main") {
                             let _ = window.show();
                             let _ = window.set_focus();
+                        }
+                    }
+                    "send_feedback" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                            let _ = window.emit("tray:open-feedback", ());
+                        }
+                    }
+                    "settings" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                            let _ = window.emit("tray:open-settings", ());
                         }
                     }
                     "quit" => {
@@ -463,9 +500,9 @@ fn run_gui_mode(
             let _ = main_window;
 
             // Create the preview indicator window (persistent banner for uncommitted changes)
-            if let Err(e) = peek::create_preview_indicator_window(handle) {
-                log::error!("[peek] ❌ Failed to create preview indicator window: {}", e);
-            }
+            // if let Err(e) = peek::create_preview_indicator_window(handle) {
+            //     log::error!("[peek] ❌ Failed to create preview indicator window: {}", e);
+            // }
 
             // Start config watcher - monitors config directory for file changes
             // This emits config:changed events to the frontend when files are modified

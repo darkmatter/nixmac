@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { FeedbackType } from "@/types/feedback";
-import type { SummaryResponse, EvolveEvent, GitStatus, PermissionsState } from "@/tauri-api";
+import type { HistoryItem, SummaryResponse, EvolveEvent, GitStatus, PermissionsState } from "@/tauri-api";
 import { computeCurrentStep } from "@/components/widget/utils";
 export type {
   SummaryResponse,
@@ -18,8 +18,9 @@ export type {
 /**
  * Widget step state - updated by useEffect based on app state.
  */
-export type WidgetStep = "permissions" | "nix-setup" | "setup" | "evolving" | "merge";
+export type WidgetStep = "permissions" | "nix-setup" | "setup" | "evolving" | "merge" | "history";
 export type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
+export type ConfirmPrefKey = "confirmBuild" | "confirmClear" | "confirmRollback";
 
 // Rebuild state for showing progress inline in the widget
 export type RebuildErrorType =
@@ -27,6 +28,8 @@ export type RebuildErrorType =
   | "evaluation_error"
   | "build_error"
   | "full_disk_access"
+  | "user_cancelled"
+  | "authorization_denied"
   | "generic_error";
 
 export interface RebuildLine {
@@ -35,8 +38,11 @@ export interface RebuildLine {
   type: "stdout" | "stderr" | "info";
 }
 
+export type RebuildContext = "rollback" | "apply";
+
 export interface RebuildState {
   isRunning: boolean;
+  context: RebuildContext;
   lines: RebuildLine[];
   rawLines: string[];
   exitCode?: number;
@@ -70,7 +76,6 @@ export interface WidgetState {
   gitStatus: GitStatus | null;
   // Evolution
   evolvePrompt: string;
-  commitMsg: string;
   isProcessing: boolean;
   processingAction: ProcessingAction;
   evolveEvents: EvolveEvent[];
@@ -85,11 +90,17 @@ export interface WidgetState {
   // Console
   consoleLogs: string;
 
+  // History
+  history: HistoryItem[];
+  historyLoading: boolean;
+  analyzingHistoryForHashes: Set<string>;
+
   // UI
   summaryLoading: boolean;
   summaryAvailable: boolean;
   isGenerating: boolean;
   settingsOpen: boolean;
+  showHistory: boolean;
   feedbackOpen: boolean;
   feedbackTypeOverride: FeedbackType | null;
   feedbackInitialText: string | null;
@@ -101,6 +112,11 @@ export interface WidgetState {
   } | null;
   error: string | null;
   suggestions: string[];
+
+  // Confirmation preferences
+  confirmBuild: boolean;
+  confirmClear: boolean;
+  confirmRollback: boolean;
 }
 
 export interface WidgetActions {
@@ -119,10 +135,10 @@ export interface WidgetActions {
   setDarwinRebuildPrefetching: (prefetching: boolean) => void;
   setGitStatus: (status: GitStatus | null) => void;
   setEvolvePrompt: (prompt: string) => void;
-  setCommitMsg: (msg: string) => void;
   setProcessing: (isProcessing: boolean, action?: ProcessingAction) => void;
   setSummary: (summary: SummaryResponse) => void;
   setSettingsOpen: (open: boolean) => void;
+  setShowHistory: (show: boolean) => void;
   setFeedbackOpen: (open: boolean) => void;
   setError: (error: string | null) => void;
   setPanicDetails: (
@@ -130,6 +146,16 @@ export interface WidgetActions {
   ) => void;
   setPromptHistory: (history: string[]) => void;
   setSummaryAvailable: (available: boolean) => void;
+
+  // History
+  setHistory: (history: HistoryItem[]) => void;
+  setHistoryLoading: (loading: boolean) => void;
+  addAnalyzingHistoryHash: (hash: string) => void;
+  removeAnalyzingHistoryHash: (hash: string) => void;
+
+  // Confirmation preferences
+  setConfirmPref: (key: ConfirmPrefKey, value: boolean) => void;
+  initConfirmPrefs: (prefs: Partial<Record<ConfirmPrefKey, boolean>>) => void;
 
   // Client-side state (NOT from server)
   setSummaryLoading: (loading: boolean) => void;
@@ -147,7 +173,7 @@ export interface WidgetActions {
   clearEvolveEvents: () => void;
 
   // Rebuild state
-  startRebuild: () => void;
+  startRebuild: (context: RebuildContext) => void;
   appendRebuildLine: (line: RebuildLine) => void;
   appendRawLine: (line: string) => void;
   setRebuildError: (errorType: RebuildErrorType, errorMessage: string) => void;
@@ -163,6 +189,7 @@ export type WidgetStore = WidgetState & WidgetActions;
 
 export const initialRebuildState: RebuildState = {
   isRunning: false,
+  context: "apply",
   lines: [],
   rawLines: [],
   exitCode: undefined,
@@ -201,11 +228,15 @@ export const initialWidgetState: WidgetState = {
 
   // Evolution
   evolvePrompt: "",
-  commitMsg: "",
   isProcessing: false,
   processingAction: null,
   evolveEvents: [],
   promptHistory: [],
+
+  // History
+  history: [],
+  historyLoading: false,
+  analyzingHistoryForHashes: new Set<string>(),
 
   // Summary
   summary: initialSummaryState,
@@ -222,12 +253,18 @@ export const initialWidgetState: WidgetState = {
   isBootstrapping: false,
   isGenerating: false,
   settingsOpen: false,
+  showHistory: false,
   feedbackOpen: false,
   feedbackTypeOverride: null,
   feedbackInitialText: null,
   panicDetails: null,
   error: null,
   suggestions: ["Install vim", "Add Rectangle app", "Configure git"],
+
+  // Confirmation preferences
+  confirmBuild: true,
+  confirmClear: true,
+  confirmRollback: true,
 };
 
 // =============================================================================
@@ -253,7 +290,6 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setHost: (host) => set({ host }),
     setGitStatus: (gitStatus) => set({ gitStatus }),
     setEvolvePrompt: (evolvePrompt) => set({ evolvePrompt }),
-    setCommitMsg: (commitMsg) => set({ commitMsg }),
     setProcessing: (isProcessing, action = null) =>
       set({
         isProcessing,
@@ -262,7 +298,25 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setSummary: (summary) => set({ summary, summaryAvailable: true }),
     setSummaryLoading: (summaryLoading) => set({ summaryLoading }),
     setSummaryAvailable: (summaryAvailable) => set({ summaryAvailable }),
+    setConfirmPref: (key, value) => set({ [key]: value }),
+    initConfirmPrefs: (prefs) =>
+      set({
+        confirmBuild: prefs.confirmBuild ?? true,
+        confirmClear: prefs.confirmClear ?? true,
+        confirmRollback: prefs.confirmRollback ?? true,
+      }),
+    setHistory: (history) => set({ history }),
+    setHistoryLoading: (historyLoading) => set({ historyLoading }),
+    addAnalyzingHistoryHash: (hash) =>
+      set((state) => ({ analyzingHistoryForHashes: new Set([...state.analyzingHistoryForHashes, hash]) })),
+    removeAnalyzingHistoryHash: (hash) =>
+      set((state) => {
+        const next = new Set(state.analyzingHistoryForHashes);
+        next.delete(hash);
+        return { analyzingHistoryForHashes: next };
+      }),
     setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
+    setShowHistory: (showHistory) => set({ showHistory }),
     setFeedbackOpen: (feedbackOpen) => set({ feedbackOpen }),
     setFeedbackTypeOverride: (feedbackTypeOverride) => set({ feedbackTypeOverride }),
     openFeedback: (type, initialText) =>
@@ -299,10 +353,11 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     clearEvolveEvents: () => set({ evolveEvents: [] }),
 
     // Rebuild state
-    startRebuild: () =>
+    startRebuild: (context) =>
       set({
         rebuild: {
           isRunning: true,
+          context,
           lines: [{ id: 0, text: "Preparing rebuild...", type: "info" }],
           rawLines: [],
           exitCode: undefined,

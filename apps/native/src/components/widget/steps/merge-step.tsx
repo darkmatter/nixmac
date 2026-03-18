@@ -1,13 +1,13 @@
 "use client";
 
-import { ActionTiles, type ActionTile } from "@/components/widget/action-tiles";
-import { ConfirmationDialog } from "@/components/widget/confirmation-dialog";
-import { KeepBranchCheckbox } from "@/components/widget/keep-branch-checkbox";
+import { Button } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/widget/confirm-button";
 import { MergeSection } from "@/components/widget/merge-section";
+import { StepActionsHeader } from "@/components/widget/step-actions-header";
 import { PromptInputSection } from "@/components/widget/prompt-input-section";
 import { SummaryOrDiff } from "@/components/widget/summary-or-diff";
 import { useRollback } from "@/hooks/use-rollback";
-import { GitBranch, RefreshCw, Undo2 } from "lucide-react";
+import { RefreshCw, Undo2 } from "lucide-react";
 import { useState } from "react";
 
 /**
@@ -15,54 +15,37 @@ import { useState } from "react";
  */
 export function MergeStep() {
   const { handleRollback } = useRollback();
-
-  const [showRollbackDialog, setShowRollbackDialog] = useState(false);
-  const [keepBranch, setKeepBranch] = useState(false);
   const [action, setAction] = useState<"merge" | "amend">("merge");
-
-  const tiles: ActionTile[] = [
-    {
-      name: "Merge",
-      icon: GitBranch,
-      color: "white",
-      isActive: action === "merge",
-      onAction: () => setAction("merge"),
-    },
-    {
-      name: "Evolve",
-      icon: RefreshCw,
-      color: "teal",
-      isActive: action === "amend",
-      onAction: () => setAction("amend"),
-    },
-    {
-      name: "Rollback",
-      icon: Undo2,
-      color: "amber",
-      onAction: () => setShowRollbackDialog(true),
-    },
-  ];
 
   return (
     <>
-      <ActionTiles
-        tiles={tiles}
-        title="All changes active!"
-        subtitle="Don't forget to merge your changes if you are satisfied"
-      />
-      <SummaryOrDiff />
-      {action === "merge" && (<MergeSection />)}
-      {action === "amend" && <PromptInputSection />}
+      <StepActionsHeader label="All changes active!">
+        <ConfirmButton
+          variant="ghost"
+          size="sm"
+          className="text-rose-400 hover:text-rose-300 hover:bg-rose-400/10"
+          confirmPrefKey="confirmRollback"
+          onConfirm={handleRollback}
+          message="Discard changes and rebuild to previous commit?"
+          color="amber"
+        >
+          <Undo2 className="h-3.5 w-3.5" />
+          Undo All
+        </ConfirmButton>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground hover:text-foreground"
+          onClick={() => setAction(action === "merge" ? "amend" : "merge")}
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          {action === "merge" ? "Continue editing" : "Back to merge"}
+        </Button>
+      </StepActionsHeader>
 
-      <ConfirmationDialog
-        open={showRollbackDialog}
-        onOpenChange={setShowRollbackDialog}
-        message="Discard changes and rebuild to previous commit?"
-        onConfirm={() => handleRollback(keepBranch)}
-        color="amber"
-      >
-        <KeepBranchCheckbox checked={keepBranch} onCheckedChange={setKeepBranch} />
-      </ConfirmationDialog>
+      <SummaryOrDiff />
+      {action === "merge" && <MergeSection />}
+      {action === "amend" && <PromptInputSection />}
     </>
   );
 }

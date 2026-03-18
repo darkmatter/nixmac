@@ -11,7 +11,9 @@ This is a monorepo with the following structure:
 - **`apps/server/`** - Backend server (Hono)
 
 - **`packages/api/`** - Shared API logic and types
+
 - **`packages/auth/`** - Authentication logic and utilities
+
 - **`packages/db/`** - Database schema and utilities
 
 ## Available Scripts
@@ -76,5 +78,4 @@ This project includes a `bts.jsonc` configuration file that stores your Better-T
 - Run commands from the root to execute across all workspaces
 - Run workspace-specific commands with `bun run command-name`
 - Turborepo handles build caching and parallel execution
-- Use `bunx
-create-better-t-stack add` to add more features later
+- Use `bunx create-better-t-stack add` to add more features later

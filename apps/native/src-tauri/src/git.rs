@@ -43,8 +43,8 @@ pub fn init_if_needed(dir: &str) -> Result<()> {
     Ok(())
 }
 
-/// Gets the default branch name (main or master), if it exists.
-fn get_default_branch(dir: &str) -> Option<&'static str> {
+/// Probes in order: local main, local master, then remote HEAD as a last resort
+pub fn get_default_branch(dir: &str) -> Option<String> {
     if git_command()
         .args(["rev-parse", "--verify", "main"])
         .current_dir(dir)
@@ -52,18 +52,42 @@ fn get_default_branch(dir: &str) -> Option<&'static str> {
         .map(|o| o.status.success())
         .unwrap_or(false)
     {
-        Some("main")
-    } else if git_command()
+        return Some("main".to_string());
+    }
+    if git_command()
         .args(["rev-parse", "--verify", "master"])
         .current_dir(dir)
         .output()
         .map(|o| o.status.success())
         .unwrap_or(false)
     {
-        Some("master")
-    } else {
-        None
+        return Some("master".to_string());
     }
+    // Only reached if neither main nor master exist locally.
+    if let Ok(output) = git_command()
+        .args(["symbolic-ref", "refs/remotes/origin/HEAD"])
+        .current_dir(dir)
+        .output()
+    {
+        if output.status.success() {
+            let refname = String::from_utf8_lossy(&output.stdout);
+            if let Some(branch) = refname.trim().strip_prefix("refs/remotes/origin/") {
+                return Some(branch.to_string());
+            }
+        }
+    }
+    None
+}
+
+/// For write operations that MUST act on the default branch.
+fn require_default_branch(dir: &str) -> Result<String> {
+    get_default_branch(dir).ok_or_else(|| {
+        anyhow::anyhow!(
+            "No default branch (main or master) found in this repository. \
+             Ensure the repository has at least one commit on a main or master branch, \
+             or that a remote is configured with a default branch."
+        )
+    })
 }
 
 /// Gets the full diff against main/master branch, including tracked changes and untracked file contents.
@@ -71,11 +95,11 @@ fn get_default_branch(dir: &str) -> Option<&'static str> {
 /// Falls back to HEAD if neither main nor master exist.
 /// Untracked files are formatted as diffs showing the entire file as added.
 pub fn get_full_diff(dir: &str) -> Result<String> {
-    let base = get_default_branch(dir).unwrap_or("HEAD");
+    let base = get_default_branch(dir).unwrap_or_else(|| "HEAD".to_string());
 
     // Get git diff for tracked files
     let diff_output = git_command()
-        .args(["diff", base])
+        .args(["diff", &base])
         .current_dir(dir)
         .output()?;
 
@@ -153,10 +177,10 @@ pub fn get_head_diff(dir: &str) -> Result<String> {
 
 /// Gets a diff containing only .nix files (including untracked .nix files).
 pub fn get_nix_diff(dir: &str) -> Result<String> {
-    let base = get_default_branch(dir).unwrap_or("HEAD");
+    let base = get_default_branch(dir).unwrap_or_else(|| "HEAD".to_string());
 
     let diff_output = git_command()
-        .args(["diff", base, "--", "*.nix"])
+        .args(["diff", &base, "--", "*.nix"])
         .current_dir(dir)
         .output()?;
 
@@ -216,7 +240,7 @@ pub fn count_diff_changes(diff: &str) -> (usize, usize) {
 /// Parses file information from diff output.
 /// Extracts file paths and change types from diff headers.
 /// Uses the same pattern as diff.tsx: `diff --git a/<path> b/<path>`
-fn parse_files_from_diff(diff: &str) -> Vec<GitFileStatus> {
+pub fn parse_files_from_diff(diff: &str) -> Vec<GitFileStatus> {
     let mut files = Vec::new();
     let mut current_file: Option<String> = None;
     let mut current_change_type = "edited";
@@ -375,10 +399,12 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     // Get current branch
     let branch = get_current_branch(dir);
 
-    // Check if on main or master branch
+    // Check if on the default branch
+    let default_branch = get_default_branch(dir);
     let is_main_branch = branch
         .as_ref()
-        .map(|b| b == "main" || b == "master")
+        .zip(default_branch.as_ref())
+        .map(|(b, d)| b == d)
         .unwrap_or(false);
 
     // Compute diff and stats
@@ -464,6 +490,13 @@ pub fn intent_add_untracked(dir: &str) -> Result<()> {
         .current_dir(dir)
         .output()?;
 
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(anyhow::anyhow!(
+            "failed to run `git ls-files --others --exclude-standard` in `{dir}`: {stderr}"
+        ));
+    }
+
     let untracked = String::from_utf8_lossy(&output.stdout);
     let files: Vec<&str> = untracked.lines().filter(|l| !l.is_empty()).collect();
 
@@ -473,7 +506,13 @@ pub fn intent_add_untracked(dir: &str) -> Result<()> {
 
     let mut args = vec!["add", "-N", "--"];
     args.extend(files);
-    git_command().args(&args).current_dir(dir).output()?;
+    let add_output = git_command().args(&args).current_dir(dir).output()?;
+    if !add_output.status.success() {
+        let stderr = String::from_utf8_lossy(&add_output.stderr);
+        return Err(anyhow::anyhow!(
+            "failed to run `git add -N -- <untracked files>` in `{dir}`: {stderr}"
+        ));
+    }
     Ok(())
 }
 
@@ -491,6 +530,60 @@ pub fn unstage_all(dir: &str) -> Result<()> {
 pub struct CommitInfo {
     pub hash: String,
     pub tree_hash: String,
+}
+
+/// Fetch commits starting from `start_hash` going backwards.
+/// `limit` caps the number returned; pass `None` to return all commits.
+/// Returns CommitRow values with id = 0 (placeholder; real id assigned on DB upsert).
+pub fn log(
+    dir: &str,
+    start_hash: &str,
+    limit: Option<usize>,
+) -> Result<Vec<crate::sqlite_types::CommitRow>> {
+    let mut cmd = git_command();
+    cmd.arg("log").arg("--format=%H%n%T%n%at%n%s");
+    if let Some(n) = limit {
+        cmd.arg("-n").arg(n.to_string());
+    }
+    cmd.arg(start_hash);
+    let output = cmd.current_dir(dir).output()?;
+
+    let text = String::from_utf8_lossy(&output.stdout);
+    let mut commits = Vec::new();
+    let mut lines = text.lines();
+
+    loop {
+        let hash = match lines.next() {
+            Some(h) if !h.is_empty() => h.to_string(),
+            _ => break,
+        };
+        let tree_hash = lines.next().unwrap_or("").to_string();
+        let timestamp: i64 = lines.next().unwrap_or("0").trim().parse().unwrap_or(0);
+        let subject = lines.next().unwrap_or("").to_string();
+
+        commits.push(crate::sqlite_types::CommitRow {
+            id: 0,
+            hash,
+            tree_hash,
+            message: if subject.is_empty() {
+                None
+            } else {
+                Some(subject)
+            },
+            created_at: timestamp,
+        });
+    }
+
+    Ok(commits)
+}
+
+/// Get the unified diff between parent_hash and commit_hash.
+pub fn commit_diff(dir: &str, parent_hash: &str, commit_hash: &str) -> Result<String> {
+    let output = git_command()
+        .args(["diff", parent_hash, commit_hash])
+        .current_dir(dir)
+        .output()?;
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
 /// Stages all changes and commits with the given message.
@@ -525,6 +618,15 @@ pub fn commit_all(dir: &str, message: &str) -> Result<CommitInfo> {
         .to_string();
 
     Ok(CommitInfo { hash, tree_hash })
+}
+
+/// Checks out all files from `target_hash` into the working tree without moving HEAD.
+pub fn restore_files_at_commit(dir: &str, target_hash: &str) -> Result<()> {
+    git_command()
+        .args(["checkout", target_hash, "--", "."])
+        .current_dir(dir)
+        .output()?;
+    Ok(())
 }
 
 /// Stages all changes and commits with the given message.
@@ -615,7 +717,7 @@ pub fn checkout_main_branch(dir: &str) -> Result<()> {
     let Some(branch) = get_default_branch(dir) else {
         anyhow::bail!("No main or master branch found");
     };
-    checkout_branch(dir, branch)
+    checkout_branch(dir, &branch)
 }
 
 /// Deletes a local branch by name. Must not be the currently checked-out branch.
@@ -677,16 +779,33 @@ pub fn finalize_evolve(
     squash: bool,
     commit_message: Option<&str>,
 ) -> Result<()> {
-    // If squashing, reset soft to main and create a new commit on the branch
+    let default_branch = require_default_branch(dir)?;
+
+    // If a commit message is provided without squashing, amend the latest commit before merging
+    if !squash {
+        if let Some(msg) = commit_message {
+            let output = git_command()
+                .args(["commit", "--amend", "-m", msg])
+                .current_dir(dir)
+                .output()?;
+
+            if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                anyhow::bail!("Failed to amend commit message: {}", stderr);
+            }
+        }
+    }
+
+    // If squashing, reset soft to the default branch and create a new commit on the branch
     if squash {
         let output = git_command()
-            .args(["reset", "--soft", "main"])
+            .args(["reset", "--soft", &default_branch])
             .current_dir(dir)
             .output()?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            anyhow::bail!("Failed to reset to main: {}", stderr);
+            anyhow::bail!("Failed to reset to {}: {}", default_branch, stderr);
         }
 
         let msg = commit_message.unwrap_or("chore: squash evolve commits");
@@ -701,15 +820,15 @@ pub fn finalize_evolve(
         }
     }
 
-    // 1. Checkout main
+    // 1. Checkout default branch
     let output = git_command()
-        .args(["checkout", "main"])
+        .args(["checkout", &default_branch])
         .current_dir(dir)
         .output()?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("Failed to checkout main: {}", stderr);
+        anyhow::bail!("Failed to checkout {}: {}", default_branch, stderr);
     }
 
     // 2. Merge the evolve branch (fast-forward if squashed)

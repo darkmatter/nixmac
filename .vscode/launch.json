@@ -17,6 +17,26 @@
             "type": "lldb",
             "request": "attach",
             "pid": "${command:pickProcess}"
+        },
+        {
+            "name": "Debug AI Engine Eval (Python)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/apps/eval/run_evals.py",
+            "args": ["--rows", "1,2,3", "--ollama-url", "http://localhost:11434"],
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/apps/ai-engine-eval:${env:PYTHONPATH}"
+            }
+        },
+        {
+            "name": "Calculate AI Engine Eval Stats (Python)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/apps/eval/calc_stats.py",
+            "args": ["-i", "${workspaceFolder}/apps/eval/data/results"],
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/apps/ai-engine-eval:${env:PYTHONPATH}"
+            }
         }
     ]
 }

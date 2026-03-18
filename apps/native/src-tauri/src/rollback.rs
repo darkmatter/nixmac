@@ -23,19 +23,15 @@ pub fn rollback_erase<R: Runtime>(app: &AppHandle<R>, keep_branch: bool) -> Resu
     // Capture branch name before any git changes
     let pre_status = git::status(&config_dir).context("Failed to get git status")?;
     let branch_name = pre_status.branch.clone();
-    let is_on_main = branch_name
-        .as_deref()
-        .map(|b| b == "main" || b == "master")
-        .unwrap_or(false);
 
     git::restore_all(&config_dir).context("Failed to restore uncommitted changes")?;
 
-    if !is_on_main {
+    if !pre_status.is_main_branch {
         git::checkout_main_branch(&config_dir).context("Failed to checkout main branch")?;
     }
 
     if !keep_branch {
-        if let Some(branch) = branch_name.filter(|b| b != "main" && b != "master") {
+        if let Some(branch) = branch_name.filter(|_| !pre_status.is_main_branch) {
             let db_path = db::get_db_path(app).context("Failed to get database path")?;
             match db::operations::delete_evolution_by_branch(&db_path, &branch) {
                 Ok(()) => {

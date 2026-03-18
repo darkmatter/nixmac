@@ -13,8 +13,5 @@ tart-delete:
 scp:
 	scp -r ./target/release/bundle/macos/nixmac.app admin@$$(tart ip test-vm):/tmp/nixmac.app
 
-cp:
-	cp -r ./target/release/bundle/macos/nixmac.app ~/Documents/nixmac.app
-
 build:
 	cd ./apps/native && bunx tauri build --bundles app

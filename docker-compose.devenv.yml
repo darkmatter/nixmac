@@ -14,6 +14,5 @@ services:
       - "${PG_PORT:-5432}:5432"
     volumes:
       - "nixmac-postgres-data:/var/lib/postgresql/data"
-
 volumes:
   nixmac-postgres-data:

@@ -176,11 +176,16 @@ pub async fn git_commit(app: AppHandle, message: String) -> Result<serde_json::V
 
     // Save commit to database
     if let Ok(db_path) = db::get_db_path(&app) {
-        match db::commits::insert_commit(
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64;
+        match db::commits::upsert_commit(
             &db_path,
             &commit_info.hash,
             &commit_info.tree_hash,
-            &message,
+            Some(&message),
+            now,
         ) {
             Ok(id) => log::info!(
                 "[git_commit] Saved commit to database (id={}, hash={})",
@@ -317,9 +322,17 @@ pub async fn darwin_evolve(
     // Reset cancellation flag at the start of a new evolution
     reset_evolve_cancelled();
 
-    let result = evolution::evolve_and_commit(&app, &description)
-        .await
-        .map_err(|e| capture_err("darwin_evolve", e))?;
+    let result = match evolution::evolve_and_commit(&app, &description).await {
+        Ok(result) => result,
+        Err(failure) => {
+            log::warn!(
+                "[darwin_evolve] failed after {} iterations and {} build attempts",
+                failure.telemetry.iterations,
+                failure.telemetry.build_attempts
+            );
+            return Err(capture_err("darwin_evolve", failure.error));
+        }
+    };
 
     Ok(serde_json::to_value(result).unwrap_or_default())
 }
@@ -539,6 +552,42 @@ pub async fn summary_get_cached(app: AppHandle) -> Result<Option<types::SummaryR
     store::get_cached_summary(&app).map_err(|e| e.to_string())
 }
 
+/// Walks back `number` commits from `commit_hash`,
+/// upserts missing metadata (commits and summaries).
+#[tauri::command]
+pub async fn generate_history_from(
+    app: AppHandle,
+    commit_hash: String,
+    number: usize,
+) -> Result<(), String> {
+    crate::generate_history_from::generate_history_from(&app, &commit_hash, number)
+        .await
+        .map_err(|e| capture_err("generate_history_from", e))
+}
+
+/// Returns all commits on the main branch, each paired with optional DB metadata, summary,
+/// and build/head status.
+#[tauri::command]
+pub async fn get_history(app: AppHandle) -> Result<Vec<types::HistoryItem>, String> {
+    crate::get_history::get_history(&app)
+        .await
+        .map_err(|e| capture_err("get_history", e))
+}
+
+/// Restores the working tree to `target_hash` by checking out its files and
+/// creating a new forward commit on main. Rebuild is triggered by the frontend.
+#[tauri::command]
+pub async fn restore_to_commit(app: AppHandle, target_hash: String) -> Result<(), String> {
+    let config_dir =
+        store::get_config_dir(&app).map_err(|e| capture_err("restore_to_commit", e))?;
+    let label = &target_hash[..target_hash.len().min(8)];
+    git::restore_files_at_commit(&config_dir, &target_hash)
+        .map_err(|e| capture_err("restore_to_commit", e))?;
+    git::commit_all(&config_dir, &format!("nixmac: restore {label}"))
+        .map_err(|e| capture_err("restore_to_commit", e))?;
+    Ok(())
+}
+
 /// Finds the relevant summary for the current git state, flags availability.
 #[tauri::command]
 pub async fn find_summary(app: AppHandle) -> Result<Option<types::SummaryResponse>, String> {
@@ -631,10 +680,19 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
     let summary_model =
         store::get_summary_model(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
 
-    let max_iterations = Some(store::get_max_iterations(&app).unwrap_or(50));
+    let max_iterations = Some(
+        store::get_max_iterations(&app).unwrap_or(store::DEFAULT_MAX_ITERATIONS),
+    );
     let max_build_attempts = Some(store::get_max_build_attempts(&app).unwrap_or(5));
     let ollama_api_base_url: Option<String> =
         store::get_ollama_api_base_url(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+
+    let confirm_build = store::get_bool_pref(&app, store::CONFIRM_BUILD_KEY, true)
+        .map_err(|e| capture_err("ui_get_prefs", e))?;
+    let confirm_clear = store::get_bool_pref(&app, store::CONFIRM_CLEAR_KEY, true)
+        .map_err(|e| capture_err("ui_get_prefs", e))?;
+    let confirm_rollback = store::get_bool_pref(&app, store::CONFIRM_ROLLBACK_KEY, true)
+        .map_err(|e| capture_err("ui_get_prefs", e))?;
 
     Ok(types::UiPrefs {
         openrouter_api_key,
@@ -650,6 +708,10 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
 
         ollama_api_base_url,
         send_diagnostics,
+
+        confirm_build,
+        confirm_clear,
+        confirm_rollback,
     })
 }
 
@@ -696,6 +758,27 @@ pub async fn ui_set_prefs(
     }
     if let Some(send_diagnostics) = prefs.get("sendDiagnostics").and_then(|v| v.as_bool()) {
         store::set_send_diagnostics(&app, send_diagnostics)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
+    }
+    if let Some(confirm_build) = prefs
+        .get(store::CONFIRM_BUILD_KEY)
+        .and_then(|v| v.as_bool())
+    {
+        store::set_bool_pref(&app, store::CONFIRM_BUILD_KEY, confirm_build)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
+    }
+    if let Some(confirm_clear) = prefs
+        .get(store::CONFIRM_CLEAR_KEY)
+        .and_then(|v| v.as_bool())
+    {
+        store::set_bool_pref(&app, store::CONFIRM_CLEAR_KEY, confirm_clear)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
+    }
+    if let Some(confirm_rollback) = prefs
+        .get(store::CONFIRM_ROLLBACK_KEY)
+        .and_then(|v| v.as_bool())
+    {
+        store::set_bool_pref(&app, store::CONFIRM_ROLLBACK_KEY, confirm_rollback)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
 

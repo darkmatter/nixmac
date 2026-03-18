@@ -20,7 +20,7 @@
   # experience significantly and is safe on macOS.
   #
   # To disable this feature, comment out or remove the line below:
-  security.pam.enableSudoTouchIdAuth = true;
+  security.pam.services.sudo_local.touchIdAuth = true;
 
   # ============================================================================
   # Security examples and guidance (macOS / nix-darwin)

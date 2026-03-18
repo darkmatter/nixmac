@@ -5,9 +5,9 @@ import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { Check } from "lucide-react";
 
 const STEPS = [
-	{ name: "Begin", description: "Make a change" },
-	{ name: "Evolve", description: "Review & edit" },
-	{ name: "Commit", description: "Save to git" },
+	{ name: "Describe", description: "What to change" },
+	{ name: "Review", description: "Check & test" },
+	{ name: "Save", description: "Keep changes" },
 ] as const;
 
 export function Stepper() {
@@ -17,17 +17,23 @@ export function Stepper() {
 	const isRebuilding = useWidgetStore((s) => s.rebuild.isRunning);
 	const hasChanges = Boolean(gitStatus?.diff);
 
-	if (step === "setup" || step === "permissions" || step === "nix-setup" || isGenerating || isRebuilding) {
+	if (step === "setup" || step === "permissions" || step === "nix-setup" || step === "history" || isGenerating || isRebuilding) {
 		return null;
 	}
 
 	// Determine current step index based on widget state
 	const currentStepIndex = step === "merge" ? 2 : hasChanges ? 1 : 0;
 
+	const activeStepName = STEPS[currentStepIndex].name;
+
 	return (
 		<div className="border-border border-b bg-muted/30 px-3 py-4">
 			{/* 5-column grid: step | line | step | line | step */}
-			<div className="grid grid-cols-[2.5fr_1fr_2.5fr_1fr_2.5fr] items-center max-w-2xl mx-auto xs:-translate-x-3 sm:-translate-x-5">
+			<div
+				role="list"
+				aria-label={`Progress: step ${currentStepIndex + 1} of ${STEPS.length}, ${activeStepName}`}
+				className="grid grid-cols-[2.5fr_1fr_2.5fr_1fr_2.5fr] items-center max-w-2xl mx-auto xs:-translate-x-3 sm:-translate-x-5"
+			>
 				{STEPS.map((stepInfo, index) => {
 					const isCompleted = currentStepIndex > index;
 					const isActive = currentStepIndex === index;
@@ -40,6 +46,8 @@ export function Stepper() {
 						<>
 							{/* Step cell */}
 							<div
+								role="listitem"
+								aria-current={isActive ? "step" : undefined}
 								className={cn(
 									"flex items-center gap-3 xs:gap-2 sm:gap-3",
 									isFirst && "justify-end",

@@ -1,16 +1,21 @@
 //! Evolution module for AI-assisted configuration changes.
 
+mod config_dir_context;
 mod file_ops;
 pub mod messages;
 pub mod providers;
+mod run_command;
+mod search_packages;
 mod tools;
 mod types;
+mod utils;
 
 // Re-export public API
 use anyhow::{anyhow, Result};
 use chrono::Utc;
 use log::{debug, error, info, warn};
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::fs::OpenOptions;
@@ -25,7 +30,9 @@ pub use types::{Evolution, EvolutionState};
 use crate::{
     commands, nix, statistics, store,
     types::{emit_evolve_event, EvolveEvent},
+    utils as global_utils,
 };
+use config_dir_context::format_config_dir_context;
 use messages::Message;
 use providers::{AiProvider, OllamaProvider, OpenAIProvider, ProviderError};
 
@@ -235,21 +242,110 @@ fn log_api_error(
 const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
-const DEFAULT_MAX_ITERATIONS: usize = 50;
 const DEFAULT_MAX_BUILD_ATTEMPTS: usize = 5;
 const SYSTEM_PROMPT: &str = include_str!("../../prompts/system.md");
 
-/// Additional instructions to encourage thinking
-const THINKING_INSTRUCTIONS: &str = r#"
+/// Partial evolution telemetry captured on failed runs.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EvolutionProgress {
+    pub state: EvolutionState,
+    pub iterations: usize,
+    pub build_attempts: usize,
+    pub total_tokens: u32,
+    pub edits_count: usize,
+    pub thinking_count: usize,
+    pub tool_calls_count: usize,
+}
 
-IMPORTANT: You have a 'think' tool available. Use it FREQUENTLY to reason through problems:
-1. BEFORE reading files - think about what you need to understand
-2. AFTER reading files - analyze what you learned
-3. BEFORE making edits - plan your changes carefully
-4. WHEN debugging - analyze errors step by step
-5. BEFORE calling done - verify your work is complete
+/// Error for failed evolution generation that still carries partial progress.
+#[derive(Debug, Clone)]
+pub struct EvolutionRunError {
+    pub message: String,
+    pub progress: EvolutionProgress,
+}
 
-Thorough thinking leads to better, more complete implementations. Don't rush."#;
+impl EvolutionRunError {
+    fn from_state(
+        message: impl Into<String>,
+        evolution: &Evolution,
+        iterations: usize,
+        build_attempts: usize,
+        total_tokens: u32,
+    ) -> Self {
+        Self {
+            message: message.into(),
+            progress: EvolutionProgress {
+                state: EvolutionState::Failed,
+                iterations,
+                build_attempts,
+                total_tokens,
+                edits_count: evolution.edits.len(),
+                thinking_count: evolution.thinking.len(),
+                tool_calls_count: evolution.tool_calls.len(),
+            },
+        }
+    }
+}
+
+impl std::fmt::Display for EvolutionRunError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for EvolutionRunError {}
+
+/// Build a short single-line preview from the conversation messages to help with
+/// troubleshooting.
+fn build_preview(messages: &[Message]) -> String {
+    let preview_raw: String = messages
+        .iter()
+        .rev()
+        .filter_map(|m| match m {
+            // user messages and system prompts are always relevant
+            Message::User { content } | Message::System { content } => {
+                let c = content.trim();
+                if c.is_empty() {
+                    None
+                } else {
+                    Some(c.to_string())
+                }
+            }
+            // tool outputs can be included if non-empty
+            Message::Tool { content, .. } => {
+                let c = content.trim();
+                if c.is_empty() {
+                    None
+                } else {
+                    Some(c.to_string())
+                }
+            }
+            // skip assistant messages
+            Message::Assistant { .. } => None,
+        })
+        .take(3)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect::<Vec<_>>()
+        .join(" \n\n ");
+
+    // replace newlines with spaces and truncate
+    let mut preview = preview_raw.replace(['\n', '\r'], " ");
+    if preview.len() > 100 {
+        global_utils::truncate_utf8(&mut preview, 100);
+        preview.push_str("...");
+    }
+    preview
+}
+
+fn escape_user_query(input: &str) -> String {
+    input
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
 
 /// Generate an evolution from a user prompt using OpenAI function calling.
 ///
@@ -342,7 +438,7 @@ pub async fn generate_evolution(
     );
 
     // Read configurable limits from store
-    let max_iterations = store::get_max_iterations(app).unwrap_or(DEFAULT_MAX_ITERATIONS);
+    let max_iterations = store::get_max_iterations(app).unwrap_or(store::DEFAULT_MAX_ITERATIONS);
     let max_build_attempts =
         store::get_max_build_attempts(app).unwrap_or(DEFAULT_MAX_BUILD_ATTEMPTS);
     info!(
@@ -351,6 +447,11 @@ pub async fn generate_evolution(
     );
 
     let tools = create_tools();
+    let allowed_tool_names = tools
+        .iter()
+        .map(|tool| tool.name.as_str())
+        .collect::<Vec<_>>();
+    let allowed_tool_names_display = allowed_tool_names.join(", ");
     let mut evolution = Evolution::new(prompt);
     let mut iteration: usize = 0;
     let mut build_attempts: usize = 0;
@@ -364,15 +465,26 @@ pub async fn generate_evolution(
     let system_prompt = SYSTEM_PROMPT
         .replace("{{CONFIG_DIR}}", config_dir)
         .replace("{{HOST_ATTR}}", &host_attr);
+    let config_dir_context = match format_config_dir_context(config_dir) {
+        Ok(tree) => tree,
+        Err(e) => {
+            warn!(
+                "Failed to build config_dir context for prompt ({}): {}",
+                config_dir, e
+            );
+            "(Failed to render config directory tree)".to_string()
+        }
+    };
 
     let mut messages: Vec<Message> = vec![
         Message::System {
-            content: format!("{}{}", system_prompt, THINKING_INSTRUCTIONS),
+            content: system_prompt.clone(),
         },
         Message::User {
             content: format!(
-                "{}\n\nStart by using the 'think' tool to plan your approach.",
-                prompt
+                "<user_query>{}</user_query>\n\n<config_dir>\n{}\n</config_dir>\n\nStart by using the 'think' tool to plan your approach.",
+                escape_user_query(prompt),
+                config_dir_context
             ),
         },
     ];
@@ -382,6 +494,7 @@ pub async fn generate_evolution(
         // Check for cancellation at the start of each iteration
         if commands::is_evolve_cancelled() {
             warn!("⚠️ Evolution cancelled by user");
+            evolution.state = EvolutionState::Failed;
             emit_evolve_event(
                 app,
                 EvolveEvent::error(start_time, Some(iteration), "Evolution cancelled by user"),
@@ -390,7 +503,14 @@ pub async fn generate_evolution(
             if let Err(e) = statistics::record_evolution_failure(app, iteration) {
                 warn!("Failed to record evolution failure stats: {}", e);
             }
-            return Err(anyhow!("Evolution cancelled by user"));
+            return Err(EvolutionRunError::from_state(
+                "Evolution cancelled by user",
+                &evolution,
+                iteration,
+                build_attempts,
+                total_tokens,
+            )
+            .into());
         }
 
         iteration += 1;
@@ -410,7 +530,10 @@ pub async fn generate_evolution(
             EvolveEvent::iteration(start_time, iteration, messages.len()),
         );
 
-        debug!("Sending request to AI provider...");
+        // Capture the messages that most directly drive the agent's next action
+        let preview = build_preview(&messages);
+
+        debug!("Sending request to AI provider, preview: {}", preview);
         emit_evolve_event(app, EvolveEvent::api_request(start_time, iteration));
 
         // Run provider completion inside a short-lived block and select!
@@ -433,6 +556,7 @@ pub async fn generate_evolution(
                     }
                 } => {
                     warn!("⚠️ Evolution cancelled by user during provider call");
+                    evolution.state = EvolutionState::Failed;
                     emit_evolve_event(
                         app,
                         EvolveEvent::error(start_time, Some(iteration), "Evolution cancelled by user"),
@@ -441,7 +565,14 @@ pub async fn generate_evolution(
                     if let Err(e) = statistics::record_evolution_failure(app, iteration) {
                         warn!("Failed to record evolution failure stats: {}", e);
                     }
-                    return Err(anyhow!("Evolution cancelled by user"));
+                    return Err(EvolutionRunError::from_state(
+                        "Evolution cancelled by user",
+                        &evolution,
+                        iteration,
+                        build_attempts,
+                        total_tokens,
+                    )
+                    .into());
                 }
             }
         };
@@ -476,7 +607,15 @@ pub async fn generate_evolution(
                 }
 
                 // Return a downcastable error in case the caller needs to see the ProviderError.
-                return Err(e.into());
+                evolution.state = EvolutionState::Failed;
+                return Err(EvolutionRunError::from_state(
+                    error_str,
+                    &evolution,
+                    iteration,
+                    build_attempts,
+                    total_tokens,
+                )
+                .into());
             }
         };
 
@@ -495,13 +634,24 @@ pub async fn generate_evolution(
 
         let assistant_msg = response.message;
 
-        // Log assistant text response if any
+        // Log assistant text response if any. If tool calls are present, treat tool_calls as
+        // the sole executable source and only log content as an optional side note.
         if let Message::Assistant {
             content: Some(ref text),
-            ..
+            ref tool_calls,
         } = assistant_msg
         {
-            info!("💬 Assistant: {}", truncate_for_log(text, 500));
+            let has_tool_calls = tool_calls.as_ref().is_some_and(|calls| !calls.is_empty());
+            if has_tool_calls {
+                debug!(
+                    "Assistant returned content alongside tool_calls; content treated as non-executable text | content_preview={}",
+                    global_utils::truncate_with_ellipsis(text, 300)
+                );
+            }
+            info!(
+                "💬 Assistant: {}",
+                global_utils::truncate_with_ellipsis(text, 500)
+            );
         }
 
         // Add assistant message to history
@@ -532,7 +682,7 @@ pub async fn generate_evolution(
                         EvolveEvent::tool_call(start_time, iteration, tool_name, &args_summary),
                     );
 
-                    let result = execute_tool(config_dir, tool_name, &args);
+                    let result = execute_tool(config_dir, host_attr.as_str(), tool_name, &args);
 
                     match result {
                         Ok(ref res) => {
@@ -601,7 +751,7 @@ pub async fn generate_evolution(
                                 }
                             }
 
-                            let (msg, break_signal) = process_tool_result(
+                            let (msg, break_signal) = match process_tool_result(
                                 &tool_call.id,
                                 res,
                                 &mut evolution,
@@ -610,7 +760,20 @@ pub async fn generate_evolution(
                                 &host_attr,
                                 start_time,
                                 iteration,
-                            )?;
+                            ) {
+                                Ok(v) => v,
+                                Err(e) => {
+                                    evolution.state = EvolutionState::Failed;
+                                    return Err(EvolutionRunError::from_state(
+                                        e.to_string(),
+                                        &evolution,
+                                        iteration,
+                                        build_attempts,
+                                        total_tokens,
+                                    )
+                                    .into());
+                                }
+                            };
                             messages.push(msg);
 
                             match break_signal {
@@ -636,9 +799,21 @@ pub async fn generate_evolution(
                                 &format!("ERROR: {}", e),
                                 false,
                             );
+
+                            let tool_error = e.to_string();
+                            let recovery_message = if tool_error.starts_with("Unknown tool:") {
+                                format!(
+                                    "Unknown tool '{}'. Retry with one of the allowed tools only: {}. \
+Do not invent tool names and do not place tool invocations in assistant content.",
+                                    tool_name, allowed_tool_names_display
+                                )
+                            } else {
+                                format!("Error: {}. Please try a different approach.", tool_error)
+                            };
+
                             messages.push(Message::Tool {
                                 tool_call_id: tool_call.id.clone(),
-                                content: format!("Error: {}. Please try a different approach.", e),
+                                content: recovery_message,
                             });
                         }
                     }
@@ -665,11 +840,12 @@ pub async fn generate_evolution(
         }
 
         // Safety limits
-        if iteration > max_iterations {
+        if iteration >= max_iterations {
             warn!(
                 "⚠️ Evolution exceeded maximum iterations ({}) - aborting",
                 max_iterations
             );
+            evolution.state = EvolutionState::Failed;
             emit_evolve_event(
                 app,
                 EvolveEvent::error(
@@ -682,10 +858,14 @@ pub async fn generate_evolution(
             if let Err(e) = statistics::record_evolution_failure(app, iteration) {
                 warn!("Failed to record evolution failure stats: {}", e);
             }
-            return Err(anyhow!(
-                "Evolution exceeded maximum iterations ({})",
-                max_iterations
-            ));
+            return Err(EvolutionRunError::from_state(
+                format!("Evolution exceeded maximum iterations ({})", max_iterations),
+                &evolution,
+                iteration,
+                build_attempts,
+                total_tokens,
+            )
+            .into());
         }
 
         if build_attempts >= max_build_attempts {
@@ -693,6 +873,7 @@ pub async fn generate_evolution(
                 "⚠️ Evolution exceeded maximum build attempts ({}) - aborting",
                 max_build_attempts
             );
+            evolution.state = EvolutionState::Failed;
             emit_evolve_event(
                 app,
                 EvolveEvent::error(
@@ -705,10 +886,17 @@ pub async fn generate_evolution(
             if let Err(e) = statistics::record_evolution_failure(app, iteration) {
                 warn!("Failed to record evolution failure stats: {}", e);
             }
-            return Err(anyhow!(
-                "Failed to produce a valid configuration after {} build attempts",
-                max_build_attempts
-            ));
+            return Err(EvolutionRunError::from_state(
+                format!(
+                    "Failed to produce a valid configuration after {} build attempts",
+                    max_build_attempts
+                ),
+                &evolution,
+                iteration,
+                build_attempts,
+                total_tokens,
+            )
+            .into());
         }
     }
 
@@ -747,15 +935,6 @@ pub async fn generate_evolution(
     Ok(evolution)
 }
 
-/// Truncate string for logging
-fn truncate_for_log(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
-        s.to_string()
-    } else {
-        format!("{}...", &s[..max_len])
-    }
-}
-
 /// Summarize tool arguments for logging
 fn summarize_args(args: &serde_json::Value) -> String {
     match args {
@@ -765,11 +944,7 @@ fn summarize_args(args: &serde_json::Value) -> String {
                 .map(|(k, v)| {
                     let v_str = match v {
                         serde_json::Value::String(s) => {
-                            if s.len() > 50 {
-                                format!("\"{}...\"", &s[..50])
-                            } else {
-                                format!("\"{}\"", s)
-                            }
+                            format!("\"{}\"", global_utils::truncate_with_ellipsis(s, 50))
                         }
                         _ => v.to_string(),
                     };
@@ -797,7 +972,10 @@ fn summarize_result(result: &ToolResult) -> (String, bool) {
                 ("FAILED".to_string(), false)
             }
         }
-        ToolResult::Done(s) => (format!("done: {}", truncate_for_log(s, 50)), true),
+        ToolResult::Done(s) => (
+            format!("done: {}", global_utils::truncate_with_ellipsis(s, 50)),
+            true,
+        ),
     }
 }
 
@@ -859,6 +1037,7 @@ fn process_tool_result(
         }
 
         ToolResult::BuildResult { success, output } => {
+            *build_attempts += 1;
             if *success {
                 info!("✅ BUILD CHECK PASSED");
                 *build_verified = true;
@@ -871,7 +1050,6 @@ fn process_tool_result(
                 };
                 (msg, Some(false))
             } else {
-                *build_attempts += 1;
                 warn!(
                     "❌ BUILD CHECK FAILED (attempt {}/{})",
                     build_attempts, DEFAULT_MAX_BUILD_ATTEMPTS
