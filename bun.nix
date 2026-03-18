@@ -4036,6 +4036,10 @@
     url = "https://registry.npmjs.org/chromatic/-/chromatic-13.3.4.tgz";
     hash = "sha512-TR5rvyH0ESXobBB3bV8jc87AEAFQC7/n+Eb4XWhJz6hW3YNxIQPVjcbgLv+a4oKHEl1dUBueWSoIQsOVGTd+RQ==";
   };
+  "chromatic@15.2.0" = fetchurl {
+    url = "https://registry.npmjs.org/chromatic/-/chromatic-15.2.0.tgz";
+    hash = "sha512-c9tDfE62aiPVPnVab8jQLz+9c9II/CUFZ6T2Kk3hi2hSL+HLkRwX3zjwRYW1z9Shn57R/ORBEpQ3ftufp8EgWA==";
+  };
   "ci-info@3.9.0" = fetchurl {
     url = "https://registry.npmjs.org/ci-info/-/ci-info-3.9.0.tgz";
     hash = "sha512-NIxF55hv4nSqQswkAeiOi1r83xy8JldOFDTWiug55KBu9Jnblncd2U6ViHmYgHf01TPZS77NJBhBMKdWj9HQMQ==";

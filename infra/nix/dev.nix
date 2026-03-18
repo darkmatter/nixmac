@@ -61,7 +61,7 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     export VITE_NIXMAC_ENV=local
     export NIXMAC_VERSION=local-$(whoami)
     export VITE_NIXMAC_VERSION=local-$(whoami)
-    
+
     # eval "$(starship init $SHELL)"
   '';
 
@@ -70,6 +70,8 @@ lib.mkIf (!(config.container.isBuilding or false)) {
   languages.javascript.enable = true;
   languages.javascript.bun.install.enable = true;
   languages.javascript.bun.enable = true;
+
+  env.SOPS_KEYSERVICE = "tcp://100.116.189.36:5000";
 
   # https://devenv.sh/processes/
   processes.tauri = {
