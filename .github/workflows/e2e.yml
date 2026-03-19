@@ -122,7 +122,7 @@ jobs:
 
       - name: Decrypt E2E secrets
         env:
-          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY_DRKMTTR_DEV }}
         run: |
           if ! command -v sops &>/dev/null; then
             curl -sLO https://github.com/getsops/sops/releases/download/v3.9.4/sops-v3.9.4.linux.amd64
