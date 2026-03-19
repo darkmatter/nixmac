@@ -1,0 +1,238 @@
+name: E2E Tests
+
+# ============================================================================
+# Multi-scenario E2E test runner for nixmac
+#
+# Trigger methods:
+#   1. Path-based (automatic): Changes to specific paths trigger matching scenarios
+#   2. Label-based (manual): Add e2e:<scenario> labels to PRs
+#   3. workflow_dispatch: Run any scenario on demand
+#
+# Scenario routing:
+#   - e2e:install   → nix-install scenario (full install flow)
+#   - e2e:all       → run all scenarios sequentially
+#   - Path fallback → nix-install (safe default for any native change)
+#
+# Future: AI-generated scenarios from PR diffs (Layer 4)
+# ============================================================================
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+    paths:
+      - 'apps/native/src-tauri/**'
+      - 'tests/e2e/**'
+      - '.github/workflows/e2e.yml'
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: 'Scenario to run (or "all")'
+        required: false
+        default: 'nix-install'
+        type: choice
+        options:
+          - nix-install
+          - all
+      branch:
+        description: 'Branch to test (defaults to current)'
+        required: false
+        default: ''
+
+concurrency:
+  group: e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # --- Determine which scenarios to run ---
+  resolve-scenarios:
+    name: Resolve scenarios
+    runs-on: ubuntu-latest
+    outputs:
+      scenarios: ${{ steps.resolve.outputs.scenarios }}
+      branch: ${{ steps.ref.outputs.branch }}
+      sha: ${{ steps.ref.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine branch and commit
+        id: ref
+        run: |
+          if [ -n "${{ inputs.branch }}" ]; then
+            echo "branch=${{ inputs.branch }}" >> $GITHUB_OUTPUT
+          elif [ -n "${{ github.head_ref }}" ]; then
+            echo "branch=${{ github.head_ref }}" >> $GITHUB_OUTPUT
+          else
+            echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+          echo "sha=${{ github.event.pull_request.head.sha || github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Resolve scenario list
+        id: resolve
+        run: |
+          SCENARIOS=""
+
+          # --- Method 1: workflow_dispatch ---
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            INPUT="${{ inputs.scenario }}"
+            if [ "$INPUT" = "all" ]; then
+              # List all scenario files
+              SCENARIOS=$(ls tests/e2e/scenarios/*.sh 2>/dev/null | xargs -I{} basename {} .sh | jq -R . | jq -s .)
+            else
+              SCENARIOS=$(echo "[\"$INPUT\"]")
+            fi
+
+          # --- Method 2: Label-based ---
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            LABELS='${{ toJSON(github.event.pull_request.labels.*.name) }}'
+
+            # Check for e2e:* labels
+            E2E_LABELS=$(echo "$LABELS" | jq -r '.[] | select(startswith("e2e:")) | sub("^e2e:"; "")')
+
+            if echo "$E2E_LABELS" | grep -q "^all$"; then
+              SCENARIOS=$(ls tests/e2e/scenarios/*.sh 2>/dev/null | xargs -I{} basename {} .sh | jq -R . | jq -s .)
+            elif [ -n "$E2E_LABELS" ]; then
+              SCENARIOS=$(echo "$E2E_LABELS" | jq -R . | jq -s .)
+            fi
+
+            # --- Method 3: Path-based fallback ---
+            if [ -z "$SCENARIOS" ] || [ "$SCENARIOS" = "[]" ] || [ "$SCENARIOS" = "null" ]; then
+              # Default: run nix-install for any native code change
+              SCENARIOS='["nix-install"]'
+            fi
+          else
+            SCENARIOS='["nix-install"]'
+          fi
+
+          echo "Resolved scenarios: $SCENARIOS"
+          echo "scenarios=$SCENARIOS" >> $GITHUB_OUTPUT
+
+  # --- Run each scenario ---
+  e2e-test:
+    name: "E2E: ${{ matrix.scenario }}"
+    needs: resolve-scenarios
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: ${{ fromJSON(needs.resolve-scenarios.outputs.scenarios) }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Decrypt E2E secrets
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY_DRKMTTR_DEV }}
+        run: |
+          if ! command -v sops &>/dev/null; then
+            curl -sLO https://github.com/getsops/sops/releases/download/v3.9.4/sops-v3.9.4.linux.amd64
+            chmod +x sops-v3.9.4.linux.amd64
+            sudo mv sops-v3.9.4.linux.amd64 /usr/local/bin/sops
+          fi
+
+          SECRETS_FILE="ops/secrets/e2e.enc.yaml"
+          if [ ! -f "$SECRETS_FILE" ]; then
+            echo "::error::SOPS secrets file not found at $SECRETS_FILE"
+            exit 1
+          fi
+
+          {
+            echo "MAC_E2E_HOST=$(sops -d --extract '["mac_host"]' "$SECRETS_FILE")"
+            echo "MAC_E2E_USER=$(sops -d --extract '["mac_user"]' "$SECRETS_FILE")"
+            echo "MAC_E2E_ADMIN_PW=$(sops -d --extract '["mac_admin_pw"]' "$SECRETS_FILE")"
+          } >> "$GITHUB_ENV"
+
+          sops -d --extract '["mac_ssh_key"]' "$SECRETS_FILE" > /tmp/e2e_ssh_key
+          chmod 600 /tmp/e2e_ssh_key
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          cp /tmp/e2e_ssh_key ~/.ssh/e2e_key
+          chmod 600 ~/.ssh/e2e_key
+          ssh-keyscan -H "$MAC_E2E_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: "Run E2E: ${{ matrix.scenario }}"
+        env:
+          SCENARIO: ${{ matrix.scenario }}
+          BRANCH: ${{ needs.resolve-scenarios.outputs.branch }}
+          COMMIT_SHA: ${{ needs.resolve-scenarios.outputs.sha }}
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              -o ConnectTimeout=30 \
+              -o ServerAliveInterval=15 \
+              -o ServerAliveCountMax=4 \
+              -i ~/.ssh/e2e_key \
+              "${MAC_E2E_USER}@${MAC_E2E_HOST}" \
+              "export ADMIN_PASSWORD=$(printf '%q' "$MAC_E2E_ADMIN_PW") \
+               export GH_TOKEN=$(printf '%q' "${{ secrets.GITHUB_TOKEN }}") \
+               export BRANCH=$(printf '%q' "$BRANCH") \
+               export COMMIT_SHA=$(printf '%q' "$COMMIT_SHA") \
+               export SCENARIO=$(printf '%q' "$SCENARIO") \
+               bash -s" < tests/e2e/ci-runner.sh
+
+      - name: Fetch test artifacts
+        if: always()
+        run: |
+          SCP="scp -o StrictHostKeyChecking=no -i ~/.ssh/e2e_key"
+          HOST="${MAC_E2E_USER}@${MAC_E2E_HOST}"
+          mkdir -p artifacts
+
+          $SCP "$HOST:/tmp/e2e-recording.mp4" artifacts/ 2>/dev/null || true
+          $SCP "$HOST:/tmp/e2e-test.log" artifacts/ 2>/dev/null || true
+          $SCP "$HOST:/tmp/e2e-test-results.json" artifacts/ 2>/dev/null || true
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/e2e_key "$HOST" \
+            'ls /tmp/e2e-screenshots/*.png 2>/dev/null' | while read -r f; do
+            $SCP "$HOST:$f" artifacts/ 2>/dev/null || true
+          done
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: "e2e-${{ matrix.scenario }}"
+          path: artifacts/
+          retention-days: 14
+
+      - name: Post summary
+        if: always()
+        run: |
+          SCENARIO="${{ matrix.scenario }}"
+          echo "### E2E: ${SCENARIO}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # JSON results (preferred)
+          if [ -f artifacts/e2e-test-results.json ]; then
+            SUCCESS=$(jq -r '.success' artifacts/e2e-test-results.json)
+            PASSED=$(jq -r '.passed' artifacts/e2e-test-results.json)
+            FAILED=$(jq -r '.failed' artifacts/e2e-test-results.json)
+            DURATION=$(jq -r '.duration_seconds' artifacts/e2e-test-results.json)
+
+            echo "| Phase | Status | Name |" >> $GITHUB_STEP_SUMMARY
+            echo "|-------|--------|------|" >> $GITHUB_STEP_SUMMARY
+            jq -r '.phases[] | "| \(.phase) | \(if .status == "PASS" then "✅" else "❌" end) | \(.message) |"' \
+              artifacts/e2e-test-results.json >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Result:** $PASSED passed, $FAILED failed in ${DURATION}s" >> $GITHUB_STEP_SUMMARY
+
+          # Fallback: parse log
+          elif [ -f artifacts/e2e-test.log ]; then
+            grep -E '\[PASS\]|\[FAIL\]' artifacts/e2e-test.log | \
+              sed 's/\x1b\[[0-9;]*m//g' | \
+              while read -r line; do
+                if echo "$line" | grep -q "PASS"; then
+                  echo "✅ ${line#*PASS] }" >> $GITHUB_STEP_SUMMARY
+                else
+                  echo "❌ ${line#*FAIL] }" >> $GITHUB_STEP_SUMMARY
+                fi
+              done
+          else
+            echo "⚠️ No test results found." >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📹 Video and screenshots in workflow artifacts." >> $GITHUB_STEP_SUMMARY
+
+      - name: Cleanup
+        if: always()
+        run: rm -f /tmp/e2e_ssh_key ~/.ssh/e2e_key
