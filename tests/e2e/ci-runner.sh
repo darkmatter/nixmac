@@ -59,16 +59,30 @@ rm -rf /tmp/e2e-screenshots /tmp/e2e-recording.mp4 /tmp/e2e-test.log /tmp/e2e-ru
 # --- Download app artifact (pinned to commit SHA if available) ---
 echo "[ci] Downloading app from CI (branch: $BRANCH)..."
 
+# Try exact commit first, then fall back to latest successful on branch
+RUN_ID=""
 if [ -n "$COMMIT_SHA" ]; then
     RUN_ID=$(gh api "repos/${REPO}/actions/runs?head_sha=${COMMIT_SHA}&status=success&per_page=5" \
-        --jq "[.workflow_runs[] | select(.name != \"E2E — Nix Install Flow\")] | .[0].id" 2>/dev/null)
-else
-    RUN_ID=$(gh api "repos/${REPO}/actions/runs?branch=${BRANCH}&status=success&per_page=5" \
-        --jq "[.workflow_runs[] | select(.name != \"E2E — Nix Install Flow\")] | .[0].id" 2>/dev/null)
+        --jq "[.workflow_runs[] | select(.name == \"Build macOS App\")] | .[0].id" 2>/dev/null)
+    [ "$RUN_ID" = "null" ] && RUN_ID=""
 fi
 
-if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
-    echo "[ci] ERROR: No successful CI run found for ${COMMIT_SHA:-branch $BRANCH}"
+if [ -z "$RUN_ID" ]; then
+    echo "[ci] No build for exact commit, trying latest successful on branch $BRANCH..."
+    RUN_ID=$(gh api "repos/${REPO}/actions/runs?branch=${BRANCH}&status=success&per_page=10" \
+        --jq "[.workflow_runs[] | select(.name == \"Build macOS App\")] | .[0].id" 2>/dev/null)
+    [ "$RUN_ID" = "null" ] && RUN_ID=""
+fi
+
+if [ -z "$RUN_ID" ]; then
+    echo "[ci] No build on branch either, trying latest successful on main..."
+    RUN_ID=$(gh api "repos/${REPO}/actions/runs?branch=main&status=success&per_page=10" \
+        --jq "[.workflow_runs[] | select(.name == \"Build macOS App\")] | .[0].id" 2>/dev/null)
+    [ "$RUN_ID" = "null" ] && RUN_ID=""
+fi
+
+if [ -z "$RUN_ID" ]; then
+    echo "[ci] ERROR: No successful Build macOS App run found anywhere"
     exit 1
 fi
 echo "[ci] Using CI run: $RUN_ID"
