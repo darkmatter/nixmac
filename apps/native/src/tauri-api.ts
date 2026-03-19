@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { type Event, listen, once } from "@tauri-apps/api/event";
-import type { CommitRow, SummaryRow } from "./types/sqlite";
-export type { CommitRow, SummaryRow } from "./types/sqlite";
+import type { Change, CommitRow, SummaryRow } from "./types/sqlite";
+export type { Change, CommitRow, SummaryRow } from "./types/sqlite";
 import type { SummarizedChanges } from "./types/queries";
 export type { SummarizedChanges } from "./types/queries";
 
@@ -67,6 +67,7 @@ export interface GitStatus {
   deletions?: number;
   headCommitHash: string | null;
   cleanHead: boolean;
+  changes?: Change[];
 }
 
 export interface SummaryItem {

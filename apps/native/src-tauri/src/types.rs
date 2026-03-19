@@ -58,6 +58,9 @@ pub struct GitStatus {
 
     /// Whether the working tree is clean (no uncommitted changes).
     pub clean_head: bool,
+
+    /// Parsed hunks from the current diff. Empty when `clean_head` is true.
+    pub changes: Vec<crate::sqlite_types::Change>,
 }
 
 /// Individual file status parsed from diff headers.

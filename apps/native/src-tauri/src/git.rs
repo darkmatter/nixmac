@@ -439,6 +439,8 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     let head_diff = get_head_diff(dir).unwrap_or_default();
     let clean_head = head_diff.is_empty();
 
+    let changes = crate::changes_from_diff::changes_from_diff(&diff, 0, false);
+
     Ok(GitStatus {
         files,
         branch,
@@ -451,6 +453,7 @@ pub fn status(dir: &str) -> Result<GitStatus> {
         deletions,
         head_commit_hash,
         clean_head,
+        changes,
     })
 }
 
