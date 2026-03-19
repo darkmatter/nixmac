@@ -120,16 +120,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup sops
+        uses: nhedger/setup-sops@v2
+
+      - name: Setup age
+        uses: alessiodionisi/setup-age-action@v1.3.0
+
       - name: Decrypt E2E secrets
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY_DRKMTTR_DEV }}
         run: |
-          if ! command -v sops &>/dev/null; then
-            curl -sLO https://github.com/getsops/sops/releases/download/v3.9.4/sops-v3.9.4.linux.amd64
-            chmod +x sops-v3.9.4.linux.amd64
-            sudo mv sops-v3.9.4.linux.amd64 /usr/local/bin/sops
-          fi
-
           SECRETS_FILE="ops/secrets/e2e.enc.yaml"
           if [ ! -f "$SECRETS_FILE" ]; then
             echo "::error::SOPS secrets file not found at $SECRETS_FILE"
