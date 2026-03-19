@@ -4,7 +4,6 @@ use super::file_ops::{
     apply_file_edits, ensure_path_under_base, join_in_dir, resolve_existing_path_in_dir,
 };
 use super::messages::Tool;
-//use super::run_command::execute_run_command;
 use super::search_packages::execute_search_packages;
 use super::types::FileEdit;
 
@@ -111,26 +110,6 @@ pub fn create_tools() -> Vec<Tool> {
                 "required": ["host"]
             }),
         },
-        // TODO: Remove this when we're confident we can run without run_command.
-        // It's a powerful escape hatch for complex operations that don't fit other tools,
-        // but it can lead to sloppy agent work if overused.
-        // And it's a security risk if the agent is compromised.
-        // Tool {
-        //     name: "run_command".to_string(),
-        //     description: "Run a shell command in the config directory. Use sparingly - prefer \
-        //                  specific tools when available. Useful for checking nix syntax, \
-        //                  searching code, or other exploratory commands.".to_string(),
-        //     parameters: serde_json::json!({
-        //         "type": "object",
-        //         "properties": {
-        //             "command": {
-        //                 "type": "string",
-        //                 "description": "Shell command to run"
-        //             }
-        //         },
-        //         "required": ["command"]
-        //     }),
-        // },
         Tool {
             name: "search_code".to_string(),
             description: "Search for text patterns in the codebase using ripgrep. \
@@ -158,7 +137,6 @@ pub fn create_tools() -> Vec<Tool> {
                          {\"attr_path\": string, \"version\": string, \"description\": string, \"channel\": string}. \
                          Example: {\"wget\": {\"attr_path\": \"wget\", \"version\": \"1.21.3\", \"description\": \"retrieves files from the web\", \"channel\": \"nixpkgs-unstable\"}}. \
                          Return JSON only (no prose). \
-                         Use this instead of run_command for package discovery. \
                          Parameters: search_type controls where to search (names, descriptions, or both); \
                          use_regex enables regex patterns for advanced matching; \
                          channel lets you search in different flakes (nixpkgs, nixpkgs-unstable, etc.)".to_string(),
@@ -399,15 +377,6 @@ pub fn execute_tool(
             }
         }
 
-        // TODO: Remove when we know we can run without it. See previous comment at tool definitions.
-        // "run_command" => {
-        //     let command = args["command"]
-        //         .as_str()
-        //         .ok_or_else(|| anyhow!("run_command: missing command"))?;
-
-        //     let result = execute_run_command(config_dir, command)?;
-        //     Ok(ToolResult::Continue(result))
-        // }
         "search_code" => {
             let pattern = args["pattern"]
                 .as_str()
