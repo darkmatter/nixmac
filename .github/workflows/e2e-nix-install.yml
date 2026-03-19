@@ -1,0 +1,97 @@
+name: E2E — Nix Install Flow
+
+on:
+  pull_request:
+    paths:
+      - 'apps/native/src-tauri/**'
+      - 'tests/e2e/**'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to test (defaults to PR head or main)'
+        required: false
+        default: ''
+
+concurrency:
+  group: e2e-nix-install
+  cancel-in-progress: true
+
+jobs:
+  e2e-test:
+    name: Nix Install E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.MAC_E2E_SSH_KEY }}" > ~/.ssh/e2e_key
+          chmod 600 ~/.ssh/e2e_key
+          ssh-keyscan -H ${{ secrets.MAC_E2E_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Determine branch
+        id: branch
+        run: |
+          if [ -n "${{ inputs.branch }}" ]; then
+            echo "name=${{ inputs.branch }}" >> $GITHUB_OUTPUT
+          elif [ -n "${{ github.head_ref }}" ]; then
+            echo "name=${{ github.head_ref }}" >> $GITHUB_OUTPUT
+          else
+            echo "name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run E2E test on macOS runner
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              -o ConnectTimeout=30 \
+              -i ~/.ssh/e2e_key \
+              ${{ secrets.MAC_E2E_USER }}@${{ secrets.MAC_E2E_HOST }} \
+              "ADMIN_PASSWORD='${{ secrets.MAC_E2E_ADMIN_PW }}' \
+               GH_TOKEN='${{ secrets.GITHUB_TOKEN }}' \
+               BRANCH='${{ steps.branch.outputs.name }}' \
+               bash -s" < tests/e2e/ci-runner.sh
+
+      - name: Fetch test artifacts
+        if: always()
+        run: |
+          SCP="scp -o StrictHostKeyChecking=no -i ~/.ssh/e2e_key"
+          HOST="${{ secrets.MAC_E2E_USER }}@${{ secrets.MAC_E2E_HOST }}"
+          mkdir -p artifacts
+
+          $SCP "$HOST:/tmp/e2e-recording.mp4" artifacts/ 2>/dev/null || echo "No video"
+          $SCP "$HOST:/tmp/e2e-test.log" artifacts/ 2>/dev/null || echo "No log"
+          # scp doesn't glob over ssh; list files first
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/e2e_key "$HOST" \
+            'ls /tmp/e2e-screenshots/*.png 2>/dev/null' | while read -r f; do
+            $SCP "$HOST:$f" artifacts/ 2>/dev/null || true
+          done
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-nix-install
+          path: artifacts/
+          retention-days: 14
+
+      - name: Post summary
+        if: always()
+        run: |
+          if [ -f artifacts/e2e-test.log ]; then
+            echo "### E2E Test — Nix Install Flow" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            grep -E '\[PASS\]|\[FAIL\]' artifacts/e2e-test.log | \
+              sed 's/\x1b\[[0-9;]*m//g' | \
+              while read -r line; do
+                if echo "$line" | grep -q "PASS"; then
+                  echo "✅ ${line#*PASS] }" >> $GITHUB_STEP_SUMMARY
+                else
+                  echo "❌ ${line#*FAIL] }" >> $GITHUB_STEP_SUMMARY
+                fi
+              done
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "📹 Video and screenshots available in workflow artifacts." >> $GITHUB_STEP_SUMMARY
+          fi
