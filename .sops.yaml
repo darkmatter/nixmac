@@ -1,5 +1,6 @@
 keys:
-  - &key_service age16wuzuxnkcgfuxzvzgk5e5a5f6hhs386adjewyv54m9esr4yj6uuslpn6tp 
+  - &key_service age16wuzuxnkcgfuxzvzgk5e5a5f6hhs386adjewyv54m9esr4yj6uuslpn6tp
+  - &runner age1eqcj2g0fdekj2wpqp4y0fg9c5myydjdt9zlr5scr0grk6fxszymqkpw5jf
 creation_rules:
   - path_regex: .*secrets/.*prod(uction)?\.(ya?ml|json|env)$
     unencrypted_comment_regex: '^\s?(safe|plaintext|unencrypted)$'
@@ -16,3 +17,4 @@ creation_rules:
       - age164al9lamrv4ufza9wvg5g5kh863yenq0gdggyxujugxqlv00894spd6jj9
       - age1vapyvpjzqg8wdfay055s574qt0u6avtzv4ch7kv0epvtycpyjqzqk3m4yr
       - *key_service
+      - *runner
