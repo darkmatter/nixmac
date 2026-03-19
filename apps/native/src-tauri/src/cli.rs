@@ -179,7 +179,9 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
     // Effective max iterations: prefer CLI value, otherwise read from store (has default)
     let effective_max_iterations: usize = match max_iterations {
         Some(v) => v,
-        None => crate::store::get_max_iterations(app).unwrap_or(50),
+        None => {
+            crate::store::get_max_iterations(app).unwrap_or(crate::store::DEFAULT_MAX_ITERATIONS)
+        }
     };
 
     // Max iterations

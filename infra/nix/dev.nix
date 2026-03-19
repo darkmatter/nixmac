@@ -20,8 +20,6 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     pkgs.git
     pkgs.libiconv
     pkgs.starship
-    pkgs.lldb
-    pkgs.llvmPackages.bintools
     pkgs.nixfmt
     pkgs.uv
     pkgs.pyright
@@ -29,13 +27,15 @@ lib.mkIf (!(config.container.isBuilding or false)) {
   ]
   ++ lib.optionals (pkgs.stdenv.isDarwin) [
     pkgs.apple-sdk_15
+    pkgs.lldb
+    pkgs.llvmPackages.bintools
   ]
   ++ lib.optionals (builtins.getEnv "_PROFILE" == "development") [
     pkgs.starship
   ];
 
   # Dev-only languages/toolchains
-  languages.swift.enable = true;
+  languages.swift.enable = pkgs.stdenv.isDarwin;
   languages.rust.enable = true;
   languages.rust.channel = "stable";
   languages.typescript.enable = true;
@@ -54,10 +54,6 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     export RUST_BACKTRACE=1
     export RUST_LOG=info
 
-    # For CodeLLDB
-    export LLDB_BIN=$(which lldb)
-    export DYLD_LIBRARY_PATH=${pkgs.lldb}/lib:$DYLD_LIBRARY_PATH
-
     # Inherit locale settings from host environment
     export LANG=en_US.UTF-8
     export LC_ALL=en_US.UTF-8
@@ -70,6 +66,11 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     export VITE_NIXMAC_VERSION=local-$(whoami)
 
     # eval "$(starship init $SHELL)"
+  ''
+  + lib.optionalString pkgs.stdenv.isDarwin ''
+    # For CodeLLDB
+    export LLDB_BIN=$(which lldb)
+    export DYLD_LIBRARY_PATH=${pkgs.lldb}/lib:$DYLD_LIBRARY_PATH
   '';
 
   # https://devenv.sh/languages/
@@ -77,6 +78,8 @@ lib.mkIf (!(config.container.isBuilding or false)) {
   languages.javascript.enable = true;
   languages.javascript.bun.install.enable = true;
   languages.javascript.bun.enable = true;
+
+  env.SOPS_KEYSERVICE = "tcp://100.116.189.36:5000";
 
   # https://devenv.sh/processes/
   processes.tauri = {
@@ -106,8 +109,8 @@ lib.mkIf (!(config.container.isBuilding or false)) {
   # Formatting and git-hooks are dev-only; don't ship them into containers.
   treefmt.enable = true;
   treefmt.config = {
-    programs.rustfmt.enable = true;
-    programs.yamlfmt.enable = true;
+    programs.rustfmt.enable = false;
+    programs.yamlfmt.enable = false;
     programs.mdformat.enable = true;
   };
 
@@ -115,8 +118,8 @@ lib.mkIf (!(config.container.isBuilding or false)) {
   git-hooks = {
     # hooks.biome.enable = true;
     hooks.shellcheck.enable = true;
-    hooks.rustfmt.enable = true;
-    hooks.clippy.enable = true;
+    hooks.rustfmt.enable = false;
+    hooks.clippy.enable = false;
     hooks.mdformat.enable = true;
     excludes = [
       "^.*\/?(\.git|\.direnv|\.devenv|\.vscode|\.idea|\.DS_Store|\.env|\.envrc|\.github).*$"

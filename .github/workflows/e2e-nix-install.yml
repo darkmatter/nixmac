@@ -1,0 +1,144 @@
+name: E2E — Nix Install Flow
+
+on:
+  pull_request:
+    paths:
+      - 'apps/native/src-tauri/**'
+      - 'tests/e2e/**'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to test (defaults to PR head or main)'
+        required: false
+        default: ''
+
+concurrency:
+  group: e2e-nix-install
+  cancel-in-progress: true
+
+jobs:
+  e2e-test:
+    name: Nix Install E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- Decrypt secrets via SOPS ---
+      # Expects a SOPS-encrypted file at ops/secrets/e2e.enc.yaml
+      # containing: mac_host, mac_user, mac_ssh_key, mac_admin_pw
+      # The SOPS age key is the only GitHub Secret needed.
+      - name: Decrypt E2E secrets
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          # Install sops if not available
+          if ! command -v sops &>/dev/null; then
+            curl -LO https://github.com/getsops/sops/releases/download/v3.9.4/sops-v3.9.4.linux.amd64
+            chmod +x sops-v3.9.4.linux.amd64
+            sudo mv sops-v3.9.4.linux.amd64 /usr/local/bin/sops
+          fi
+
+          # Decrypt secrets
+          SECRETS_FILE="ops/secrets/e2e.enc.yaml"
+          if [ ! -f "$SECRETS_FILE" ]; then
+            echo "::error::SOPS secrets file not found at $SECRETS_FILE"
+            exit 1
+          fi
+
+          # Export secrets as env vars for subsequent steps
+          {
+            echo "MAC_E2E_HOST=$(sops -d --extract '["mac_host"]' "$SECRETS_FILE")"
+            echo "MAC_E2E_USER=$(sops -d --extract '["mac_user"]' "$SECRETS_FILE")"
+            echo "MAC_E2E_ADMIN_PW=$(sops -d --extract '["mac_admin_pw"]' "$SECRETS_FILE")"
+          } >> "$GITHUB_ENV"
+
+          # SSH key needs to go to a file
+          sops -d --extract '["mac_ssh_key"]' "$SECRETS_FILE" > /tmp/e2e_ssh_key
+          chmod 600 /tmp/e2e_ssh_key
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          cp /tmp/e2e_ssh_key ~/.ssh/e2e_key
+          chmod 600 ~/.ssh/e2e_key
+          ssh-keyscan -H "$MAC_E2E_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Determine branch and commit
+        id: ref
+        run: |
+          if [ -n "${{ inputs.branch }}" ]; then
+            echo "branch=${{ inputs.branch }}" >> $GITHUB_OUTPUT
+          elif [ -n "${{ github.head_ref }}" ]; then
+            echo "branch=${{ github.head_ref }}" >> $GITHUB_OUTPUT
+          else
+            echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+          echo "sha=${{ github.event.pull_request.head.sha || github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Run E2E test on macOS runner
+        run: |
+          # Write env vars to a temp file, scp it, then source on remote
+          # (avoids shell quoting issues with special chars in secrets)
+          cat > /tmp/e2e-env.sh << 'ENVEOF'
+          export ADMIN_PASSWORD="$1"
+          export GH_TOKEN="$2"
+          export BRANCH="$3"
+          export COMMIT_SHA="$4"
+          ENVEOF
+
+          ssh -o StrictHostKeyChecking=no \
+              -o ConnectTimeout=30 \
+              -i ~/.ssh/e2e_key \
+              "${MAC_E2E_USER}@${MAC_E2E_HOST}" \
+              "export ADMIN_PASSWORD=$(printf '%q' "$MAC_E2E_ADMIN_PW") \
+               export GH_TOKEN=$(printf '%q' "${{ secrets.GITHUB_TOKEN }}") \
+               export BRANCH=$(printf '%q' "${{ steps.ref.outputs.branch }}") \
+               export COMMIT_SHA=$(printf '%q' "${{ steps.ref.outputs.sha }}") \
+               bash -s" < tests/e2e/ci-runner.sh
+
+      - name: Fetch test artifacts
+        if: always()
+        run: |
+          SCP="scp -o StrictHostKeyChecking=no -i ~/.ssh/e2e_key"
+          HOST="${MAC_E2E_USER}@${MAC_E2E_HOST}"
+          mkdir -p artifacts
+
+          $SCP "$HOST:/tmp/e2e-recording.mp4" artifacts/ 2>/dev/null || echo "No video"
+          $SCP "$HOST:/tmp/e2e-test.log" artifacts/ 2>/dev/null || echo "No log"
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/e2e_key "$HOST" \
+            'ls /tmp/e2e-screenshots/*.png 2>/dev/null' | while read -r f; do
+            $SCP "$HOST:$f" artifacts/ 2>/dev/null || true
+          done
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-nix-install
+          path: artifacts/
+          retention-days: 14
+
+      - name: Post summary
+        if: always()
+        run: |
+          if [ -f artifacts/e2e-test.log ]; then
+            echo "### E2E Test — Nix Install Flow" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            grep -E '\[PASS\]|\[FAIL\]' artifacts/e2e-test.log | \
+              sed 's/\x1b\[[0-9;]*m//g' | \
+              while read -r line; do
+                if echo "$line" | grep -q "PASS"; then
+                  echo "✅ ${line#*PASS] }" >> $GITHUB_STEP_SUMMARY
+                else
+                  echo "❌ ${line#*FAIL] }" >> $GITHUB_STEP_SUMMARY
+                fi
+              done
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "📹 Video and screenshots available in workflow artifacts." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f /tmp/e2e_ssh_key ~/.ssh/e2e_key /tmp/e2e-env.sh

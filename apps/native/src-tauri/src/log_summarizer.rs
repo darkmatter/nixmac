@@ -426,11 +426,12 @@ Guidelines:
         provider.model(),
         request_id,
     );
-    let response = provider
+    let (response, _) = provider
         .completion(
             &system_prompt,
             &user_prompt,
             MAX_TOKENS,
+            None,
             TEMPERATURE,
             &request_id,
         )
