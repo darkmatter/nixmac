@@ -176,18 +176,22 @@ jobs:
           BRANCH: ${{ needs.resolve-scenarios.outputs.branch }}
           COMMIT_SHA: ${{ needs.resolve-scenarios.outputs.sha }}
         run: |
-          ssh -o StrictHostKeyChecking=no \
-              -o ConnectTimeout=30 \
-              -o ServerAliveInterval=15 \
-              -o ServerAliveCountMax=4 \
-              -i ~/.ssh/e2e_key \
-              "${MAC_E2E_USER}@${MAC_E2E_HOST}" \
-              "export ADMIN_PASSWORD=$(printf '%q' "$MAC_E2E_ADMIN_PW") \
-               export GH_TOKEN=$(printf '%q' "${{ secrets.GITHUB_TOKEN }}") \
-               export BRANCH=$(printf '%q' "$BRANCH") \
-               export COMMIT_SHA=$(printf '%q' "$COMMIT_SHA") \
-               export SCENARIO=$(printf '%q' "$SCENARIO") \
-               bash -s" < tests/e2e/ci-runner.sh
+          # Write env vars to a script that gets piped to bash on the remote
+          {
+            echo "export ADMIN_PASSWORD=$(printf '%q' "$MAC_E2E_ADMIN_PW")"
+            echo "export GH_TOKEN=$(printf '%q' "${{ secrets.GITHUB_TOKEN }}")"
+            echo "export BRANCH=$(printf '%q' "$BRANCH")"
+            echo "export COMMIT_SHA=$(printf '%q' "$COMMIT_SHA")"
+            echo "export SCENARIO=$(printf '%q' "$SCENARIO")"
+            echo "export PATH=/opt/homebrew/bin:\$PATH"
+            cat tests/e2e/ci-runner.sh
+          } | ssh -o StrictHostKeyChecking=no \
+                  -o ConnectTimeout=30 \
+                  -o ServerAliveInterval=15 \
+                  -o ServerAliveCountMax=4 \
+                  -i ~/.ssh/e2e_key \
+                  "${MAC_E2E_USER}@${MAC_E2E_HOST}" \
+                  "bash -s"
 
       - name: Fetch test artifacts
         if: always()
