@@ -31,7 +31,7 @@ jobs:
       # The SOPS age key is the only GitHub Secret needed.
       - name: Decrypt E2E secrets
         env:
-          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY_DRKMTTR_DEV }}
         run: |
           # Install sops if not available
           if ! command -v sops &>/dev/null; then
