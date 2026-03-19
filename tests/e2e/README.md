@@ -5,13 +5,13 @@ Automated end-to-end test of the full Nix installation flow in the nixmac native
 ## What it tests
 
 1. Launch nixmac app on a clean macOS machine (no Nix installed)
-2. Click "Install Nix" button via GUI automation
-3. App downloads the Determinate Nix `.pkg` and opens macOS Installer.app
-4. Nix is installed via CLI (`sudo installer -pkg`)
-5. App detects Nix and begins darwin-rebuild prefetch
-6. Prefetch completes → app shows "Welcome to nixmac" setup wizard
-7. Verifies `nix --version` and darwin-rebuild availability
-8. Cleans up (uninstalls Nix for repeatable runs)
+1. Click "Install Nix" button via GUI automation
+1. App downloads the Determinate Nix `.pkg` and opens macOS Installer.app
+1. Nix is installed via CLI (`sudo installer -pkg`)
+1. App detects Nix and begins darwin-rebuild prefetch
+1. Prefetch completes → app shows "Welcome to nixmac" setup wizard
+1. Verifies `nix --version` and darwin-rebuild availability
+1. Cleans up (uninstalls Nix for repeatable runs)
 
 ## Architecture
 
