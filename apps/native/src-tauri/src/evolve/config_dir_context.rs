@@ -167,3 +167,32 @@ fn is_allowed_file(name: &str, path: &Path) -> bool {
     let ext_lower = ext.to_ascii_lowercase();
     ALLOWED_EXTENSIONS.contains(&ext_lower.as_str())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn prints_config_dir_context_for_inspection() -> Result<()> {
+        const TEST_CONFIG_DIR_RELATIVE: &str = "../templates/nix-darwin-determinate";
+        let test_config_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join(TEST_CONFIG_DIR_RELATIVE);
+
+        // If you want to test with your actual config dir, you can replace the above with something like:
+        //let test_config_dir = Path::new("/Users/me/.darwin");
+
+        let context = format_config_dir_context(
+            test_config_dir
+                .to_str()
+                .context("test config dir path is not valid UTF-8")?,
+        )?;
+        println!("{context}");
+
+        // Verify it starts with the right context key
+        assert!(
+            context.starts_with("CONFIG_DIR/"),
+            "context should start with CONFIG_DIR/"
+        );
+        Ok(())
+    }
+}
