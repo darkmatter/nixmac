@@ -22,6 +22,20 @@
 # =============================================================================
 set -euo pipefail
 
+# --- Runner lock (prevent concurrent runs) ---
+LOCK_FILE="/tmp/e2e-runner.lock"
+if [ -f "$LOCK_FILE" ]; then
+    LOCK_PID=$(cat "$LOCK_FILE" 2>/dev/null || true)
+    if [ -n "$LOCK_PID" ] && kill -0 "$LOCK_PID" 2>/dev/null; then
+        echo "ERROR: Another E2E run is active (PID $LOCK_PID). Exiting."
+        exit 1
+    fi
+    echo "WARN: Stale lock file found (PID $LOCK_PID not running). Removing."
+    rm -f "$LOCK_FILE"
+fi
+echo $$ > "$LOCK_FILE"
+trap 'rm -f "$LOCK_FILE"' EXIT
+
 # --- Config ---
 APP_NAME="nixmac"
 APP_PATH="${APP_PATH:-/Applications/nixmac.app}"
@@ -62,7 +76,7 @@ peek_elements() {
     local app="${1:-}"
     local args=""
     [ -n "$app" ] && args="--app $app"
-    $PEEKABOO see $args --json 2>/dev/null
+    $PEEKABOO see $args --json 2>/dev/null || echo '{"data":{"ui_elements":[],"snapshot_id":""}}'
 }
 
 peek_find_button() {
@@ -87,7 +101,7 @@ peek_click() {
 peek_text() {
     local app="${1:-}"
     local json
-    json=$(peek_elements "$app")
+    json=$(peek_elements "$app") || true
     echo "$json" | jq -r '
         [.data.ui_elements[]? | .label? // ""] | join(" ")
     ' 2>/dev/null || echo ""
@@ -117,7 +131,7 @@ RECEOF
     open -a Terminal /tmp/e2e-record.sh
     sleep 3
 
-    RECORDER_PID=$(pgrep -f "ffmpeg.*e2e-recording" | head -1)
+    RECORDER_PID=$(pgrep -f "ffmpeg.*e2e-recording" 2>/dev/null | head -1 || true)
     if [ -n "$RECORDER_PID" ]; then
         log "Recorder started (PID: $RECORDER_PID)"
     else

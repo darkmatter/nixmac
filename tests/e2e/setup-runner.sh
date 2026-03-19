@@ -10,7 +10,7 @@
 # =============================================================================
 set -euo pipefail
 
-BRANCH="ENG-275/fix-nix-installation"
+BRANCH="${BRANCH:-main}"
 REPO="darkmatter/nixmac"
 APP_PATH="/Applications/nixmac.app"
 ARTIFACT_NAME="nixmac-macos-app"

@@ -114,14 +114,24 @@ ssh admin@<host> 'cd /path/to/tests/e2e && ADMIN_PASSWORD=<pw> bash run-e2e.sh'
 
 The workflow (`.github/workflows/e2e-nix-install.yml`) triggers on PRs that modify `apps/native/src-tauri/**` or `tests/e2e/**`, plus manual dispatch.
 
-### Required secrets
+### Secrets (via SOPS)
 
-| Secret | Description |
-|--------|-------------|
-| `MAC_E2E_HOST` | Runner IP/hostname |
-| `MAC_E2E_USER` | SSH username |
-| `MAC_E2E_SSH_KEY` | SSH private key |
-| `MAC_E2E_ADMIN_PW` | macOS admin password |
+Secrets are stored in `ops/secrets/e2e.enc.yaml` encrypted with [SOPS](https://github.com/getsops/sops) + age. Only one GitHub Secret is needed:
+
+| GitHub Secret | Description |
+|---------------|-------------|
+| `SOPS_AGE_KEY` | age private key to decrypt `e2e.enc.yaml` |
+
+The SOPS file contains:
+
+| Field | Description |
+|-------|-------------|
+| `mac_host` | Runner IP/hostname |
+| `mac_user` | SSH username |
+| `mac_ssh_key` | SSH private key |
+| `mac_admin_pw` | macOS admin password |
+
+See `ops/secrets/e2e.enc.yaml.example` for the template.
 
 ## Limitations
 

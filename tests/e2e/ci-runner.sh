@@ -8,16 +8,19 @@
 #   ADMIN_PASSWORD  - macOS admin password
 #   GH_TOKEN        - GitHub token (for artifact download)
 #   BRANCH          - Git branch to test (default: main)
+#   COMMIT_SHA      - Exact commit SHA to test (pins artifact + scripts)
 #
 # Usage from GitHub Actions:
 #   ssh admin@<host> \
-#     'ADMIN_PASSWORD=... GH_TOKEN=... BRANCH=... bash -s' < ci-runner.sh
+#     "ADMIN_PASSWORD=... GH_TOKEN=... BRANCH=... COMMIT_SHA=... bash -s" \
+#     < tests/e2e/ci-runner.sh
 # =============================================================================
-set -euo pipefail
+set -uo pipefail  # no -e: we capture exit codes manually
 
 export PATH="/opt/homebrew/bin:$PATH"
 
 BRANCH="${BRANCH:-main}"
+COMMIT_SHA="${COMMIT_SHA:-}"
 REPO="darkmatter/nixmac"
 ARTIFACT_NAME="nixmac-macos-app"
 APP_PATH="/Applications/nixmac.app"
@@ -27,6 +30,7 @@ echo "=========================================="
 echo " nixmac E2E CI Runner"
 echo "=========================================="
 echo "Branch:  $BRANCH"
+echo "Commit:  ${COMMIT_SHA:-latest}"
 echo "Host:    $(hostname)"
 echo "macOS:   $(sw_vers -productVersion)"
 echo "Date:    $(date)"
@@ -54,13 +58,20 @@ if [ -f "/nix/nix-installer" ]; then
 fi
 rm -rf /tmp/e2e-screenshots /tmp/e2e-recording.mp4 /tmp/e2e-test.log
 
-# --- Download app ---
+# --- Download app artifact (pinned to commit SHA if available) ---
 echo "[ci] Downloading app from CI (branch: $BRANCH)..."
 
-RUN_ID=$(gh api "repos/${REPO}/actions/runs?branch=${BRANCH}&status=success&per_page=1" \
-    --jq '.workflow_runs[0].id' 2>/dev/null)
+if [ -n "$COMMIT_SHA" ]; then
+    # Find the run for this exact commit
+    RUN_ID=$(gh api "repos/${REPO}/actions/runs?head_sha=${COMMIT_SHA}&status=success&per_page=5" \
+        --jq "[.workflow_runs[] | select(.name != \"E2E — Nix Install Flow\")] | .[0].id" 2>/dev/null)
+else
+    RUN_ID=$(gh api "repos/${REPO}/actions/runs?branch=${BRANCH}&status=success&per_page=5" \
+        --jq "[.workflow_runs[] | select(.name != \"E2E — Nix Install Flow\")] | .[0].id" 2>/dev/null)
+fi
+
 if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
-    echo "[ci] ERROR: No successful CI run for branch $BRANCH"
+    echo "[ci] ERROR: No successful CI run found for ${COMMIT_SHA:-branch $BRANCH}"
     exit 1
 fi
 echo "[ci] Using CI run: $RUN_ID"
@@ -88,16 +99,19 @@ sudo xattr -cr "$APP_PATH" 2>/dev/null || true
 rm -rf nixmac-extract nixmac-app.zip
 echo "[ci] App installed at $APP_PATH"
 
-# --- Fetch test scripts (if not already on disk) ---
-if [ ! -f "$E2E_DIR/run-e2e.sh" ]; then
-    echo "[ci] Fetching test scripts from repo..."
-    mkdir -p "$E2E_DIR"
-    for script in run-e2e.sh setup-runner.sh; do
-        gh api "repos/${REPO}/contents/tests/e2e/${script}?ref=${BRANCH}" \
-            --jq '.content' 2>/dev/null | base64 -d > "$E2E_DIR/$script" || true
-    done
-    chmod +x "$E2E_DIR"/*.sh 2>/dev/null || true
-fi
+# --- Always fetch fresh test scripts from the branch under test ---
+echo "[ci] Fetching test scripts from repo (branch: $BRANCH)..."
+rm -rf "$E2E_DIR"
+mkdir -p "$E2E_DIR"
+REF="${COMMIT_SHA:-$BRANCH}"
+for script in run-e2e.sh setup-runner.sh; do
+    gh api "repos/${REPO}/contents/tests/e2e/${script}?ref=${REF}" \
+        --jq '.content' 2>/dev/null | base64 -d > "$E2E_DIR/$script" || {
+        echo "[ci] ERROR: Failed to fetch $script from ref $REF"
+        exit 1
+    }
+done
+chmod +x "$E2E_DIR"/*.sh
 
 # --- Run E2E ---
 echo ""
@@ -107,13 +121,8 @@ echo ""
 export ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
 export CLEANUP_ON_SUCCESS=1
 
-if [ -f "$E2E_DIR/run-e2e.sh" ]; then
-    bash "$E2E_DIR/run-e2e.sh"
-    EXIT_CODE=$?
-else
-    echo "[ci] ERROR: run-e2e.sh not found at $E2E_DIR"
-    EXIT_CODE=1
-fi
+EXIT_CODE=0
+bash "$E2E_DIR/run-e2e.sh" || EXIT_CODE=$?
 
 # --- Results ---
 echo ""
