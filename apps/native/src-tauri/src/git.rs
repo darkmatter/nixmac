@@ -781,6 +781,18 @@ pub fn finalize_evolve(
 ) -> Result<()> {
     let default_branch = require_default_branch(dir)?;
 
+    // Branch-specific operations below (amend/squash) must run on the branch
+    // being finalized, not whichever branch happens to be currently checked out.
+    let output = git_command()
+        .args(["checkout", branch_name])
+        .current_dir(dir)
+        .output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("Failed to checkout {}: {}", branch_name, stderr);
+    }
+
     // If a commit message is provided without squashing, amend the latest commit before merging
     if !squash {
         if let Some(msg) = commit_message {
@@ -866,7 +878,19 @@ pub fn finalize_evolve(
 mod tests {
     use super::*;
     use std::fs;
+    use std::path::Path;
     use tempfile::TempDir;
+
+    fn run_git_ok(repo_dir: &Path, args: &[&str]) -> String {
+        let output = git_command().args(args).current_dir(repo_dir).output().unwrap();
+        assert!(
+            output.status.success(),
+            "git {:?} failed: {}",
+            args,
+            String::from_utf8_lossy(&output.stderr)
+        );
+        String::from_utf8_lossy(&output.stdout).to_string()
+    }
 
     // mk temp repo
     #[test]
@@ -919,5 +943,47 @@ deleted file mode 100644
         assert_eq!(files[1].change_type, "edited");
         assert_eq!(files[2].path, "removed.txt");
         assert_eq!(files[2].change_type, "removed");
+    }
+
+    #[test]
+    fn test_finalize_evolve_amends_target_branch_not_checked_out_branch() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_if_needed(&repo_dir_str).unwrap();
+
+        run_git_ok(&repo_dir, &["config", "user.email", "test@example.com"]);
+        run_git_ok(&repo_dir, &["config", "user.name", "Test User"]);
+
+        fs::write(repo_dir.join("file.txt"), "main\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+        run_git_ok(&repo_dir, &["commit", "-m", "main commit"]);
+        let default_branch = get_default_branch(&repo_dir_str).unwrap();
+        let original_default_head = run_git_ok(&repo_dir, &["rev-parse", "HEAD"]);
+
+        run_git_ok(&repo_dir, &["checkout", "-b", "feature"]);
+        fs::write(repo_dir.join("file.txt"), "feature\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+        run_git_ok(&repo_dir, &["commit", "-m", "feature commit"]);
+        run_git_ok(&repo_dir, &["checkout", &default_branch]);
+
+        finalize_evolve(
+            &repo_dir_str,
+            "feature",
+            false,
+            Some("feature commit (edited)"),
+        )
+        .unwrap();
+
+        let current_branch = run_git_ok(&repo_dir, &["rev-parse", "--abbrev-ref", "HEAD"]);
+        assert_eq!(current_branch.trim(), default_branch);
+
+        let feature_message = run_git_ok(&repo_dir, &["log", "feature", "-1", "--pretty=%s"]);
+        assert_eq!(feature_message.trim(), "feature commit (edited)");
+
+        // The original default-branch head must remain in the default branch's
+        // first-parent chain, proving we did not amend the default branch itself.
+        let first_parent_history = run_git_ok(&repo_dir, &["rev-list", "--first-parent", &default_branch]);
+        assert!(first_parent_history.contains(original_default_head.trim()));
     }
 }
