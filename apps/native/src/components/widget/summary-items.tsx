@@ -20,7 +20,6 @@ export function SummaryItems({ variant = "default", diffSections }: SummaryItems
   const summary = useWidgetStore((s) => s.summary);
   const summaryAvailable = useWidgetStore((s) => s.summaryAvailable);
   const summaryItems = summary.items;
-  console.log(summary)
 
   const renderListItem = ({
     key,
