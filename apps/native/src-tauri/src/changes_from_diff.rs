@@ -26,12 +26,11 @@ pub fn changes_from_diff(diff: &str, created_at: i64) -> Vec<Change> {
     for line in diff.lines() {
         if line.starts_with("diff --git ") {
             flush(&mut changes, &current_file, &mut current_hunk, created_at);
-            // "diff --git a/X b/X" — grab b-side as the canonical filename.
-            // rfind handles filenames that contain " b/" by taking the last match.
-            current_file = line.rfind(" b/").map(|i| line[i + 3..].to_string());
-        } else if line.starts_with("+++ b/") {
+            // "diff --git is, always present with filenames for a/ and b/ paths.
+            current_file = line.rfind(" b/").and_then(|i| line.get(i + 3..)).map(str::to_string);
+        } else if let Some(path) = line.strip_prefix("+++ b/") {
             // Overrides the header value; more reliable for renames.
-            current_file = Some(line[6..].to_string());
+            current_file = Some(path.to_string());
         } else if line.starts_with("@@ ") {
             flush(&mut changes, &current_file, &mut current_hunk, created_at);
             current_hunk = Some(line.to_string());
@@ -201,4 +200,5 @@ new file mode 100644
         let changes = changes_from_diff(SAMPLE, 0);
         assert_ne!(changes[0].hash, changes[1].hash);
     }
+
 }

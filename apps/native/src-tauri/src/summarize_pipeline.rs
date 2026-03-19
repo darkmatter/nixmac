@@ -78,7 +78,7 @@ pub async fn run<R: Runtime>(
                 .iter()
                 .map(|sc| sc.title.clone())
                 .collect();
-            let app_clone = app_handle.map(|a| a.clone());
+            let app_clone = app_handle.cloned();
             Some(tokio::spawn(async move {
                 match crate::summarize_changes::generate_commit_message_from_map(
                     titles,
@@ -141,7 +141,7 @@ pub async fn run<R: Runtime>(
         let group_budget = budgets::stage_two_group_budget(total_capped_lines);
 
         let title = sc.title.clone();
-        let app_clone = app_handle.map(|a| a.clone());
+        let app_clone = app_handle.cloned();
         group_set.spawn(async move {
             let is_single_hunk = main_with_reasoning.len() + sub_changes.len() == 1;
 
