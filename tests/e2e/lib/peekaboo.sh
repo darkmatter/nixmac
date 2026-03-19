@@ -248,21 +248,33 @@ screen_unlock() {
         return 1
     fi
     
-    # Check if screen is locked (only loginwindow visible with no buttons)
-    local json
+    local json elements has_login
     json=$(peek_elements)
-    local elements
     elements=$(echo "$json" | jq -r '.data.ui_elements | length' 2>/dev/null || echo "0")
     elements="${elements//[^0-9]/}"; [ -z "$elements" ] && elements=0
-    local has_login
-    has_login=$(echo "$json" | jq -r '.data.ui_elements[]? | .label // ""' 2>/dev/null | grep -c "Login" || true)
+    has_login=$(echo "$json" | jq -r '.data.ui_elements[]? | .label // ""' 2>/dev/null | grep -ci "Login" || true)
     
-    if [ "$elements" -le 1 ] && [ "$has_login" -gt 0 ]; then
-        log "Screen appears locked. Unlocking..."
+    if [ "$has_login" -gt 0 ] && [ "$elements" -lt 50 ]; then
+        log "Screen appears locked/logged out ($elements elements, login detected). Unlocking..."
         caffeinate -u -t 2 &>/dev/null &
         sleep 1
-        peek_press "space" || true
-        sleep 2
+        
+        # Check if this is a full login screen (has user icons/buttons) vs lock screen
+        local has_user_elem snap_id
+        has_user_elem=$(echo "$json" | jq -r '.data.ui_elements[]? | select(.label == "admin" or .label == "Admin") | .id' 2>/dev/null | head -1)
+        snap_id=$(echo "$json" | jq -r '.data.snapshot_id // ""' 2>/dev/null)
+        
+        if [ -n "$has_user_elem" ] && [ -n "$snap_id" ]; then
+            # Full login screen — click user first
+            log "Login screen detected. Clicking user '$has_user_elem'..."
+            $PEEKABOO click --on "$has_user_elem" --snapshot "$snap_id" 2>/dev/null || true
+            sleep 2
+        else
+            # Lock screen — just wake + type
+            peek_press "space" || true
+            sleep 2
+        fi
+        
         peek_type "$password"
         sleep 1
         peek_press "return"
@@ -272,11 +284,11 @@ screen_unlock() {
         json=$(peek_elements)
         elements=$(echo "$json" | jq -r '.data.ui_elements | length' 2>/dev/null || echo "0")
         elements="${elements//[^0-9]/}"; [ -z "$elements" ] && elements=0
-        if [ "$elements" -gt 1 ]; then
-            pass "Screen unlocked"
+        if [ "$elements" -gt 50 ]; then
+            pass "Screen unlocked ($elements elements visible)"
             return 0
         else
-            fail "Failed to unlock screen"
+            fail "Failed to unlock screen (only $elements elements)"
             return 1
         fi
     else
