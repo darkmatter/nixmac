@@ -136,10 +136,19 @@ jobs:
             exit 1
           fi
 
+          # Decrypt and mask secrets so they don't leak in logs
+          MAC_E2E_HOST=$(sops -d --extract '["mac_host"]' "$SECRETS_FILE")
+          MAC_E2E_USER=$(sops -d --extract '["mac_user"]' "$SECRETS_FILE")
+          MAC_E2E_ADMIN_PW=$(sops -d --extract '["mac_admin_pw"]' "$SECRETS_FILE")
+
+          echo "::add-mask::$MAC_E2E_HOST"
+          echo "::add-mask::$MAC_E2E_USER"
+          echo "::add-mask::$MAC_E2E_ADMIN_PW"
+
           {
-            echo "MAC_E2E_HOST=$(sops -d --extract '["mac_host"]' "$SECRETS_FILE")"
-            echo "MAC_E2E_USER=$(sops -d --extract '["mac_user"]' "$SECRETS_FILE")"
-            echo "MAC_E2E_ADMIN_PW=$(sops -d --extract '["mac_admin_pw"]' "$SECRETS_FILE")"
+            echo "MAC_E2E_HOST=$MAC_E2E_HOST"
+            echo "MAC_E2E_USER=$MAC_E2E_USER"
+            echo "MAC_E2E_ADMIN_PW=$MAC_E2E_ADMIN_PW"
           } >> "$GITHUB_ENV"
 
           sops -d --extract '["mac_ssh_key"]' "$SECRETS_FILE" > /tmp/e2e_ssh_key
@@ -150,6 +159,15 @@ jobs:
           mkdir -p ~/.ssh
           cp /tmp/e2e_ssh_key ~/.ssh/e2e_key
           chmod 600 ~/.ssh/e2e_key
+
+          # Validate the key was written correctly
+          if ! ssh-keygen -l -f ~/.ssh/e2e_key >/dev/null 2>&1; then
+            echo "::error::SSH key appears invalid. Check SOPS encryption."
+            head -1 ~/.ssh/e2e_key
+            wc -l ~/.ssh/e2e_key
+            exit 1
+          fi
+
           ssh-keyscan -H "$MAC_E2E_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
 
       - name: "Run E2E: ${{ matrix.scenario }}"
