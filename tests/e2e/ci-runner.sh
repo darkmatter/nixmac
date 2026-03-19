@@ -119,8 +119,12 @@ REF="${COMMIT_SHA:-$BRANCH}"
 # Clone just the tests/e2e directory
 cd /tmp
 rm -rf nixmac-e2e-checkout
+CLONE_URL="https://github.com/${REPO}.git"
+if [ -n "${GH_TOKEN:-}" ]; then
+    CLONE_URL="https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+fi
 git clone --depth 1 --branch "$BRANCH" --filter=blob:none --sparse \
-    "https://github.com/${REPO}.git" nixmac-e2e-checkout 2>&1 || {
+    "$CLONE_URL" nixmac-e2e-checkout 2>&1 || {
     echo "[ci] ERROR: Failed to clone repo"
     exit 1
 }
