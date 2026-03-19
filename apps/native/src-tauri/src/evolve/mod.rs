@@ -4,7 +4,6 @@ mod config_dir_context;
 mod file_ops;
 pub mod messages;
 pub mod providers;
-mod run_command;
 mod search_packages;
 mod tools;
 mod types;
