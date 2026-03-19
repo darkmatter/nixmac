@@ -252,7 +252,8 @@ screen_unlock() {
     local json
     json=$(peek_elements)
     local elements
-    elements=$(echo "$json" | jq '.data.ui_elements | length' 2>/dev/null || echo 0)
+    elements=$(echo "$json" | jq -r '.data.ui_elements | length' 2>/dev/null || echo "0")
+    elements="${elements//[^0-9]/}"; [ -z "$elements" ] && elements=0
     local has_login
     has_login=$(echo "$json" | jq -r '.data.ui_elements[]? | .label // ""' 2>/dev/null | grep -c "Login" || true)
     
@@ -269,7 +270,8 @@ screen_unlock() {
         
         # Verify unlock
         json=$(peek_elements)
-        elements=$(echo "$json" | jq '.data.ui_elements | length' 2>/dev/null || echo 0)
+        elements=$(echo "$json" | jq -r '.data.ui_elements | length' 2>/dev/null || echo "0")
+        elements="${elements//[^0-9]/}"; [ -z "$elements" ] && elements=0
         if [ "$elements" -gt 1 ]; then
             pass "Screen unlocked"
             return 0
