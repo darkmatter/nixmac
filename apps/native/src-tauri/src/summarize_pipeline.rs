@@ -78,7 +78,7 @@ pub async fn run<R: Runtime>(
                 .iter()
                 .map(|sc| sc.title.clone())
                 .collect();
-            let app_clone = app_handle.map(|a| a.clone());
+            let app_clone = app_handle.cloned();
             Some(tokio::spawn(async move {
                 match crate::summarize_changes::generate_commit_message_from_map(
                     titles,
@@ -141,7 +141,7 @@ pub async fn run<R: Runtime>(
         let group_budget = budgets::stage_two_group_budget(total_capped_lines);
 
         let title = sc.title.clone();
-        let app_clone = app_handle.map(|a| a.clone());
+        let app_clone = app_handle.cloned();
         group_set.spawn(async move {
             let is_single_hunk = main_with_reasoning.len() + sub_changes.len() == 1;
 
@@ -151,8 +151,7 @@ pub async fn run<R: Runtime>(
                 .chain(sub_changes.iter())
                 .map(|(c, _)| c.clone())
                 .collect();
-            let hashes: BTreeSet<String> =
-                all_changes.iter().map(|c| c.hash.clone()).collect();
+            let hashes: BTreeSet<String> = all_changes.iter().map(|c| c.hash.clone()).collect();
             let fallback_group_desc: String = main_with_reasoning
                 .first()
                 .or_else(|| sub_changes.first())
@@ -193,11 +192,7 @@ pub async fn run<R: Runtime>(
                         (summary.group, summary.own_summaries)
                     }
                     Err(e) => {
-                        log::warn!(
-                            "[summarize_pipeline] stage 2 failed for '{}': {}",
-                            title,
-                            e
-                        );
+                        log::warn!("[summarize_pipeline] stage 2 failed for '{}': {}", title, e);
                         (
                             HunkSummary {
                                 title: title.clone(),
@@ -208,17 +203,31 @@ pub async fn run<R: Runtime>(
                     }
                 };
 
-            let group_summary = if is_single_hunk { None } else { Some(group_summary) };
+            let group_summary = if is_single_hunk {
+                None
+            } else {
+                Some(group_summary)
+            };
 
             let hunks: Vec<SummarizedHunk> = all_changes
                 .into_iter()
                 .map(|c| {
                     let own_summary = own_summaries.get(&c.hash).cloned();
-                    SummarizedHunk { change: c, own_summary }
+                    SummarizedHunk {
+                        change: c,
+                        own_summary,
+                    }
                 })
                 .collect();
 
-            (sc_idx, SummarizedSemanticChange { group_summary, hashes, hunks })
+            (
+                sc_idx,
+                SummarizedSemanticChange {
+                    group_summary,
+                    hashes,
+                    hunks,
+                },
+            )
         });
     }
 

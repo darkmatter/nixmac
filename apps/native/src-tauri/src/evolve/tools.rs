@@ -107,8 +107,11 @@ pub fn create_tools() -> Vec<Tool> {
             parameters: serde_json::json!({
                 "type": "object",
                 "properties": {
+                    "show_trace": {
+                        "type": "boolean",
+                        "description": "Include --show-trace in nix build for deeper stack traces (default: false)"
+                    }
                 },
-                "required": ["host"]
             }),
         },
         Tool {
@@ -202,8 +205,13 @@ pub enum ToolResult {
     Done(String),
     /// A file edit was made
     Edit(FileEdit),
-    /// Build check result (success, output)
-    BuildResult { success: bool, output: String },
+    /// Build check result (success, output, stdout, stderr)
+    BuildResult {
+        success: bool,
+        output: String,
+        stdout: String,
+        stderr: String,
+    },
     /// Agent thinking/reasoning (category, content)
     Think { category: String, thought: String },
 }
@@ -333,7 +341,11 @@ pub fn execute_tool(
         }
 
         "build_check" => {
-            info!("Running build check for host: {}", host_attr);
+            let show_trace = args["show_trace"].as_bool().unwrap_or(false);
+            info!(
+                "Running build check for host: {}, show_trace: {}",
+                host_attr, show_trace
+            );
 
             // First make sure we have all new add-files
             crate::git::intent_add_untracked(config_dir).map_err(|e| {
@@ -344,13 +356,17 @@ pub fn execute_tool(
             })?;
 
             // Use nix build --dry-run to check without actually building
-            let output = Command::new("nix")
-                .args([
-                    "build",
-                    &format!(".#darwinConfigurations.{}.system", host_attr),
-                    "--dry-run",
-                    "--show-trace",
-                ])
+            let mut command = Command::new("nix");
+            command
+                .arg("build")
+                .arg(format!(".#darwinConfigurations.{}.system", host_attr))
+                .arg("--dry-run");
+
+            if show_trace {
+                command.arg("--show-trace");
+            }
+
+            let output = command
                 .current_dir(config_dir)
                 .env("PATH", crate::nix::get_nix_path())
                 .env("NIX_CONFIG", "experimental-features = nix-command flakes")
@@ -358,24 +374,26 @@ pub fn execute_tool(
 
             let stdout = String::from_utf8_lossy(&output.stdout);
             let stderr = String::from_utf8_lossy(&output.stderr);
-            let combined = format!("{}\n{}", stdout, stderr);
 
             if output.status.success() {
                 info!("Build check passed for host: {}", host_attr);
                 Ok(ToolResult::BuildResult {
                     success: true,
                     output: format!("✓ Build check passed for '{}'", host_attr),
+                    stdout: stdout.to_string(),
+                    stderr: stderr.to_string(),
                 })
             } else {
                 error!("Build check failed for host: {}", host_attr);
-                debug!("Build error output: {}", combined);
+                debug!("Build error output: stderr: {}, stdout: {}", stderr, stdout);
                 Ok(ToolResult::BuildResult {
                     success: false,
                     output: format!(
-                        "✗ Build check FAILED for '{}':\n\n{}",
+                        "✗ Build check FAILED for '{}':\n\nTip: Re-run build_check with show_trace=true if you need additional debugging details.",
                         host_attr,
-                        truncate_error(&combined, 4000)
                     ),
+                    stdout: stdout.to_string(),
+                    stderr: stderr.to_string(),
                 })
             }
         }
