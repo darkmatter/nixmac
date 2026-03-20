@@ -18,6 +18,7 @@ const DIFF_EXCERPT_LINES: usize = 60;
 ///
 /// `created_at` is a Unix timestamp (seconds) forwarded to every returned struct.
 /// The `id` field is always `0`; callers assign real ids on DB insert.
+#[allow(clippy::manual_strip)]
 pub fn changes_from_diff(diff: &str, created_at: i64) -> Vec<Change> {
     let mut changes = Vec::new();
     let mut current_file: Option<String> = None;
