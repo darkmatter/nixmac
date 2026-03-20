@@ -196,6 +196,7 @@ jobs:
         shell: 'sops exec-env .secrets.enc.yaml "bash -e {0}"'
         env:
           AWS_DEFAULT_REGION: auto
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Map SOPS env vars to AWS CLI vars
           export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
