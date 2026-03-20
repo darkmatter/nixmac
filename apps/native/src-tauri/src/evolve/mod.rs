@@ -4,10 +4,14 @@ mod config_dir_context;
 mod file_ops;
 pub mod messages;
 pub mod providers;
+mod search_code;
 mod search_packages;
 mod tools;
 mod types;
 mod utils;
+
+/// Directories ignored by file listing and search helpers.
+pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 
 // Re-export public API
 use anyhow::{anyhow, Result};
@@ -242,6 +246,12 @@ const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 const DEFAULT_MAX_BUILD_ATTEMPTS: usize = 5;
+
+// Applied separately to stdout and stderr. So when thinking about tokens,
+// the effective output limit could be up to double this if both are long.
+const BUILD_OUTPUT_MAX_CHARS: usize = 6_000;
+const BUILD_OUTPUT_TAIL_LINES: usize = 80;
+
 const SYSTEM_PROMPT: &str = include_str!("../../prompts/system.md");
 
 /// Partial evolution telemetry captured on failed runs.
@@ -364,12 +374,13 @@ pub async fn generate_evolution(
         .or_else(|| std::env::var("EVOLVE_PROVIDER").ok())
         .unwrap_or_else(|| "openai".to_string());
 
+    info!("");
     info!("════════════════════════════════════════════════════════════════");
     info!("EVOLUTION STARTING");
     info!("════════════════════════════════════════════════════════════════");
     info!("Provider: {}", provider_type);
     info!("Config dir: {}", config_dir);
-    info!("Prompt: {}", prompt);
+    info!("📝 Prompt: {}", prompt);
 
     let store_model = store::get_evolve_model(app).ok().flatten();
 
@@ -711,15 +722,30 @@ pub async fn generate_evolution(
                                         EvolveEvent::editing(start_time, iteration, &edit.path),
                                     );
                                 }
-                                ToolResult::BuildResult { success, output } => {
+                                ToolResult::BuildResult {
+                                    success,
+                                    output,
+                                    stderr,
+                                    stdout,
+                                } => {
                                     if *success {
                                         emit_evolve_event(
                                             app,
                                             EvolveEvent::build_pass(start_time, iteration),
                                         );
                                     } else {
-                                        let error_preview =
-                                            output.lines().take(3).collect::<Vec<_>>().join("\n");
+                                        let error_source = if !stderr.is_empty() {
+                                            stderr
+                                        } else if !stdout.is_empty() {
+                                            stdout
+                                        } else {
+                                            output
+                                        };
+                                        let error_preview = error_source
+                                            .lines()
+                                            .take(3)
+                                            .collect::<Vec<_>>()
+                                            .join("\n");
                                         emit_evolve_event(
                                             app,
                                             EvolveEvent::build_fail(
@@ -934,6 +960,41 @@ Do not invent tool names and do not place tool invocations in assistant content.
     Ok(evolution)
 }
 
+// Truncate build output to save against model token limits while preserving the tail where error details usually are
+fn truncate_build_output_for_model(output: &str) -> String {
+    // Short-circuit if output is already within limits
+    let output = output.trim();
+    if output.len() <= BUILD_OUTPUT_MAX_CHARS {
+        return output.to_string();
+    }
+
+    let lines: Vec<&str> = output.lines().collect();
+    let total_lines = lines.len();
+
+    // Try to find last "error:" line, otherwise just take tail
+    let start_idx = lines
+        .iter()
+        .rposition(|line| line.to_ascii_lowercase().contains("error:"))
+        .unwrap_or_else(|| total_lines.saturating_sub(BUILD_OUTPUT_TAIL_LINES));
+
+    let tail_lines = &lines[start_idx..];
+    let mut truncated = tail_lines.join("\n");
+
+    if truncated.len() > BUILD_OUTPUT_MAX_CHARS {
+        global_utils::truncate_utf8(&mut truncated, BUILD_OUTPUT_MAX_CHARS);
+        truncated.push_str("\n\n... [truncated] ...");
+    } else if start_idx > 0 {
+        truncated = format!(
+            "... [omitted {} lines; original size={} chars] ...\n\n{}",
+            start_idx,
+            output.len(),
+            truncated
+        );
+    }
+
+    truncated
+}
+
 /// Summarize tool arguments for logging
 fn summarize_args(args: &serde_json::Value) -> String {
     match args {
@@ -1035,16 +1096,47 @@ fn process_tool_result(
             (msg, Some(false))
         }
 
-        ToolResult::BuildResult { success, output } => {
+        ToolResult::BuildResult {
+            success,
+            output: _,
+            stdout,
+            stderr,
+        } => {
             *build_attempts += 1;
+
+            let trimmed_stdout = stdout.trim();
+            let trimmed_stderr = stderr.trim();
+
+            let stderr_for_model = if trimmed_stderr.is_empty() {
+                None
+            } else {
+                Some(truncate_build_output_for_model(trimmed_stderr))
+            };
+
+            let stdout_for_model = if trimmed_stdout.is_empty() {
+                None
+            } else {
+                Some(truncate_build_output_for_model(trimmed_stdout))
+            };
+
+            let model_output = match (&stderr_for_model, &stdout_for_model) {
+                (Some(stderr), Some(stdout)) => {
+                    format!("stderr:\n{stderr}\n\nstdout:\n{stdout}")
+                }
+                (Some(stderr), None) => format!("stderr:\n{stderr}"),
+                (None, Some(stdout)) => format!("stdout:\n{stdout}"),
+                (None, None) => "(no build output captured)".to_string(),
+            };
+
             if *success {
                 info!("✅ BUILD CHECK PASSED");
                 *build_verified = true;
+
                 let msg = Message::Tool {
                     tool_call_id: tool_call_id.to_string(),
                     content: format!(
                         "{}\n\nBuild verified! You may now call 'done' with your summary.",
-                        output
+                        model_output
                     ),
                 };
                 (msg, Some(false))
@@ -1053,16 +1145,27 @@ fn process_tool_result(
                     "❌ BUILD CHECK FAILED (attempt {}/{})",
                     build_attempts, DEFAULT_MAX_BUILD_ATTEMPTS
                 );
-                for line in output.lines().take(20) {
+
+                // Prefer logging stderr first since that's usually where Nix errors live.
+                let log_preview = if !trimmed_stderr.is_empty() {
+                    trimmed_stderr
+                } else if !trimmed_stdout.is_empty() {
+                    trimmed_stdout
+                } else {
+                    ""
+                };
+
+                for line in log_preview.lines().take(20) {
                     warn!("   │ {}", line);
                 }
+
                 let msg = Message::Tool {
-                    tool_call_id: tool_call_id.to_string(),
-                    content: format!(
-                        "{}\n\nUse the 'think' tool to analyze the error, then fix the issue and run build_check again.",
-                        output
-                    ),
-                };
+            tool_call_id: tool_call_id.to_string(),
+            content: format!(
+                "{}\n\nUse the 'think' tool to analyze the error, then fix the issue and run build_check again.",
+                model_output
+            ),
+        };
                 (msg, Some(false))
             }
         }

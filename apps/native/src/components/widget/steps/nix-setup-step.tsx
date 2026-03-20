@@ -55,6 +55,16 @@ export function NixSetupStep() {
     }
   }, [nixInstalled, darwinRebuildAvailable, nixInstalling, error, installNix]);
 
+  // Open settings dialog during install so users can configure API keys while waiting.
+  const isInstalling = state === "downloading" || state === "waiting-for-installer" || state === "prefetching";
+  useEffect(() => {
+    if (!isInstalling) return;
+    const timer = setTimeout(() => {
+      useWidgetStore.getState().setSettingsOpen(true);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [isInstalling]);
+
   const downloadPercent =
     nixDownloadProgress && nixDownloadProgress.total > 0
       ? Math.round((nixDownloadProgress.downloaded / nixDownloadProgress.total) * 100)
@@ -69,7 +79,7 @@ export function NixSetupStep() {
           </div>
           <h2 className="font-semibold text-foreground text-lg">System Setup</h2>
           <p className="mt-1 text-muted-foreground text-sm">
-            nixmac needs to install a system component to get started
+            nixmac needs to install a few things to get started. While you wait, feel free to set up your AI provider and preferences using the gear icon above.
           </p>
         </div>
 

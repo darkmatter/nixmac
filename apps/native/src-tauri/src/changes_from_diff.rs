@@ -18,6 +18,7 @@ const DIFF_EXCERPT_LINES: usize = 60;
 ///
 /// `created_at` is a Unix timestamp (seconds) forwarded to every returned struct.
 /// The `id` field is always `0`; callers assign real ids on DB insert.
+#[allow(clippy::manual_strip)]
 pub fn changes_from_diff(diff: &str, created_at: i64, truncate_diffs: bool) -> Vec<Change> {
     let mut changes = Vec::new();
     let mut current_file: Option<String> = None;
@@ -25,21 +26,42 @@ pub fn changes_from_diff(diff: &str, created_at: i64, truncate_diffs: bool) -> V
 
     for line in diff.lines() {
         if line.starts_with("diff --git ") {
-            flush(&mut changes, &current_file, &mut current_hunk, created_at, truncate_diffs);
+            flush(
+                &mut changes,
+                &current_file,
+                &mut current_hunk,
+                created_at,
+                truncate_diffs,
+            );
             // "diff --git is, always present with filenames for a/ and b/ paths.
-            current_file = line.rfind(" b/").and_then(|i| line.get(i + 3..)).map(str::to_string);
+            current_file = line
+                .rfind(" b/")
+                .and_then(|i| line.get(i + 3..))
+                .map(str::to_string);
         } else if let Some(path) = line.strip_prefix("+++ b/") {
             // Overrides the header value; more reliable for renames.
             current_file = Some(path.to_string());
         } else if line.starts_with("@@ ") {
-            flush(&mut changes, &current_file, &mut current_hunk, created_at, truncate_diffs);
+            flush(
+                &mut changes,
+                &current_file,
+                &mut current_hunk,
+                created_at,
+                truncate_diffs,
+            );
             current_hunk = Some(line.to_string());
         } else if let Some(ref mut hunk) = current_hunk {
             hunk.push('\n');
             hunk.push_str(line);
         }
     }
-    flush(&mut changes, &current_file, &mut current_hunk, created_at, truncate_diffs);
+    flush(
+        &mut changes,
+        &current_file,
+        &mut current_hunk,
+        created_at,
+        truncate_diffs,
+    );
 
     changes
 }
@@ -55,7 +77,11 @@ fn flush(
         if !h.trim().is_empty() {
             let line_count = h.lines().count() as i64;
             let hash = hunk_hash(f, &h); // full diff before truncation
-            let diff = if truncate_diffs { truncate_excerpt(&h) } else { h };
+            let diff = if truncate_diffs {
+                truncate_excerpt(&h)
+            } else {
+                h
+            };
             out.push(Change {
                 id: 0,
                 hash,
@@ -201,5 +227,4 @@ new file mode 100644
         let changes = changes_from_diff(SAMPLE, 0, true);
         assert_ne!(changes[0].hash, changes[1].hash);
     }
-
 }

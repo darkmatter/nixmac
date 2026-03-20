@@ -151,8 +151,7 @@ pub async fn run<R: Runtime>(
                 .chain(sub_changes.iter())
                 .map(|(c, _)| c.clone())
                 .collect();
-            let hashes: BTreeSet<String> =
-                all_changes.iter().map(|c| c.hash.clone()).collect();
+            let hashes: BTreeSet<String> = all_changes.iter().map(|c| c.hash.clone()).collect();
             let fallback_group_desc: String = main_with_reasoning
                 .first()
                 .or_else(|| sub_changes.first())
@@ -193,11 +192,7 @@ pub async fn run<R: Runtime>(
                         (summary.group, summary.own_summaries)
                     }
                     Err(e) => {
-                        log::warn!(
-                            "[summarize_pipeline] stage 2 failed for '{}': {}",
-                            title,
-                            e
-                        );
+                        log::warn!("[summarize_pipeline] stage 2 failed for '{}': {}", title, e);
                         (
                             HunkSummary {
                                 title: title.clone(),
@@ -208,17 +203,31 @@ pub async fn run<R: Runtime>(
                     }
                 };
 
-            let group_summary = if is_single_hunk { None } else { Some(group_summary) };
+            let group_summary = if is_single_hunk {
+                None
+            } else {
+                Some(group_summary)
+            };
 
             let hunks: Vec<SummarizedHunk> = all_changes
                 .into_iter()
                 .map(|c| {
                     let own_summary = own_summaries.get(&c.hash).cloned();
-                    SummarizedHunk { change: c, own_summary }
+                    SummarizedHunk {
+                        change: c,
+                        own_summary,
+                    }
                 })
                 .collect();
 
-            (sc_idx, SummarizedSemanticChange { group_summary, hashes, hunks })
+            (
+                sc_idx,
+                SummarizedSemanticChange {
+                    group_summary,
+                    hashes,
+                    hunks,
+                },
+            )
         });
     }
 
