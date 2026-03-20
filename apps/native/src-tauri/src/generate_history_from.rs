@@ -52,7 +52,7 @@ pub async fn generate_history_from<R: Runtime>(
 
         let diff = crate::git::commit_diff(&config_dir, &commits[i + 1].hash, &commits[i].hash)?;
 
-        let all_changes = crate::changes_from_diff::changes_from_diff(&diff, commits[i].created_at);
+        let all_changes = crate::changes_from_diff::changes_from_diff(&diff, commits[i].created_at, true);
 
         let (sensitive_or_opaque, changes): (Vec<_>, Vec<_>) = all_changes
             .into_iter()
