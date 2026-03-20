@@ -17,6 +17,8 @@ export interface UpdateState {
   progress: number | null;
   /** Error message if something failed */
   error: string | null;
+  /** Which phase produced the error */
+  errorSource: "check" | "install" | null;
 }
 
 const initialState: UpdateState = {
@@ -27,6 +29,7 @@ const initialState: UpdateState = {
   downloading: false,
   progress: null,
   error: null,
+  errorSource: null,
 };
 
 export function useUpdater() {
@@ -54,6 +57,7 @@ export function useUpdater() {
         ...s,
         checking: false,
         error: err instanceof Error ? err.message : String(err),
+        errorSource: "check",
       }));
     }
   }, []);
@@ -95,6 +99,7 @@ export function useUpdater() {
         downloading: false,
         progress: null,
         error: err instanceof Error ? err.message : String(err),
+        errorSource: "install",
       }));
     }
   }, [state.available]);
