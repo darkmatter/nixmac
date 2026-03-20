@@ -1,106 +1,166 @@
-# E2E Test — Nix Installation Flow
+# macos-e2e
 
-Automated end-to-end test of the full Nix installation flow in the nixmac native app. Uses [Peekaboo](https://peekaboo.boo) for GUI automation over SSH, with ffmpeg screen recording.
+GUI test framework for macOS apps. Uses [Peekaboo](https://peekaboo.boo) for accessibility-based automation over SSH, with ffmpeg screen recording.
 
-## What it tests
+> Built for [nixmac](https://github.com/darkmatter/nixmac), designed to be extracted as a standalone tool.
 
-1. Launch nixmac app on a clean macOS machine (no Nix installed)
-1. Click "Install Nix" button via GUI automation
-1. App downloads the Determinate Nix `.pkg` and opens macOS Installer.app
-1. Nix is installed via CLI (`sudo installer -pkg`)
-1. App detects Nix and begins darwin-rebuild prefetch
-1. Prefetch completes → app shows "Welcome to nixmac" setup wizard
-1. Verifies `nix --version` and darwin-rebuild availability
-1. Cleans up (uninstalls Nix for repeatable runs)
+## Quick start
+
+```bash
+# Run the Nix install flow test
+./run.sh nix-install
+
+# List available scenarios
+./run.sh --list
+
+# Run without recording
+./run.sh nix-install --no-record
+
+# Keep Nix installed after test (inspect state)
+./run.sh nix-install --no-cleanup
+
+# Verbose + JSON output
+./run.sh nix-install --verbose --json
+```
 
 ## Architecture
 
 ```
-┌──────────────┐     SSH      ┌──────────────────────────────┐
-│  GitHub       │────────────▶│  macOS Test Runner            │
-│  Actions      │             │  (MacInCloud / Tart VM)       │
-│               │             │                               │
-│  ci-runner.sh │             │  ┌─────────┐  ┌───────────┐  │
-│               │             │  │ nixmac  │  │ Peekaboo  │  │
-│               │             │  │  .app   │◀─│  Bridge    │  │
-│               │             │  └─────────┘  └───────────┘  │
-│               │             │                               │
-│               │             │  ffmpeg (AVFoundation)        │
-│               │             │  → screen recording           │
-└──────────────┘             └──────────────────────────────┘
+tests/e2e/
+├── run.sh                  # CLI entry point
+├── ci-runner.sh            # GitHub Actions SSH entry point
+├── setup-runner.sh         # One-time runner provisioning
+├── lib/
+│   ├── core.sh             # Logging, assertions, phases, results
+│   ├── peekaboo.sh         # GUI automation (click, type, wait, screenshot)
+│   ├── recording.sh        # ffmpeg AVFoundation screen capture
+│   ├── app.sh              # App lifecycle (launch, quit, pkg install)
+│   ├── runner.sh           # Test orchestration (lock, source, cleanup)
+│   └── API.md              # Full API reference
+├── adapters/
+│   └── nixmac.sh           # nixmac-specific helpers (Nix, app flow)
+├── fixtures/
+│   ├── clean-machine.sh    # Nix uninstalled, app not running
+│   └── nix-installed.sh    # Nix present, app through setup
+└── scenarios/
+    └── nix-install.sh      # Full install flow test
 ```
 
-- **Peekaboo Bridge**: Peekaboo.app runs on the Mac and holds Screen Recording + Accessibility permissions. The CLI connects via a local Unix socket, allowing SSH sessions to automate the GUI.
-- **ffmpeg AVFoundation**: Records the screen via `open -a Terminal` (inherits Terminal.app's Screen Recording permission).
-- **CLI install bypass**: The macOS Installer password dialog (SecurityAgent) can't be automated via Accessibility APIs, so we kill the GUI installer and run `sudo installer -pkg ... -target /` instead. The app only cares that Nix appears on the system.
+### How it works
+
+```
+┌──────────┐    SSH     ┌─────────────────────────────────┐
+│ CI / You │───────────▶│  macOS Test Runner               │
+│          │            │                                   │
+│ run.sh   │            │  ┌────────┐   ┌──────────────┐  │
+│ scenario │            │  │ App    │◀──│ Peekaboo     │  │
+│          │            │  │ Under  │   │ Bridge       │  │
+│          │            │  │ Test   │   │ (GUI proxy)  │  │
+│          │            │  └────────┘   └──────────────┘  │
+│          │            │                                   │
+│          │            │  ffmpeg (AVFoundation)            │
+│          │            │  → screen recording               │
+└──────────┘            └─────────────────────────────────┘
+```
+
+- **Peekaboo Bridge**: Desktop app holds Screen Recording + Accessibility TCC grants. CLI connects via Unix socket, allowing SSH sessions to drive the GUI.
+- **ffmpeg**: Records via `open -a Terminal` (inherits Terminal.app's Screen Recording permission).
+- **Adapters**: App-specific logic lives in `adapters/`. The core framework is app-agnostic.
+- **Fixtures**: Reusable precondition states. Scenarios declare which fixture they need.
+
+## Writing a new scenario
+
+```bash
+#!/bin/bash
+# scenarios/my-feature.sh
+# Scenario: Test my feature does the thing
+
+E2E_ADAPTER="nixmac"          # Load nixmac helpers
+E2E_FIXTURE="nix-installed"   # Start with Nix already installed
+
+scenario_test() {
+    phase "Navigate to settings"
+    nixmac_click_button "Settings"
+    nixmac_screenshot "settings-page"
+    phase_pass "Settings page loaded"
+
+    phase "Verify feature toggle"
+    nixmac_wait_for_text "My Feature" --timeout 10
+    assert_contains "Feature visible" "$(nixmac_text)" "My Feature"
+    phase_pass "Feature toggle present"
+}
+```
+
+See `lib/API.md` for the full API reference.
+
+## Writing an adapter (for other apps)
+
+Create `adapters/<appname>.sh`:
+
+```bash
+#!/bin/bash
+MY_APP_NAME="myapp"
+MY_APP_PATH="/Applications/MyApp.app"
+
+myapp_launch() { app_launch "$MY_APP_PATH" "$MY_APP_NAME"; }
+myapp_quit()   { app_quit "$MY_APP_NAME"; }
+myapp_text()   { peek_text "$MY_APP_NAME"; }
+# ... app-specific helpers
+
+adapter_cleanup() {
+    myapp_quit
+}
+```
+
+Then reference it in your scenario: `E2E_ADAPTER="myapp"`
 
 ## Runner setup (one-time)
 
 ### Prerequisites
 
-- Dedicated macOS machine (Apple Silicon, macOS 15+)
+- macOS machine (Apple Silicon, macOS 15+)
 - SSH access with passwordless sudo
-- GUI session active (for Peekaboo Bridge + screen recording)
+- GUI session active (Peekaboo + screen recording need it)
 
-### Provision the runner
+### Provision
 
 ```bash
-ssh admin@<host>
-
-# Install Homebrew
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-eval "$(/opt/homebrew/bin/brew shellenv zsh)"
-
 # Install tools
 brew install steipete/tap/peekaboo gh ffmpeg
 
-# Install Peekaboo.app (Bridge host)
+# Install Peekaboo.app and grant permissions:
+#   System Settings → Privacy & Security → Screen Recording → Peekaboo ✓
+#   System Settings → Privacy & Security → Accessibility → Peekaboo ✓
 curl -L -o /tmp/Peekaboo.app.zip \
   "https://github.com/steipete/Peekaboo/releases/latest/download/Peekaboo.app.zip"
 sudo unzip -o /tmp/Peekaboo.app.zip -d /Applications/
-
-# Launch Peekaboo.app and grant permissions:
-#   System Settings → Privacy & Security → Screen Recording → Peekaboo ✓
-#   System Settings → Privacy & Security → Accessibility → Peekaboo ✓
 open /Applications/Peekaboo.app
 
-# Set up passwordless sudo
-sudo sh -c 'echo "admin ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/admin && chmod 440 /etc/sudoers.d/admin'
-
-# Authenticate GitHub CLI
-gh auth login
+# Passwordless sudo
+sudo sh -c 'echo "$(whoami) ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/e2e && chmod 440 /etc/sudoers.d/e2e'
 ```
 
-Or use the setup script:
-
-```bash
-./setup-runner.sh --branch <branch-name>
-```
+Or use: `./setup-runner.sh --branch <branch>`
 
 ### Verify
 
 ```bash
-peekaboo bridge status          # Should show "remote gui via ..."
-peekaboo permissions             # Screen Recording: Granted, Accessibility: Granted
-sudo -n whoami                   # Should print "root" (no password)
+peekaboo bridge status         # "remote gui via ..."
+peekaboo permissions           # Screen Recording: Granted, Accessibility: Granted
+sudo -n whoami                 # "root"
 ```
 
-## Running manually
+## CI
 
-```bash
-ADMIN_PASSWORD=<pw> ./run-e2e.sh
+The workflow (`.github/workflows/e2e-nix-install.yml`) triggers on PRs modifying `apps/native/src-tauri/**` or `tests/e2e/**`.
 
-# Or from your local machine via SSH
-ssh admin@<host> 'cd /path/to/tests/e2e && ADMIN_PASSWORD=<pw> bash run-e2e.sh'
-```
+### Secrets (via SOPS)
 
-### Options
+Only one GitHub Secret needed:
 
-| Command | Description |
-|---------|-------------|
-| `./run-e2e.sh` | Full test run |
-| `./run-e2e.sh --cleanup-only` | Just uninstall Nix and quit the app |
-| `CLEANUP_ON_SUCCESS=0 ./run-e2e.sh` | Don't cleanup after success (inspect state) |
+| Secret | Description |
+|--------|-------------|
+| `SOPS_AGE_KEY` | age private key to decrypt `ops/secrets/e2e.enc.yaml` |
 
 ### Outputs
 
@@ -109,33 +169,11 @@ ssh admin@<host> 'cd /path/to/tests/e2e && ADMIN_PASSWORD=<pw> bash run-e2e.sh'
 | Screen recording | `/tmp/e2e-recording.mp4` |
 | Screenshots | `/tmp/e2e-screenshots/` |
 | Test log | `/tmp/e2e-test.log` |
-
-## CI
-
-The workflow (`.github/workflows/e2e-nix-install.yml`) triggers on PRs that modify `apps/native/src-tauri/**` or `tests/e2e/**`, plus manual dispatch.
-
-### Secrets (via SOPS)
-
-Secrets are stored in `ops/secrets/e2e.enc.yaml` encrypted with [SOPS](https://github.com/getsops/sops) + age. Only one GitHub Secret is needed:
-
-| GitHub Secret | Description |
-|---------------|-------------|
-| `SOPS_AGE_KEY` | age private key to decrypt `e2e.enc.yaml` |
-
-The SOPS file contains:
-
-| Field | Description |
-|-------|-------------|
-| `mac_host` | Runner IP/hostname |
-| `mac_user` | SSH username |
-| `mac_ssh_key` | SSH private key |
-| `mac_admin_pw` | macOS admin password |
-
-See `ops/secrets/e2e.enc.yaml.example` for the template.
+| JSON results | `/tmp/e2e-test-results.json` |
 
 ## Limitations
 
-- Requires a persistent macOS GUI session (screen recording and Peekaboo Bridge need it)
-- One test at a time per runner (shared system state)
-- SecurityAgent can't be GUI-automated; uses CLI installer bypass
-- Runner needs Peekaboo.app running before tests start
+- Requires persistent GUI session on the runner
+- One test at a time per machine (file-based lock)
+- SecurityAgent can't be automated → uses CLI `.pkg` install bypass
+- Peekaboo.app must be running before tests start

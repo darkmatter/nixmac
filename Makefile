@@ -1,8 +1,11 @@
+# sequoia/tahoe
+OS_VERSION ?= sequoia
+
 tart-clone-base:
-	tart clone ghcr.io/cirruslabs/macos-tahoe-base:latest tahoe-base
+	tart clone ghcr.io/cirruslabs/macos-$(OS_VERSION)-base:latest $(OS_VERSION)-base
 
 tart-clone:
-	tart clone tahoe-base test-vm
+	tart clone $(OS_VERSION)-base test-vm
 
 tart-run:
 	tart run test-vm --dir=shared:./target/release/bundle/macos
