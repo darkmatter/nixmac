@@ -4,10 +4,14 @@ mod config_dir_context;
 mod file_ops;
 pub mod messages;
 pub mod providers;
+mod search_code;
 mod search_packages;
 mod tools;
 mod types;
 mod utils;
+
+/// Directories ignored by file listing and search helpers.
+pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 
 // Re-export public API
 use anyhow::{anyhow, Result};

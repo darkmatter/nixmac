@@ -4,6 +4,7 @@ use super::file_ops::{
     apply_file_edits, ensure_path_under_base, join_in_dir, resolve_existing_path_in_dir,
 };
 use super::messages::Tool;
+use super::search_code::execute_search_code;
 use super::search_packages::execute_search_packages;
 use super::types::FileEdit;
 
@@ -113,7 +114,9 @@ pub fn create_tools() -> Vec<Tool> {
         Tool {
             name: "search_code".to_string(),
             description: "Search for text patterns in the codebase using ripgrep. \
-                         This helps locate where functions or variables are defined or used.".to_string(),
+                         This helps locate where functions or variables are defined or used. \
+                         Output format: one match per line as file:line:text, where \
+                         text is the matching line content.".to_string(),
             parameters: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -250,7 +253,7 @@ pub fn execute_tool(
             let full_pattern = join_in_dir(base, pattern)?;
             info!("Listing files matching: {}", full_pattern.display());
 
-            let ignored_dirs = [".git", "result"];
+            let ignored_dirs = super::IGNORED_DIRS;
             let matched_files = glob::glob(full_pattern.to_str().unwrap())
                 .map_err(|e| anyhow!("Invalid glob pattern: {}", e))?
                 .filter_map(|p| p.ok())
@@ -382,53 +385,8 @@ pub fn execute_tool(
                 .as_str()
                 .ok_or_else(|| anyhow!("search_code: missing pattern"))?;
             let file_pattern = args["file_pattern"].as_str();
-
-            info!("Searching for pattern: {}", pattern);
-
-            let mut cmd = Command::new("rg");
-            cmd.args(["--line-number", "--no-heading", pattern]);
-
-            if let Some(fp) = file_pattern {
-                // Validate `file_pattern` so it cannot escape `base`, but keep it as a
-                // relative glob pattern for ripgrep instead of converting it to an
-                // absolute filesystem path.
-                let fp_path = Path::new(fp);
-                if fp_path.is_absolute() {
-                    return Err(anyhow!(
-                        "search_code: absolute paths are not allowed in file_pattern"
-                    ));
-                }
-                for component in fp_path.components() {
-                    if let Component::ParentDir = component {
-                        return Err(anyhow!(
-                            "search_code: parent directory segments ('..') are not allowed in file_pattern"
-                        ));
-                    }
-                }
-                cmd.arg("--glob").arg(fp);
-            }
-
-            let output = cmd.current_dir(config_dir).output();
-
-            match output {
-                Ok(out) => {
-                    let stdout = String::from_utf8_lossy(&out.stdout);
-                    if stdout.is_empty() {
-                        Ok(ToolResult::Continue("No matches found.".to_string()))
-                    } else {
-                        Ok(ToolResult::Continue(truncate_error(&stdout, 8000)))
-                    }
-                }
-                Err(_) => {
-                    // Fallback to grep if rg not available
-                    let output = Command::new("grep")
-                        .args(["-rn", pattern, "."])
-                        .current_dir(config_dir)
-                        .output()?;
-                    let stdout = String::from_utf8_lossy(&output.stdout);
-                    Ok(ToolResult::Continue(truncate_error(&stdout, 8000)))
-                }
-            }
+            let output = execute_search_code(config_dir, pattern, file_pattern)?;
+            Ok(ToolResult::Continue(output))
         }
 
         "search_packages" => {
