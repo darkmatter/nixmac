@@ -119,9 +119,7 @@ export function DarwinWidget() {
     <div className="flex h-full w-full flex-col bg-background/90 backdrop-blur-xl">
       <Header />
       <Stepper />
-      <div className="px-5 pt-2">
-        <UpdateBanner />
-      </div>
+      <UpdateBanner />
 
       <StepContentWrapper>
         <ErrorMessage />
