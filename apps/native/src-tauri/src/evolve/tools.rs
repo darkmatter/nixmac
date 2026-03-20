@@ -8,7 +8,6 @@ use super::search_code::execute_search_code;
 use super::search_packages::execute_search_packages;
 use super::types::FileEdit;
 
-use super::utils::truncate_error;
 use anyhow::{anyhow, Result};
 use log::{debug, error, info};
 use std::path::{Component, Path};
