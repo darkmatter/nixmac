@@ -20,7 +20,7 @@ export function UpdateBanner() {
   return (
     <div
       className={cn(
-        "relative flex items-center gap-3 rounded-lg border px-4 py-3 text-sm",
+        "relative flex items-center gap-3 rounded-lg border px-4 py-3 text-sm mx-5 mt-2",
         error
           ? "border-destructive/40 bg-destructive/10 text-destructive"
           : "border-blue-500/30 bg-blue-500/10 text-blue-200"
