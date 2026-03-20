@@ -10,6 +10,7 @@ export function UpdateBanner() {
     downloading,
     progress,
     error,
+    errorSource,
     installUpdate,
     dismiss,
   } = useUpdater();
@@ -29,7 +30,9 @@ export function UpdateBanner() {
 
       <div className="flex-1 min-w-0">
         {error ? (
-          <p className="truncate">Update check failed: {error}</p>
+          <p className="truncate">
+            {errorSource === "install" ? "Update install failed" : "Update check failed"}: {error}
+          </p>
         ) : (
           <>
             <p className="font-medium">
