@@ -217,7 +217,7 @@ jobs:
           echo "Found tar.gz: $TAR_GZ"
           echo "Found sig: $SIG_FILE"
 
-          SIGNATURE=$(cat "$SIG_FILE")
+          SIGNATURE=$(cat "$SIG_FILE" | jq -Rs .)
 
           # Upload binary artifacts with long cache
           aws s3 cp "$TAR_GZ" "s3://nixmac-releases/${VERSION}/nixmac.app.tar.gz" \
@@ -244,7 +244,7 @@ jobs:
             "pub_date": "${PUB_DATE}",
             "platforms": {
               "darwin-aarch64": {
-                "signature": "${SIGNATURE}",
+                "signature": ${SIGNATURE},
                 "url": "https://releases.nixmac.com/${VERSION}/nixmac.app.tar.gz"
               }
             }
