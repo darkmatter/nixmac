@@ -76,7 +76,7 @@ jobs:
           echo "=== Available signing identities ==="
           security find-identity -v -p codesigning $KEYCHAIN_PATH
           echo "=== End identities ==="
-      # Build the Tauri app
+      # Build the Tauri app (TAURI_SIGNING_PRIVATE_KEY + PASSWORD come from sops)
       - name: Build Tauri app
         run: bun run desktop:build
         shell: 'sops exec-env .secrets.enc.yaml "bash -e {0}"'
@@ -190,6 +190,77 @@ jobs:
             target/release/bundle/dmg/*.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Upload to R2 for auto-updater (R2 creds come from sops)
+      - name: Upload to R2
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: 'sops exec-env .secrets.enc.yaml "bash -e {0}"'
+        env:
+          AWS_DEFAULT_REGION: auto
+        run: |
+          # Map SOPS env vars to AWS CLI vars
+          export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
+          export AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
+
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          # Find the .app.tar.gz and .sig files from Tauri build output
+          TAR_GZ=$(find target/release/bundle -name "*.app.tar.gz" -not -name "*.sig" | head -1)
+          SIG_FILE=$(find target/release/bundle -name "*.app.tar.gz.sig" | head -1)
+
+          if [ -z "$TAR_GZ" ] || [ -z "$SIG_FILE" ]; then
+            echo "ERROR: Could not find .app.tar.gz or .sig file"
+            echo "Contents of target/release/bundle:"
+            find target/release/bundle -type f -name "*.tar.gz*" 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "Found tar.gz: $TAR_GZ"
+          echo "Found sig: $SIG_FILE"
+
+          SIGNATURE=$(cat "$SIG_FILE")
+
+          # Upload binary artifacts with long cache
+          aws s3 cp "$TAR_GZ" "s3://nixmac-releases/${VERSION}/nixmac.app.tar.gz" \
+            --endpoint-url "$R2_ENDPOINT" \
+            --cache-control "max-age=31536000"
+
+          aws s3 cp "$SIG_FILE" "s3://nixmac-releases/${VERSION}/nixmac.app.tar.gz.sig" \
+            --endpoint-url "$R2_ENDPOINT" \
+            --cache-control "max-age=31536000"
+
+          # Generate latest.json
+          PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          # Try to get release notes from the GitHub release
+          NOTES=""
+          if command -v gh &> /dev/null; then
+            NOTES=$(gh release view "$GITHUB_REF_NAME" --json body -q .body 2>/dev/null || echo "")
+          fi
+
+          cat > /tmp/latest.json << EOF
+          {
+            "version": "${VERSION}",
+            "notes": $(echo "$NOTES" | jq -Rs .),
+            "pub_date": "${PUB_DATE}",
+            "platforms": {
+              "darwin-aarch64": {
+                "signature": "${SIGNATURE}",
+                "url": "https://releases.nixmac.com/${VERSION}/nixmac.app.tar.gz"
+              }
+            }
+          }
+          EOF
+
+          # Pretty-print to validate JSON
+          cat /tmp/latest.json | jq . > /tmp/latest-formatted.json
+
+          # Upload latest.json with short cache
+          aws s3 cp /tmp/latest-formatted.json "s3://nixmac-releases/latest.json" \
+            --endpoint-url "$R2_ENDPOINT" \
+            --cache-control "max-age=300" \
+            --content-type "application/json"
+
+          echo "✅ Uploaded to R2: v${VERSION}"
       - name: Cleanup keychain
         if: always()
         run: |
