@@ -29,10 +29,10 @@ mod panic_handler;
 mod peek;
 mod permissions;
 mod providers;
+mod query_return_types;
 mod rollback;
 mod scanner;
 mod secret_scanner;
-mod query_return_types;
 mod sqlite_types;
 mod statistics;
 mod store;
@@ -282,7 +282,7 @@ fn run_gui_mode(
                 .build(),
         )
         .plugin(tauri_plugin_sql::Builder::new().build())
-        // .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_upload::init())
         .plugin(tauri_plugin_macos_permissions::init())
         .invoke_handler(tauri::generate_handler![

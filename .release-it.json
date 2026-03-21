@@ -1,0 +1,18 @@
+{
+  "git": {
+    "commitMessage": "chore: release v${version}",
+    "tagName": "v${version}",
+    "requireBranch": "main",
+    "requireCleanWorkingDir": true
+  },
+  "github": {
+    "release": false
+  },
+  "npm": {
+    "publish": false
+  },
+  "hooks": {
+    "before:bump": "echo 'Bumping to v${version}'",
+    "after:bump": "node scripts/sync-versions.mjs ${version}"
+  }
+}
