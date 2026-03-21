@@ -25,6 +25,7 @@ class ResultMetrics:
     tool_calls_count: int | None
     branch_has_built_commit: bool
     commit_message: str
+    model_name: str | None = None
 
 
 def extract_metrics(result_path: Path) -> ResultMetrics | None:
@@ -48,6 +49,15 @@ def extract_metrics(result_path: Path) -> ResultMetrics | None:
             or (result.get("summary") or {}).get("commitMessage")
             or ""
         )
+        # Attempt to extract model name; prefer top-level `evolveModel`
+        model_name = (
+            data.get("evolveModel")
+            or data.get("model")
+            or data.get("result", {}).get("model")
+            or (data.get("summary") or {}).get("model")
+            or None
+        )
+
         return ResultMetrics(
             case_num=case_num,
             prompt=data.get("prompt", ""),
@@ -61,6 +71,7 @@ def extract_metrics(result_path: Path) -> ResultMetrics | None:
             tool_calls_count=optional_int(result, "toolCallsCount"),
             branch_has_built_commit=result.get("gitStatus", {}).get("branchHasBuiltCommit", False),
             commit_message=commit_message,
+            model_name=model_name,
         )
     except (json.JSONDecodeError, KeyError, ValueError) as e:
         print(f"Warning: Failed to parse {result_path}: {e}")
@@ -152,55 +163,73 @@ def calculate_stats(metrics_list: list[ResultMetrics]) -> Statistics:
     )
 
 
-def print_summary_table(stats: Statistics) -> None:
-    """Print a summary statistics table."""
-    summary_data = [
-        ["Metric", "Value"],
-        ["─" * 40, "─" * 20],
-        ["Total Cases", stats.total_cases],
-        ["Passed", f"{stats.passed_cases} ({stats.pass_rate:.1f}%)"],
-        ["Failed", stats.failed_cases],
-        ["", ""],
-        ["Duration (ms)", ""],
-        ["  Average", f"{stats.avg_duration_ms:.0f}"],
-        ["  Median", f"{stats.median_duration_ms:.0f}"],
-        ["  Min / Max", f"{stats.min_duration_ms} / {stats.max_duration_ms}"],
-        ["  Std Dev", f"{stats.stddev_duration_ms:.0f}"],
-        ["", ""],
-        ["Iterations", ""],
-        ["  Average", f"{stats.avg_iterations:.2f}"],
-        ["  Median", f"{stats.median_iterations:.0f}"],
-        ["  Min / Max", f"{stats.min_iterations} / {stats.max_iterations}"],
-        ["  Std Dev", f"{stats.stddev_iterations:.2f}"],
-        ["", ""],
-        ["Build Attempts", ""],
-        ["  Average", f"{stats.avg_build_attempts:.2f}"],
-        ["  Median", f"{stats.median_build_attempts:.0f}"],
-        ["  Total", stats.total_build_attempts],
-        ["", ""],
-        ["Token Usage", ""],
-        ["  Average", f"{stats.avg_tokens:.0f}"],
-        ["  Median", f"{stats.median_tokens:.0f}"],
-        ["  Min / Max", f"{stats.min_tokens} / {stats.max_tokens}"],
-        ["  Std Dev", f"{stats.stddev_tokens:.0f}"],
-        ["", ""],
-        ["Edits", f"{stats.avg_edits:.2f}"],
-        [
-            "Thinking (Avg)",
-            f"{stats.avg_thinking_count:.2f}" if stats.avg_thinking_count is not None else "n/a",
-        ],
-        [
-            "Tool Calls (Avg)",
-            f"{stats.avg_tool_calls:.2f}" if stats.avg_tool_calls is not None else "n/a",
-        ],
-        ["Built %", f"{stats.built_commit_rate:.1f}%"],
-    ]
+def print_summary_table(stats: Statistics, metrics_list: list[ResultMetrics]) -> None:
+    """Print a summary statistics table segmented by overall/passing/failing."""
+    def _safe_calc(subset: list[ResultMetrics] | None):
+        try:
+            return calculate_stats(subset) if subset is not None and subset else None
+        except Exception:
+            return None
 
-    print("\n" + "=" * 65)
-    print("EVALUATION STATISTICS SUMMARY")
-    print("=" * 65)
-    print(tabulate.tabulate(cast(Iterable[Iterable[Any]], summary_data), tablefmt="plain"))
-    print("=" * 65 + "\n")
+    passed_metrics = [m for m in metrics_list if m.ok]
+    failed_metrics = [m for m in metrics_list if not m.ok]
+    passed_stats = _safe_calc(passed_metrics)
+    failed_stats = _safe_calc(failed_metrics)
+
+    # model names present in metrics
+    model_names = sorted({m.model_name for m in metrics_list if m.model_name})
+    model_title = ", ".join(model_names) if model_names else "(models: unknown)"
+
+    headers = ["Metric", "Overall", "Passing", "Failing"]
+
+    def maybe(fmt: str, s: Statistics | None):
+        try:
+            return fmt.format(s) if s is not None else "n/a"
+        except Exception:
+            return "n/a"
+
+    rows = []
+    rows.append(["Total Cases", f"{stats.total_cases}", f"{passed_stats.total_cases}" if passed_stats else "0", f"{failed_stats.total_cases}" if failed_stats else "0"])
+    rows.append(["Pass Rate", f"{stats.pass_rate:.1f}%", "100.0%" if passed_stats else "n/a", "0.0%" if failed_stats else "n/a"])
+
+    rows.append(["", "", "", ""])
+    rows.append(["Duration (ms)", "", "", ""])
+    rows.append(["  Average", f"{stats.avg_duration_ms:.0f}", maybe("{0.avg_duration_ms:.0f}", passed_stats), maybe("{0.avg_duration_ms:.0f}", failed_stats)])
+    rows.append(["  Median", f"{stats.median_duration_ms:.0f}", maybe("{0.median_duration_ms:.0f}", passed_stats), maybe("{0.median_duration_ms:.0f}", failed_stats)])
+    rows.append(["  Min / Max", f"{stats.min_duration_ms} / {stats.max_duration_ms}", "--", "--"])
+    rows.append(["  Std Dev", f"{stats.stddev_duration_ms:.0f}", maybe("{0.stddev_duration_ms:.0f}", passed_stats), maybe("{0.stddev_duration_ms:.0f}", failed_stats)])
+
+    rows.append(["", "", "", ""])
+    rows.append(["Iterations", "", "", ""])
+    rows.append(["  Average", f"{stats.avg_iterations:.2f}", maybe("{0.avg_iterations:.2f}", passed_stats), maybe("{0.avg_iterations:.2f}", failed_stats)])
+    rows.append(["  Median", f"{stats.median_iterations:.0f}", maybe("{0.median_iterations:.0f}", passed_stats), maybe("{0.median_iterations:.0f}", failed_stats)])
+    rows.append(["  Min / Max", f"{stats.min_iterations} / {stats.max_iterations}", f"{passed_stats.min_iterations} / {passed_stats.max_iterations}" if passed_stats else "n/a", f"{failed_stats.min_iterations} / {failed_stats.max_iterations}" if failed_stats else "n/a"])
+    rows.append(["  Std Dev", f"{stats.stddev_iterations:.2f}", maybe("{0.stddev_iterations:.2f}", passed_stats), maybe("{0.stddev_iterations:.2f}", failed_stats)])
+
+    rows.append(["", "", "", ""])
+    rows.append(["Build Attempts", "", "", ""])
+    rows.append(["  Average", f"{stats.avg_build_attempts:.2f}", maybe("{0.avg_build_attempts:.2f}", passed_stats), maybe("{0.avg_build_attempts:.2f}", failed_stats)])
+    rows.append(["  Median", f"{stats.median_build_attempts:.0f}", maybe("{0.median_build_attempts:.0f}", passed_stats), maybe("{0.median_build_attempts:.0f}", failed_stats)])
+    rows.append(["  Total", f"{stats.total_build_attempts}", maybe("{0.total_build_attempts}", passed_stats), maybe("{0.total_build_attempts}", failed_stats)])
+
+    rows.append(["", "", "", ""])
+    rows.append(["Token Usage", "", "", ""])
+    rows.append(["  Average", f"{stats.avg_tokens:.0f}", maybe("{0.avg_tokens:.0f}", passed_stats), maybe("{0.avg_tokens:.0f}", failed_stats)])
+    rows.append(["  Median", f"{stats.median_tokens:.0f}", maybe("{0.median_tokens:.0f}", passed_stats), maybe("{0.median_tokens:.0f}", failed_stats)])
+    rows.append(["  Min / Max", f"{stats.min_tokens} / {stats.max_tokens}", f"{passed_stats.min_tokens} / {passed_stats.max_tokens}" if passed_stats else "n/a", f"{failed_stats.min_tokens} / {failed_stats.max_tokens}" if failed_stats else "n/a"])
+    rows.append(["  Std Dev", f"{stats.stddev_tokens:.0f}", maybe("{0.stddev_tokens:.0f}", passed_stats), maybe("{0.stddev_tokens:.0f}", failed_stats)])
+
+    rows.append(["", "", "", ""])
+    rows.append(["Edits (Avg)", f"{stats.avg_edits:.2f}", maybe("{0.avg_edits:.2f}", passed_stats), maybe("{0.avg_edits:.2f}", failed_stats)])
+    rows.append(["Thinking (Avg)", f"{stats.avg_thinking_count:.2f}" if stats.avg_thinking_count is not None else "n/a", maybe("{0.avg_thinking_count:.2f}", passed_stats), maybe("{0.avg_thinking_count:.2f}", failed_stats)])
+    rows.append(["Tool Calls (Avg)", f"{stats.avg_tool_calls:.2f}" if stats.avg_tool_calls is not None else "n/a", maybe("{0.avg_tool_calls:.2f}", passed_stats), maybe("{0.avg_tool_calls:.2f}", failed_stats)])
+    rows.append(["Built %", f"{stats.built_commit_rate:.1f}%", maybe("{0.built_commit_rate:.1f}%", passed_stats), maybe("{0.built_commit_rate:.1f}%", failed_stats)])
+
+    print("\n" + "=" * 95)
+    print(f"EVALUATION STATISTICS SUMMARY — {model_title}")
+    print("=" * 95)
+    print(tabulate.tabulate(rows, headers=headers, tablefmt="simple"))
+    print("=" * 95 + "\n")
 
 
 def print_cases_table(metrics_list: list[ResultMetrics]) -> None:
@@ -287,7 +316,7 @@ def main() -> None:
     stats = calculate_stats(metrics_list)
 
     # Print results
-    print_summary_table(stats)
+    print_summary_table(stats, metrics_list)
 
     if not args.summary_only:
         print_cases_table(metrics_list)

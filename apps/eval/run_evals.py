@@ -6,6 +6,8 @@ import shlex
 import shutil
 import subprocess
 import tempfile
+import getpass
+import signal
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
@@ -166,11 +168,18 @@ def create_nix_config_git_repo():
         # fallback
         hostname = "localhost"
 
+    # Replace username placeholder with the current system user running this script
+    try:
+        username = getpass.getuser()
+    except Exception:
+        username = os.environ.get("USER", "nobody")
+
     # Replace placeholders in flake.nix
     flake_path = tmpdir / "flake.nix"
     if flake_path.exists():
         content = flake_path.read_text()
         content = content.replace("HOSTNAME_PLACEHOLDER", hostname)
+        content = content.replace("USERNAME_PLACEHOLDER", username)
         content = content.replace("PLATFORM_PLACEHOLDER", "aarch64-darwin")
         flake_path.write_text(content)
 
@@ -353,6 +362,15 @@ def generate_nixmac_settings(
 def main(parsed_args: argparse.Namespace) -> None:
     # Back up nixmac settings.json before running any test cases, and restore it at the end
     settings_backup_path = backup_nixmac_settings()
+    stop_requested = False
+
+    def _sigint_handler(signum, frame):
+        nonlocal stop_requested
+        stop_requested = True
+        print("\nSIGINT received: will stop after current test (press again to force).")
+
+    old_handler = signal.signal(signal.SIGINT, _sigint_handler)
+
     try:
         # Parse comma-delimited rows into list[int]
         rows: list[int] | None
@@ -387,22 +405,47 @@ def main(parsed_args: argparse.Namespace) -> None:
 
         print(f"Running {len(cases)} test cases...")
         for case in cases:
+            if stop_requested:
+                print("Stop requested; exiting before starting next test.")
+                break
+
             print(f"Running case {case.num}: {case.scenario}...")
             nixmac_path = Path(parsed_args.nixmac)
-            result = run_test_case(
-                case,
-                nixmac_path,
-                parsed_args.evolve_provider,
-                parsed_args.evolve_model,
-                parsed_args.summary_provider,
-                parsed_args.summary_model,
-                parsed_args.openai_key,
-                parsed_args.openrouter_key,
-                parsed_args.ollama_url,
-                parsed_args.host,
-            )
+            try:
+                result = run_test_case(
+                    case,
+                    nixmac_path,
+                    parsed_args.evolve_provider,
+                    parsed_args.evolve_model,
+                    parsed_args.summary_provider,
+                    parsed_args.summary_model,
+                    parsed_args.openai_key,
+                    parsed_args.openrouter_key,
+                    parsed_args.ollama_url,
+                    parsed_args.host,
+                )
+            except KeyboardInterrupt:
+                # Signal handler also sets `stop_requested`; ensure we record
+                # that this case was interrupted and then break the loop so
+                # the overall cleanup in the outer finally runs.
+                stop_requested = True
+                print(f"Interrupted during case {case.num}; finishing cleanup and exiting...")
+                result = {
+                    "success": False,
+                    "error": "Interrupted by user",
+                    "case": case.num,
+                }
             update_test_case_status(case.num, result)
+            if stop_requested:
+                print("Stop requested; exiting after current test.")
+                break
     finally:
+        # Restore original SIGINT handler
+        try:
+            signal.signal(signal.SIGINT, old_handler)
+        except Exception:
+            pass
+
         restore_nixmac_settings(settings_backup_path)
 
 
