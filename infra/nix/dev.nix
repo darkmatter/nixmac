@@ -24,6 +24,7 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     pkgs.uv
     pkgs.pyright
     pkgs.ruff
+    pkgs.pre-commit
   ]
   ++ lib.optionals (pkgs.stdenv.isDarwin) [
     pkgs.apple-sdk_15
