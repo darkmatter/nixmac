@@ -12,6 +12,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": "v1Compatible",
     "icon": [
       "icons/icon.icns",
       "icons/32x32.png",
@@ -44,6 +45,12 @@
   "plugins": {
     "shell": {
       "open": true
+    },
+    "updater": {
+      "endpoints": [
+        "https://releases.nixmac.com/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDEyQ0ZGMjJEOTNBMDUxQ0IKUldUTFVhQ1RMZkxQRXNDYXVyblBpa3BVbVdUK3QwUFpzaXl0MVVoQThjcjJkU3hkYlBwNHo1L3cK"
     }
   }
 }
