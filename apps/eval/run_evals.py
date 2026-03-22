@@ -2,7 +2,6 @@ import argparse
 import csv
 import json
 import os
-import shlex
 import shutil
 import subprocess
 import tempfile
@@ -50,6 +49,7 @@ class EvalTestCase:
     request: str
     expected: str
     status: str
+    skip: bool = False
 
 
 def read_test_cases_from_xl(
@@ -102,7 +102,9 @@ def read_test_cases_from_csv(
     - category: high-level category
     - subcategory: more specific scenario
     - quality_dimension: quality aspect being tested
+    - priority: priority level (Critical/High/Medium/Low)
     - notes: additional notes
+    - skip: if TRUE, the test case is skipped
     """
     cases: list[EvalTestCase] = []
 
@@ -128,10 +130,11 @@ def read_test_cases_from_csv(
                     feature=row_data.get("category", ""),
                     scenario=row_data.get("subcategory", ""),
                     persona=row_data.get("quality_dimension", ""),
-                    priority="",  # Not in CSV, could be derived from category if needed
+                    priority=row_data.get("priority", ""),
                     request=row_data.get("prompt", ""),
                     expected=row_data.get("expected_outcome", ""),
                     status=row_data.get("notes", ""),
+                    skip=row_data.get("skip", "").strip().upper() == "TRUE",
                 )
 
                 # Apply filters
@@ -254,9 +257,19 @@ def run_test_case(
         result_dir = Path(tempfile.mkdtemp(prefix="evolution-"))
         out_path = result_dir / "evolution_result.json"
 
-        # Run the test case using nixmac and write output to the temp dir
-        cmd = f"{shlex.quote(str(nixmac))} evolve {shlex.quote(case.request)} --out {shlex.quote(str(out_path))}"
-        os.system(cmd)
+        # Run the test case using nixmac and write output to the temp dir.
+        # Use subprocess.run instead of os.system: os.system blocks SIGINT in
+        # the parent while the child runs, so Ctrl-C would not reach
+        # the stop_requested handler until after the child exits.
+        # This way we don't have to Ctrl-C O(n) times stop a long-running test suite.
+        cmd = [
+            str(nixmac),
+            "evolve",
+            case.request,
+            "--out",
+            str(out_path),
+        ]
+        subprocess.run(cmd, check=False)
 
         # Read and return the evolution result if present
         if out_path.exists():
@@ -409,6 +422,10 @@ def main(parsed_args: argparse.Namespace) -> None:
                 print("Stop requested; exiting before starting next test.")
                 break
 
+            if case.skip:
+                print(f"Skipping case {case.num}: {case.scenario} (marked skip=TRUE in CSV).")
+                continue
+
             print(f"Running case {case.num}: {case.scenario}...")
             nixmac_path = Path(parsed_args.nixmac)
             try:
@@ -502,7 +519,7 @@ if __name__ == "__main__":
         help="Maximum number of test cases to run (default: all matching cases)",
     )
     parser.add_argument(
-        "--priority", type=str, help="Filter test cases by priority (e.g., --priority High)"
+        "--priority", type=str, help="Filter test cases by priority (e.g., --priority {Critical,High,Medium,Low})"
     )
     parser.add_argument(
         "--persona", type=str, help="Filter test cases by persona (e.g., --persona Developer)"
