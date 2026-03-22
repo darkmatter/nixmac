@@ -1,8 +1,10 @@
 use super::{AiProvider, ProviderError, ProviderResponse, TokenUsage};
 use crate::evolve::messages::{Message, Tool as GenericTool, ToolCall};
+use crate::provider_errors::classify_openai_error;
 use anyhow::anyhow;
 use async_openai::{
     config::OpenAIConfig,
+    error::OpenAIError,
     types::{
         ChatCompletionMessageToolCall, ChatCompletionRequestAssistantMessageArgs,
         ChatCompletionRequestMessage, ChatCompletionRequestSystemMessageArgs,
@@ -13,6 +15,7 @@ use async_openai::{
     Client,
 };
 use async_trait::async_trait;
+use reqwest::StatusCode;
 
 pub struct OpenAIProvider {
     client: Client<OpenAIConfig>,
@@ -65,7 +68,7 @@ impl AiProvider for OpenAIProvider {
             .chat()
             .create(request)
             .await
-            .map_err(|e| ProviderError::Other(anyhow!(e)))?;
+            .map_err(normalize_openai_error)?;
 
         let choice = response
             .choices
@@ -172,5 +175,16 @@ fn convert_from_openai_response(choice: &async_openai::types::ChatChoice) -> Mes
     Message::Assistant {
         content,
         tool_calls,
+    }
+}
+
+/// Normalize an async_openai error into a `ProviderError`.
+fn normalize_openai_error(e: OpenAIError) -> ProviderError {
+    if let Some((status_u16, msg)) = classify_openai_error(&e) {
+        let status =
+            StatusCode::from_u16(status_u16).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+        ProviderError::Http { status, body: msg }
+    } else {
+        ProviderError::Other(anyhow!(e))
     }
 }

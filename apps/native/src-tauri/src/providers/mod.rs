@@ -105,7 +105,7 @@ pub fn create_provider<R: Runtime>(
             let key = store_key
                 .or_else(|| std::env::var("OPENROUTER_API_KEY").ok())
                 .or_else(|| std::env::var("OPENAI_API_KEY").ok())
-                .ok_or_else(|| anyhow::anyhow!("No API key configured. Please set your OpenRouter or OpenAI API key in Settings."))?;
+                .ok_or_else(|| anyhow::anyhow!("No API key found. Please add your API key in Settings to get started."))?;
 
             Ok(Box::new(OpenAIClient::new(
                 &key,
