@@ -417,7 +417,7 @@ pub async fn generate_evolution(
                 std::env::var("OPENAI_API_KEY").ok()
             })
             .ok_or_else(|| {
-                anyhow!("No API key configured. Please set your OpenRouter or OpenAI API key in Settings.")
+                anyhow!("No API key found. Please add your API key in Settings to get started.")
             })?;
 
         let model = store_model
@@ -507,7 +507,7 @@ pub async fn generate_evolution(
             evolution.state = EvolutionState::Failed;
             emit_evolve_event(
                 app,
-                EvolveEvent::error(start_time, Some(iteration), "Evolution cancelled by user"),
+                EvolveEvent::error(start_time, Some(iteration), "Evolution cancelled by user", "Evolution cancelled by user"),
             );
             // Track failure
             if let Err(e) = statistics::record_evolution_failure(app, iteration) {
@@ -569,7 +569,7 @@ pub async fn generate_evolution(
                     evolution.state = EvolutionState::Failed;
                     emit_evolve_event(
                         app,
-                        EvolveEvent::error(start_time, Some(iteration), "Evolution cancelled by user"),
+                        EvolveEvent::error(start_time, Some(iteration), "Evolution cancelled by user", "Evolution cancelled by user"),
                     );
                     // Track failure
                     if let Err(e) = statistics::record_evolution_failure(app, iteration) {
@@ -591,8 +591,7 @@ pub async fn generate_evolution(
         let response = match response_result {
             Ok(res) => res,
             Err(e) => {
-                // Use structured ProviderError handling so we can log full body locally
-                // but only send redacted metadata to Sentry.
+                // Raw error for logging and diagnostics
                 let error_str = format!("{:#}", e);
                 error!("AI API error:\n{}", error_str);
 
@@ -608,7 +607,7 @@ pub async fn generate_evolution(
 
                 emit_evolve_event(
                     app,
-                    EvolveEvent::error(start_time, Some(iteration), &error_str),
+                    EvolveEvent::error(start_time, Some(iteration), &e.user_message(), &error_str),
                 );
 
                 // Track failure
@@ -616,10 +615,13 @@ pub async fn generate_evolution(
                     warn!("Failed to record evolution failure stats: {}", e);
                 }
 
-                // Return a downcastable error in case the caller needs to see the ProviderError.
+                // User-friendly message for the UI — translates raw provider
+                // errors into actionable guidance without technical details.
+                let user_msg = e.user_message();
+
                 evolution.state = EvolutionState::Failed;
                 return Err(EvolutionRunError::from_state(
-                    error_str,
+                    user_msg,
                     &evolution,
                     iteration,
                     build_attempts,
@@ -814,7 +816,7 @@ pub async fn generate_evolution(
                             error!("❌ Tool {} failed: {}", tool_name, e);
                             emit_evolve_event(
                                 app,
-                                EvolveEvent::error(start_time, Some(iteration), &e.to_string()),
+                                EvolveEvent::error(start_time, Some(iteration), &format!("Tool {} failed", tool_name), &e.to_string()),
                             );
                             evolution.add_tool_call(
                                 start_time,
@@ -877,6 +879,7 @@ Do not invent tool names and do not place tool invocations in assistant content.
                     start_time,
                     Some(iteration),
                     &format!("Maximum iterations exceeded ({})", max_iterations),
+                    &format!("Maximum iterations exceeded ({})", max_iterations),
                 ),
             );
             // Track failure
@@ -904,6 +907,7 @@ Do not invent tool names and do not place tool invocations in assistant content.
                 EvolveEvent::error(
                     start_time,
                     Some(iteration),
+                    &format!("Failed after {} build attempts", max_build_attempts),
                     &format!("Failed after {} build attempts", max_build_attempts),
                 ),
             );
