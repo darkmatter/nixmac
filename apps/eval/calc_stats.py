@@ -49,7 +49,7 @@ def extract_metrics(result_path: Path) -> ResultMetrics | None:
             or (result.get("summary") or {}).get("commitMessage")
             or ""
         )
-        # Attempt to extract model name; prefer top-level `evolveModel`
+        # Extract model name
         model_name = (
             data.get("evolveModel")
             or data.get("model")
