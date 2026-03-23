@@ -216,6 +216,22 @@ pub async fn evolve_and_commit(
         evolution.iterations
     );
 
+    // Step 1.5. Short-circuit: conversational responses made no environment changes — skip
+    // the summarize / branch / commit / DB steps entirely.
+    if evolution.state == EvolutionState::Conversational {
+        info!("[evolution] Conversational response — skipping git/commit/db workflow");
+        return Ok(EvolutionResult {
+            summary: SummaryResponse {
+                items: vec![],
+                instructions: evolution.summary.clone().unwrap_or_default(),
+                commit_message: String::new(),
+                diff: String::new(),
+            },
+            git_status: initial_status,
+            telemetry: EvolutionTelemetry::from_evolution(&evolution, elapsed_since(start_time_ms)),
+        });
+    }
+
     // Step 2: Generate summary (emit event - this is the only slow finalization step)
     emit_evolve_event(app, EvolveEvent::summarizing(start_time_s, iteration));
 

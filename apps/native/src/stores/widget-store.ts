@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import { FeedbackType } from "@/types/feedback";
-import type { HistoryItem, SummaryResponse, EvolveEvent, GitStatus, PermissionsState } from "@/tauri-api";
+import type {
+  HistoryItem,
+  SummaryResponse,
+  EvolveEvent,
+  GitStatus,
+  PermissionsState,
+} from "@/tauri-api";
 import { computeCurrentStep } from "@/components/widget/utils";
 export type {
   SummaryResponse,
@@ -82,6 +88,7 @@ export interface WidgetState {
   processingAction: ProcessingAction;
   evolveEvents: EvolveEvent[];
   promptHistory: string[];
+  conversationalResponse: string | null;
 
   // Summary (AI-generated)
   summary: SummaryResponse;
@@ -133,7 +140,9 @@ export interface WidgetActions {
   setBootstrapping: (isBootstrapping: boolean) => void;
   setNixInstalled: (installed: boolean | null) => void;
   setNixInstalling: (installing: boolean) => void;
-  setNixInstallPhase: (phase: "downloading" | "waiting-for-installer" | "prefetching" | null) => void;
+  setNixInstallPhase: (
+    phase: "downloading" | "waiting-for-installer" | "prefetching" | null,
+  ) => void;
   setNixDownloadProgress: (progress: { downloaded: number; total: number } | null) => void;
   setDarwinRebuildAvailable: (available: boolean | null) => void;
   setDarwinRebuildPrefetching: (prefetching: boolean) => void;
@@ -175,6 +184,8 @@ export interface WidgetActions {
   // Evolve events
   appendEvolveEvent: (event: EvolveEvent) => void;
   clearEvolveEvents: () => void;
+
+  setConversationalResponse: (response: string | null) => void;
 
   // Rebuild state
   startRebuild: (context: RebuildContext) => void;
@@ -238,6 +249,7 @@ export const initialWidgetState: WidgetState = {
   processingAction: null,
   evolveEvents: [],
   promptHistory: [],
+  conversationalResponse: null,
 
   // History
   history: [],
@@ -314,7 +326,9 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setHistory: (history) => set({ history }),
     setHistoryLoading: (historyLoading) => set({ historyLoading }),
     addAnalyzingHistoryHash: (hash) =>
-      set((state) => ({ analyzingHistoryForHashes: new Set([...state.analyzingHistoryForHashes, hash]) })),
+      set((state) => ({
+        analyzingHistoryForHashes: new Set([...state.analyzingHistoryForHashes, hash]),
+      })),
     removeAnalyzingHistoryHash: (hash) =>
       set((state) => {
         const next = new Set(state.analyzingHistoryForHashes);
@@ -359,6 +373,9 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     appendEvolveEvent: (event) =>
       set((state) => ({ evolveEvents: [...state.evolveEvents, event] })),
     clearEvolveEvents: () => set({ evolveEvents: [] }),
+
+    // Conversational response
+    setConversationalResponse: (conversationalResponse) => set({ conversationalResponse }),
 
     // Rebuild state
     startRebuild: (context) =>
