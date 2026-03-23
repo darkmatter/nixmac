@@ -852,15 +852,29 @@ Do not invent tool names and do not place tool invocations in assistant content.
                 // This shouldn't happen if tool_calls is Some, but good to handle
             }
         } else {
-            info!("Model finished without tool calls");
+            // Model returned content with no tool calls.
             if let Message::Assistant {
                 content: Some(content),
                 ..
             } = assistant_msg
             {
-                evolution.summary = Some(content);
+                if evolution.edits.is_empty() {
+                    // No files were changed — this is a conversational reply (e.g. "hi").
+                    // Emit the content as the completion event so the UI shows it,
+                    // and mark the state so the caller can skip the review workflow.
+                    info!("Conversational response (no edits made)");
+                    emit_evolve_event(app, EvolveEvent::complete(start_time, iteration, &content));
+                    evolution.summary = Some(content);
+                    evolution.state = EvolutionState::Conversational;
+                } else {
+                    info!("Model finished without tool calls (edits already made)");
+                    evolution.summary = Some(content);
+                    evolution.state = EvolutionState::Generated;
+                }
+            } else {
+                info!("Model finished without tool calls");
+                evolution.state = EvolutionState::Generated;
             }
-            evolution.state = EvolutionState::Generated;
             break;
         }
 
