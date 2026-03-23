@@ -25,6 +25,8 @@ class ResultMetrics:
     tool_calls_count: int | None
     branch_has_built_commit: bool
     commit_message: str
+    state: str = "generated"
+    conversational_reply: str | None = None
     model_name: str | None = None
 
 
@@ -49,6 +51,10 @@ def extract_metrics(result_path: Path) -> ResultMetrics | None:
             or (result.get("summary") or {}).get("commitMessage")
             or ""
         )
+        state = data.get("state") or result.get("state") or "generated"
+        conversational_reply: str | None = None
+        if state == "conversational":
+            conversational_reply = (result.get("summary") or {}).get("instructions") or None
         # Extract model name
         model_name = (
             data.get("evolveModel")
@@ -71,6 +77,8 @@ def extract_metrics(result_path: Path) -> ResultMetrics | None:
             tool_calls_count=optional_int(result, "toolCallsCount"),
             branch_has_built_commit=result.get("gitStatus", {}).get("branchHasBuiltCommit", False),
             commit_message=commit_message,
+            state=state,
+            conversational_reply=conversational_reply,
             model_name=model_name,
         )
     except (json.JSONDecodeError, KeyError, ValueError) as e:
@@ -239,9 +247,15 @@ def print_cases_table(metrics_list: list[ResultMetrics]) -> None:
     cases_data = []
     for m in sorted_metrics:
         status = "✓ PASS" if m.ok else "✗ FAIL"
-        commit_msg_display = m.commit_message or ""
-        if len(commit_msg_display) > 80:
-            commit_msg_display = commit_msg_display[:77] + "..."
+        if m.state == "conversational" and m.conversational_reply:
+            raw = m.conversational_reply.replace("\n", " ").strip()
+            commit_msg_display = ("💬 " + raw)[:80]
+            if len("💬 " + raw) > 80:
+                commit_msg_display = commit_msg_display[:77] + "..."
+        else:
+            commit_msg_display = m.commit_message or ""
+            if len(commit_msg_display) > 80:
+                commit_msg_display = commit_msg_display[:77] + "..."
 
         cases_data.append(
             [
