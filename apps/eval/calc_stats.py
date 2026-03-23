@@ -2,6 +2,7 @@ import argparse
 import json
 import statistics
 from collections.abc import Iterable
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
@@ -204,7 +205,12 @@ def print_summary_table(stats: Statistics, metrics_list: list[ResultMetrics]) ->
     rows.append(["Duration (ms)", "", "", ""])
     rows.append(["  Average", f"{stats.avg_duration_ms:.0f}", maybe("{0.avg_duration_ms:.0f}", passed_stats), maybe("{0.avg_duration_ms:.0f}", failed_stats)])
     rows.append(["  Median", f"{stats.median_duration_ms:.0f}", maybe("{0.median_duration_ms:.0f}", passed_stats), maybe("{0.median_duration_ms:.0f}", failed_stats)])
-    rows.append(["  Min / Max", f"{stats.min_duration_ms} / {stats.max_duration_ms}", "--", "--"])
+    rows.append([
+        "  Min / Max",
+        f"{stats.min_duration_ms} / {stats.max_duration_ms}",
+        f"{passed_stats.min_duration_ms} / {passed_stats.max_duration_ms}" if passed_stats else "n/a",
+        f"{failed_stats.min_duration_ms} / {failed_stats.max_duration_ms}" if failed_stats else "n/a",
+    ])
     rows.append(["  Std Dev", f"{stats.stddev_duration_ms:.0f}", maybe("{0.stddev_duration_ms:.0f}", passed_stats), maybe("{0.stddev_duration_ms:.0f}", failed_stats)])
 
     rows.append(["", "", "", ""])
@@ -232,6 +238,16 @@ def print_summary_table(stats: Statistics, metrics_list: list[ResultMetrics]) ->
     rows.append(["Thinking (Avg)", f"{stats.avg_thinking_count:.2f}" if stats.avg_thinking_count is not None else "n/a", maybe("{0.avg_thinking_count:.2f}", passed_stats), maybe("{0.avg_thinking_count:.2f}", failed_stats)])
     rows.append(["Tool Calls (Avg)", f"{stats.avg_tool_calls:.2f}" if stats.avg_tool_calls is not None else "n/a", maybe("{0.avg_tool_calls:.2f}", passed_stats), maybe("{0.avg_tool_calls:.2f}", failed_stats)])
     rows.append(["Built %", f"{stats.built_commit_rate:.1f}%", maybe("{0.built_commit_rate:.1f}%", passed_stats), maybe("{0.built_commit_rate:.1f}%", failed_stats)])
+
+    # Add counts of observed states (e.g., generated, conversational, failed, etc.)
+    counts = Counter(m.state for m in metrics_list)
+    passed_counts = Counter(m.state for m in passed_metrics)
+    failed_counts = Counter(m.state for m in failed_metrics)
+
+    rows.append(["", "", "", ""])
+    rows.append(["State Counts", "Overall", "Passing", "Failing"])
+    for state, cnt in sorted(counts.items()):
+        rows.append([f"  {state}", f"{cnt}", f"{passed_counts.get(state, 0)}", f"{failed_counts.get(state, 0)}"])
 
     print("\n" + "=" * 95)
     print(f"EVALUATION STATISTICS SUMMARY — {model_title}")
