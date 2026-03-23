@@ -90,7 +90,7 @@ export interface GitStatusWithSummary<S = SummaryResponse> {
   summary: S;
 }
 
-export type EvolutionResult = GitStatusWithSummary;
+export type EvolutionResult = GitStatusWithSummary & { state?: string };
 export type WatcherEvent = GitStatusWithSummary<SummaryResponse | null>;
 export type RollbackResult = GitStatusWithSummary<SummaryResponse | null>;
 
