@@ -151,6 +151,12 @@ Do not edit the following files unless the user explicitly requests it.
 - `flake.nix` (at the repository root)
 - `flake-modules/*.nix` (at the repository root)
 
+## Common Config Issues
+
+- `home.homeDirectory` must be an absolute path, never null. On macOS it is `"/Users/<username>"`.
+- `home.username` and `home.stateVersion` must also be set when using home-manager.
+- `users.users.<username>.home` must be set in the nix-darwin config (e.g. in `modules/darwin/users.nix`). home-manager derives `home.homeDirectory` from this — if it is missing, `home.homeDirectory` becomes null and the build fails.
+
 ## Documentation
 
 **Home Manager: Module Auto-importing**
