@@ -2,10 +2,11 @@ import argparse
 import csv
 import json
 import os
-import shlex
 import shutil
 import subprocess
 import tempfile
+import getpass
+import signal
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
@@ -48,6 +49,7 @@ class EvalTestCase:
     request: str
     expected: str
     status: str
+    skip: bool = False
 
 
 def read_test_cases_from_xl(
@@ -100,7 +102,9 @@ def read_test_cases_from_csv(
     - category: high-level category
     - subcategory: more specific scenario
     - quality_dimension: quality aspect being tested
+    - priority: priority level (Critical/High/Medium/Low)
     - notes: additional notes
+    - skip: if TRUE, the test case is skipped
     """
     cases: list[EvalTestCase] = []
 
@@ -126,10 +130,11 @@ def read_test_cases_from_csv(
                     feature=row_data.get("category", ""),
                     scenario=row_data.get("subcategory", ""),
                     persona=row_data.get("quality_dimension", ""),
-                    priority="",  # Not in CSV, could be derived from category if needed
+                    priority=row_data.get("priority", ""),
                     request=row_data.get("prompt", ""),
                     expected=row_data.get("expected_outcome", ""),
                     status=row_data.get("notes", ""),
+                    skip=row_data.get("skip", "").strip().upper() == "TRUE",
                 )
 
                 # Apply filters
@@ -166,11 +171,18 @@ def create_nix_config_git_repo():
         # fallback
         hostname = "localhost"
 
+    # Replace username placeholder with the current system user running this script
+    try:
+        username = getpass.getuser()
+    except Exception:
+        username = os.environ.get("USER", "nobody")
+
     # Replace placeholders in flake.nix
     flake_path = tmpdir / "flake.nix"
     if flake_path.exists():
         content = flake_path.read_text()
         content = content.replace("HOSTNAME_PLACEHOLDER", hostname)
+        content = content.replace("USERNAME_PLACEHOLDER", username)
         content = content.replace("PLATFORM_PLACEHOLDER", "aarch64-darwin")
         flake_path.write_text(content)
 
@@ -245,9 +257,19 @@ def run_test_case(
         result_dir = Path(tempfile.mkdtemp(prefix="evolution-"))
         out_path = result_dir / "evolution_result.json"
 
-        # Run the test case using nixmac and write output to the temp dir
-        cmd = f"{shlex.quote(str(nixmac))} evolve {shlex.quote(case.request)} --out {shlex.quote(str(out_path))}"
-        os.system(cmd)
+        # Run the test case using nixmac and write output to the temp dir.
+        # Use subprocess.run instead of os.system: os.system blocks SIGINT in
+        # the parent while the child runs, so Ctrl-C would not reach
+        # the stop_requested handler until after the child exits.
+        # This way we don't have to Ctrl-C O(n) times stop a long-running test suite.
+        cmd = [
+            str(nixmac),
+            "evolve",
+            case.request,
+            "--out",
+            str(out_path),
+        ]
+        subprocess.run(cmd, check=False)
 
         # Read and return the evolution result if present
         if out_path.exists():
@@ -353,6 +375,15 @@ def generate_nixmac_settings(
 def main(parsed_args: argparse.Namespace) -> None:
     # Back up nixmac settings.json before running any test cases, and restore it at the end
     settings_backup_path = backup_nixmac_settings()
+    stop_requested = False
+
+    def _sigint_handler(signum, frame):
+        nonlocal stop_requested
+        stop_requested = True
+        print("\nSIGINT received: will stop after current test (press again to force).")
+
+    old_handler = signal.signal(signal.SIGINT, _sigint_handler)
+
     try:
         # Parse comma-delimited rows into list[int]
         rows: list[int] | None
@@ -387,22 +418,51 @@ def main(parsed_args: argparse.Namespace) -> None:
 
         print(f"Running {len(cases)} test cases...")
         for case in cases:
+            if stop_requested:
+                print("Stop requested; exiting before starting next test.")
+                break
+
+            if case.skip:
+                print(f"Skipping case {case.num}: {case.scenario} (marked skip=TRUE in CSV).")
+                continue
+
             print(f"Running case {case.num}: {case.scenario}...")
             nixmac_path = Path(parsed_args.nixmac)
-            result = run_test_case(
-                case,
-                nixmac_path,
-                parsed_args.evolve_provider,
-                parsed_args.evolve_model,
-                parsed_args.summary_provider,
-                parsed_args.summary_model,
-                parsed_args.openai_key,
-                parsed_args.openrouter_key,
-                parsed_args.ollama_url,
-                parsed_args.host,
-            )
+            try:
+                result = run_test_case(
+                    case,
+                    nixmac_path,
+                    parsed_args.evolve_provider,
+                    parsed_args.evolve_model,
+                    parsed_args.summary_provider,
+                    parsed_args.summary_model,
+                    parsed_args.openai_key,
+                    parsed_args.openrouter_key,
+                    parsed_args.ollama_url,
+                    parsed_args.host,
+                )
+            except KeyboardInterrupt:
+                # Signal handler also sets `stop_requested`; ensure we record
+                # that this case was interrupted and then break the loop so
+                # the overall cleanup in the outer finally runs.
+                stop_requested = True
+                print(f"Interrupted during case {case.num}; finishing cleanup and exiting...")
+                result = {
+                    "success": False,
+                    "error": "Interrupted by user",
+                    "case": case.num,
+                }
             update_test_case_status(case.num, result)
+            if stop_requested:
+                print("Stop requested; exiting after current test.")
+                break
     finally:
+        # Restore original SIGINT handler
+        try:
+            signal.signal(signal.SIGINT, old_handler)
+        except Exception:
+            pass
+
         restore_nixmac_settings(settings_backup_path)
 
 
@@ -459,7 +519,7 @@ if __name__ == "__main__":
         help="Maximum number of test cases to run (default: all matching cases)",
     )
     parser.add_argument(
-        "--priority", type=str, help="Filter test cases by priority (e.g., --priority High)"
+        "--priority", type=str, help="Filter test cases by priority (e.g., --priority {Critical,High,Medium,Low})"
     )
     parser.add_argument(
         "--persona", type=str, help="Filter test cases by persona (e.g., --persona Developer)"
