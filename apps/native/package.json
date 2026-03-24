@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "desktop:dev": "tauri dev",
+    "desktop:dev": "TAURI_CONFIG=dev tauri dev",
     "desktop:build": "tauri build",
     "lint": "oxlint .",
     "preview": "vite preview",

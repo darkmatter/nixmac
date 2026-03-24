@@ -268,6 +268,13 @@ fn run_gui_mode(
         builder = builder.plugin(tauri_plugin_sentry::init(client));
     }
 
+    // The updater will misbehave in dev mode in most scenarios (e.g. always say an update is available,
+    // fail signature checks, try to downgrade your app, etc.), so we only include it in release builds.
+    #[cfg(not(debug_assertions))]
+    {
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    }
+
     builder
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
@@ -282,7 +289,6 @@ fn run_gui_mode(
                 .build(),
         )
         .plugin(tauri_plugin_sql::Builder::new().build())
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_upload::init())
         .plugin(tauri_plugin_macos_permissions::init())
         .invoke_handler(tauri::generate_handler![
