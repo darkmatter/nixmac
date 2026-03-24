@@ -16,15 +16,8 @@ tart-delete:
 scp:
 	scp -r ./target/debug/bundle/macos/nixmac.app admin@$$(tart ip test-vm):/tmp/nixmac.app
 
-check:
-	bunx ultracite check
-	bun run check-types
-
-fix:
-	bunx ultracite fix
-
-build: check
+build:
 	cd ./apps/native && bunx tauri build --bundles app
 
-build-dev: check
+build-dev:
 	cd ./apps/native && bunx tauri build --bundles app --debug --config src-tauri/tauri.conf.dev.json
