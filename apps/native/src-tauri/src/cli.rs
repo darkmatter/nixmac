@@ -179,7 +179,9 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
     // Effective max iterations: prefer CLI value, otherwise read from store (has default)
     let effective_max_iterations: usize = match max_iterations {
         Some(v) => v,
-        None => crate::store::get_max_iterations(app).unwrap_or(50),
+        None => {
+            crate::store::get_max_iterations(app).unwrap_or(crate::store::DEFAULT_MAX_ITERATIONS)
+        }
     };
 
     // Max iterations
@@ -200,10 +202,28 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
 
     let (ok, output_value, failure_message) = match outcome {
         Ok(output) => {
-            println!("Evolution completed successfully");
+            let is_conversational =
+                output.telemetry.state == crate::evolve::EvolutionState::Conversational;
+
+            if is_conversational {
+                // Print the agent's reply directly to stdout so it is human-readable
+                // in terminal sessions and pipe-friendly for scripts.
+                let reply = output.summary.instructions.trim();
+                println!(
+                    "{}",
+                    if reply.is_empty() {
+                        "(no response)"
+                    } else {
+                        reply
+                    }
+                );
+            } else {
+                println!("Evolution completed successfully");
+            }
+
             let output_value = match serde_json::to_value(&output) {
                 Ok(v) => v,
-                Err(_) => json!({ "raw": format!("{:#?}", output) }),
+                Err(_) => serde_json::json!({ "raw": format!("{:#?}", output) }),
             };
             (true, output_value, None)
         }
@@ -211,15 +231,23 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
             println!("Evolution failed: {}", failure.error);
             let output_value = match serde_json::to_value(&failure) {
                 Ok(v) => v,
-                Err(_) => json!({ "error": failure.error.clone() }),
+                Err(_) => serde_json::json!({ "error": failure.error.clone() }),
             };
             (false, output_value, Some(failure.error))
         }
     };
 
     if let Some(out_path) = out {
+        // Hoist `state` to the envelope so test suites can branch on it without
+        // digging into result.telemetry.state.
+        let state_str = output_value
+            .get("state")
+            .and_then(|v| v.as_str())
+            .unwrap_or(if ok { "generated" } else { "failed" });
+
         let combined = json!({
             "ok": ok,
+            "state": state_str,
             "prompt": prompt,
             "maxIterations": effective_max_iterations,
             "evolveProvider": effective_evolve_provider,

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import type { HistoryItem, SummaryResponse } from "@/tauri-api";
+import type { HistoryItem } from "@/tauri-api";
+import type { SummarizedChange } from "@/types/queries";
 import { cn } from "@/lib/utils";
 import { AnalyzeHistoryItemButton } from "@/components/widget/analyze-history-item-button";
 import { HistoryRestoreItemButton } from "@/components/widget/history-restore-item-button";
@@ -34,6 +35,27 @@ function formatRelativeTime(unixSeconds: number): string {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
+interface SummaryBadge {
+  title: string;
+  description: string;
+}
+
+function getSummaryBadges(changes: SummarizedChange[]): SummaryBadge[] {
+  const seen = new Set<number>();
+  const badges: SummaryBadge[] = [];
+  for (const sc of changes) {
+    if (sc.groupSummary) {
+      if (!seen.has(sc.groupSummary.id)) {
+        seen.add(sc.groupSummary.id);
+        badges.push({ title: sc.groupSummary.title, description: sc.groupSummary.description });
+      }
+    } else if (sc.ownSummary) {
+      badges.push({ title: sc.ownSummary.title, description: sc.ownSummary.description });
+    }
+  }
+  return badges;
+}
+
 interface HistoryItemCardProps {
   item: HistoryItem;
 }
@@ -41,9 +63,8 @@ interface HistoryItemCardProps {
 export function HistoryItemCard({ item }: HistoryItemCardProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const summary = item.summary
-    ? (JSON.parse(item.summary.contentJson) as SummaryResponse)
-    : null;
+  const changeSet = item.changeSet;
+  const badges = changeSet ? getSummaryBadges(changeSet.changes) : [];
 
   const toggle = () => setExpanded((prev) => !prev);
 
@@ -52,17 +73,17 @@ export function HistoryItemCard({ item }: HistoryItemCardProps) {
       className={cn(
         "group rounded-[10px] border-2 bg-[#111111] px-[14px] py-3 mb-2 select-none transition-colors duration-150",
         item.isBuilt ? "border-teal-400/40" : "border-white/[0.12]",
-        summary
+        changeSet
           ? cn("cursor-pointer", !item.isBuilt && "hover:border-white/25 hover:bg-[#141414]")
           : "cursor-default",
         expanded && cn("bg-[#151515]", item.isBuilt ? "border-teal-400/50" : "border-white/35"),
       )}
-      onClick={summary ? toggle : undefined}
-      onKeyDown={summary ? (e) => {
+      onClick={changeSet ? toggle : undefined}
+      onKeyDown={changeSet ? (e) => {
         if (e.key === "Enter" || e.key === " ") toggle();
       } : undefined}
-      role={summary ? "button" : undefined}
-      tabIndex={summary ? 0 : undefined}
+      role={changeSet ? "button" : undefined}
+      tabIndex={changeSet ? 0 : undefined}
     >
       {/* Collapsed body: left content + right actions */}
       <div className="flex items-start justify-between gap-[10px]">
@@ -79,13 +100,13 @@ export function HistoryItemCard({ item }: HistoryItemCardProps) {
               {formatRelativeTime(item.createdAt)}
             </span>
           </div>
-          {summary && summary.items.length > 0 && (
+          {badges.length > 0 && (
             <div className="mt-[6px] flex flex-wrap gap-1">
-              {summary.items.map((si) => {
-                const style = getCategoryStyle(si.title);
+              {badges.map((badge) => {
+                const style = getCategoryStyle(badge.title);
                 return (
                   <span
-                    key={si.title}
+                    key={badge.title}
                     className={cn(
                       "inline-flex items-center gap-[3px] rounded px-[7px] py-0.5 text-[10px]",
                       style.text,
@@ -93,7 +114,7 @@ export function HistoryItemCard({ item }: HistoryItemCardProps) {
                     )}
                   >
                     <span className={cn("h-[5px] w-[5px] shrink-0 rounded-full", style.dot)} />
-                    {si.title}
+                    {badge.title}
                   </span>
                 );
               })}
@@ -104,7 +125,7 @@ export function HistoryItemCard({ item }: HistoryItemCardProps) {
         {/* Right: action buttons */}
         <div className="flex shrink-0 flex-col items-end gap-1">
           <HistoryRestoreItemButton hash={item.hash} isBuilt={item.isBuilt} />
-          {!summary && (
+          {!changeSet && (
             <AnalyzeHistoryItemButton
               hash={item.hash}
               className="group-hover:bg-accent group-hover:text-accent-foreground"
@@ -114,15 +135,15 @@ export function HistoryItemCard({ item }: HistoryItemCardProps) {
       </div>
 
       {/* Expanded detail lines */}
-      {expanded && summary && (
+      {expanded && badges.length > 0 && (
         <div className="mt-[10px] border-t border-white/10 pt-[10px]">
           <p className="mb-[5px] text-[11px] font-medium text-neutral-400">Changes</p>
-          {summary.items.map((si) => (
+          {badges.map((badge) => (
             <div
-              key={si.title}
+              key={badge.title}
               className="my-[3px] rounded border-l-2 border-white/20 bg-white/[0.02] px-2 py-1 text-[11px] text-neutral-500"
             >
-              {si.description}
+              {badge.description}
             </div>
           ))}
         </div>

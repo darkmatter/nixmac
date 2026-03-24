@@ -1,12 +1,13 @@
 //! Tools used by AI
 
-use super::file_ops::{apply_file_edits, join_in_dir};
+use super::file_ops::{
+    apply_file_edits, ensure_path_under_base, join_in_dir, resolve_existing_path_in_dir,
+};
 use super::messages::Tool;
-//use super::run_command::execute_run_command;
+use super::search_code::execute_search_code;
 use super::search_packages::execute_search_packages;
 use super::types::FileEdit;
 
-use super::utils::truncate_error;
 use anyhow::{anyhow, Result};
 use log::{debug, error, info};
 use std::path::{Component, Path};
@@ -105,38 +106,19 @@ pub fn create_tools() -> Vec<Tool> {
             parameters: serde_json::json!({
                 "type": "object",
                 "properties": {
-                    "host": {
-                        "type": "string",
-                        "description": "The host configuration to check (e.g., 'macbook')"
+                    "show_trace": {
+                        "type": "boolean",
+                        "description": "Include --show-trace in nix build for deeper stack traces (default: false)"
                     }
                 },
-                "required": ["host"]
             }),
         },
-        // TODO: Remove this when we're confident we can run without run_command.
-        // It's a powerful escape hatch for complex operations that don't fit other tools,
-        // but it can lead to sloppy agent work if overused.
-        // And it's a security risk if the agent is compromised.
-        // Tool {
-        //     name: "run_command".to_string(),
-        //     description: "Run a shell command in the config directory. Use sparingly - prefer \
-        //                  specific tools when available. Useful for checking nix syntax, \
-        //                  searching code, or other exploratory commands.".to_string(),
-        //     parameters: serde_json::json!({
-        //         "type": "object",
-        //         "properties": {
-        //             "command": {
-        //                 "type": "string",
-        //                 "description": "Shell command to run"
-        //             }
-        //         },
-        //         "required": ["command"]
-        //     }),
-        // },
         Tool {
             name: "search_code".to_string(),
             description: "Search for text patterns in the codebase using ripgrep. \
-                         This helps locate where functions or variables are defined or used.".to_string(),
+                         This helps locate where functions or variables are defined or used. \
+                         Output format: one match per line as file:line:text, where \
+                         text is the matching line content.".to_string(),
             parameters: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -160,7 +142,6 @@ pub fn create_tools() -> Vec<Tool> {
                          {\"attr_path\": string, \"version\": string, \"description\": string, \"channel\": string}. \
                          Example: {\"wget\": {\"attr_path\": \"wget\", \"version\": \"1.21.3\", \"description\": \"retrieves files from the web\", \"channel\": \"nixpkgs-unstable\"}}. \
                          Return JSON only (no prose). \
-                         Use this instead of run_command for package discovery. \
                          Parameters: search_type controls where to search (names, descriptions, or both); \
                          use_regex enables regex patterns for advanced matching; \
                          channel lets you search in different flakes (nixpkgs, nixpkgs-unstable, etc.)".to_string(),
@@ -223,14 +204,24 @@ pub enum ToolResult {
     Done(String),
     /// A file edit was made
     Edit(FileEdit),
-    /// Build check result (success, output)
-    BuildResult { success: bool, output: String },
+    /// Build check result (success, output, stdout, stderr)
+    BuildResult {
+        success: bool,
+        output: String,
+        stdout: String,
+        stderr: String,
+    },
     /// Agent thinking/reasoning (category, content)
     Think { category: String, thought: String },
 }
 
 /// Execute a tool call and return the result
-pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> Result<ToolResult> {
+pub fn execute_tool(
+    config_dir: &str,
+    host_attr: &str,
+    name: &str,
+    args: &serde_json::Value,
+) -> Result<ToolResult> {
     let base = Path::new(config_dir);
     match name {
         "think" => {
@@ -254,7 +245,7 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
             let path = args["path"]
                 .as_str()
                 .ok_or_else(|| anyhow!("read_file: missing path"))?;
-            let full_path = join_in_dir(base, path)?;
+            let full_path = resolve_existing_path_in_dir(base, path)?;
             info!("Reading file: {}", full_path.display());
             let content = std::fs::read_to_string(&full_path)
                 .map_err(|e| anyhow!("Failed to read {}: {}", path, e))?;
@@ -269,25 +260,52 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
             let full_pattern = join_in_dir(base, pattern)?;
             info!("Listing files matching: {}", full_pattern.display());
 
-            let ignored_dirs = [".git", "result"];
-            let files: Vec<String> = glob::glob(full_pattern.to_str().unwrap())
+            let ignored_dirs = super::IGNORED_DIRS;
+            let matched_files = glob::glob(full_pattern.to_str().unwrap())
                 .map_err(|e| anyhow!("Invalid glob pattern: {}", e))?
                 .filter_map(|p| p.ok())
                 .filter(|p| p.is_file())
-                .filter_map(|p| {
-                    // Strip the normalized `base` so results are returned
-                    // relative to the same directory we validated above.
-                    let rel = p.strip_prefix(base).ok()?;
+                .collect::<Vec<_>>();
 
-                    if let Some(Component::Normal(name)) = rel.components().next() {
-                        if ignored_dirs.contains(&name.to_string_lossy().as_ref()) {
-                            return None;
-                        }
+            let mut files: Vec<String> = Vec::new();
+            let mut escaped_matches: Vec<String> = Vec::new();
+
+            for p in matched_files {
+                if ensure_path_under_base(base, &p).is_err() {
+                    escaped_matches.push(p.display().to_string());
+                    continue;
+                }
+
+                // Strip the normalized `base` so results are returned
+                // relative to the same directory we validated above.
+                let Some(rel) = p.strip_prefix(base).ok() else {
+                    continue;
+                };
+
+                if let Some(Component::Normal(name)) = rel.components().next() {
+                    if ignored_dirs.contains(&name.to_string_lossy().as_ref()) {
+                        continue;
                     }
+                }
 
-                    Some(rel.to_string_lossy().to_string())
-                })
-                .collect();
+                files.push(rel.to_string_lossy().to_string());
+            }
+
+            if !escaped_matches.is_empty() {
+                let sample = escaped_matches
+                    .iter()
+                    .take(3)
+                    .cloned()
+                    .collect::<Vec<_>>()
+                    .join(", ");
+
+                return Err(anyhow!(
+                    "list_files matched one or more files outside config_dir after symlink resolution. pattern='{}' config_dir='{}'. Example match(es): {}. Fix: narrow the pattern to files under config_dir and avoid symlink targets outside config_dir.",
+                    pattern,
+                    base.display(),
+                    sample
+                ));
+            }
 
             debug!("Found {} files", files.len());
             Ok(ToolResult::Continue(files.join("\n")))
@@ -322,20 +340,32 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
         }
 
         "build_check" => {
-            let host = args["host"]
-                .as_str()
-                .ok_or_else(|| anyhow!("build_check: missing host"))?;
+            let show_trace = args["show_trace"].as_bool().unwrap_or(false);
+            info!(
+                "Running build check for host: {}, show_trace: {}",
+                host_attr, show_trace
+            );
 
-            info!("Running build check for host: {}", host);
+            // First make sure we have all new add-files
+            crate::git::intent_add_untracked(config_dir).map_err(|e| {
+                anyhow::anyhow!(
+                    "Failed to register new files with git for flake visibility: {}",
+                    e
+                )
+            })?;
 
             // Use nix build --dry-run to check without actually building
-            let output = Command::new("nix")
-                .args([
-                    "build",
-                    &format!(".#darwinConfigurations.{}.system", host),
-                    "--dry-run",
-                    "--show-trace",
-                ])
+            let mut command = Command::new("nix");
+            command
+                .arg("build")
+                .arg(format!(".#darwinConfigurations.{}.system", host_attr))
+                .arg("--dry-run");
+
+            if show_trace {
+                command.arg("--show-trace");
+            }
+
+            let output = command
                 .current_dir(config_dir)
                 .env("PATH", crate::nix::get_nix_path())
                 .env("NIX_CONFIG", "experimental-features = nix-command flakes")
@@ -343,89 +373,37 @@ pub fn execute_tool(config_dir: &str, name: &str, args: &serde_json::Value) -> R
 
             let stdout = String::from_utf8_lossy(&output.stdout);
             let stderr = String::from_utf8_lossy(&output.stderr);
-            let combined = format!("{}\n{}", stdout, stderr);
 
             if output.status.success() {
-                info!("Build check passed for host: {}", host);
+                info!("Build check passed for host: {}", host_attr);
                 Ok(ToolResult::BuildResult {
                     success: true,
-                    output: format!("✓ Build check passed for '{}'", host),
+                    output: format!("✓ Build check passed for '{}'", host_attr),
+                    stdout: stdout.to_string(),
+                    stderr: stderr.to_string(),
                 })
             } else {
-                error!("Build check failed for host: {}", host);
-                debug!("Build error output: {}", combined);
+                error!("Build check failed for host: {}", host_attr);
+                debug!("Build error output: stderr: {}, stdout: {}", stderr, stdout);
                 Ok(ToolResult::BuildResult {
                     success: false,
                     output: format!(
-                        "✗ Build check FAILED for '{}':\n\n{}",
-                        host,
-                        truncate_error(&combined, 4000)
+                        "✗ Build check FAILED for '{}':\n\nTip: Re-run build_check with show_trace=true if you need additional debugging details.",
+                        host_attr,
                     ),
+                    stdout: stdout.to_string(),
+                    stderr: stderr.to_string(),
                 })
             }
         }
 
-        // TODO: Remove when we know we can run without it. See previous comment at tool definitions.
-        // "run_command" => {
-        //     let command = args["command"]
-        //         .as_str()
-        //         .ok_or_else(|| anyhow!("run_command: missing command"))?;
-
-        //     let result = execute_run_command(config_dir, command)?;
-        //     Ok(ToolResult::Continue(result))
-        // }
         "search_code" => {
             let pattern = args["pattern"]
                 .as_str()
                 .ok_or_else(|| anyhow!("search_code: missing pattern"))?;
             let file_pattern = args["file_pattern"].as_str();
-
-            info!("Searching for pattern: {}", pattern);
-
-            let mut cmd = Command::new("rg");
-            cmd.args(["--line-number", "--no-heading", pattern]);
-
-            if let Some(fp) = file_pattern {
-                // Validate `file_pattern` so it cannot escape `base`, but keep it as a
-                // relative glob pattern for ripgrep instead of converting it to an
-                // absolute filesystem path.
-                let fp_path = Path::new(fp);
-                if fp_path.is_absolute() {
-                    return Err(anyhow!(
-                        "search_code: absolute paths are not allowed in file_pattern"
-                    ));
-                }
-                for component in fp_path.components() {
-                    if let Component::ParentDir = component {
-                        return Err(anyhow!(
-                            "search_code: parent directory segments ('..') are not allowed in file_pattern"
-                        ));
-                    }
-                }
-                cmd.arg("--glob").arg(fp);
-            }
-
-            let output = cmd.current_dir(config_dir).output();
-
-            match output {
-                Ok(out) => {
-                    let stdout = String::from_utf8_lossy(&out.stdout);
-                    if stdout.is_empty() {
-                        Ok(ToolResult::Continue("No matches found.".to_string()))
-                    } else {
-                        Ok(ToolResult::Continue(truncate_error(&stdout, 8000)))
-                    }
-                }
-                Err(_) => {
-                    // Fallback to grep if rg not available
-                    let output = Command::new("grep")
-                        .args(["-rn", pattern, "."])
-                        .current_dir(config_dir)
-                        .output()?;
-                    let stdout = String::from_utf8_lossy(&output.stdout);
-                    Ok(ToolResult::Continue(truncate_error(&stdout, 8000)))
-                }
-            }
+            let output = execute_search_code(config_dir, pattern, file_pattern)?;
+            Ok(ToolResult::Continue(output))
         }
 
         "search_packages" => {

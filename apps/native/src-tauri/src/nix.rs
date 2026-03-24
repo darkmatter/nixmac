@@ -27,6 +27,7 @@
 use anyhow::Result;
 use log::{error, info};
 use serde_json::Value;
+use std::io::{Read as _, Write as _};
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 use tauri::{AppHandle, Emitter};
@@ -255,39 +256,74 @@ pub fn install_nix_stream(app: &AppHandle) -> Result<()> {
     Ok(())
 }
 
-/// Sentinel file paths used to detect when Terminal commands complete.
-fn sentinel_paths() -> (std::path::PathBuf, std::path::PathBuf) {
-    let tmp = std::env::temp_dir();
-    (tmp.join(".nixmac-setup-ok"), tmp.join(".nixmac-setup-fail"))
-}
+const PKG_DOWNLOAD_URL: &str =
+    "https://install.determinate.systems/determinate-pkg/stable/Universal";
 
-fn cleanup_sentinels() {
-    let (ok, fail) = sentinel_paths();
-    let _ = std::fs::remove_file(&ok);
-    let _ = std::fs::remove_file(&fail);
-}
+/// Downloads the Determinate Nix .pkg installer with progress reporting.
+///
+/// Emits `nix:install:progress` events with `phase: "downloading"` and
+/// `downloaded`/`total` byte counts so the frontend can show a progress bar.
+fn download_nix_pkg(app: &AppHandle) -> Result<std::path::PathBuf> {
+    info!("[nix] Downloading .pkg from {}", PKG_DOWNLOAD_URL);
 
-/// Opens a Terminal window with the given command via osascript.
-fn open_terminal(cmd: &str) -> Result<()> {
-    let applescript = format!(
-        "tell application \"Terminal\"\n  activate\n  do script \"{}\"\nend tell",
-        cmd
-    );
-    let status = Command::new("osascript")
-        .args(["-e", &applescript])
-        .output()?;
-    if !status.status.success() {
-        anyhow::bail!(
-            "Failed to open Terminal: {}",
-            String::from_utf8_lossy(&status.stderr)
-        );
+    let client = reqwest::blocking::Client::new();
+    let mut response = client.get(PKG_DOWNLOAD_URL).send()?;
+
+    if !response.status().is_success() {
+        anyhow::bail!("Download failed with status {}", response.status());
     }
-    Ok(())
+
+    let total = response.content_length().unwrap_or(0);
+    let pkg_path = std::env::temp_dir().join("Determinate Nix.pkg");
+    let mut file = std::fs::File::create(&pkg_path)?;
+    let mut downloaded: u64 = 0;
+    let mut buffer = [0u8; 65536];
+    let mut last_emit = std::time::Instant::now();
+
+    loop {
+        let n = response.read(&mut buffer)?;
+        if n == 0 {
+            break;
+        }
+        file.write_all(&buffer[..n])?;
+        downloaded += n as u64;
+
+        // Throttle progress events to ~20/sec max
+        if last_emit.elapsed() > std::time::Duration::from_millis(50) {
+            let _ = app.emit(
+                "nix:install:progress",
+                serde_json::json!({
+                    "phase": "downloading",
+                    "downloaded": downloaded,
+                    "total": total,
+                }),
+            );
+            last_emit = std::time::Instant::now();
+        }
+    }
+
+    // Final progress event
+    let _ = app.emit(
+        "nix:install:progress",
+        serde_json::json!({
+            "phase": "downloading",
+            "downloaded": downloaded,
+            "total": total,
+        }),
+    );
+
+    info!("[nix] Download complete: {} bytes", downloaded);
+    Ok(pkg_path)
 }
+
+/// Timeout for each installation phase — nix install and nix-darwin prefetch (5 minutes each).
+const INSTALL_PHASE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(300);
 
 fn run_nix_install(app: &AppHandle) -> Result<()> {
     let nix_installed = is_nix_installed();
     let dr_available = nix_installed && is_darwin_rebuild_available();
+    // Each phase gets its own 5-minute deadline.
+    let mut deadline;
 
     // Both already available — nothing to do
     if nix_installed && dr_available {
@@ -309,27 +345,54 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
     }
 
     if !nix_installed {
-        // Phase 1: Install Nix via Terminal
-        let install_cmd = "curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install --no-confirm; exit";
+        // Phase 1: Download .pkg and open with macOS Installer.app
+        let _ = app.emit(
+            "nix:install:progress",
+            serde_json::json!({ "phase": "downloading", "downloaded": 0, "total": 0 }),
+        );
 
-        info!("[nix] Opening Terminal for Nix installation");
-        if let Err(e) = open_terminal(install_cmd) {
+        let pkg_path = match download_nix_pkg(app) {
+            Ok(path) => path,
+            Err(e) => {
+                app.emit(
+                    "nix:install:end",
+                    serde_json::json!({
+                        "ok": false,
+                        "code": -1,
+                        "error_type": "download_failed",
+                        "error": format!("Failed to download Nix installer: {}", e),
+                    }),
+                )?;
+                return Ok(());
+            }
+        };
+
+        // Open the .pkg with macOS Installer.app
+        info!("[nix] Opening .pkg with macOS Installer: {:?}", pkg_path);
+        let _ = app.emit(
+            "nix:install:progress",
+            serde_json::json!({ "phase": "waiting-for-installer" }),
+        );
+
+        if let Err(e) = Command::new("open").arg(&pkg_path).status() {
+            let _ = std::fs::remove_file(&pkg_path);
             app.emit(
                 "nix:install:end",
                 serde_json::json!({
                     "ok": false,
                     "code": -1,
-                    "error_type": "terminal",
-                    "error": e.to_string(),
+                    "error_type": "installer_failed",
+                    "error": format!("Failed to open installer: {}", e),
                 }),
             )?;
             return Ok(());
         }
 
-        // Poll until Nix is installed
-        let max_wait = std::time::Duration::from_secs(600);
+        // Start the 5-minute deadline for nix installation (download time doesn't count)
+        deadline = std::time::Instant::now() + INSTALL_PHASE_TIMEOUT;
+
+        // Poll until Nix is installed (user completes the macOS Installer wizard)
         let poll_interval = std::time::Duration::from_secs(3);
-        let start = std::time::Instant::now();
         let mut poll_count = 0u32;
 
         loop {
@@ -342,20 +405,23 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
 
             if is_nix_installed() {
                 info!("[nix] Poll #{}: nix detected!", poll_count);
+                // Clean up the downloaded .pkg
+                let _ = std::fs::remove_file(&pkg_path);
                 if let Err(e) = crate::default_config::finalize_flake_lock(app) {
                     info!("[nix] Could not finalize flake.lock: {}", e);
                 }
                 break;
             }
 
-            if start.elapsed() > max_wait {
+            if std::time::Instant::now() >= deadline {
+                let _ = std::fs::remove_file(&pkg_path);
                 app.emit(
                     "nix:install:end",
                     serde_json::json!({
                         "ok": false,
                         "code": -1,
                         "error_type": "timeout",
-                        "error": "Nix installation timed out. Please try installing manually in Terminal.",
+                        "error": "Installation timed out after 5 minutes. Please try again.",
                     }),
                 )?;
                 return Ok(());
@@ -363,55 +429,65 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
         }
     }
 
-    // Phase 2: Prefetch darwin-rebuild via a fresh Terminal session.
-    // A new Terminal window gets nix on PATH from /etc/zshrc automatically.
-    cleanup_sentinels();
-    let (sentinel_ok, sentinel_fail) = sentinel_paths();
-    let sentinel_ok_str = sentinel_ok.display().to_string();
-    let sentinel_fail_str = sentinel_fail.display().to_string();
-
-    let prefetch_cmd = format!(
-        "echo Preparing nix-darwin... && NIX_CONFIG='experimental-features = nix-command flakes' nix build --no-link nix-darwin/master#darwin-rebuild && touch {} || touch {}; exit",
-        sentinel_ok_str, sentinel_fail_str
+    // Phase 2: Prefetch darwin-rebuild directly (no Terminal needed)
+    // Fresh 5-minute deadline for this phase
+    deadline = std::time::Instant::now() + INSTALL_PHASE_TIMEOUT;
+    let _ = app.emit(
+        "nix:install:progress",
+        serde_json::json!({ "phase": "prefetching" }),
     );
 
-    info!("[nix] Opening Terminal for nix-darwin prefetch");
-    if let Err(e) = open_terminal(&prefetch_cmd) {
-        cleanup_sentinels();
-        app.emit(
-            "nix:install:end",
-            serde_json::json!({
-                "ok": false,
-                "code": -1,
-                "error_type": "terminal",
-                "error": e.to_string(),
-            }),
-        )?;
-        return Ok(());
-    }
-
-    // Poll until darwin-rebuild prefetch completes (sentinel file)
-    let max_wait = std::time::Duration::from_secs(600);
-    let poll_interval = std::time::Duration::from_secs(3);
-    let start = std::time::Instant::now();
-    let mut poll_count = 0u32;
-
-    loop {
-        std::thread::sleep(poll_interval);
-        poll_count += 1;
-
-        if sentinel_ok.exists() {
-            info!(
-                "[nix] Poll #{}: darwin-rebuild prefetch succeeded",
-                poll_count
-            );
-            cleanup_sentinels();
-            break;
+    info!("[nix] Prefetching darwin-rebuild in background");
+    let mut child = match Command::new("nix")
+        .args(["build", "--no-link", "nix-darwin/master#darwin-rebuild"])
+        .env("PATH", get_nix_path_with_login_shell())
+        .env("NIX_CONFIG", "experimental-features = nix-command flakes")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+    {
+        Ok(child) => child,
+        Err(e) => {
+            error!("[nix] darwin-rebuild prefetch error: {}", e);
+            app.emit(
+                "nix:install:end",
+                serde_json::json!({
+                    "ok": false,
+                    "code": -1,
+                    "error_type": "darwin_rebuild",
+                    "error": format!("Failed to set up nix-darwin: {}", e),
+                }),
+            )?;
+            return Ok(());
         }
+    };
 
-        if sentinel_fail.exists() {
-            info!("[nix] Poll #{}: darwin-rebuild prefetch failed", poll_count);
-            cleanup_sentinels();
+    // Poll until the child exits or the deadline is reached
+    let poll_interval = std::time::Duration::from_secs(1);
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break Ok(status),
+            Ok(None) => {
+                if std::time::Instant::now() >= deadline {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    break Err("timed out");
+                }
+                std::thread::sleep(poll_interval);
+            }
+            Err(e) => {
+                error!("[nix] darwin-rebuild wait error: {}", e);
+                break Err("wait failed");
+            }
+        }
+    };
+
+    match status {
+        Ok(s) if s.success() => {
+            info!("[nix] darwin-rebuild prefetch succeeded");
+        }
+        Ok(_) => {
+            error!("[nix] darwin-rebuild prefetch failed");
             app.emit(
                 "nix:install:end",
                 serde_json::json!({
@@ -423,16 +499,15 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
             )?;
             return Ok(());
         }
-
-        if start.elapsed() > max_wait {
-            cleanup_sentinels();
+        Err(_) => {
+            error!("[nix] darwin-rebuild prefetch timed out");
             app.emit(
                 "nix:install:end",
                 serde_json::json!({
                     "ok": false,
                     "code": -1,
                     "error_type": "timeout",
-                    "error": "nix-darwin setup timed out. Please try again.",
+                    "error": "Installation timed out after 5 minutes. Please try again.",
                 }),
             )?;
             return Ok(());

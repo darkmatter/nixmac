@@ -1,6 +1,13 @@
 import { create } from "zustand";
 import { FeedbackType } from "@/types/feedback";
-import type { HistoryItem, SummaryResponse, EvolveEvent, GitStatus, PermissionsState, RecommendedPrompt } from "@/tauri-api";
+import type {
+  HistoryItem,
+  SummaryResponse,
+  EvolveEvent,
+  GitStatus,
+  PermissionsState,
+  RecommendedPrompt,
+} from "@/tauri-api";
 import { computeCurrentStep } from "@/components/widget/utils";
 export type {
   SummaryResponse,
@@ -67,6 +74,8 @@ export interface WidgetState {
   // Nix installation
   nixInstalled: boolean | null; // null = not checked yet
   nixInstalling: boolean;
+  nixInstallPhase: "downloading" | "waiting-for-installer" | "prefetching" | null;
+  nixDownloadProgress: { downloaded: number; total: number } | null;
 
   // nix-darwin (darwin-rebuild availability)
   darwinRebuildAvailable: boolean | null; // null = not checked yet
@@ -80,6 +89,7 @@ export interface WidgetState {
   processingAction: ProcessingAction;
   evolveEvents: EvolveEvent[];
   promptHistory: string[];
+  conversationalResponse: string | null;
 
   // Summary (AI-generated)
   summary: SummaryResponse;
@@ -132,6 +142,10 @@ export interface WidgetActions {
   setBootstrapping: (isBootstrapping: boolean) => void;
   setNixInstalled: (installed: boolean | null) => void;
   setNixInstalling: (installing: boolean) => void;
+  setNixInstallPhase: (
+    phase: "downloading" | "waiting-for-installer" | "prefetching" | null,
+  ) => void;
+  setNixDownloadProgress: (progress: { downloaded: number; total: number } | null) => void;
   setDarwinRebuildAvailable: (available: boolean | null) => void;
   setDarwinRebuildPrefetching: (prefetching: boolean) => void;
   setGitStatus: (status: GitStatus | null) => void;
@@ -173,6 +187,8 @@ export interface WidgetActions {
   // Evolve events
   appendEvolveEvent: (event: EvolveEvent) => void;
   clearEvolveEvents: () => void;
+
+  setConversationalResponse: (response: string | null) => void;
 
   // Rebuild state
   startRebuild: (context: RebuildContext) => void;
@@ -220,6 +236,8 @@ export const initialWidgetState: WidgetState = {
   // Nix
   nixInstalled: null,
   nixInstalling: false,
+  nixInstallPhase: null,
+  nixDownloadProgress: null,
 
   // nix-darwin
   darwinRebuildAvailable: null,
@@ -234,6 +252,7 @@ export const initialWidgetState: WidgetState = {
   processingAction: null,
   evolveEvents: [],
   promptHistory: [],
+  conversationalResponse: null,
 
   // History
   history: [],
@@ -310,7 +329,9 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setHistory: (history) => set({ history }),
     setHistoryLoading: (historyLoading) => set({ historyLoading }),
     addAnalyzingHistoryHash: (hash) =>
-      set((state) => ({ analyzingHistoryForHashes: new Set([...state.analyzingHistoryForHashes, hash]) })),
+      set((state) => ({
+        analyzingHistoryForHashes: new Set([...state.analyzingHistoryForHashes, hash]),
+      })),
     removeAnalyzingHistoryHash: (hash) =>
       set((state) => {
         const next = new Set(state.analyzingHistoryForHashes);
@@ -336,6 +357,8 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setBootstrapping: (isBootstrapping) => set({ isBootstrapping }),
     setNixInstalled: (nixInstalled) => set({ nixInstalled }),
     setNixInstalling: (nixInstalling) => set({ nixInstalling }),
+    setNixInstallPhase: (nixInstallPhase) => set({ nixInstallPhase }),
+    setNixDownloadProgress: (nixDownloadProgress) => set({ nixDownloadProgress }),
     setDarwinRebuildAvailable: (darwinRebuildAvailable) => set({ darwinRebuildAvailable }),
     setDarwinRebuildPrefetching: (darwinRebuildPrefetching) => set({ darwinRebuildPrefetching }),
     setGenerating: (isGenerating) => set({ isGenerating }),
@@ -354,6 +377,9 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     appendEvolveEvent: (event) =>
       set((state) => ({ evolveEvents: [...state.evolveEvents, event] })),
     clearEvolveEvents: () => set({ evolveEvents: [] }),
+
+    // Conversational response
+    setConversationalResponse: (conversationalResponse) => set({ conversationalResponse }),
 
     // Rebuild state
     startRebuild: (context) =>

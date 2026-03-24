@@ -10,15 +10,13 @@ export type ChangeSet = { id: number; commitId: number | null; baseCommitId: num
 
 export type ChangeSummary = { id: number; title: string; description: string; groupSummaryFor: string | null; createdAt: number }
 
-export type CommitRow = { id: number; hash: string; treeHash: string; message: string | null; createdAt: number }
+/**
+ * Result of a dirty-HEAD hash lookup.
+ * `unsummarized_hashes` contains hashes with no stored match — these still need the pipeline.
+ */
+export type FoundChanges = { summarized: SummarizedChange[]; unsummarizedHashes: string[] }
 
-export type EvolutionCommitRow = { evolutionId: number; commitId: number }
+export type SummarizedChange = { change: Change; ownSummary: ChangeSummary | null; groupSummary: ChangeSummary | null }
 
-export type EvolutionRow = { id: number; branch: string; merged: number; builds: number }
-
-export type PromptRow = { id: number; text: string; commitId: number | null; createdAt: number }
-
-export type SquashedCommitRow = { targetId: number; sourceId: number }
-
-export type SummaryRow = { id: number; commitId: number; baseCommitId: number | null; contentJson: string; diff: string; createdAt: number }
+export type SummarizedChanges = { changeSet: ChangeSet; changes: SummarizedChange[] }
 

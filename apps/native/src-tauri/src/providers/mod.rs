@@ -12,21 +12,51 @@ const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
 const DEFAULT_SUMMARY_MODEL: &str = "openai/gpt-4o-mini";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 
-/// Trait for pluggable chat completion providers
+/// Token consumption reported by a provider for a single completion call.
+#[derive(Debug, Default, Clone)]
+pub struct TokenUsage {
+    pub input: Option<u32>,
+    pub output: Option<u32>,
+}
+
+/// Returns `(content, usage)` — fields inside `TokenUsage` or `None` when unsupported
 #[async_trait]
 pub trait ChatCompletionProvider: Send + Sync {
     /// Get the model name/identifier
     fn model(&self) -> &str;
 
-    /// Request a chat completion
+    /// Request a chat completion.
+    /// `num_ctx` — overrides Ollama default context-window size
     async fn completion(
         &self,
         system_prompt: &str,
         user_prompt: &str,
         max_tokens: u32,
+        num_ctx: Option<u32>,
         temperature: f32,
         request_id: &str,
-    ) -> Result<String>;
+    ) -> Result<(String, TokenUsage)>;
+
+    /// Request a completion with JSON output enforced (response_format: json_object).
+    async fn json_completion(
+        &self,
+        system_prompt: &str,
+        user_prompt: &str,
+        max_tokens: u32,
+        num_ctx: Option<u32>,
+        temperature: f32,
+        request_id: &str,
+    ) -> Result<(String, TokenUsage)> {
+        self.completion(
+            system_prompt,
+            user_prompt,
+            max_tokens,
+            num_ctx,
+            temperature,
+            request_id,
+        )
+        .await
+    }
 }
 
 /// Create a provider based on environment configuration
