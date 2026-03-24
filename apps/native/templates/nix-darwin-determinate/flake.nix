@@ -20,7 +20,7 @@
     #
     # See: https://nix-community.github.io/home-manager/
     #
-    # inputs.home-manager = {
+    # home-manager = {
     #   url = "github:nix-community/home-manager";
     #   inputs.nixpkgs.follows = "nixpkgs";
     # };

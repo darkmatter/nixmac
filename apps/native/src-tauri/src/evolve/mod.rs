@@ -247,6 +247,11 @@ const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 const DEFAULT_MAX_BUILD_ATTEMPTS: usize = 5;
 
+// Maximum number of iterations allowed before we force an edit or build check
+// to ensure the agent is making progress and we have enough allowable iterations
+// at the end to finalize an edit.
+const MAX_ITERATIONS_BEFORE_EDIT: usize = 15;
+
 // Applied separately to stdout and stderr. So when thinking about tokens,
 // the effective output limit could be up to double this if both are long.
 const BUILD_OUTPUT_MAX_CHARS: usize = 6_000;
@@ -499,6 +504,9 @@ pub async fn generate_evolution(
         },
     ];
 
+    // Track whether we've made any actual edits or build checks
+    let mut made_edit_or_build_check = false;
+
     // Agentic loop - let the model use tools until done AND build passes
     loop {
         // Check for cancellation at the start of each iteration
@@ -708,6 +716,11 @@ pub async fn generate_evolution(
                                 success,
                             );
 
+                            // Track if we've made an edit or build check
+                            if tool_name == "edit_file" || tool_name == "build_check" {
+                                made_edit_or_build_check = true;
+                            }
+
                             // Emit specific events based on tool result type
                             match res {
                                 ToolResult::Think { category, thought } => {
@@ -854,16 +867,61 @@ Do not invent tool names and do not place tool invocations in assistant content.
                 // This shouldn't happen if tool_calls is Some, but good to handle
             }
         } else {
-            info!("Model finished without tool calls");
+            // Model returned content with no tool calls.
             if let Message::Assistant {
                 content: Some(content),
                 ..
             } = assistant_msg
             {
-                evolution.summary = Some(content);
+                if evolution.edits.is_empty() {
+                    // No files were changed — this is a conversational reply (e.g. "hi").
+                    // Emit the content as the completion event so the UI shows it,
+                    // and mark the state so the caller can skip the review workflow.
+                    info!("Conversational response (no edits made)");
+                    emit_evolve_event(app, EvolveEvent::complete(start_time, iteration, &content));
+                    evolution.summary = Some(content);
+                    evolution.state = EvolutionState::Conversational;
+                } else {
+                    info!("Model finished without tool calls (edits already made)");
+                    evolution.summary = Some(content);
+                    evolution.state = EvolutionState::Generated;
+                }
+            } else {
+                info!("Model finished without tool calls");
+                evolution.state = EvolutionState::Generated;
             }
-            evolution.state = EvolutionState::Generated;
             break;
+        }
+
+        // Safety limits
+        if iteration == MAX_ITERATIONS_BEFORE_EDIT && !made_edit_or_build_check {
+            warn!(
+                "⚠️ No edit or build_check by iteration {} - agent not making progress",
+                MAX_ITERATIONS_BEFORE_EDIT
+            );
+            evolution.state = EvolutionState::Failed;
+            let message = format!(
+                "I've analyzed your configuration for {} iterations but haven't started making concrete changes yet. \
+This suggests I'm having difficulty understanding what modifications you'd like. \
+Could you provide more specific guidance on what aspects of your configuration need adjustment?",
+                MAX_ITERATIONS_BEFORE_EDIT
+            );
+            emit_evolve_event(
+                app,
+                EvolveEvent::error(start_time, Some(iteration), &message),
+            );
+            // Track failure
+            if let Err(e) = statistics::record_evolution_failure(app, iteration) {
+                warn!("Failed to record evolution failure stats: {}", e);
+            }
+            return Err(EvolutionRunError::from_state(
+                message,
+                &evolution,
+                iteration,
+                build_attempts,
+                total_tokens,
+            )
+            .into());
         }
 
         // Safety limits
