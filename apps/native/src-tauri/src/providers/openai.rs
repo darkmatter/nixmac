@@ -1,6 +1,6 @@
 use super::{ChatCompletionProvider, TokenUsage};
 use crate::provider_errors::{classify_openai_error, friendly_provider_error};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use async_openai::{
     config::OpenAIConfig,
     error::OpenAIError,
@@ -14,11 +14,15 @@ use async_trait::async_trait;
 use log::debug;
 
 /// Normalize an async_openai error into a user-friendly anyhow error.
+///
+/// Classified API errors get a friendly message for the user while preserving
+/// the original error in the chain via `context`. Unclassified errors pass
+/// through directly so callers can inspect the full source.
 fn normalize_completion_error(e: OpenAIError) -> anyhow::Error {
     if let Some((status, _)) = classify_openai_error(&e) {
-        anyhow::anyhow!("{}", friendly_provider_error(status))
+        anyhow::Error::from(e).context(friendly_provider_error(status))
     } else {
-        anyhow::anyhow!("{}", e)
+        anyhow::Error::from(e)
     }
 }
 

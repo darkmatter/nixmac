@@ -3,8 +3,7 @@ use crate::provider_errors::friendly_provider_error;
 use anyhow::Error as AnyhowError;
 use async_trait::async_trait;
 use reqwest::StatusCode;
-use std::error::Error as StdError;
-use std::fmt;
+use thiserror::Error;
 
 pub mod ollama;
 pub mod openai;
@@ -64,30 +63,14 @@ pub trait AiProvider: Send + Sync {
 ///
 /// See `report_provider_error` in `evolve/mod.rs` for an example of safe telemetry
 /// reporting and `extract_error_metadata` for extracting non-sensitive fields.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ProviderError {
     /// HTTP-style error with status code and body
+    #[error("http error {status}: {body}")]
     Http { status: StatusCode, body: String },
     /// Other error (wrapped anyhow::Error)
+    #[error(transparent)]
     Other(AnyhowError),
-}
-
-impl fmt::Display for ProviderError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ProviderError::Http { status, body } => write!(f, "http error {}: {}", status, body),
-            ProviderError::Other(e) => write!(f, "{}", e),
-        }
-    }
-}
-
-impl StdError for ProviderError {
-    fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        match self {
-            ProviderError::Other(e) => e.source(),
-            _ => None,
-        }
-    }
 }
 
 impl ProviderError {
@@ -100,9 +83,7 @@ impl ProviderError {
     /// `Http { status, body }` before reaching this method.
     pub fn user_message(&self) -> String {
         match self {
-            ProviderError::Http { status, .. } => {
-                friendly_provider_error(status.as_u16())
-            }
+            ProviderError::Http { status, .. } => friendly_provider_error(status.as_u16()),
             ProviderError::Other(e) => {
                 let msg = format!("{:#}", e);
                 // Preserve controlled messages that are already user-friendly.
