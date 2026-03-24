@@ -39,6 +39,14 @@ pub struct SystemDefaultsScan {
     pub total_scanned: usize,
 }
 
+/// A recommended prompt based on the user's current macOS settings.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecommendedPrompt {
+    pub id: String,
+    pub prompt_text: String,
+}
+
 // =============================================================================
 // Domain value types
 // =============================================================================
@@ -1675,6 +1683,147 @@ pub fn build_summary(defaults: &[SystemDefault]) -> Vec<(String, String)> {
 }
 
 // =============================================================================
+// Recommended prompt selection
+// =============================================================================
+
+/// A single target that a recommended prompt checks against.
+struct PromptTarget {
+    defaults_domain: &'static str,
+    defaults_key: &'static str,
+    desired_value: &'static str,
+}
+
+/// Definition for a curated prompt recommendation.
+struct PromptDef {
+    id: &'static str,
+    prompt_text: &'static str,
+    targets: &'static [PromptTarget],
+}
+
+/// Curated prompt definitions in priority order. The first prompt whose targets
+/// are not all at their desired values is returned as the recommendation.
+const PROMPT_DEFS: &[PromptDef] = &[
+    PromptDef {
+        id: "finder_pathbar",
+        prompt_text: "Enable the Finder path bar and status bar",
+        targets: &[
+            PromptTarget {
+                defaults_domain: "com.apple.finder",
+                defaults_key: "ShowPathbar",
+                desired_value: "true",
+            },
+            PromptTarget {
+                defaults_domain: "com.apple.finder",
+                defaults_key: "ShowStatusBar",
+                desired_value: "true",
+            },
+        ],
+    },
+    PromptDef {
+        id: "show_extensions",
+        prompt_text: "Show all file extensions in Finder",
+        targets: &[
+            PromptTarget {
+                defaults_domain: "com.apple.finder",
+                defaults_key: "AppleShowAllExtensions",
+                desired_value: "true",
+            },
+            PromptTarget {
+                defaults_domain: "NSGlobalDomain",
+                defaults_key: "AppleShowAllExtensions",
+                desired_value: "true",
+            },
+        ],
+    },
+    PromptDef {
+        id: "dock_autohide",
+        prompt_text: "Hide the Dock automatically",
+        targets: &[PromptTarget {
+            defaults_domain: "com.apple.dock",
+            defaults_key: "autohide",
+            desired_value: "true",
+        }],
+    },
+    PromptDef {
+        id: "tap_to_click",
+        prompt_text: "Enable tap to click on the trackpad",
+        targets: &[PromptTarget {
+            defaults_domain: "com.apple.AppleMultitouchTrackpad",
+            defaults_key: "Clicking",
+            desired_value: "true",
+        }],
+    },
+    PromptDef {
+        id: "folders_first",
+        prompt_text: "Sort folders first in Finder",
+        targets: &[PromptTarget {
+            defaults_domain: "com.apple.finder",
+            defaults_key: "_FXSortFoldersFirst",
+            desired_value: "true",
+        }],
+    },
+    PromptDef {
+        id: "disable_autocorrect",
+        prompt_text: "Disable auto-correct and auto-capitalization",
+        targets: &[
+            PromptTarget {
+                defaults_domain: "NSGlobalDomain",
+                defaults_key: "NSAutomaticSpellingCorrectionEnabled",
+                desired_value: "false",
+            },
+            PromptTarget {
+                defaults_domain: "NSGlobalDomain",
+                defaults_key: "NSAutomaticCapitalizationEnabled",
+                desired_value: "false",
+            },
+        ],
+    },
+];
+
+/// Returns the first curated prompt whose targets are not all at the desired
+/// value, or `None` if every prompt is already satisfied.
+pub fn recommend_prompt() -> Option<RecommendedPrompt> {
+    recommend_prompt_with_reader(read_domain)
+}
+
+/// Testable core: accepts a domain-reader function so tests can inject mock data.
+fn recommend_prompt_with_reader<F>(reader: F) -> Option<RecommendedPrompt>
+where
+    F: Fn(&str) -> BTreeMap<String, String>,
+{
+    // Cache domain reads to avoid re-reading the same domain for multiple prompts.
+    let mut domain_cache: BTreeMap<&str, BTreeMap<String, String>> = BTreeMap::new();
+
+    for def in PROMPT_DEFS {
+        let needs_change = def.targets.iter().any(|target| {
+            let domain_values = domain_cache
+                .entry(target.defaults_domain)
+                .or_insert_with(|| reader(target.defaults_domain));
+
+            match domain_values.get(target.defaults_key) {
+                Some(current) => {
+                    // Normalize booleans for comparison
+                    normalize_bool(current) != normalize_bool(target.desired_value)
+                }
+                // Key not set — the system is using whatever macOS factory
+                // default is compiled in.  We can't know that value here,
+                // so conservatively assume it needs changing.
+                None => true,
+            }
+        });
+
+        if needs_change {
+            return Some(RecommendedPrompt {
+                id: def.id.to_string(),
+                prompt_text: def.prompt_text.to_string(),
+            });
+        }
+    }
+
+    None
+}
+
+// =============================================================================
 // Tests
 // =============================================================================
 
@@ -1985,5 +2134,120 @@ mod tests {
         );
         assert_eq!(parse_plist_value("<dict>"), None);
         assert_eq!(parse_plist_value("<array>"), None);
+    }
+
+    // ── recommend_prompt tests ──────────────────────────────────────────
+
+    /// Helper: build a mock domain reader from a list of (domain, key, value).
+    fn mock_reader(
+        data: Vec<(&'static str, &'static str, &'static str)>,
+    ) -> impl Fn(&str) -> BTreeMap<String, String> {
+        let mut map: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
+        for (domain, key, value) in data {
+            map.entry(domain.to_string())
+                .or_default()
+                .insert(key.to_string(), value.to_string());
+        }
+        move |domain: &str| map.get(domain).cloned().unwrap_or_default()
+    }
+
+    #[test]
+    fn test_recommend_prompt_returns_first_unsatisfied() {
+        // No defaults set → first prompt (finder_pathbar) should be returned
+        let reader = mock_reader(vec![]);
+        let result = recommend_prompt_with_reader(reader);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().id, "finder_pathbar");
+    }
+
+    #[test]
+    fn test_recommend_prompt_skips_satisfied() {
+        // Satisfy finder_pathbar → should return show_extensions
+        let reader = mock_reader(vec![
+            ("com.apple.finder", "ShowPathbar", "true"),
+            ("com.apple.finder", "ShowStatusBar", "true"),
+        ]);
+        let result = recommend_prompt_with_reader(reader);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().id, "show_extensions");
+    }
+
+    #[test]
+    fn test_recommend_prompt_partially_satisfied_still_recommended() {
+        // Only one of finder_pathbar's targets is satisfied
+        let reader = mock_reader(vec![("com.apple.finder", "ShowPathbar", "true")]);
+        let result = recommend_prompt_with_reader(reader);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().id, "finder_pathbar");
+    }
+
+    #[test]
+    fn test_recommend_prompt_all_satisfied_returns_none() {
+        let reader = mock_reader(vec![
+            // finder_pathbar
+            ("com.apple.finder", "ShowPathbar", "true"),
+            ("com.apple.finder", "ShowStatusBar", "true"),
+            // show_extensions
+            ("com.apple.finder", "AppleShowAllExtensions", "true"),
+            ("NSGlobalDomain", "AppleShowAllExtensions", "true"),
+            // dock_autohide
+            ("com.apple.dock", "autohide", "true"),
+            // tap_to_click
+            ("com.apple.AppleMultitouchTrackpad", "Clicking", "true"),
+            // folders_first
+            ("com.apple.finder", "_FXSortFoldersFirst", "true"),
+            // disable_autocorrect (desired is false)
+            (
+                "NSGlobalDomain",
+                "NSAutomaticSpellingCorrectionEnabled",
+                "false",
+            ),
+            (
+                "NSGlobalDomain",
+                "NSAutomaticCapitalizationEnabled",
+                "false",
+            ),
+        ]);
+        let result = recommend_prompt_with_reader(reader);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_recommend_prompt_false_desired_unset_is_satisfied() {
+        // disable_autocorrect wants false; key not set = macOS default (true)
+        // → should be recommended when it's the only one left
+        let reader = mock_reader(vec![
+            ("com.apple.finder", "ShowPathbar", "true"),
+            ("com.apple.finder", "ShowStatusBar", "true"),
+            ("com.apple.finder", "AppleShowAllExtensions", "true"),
+            ("NSGlobalDomain", "AppleShowAllExtensions", "true"),
+            ("com.apple.dock", "autohide", "true"),
+            ("com.apple.AppleMultitouchTrackpad", "Clicking", "true"),
+            ("com.apple.finder", "_FXSortFoldersFirst", "true"),
+            // autocorrect keys NOT set → they default to true (enabled),
+            // but desired is false → needs change
+        ]);
+        let result = recommend_prompt_with_reader(reader);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().id, "disable_autocorrect");
+    }
+
+    // ── PROMPT_DEFS / KEY_DEFS alignment ────────────────────────────────
+
+    #[test]
+    fn test_prompt_defs_targets_exist_in_key_defs() {
+        for def in PROMPT_DEFS {
+            for target in def.targets {
+                let found = KEY_DEFS.iter().any(|(domain, keys)| {
+                    *domain == target.defaults_domain
+                        && keys.iter().any(|k| k.defaults_key == target.defaults_key)
+                });
+                assert!(
+                    found,
+                    "PROMPT_DEFS target ({}, {}) in prompt '{}' not found in KEY_DEFS",
+                    target.defaults_domain, target.defaults_key, def.id
+                );
+            }
+        }
     }
 }
