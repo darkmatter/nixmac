@@ -273,7 +273,8 @@ pub struct EvolutionProgress {
 }
 
 /// Error for failed evolution generation that still carries partial progress.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, thiserror::Error)]
+#[error("{message}")]
 pub struct EvolutionRunError {
     pub message: String,
     pub progress: EvolutionProgress,
@@ -301,14 +302,6 @@ impl EvolutionRunError {
         }
     }
 }
-
-impl std::fmt::Display for EvolutionRunError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
-
-impl std::error::Error for EvolutionRunError {}
 
 /// Build a short single-line preview from the conversation messages to help with
 /// troubleshooting.

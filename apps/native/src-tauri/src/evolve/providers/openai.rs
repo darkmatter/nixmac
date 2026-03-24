@@ -181,8 +181,7 @@ fn convert_from_openai_response(choice: &async_openai::types::ChatChoice) -> Mes
 /// Normalize an async_openai error into a `ProviderError`.
 fn normalize_openai_error(e: OpenAIError) -> ProviderError {
     if let Some((status_u16, msg)) = classify_openai_error(&e) {
-        let status =
-            StatusCode::from_u16(status_u16).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+        let status = StatusCode::from_u16(status_u16).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
         ProviderError::Http { status, body: msg }
     } else {
         ProviderError::Other(anyhow!(e))
