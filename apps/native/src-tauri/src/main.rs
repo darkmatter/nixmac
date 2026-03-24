@@ -8,6 +8,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod apply_system_defaults;
+mod changes_from_diff;
 mod cli;
 mod commands;
 mod darwin;
@@ -17,6 +18,7 @@ mod evolution;
 mod evolve;
 mod feedback;
 mod finalize_apply;
+mod find_change_summaries;
 mod find_summary;
 mod generate_history_from;
 mod get_history;
@@ -27,13 +29,19 @@ mod panic_handler;
 mod peek;
 mod permissions;
 mod providers;
+mod query_return_types;
 mod rollback;
 mod scanner;
 mod secret_scanner;
 mod sqlite_types;
 mod statistics;
 mod store;
+mod store_changeset;
 mod summarize;
+mod summarize_changes;
+mod summarize_pipeline;
+mod summarize_pipeline_logging;
+mod summarize_token_budgets;
 mod template;
 mod types;
 mod utils;
@@ -260,6 +268,13 @@ fn run_gui_mode(
         builder = builder.plugin(tauri_plugin_sentry::init(client));
     }
 
+    // The updater will misbehave in dev mode in most scenarios (e.g. always say an update is available,
+    // fail signature checks, try to downgrade your app, etc.), so we only include it in release builds.
+    #[cfg(not(debug_assertions))]
+    {
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    }
+
     builder
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
@@ -274,7 +289,6 @@ fn run_gui_mode(
                 .build(),
         )
         .plugin(tauri_plugin_sql::Builder::new().build())
-        // .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_upload::init())
         .plugin(tauri_plugin_macos_permissions::init())
         .invoke_handler(tauri::generate_handler![
@@ -285,6 +299,7 @@ fn run_gui_mode(
             commands::config_pick_dir,
             // Feedback
             commands::feedback_gather_metadata,
+            commands::feedback_submit,
             #[cfg(debug_assertions)]
             commands::trigger_test_panic,
             // Git
@@ -366,6 +381,18 @@ fn run_gui_mode(
                     log::error!("Failed to initialize database: {}", e);
                 } else {
                     log::info!("Database initialized successfully");
+                }
+            });
+
+            // Retry any pending feedback reports from previous failed submissions
+            let retry_handle = handle.clone();
+            tauri::async_runtime::spawn(async move {
+                match feedback::retry_pending(&retry_handle).await {
+                    Ok(n) if n > 0 => {
+                        log::info!("Retried and sent {} pending feedback report(s)", n)
+                    }
+                    Err(e) => log::warn!("Failed to retry pending feedback: {}", e),
+                    _ => {}
                 }
             });
 

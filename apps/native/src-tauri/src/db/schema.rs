@@ -60,6 +60,8 @@ fn create_tables(conn: &Connection) -> Result<()> {
             PRIMARY KEY (evolution_id, commit_id)
         );
 
+        -- DEPRECATED: will be replaced by change_sets + change_summaries + changes.
+        -- Do not write new code against this table.
         CREATE TABLE IF NOT EXISTS summaries (
             id INTEGER PRIMARY KEY,
             commit_id INTEGER NOT NULL REFERENCES commits(id),
@@ -67,6 +69,40 @@ fn create_tables(conn: &Connection) -> Result<()> {
             content_json TEXT NOT NULL,
             diff TEXT NOT NULL,
             created_at INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS change_summaries (
+            id INTEGER PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL,
+            group_summary_for TEXT,
+            created_at INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS changes (
+            id INTEGER PRIMARY KEY,
+            hash TEXT NOT NULL UNIQUE,
+            filename TEXT NOT NULL,
+            diff TEXT NOT NULL,
+            line_count INTEGER NOT NULL,
+            created_at INTEGER NOT NULL,
+            group_summary_id INTEGER REFERENCES change_summaries(id),
+            own_summary_id INTEGER REFERENCES change_summaries(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS change_sets (
+            id INTEGER PRIMARY KEY,
+            commit_id INTEGER REFERENCES commits(id),
+            base_commit_id INTEGER NOT NULL REFERENCES commits(id),
+            commit_message TEXT,
+            generated_commit_message TEXT,
+            created_at INTEGER NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS set_changes (
+            change_set_id INTEGER NOT NULL REFERENCES change_sets(id),
+            change_id INTEGER NOT NULL REFERENCES changes(id),
+            PRIMARY KEY (change_set_id, change_id)
         );
 
         CREATE TABLE IF NOT EXISTS prompts (
@@ -82,6 +118,9 @@ fn create_tables(conn: &Connection) -> Result<()> {
         CREATE INDEX IF NOT EXISTS idx_summaries_commit ON summaries(commit_id);
         CREATE INDEX IF NOT EXISTS idx_summaries_base ON summaries(base_commit_id);
         CREATE INDEX IF NOT EXISTS idx_prompts_commit ON prompts(commit_id);
+        CREATE INDEX IF NOT EXISTS idx_change_sets_commit ON change_sets(commit_id);
+        CREATE INDEX IF NOT EXISTS idx_change_sets_base ON change_sets(base_commit_id);
+        CREATE INDEX IF NOT EXISTS idx_set_changes_change ON set_changes(change_id);
         "#,
     )?;
 
