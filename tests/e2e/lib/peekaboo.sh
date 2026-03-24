@@ -220,7 +220,7 @@ dismiss_dialogs() {
         dialog_button=$(echo "$json" | jq -r '
             .data.ui_elements[]? |
             select(.role == "button") |
-            select(.label? // "" | test("^(Allow|OK|Open|Continue|Grant Access)$"; "i")) |
+            select(.label? // .title? // "" | test("^(Allow|OK|Open|Continue|Grant Access)$"; "i")) |
             .id
         ' 2>/dev/null | head -1)
         
