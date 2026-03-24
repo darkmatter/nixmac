@@ -199,15 +199,30 @@ click_button() {
     peek_click "$btn" "$json"
 }
 
-# Dismiss system dialogs (Allow, OK, Open, Continue)
+# Dismiss system dialogs (Allow, OK, Open, Continue).
+#
+# Scans ALL windows (not app-scoped) so macOS-level permission prompts
+# that float above the app are detected. Clicks the affirmative button
+# (Allow, OK, Open, Continue) and avoids negative buttons (Don't Allow,
+# Cancel). Repeats up to max_attempts times with a short pause between
+# each to catch sequential dialogs (e.g. Desktop then Documents access).
 dismiss_dialogs() {
     local max_attempts="${1:-5}"
     local i=0
     while [ $i -lt $max_attempts ]; do
         local json
+        # No --app flag: scan the entire screen so we catch system dialogs
         json=$(peek_elements)
+        
+        # Look for affirmative buttons in system dialogs.
+        # Use exact-match patterns to avoid matching "Don't Allow".
         local dialog_button
-        dialog_button=$(peek_find_button "$json" "^(Allow|OK|Open|Continue)$")
+        dialog_button=$(echo "$json" | jq -r '
+            .data.ui_elements[]? |
+            select(.role == "button") |
+            select(.label? // "" | test("^(Allow|OK|Open|Continue|Grant Access)$"; "i")) |
+            .id
+        ' 2>/dev/null | head -1)
         
         if [ -n "$dialog_button" ]; then
             log "Dismissing system dialog (clicking $dialog_button)..."
