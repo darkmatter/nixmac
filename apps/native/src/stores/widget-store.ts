@@ -6,6 +6,7 @@ import type {
   EvolveEvent,
   GitStatus,
   PermissionsState,
+  RecommendedPrompt,
 } from "@/tauri-api";
 import { computeCurrentStep } from "@/components/widget/utils";
 export type {
@@ -120,7 +121,8 @@ export interface WidgetState {
     timestamp: string;
   } | null;
   error: string | null;
-  suggestions: string[];
+  // `undefined` means "stale/unfetched", while `null` means "fetched and none found".
+  recommendedPrompt: RecommendedPrompt | null | undefined;
 
   // Confirmation preferences
   confirmBuild: boolean;
@@ -159,6 +161,7 @@ export interface WidgetActions {
   ) => void;
   setPromptHistory: (history: string[]) => void;
   setSummaryAvailable: (available: boolean) => void;
+  setRecommendedPrompt: (prompt: RecommendedPrompt | null | undefined) => void;
 
   // History
   setHistory: (history: HistoryItem[]) => void;
@@ -277,7 +280,7 @@ export const initialWidgetState: WidgetState = {
   feedbackInitialText: null,
   panicDetails: null,
   error: null,
-  suggestions: ["Install vim", "Add Rectangle app", "Configure git"],
+  recommendedPrompt: undefined,
 
   // Confirmation preferences
   confirmBuild: true,
@@ -348,6 +351,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setError: (error) => set({ error }),
     setPanicDetails: (panicDetails) => set({ panicDetails }),
     setPromptHistory: (promptHistory) => set({ promptHistory }),
+    setRecommendedPrompt: (recommendedPrompt) => set({ recommendedPrompt }),
 
     // Client-side UI state (NOT from server)
     setBootstrapping: (isBootstrapping) => set({ isBootstrapping }),
