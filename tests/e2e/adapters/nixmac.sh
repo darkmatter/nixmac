@@ -82,6 +82,18 @@ nixmac_launch() {
     local wait="${1:-8}"
     app_launch "$NIXMAC_APP_PATH" "$NIXMAC_APP_NAME" "$wait"
     
+    # Bail early if process isn't even running (crash on launch)
+    if ! app_is_running "$NIXMAC_APP_NAME"; then
+        # Grab any crash info before failing
+        local crash_log
+        crash_log=$(find ~/Library/Logs/DiagnosticReports -name "*nixmac*" -newer "$E2E_LOG_FILE" 2>/dev/null | head -1)
+        if [ -n "$crash_log" ]; then
+            log "Crash report found: $crash_log"
+            head -30 "$crash_log" 2>/dev/null | tee -a "$E2E_LOG_FILE"
+        fi
+        die "nixmac process not running after launch — app likely crashed on startup"
+    fi
+    
     # Tauri apps may start without a visible window. Bring to front.
     $PEEKABOO app switch --to "$NIXMAC_APP_NAME" 2>/dev/null || true
     sleep 1
@@ -89,6 +101,11 @@ nixmac_launch() {
     # Verify we can see the window
     local retries=0
     while [ $retries -lt 5 ]; do
+        # Re-check process is alive (may have crashed after initial launch)
+        if ! app_is_running "$NIXMAC_APP_NAME"; then
+            die "nixmac process died during window wait (crash after launch)"
+        fi
+        
         local json
         json=$(peek_elements "$NIXMAC_APP_NAME") || true
         local count
@@ -105,7 +122,7 @@ nixmac_launch() {
         retries=$((retries + 1))
     done
     
-    warn "nixmac window may not be visible"
+    die "nixmac window not visible after 15s (app is running but UI did not render)"
 }
 
 nixmac_quit() {

@@ -209,6 +209,21 @@ fn check_admin_privileges() -> PermissionStatus {
 
 /// Check all permissions and return the current state
 pub fn check_all_permissions() -> PermissionsState {
+    // In CI/E2E mode, skip all permission checks and report everything as granted.
+    // The E2E test environment may not have FDA granted and can't obtain it programmatically.
+    if std::env::var("NIXMAC_SKIP_PERMISSIONS").unwrap_or_default() == "1" {
+        info!("NIXMAC_SKIP_PERMISSIONS=1: reporting all permissions as granted");
+        let mut permissions = get_default_permissions();
+        for perm in &mut permissions {
+            perm.status = PermissionStatus::Granted;
+        }
+        return PermissionsState {
+            permissions,
+            all_required_granted: true,
+            checked_at: Some(chrono::Utc::now().timestamp()),
+        };
+    }
+
     let mut permissions = get_default_permissions();
     let mut all_required_granted = true; // assume true until proven otherwise
 

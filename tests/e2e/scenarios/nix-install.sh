@@ -15,7 +15,7 @@ E2E_FIXTURE="clean-machine"
 scenario_test() {
     # Phase 1: Launch
     phase "Launch nixmac app"
-    nixmac_launch
+    nixmac_launch || die "App failed to launch"
     nixmac_screenshot "01-launched"
     phase_pass "App launched"
     
