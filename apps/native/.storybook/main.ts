@@ -1,6 +1,11 @@
-import { defineMain } from "@storybook/react-vite/node";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import type { StorybookConfig } from "@storybook/react-vite";
+import { mergeConfig } from "vite";
 
-const config = defineMain({
+const storybookDir = fileURLToPath(new URL(".", import.meta.url));
+
+const config: StorybookConfig = {
   stories: ["../src/**/*.mdx", "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
   addons: [
     "@storybook/addon-essentials",
@@ -11,6 +16,21 @@ const config = defineMain({
     name: "@storybook/react-vite",
     options: {},
   },
-});
+  viteFinal: async (config) =>
+    mergeConfig(config, {
+      resolve: {
+        alias: {
+          "@/tauri-api": path.resolve(storybookDir, "mocks/tauri-api.ts"),
+          "@tauri-apps/api/core": path.resolve(storybookDir, "mocks/tauri-core.ts"),
+          "@tauri-apps/api/event": path.resolve(storybookDir, "mocks/tauri-event.ts"),
+          "@tauri-apps/plugin-shell": path.resolve(storybookDir, "mocks/tauri-plugin-shell.ts"),
+          "tauri-plugin-macos-permissions-api": path.resolve(
+            storybookDir,
+            "mocks/tauri-permissions.ts",
+          ),
+        },
+      },
+    }),
+};
 
 export default config;
