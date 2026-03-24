@@ -931,6 +931,12 @@ pub async fn permissions_all_required_granted() -> Result<bool, String> {
 // System Defaults Scanner Commands
 // =============================================================================
 
+/// Returns a recommended prompt based on the user's current macOS settings.
+#[tauri::command]
+pub async fn get_recommended_prompt() -> Result<Option<scanner::RecommendedPrompt>, String> {
+    Ok(scanner::recommend_prompt())
+}
+
 /// Scans macOS system defaults and returns settings that differ from factory defaults.
 #[tauri::command]
 pub async fn scan_system_defaults(app: AppHandle) -> Result<scanner::SystemDefaultsScan, String> {
