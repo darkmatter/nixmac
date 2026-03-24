@@ -308,7 +308,9 @@ screen_prevent_lock() {
 # --- Peekaboo preflight ---
 
 peekaboo_check() {
-    if ! $PEEKABOO bridge status 2>&1 | grep -q "remote gui"; then
+    if ! $PEEKABOO bridge status 2>&1 | grep -qE "remote (gui|onDemand)"; then
+        warn "Peekaboo bridge status:"
+        $PEEKABOO bridge status 2>&1 || true
         die "Peekaboo Bridge not connected. Ensure Peekaboo.app is running."
     fi
     pass "Peekaboo Bridge connected"
