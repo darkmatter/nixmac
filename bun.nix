@@ -3940,10 +3940,6 @@
     url = "https://registry.npmjs.org/aria-query/-/aria-query-5.3.0.tgz";
     hash = "sha512-b0P0sZPKtyu8HkeRAfCq0IfURZK+SuwMjY1UXGBU27wpAiTwQAIlq56IbIO+ytk/JjS1fMR14ee5WBBfKi5J6A==";
   };
-  "aria-query@5.3.2" = fetchurl {
-    url = "https://registry.npmjs.org/aria-query/-/aria-query-5.3.2.tgz";
-    hash = "sha512-COROpnaoap1E2F000S62r6A60uHZnmlvomhfyT2DlTcrY1OrBKn2UhH7qn5wTC9zMvD0AY7csdPSNwKP+7WiQw==";
-  };
   "array-buffer-byte-length@1.0.2" = fetchurl {
     url = "https://registry.npmjs.org/array-buffer-byte-length/-/array-buffer-byte-length-1.0.2.tgz";
     hash = "sha512-LHE+8BuR7RYGDKvnrmcuSq3tDcKv9OFEXQt/HpbZhY7V6h0zlUXutnAD82GiFx9rdieCMjkvtcsPqBwgUl1Iiw==";
