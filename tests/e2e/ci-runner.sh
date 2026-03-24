@@ -143,6 +143,7 @@ echo ""
 export ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
 export E2E_CLEANUP_NIX=1
 export E2E_JSON=1
+export NIXMAC_DISABLE_UPDATER=1  # Updater can crash in CI (unsigned builds, empty platforms)
 
 EXIT_CODE=0
 bash "$E2E_DIR/run.sh" "$SCENARIO" || EXIT_CODE=$?
