@@ -28,6 +28,7 @@ scenario_cleanup() {
 ## Core API (`lib/core.sh`)
 
 ### Logging
+
 | Function | Description |
 |----------|-------------|
 | `log "message"` | Timestamped info log |
@@ -38,6 +39,7 @@ scenario_cleanup() {
 | `die "message"` | Fail + screenshot + exit |
 
 ### Phases
+
 | Function | Description |
 |----------|-------------|
 | `phase "name"` | Start a new numbered phase |
@@ -45,6 +47,7 @@ scenario_cleanup() {
 | `phase_fail "msg"` | Record phase as failed |
 
 ### Assertions
+
 | Function | Signature | Description |
 |----------|-----------|-------------|
 | `assert_true` | `"desc" command args...` | Pass if command exits 0 |
@@ -55,6 +58,7 @@ scenario_cleanup() {
 | `assert_command` | `"desc" command args...` | Pass if command exits 0, prints stdout |
 
 ### Results
+
 | Function | Description |
 |----------|-------------|
 | `print_results` | Print phase results table |
@@ -63,6 +67,7 @@ scenario_cleanup() {
 ## Peekaboo API (`lib/peekaboo.sh`)
 
 ### Low-level
+
 | Function | Description |
 |----------|-------------|
 | `peek_elements [app]` | Get all UI elements as JSON |
@@ -75,6 +80,7 @@ scenario_cleanup() {
 | `peek_text [app]` | Get all visible text from app UI |
 
 ### High-level
+
 | Function | Signature | Description |
 |----------|-----------|-------------|
 | `screenshot` | `"name" [app]` | Take annotated screenshot |
@@ -107,6 +113,7 @@ scenario_cleanup() {
 ## nixmac Adapter (`adapters/nixmac.sh`)
 
 ### Nix Helpers
+
 | Function | Description |
 |----------|-------------|
 | `nix_is_installed` | Check if Nix binary exists and works |
@@ -117,6 +124,7 @@ scenario_cleanup() {
 | `nix_wait_for_binary [timeout]` | Poll until Nix binary appears |
 
 ### App Helpers
+
 | Function | Description |
 |----------|-------------|
 | `nixmac_launch [wait]` | Launch nixmac.app |
@@ -128,6 +136,7 @@ scenario_cleanup() {
 | `nixmac_wait_for_button "pattern"` | Wait for button in nixmac |
 
 ### Flow Helpers
+
 | Function | Description |
 |----------|-------------|
 | `nixmac_wait_for_install_screen [timeout]` | Wait for Install Nix button |

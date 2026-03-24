@@ -1,6 +1,7 @@
 import type { Decorator } from "@storybook/react-vite";
 import { definePreview } from "@storybook/react-vite";
 import { useEffect } from "react";
+import "./mocks/tauri-runtime";
 import "../src/index.css";
 
 /**
@@ -41,6 +42,6 @@ const preview = definePreview({
     backgrounds: { value: "dark" },
   },
   decorators: [withDarkTheme],
-} satisfies Preview);
+} as any);
 
 export default preview;
