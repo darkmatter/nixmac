@@ -21,6 +21,9 @@
     "global-shortcut:allow-unregister",
     "macos-permissions:default",
     "sentry:default",
-    "http:default"
+    "http:default",
+    "updater:default",
+    "updater:allow-check",
+    "updater:allow-download-and-install"
   ]
 }

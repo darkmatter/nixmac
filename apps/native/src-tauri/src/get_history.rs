@@ -22,24 +22,23 @@ pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::ty
         let db_commit =
             crate::db::commits::get_commit_by_hash(&db_path, &git_commit.hash).unwrap_or(None);
 
-        let summary = if let Some(ref commit) = db_commit {
-            git_commits.get(i + 1).and_then(|parent| {
-                crate::db::commits::get_commit_by_hash(&db_path, &parent.hash)
-                    .ok()
-                    .flatten()
-                    .and_then(|parent_db| {
-                        crate::db::summaries::get_summary_for_from(
-                            &db_path,
-                            commit.id,
-                            parent_db.id,
-                        )
-                        .ok()
-                        .flatten()
-                    })
-            })
-        } else {
-            None
-        };
+        let parent_db = git_commits.get(i + 1).and_then(|parent| {
+            crate::db::commits::get_commit_by_hash(&db_path, &parent.hash)
+                .ok()
+                .flatten()
+        });
+
+        let summary = db_commit.as_ref().zip(parent_db.as_ref()).and_then(|(commit, parent_db)| {
+            crate::db::summaries::get_summary_for_from(&db_path, commit.id, parent_db.id)
+                .ok()
+                .flatten()
+        });
+
+        let change_set = db_commit.as_ref().zip(parent_db.as_ref()).and_then(|(commit, parent_db)| {
+            crate::find_change_summaries::by_commit_pair(&db_path, commit.id, parent_db.id)
+                .ok()
+                .flatten()
+        });
 
         let is_built = last_built_sha
             .as_deref()
@@ -53,6 +52,7 @@ pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::ty
             is_built,
             commit: db_commit,
             summary,
+            change_set,
         });
     }
 

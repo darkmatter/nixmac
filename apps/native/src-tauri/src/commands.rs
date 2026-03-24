@@ -109,6 +109,14 @@ pub async fn feedback_gather_metadata(
     feedback::gather_metadata(&app, request).map_err(|e| capture_err("feedback_gather_metadata", e))
 }
 
+/// Submits feedback: tries to POST, saves to disk on failure, flushes pending.
+#[tauri::command]
+pub async fn feedback_submit(app: AppHandle, payload: String) -> Result<bool, String> {
+    feedback::submit(&app, payload)
+        .await
+        .map_err(|e| capture_err("feedback_submit", e))
+}
+
 // =============================================================================
 // TESTING / DEBUG Commands
 // TODO: Consider removing or gating behind a debug flag in production builds.
@@ -680,7 +688,9 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
     let summary_model =
         store::get_summary_model(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
 
-    let max_iterations = Some(store::get_max_iterations(&app).unwrap_or(50));
+    let max_iterations = Some(
+        store::get_max_iterations(&app).unwrap_or(store::DEFAULT_MAX_ITERATIONS),
+    );
     let max_build_attempts = Some(store::get_max_build_attempts(&app).unwrap_or(5));
     let ollama_api_base_url: Option<String> =
         store::get_ollama_api_base_url(&app).map_err(|e| capture_err("ui_get_prefs", e))?;

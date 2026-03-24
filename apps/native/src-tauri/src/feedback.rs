@@ -12,7 +12,7 @@ use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 // Number of lines to include when attaching app logs
 const APP_LOG_LAST_LINES: usize = 200;
@@ -275,103 +275,6 @@ pub fn gather_ai_provider_model_info(
     })
 }
 
-// =============================================================================
-// Nix Config Snapshot
-// =============================================================================
-
-/// Recursively find all .nix files in a directory (bounded recursion)
-fn find_nix_files(dir: &Path) -> Result<Vec<PathBuf>> {
-    const MAX_RECURSION_DEPTH: usize = 20;
-
-    let mut nix_files = Vec::new();
-
-    if !dir.exists() {
-        return Ok(nix_files);
-    }
-
-    fn visit_dir(path: &Path, files: &mut Vec<PathBuf>, depth: usize) -> Result<()> {
-        if depth >= MAX_RECURSION_DEPTH {
-            // Stop descending further to avoid potential infinite recursion
-            return Ok(());
-        }
-
-        if !path.is_dir() {
-            return Ok(());
-        }
-
-        for entry in fs::read_dir(path)? {
-            let entry = entry?;
-            let path = entry.path();
-
-            if path.is_dir() {
-                visit_dir(&path, files, depth + 1)?;
-            } else if path.extension().and_then(|s| s.to_str()) == Some("nix") {
-                files.push(path);
-            }
-        }
-        Ok(())
-    }
-
-    visit_dir(dir, &mut nix_files, 0)?;
-    Ok(nix_files)
-}
-
-/// Read and concatenate all .nix files from the config directory's modules/ folder
-pub fn gather_nix_config_snapshot(app: &AppHandle) -> Option<String> {
-    let config_dir = store::get_config_dir(app).ok()?;
-    let modules_dir = PathBuf::from(&config_dir).join("modules");
-
-    if !modules_dir.exists() {
-        debug!("No modules directory found at {:?}", modules_dir);
-        return None;
-    }
-
-    match find_nix_files(&modules_dir) {
-        Ok(nix_files) => {
-            if nix_files.is_empty() {
-                debug!("No .nix files found in modules directory");
-                return None;
-            }
-
-            let mut snapshot = String::new();
-            snapshot.push_str("# Nix Configuration Snapshot\n");
-            snapshot.push_str(&format!("# Collected at: {}\n", Utc::now().to_rfc3339()));
-            snapshot.push_str(&format!("# Total files: {}\n\n", nix_files.len()));
-
-            for (idx, file_path) in nix_files.iter().enumerate() {
-                // Get relative path from config_dir for cleaner output
-                let rel_path = file_path.strip_prefix(&config_dir).unwrap_or(file_path);
-
-                snapshot.push_str(&format!("\n{}\n", "=".repeat(70)));
-                snapshot.push_str(&format!(
-                    "File {}/{}: {}\n",
-                    idx + 1,
-                    nix_files.len(),
-                    rel_path.display()
-                ));
-                snapshot.push_str(&format!("{}\n\n", "=".repeat(70)));
-
-                match fs::read_to_string(file_path) {
-                    Ok(content) => {
-                        snapshot.push_str(&content);
-                        snapshot.push('\n');
-                    }
-                    Err(e) => {
-                        snapshot.push_str(&format!("// ERROR: Failed to read file: {}\n", e));
-                    }
-                }
-            }
-
-            // Will be redacted in gather_metadata
-            Some(snapshot)
-        }
-        Err(e) => {
-            warn!("Failed to find nix files: {}", e);
-            None
-        }
-    }
-}
-
 /// Gather a git diff containing only .nix file changes (including untracked).
 ///
 /// Note: this depends on git status/diff; it will be empty when there are no
@@ -535,13 +438,6 @@ fn redact_metadata_with_scanner(
         }
         *content = redacted;
     }
-    if let Some(ref mut content) = metadata.nix_config_snapshot {
-        let (redacted, changed) = scanner.redact_string(content);
-        if changed {
-            redacted_fields.push("nix_config_snapshot");
-        }
-        *content = redacted;
-    }
     if let Some(ref mut content) = metadata.build_error_output {
         let (redacted, changed) = scanner.redact_string(content);
         if changed {
@@ -582,6 +478,153 @@ fn redact_metadata_with_scanner(
 }
 
 // =============================================================================
+// Pending Report Queue
+// =============================================================================
+
+/// Get the path to the pending feedback report file
+fn get_report_path(app: &AppHandle) -> Result<PathBuf> {
+    let app_data = app
+        .path()
+        .app_data_dir()
+        .context("Failed to get app data directory")?;
+    fs::create_dir_all(&app_data)?;
+    Ok(app_data.join("report.json"))
+}
+
+/// Submit feedback: try to POST, save to disk on failure, also flush any pending reports.
+/// Returns true if the new submission was sent successfully.
+pub async fn submit(app: &AppHandle, payload: String) -> Result<bool> {
+    let feedback_url = get_feedback_url();
+    let parsed: Value = serde_json::from_str(&payload).unwrap_or(Value::String(payload.clone()));
+    let client = reqwest::Client::new();
+
+    let sent = match client
+        .post(&feedback_url)
+        .header("Content-Type", "application/json")
+        .json(&parsed)
+        .send()
+        .await
+    {
+        Ok(resp) if resp.status().is_success() => true,
+        Ok(resp) => {
+            log::warn!("[feedback] Server rejected submission: {}", resp.status());
+            save_to_queue(app, &parsed, "server error")?;
+            false
+        }
+        Err(e) => {
+            log::warn!("[feedback] Failed to submit: {}", e);
+            save_to_queue(app, &parsed, "network error")?;
+            false
+        }
+    };
+
+    // Also flush any previously pending reports
+    if let Err(e) = retry_pending(app).await {
+        log::warn!("[feedback] Failed to retry pending reports: {}", e);
+    }
+
+    Ok(sent)
+}
+
+/// Append a payload to the pending report queue on disk.
+fn save_to_queue(app: &AppHandle, payload: &Value, failure_reason: &str) -> Result<()> {
+    let path = get_report_path(app)?;
+
+    let mut entries: Vec<Value> = if path.exists() {
+        let content = fs::read_to_string(&path)?;
+        serde_json::from_str(&content).unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+
+    entries.push(serde_json::json!({
+        "payload": payload,
+        "timestamp": Utc::now().to_rfc3339(),
+        "failureReason": failure_reason,
+    }));
+
+    fs::write(&path, serde_json::to_string_pretty(&entries)?)?;
+    Ok(())
+}
+
+const FEEDBACK_DSN: &str = "dsn_6f4b9a5e8c2d4f1a9b3c7e2d5a1f0b4c";
+
+fn get_feedback_url() -> String {
+    let base = option_env!("VITE_SERVER_URL")
+        .map(|s| s.to_string())
+        .or_else(|| std::env::var("VITE_SERVER_URL").ok())
+        .unwrap_or_else(|| "http://localhost:3001".to_string());
+    format!("{}/api/feedback/{}", base, FEEDBACK_DSN)
+}
+
+/// Retry all pending feedback reports in the background.
+/// Reads report.json, POSTs each entry, removes successes.
+pub async fn retry_pending(app: &AppHandle) -> Result<usize> {
+    let path = get_report_path(app)?;
+
+    if !path.exists() {
+        return Ok(0);
+    }
+
+    let content = fs::read_to_string(&path)?;
+    let entries: Vec<Value> = serde_json::from_str(&content).unwrap_or_default();
+
+    if entries.is_empty() {
+        let _ = fs::remove_file(&path);
+        return Ok(0);
+    }
+
+    let feedback_url = get_feedback_url();
+    log::info!(
+        "[feedback] Found {} pending report(s), sending to {}",
+        entries.len(),
+        feedback_url
+    );
+    let client = reqwest::Client::new();
+    let mut remaining = Vec::new();
+    let mut sent = 0usize;
+
+    for entry in entries {
+        let payload = match entry.get("payload") {
+            Some(p) => p.clone(),
+            None => continue,
+        };
+
+        match client
+            .post(&feedback_url)
+            .header("Content-Type", "application/json")
+            .json(&payload)
+            .send()
+            .await
+        {
+            Ok(resp) if resp.status().is_success() => {
+                log::info!("[feedback] Successfully sent pending report");
+                sent += 1;
+            }
+            Ok(resp) => {
+                log::warn!(
+                    "[feedback] Server rejected pending report: {}",
+                    resp.status()
+                );
+                remaining.push(entry);
+            }
+            Err(e) => {
+                log::warn!("[feedback] Failed to send pending report: {}", e);
+                remaining.push(entry);
+            }
+        }
+    }
+
+    if remaining.is_empty() {
+        let _ = fs::remove_file(&path);
+    } else {
+        fs::write(&path, serde_json::to_string_pretty(&remaining)?)?;
+    }
+
+    Ok(sent)
+}
+
+// =============================================================================
 // Main Entry Point
 // =============================================================================
 
@@ -600,7 +643,6 @@ pub fn gather_metadata(
         ai_provider_model_info: None,
         build_error_output: None,
         flake_inputs_snapshot: None,
-        nix_config_snapshot: None,
         app_logs_content: None,
         panic_details: None, // Panic details are captured on the frontend
     };
@@ -643,11 +685,6 @@ pub fn gather_metadata(
         metadata.flake_inputs_snapshot = gather_flake_inputs_snapshot(app);
     }
 
-    // Gather nix configuration snapshot
-    if share.nix_config {
-        metadata.nix_config_snapshot = gather_nix_config_snapshot(app);
-    }
-
     // Gather application logs
     if share.app_logs {
         metadata.app_logs_content = gather_app_logs();
@@ -688,7 +725,6 @@ regex = "token=([A-Za-z0-9]+)"
             ai_provider_model_info: None,
             build_error_output: None,
             flake_inputs_snapshot: None,
-            nix_config_snapshot: None,
             app_logs_content: None,
             panic_details: None,
         }

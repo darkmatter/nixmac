@@ -211,21 +211,54 @@ fn run_build_step(
 
 /// Run the activation step as root using native macOS authentication dialog.
 /// Uses `osascript` to show Touch ID dialog on compatible hardware.
+///
+/// Set `NIXMAC_DISABLE_SUDO_E=1` to skip the `sudo -E` wrapper and run the
+/// activation script directly under the `do shell script … with administrator
+/// privileges` context (useful as an escape hatch if `sudo -E` causes
+/// unintended side-effects in a particular environment).
 fn run_activate_step(config_dir: &str) -> Result<ActivateResult, anyhow::Error> {
     let activate_path = format!("{}/result/activate", config_dir);
     let nix_path = crate::nix::get_nix_path();
-    let shell_script = format!(
-        "export PATH='{}' && '{}' 2>&1",
-        nix_path.replace('\'', "'\\''"),
-        activate_path.replace('\'', "'\\''"),
-    );
+    let disable_sudo_e = std::env::var("NIXMAC_DISABLE_SUDO_E")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+
+    let shell_script = if disable_sudo_e {
+        // Run the activation script directly without sudo -E.
+        // The `do shell script … with administrator privileges` context already
+        // executes as root, so no extra sudo wrapper is needed.
+        format!(
+            "export PATH='{}'; '{}' 2>&1",
+            nix_path.replace('\'', "'\\''"),
+            activate_path.replace('\'', "'\\''"),
+        )
+    } else {
+        // Preserve the user's environment for sudo so macOS does not treat the
+        // elevated process as a remote/SSH-like context (TCC full-disk access).
+        let home = std::env::var("HOME").unwrap_or_default();
+        let ssh_sock = std::env::var("SSH_AUTH_SOCK").unwrap_or_default();
+        format!(
+            "export PATH='{}'; export HOME='{}'; export SSH_AUTH_SOCK='{}'; sudo -E '{}' 2>&1",
+            nix_path.replace('\'', "'\\''"),
+            home.replace('\'', "'\\''"),
+            ssh_sock.replace('\'', "'\\''"),
+            activate_path.replace('\'', "'\\''"),
+        )
+    };
+
     let escaped_script = shell_script.replace('\\', "\\\\").replace('"', "\\\"");
+
+    // Wrap in osascript to get native macOS password / Touch ID dialog
     let osascript_cmd = format!(
         "do shell script \"{}\" with administrator privileges",
         escaped_script
     );
 
-    info!("[darwin] Running osascript for activation");
+    if disable_sudo_e {
+        info!("[darwin] Running osascript for activation (NIXMAC_DISABLE_SUDO_E enabled)");
+    } else {
+        info!("[darwin] Running osascript for activation with sudo -E");
+    }
 
     let output = Command::new("osascript")
         .args(["-e", &osascript_cmd])
