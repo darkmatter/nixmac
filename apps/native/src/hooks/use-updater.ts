@@ -35,6 +35,7 @@ const initialState: UpdateState = {
 export function useUpdater() {
   const [state, setState] = useState<UpdateState>(initialState);
   const checkedRef = useRef(false);
+  const isDevMode = import.meta.env.DEV;
 
   const checkForUpdates = useCallback(async () => {
     setState((s) => ({ ...s, checking: true, error: null }));
@@ -52,6 +53,18 @@ export function useUpdater() {
         setState((s) => ({ ...s, checking: false }));
       }
     } catch (err) {
+      if (isDevMode) {
+        // We disable the updater in dev mode since it can be disruptive and isn't relevant to development
+        // So suppress any errors from here and don't show the big red banner every single time.
+        setState((s) => ({
+          ...s,
+          checking: false,
+          error: null,
+          errorSource: null,
+        }));
+        return;
+      }
+
       console.error("[updater] check failed:", err);
       setState((s) => ({
         ...s,
@@ -60,7 +73,7 @@ export function useUpdater() {
         errorSource: "check",
       }));
     }
-  }, []);
+  }, [isDevMode]);
 
   const installUpdate = useCallback(async () => {
     const update = state.available;
@@ -93,6 +106,17 @@ export function useUpdater() {
       // Relaunch the app after install
       await relaunch();
     } catch (err) {
+      if (isDevMode) {
+        setState((s) => ({
+          ...s,
+          downloading: false,
+          progress: null,
+          error: null,
+          errorSource: null,
+        }));
+        return;
+      }
+
       console.error("[updater] install failed:", err);
       setState((s) => ({
         ...s,
@@ -102,7 +126,7 @@ export function useUpdater() {
         errorSource: "install",
       }));
     }
-  }, [state.available]);
+  }, [isDevMode, state.available]);
 
   const dismiss = useCallback(() => {
     setState(initialState);
