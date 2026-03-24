@@ -94,6 +94,11 @@ nixmac_launch() {
         die "nixmac process not running after launch — app likely crashed on startup"
     fi
     
+    # macOS shows permission dialogs (Desktop/Documents access) on first launch.
+    # Accept them immediately so they don't block the app's permission check flow.
+    sleep 2
+    dismiss_dialogs 10
+    
     # Tauri apps may start without a visible window. Bring to front.
     $PEEKABOO app switch --to "$NIXMAC_APP_NAME" 2>/dev/null || true
     sleep 1
@@ -105,6 +110,10 @@ nixmac_launch() {
         if ! app_is_running "$NIXMAC_APP_NAME"; then
             die "nixmac process died during window wait (crash after launch)"
         fi
+        
+        # Dismiss any late-appearing system dialogs (e.g. Documents access
+        # appears after Desktop access is granted)
+        dismiss_dialogs 3
         
         local json
         json=$(peek_elements "$NIXMAC_APP_NAME") || true
