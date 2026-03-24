@@ -145,7 +145,8 @@ echo ""
 export ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
 export E2E_CLEANUP_NIX=1
 export E2E_JSON=1
-export NIXMAC_DISABLE_UPDATER=1  # Updater can crash in CI (unsigned builds, empty platforms)
+export NIXMAC_DISABLE_UPDATER=1   # Updater can crash in CI (unsigned builds, empty platforms)
+export NIXMAC_SKIP_PERMISSIONS=1  # CI Mac may not have FDA granted; skip permissions screen
 
 EXIT_CODE=0
 bash "$E2E_DIR/run.sh" "$SCENARIO" || EXIT_CODE=$?
