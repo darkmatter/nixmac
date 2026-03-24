@@ -36,8 +36,10 @@ echo ""
 
 # --- Preflight ---
 echo "[ci] Checking Peekaboo Bridge..."
-if ! peekaboo bridge status 2>&1 | grep -q "remote gui"; then
+if ! peekaboo bridge status 2>&1 | grep -qE "remote (gui|onDemand)"; then
     echo "[ci] ERROR: Peekaboo Bridge not running. Ensure Peekaboo.app is launched."
+    echo "[ci] Bridge status output:"
+    peekaboo bridge status 2>&1 || true
     exit 1
 fi
 
