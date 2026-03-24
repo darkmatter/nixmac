@@ -34,7 +34,7 @@ jobs:
               ;;
           esac
 
-          curl -fsSL "https://github.com/getsops/sops/releases/download/v3.11.0/sops-v3.11.0.linux.${SOPS_ARCH}" -o /tmp/sops
+          curl -fsSL "https://github.com/getsops/sops/releases/download/v3.12.1/sops-v3.12.1.linux.${SOPS_ARCH}" -o /tmp/sops
           sudo install -m 0755 /tmp/sops /usr/local/bin/sops
           sops --version
 
