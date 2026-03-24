@@ -7,7 +7,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ModelCombobox } from "@/components/widget/model-combobox";
-import { darwinAPI } from "@/tauri-api";
+import { darwinAPI, DEFAULT_MAX_ITERATIONS } from "@/tauri-api";
 import type { AnyFieldApi } from "@tanstack/react-form";
 
 interface AiModelsTabProps {
@@ -186,14 +186,14 @@ export function AiModelsTab({
                   max={200}
                   value={maxIterationsField.state.value}
                   onChange={async (e) => {
-                    const value = Number.parseInt(e.target.value, 10) || 50;
+                    const value = Number.parseInt(e.target.value, 10) || DEFAULT_MAX_ITERATIONS;
                     maxIterationsField.handleChange(value);
                     await darwinAPI.ui.setPrefs({ maxIterations: value });
                   }}
                   onBlur={maxIterationsField.handleBlur}
                 />
                 <p className="text-muted-foreground text-xs">
-                  API calls before stopping (default: 50)
+                  API calls before stopping (default: {DEFAULT_MAX_ITERATIONS})
                 </p>
               </div>
               <div className="space-y-2">

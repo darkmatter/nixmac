@@ -24,9 +24,7 @@ import {
 import { Lightbulb, Bug, MessageCircle, Info, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Feedback as FeedbackModel, FeedbackType, ShareOptions } from "@/types/feedback";
-import { getFeedbackUrl } from "@/lib/env";
 import { darwinAPI } from "@/tauri-api";
-import { fetch } from "@tauri-apps/plugin-http";
 import { toast } from "sonner";
 
 const DEFAULT_SHARE_OPTIONS: ShareOptions = {
@@ -38,7 +36,6 @@ const DEFAULT_SHARE_OPTIONS: ShareOptions = {
   aiProviderModelInfo: true,
   buildErrorOutput: true,
   flakeInputsSnapshot: true,
-  nixConfig: true,
   appLogs: true,
 };
 
@@ -51,7 +48,6 @@ const ISSUE_SHARE_OPTIONS: ShareOptions = {
   aiProviderModelInfo: true,
   buildErrorOutput: true,
   flakeInputsSnapshot: true,
-  nixConfig: true,
   appLogs: true,
 };
 
@@ -248,33 +244,6 @@ function shouldShowFlakeInputsSnapshot(
   }
 }
 
-function shouldShowNixConfig(
-  feedbackType: FeedbackType,
-  step: string,
-  _mainWindowError?: string,
-): boolean {
-  switch (feedbackType) {
-    case FeedbackType.Suggestion:
-    case FeedbackType.General:
-      return false;
-    case FeedbackType.Issue:
-      switch (step) {
-        case "setup":
-          return false;
-        case "evolving":
-          return true;
-        case "merge":
-          return false;
-        default:
-          return false;
-      }
-    case FeedbackType.Bug:
-      return true;
-    default:
-      return false;
-  }
-}
-
 function shouldShowAppLogs(
   feedbackType: FeedbackType,
   step: string,
@@ -424,7 +393,6 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
         aiProviderModelInfo: metadata?.aiProviderModelInfo,
         buildErrorOutput: metadata?.buildErrorOutput,
         flakeInputsSnapshot: metadata?.flakeInputsSnapshot,
-        nixConfigSnapshot: metadata?.nixConfigSnapshot,
         appLogsContent: metadata?.appLogsContent,
         panicDetails: feedbackType === FeedbackType.Error ? (panicDetails ?? undefined) : undefined,
       });
@@ -434,69 +402,15 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
         console.warn("Feedback validation failed:", validation.errors);
       }
 
-      try {
-        const feedbackUrl = getFeedbackUrl();
-        const payload = feedbackModel.toJSON();
-        const json = JSON.stringify(payload);
+      const json = JSON.stringify(feedbackModel.toJSON());
+      const sent = await darwinAPI.feedback.submit(json);
 
-        const resp = await fetch(feedbackUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: json,
-        });
-
-        let body: any = null;
-        try {
-          body = await resp.json();
-          // oxlint-disable-next-line no-unused-vars
-        } catch (e) {
-          // ignore
-        }
-
-        if (!resp.ok) {
-          const serverErr = body?.error ?? null;
-          const details = body?.details;
-
-          // Only surface errors we intentionally add in the API handler.
-          if (serverErr === "rate_limited") {
-            toast.error(
-              "You're sending feedback too quickly — please wait a minute and try again.",
-            );
-          } else if (serverErr === "validation_failed") {
-            if (Array.isArray(details) && details.length > 0) {
-              toast.error(`Validation error: ${details.join("; ")}`);
-            } else {
-              toast.error("Validation failed — please check your input.");
-            }
-          } else if (serverErr === "dsn missing") {
-            toast.error("Feedback DSN missing in request.");
-          } else if (serverErr === "invalid dsn") {
-            toast.error("Invalid feedback DSN — submission rejected.");
-          } else if (serverErr === "db_error") {
-            toast.error("Server error saving feedback. Please try again later.");
-          } else if (typeof serverErr === "string") {
-            // If it's some other string, show it directly (fallback).
-            toast.error(serverErr);
-          } else {
-            toast.error("Failed to send feedback. Please try again.");
-          }
-        } else {
-          const id = body?.id ?? undefined;
-          toast.success(id ? `Thanks — feedback sent (id: ${id})` : "Thanks — feedback sent");
-          const info = body?.info ?? body?.message ?? null;
-          if (typeof info === "string" && info.length > 0) {
-            // show any friendly informational message from the server
-            toast(info);
-          }
-          sentSuccessfully = true;
-        }
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error("Error posting feedback:", err);
-        toast.error("Network error sending feedback — please check your connection and try again.");
+      if (sent) {
+        toast.success("Thanks — feedback sent");
+      } else {
+        toast.info("Failed to send, we'll try again next time you open the app.");
       }
+      sentSuccessfully = true;
     } finally {
       setSubmitting(false);
     }
@@ -953,41 +867,6 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
                 </div>
               )}
 
-              {shouldShowNixConfig(feedbackType, step, mainWindowError) && (
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="share-nix-config"
-                    checked={shareOptions.nixConfig}
-                    onCheckedChange={(checked: boolean | "indeterminate") =>
-                      setShareOptions({
-                        ...shareOptions,
-                        nixConfig: checked === true,
-                      })
-                    }
-                  />
-                  <Label
-                    htmlFor="share-nix-config"
-                    className="cursor-pointer font-medium text-sm text-foreground flex-1"
-                  >
-                    Nix config snapshot
-                  </Label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="p-1 h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent/50 transition-colors flex-shrink-0 group"
-                        aria-label="More information"
-                      >
-                        <Info className="h-4 w-4 text-muted-foreground group-hover:text-foreground/70 transition-colors" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="max-w-sm text-sm">
-                      {shareOptionTooltips.nixConfig}
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              )}
-
               {shouldShowAppLogs(feedbackType, step, mainWindowError) && (
                 <div className="flex items-center gap-2">
                   <Checkbox
@@ -1031,8 +910,7 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={submitting}>
-            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isReportMode ? "Send Report" : "Send Feedback"}
+            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : isReportMode ? "Send Report" : "Send Feedback"}
           </Button>
         </DialogFooter>
       </DialogContent>

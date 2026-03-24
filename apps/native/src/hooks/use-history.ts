@@ -40,6 +40,11 @@ export function useHistory() {
       }
       for (const hash of hashes) {
         if (!useWidgetStore.getState().analyzingHistoryForHashes.has(hash)) break;
+        const item = useWidgetStore.getState().history.find((h) => h.hash === hash);
+        if (item?.changeSet) {
+          removeAnalyzingHistoryHash(hash);
+          continue;
+        }
         try {
           await darwinAPI.history.generateFrom(hash, 1);
           await loadHistory();

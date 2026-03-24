@@ -62,3 +62,43 @@ pub struct PromptRow {
     pub commit_id: Option<i64>,
     pub created_at: i64,
 }
+
+// New change-set pipeline — schema not yet applied.
+#[allow(dead_code)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct Change {
+    pub id: i64,
+    pub hash: String,
+    pub filename: String,
+    pub diff: String,
+    pub line_count: i64,
+    pub created_at: i64,
+    pub group_summary_id: Option<i64>,
+    pub own_summary_id: Option<i64>,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeSummary {
+    pub id: i64,
+    pub title: String,
+    pub description: String,
+    pub group_summary_for: Option<String>,
+    pub created_at: i64,
+}
+
+/// Groups Changes for a commit→base_commit pair. `commit_id` is NULL for speculative
+/// (uncommitted) changesets. Membership is stored in the `set_changes` join table.
+#[allow(dead_code)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeSet {
+    pub id: i64,
+    pub commit_id: Option<i64>,
+    pub base_commit_id: i64,
+    pub commit_message: Option<String>,
+    pub generated_commit_message: Option<String>,
+    pub created_at: i64,
+}

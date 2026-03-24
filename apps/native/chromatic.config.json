@@ -1,0 +1,6 @@
+{
+  "$schema": "https://www.chromatic.com/config-file.schema.json",
+	"repositorySlug": "darkmatter/nixmac",
+  "projectId": "6943885a3f418a8dcab1c175",
+	"exitOnceUploaded": true
+}

@@ -28,7 +28,6 @@ export interface ShareOptions {
   aiProviderModelInfo: boolean;
   buildErrorOutput: boolean;
   flakeInputsSnapshot: boolean;
-  nixConfig: boolean;
   appLogs: boolean;
   lastPrompt?: boolean;
 }
@@ -124,7 +123,6 @@ export interface FeedbackPayload {
   aiProviderModelInfo?: AiProviderModelInfo;
   buildErrorOutput?: string;
   flakeInputsSnapshot?: FlakeInputsSnapshot;
-  nixConfigSnapshot?: string;
   appLogsContent?: string;
   panicDetails?: {
     message: string;
@@ -165,7 +163,6 @@ export class Feedback {
   public aiProviderModelInfo?: AiProviderModelInfo;
   public buildErrorOutput?: string;
   public flakeInputsSnapshot?: FlakeInputsSnapshot;
-  public nixConfigSnapshot?: string;
   public appLogsContent?: string;
   public systemInfo?: SystemInfo;
   public usageStats?: UsageStats;
@@ -197,7 +194,6 @@ export class Feedback {
       aiProviderModelInfo: true,
       buildErrorOutput: true,
       flakeInputsSnapshot: true,
-      nixConfig: true,
       appLogs: true,
     };
     this.createdAt = payload.createdAt ?? new Date().toISOString();
@@ -210,7 +206,6 @@ export class Feedback {
     this.aiProviderModelInfo = payload.aiProviderModelInfo;
     this.buildErrorOutput = payload.buildErrorOutput;
     this.flakeInputsSnapshot = payload.flakeInputsSnapshot;
-    this.nixConfigSnapshot = payload.nixConfigSnapshot;
     this.appLogsContent = payload.appLogsContent;
     this.panicDetails = payload.panicDetails;
   }
@@ -235,7 +230,6 @@ export class Feedback {
       aiProviderModelInfo: this.aiProviderModelInfo,
       buildErrorOutput: this.buildErrorOutput,
       flakeInputsSnapshot: this.flakeInputsSnapshot,
-      nixConfigSnapshot: this.nixConfigSnapshot,
       appLogsContent: this.appLogsContent,
       panicDetails: this.panicDetails,
       createdAt: this.createdAt,
@@ -261,7 +255,6 @@ export class Feedback {
         aiProviderModelInfo: true,
         buildErrorOutput: true,
         flakeInputsSnapshot: true,
-        nixConfig: true,
         appLogs: true,
       },
       lastPromptText: input.lastPromptText,
@@ -273,7 +266,6 @@ export class Feedback {
       aiProviderModelInfo: input.aiProviderModelInfo,
       buildErrorOutput: input.buildErrorOutput,
       flakeInputsSnapshot: input.flakeInputsSnapshot,
-      nixConfigSnapshot: input.nixConfigSnapshot,
       appLogsContent: input.appLogsContent,
       createdAt: input.createdAt,
     });

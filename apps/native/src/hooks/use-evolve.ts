@@ -1,10 +1,5 @@
 import { useWidgetStore } from "@/stores/widget-store";
-import {
-  darwinAPI,
-  EVOLVE_EVENT_CHANNEL,
-  ipcRenderer,
-  type EvolveEvent,
-} from "@/tauri-api";
+import { darwinAPI, EVOLVE_EVENT_CHANNEL, ipcRenderer, type EvolveEvent } from "@/tauri-api";
 import { useCallback } from "react";
 import { useGitOperations } from "./use-git-operations";
 import { usePromptHistory } from "./use-prompt-history";
@@ -40,20 +35,18 @@ export function useEvolve() {
     store.clearEvolveEvents();
     store.clearLogs();
     store.clearPreview();
+    store.setConversationalResponse(null);
     store.appendLog(`\n> Evolving: "${store.evolvePrompt}"\n`);
 
     // Set up evolve event listener
-    const unlistenEvolve = await ipcRenderer.on<EvolveEvent>(
-      EVOLVE_EVENT_CHANNEL,
-      (event) => {
-        if (event.payload) {
-          useWidgetStore.getState().appendEvolveEvent(event.payload);
-          if (event.payload.raw) {
-            useWidgetStore.getState().appendLog(`${event.payload.raw}\n`);
-          }
+    const unlistenEvolve = await ipcRenderer.on<EvolveEvent>(EVOLVE_EVENT_CHANNEL, (event) => {
+      if (event.payload) {
+        useWidgetStore.getState().appendEvolveEvent(event.payload);
+        if (event.payload.raw) {
+          useWidgetStore.getState().appendLog(`${event.payload.raw}\n`);
         }
       }
-    );
+    });
 
     try {
       // Run the unified evolution workflow
@@ -62,8 +55,13 @@ export function useEvolve() {
 
       useWidgetStore.getState().appendLog("✓ Evolution complete\n");
 
-      // Set the summary and git status from the result
-      if (result?.summary) {
+      // Set the summary and git status from the result.
+      // For conversational responses (no nix changes), show the agent's reply in a
+      // dedicated UI panel below the prompt — do not open the review / merge UI.
+      if (result?.state === "conversational") {
+        const response = result.summary?.instructions;
+        useWidgetStore.getState().setConversationalResponse(response ?? null);
+      } else if (result?.summary) {
         store.setSummaryAvailable(true);
         useWidgetStore.getState().setSummary(result.summary);
       }

@@ -30,6 +30,7 @@ import { useWatcher } from "@/hooks/use-watcher";
 import { loadConfig, loadHosts } from "@/hooks/use-widget-initialization";
 import { useSummary } from "@/hooks/use-summary";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
+import { UpdateBanner } from "@/components/update-banner";
 import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
 import { useEffect } from "react";
 
@@ -118,6 +119,7 @@ export function DarwinWidget() {
     <div className="flex h-full w-full flex-col bg-background/90 backdrop-blur-xl">
       <Header />
       <Stepper />
+      <UpdateBanner />
 
       <StepContentWrapper>
         <ErrorMessage />

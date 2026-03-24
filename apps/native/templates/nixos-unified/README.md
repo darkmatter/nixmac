@@ -13,8 +13,8 @@ and is intended for cross-platform testing on Linux and macOS.
 ## Quick usage
 
 1. Copy this directory as your flake root.
-2. Update usernames/emails in `configurations/home/runner.nix`.
-3. Update host definitions under:
+1. Update usernames/emails in `configurations/home/runner.nix`.
+1. Update host definitions under:
    - `configurations/darwin/example.nix`
    - `configurations/nixos/example/`
-4. Run `nix run` from the flake root.
+1. Run `nix run` from the flake root.
