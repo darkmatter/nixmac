@@ -56,9 +56,16 @@ export function useUpdater() {
         setState((s) => ({ ...s, checking: false }));
       }
     } catch (err) {
-      if (isDevMode) {
-        // We disable the updater in dev mode since it can be disruptive and isn't relevant to development
-        // So suppress any errors from here and don't show the big red banner every single time.
+      const errMsg = err instanceof Error ? err.message : String(err);
+      const isPluginMissing = errMsg.includes("plugin updater not found") ||
+                              errMsg.includes("plugin not found");
+
+      if (isDevMode || isPluginMissing) {
+        // Suppress errors when the updater plugin isn't registered (NIXMAC_DISABLE_UPDATER=1)
+        // or in dev mode where it's always noisy.
+        if (isPluginMissing) {
+          console.debug("[updater] plugin not registered, skipping update check");
+        }
         setState((s) => ({
           ...s,
           checking: false,
