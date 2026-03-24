@@ -36,8 +36,10 @@ echo ""
 
 # --- Preflight ---
 echo "[ci] Checking Peekaboo Bridge..."
-if ! peekaboo bridge status 2>&1 | grep -q "remote gui"; then
+if ! peekaboo bridge status 2>&1 | grep -qE "remote (gui|onDemand)"; then
     echo "[ci] ERROR: Peekaboo Bridge not running. Ensure Peekaboo.app is launched."
+    echo "[ci] Bridge status output:"
+    peekaboo bridge status 2>&1 || true
     exit 1
 fi
 
@@ -143,6 +145,13 @@ echo ""
 export ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
 export E2E_CLEANUP_NIX=1
 export E2E_JSON=1
+export NIXMAC_DISABLE_UPDATER=1   # Updater can crash in CI (unsigned builds, empty platforms)
+export NIXMAC_SKIP_PERMISSIONS=1  # CI Mac may not have FDA granted; skip permissions screen
+
+# macOS `open` launches apps via Launch Services which ignores shell env vars.
+# Use launchctl setenv so the app process inherits these flags.
+launchctl setenv NIXMAC_DISABLE_UPDATER 1
+launchctl setenv NIXMAC_SKIP_PERMISSIONS 1
 
 EXIT_CODE=0
 bash "$E2E_DIR/run.sh" "$SCENARIO" || EXIT_CODE=$?
@@ -155,5 +164,9 @@ echo "[ci] Artifacts:"
 [ -f "/tmp/e2e-test.log" ]      && echo "  Log:         /tmp/e2e-test.log"
 [ -d "/tmp/e2e-screenshots" ]   && echo "  Screenshots: /tmp/e2e-screenshots/ ($(ls /tmp/e2e-screenshots/*.png 2>/dev/null | wc -l | tr -d ' ') files)"
 [ -f "/tmp/e2e-test-results.json" ] && echo "  Results:     /tmp/e2e-test-results.json"
+
+# Clean up launchctl env vars so they don't persist on the CI Mac
+launchctl unsetenv NIXMAC_DISABLE_UPDATER 2>/dev/null || true
+launchctl unsetenv NIXMAC_SKIP_PERMISSIONS 2>/dev/null || true
 
 exit $EXIT_CODE

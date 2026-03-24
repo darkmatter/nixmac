@@ -18,6 +18,8 @@
   "rust-analyzer.inlayHints.typeHints.enable": true,
   "rust-analyzer.inlayHints.chainingHints.enable": true,
   "rust-analyzer.diagnostics.experimental.enable": true,
+  "rust-analyzer.checkOnSave": true,
+  "rust-analyzer.cargo.buildScripts.rebuildOnSave": true,
   "nix.serverSettings": {
     "nixd": {
       "formatting": {
