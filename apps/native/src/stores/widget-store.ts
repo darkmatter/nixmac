@@ -6,7 +6,7 @@ import type {
   EvolveEvent,
   GitStatus,
   PermissionsState,
-  RecommendedPrompt
+  RecommendedPrompt,
 } from "@/tauri-api";
 import { computeCurrentStep } from "@/components/widget/utils";
 export type {
