@@ -1,5 +1,5 @@
 # sequoia/tahoe
-OS_VERSION ?= sequoia
+OS_VERSION ?= tahoe
 
 tart-clone-base:
 	tart clone ghcr.io/cirruslabs/macos-$(OS_VERSION)-base:latest $(OS_VERSION)-base
@@ -14,7 +14,10 @@ tart-delete:
 	tart delete test-vm
 
 scp:
-	scp -r ./target/release/bundle/macos/nixmac.app admin@$$(tart ip test-vm):/tmp/nixmac.app
+	scp -r ./target/debug/bundle/macos/nixmac.app admin@$$(tart ip test-vm):/tmp/nixmac.app
 
 build:
 	cd ./apps/native && bunx tauri build --bundles app
+
+build-dev:
+	cd ./apps/native && bunx tauri build --bundles app --debug --config src-tauri/tauri.conf.dev.json

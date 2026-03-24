@@ -24,7 +24,6 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     pkgs.uv
     pkgs.pyright
     pkgs.ruff
-    pkgs.pre-commit
   ]
   ++ lib.optionals (pkgs.stdenv.isDarwin) [
     pkgs.apple-sdk_15
@@ -107,7 +106,7 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     exec = "sops exec-env ${config.git.root}/.secrets.enc.yaml 'bun run test:watch'";
   };
 
-  # Formatting and git-hooks are dev-only; don't ship them into containers.
+  # Formatting
   treefmt.enable = true;
   treefmt.config = {
     programs.rustfmt.enable = false;
@@ -115,13 +114,15 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     programs.mdformat.enable = true;
   };
 
-  # https://devenv.sh/git-hooks/
+  # Git hooks (pure Nix-native, no pre-commit)
+  # Prefer treefmt to git-hooks when available
   git-hooks = {
-    # hooks.biome.enable = true;
+    enable = true;
+
+    # Run treefmt on commit
+    hooks.treefmt.enable = true;
+
     hooks.shellcheck.enable = true;
-    hooks.rustfmt.enable = false;
-    hooks.clippy.enable = false;
-    hooks.mdformat.enable = true;
     excludes = [
       "^.*\/?(\.git|\.direnv|\.devenv|\.vscode|\.idea|\.DS_Store|\.env|\.envrc|\.github).*$"
     ];

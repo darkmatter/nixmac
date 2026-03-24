@@ -36,6 +36,7 @@ app.use(
 
 app.all("/api/*", (c) => apiApp.fetch(c.req.raw));
 app.all("/trpc/*", (c) => apiApp.fetch(c.req.raw));
+app.get("/healthz", async (c, next) => c.json({ success: true, message: 'OK' }))
 
 // Serve the Vite build output (SPA) from the filesystem.
 // In your nix2container image, `./dist` becomes `/env/dist`.
@@ -73,5 +74,5 @@ app.get("*", async (c, next) => {
 });
 
 // Bun auto-starts an HTTP server for modules exporting `{ port, fetch }`.
-const port = Number(process.env.PORT || 3001);
+const port = Number(process.env.PORT || 3000);
 export default { port, fetch: app.fetch };

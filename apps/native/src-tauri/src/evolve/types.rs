@@ -16,6 +16,8 @@ pub enum EvolutionState {
     Committed,
     /// An error occurred
     Failed,
+    /// Agent responded conversationally without making any environment changes
+    Conversational,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
