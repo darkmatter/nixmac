@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { check, type Update } from "@tauri-apps/plugin-updater";
+import type { Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 
 export interface UpdateState {
@@ -40,6 +40,9 @@ export function useUpdater() {
   const checkForUpdates = useCallback(async () => {
     setState((s) => ({ ...s, checking: true, error: null }));
     try {
+      // Dynamic import: if the updater plugin isn't registered (e.g. NIXMAC_DISABLE_UPDATER=1),
+      // the import will succeed but check() will throw — which we catch below.
+      const { check } = await import("@tauri-apps/plugin-updater");
       const update = await check();
       if (update) {
         setState((s) => ({

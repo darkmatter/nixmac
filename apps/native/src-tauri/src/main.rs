@@ -268,11 +268,17 @@ fn run_gui_mode(
         builder = builder.plugin(tauri_plugin_sentry::init(client));
     }
 
-    // The updater will misbehave in dev mode in most scenarios (e.g. always say an update is available,
-    // fail signature checks, try to downgrade your app, etc.), so we only include it in release builds.
+    // The updater will misbehave in dev mode (always says an update is available, fails signature
+    // checks, tries to downgrade your app, etc.), so we only include it in release builds.
+    // Also skip it when NIXMAC_DISABLE_UPDATER=1 is set (used in E2E/CI environments where the
+    // updater can crash on launch due to missing platforms in latest.json or unsigned builds).
     #[cfg(not(debug_assertions))]
     {
-        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+        if std::env::var("NIXMAC_DISABLE_UPDATER").unwrap_or_default() != "1" {
+            builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+        } else {
+            log::info!("Updater plugin disabled via NIXMAC_DISABLE_UPDATER=1");
+        }
     }
 
     builder
