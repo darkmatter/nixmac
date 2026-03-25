@@ -59,6 +59,7 @@ export function SettingsDialog() {
   const verifyOpenrouterKey = async (key: string) => {
     if (!key) {
       setOpenrouterKeyStatus("idle");
+      await darwinAPI.ui.setPrefs({ openrouterApiKey: "" });
       return;
     }
 
@@ -86,6 +87,7 @@ export function SettingsDialog() {
   const verifyOpenaiKey = async (key: string) => {
     if (!key) {
       setOpenaiKeyStatus("idle");
+      await darwinAPI.ui.setPrefs({ openaiApiKey: "" });
       return;
     }
 
@@ -111,11 +113,9 @@ export function SettingsDialog() {
   };
 
   const saveOllamaUrl = async (url: string) => {
-    if (url) {
-      await darwinAPI.ui.setPrefs({ ollamaApiBaseUrl: url });
-      // Clear cached Ollama models when the base URL changes
-      await darwinAPI.models.clearCached("ollama");
-    }
+    await darwinAPI.ui.setPrefs({ ollamaApiBaseUrl: url });
+    // Clear cached Ollama models when the base URL changes
+    await darwinAPI.models.clearCached("ollama");
   };
 
   const form = useForm({
@@ -151,12 +151,8 @@ export function SettingsDialog() {
           form.setFieldValue("maxBuildAttempts", prefs.maxBuildAttempts ?? 5);
           form.setFieldValue("sendDiagnostics", prefs.sendDiagnostics ?? false);
 
-          if (prefs.openrouterApiKey) {
-            setOpenrouterKeyStatus("valid");
-          }
-          if (prefs.openaiApiKey) {
-            setOpenaiKeyStatus("valid");
-          }
+          setOpenrouterKeyStatus(prefs.openrouterApiKey ? "valid" : "idle");
+          setOpenaiKeyStatus(prefs.openaiApiKey ? "valid" : "idle");
         }
       } catch (err) {
         console.error("Failed to load settings:", err);
