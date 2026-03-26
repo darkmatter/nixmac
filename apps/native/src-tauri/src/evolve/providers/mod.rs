@@ -1,9 +1,9 @@
 use super::messages::{Message, Tool};
+use crate::provider_errors::friendly_provider_error;
 use anyhow::Error as AnyhowError;
 use async_trait::async_trait;
 use reqwest::StatusCode;
-use std::error::Error as StdError;
-use std::fmt;
+use thiserror::Error;
 
 pub mod ollama;
 pub mod openai;
@@ -63,28 +63,42 @@ pub trait AiProvider: Send + Sync {
 ///
 /// See `report_provider_error` in `evolve/mod.rs` for an example of safe telemetry
 /// reporting and `extract_error_metadata` for extracting non-sensitive fields.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ProviderError {
     /// HTTP-style error with status code and body
+    #[error("http error {status}: {body}")]
     Http { status: StatusCode, body: String },
     /// Other error (wrapped anyhow::Error)
+    #[error(transparent)]
     Other(AnyhowError),
 }
 
-impl fmt::Display for ProviderError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl ProviderError {
+    /// Return a user-friendly error message suitable for display in the UI.
+    ///
+    /// Translates raw provider errors into actionable guidance without
+    /// exposing technical details like JSON payloads or deserialization failures.
+    /// The concrete `OpenAIError` matching in `openai.rs` ensures that both
+    /// standard API errors and deserialization failures are already mapped to
+    /// `Http { status, body }` before reaching this method.
+    pub fn user_message(&self) -> String {
         match self {
-            ProviderError::Http { status, body } => write!(f, "http error {}: {}", status, body),
-            ProviderError::Other(e) => write!(f, "{}", e),
-        }
-    }
-}
-
-impl StdError for ProviderError {
-    fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        match self {
-            ProviderError::Other(e) => e.source(),
-            _ => None,
+            ProviderError::Http { status, .. } => friendly_provider_error(status.as_u16()),
+            ProviderError::Other(e) => {
+                let msg = format!("{:#}", e);
+                // Preserve controlled messages that are already user-friendly.
+                // These are our own anyhow errors from setup validation, not
+                // raw provider/network errors:
+                //   - "No API key found. Please add your API key in Settings..."
+                //   - "No host attribute configured. Please set a host first."
+                if msg.contains("API key") || msg.contains("No host") {
+                    msg
+                } else {
+                    // Transport errors, DNS failures, connection refused, etc.
+                    // should not leak raw technical text to the user.
+                    "Something went wrong connecting to the AI provider. Please check your connection and try again.".to_string()
+                }
+            }
         }
     }
 }
