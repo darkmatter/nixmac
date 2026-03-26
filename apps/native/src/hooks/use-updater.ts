@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { check, type Update } from "@tauri-apps/plugin-updater";
+import type { Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 
 export interface UpdateState {
@@ -35,10 +35,14 @@ const initialState: UpdateState = {
 export function useUpdater() {
   const [state, setState] = useState<UpdateState>(initialState);
   const checkedRef = useRef(false);
+  const isDevMode = import.meta.env.DEV;
 
   const checkForUpdates = useCallback(async () => {
     setState((s) => ({ ...s, checking: true, error: null }));
     try {
+      // Dynamic import: if the updater plugin isn't registered (e.g. NIXMAC_DISABLE_UPDATER=1),
+      // the import will succeed but check() will throw — which we catch below.
+      const { check } = await import("@tauri-apps/plugin-updater");
       const update = await check();
       if (update) {
         setState((s) => ({
@@ -52,6 +56,25 @@ export function useUpdater() {
         setState((s) => ({ ...s, checking: false }));
       }
     } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      const isPluginMissing = errMsg.includes("plugin updater not found") ||
+                              errMsg.includes("plugin not found");
+
+      if (isDevMode || isPluginMissing) {
+        // Suppress errors when the updater plugin isn't registered (NIXMAC_DISABLE_UPDATER=1)
+        // or in dev mode where it's always noisy.
+        if (isPluginMissing) {
+          console.debug("[updater] plugin not registered, skipping update check");
+        }
+        setState((s) => ({
+          ...s,
+          checking: false,
+          error: null,
+          errorSource: null,
+        }));
+        return;
+      }
+
       console.error("[updater] check failed:", err);
       setState((s) => ({
         ...s,
@@ -60,7 +83,7 @@ export function useUpdater() {
         errorSource: "check",
       }));
     }
-  }, []);
+  }, [isDevMode]);
 
   const installUpdate = useCallback(async () => {
     const update = state.available;
@@ -93,6 +116,17 @@ export function useUpdater() {
       // Relaunch the app after install
       await relaunch();
     } catch (err) {
+      if (isDevMode) {
+        setState((s) => ({
+          ...s,
+          downloading: false,
+          progress: null,
+          error: null,
+          errorSource: null,
+        }));
+        return;
+      }
+
       console.error("[updater] install failed:", err);
       setState((s) => ({
         ...s,
@@ -102,7 +136,7 @@ export function useUpdater() {
         errorSource: "install",
       }));
     }
-  }, [state.available]);
+  }, [isDevMode, state.available]);
 
   const dismiss = useCallback(() => {
     setState(initialState);

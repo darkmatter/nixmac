@@ -1,6 +1,13 @@
 import { create } from "zustand";
 import { FeedbackType } from "@/types/feedback";
-import type { HistoryItem, SummaryResponse, EvolveEvent, GitStatus, PermissionsState } from "@/tauri-api";
+import type {
+  HistoryItem,
+  SummaryResponse,
+  EvolveEvent,
+  GitStatus,
+  PermissionsState,
+  RecommendedPrompt,
+} from "@/tauri-api";
 import { computeCurrentStep } from "@/components/widget/utils";
 export type {
   SummaryResponse,
@@ -83,6 +90,7 @@ export interface WidgetState {
   processingAction: ProcessingAction;
   evolveEvents: EvolveEvent[];
   promptHistory: string[];
+  conversationalResponse: string | null;
 
   // Summary (AI-generated)
   summary: SummaryResponse;
@@ -115,7 +123,8 @@ export interface WidgetState {
     timestamp: string;
   } | null;
   error: string | null;
-  suggestions: string[];
+  // `undefined` means "stale/unfetched", while `null` means "fetched and none found".
+  recommendedPrompt: RecommendedPrompt | null | undefined;
 
   // Confirmation preferences
   confirmBuild: boolean;
@@ -135,7 +144,9 @@ export interface WidgetActions {
   setBootstrapping: (isBootstrapping: boolean) => void;
   setNixInstalled: (installed: boolean | null) => void;
   setNixInstalling: (installing: boolean) => void;
-  setNixInstallPhase: (phase: "downloading" | "waiting-for-installer" | "prefetching" | null) => void;
+  setNixInstallPhase: (
+    phase: "downloading" | "waiting-for-installer" | "prefetching" | null,
+  ) => void;
   setNixDownloadProgress: (progress: { downloaded: number; total: number } | null) => void;
   setDarwinRebuildAvailable: (available: boolean | null) => void;
   setDarwinRebuildPrefetching: (prefetching: boolean) => void;
@@ -152,6 +163,7 @@ export interface WidgetActions {
   ) => void;
   setPromptHistory: (history: string[]) => void;
   setSummaryAvailable: (available: boolean) => void;
+  setRecommendedPrompt: (prompt: RecommendedPrompt | null | undefined) => void;
 
   // History
   setHistory: (history: HistoryItem[]) => void;
@@ -177,6 +189,8 @@ export interface WidgetActions {
   // Evolve events
   appendEvolveEvent: (event: EvolveEvent) => void;
   clearEvolveEvents: () => void;
+
+  setConversationalResponse: (response: string | null) => void;
 
   // Rebuild state
   startRebuild: (context: RebuildContext) => void;
@@ -240,6 +254,7 @@ export const initialWidgetState: WidgetState = {
   processingAction: null,
   evolveEvents: [],
   promptHistory: [],
+  conversationalResponse: null,
 
   // History
   history: [],
@@ -268,7 +283,7 @@ export const initialWidgetState: WidgetState = {
   feedbackInitialText: null,
   panicDetails: null,
   error: null,
-  suggestions: ["Install vim", "Add Rectangle app", "Configure git"],
+  recommendedPrompt: undefined,
 
   // Confirmation preferences
   confirmBuild: true,
@@ -317,7 +332,9 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setHistory: (history) => set({ history }),
     setHistoryLoading: (historyLoading) => set({ historyLoading }),
     addAnalyzingHistoryHash: (hash) =>
-      set((state) => ({ analyzingHistoryForHashes: new Set([...state.analyzingHistoryForHashes, hash]) })),
+      set((state) => ({
+        analyzingHistoryForHashes: new Set([...state.analyzingHistoryForHashes, hash]),
+      })),
     removeAnalyzingHistoryHash: (hash) =>
       set((state) => {
         const next = new Set(state.analyzingHistoryForHashes);
@@ -338,6 +355,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setError: (error) => set({ error }),
     setPanicDetails: (panicDetails) => set({ panicDetails }),
     setPromptHistory: (promptHistory) => set({ promptHistory }),
+    setRecommendedPrompt: (recommendedPrompt) => set({ recommendedPrompt }),
 
     // Client-side UI state (NOT from server)
     setBootstrapping: (isBootstrapping) => set({ isBootstrapping }),
@@ -363,6 +381,9 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     appendEvolveEvent: (event) =>
       set((state) => ({ evolveEvents: [...state.evolveEvents, event] })),
     clearEvolveEvents: () => set({ evolveEvents: [] }),
+
+    // Conversational response
+    setConversationalResponse: (conversationalResponse) => set({ conversationalResponse }),
 
     // Rebuild state
     startRebuild: (context) =>

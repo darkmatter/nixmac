@@ -175,33 +175,17 @@ impl TemplateContext {
 }
 
 /// Errors that can occur during template operations.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum TemplateError {
     /// Error parsing a template
-    Parse(tera::Error),
+    #[error("Template parse error: {0}")]
+    Parse(#[source] tera::Error),
     /// Error rendering a template
-    Render(tera::Error),
+    #[error("Template render error: {0}")]
+    Render(#[source] tera::Error),
     /// Error reading a template file
-    Io(std::io::Error),
-}
-
-impl std::fmt::Display for TemplateError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Parse(e) => write!(f, "Template parse error: {}", e),
-            Self::Render(e) => write!(f, "Template render error: {}", e),
-            Self::Io(e) => write!(f, "Template I/O error: {}", e),
-        }
-    }
-}
-
-impl std::error::Error for TemplateError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::Parse(e) | Self::Render(e) => Some(e),
-            Self::Io(e) => Some(e),
-        }
-    }
+    #[error("Template I/O error: {0}")]
+    Io(#[from] std::io::Error),
 }
 
 /// Renders a template file and writes the result to the output path.

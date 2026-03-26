@@ -2,6 +2,7 @@ import argparse
 import json
 import statistics
 from collections.abc import Iterable
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
@@ -25,6 +26,8 @@ class ResultMetrics:
     tool_calls_count: int | None
     branch_has_built_commit: bool
     commit_message: str
+    state: str = "generated"
+    conversational_reply: str | None = None
     model_name: str | None = None
 
 
@@ -49,7 +52,11 @@ def extract_metrics(result_path: Path) -> ResultMetrics | None:
             or (result.get("summary") or {}).get("commitMessage")
             or ""
         )
-        # Attempt to extract model name; prefer top-level `evolveModel`
+        state = data.get("state") or result.get("state") or "generated"
+        conversational_reply: str | None = None
+        if state == "conversational":
+            conversational_reply = (result.get("summary") or {}).get("instructions") or None
+        # Extract model name
         model_name = (
             data.get("evolveModel")
             or data.get("model")
@@ -71,6 +78,8 @@ def extract_metrics(result_path: Path) -> ResultMetrics | None:
             tool_calls_count=optional_int(result, "toolCallsCount"),
             branch_has_built_commit=result.get("gitStatus", {}).get("branchHasBuiltCommit", False),
             commit_message=commit_message,
+            state=state,
+            conversational_reply=conversational_reply,
             model_name=model_name,
         )
     except (json.JSONDecodeError, KeyError, ValueError) as e:
@@ -196,7 +205,12 @@ def print_summary_table(stats: Statistics, metrics_list: list[ResultMetrics]) ->
     rows.append(["Duration (ms)", "", "", ""])
     rows.append(["  Average", f"{stats.avg_duration_ms:.0f}", maybe("{0.avg_duration_ms:.0f}", passed_stats), maybe("{0.avg_duration_ms:.0f}", failed_stats)])
     rows.append(["  Median", f"{stats.median_duration_ms:.0f}", maybe("{0.median_duration_ms:.0f}", passed_stats), maybe("{0.median_duration_ms:.0f}", failed_stats)])
-    rows.append(["  Min / Max", f"{stats.min_duration_ms} / {stats.max_duration_ms}", "--", "--"])
+    rows.append([
+        "  Min / Max",
+        f"{stats.min_duration_ms} / {stats.max_duration_ms}",
+        f"{passed_stats.min_duration_ms} / {passed_stats.max_duration_ms}" if passed_stats else "n/a",
+        f"{failed_stats.min_duration_ms} / {failed_stats.max_duration_ms}" if failed_stats else "n/a",
+    ])
     rows.append(["  Std Dev", f"{stats.stddev_duration_ms:.0f}", maybe("{0.stddev_duration_ms:.0f}", passed_stats), maybe("{0.stddev_duration_ms:.0f}", failed_stats)])
 
     rows.append(["", "", "", ""])
@@ -225,6 +239,16 @@ def print_summary_table(stats: Statistics, metrics_list: list[ResultMetrics]) ->
     rows.append(["Tool Calls (Avg)", f"{stats.avg_tool_calls:.2f}" if stats.avg_tool_calls is not None else "n/a", maybe("{0.avg_tool_calls:.2f}", passed_stats), maybe("{0.avg_tool_calls:.2f}", failed_stats)])
     rows.append(["Built %", f"{stats.built_commit_rate:.1f}%", maybe("{0.built_commit_rate:.1f}%", passed_stats), maybe("{0.built_commit_rate:.1f}%", failed_stats)])
 
+    # Add counts of observed states (e.g., generated, conversational, failed, etc.)
+    counts = Counter(m.state for m in metrics_list)
+    passed_counts = Counter(m.state for m in passed_metrics)
+    failed_counts = Counter(m.state for m in failed_metrics)
+
+    rows.append(["", "", "", ""])
+    rows.append(["State Counts", "Overall", "Passing", "Failing"])
+    for state, cnt in sorted(counts.items()):
+        rows.append([f"  {state}", f"{cnt}", f"{passed_counts.get(state, 0)}", f"{failed_counts.get(state, 0)}"])
+
     print("\n" + "=" * 95)
     print(f"EVALUATION STATISTICS SUMMARY — {model_title}")
     print("=" * 95)
@@ -239,9 +263,15 @@ def print_cases_table(metrics_list: list[ResultMetrics]) -> None:
     cases_data = []
     for m in sorted_metrics:
         status = "✓ PASS" if m.ok else "✗ FAIL"
-        commit_msg_display = m.commit_message or ""
-        if len(commit_msg_display) > 80:
-            commit_msg_display = commit_msg_display[:77] + "..."
+        if m.state == "conversational" and m.conversational_reply:
+            raw = m.conversational_reply.replace("\n", " ").strip()
+            commit_msg_display = ("💬 " + raw)[:80]
+            if len("💬 " + raw) > 80:
+                commit_msg_display = commit_msg_display[:77] + "..."
+        else:
+            commit_msg_display = m.commit_message or ""
+            if len(commit_msg_display) > 80:
+                commit_msg_display = commit_msg_display[:77] + "..."
 
         cases_data.append(
             [

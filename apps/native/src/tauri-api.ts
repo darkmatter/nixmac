@@ -90,7 +90,7 @@ export interface GitStatusWithSummary<S = SummaryResponse> {
   summary: S;
 }
 
-export type EvolutionResult = GitStatusWithSummary;
+export type EvolutionResult = GitStatusWithSummary & { state?: string };
 export type WatcherEvent = GitStatusWithSummary<SummaryResponse | null>;
 export type RollbackResult = GitStatusWithSummary<SummaryResponse | null>;
 
@@ -208,6 +208,11 @@ export interface SystemDefault {
 export interface SystemDefaultsScan {
   defaults: SystemDefault[];
   totalScanned: number;
+}
+
+export interface RecommendedPrompt {
+  id: string;
+  promptText: string;
 }
 
 // =============================================================================
@@ -336,6 +341,7 @@ export const darwinAPI = {
   },
 
   scanner: {
+    getRecommendedPrompt: () => invoke<RecommendedPrompt | null>("get_recommended_prompt"),
     scanDefaults: () => invoke<SystemDefaultsScan>("scan_system_defaults"),
     applyDefaults: (defaults: SystemDefault[]) =>
       invoke<{
