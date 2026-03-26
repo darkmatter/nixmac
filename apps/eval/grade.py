@@ -161,6 +161,15 @@ def check_artifact_completeness(result: dict[str, Any]) -> list[str]:
     return missing
 
 
+def extract_added_lines(diff: str) -> str:
+    """Extract only added lines from unified diff (excluding +++ headers)."""
+    added = []
+    for line in diff.splitlines():
+        if line.startswith("+") and not line.startswith("+++"):
+            added.append(line[1:])
+    return "\n".join(added)
+
+
 def diff_mentions_protected_files(diff: str) -> list[str]:
     """Check if diff touches protected files."""
     violations = []
@@ -180,10 +189,21 @@ def grade_succeed(
     """Grade a case with expected_outcome=succeed."""
     case_id = result.get("_case_id", 0)
     grade = GradeResult(case_id=case_id, passed=True, expected_outcome="succeed")
+    ok = result.get("ok", False)
     diff = extract_diff(result)
     edits_count = extract_edits_count(result)
     build_attempts = extract_build_attempts(result)
     built_commit = extract_branch_has_built_commit(result)
+
+    # Check: completed_ok (a crash is not a successful evolution)
+    grade.checks["completed_ok"] = CheckResult(
+        passed=ok,
+        detail="CLI completed ok" if ok else "CLI reported failure — run did not complete successfully",
+    )
+    if not ok:
+        grade.passed = False
+        grade.failure_class = "other"
+        return grade
 
     # Check: artifact completeness
     missing_fields = check_artifact_completeness(result)
@@ -263,9 +283,10 @@ def grade_succeed(
         )
 
     # Check: relevant_changes (keyword matching from expectations)
+    # Only check added lines to avoid false matches from removed/context lines
     if expectations and expectations.get("expected_in_diff"):
         expected_keywords = expectations["expected_in_diff"]
-        diff_lower = diff.lower()
+        diff_lower = extract_added_lines(diff).lower()
         found = [kw for kw in expected_keywords if kw.lower() in diff_lower]
         missing = [kw for kw in expected_keywords if kw.lower() not in diff_lower]
         all_found = len(missing) == 0
