@@ -1,6 +1,7 @@
 //! Evolution module for AI-assisted configuration changes.
 
 mod config_dir_context;
+mod edit_nix_file;
 mod file_ops;
 pub mod messages;
 pub mod providers;
@@ -38,6 +39,8 @@ use crate::{
 use config_dir_context::format_config_dir_context;
 use messages::Message;
 use providers::{AiProvider, OllamaProvider, OpenAIProvider, ProviderError};
+
+use self::types::FileEdit;
 
 /// Return short hex prefix for correlation of error messages without risking sensitive content exposure.
 fn short_hash(s: &str) -> String {
@@ -735,6 +738,12 @@ pub async fn generate_evolution(
                                         EvolveEvent::editing(start_time, iteration, &edit.path),
                                     );
                                 }
+                                ToolResult::EditSemantic(edit) => {
+                                    emit_evolve_event(
+                                        app,
+                                        EvolveEvent::editing(start_time, iteration, &edit.path),
+                                    );
+                                }
                                 ToolResult::BuildResult {
                                     success,
                                     output,
@@ -1083,6 +1092,7 @@ fn summarize_result(result: &ToolResult) -> (String, bool) {
         }
         ToolResult::Continue(s) => (format!("{} chars", s.len()), true),
         ToolResult::Edit(e) => (format!("edited {}", e.path), true),
+        ToolResult::EditSemantic(e) => (format!("semantic edit {} ({:?})", e.path, e.action), true),
         ToolResult::BuildResult { success, .. } => {
             if *success {
                 ("PASSED".to_string(), true)
@@ -1149,6 +1159,28 @@ fn process_tool_result(
                 tool_call_id: tool_call_id.to_string(),
                 content:
                     "Edit applied successfully. Remember to run build_check before calling done."
+                        .to_string(),
+            };
+            (msg, Some(false))
+        }
+
+        ToolResult::EditSemantic(edit) => {
+            info!(
+                "📝 Semantic Edit | path={} | description={}",
+                edit.path,
+                format_args!("{:?}", edit.action)
+            );
+            evolution.edits.push(FileEdit {
+                path: edit.path.clone(),
+                // Preserve semantic edit events in the legacy edits list.
+                search: String::new(),
+                replace: format!("semantic:{:?}", edit.action),
+            });
+
+            let msg = Message::Tool {
+                tool_call_id: tool_call_id.to_string(),
+                content:
+                    "Semantic edit applied successfully. Remember to run build_check before calling done."
                         .to_string(),
             };
             (msg, Some(false))
