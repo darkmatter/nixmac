@@ -25,6 +25,7 @@ export type {
 /**
  * Widget step state - updated by useEffect based on app state.
  */
+export type SettingsTab = "general" | "api-keys" | "ai-models" | "preferences";
 export type WidgetStep = "permissions" | "nix-setup" | "setup" | "evolving" | "merge" | "history";
 export type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
 export type ConfirmPrefKey = "confirmBuild" | "confirmClear" | "confirmRollback";
@@ -110,6 +111,7 @@ export interface WidgetState {
   summaryAvailable: boolean;
   isGenerating: boolean;
   settingsOpen: boolean;
+  settingsActiveTab: SettingsTab | null;
   showHistory: boolean;
   feedbackOpen: boolean;
   feedbackTypeOverride: FeedbackType | null;
@@ -152,7 +154,7 @@ export interface WidgetActions {
   setEvolvePrompt: (prompt: string) => void;
   setProcessing: (isProcessing: boolean, action?: ProcessingAction) => void;
   setSummary: (summary: SummaryResponse) => void;
-  setSettingsOpen: (open: boolean) => void;
+  setSettingsOpen: (open: boolean, tab?: SettingsTab) => void;
   setShowHistory: (show: boolean) => void;
   setFeedbackOpen: (open: boolean) => void;
   setError: (error: string | null) => void;
@@ -274,6 +276,7 @@ export const initialWidgetState: WidgetState = {
   isBootstrapping: false,
   isGenerating: false,
   settingsOpen: false,
+  settingsActiveTab: null,
   showHistory: false,
   feedbackOpen: false,
   feedbackTypeOverride: null,
@@ -338,7 +341,8 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
         next.delete(hash);
         return { analyzingHistoryForHashes: next };
       }),
-    setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
+    setSettingsOpen: (settingsOpen, tab) =>
+      set({ settingsOpen, settingsActiveTab: tab ?? null }),
     setShowHistory: (showHistory) => set({ showHistory }),
     setFeedbackOpen: (feedbackOpen) => set({ feedbackOpen }),
     setFeedbackTypeOverride: (feedbackTypeOverride) => set({ feedbackTypeOverride }),

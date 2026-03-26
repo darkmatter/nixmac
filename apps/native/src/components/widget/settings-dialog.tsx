@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { cn } from "@/lib/utils";
-import { useWidgetStore } from "@/stores/widget-store";
+import { type SettingsTab, useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI, DEFAULT_MAX_ITERATIONS } from "@/tauri-api";
 import { useForm } from "@tanstack/react-form";
 import { Bot, FolderOpen, Key, Settings2, SlidersHorizontal } from "lucide-react";
@@ -10,8 +10,6 @@ import { AiModelsTab } from "./settings/ai-models-tab";
 import { ApiKeysTab } from "./settings/api-keys-tab";
 import { GeneralTab } from "./settings/general-tab";
 import { PreferencesTab } from "./settings/preferences-tab";
-
-type SettingsTab = "general" | "api-keys" | "ai-models" | "preferences";
 type ApiKeyStatus = "idle" | "verifying" | "valid" | "invalid";
 
 interface NavItemProps {
@@ -42,6 +40,7 @@ function NavItem({ icon, label, active, onClick }: NavItemProps) {
 export function SettingsDialog() {
   const {
     settingsOpen: isOpen,
+    settingsActiveTab,
     setSettingsOpen,
     configDir,
     hosts,
@@ -49,6 +48,13 @@ export function SettingsDialog() {
     setHosts,
   } = useWidgetStore();
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
+
+  // Deep-link to a specific tab when requested, otherwise reset to general
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(settingsActiveTab ?? "general");
+    }
+  }, [isOpen, settingsActiveTab]);
   const [openrouterKeyStatus, setOpenrouterKeyStatus] = useState<ApiKeyStatus>("idle");
   const [openaiKeyStatus, setOpenaiKeyStatus] = useState<ApiKeyStatus>("idle");
   const openrouterTimeoutRef = useRef<NodeJS.Timeout | null>(null);

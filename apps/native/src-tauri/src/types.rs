@@ -518,13 +518,13 @@ impl EvolveEvent {
         )
     }
 
-    pub fn error(start_time: i64, iter: Option<usize>, error: &str) -> Self {
-        let mut error = error.to_string();
-        global_utils::truncate_utf8(&mut error, 100);
+    pub fn error(start_time: i64, iter: Option<usize>, summary: &str, raw: &str) -> Self {
+        let mut summary = summary.to_string();
+        global_utils::truncate_utf8(&mut summary, 100);
         Self::new(
             EvolveEventType::Error,
-            format!("Error: {}", error),
-            format!("Error: {}", error),
+            format!("Error: {}", raw),
+            format!("Error: {}", summary),
             iter,
             start_time,
         )

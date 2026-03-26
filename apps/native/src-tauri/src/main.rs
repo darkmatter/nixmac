@@ -44,6 +44,7 @@ mod summarize_pipeline_logging;
 mod summarize_token_budgets;
 mod template;
 mod types;
+mod provider_errors;
 mod utils;
 mod watcher;
 

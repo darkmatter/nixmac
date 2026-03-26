@@ -1,7 +1,9 @@
 use super::{ChatCompletionProvider, TokenUsage};
-use anyhow::Result;
+use crate::provider_errors::{classify_openai_error, friendly_provider_error};
+use anyhow::{Context, Result};
 use async_openai::{
     config::OpenAIConfig,
+    error::OpenAIError,
     types::{
         ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestUserMessageArgs,
         CreateChatCompletionRequestArgs, ResponseFormat,
@@ -10,6 +12,19 @@ use async_openai::{
 };
 use async_trait::async_trait;
 use log::debug;
+
+/// Normalize an async_openai error into a user-friendly anyhow error.
+///
+/// Classified API errors get a friendly message for the user while preserving
+/// the original error in the chain via `context`. Unclassified errors pass
+/// through directly so callers can inspect the full source.
+fn normalize_completion_error(e: OpenAIError) -> anyhow::Error {
+    if let Some((status, _)) = classify_openai_error(&e) {
+        anyhow::Error::from(e).context(friendly_provider_error(status))
+    } else {
+        anyhow::Error::from(e)
+    }
+}
 
 pub struct OpenAIClient {
     client: Client<OpenAIConfig>,
@@ -64,7 +79,12 @@ impl ChatCompletionProvider for OpenAIClient {
             "Requesting completion from {} [id: {}]",
             self.model, request_id
         );
-        let response = self.client.chat().create(request).await?;
+        let response = self
+            .client
+            .chat()
+            .create(request)
+            .await
+            .map_err(normalize_completion_error)?;
         let usage = TokenUsage {
             input: response.usage.as_ref().map(|u| u.prompt_tokens),
             output: response.usage.as_ref().map(|u| u.completion_tokens),
@@ -115,7 +135,12 @@ impl ChatCompletionProvider for OpenAIClient {
             "Requesting JSON completion from {} [id: {}]",
             self.model, request_id
         );
-        let response = self.client.chat().create(request).await?;
+        let response = self
+            .client
+            .chat()
+            .create(request)
+            .await
+            .map_err(normalize_completion_error)?;
         let usage = TokenUsage {
             input: response.usage.as_ref().map(|u| u.prompt_tokens),
             output: response.usage.as_ref().map(|u| u.completion_tokens),
