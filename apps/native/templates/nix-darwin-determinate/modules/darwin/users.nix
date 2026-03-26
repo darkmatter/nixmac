@@ -1,6 +1,7 @@
 { config, pkgs, ... }:
 
 {
+  # nixmac template v0.1.3
   # Users module
   # Purpose:
   # - Manage local user accounts, shells, and group membership.
@@ -18,15 +19,8 @@
   #   why the account exists and any required post-creation steps.
   # - Do not include plaintext passwords in the Nix configuration.
   #
-  users.users = {
-    # Example user (adjust uid/home/shell as needed):
-    # alice = {
-    #   isNormalUser = true;
-    #   uid = 1001;
-    #   home = "/Users/alice";
-    #   shell = pkgs.zsh;
-    #   extraGroups = [ "staff" "docker" ];
-    # };
+  users.users.USERNAME_PLACEHOLDER = {
+    home = "/Users/USERNAME_PLACEHOLDER";
   };
 
   # Sudo configuration (nix-darwin exposes `security.sudo`):

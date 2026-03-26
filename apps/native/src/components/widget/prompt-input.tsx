@@ -8,6 +8,7 @@ import {
   InputGroupText,
   InputGroupTextarea,
 } from "@/components/ui/input-group";
+import { MacRecommendationChip } from "@/components/widget/mac-recommendation-chip";
 import { PromptHistoryBadge } from "@/components/widget/prompt-history-badge";
 import { SystemDefaultsCTA } from "@/components/widget/system-defaults-cta";
 import { useEvolve } from "@/hooks/use-evolve";
@@ -16,13 +17,14 @@ import { ArrowUpIcon } from "lucide-react";
 
 const MAX_CONTEXT_LENGTH = 1000;
 
+const STATIC_SUGGESTIONS = ["Install vim", "Add Rectangle app"];
+
 export function PromptInput() {
   const evolvePrompt = useWidgetStore((s) => s.evolvePrompt);
   const setEvolvePrompt = useWidgetStore((s) => s.setEvolvePrompt);
   const isProcessing = useWidgetStore((s) => s.isProcessing);
   const processingAction = useWidgetStore((s) => s.processingAction);
   const gitStatus = useWidgetStore((s) => s.gitStatus);
-  const suggestions = useWidgetStore((s) => s.suggestions);
   const { handleEvolve } = useEvolve();
 
 
@@ -100,17 +102,20 @@ export function PromptInput() {
         </InputGroupAddon>
       </InputGroup>
 
-      <div className="flex flex-wrap items-center gap-1">
-        {suggestions.map((suggestion) => (
-          <BadgeButton
-            key={suggestion}
-            onClick={() => setEvolvePrompt(suggestion)}
-          >
-            {suggestion}
-          </BadgeButton>
-        ))}
-        <SystemDefaultsCTA />
-        <div className="ml-auto">
+      <div className="flex items-start gap-1">
+        <div className="flex flex-wrap items-center gap-1">
+          {STATIC_SUGGESTIONS.map((suggestion) => (
+            <BadgeButton
+              key={suggestion}
+              onClick={() => setEvolvePrompt(suggestion)}
+            >
+              {suggestion}
+            </BadgeButton>
+          ))}
+          <MacRecommendationChip />
+          <SystemDefaultsCTA />
+        </div>
+        <div className="ml-auto shrink-0">
           <PromptHistoryBadge />
         </div>
       </div>

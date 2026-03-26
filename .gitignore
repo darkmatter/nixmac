@@ -1,4 +1,5 @@
 # Dependencies
+apps/server/server
 node_modules
 
 # Build output
@@ -109,3 +110,5 @@ temp
 
 .output
 .stackpanel-root
+.artifacts
+*.js.map
