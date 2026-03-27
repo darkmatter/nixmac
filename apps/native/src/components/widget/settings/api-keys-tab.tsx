@@ -69,7 +69,11 @@ function ApiKeyInput({
             if (timeoutRef.current) {
               clearTimeout(timeoutRef.current);
             }
-            timeoutRef.current = setTimeout(() => verifyKey(e.target.value), 500);
+            if (!e.target.value) {
+              verifyKey("");
+            } else {
+              timeoutRef.current = setTimeout(() => verifyKey(e.target.value), 500);
+            }
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
