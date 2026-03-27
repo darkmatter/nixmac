@@ -8,6 +8,7 @@ import type {
   PermissionsState,
   RecommendedPrompt,
 } from "@/tauri-api";
+import type { SemanticChangeMap } from "@/types/queries";
 import { computeCurrentStep } from "@/components/widget/utils";
 export type {
   SummaryResponse,
@@ -94,6 +95,10 @@ export interface WidgetState {
 
   // Summary (AI-generated)
   summary: SummaryResponse;
+  changeMap: SemanticChangeMap | null;
+
+  // Commit message suggestion (generated on merge screen)
+  commitMessageSuggestion: string | null;
 
   // Rebuild state (for inline rebuild progress)
   rebuild: RebuildState;
@@ -154,7 +159,8 @@ export interface WidgetActions {
   setEvolvePrompt: (prompt: string) => void;
   setProcessing: (isProcessing: boolean, action?: ProcessingAction) => void;
   setSummary: (summary: SummaryResponse) => void;
-  setSettingsOpen: (open: boolean, tab?: SettingsTab) => void;
+  setChangeMap: (map: SemanticChangeMap | null) => void;
+  setSettingsOpen: (open: boolean, tab?: SettingsTab | null) => void;
   setShowHistory: (show: boolean) => void;
   setFeedbackOpen: (open: boolean) => void;
   setError: (error: string | null) => void;
@@ -191,6 +197,9 @@ export interface WidgetActions {
   clearEvolveEvents: () => void;
 
   setConversationalResponse: (response: string | null) => void;
+
+  // Commit message suggestion
+  setCommitMessageSuggestion: (msg: string | null) => void;
 
   // Rebuild state
   startRebuild: (context: RebuildContext) => void;
@@ -263,7 +272,11 @@ export const initialWidgetState: WidgetState = {
 
   // Summary
   summary: initialSummaryState,
+  changeMap: null,
   summaryAvailable: false,
+
+  // Commit message suggestion
+  commitMessageSuggestion: null,
 
   // Rebuild
   rebuild: initialRebuildState,
@@ -320,6 +333,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
         processingAction: isProcessing ? action : null,
       }),
     setSummary: (summary) => set({ summary, summaryAvailable: true }),
+    setChangeMap: (changeMap) => set({ changeMap }),
     setSummaryLoading: (summaryLoading) => set({ summaryLoading }),
     setSummaryAvailable: (summaryAvailable) => set({ summaryAvailable }),
     setConfirmPref: (key, value) => set({ [key]: value }),
@@ -384,6 +398,9 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
 
     // Conversational response
     setConversationalResponse: (conversationalResponse) => set({ conversationalResponse }),
+
+    // Commit message suggestion
+    setCommitMessageSuggestion: (commitMessageSuggestion) => set({ commitMessageSuggestion }),
 
     // Rebuild state
     startRebuild: (context) =>

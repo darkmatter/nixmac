@@ -53,54 +53,6 @@ export function getDirectory(path: string): string {
   return parts.slice(0, -1).join("/");
 }
 
-export interface FileDiff {
-  filename: string;
-  chunks: string;
-}
-
-/**
- * Parse a unified diff into sections per file
- */
-export function parseDiffIntoSections(diffContent: string): FileDiff[] {
-  const sections: FileDiff[] = [];
-  const lines = diffContent.split("\n");
-
-  let currentFilename = "";
-  let currentChunks: string[] = [];
-
-  for (const line of lines) {
-    const gitDiffMatch = line.match(/^diff --git a\/(.+?) b\/(.+)$/);
-    if (gitDiffMatch) {
-      if (currentFilename && currentChunks.length > 0) {
-        sections.push({ filename: currentFilename, chunks: currentChunks.join("\n") });
-      }
-      currentFilename = gitDiffMatch[2];
-      currentChunks = [];
-      continue;
-    }
-
-    if (
-      line.startsWith("--- ") ||
-      line.startsWith("+++ ") ||
-      line.startsWith("index ") ||
-      line.startsWith("new file mode") ||
-      line.startsWith("deleted file mode")
-    ) {
-      continue;
-    }
-
-    if (currentFilename) {
-      currentChunks.push(line);
-    }
-  }
-
-  if (currentFilename && currentChunks.length > 0) {
-    sections.push({ filename: currentFilename, chunks: currentChunks.join("\n") });
-  }
-
-  return sections;
-}
-
 /**
  * Infer change type from diff chunk content.
  */

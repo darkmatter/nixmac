@@ -26,6 +26,7 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { usePrefs } from "@/hooks/use-prefs";
 import { usePromptHistory } from "@/hooks/use-prompt-history";
 import { useTrayEvents } from "@/hooks/use-tray-events";
+import { useQueueSummarizer } from "@/hooks/use-queue-summarizer";
 import { useWatcher } from "@/hooks/use-watcher";
 import { loadConfig, loadHosts } from "@/hooks/use-widget-initialization";
 import { useSummary } from "@/hooks/use-summary";
@@ -46,7 +47,8 @@ export function DarwinWidget() {
   const { loadPrefs } = usePrefs();
   const { refreshPromptHistory } = usePromptHistory();
   const { startWatching } = useWatcher();
-  const { findSummary } = useSummary();
+  const { queueForSummaries } = useQueueSummarizer();
+  const { findChangeMap } = useSummary();
 
   // Set up panic handler to catch Rust crashes and show feedback dialog
   usePanicHandler();
@@ -74,14 +76,15 @@ export function DarwinWidget() {
         await loadHosts();
         await getInitialStatus();
         await loadPrefs();
-        await findSummary();
+        await findChangeMap();
         refreshPromptHistory();
       } catch (e: unknown) {
         useWidgetStore.getState().setError((e as Error)?.message || String(e));
       }
 
-      // Start watching for git changes after initial load
+      // Start watching for git changes and summarizer updates after initial load
       startWatching();
+      queueForSummaries();
     })();
   }, []);
 

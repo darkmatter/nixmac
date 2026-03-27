@@ -5,21 +5,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs } from "@/components/ui/tabs";
 import { useGitOperations } from "@/hooks/use-git-operations";
+import { useSummary } from "@/hooks/use-summary";
 import { useWidgetStore } from "@/stores/widget-store";
 import { GitMerge, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export function MergeSection() {
   const [keepCommits, setKeepCommits] = useState(false);
-  const summary = useWidgetStore((s) => s.summary);
   const isProcessing = useWidgetStore((s) => s.isProcessing);
   const processingAction = useWidgetStore((s) => s.processingAction);
   const gitStatus = useWidgetStore((s) => s.gitStatus);
+  const commitMessageSuggestion = useWidgetStore((s) => s.commitMessageSuggestion);
 
   const { handleMerge } = useGitOperations();
+  const { generateCommitMessage } = useSummary();
+
+  useEffect(() => {
+    generateCommitMessage();
+  }, [generateCommitMessage]);
 
   const commits = gitStatus?.branchCommitMessages ?? [];
-  const defaultCommitMsg = summary.commitMessage || commits[commits.length - 1] || "";
+  const defaultCommitMsg = commitMessageSuggestion || commits[commits.length - 1] || "";
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -75,7 +81,7 @@ export function MergeSection() {
               defaultValue={defaultCommitMsg}
               disabled={isProcessing}
               name="commitMsg"
-              placeholder="Commit message..."
+              placeholder="Loading..."
             />
           </div>
         )}

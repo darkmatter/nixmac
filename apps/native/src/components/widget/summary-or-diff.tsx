@@ -1,10 +1,10 @@
 "use client";
 
+import { Activity, useState } from "react";
 import { Diff } from "@/components/widget/diff";
 import { SummaryItems } from "@/components/widget/summary-items";
-import { parseDiffIntoSections } from "@/components/widget/utils";
 import { AnimatedTabsList, AnimatedTabsTrigger } from "@/components/ui/animated-tabs";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { Tabs } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
 import { Loader2, Sparkles, Wrench } from "lucide-react";
@@ -16,20 +16,22 @@ interface SummaryOrDiffProps {
 export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   const summaryLoading = useWidgetStore((s) => s.summaryLoading);
   const gitStatus = useWidgetStore((s) => s.gitStatus);
+  const changeMap = useWidgetStore((s) => s.changeMap);
+  const [activeTab, setActiveTab] = useState("summary");
 
   const cleanOnMain = gitStatus?.cleanHead && gitStatus?.isMainBranch;
-
   if (!gitStatus || cleanOnMain) {
     return null;
   }
-
-  const diffSections = parseDiffIntoSections(gitStatus.diff || "");
+  console.log(changeMap)
+  const changes = gitStatus.changes ?? [];
 
   return (
     <Tabs
-      defaultValue="summary"
+      value={activeTab}
+      onValueChange={setActiveTab}
       className={cn(
-        "flex max-h-[400px] min-h-0 max-w-full shrink-0 flex-col overflow-hidden rounded-lg gap-0",
+        "flex max-w-full flex-col rounded-lg gap-0",
         variant === "outline" && "border border-border"
       )}
     >
@@ -50,12 +52,15 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
         </div>
       ) : (
         <>
-          <TabsContent value="summary" className="mt-0">
-            <SummaryItems variant={variant} diffSections={diffSections} />
-          </TabsContent>
-          <TabsContent value="diff" className="mt-0">
-            <Diff diffSections={diffSections} />
-          </TabsContent>
+          <Activity mode={activeTab === "summary" ? "visible" : "hidden"}>
+            {changeMap
+              ? <SummaryItems map={changeMap} />
+              : <div className="p-4 text-muted-foreground text-sm">No summary available yet.</div>
+            }
+          </Activity>
+          <Activity mode={activeTab === "diff" ? "visible" : "hidden"}>
+            <Diff changes={changes} />
+          </Activity>
         </>
       )}
     </Tabs>

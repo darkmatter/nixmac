@@ -2,8 +2,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { type Event, listen, once } from "@tauri-apps/api/event";
 import type { Change, CommitRow, SummaryRow } from "./types/sqlite";
 export type { Change, CommitRow, SummaryRow } from "./types/sqlite";
-import type { SummarizedChanges } from "./types/queries";
-export type { SummarizedChanges } from "./types/queries";
+import type { SemanticChangeMap, SummarizedChangeSet } from "./types/queries";
+export type { SemanticChangeMap, SummarizedChangeSet } from "./types/queries";
 
 export interface HistoryItem {
   hash: string;
@@ -12,7 +12,7 @@ export interface HistoryItem {
   isBuilt: boolean;
   commit: CommitRow | null;
   summary: SummaryRow | null;
-  changeSet: SummarizedChanges | null;
+  changeSet: SummarizedChangeSet | null;
 }
 import {
   checkFullDiskAccessPermission,
@@ -92,8 +92,12 @@ export interface GitStatusWithSummary<S = SummaryResponse> {
   summary: S;
 }
 
+export interface WatcherEvent {
+  gitStatus: GitStatus;
+  changeMap: SemanticChangeMap;
+}
+
 export type EvolutionResult = GitStatusWithSummary & { state?: string };
-export type WatcherEvent = GitStatusWithSummary<SummaryResponse | null>;
 export type RollbackResult = GitStatusWithSummary<SummaryResponse | null>;
 
 export interface PreviewIndicatorState {
@@ -313,6 +317,12 @@ export const darwinAPI = {
   summary: {
     find: () => invoke<SummaryResponse | null>("find_summary"),
     generate: () => invoke<SummaryResponse>("summarize_changes"),
+  },
+  summarizedChanges: {
+    find: () => invoke<SummarizedChangeSet[]>("find_summarized_changes"),
+    findChangeMap: () => invoke<SemanticChangeMap>("find_change_map"),
+    summarizeCurrent: () => invoke<void>("summarize_current"),
+    generateCommitMessage: () => invoke<string>("generate_commit_message"),
   },
   feedback: {
     gatherMetadata: (feedbackType: string, share: FeedbackShareOptions) =>
