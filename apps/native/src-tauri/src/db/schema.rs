@@ -73,9 +73,9 @@ fn create_tables(conn: &Connection) -> Result<()> {
 
         CREATE TABLE IF NOT EXISTS change_summaries (
             id INTEGER PRIMARY KEY,
-            title TEXT NOT NULL,
-            description TEXT NOT NULL,
-            group_summary_for TEXT,
+            title TEXT NOT NULL DEFAULT '',
+            description TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'QUEUED' CHECK(status IN ('QUEUED', 'DONE', 'FAILED', 'CANCELLED')),
             created_at INTEGER NOT NULL
         );
 
@@ -86,8 +86,12 @@ fn create_tables(conn: &Connection) -> Result<()> {
             diff TEXT NOT NULL,
             line_count INTEGER NOT NULL,
             created_at INTEGER NOT NULL,
-            group_summary_id INTEGER REFERENCES change_summaries(id),
             own_summary_id INTEGER REFERENCES change_summaries(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS group_summaries (
+            change_id INTEGER NOT NULL REFERENCES changes(id),
+            change_summary_id INTEGER NOT NULL REFERENCES change_summaries(id)
         );
 
         CREATE TABLE IF NOT EXISTS change_sets (
@@ -103,6 +107,17 @@ fn create_tables(conn: &Connection) -> Result<()> {
             change_set_id INTEGER NOT NULL REFERENCES change_sets(id),
             change_id INTEGER NOT NULL REFERENCES changes(id),
             PRIMARY KEY (change_set_id, change_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS queued_summaries (
+            id INTEGER PRIMARY KEY,
+            status TEXT NOT NULL DEFAULT 'QUEUED' CHECK(status IN ('QUEUED', 'DONE', 'FAILED', 'CANCELLED')),
+            attempted_count INTEGER NOT NULL DEFAULT 0,
+            prompt TEXT NOT NULL,
+            model_response TEXT,
+            group_summary_id INTEGER REFERENCES change_summaries(id),
+            hash_own_summary_id_pairs TEXT,
+            type TEXT NOT NULL CHECK(type IN ('NEW_SINGLE', 'NEW_GROUP', 'EVOLVED_GROUP'))
         );
 
         CREATE TABLE IF NOT EXISTS prompts (
@@ -121,6 +136,7 @@ fn create_tables(conn: &Connection) -> Result<()> {
         CREATE INDEX IF NOT EXISTS idx_change_sets_commit ON change_sets(commit_id);
         CREATE INDEX IF NOT EXISTS idx_change_sets_base ON change_sets(base_commit_id);
         CREATE INDEX IF NOT EXISTS idx_set_changes_change ON set_changes(change_id);
+        CREATE INDEX IF NOT EXISTS idx_queued_summaries_status ON queued_summaries(status);
         "#,
     )?;
 

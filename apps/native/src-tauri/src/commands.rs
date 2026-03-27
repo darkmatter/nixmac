@@ -9,7 +9,7 @@
 
 use crate::{
     darwin, db, default_config, evolution, feedback, find_summary, git, nix, peek, permissions,
-    rollback, scanner, store, summarize, types,
+    legacy_summarize, rollback, scanner, store, types,
 };
 use std::path::Path;
 use std::process::Command;
@@ -570,6 +570,31 @@ pub async fn flake_list_hosts(app: AppHandle) -> Result<Vec<String>, String> {
 // Summarization Commands
 // =============================================================================
 
+/// Routes to commit-pair lookup (clean HEAD) or base-commit lookup (dirty HEAD).
+#[tauri::command]
+pub async fn find_summarized_changes(
+    app: AppHandle,
+) -> Result<Vec<crate::query_return_types::SummarizedChangeSet>, String> {
+    let db_path =
+        db::get_db_path(&app).map_err(|e| capture_err("find_summarized_changes", e))?;
+    let dir = store::get_config_dir(&app).map_err(|e| capture_err("find_summarized_changes", e))?;
+    crate::summarize::find_existing::for_current_state(&db_path, &dir)
+        .map_err(|e| capture_err("find_summarized_changes", e))
+}
+
+#[tauri::command]
+pub async fn find_change_map(
+    app: AppHandle,
+) -> Result<crate::query_return_types::SemanticChangeMap, String> {
+    let db_path =
+        db::get_db_path(&app).map_err(|e| capture_err("find_change_map", e))?;
+    let dir =
+        store::get_config_dir(&app).map_err(|e| capture_err("find_change_map", e))?;
+    let change_sets = crate::summarize::find_existing::for_current_state(&db_path, &dir)
+        .map_err(|e| capture_err("find_change_map", e))?;
+    Ok(crate::summarize::group_existing::from_change_sets(change_sets))
+}
+
 /// Returns the cached summary if available.
 #[tauri::command]
 pub async fn summary_get_cached(app: AppHandle) -> Result<Option<types::SummaryResponse>, String> {
@@ -584,9 +609,18 @@ pub async fn generate_history_from(
     commit_hash: String,
     number: usize,
 ) -> Result<(), String> {
-    crate::generate_history_from::generate_history_from(&app, &commit_hash, number)
+    crate::summarize::pipelines::history::from_commit_times_number(&app, &commit_hash, number)
         .await
         .map_err(|e| capture_err("generate_history_from", e))
+}
+
+/// Summarizes the current working state, running the from-scratch pipeline if
+/// no existing summaries are found, or grouping and simplifying existing ones.
+#[tauri::command]
+pub async fn summarize_current(app: AppHandle) -> Result<(), String> {
+    crate::summarize::summarize_current(&app)
+        .await
+        .map_err(|e| capture_err("summarize_current", e))
 }
 
 /// Returns all commits on the main branch, each paired with optional DB metadata, summary,
@@ -632,7 +666,7 @@ pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse,
 
     // Try to generate AI summary, but don't fail if it errors (e.g., no API key)
     let (items, instructions, commit_message) =
-        match summarize::summarize_for_preview(diff, &file_list, Some(&app)).await {
+        match legacy_summarize::summarize_for_preview(diff, &file_list, Some(&app)).await {
             Ok((change_summary, msg)) => {
                 let items: Vec<types::SummaryItem> = change_summary
                     .items
@@ -665,22 +699,14 @@ pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse,
     Ok(response)
 }
 
-/// Generates just a commit message suggestion based on current changes.
+/// Generates a commit message from the current semantic change map via the pipeline.
 #[tauri::command]
-pub async fn suggest_commit_message(app: AppHandle) -> Result<String, String> {
-    let dir = store::ensure_config_dir_exists(&app)
-        .map_err(|e| capture_err("suggest_commit_message", e))?;
-
-    // Get git status which includes diff
-    let status = git::status(&dir).map_err(|e| capture_err("suggest_commit_message", e))?;
-    let file_list: Vec<String> = status.files.iter().map(|f| f.path.clone()).collect();
-
-    let message = summarize::generate_commit_message(&status.diff, &file_list, Some(&app))
+pub async fn generate_commit_message(app: AppHandle) -> Result<String, String> {
+    crate::summarize::pipelines::commit_message::generate(&app)
         .await
-        .map_err(|e| capture_err("suggest_commit_message", e))?;
-
-    Ok(message)
+        .map_err(|e| capture_err("generate_commit_message", e))
 }
+
 
 // =============================================================================
 // UI Preference Commands

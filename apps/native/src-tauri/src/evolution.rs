@@ -16,7 +16,7 @@ use tauri::AppHandle;
 use crate::{
     db,
     evolve::{self, EvolutionState},
-    git, store, summarize,
+    git, legacy_summarize, store,
     types::{emit_evolve_event, slugify, EvolveEvent, SummaryItem, SummaryResponse},
 };
 
@@ -250,7 +250,7 @@ pub async fn evolve_and_commit(
     let file_list: Vec<String> = status.files.iter().map(|f| f.path.clone()).collect();
 
     let (change_summary, commit_message) =
-        match summarize::summarize_for_preview(&status.diff, &file_list, Some(app)).await {
+        match legacy_summarize::summarize_for_preview(&status.diff, &file_list, Some(app)).await {
             Ok(v) => v,
             Err(e) => {
                 return Err(EvolutionFailureResult::from_evolution(

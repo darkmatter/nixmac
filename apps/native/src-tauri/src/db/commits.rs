@@ -4,8 +4,7 @@ use anyhow::Result;
 use rusqlite::Connection;
 use std::path::Path;
 
-/// Insert a commit into the database if no commit with the same hash exists.
-/// Returns the commit's DB id (existing or newly inserted).
+/// Insert a commit into the database, returns id
 pub fn upsert_commit(
     db_path: &Path,
     hash: &str,
@@ -29,6 +28,28 @@ pub fn upsert_commit(
     )?;
 
     Ok(conn.last_insert_rowid())
+}
+
+/// Passes through `existing` if `Some`; otherwise resolves HEAD from git and upserts it.
+pub fn store_head_commit(
+    db_path: &Path,
+    config_dir: &str,
+    existing: Option<i64>,
+) -> Result<Option<i64>> {
+    if let Some(id) = existing {
+        return Ok(Some(id));
+    }
+    let Some(hash) = crate::git::get_ref_sha(config_dir, "HEAD") else {
+        return Ok(None);
+    };
+    let Some(tree_hash) = crate::git::get_ref_sha(config_dir, "HEAD^{tree}") else {
+        return Ok(None);
+    };
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64;
+    Ok(Some(upsert_commit(db_path, &hash, &tree_hash, None, now)?))
 }
 
 /// Returns the full commit row for a given hash, or `None` if not in the DB.

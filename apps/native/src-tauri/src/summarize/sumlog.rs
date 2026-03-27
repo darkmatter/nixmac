@@ -1,0 +1,279 @@
+//! Centralized debug logging for summarize pipelines.
+//!
+//! Toggle each pipeline independently. All output is JSON, wrapped in a
+//! box-drawing header so it is easy to spot and grep in noisy logs.
+//!
+//!   TURN SWITCHES ON/OFF HERE ↓
+
+// ── Per-pipeline verbosity switches ──────────────────────────────────────────
+pub const FIND_EXISTING: bool = false;
+pub const GROUP_EXISTING: bool = false;
+pub const SIMPLIFY_GROUP: bool = false;
+pub const FRESH_CHANGESET: bool = false;
+pub const EVOLVED_CHANGESET: bool = false;
+
+// ── Imports ───────────────────────────────────────────────────────────────────
+
+use crate::query_return_types::{SemanticChangeMap, SummarizedChangeSet};
+use crate::sqlite_types::Change;
+use crate::summarize::assignments::Assignments;
+use crate::summarize::model_output_types::{RawHunkPlacement, RawNewMapEntry};
+
+// ── Shared primitives ─────────────────────────────────────────────────────────
+
+/// Logs a JSON-serializable value wrapped in a labelled box-drawing header.
+/// `pipeline` — e.g. `"FIND_EXISTING"`, `step` — e.g. `"result"`.
+fn emit_json(pipeline: &str, step: &str, value: &(impl serde::Serialize + ?Sized)) {
+    let label = format!("{} — {}", pipeline, step);
+    log::warn!("╔══ {} ══╗", label);
+    match serde_json::to_string_pretty(value) {
+        Ok(json) => log::info!("{}", json),
+        Err(e) => log::warn!("  (serialization failed: {})", e),
+    }
+    log::warn!("╚══ {} ══╝", label);
+}
+
+/// Logs a raw text block (prompts, etc.) wrapped in a labelled header.
+fn emit_text(pipeline: &str, step: &str, text: &str) {
+    let label = format!("{} — {}", pipeline, step);
+    log::warn!("╔══ {} ══╗", label);
+    log::info!("{}", text);
+    log::warn!("╚══ {} ══╝", label);
+}
+
+// ── find_existing ─────────────────────────────────────────────────────────────
+
+pub enum FindPath<'a> {
+    CommitPair { head_hash: &'a str, parent_hash: &'a str, commit_id: i64, parent_id: i64 },
+    DirtyHead { head_hash: &'a str, commit_id: i64, hashes: &'a [String] },
+}
+
+pub fn find_log_path(path: &FindPath) {
+    if !FIND_EXISTING {
+        return;
+    }
+    match path {
+        FindPath::CommitPair { head_hash, parent_hash, commit_id, parent_id } => emit_json(
+            "FIND_EXISTING",
+            "path",
+            &serde_json::json!({
+                "kind": "commit_pair",
+                "head_hash": head_hash,
+                "parent_hash": parent_hash,
+                "commit_id": commit_id,
+                "parent_id": parent_id,
+            }),
+        ),
+        FindPath::DirtyHead { head_hash, commit_id, hashes } => emit_json(
+            "FIND_EXISTING",
+            "path",
+            &serde_json::json!({
+                "kind": "dirty_head",
+                "head_hash": head_hash,
+                "commit_id": commit_id,
+                "hashes": hashes,
+            }),
+        ),
+    }
+}
+
+pub fn find_log_result(result: &[SummarizedChangeSet]) {
+    if !FIND_EXISTING {
+        return;
+    }
+    let change_sets = result
+        .iter()
+        .map(|cs| {
+            serde_json::json!({
+                "change_set_id": cs.change_set.id,
+                "commit_id": cs.change_set.commit_id,
+                "base_commit_id": cs.change_set.base_commit_id,
+                "commit_message": cs.change_set.commit_message,
+                "generated_message": cs.change_set.generated_commit_message,
+                "changes": cs.changes.len(),
+                "missed_hashes": cs.missed_hashes.len(),
+            })
+        })
+        .collect::<Vec<_>>();
+    emit_json(
+        "FIND_EXISTING",
+        "result",
+        &serde_json::json!({ "count": result.len(), "change_sets": change_sets }),
+    );
+}
+
+// ── group_existing ────────────────────────────────────────────────────────────
+
+pub fn group_log_result(map: &SemanticChangeMap) {
+    if !GROUP_EXISTING {
+        return;
+    }
+    let groups = map
+        .groups
+        .iter()
+        .map(|g| {
+            serde_json::json!({
+                "id": g.summary.id,
+                "title": g.summary.title,
+                "description": g.summary.description,
+                "changes": g.changes.iter().map(|c| serde_json::json!({
+                    "hash": &c.hash[..8.min(c.hash.len())],
+                    "filename": c.filename,
+                    "title": c.title,
+                })).collect::<Vec<_>>(),
+            })
+        })
+        .collect::<Vec<_>>();
+    let singles = map
+        .singles
+        .iter()
+        .map(|c| {
+            serde_json::json!({
+                "hash": &c.hash[..8.min(c.hash.len())],
+                "filename": c.filename,
+                "title": c.title,
+            })
+        })
+        .collect::<Vec<_>>();
+    emit_json(
+        "GROUP_EXISTING",
+        "result",
+        &serde_json::json!({
+            "groups": groups,
+            "singles": singles,
+            "missed_hashes": map.missed_hashes,
+        }),
+    );
+}
+
+// ── simplify_grouped ──────────────────────────────────────────────────────────
+
+pub fn simplify_log_result(map: &(impl serde::Serialize + ?Sized)) {
+    if !SIMPLIFY_GROUP {
+        return;
+    }
+    emit_json("SIMPLIFY_GROUP", "result", map);
+}
+
+// ── new_changeset pipeline ────────────────────────────────────────────────────
+
+pub fn new_log_changes(changes: &[Change]) {
+    if !FRESH_CHANGESET {
+        return;
+    }
+    let value = changes
+        .iter()
+        .map(|c| {
+            serde_json::json!({
+                "hash": &c.hash[..8.min(c.hash.len())],
+                "filename": c.filename,
+                "line_count": c.line_count,
+            })
+        })
+        .collect::<Vec<_>>();
+    emit_json("FRESH_CHANGESET", "input changes", &value);
+}
+
+pub fn new_log_prompt(prompt: &str) {
+    if !FRESH_CHANGESET {
+        return;
+    }
+    emit_text("FRESH_CHANGESET", "map prompt", prompt);
+}
+
+pub fn new_log_map_output(entries: &[RawNewMapEntry]) {
+    if !FRESH_CHANGESET {
+        return;
+    }
+    emit_json("FRESH_CHANGESET", "map output", entries);
+}
+
+pub fn new_log_assignments(assignments: &Assignments) {
+    if !FRESH_CHANGESET {
+        return;
+    }
+    emit_json("FRESH_CHANGESET", "assignments", assignments);
+}
+
+// ── grouped_changeset pipeline ────────────────────────────────────────────────
+
+pub fn grouped_log_semantic_map(map: &SemanticChangeMap) {
+    if !EVOLVED_CHANGESET {
+        return;
+    }
+    // Omit diffs — they are large and redundant at this stage.
+    let groups = map
+        .groups
+        .iter()
+        .map(|g| {
+            serde_json::json!({
+                "id": g.summary.id,
+                "title": g.summary.title,
+                "description": g.summary.description,
+                "changes": g.changes.iter().map(|c| serde_json::json!({
+                    "hash": &c.hash[..8.min(c.hash.len())],
+                    "filename": c.filename,
+                    "title": c.title,
+                })).collect::<Vec<_>>(),
+            })
+        })
+        .collect::<Vec<_>>();
+    let singles = map
+        .singles
+        .iter()
+        .map(|c| {
+            serde_json::json!({
+                "hash": &c.hash[..8.min(c.hash.len())],
+                "filename": c.filename,
+                "title": c.title,
+            })
+        })
+        .collect::<Vec<_>>();
+    emit_json(
+        "EVOLVED_CHANGESET",
+        "semantic map",
+        &serde_json::json!({
+            "groups": groups,
+            "singles": singles,
+            "missed_hashes": map.missed_hashes,
+        }),
+    );
+}
+
+pub fn grouped_log_missed_changes(missed: &[Change]) {
+    if !EVOLVED_CHANGESET {
+        return;
+    }
+    let value = missed
+        .iter()
+        .map(|c| {
+            serde_json::json!({
+                "hash": c.hash,
+                "filename": c.filename,
+                "line_count": c.line_count,
+            })
+        })
+        .collect::<Vec<_>>();
+    emit_json("EVOLVED_CHANGESET", "missed changes", &value);
+}
+
+pub fn grouped_log_placement_prompt(prompt: &str) {
+    if !EVOLVED_CHANGESET {
+        return;
+    }
+    emit_text("EVOLVED_CHANGESET", "placement prompt", prompt);
+}
+
+pub fn grouped_log_placement_output(placements: &[RawHunkPlacement]) {
+    if !EVOLVED_CHANGESET {
+        return;
+    }
+    emit_json("EVOLVED_CHANGESET", "placement output", placements);
+}
+
+pub fn grouped_log_assignments(assignments: &Assignments) {
+    if !EVOLVED_CHANGESET {
+        return;
+    }
+    emit_json("EVOLVED_CHANGESET", "assignments", assignments);
+}
