@@ -1,6 +1,6 @@
 use super::{ChatCompletionProvider, TokenUsage};
 use crate::provider_errors::{classify_openai_error, friendly_provider_error};
-use anyhow::{Context, Result};
+use anyhow::Result;
 use async_openai::{
     config::OpenAIConfig,
     error::OpenAIError,
