@@ -31,6 +31,7 @@
       self,
       nix-darwin,
       nixpkgs,
+      # home-manager,
     }:
     let
       configuration =
@@ -77,7 +78,10 @@
       darwinConfigurations."HOSTNAME_PLACEHOLDER" = nix-darwin.lib.darwinSystem {
         modules = [
           configuration
+          # home-manager.darwinModules.home-manager
           ./modules/darwin/fonts.nix
+          ./modules/darwin/defaults.nix
+          ./modules/darwin/home.nix
           ./modules/darwin/homebrew.nix
           ./modules/darwin/environment.nix
           ./modules/darwin/networking.nix

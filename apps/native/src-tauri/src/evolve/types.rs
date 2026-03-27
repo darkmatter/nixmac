@@ -28,6 +28,34 @@ pub struct FileEdit {
     pub replace: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum FileEditAction {
+    /// Generic add to an attribute path: e.g. { path: "environment.systemPackages", values: ["ripgrep"] }
+    Add { path: String, values: Vec<String> },
+    /// Generic remove from an attribute path
+    Remove { path: String, values: Vec<String> },
+    /// Set an attribute path to a scalar JSON value (bool/string/number/null)
+    Set {
+        path: String,
+        value: serde_json::Value,
+    },
+    /// Create or update an attribute set at a given path, setting multiple scalar key-value pairs.
+    /// For missing paths a new attrset assignment is inserted; for existing ones the named keys are
+    /// updated in-place (or appended) without disturbing the rest of the block.
+    SetAttrs {
+        path: String,
+        attrs: serde_json::Map<String, serde_json::Value>,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SemanticFileEdit {
+    pub path: String, // the nix file being edited
+    pub action: FileEditAction,
+}
+
 /// A single thinking entry from the agent's reasoning process
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
