@@ -83,6 +83,7 @@ coverage
 .cache
 tmp
 temp
+untracked
 
 # START Ruler Generated Files
 /.codex/config.json

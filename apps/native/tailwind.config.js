@@ -52,7 +52,26 @@ module.exports = {
         },
       },
       screens: {
-      'xs': "512px",
+        'xs': "512px",
+      },
+      keyframes: {
+        "collapsible-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-collapsible-content-height)" },
+        },
+        "collapsible-up": {
+          from: { height: "var(--radix-collapsible-content-height)" },
+          to: { height: "0" },
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
+      },
+      animation: {
+        "collapsible-down": "collapsible-down 0.15s ease-out",
+        "collapsible-up": "collapsible-up 0.15s ease-out",
+        shimmer: "shimmer 4s linear infinite",
       },
     },
   },
