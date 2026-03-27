@@ -22,10 +22,9 @@ export function useWatcher() {
         const store = useWidgetStore.getState();
         if (!store.isProcessing && !store.isGenerating) {
           store.setGitStatus(event.payload.gitStatus);
-          store.setSummaryAvailable(event.payload.summary !== null);
-          if (event.payload.summary) {
-            store.setSummary(event.payload.summary);
-          }
+          store.setChangeMap(event.payload.changeMap);
+          const map = event.payload.changeMap;
+          store.setSummaryAvailable(map.groups.length > 0 || map.singles.length > 0);
         }
       }
     );

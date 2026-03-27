@@ -64,7 +64,7 @@ export function AnimatedTabsTrigger({
       value={value}
       onClick={() => ctx?.setActiveValue(value)}
       className={cn(
-        "relative px-3 py-1 text-xs data-[state=active]:bg-transparent data-[state=active]:shadow-none",
+        "relative px-3 py-1 text-xs data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=inactive]:hover:text-foreground",
         className
       )}
     >
