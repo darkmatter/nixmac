@@ -250,10 +250,9 @@ const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 const DEFAULT_MAX_BUILD_ATTEMPTS: usize = 5;
 
-// Maximum number of iterations allowed before we force an edit or build check
-// to ensure the agent is making progress and we have enough allowable iterations
-// at the end to finalize an edit.
-const MAX_ITERATIONS_BEFORE_EDIT: usize = 15;
+// Percentage of max_iterations after which we require at least one edit/build_check.
+// Example: with max_iterations=50 and this set to 60, threshold is 30 iterations.
+const MAX_ITERATIONS_BEFORE_EDIT_PERCENT: usize = 60;
 
 // Applied separately to stdout and stderr. So when thinking about tokens,
 // the effective output limit could be up to double this if both are long.
@@ -450,11 +449,18 @@ pub async fn generate_evolution(
 
     // Read configurable limits from store
     let max_iterations = store::get_max_iterations(app).unwrap_or(store::DEFAULT_MAX_ITERATIONS);
+    let max_iterations_before_edit = std::cmp::max(
+        1,
+        (max_iterations * MAX_ITERATIONS_BEFORE_EDIT_PERCENT) / 100,
+    );
     let max_build_attempts =
         store::get_max_build_attempts(app).unwrap_or(DEFAULT_MAX_BUILD_ATTEMPTS);
     info!(
-        "Limits: max_iterations={}, max_build_attempts={}",
-        max_iterations, max_build_attempts
+        "Limits: max_iterations={}, max_iterations_before_edit={} ({}%), max_build_attempts={}",
+        max_iterations,
+        max_iterations_before_edit,
+        MAX_ITERATIONS_BEFORE_EDIT_PERCENT,
+        max_build_attempts
     );
 
     let tools = create_tools();
@@ -896,17 +902,17 @@ Do not invent tool names and do not place tool invocations in assistant content.
         }
 
         // Safety limits
-        if iteration == MAX_ITERATIONS_BEFORE_EDIT && !made_edit_or_build_check {
+        if iteration == max_iterations_before_edit && !made_edit_or_build_check {
             warn!(
                 "⚠️ No edit or build_check by iteration {} - agent not making progress",
-                MAX_ITERATIONS_BEFORE_EDIT
+                max_iterations_before_edit
             );
             evolution.state = EvolutionState::Failed;
             let message = format!(
                 "I've analyzed your configuration for {} iterations but haven't started making concrete changes yet. \
 This suggests I'm having difficulty understanding what modifications you'd like. \
 Could you provide more specific guidance on what aspects of your configuration need adjustment?",
-                MAX_ITERATIONS_BEFORE_EDIT
+                max_iterations_before_edit
             );
             emit_evolve_event(
                 app,
