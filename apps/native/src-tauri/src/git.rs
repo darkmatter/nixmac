@@ -327,19 +327,23 @@ pub fn get_last_built_commit_sha(dir: &str) -> Option<String> {
     }
 }
 
-/// Gets the SHA of the current HEAD commit.
-fn get_head_sha(dir: &str) -> Option<String> {
+/// Gets the SHA of any ref (branch name, tag, or symbolic ref like HEAD).
+pub fn get_ref_sha(dir: &str, ref_name: &str) -> Option<String> {
     let output = git_command()
-        .args(["rev-parse", "HEAD"])
+        .args(["rev-parse", ref_name])
         .current_dir(dir)
         .output()
         .ok()?;
-
     if output.status.success() {
         Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
     } else {
         None
     }
+}
+
+/// Gets the SHA of the current HEAD commit.
+fn get_head_sha(dir: &str) -> Option<String> {
+    get_ref_sha(dir, "HEAD")
 }
 
 /// Checks if HEAD has the nixmac-last-build tag.

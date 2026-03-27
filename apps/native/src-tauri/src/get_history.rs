@@ -35,7 +35,7 @@ pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::ty
         });
 
         let change_set = db_commit.as_ref().zip(parent_db.as_ref()).and_then(|(commit, parent_db)| {
-            crate::find_change_summaries::by_commit_pair(&db_path, commit.id, parent_db.id)
+            crate::summarize::find_existing::by_commit_pair(&db_path, commit.id, parent_db.id)
                 .ok()
                 .flatten()
         });

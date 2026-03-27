@@ -6,6 +6,8 @@ pub mod operations;
 mod schema;
 pub mod squashed_commits;
 pub mod summaries;
+pub mod store_evolved_changeset;
+pub mod store_new_changeset;
 
 use anyhow::Result;
 use std::path::PathBuf;

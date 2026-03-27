@@ -40,8 +40,10 @@ fn main() {
     let mut qrt_collection = TypeCollection::default();
     let qrt_types = qrt_collection
         .register::<query_return_types::SummarizedChange>()
-        .register::<query_return_types::SummarizedChanges>()
-        .register::<query_return_types::FoundChanges>();
+        .register::<query_return_types::SummarizedChangeSet>()
+        .register::<query_return_types::ChangeWithSummary>()
+        .register::<query_return_types::SemanticChangeGroup>()
+        .register::<query_return_types::SemanticChangeMap>();
 
     let qrt_output_path = "../src/types/queries.ts";
 

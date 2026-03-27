@@ -15,6 +15,7 @@ const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 
 /// Token consumption reported by a provider for a single completion call.
 #[derive(Debug, Default, Clone)]
+#[allow(dead_code)]
 pub struct TokenUsage {
     pub input: Option<u32>,
     pub output: Option<u32>,

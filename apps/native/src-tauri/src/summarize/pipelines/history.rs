@@ -1,7 +1,9 @@
+//! Pipeline entry point for generating summaries over a historical commit range.
+
 use anyhow::Result;
 use tauri::{AppHandle, Runtime};
 
-pub async fn generate_history_from<R: Runtime>(
+pub async fn from_commit_times_number<R: Runtime>(
     app: &AppHandle<R>,
     commit_hash: &str,
     number: usize,
@@ -51,41 +53,27 @@ pub async fn generate_history_from<R: Runtime>(
         }
 
         let diff = crate::git::commit_diff(&config_dir, &commits[i + 1].hash, &commits[i].hash)?;
-
-        let all_changes = crate::changes_from_diff::changes_from_diff(&diff, commits[i].created_at, true);
-
-        let (sensitive_or_opaque, changes): (Vec<_>, Vec<_>) = all_changes
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64;
+        let all_changes = crate::changes_from_diff::changes_from_diff(&diff, now, true);
+        let (_, changes): (Vec<_>, Vec<_>) = all_changes
             .into_iter()
             .partition(crate::changes_from_diff::is_sensitive_or_opaque);
 
-        let result = match crate::summarize_pipeline::run(
+        if let Err(e) = super::fresh_changeset::analyze(
             changes,
-            sensitive_or_opaque,
+            app,
+            &db_path,
+            Some(commit_id),
+            Some(base_commit_id),
             commits[i].message.as_deref(),
-            Some(app),
         )
         .await
         {
-            Ok(r) => r,
-            Err(e) => {
-                log::error!(
-                    "[generate_history_from] pipeline failed for {}: {}",
-                    commits[i].hash,
-                    e
-                );
-                continue;
-            }
-        };
-
-        if let Err(e) = crate::store_changeset::store_change_set(
-            &db_path,
-            Some(commit_id),
-            base_commit_id,
-            commits[i].message.as_deref(),
-            &result,
-        ) {
             log::error!(
-                "[generate_history_from] store_change_set failed for {}: {}",
+                "[history] pipeline failed for {}: {}",
                 commits[i].hash,
                 e
             );

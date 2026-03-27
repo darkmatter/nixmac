@@ -6,20 +6,19 @@
 use anyhow::Result;
 use rusqlite::{Connection, Transaction};
 
-use crate::query_return_types::{SummarizedChanges, SummarizedChange};
-use crate::sqlite_types::{Change, ChangeSet, ChangeSummary};
+use crate::query_return_types::{SummarizedChange, SummarizedChangeSet};
+use crate::sqlite_types::{Change, ChangeSet, ChangeSummary, QueuedSummary};
 
 pub fn insert_change_summary(
     tx: &Transaction,
     title: &str,
     description: &str,
-    group_summary_for: Option<&str>,
+    status: &str,
     created_at: i64,
 ) -> Result<i64> {
     tx.execute(
-        "INSERT INTO change_summaries (title, description, group_summary_for, created_at) \
-         VALUES (?1, ?2, ?3, ?4)",
-        rusqlite::params![title, description, group_summary_for, created_at],
+        "INSERT INTO change_summaries (title, description, status, created_at) VALUES (?1, ?2, ?3, ?4)",
+        rusqlite::params![title, description, status, created_at],
     )?;
     Ok(tx.last_insert_rowid())
 }
@@ -27,25 +26,25 @@ pub fn insert_change_summary(
 pub fn upsert_change(
     tx: &Transaction,
     change: &Change,
-    group_summary_id: Option<i64>,
     own_summary_id: Option<i64>,
 ) -> Result<()> {
     tx.execute(
         "INSERT OR IGNORE INTO changes \
-         (hash, filename, diff, line_count, created_at, group_summary_id, own_summary_id) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+         (hash, filename, diff, line_count, created_at, own_summary_id) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         rusqlite::params![
             &change.hash, &change.filename, &change.diff, change.line_count, change.created_at,
-            group_summary_id, own_summary_id,
+            own_summary_id,
         ],
     )?;
     tx.execute(
-        "UPDATE changes SET group_summary_id = ?1, own_summary_id = ?2 WHERE hash = ?3",
-        rusqlite::params![group_summary_id, own_summary_id, &change.hash],
+        "UPDATE changes SET own_summary_id = ?1 WHERE hash = ?2",
+        rusqlite::params![own_summary_id, &change.hash],
     )?;
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn insert_change_or_ignore(
     tx: &Transaction,
     change: &Change,
@@ -53,12 +52,24 @@ pub fn insert_change_or_ignore(
 ) -> Result<()> {
     tx.execute(
         "INSERT OR IGNORE INTO changes \
-         (hash, filename, diff, line_count, created_at, group_summary_id, own_summary_id) \
-         VALUES (?1, ?2, ?3, ?4, ?5, NULL, ?6)",
+         (hash, filename, diff, line_count, created_at, own_summary_id) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         rusqlite::params![
             &change.hash, &change.filename, &change.diff, change.line_count, change.created_at,
             own_summary_id,
         ],
+    )?;
+    Ok(())
+}
+
+pub fn link_change_to_group_summary(
+    tx: &Transaction,
+    change_id: i64,
+    change_summary_id: i64,
+) -> Result<()> {
+    tx.execute(
+        "INSERT INTO group_summaries (change_id, change_summary_id) VALUES (?1, ?2)",
+        rusqlite::params![change_id, change_summary_id],
     )?;
     Ok(())
 }
@@ -98,6 +109,22 @@ pub fn link_change_to_set(tx: &Transaction, change_set_id: i64, change_id: i64) 
     Ok(())
 }
 
+pub fn insert_queued_summary(
+    tx: &Transaction,
+    prompt: &str,
+    summary_type: &str,
+    group_summary_id: Option<i64>,
+    hash_own_summary_id_pairs: Option<&str>,
+) -> Result<i64> {
+    tx.execute(
+        "INSERT INTO queued_summaries \
+         (status, prompt, type, group_summary_id, hash_own_summary_id_pairs) \
+         VALUES ('QUEUED', ?1, ?2, ?3, ?4)",
+        rusqlite::params![prompt, summary_type, group_summary_id, hash_own_summary_id_pairs],
+    )?;
+    Ok(tx.last_insert_rowid())
+}
+
 fn map_summarized_change(row: &rusqlite::Row) -> rusqlite::Result<SummarizedChange> {
     let change = Change {
         id: row.get(0)?,
@@ -106,27 +133,26 @@ fn map_summarized_change(row: &rusqlite::Row) -> rusqlite::Result<SummarizedChan
         diff: row.get(3)?,
         line_count: row.get(4)?,
         created_at: row.get(5)?,
-        group_summary_id: row.get(6)?,
-        own_summary_id: row.get(7)?,
+        own_summary_id: row.get(6)?,
     };
-    let own_summary = if row.get::<_, Option<i64>>(8)?.is_some() {
+    let own_summary = if row.get::<_, Option<i64>>(7)?.is_some() {
         Some(ChangeSummary {
-            id: row.get(8)?,
-            title: row.get(9)?,
-            description: row.get(10)?,
-            group_summary_for: row.get(11)?,
-            created_at: row.get(12)?,
+            id: row.get(7)?,
+            title: row.get(8)?,
+            description: row.get(9)?,
+            status: row.get(10)?,
+            created_at: row.get(11)?,
         })
     } else {
         None
     };
-    let group_summary = if row.get::<_, Option<i64>>(13)?.is_some() {
+    let group_summary = if row.get::<_, Option<i64>>(12)?.is_some() {
         Some(ChangeSummary {
-            id: row.get(13)?,
-            title: row.get(14)?,
-            description: row.get(15)?,
-            group_summary_for: row.get(16)?,
-            created_at: row.get(17)?,
+            id: row.get(12)?,
+            title: row.get(13)?,
+            description: row.get(14)?,
+            status: row.get(15)?,
+            created_at: row.get(16)?,
         })
     } else {
         None
@@ -135,15 +161,15 @@ fn map_summarized_change(row: &rusqlite::Row) -> rusqlite::Result<SummarizedChan
 }
 
 const CHANGE_SELECT: &str = "SELECT c.id, c.hash, c.filename, c.diff, c.line_count, c.created_at,
-        c.group_summary_id, c.own_summary_id,
-        os.id, os.title, os.description, os.group_summary_for, os.created_at,
-        gs.id, gs.title, gs.description, gs.group_summary_for, gs.created_at";
+        c.own_summary_id,
+        os.id, os.title, os.description, os.status, os.created_at,
+        gs.id, gs.title, gs.description, gs.status, gs.created_at";
 
 pub fn query_change_set_for_commit_pair(
     conn: &Connection,
     commit_id: i64,
     base_commit_id: i64,
-) -> Result<Option<SummarizedChanges>> {
+) -> Result<Option<SummarizedChangeSet>> {
     let cs_result = conn.query_row(
         "SELECT id, commit_id, base_commit_id, commit_message, generated_commit_message, created_at
          FROM change_sets WHERE commit_id = ?1 AND base_commit_id = ?2
@@ -168,23 +194,73 @@ pub fn query_change_set_for_commit_pair(
     };
 
     let change_set_id = change_set.id;
+    // Subquery picks at most one group summary per change: only summaries whose
+    // entire member set is present in this change_set (no orphaned members).
     let mut stmt = conn.prepare(&format!(
         "{CHANGE_SELECT}
          FROM set_changes sc
          JOIN changes c ON c.id = sc.change_id
          LEFT JOIN change_summaries os ON os.id = c.own_summary_id
-         LEFT JOIN change_summaries gs ON gs.id = c.group_summary_id
+         LEFT JOIN (
+             SELECT g.change_id, MAX(g.change_summary_id) AS change_summary_id
+             FROM group_summaries g
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM group_summaries g2
+                 WHERE g2.change_summary_id = g.change_summary_id
+                   AND g2.change_id NOT IN (
+                       SELECT change_id FROM set_changes WHERE change_set_id = ?1
+                   )
+             )
+             GROUP BY g.change_id
+         ) best_gs ON best_gs.change_id = c.id
+         LEFT JOIN change_summaries gs ON gs.id = best_gs.change_summary_id
          WHERE sc.change_set_id = ?1"
     ))?;
     let changes: Vec<SummarizedChange> = stmt
         .query_map([change_set_id], map_summarized_change)?
         .collect::<rusqlite::Result<_>>()?;
 
-    Ok(Some(SummarizedChanges { change_set, changes }))
+    Ok(Some(SummarizedChangeSet { change_set, changes, missed_hashes: vec![] }))
 }
 
-#[allow(dead_code)]
-pub fn query_changes_by_hashes_for_base(
+pub fn query_change_set_for_base_with_hashes(
+    conn: &Connection,
+    base_commit_id: i64,
+    hashes: &[String],
+) -> Result<Option<SummarizedChangeSet>> {
+    let cs_result: rusqlite::Result<ChangeSet> = conn.query_row(
+        "SELECT id, commit_id, base_commit_id, commit_message, generated_commit_message, \
+         created_at FROM change_sets WHERE base_commit_id = ?1 \
+         ORDER BY created_at DESC LIMIT 1",
+        [base_commit_id],
+        |row| {
+            Ok(ChangeSet {
+                id: row.get(0)?,
+                commit_id: row.get(1)?,
+                base_commit_id: row.get(2)?,
+                commit_message: row.get(3)?,
+                generated_commit_message: row.get(4)?,
+                created_at: row.get(5)?,
+            })
+        },
+    );
+
+    let change_set = match cs_result {
+        Ok(cs) => cs,
+        Err(rusqlite::Error::QueryReturnedNoRows) => return Ok(None),
+        Err(e) => return Err(e.into()),
+    };
+
+    let matched = query_changes_by_hashes_for_base(conn, base_commit_id, hashes)?;
+    let matched_set: std::collections::HashSet<&str> =
+        matched.iter().map(|sc| sc.change.hash.as_str()).collect();
+    let missed_hashes =
+        hashes.iter().filter(|h| !matched_set.contains(h.as_str())).cloned().collect();
+
+    Ok(Some(SummarizedChangeSet { change_set, changes: matched, missed_hashes }))
+}
+
+fn query_changes_by_hashes_for_base(
     conn: &Connection,
     base_commit_id: i64,
     hashes: &[String],
@@ -197,13 +273,27 @@ pub fn query_changes_by_hashes_for_base(
         .map(|i| format!("?{i}"))
         .collect::<Vec<_>>()
         .join(", ");
+    // {placeholders} is reused in both IN clauses; rusqlite numbered params (?2, ?3, ...)
+    // are bound once and referenced twice, so no extra entries in the params vec are needed.
     let sql = format!(
         "{CHANGE_SELECT}
          FROM changes c
          JOIN set_changes sc ON sc.change_id = c.id
          JOIN change_sets cs ON cs.id = sc.change_set_id
          LEFT JOIN change_summaries os ON os.id = c.own_summary_id
-         LEFT JOIN change_summaries gs ON gs.id = c.group_summary_id
+         LEFT JOIN (
+             SELECT g.change_id, MAX(g.change_summary_id) AS change_summary_id
+             FROM group_summaries g
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM group_summaries g2
+                 WHERE g2.change_summary_id = g.change_summary_id
+                   AND g2.change_id NOT IN (
+                       SELECT id FROM changes WHERE hash IN ({placeholders})
+                   )
+             )
+             GROUP BY g.change_id
+         ) best_gs ON best_gs.change_id = c.id
+         LEFT JOIN change_summaries gs ON gs.id = best_gs.change_summary_id
          WHERE cs.base_commit_id = ?1 AND c.hash IN ({placeholders})"
     );
 
@@ -216,4 +306,108 @@ pub fn query_changes_by_hashes_for_base(
         .query_map(rusqlite::params_from_iter(params.iter()), map_summarized_change)?
         .collect::<rusqlite::Result<Vec<_>>>()?;
     Ok(result)
+}
+
+// ── Queue-processing helpers ───────────────────────────────────────────────────
+
+fn map_queued_summary(row: &rusqlite::Row) -> rusqlite::Result<QueuedSummary> {
+    Ok(QueuedSummary {
+        id: row.get(0)?,
+        status: row.get(1)?,
+        attempted_count: row.get(2)?,
+        prompt: row.get(3)?,
+        model_response: row.get(4)?,
+        group_summary_id: row.get(5)?,
+        hash_own_summary_id_pairs: row.get(6)?,
+        summary_type: row.get(7)?,
+    })
+}
+
+const QUEUED_SUMMARY_SELECT: &str =
+    "SELECT id, status, attempted_count, prompt, model_response, \
+     group_summary_id, hash_own_summary_id_pairs, type FROM queued_summaries";
+
+/// Fetch specific QUEUED rows by ID, preserving the order of the `ids` slice.
+pub fn fetch_queued_summaries_by_ids(
+    conn: &Connection,
+    ids: &[i64],
+) -> Result<Vec<QueuedSummary>> {
+    if ids.is_empty() {
+        return Ok(vec![]);
+    }
+    let placeholders = (1..=ids.len()).map(|i| format!("?{i}")).collect::<Vec<_>>().join(", ");
+    let sql = format!(
+        "{QUEUED_SUMMARY_SELECT} WHERE status = 'QUEUED' AND id IN ({placeholders})"
+    );
+    use rusqlite::types::ToSql;
+    let params: Vec<Box<dyn ToSql>> =
+        ids.iter().map(|&id| Box::new(id) as Box<dyn ToSql>).collect();
+    let mut stmt = conn.prepare(&sql)?;
+    let mut rows: Vec<QueuedSummary> = stmt
+        .query_map(rusqlite::params_from_iter(params.iter()), map_queued_summary)?
+        .collect::<rusqlite::Result<_>>()?;
+    let id_order: std::collections::HashMap<i64, usize> =
+        ids.iter().enumerate().map(|(i, &id)| (id, i)).collect();
+    rows.sort_by_key(|r| id_order.get(&r.id).copied().unwrap_or(usize::MAX));
+    Ok(rows)
+}
+
+/// Fetch all rows with status = 'QUEUED'.
+pub fn fetch_all_queued_summaries(conn: &Connection) -> Result<Vec<QueuedSummary>> {
+    let sql = format!("{QUEUED_SUMMARY_SELECT} WHERE status = 'QUEUED'");
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt
+        .query_map([], map_queued_summary)?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    Ok(rows)
+}
+
+/// Atomically increment attempted_count.
+pub fn increment_queued_attempts(tx: &Transaction, id: i64) -> Result<()> {
+    tx.execute(
+        "UPDATE queued_summaries SET attempted_count = attempted_count + 1 WHERE id = ?1",
+        [id],
+    )?;
+    Ok(())
+}
+
+/// Mark queued_summary DONE, saving the raw model JSON.
+pub fn mark_queued_done(tx: &Transaction, id: i64, model_response: &str) -> Result<()> {
+    tx.execute(
+        "UPDATE queued_summaries SET status = 'DONE', model_response = ?1 WHERE id = ?2",
+        rusqlite::params![model_response, id],
+    )?;
+    Ok(())
+}
+
+/// Mark queued_summary FAILED.
+pub fn mark_queued_failed(tx: &Transaction, id: i64) -> Result<()> {
+    tx.execute(
+        "UPDATE queued_summaries SET status = 'FAILED' WHERE id = ?1",
+        [id],
+    )?;
+    Ok(())
+}
+
+/// Write title + description into a change_summaries row, set status = 'DONE'.
+pub fn update_change_summary_content(
+    tx: &Transaction,
+    summary_id: i64,
+    title: &str,
+    description: &str,
+) -> Result<()> {
+    tx.execute(
+        "UPDATE change_summaries SET title = ?1, description = ?2, status = 'DONE' WHERE id = ?3",
+        rusqlite::params![title, description, summary_id],
+    )?;
+    Ok(())
+}
+
+/// Set a change_summaries row to status = 'FAILED'.
+pub fn mark_change_summary_failed(tx: &Transaction, summary_id: i64) -> Result<()> {
+    tx.execute(
+        "UPDATE change_summaries SET status = 'FAILED' WHERE id = ?1",
+        [summary_id],
+    )?;
+    Ok(())
 }

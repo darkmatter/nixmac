@@ -12,7 +12,7 @@ use crate::{
     db,
     evolution::{EvolutionResult, EvolutionTelemetry},
     evolve::EvolutionState,
-    find_summary, git, store, summarize,
+    find_summary, git, legacy_summarize, store,
     types::{slugify, GitStatus, SummaryItem, SummaryResponse},
 };
 
@@ -79,7 +79,7 @@ async fn record_uncommitted_built_changes(
     // Generate AI summary from the pre-commit diff.
     let file_list: Vec<String> = status.files.iter().map(|f| f.path.clone()).collect();
     let (change_summary, commit_message) =
-        summarize::summarize_for_preview(&status.diff, &file_list, Some(app))
+        legacy_summarize::summarize_for_preview(&status.diff, &file_list, Some(app))
             .await
             .context("Failed to generate summary")?;
 

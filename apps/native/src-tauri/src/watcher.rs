@@ -4,8 +4,9 @@
 //! Change detection compares current git status against the persisted store cache,
 //! which is kept in sync by both this watcher and the evolution/summarize handlers.
 
-use crate::types::{GitStatus, SummaryResponse};
-use crate::{find_summary, git, store};
+use crate::query_return_types::SemanticChangeMap;
+use crate::types::GitStatus;
+use crate::{db, git, store, summarize};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
@@ -25,8 +26,7 @@ static WATCHER_THREAD: Mutex<Option<std::thread::JoinHandle<()>>> = Mutex::new(N
 #[serde(rename_all = "camelCase")]
 pub struct WatcherEvent {
     pub git_status: GitStatus,
-    /// The relevant summary for this state, or `None` if not available.
-    pub summary: Option<SummaryResponse>,
+    pub change_map: SemanticChangeMap,
 }
 
 /// Starts the git status watcher for the given directory.
@@ -80,13 +80,18 @@ where
                     let current_json = serde_json::to_string(&status).ok();
 
                     if current_json != cached_json {
-                        let summary = find_summary::find_summary(&app_handle).unwrap_or(None);
-                        let _ = store::set_summary_available(&app_handle, summary.is_some());
+                        let change_map = db::get_db_path(&app_handle)
+                            .ok()
+                            .and_then(|db_path| {
+                                summarize::find_existing::for_current_state(&db_path, dir).ok()
+                            })
+                            .map(summarize::group_existing::from_change_sets)
+                            .unwrap_or_default();
                         let _ = app_handle.emit(
                             "git:status-changed",
                             WatcherEvent {
                                 git_status: status.clone(),
-                                summary,
+                                change_map,
                             },
                         );
                         let _ = store::set_cached_git_status(&app_handle, &status);
