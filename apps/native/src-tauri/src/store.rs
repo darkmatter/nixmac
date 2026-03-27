@@ -217,6 +217,30 @@ pub fn set_ollama_api_base_url<R: Runtime>(app: &AppHandle<R>, url: &str) -> Res
     Ok(())
 }
 
+/// Gets the stored vLLM API base URL.
+pub fn get_vllm_api_base_url<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
+    get_string_pref(app, "vllmApiBaseUrl")
+}
+
+pub fn set_vllm_api_base_url<R: Runtime>(app: &AppHandle<R>, url: &str) -> Result<()> {
+    let store = get_store(app)?;
+    store.set("vllmApiBaseUrl", serde_json::json!(url));
+    store.save()?;
+    Ok(())
+}
+
+/// Gets the stored vLLM API key (optional — vllm direct endpoint may not require one).
+pub fn get_vllm_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
+    get_string_pref(app, "vllmApiKey")
+}
+
+pub fn set_vllm_api_key<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<()> {
+    let store = get_store(app)?;
+    store.set("vllmApiKey", serde_json::json!(key));
+    store.save()?;
+    Ok(())
+}
+
 fn get_string_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<String>> {
     let store = get_store(app)?;
     if let Some(val) = store.get(key) {

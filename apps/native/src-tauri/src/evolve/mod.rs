@@ -399,6 +399,21 @@ pub async fn generate_evolution(
             model, base_url
         );
         Arc::new(OllamaProvider::new(base_url, model))
+    } else if provider_type == "vllm" {
+        let model = store_model
+            .or_else(|| std::env::var("EVOLVE_MODEL").ok())
+            .unwrap_or_else(|| "gpt-oss-120b".to_string());
+        let base_url = store::get_vllm_api_base_url(app)
+            .ok()
+            .flatten()
+            .or_else(|| std::env::var("VLLM_API_BASE").ok())
+            .ok_or_else(|| anyhow!("No vLLM base URL configured. Please set it in Settings."))?;
+        let api_key = store::get_vllm_api_key(app)
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "none".to_string());
+        info!("Using vLLM provider | Model: {} | URL: {}", model, base_url);
+        Arc::new(OpenAIProvider::new(api_key, base_url, model))
     } else {
         // Init OpenAI / OpenRouter - try OpenRouter key first, then OpenAI key
         let api_key = store::get_openrouter_api_key(app)

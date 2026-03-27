@@ -124,11 +124,21 @@ export function SettingsDialog() {
     await darwinAPI.models.clearCached("ollama");
   };
 
+  const saveVllmUrl = async (url: string) => {
+    await darwinAPI.ui.setPrefs({ vllmApiBaseUrl: url });
+  };
+
+  const saveVllmKey = async (key: string) => {
+    await darwinAPI.ui.setPrefs({ vllmApiKey: key });
+  };
+
   const form = useForm({
     defaultValues: {
       openrouterApiKey: "",
       openaiApiKey: "",
       ollamaApiBaseUrl: "",
+      vllmApiBaseUrl: "",
+      vllmApiKey: "",
       summaryProvider: "openai",
       summaryModel: "openai/gpt-4o-mini",
       evolveProvider: "openai",
@@ -149,6 +159,8 @@ export function SettingsDialog() {
           form.setFieldValue("openrouterApiKey", prefs.openrouterApiKey ?? "");
           form.setFieldValue("openaiApiKey", prefs.openaiApiKey ?? "");
           form.setFieldValue("ollamaApiBaseUrl", prefs.ollamaApiBaseUrl ?? "");
+          form.setFieldValue("vllmApiBaseUrl", prefs.vllmApiBaseUrl ?? "");
+          form.setFieldValue("vllmApiKey", prefs.vllmApiKey ?? "");
           form.setFieldValue("summaryProvider", prefs.summaryProvider ?? "openai");
           form.setFieldValue("summaryModel", prefs.summaryModel ?? "openai/gpt-4o-mini");
           form.setFieldValue("evolveProvider", prefs.evolveProvider ?? "openai");
@@ -262,19 +274,31 @@ export function SettingsDialog() {
                     {(openaiApiKeyField) => (
                       <form.Field name="ollamaApiBaseUrl">
                         {(ollamaApiBaseUrlField) => (
-                          <ApiKeysTab
-                            openrouterApiKeyField={openrouterApiKeyField}
-                            openrouterKeyStatus={openrouterKeyStatus}
-                            verifyOpenrouterKey={verifyOpenrouterKey}
-                            openrouterTimeoutRef={openrouterTimeoutRef}
-                            openaiApiKeyField={openaiApiKeyField}
-                            openaiKeyStatus={openaiKeyStatus}
-                            verifyOpenaiKey={verifyOpenaiKey}
-                            openaiTimeoutRef={openaiTimeoutRef}
-                            ollamaApiBaseUrlField={ollamaApiBaseUrlField}
-                            onSaveOllamaUrl={saveOllamaUrl}
-                            form={form}
-                          />
+                          <form.Field name="vllmApiBaseUrl">
+                            {(vllmApiBaseUrlField) => (
+                              <form.Field name="vllmApiKey">
+                                {(vllmApiKeyField) => (
+                                  <ApiKeysTab
+                                    openrouterApiKeyField={openrouterApiKeyField}
+                                    openrouterKeyStatus={openrouterKeyStatus}
+                                    verifyOpenrouterKey={verifyOpenrouterKey}
+                                    openrouterTimeoutRef={openrouterTimeoutRef}
+                                    openaiApiKeyField={openaiApiKeyField}
+                                    openaiKeyStatus={openaiKeyStatus}
+                                    verifyOpenaiKey={verifyOpenaiKey}
+                                    openaiTimeoutRef={openaiTimeoutRef}
+                                    ollamaApiBaseUrlField={ollamaApiBaseUrlField}
+                                    onSaveOllamaUrl={saveOllamaUrl}
+                                    vllmApiBaseUrlField={vllmApiBaseUrlField}
+                                    vllmApiKeyField={vllmApiKeyField}
+                                    onSaveVllmUrl={saveVllmUrl}
+                                    onSaveVllmKey={saveVllmKey}
+                                    form={form}
+                                  />
+                                )}
+                              </form.Field>
+                            )}
+                          </form.Field>
                         )}
                       </form.Field>
                     )}

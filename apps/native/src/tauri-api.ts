@@ -38,6 +38,8 @@ export interface DarwinPrefs {
   maxIterations?: number;
   maxBuildAttempts?: number;
   ollamaApiBaseUrl?: string;
+  vllmApiBaseUrl?: string;
+  vllmApiKey?: string;
   sendDiagnostics?: boolean;
   confirmBuild?: boolean;
   confirmClear?: boolean;
