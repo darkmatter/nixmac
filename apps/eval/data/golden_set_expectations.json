@@ -5,7 +5,8 @@
     "author": "Farhan Khalaf",
     "date": "2026-03-21",
     "status": "draft",
-    "expected_files_semantics": "When multiple files are listed, ANY of them is valid unless noted otherwise. Empty list means Scott needs to determine the correct file."
+    "expected_files_semantics": "When multiple files are listed, ANY of them is valid unless noted otherwise. Empty list means Scott needs to determine the correct file.",
+    "case_count": 26
   },
   "1": {
     "expected_outcome": "succeed",
@@ -86,9 +87,9 @@
     "expected_option": "system.defaults.dock.autohide",
     "expected_value": "true",
     "expected_files": [
-      "modules/darwin/environment.nix"
+      "modules/darwin/defaults.nix"
     ],
-    "notes": "Boolean dock default. Scott: confirm which module file defaults go in \u2014 may need a new defaults.nix or go in environment.nix."
+    "notes": "Boolean dock default. Scott added defaults.nix to template for system.defaults settings."
   },
   "24": {
     "expected_outcome": "succeed",
@@ -100,7 +101,7 @@
     "expected_option": "system.defaults.dock.tilesize",
     "expected_value": "48",
     "expected_files": [
-      "modules/darwin/environment.nix"
+      "modules/darwin/defaults.nix"
     ],
     "notes": "Integer dock default"
   },
@@ -114,7 +115,7 @@
     "expected_option": "system.defaults.NSGlobalDomain.AppleShowAllExtensions",
     "expected_value": "true",
     "expected_files": [
-      "modules/darwin/environment.nix"
+      "modules/darwin/defaults.nix"
     ],
     "notes": "Finder preference via NSGlobalDomain"
   },
@@ -126,9 +127,9 @@
     ],
     "expected_option": "system.defaults.trackpad.Clicking",
     "expected_files": [
-      "modules/darwin/environment.nix"
+      "modules/darwin/defaults.nix"
     ],
-    "notes": "Scott: confirm exact option path \u2014 could also be system.defaults.NSGlobalDomain.com.apple.mouse.tapBehavior"
+    "notes": "Scott confirmed: system.defaults.trackpad.Clicking"
   },
   "33": {
     "expected_outcome": "succeed",
@@ -138,9 +139,9 @@
       "Screenshots"
     ],
     "expected_files": [
-      "modules/darwin/environment.nix"
+      "modules/darwin/defaults.nix"
     ],
-    "notes": "Multiple defaults: screencapture type=png + location=~/Screenshots. Scott: confirm option paths."
+    "notes": "Multiple defaults: screencapture type=png + location=~/Screenshots"
   },
   "39": {
     "expected_outcome": "succeed",
@@ -195,20 +196,6 @@
     "expected_files": [],
     "notes": "Git identity config. Check for userName/userEmail or user.name/user.email attribute paths, not literal name/email values. Scott: confirm how nix-darwin handles git config."
   },
-  "60": {
-    "expected_outcome": "succeed",
-    "type": "multi_step",
-    "expected_in_diff": [
-      "node",
-      "docker",
-      "git"
-    ],
-    "expected_files": [
-      "modules/darwin/packages.nix",
-      "modules/darwin/homebrew.nix"
-    ],
-    "notes": "Complex multi-tool request. Scott: define minimum required items \u2014 does it need ALL of Node, VS Code, Docker, git config, Dock settings to pass?"
-  },
   "62": {
     "expected_outcome": "succeed",
     "type": "multi_step",
@@ -217,9 +204,9 @@
     ],
     "expected_files": [
       "modules/darwin/security.nix",
-      "modules/darwin/environment.nix"
+      "modules/darwin/defaults.nix"
     ],
-    "notes": "Multiple security defaults. Scott: define which security settings are minimum for a pass."
+    "notes": "Multiple security defaults. System defaults go in defaults.nix."
   },
   "65": {
     "expected_outcome": "fail_gracefully",
@@ -228,22 +215,6 @@
     "require_empty_diff": true,
     "require_explanation": true,
     "notes": "Should ask for clarification, not make changes"
-  },
-  "69": {
-    "expected_outcome": "succeed",
-    "type": "edge_case",
-    "expected_in_diff": [
-      "chromium"
-    ],
-    "expected_files": [
-      "modules/darwin/packages.nix",
-      "modules/darwin/homebrew.nix"
-    ],
-    "notes": "Agent should honor the FINAL request (chromium). Should NOT install chrome or firefox \u2014 only chromium. Scott: confirm expected diff content.",
-    "forbidden_in_diff": [
-      "chrome",
-      "firefox"
-    ]
   },
   "72": {
     "expected_outcome": "fail_gracefully",

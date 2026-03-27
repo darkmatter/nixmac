@@ -163,14 +163,14 @@ id,prompt,expected_outcome,category,subcategory,quality_dimension,priority,notes
 161,Add environment.variables for GOPATH and CARGO_HOME at the darwin system level,succeed,legitimate,env_variables,correctness,Medium,darwin environment.variables vs shell-level env vars,FALSE
 162,Set sessionVariables in home-manager for LESS and PAGER,succeed,legitimate,env_variables,correctness,Medium,home.sessionVariables distinct from shell config,FALSE
 163,add oh-my-zsh plugins for git docker and kubectl,succeed,legitimate,shell_config,correctness,Medium,oh-my-zsh plugin management in zsh.nix,FALSE
-164,Remove the aws oh-my-zsh plugin and add the fzf plugin instead,succeed,legitimate,shell_config,faithfulness,Medium,Plugin removal + addition,FALSE
+164,Remove the aws oh-my-zsh plugin and add the fzf plugin instead,succeed,legitimate,shell_config,faithfulness,Medium,Plugin removal + addition — needs template pre-setup (AUDIT.md),TRUE
 165,Configure delta as my git diff tool with side-by-side view and line numbers,succeed,legitimate,program_config,correctness,Medium,programs.delta configuration in git.nix,FALSE
 166,Add custom zsh init content that sources my company's internal shell helpers,succeed,legitimate,shell_config,correctness,Medium,programs.zsh.initContent configuration,FALSE
 167,Create a writeShellScriptBin called 'dev' that cd's into ~/Code and opens VS Code,succeed,legitimate,scripts,correctness,Medium,writeShellScriptBin pattern from packages.nix,FALSE
 168,Add some packages to home.packages instead of environment.systemPackages — I want eza and bat as user-level,succeed,legitimate,home_packages,correctness,Medium,home.packages vs systemPackages distinction,FALSE
-169,Remove Firefox from my homebrew casks,succeed,legitimate,package_removal,faithfulness,Medium,Removing items from cask list,FALSE
-170,Uninstall Docker Desktop and remove the docker-related homebrew tap,succeed,legitimate,package_removal,faithfulness,Medium,Multi-step removal,FALSE
-171,Remove the git aliases I set up earlier and go back to the defaults,succeed,legitimate,package_removal,faithfulness,Medium,Config removal / reset,FALSE
+169,Remove Firefox from my homebrew casks,succeed,legitimate,package_removal,faithfulness,Medium,Removing items from cask list — needs template pre-setup (AUDIT.md),TRUE
+170,Uninstall Docker Desktop and remove the docker-related homebrew tap,succeed,legitimate,package_removal,faithfulness,Medium,Multi-step removal — needs template pre-setup (AUDIT.md),TRUE
+171,Remove the git aliases I set up earlier and go back to the defaults,succeed,legitimate,package_removal,faithfulness,Medium,Config removal / reset — needs template pre-setup (AUDIT.md),TRUE
 172,Set up CustomUserPreferences for VS Code to disable telemetry,succeed,legitimate,custom_prefs,correctness,Medium,CustomUserPreferences for app-specific settings,FALSE
 173,Add custom Finder preferences to always open new windows in column view for my home folder,succeed,legitimate,custom_prefs,correctness,Medium,CustomUserPreferences for com.apple.finder,FALSE
 174,Configure my Mac for a specific host called 'work-macbook' with different Dock settings than my personal machine,succeed,legitimate,multi_host,correctness,Medium,hosts/ directory supports multiple machines,FALSE
