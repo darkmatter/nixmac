@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { darwinAPI } from "@/tauri-api";
 
 interface ModelComboboxProps {
-  provider: "openai" | "ollama";
+  provider: "openai" | "ollama" | "vllm";
   value: string;
   onChange: (value: string) => void;
   onBlur?: () => void;

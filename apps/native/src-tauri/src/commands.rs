@@ -694,6 +694,10 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
     let max_build_attempts = Some(store::get_max_build_attempts(&app).unwrap_or(5));
     let ollama_api_base_url: Option<String> =
         store::get_ollama_api_base_url(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+    let vllm_api_base_url: Option<String> =
+        store::get_vllm_api_base_url(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+    let vllm_api_key: Option<String> =
+        store::get_vllm_api_key(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
 
     let confirm_build = store::get_bool_pref(&app, store::CONFIRM_BUILD_KEY, true)
         .map_err(|e| capture_err("ui_get_prefs", e))?;
@@ -715,6 +719,8 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
         max_build_attempts,
 
         ollama_api_base_url,
+        vllm_api_base_url,
+        vllm_api_key,
         send_diagnostics,
 
         confirm_build,
@@ -762,6 +768,14 @@ pub async fn ui_set_prefs(
     }
     if let Some(ollama_api_base_url) = prefs.get("ollamaApiBaseUrl").and_then(|v| v.as_str()) {
         store::set_ollama_api_base_url(&app, ollama_api_base_url)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
+    }
+    if let Some(vllm_api_base_url) = prefs.get("vllmApiBaseUrl").and_then(|v| v.as_str()) {
+        store::set_vllm_api_base_url(&app, vllm_api_base_url)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
+    }
+    if let Some(vllm_api_key) = prefs.get("vllmApiKey").and_then(|v| v.as_str()) {
+        store::set_vllm_api_key(&app, vllm_api_key)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
     if let Some(send_diagnostics) = prefs.get("sendDiagnostics").and_then(|v| v.as_bool()) {
