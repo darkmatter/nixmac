@@ -517,7 +517,12 @@ pub async fn generate_evolution(
             evolution.state = EvolutionState::Failed;
             emit_evolve_event(
                 app,
-                EvolveEvent::error(start_time, Some(iteration), "Evolution cancelled by user", "Evolution cancelled by user"),
+                EvolveEvent::error(
+                    start_time,
+                    Some(iteration),
+                    "Evolution cancelled by user",
+                    "Evolution cancelled by user",
+                ),
             );
             // Track failure
             if let Err(e) = statistics::record_evolution_failure(app, iteration) {
@@ -837,7 +842,12 @@ pub async fn generate_evolution(
                             error!("❌ Tool {} failed: {}", tool_name, e);
                             emit_evolve_event(
                                 app,
-                                EvolveEvent::error(start_time, Some(iteration), &format!("Tool {} failed", tool_name), &e.to_string()),
+                                EvolveEvent::error(
+                                    start_time,
+                                    Some(iteration),
+                                    &format!("Tool {} failed", tool_name),
+                                    &e.to_string(),
+                                ),
                             );
                             evolution.add_tool_call(
                                 start_time,
@@ -901,7 +911,7 @@ Do not invent tool names and do not place tool invocations in assistant content.
             break;
         }
 
-        // Safety limits
+        // Safety limits -- Max Iterations Before Edit Check
         if iteration == max_iterations_before_edit && !made_edit_or_build_check {
             warn!(
                 "⚠️ No edit or build_check by iteration {} - agent not making progress",
@@ -916,7 +926,12 @@ Could you provide more specific guidance on what aspects of your configuration n
             );
             emit_evolve_event(
                 app,
-                EvolveEvent::error(start_time, Some(iteration), &message),
+                EvolveEvent::error(
+                    start_time,
+                    Some(iteration),
+                    &format!("Maximum iterations exceeded ({})", max_iterations),
+                    &format!("Maximum iterations exceeded ({})", max_iterations),
+                ),
             );
             // Track failure
             if let Err(e) = statistics::record_evolution_failure(app, iteration) {
@@ -932,7 +947,7 @@ Could you provide more specific guidance on what aspects of your configuration n
             .into());
         }
 
-        // Safety limits
+        // Safety limits -- Max Iterations
         if iteration >= max_iterations {
             warn!(
                 "⚠️ Evolution exceeded maximum iterations ({}) - aborting",
@@ -962,6 +977,7 @@ Could you provide more specific guidance on what aspects of your configuration n
             .into());
         }
 
+        // Safety limits -- Max Build Attempts
         if build_attempts >= max_build_attempts {
             warn!(
                 "⚠️ Evolution exceeded maximum build attempts ({}) - aborting",
