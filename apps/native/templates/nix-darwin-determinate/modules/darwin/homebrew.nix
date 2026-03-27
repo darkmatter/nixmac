@@ -29,8 +29,16 @@
   #   preview, then `darwin-rebuild switch --flake .#<host>` to apply.
 
   homebrew = {
+    # Homebrew taps (e.g., "dotenvx/brew")
+    # taps need to be specified as strings (tap names).
+    taps = [
+      # "dotenvx/brew" # required for dotenvx formula
+    ];
+
+    # Homebrew formulae (non-GUI packages)
+    # brews need to be specified as strings (formula names).
     brews = [
-      # Example: "git"  # needed for development workflows
+      # "git" # required for CLI workflows
     ];
 
     casks = [
