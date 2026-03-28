@@ -10,7 +10,13 @@
 # - This avoids cross-compilation issues with native node modules
 #
 # For pure builds, you'd need a Linux builder (remote or VM).
-{ inputs, pkgs, lib, config, ... }:
+{
+  inputs,
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 let
   # Import nixpkgs for x86_64-linux to build amd64 container images for Fly.io
   pkgsLinux = import inputs.nixpkgs {
@@ -26,7 +32,7 @@ let
   # Requires: devenv tasks run deploy:build (or bun run build in apps/web)
   # Using filterSource to bypass gitignore filtering for .output directory.
   webOutputDir = config.git.root + "/apps/web/.output";
-  webBundle = pkgs.runCommand "web-bundle" {} ''
+  webBundle = pkgs.runCommand "web-bundle" { } ''
     mkdir -p $out
     cp -R ${builtins.filterSource (path: type: true) webOutputDir}/server $out/
     cp -R ${builtins.filterSource (path: type: true) webOutputDir}/public $out/
@@ -207,7 +213,7 @@ in
   # Keep the container runtime focused.
   # Dev packages/toolchains/processes live in `devenv.dev.nix` (which is excluded
   # from container builds).
-  packages = lib.mkDefault [  ];
+  packages = lib.mkDefault [ ];
   languages.javascript.enable = true;
   languages.javascript.bun.enable = true;
   languages.javascript.directory = "${config.git.root}";
@@ -226,7 +232,7 @@ in
   processes.web = {
     cwd = "${config.git.root}/apps/web";
     exec = ''
-      ${pkgs.sops}/bin/sops exec-file \
+      ${pkgs.sops}/bin/sops exec-env \
         ${config.git.root}/.secrets.enc.yaml \
         '${pkgs.bun}/bin/bun --bun run dev'
     '';
@@ -242,54 +248,62 @@ in
 
     # Override the derivation to use our custom nix2container image
     # This bypasses devenv's default container building and uses our image directly
-    derivation = lib.mkForce (nix2containerPkgs.nix2container.buildImage {
-      name = "nixmac";
-      tag = "latest";
-      fromImage = base;
+    derivation = lib.mkForce (
+      nix2containerPkgs.nix2container.buildImage {
+        name = "nixmac";
+        tag = "latest";
+        fromImage = base;
 
-      # Use layers with reproducible = false to pre-build tarballs
-      # This avoids the digest mismatch from runtime tarball generation
-      layers = [
-        (nix2containerPkgs.nix2container.buildLayer {
-          reproducible = false;
-          copyToRoot = [
-            pkgsLinux.cacert
-            pkgsLinux.chamber
-            bashShell
-            runWeb
-            # Include encrypted secrets file
-            (pkgsLinux.runCommand "secrets" {} ''
-              mkdir -p $out/secrets
-              cp -r ${../../infra/secrets/web.prod.yaml} $out/secrets/web.prod.yaml
-            '')
-            # Web app output (built impure on macOS via deploy:build task)
-            (pkgsLinux.runCommand "web-app" {} ''
-              mkdir -p $out/app/.output
-              cp -r ${webBundle}/* $out/app/.output/
-            '')
-          ];
-        })
-      ];
-      config =
-        let
-          baseEnv = [
-            "NODE_ENV=production"
-            "PORT=3001"
-            "SSL_CERT_FILE=/etc/ssl/certs/ca-bundle.crt"
-            "AWS_REGION=us-west-2"
-            "AWS_WEB_IDENTITY_TOKEN_FILE=${tokenFile}"
-            "PATH=/nix/store/bin:${bashShell}/bin:${pkgsLinux.coreutils}/bin:$PATH"
-          ];
-        in
-        {
-        entrypoint = [ "${runWeb}/bin/run-web" ];
-        WorkingDir = "/app";
-        Env = baseEnv;
-        ExposedPorts = { "3000/tcp" = {}; "3001/tcp" = {}; };
-        User = "65534:65534";
-        Cmd = [ "/usr/local/bin/bun" "/app/.output/server/index.mjs" ];
-      };
-    });
+        # Use layers with reproducible = false to pre-build tarballs
+        # This avoids the digest mismatch from runtime tarball generation
+        layers = [
+          (nix2containerPkgs.nix2container.buildLayer {
+            reproducible = false;
+            copyToRoot = [
+              pkgsLinux.cacert
+              pkgsLinux.chamber
+              bashShell
+              runWeb
+              # Include encrypted secrets file
+              (pkgsLinux.runCommand "secrets" { } ''
+                mkdir -p $out/secrets
+                cp -r ${../../infra/secrets/web.prod.yaml} $out/secrets/web.prod.yaml
+              '')
+              # Web app output (built impure on macOS via deploy:build task)
+              (pkgsLinux.runCommand "web-app" { } ''
+                mkdir -p $out/app/.output
+                cp -r ${webBundle}/* $out/app/.output/
+              '')
+            ];
+          })
+        ];
+        config =
+          let
+            baseEnv = [
+              "NODE_ENV=production"
+              "PORT=3001"
+              "SSL_CERT_FILE=/etc/ssl/certs/ca-bundle.crt"
+              "AWS_REGION=us-west-2"
+              "AWS_WEB_IDENTITY_TOKEN_FILE=${tokenFile}"
+              "PATH=/nix/store/bin:${bashShell}/bin:${pkgsLinux.coreutils}/bin:$PATH"
+            ];
+          in
+          {
+            entrypoint = [ "${runWeb}/bin/run-web" ];
+            WorkingDir = "/app";
+            Env = baseEnv;
+            ExposedPorts = {
+              "3000/tcp" = { };
+              "3001/tcp" = { };
+            };
+            User = "65534:65534";
+            Cmd = [
+              "/usr/local/bin/bun"
+              "/app/.output/server/index.mjs"
+            ];
+          };
+      }
+    );
   };
 
   # ============================================================================

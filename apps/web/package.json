@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --bun vite dev --port 3001",
+    "dev": "bun --bun vite dev --port 3001 --host",
     "build": "tsc -b && bun --bun vite build",
     "preview": "bun --bun vite preview --port 3001",
     "start": "bun run .output/server/index.mjs",
