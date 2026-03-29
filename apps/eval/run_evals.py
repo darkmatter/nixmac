@@ -153,10 +153,29 @@ def read_test_cases_from_csv(
     return cases
 
 
-def create_nix_config_git_repo():
+def _get_eval_hostname() -> str:
+    """Get the canonical hostname for eval runs.
+
+    Uses scutil --get LocalHostName (same source the app uses for
+    darwinConfigurations key). This must match the hostAttr passed to
+    generate_nixmac_settings so template and build target agree.
+    """
+    try:
+        return subprocess.check_output(
+            ["scutil", "--get", "LocalHostName"], text=True
+        ).strip()
+    except subprocess.CalledProcessError:
+        return "localhost"
+
+
+def create_nix_config_git_repo(hostname: str | None = None):
     """
     Create a temporary nix config git repo from the template, with hostname
     and platform placeholders replaced, ready for nix-darwin evaluation.
+
+    Mirrors the production template-processing path in default_config.rs:
+    replaces HOSTNAME_PLACEHOLDER, USERNAME_PLACEHOLDER, and
+    PLATFORM_PLACEHOLDER across ALL .nix files, not just flake.nix.
     """
     # Create temporary directory
     tmpdir = Path(tempfile.mkdtemp(prefix="nix-config-"))
@@ -164,12 +183,8 @@ def create_nix_config_git_repo():
     # Copy template into temp dir (full recursive copy, preserve all files)
     shutil.copytree(CONFIG_TEMPLATE_DIR, tmpdir, dirs_exist_ok=True)
 
-    # Get the correct macOS LocalHostName for nix-darwin
-    try:
-        hostname = subprocess.check_output(["scutil", "--get", "LocalHostName"], text=True).strip()
-    except subprocess.CalledProcessError:
-        # fallback
-        hostname = "localhost"
+    if hostname is None:
+        hostname = _get_eval_hostname()
 
     # Replace username placeholder with the current system user running this script
     try:
@@ -177,14 +192,16 @@ def create_nix_config_git_repo():
     except Exception:
         username = os.environ.get("USER", "nobody")
 
-    # Replace placeholders in flake.nix
-    flake_path = tmpdir / "flake.nix"
-    if flake_path.exists():
-        content = flake_path.read_text()
-        content = content.replace("HOSTNAME_PLACEHOLDER", hostname)
-        content = content.replace("USERNAME_PLACEHOLDER", username)
-        content = content.replace("PLATFORM_PLACEHOLDER", "aarch64-darwin")
-        flake_path.write_text(content)
+    # Replace placeholders in ALL .nix files (matching default_config.rs behavior)
+    for nix_file in tmpdir.rglob("*.nix"):
+        content = nix_file.read_text()
+        updated = (
+            content.replace("HOSTNAME_PLACEHOLDER", hostname)
+            .replace("USERNAME_PLACEHOLDER", username)
+            .replace("PLATFORM_PLACEHOLDER", "aarch64-darwin")
+        )
+        if updated != content:
+            nix_file.write_text(updated)
 
     # Ignore flake.lock so nix operations don't dirty the git tree
     # Normally we would want to commit the lockfile, but for AI evolve engine
@@ -233,14 +250,18 @@ def run_test_case(
     """
     print(f"Running prompt: {case.request}")
 
+    # Derive hostname once and thread through both template and settings
+    eval_hostname = host if host else _get_eval_hostname()
+
     # Create a git repo in a temporary directory from nix-darwin-determinate
     config_dir: Path | None = None
     result_dir: Path | None = None
     try:
-        config_dir = create_nix_config_git_repo()
+        config_dir = create_nix_config_git_repo(hostname=eval_hostname)
         print(f"Created git repo with config at: {config_dir}")
 
         # Generate nixmac settings.json pointing to the config dir
+        # Use the same eval_hostname for hostAttr so template and build agree
         generate_nixmac_settings(
             evolve_provider,
             evolve_model,
@@ -249,7 +270,7 @@ def run_test_case(
             openai_key,
             openrouter_key,
             ollama_url,
-            host,
+            eval_hostname,
             str(config_dir),
         )
 
@@ -353,7 +374,7 @@ def generate_nixmac_settings(
 ) -> None:
     """Generate a nixmac settings.json file based on provided parameters."""
     if host is None:
-        host = os.uname().nodename
+        host = _get_eval_hostname()
 
     settings = {
         "evolveProvider": evolve_provider,
