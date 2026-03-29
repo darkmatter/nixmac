@@ -52,7 +52,20 @@ jobs:
             # use the tag version so branch builds never embed a lower version than
             # what has already shipped (which would trigger a false-positive update banner).
             LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "")
-            if [[ -n "$LATEST_TAG" ]] && [[ "$(printf '%s\n%s\n' "$PKG_VERSION" "$LATEST_TAG" | sort -V | tail -1)" != "$PKG_VERSION" ]]; then
+            # Portable semver compare via Node (avoids sort -V which requires GNU coreutils).
+            # Exits 0 (true) when LATEST_TAG > PKG_VERSION, 1 otherwise.
+            _tag_is_newer() {
+              node -e "
+                const a = '$PKG_VERSION'.split('.').map(s => parseInt(s, 10));
+                const b = '$LATEST_TAG'.split('.').map(s => parseInt(s, 10));
+                for (let i = 0; i < 3; i++) {
+                  if ((b[i]||0) > (a[i]||0)) process.exit(0);
+                  if ((a[i]||0) > (b[i]||0)) process.exit(1);
+                }
+                process.exit(1);
+              "
+            }
+            if [[ -n "$LATEST_TAG" ]] && _tag_is_newer; then
               echo "⚠️  package.json version ($PKG_VERSION) lags behind latest tag ($LATEST_TAG) — using tag version to prevent false-positive update banner"
               VERSION="$LATEST_TAG"
             else
