@@ -18,6 +18,11 @@ interface ApiKeysTabProps {
   // Ollama
   ollamaApiBaseUrlField: AnyFieldApi;
   onSaveOllamaUrl: (url: string) => Promise<void>;
+  // vLLM
+  vllmApiBaseUrlField: AnyFieldApi;
+  vllmApiKeyField: AnyFieldApi;
+  onSaveVllmUrl: (url: string) => Promise<void>;
+  onSaveVllmKey: (key: string) => Promise<void>;
   // Form
   form: AnyFormApi;
 }
@@ -69,7 +74,11 @@ function ApiKeyInput({
             if (timeoutRef.current) {
               clearTimeout(timeoutRef.current);
             }
-            timeoutRef.current = setTimeout(() => verifyKey(e.target.value), 500);
+            if (!e.target.value) {
+              verifyKey("");
+            } else {
+              timeoutRef.current = setTimeout(() => verifyKey(e.target.value), 500);
+            }
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -174,6 +183,10 @@ export function ApiKeysTab({
   openaiTimeoutRef,
   ollamaApiBaseUrlField,
   onSaveOllamaUrl,
+  vllmApiBaseUrlField,
+  vllmApiKeyField,
+  onSaveVllmUrl,
+  onSaveVllmKey,
   form,
 }: ApiKeysTabProps) {
   return (
@@ -259,6 +272,41 @@ export function ApiKeysTab({
               form={form}
               onSave={onSaveOllamaUrl}
             />
+          </div>
+
+          {/* vLLM */}
+          <div className="rounded-lg border border-border p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-cyan-500">
+                <span className="font-bold text-white text-xs">VL</span>
+              </div>
+              <div>
+                <h3 className="font-medium text-sm">vLLM</h3>
+                <p className="text-muted-foreground text-xs">
+                  OpenAI-compatible self-hosted inference server
+                </p>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <UrlInput
+                id="vllmApiBaseUrl"
+                label="API Base URL"
+                description=""
+                placeholder="http://localhost:8000/v1"
+                field={vllmApiBaseUrlField}
+                form={form}
+                onSave={onSaveVllmUrl}
+              />
+              <UrlInput
+                id="vllmApiKey"
+                label="API Key (optional)"
+                description="Leave blank for unauthenticated vllm. Required for litellm proxy."
+                placeholder="sk-..."
+                field={vllmApiKeyField}
+                form={form}
+                onSave={onSaveVllmKey}
+              />
+            </div>
           </div>
 
           {/* Info box */}

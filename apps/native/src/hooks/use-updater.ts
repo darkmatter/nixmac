@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Update } from "@tauri-apps/plugin-updater";
-import { relaunch } from "@tauri-apps/plugin-process";
+import { invoke } from "@tauri-apps/api/core";
 
 export interface UpdateState {
   /** Whether we're currently checking for updates */
@@ -113,8 +113,11 @@ export function useUpdater() {
         }
       });
 
-      // Relaunch the app after install
-      await relaunch();
+      // On macOS the updater swaps the .app bundle on disk; using the
+      // custom relaunch_after_update command opens the newly-installed
+      // bundle via LaunchServices instead of re-exec-ing the cached
+      // (potentially stale) binary path from the old bundle.
+      await invoke("relaunch_after_update");
     } catch (err) {
       if (isDevMode) {
         setState((s) => ({

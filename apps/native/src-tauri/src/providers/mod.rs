@@ -88,6 +88,24 @@ pub fn create_provider<R: Runtime>(
                 .unwrap_or_else(|| DEFAULT_OLLAMA_API_BASE.to_string());
             Ok(Box::new(OllamaClient::new(&base_url, &model)))
         }
+        "vllm" => {
+            let model = store_model
+                .or_else(|| std::env::var("SUMMARY_MODEL").ok())
+                .unwrap_or_else(|| "gpt-oss-120b".to_string());
+
+            let base_url = app_handle
+                .and_then(|app| crate::store::get_vllm_api_base_url(app).ok())
+                .flatten()
+                .or_else(|| std::env::var("VLLM_API_BASE").ok())
+                .ok_or_else(|| anyhow::anyhow!("No vLLM base URL configured. Please set it in Settings."))?;
+
+            let api_key = app_handle
+                .and_then(|app| crate::store::get_vllm_api_key(app).ok())
+                .flatten()
+                .unwrap_or_else(|| "none".to_string());
+
+            Ok(Box::new(OpenAIClient::new(&api_key, &base_url, &model)))
+        }
         _ => {
             let model = store_model
                 .or_else(|| std::env::var("SUMMARY_MODEL").ok())
@@ -105,7 +123,7 @@ pub fn create_provider<R: Runtime>(
             let key = store_key
                 .or_else(|| std::env::var("OPENROUTER_API_KEY").ok())
                 .or_else(|| std::env::var("OPENAI_API_KEY").ok())
-                .ok_or_else(|| anyhow::anyhow!("No API key configured. Please set your OpenRouter or OpenAI API key in Settings."))?;
+                .ok_or_else(|| anyhow::anyhow!("No API key found. Please add your API key in Settings to get started."))?;
 
             Ok(Box::new(OpenAIClient::new(
                 &key,

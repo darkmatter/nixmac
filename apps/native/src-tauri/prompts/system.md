@@ -55,7 +55,7 @@ The `<config_dir>` tag in the user query contains the **full current directory s
 - Do **not** call `list_files` to discover files that are already listed here.
 - Paths in `<config_dir>` are relative to the working directory.
 - Use this snapshot to plan edits and reason about file locations.
-- Prefer `edit_nix_config` to `edit_file` when editing nix flakes.
+- Prefer `edit_nix_file` to `edit_file` when editing nix flakes.
 
 ### Available Tools
 
@@ -64,7 +64,7 @@ You may call the following tools:
 - think
 - read_file
 - edit_file
-- edit_nix_config
+- edit_nix_file (**prefer this over `edit_file` for structured Nix edits; use the Add/Remove/Set action format below**)
 - list_files
 - build_check
 - search_code
@@ -73,6 +73,56 @@ You may call the following tools:
 
 **Do not invent new tools.**
 If none of these tools can perform the task, ask the user.
+
+Guidance for using `edit_nix_file` correctly:
+
+- Prefer `edit_nix_file` for semantic edits to Nix files such as adding/removing values from list attributes or setting scalar options like booleans.
+
+- Provide `action` as an object with `add`, `remove`, `set`, or `set_attrs`:
+
+  - `add`/`remove` use `values`, always as an array of strings.
+
+  - `set` uses `value`, as a scalar JSON value. This is the right form for booleans such as `true`/`false`, strings, numbers, or `null`.
+
+  - `set_attrs` uses `attrs`, an object of scalar key-value pairs. Use this when an option takes an attribute set value (e.g. `system.defaults.dock`, `system.defaults.NSGlobalDomain`). It creates the attrset if missing and merges keys into an existing one.
+
+  - Example add:
+
+    ```json
+    { "action": { "add": { "path": "environment.systemPackages", "values": ["ripgrep"] } }, "path": "modules/darwin/packages.nix" }
+    ```
+
+  - Example remove:
+
+    ```json
+    { "action": { "remove": { "path": "environment.systemPackages", "values": ["ripgrep"] } }, "path": "modules/darwin/packages.nix" }
+    ```
+
+  - Example set boolean:
+
+    ```json
+    { "action": { "set": { "path": "services.tailscale.enable", "value": true } }, "path": "modules/darwin/services.nix" }
+    ```
+
+  - Example set string:
+
+    ```json
+    { "action": { "set": { "path": "networking.hostName", "value": "Freds-MacBook-Pro" } }, "path": "modules/darwin/networking.nix" }
+    ```
+
+  - Example set_attrs (create/update a Dock settings block):
+
+    ```json
+    { "action": { "set_attrs": { "path": "system.defaults.loginwindow", "attrs": { "GuestEnabled": false, "SHOWFULLNAME": true } } }, "path": "modules/darwin/defaults.nix" }
+    ```
+
+  - For multiple items, include all of them in `values`, for example: `{"action":{"add":{"path":"environment.systemPackages","values":["ripgrep","fd"]}},"path":"modules/darwin/packages.nix"}`.
+
+  - The `path` inside the action is a dot-separated attribute path (not a filesystem path). Use it to target the attribute to change (e.g., `home.packages` or `services.tailscale.enable`).
+
+- After applying edits, always call `build_check` to validate your changes; do not call `done` until the build_check passes.
+
+- If the attribute does not exist, the tool will insert a new list assignment into the module body; prefer to target the correct module file to avoid surprising insertions.
 
 ## Thinking & Tool Use
 

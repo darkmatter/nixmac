@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { cn } from "@/lib/utils";
-import { useWidgetStore } from "@/stores/widget-store";
+import { type SettingsTab, useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI, DEFAULT_MAX_ITERATIONS } from "@/tauri-api";
 import { useForm } from "@tanstack/react-form";
 import { Bot, FolderOpen, Key, Settings2, SlidersHorizontal } from "lucide-react";
@@ -10,8 +10,6 @@ import { AiModelsTab } from "./settings/ai-models-tab";
 import { ApiKeysTab } from "./settings/api-keys-tab";
 import { GeneralTab } from "./settings/general-tab";
 import { PreferencesTab } from "./settings/preferences-tab";
-
-type SettingsTab = "general" | "api-keys" | "ai-models" | "preferences";
 type ApiKeyStatus = "idle" | "verifying" | "valid" | "invalid";
 
 interface NavItemProps {
@@ -42,6 +40,7 @@ function NavItem({ icon, label, active, onClick }: NavItemProps) {
 export function SettingsDialog() {
   const {
     settingsOpen: isOpen,
+    settingsActiveTab,
     setSettingsOpen,
     configDir,
     hosts,
@@ -49,6 +48,13 @@ export function SettingsDialog() {
     setHosts,
   } = useWidgetStore();
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
+
+  // Deep-link to a specific tab when requested, otherwise reset to general
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(settingsActiveTab ?? "general");
+    }
+  }, [isOpen, settingsActiveTab]);
   const [openrouterKeyStatus, setOpenrouterKeyStatus] = useState<ApiKeyStatus>("idle");
   const [openaiKeyStatus, setOpenaiKeyStatus] = useState<ApiKeyStatus>("idle");
   const openrouterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -59,6 +65,7 @@ export function SettingsDialog() {
   const verifyOpenrouterKey = async (key: string) => {
     if (!key) {
       setOpenrouterKeyStatus("idle");
+      await darwinAPI.ui.setPrefs({ openrouterApiKey: "" });
       return;
     }
 
@@ -86,6 +93,7 @@ export function SettingsDialog() {
   const verifyOpenaiKey = async (key: string) => {
     if (!key) {
       setOpenaiKeyStatus("idle");
+      await darwinAPI.ui.setPrefs({ openaiApiKey: "" });
       return;
     }
 
@@ -111,11 +119,17 @@ export function SettingsDialog() {
   };
 
   const saveOllamaUrl = async (url: string) => {
-    if (url) {
-      await darwinAPI.ui.setPrefs({ ollamaApiBaseUrl: url });
-      // Clear cached Ollama models when the base URL changes
-      await darwinAPI.models.clearCached("ollama");
-    }
+    await darwinAPI.ui.setPrefs({ ollamaApiBaseUrl: url });
+    // Clear cached Ollama models when the base URL changes
+    await darwinAPI.models.clearCached("ollama");
+  };
+
+  const saveVllmUrl = async (url: string) => {
+    await darwinAPI.ui.setPrefs({ vllmApiBaseUrl: url });
+  };
+
+  const saveVllmKey = async (key: string) => {
+    await darwinAPI.ui.setPrefs({ vllmApiKey: key });
   };
 
   const form = useForm({
@@ -123,6 +137,8 @@ export function SettingsDialog() {
       openrouterApiKey: "",
       openaiApiKey: "",
       ollamaApiBaseUrl: "",
+      vllmApiBaseUrl: "",
+      vllmApiKey: "",
       summaryProvider: "openai",
       summaryModel: "openai/gpt-4o-mini",
       evolveProvider: "openai",
@@ -143,6 +159,8 @@ export function SettingsDialog() {
           form.setFieldValue("openrouterApiKey", prefs.openrouterApiKey ?? "");
           form.setFieldValue("openaiApiKey", prefs.openaiApiKey ?? "");
           form.setFieldValue("ollamaApiBaseUrl", prefs.ollamaApiBaseUrl ?? "");
+          form.setFieldValue("vllmApiBaseUrl", prefs.vllmApiBaseUrl ?? "");
+          form.setFieldValue("vllmApiKey", prefs.vllmApiKey ?? "");
           form.setFieldValue("summaryProvider", prefs.summaryProvider ?? "openai");
           form.setFieldValue("summaryModel", prefs.summaryModel ?? "openai/gpt-4o-mini");
           form.setFieldValue("evolveProvider", prefs.evolveProvider ?? "openai");
@@ -151,12 +169,8 @@ export function SettingsDialog() {
           form.setFieldValue("maxBuildAttempts", prefs.maxBuildAttempts ?? 5);
           form.setFieldValue("sendDiagnostics", prefs.sendDiagnostics ?? false);
 
-          if (prefs.openrouterApiKey) {
-            setOpenrouterKeyStatus("valid");
-          }
-          if (prefs.openaiApiKey) {
-            setOpenaiKeyStatus("valid");
-          }
+          setOpenrouterKeyStatus(prefs.openrouterApiKey ? "valid" : "idle");
+          setOpenaiKeyStatus(prefs.openaiApiKey ? "valid" : "idle");
         }
       } catch (err) {
         console.error("Failed to load settings:", err);
@@ -260,19 +274,31 @@ export function SettingsDialog() {
                     {(openaiApiKeyField) => (
                       <form.Field name="ollamaApiBaseUrl">
                         {(ollamaApiBaseUrlField) => (
-                          <ApiKeysTab
-                            openrouterApiKeyField={openrouterApiKeyField}
-                            openrouterKeyStatus={openrouterKeyStatus}
-                            verifyOpenrouterKey={verifyOpenrouterKey}
-                            openrouterTimeoutRef={openrouterTimeoutRef}
-                            openaiApiKeyField={openaiApiKeyField}
-                            openaiKeyStatus={openaiKeyStatus}
-                            verifyOpenaiKey={verifyOpenaiKey}
-                            openaiTimeoutRef={openaiTimeoutRef}
-                            ollamaApiBaseUrlField={ollamaApiBaseUrlField}
-                            onSaveOllamaUrl={saveOllamaUrl}
-                            form={form}
-                          />
+                          <form.Field name="vllmApiBaseUrl">
+                            {(vllmApiBaseUrlField) => (
+                              <form.Field name="vllmApiKey">
+                                {(vllmApiKeyField) => (
+                                  <ApiKeysTab
+                                    openrouterApiKeyField={openrouterApiKeyField}
+                                    openrouterKeyStatus={openrouterKeyStatus}
+                                    verifyOpenrouterKey={verifyOpenrouterKey}
+                                    openrouterTimeoutRef={openrouterTimeoutRef}
+                                    openaiApiKeyField={openaiApiKeyField}
+                                    openaiKeyStatus={openaiKeyStatus}
+                                    verifyOpenaiKey={verifyOpenaiKey}
+                                    openaiTimeoutRef={openaiTimeoutRef}
+                                    ollamaApiBaseUrlField={ollamaApiBaseUrlField}
+                                    onSaveOllamaUrl={saveOllamaUrl}
+                                    vllmApiBaseUrlField={vllmApiBaseUrlField}
+                                    vllmApiKeyField={vllmApiKeyField}
+                                    onSaveVllmUrl={saveVllmUrl}
+                                    onSaveVllmKey={saveVllmKey}
+                                    form={form}
+                                  />
+                                )}
+                              </form.Field>
+                            )}
+                          </form.Field>
                         )}
                       </form.Field>
                     )}

@@ -89,7 +89,15 @@ pub struct UiPrefs {
     #[serde(rename = "ollamaApiBaseUrl")]
     pub ollama_api_base_url: Option<String>,
 
-    /// Provider for summarization (openai/ollama).
+    /// vLLM API base URL (OpenAI-compatible endpoint).
+    #[serde(rename = "vllmApiBaseUrl")]
+    pub vllm_api_base_url: Option<String>,
+
+    /// vLLM API key (optional — defaults to "none" if not set).
+    #[serde(rename = "vllmApiKey")]
+    pub vllm_api_key: Option<String>,
+
+    /// Provider for summarization (openai/ollama/vllm).
     #[serde(rename = "summaryProvider")]
     pub summary_provider: Option<String>,
 
@@ -518,13 +526,13 @@ impl EvolveEvent {
         )
     }
 
-    pub fn error(start_time: i64, iter: Option<usize>, error: &str) -> Self {
-        let mut error = error.to_string();
-        global_utils::truncate_utf8(&mut error, 100);
+    pub fn error(start_time: i64, iter: Option<usize>, summary: &str, raw: &str) -> Self {
+        let mut summary = summary.to_string();
+        global_utils::truncate_utf8(&mut summary, 100);
         Self::new(
             EvolveEventType::Error,
-            format!("Error: {}", error),
-            format!("Error: {}", error),
+            format!("Error: {}", raw),
+            format!("Error: {}", summary),
             iter,
             start_time,
         )

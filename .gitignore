@@ -107,6 +107,7 @@ temp
 
 # Claude Code local settings
 .claude/settings.local.json
+untracked
 
 .output
 .stackpanel-root
