@@ -36,6 +36,20 @@ jobs:
           node-version: 20
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
+      # Sync native app version files to the tag version (on tag builds) or root
+      # package.json version (on branch/PR builds). This ensures the packaged app
+      # metadata always reflects the intended release version rather than stale
+      # checked-in values from apps/native/src-tauri/tauri.conf.json, Cargo.toml, etc.
+      - name: Sync native app version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            echo "Tag build — syncing to tag version: $VERSION"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+            echo "Branch/PR build — syncing to package.json version: $VERSION"
+          fi
+          node scripts/sync-versions.mjs "$VERSION"
       # Check if code signing secrets are available
       - name: Check for code signing secrets
         id: check-secrets
