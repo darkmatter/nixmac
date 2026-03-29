@@ -36,18 +36,29 @@ jobs:
           node-version: 20
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
-      # Sync native app version files to the tag version (on tag builds) or root
-      # package.json version (on branch/PR builds). This ensures the packaged app
-      # metadata always reflects the intended release version rather than stale
-      # checked-in values from apps/native/src-tauri/tauri.conf.json, Cargo.toml, etc.
+      # Sync native app version files to the tag version (on tag builds) or the
+      # max(package.json, latest-git-tag) version (on branch/PR builds). Using the
+      # max protects against a stale package.json causing branch builds to embed a
+      # lower version than what has already shipped, which would produce a
+      # false-positive update banner (e.g. embedding 0.5.0 when latest.json is 0.16.2).
       - name: Sync native app version
         run: |
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             VERSION="${GITHUB_REF_NAME#v}"
             echo "Tag build — syncing to tag version: $VERSION"
           else
-            VERSION=$(node -p "require('./package.json').version")
-            echo "Branch/PR build — syncing to package.json version: $VERSION"
+            PKG_VERSION=$(node -p "require('./package.json').version")
+            # Guard against stale package.json: if the latest git tag is newer,
+            # use the tag version so branch builds never embed a lower version than
+            # what has already shipped (which would trigger a false-positive update banner).
+            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "")
+            if [[ -n "$LATEST_TAG" ]] && [[ "$(printf '%s\n%s\n' "$PKG_VERSION" "$LATEST_TAG" | sort -V | tail -1)" != "$PKG_VERSION" ]]; then
+              echo "⚠️  package.json version ($PKG_VERSION) lags behind latest tag ($LATEST_TAG) — using tag version to prevent false-positive update banner"
+              VERSION="$LATEST_TAG"
+            else
+              VERSION="$PKG_VERSION"
+            fi
+            echo "Branch/PR build — syncing to version: $VERSION"
           fi
           node scripts/sync-versions.mjs "$VERSION"
       # Check if code signing secrets are available
