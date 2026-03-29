@@ -89,7 +89,15 @@ pub struct UiPrefs {
     #[serde(rename = "ollamaApiBaseUrl")]
     pub ollama_api_base_url: Option<String>,
 
-    /// Provider for summarization (openai/ollama).
+    /// vLLM API base URL (OpenAI-compatible endpoint).
+    #[serde(rename = "vllmApiBaseUrl")]
+    pub vllm_api_base_url: Option<String>,
+
+    /// vLLM API key (optional — defaults to "none" if not set).
+    #[serde(rename = "vllmApiKey")]
+    pub vllm_api_key: Option<String>,
+
+    /// Provider for summarization (openai/ollama/vllm).
     #[serde(rename = "summaryProvider")]
     pub summary_provider: Option<String>,
 

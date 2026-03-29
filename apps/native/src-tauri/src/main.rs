@@ -374,6 +374,8 @@ fn run_gui_mode(
             commands::get_recommended_prompt,
             commands::scan_system_defaults,
             commands::apply_system_defaults,
+            // Updater
+            commands::relaunch_after_update,
         ])
         .setup(move |app| {
             let handle = app.handle();

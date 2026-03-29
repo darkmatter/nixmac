@@ -71,6 +71,7 @@ export function AiModelsTab({
                   <SelectContent>
                     <SelectItem value="openai">OpenAI / OpenRouter</SelectItem>
                     <SelectItem value="ollama">Ollama</SelectItem>
+                    <SelectItem value="vllm">vLLM / LiteLLM</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -86,7 +87,7 @@ export function AiModelsTab({
                 >
                   {([evolveProvider]: [string, string]) => (
                     <ModelCombobox
-                      provider={evolveProvider as "openai" | "ollama"}
+                      provider={evolveProvider as "openai" | "ollama" | "vllm"}
                       value={evolveModelField.state.value}
                       onChange={async (value) => {
                         evolveModelField.handleChange(value);
@@ -95,7 +96,7 @@ export function AiModelsTab({
                         });
                       }}
                       onBlur={evolveModelField.handleBlur}
-                      placeholder={evolveProvider === "ollama" ? "" : "anthropic/claude-sonnet-4"}
+                      placeholder={evolveProvider === "ollama" ? "" : evolveProvider === "vllm" ? "gpt-oss-120b" : "anthropic/claude-sonnet-4"}
                     />
                   )}
                 </form.Subscribe>
@@ -133,6 +134,7 @@ export function AiModelsTab({
                   <SelectContent>
                     <SelectItem value="openai">OpenAI / OpenRouter</SelectItem>
                     <SelectItem value="ollama">Ollama</SelectItem>
+                    <SelectItem value="vllm">vLLM / LiteLLM</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -148,7 +150,7 @@ export function AiModelsTab({
                 >
                   {([summaryProvider]: [string, string]) => (
                     <ModelCombobox
-                      provider={summaryProvider as "openai" | "ollama"}
+                      provider={summaryProvider as "openai" | "ollama" | "vllm"}
                       value={summaryModelField.state.value}
                       onChange={async (value) => {
                         summaryModelField.handleChange(value);
@@ -157,7 +159,7 @@ export function AiModelsTab({
                         });
                       }}
                       onBlur={summaryModelField.handleBlur}
-                      placeholder={summaryProvider === "ollama" ? "llama3.1" : "openai/gpt-4o-mini"}
+                      placeholder={summaryProvider === "ollama" ? "llama3.1" : summaryProvider === "vllm" ? "gpt-oss-120b" : "openai/gpt-4o-mini"}
                     />
                   )}
                 </form.Subscribe>

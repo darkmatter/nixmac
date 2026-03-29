@@ -7,6 +7,8 @@
 
 use std::path::{Component, Path, PathBuf};
 
+use anyhow::Context;
+
 const PATH_SCOPE_ERROR_CODE: &str = "E_PATH_OUTSIDE_CONFIG_DIR";
 
 /// Join a relative path into `base`, rejecting absolute paths and any path
@@ -95,6 +97,30 @@ pub(crate) fn ensure_path_under_base(base: &Path, path: &Path) -> anyhow::Result
     validate_under_base(&error_path, "list files", &base_canonical, &path_canonical)
 }
 
+/// Resolve an existing file under `base`, then rewrite it using `edit`,
+/// which is one of the "editing" tools (`edit_file`, `edit_nix_file`, etc).
+/// formulated as a function. This is used for all operations that need to
+/// read-modify-write an existing file, so that we can centralize the logic
+/// for securely resolving the file path and providing good error messages when things go wrong.
+pub(crate) fn rewrite_existing_file_in_dir<F>(
+    base: &Path,
+    rel: &str,
+    operation: &str,
+    edit: F,
+) -> anyhow::Result<()>
+where
+    F: FnOnce(&str) -> anyhow::Result<String>,
+{
+    let full_path = resolve_existing_path_in_dir(base, rel)?;
+    let fail = |kind: &str| format!("Failed to {} {} for {}", kind, rel, operation);
+
+    let content = std::fs::read_to_string(&full_path).with_context(|| fail("read"))?;
+    let new_content = edit(&content).with_context(|| fail("edit"))?;
+    std::fs::write(&full_path, new_content).with_context(|| fail("write"))?;
+
+    Ok(())
+}
+
 // We need a lot of extra complexity to handle symlinks and other filesystem weirdness robustly, but the core logic is just to check that the canonicalized path starts with the canonicalized base directory. The rest is about making sure we can get to that check without false positives or false negatives, and providing good error messages when things go wrong.
 fn canonicalize_base_dir(base: &Path) -> anyhow::Result<PathBuf> {
     let base_canonical = base
@@ -164,29 +190,26 @@ pub fn apply_file_edits(base: &Path, edit: &super::types::FileEdit) -> anyhow::R
         }
         std::fs::write(&full_path, &edit.replace)?;
     } else {
-        // Edit existing file — resolve symlinks and confirm the target is under base.
-        let full_path = resolve_existing_path_in_dir(base, &edit.path)?;
-        let content = std::fs::read_to_string(&full_path)?;
+        rewrite_existing_file_in_dir(base, &edit.path, "edit existing file", |content| {
+            // Verify search string exists and is unique.
+            let count = content.matches(&edit.search).count();
+            if count == 0 {
+                return Err(anyhow::anyhow!(
+                    "Search string not found in {}: {:?}",
+                    edit.path,
+                    edit.search.chars().take(50).collect::<String>()
+                ));
+            }
+            if count > 1 {
+                return Err(anyhow::anyhow!(
+                    "Search string found {} times in {} (must be unique)",
+                    count,
+                    edit.path
+                ));
+            }
 
-        // Verify search string exists and is unique
-        let count = content.matches(&edit.search).count();
-        if count == 0 {
-            return Err(anyhow::anyhow!(
-                "Search string not found in {}: {:?}",
-                edit.path,
-                edit.search.chars().take(50).collect::<String>()
-            ));
-        }
-        if count > 1 {
-            return Err(anyhow::anyhow!(
-                "Search string found {} times in {} (must be unique)",
-                count,
-                edit.path
-            ));
-        }
-
-        let new_content = content.replace(&edit.search, &edit.replace);
-        std::fs::write(&full_path, new_content)?;
+            Ok(content.replace(&edit.search, &edit.replace))
+        })?;
     }
 
     Ok(())

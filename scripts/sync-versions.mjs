@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 
 /**
- * Syncs the version number across all config files after release-it bumps package.json.
- * Called as an after:bump hook by release-it.
+ * Syncs the version number across all native app config files.
+ *
+ * Usage:
+ *   node scripts/sync-versions.mjs <version>   # explicit version (used by release-it hook)
+ *   node scripts/sync-versions.mjs             # falls back to root package.json version (used by CI)
  *
  * Files updated:
  *   - apps/native/package.json
@@ -17,9 +20,21 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
 
-const version = process.argv[2];
+let version = process.argv[2];
 if (!version) {
-  console.error("Usage: node scripts/sync-versions.mjs <version>");
+  // Fallback: read version from root package.json (useful for CI or manual runs)
+  const rootPkg = JSON.parse(readFileSync(resolve(root, "package.json"), "utf-8"));
+  version = rootPkg.version;
+  if (!version) {
+    console.error("Error: No version argument provided and no version found in root package.json");
+    process.exit(1);
+  }
+  console.log(`No version argument — using root package.json version: ${version}`);
+}
+
+// Basic semver validation (major.minor.patch with optional pre-release)
+if (!/^\d+\.\d+\.\d+/.test(version)) {
+  console.error(`Error: Invalid version format "${version}" — expected semver (e.g. 1.2.3)`);
   process.exit(1);
 }
 
@@ -33,16 +48,20 @@ function updateJson(filePath, mutator) {
 
 function updateToml(filePath) {
   const abs = resolve(root, filePath);
-  let content = readFileSync(abs, "utf-8");
-  content = content.replace(
-    /^(version\s*=\s*)"[^"]*"/m,
-    `$1"${version}"`
-  );
-  writeFileSync(abs, content);
+  const original = readFileSync(abs, "utf-8");
+  // Match the first standalone `version = "..."` line (the [package] section)
+  const pattern = /^(version\s*=\s*)"[^"]*"/m;
+  if (!pattern.test(original)) {
+    console.warn(`  ⚠️  ${filePath} — no version field found to update`);
+    process.exitCode = 1;
+    return;
+  }
+  const updated = original.replace(pattern, `$1"${version}"`);
+  writeFileSync(abs, updated);
   console.log(`  ✅ ${filePath} → ${version}`);
 }
 
-console.log(`Syncing version ${version} across files...`);
+console.log(`Syncing version ${version} across native app files...`);
 
 updateJson("apps/native/package.json", (d) => {
   d.version = version;

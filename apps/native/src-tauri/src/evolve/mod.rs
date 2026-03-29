@@ -250,10 +250,9 @@ const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 const DEFAULT_MAX_BUILD_ATTEMPTS: usize = 5;
 
-// Maximum number of iterations allowed before we force an edit or build check
-// to ensure the agent is making progress and we have enough allowable iterations
-// at the end to finalize an edit.
-const MAX_ITERATIONS_BEFORE_EDIT: usize = 15;
+// Percentage of max_iterations after which we require at least one edit/build_check.
+// Example: with max_iterations=50 and this set to 60, threshold is 30 iterations.
+const MAX_ITERATIONS_BEFORE_EDIT_PERCENT: usize = 60;
 
 // Applied separately to stdout and stderr. So when thinking about tokens,
 // the effective output limit could be up to double this if both are long.
@@ -400,6 +399,21 @@ pub async fn generate_evolution(
             model, base_url
         );
         Arc::new(OllamaProvider::new(base_url, model))
+    } else if provider_type == "vllm" {
+        let model = store_model
+            .or_else(|| std::env::var("EVOLVE_MODEL").ok())
+            .unwrap_or_else(|| "gpt-oss-120b".to_string());
+        let base_url = store::get_vllm_api_base_url(app)
+            .ok()
+            .flatten()
+            .or_else(|| std::env::var("VLLM_API_BASE").ok())
+            .ok_or_else(|| anyhow!("No vLLM base URL configured. Please set it in Settings."))?;
+        let api_key = store::get_vllm_api_key(app)
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "none".to_string());
+        info!("Using vLLM provider | Model: {} | URL: {}", model, base_url);
+        Arc::new(OpenAIProvider::new(api_key, base_url, model))
     } else {
         // Init OpenAI / OpenRouter - try OpenRouter key first, then OpenAI key
         let api_key = store::get_openrouter_api_key(app)
@@ -450,11 +464,18 @@ pub async fn generate_evolution(
 
     // Read configurable limits from store
     let max_iterations = store::get_max_iterations(app).unwrap_or(store::DEFAULT_MAX_ITERATIONS);
+    let max_iterations_before_edit = std::cmp::max(
+        1,
+        (max_iterations * MAX_ITERATIONS_BEFORE_EDIT_PERCENT) / 100,
+    );
     let max_build_attempts =
         store::get_max_build_attempts(app).unwrap_or(DEFAULT_MAX_BUILD_ATTEMPTS);
     info!(
-        "Limits: max_iterations={}, max_build_attempts={}",
-        max_iterations, max_build_attempts
+        "Limits: max_iterations={}, max_iterations_before_edit={} ({}%), max_build_attempts={}",
+        max_iterations,
+        max_iterations_before_edit,
+        MAX_ITERATIONS_BEFORE_EDIT_PERCENT,
+        max_build_attempts
     );
 
     let tools = create_tools();
@@ -511,7 +532,12 @@ pub async fn generate_evolution(
             evolution.state = EvolutionState::Failed;
             emit_evolve_event(
                 app,
-                EvolveEvent::error(start_time, Some(iteration), "Evolution cancelled by user", "Evolution cancelled by user"),
+                EvolveEvent::error(
+                    start_time,
+                    Some(iteration),
+                    "Evolution cancelled by user",
+                    "Evolution cancelled by user",
+                ),
             );
             // Track failure
             if let Err(e) = statistics::record_evolution_failure(app, iteration) {
@@ -831,7 +857,12 @@ pub async fn generate_evolution(
                             error!("❌ Tool {} failed: {}", tool_name, e);
                             emit_evolve_event(
                                 app,
-                                EvolveEvent::error(start_time, Some(iteration), &format!("Tool {} failed", tool_name), &e.to_string()),
+                                EvolveEvent::error(
+                                    start_time,
+                                    Some(iteration),
+                                    &format!("Tool {} failed", tool_name),
+                                    &e.to_string(),
+                                ),
                             );
                             evolution.add_tool_call(
                                 start_time,
@@ -895,22 +926,27 @@ Do not invent tool names and do not place tool invocations in assistant content.
             break;
         }
 
-        // Safety limits
-        if iteration == MAX_ITERATIONS_BEFORE_EDIT && !made_edit_or_build_check {
+        // Safety limits -- Max Iterations Before Edit Check
+        if iteration == max_iterations_before_edit && !made_edit_or_build_check {
             warn!(
                 "⚠️ No edit or build_check by iteration {} - agent not making progress",
-                MAX_ITERATIONS_BEFORE_EDIT
+                max_iterations_before_edit
             );
             evolution.state = EvolutionState::Failed;
             let message = format!(
                 "I've analyzed your configuration for {} iterations but haven't started making concrete changes yet. \
 This suggests I'm having difficulty understanding what modifications you'd like. \
 Could you provide more specific guidance on what aspects of your configuration need adjustment?",
-                MAX_ITERATIONS_BEFORE_EDIT
+                max_iterations_before_edit
             );
             emit_evolve_event(
                 app,
-                EvolveEvent::error(start_time, Some(iteration), &message, &message),
+                EvolveEvent::error(
+                    start_time,
+                    Some(iteration),
+                    &format!("Maximum iterations exceeded ({})", max_iterations),
+                    &format!("Maximum iterations exceeded ({})", max_iterations),
+                ),
             );
             // Track failure
             if let Err(e) = statistics::record_evolution_failure(app, iteration) {
@@ -926,7 +962,7 @@ Could you provide more specific guidance on what aspects of your configuration n
             .into());
         }
 
-        // Safety limits
+        // Safety limits -- Max Iterations
         if iteration >= max_iterations {
             warn!(
                 "⚠️ Evolution exceeded maximum iterations ({}) - aborting",
@@ -956,6 +992,7 @@ Could you provide more specific guidance on what aspects of your configuration n
             .into());
         }
 
+        // Safety limits -- Max Build Attempts
         if build_attempts >= max_build_attempts {
             warn!(
                 "⚠️ Evolution exceeded maximum build attempts ({}) - aborting",

@@ -36,6 +36,20 @@ jobs:
           node-version: 20
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
+      # Sync native app version files to the tag version (on tag builds) or root
+      # package.json version (on branch/PR builds). This ensures the packaged app
+      # metadata always reflects the intended release version rather than stale
+      # checked-in values from apps/native/src-tauri/tauri.conf.json, Cargo.toml, etc.
+      - name: Sync native app version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            echo "Tag build — syncing to tag version: $VERSION"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+            echo "Branch/PR build — syncing to package.json version: $VERSION"
+          fi
+          node scripts/sync-versions.mjs "$VERSION"
       # Check if code signing secrets are available
       - name: Check for code signing secrets
         id: check-secrets
@@ -51,14 +65,19 @@ jobs:
           else
             echo "has_notarization=false" >> $GITHUB_OUTPUT
           fi
-      # Import Apple Developer certificate (only for releases with secrets)
+      # Build the Tauri app (TAURI_SIGNING_PRIVATE_KEY + PASSWORD come from sops)
+      # NOTE: Certificate import is intentionally deferred until after this step.
+      # Running `security list-keychain -d user -s <keychain>` before the build
+      # replaces the keychain search list and breaks DMG bundling on tag runs.
+      - name: Build Tauri app
+        run: bun run desktop:build
+        shell: 'sops exec-env .secrets.enc.yaml "bash -e {0}"'
+      # Import Apple Developer certificate (only for releases with secrets).
+      # Placed AFTER the Tauri build to avoid replacing the keychain search list
+      # before `bun run desktop:build`, which caused DMG bundling failures on tags.
       - name: Import Apple Developer certificate
         if: startsWith(github.ref, 'refs/tags/') && steps.check-secrets.outputs.has_certificate == 'true'
         shell: 'sops exec-env .secrets.enc.yaml "bash -e {0}"'
-        # env:
-        #   APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-        #   APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-        #   KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
           # Create a temporary keychain
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
@@ -70,16 +89,14 @@ jobs:
           echo "$APPLE_CERTIFICATE" | base64 --decode > $RUNNER_TEMP/certificate.p12
           security import $RUNNER_TEMP/certificate.p12 -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security list-keychain -d user -s $KEYCHAIN_PATH
+          # Prepend our keychain but keep the existing search list so later steps
+          # that do not need the cert still have access to the default keychains.
+          security list-keychain -d user -s $KEYCHAIN_PATH $(security list-keychains -d user | tr -d '"' | xargs)
 
           # Debug: List available signing identities
           echo "=== Available signing identities ==="
           security find-identity -v -p codesigning $KEYCHAIN_PATH
           echo "=== End identities ==="
-      # Build the Tauri app (TAURI_SIGNING_PRIVATE_KEY + PASSWORD come from sops)
-      - name: Build Tauri app
-        run: bun run desktop:build
-        shell: 'sops exec-env .secrets.enc.yaml "bash -e {0}"'
       # Sign the app bundle (required for notarization)
       - name: Sign app bundle
         if: startsWith(github.ref, 'refs/tags/') && steps.check-secrets.outputs.has_certificate == 'true'

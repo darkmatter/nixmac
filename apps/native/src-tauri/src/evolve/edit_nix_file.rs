@@ -8,7 +8,7 @@ use rowan::ast::AstNode;
 use rowan::{TextRange, TextSize};
 use std::path::Path;
 
-use crate::evolve::file_ops::resolve_existing_path_in_dir;
+use crate::evolve::file_ops::rewrite_existing_file_in_dir;
 use crate::evolve::types::FileEditAction;
 
 fn text_size_to_usize(size: TextSize) -> usize {
@@ -61,34 +61,32 @@ fn render_nix_scalar(value: &serde_json::Value) -> Result<String> {
 
 /// Apply a semantic file edit to the filesystem, with Nix-aware handling for specific edit types.
 pub fn apply_semantic_edit(base: &Path, edit: &SemanticFileEdit) -> anyhow::Result<()> {
-    let full_path = resolve_existing_path_in_dir(base, &edit.path)?;
-    let content = std::fs::read_to_string(&full_path)?;
+    rewrite_existing_file_in_dir(base, &edit.path, "apply semantic nix edit", |content| {
+        info!(
+            "apply_semantic_edit: path={} | action={:?}",
+            edit.path, edit.action
+        );
 
-    info!(
-        "apply_semantic_edit: path={} | action={:?}",
-        edit.path, edit.action
-    );
+        match &edit.action {
+            FileEditAction::Add { path, values } => {
+                info!("Action=Add path={} values={:?}", path, values);
+                add(content, path, values)
+            }
+            FileEditAction::Remove { path, values } => {
+                info!("Action=Remove path={} values={:?}", path, values);
+                remove(content, path, values)
+            }
+            FileEditAction::Set { path, value } => {
+                info!("Action=Set path={} value={:?}", path, value);
+                set_scalar(content, path, value)
+            }
+            FileEditAction::SetAttrs { path, attrs } => {
+                info!("Action=SetAttrs path={} attrs_count={}", path, attrs.len());
+                set_attrs(content, path, attrs)
+            }
+        }
+    })?;
 
-    let new_content = match &edit.action {
-        FileEditAction::Add { path, values } => {
-            info!("Action=Add path={} values={:?}", path, values);
-            add(&content, path, values)?
-        }
-        FileEditAction::Remove { path, values } => {
-            info!("Action=Remove path={} values={:?}", path, values);
-            remove(&content, path, values)?
-        }
-        FileEditAction::Set { path, value } => {
-            info!("Action=Set path={} value={:?}", path, value);
-            set_scalar(&content, path, value)?
-        }
-        FileEditAction::SetAttrs { path, attrs } => {
-            info!("Action=SetAttrs path={} attrs_count={}", path, attrs.len());
-            set_attrs(&content, path, attrs)?
-        }
-    };
-
-    std::fs::write(full_path, new_content)?;
     Ok(())
 }
 
@@ -102,10 +100,48 @@ fn extract_package_list(node: &SyntaxNode) -> Result<Vec<String>> {
     Ok(pkgs)
 }
 
-fn list_assignment_lhs(content: &str, list_start: usize) -> Option<&str> {
+/// Build the full attrpath for a list by checking brace nesting context.
+/// For a list inside nested attrsets like `homebrew = { taps = [...]; }`,
+/// this returns the full path "homebrew.taps" by scanning backwards through braces.
+/// For flat assignments like `environment.systemPackages = [...]`, returns just the full path.
+fn list_full_attrpath(content: &str, list_start: usize) -> Option<String> {
     let before_list = content.get(..list_start)?;
     let equals_pos = before_list.rfind('=')?;
-    assignment_lhs_at_equals(content, equals_pos)
+
+    // Start with the immediate LHS (e.g., "taps")
+    let immediate_lhs = assignment_lhs_at_equals(content, equals_pos)?;
+    let mut path_segments = vec![immediate_lhs.to_string()];
+
+    // Trace backwards through the content to find parent attrsets.
+    // Scan from the `=` position backwards, counting brace nesting, to find the opening brace
+    // of the immediately-enclosing attrset.
+    let mut brace_depth = 0;
+    let before_equals = content.get(..equals_pos)?;
+
+    let char_indices: Vec<(usize, char)> = before_equals.char_indices().collect();
+    for (idx, ch) in char_indices.iter().rev() {
+        match ch {
+            '}' => brace_depth += 1,
+            '{' if brace_depth > 0 => {
+                brace_depth -= 1;
+            }
+            '{' if brace_depth == 0 => {
+                // Found the opening brace of the enclosing attrset.
+                // Use the exact position from the iteration, not rfind, to avoid selecting
+                // the wrong brace if there are fully-closed { ... } blocks in between.
+                let brace_pos = *idx;
+                if let Some(parent_equals) = content.get(..brace_pos).and_then(|s| s.rfind('=')) {
+                    if let Some(parent_lhs) = assignment_lhs_at_equals(content, parent_equals) {
+                        path_segments.insert(0, parent_lhs.to_string());
+                    }
+                }
+                break;
+            }
+            _ => {}
+        }
+    }
+
+    Some(path_segments.join("."))
 }
 
 fn assignment_lhs_at_equals(content: &str, equals_pos: usize) -> Option<&str> {
@@ -237,15 +273,17 @@ fn find_statement_end(content: &str, start: usize) -> Option<usize> {
 }
 
 /// Find a List node assigned to a specific attrpath.
+/// Handles both flat assignments (e.g., `environment.systemPackages = [...]`)
+/// and nested ones (e.g., `homebrew = { taps = [...]; }`).
 fn find_list_for_attrpath(root: &SyntaxNode, content: &str, attrpath: &str) -> Option<SyntaxNode> {
     let target = normalize_attrpath_for_match(attrpath);
 
     for node in root.descendants() {
         if List::cast(node.clone()).is_some() {
             let list_start = text_size_to_usize(node.text_range().start());
-            if let Some(lhs) = list_assignment_lhs(content, list_start) {
-                let lhs_normalized = normalize_attrpath_for_match(lhs);
-                if lhs_normalized == target {
+            if let Some(full_path) = list_full_attrpath(content, list_start) {
+                let full_path_normalized = normalize_attrpath_for_match(&full_path);
+                if full_path_normalized == target {
                     return Some(node);
                 }
             }
@@ -799,6 +837,48 @@ environment.systemPackages = with pkgs; [
             edited.matches("system.defaults.dock").count(),
             1,
             "should not duplicate the attrset assignment"
+        );
+    }
+
+    const HOMEBREW_NESTED: &str = r#"{ config, pkgs, ... }:
+{
+  homebrew = {
+    # Homebrew taps (e.g., "dotenvx/brew")
+    taps = [
+      # "dotenvx/brew" # required for dotenvx formula
+    ];
+
+    # Homebrew formulae (non-GUI packages)
+    brews = [
+      # "git" # required for CLI workflows
+    ];
+
+    casks = [
+      # Homebrew Casks should be specified as strings (Cask token names).
+      # Add casks here, e.g.
+      # "visual-studio-code" # editor - enable if you prefer cask-managed VSCode
+    ];
+  };
+}
+"#;
+
+    #[test]
+    fn add_to_nested_list_inside_attrset() {
+        let edited = add(
+            HOMEBREW_NESTED,
+            "homebrew.taps",
+            &["dotenvx/brew".to_string()],
+        )
+        .expect("add should succeed for nested list in attrset");
+
+        assert!(
+            edited.contains("dotenvx/brew"),
+            "expected to find dotenvx/brew in the edited output"
+        );
+        assert_eq!(
+            edited.matches("taps = [").count(),
+            1,
+            "should not insert duplicate taps assignment"
         );
     }
 }
