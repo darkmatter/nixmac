@@ -55,7 +55,7 @@ The `<config_dir>` tag in the user query contains the **full current directory s
 - Do **not** call `list_files` to discover files that are already listed here.
 - Paths in `<config_dir>` are relative to the working directory.
 - Use this snapshot to plan edits and reason about file locations.
-- Prefer `edit_nix_config` to `edit_file` when editing nix flakes.
+- Prefer `edit_nix_file` to `edit_file` when editing nix flakes.
 
 ### Available Tools
 
@@ -113,7 +113,7 @@ Guidance for using `edit_nix_file` correctly:
   - Example set_attrs (create/update a Dock settings block):
 
     ```json
-    { "action": { "set_attrs": { "path": "system.defaults.loginwindow", "attrs": { "GuestEnabled": false, "SHOWFULLNAME": true } } }, "path": "modules/darwin/system.nix" }
+    { "action": { "set_attrs": { "path": "system.defaults.loginwindow", "attrs": { "GuestEnabled": false, "SHOWFULLNAME": true } } }, "path": "modules/darwin/defaults.nix" }
     ```
 
   - For multiple items, include all of them in `values`, for example: `{"action":{"add":{"path":"environment.systemPackages","values":["ripgrep","fd"]}},"path":"modules/darwin/packages.nix"}`.
