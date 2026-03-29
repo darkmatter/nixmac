@@ -100,5 +100,6 @@
     "**/dist/**": true,
     "**/.devenv/**": true,
     "**/Cargo.lock": true
-  }
+  },
+  "nixEnvSelector.nixFile": "${workspaceFolder}/devenv.nix"
 }

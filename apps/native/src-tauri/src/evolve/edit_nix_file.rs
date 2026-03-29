@@ -8,7 +8,7 @@ use rowan::ast::AstNode;
 use rowan::{TextRange, TextSize};
 use std::path::Path;
 
-use crate::evolve::file_ops::resolve_existing_path_in_dir;
+use crate::evolve::file_ops::rewrite_existing_file_in_dir;
 use crate::evolve::types::FileEditAction;
 
 fn text_size_to_usize(size: TextSize) -> usize {
@@ -61,34 +61,32 @@ fn render_nix_scalar(value: &serde_json::Value) -> Result<String> {
 
 /// Apply a semantic file edit to the filesystem, with Nix-aware handling for specific edit types.
 pub fn apply_semantic_edit(base: &Path, edit: &SemanticFileEdit) -> anyhow::Result<()> {
-    let full_path = resolve_existing_path_in_dir(base, &edit.path)?;
-    let content = std::fs::read_to_string(&full_path)?;
+    rewrite_existing_file_in_dir(base, &edit.path, "apply semantic nix edit", |content| {
+        info!(
+            "apply_semantic_edit: path={} | action={:?}",
+            edit.path, edit.action
+        );
 
-    info!(
-        "apply_semantic_edit: path={} | action={:?}",
-        edit.path, edit.action
-    );
+        match &edit.action {
+            FileEditAction::Add { path, values } => {
+                info!("Action=Add path={} values={:?}", path, values);
+                add(content, path, values)
+            }
+            FileEditAction::Remove { path, values } => {
+                info!("Action=Remove path={} values={:?}", path, values);
+                remove(content, path, values)
+            }
+            FileEditAction::Set { path, value } => {
+                info!("Action=Set path={} value={:?}", path, value);
+                set_scalar(content, path, value)
+            }
+            FileEditAction::SetAttrs { path, attrs } => {
+                info!("Action=SetAttrs path={} attrs_count={}", path, attrs.len());
+                set_attrs(content, path, attrs)
+            }
+        }
+    })?;
 
-    let new_content = match &edit.action {
-        FileEditAction::Add { path, values } => {
-            info!("Action=Add path={} values={:?}", path, values);
-            add(&content, path, values)?
-        }
-        FileEditAction::Remove { path, values } => {
-            info!("Action=Remove path={} values={:?}", path, values);
-            remove(&content, path, values)?
-        }
-        FileEditAction::Set { path, value } => {
-            info!("Action=Set path={} value={:?}", path, value);
-            set_scalar(&content, path, value)?
-        }
-        FileEditAction::SetAttrs { path, attrs } => {
-            info!("Action=SetAttrs path={} attrs_count={}", path, attrs.len());
-            set_attrs(&content, path, attrs)?
-        }
-    };
-
-    std::fs::write(full_path, new_content)?;
     Ok(())
 }
 
