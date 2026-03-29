@@ -13,6 +13,7 @@
   },
   "hooks": {
     "before:bump": "echo 'Bumping to v${version}'",
-    "after:bump": "node scripts/sync-versions.mjs ${version}"
+    "after:bump": "node scripts/sync-versions.mjs ${version}",
+    "before:git:commit": "git add apps/native/package.json apps/native/src-tauri/tauri.conf.json apps/native/src-tauri/Cargo.toml"
   }
 }
