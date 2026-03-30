@@ -48,8 +48,7 @@
   # Environment Variables
   # ---------------------------------------------------------------------------
   env = {
-    # DATABASE_URL = "postgres://localhost:5432/myapp";
-    # NODE_ENV = "development";
+    DATABASE_URL = "postgres://postgres:password@localhost:5432/nixmac-postgres";
   };
 
   # ---------------------------------------------------------------------------
