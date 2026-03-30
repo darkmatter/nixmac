@@ -15,6 +15,8 @@
   # ---------------------------------------------------------------------------
   cli.enable = true;
 
+  turbo.enable = false;
+
   # ---------------------------------------------------------------------------
   # Theme - Starship prompt with stackpanel styling
   # See: https://stackpanel.dev/docs/theme
