@@ -20,7 +20,10 @@
       bun.buildPhase = "bun run build";
       commands = {
         dev = {
-          command = "bun run dev:web";
+          command = "bun run dev";
+        };
+        start = {
+          command = "bun run start";
         };
       };
       description = "Main web application";
