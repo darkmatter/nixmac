@@ -36,18 +36,42 @@ jobs:
           node-version: 20
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
-      # Sync native app version files to the tag version (on tag builds) or root
-      # package.json version (on branch/PR builds). This ensures the packaged app
-      # metadata always reflects the intended release version rather than stale
-      # checked-in values from apps/native/src-tauri/tauri.conf.json, Cargo.toml, etc.
+      # Sync native app version files to the tag version (on tag builds) or the
+      # max(package.json, latest-git-tag) version (on branch/PR builds). Using the
+      # max protects against a stale package.json causing branch builds to embed a
+      # lower version than what has already shipped, which would produce a
+      # false-positive update banner (e.g. embedding 0.5.0 when latest.json is 0.16.2).
       - name: Sync native app version
         run: |
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             VERSION="${GITHUB_REF_NAME#v}"
             echo "Tag build — syncing to tag version: $VERSION"
           else
-            VERSION=$(node -p "require('./package.json').version")
-            echo "Branch/PR build — syncing to package.json version: $VERSION"
+            PKG_VERSION=$(node -p "require('./package.json').version")
+            # Guard against stale package.json: if the latest git tag is newer,
+            # use the tag version so branch builds never embed a lower version than
+            # what has already shipped (which would trigger a false-positive update banner).
+            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "")
+            # Portable semver compare via Node (avoids sort -V which requires GNU coreutils).
+            # Exits 0 (true) when LATEST_TAG > PKG_VERSION, 1 otherwise.
+            _tag_is_newer() {
+              node -e "
+                const a = '$PKG_VERSION'.split('.').map(s => parseInt(s, 10));
+                const b = '$LATEST_TAG'.split('.').map(s => parseInt(s, 10));
+                for (let i = 0; i < 3; i++) {
+                  if ((b[i]||0) > (a[i]||0)) process.exit(0);
+                  if ((a[i]||0) > (b[i]||0)) process.exit(1);
+                }
+                process.exit(1);
+              "
+            }
+            if [[ -n "$LATEST_TAG" ]] && _tag_is_newer; then
+              echo "⚠️  package.json version ($PKG_VERSION) lags behind latest tag ($LATEST_TAG) — using tag version to prevent false-positive update banner"
+              VERSION="$LATEST_TAG"
+            else
+              VERSION="$PKG_VERSION"
+            fi
+            echo "Branch/PR build — syncing to version: $VERSION"
           fi
           node scripts/sync-versions.mjs "$VERSION"
       # Check if code signing secrets are available
