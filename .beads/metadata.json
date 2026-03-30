@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_database": "nixmac",
+  "project_id": "e1903701-3b76-4271-b17e-5ac6cfcb7b80"
+}
