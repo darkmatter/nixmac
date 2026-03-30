@@ -6,7 +6,7 @@ export type Change = { id: number; hash: string; filename: string; diff: string;
  * Groups Changes for a commit→base_commit pair. `commit_id` is NULL for speculative
  * (uncommitted) changesets. Membership is stored in the `set_changes` join table.
  */
-export type ChangeSet = { id: number; commitId: number | null; baseCommitId: number; commitMessage: string | null; generatedCommitMessage: string | null; createdAt: number }
+export type ChangeSet = { id: number; commitId: number | null; baseCommitId: number; commitMessage: string | null; generatedCommitMessage: string | null; createdAt: number; evolutionId: number | null }
 
 export type ChangeSummary = { id: number; title: string; description: string; 
 /**
@@ -14,15 +14,15 @@ export type ChangeSummary = { id: number; title: string; description: string;
  */
 status: string; createdAt: number }
 
-export type CommitRow = { id: number; hash: string; treeHash: string; message: string | null; createdAt: number }
+export type Commit = { id: number; hash: string; treeHash: string; message: string | null; createdAt: number }
 
-export type EvolutionCommitRow = { evolutionId: number; commitId: number }
+export type Evolution = { id: number; originBranch: string; merged: number; builds: number }
 
-export type EvolutionRow = { id: number; branch: string; merged: number; builds: number }
+export type EvolutionCommit = { evolutionId: number; commitId: number }
 
-export type PromptRow = { id: number; text: string; commitId: number | null; createdAt: number }
+export type Prompt = { id: number; text: string; commitId: number | null; createdAt: number }
 
-export type SquashedCommitRow = { targetId: number; sourceId: number }
+export type SquashedCommit = { targetId: number; sourceId: number }
 
-export type SummaryRow = { id: number; commitId: number; baseCommitId: number | null; contentJson: string; diff: string; createdAt: number }
+export type Summary = { id: number; commitId: number; baseCommitId: number | null; contentJson: string; diff: string; createdAt: number }
 

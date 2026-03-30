@@ -48,8 +48,8 @@ fn create_tables(conn: &Connection) -> Result<()> {
         );
 
         CREATE TABLE IF NOT EXISTS evolutions (
-            id INTEGER PRIMARY KEY,
-            branch TEXT NOT NULL,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            origin_branch TEXT NOT NULL,
             merged INTEGER NOT NULL DEFAULT 0,
             builds INTEGER NOT NULL DEFAULT 0
         );
@@ -95,12 +95,13 @@ fn create_tables(conn: &Connection) -> Result<()> {
         );
 
         CREATE TABLE IF NOT EXISTS change_sets (
-            id INTEGER PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             commit_id INTEGER REFERENCES commits(id),
             base_commit_id INTEGER NOT NULL REFERENCES commits(id),
             commit_message TEXT,
             generated_commit_message TEXT,
-            created_at INTEGER NOT NULL
+            created_at INTEGER NOT NULL,
+            evolution_id INTEGER REFERENCES evolutions(id)
         );
 
         CREATE TABLE IF NOT EXISTS set_changes (
@@ -128,7 +129,7 @@ fn create_tables(conn: &Connection) -> Result<()> {
         );
 
         CREATE INDEX IF NOT EXISTS idx_commits_tree_hash ON commits(tree_hash);
-        CREATE INDEX IF NOT EXISTS idx_evolutions_branch ON evolutions(branch);
+        CREATE INDEX IF NOT EXISTS idx_evolutions_origin_branch ON evolutions(origin_branch);
         CREATE INDEX IF NOT EXISTS idx_evolution_commits_commit ON evolution_commits(commit_id);
         CREATE INDEX IF NOT EXISTS idx_summaries_commit ON summaries(commit_id);
         CREATE INDEX IF NOT EXISTS idx_summaries_base ON summaries(base_commit_id);

@@ -171,7 +171,7 @@ pub fn query_change_set_for_commit_pair(
     base_commit_id: i64,
 ) -> Result<Option<SummarizedChangeSet>> {
     let cs_result = conn.query_row(
-        "SELECT id, commit_id, base_commit_id, commit_message, generated_commit_message, created_at
+        "SELECT id, commit_id, base_commit_id, commit_message, generated_commit_message, created_at, evolution_id
          FROM change_sets WHERE commit_id = ?1 AND base_commit_id = ?2
          ORDER BY created_at DESC LIMIT 1",
         rusqlite::params![commit_id, base_commit_id],
@@ -183,6 +183,7 @@ pub fn query_change_set_for_commit_pair(
                 commit_message: row.get(3)?,
                 generated_commit_message: row.get(4)?,
                 created_at: row.get(5)?,
+                evolution_id: row.get(6)?,
             })
         },
     );
@@ -230,7 +231,7 @@ pub fn query_change_set_for_base_with_hashes(
 ) -> Result<Option<SummarizedChangeSet>> {
     let cs_result: rusqlite::Result<ChangeSet> = conn.query_row(
         "SELECT id, commit_id, base_commit_id, commit_message, generated_commit_message, \
-         created_at FROM change_sets WHERE base_commit_id = ?1 \
+         created_at, evolution_id FROM change_sets WHERE base_commit_id = ?1 \
          ORDER BY created_at DESC LIMIT 1",
         [base_commit_id],
         |row| {
@@ -241,6 +242,7 @@ pub fn query_change_set_for_base_with_hashes(
                 commit_message: row.get(3)?,
                 generated_commit_message: row.get(4)?,
                 created_at: row.get(5)?,
+                evolution_id: row.get(6)?,
             })
         },
     );
