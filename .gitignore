@@ -129,8 +129,8 @@ untracked
 .stack/profile/
 .stack/state/
 .tasks
-.turbo
-devshell
+/devshell
 packages/infra/
+packages/scripts/entrypoints/
 process-compose.yaml
 # ── END stackpanel ──
