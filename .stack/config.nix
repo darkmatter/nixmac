@@ -6,9 +6,29 @@
 # ==============================================================================
 {
   enable = true;
-  name = "my-project";
-  github = "owner/repo";
+  name = "nixmac";
+  github = "darkmatter/nixmac";
   # debug = false;
+
+  # ---------------------------------------------------------------------------
+  # Apps
+  # ---------------------------------------------------------------------------
+  apps = {
+    web = {
+      bun.enable = true;
+      bun.generateFiles = false;
+      bun.buildPhase = "bun run build";
+      commands = {
+        dev = {
+          command = "bun run dev:web";
+        };
+      };
+      description = "Main web application";
+      name = "web";
+      path = "apps/web";
+      type = "bun";
+    };
+  };
 
   # ---------------------------------------------------------------------------
   # CLI - Stackpanel command-line tools

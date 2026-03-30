@@ -26,13 +26,13 @@
   # Languages - Enable language toolchains
   # ---------------------------------------------------------------------------
   languages = {
-    # javascript = {
-    #   enable = true;
-    #   bun.enable = true;
-    #   bun.install.enable = true;
-    # };
+    javascript = {
+      enable = true;
+      bun.enable = true;
+      bun.install.enable = true;
+    };
 
-    # typescript.enable = true;
+    typescript.enable = true;
 
     # go.enable = true;
 
