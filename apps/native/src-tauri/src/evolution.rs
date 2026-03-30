@@ -348,7 +348,7 @@ pub async fn evolve_and_commit(
             commit_hash: commit_info.hash.clone(),
             tree_hash: commit_info.tree_hash.clone(),
             commit_message: commit_message.clone(),
-            branch: branch_for_db,
+            origin_branch: branch_for_db,
             summary_json,
             diff: status.diff.clone(),
             prompt: Some(description.to_string()),

@@ -36,13 +36,13 @@ pub fn get_summary_for_from(
     db_path: &Path,
     commit_id: i64,
     base_commit_id: i64,
-) -> Result<Option<crate::sqlite_types::SummaryRow>> {
+) -> Result<Option<crate::sqlite_types::Summary>> {
     let conn = Connection::open(db_path)?;
     let result = conn.query_row(
         "SELECT id, commit_id, base_commit_id, content_json, diff, created_at FROM summaries WHERE commit_id = ?1 AND base_commit_id = ?2",
         [commit_id, base_commit_id],
         |row| {
-            Ok(crate::sqlite_types::SummaryRow {
+            Ok(crate::sqlite_types::Summary {
                 id: row.get(0)?,
                 commit_id: row.get(1)?,
                 base_commit_id: row.get(2)?,

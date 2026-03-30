@@ -13,7 +13,7 @@ pub struct EvolutionData {
     pub commit_hash: String,
     pub tree_hash: String,
     pub commit_message: String,
-    pub branch: String,
+    pub origin_branch: String,
     pub summary_json: String,
     pub diff: String,
     /// function reused for straggling manual changes - prompt optional
@@ -58,8 +58,8 @@ pub fn save_evolution_complete(db_path: &Path, data: EvolutionData) -> Result<i6
 
     // Insert evolution record
     tx.execute(
-        "INSERT INTO evolutions (branch, merged, builds) VALUES (?1, 0, 0)",
-        [&data.branch],
+        "INSERT INTO evolutions (origin_branch, merged, builds) VALUES (?1, 0, 0)",
+        [&data.origin_branch],
     )?;
     let evolution_id = tx.last_insert_rowid();
 
@@ -98,7 +98,7 @@ pub fn delete_evolution_by_branch(db_path: &Path, branch: &str) -> Result<()> {
 
     // Collect evolution IDs for this branch
     let evolution_ids: Vec<i64> = {
-        let mut stmt = tx.prepare("SELECT id FROM evolutions WHERE branch = ?1")?;
+        let mut stmt = tx.prepare("SELECT id FROM evolutions WHERE origin_branch = ?1")?;
         let mut rows = stmt.query([branch])?;
         let mut ids = Vec::new();
         while let Some(row) = rows.next()? {
@@ -149,7 +149,7 @@ pub fn delete_evolution_by_branch(db_path: &Path, branch: &str) -> Result<()> {
         rusqlite::params_from_iter(&evolution_ids),
     )?;
 
-    tx.execute("DELETE FROM evolutions WHERE branch = ?1", [branch])?;
+    tx.execute("DELETE FROM evolutions WHERE origin_branch = ?1", [branch])?;
 
     if !commit_ids.is_empty() {
         let cp = commit_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");

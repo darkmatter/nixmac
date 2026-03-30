@@ -310,9 +310,9 @@ pub struct HistoryItem {
     /// True if this commit has the `nixmac-last-build` tag (most recently built).
     pub is_built: bool,
     /// DB record — present only if metadata has been generated for this commit.
-    pub commit: Option<crate::sqlite_types::CommitRow>,
+    pub commit: Option<crate::sqlite_types::Commit>,
     /// AI summary — present only if a summary has been generated.
-    pub summary: Option<crate::sqlite_types::SummaryRow>,
+    pub summary: Option<crate::sqlite_types::Summary>,
     /// Change set with granular changes and summaries — present only if the pipeline has run.
     pub change_set: Option<crate::query_return_types::SummarizedChangeSet>,
 }

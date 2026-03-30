@@ -8,7 +8,7 @@ use specta::Type;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct CommitRow {
+pub struct Commit {
     pub id: i64,
     pub hash: String,
     pub tree_hash: String,
@@ -19,7 +19,7 @@ pub struct CommitRow {
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct SquashedCommitRow {
+pub struct SquashedCommit {
     pub target_id: i64,
     pub source_id: i64,
 }
@@ -27,9 +27,9 @@ pub struct SquashedCommitRow {
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct EvolutionRow {
+pub struct Evolution {
     pub id: i64,
-    pub branch: String,
+    pub origin_branch: String,
     pub merged: i64,
     pub builds: i64,
 }
@@ -37,14 +37,14 @@ pub struct EvolutionRow {
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct EvolutionCommitRow {
+pub struct EvolutionCommit {
     pub evolution_id: i64,
     pub commit_id: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct SummaryRow {
+pub struct Summary {
     pub id: i64,
     pub commit_id: i64,
     pub base_commit_id: Option<i64>,
@@ -56,7 +56,7 @@ pub struct SummaryRow {
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct PromptRow {
+pub struct Prompt {
     pub id: i64,
     pub text: String,
     pub commit_id: Option<i64>,
@@ -117,4 +117,5 @@ pub struct ChangeSet {
     pub commit_message: Option<String>,
     pub generated_commit_message: Option<String>,
     pub created_at: i64,
+    pub evolution_id: Option<i64>,
 }

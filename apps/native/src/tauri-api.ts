@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { type Event, listen, once } from "@tauri-apps/api/event";
-import type { Change, CommitRow, SummaryRow } from "./types/sqlite";
-export type { Change, CommitRow, SummaryRow } from "./types/sqlite";
+import type { Change, Commit, Summary } from "./types/sqlite";
+export type { Change, Commit, Summary } from "./types/sqlite";
 import type { SemanticChangeMap, SummarizedChangeSet } from "./types/queries";
 export type { SemanticChangeMap, SummarizedChangeSet } from "./types/queries";
 
@@ -10,8 +10,8 @@ export interface HistoryItem {
   message: string | null;
   createdAt: number;
   isBuilt: boolean;
-  commit: CommitRow | null;
-  summary: SummaryRow | null;
+  commit: Commit | null;
+  summary: Summary | null;
   changeSet: SummarizedChangeSet | null;
 }
 import {

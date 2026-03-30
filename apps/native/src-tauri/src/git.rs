@@ -546,7 +546,7 @@ pub fn log(
     dir: &str,
     start_hash: &str,
     limit: Option<usize>,
-) -> Result<Vec<crate::sqlite_types::CommitRow>> {
+) -> Result<Vec<crate::sqlite_types::Commit>> {
     let mut cmd = git_command();
     cmd.arg("log").arg("--format=%H%n%T%n%at%n%s");
     if let Some(n) = limit {
@@ -568,7 +568,7 @@ pub fn log(
         let timestamp: i64 = lines.next().unwrap_or("0").trim().parse().unwrap_or(0);
         let subject = lines.next().unwrap_or("").to_string();
 
-        commits.push(crate::sqlite_types::CommitRow {
+        commits.push(crate::sqlite_types::Commit {
             id: 0,
             hash,
             tree_hash,

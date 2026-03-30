@@ -18,12 +18,12 @@ use specta_typescript::Typescript;
 fn main() {
     let mut collection = TypeCollection::default();
     let types = collection
-        .register::<sqlite_types::CommitRow>()
-        .register::<sqlite_types::SquashedCommitRow>()
-        .register::<sqlite_types::EvolutionRow>()
-        .register::<sqlite_types::EvolutionCommitRow>()
-        .register::<sqlite_types::SummaryRow>()
-        .register::<sqlite_types::PromptRow>()
+        .register::<sqlite_types::Commit>()
+        .register::<sqlite_types::SquashedCommit>()
+        .register::<sqlite_types::Evolution>()
+        .register::<sqlite_types::EvolutionCommit>()
+        .register::<sqlite_types::Summary>()
+        .register::<sqlite_types::Prompt>()
         .register::<sqlite_types::Change>()
         .register::<sqlite_types::ChangeSummary>()
         .register::<sqlite_types::ChangeSet>();

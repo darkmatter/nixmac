@@ -56,13 +56,13 @@ pub fn store_head_commit(
 pub fn get_commit_by_hash(
     db_path: &Path,
     hash: &str,
-) -> Result<Option<crate::sqlite_types::CommitRow>> {
+) -> Result<Option<crate::sqlite_types::Commit>> {
     let conn = Connection::open(db_path)?;
     let result = conn.query_row(
         "SELECT id, hash, tree_hash, message, created_at FROM commits WHERE hash = ?1",
         [hash],
         |row| {
-            Ok(crate::sqlite_types::CommitRow {
+            Ok(crate::sqlite_types::Commit {
                 id: row.get(0)?,
                 hash: row.get(1)?,
                 tree_hash: row.get(2)?,
