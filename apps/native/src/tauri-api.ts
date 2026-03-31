@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { type Event, listen, once } from "@tauri-apps/api/event";
-import type { Change, Commit, Summary } from "./types/sqlite";
-export type { Change, Commit, Summary } from "./types/sqlite";
+import type { Change, Commit } from "./types/sqlite";
+export type { Change, Commit } from "./types/sqlite";
 import type { SemanticChangeMap, SummarizedChangeSet } from "./types/queries";
 export type { SemanticChangeMap, SummarizedChangeSet } from "./types/queries";
 
@@ -11,8 +11,7 @@ export interface HistoryItem {
   createdAt: number;
   isBuilt: boolean;
   commit: Commit | null;
-  summary: Summary | null;
-  changeSet: SummarizedChangeSet | null;
+  changeMap: SemanticChangeMap | null;
 }
 import {
   checkFullDiskAccessPermission,
@@ -87,18 +86,20 @@ export interface SummaryResponse {
   diff: string;
 }
 
-export interface GitStatusWithSummary<S = SummaryResponse> {
-  gitStatus: GitStatus;
-  summary: S;
-}
-
 export interface WatcherEvent {
   gitStatus: GitStatus;
   changeMap: SemanticChangeMap;
 }
 
-export type EvolutionResult = GitStatusWithSummary & { state?: string };
-export type RollbackResult = GitStatusWithSummary<SummaryResponse | null>;
+export interface EvolutionResult {
+  gitStatus: GitStatus;
+  changeMap: SemanticChangeMap;
+  state?: string;
+}
+
+export interface RollbackResult {
+  gitStatus: GitStatus;
+}
 
 export interface PreviewIndicatorState {
   visible: boolean;
@@ -276,16 +277,7 @@ export const darwinAPI = {
     cached: () => invoke<GitStatus | null>("git_cached"),
     commit: (message: string) => invoke("git_commit", { message }),
     stash: (message: string) => invoke("git_stash", { message }),
-    stageAll: () => invoke("git_stage_all"),
-    unstageAll: () => invoke("git_unstage_all"),
-    restoreAll: () => invoke("git_restore_all"),
-    checkoutNewBranch: (branchName: string) =>
-      invoke<{ ok: boolean; branch: string }>("git_checkout_new_branch", { branchName }),
-    checkoutBranch: (branchName: string) => invoke("git_checkout_branch", { branchName }),
-    checkoutMainBranch: () => invoke("git_checkout_main_branch"),
     tagAsBuilt: () => invoke("git_tag_as_built"),
-    mergeBranch: (branchName: string, squash?: boolean, commitMessage?: string) =>
-      invoke("git_finalize_evolve", { branchName, squash, commitMessage }),
   },
   darwin: {
     evolve: (description: string) => invoke<EvolutionResult>("darwin_evolve", { description }),
@@ -294,9 +286,8 @@ export const darwinAPI = {
     applyStreamStart: (hostOverride?: string) =>
       invoke("darwin_apply_stream_start", { hostOverride }),
     applyStreamCancel: () => invoke("darwin_apply_stream_cancel"),
-    finalizeApply: () => invoke<EvolutionResult>("finalize_apply"),
-    rollbackErase: (keepBranch?: boolean) =>
-      invoke<RollbackResult>("rollback_erase", { keepBranch }),
+    finalizeApply: () => invoke<GitStatus>("finalize_apply"),
+    rollbackErase: () => invoke<RollbackResult>("rollback_erase"),
     restoreToCommit: (targetHash: string) => invoke<void>("restore_to_commit", { targetHash }),
   },
   nix: {

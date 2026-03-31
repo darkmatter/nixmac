@@ -55,15 +55,10 @@ export function useEvolve() {
 
       useWidgetStore.getState().appendLog("✓ Evolution complete\n");
 
-      // Set the summary and git status from the result.
-      // For conversational responses (no nix changes), show the agent's reply in a
-      // dedicated UI panel below the prompt — do not open the review / merge UI.
       if (result?.state === "conversational") {
-        const response = result.summary?.instructions;
-        useWidgetStore.getState().setConversationalResponse(response ?? null);
-      } else if (result?.summary) {
+        useWidgetStore.getState().setConversationalResponse(null);
+      } else {
         store.setSummaryAvailable(true);
-        useWidgetStore.getState().setSummary(result.summary);
       }
       if (result?.gitStatus) {
         useWidgetStore.getState().setGitStatus(result.gitStatus);

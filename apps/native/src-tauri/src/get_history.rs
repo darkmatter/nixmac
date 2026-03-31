@@ -1,4 +1,4 @@
-//! History query: all commits on the main branch with DB metadata, summary, and build status.
+//! History query: all commits from HEAD with DB metadata and change map.
 
 use anyhow::Result;
 use tauri::{AppHandle, Runtime};
@@ -7,11 +7,8 @@ pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::ty
     let config_dir = crate::store::get_config_dir(app)?;
     let db_path = crate::db::get_db_path(app)?;
 
-    let main_branch =
-        crate::git::get_default_branch(&config_dir).unwrap_or_else(|| "main".to_string());
-
-    // Fetch all commits on the main branch (no limit).
-    let git_commits = crate::git::log(&config_dir, &main_branch, None)?;
+    // Fetch all commits from HEAD backwards (no limit).
+    let git_commits = crate::git::log(&config_dir, "HEAD", None)?;
 
     // Resolve the last-built SHA once — used to flag is_built per commit.
     let last_built_sha = crate::git::get_last_built_commit_sha(&config_dir);
@@ -28,16 +25,11 @@ pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::ty
                 .flatten()
         });
 
-        let summary = db_commit.as_ref().zip(parent_db.as_ref()).and_then(|(commit, parent_db)| {
-            crate::db::summaries::get_summary_for_from(&db_path, commit.id, parent_db.id)
-                .ok()
-                .flatten()
-        });
-
-        let change_set = db_commit.as_ref().zip(parent_db.as_ref()).and_then(|(commit, parent_db)| {
+        let change_map = db_commit.as_ref().zip(parent_db.as_ref()).and_then(|(commit, parent_db)| {
             crate::summarize::find_existing::by_commit_pair(&db_path, commit.id, parent_db.id)
                 .ok()
                 .flatten()
+                .map(|cs| crate::summarize::group_existing::from_change_sets(vec![cs]))
         });
 
         let is_built = last_built_sha
@@ -51,8 +43,7 @@ pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::ty
             created_at: git_commit.created_at,
             is_built,
             commit: db_commit,
-            summary,
-            change_set,
+            change_map,
         });
     }
 

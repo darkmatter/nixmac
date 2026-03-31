@@ -206,17 +206,7 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
                 output.telemetry.state == crate::evolve::EvolutionState::Conversational;
 
             if is_conversational {
-                // Print the agent's reply directly to stdout so it is human-readable
-                // in terminal sessions and pipe-friendly for scripts.
-                let reply = output.summary.instructions.trim();
-                println!(
-                    "{}",
-                    if reply.is_empty() {
-                        "(no response)"
-                    } else {
-                        reply
-                    }
-                );
+                println!("(conversational response — no changes made)");
             } else {
                 println!("Evolution completed successfully");
             }

@@ -49,23 +49,17 @@ export function useGitOperations() {
     [refreshGitStatus],
   );
 
-  const handleMerge = useCallback(
-    async (squash = false, commitMessage?: string) => {
+  const handleCommit = useCallback(
+    async (commitMessage: string) => {
       const store = useWidgetStore.getState();
-      const currentBranch = store.gitStatus?.branch;
-
-      if (!currentBranch) {
-        return;
-      }
-
       store.setProcessing(true, "merge");
-      store.appendLog(`\n> Merging ${currentBranch} to main...\n`);
+      store.appendLog(`\n> Committing changes...\n`);
 
       try {
-        await darwinAPI.git.mergeBranch(currentBranch, squash, commitMessage);
-        useWidgetStore.getState().appendLog("✓ Merged successfully\n");
+        await darwinAPI.git.commit(commitMessage);
+        useWidgetStore.getState().appendLog("✓ Committed successfully\n");
         useWidgetStore.getState().setError(null);
-        toast.success("Merged successfully", { description: `${currentBranch} merged to main` });
+        toast.success("Committed successfully");
         useWidgetStore.getState().setEvolvePrompt("");
         useWidgetStore.getState().clearPreview();
         await refreshGitStatus();
@@ -80,5 +74,5 @@ export function useGitOperations() {
     [refreshGitStatus],
   );
 
-  return { refreshGitStatus, getInitialStatus, gitStash, handleMerge };
+  return { refreshGitStatus, getInitialStatus, gitStash, handleCommit };
 }

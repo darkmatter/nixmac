@@ -42,16 +42,6 @@ pub struct EvolutionCommit {
     pub commit_id: i64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct Summary {
-    pub id: i64,
-    pub commit_id: i64,
-    pub base_commit_id: Option<i64>,
-    pub content_json: String,
-    pub diff: String,
-    pub created_at: i64,
-}
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
