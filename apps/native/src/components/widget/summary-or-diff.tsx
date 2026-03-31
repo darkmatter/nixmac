@@ -1,13 +1,13 @@
 "use client";
 
-import { Activity, useState } from "react";
-import { Diff } from "@/components/widget/diff";
-import { SummaryItems } from "@/components/widget/summary-items";
 import { AnimatedTabsList, AnimatedTabsTrigger } from "@/components/ui/animated-tabs";
 import { Tabs } from "@/components/ui/tabs";
+import { Diff } from "@/components/widget/diff";
+import { SummaryItems } from "@/components/widget/summary-items";
 import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
 import { Dna, Wrench } from "lucide-react";
+import { Activity, useState } from "react";
 
 interface SummaryOrDiffProps {
   variant?: "default" | "outline";
@@ -16,10 +16,10 @@ interface SummaryOrDiffProps {
 export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   const gitStatus = useWidgetStore((s) => s.gitStatus);
   const changeMap = useWidgetStore((s) => s.changeMap);
+  const evolveState = useWidgetStore((s) => s.evolveState);
   const [activeTab, setActiveTab] = useState("summary");
 
-  const cleanOnMain = gitStatus?.cleanHead && gitStatus?.isMainBranch;
-  if (!gitStatus || cleanOnMain) {
+  if (!gitStatus || !evolveState || evolveState.step === "begin") {
     return null;
   }
   const changes = gitStatus.changes ?? [];
@@ -35,8 +35,8 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-border/50 border-b py-2">
         <div className="flex items-center gap-2">
-          {gitStatus.headIsBuilt ? <Wrench className="h-4 w-4 text-primary" /> : <Dna className="h-4 w-4 text-primary" />}
-          <h2 className="font-medium text-sm">{gitStatus.headIsBuilt ? "Active Changes" : "What's changed"}</h2>
+          {evolveState.committable ? <Wrench className="h-4 w-4 text-primary" /> : <Dna className="h-4 w-4 text-primary" />}
+          <h2 className="font-medium text-sm">{evolveState.committable ? "Active Changes" : "What's changed"}</h2>
         </div>
         <AnimatedTabsList defaultValue="summary">
           <AnimatedTabsTrigger value="summary">Summary</AnimatedTabsTrigger>

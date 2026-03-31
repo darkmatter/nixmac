@@ -8,7 +8,7 @@ export type Change = { id: number; hash: string; filename: string; diff: string;
  */
 export type ChangeSet = { id: number; commitId: number | null; baseCommitId: number; commitMessage: string | null; generatedCommitMessage: string | null; createdAt: number; evolutionId: number | null }
 
-export type ChangeSummary = { id: number; title: string; description: string;
+export type ChangeSummary = { id: number; title: string; description: string; 
 /**
  * One of `"QUEUED"`, `"DONE"`, `"FAILED"`, `"CANCELLED"`.
  */

@@ -8,7 +8,7 @@
 //! preview mode, etc.) is computed and managed entirely by the client.
 
 use crate::{
-    darwin, db, default_config, evolution, feedback, git, nix, peek, permissions,
+    darwin, db, default_config, evolution, evolve_state, feedback, git, nix, peek, permissions,
     rollback, scanner, store, types,
 };
 use std::path::Path;
@@ -410,13 +410,14 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<serde_json::Va
     Ok(serde_json::json!({"ok": true}))
 }
 
-/// Finalize a successful darwin-rebuild, commits and records manual changes when detected.
+/// Finalize a successful darwin-rebuild, tags HEAD as built, and marks changes as committable.
 #[tauri::command]
-pub async fn finalize_apply(app: AppHandle) -> Result<serde_json::Value, String> {
-    let result = crate::finalize_apply::finalize_apply(&app)
+pub async fn finalize_apply(
+    app: AppHandle,
+) -> Result<crate::finalize_apply::ApplyResult, String> {
+    crate::finalize_apply::finalize_apply(&app)
         .await
-        .map_err(|e| capture_err("finalize_apply", e))?;
-    Ok(serde_json::to_value(result).unwrap_or_default())
+        .map_err(|e| capture_err("finalize_apply", e))
 }
 
 #[tauri::command]
@@ -949,4 +950,17 @@ pub fn relaunch_after_update(app: AppHandle) -> Result<(), String> {
     // `app.exit` schedules an exit through the Tauri event loop and returns
     // (it does not call std::process::exit directly), so we must return Ok here.
     Ok(())
+// Evolve State Commands
+// =============================================================================
+
+/// Load persisted evolve state (called on startup).
+#[tauri::command]
+pub async fn routing_state_get(app: AppHandle) -> Result<evolve_state::EvolveState, String> {
+    evolve_state::get(&app).map_err(|e| capture_err("routing_state_get", e))
+}
+
+/// Clear evolve state back to idle (called after a successful git commit).
+#[tauri::command]
+pub async fn routing_state_clear(app: AppHandle) -> Result<evolve_state::EvolveState, String> {
+    evolve_state::clear(&app).map_err(|e| capture_err("routing_state_clear", e))
 }

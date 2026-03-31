@@ -6,14 +6,10 @@ import type {
 export function computeCurrentStep(state: WidgetState): WidgetStep {
   const hasConfigDir = !!state.configDir;
   const hasHost = !!state.host;
-  const notMainBranch = !(state.gitStatus?.isMainBranch ?? true);
-  const headIsClean = state.gitStatus?.cleanHead ?? false;
-  const headIsBuilt = state.gitStatus?.headIsBuilt ?? false;
   const permissionsCheckedAndIncomplete =
     state.permissionsChecked &&
     state.permissionsState &&
     !state.permissionsState.allRequiredGranted;
-  const isBootstrapping = state.isBootstrapping;
 
   if (permissionsCheckedAndIncomplete) {
     return "permissions";
@@ -23,7 +19,7 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
     return "nix-setup";
   }
 
-  if (isBootstrapping) {
+  if (state.isBootstrapping) {
     return "setup";
   }
 
@@ -35,9 +31,11 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
     return "history";
   }
 
-  if (notMainBranch && headIsBuilt && headIsClean) {
-    return "merge";
-  }
+  // Backend is the source of truth for evolve/merge routing.
+  const routingStep = state.evolveState?.step;
+  if (routingStep === "merge") return "merge";
+  if (routingStep === "evolve") return "evolving";
+  if (routingStep === "begin") return "begin";
 
   return "evolving";
 }

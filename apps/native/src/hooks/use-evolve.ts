@@ -63,6 +63,9 @@ export function useEvolve() {
       if (result?.gitStatus) {
         useWidgetStore.getState().setGitStatus(result.gitStatus);
       }
+      if (result?.evolveState) {
+        useWidgetStore.getState().setEvolveState(result.evolveState);
+      }
 
       store.setEvolvePrompt("");
     } catch (e: unknown) {

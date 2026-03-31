@@ -1,9 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import { type Event, listen, once } from "@tauri-apps/api/event";
-import type { Change, Commit } from "./types/sqlite";
-export type { Change, Commit } from "./types/sqlite";
+import {
+  checkFullDiskAccessPermission,
+  requestFullDiskAccessPermission,
+} from "tauri-plugin-macos-permissions-api";
 import type { SemanticChangeMap, SummarizedChangeSet } from "./types/queries";
+import type { Change, Commit } from "./types/sqlite";
 export type { SemanticChangeMap, SummarizedChangeSet } from "./types/queries";
+export type { Change, Commit } from "./types/sqlite";
 
 export interface HistoryItem {
   hash: string;
@@ -13,10 +17,6 @@ export interface HistoryItem {
   commit: Commit | null;
   changeMap: SemanticChangeMap | null;
 }
-import {
-  checkFullDiskAccessPermission,
-  requestFullDiskAccessPermission,
-} from "tauri-plugin-macos-permissions-api";
 
 export interface UnknownRecord {
   [key: string]: unknown;
@@ -76,14 +76,33 @@ export interface WatcherEvent {
   changeMap: SemanticChangeMap;
 }
 
+/** Widget step derived from EvolveState fields. */
+export type EvolveStep = "begin" | "evolve" | "merge";
+
+export interface EvolveState {
+  evolutionId: number | null;
+  currentChangesetId: number | null;
+  changesetAtBuild: number | null;
+  committable: boolean;
+  /** Computed by the backend — use this to drive step routing. */
+  step: EvolveStep;
+}
+
 export interface EvolutionResult {
   gitStatus: GitStatus;
   changeMap: SemanticChangeMap;
+  evolveState: EvolveState;
   state?: string;
+}
+
+export interface ApplyResult {
+  gitStatus: GitStatus;
+  evolveState: EvolveState;
 }
 
 export interface RollbackResult {
   gitStatus: GitStatus;
+  evolveState: EvolveState;
 }
 
 export interface PreviewIndicatorState {
@@ -271,7 +290,7 @@ export const darwinAPI = {
     applyStreamStart: (hostOverride?: string) =>
       invoke("darwin_apply_stream_start", { hostOverride }),
     applyStreamCancel: () => invoke("darwin_apply_stream_cancel"),
-    finalizeApply: () => invoke<GitStatus>("finalize_apply"),
+    finalizeApply: () => invoke<ApplyResult>("finalize_apply"),
     rollbackErase: () => invoke<RollbackResult>("rollback_erase"),
     restoreToCommit: (targetHash: string) => invoke<void>("restore_to_commit", { targetHash }),
   },
@@ -342,6 +361,11 @@ export const darwinAPI = {
     // macOS-specific permission checks via tauri-plugin-macos-permissions
     checkFullDiskAccess: () => checkFullDiskAccessPermission(),
     requestFullDiskAccess: () => requestFullDiskAccessPermission(),
+  },
+
+  evolveState: {
+    get: () => invoke<EvolveState>("routing_state_get"),
+    clear: () => invoke<EvolveState>("routing_state_clear"),
   },
 
   history: {

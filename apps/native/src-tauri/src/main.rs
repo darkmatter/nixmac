@@ -32,6 +32,7 @@ mod scanner;
 mod secret_scanner;
 mod sqlite_types;
 mod statistics;
+mod evolve_state;
 mod store;
 mod summarize;
 mod template;
@@ -317,6 +318,9 @@ fn run_gui_mode(
             commands::darwin_apply_stream_cancel,
             commands::finalize_apply,
             commands::rollback_erase,
+            // Routing state
+            commands::routing_state_get,
+            commands::routing_state_clear,
             commands::nix_check,
             commands::nix_install_start,
             commands::darwin_rebuild_prefetch,

@@ -16,6 +16,7 @@ export function useRollback() {
       const result = await darwinAPI.darwin.rollbackErase();
 
       store.setGitStatus(result.gitStatus);
+      store.setEvolveState(result.evolveState);
       store.setEvolvePrompt("");
       store.clearPreview();
       store.appendLog("✓ Changes discarded\n");

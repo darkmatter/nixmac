@@ -64,10 +64,7 @@ export function GitStatusDebug() {
     >
       {/* Booleans always visible */}
       <div className="flex flex-wrap gap-x-2 gap-y-0.5">
-        <Bool label="head_is_built" value={gitStatus.headIsBuilt} />
         <Bool label="clean_head" value={gitStatus.cleanHead} />
-        <Bool label="is_main_branch" value={gitStatus.isMainBranch} />
-        <Bool label="branch_has_built_commit" value={gitStatus.branchHasBuiltCommit} />
         <button
           className="text-yellow-400/60 hover:text-yellow-400"
           onClick={() => setExpanded(!expanded)}
