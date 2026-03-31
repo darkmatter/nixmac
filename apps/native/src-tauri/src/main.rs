@@ -28,6 +28,7 @@ mod nix;
 mod panic_handler;
 mod peek;
 mod permissions;
+mod provider_errors;
 mod providers;
 mod query_return_types;
 mod rollback;
@@ -44,7 +45,6 @@ mod summarize_pipeline_logging;
 mod summarize_token_budgets;
 mod template;
 mod types;
-mod provider_errors;
 mod utils;
 mod watcher;
 
@@ -406,6 +406,9 @@ fn run_gui_mode(
             });
 
             let _ = secret_scanner::SecretScanner::global(handle);
+
+            // Build the nix-darwin docs index once at startup for fast option-shape lookup.
+            evolve::search_docs::initialize_docs_index();
 
             let send_diagnostics = store::get_send_diagnostics(handle).unwrap_or(false);
             if send_diagnostics {
