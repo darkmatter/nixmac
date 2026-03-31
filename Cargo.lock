@@ -3520,7 +3520,7 @@ dependencies = [
 
 [[package]]
 name = "nixmac"
-version = "0.0.0"
+version = "0.17.0"
 dependencies = [
  "anyhow",
  "async-openai",
