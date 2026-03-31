@@ -130,7 +130,6 @@ untracked
 .stack/state/
 .tasks
 /devshell
-packages/infra/
 packages/scripts/entrypoints/
 process-compose.yaml
 # ── END stackpanel ──
