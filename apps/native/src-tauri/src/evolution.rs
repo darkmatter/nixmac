@@ -13,17 +13,18 @@ use tauri::AppHandle;
 use crate::{
     db,
     evolve::{self, EvolutionState},
-    git, store,
+    evolve_state, git, store,
     query_return_types::SemanticChangeMap,
     types::{emit_evolve_event, EvolveEvent},
 };
 
-/// Evolution returns final git status and change map to frontend when done.
+/// Evolution result returned to the frontend on completion.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EvolutionResult {
     pub change_map: SemanticChangeMap,
     pub git_status: crate::types::GitStatus,
+    pub evolve_state: evolve_state::EvolveState,
     #[serde(flatten)]
     pub telemetry: EvolutionTelemetry,
 }
@@ -214,9 +215,11 @@ pub async fn evolve_and_commit(
     // Short-circuit: conversational responses made no environment changes.
     if evolution.state == EvolutionState::Conversational {
         info!("[evolution] Conversational response — skipping git/db workflow");
+        let evolve_state = evolve_state::get(app).unwrap_or_default();
         return Ok(EvolutionResult {
             change_map: SemanticChangeMap::default(),
             git_status: initial_status,
+            evolve_state,
             telemetry: EvolutionTelemetry::from_evolution(&evolution, elapsed_since(start_time_ms)),
         });
     }
@@ -250,9 +253,17 @@ pub async fn evolve_and_commit(
 
     let _ = store::set_cached_git_status(app, &final_status);
 
+    // Use a timestamp as a lightweight unique id until a DB evolution table exists.
+    let evolution_id = chrono::Utc::now().timestamp_millis();
+    let evolve_state = evolve_state::set(app, evolve_state::EvolveState {
+        evolution_id: Some(evolution_id),
+        ..Default::default()
+    }).unwrap_or_default();
+
     Ok(EvolutionResult {
         change_map,
         git_status: final_status,
+        evolve_state,
         telemetry: EvolutionTelemetry::from_evolution(&evolution, elapsed_since(start_time_ms)),
     })
 }

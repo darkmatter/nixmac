@@ -10,9 +10,9 @@ interface KeepBranchCheckboxProps {
 }
 
 export function KeepBranchCheckbox({ checked, onCheckedChange }: KeepBranchCheckboxProps) {
-  const isMainBranch = useWidgetStore((s) => s.gitStatus?.isMainBranch);
+  const evolveState = useWidgetStore((s) => s.evolveState);
 
-  if (isMainBranch) return null;
+  if (!evolveState || evolveState.step === "begin") return null;
 
   return (
     <div className="flex items-center gap-2">

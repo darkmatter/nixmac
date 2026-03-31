@@ -19,9 +19,12 @@ export function useApply() {
       context: "apply",
       onSuccess: async () => {
         try {
-          const gitStatus = await darwinAPI.darwin.finalizeApply();
-          if (gitStatus) {
-            useWidgetStore.getState().setGitStatus(gitStatus);
+          const result = await darwinAPI.darwin.finalizeApply();
+          if (result?.gitStatus) {
+            useWidgetStore.getState().setGitStatus(result.gitStatus);
+          }
+          if (result?.evolveState) {
+            useWidgetStore.getState().setEvolveState(result.evolveState);
           }
         } catch (e) {
           console.error("Failed to finalize apply:", e);

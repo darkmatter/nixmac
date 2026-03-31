@@ -16,10 +16,9 @@ export function ErrorMessage() {
   const setSettingsOpen = useWidgetStore((s) => s.setSettingsOpen);
   const step = useCurrentStep();
 
-  // Suppress expected errors during setup (no flake.nix yet)
   const isSuppressedError =
     (step === "setup" && error?.includes("Failed to list hosts: path")) ||
-    (step === "evolving" && error?.includes("cancelled by user"));
+    ((step === "evolving" || step === "begin") && error?.includes("cancelled by user"));
 
   if (!error || isSuppressedError) {
     return null;

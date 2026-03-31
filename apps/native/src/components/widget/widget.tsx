@@ -28,7 +28,7 @@ import { usePromptHistory } from "@/hooks/use-prompt-history";
 import { useTrayEvents } from "@/hooks/use-tray-events";
 import { useQueueSummarizer } from "@/hooks/use-queue-summarizer";
 import { useWatcher } from "@/hooks/use-watcher";
-import { loadConfig, loadHosts } from "@/hooks/use-widget-initialization";
+import { loadConfig, loadHosts, loadEvolveState } from "@/hooks/use-widget-initialization";
 import { useSummary } from "@/hooks/use-summary";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { UpdateBanner } from "@/components/update-banner";
@@ -36,9 +36,9 @@ import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
 import { useEffect } from "react";
 
 /**
- * Main widget component that connects to Tauri backend.
- * State is computed entirely on the client - the server just exposes.
+ * Main nixmac window / widget component.
  */
+
 export function DarwinWidget() {
   const step = useCurrentStep();
   const { getInitialStatus } = useGitOperations();
@@ -74,6 +74,7 @@ export function DarwinWidget() {
         await loadConfig();
         await checkNix();
         await loadHosts();
+        await loadEvolveState();
         await getInitialStatus();
         await loadPrefs();
         await findChangeMap();
@@ -100,6 +101,7 @@ export function DarwinWidget() {
       case "setup":
         return <SetupStep />;
 
+      case "begin":
       case "evolving":
         return <EvolveStep />;
 
@@ -110,13 +112,6 @@ export function DarwinWidget() {
         return <HistoryStep />;
     }
   };
-
-  // Compute the visible error (if any, respecting suppression rules)
-  const error = useWidgetStore((s) => s.error);
-  const isErrorSuppressed =
-    (step === "setup" && error?.includes("Failed to list hosts: path")) ||
-    (step === "evolving" && error?.includes("cancelled by user"));
-  const visibleError = error && !isErrorSuppressed ? error : undefined;
 
   return (
     <div className="flex h-full w-full flex-col bg-background/90 backdrop-blur-xl">
@@ -134,7 +129,7 @@ export function DarwinWidget() {
 
       <Console />
       <SettingsDialog />
-      <FeedbackDialog mainWindowError={visibleError} />
+      <FeedbackDialog />
     </div>
   );
 }

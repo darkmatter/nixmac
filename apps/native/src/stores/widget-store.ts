@@ -1,20 +1,20 @@
-import { create } from "zustand";
-import { FeedbackType } from "@/types/feedback";
+import { computeCurrentStep } from "@/components/widget/utils";
 import type {
-  HistoryItem,
   EvolveEvent,
+  EvolveState,
   GitStatus,
+  HistoryItem,
   PermissionsState,
   RecommendedPrompt,
 } from "@/tauri-api";
+import { FeedbackType } from "@/types/feedback";
 import type { SemanticChangeMap } from "@/types/queries";
-import { computeCurrentStep } from "@/components/widget/utils";
+import { create } from "zustand";
 export type {
   EvolveEvent,
-  EvolveEventType,
-  GitFileStatus,
+  EvolveEventType, EvolveState, GitFileStatus,
   GitStatus,
-  PermissionsState,
+  PermissionsState
 } from "@/tauri-api";
 
 // =============================================================================
@@ -25,7 +25,7 @@ export type {
  * Widget step state - updated by useEffect based on app state.
  */
 export type SettingsTab = "general" | "api-keys" | "ai-models" | "preferences";
-export type WidgetStep = "permissions" | "nix-setup" | "setup" | "evolving" | "merge" | "history";
+export type WidgetStep = "permissions" | "nix-setup" | "setup" | "begin" | "evolving" | "merge" | "history";
 export type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
 export type ConfirmPrefKey = "confirmBuild" | "confirmClear" | "confirmRollback";
 
@@ -80,6 +80,9 @@ export interface WidgetState {
   // nix-darwin (darwin-rebuild availability)
   darwinRebuildAvailable: boolean | null; // null = not checked yet
   darwinRebuildPrefetching: boolean;
+
+  // Evolve state derived from backend source of truth
+  evolveState: EvolveState | null;
 
   // Git (from backend)
   gitStatus: GitStatus | null;
@@ -150,6 +153,7 @@ export interface WidgetActions {
   setNixDownloadProgress: (progress: { downloaded: number; total: number } | null) => void;
   setDarwinRebuildAvailable: (available: boolean | null) => void;
   setDarwinRebuildPrefetching: (prefetching: boolean) => void;
+  setEvolveState: (state: EvolveState | null) => void;
   setGitStatus: (status: GitStatus | null) => void;
   setEvolvePrompt: (prompt: string) => void;
   setProcessing: (isProcessing: boolean, action?: ProcessingAction) => void;
@@ -240,6 +244,9 @@ export const initialWidgetState: WidgetState = {
   darwinRebuildAvailable: null,
   darwinRebuildPrefetching: false,
 
+  // Routing state
+  evolveState: null,
+
   // Git
   gitStatus: null,
 
@@ -308,6 +315,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setConfigDir: (configDir) => set({ configDir }),
     setHosts: (hosts) => set({ hosts }),
     setHost: (host) => set({ host }),
+    setEvolveState: (evolveState) => set({ evolveState: evolveState }),
     setGitStatus: (gitStatus) => set({ gitStatus }),
     setEvolvePrompt: (evolvePrompt) => set({ evolvePrompt }),
     setProcessing: (isProcessing, action = null) =>

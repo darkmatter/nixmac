@@ -1,15 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { useCurrentStep } from "@/stores/widget-store";
+import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
+import { useState } from "react";
 import { GitStatusDebug } from "./git-status-debug";
 
 /**
  * Debug overlay for development - shows current widget state
  */
 export function DebugOverlay() {
-  const step = useCurrentStep();
+  const evolveState = useWidgetStore((s) => s.evolveState);
   const [visible, setVisible] = useState(true);
 
   if (!visible) {
@@ -33,7 +33,14 @@ export function DebugOverlay() {
         className="rounded bg-black/80 px-2 py-1 font-mono text-xs text-yellow-400"
         style={{ backdropFilter: "blur(4px)" }}
       >
-        step: {step}
+        {evolveState && (
+          <div className="mt-0.5 text-yellow-400/70">
+            routing: {evolveState.step}
+            {evolveState.committable && " ✓committable"}
+            {!evolveState.committable && " ✗non-committable"}
+            {evolveState.evolutionId !== null && ` eid:${evolveState.evolutionId}`}
+          </div>
+        )}
       </div>
       <div className="pointer-events-auto">
         <GitStatusDebug />

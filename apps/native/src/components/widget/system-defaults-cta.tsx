@@ -42,7 +42,7 @@ function formatValue(value: string): string {
  * Appears in the prompt badge row when non-default settings are detected.
  */
 export function SystemDefaultsCTA() {
-  const gitStatus = useWidgetStore((s) => s.gitStatus);
+  const evolveState = useWidgetStore((s) => s.evolveState);
   const [scan, setScan] = useState<SystemDefaultsScan | null>(null);
   const [applying, setApplying] = useState(false);
   const [open, setOpen] = useState(false);
@@ -50,7 +50,7 @@ export function SystemDefaultsCTA() {
     () => localStorage.getItem(DISMISS_KEY) === "true",
   );
 
-  const eligible = Boolean(gitStatus?.isMainBranch && !gitStatus?.diff);
+  const eligible = evolveState?.step === "begin";
 
   // Re-scan whenever we land on main with a clean working tree.
   // The backend returns an empty scan if system-defaults.nix already exists.
