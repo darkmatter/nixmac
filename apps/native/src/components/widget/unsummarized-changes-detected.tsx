@@ -7,14 +7,11 @@ import { useSummary } from "@/hooks/use-summary";
 
 export function UnsummarizedChangesDetected() {
   const changeMap = useWidgetStore((s) => s.changeMap);
-  const summaryLoading = useWidgetStore((s) => s.summaryLoading);
   const configDir = useWidgetStore((s) => s.configDir);
-  // const { generateCurrentSummary } = useSummary();
-
   const { generateCurrentSummary } = useSummary();
   const hasUnsummarized = !changeMap || changeMap.missedHashes.length > 0;
 
-  if (summaryLoading || !hasUnsummarized) {
+  if (!hasUnsummarized) {
     return null;
   }
 

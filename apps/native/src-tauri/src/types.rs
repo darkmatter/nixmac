@@ -252,37 +252,6 @@ pub struct FeedbackPanicDetails {
     pub timestamp: String,
 }
 
-/// A single summary item with a title and description
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SummaryItem {
-    /// Short title for the change (2-5 words)
-    pub title: String,
-
-    /// Friendly description of what this change does
-    pub description: String,
-}
-
-/// Response for summarization requests.
-/// Contains only AI-generated content. Raw git data (diff, additions, deletions)
-/// comes from GitStatus instead.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SummaryResponse {
-    /// List of changes with title and description
-    pub items: Vec<SummaryItem>,
-
-    /// Helpful suggestion for testing the changes
-    pub instructions: String,
-
-    /// Suggested commit message
-    #[serde(default)]
-    pub commit_message: String,
-
-    /// The diff this summary was generated for (used for cache validation)
-    #[serde(default)]
-    pub diff: String,
-}
-
 // =============================================================================
 // History
 // =============================================================================

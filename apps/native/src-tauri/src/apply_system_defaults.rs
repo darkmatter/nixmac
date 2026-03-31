@@ -3,7 +3,7 @@
 use anyhow::{bail, Context, Result};
 use tauri::AppHandle;
 
-use crate::{git, nix, scanner, store, types};
+use crate::{git, nix, query_return_types, scanner, store};
 
 /// Writes detected system defaults to a .nix module file, injects the import
 /// into flake.nix, creates a git branch, commits, and caches a summary.
@@ -99,30 +99,28 @@ pub async fn apply_system_defaults(
         log::warn!("[apply_system_defaults] No new changes to commit (porcelain was empty)");
     }
 
-    // 6. Build and cache a summary so the frontend "What's changed" view
-    //    shows meaningful descriptions instead of the raw file list.
+    // 6. Build a SemanticChangeMap from the deterministic summary so the frontend
+    //    changeMap store field gets populated after applying defaults.
     let summary = scanner::build_summary(&defaults);
-    let summary_response = types::SummaryResponse {
-        items: summary
-            .iter()
-            .map(|(title, desc)| types::SummaryItem {
-                title: title.clone(),
-                description: desc.clone(),
+    let change_map = query_return_types::SemanticChangeMap {
+        groups: vec![],
+        singles: summary
+            .into_iter()
+            .enumerate()
+            .map(|(i, (title, description))| query_return_types::ChangeWithSummary {
+                id: i as i64,
+                hash: title.replace(' ', "-").to_lowercase(),
+                filename: String::new(),
+                diff: String::new(),
+                line_count: 0,
+                created_at: 0,
+                own_summary_id: None,
+                title,
+                description,
             })
             .collect(),
-        instructions: "Review the changes, then hit Build to apply them to your system."
-            .to_string(),
-        commit_message: "feat: add detected macOS system defaults".to_string(),
-        diff: String::new(),
+        missed_hashes: vec![],
     };
-
-    if let Err(e) = store::set_cached_summary(app, &summary_response) {
-        log::error!("[apply_system_defaults] Failed to cache summary: {}", e);
-    }
-    log::info!(
-        "[apply_system_defaults] Cached summary with {} items",
-        summary_response.items.len()
-    );
 
     // Get the current git status and cache it in the store so the watcher
     // won't fire a spurious change event on its next poll.
@@ -136,12 +134,12 @@ pub async fn apply_system_defaults(
         defaults.len()
     );
 
-    // Return summary + git status directly so the frontend can set them
+    // Return changeMap + git status directly so the frontend can set them
     // atomically, avoiding race conditions with the watcher.
     Ok(serde_json::json!({
         "ok": true,
         "count": defaults.len(),
-        "summary": summary_response,
+        "changeMap": change_map,
         "gitStatus": git_status,
     }))
 }

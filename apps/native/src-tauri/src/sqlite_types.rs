@@ -19,27 +19,11 @@ pub struct Commit {
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct SquashedCommit {
-    pub target_id: i64,
-    pub source_id: i64,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
 pub struct Evolution {
     pub id: i64,
     pub origin_branch: String,
     pub merged: i64,
     pub builds: i64,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct EvolutionCommit {
-    pub evolution_id: i64,
-    pub commit_id: i64,
 }
 
 

@@ -8,7 +8,7 @@ export type Change = { id: number; hash: string; filename: string; diff: string;
  */
 export type ChangeSet = { id: number; commitId: number | null; baseCommitId: number; commitMessage: string | null; generatedCommitMessage: string | null; createdAt: number; evolutionId: number | null }
 
-export type ChangeSummary = { id: number; title: string; description: string; 
+export type ChangeSummary = { id: number; title: string; description: string;
 /**
  * One of `"QUEUED"`, `"DONE"`, `"FAILED"`, `"CANCELLED"`.
  */
@@ -18,11 +18,5 @@ export type Commit = { id: number; hash: string; treeHash: string; message: stri
 
 export type Evolution = { id: number; originBranch: string; merged: number; builds: number }
 
-export type EvolutionCommit = { evolutionId: number; commitId: number }
-
 export type Prompt = { id: number; text: string; commitId: number | null; createdAt: number }
-
-export type SquashedCommit = { targetId: number; sourceId: number }
-
-export type Summary = { id: number; commitId: number; baseCommitId: number | null; contentJson: string; diff: string; createdAt: number }
 

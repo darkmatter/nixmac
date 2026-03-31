@@ -7,14 +7,13 @@ import { AnimatedTabsList, AnimatedTabsTrigger } from "@/components/ui/animated-
 import { Tabs } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
-import { Loader2, Sparkles, Wrench } from "lucide-react";
+import { Dna, Wrench } from "lucide-react";
 
 interface SummaryOrDiffProps {
   variant?: "default" | "outline";
 }
 
 export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
-  const summaryLoading = useWidgetStore((s) => s.summaryLoading);
   const gitStatus = useWidgetStore((s) => s.gitStatus);
   const changeMap = useWidgetStore((s) => s.changeMap);
   const [activeTab, setActiveTab] = useState("summary");
@@ -23,7 +22,6 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   if (!gitStatus || cleanOnMain) {
     return null;
   }
-  console.log(changeMap)
   const changes = gitStatus.changes ?? [];
 
   return (
@@ -37,7 +35,7 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-border/50 border-b py-2">
         <div className="flex items-center gap-2">
-          {gitStatus.headIsBuilt ? <Wrench className="h-4 w-4 text-primary" /> : <Sparkles className="h-4 w-4 text-primary" />}
+          {gitStatus.headIsBuilt ? <Wrench className="h-4 w-4 text-primary" /> : <Dna className="h-4 w-4 text-primary" />}
           <h2 className="font-medium text-sm">{gitStatus.headIsBuilt ? "Active Changes" : "What's changed"}</h2>
         </div>
         <AnimatedTabsList defaultValue="summary">
@@ -45,24 +43,17 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
           <AnimatedTabsTrigger value="diff">Diff</AnimatedTabsTrigger>
         </AnimatedTabsList>
       </div>
-      {summaryLoading ? (
-        <div className="flex items-center gap-2 p-4 text-muted-foreground text-sm">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Summarizing changes...
-        </div>
-      ) : (
-        <>
-          <Activity mode={activeTab === "summary" ? "visible" : "hidden"}>
-            {changeMap
-              ? <SummaryItems map={changeMap} />
-              : <div className="p-4 text-muted-foreground text-sm">No summary available yet.</div>
-            }
-          </Activity>
-          <Activity mode={activeTab === "diff" ? "visible" : "hidden"}>
-            <Diff changes={changes} />
-          </Activity>
-        </>
-      )}
+      <>
+        <Activity mode={activeTab === "summary" ? "visible" : "hidden"}>
+          {changeMap
+            ? <SummaryItems map={changeMap} />
+            : <div className="p-4 text-muted-foreground text-sm">No summary available yet.</div>
+          }
+        </Activity>
+        <Activity mode={activeTab === "diff" ? "visible" : "hidden"}>
+          <Diff changes={changes} />
+        </Activity>
+      </>
     </Tabs>
   );
 }

@@ -1,8 +1,9 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
 import { PermissionsScreen } from "@/components/permissions-screen";
-import type { SummaryResponse, EvolveEvent, GitStatus } from "@/stores/widget-store";
+import type { EvolveEvent, GitStatus } from "@/stores/widget-store";
 import { useWidgetStore } from "@/stores/widget-store";
+import type { SemanticChangeMap } from "@/types/queries";
 import { fn } from "@storybook/test";
 import type React from "react";
 import { useEffect } from "react";
@@ -79,27 +80,6 @@ const mockGitStatusAllStaged: GitStatus = {
   headIsBuilt: true,
 };
 
-const mockSummary: SummaryResponse = {
-  items: [
-    {
-      title: "Vim Editor Installed",
-      description:
-        "Added vim to your system packages with custom configuration for a better editing experience.",
-    },
-    {
-      title: "Git Settings Updated",
-      description: "Configured your git user name and email for commits.",
-    },
-    {
-      title: "Rectangle App Added",
-      description: "Installed Rectangle window manager via Homebrew for better window management.",
-    },
-  ],
-  instructions:
-    "Run 'vim .' in your terminal to try out your new editor, or open Rectangle from your Applications folder.",
-  commitMessage: "feat(darwin): add vim and configure git",
-};
-
 const mockEvolveEvents: EvolveEvent[] = [
   {
     eventType: "start",
@@ -145,6 +125,58 @@ const mockEvolveEvents: EvolveEvent[] = [
   },
 ];
 
+const mockChangeMap: SemanticChangeMap = {
+  groups: [
+    {
+      summary: {
+        id: 1,
+        title: "System Settings (4)",
+        description: "Dock autohide, Finder path bar, trackpad tap-to-click, +1 more",
+        status: "DONE",
+        createdAt: 0,
+      },
+      changes: [
+        {
+          id: 1,
+          hash: "mock-dock-autohide",
+          filename: "modules/darwin/system-defaults.nix",
+          diff: "",
+          lineCount: 5,
+          createdAt: 0,
+          ownSummaryId: null,
+          title: "Dock autohide enabled",
+          description: "dock.autohide = true",
+        },
+        {
+          id: 2,
+          hash: "mock-finder-pathbar",
+          filename: "modules/darwin/system-defaults.nix",
+          diff: "",
+          lineCount: 3,
+          createdAt: 0,
+          ownSummaryId: null,
+          title: "Finder shows path bar",
+          description: "finder.ShowPathbar = true",
+        },
+      ],
+    },
+  ],
+  singles: [
+    {
+      id: 3,
+      hash: "mock-key-repeat",
+      filename: "modules/darwin/system-defaults.nix",
+      diff: "",
+      lineCount: 2,
+      createdAt: 0,
+      ownSummaryId: null,
+      title: "Keyboard (1)",
+      description: "KeyRepeat = 2",
+    },
+  ],
+  missedHashes: [],
+};
+
 // =============================================================================
 // Store Setup Wrapper
 // =============================================================================
@@ -154,13 +186,12 @@ interface StoreState {
   hosts?: string[];
   host?: string;
   gitStatus?: GitStatus | null;
+  changeMap?: SemanticChangeMap | null;
   evolvePrompt?: string;
   isProcessing?: boolean;
   isGenerating?: boolean;
   processingAction?: "evolve" | "apply" | "commit" | "cancel" | null;
   evolveEvents?: EvolveEvent[];
-  summary?: SummaryResponse;
-  summaryLoading?: boolean;
   consoleLogs?: string;
   settingsOpen?: boolean;
   error?: string | null;
@@ -178,6 +209,7 @@ function StoryWidget({ storeState }: { storeState?: StoreState }) {
     if (storeState?.hosts !== undefined) store.setHosts(storeState.hosts);
     if (storeState?.host !== undefined) store.setHost(storeState.host);
     if (storeState?.gitStatus !== undefined) store.setGitStatus(storeState.gitStatus);
+    if (storeState?.changeMap !== undefined) store.setChangeMap(storeState.changeMap);
     if (storeState?.evolvePrompt !== undefined) store.setEvolvePrompt(storeState.evolvePrompt);
     if (storeState?.isProcessing !== undefined)
       store.setProcessing(storeState.isProcessing, storeState.processingAction || null);
@@ -190,13 +222,6 @@ function StoryWidget({ storeState }: { storeState?: StoreState }) {
       for (const event of storeState.evolveEvents) {
         store.appendEvolveEvent(event);
       }
-    }
-
-    if (storeState?.summary !== undefined) {
-      store.setSummary(storeState.summary);
-    }
-    if (storeState?.summaryLoading !== undefined) {
-      store.setSummaryLoading(storeState.summaryLoading);
     }
 
     if (storeState?.consoleLogs !== undefined) {
@@ -379,27 +404,9 @@ export const Preview = meta.story({
         host: "Demo-MacBook-Pro",
         hosts: ["Demo-MacBook-Pro", "Work-MacBook"],
         gitStatus: mockGitStatus,
-        summary: mockSummary,
+        changeMap: mockChangeMap,
         consoleLogs:
           "> Running darwin-rebuild switch...\n✓ Apply complete\n\nChanges are now active. Commit to save or discard to revert.\n",
-      }}
-    />
-  ),
-});
-
-/**
- * Preview with summary loading
- */
-export const PreviewLoading = meta.story({
-  render: () => (
-    <StoryWidget
-      storeState={{
-        configDir: "/Users/demo/.darwin",
-        host: "Demo-MacBook-Pro",
-        hosts: ["Demo-MacBook-Pro", "Work-MacBook"],
-        gitStatus: mockGitStatus,
-        summaryLoading: true,
-        consoleLogs: "> Running darwin-rebuild switch...\n✓ Apply complete\n",
       }}
     />
   ),
@@ -418,7 +425,6 @@ export const Committing = meta.story({
         gitStatus: mockGitStatus,
         isProcessing: true,
         processingAction: "commit",
-        summary: mockSummary,
         consoleLogs: '> Committing: "feat(darwin): add vim and configure git"\n',
       }}
     />
@@ -470,7 +476,7 @@ export const ManyChangedFiles = meta.story({
           additions: 120,
           deletions: 15,
         },
-        summary: mockSummary,
+        changeMap: mockChangeMap,
       }}
     />
   ),
@@ -487,7 +493,7 @@ export const ConsoleWithOutput = meta.story({
         host: "Demo-MacBook-Pro",
         hosts: ["Demo-MacBook-Pro", "Work-MacBook"],
         gitStatus: mockGitStatus,
-        summary: mockSummary,
+        changeMap: mockChangeMap,
         consoleLogs: `> Running darwin-rebuild switch...
 building the system configuration...
 these 3 derivations will be built:
@@ -554,7 +560,7 @@ export const EvolvingReadyToCommit = meta.story({
         host: "Demo-MacBook-Pro",
         hosts: ["Demo-MacBook-Pro", "Work-MacBook"],
         gitStatus: mockGitStatusAllStaged,
-        summary: mockSummary,
+        changeMap: mockChangeMap,
       }}
     />
   ),
@@ -571,7 +577,7 @@ export const CommitScreen = meta.story({
         host: "Demo-MacBook-Pro",
         hosts: ["Demo-MacBook-Pro", "Work-MacBook"],
         gitStatus: mockGitStatusAllStaged,
-        summary: mockSummary,
+        changeMap: mockChangeMap,
       }}
     />
   ),
@@ -588,7 +594,7 @@ export const CommitScreenWithMessage = meta.story({
         host: "Demo-MacBook-Pro",
         hosts: ["Demo-MacBook-Pro", "Work-MacBook"],
         gitStatus: mockGitStatusAllStaged,
-        summary: mockSummary,
+        changeMap: mockChangeMap,
       }}
     />
   ),

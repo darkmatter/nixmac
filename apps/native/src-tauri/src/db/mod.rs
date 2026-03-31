@@ -3,8 +3,6 @@
 pub mod changesets;
 pub mod commits;
 mod schema;
-pub mod squashed_commits;
-pub mod summaries;
 pub mod store_evolved_changeset;
 pub mod store_new_changeset;
 

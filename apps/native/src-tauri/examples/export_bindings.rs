@@ -19,10 +19,7 @@ fn main() {
     let mut collection = TypeCollection::default();
     let types = collection
         .register::<sqlite_types::Commit>()
-        .register::<sqlite_types::SquashedCommit>()
         .register::<sqlite_types::Evolution>()
-        .register::<sqlite_types::EvolutionCommit>()
-        .register::<sqlite_types::Summary>()
         .register::<sqlite_types::Prompt>()
         .register::<sqlite_types::Change>()
         .register::<sqlite_types::ChangeSummary>()

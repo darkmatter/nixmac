@@ -79,7 +79,7 @@ export function SystemDefaultsCTA() {
 
     try {
       const result = await darwinAPI.scanner.applyDefaults(defaults);
-      useWidgetStore.getState().setSummary(result.summary);
+      useWidgetStore.getState().setChangeMap(result.changeMap);
       useWidgetStore.getState().setGitStatus(result.gitStatus);
       // Invalidate recommended prompt — settings changed
       useWidgetStore.getState().setRecommendedPrompt(undefined);
