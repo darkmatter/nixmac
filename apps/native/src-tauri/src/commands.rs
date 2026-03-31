@@ -333,6 +333,22 @@ pub async fn darwin_evolve(
     let result = match evolution::evolve_and_commit(&app, &description).await {
         Ok(result) => result,
         Err(failure) => {
+            let is_cancelled = is_evolve_cancelled()
+                || failure
+                    .error
+                    .to_ascii_lowercase()
+                    .contains("cancelled by user");
+
+            if is_cancelled {
+                log::info!(
+                    "[darwin_evolve] cancelled after {} iterations and {} build attempts",
+                    failure.telemetry.iterations,
+                    failure.telemetry.build_attempts
+                );
+                // Don't send to Sentry if it was a user-initiated cancellation
+                return Err(failure.error);
+            }
+
             log::warn!(
                 "[darwin_evolve] failed after {} iterations and {} build attempts",
                 failure.telemetry.iterations,
@@ -688,9 +704,8 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
     let summary_model =
         store::get_summary_model(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
 
-    let max_iterations = Some(
-        store::get_max_iterations(&app).unwrap_or(store::DEFAULT_MAX_ITERATIONS),
-    );
+    let max_iterations =
+        Some(store::get_max_iterations(&app).unwrap_or(store::DEFAULT_MAX_ITERATIONS));
     let max_build_attempts = Some(store::get_max_build_attempts(&app).unwrap_or(5));
     let ollama_api_base_url: Option<String> =
         store::get_ollama_api_base_url(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
@@ -775,8 +790,7 @@ pub async fn ui_set_prefs(
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
     if let Some(vllm_api_key) = prefs.get("vllmApiKey").and_then(|v| v.as_str()) {
-        store::set_vllm_api_key(&app, vllm_api_key)
-            .map_err(|e| capture_err("ui_set_prefs", e))?;
+        store::set_vllm_api_key(&app, vllm_api_key).map_err(|e| capture_err("ui_set_prefs", e))?;
     }
     if let Some(send_diagnostics) = prefs.get("sendDiagnostics").and_then(|v| v.as_bool()) {
         store::set_send_diagnostics(&app, send_diagnostics)
@@ -1052,4 +1066,3 @@ pub fn relaunch_after_update(app: AppHandle) -> Result<(), String> {
     // (it does not call std::process::exit directly), so we must return Ok here.
     Ok(())
 }
-
