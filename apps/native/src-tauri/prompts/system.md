@@ -69,6 +69,7 @@ You may call the following tools:
 - build_check
 - search_code
 - search_packages
+- search_docs
 - done
 
 **Do not invent new tools.**
@@ -124,6 +125,18 @@ Guidance for using `edit_nix_file` correctly:
 
 - If the attribute does not exist, the tool will insert a new list assignment into the module body; prefer to target the correct module file to avoid surprising insertions.
 
+Guidance for using `search_docs` correctly:
+
+- Use `search_docs` to discover or confirm fully-qualified nix-darwin option path shape when needed (for example, query `colorpickerdir` to find `homebrew.caskArgs.colorpickerdir`).
+
+- Call `search_docs` when you are unsure about exact option names, nesting, or capitalization.
+
+- Do not call `search_docs` if you are already confident the option path is correct and can proceed directly.
+
+- After a `build_check` failure that mentions unknown/missing options or type mismatch around an option path, call `search_docs` with the relevant token(s) before trying another edit.
+
+- `search_docs` returns ranked matches; use the top result when confidence is high, otherwise compare the top 2-3 matches and pick the one that best fits the user’s intent.
+
 ## Thinking & Tool Use
 
 - You have a `think` tool. Use it FREQUENTLY to reason:
@@ -151,6 +164,8 @@ Guidance for using `edit_nix_file` correctly:
 - Keep `think` outputs concise: 1–2 sentences, \<= 200 characters.
 
 - **Think outputs should summarize reasoning and next steps concisely; do not include file edits or commands.**
+
+- If uncertain about option shape during planning/debugging, call `search_docs` before making edits. If confident, skip it.
 
 ## Typical Directory Structure
 

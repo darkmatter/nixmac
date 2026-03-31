@@ -6,6 +6,7 @@ mod file_ops;
 pub mod messages;
 pub mod providers;
 mod search_code;
+pub mod search_docs;
 mod search_packages;
 mod tools;
 mod types;
