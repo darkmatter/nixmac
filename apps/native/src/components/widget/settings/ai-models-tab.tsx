@@ -1,4 +1,5 @@
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -9,6 +10,7 @@ import {
 import { ModelCombobox } from "@/components/widget/model-combobox";
 import { darwinAPI, DEFAULT_MAX_ITERATIONS } from "@/tauri-api";
 import type { AnyFieldApi } from "@tanstack/react-form";
+import { Info } from "lucide-react";
 
 interface AiModelsTabProps {
   // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
@@ -96,7 +98,13 @@ export function AiModelsTab({
                         });
                       }}
                       onBlur={evolveModelField.handleBlur}
-                      placeholder={evolveProvider === "ollama" ? "" : evolveProvider === "vllm" ? "gpt-oss-120b" : "anthropic/claude-sonnet-4"}
+                      placeholder={
+                        evolveProvider === "ollama"
+                          ? ""
+                          : evolveProvider === "vllm"
+                            ? "gpt-oss-120b"
+                            : "anthropic/claude-sonnet-4"
+                      }
                     />
                   )}
                 </form.Subscribe>
@@ -159,7 +167,13 @@ export function AiModelsTab({
                         });
                       }}
                       onBlur={summaryModelField.handleBlur}
-                      placeholder={summaryProvider === "ollama" ? "llama3.1" : summaryProvider === "vllm" ? "gpt-oss-120b" : "openai/gpt-4o-mini"}
+                      placeholder={
+                        summaryProvider === "ollama"
+                          ? "llama3.1"
+                          : summaryProvider === "vllm"
+                            ? "gpt-oss-120b"
+                            : "openai/gpt-4o-mini"
+                      }
                     />
                   )}
                 </form.Subscribe>
@@ -175,12 +189,33 @@ export function AiModelsTab({
             </p>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label
-                  className="text-xs font-medium text-muted-foreground"
-                  htmlFor="maxIterations"
-                >
-                  Max Iterations
-                </label>
+                <div className="flex items-center gap-2">
+                  <label
+                    className="text-xs font-medium text-muted-foreground"
+                    htmlFor="maxIterations"
+                  >
+                    Max Iterations
+                  </label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="inline-flex h-4 w-4 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground/70"
+                        aria-label="Max iterations info"
+                      >
+                        <Info className="h-3.5 w-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-xs text-xs">
+                      <p>API calls before stopping (default: {DEFAULT_MAX_ITERATIONS}).</p>
+                      <p className="mt-1">
+                        Lower = faster/cheaper, may not finish complex changes.
+                        <br />
+                        Higher = more thorough, uses more API calls.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
                 <Input
                   id="maxIterations"
                   type="number"
@@ -194,17 +229,30 @@ export function AiModelsTab({
                   }}
                   onBlur={maxIterationsField.handleBlur}
                 />
-                <p className="text-muted-foreground text-xs">
-                  API calls before stopping (default: {DEFAULT_MAX_ITERATIONS})
-                </p>
               </div>
               <div className="space-y-2">
-                <label
-                  className="text-xs font-medium text-muted-foreground"
-                  htmlFor="maxBuildAttempts"
-                >
-                  Max Build Attempts
-                </label>
+                <div className="flex items-center gap-2">
+                  <label
+                    className="text-xs font-medium text-muted-foreground"
+                    htmlFor="maxBuildAttempts"
+                  >
+                    Max Build Attempts
+                  </label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="inline-flex h-4 w-4 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground/70"
+                        aria-label="Max build attempts info"
+                      >
+                        <Info className="h-3.5 w-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-xs text-xs">
+                      Failed builds before stopping (default: 5).
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
                 <Input
                   id="maxBuildAttempts"
                   type="number"
@@ -218,9 +266,6 @@ export function AiModelsTab({
                   }}
                   onBlur={maxBuildAttemptsField.handleBlur}
                 />
-                <p className="text-muted-foreground text-xs">
-                  Failed builds before stopping (default: 5)
-                </p>
               </div>
             </div>
           </div>
