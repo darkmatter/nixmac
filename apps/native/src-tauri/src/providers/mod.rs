@@ -9,6 +9,7 @@ use tauri::{AppHandle, Runtime};
 use async_trait::async_trait;
 
 const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
+const OPENAI_BASE_URL: &str = "https://api.openai.com/v1";
 const DEFAULT_SUMMARY_MODEL: &str = "openai/gpt-4o-mini";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 
@@ -111,25 +112,43 @@ pub fn create_provider<R: Runtime>(
                 .or_else(|| std::env::var("SUMMARY_MODEL").ok())
                 .unwrap_or_else(|| DEFAULT_SUMMARY_MODEL.to_string());
 
-            // Try to get key from store first (OpenRouter preferred), then env var
-            let store_key = app_handle.and_then(|app| {
-                // Try OpenRouter key first, then OpenAI key
-                crate::store::get_openrouter_api_key(app)
-                    .ok()
-                    .flatten()
-                    .or_else(|| crate::store::get_openai_api_key(app).ok().flatten())
-            });
-
-            let key = store_key
-                .or_else(|| std::env::var("OPENROUTER_API_KEY").ok())
-                .or_else(|| std::env::var("OPENAI_API_KEY").ok())
+            // Resolve API key and matching base URL together.
+            // Prefer OpenRouter; fall back to direct OpenAI.
+            let (key, base_url) = app_handle
+                .and_then(|app| {
+                    crate::store::get_openrouter_api_key(app)
+                        .ok()
+                        .flatten()
+                        .map(|k| (k, OPENROUTER_BASE_URL))
+                })
+                .or_else(|| {
+                    app_handle.and_then(|app| {
+                        crate::store::get_openai_api_key(app)
+                            .ok()
+                            .flatten()
+                            .map(|k| (k, OPENAI_BASE_URL))
+                    })
+                })
+                .or_else(|| {
+                    std::env::var("OPENROUTER_API_KEY")
+                        .ok()
+                        .map(|k| (k, OPENROUTER_BASE_URL))
+                })
+                .or_else(|| {
+                    std::env::var("OPENAI_API_KEY")
+                        .ok()
+                        .map(|k| (k, OPENAI_BASE_URL))
+                })
                 .ok_or_else(|| anyhow::anyhow!("No API key found. Please add your API key in Settings to get started."))?;
 
-            Ok(Box::new(OpenAIClient::new(
-                &key,
-                OPENROUTER_BASE_URL,
-                &model,
-            )))
+            // Strip OpenRouter-style "openai/" prefix for direct OpenAI usage
+            let model = if base_url == OPENAI_BASE_URL {
+                model.strip_prefix("openai/").unwrap_or(&model).to_string()
+            } else {
+                model
+            };
+
+            Ok(Box::new(OpenAIClient::new(&key, base_url, &model)))
         }
     }
 }
