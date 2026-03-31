@@ -18,6 +18,7 @@
       bun.enable = true;
       bun.generateFiles = false;
       bun.buildPhase = "bun run build";
+      bun.startScript = "bun .output/server/index.mjs";
       commands = {
         dev = {
           command = "bun run dev";
@@ -37,7 +38,11 @@
         targets = [ "stackpanel-test" ];
         modules = [
           {
-            networking.firewall.allowedTCPPorts = [ 3001 ];
+            networking.firewall.allowedTCPPorts = [ 3000 ];
+            systemd.services.web.environment = {
+              NODE_ENV = "production";
+              DATABASE_URL = "postgres://postgres:password@localhost:5432/nixmac-postgres";
+            };
           }
         ];
       };
