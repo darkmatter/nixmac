@@ -17,7 +17,8 @@ pub async fn analyze<R: Runtime>(
     commit_id: Option<i64>,
     base_commit_id: i64,
     commit_message: Option<&str>,
-) -> Result<()> {
+    evolution_id: Option<i64>,
+) -> Result<Option<i64>> {
     dbg::grouped_log_semantic_map(&semantic_map);
     dbg::grouped_log_missed_changes(&missed_changes);
 
@@ -26,7 +27,7 @@ pub async fn analyze<R: Runtime>(
         .map_err(|e| anyhow::anyhow!("failed to serialize simplified map: {}", e))?;
 
     if missed_changes.is_empty() {
-        return Ok(());
+        return Ok(None);
     }
 
     let short_hashed_changes = crate::changes_from_diff::with_short_hashes(&missed_changes);
@@ -65,13 +66,14 @@ pub async fn analyze<R: Runtime>(
 
     dbg::grouped_log_assignments(&assignments);
 
-    let (_, queued_ids) = crate::db::store_evolved_changeset::store(
+    let (change_set_id, queued_ids) = crate::db::store_evolved_changeset::store(
         db_path,
         commit_id,
         base_commit_id,
         commit_message,
         &mut assignments,
         &semantic_map,
+        evolution_id,
     )?;
 
     if !queued_ids.is_empty() {
@@ -82,5 +84,5 @@ pub async fn analyze<R: Runtime>(
         });
     }
 
-    Ok(())
+    Ok(Some(change_set_id))
 }

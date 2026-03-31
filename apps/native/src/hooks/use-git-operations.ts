@@ -56,12 +56,13 @@ export function useGitOperations() {
       store.appendLog(`\n> Committing changes...\n`);
 
       try {
-        await darwinAPI.git.commit(commitMessage);
+        const result = await darwinAPI.git.commit(commitMessage);
         useWidgetStore.getState().appendLog("✓ Committed successfully\n");
         useWidgetStore.getState().setError(null);
         toast.success("Committed successfully");
         useWidgetStore.getState().setEvolvePrompt("");
         useWidgetStore.getState().clearPreview();
+        useWidgetStore.getState().setEvolveState(result.evolveState);
         await refreshGitStatus();
       } catch (e: unknown) {
         const msg = (e as Error)?.message || String(e);

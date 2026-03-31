@@ -178,7 +178,10 @@ pub async fn git_cached(app: AppHandle) -> Result<Option<types::GitStatus>, Stri
 
 /// Stages all changes and creates a commit with the given message.
 #[tauri::command]
-pub async fn git_commit(app: AppHandle, message: String) -> Result<serde_json::Value, String> {
+pub async fn git_commit(
+    app: AppHandle,
+    message: String,
+) -> Result<CommitResult, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_commit", e))?;
     let commit_info = git::commit_all(&dir, &message).map_err(|e| capture_err("git_commit", e))?;
 
@@ -204,7 +207,21 @@ pub async fn git_commit(app: AppHandle, message: String) -> Result<serde_json::V
         }
     }
 
-    Ok(serde_json::json!({"ok": true, "hash": commit_info.hash}))
+    // Evolution complete — reset state back to idle.
+    let evolve_state = evolve_state::clear(&app)
+        .unwrap_or_else(|e| {
+            log::error!("[git_commit] Failed to clear evolve state: {}", e);
+            evolve_state::EvolveState::default()
+        });
+
+    Ok(CommitResult { hash: commit_info.hash, evolve_state })
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommitResult {
+    pub hash: String,
+    pub evolve_state: evolve_state::EvolveState,
 }
 
 /// Stash changes
@@ -534,8 +551,9 @@ pub async fn generate_history_from(
 /// no existing summaries are found, or grouping and simplifying existing ones.
 #[tauri::command]
 pub async fn summarize_current(app: AppHandle) -> Result<(), String> {
-    crate::summarize::summarize_current(&app)
+    crate::summarize::new_changeset(&app, None)
         .await
+        .map(|_| ())
         .map_err(|e| capture_err("summarize_current", e))
 }
 

@@ -100,6 +100,11 @@ export interface ApplyResult {
   evolveState: EvolveState;
 }
 
+export interface CommitResult {
+  hash: string;
+  evolveState: EvolveState;
+}
+
 export interface RollbackResult {
   gitStatus: GitStatus;
   evolveState: EvolveState;
@@ -279,7 +284,7 @@ export const darwinAPI = {
     status: () => invoke<GitStatus | null>("git_status"),
     statusAndCache: () => invoke<GitStatus | null>("git_status_and_cache"),
     cached: () => invoke<GitStatus | null>("git_cached"),
-    commit: (message: string) => invoke("git_commit", { message }),
+    commit: (message: string) => invoke<CommitResult>("git_commit", { message }),
     stash: (message: string) => invoke("git_stash", { message }),
     tagAsBuilt: () => invoke("git_tag_as_built"),
   },
