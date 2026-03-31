@@ -30,6 +30,17 @@
       name = "web";
       path = "apps/web";
       type = "bun";
+      deployment = {
+        enable = true;
+        backend = "colmena";
+        command = "bun run start";
+        targets = [ "stackpanel-test" ];
+        modules = [
+          {
+            networking.firewall.allowedTCPPorts = [ 3001 ];
+          }
+        ];
+      };
     };
   };
 
@@ -86,6 +97,20 @@
       description = "Build the project";
     }
   ];
+
+  # ---------------------------------------------------------------------------
+  # Deployment
+  # ---------------------------------------------------------------------------
+  deployment.machines = {
+    stackpanel-test = {
+      host = "49.13.150.192";
+      user = "root";
+      system = "x86_64-linux";
+      authorizedKeys = [
+        "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDRZy5oeMfqhk91usPMfWM3qZjOu91mhxP5FNISekFeUuHVWciOTjObUquvXcBXPBECsMkkHCuBVW01usaqvMWl0fGGs6oV0oHBjMVNoNTR8PoXklvXQyTVKH4XDHt21guAZcdIyAWrcjGaUbCotN8gbBQ4qJe8EgVrwOHBiIwKzQT8SQKJAkbwLFmQpHfcSpibr/h/UDuEpgKv6dKE5TNiEKdWKYYbCFei98A1Vax56HXVQKVZmzz0WrH3M5uLVi4BG0Ed1o6IjhBl2iJOBNZpuK6N44mc0wUQcqKwshinDPprstfaV5vYsB3U2nDLeNaO1yvOXkOA+PqGeu5Kx5k3 raskolnikov@ce1"
+      ];
+    };
+  };
 
   # ---------------------------------------------------------------------------
   # Users - Team members with project access
