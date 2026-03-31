@@ -67,6 +67,7 @@ pub async fn from_commit_times_number<R: Runtime>(
             Some(commit_id),
             Some(base_commit_id),
             commits[i].message.as_deref(),
+            None,
         )
         .await
         {

@@ -24,9 +24,8 @@ export function PromptInput() {
   const setEvolvePrompt = useWidgetStore((s) => s.setEvolvePrompt);
   const isProcessing = useWidgetStore((s) => s.isProcessing);
   const processingAction = useWidgetStore((s) => s.processingAction);
-  const gitStatus = useWidgetStore((s) => s.gitStatus);
+  const step = useWidgetStore((s) => s.evolveState?.step);
   const { handleEvolve } = useEvolve();
-
 
   const handleSubmit = () => {
     if (evolvePrompt.trim()) {
@@ -35,11 +34,11 @@ export function PromptInput() {
   };
 
   const isLoading = isProcessing && processingAction === "evolve";
-  const hasChanges = Boolean(gitStatus?.diff);
 
-  const placeholder = hasChanges
-    ? "Describe additional changes or refinements..."
-    : "Describe changes to make to your configuration.";
+  const placeholder =
+    step === "evolve"
+      ? "Describe additional changes or refinements..."
+      : "Describe changes to make to your configuration.";
 
   const words = evolvePrompt.split(" ").length;
   const percentage = words / MAX_CONTEXT_LENGTH;

@@ -21,6 +21,7 @@ pub fn store(
     commit_message: Option<&str>,
     assignments: &mut Assignments,
     semantic_map: &SemanticChangeMap,
+    evolution_id: Option<i64>,
 ) -> Result<(i64, Vec<i64>)> {
     let mut conn = rusqlite::Connection::open(db_path)?;
     let now = unix_now();
@@ -38,7 +39,7 @@ pub fn store(
     }
 
     let change_set_id =
-        insert_change_set(&tx, commit_id, base_commit_id, commit_message, None, now)?;
+        insert_change_set(&tx, commit_id, base_commit_id, commit_message, None, now, evolution_id)?;
 
     // Collect all change IDs — HashSet deduplicates existing + new overlaps.
     let mut all_ids: std::collections::HashSet<i64> = std::collections::HashSet::new();

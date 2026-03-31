@@ -16,18 +16,19 @@ pub async fn analyze<R: Runtime>(
     commit_id: Option<i64>,
     base_commit_id: Option<i64>,
     commit_message: Option<&str>,
-) -> Result<()> {
+    evolution_id: Option<i64>,
+) -> Result<Option<i64>> {
     dbg::new_log_changes(&changes);
 
     if changes.is_empty() {
-        return Ok(());
+        return Ok(None);
     }
 
     let config_dir = crate::store::get_config_dir(app)?;
     let Some(base_commit_id) =
         crate::db::commits::store_head_commit(db_path, &config_dir, base_commit_id)?
     else {
-        return Ok(());
+        return Ok(None);
     };
 
     let short_hashed_changes = crate::changes_from_diff::with_short_hashes(&changes);
@@ -55,15 +56,16 @@ pub async fn analyze<R: Runtime>(
     dbg::new_log_assignments(&assignments);
 
     if assignments.new_groups.is_empty() && assignments.new_singles.is_empty() {
-        return Ok(());
+        return Ok(None);
     }
 
-    let (_, queued_ids) = crate::db::store_new_changeset::store(
+    let (change_set_id, queued_ids) = crate::db::store_new_changeset::store(
         db_path,
         commit_id,
         base_commit_id,
         commit_message,
         &mut assignments,
+        evolution_id,
     )?;
 
     if !queued_ids.is_empty() {
@@ -74,5 +76,5 @@ pub async fn analyze<R: Runtime>(
         });
     }
 
-    Ok(())
+    Ok(Some(change_set_id))
 }

@@ -81,13 +81,15 @@ pub fn insert_change_set(
     commit_message: Option<&str>,
     generated_commit_message: Option<&str>,
     created_at: i64,
+    evolution_id: Option<i64>,
 ) -> Result<i64> {
     tx.execute(
         "INSERT INTO change_sets \
-         (commit_id, base_commit_id, commit_message, generated_commit_message, created_at) \
-         VALUES (?1, ?2, ?3, ?4, ?5)",
+         (commit_id, base_commit_id, commit_message, generated_commit_message, created_at, evolution_id) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         rusqlite::params![
             commit_id, base_commit_id, commit_message, generated_commit_message, created_at,
+            evolution_id,
         ],
     )?;
     Ok(tx.last_insert_rowid())

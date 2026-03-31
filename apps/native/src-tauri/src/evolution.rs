@@ -13,7 +13,7 @@ use tauri::AppHandle;
 use crate::{
     db,
     evolve::{self, EvolutionState},
-    evolve_state, git, store,
+    evolve_state, git, store, summarize,
     query_return_types::SemanticChangeMap,
     types::{emit_evolve_event, EvolveEvent},
 };
@@ -237,15 +237,6 @@ pub async fn evolve_and_commit(
         }
     };
 
-    // Look up any already-summarized changesets for the current state.
-    let change_map = db::get_db_path(app)
-        .ok()
-        .and_then(|db_path| {
-            crate::summarize::find_existing::for_current_state(&db_path, &config_dir).ok()
-        })
-        .map(crate::summarize::group_existing::from_change_sets)
-        .unwrap_or_default();
-
     emit_evolve_event(
         app,
         EvolveEvent::complete(start_time_s, evolution.iterations, "Evolution complete"),
@@ -253,12 +244,25 @@ pub async fn evolve_and_commit(
 
     let _ = store::set_cached_git_status(app, &final_status);
 
-    // Use a timestamp as a lightweight unique id until a DB evolution table exists.
-    let evolution_id = chrono::Utc::now().timestamp_millis();
+    // Insert a DB evolution record and run the appropriate summarization pipeline.
+    let (db_evolution_id, changeset_id) =
+        store_metadata(app, &final_status).await;
+
     let evolve_state = evolve_state::set(app, evolve_state::EvolveState {
-        evolution_id: Some(evolution_id),
+        evolution_id: db_evolution_id,
+        current_changeset_id: changeset_id,
         ..Default::default()
-    }).unwrap_or_default();
+    })
+    .unwrap_or_default();
+
+    // Build the change map from whatever is now stored in the DB.
+    let change_map = db::get_db_path(app)
+        .ok()
+        .and_then(|db_path| {
+            summarize::find_existing::for_current_state(&db_path, &config_dir).ok()
+        })
+        .map(summarize::group_existing::from_change_sets)
+        .unwrap_or_default();
 
     Ok(EvolutionResult {
         change_map,
@@ -266,4 +270,42 @@ pub async fn evolve_and_commit(
         evolve_state,
         telemetry: EvolutionTelemetry::from_evolution(&evolution, elapsed_since(start_time_ms)),
     })
+}
+
+/// Insert a DB evolution, and summarize a changeset to link to it
+async fn store_metadata(
+    app: &AppHandle,
+    status: &crate::types::GitStatus,
+) -> (Option<i64>, Option<i64>) {
+    let db_path = match db::get_db_path(app) {
+        Ok(p) => p,
+        Err(e) => {
+            log::error!("[evolution] failed to get db path: {}", e);
+            return (None, None);
+        }
+    };
+
+    let evolution_id = match db::evolutions::insert(
+        &db_path,
+        status.branch.as_deref().unwrap_or("unknown"),
+    ) {
+        Ok(id) => {
+            info!("[evolution] inserted evolution record | id={}", id);
+            Some(id)
+        }
+        Err(e) => {
+            log::error!("[evolution] failed to insert evolution record: {}", e);
+            None
+        }
+    };
+
+    let changeset_id = match summarize::new_changeset(app, evolution_id).await {
+        Ok(id) => id,
+        Err(e) => {
+            log::error!("[evolution] summarization pipeline failed: {}", e);
+            None
+        }
+    };
+
+    (evolution_id, changeset_id)
 }

@@ -20,6 +20,7 @@ pub fn store(
     base_commit_id: i64,
     commit_message: Option<&str>,
     assignments: &mut Assignments,
+    evolution_id: Option<i64>,
 ) -> Result<(i64, Vec<i64>)> {
     let mut conn = rusqlite::Connection::open(db_path)?;
     let now = unix_now();
@@ -34,7 +35,7 @@ pub fn store(
     }
 
     let change_set_id =
-        insert_change_set(&tx, commit_id, base_commit_id, commit_message, None, now)?;
+        insert_change_set(&tx, commit_id, base_commit_id, commit_message, None, now, evolution_id)?;
 
     let mut all_ids: std::collections::HashSet<i64> = std::collections::HashSet::new();
     for a in &assignments.new_groups {
