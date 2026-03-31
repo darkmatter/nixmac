@@ -71,21 +71,6 @@ export interface GitStatus {
   changes?: Change[];
 }
 
-export interface SummaryItem {
-  title: string;
-  description: string;
-}
-
-/**
- * AI-generated summary of changes.
- */
-export interface SummaryResponse {
-  items: SummaryItem[];
-  instructions: string;
-  commitMessage: string;
-  diff: string;
-}
-
 export interface WatcherEvent {
   gitStatus: GitStatus;
   changeMap: SemanticChangeMap;
@@ -305,10 +290,6 @@ export const darwinAPI = {
     bootstrapDefault: (hostname: string) => invoke<void>("bootstrap_default_config", { hostname }),
     finalizeFlakeLock: () => invoke("finalize_flake_lock"),
   },
-  summary: {
-    find: () => invoke<SummaryResponse | null>("find_summary"),
-    generate: () => invoke<SummaryResponse>("summarize_changes"),
-  },
   summarizedChanges: {
     find: () => invoke<SummarizedChangeSet[]>("find_summarized_changes"),
     findChangeMap: () => invoke<SemanticChangeMap>("find_change_map"),
@@ -350,7 +331,7 @@ export const darwinAPI = {
       invoke<{
         ok: boolean;
         count: number;
-        summary: SummaryResponse;
+        changeMap: SemanticChangeMap;
         gitStatus: GitStatus;
       }>("apply_system_defaults", { defaults }),
   },

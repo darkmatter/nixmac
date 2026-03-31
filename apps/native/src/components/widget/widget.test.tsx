@@ -1,4 +1,4 @@
-import { initialSummaryState, useWidgetStore } from "@/stores/widget-store";
+import { useWidgetStore } from "@/stores/widget-store";
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DarwinWidget } from "./widget";
@@ -59,7 +59,6 @@ describe("DarwinWidget", () => {
     store.setError(null);
     store.clearEvolveEvents();
     store.clearLogs();
-    store.setSummary(initialSummaryState);
   });
 
   it("renders without crashing", () => {

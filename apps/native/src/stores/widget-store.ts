@@ -2,7 +2,6 @@ import { create } from "zustand";
 import { FeedbackType } from "@/types/feedback";
 import type {
   HistoryItem,
-  SummaryResponse,
   EvolveEvent,
   GitStatus,
   PermissionsState,
@@ -11,7 +10,6 @@ import type {
 import type { SemanticChangeMap } from "@/types/queries";
 import { computeCurrentStep } from "@/components/widget/utils";
 export type {
-  SummaryResponse,
   EvolveEvent,
   EvolveEventType,
   GitFileStatus,
@@ -93,8 +91,6 @@ export interface WidgetState {
   promptHistory: string[];
   conversationalResponse: string | null;
 
-  // Summary (AI-generated)
-  summary: SummaryResponse;
   changeMap: SemanticChangeMap | null;
 
   // Commit message suggestion (generated on merge screen)
@@ -112,7 +108,6 @@ export interface WidgetState {
   analyzingHistoryForHashes: Set<string>;
 
   // UI
-  summaryLoading: boolean;
   summaryAvailable: boolean;
   isGenerating: boolean;
   settingsOpen: boolean;
@@ -158,7 +153,6 @@ export interface WidgetActions {
   setGitStatus: (status: GitStatus | null) => void;
   setEvolvePrompt: (prompt: string) => void;
   setProcessing: (isProcessing: boolean, action?: ProcessingAction) => void;
-  setSummary: (summary: SummaryResponse) => void;
   setChangeMap: (map: SemanticChangeMap | null) => void;
   setSettingsOpen: (open: boolean, tab?: SettingsTab | null) => void;
   setShowHistory: (show: boolean) => void;
@@ -182,7 +176,6 @@ export interface WidgetActions {
   initConfirmPrefs: (prefs: Partial<Record<ConfirmPrefKey, boolean>>) => void;
 
   // Client-side state (NOT from server)
-  setSummaryLoading: (loading: boolean) => void;
   setGenerating: (generating: boolean) => void;
   clearPreview: () => void;
   setFeedbackTypeOverride: (type: FeedbackType | null) => void;
@@ -227,13 +220,6 @@ export const initialRebuildState: RebuildState = {
   errorMessage: undefined,
 };
 
-export const initialSummaryState: SummaryResponse = {
-  items: [],
-  instructions: "",
-  commitMessage: "",
-  diff: "",
-};
-
 export const initialWidgetState: WidgetState = {
   // Permissions
   permissionsState: null,
@@ -270,8 +256,6 @@ export const initialWidgetState: WidgetState = {
   historyLoading: false,
   analyzingHistoryForHashes: new Set<string>(),
 
-  // Summary
-  summary: initialSummaryState,
   changeMap: null,
   summaryAvailable: false,
 
@@ -285,7 +269,6 @@ export const initialWidgetState: WidgetState = {
   consoleLogs: "",
 
   // UI
-  summaryLoading: false,
   isBootstrapping: false,
   isGenerating: false,
   settingsOpen: false,
@@ -332,9 +315,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
         isProcessing,
         processingAction: isProcessing ? action : null,
       }),
-    setSummary: (summary) => set({ summary, summaryAvailable: true }),
     setChangeMap: (changeMap) => set({ changeMap }),
-    setSummaryLoading: (summaryLoading) => set({ summaryLoading }),
     setSummaryAvailable: (summaryAvailable) => set({ summaryAvailable }),
     setConfirmPref: (key, value) => set({ [key]: value }),
     initConfirmPrefs: (prefs) =>
@@ -382,8 +363,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setGenerating: (isGenerating) => set({ isGenerating }),
     clearPreview: () =>
       set({
-        summary: initialSummaryState,
-        summaryLoading: false,
+        changeMap: null,
         summaryAvailable: false,
       }),
 

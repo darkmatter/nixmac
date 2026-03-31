@@ -8,8 +8,8 @@
 //! preview mode, etc.) is computed and managed entirely by the client.
 
 use crate::{
-    darwin, db, default_config, evolution, feedback, find_summary, git, nix, peek, permissions,
-    legacy_summarize, rollback, scanner, store, types,
+    darwin, db, default_config, evolution, feedback, git, nix, peek, permissions,
+    rollback, scanner, store, types,
 };
 use std::path::Path;
 use std::process::Command;
@@ -516,12 +516,6 @@ pub async fn find_change_map(
     Ok(crate::summarize::group_existing::from_change_sets(change_sets))
 }
 
-/// Returns the cached summary if available.
-#[tauri::command]
-pub async fn summary_get_cached(app: AppHandle) -> Result<Option<types::SummaryResponse>, String> {
-    store::get_cached_summary(&app).map_err(|e| e.to_string())
-}
-
 /// Walks back `number` commits from `commit_hash`,
 /// upserts missing metadata (commits and summaries).
 #[tauri::command]
@@ -565,59 +559,6 @@ pub async fn restore_to_commit(app: AppHandle, target_hash: String) -> Result<()
     git::commit_all(&config_dir, &format!("nixmac: restore {label}"))
         .map_err(|e| capture_err("restore_to_commit", e))?;
     Ok(())
-}
-
-/// Finds the relevant summary for the current git state, flags availability.
-#[tauri::command]
-pub async fn find_summary(app: AppHandle) -> Result<Option<types::SummaryResponse>, String> {
-    let result = find_summary::find_summary(&app).map_err(|e| e.to_string())?;
-    let _ = store::set_summary_available(&app, result.is_some());
-    Ok(result)
-}
-
-#[tauri::command]
-pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse, String> {
-    let dir =
-        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("summarize_changes", e))?;
-
-    // Get git status for diff and file list
-    let status = git::status(&dir).map_err(|e| capture_err("summarize_changes", e))?;
-    let diff = &status.diff;
-    let file_list: Vec<String> = status.files.iter().map(|f| f.path.clone()).collect();
-
-    // Try to generate AI summary, but don't fail if it errors (e.g., no API key)
-    let (items, instructions, commit_message) =
-        match legacy_summarize::summarize_for_preview(diff, &file_list, Some(&app)).await {
-            Ok((change_summary, msg)) => {
-                let items: Vec<types::SummaryItem> = change_summary
-                    .items
-                    .into_iter()
-                    .map(|item| types::SummaryItem {
-                        title: item.title,
-                        description: item.description,
-                    })
-                    .collect();
-                (items, change_summary.instructions, msg)
-            }
-            Err(e) => {
-                log::error!("[summarize_changes] AI summarization failed: {}", e);
-                // Return empty summary on error
-                (Vec::new(), String::new(), String::new())
-            }
-        };
-
-    let response = types::SummaryResponse {
-        items,
-        instructions,
-        commit_message,
-        diff: status.diff.clone(),
-    };
-
-    // Cache the summary and mark it as available
-    let _ = store::set_cached_summary(&app, &response);
-    let _ = store::set_summary_available(&app, true);
-
-    Ok(response)
 }
 
 /// Generates a commit message from the current semantic change map via the pipeline.

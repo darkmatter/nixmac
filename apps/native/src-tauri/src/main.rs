@@ -18,7 +18,6 @@ mod evolution;
 mod evolve;
 mod feedback;
 mod finalize_apply;
-mod find_summary;
 mod get_history;
 mod git;
 mod log_summarizer;
@@ -34,7 +33,6 @@ mod secret_scanner;
 mod sqlite_types;
 mod statistics;
 mod store;
-mod legacy_summarize;
 mod summarize;
 mod template;
 mod types;
@@ -330,13 +328,10 @@ fn run_gui_mode(
             // Summarization
             commands::find_summarized_changes,
             commands::find_change_map,
-            commands::find_summary,
             commands::get_history,
             commands::generate_history_from,
             commands::summarize_current,
             commands::restore_to_commit,
-            commands::summarize_changes,
-            commands::summary_get_cached,
             commands::generate_commit_message,
             // UI preferences
             commands::ui_get_prefs,
