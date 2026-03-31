@@ -43,38 +43,25 @@ fn emit_text(pipeline: &str, step: &str, text: &str) {
 
 // ── find_existing ─────────────────────────────────────────────────────────────
 
-pub enum FindPath<'a> {
-    CommitPair { head_hash: &'a str, parent_hash: &'a str, commit_id: i64, parent_id: i64 },
-    DirtyHead { head_hash: &'a str, commit_id: i64, hashes: &'a [String] },
+pub struct FindPath<'a> {
+    pub head_hash: &'a str,
+    pub commit_id: i64,
+    pub hashes: &'a [String],
 }
 
 pub fn find_log_path(path: &FindPath) {
     if !FIND_EXISTING {
         return;
     }
-    match path {
-        FindPath::CommitPair { head_hash, parent_hash, commit_id, parent_id } => emit_json(
-            "FIND_EXISTING",
-            "path",
-            &serde_json::json!({
-                "kind": "commit_pair",
-                "head_hash": head_hash,
-                "parent_hash": parent_hash,
-                "commit_id": commit_id,
-                "parent_id": parent_id,
-            }),
-        ),
-        FindPath::DirtyHead { head_hash, commit_id, hashes } => emit_json(
-            "FIND_EXISTING",
-            "path",
-            &serde_json::json!({
-                "kind": "dirty_head",
-                "head_hash": head_hash,
-                "commit_id": commit_id,
-                "hashes": hashes,
-            }),
-        ),
-    }
+    emit_json(
+        "FIND_EXISTING",
+        "path",
+        &serde_json::json!({
+            "head_hash": path.head_hash,
+            "commit_id": path.commit_id,
+            "hashes": path.hashes,
+        }),
+    );
 }
 
 pub fn find_log_result(result: &[SummarizedChangeSet]) {

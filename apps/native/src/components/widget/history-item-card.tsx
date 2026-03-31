@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { HistoryItem } from "@/tauri-api";
-import type { SummarizedChange } from "@/types/queries";
+import type { SemanticChangeMap } from "@/types/queries";
 import { cn } from "@/lib/utils";
 import { AnalyzeHistoryItemButton } from "@/components/widget/analyze-history-item-button";
 import { HistoryRestoreItemButton } from "@/components/widget/history-restore-item-button";
@@ -40,18 +40,13 @@ interface SummaryBadge {
   description: string;
 }
 
-function getSummaryBadges(changes: SummarizedChange[]): SummaryBadge[] {
-  const seen = new Set<number>();
+function getSummaryBadges(changeMap: SemanticChangeMap): SummaryBadge[] {
   const badges: SummaryBadge[] = [];
-  for (const sc of changes) {
-    if (sc.groupSummary) {
-      if (!seen.has(sc.groupSummary.id)) {
-        seen.add(sc.groupSummary.id);
-        badges.push({ title: sc.groupSummary.title, description: sc.groupSummary.description });
-      }
-    } else if (sc.ownSummary) {
-      badges.push({ title: sc.ownSummary.title, description: sc.ownSummary.description });
-    }
+  for (const group of changeMap.groups) {
+    badges.push({ title: group.summary.title, description: group.summary.description });
+  }
+  for (const single of changeMap.singles) {
+    badges.push({ title: single.title, description: single.description });
   }
   return badges;
 }
@@ -63,8 +58,8 @@ interface HistoryItemCardProps {
 export function HistoryItemCard({ item }: HistoryItemCardProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const changeSet = item.changeSet;
-  const badges = changeSet ? getSummaryBadges(changeSet.changes) : [];
+  const changeMap = item.changeMap;
+  const badges = changeMap ? getSummaryBadges(changeMap) : [];
 
   const toggle = () => setExpanded((prev) => !prev);
 
@@ -73,17 +68,17 @@ export function HistoryItemCard({ item }: HistoryItemCardProps) {
       className={cn(
         "group rounded-[10px] border-2 bg-[#111111] px-[14px] py-3 mb-2 select-none transition-colors duration-150",
         item.isBuilt ? "border-teal-400/40" : "border-white/[0.12]",
-        changeSet
+        changeMap
           ? cn("cursor-pointer", !item.isBuilt && "hover:border-white/25 hover:bg-[#141414]")
           : "cursor-default",
         expanded && cn("bg-[#151515]", item.isBuilt ? "border-teal-400/50" : "border-white/35"),
       )}
-      onClick={changeSet ? toggle : undefined}
-      onKeyDown={changeSet ? (e) => {
+      onClick={changeMap ? toggle : undefined}
+      onKeyDown={changeMap ? (e) => {
         if (e.key === "Enter" || e.key === " ") toggle();
       } : undefined}
-      role={changeSet ? "button" : undefined}
-      tabIndex={changeSet ? 0 : undefined}
+      role={changeMap ? "button" : undefined}
+      tabIndex={changeMap ? 0 : undefined}
     >
       {/* Collapsed body: left content + right actions */}
       <div className="flex items-start justify-between gap-[10px]">
@@ -125,7 +120,7 @@ export function HistoryItemCard({ item }: HistoryItemCardProps) {
         {/* Right: action buttons */}
         <div className="flex shrink-0 flex-col items-end gap-1">
           <HistoryRestoreItemButton hash={item.hash} isBuilt={item.isBuilt} />
-          {!changeSet && (
+          {!changeMap && (
             <AnalyzeHistoryItemButton
               hash={item.hash}
               className="group-hover:bg-accent group-hover:text-accent-foreground"

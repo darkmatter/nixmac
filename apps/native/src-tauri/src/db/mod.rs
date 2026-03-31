@@ -2,7 +2,6 @@
 
 pub mod changesets;
 pub mod commits;
-pub mod operations;
 mod schema;
 pub mod squashed_commits;
 pub mod summaries;

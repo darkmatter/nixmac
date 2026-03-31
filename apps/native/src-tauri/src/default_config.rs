@@ -198,7 +198,6 @@ pub fn bootstrap(app: &AppHandle, hostname: &str) -> Result<(), String> {
 
     // Initialize git repository and commit templates (without flake.lock)
     git::init_if_needed(&dir).map_err(|e| format!("Failed to init git: {}", e))?;
-    git::stage_all(&dir).map_err(|e| format!("Failed to stage files: {}", e))?;
     git::commit_all(&dir, "Initial nix-darwin configuration")
         .map_err(|e| format!("Failed to commit: {}", e))?;
 
@@ -236,7 +235,6 @@ pub fn finalize_flake_lock(app: &AppHandle) -> Result<(), String> {
     }
 
     // Stage lock file and commit
-    git::stage_all(&dir).map_err(|e| format!("Failed to stage flake.lock: {}", e))?;
     git::commit_all(&dir, "Add flake.lock")
         .map_err(|e| format!("Failed to commit flake.lock: {}", e))?;
 

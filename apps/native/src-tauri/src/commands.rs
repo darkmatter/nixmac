@@ -215,66 +215,6 @@ pub async fn git_stash(app: AppHandle, message: String) -> Result<serde_json::Va
     Ok(serde_json::json!({"ok": true}))
 }
 
-/// Stage all changes (git add -A)
-#[tauri::command]
-pub async fn git_stage_all(app: AppHandle) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_stage_all", e))?;
-    git::stage_all(&dir).map_err(|e| capture_err("git_stage_all", e))?;
-    Ok(serde_json::json!({"ok": true}))
-}
-
-/// Unstage all staged changes (keeps working directory changes)
-#[tauri::command]
-pub async fn git_unstage_all(app: AppHandle) -> Result<serde_json::Value, String> {
-    let dir =
-        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_unstage_all", e))?;
-    git::unstage_all(&dir).map_err(|e| capture_err("git_unstage_all", e))?;
-    Ok(serde_json::json!({"ok": true}))
-}
-
-/// Discard all uncommitted changes (restore to HEAD)
-#[tauri::command]
-pub async fn git_restore_all(app: AppHandle) -> Result<serde_json::Value, String> {
-    let dir =
-        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_restore_all", e))?;
-    git::restore_all(&dir).map_err(|e| capture_err("git_restore_all", e))?;
-    Ok(serde_json::json!({"ok": true}))
-}
-
-/// Creates and checks out a new branch
-#[tauri::command]
-pub async fn git_checkout_new_branch(
-    app: AppHandle,
-    branch_name: String,
-) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app)
-        .map_err(|e| capture_err("git_checkout_new_branch", e))?;
-    let created_branch = git::checkout_new_branch(&dir, &branch_name)
-        .map_err(|e| capture_err("git_checkout_new_branch", e))?;
-    Ok(serde_json::json!({"ok": true, "branch": created_branch}))
-}
-
-/// Checks out an existing branch
-#[tauri::command]
-pub async fn git_checkout_branch(
-    app: AppHandle,
-    branch_name: String,
-) -> Result<serde_json::Value, String> {
-    let dir =
-        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_checkout_branch", e))?;
-    git::checkout_branch(&dir, &branch_name).map_err(|e| capture_err("git_checkout_branch", e))?;
-    Ok(serde_json::json!({"ok": true}))
-}
-
-/// Checks out the main branch (tries main, falls back to master)
-#[tauri::command]
-pub async fn git_checkout_main_branch(app: AppHandle) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app)
-        .map_err(|e| capture_err("git_checkout_main_branch", e))?;
-    git::checkout_main_branch(&dir).map_err(|e| capture_err("git_checkout_main_branch", e))?;
-    Ok(serde_json::json!({"ok": true}))
-}
-
 /// Adds the nixmac-built tag to HEAD
 #[tauri::command]
 pub async fn git_tag_as_built(app: AppHandle) -> Result<serde_json::Value, String> {
@@ -284,25 +224,6 @@ pub async fn git_tag_as_built(app: AppHandle) -> Result<serde_json::Value, Strin
     Ok(serde_json::json!({"ok": true}))
 }
 
-/// Finalizes an evolve by merging the branch to main
-#[tauri::command]
-pub async fn git_finalize_evolve(
-    app: AppHandle,
-    branch_name: String,
-    squash: Option<bool>,
-    commit_message: Option<String>,
-) -> Result<serde_json::Value, String> {
-    let dir =
-        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_finalize_evolve", e))?;
-    git::finalize_evolve(
-        &dir,
-        &branch_name,
-        squash.unwrap_or(false),
-        commit_message.as_deref(),
-    )
-    .map_err(|e| capture_err("git_finalize_evolve", e))?;
-    Ok(serde_json::json!({"ok": true}))
-}
 
 // =============================================================================
 // Darwin/Nix Commands
@@ -1027,14 +948,10 @@ pub async fn apply_system_defaults(
 // Rollback Commands
 // =============================================================================
 
-/// Restore uncommitted changes, return to main, and optionally purge branch DB records.
+/// Restore uncommitted changes.
 #[tauri::command]
-pub async fn rollback_erase(
-    app: AppHandle,
-    keep_branch: Option<bool>,
-) -> Result<rollback::RollbackResult, String> {
-    rollback::rollback_erase(&app, keep_branch.unwrap_or(false))
-        .map_err(|e| capture_err("rollback_erase", e))
+pub async fn rollback_erase(app: AppHandle) -> Result<rollback::RollbackResult, String> {
+    rollback::rollback_erase(&app).map_err(|e| capture_err("rollback_erase", e))
 }
 
 // =============================================================================
