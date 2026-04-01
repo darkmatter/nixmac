@@ -45,10 +45,7 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
       </div>
       <>
         <Activity mode={activeTab === "summary" ? "visible" : "hidden"}>
-          {changeMap
-            ? <SummaryItems map={changeMap} />
-            : <div className="p-4 text-muted-foreground text-sm">No summary available yet.</div>
-          }
+          {changeMap && <SummaryItems map={changeMap} />}
         </Activity>
         <Activity mode={activeTab === "diff" ? "visible" : "hidden"}>
           <Diff changes={changes} />

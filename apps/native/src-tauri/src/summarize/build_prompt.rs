@@ -4,7 +4,7 @@
 // ── Base ───────────────────────────────────────────────────────────────────────────────────
 
 pub const BASE_PREAMBLE: &str =
-    "Your task is to write Title - Description pairs, summarizing new macOS configuration changes.\n";
+    "Your task is to write Title - Description pairs, summarizing new nix-darwin configuration changes.\n";
 
 pub const BASE_CHANGES_INTRO: &str =
     "Below are the new changes you will write Title - Descriptions for. Hash is the key for each. Filename, lines and diff are sources of meaning.\n";
@@ -21,7 +21,7 @@ pub const BASE_RESPONSE_INTRO: &str =
 // ── New map ───────────────────────────────────────────────────────────────────────────────
 
 pub const NEW_MAP_PREAMBLE: &str =
-    "Your task is to group new macOS configuration changes by semantic intent, what the user is actually trying to accomplish.\n";
+    "Your task is to group new nix-darwin configuration changes by semantic intent, what the user is actually trying to accomplish.\n";
 
 pub const NEW_MAP_RULES: &str =
     "Below are the changes to group. Hash is the key for each. Filename, lines and diff are sources of meaning. One goal touching many files is one group. Artifacts and auto-generated files (lock files, backups, generated paths) belong to the group of the change that caused them. Keep track of groups and assign a number id to each one. It is possible there are few changes, and that they have no group relation. Whether a change even belongs to any group or none at all is for you to decide. At the end you will provide shared group_id integers and a one-sentence reason for why the change belongs in that group, or is standalone.  \n";
@@ -32,7 +32,7 @@ pub const NEW_MAP_RESPONSE_INTRO: &str =
 // ── Placement ─────────────────────────────────────────────────────────────────────────────
 
 pub const PLACEMENT_PREAMBLE: &str =
-"Your task involves two steps. First you will analyze an existing set of macOS configuration changes represented in JSON. Changes in groups share a topic or user intent. Singles are standalone. Second you will analyze a new set of changes, which may or may not be related to existing groups or singles. That is for you to decide. First please understand existing groups and changes: \n";
+"Your task involves two steps. First you will analyze an existing set of nix-darwin configuration changes represented in JSON. Changes in groups share a topic or user intent. Singles are standalone. Second you will analyze a new set of changes, which may or may not be related to existing groups or singles. That is for you to decide. First please understand existing groups and changes: \n";
 
 pub const PLACEMENT_CHANGES_INTRO: &str =
 "Below are the new changes you will place into context. Hash is the key for each. Filename, lines and diff are sources of meaning. Keep in mind new changes may belong to a group, or form a new group with an existing single hash. We will not however, break up existing groups.\n";

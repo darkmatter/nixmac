@@ -1,8 +1,8 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { Layers } from "lucide-react";
 import { UnsummarizedChangesDetected } from "@/components/widget/unsummarized-changes-detected";
-import { getShortFilename } from "@/components/widget/utils";
+import { getCategoryStyle, getShortFilename } from "@/components/widget/utils";
 import type { ChangeWithSummary, SemanticChangeGroup, SemanticChangeMap } from "@/types/shared";
 import { cn } from "@/lib/utils";
 import {
@@ -11,21 +11,6 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 
-const CATEGORY_COLORS: Record<string, string> = {
-  packages: "text-emerald-500",
-  settings: "text-blue-500",
-  shell: "text-amber-500",
-  home: "text-violet-500",
-  system: "text-gray-500",
-};
-
-function getCategoryColor(title: string): string {
-  const key = title.toLowerCase();
-  for (const [k, v] of Object.entries(CATEGORY_COLORS)) {
-    if (key.includes(k)) return v;
-  }
-  return "text-neutral-200";
-}
 
 function ShimmerBar({ className }: { className?: string }) {
   return (
@@ -47,7 +32,7 @@ const SHIMMER_VARIANTS = [
 function SkeletonItem({ index = 0 }: { index?: number }) {
   const [a, b] = SHIMMER_VARIANTS[index % SHIMMER_VARIANTS.length];
   return (
-    <div className="mb-2 px-4 py-3">
+    <div className="mb-2 px-1 py-3">
       <ShimmerBar className={cn("h-3.5", a)} />
       <ShimmerBar className={cn("mt-2 h-2.5", b)} />
     </div>
@@ -59,20 +44,21 @@ function GroupItem({ group, index }: { group: SemanticChangeGroup; index: number
     return <SkeletonItem index={index} />;
   }
 
-  const titleColor = getCategoryColor(group.summary.title);
+  const titleColor = getCategoryStyle(group.summary.title).text;
 
   return (
-    <Collapsible className="mb-2 last:mb-0">
+    <Collapsible className="group/root mb-2 last:mb-0">
       <div className="px-1 pb-2 pt-3">
         <div className="flex items-center gap-2">
-          <span className={cn("text-[13px] font-medium leading-snug", titleColor)}>
+          <span className={cn("text-[14px] font-medium leading-snug", titleColor)}>
             {group.summary.title}
           </span>
-          <span className="rounded bg-white/[0.06] px-[5px] py-px font-mono text-[10px] text-neutral-500">
-            {group.changes.length}
-          </span>
+          <CollapsibleTrigger className="flex h-[18px] w-[26px] items-center justify-center rounded bg-white/[0.06] font-mono text-[11.5px] text-neutral-300 transition-colors hover:bg-white/[0.1] hover:text-neutral-300">
+            <span className="group-data-[state=open]/root:hidden">{group.changes.length}</span>
+            <Layers className="hidden h-[11px] w-[11px] group-data-[state=open]/root:block" />
+          </CollapsibleTrigger>
         </div>
-        <p className="mt-1 text-[11px] leading-snug text-neutral-500">
+        <p className="mt-1 text-[12px] leading-snug text-neutral-300">
           {group.summary.description}
         </p>
       </div>
@@ -81,16 +67,18 @@ function GroupItem({ group, index }: { group: SemanticChangeGroup; index: number
           {group.changes.map((change) => (
             <div
               key={change.hash}
-              className="rounded border-l-2 border-white/20 bg-white/[0.02] px-2 py-1 text-[11px] text-neutral-500"
+              className="rounded border-l-2 border-white/20 bg-white/[0.02] px-2 py-1.5"
             >
-              {change.title || getShortFilename(change.filename)}
+              <div className="truncate text-[11px] text-neutral-300">
+                {change.title || getShortFilename(change.filename)}
+                {change.description && (
+                  <span className="text-neutral-400"> — {change.description}</span>
+                )}
+              </div>
             </div>
           ))}
         </div>
       </CollapsibleContent>
-      <CollapsibleTrigger className="group flex w-full justify-center pb-2 text-neutral-700">
-        <ChevronDown className="h-3 w-3 transition-transform duration-200 group-data-[state=open]:translate-y-0.5" />
-      </CollapsibleTrigger>
     </Collapsible>
   );
 }
@@ -100,15 +88,15 @@ function SingleItem({ change, index }: { change: ChangeWithSummary; index: numbe
     return <SkeletonItem index={index} />;
   }
 
-  const titleColor = getCategoryColor(change.title);
+  const titleColor = getCategoryStyle(change.title);
 
   return (
-    <div className="mb-2 px-4 py-3 last:mb-0">
-      <span className={cn("text-[13px] font-medium leading-snug", titleColor)}>
+    <div className="mb-2 px-1 py-3 last:mb-0">
+      <span className={cn("text-[14px] font-medium leading-snug", titleColor)}>
         {change.title || getShortFilename(change.filename)}
       </span>
       {change.description && (
-        <p className="mt-1 text-[11px] leading-snug text-neutral-500">
+        <p className="mt-1 text-[12px] leading-snug text-neutral-400">
           {change.description}
         </p>
       )}

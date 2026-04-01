@@ -505,7 +505,6 @@ impl EvolveEvent {
         )
     }
 
-    #[allow(dead_code)]
     pub fn analyzing(start_time: i64, iter: Option<usize>) -> Self {
         Self::new(
             EvolveEventType::Summarizing,

@@ -4,28 +4,7 @@ import type { SemanticChangeMap } from "@/types/shared";
 import { cn } from "@/lib/utils";
 import { AnalyzeHistoryItemButton } from "@/components/widget/analyze-history-item-button";
 import { HistoryRestoreItemButton } from "@/components/widget/history-restore-item-button";
-
-type CategoryStyle = {
-  text: string;
-  bg: string;
-  dot: string;
-};
-
-const CATEGORY_STYLES: Record<string, CategoryStyle> = {
-  packages: { text: "text-emerald-500", bg: "bg-emerald-500/[0.08]", dot: "bg-emerald-500" },
-  settings: { text: "text-blue-500", bg: "bg-blue-500/[0.08]", dot: "bg-blue-500" },
-  shell: { text: "text-amber-500", bg: "bg-amber-500/[0.08]", dot: "bg-amber-500" },
-  home: { text: "text-violet-500", bg: "bg-violet-500/[0.08]", dot: "bg-violet-500" },
-  system: { text: "text-gray-500", bg: "bg-gray-500/[0.08]", dot: "bg-gray-500" },
-};
-
-function getCategoryStyle(title: string): CategoryStyle {
-  const key = title.toLowerCase();
-  for (const [k, v] of Object.entries(CATEGORY_STYLES)) {
-    if (key.includes(k)) return v;
-  }
-  return { text: "text-gray-500", bg: "bg-gray-500/[0.08]", dot: "bg-gray-500" };
-}
+import { getCategoryStyle } from "@/components/widget/utils";
 
 function formatRelativeTime(unixSeconds: number): string {
   const diff = Math.floor(Date.now() / 1000 - unixSeconds);
