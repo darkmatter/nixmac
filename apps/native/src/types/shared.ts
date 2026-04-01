@@ -19,7 +19,7 @@ export type ChangeWithSummary = { id: number; hash: string; filename: string; di
 /**
  * Persisted evolve state stored in `evolve-state.json`.
  */
-export type EvolveState = { evolutionId: number | null; currentChangesetId: number | null; changesetAtBuild: number | null; committable: boolean; 
+export type EvolveState = { evolutionId: number | null; currentChangesetId: number | null; changesetAtBuild: number | null; committable: boolean; backupBranch: string | null; 
 /**
  * Computed from the other fields — always kept in sync by `set`.
  */

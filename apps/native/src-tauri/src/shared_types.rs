@@ -76,6 +76,7 @@ pub struct EvolveState {
     pub current_changeset_id: Option<i64>,
     pub changeset_at_build: Option<i64>,
     pub committable: bool,
+    pub backup_branch: Option<String>,
     /// Computed from the other fields — always kept in sync by `set`.
     pub step: EvolveStep,
 }
@@ -87,6 +88,7 @@ impl Default for EvolveState {
             current_changeset_id: None,
             changeset_at_build: None,
             committable: false,
+            backup_branch: None,
             step: EvolveStep::Begin,
         }
     }

@@ -185,12 +185,42 @@ pub async fn backup_evolve_and_record_changeset(
         initial_status.branch
     );
 
-    // Step 1: Run AI evolution
+    // Step 1: Snapshot the working tree onto a backup branch before AI touches anything.
+    // If evolution_id is None the tree is clean (begin-evolve-warning guarantees this),
+    // so create_evolution_backup will skip (clean + changeset_id==0 → None).
+    let pre_evolve_state = evolve_state::get(app).unwrap_or_default();
+    let changeset_id = pre_evolve_state.current_changeset_id.unwrap_or(0);
+    let backup_branch = match git::create_evolution_backup(
+        &config_dir,
+        pre_evolve_state.evolution_id,
+        changeset_id,
+    ) {
+        Ok(branch) => branch,
+        Err(e) => {
+            return Err(EvolutionFailureResult::defaults(
+                format!("Failed to create backup branch: {}", e),
+                None,
+                elapsed_since(start_time_ms),
+            ));
+        }
+    };
+
+    if let Some(ref branch) = backup_branch {
+        info!("[evolution] backup branch created | branch={}", branch);
+        let updated = evolve_state::EvolveState {
+            backup_branch: Some(branch.clone()),
+            ..pre_evolve_state.clone()
+        };
+        let _ = evolve_state::set(app, updated);
+    }
+
+    // Step 2: Run AI evolution
     let evolution = match evolve::generate_evolution(app, &config_dir, description).await {
         Ok(evolution) => evolution,
         Err(e) => {
             let duration_ms = elapsed_since(start_time_ms);
             let git_status = git::status(&config_dir).ok();
+            restore_after_failure(app, &config_dir, &backup_branch);
             if let Some(run_error) = e.downcast_ref::<evolve::EvolutionRunError>() {
                 return Err(EvolutionFailureResult::new(
                     run_error.message.clone(),
@@ -198,7 +228,6 @@ pub async fn backup_evolve_and_record_changeset(
                     EvolutionTelemetry::from_failed_progress(&run_error.progress, duration_ms),
                 ));
             }
-
             return Err(EvolutionFailureResult::defaults(
                 format!("AI evolution failed: {}", e),
                 git_status,
@@ -228,6 +257,7 @@ pub async fn backup_evolve_and_record_changeset(
     let final_status = match git::status(&config_dir) {
         Ok(status) => status,
         Err(e) => {
+            restore_after_failure(app, &config_dir, &backup_branch);
             return Err(EvolutionFailureResult::from_evolution(
                 format!("Failed to get final git status: {}", e),
                 None,
@@ -245,12 +275,13 @@ pub async fn backup_evolve_and_record_changeset(
     let _ = store::set_cached_git_status(app, &final_status);
 
     // Insert a DB evolution record and run the appropriate summarization pipeline.
-    let (db_evolution_id, changeset_id) =
+    let (db_evolution_id, new_changeset_id) =
         store_metadata(app, &final_status).await;
 
     let evolve_state = evolve_state::set(app, evolve_state::EvolveState {
         evolution_id: db_evolution_id,
-        current_changeset_id: changeset_id,
+        current_changeset_id: new_changeset_id,
+        backup_branch,
         ..Default::default()
     })
     .unwrap_or_default();
@@ -270,6 +301,25 @@ pub async fn backup_evolve_and_record_changeset(
         evolve_state,
         telemetry: EvolutionTelemetry::from_evolution(&evolution, elapsed_since(start_time_ms)),
     })
+}
+
+fn restore_after_failure(app: &AppHandle, config_dir: &str, backup_branch: &Option<String>) {
+    match backup_branch {
+        Some(_) => {
+            if let Err(e) = git::restore_from_backup(config_dir) {
+                log::error!("[evolution] restore_from_backup failed: {}", e);
+            }
+            let _ = evolve_state::set(app, evolve_state::EvolveState {
+                backup_branch: None,
+                ..evolve_state::get(app).unwrap_or_default()
+            });
+        }
+        None => {
+            if let Err(e) = git::restore_all(config_dir) {
+                log::error!("[evolution] restore_all failed: {}", e);
+            }
+        }
+    }
 }
 
 /// Insert a DB evolution (or reuse the active one), and summarize a changeset to link to it.
