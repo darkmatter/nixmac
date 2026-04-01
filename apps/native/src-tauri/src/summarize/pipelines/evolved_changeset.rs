@@ -51,13 +51,16 @@ pub async fn analyze<R: Runtime>(
             .map(simplify_grouped::from_change_with_summary)
             .collect::<Vec<_>>();
         let new_refs: Vec<&Change> = a.new_changes.iter().map(|p| &p.change).collect();
-        let new_hashes: Vec<String> =
-            a.new_changes.iter().map(|p| p.change.hash.clone()).collect();
+        let new_hashes: Vec<String> = a.new_changes.iter()
+            .map(|p| p.change.hash[..crate::changes_from_diff::SHORT_HASH_LEN].to_string())
+            .collect();
         a.prompt = build_prompt::evolve_group(&existing, &new_refs, &new_hashes);
     }
     for a in &mut assignments.new_groups {
         let refs: Vec<&Change> = a.changes.iter().map(|p| &p.change).collect();
-        let hashes: Vec<String> = a.changes.iter().map(|p| p.change.hash.clone()).collect();
+        let hashes: Vec<String> = a.changes.iter()
+            .map(|p| p.change.hash[..crate::changes_from_diff::SHORT_HASH_LEN].to_string())
+            .collect();
         a.prompt = build_prompt::new_group(&hashes, &refs);
     }
     for a in &mut assignments.new_singles {

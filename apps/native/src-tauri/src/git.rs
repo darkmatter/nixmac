@@ -588,6 +588,101 @@ pub fn tag_as_built(dir: &str) -> Result<()> {
     Ok(())
 }
 
+/// Stage everything and create a backup branch without moving HEAD.
+/// Returns the branch name, or None if skipped (clean tree + changeset_id == 0).
+pub fn create_evolution_backup(
+    repo_path: &str,
+    evolution_id: Option<i64>,
+    changeset_id: i64,
+) -> Result<Option<String>> {
+    let head_diff = get_head_diff(repo_path).unwrap_or_default();
+    if head_diff.is_empty() && changeset_id == 0 {
+        return Ok(None);
+    }
+
+    let branch_name = format!(
+        "nixmac-evolve/evolution{}-changeset{}",
+        evolution_id.map_or_else(|| "unknown".to_string(), |id| id.to_string()),
+        changeset_id
+    );
+
+    let add_output = git_command()
+        .args(["add", "--all"])
+        .current_dir(repo_path)
+        .output()?;
+    if !add_output.status.success() {
+        let stderr = String::from_utf8_lossy(&add_output.stderr);
+        anyhow::bail!("git add --all failed: {}", stderr);
+    }
+
+    let tree_output = git_command()
+        .args(["write-tree"])
+        .current_dir(repo_path)
+        .output()?;
+    if !tree_output.status.success() {
+        let stderr = String::from_utf8_lossy(&tree_output.stderr);
+        anyhow::bail!("git write-tree failed: {}", stderr);
+    }
+    let tree_hash = String::from_utf8_lossy(&tree_output.stdout).trim().to_string();
+
+    let head_hash = get_head_sha(repo_path)
+        .ok_or_else(|| anyhow::anyhow!("failed to resolve HEAD"))?;
+
+    let commit_msg = format!("nixmac backup: {}", branch_name);
+    let commit_output = git_command()
+        .args(["commit-tree", &tree_hash, "-p", &head_hash, "-m", &commit_msg])
+        .current_dir(repo_path)
+        .output()?;
+    if !commit_output.status.success() {
+        let stderr = String::from_utf8_lossy(&commit_output.stderr);
+        anyhow::bail!("git commit-tree failed: {}", stderr);
+    }
+    let commit_hash = String::from_utf8_lossy(&commit_output.stdout).trim().to_string();
+
+    let ref_path = format!("refs/heads/{}", branch_name);
+    let ref_output = git_command()
+        .args(["update-ref", &ref_path, &commit_hash])
+        .current_dir(repo_path)
+        .output()?;
+    if !ref_output.status.success() {
+        let stderr = String::from_utf8_lossy(&ref_output.stderr);
+        anyhow::bail!("git update-ref failed: {}", stderr);
+    }
+
+    Ok(Some(branch_name))
+}
+
+/// Restore working tree from backup index state without moving HEAD.
+/// Assumes the real index is still in the backup state (AI does not run git commands).
+pub fn restore_from_backup(repo_path: &str) -> Result<()> {
+    let checkout_output = git_command()
+        .args(["checkout-index", "-f", "-a"])
+        .current_dir(repo_path)
+        .output()?;
+    if !checkout_output.status.success() {
+        let stderr = String::from_utf8_lossy(&checkout_output.stderr);
+        anyhow::bail!("git checkout-index failed: {}", stderr);
+    }
+
+    git_command()
+        .args(["clean", "-fd"])
+        .current_dir(repo_path)
+        .output()?;
+
+    Ok(())
+}
+
+/// Delete a backup branch ref.
+#[allow(dead_code)]
+pub fn delete_backup_branch(repo_path: &str, branch_name: &str) -> Result<()> {
+    let ref_path = format!("refs/heads/{}", branch_name);
+    git_command()
+        .args(["update-ref", "-d", &ref_path])
+        .current_dir(repo_path)
+        .output()?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -152,7 +152,7 @@ fn build_pairs_json(changes: &[PendingChange]) -> String {
         .iter()
         .filter_map(|c| {
             Some(serde_json::json!({
-                "hash": c.change.hash,
+                "hash": &c.change.hash[..crate::changes_from_diff::SHORT_HASH_LEN],
                 "summary_id": c.own_summary_id?
             }))
         })
