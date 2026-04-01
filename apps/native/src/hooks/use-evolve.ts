@@ -74,6 +74,9 @@ export function useEvolve() {
       if (result?.evolveState) {
         useWidgetStore.getState().setEvolveState(result.evolveState);
       }
+      if (result?.changeMap) {
+        useWidgetStore.getState().setChangeMap(result.changeMap);
+      }
 
       store.setEvolvePrompt("");
     } catch (e: unknown) {

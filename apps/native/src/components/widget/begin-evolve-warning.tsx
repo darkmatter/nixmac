@@ -120,7 +120,7 @@ export function BeginEvolveWarning({ open, onOpenChange, handleEvolve }: BeginEv
         </DialogHeader>
 
         <p className="px-5 py-3 text-xs font-semibold text-foreground">First, decide how to handle uncommitted changes.</p>
-        <div className="overflow-y-auto flex-1 min-h-0 border-t border-border/50 divide-y divide-border/50">
+        <div className="border-t border-border/50 divide-y divide-border/50">
           {/* Option 1: Discard */}
           <div className="px-5 py-4 space-y-1.5">
             <div className="flex items-center gap-2">
@@ -182,23 +182,23 @@ export function BeginEvolveWarning({ open, onOpenChange, handleEvolve }: BeginEv
           </div>
 
           {/* Option 3: Adopt */}
-          <div className="px-5 py-4 space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border text-[10px] font-semibold tabular-nums text-muted-foreground">
-                {buildChecking ? <Loader2 className="h-3 w-3 animate-spin" /> : buildPassed ? 3 : <X className="h-3 w-3" />}
-              </span>
-              <p className="text-xs font-semibold text-foreground">Include in evolution</p>
+          <label className="flex items-center gap-4 px-5 py-4 cursor-pointer">
+            <div className="flex-1 space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border text-[10px] font-semibold tabular-nums text-muted-foreground">
+                  {buildChecking ? <Loader2 className="h-3 w-3 animate-spin" /> : buildPassed ? 3 : <X className="h-3 w-3" />}
+                </span>
+                <p className="text-xs font-semibold text-foreground">Include in evolution</p>
+              </div>
+              <p className="text-xs text-muted-foreground">{buildChecking ? `checking build…` : `Adopt the changes into your request, and save them together at the end.`}</p>
             </div>
-            <label className="flex items-start gap-3 cursor-pointer">
-              <p className="text-xs text-muted-foreground flex-1">{buildChecking ? `checking build…` : `Adopt the changes into your request, and save them together at the end.`}</p>
-              <Checkbox
-                checked={adoptOnContinue}
-                onCheckedChange={(checked) => setAdoptOnContinue(!!checked)}
-                disabled={buildChecking || !buildPassed}
-                className="mt-0.5 shrink-0"
-              />
-            </label>
-          </div>
+            <Checkbox
+              checked={adoptOnContinue}
+              onCheckedChange={(checked) => setAdoptOnContinue(!!checked)}
+              disabled={buildChecking || !buildPassed}
+              className="h-5 w-5 shrink-0 border-neutral-400 mr-2"
+            />
+          </label>
         </div>
 
         <div className="px-5 py-4 border-t border-border/50 shrink-0 flex flex-col items-center gap-3">

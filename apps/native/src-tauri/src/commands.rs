@@ -943,7 +943,8 @@ pub async fn darwin_adopt_manual_changes(app: AppHandle) -> Result<i64, String> 
     let db_path = db::get_db_path(&app)
         .map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
     let branch = git_status.branch.as_deref().unwrap_or("unknown");
-    let evolution_id = db::evolutions::insert(&db_path, branch)
+    let existing_id = evolve_state::get(&app).ok().and_then(|s| s.evolution_id);
+    let evolution_id = db::evolutions::upsert(&db_path, existing_id, branch)
         .map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
 
     evolve_state::set(

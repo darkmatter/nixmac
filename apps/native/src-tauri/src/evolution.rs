@@ -267,10 +267,7 @@ pub async fn backup_evolve_and_record_changeset(
         }
     };
 
-    emit_evolve_event(
-        app,
-        EvolveEvent::complete(start_time_s, evolution.iterations, "Evolution complete"),
-    );
+    emit_evolve_event(app, EvolveEvent::analyzing(start_time_s, None));
 
     let _ = store::set_cached_git_status(app, &final_status);
 
@@ -337,24 +334,19 @@ pub async fn store_metadata(
 
     // Reuse an in-progress evolution (e.g. after adopt-then-evolve); otherwise insert fresh.
     let existing_id = evolve_state::get(app).ok().and_then(|s| s.evolution_id);
-    let evolution_id = match existing_id {
-        Some(id) => {
-            info!("[evolution] reusing existing evolution | id={}", id);
+    let evolution_id = match db::evolutions::upsert(
+        &db_path,
+        existing_id,
+        status.branch.as_deref().unwrap_or("unknown"),
+    ) {
+        Ok(id) => {
+            info!("[evolution] upserted evolution record | id={}", id);
             Some(id)
         }
-        None => match db::evolutions::insert(
-            &db_path,
-            status.branch.as_deref().unwrap_or("unknown"),
-        ) {
-            Ok(id) => {
-                info!("[evolution] inserted evolution record | id={}", id);
-                Some(id)
-            }
-            Err(e) => {
-                log::error!("[evolution] failed to insert evolution record: {}", e);
-                None
-            }
-        },
+        Err(e) => {
+            log::error!("[evolution] failed to upsert evolution record: {}", e);
+            None
+        }
     };
 
     let changeset_id = match summarize::new_changeset(app, evolution_id).await {
