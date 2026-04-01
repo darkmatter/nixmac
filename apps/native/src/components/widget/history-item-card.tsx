@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { HistoryItem } from "@/tauri-api";
-import type { SemanticChangeMap } from "@/types/queries";
+import type { SemanticChangeMap } from "@/types/shared";
 import { cn } from "@/lib/utils";
 import { AnalyzeHistoryItemButton } from "@/components/widget/analyze-history-item-button";
 import { HistoryRestoreItemButton } from "@/components/widget/history-restore-item-button";

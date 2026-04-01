@@ -2,15 +2,15 @@
 //!
 //! Run with: cargo run --example export_bindings
 //! Output: apps/native/src/types/sqlite.ts
-//!         apps/native/src/types/queries.ts
+//!         apps/native/src/types/shared.ts
 //!
-//! Re-run whenever sqlite_types.rs or query_return_types.rs changes.
+//! Re-run whenever sqlite_types.rs or shared_types.rs changes.
 
 #[path = "../src/sqlite_types.rs"]
 mod sqlite_types;
 
-#[path = "../src/query_return_types.rs"]
-mod query_return_types;
+#[path = "../src/shared_types.rs"]
+mod shared_types;
 
 use specta::TypeCollection;
 use specta_typescript::Typescript;
@@ -32,22 +32,24 @@ fn main() {
         .export_to(output_path, types)
         .unwrap();
 
-    println!("Exported history types to {output_path}");
+    println!("Exported sqlite types to {output_path}");
 
-    let mut qrt_collection = TypeCollection::default();
-    let qrt_types = qrt_collection
-        .register::<query_return_types::SummarizedChange>()
-        .register::<query_return_types::SummarizedChangeSet>()
-        .register::<query_return_types::ChangeWithSummary>()
-        .register::<query_return_types::SemanticChangeGroup>()
-        .register::<query_return_types::SemanticChangeMap>();
+    let mut shared_collection = TypeCollection::default();
+    let shared_types_reg = shared_collection
+        .register::<shared_types::SummarizedChange>()
+        .register::<shared_types::SummarizedChangeSet>()
+        .register::<shared_types::ChangeWithSummary>()
+        .register::<shared_types::SemanticChangeGroup>()
+        .register::<shared_types::SemanticChangeMap>()
+        .register::<shared_types::EvolveStep>()
+        .register::<shared_types::EvolveState>();
 
-    let qrt_output_path = "../src/types/queries.ts";
+    let shared_output_path = "../src/types/shared.ts";
 
     Typescript::default()
         .bigint(specta_typescript::BigIntExportBehavior::Number)
-        .export_to(qrt_output_path, qrt_types)
+        .export_to(shared_output_path, shared_types_reg)
         .unwrap();
 
-    println!("Exported query return types to {qrt_output_path}");
+    println!("Exported shared types to {shared_output_path}");
 }

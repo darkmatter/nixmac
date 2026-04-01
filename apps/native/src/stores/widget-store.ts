@@ -8,7 +8,7 @@ import type {
   RecommendedPrompt,
 } from "@/tauri-api";
 import { FeedbackType } from "@/types/feedback";
-import type { SemanticChangeMap } from "@/types/queries";
+import type { SemanticChangeMap } from "@/types/shared";
 import { create } from "zustand";
 export type {
   EvolveEvent,

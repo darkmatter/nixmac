@@ -14,7 +14,6 @@ use super::types::FileEdit;
 use anyhow::{anyhow, Result};
 use log::{debug, error, info};
 use std::path::{Component, Path};
-use std::process::Command;
 
 // =============================================================================
 // Tool Definitions
@@ -604,41 +603,16 @@ pub fn execute_tool(
                 host_attr, show_trace
             );
 
-            // First make sure we have all new add-files
-            crate::git::intent_add_untracked(config_dir).map_err(|e| {
-                anyhow::anyhow!(
-                    "Failed to register new files with git for flake visibility: {}",
-                    e
-                )
-            })?;
+            let (passed, stdout, stderr) =
+                crate::darwin::dry_run_build_check(config_dir, host_attr, show_trace)?;
 
-            // Use nix build --dry-run to check without actually building
-            let mut command = Command::new("nix");
-            command
-                .arg("build")
-                .arg(format!(".#darwinConfigurations.{}.system", host_attr))
-                .arg("--dry-run");
-
-            if show_trace {
-                command.arg("--show-trace");
-            }
-
-            let output = command
-                .current_dir(config_dir)
-                .env("PATH", crate::nix::get_nix_path())
-                .env("NIX_CONFIG", "experimental-features = nix-command flakes")
-                .output()?;
-
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let stderr = String::from_utf8_lossy(&output.stderr);
-
-            if output.status.success() {
+            if passed {
                 info!("Build check passed for host: {}", host_attr);
                 Ok(ToolResult::BuildResult {
                     success: true,
                     output: format!("✓ Build check passed for '{}'", host_attr),
-                    stdout: stdout.to_string(),
-                    stderr: stderr.to_string(),
+                    stdout,
+                    stderr,
                 })
             } else {
                 error!("Build check failed for host: {}", host_attr);
@@ -649,8 +623,8 @@ pub fn execute_tool(
                         "✗ Build check FAILED for '{}':\n\nTip: Re-run build_check with show_trace=true if you need additional debugging details.",
                         host_attr,
                     ),
-                    stdout: stdout.to_string(),
-                    stderr: stderr.to_string(),
+                    stdout,
+                    stderr,
                 })
             }
         }

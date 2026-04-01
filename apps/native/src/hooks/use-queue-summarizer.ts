@@ -1,5 +1,5 @@
 import { useWidgetStore } from "@/stores/widget-store";
-import type { SemanticChangeMap } from "@/types/queries";
+import type { SemanticChangeMap } from "@/types/shared";
 import { ipcRenderer } from "@/tauri-api";
 import { useCallback, useRef } from "react";
 

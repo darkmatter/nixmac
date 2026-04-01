@@ -20,10 +20,11 @@ export function MergeSection() {
     generateCommitMessage();
   }, [generateCommitMessage]);
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const msg = new FormData(e.currentTarget).get("commitMsg")?.toString() ?? "";
-    handleCommit(msg);
+    await handleCommit(msg);
+    useWidgetStore.getState().setEvolvePrompt("");
   }
 
   return (

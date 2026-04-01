@@ -5,7 +5,7 @@ use rusqlite::Connection;
 use std::path::Path;
 
 use crate::summarize::sumlog as dbg;
-use crate::query_return_types::SummarizedChangeSet;
+use crate::shared_types::SummarizedChangeSet;
 
 /// Used by history to look up each commit's summarized changes.
 pub fn by_commit_pair(

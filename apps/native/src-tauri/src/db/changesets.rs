@@ -6,7 +6,7 @@
 use anyhow::Result;
 use rusqlite::{Connection, Transaction};
 
-use crate::query_return_types::{SummarizedChange, SummarizedChangeSet};
+use crate::shared_types::{SummarizedChange, SummarizedChangeSet};
 use crate::sqlite_types::{Change, ChangeSet, ChangeSummary, QueuedSummary};
 
 pub fn insert_change_summary(

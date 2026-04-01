@@ -271,7 +271,7 @@ pub struct HistoryItem {
     /// DB record — present only if metadata has been generated for this commit.
     pub commit: Option<crate::sqlite_types::Commit>,
     /// Grouped change map — present only if the summarize pipeline has run for this commit pair.
-    pub change_map: Option<crate::query_return_types::SemanticChangeMap>,
+    pub change_map: Option<crate::shared_types::SemanticChangeMap>,
 }
 
 // =============================================================================

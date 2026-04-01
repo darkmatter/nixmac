@@ -8,12 +8,14 @@ import {
   InputGroupText,
   InputGroupTextarea,
 } from "@/components/ui/input-group";
+import { BeginEvolveWarning } from "@/components/widget/begin-evolve-warning";
 import { MacRecommendationChip } from "@/components/widget/mac-recommendation-chip";
 import { PromptHistoryBadge } from "@/components/widget/prompt-history-badge";
 import { SystemDefaultsCTA } from "@/components/widget/system-defaults-cta";
 import { useEvolve } from "@/hooks/use-evolve";
 import { useWidgetStore } from "@/stores/widget-store";
 import { ArrowUpIcon } from "lucide-react";
+import { useState } from "react";
 
 const MAX_CONTEXT_LENGTH = 1000;
 
@@ -24,19 +26,26 @@ export function PromptInput() {
   const setEvolvePrompt = useWidgetStore((s) => s.setEvolvePrompt);
   const isProcessing = useWidgetStore((s) => s.isProcessing);
   const processingAction = useWidgetStore((s) => s.processingAction);
-  const step = useWidgetStore((s) => s.evolveState?.step);
+  const evolveState = useWidgetStore((s) => s.evolveState);
+  const gitStatus = useWidgetStore((s) => s.gitStatus);
   const { handleEvolve } = useEvolve();
+  const [warningOpen, setWarningOpen] = useState(false);
+
+  const needsResolution = !evolveState?.evolutionId && gitStatus && !gitStatus.cleanHead;
 
   const handleSubmit = () => {
-    if (evolvePrompt.trim()) {
-      handleEvolve();
+    if (!evolvePrompt.trim()) return;
+    if (needsResolution) {
+      setWarningOpen(true);
+      return;
     }
+    handleEvolve();
   };
 
   const isLoading = isProcessing && processingAction === "evolve";
 
   const placeholder =
-    step === "evolve"
+    evolveState?.step === "evolve"
       ? "Describe additional changes or refinements..."
       : "Describe changes to make to your configuration.";
 
@@ -47,6 +56,7 @@ export function PromptInput() {
 
   return (
     <div className="space-y-3">
+      <BeginEvolveWarning open={warningOpen} onOpenChange={setWarningOpen} handleEvolve={handleEvolve} />
       <InputGroup>
         <InputGroupTextarea
           disabled={isLoading}

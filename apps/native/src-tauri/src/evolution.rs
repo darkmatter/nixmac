@@ -14,7 +14,7 @@ use crate::{
     db,
     evolve::{self, EvolutionState},
     evolve_state, git, store, summarize,
-    query_return_types::SemanticChangeMap,
+    shared_types::SemanticChangeMap,
     types::{emit_evolve_event, EvolveEvent},
 };
 
@@ -150,8 +150,8 @@ fn elapsed_since(start_time_ms: i64) -> i64 {
     chrono::Utc::now().timestamp_millis() - start_time_ms
 }
 
-/// Run AI evolution, return current change map and git status.
-pub async fn evolve_and_commit(
+/// Run AI evolution, create a backup branch, and record a changeset.
+pub async fn backup_evolve_and_record_changeset(
     app: &AppHandle,
     description: &str,
 ) -> std::result::Result<EvolutionResult, EvolutionFailureResult> {
@@ -181,7 +181,7 @@ pub async fn evolve_and_commit(
     };
 
     info!(
-        "[evolution] Starting evolve_and_commit | branch={:?}",
+        "[evolution] Starting backup_evolve_and_record_changeset | branch={:?}",
         initial_status.branch
     );
 
@@ -272,8 +272,8 @@ pub async fn evolve_and_commit(
     })
 }
 
-/// Insert a DB evolution, and summarize a changeset to link to it
-async fn store_metadata(
+/// Insert a DB evolution (or reuse the active one), and summarize a changeset to link to it.
+pub async fn store_metadata(
     app: &AppHandle,
     status: &crate::types::GitStatus,
 ) -> (Option<i64>, Option<i64>) {
@@ -285,18 +285,26 @@ async fn store_metadata(
         }
     };
 
-    let evolution_id = match db::evolutions::insert(
-        &db_path,
-        status.branch.as_deref().unwrap_or("unknown"),
-    ) {
-        Ok(id) => {
-            info!("[evolution] inserted evolution record | id={}", id);
+    // Reuse an in-progress evolution (e.g. after adopt-then-evolve); otherwise insert fresh.
+    let existing_id = evolve_state::get(app).ok().and_then(|s| s.evolution_id);
+    let evolution_id = match existing_id {
+        Some(id) => {
+            info!("[evolution] reusing existing evolution | id={}", id);
             Some(id)
         }
-        Err(e) => {
-            log::error!("[evolution] failed to insert evolution record: {}", e);
-            None
-        }
+        None => match db::evolutions::insert(
+            &db_path,
+            status.branch.as_deref().unwrap_or("unknown"),
+        ) {
+            Ok(id) => {
+                info!("[evolution] inserted evolution record | id={}", id);
+                Some(id)
+            }
+            Err(e) => {
+                log::error!("[evolution] failed to insert evolution record: {}", e);
+                None
+            }
+        },
     };
 
     let changeset_id = match summarize::new_changeset(app, evolution_id).await {

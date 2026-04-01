@@ -14,7 +14,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { Change } from "@/types/queries";
+import type { Change } from "@/types/shared";
 import { getDirectory, getShortFilename } from "@/components/widget/utils";
 
 interface DiffProps {

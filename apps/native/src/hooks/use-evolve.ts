@@ -20,6 +20,14 @@ export function useEvolve() {
   const { refreshGitStatus } = useGitOperations();
   const { refreshPromptHistory } = usePromptHistory();
 
+  const evolveFromManual = useCallback(async () => {
+    await darwinAPI.darwin.evolveFromManual();
+  }, []);
+
+  const buildCheck = useCallback(async () => {
+    return await darwinAPI.darwin.buildCheck();
+  }, []);
+
   const handleEvolve = useCallback(async () => {
     // Get fresh state each time
     const store = useWidgetStore.getState();
@@ -87,5 +95,5 @@ export function useEvolve() {
     }
   }, [refreshGitStatus, refreshPromptHistory]);
 
-  return { handleEvolve };
+  return { handleEvolve, evolveFromManual, buildCheck };
 }

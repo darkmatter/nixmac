@@ -4,7 +4,7 @@
 //! Change detection compares current git status against the persisted store cache,
 //! which is kept in sync by both this watcher and the evolution/summarize handlers.
 
-use crate::query_return_types::SemanticChangeMap;
+use crate::shared_types::SemanticChangeMap;
 use crate::types::GitStatus;
 use crate::{db, git, store, summarize};
 use std::sync::atomic::{AtomicBool, Ordering};

@@ -10,7 +10,7 @@ use anyhow::Result;
 use std::path::Path;
 use tauri::{AppHandle, Emitter, Runtime};
 
-use crate::query_return_types::SemanticChangeMap;
+use crate::shared_types::SemanticChangeMap;
 use crate::sqlite_types::QueuedSummary;
 use crate::summarize::model_output_types::HunkSummary;
 

@@ -14,7 +14,7 @@ pub const EVOLVED_CHANGESET: bool = false;
 
 // ── Imports ───────────────────────────────────────────────────────────────────
 
-use crate::query_return_types::{SemanticChangeMap, SummarizedChangeSet};
+use crate::shared_types::{SemanticChangeMap, SummarizedChangeSet};
 use crate::sqlite_types::Change;
 use crate::summarize::assignments::Assignments;
 use crate::summarize::model_output_types::{RawHunkPlacement, RawNewMapEntry};
