@@ -1015,6 +1015,9 @@ pub fn relaunch_after_update(app: AppHandle) -> Result<(), String> {
     // `app.exit` schedules an exit through the Tauri event loop and returns
     // (it does not call std::process::exit directly), so we must return Ok here.
     Ok(())
+}
+
+// =============================================================================
 // Evolve State Commands
 // =============================================================================
 
