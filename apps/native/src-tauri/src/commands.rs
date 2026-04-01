@@ -8,8 +8,8 @@
 //! preview mode, etc.) is computed and managed entirely by the client.
 
 use crate::{
-    darwin, db, default_config, evolution, evolve_state, feedback, git, nix, peek, permissions,
-    rollback, scanner, store, types,
+    darwin, db, default_config, evolution, evolve_state, feedback, git, nix,
+    peek, permissions, rollback, scanner, store, types,
 };
 use std::path::Path;
 use std::process::Command;
@@ -268,7 +268,7 @@ pub async fn darwin_evolve(
     // Reset cancellation flag at the start of a new evolution
     reset_evolve_cancelled();
 
-    let result = match evolution::evolve_and_commit(&app, &description).await {
+    let result = match evolution::backup_evolve_and_record_changeset(&app, &description).await {
         Ok(result) => result,
         Err(failure) => {
             let is_cancelled = is_evolve_cancelled()
@@ -513,7 +513,7 @@ pub async fn flake_list_hosts(app: AppHandle) -> Result<Vec<String>, String> {
 #[tauri::command]
 pub async fn find_summarized_changes(
     app: AppHandle,
-) -> Result<Vec<crate::query_return_types::SummarizedChangeSet>, String> {
+) -> Result<Vec<crate::shared_types::SummarizedChangeSet>, String> {
     let db_path =
         db::get_db_path(&app).map_err(|e| capture_err("find_summarized_changes", e))?;
     let dir = store::get_config_dir(&app).map_err(|e| capture_err("find_summarized_changes", e))?;
@@ -524,7 +524,7 @@ pub async fn find_summarized_changes(
 #[tauri::command]
 pub async fn find_change_map(
     app: AppHandle,
-) -> Result<crate::query_return_types::SemanticChangeMap, String> {
+) -> Result<crate::shared_types::SemanticChangeMap, String> {
     let db_path =
         db::get_db_path(&app).map_err(|e| capture_err("find_change_map", e))?;
     let dir =
@@ -912,6 +912,52 @@ pub async fn apply_system_defaults(
 #[tauri::command]
 pub async fn rollback_erase(app: AppHandle) -> Result<rollback::RollbackResult, String> {
     rollback::rollback_erase(&app).map_err(|e| capture_err("rollback_erase", e))
+}
+
+/// Dry-run build check against the current working tree. Returns `{ passed: bool, output: string }`.
+#[tauri::command]
+pub async fn darwin_build_check(app: AppHandle) -> Result<serde_json::Value, String> {
+    let config_dir =
+        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("darwin_build_check", e))?;
+    let host_attr = store::get_host_attr(&app)
+        .map_err(|e| capture_err("darwin_build_check", e))?
+        .ok_or_else(|| "No host configured — cannot run build check".to_string())?;
+
+    let (passed, stdout, stderr) = darwin::dry_run_build_check(&config_dir, &host_attr, false)
+        .map_err(|e| capture_err("darwin_build_check", e))?;
+
+    let output = if stderr.is_empty() { stdout } else { stderr };
+    Ok(serde_json::json!({ "passed": passed, "output": output }))
+}
+
+/// Adopt pre-existing uncommitted changes as a nixmac evolution without AI.
+/// Inserts a new evolution DB record and seeds EvolveState so the subsequent AI evolve
+/// can link its changeset to the same evolution.
+/// The caller must run `darwin_build_check` first and confirm the build passes.
+#[tauri::command]
+pub async fn darwin_adopt_manual_changes(app: AppHandle) -> Result<i64, String> {
+    let config_dir = store::ensure_config_dir_exists(&app)
+        .map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
+    let git_status = git::status(&config_dir)
+        .map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
+    let db_path = db::get_db_path(&app)
+        .map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
+    let branch = git_status.branch.as_deref().unwrap_or("unknown");
+    let evolution_id = db::evolutions::insert(&db_path, branch)
+        .map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
+
+    evolve_state::set(
+        &app,
+        evolve_state::EvolveState {
+            evolution_id: Some(evolution_id),
+            current_changeset_id: None,
+            ..Default::default()
+        },
+    )
+    .map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
+
+    log::info!("[darwin_adopt_manual_changes] evolution record created | id={}", evolution_id);
+    Ok(evolution_id)
 }
 
 // =============================================================================

@@ -26,7 +26,7 @@ mod panic_handler;
 mod peek;
 mod permissions;
 mod providers;
-mod query_return_types;
+mod shared_types;
 mod rollback;
 mod scanner;
 mod secret_scanner;
@@ -318,6 +318,8 @@ fn run_gui_mode(
             commands::darwin_apply_stream_cancel,
             commands::finalize_apply,
             commands::rollback_erase,
+            commands::darwin_build_check,
+            commands::darwin_adopt_manual_changes,
             // Routing state
             commands::routing_state_get,
             commands::routing_state_clear,

@@ -16,6 +16,20 @@ status: string; createdAt: number }
 
 export type ChangeWithSummary = { id: number; hash: string; filename: string; diff: string; lineCount: number; createdAt: number; ownSummaryId: number | null; title: string; description: string }
 
+/**
+ * Persisted evolve state stored in `evolve-state.json`.
+ */
+export type EvolveState = { evolutionId: number | null; currentChangesetId: number | null; changesetAtBuild: number | null; committable: boolean; 
+/**
+ * Computed from the other fields — always kept in sync by `set`.
+ */
+step: EvolveStep }
+
+/**
+ * Widget step derived from `EvolveState` fields.
+ */
+export type EvolveStep = "begin" | "evolve" | "merge"
+
 export type SemanticChangeGroup = { summary: ChangeSummary; changes: ChangeWithSummary[] }
 
 export type SemanticChangeMap = { groups: SemanticChangeGroup[]; singles: ChangeWithSummary[]; missedHashes: string[] }

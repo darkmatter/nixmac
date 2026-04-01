@@ -4,9 +4,9 @@ import {
   checkFullDiskAccessPermission,
   requestFullDiskAccessPermission,
 } from "tauri-plugin-macos-permissions-api";
-import type { SemanticChangeMap, SummarizedChangeSet } from "./types/queries";
+import type { EvolveState, SemanticChangeMap, SummarizedChangeSet } from "./types/shared";
 import type { Change, Commit } from "./types/sqlite";
-export type { SemanticChangeMap, SummarizedChangeSet } from "./types/queries";
+export type { EvolveState, EvolveStep, SemanticChangeMap, SummarizedChangeSet } from "./types/shared";
 export type { Change, Commit } from "./types/sqlite";
 
 export interface HistoryItem {
@@ -76,17 +76,6 @@ export interface WatcherEvent {
   changeMap: SemanticChangeMap;
 }
 
-/** Widget step derived from EvolveState fields. */
-export type EvolveStep = "begin" | "evolve" | "merge";
-
-export interface EvolveState {
-  evolutionId: number | null;
-  currentChangesetId: number | null;
-  changesetAtBuild: number | null;
-  committable: boolean;
-  /** Computed by the backend — use this to drive step routing. */
-  step: EvolveStep;
-}
 
 export interface EvolutionResult {
   gitStatus: GitStatus;
@@ -290,6 +279,8 @@ export const darwinAPI = {
   },
   darwin: {
     evolve: (description: string) => invoke<EvolutionResult>("darwin_evolve", { description }),
+    buildCheck: () => invoke<{ passed: boolean; output: string }>("darwin_build_check"),
+    evolveFromManual: () => invoke<number>("darwin_adopt_manual_changes"),
     evolveCancel: () => invoke("darwin_evolve_cancel"),
     apply: (hostOverride?: string) => invoke("darwin_apply", { hostOverride }),
     applyStreamStart: (hostOverride?: string) =>

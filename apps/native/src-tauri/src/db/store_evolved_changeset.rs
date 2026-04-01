@@ -9,7 +9,7 @@ use crate::db::changesets::{
     get_change_id_by_hash, insert_change_set, insert_change_summary, insert_queued_summary,
     link_change_to_group_summary, link_change_to_set, upsert_change,
 };
-use crate::query_return_types::SemanticChangeMap;
+use crate::shared_types::SemanticChangeMap;
 use crate::summarize::assignments::{
     Assignments, EvolvedGroupAssignment, NewGroupAssignment, NewSingleAssignment, PendingChange,
 };

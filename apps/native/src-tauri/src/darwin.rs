@@ -33,6 +33,42 @@ fn create_log_file() -> anyhow::Result<(File, PathBuf)> {
     Ok((file, log_path))
 }
 
+/// Run a dry-run nix build check against the current working tree.
+///
+/// Returns `(passed, stdout, stderr)`. No build artefacts are produced.
+/// Pass `show_trace: true` to include `--show-trace` for deeper diagnostics.
+pub fn dry_run_build_check(
+    config_dir: &str,
+    host_attr: &str,
+    show_trace: bool,
+) -> Result<(bool, String, String), anyhow::Error> {
+    // Ensure untracked files are visible to flake evaluation.
+    // Hard-fail: if this fails, untracked .nix files won't be seen and the
+    // build result would be misleading.
+    crate::git::intent_add_untracked(config_dir)?;
+
+    let mut command = Command::new("nix");
+    command
+        .arg("build")
+        .arg(format!(".#darwinConfigurations.{}.system", host_attr))
+        .arg("--dry-run");
+
+    if show_trace {
+        command.arg("--show-trace");
+    }
+
+    let output = command
+        .current_dir(config_dir)
+        .env("PATH", crate::nix::get_nix_path())
+        .env("NIX_CONFIG", "experimental-features = nix-command flakes")
+        .output()?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+
+    Ok((output.status.success(), stdout, stderr))
+}
+
 /// Runs `darwin-rebuild switch` with streaming output in two steps:
 /// 1. `darwin-rebuild build` as the user (no sudo)
 /// 2. `result/activate` as root via native macOS authentication dialog (supports Touch ID)

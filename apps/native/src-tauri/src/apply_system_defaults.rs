@@ -3,7 +3,7 @@
 use anyhow::{bail, Context, Result};
 use tauri::AppHandle;
 
-use crate::{git, nix, query_return_types, scanner, store};
+use crate::{git, nix, shared_types, scanner, store};
 
 /// Writes detected system defaults to a .nix module file, injects the import
 /// into flake.nix, creates a git branch, commits, and caches a summary.
@@ -102,12 +102,12 @@ pub async fn apply_system_defaults(
     // 6. Build a SemanticChangeMap from the deterministic summary so the frontend
     //    changeMap store field gets populated after applying defaults.
     let summary = scanner::build_summary(&defaults);
-    let change_map = query_return_types::SemanticChangeMap {
+    let change_map = shared_types::SemanticChangeMap {
         groups: vec![],
         singles: summary
             .into_iter()
             .enumerate()
-            .map(|(i, (title, description))| query_return_types::ChangeWithSummary {
+            .map(|(i, (title, description))| shared_types::ChangeWithSummary {
                 id: i as i64,
                 hash: title.replace(' ', "-").to_lowercase(),
                 filename: String::new(),

@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use crate::summarize::sumlog as dbg;
-use crate::query_return_types::{
+use crate::shared_types::{
     ChangeWithSummary, SemanticChangeGroup, SemanticChangeMap, SummarizedChangeSet,
 };
 use crate::sqlite_types::ChangeSummary;

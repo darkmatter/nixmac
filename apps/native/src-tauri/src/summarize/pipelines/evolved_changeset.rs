@@ -4,7 +4,7 @@ use anyhow::Result;
 use std::path::Path;
 use tauri::{AppHandle, Runtime};
 
-use crate::query_return_types::SemanticChangeMap;
+use crate::shared_types::SemanticChangeMap;
 use crate::sqlite_types::Change;
 use crate::summarize::sumlog as dbg;
 use crate::summarize::{assignments, build_prompt, simplify_grouped};

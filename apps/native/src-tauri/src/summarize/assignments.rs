@@ -1,6 +1,6 @@
 //! Assignment types and reconciliation for the iterative pipeline.
 
-use crate::query_return_types::{ChangeWithSummary, SemanticChangeMap};
+use crate::shared_types::{ChangeWithSummary, SemanticChangeMap};
 use crate::sqlite_types::Change;
 use crate::summarize::group_existing::{find_in_group_by_hash, find_in_singles_by_hash, hash_matches};
 use crate::summarize::model_output_types::{RawHunkPlacement, RawNewMapEntry};

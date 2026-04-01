@@ -3,7 +3,7 @@
 import { ChevronDown } from "lucide-react";
 import { UnsummarizedChangesDetected } from "@/components/widget/unsummarized-changes-detected";
 import { getShortFilename } from "@/components/widget/utils";
-import type { ChangeWithSummary, SemanticChangeGroup, SemanticChangeMap } from "@/types/queries";
+import type { ChangeWithSummary, SemanticChangeGroup, SemanticChangeMap } from "@/types/shared";
 import { cn } from "@/lib/utils";
 import {
   Collapsible,

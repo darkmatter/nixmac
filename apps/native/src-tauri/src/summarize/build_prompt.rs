@@ -193,7 +193,7 @@ pub fn new_map(changes: &[&crate::sqlite_types::Change]) -> String {
     prompt
 }
 
-pub fn commit_message(map: &crate::query_return_types::SemanticChangeMap) -> String {
+pub fn commit_message(map: &crate::shared_types::SemanticChangeMap) -> String {
     let mut prompt = String::new();
 
     for group in &map.groups {
