@@ -34,6 +34,7 @@ static DOCS_INDEX: Lazy<RwLock<Option<DocsIndex>>> = Lazy::new(|| RwLock::new(No
 static FUZZY_MATCHER: Lazy<SkimMatcherV2> = Lazy::new(SkimMatcherV2::default);
 const FUZZY_STRONG_THRESHOLD: i32 = 260; // skip fuzzy boosting for strong base scores
 const FUZZY_MIN_BOOST: i32 = 8; // minimum fuzzy boost to apply
+const MIN_SCORE: i32 = 30; // minimum score to consider a match -- currently this is set based on observations in test results, but we may consider a data-driven calibration in the future.
 
 pub fn initialize_docs_index() {
     let mut guard = match DOCS_INDEX.write() {
@@ -166,7 +167,7 @@ fn rank_entries(entries: &[DocsOptionEntry], query: &str) -> Vec<ScoredResult> {
         .iter()
         .filter_map(|entry| {
             let score = score_entry(entry, query, &tokens);
-            (score > 0).then(|| ScoredResult {
+            (score >= MIN_SCORE).then(|| ScoredResult {
                 score,
                 entry: entry.clone(),
             })
