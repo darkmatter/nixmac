@@ -729,6 +729,13 @@ pub fn execute_tool(
     }
 }
 
+/// Helper to determine if a tool is an editing tool, i.e. it
+/// makes changes to the nix config that count as "edits" in the
+/// evolution process and should be tracked as such.
+pub fn is_editing_tool(name: &str) -> bool {
+    matches!(name, "edit_file" | "edit_nix_file")
+}
+
 // Truncate string for logging (single line preview)
 fn truncate_for_log(s: &str, max_len: usize) -> String {
     let s = s.replace('\n', " ").replace('\r', "");
@@ -736,5 +743,25 @@ fn truncate_for_log(s: &str, max_len: usize) -> String {
         s
     } else {
         format!("{}...", &s[..max_len])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_editing_tool;
+
+    #[test]
+    fn returns_true_for_editing_tools() {
+        assert!(is_editing_tool("edit_file"));
+        assert!(is_editing_tool("edit_nix_file"));
+    }
+
+    #[test]
+    fn returns_false_for_non_editing_tools() {
+        assert!(!is_editing_tool("read_file"));
+        assert!(!is_editing_tool("list_files"));
+        assert!(!is_editing_tool("build_check"));
+        assert!(!is_editing_tool("done"));
+        assert!(!is_editing_tool(""));
     }
 }
