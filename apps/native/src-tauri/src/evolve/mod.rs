@@ -28,7 +28,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tauri::AppHandle;
 use tokio::time::sleep;
-use tools::{create_tools, execute_tool, ToolResult};
+use tools::{create_tools, execute_tool, is_editing_tool, ToolResult};
 pub use types::{Evolution, EvolutionState};
 
 use crate::{
@@ -739,7 +739,7 @@ pub async fn generate_evolution(
                             );
 
                             // Track if we've made an edit or build check
-                            if tool_name == "edit_file" || tool_name == "build_check" {
+                            if is_editing_tool(tool_name) || tool_name == "build_check" {
                                 made_edit_or_build_check = true;
                             }
 
