@@ -1,32 +1,19 @@
 //! search_docs tool implementation for nix-darwin documentation.
 
 use anyhow::Result;
+use fuzzy_matcher::skim::SkimMatcherV2;
+use fuzzy_matcher::FuzzyMatcher;
 use once_cell::sync::Lazy;
-use regex::Regex;
+use serde::Deserialize;
 use std::cmp::Ordering;
 use std::sync::RwLock;
 
-const NIX_DARWIN_DOCS_HTML: &str = include_str!("../../resources/nix-darwin-docs.html");
+const NIX_DARWIN_DOCS_JSON: &str = include_str!("../../resources/nix-darwin-docs.json");
 const DEFAULT_RESULT_LIMIT: usize = 3;
 
-static OPTION_ENTRY_RE: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(
-        r#"(?s)<dt>\s*<span class="term">\s*<a id="opt-([^"]+)"></a>.*?<code class="option">\s*([^<]+?)\s*</code>.*?</dt>\s*<dd>(.*?)</dd>"#,
-    )
-    .expect("valid option entry regex")
-});
-
-static TAG_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?s)<[^>]+>").expect("valid tag regex"));
-static SPACE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"\s+").expect("valid space regex"));
-static TYPE_RE: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"(?is)Type:\s*([^\n]+?)(?:\n\s*Default:|\n\s*Declared by:|\z)")
-        .expect("valid type regex")
-});
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 struct DocsOptionEntry {
     option_path: String,
-    anchor_id: String,
     summary: String,
     option_type: Option<String>,
 }
@@ -44,6 +31,10 @@ struct DocsIndex {
 
 static DOCS_INDEX: Lazy<RwLock<Option<DocsIndex>>> = Lazy::new(|| RwLock::new(None));
 
+static FUZZY_MATCHER: Lazy<SkimMatcherV2> = Lazy::new(SkimMatcherV2::default);
+const FUZZY_STRONG_THRESHOLD: i32 = 260; // skip fuzzy boosting for strong base scores
+const FUZZY_MIN_BOOST: i32 = 8; // minimum fuzzy boost to apply
+
 pub fn initialize_docs_index() {
     let mut guard = match DOCS_INDEX.write() {
         Ok(g) => g,
@@ -54,7 +45,7 @@ pub fn initialize_docs_index() {
         return;
     }
 
-    let entries = parse_entries(NIX_DARWIN_DOCS_HTML);
+    let entries = parse_entries(NIX_DARWIN_DOCS_JSON);
     log::info!(
         "[search_docs] initialized nix-darwin docs index with {} option entries",
         entries.len()
@@ -81,6 +72,21 @@ pub fn execute_search_docs(query: &str, limit: usize) -> Result<String> {
 
     let max_results = limit.clamp(1, 10);
     let mut ranked = rank_entries(&index.entries, &normalized_query);
+
+    // Debug: log candidate names and scores
+    log::debug!(
+        "[search_docs] query='{}' tokens={:?} computed {} candidates before truncation",
+        query,
+        normalized_query.split_whitespace().collect::<Vec<_>>(),
+        ranked.len()
+    );
+    for r in ranked.iter().take(5) {
+        log::debug!(
+            "[search_docs] candidate score={} path={}",
+            r.score,
+            r.entry.option_path,
+        );
+    }
     ranked.truncate(max_results);
 
     if ranked.is_empty() {
@@ -102,11 +108,10 @@ pub fn execute_search_docs(query: &str, limit: usize) -> Result<String> {
             .map(|t| format!(" | type: {}", t))
             .unwrap_or_default();
         out.push_str(&format!(
-            "{}. {}{}\n   anchor: #{}\n   summary: {}\n",
+            "{}. {}{}\n   summary: {}\n",
             i + 1,
             result.entry.option_path,
             type_suffix,
-            result.entry.anchor_id,
             result.entry.summary
         ));
     }
@@ -114,26 +119,44 @@ pub fn execute_search_docs(query: &str, limit: usize) -> Result<String> {
     Ok(out.trim_end().to_string())
 }
 
-fn parse_entries(html: &str) -> Vec<DocsOptionEntry> {
-    OPTION_ENTRY_RE
-        .captures_iter(html)
-        .filter_map(|caps| {
-            let anchor_id = caps.get(1)?.as_str().trim().to_string();
-            let option_path = decode_html_entities(caps.get(2)?.as_str().trim());
-            let dd_html = caps.get(3)?.as_str();
-            let dd_text = normalize_whitespace(&decode_html_entities(&strip_html_tags(dd_html)));
+fn parse_entries(json: &str) -> Vec<DocsOptionEntry> {
+    match serde_json::from_str::<Vec<serde_json::Value>>(json) {
+        Ok(v) => {
+            let mut out: Vec<DocsOptionEntry> = Vec::with_capacity(v.len());
+            for item in v.into_iter() {
+                if let Some(obj) = item.as_object() {
+                    let option_path = obj
+                        .get("option_path")
+                        .and_then(|s| s.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    if option_path.is_empty() {
+                        continue;
+                    }
+                    let summary = obj
+                        .get("summary")
+                        .and_then(|s| s.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let option_type = obj
+                        .get("option_type")
+                        .and_then(|s| s.as_str())
+                        .map(|s| s.to_string());
 
-            let summary = first_sentence(&dd_text, 220);
-            let option_type = extract_type(&dd_text);
-
-            Some(DocsOptionEntry {
-                option_path,
-                anchor_id,
-                summary,
-                option_type,
-            })
-        })
-        .collect()
+                    out.push(DocsOptionEntry {
+                        option_path,
+                        summary,
+                        option_type,
+                    });
+                }
+            }
+            out
+        }
+        Err(e) => {
+            log::error!("[search_docs] failed to parse nix-darwin docs JSON: {}", e);
+            Vec::new()
+        }
+    }
 }
 
 fn rank_entries(entries: &[DocsOptionEntry], query: &str) -> Vec<ScoredResult> {
@@ -161,24 +184,30 @@ fn rank_entries(entries: &[DocsOptionEntry], query: &str) -> Vec<ScoredResult> {
 
 fn score_entry(entry: &DocsOptionEntry, query: &str, tokens: &[&str]) -> i32 {
     let option_lower = entry.option_path.to_ascii_lowercase();
-    let anchor_lower = entry.anchor_id.to_ascii_lowercase();
     let summary_lower = entry.summary.to_ascii_lowercase();
     let segments: Vec<&str> = option_lower.split('.').collect();
 
     let mut score = 0;
 
+    // Scoring heuristics (additive):
+    // - Exact option path match: very strong signal (exact full path)
+    //   weight: +500
     if option_lower == query {
         score += 500;
     }
 
-    if anchor_lower == query || anchor_lower.ends_with(&format!(".{query}")) {
-        score += 260;
-    }
-
+    // - Option path contains the query anywhere: good match
+    //   weight: +160
     if option_lower.contains(query) {
         score += 160;
     }
 
+    // - Per-segment scoring (dot-separated parts of the option path):
+    //   exact segment match is a very strong signal (e.g. searching "nginx"
+    //   should match "services.nginx.enable"). Partial segment matches are
+    //   helpful but weaker.
+    //   exact segment weight: +250
+    //   partial segment weight: +110
     for segment in &segments {
         if *segment == query {
             score += 250;
@@ -187,6 +216,11 @@ fn score_entry(entry: &DocsOptionEntry, query: &str, tokens: &[&str]) -> i32 {
         }
     }
 
+    // - Token-level matching: allow multi-word queries to match either the
+    //   option_path or the summary. Smaller weight per token to allow
+    //   accumulation across multiple tokens.
+    //   token-in-path weight: +50
+    //   token-in-summary weight: +20
     for token in tokens {
         if token.len() < 2 {
             continue;
@@ -200,43 +234,111 @@ fn score_entry(entry: &DocsOptionEntry, query: &str, tokens: &[&str]) -> i32 {
         }
     }
 
-    // Slight preference for deeper, fully qualified option paths for shape guidance.
-    score + (segments.len() as i32 * 2)
-}
+    // Slight preference for deeper, fully qualified option paths for shape
+    // guidance: +2 points per segment.
+    let mut base_score = score + (segments.len() as i32 * 2);
 
-fn strip_html_tags(s: &str) -> String {
-    TAG_RE.replace_all(s, " ").into_owned()
-}
-
-fn normalize_whitespace(s: &str) -> String {
-    SPACE_RE.replace_all(s, " ").trim().to_string()
-}
-
-fn decode_html_entities(s: &str) -> String {
-    s.replace("&quot;", "\"")
-        .replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&#39;", "'")
-}
-
-fn extract_type(s: &str) -> Option<String> {
-    TYPE_RE.captures(s).and_then(|caps| {
-        caps.get(1)
-            .map(|m| normalize_whitespace(m.as_str()))
-            .filter(|v| !v.is_empty())
-    })
-}
-
-fn first_sentence(s: &str, max_len: usize) -> String {
-    let sentence = s.split('.').next().unwrap_or(s).trim();
-    if sentence.len() <= max_len {
-        sentence.to_string()
-    } else {
-        format!("{}...", &sentence[..max_len])
+    // Conservative fuzzy tie-breaker: only apply when base_score is not
+    // already a strong match (prevents fuzzy from outranking exact/prefix
+    // matches). Tokenize the query (already passed as `tokens`) and run a
+    // lightweight skim fuzzy matcher per token against the option path and
+    // the summary. Scale down matcher scores so fuzzy remains a tiebreaker.
+    if base_score < FUZZY_STRONG_THRESHOLD {
+        let mut fuzzy_boost: i32 = 0;
+        for token in tokens {
+            if token.len() < 2 {
+                continue;
+            }
+            if let Some(ms) = FuzzyMatcher::fuzzy_match(&*FUZZY_MATCHER, &entry.option_path, token)
+            {
+                fuzzy_boost += (ms.max(0) as i32) / 8;
+            }
+            if let Some(ms) = FuzzyMatcher::fuzzy_match(&*FUZZY_MATCHER, &entry.summary, token) {
+                fuzzy_boost += (ms.max(0) as i32) / 16;
+            }
+        }
+        if fuzzy_boost >= FUZZY_MIN_BOOST {
+            base_score += fuzzy_boost;
+        }
     }
+
+    base_score
 }
 
 pub fn default_limit() -> usize {
     DEFAULT_RESULT_LIMIT
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_entries_loads_json() {
+        let entries = parse_entries(NIX_DARWIN_DOCS_JSON);
+        assert!(!entries.is_empty(), "expected parsed entries from JSON");
+    }
+
+    #[test]
+    fn documentation_enable_entry_present() {
+        let entries = parse_entries(NIX_DARWIN_DOCS_JSON);
+        let found = entries
+            .iter()
+            .find(|e| e.option_path == "documentation.enable");
+        assert!(found.is_some(), "documentation.enable not found in docs");
+        let e = found.unwrap();
+        // expect the documented type to include "boolean"
+        let has_bool = e
+            .option_type
+            .as_deref()
+            .map(|s| s.to_ascii_lowercase().contains("boolean"))
+            .unwrap_or(false);
+        assert!(
+            has_bool,
+            "documentation.enable type does not indicate boolean"
+        );
+    }
+
+    #[test]
+    fn sample_entries_have_summary_and_path() {
+        let entries = parse_entries(NIX_DARWIN_DOCS_JSON);
+        for e in entries.iter().take(50) {
+            assert!(!e.option_path.is_empty(), "option_path empty");
+            assert!(
+                e.summary.len() > 8,
+                "summary too short for {}",
+                e.option_path
+            );
+        }
+    }
+
+    #[test]
+    fn fuzzy_tiebreaker_prefers_similar_entry() {
+        let query = "ngnx";
+        let tokens: Vec<&str> = query.split_whitespace().collect();
+
+        // The "close" entry is the correct spelling in docs; fuzzy should
+        // prefer this when the query is misspelled.
+        let entry_close = DocsOptionEntry {
+            option_path: "services.nginx.enable".to_string(),
+            summary: "Enable nginx service".to_string(),
+            option_type: None,
+        };
+
+        let entry_far = DocsOptionEntry {
+            option_path: "services.ssh.enable".to_string(),
+            summary: "Enable SSH service".to_string(),
+            option_type: None,
+        };
+
+        let score_close = score_entry(&entry_close, query, &tokens);
+        let score_far = score_entry(&entry_far, query, &tokens);
+
+        assert!(
+            score_close > score_far,
+            "expected fuzzy-preferred entry to score higher (close={} vs far={})",
+            score_close,
+            score_far
+        );
+    }
 }

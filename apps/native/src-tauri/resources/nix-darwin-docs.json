@@ -1,0 +1,4058 @@
+[
+  {
+    "option_path": "_module.args",
+    "anchor_id": "opt-_module.args",
+    "summary": "Additional arguments passed to each module in addition to ones like lib , config , and pkgs , modulesPath .",
+    "option_type": "lazy attribute set of raw value"
+  },
+  {
+    "option_path": "documentation.enable",
+    "anchor_id": "opt-documentation.enable",
+    "summary": "Whether to install documentation of packages from environment.systemPackages into the generated system path.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "documentation.doc.enable",
+    "anchor_id": "opt-documentation.doc.enable",
+    "summary": "Whether to install documentation distributed in packages’ /share/doc . Usually plain text and/or HTML. This also includes “doc” outputs.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "documentation.info.enable",
+    "anchor_id": "opt-documentation.info.enable",
+    "summary": "Whether to install info pages and the info command. This also includes “info” outputs.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "documentation.man.enable",
+    "anchor_id": "opt-documentation.man.enable",
+    "summary": "Whether to install manual pages and the man command. This also includes “man” outputs.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "environment.enableAllTerminfo",
+    "anchor_id": "opt-environment.enableAllTerminfo",
+    "summary": "Whether to install all terminfo outputs",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "environment.darwinConfig",
+    "anchor_id": "opt-environment.darwinConfig",
+    "summary": "The path of the darwin configuration.nix used to configure the system, this updates the default darwin-config entry in NIX_PATH. Since this changes an environment variable it will only apply to new shells.",
+    "option_type": "null or absolute path or string"
+  },
+  {
+    "option_path": "environment.defaultPackages",
+    "anchor_id": "opt-environment.defaultPackages",
+    "summary": "Set of default packages that aren’t strictly necessary for a running system, entries can be removed for a more minimal NixOS installation.",
+    "option_type": "list of package"
+  },
+  {
+    "option_path": "environment.etc",
+    "anchor_id": "opt-environment.etc",
+    "summary": "Set of files that have to be linked in /etc .",
+    "option_type": "attribute set of (submodule)"
+  },
+  {
+    "option_path": "environment.extraInit",
+    "anchor_id": "opt-environment.extraInit",
+    "summary": "Shell script code called during global environment initialisation after all variables and profileVariables have been set. This code is assumed to be shell-independent, which means you should stick to pure sh without sh word split.",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "environment.extraOutputsToInstall",
+    "anchor_id": "opt-environment.extraOutputsToInstall",
+    "summary": "Entries listed here will be appended to the meta.outputsToInstall attribute for each package in environment.systemPackages , and the files from the corresponding derivation outputs symlinked into /run/current-system/sw .",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "environment.extraSetup",
+    "anchor_id": "opt-environment.extraSetup",
+    "summary": "Shell fragments to be run after the system environment has been created. This should only be used for things that need to modify the internals of the environment, e.g. generating MIME caches. The environment being built can be accessed at $out.",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "environment.interactiveShellInit",
+    "anchor_id": "opt-environment.interactiveShellInit",
+    "summary": "Shell script code called during interactive shell initialisation. This code is asumed to be shell-independent, which means you should stick to pure sh without sh word split.",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "environment.launchAgents",
+    "anchor_id": "opt-environment.launchAgents",
+    "summary": "Set of files that have to be linked in /Library/LaunchAgents .",
+    "option_type": "attribute set of (submodule)"
+  },
+  {
+    "option_path": "environment.launchDaemons",
+    "anchor_id": "opt-environment.launchDaemons",
+    "summary": "Set of files that have to be linked in /Library/LaunchDaemons .",
+    "option_type": "attribute set of (submodule)"
+  },
+  {
+    "option_path": "environment.loginShellInit",
+    "anchor_id": "opt-environment.loginShellInit",
+    "summary": "Shell script code called during login shell initialisation. This code is asumed to be shell-independent, which means you should stick to pure sh without sh word split.",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "environment.pathsToLink",
+    "anchor_id": "opt-environment.pathsToLink",
+    "summary": "List of directories to be symlinked in /run/current-system/sw .",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "environment.profiles",
+    "anchor_id": "opt-environment.profiles",
+    "summary": "A list of profiles used to setup the global environment.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "environment.shellAliases",
+    "anchor_id": "opt-environment.shellAliases",
+    "summary": "An attribute set that maps aliases (the top level attribute names in this option) to command strings or directly to build outputs. The alises are added to all users’ shells.",
+    "option_type": "attribute set of string"
+  },
+  {
+    "option_path": "environment.shellInit",
+    "anchor_id": "opt-environment.shellInit",
+    "summary": "Shell script code called during shell initialisation. This code is asumed to be shell-independent, which means you should stick to pure sh without sh word split.",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "environment.shells",
+    "anchor_id": "opt-environment.shells",
+    "summary": "A list of permissible login shells for user accounts.",
+    "option_type": "list of (package or absolute path)"
+  },
+  {
+    "option_path": "environment.systemPackages",
+    "anchor_id": "opt-environment.systemPackages",
+    "summary": "The set of packages that appear in /run/current-system/sw. These packages are automatically available to all users, and are automatically updated every time you rebuild the system configuration. (The latter is the main difference with installing them in the default profile, /nix/var/nix/profiles/default .",
+    "option_type": "list of package"
+  },
+  {
+    "option_path": "environment.systemPath",
+    "anchor_id": "opt-environment.systemPath",
+    "summary": "The set of paths that are added to PATH.",
+    "option_type": "list of (absolute path or string)"
+  },
+  {
+    "option_path": "environment.userLaunchAgents",
+    "anchor_id": "opt-environment.userLaunchAgents",
+    "summary": "Set of files that have to be linked in ~/Library/LaunchAgents .",
+    "option_type": "attribute set of (submodule)"
+  },
+  {
+    "option_path": "environment.variables",
+    "anchor_id": "opt-environment.variables",
+    "summary": "A set of environment variables used in the global environment. These variables will be set on shell initialisation. The value of each variable can be either a string or a list of strings. The latter is concatenated, interspersed with colon characters.",
+    "option_type": "attribute set of (string or list of string)"
+  },
+  {
+    "option_path": "fonts.packages",
+    "anchor_id": "opt-fonts.packages",
+    "summary": "List of fonts to install into /Library/Fonts/Nix Fonts .",
+    "option_type": "list of absolute path"
+  },
+  {
+    "option_path": "homebrew.enable",
+    "anchor_id": "opt-homebrew.enable",
+    "summary": "Whether to enable nix-darwin to manage installing/updating/upgrading Homebrew taps, formulae, casks, Mac App Store apps, Visual Studio Code extensions, Go packages, and Cargo crates using Homebrew Bundle.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "homebrew.enableBashIntegration",
+    "anchor_id": "opt-homebrew.enableBashIntegration",
+    "summary": "Whether to enable Homebrew Bash shell integration, which sets up Homebrew’s environment and shell completions .",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "homebrew.enableFishIntegration",
+    "anchor_id": "opt-homebrew.enableFishIntegration",
+    "summary": "Whether to enable Homebrew Fish shell integration, which sets up Homebrew’s environment and shell completions .",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "homebrew.enableZshIntegration",
+    "anchor_id": "opt-homebrew.enableZshIntegration",
+    "summary": "Whether to enable Homebrew Zsh shell integration, which sets up Homebrew’s environment and shell completions .",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "homebrew.brews",
+    "anchor_id": "opt-homebrew.brews",
+    "summary": "List of Homebrew formulae to install.",
+    "option_type": "list of ((submodule) or string convertible to it)"
+  },
+  {
+    "option_path": "homebrew.cargoPackages",
+    "anchor_id": "opt-homebrew.cargoPackages",
+    "summary": "List of Rust packages to install using cargo install .",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "homebrew.caskArgs",
+    "anchor_id": "opt-homebrew.caskArgs",
+    "summary": "Arguments passed to brew install --cask for all casks listed in homebrew.casks .",
+    "option_type": "submodule"
+  },
+  {
+    "option_path": "homebrew.caskArgs.appdir",
+    "anchor_id": "opt-homebrew.caskArgs.appdir",
+    "summary": "Target location for Applications.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "homebrew.caskArgs.audio_unit_plugindir",
+    "anchor_id": "opt-homebrew.caskArgs.audio_unit_plugindir",
+    "summary": "Target location for Audio Unit Plugins.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "homebrew.caskArgs.colorpickerdir",
+    "anchor_id": "opt-homebrew.caskArgs.colorpickerdir",
+    "summary": "Target location for Color Pickers.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "homebrew.caskArgs.dictionarydir",
+    "anchor_id": "opt-homebrew.caskArgs.dictionarydir",
+    "summary": "Target location for Dictionaries.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "homebrew.caskArgs.fontdir",
+    "anchor_id": "opt-homebrew.caskArgs.fontdir",
+    "summary": "Target location for Fonts.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "homebrew.caskArgs.ignore_dependencies",
+    "anchor_id": "opt-homebrew.caskArgs.ignore_dependencies",
+    "summary": "Whether to ignore cask dependencies, e.g., when you manage them externally.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "homebrew.caskArgs.input_methoddir",
+    "anchor_id": "opt-homebrew.caskArgs.input_methoddir",
+    "summary": "Target location for Input Methods.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "homebrew.caskArgs.internet_plugindir",
+    "anchor_id": "opt-homebrew.caskArgs.internet_plugindir",
+    "summary": "Target location for Internet Plugins.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "homebrew.caskArgs.language",
+    "anchor_id": "opt-homebrew.caskArgs.language",
+    "summary": "Comma-separated list of language codes to prefer for cask installation. The first matching language is used, otherwise it reverts to the cask’s default language. The default value is the language of your system.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "homebrew.caskArgs.mdimporterdir",
+    "anchor_id": "opt-homebrew.caskArgs.mdimporterdir",
+    "summary": "Target location for Spotlight Plugins.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "homebrew.caskArgs.no_binaries",
+    "anchor_id": "opt-homebrew.caskArgs.no_binaries",
+    "summary": "Whether to disable linking of helper executables.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "homebrew.caskArgs.no_quarantine",
+    "anchor_id": "opt-homebrew.caskArgs.no_quarantine",
+    "summary": "Whether to disable quarantining of downloads.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "homebrew.caskArgs.prefpanedir",
+    "anchor_id": "opt-homebrew.caskArgs.prefpanedir",
+    "summary": "Target location for Preference Panes.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "homebrew.caskArgs.qlplugindir",
+    "anchor_id": "opt-homebrew.caskArgs.qlplugindir",
+    "summary": "Target location for QuickLook Plugins.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "homebrew.caskArgs.require_sha",
+    "anchor_id": "opt-homebrew.caskArgs.require_sha",
+    "summary": "Whether to require casks to have a checksum.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "homebrew.caskArgs.screen_saverdir",
+    "anchor_id": "opt-homebrew.caskArgs.screen_saverdir",
+    "summary": "Target location for Screen Savers.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "homebrew.caskArgs.servicedir",
+    "anchor_id": "opt-homebrew.caskArgs.servicedir",
+    "summary": "Target location for Services.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "homebrew.caskArgs.vst3_plugindir",
+    "anchor_id": "opt-homebrew.caskArgs.vst3_plugindir",
+    "summary": "Target location for VST3 Plugins.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "homebrew.caskArgs.vst_plugindir",
+    "anchor_id": "opt-homebrew.caskArgs.vst_plugindir",
+    "summary": "Target location for VST Plugins.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "homebrew.casks",
+    "anchor_id": "opt-homebrew.casks",
+    "summary": "List of Homebrew casks to install.",
+    "option_type": "list of ((submodule) or string convertible to it)"
+  },
+  {
+    "option_path": "homebrew.extraConfig",
+    "anchor_id": "opt-homebrew.extraConfig",
+    "summary": "Extra lines to be added verbatim to the bottom of the generated Brewfile.",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "homebrew.global",
+    "anchor_id": "opt-homebrew.global",
+    "summary": "Options for configuring the behavior of Homebrew commands when you manually invoke them.",
+    "option_type": "submodule"
+  },
+  {
+    "option_path": "homebrew.global.autoUpdate",
+    "anchor_id": "opt-homebrew.global.autoUpdate",
+    "summary": "Whether to enable Homebrew to auto-update itself and all formulae when you manually invoke commands like brew install , brew upgrade , brew tap , and brew bundle [install] .",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "homebrew.global.brewfile",
+    "anchor_id": "opt-homebrew.global.brewfile",
+    "summary": "Whether to enable Homebrew to automatically use the Brewfile that this module generates in the Nix store, when you manually invoke brew bundle .",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "homebrew.goPackages",
+    "anchor_id": "opt-homebrew.goPackages",
+    "summary": "List of Go packages to install using go install .",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "homebrew.greedyCasks",
+    "anchor_id": "opt-homebrew.greedyCasks",
+    "summary": "Whether to always upgrade casks listed in homebrew.casks regardless of whether it’s unversioned or it updates itself.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "homebrew.masApps",
+    "anchor_id": "opt-homebrew.masApps",
+    "summary": "Applications to install from Mac App Store using mas .",
+    "option_type": "attribute set of (positive integer, meaning >0)"
+  },
+  {
+    "option_path": "homebrew.onActivation",
+    "anchor_id": "opt-homebrew.onActivation",
+    "summary": "Options for configuring the behavior of the brew bundle command that nix-darwin runs during system activation.",
+    "option_type": "submodule"
+  },
+  {
+    "option_path": "homebrew.onActivation.autoUpdate",
+    "anchor_id": "opt-homebrew.onActivation.autoUpdate",
+    "summary": "Whether to enable Homebrew to auto-update itself and all formulae during nix-darwin system activation. The default is false so that repeated invocations of darwin-rebuild switch are idempotent.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "homebrew.onActivation.cleanup",
+    "anchor_id": "opt-homebrew.onActivation.cleanup",
+    "summary": "This option manages what happens to packages installed by Homebrew that aren’t present in the Brewfile generated by this module, during nix-darwin system activation.",
+    "option_type": "one of “none”, “check”, “uninstall”, “zap”"
+  },
+  {
+    "option_path": "homebrew.onActivation.extraFlags",
+    "anchor_id": "opt-homebrew.onActivation.extraFlags",
+    "summary": "Extra flags to pass to brew bundle [install] during nix-darwin system activation.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "homebrew.onActivation.upgrade",
+    "anchor_id": "opt-homebrew.onActivation.upgrade",
+    "summary": "Whether to enable Homebrew to upgrade outdated formulae and Mac App Store apps during nix-darwin system activation. The default is false so that repeated invocations of darwin-rebuild switch are idempotent.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "homebrew.prefix",
+    "anchor_id": "opt-homebrew.prefix",
+    "summary": "The Homebrew prefix directory, i.e., the value that brew --prefix returns. The default is automatically set based on your system’s platform, and should only need to be changed if you manually installed Homebrew in a non-standard location.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "homebrew.taps",
+    "anchor_id": "opt-homebrew.taps",
+    "summary": "List of Homebrew formula repositories to tap.",
+    "option_type": "list of ((submodule) or string convertible to it)"
+  },
+  {
+    "option_path": "homebrew.user",
+    "anchor_id": "opt-homebrew.user",
+    "summary": "The user that owns the Homebrew installation. In most cases this should be the normal user account that you installed Homebrew as.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "homebrew.vscode",
+    "anchor_id": "opt-homebrew.vscode",
+    "summary": "List of Visual Studio Code extensions to install using Homebrew Bundle.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "launchd.agents",
+    "anchor_id": "opt-launchd.agents",
+    "summary": "Definition of per-user launchd agents.",
+    "option_type": "attribute set of (submodule)"
+  },
+  {
+    "option_path": "launchd.daemons",
+    "anchor_id": "opt-launchd.daemons",
+    "summary": "Definition of launchd daemons.",
+    "option_type": "attribute set of (submodule)"
+  },
+  {
+    "option_path": "launchd.envVariables",
+    "anchor_id": "opt-launchd.envVariables",
+    "summary": "A set of environment variables to be set on all future processes launched by launchd in the caller’s context. The value of each variable can be either a string or a list of strings. The latter is concatenated, interspersed with colon characters.",
+    "option_type": "attribute set of (string or list of string)"
+  },
+  {
+    "option_path": "launchd.labelPrefix",
+    "anchor_id": "opt-launchd.labelPrefix",
+    "summary": "The default prefix of the service label. Individual services can override this by setting the Label attribute.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "launchd.user.agents",
+    "anchor_id": "opt-launchd.user.agents",
+    "summary": "Definition of per-user launchd agents.",
+    "option_type": "attribute set of (submodule)"
+  },
+  {
+    "option_path": "launchd.user.envVariables",
+    "anchor_id": "opt-launchd.user.envVariables",
+    "summary": "A set of environment variables to be set on all future processes launched by launchd in the caller’s context. The value of each variable can be either a string or a list of strings. The latter is concatenated, interspersed with colon characters.",
+    "option_type": "attribute set of (string or list of string)"
+  },
+  {
+    "option_path": "networking.applicationFirewall.enable",
+    "anchor_id": "opt-networking.applicationFirewall.enable",
+    "summary": "Whether to enable application firewall.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "networking.applicationFirewall.enableStealthMode",
+    "anchor_id": "opt-networking.applicationFirewall.enableStealthMode",
+    "summary": "Whether to enable stealth mode.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "networking.applicationFirewall.allowSigned",
+    "anchor_id": "opt-networking.applicationFirewall.allowSigned",
+    "summary": "Whether to allow built-in software to receive incoming connections.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "networking.applicationFirewall.allowSignedApp",
+    "anchor_id": "opt-networking.applicationFirewall.allowSignedApp",
+    "summary": "Whether to allow downloaded signed software to receive incoming connections.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "networking.applicationFirewall.blockAllIncoming",
+    "anchor_id": "opt-networking.applicationFirewall.blockAllIncoming",
+    "summary": "Whether to block all incoming connections.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "networking.computerName",
+    "anchor_id": "opt-networking.computerName",
+    "summary": "The user-friendly name for the system, set in System Preferences > Sharing > Computer Name.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "networking.dhcpClientId",
+    "anchor_id": "opt-networking.dhcpClientId",
+    "summary": "The DHCP client identifier to use when requesting an IP address from a DHCP server.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "networking.dns",
+    "anchor_id": "opt-networking.dns",
+    "summary": "The list of dns servers used when resolving domain names.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "networking.domain",
+    "anchor_id": "opt-networking.domain",
+    "summary": "The domain. It can be left empty if it is auto-detected through DHCP.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "networking.fqdn",
+    "anchor_id": "opt-networking.fqdn",
+    "summary": "The fully qualified domain name (FQDN) of this host. By default, it is the result of combining networking.hostName and networking.domain.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "networking.fqdnOrHostName",
+    "anchor_id": "opt-networking.fqdnOrHostName",
+    "summary": "Either the fully qualified domain name (FQDN), or just the host name if it does not exists.",
+    "option_type": "string (read only)"
+  },
+  {
+    "option_path": "networking.hostName",
+    "anchor_id": "opt-networking.hostName",
+    "summary": "The hostname of your system, as visible from the command line and used by local and remote networks when connecting through SSH and Remote Login.",
+    "option_type": "null or string matching the pattern ^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])$"
+  },
+  {
+    "option_path": "networking.knownNetworkServices",
+    "anchor_id": "opt-networking.knownNetworkServices",
+    "summary": "List of networkservices that should be configured.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "networking.localHostName",
+    "anchor_id": "opt-networking.localHostName",
+    "summary": "The local hostname, or local network name, is displayed beneath the computer’s name at the top of the Sharing preferences pane. It identifies your Mac to Bonjour-compatible services.",
+    "option_type": "null or string matching the pattern ^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])$"
+  },
+  {
+    "option_path": "networking.search",
+    "anchor_id": "opt-networking.search",
+    "summary": "The list of search paths used when resolving domain names.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "networking.wakeOnLan.enable",
+    "anchor_id": "opt-networking.wakeOnLan.enable",
+    "summary": "Enable Wake-on-LAN for the device.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "networking.wg-quick.interfaces",
+    "anchor_id": "opt-networking.wg-quick.interfaces",
+    "summary": "Set of wg-quick interfaces.",
+    "option_type": "attribute set of (submodule)"
+  },
+  {
+    "option_path": "networking.wg-quick.logDir",
+    "anchor_id": "opt-networking.wg-quick.logDir",
+    "summary": "Directory to save wg-quick logs to.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "nix.enable",
+    "anchor_id": "opt-nix.enable",
+    "summary": "Whether to enable Nix.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "nix.package",
+    "anchor_id": "opt-nix.package",
+    "summary": "This option specifies the Nix package instance to use throughout the system.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "nix.buildMachines",
+    "anchor_id": "opt-nix.buildMachines",
+    "summary": "This option lists the machines to be used if distributed builds are enabled (see nix.distributedBuilds ). Nix will perform derivations on those machines via SSH by copying the inputs to the Nix store on the remote machine, starting the build, then copying the output back to the local Nix store.",
+    "option_type": "list of (submodule)"
+  },
+  {
+    "option_path": "nix.channel.enable",
+    "anchor_id": "opt-nix.channel.enable",
+    "summary": "Whether the nix-channel command and state files are made available on the machine.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "nix.checkConfig",
+    "anchor_id": "opt-nix.checkConfig",
+    "summary": "If enabled (the default), checks for data type mismatches and that Nix can parse the generated nix.conf.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "nix.daemonIOLowPriority",
+    "anchor_id": "opt-nix.daemonIOLowPriority",
+    "summary": "Whether the Nix daemon process should considered to be low priority when doing file system I/O.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "nix.daemonProcessType",
+    "anchor_id": "opt-nix.daemonProcessType",
+    "summary": "Nix daemon process resource limits class. These limits propagate to build processes. Standard is the default process type and will apply light resource limits, throttling its CPU usage and I/O bandwidth.",
+    "option_type": "one of “Background”, “Standard”, “Adaptive”, “Interactive”"
+  },
+  {
+    "option_path": "nix.distributedBuilds",
+    "anchor_id": "opt-nix.distributedBuilds",
+    "summary": "Whether to distribute builds to the machines listed in nix.buildMachines .",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "nix.extraOptions",
+    "anchor_id": "opt-nix.extraOptions",
+    "summary": "Additional text appended to nix.conf .",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "nix.gc.automatic",
+    "anchor_id": "opt-nix.gc.automatic",
+    "summary": "Automatically run the garbage collector at a specific time.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "nix.gc.interval",
+    "anchor_id": "opt-nix.gc.interval",
+    "summary": "The calendar interval at which the garbage collector will run. See the serviceConfig.StartCalendarInterval option of the launchd module for more info.",
+    "option_type": "(submodule) or unique (non-empty (list of (submodule)))"
+  },
+  {
+    "option_path": "nix.gc.options",
+    "anchor_id": "opt-nix.gc.options",
+    "summary": "Options given to nix-collect-garbage when the garbage collector is run automatically.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "nix.linux-builder.enable",
+    "anchor_id": "opt-nix.linux-builder.enable",
+    "summary": "Whether to enable Linux builder.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "nix.linux-builder.package",
+    "anchor_id": "opt-nix.linux-builder.package",
+    "summary": "This option specifies the Linux builder to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "nix.linux-builder.config",
+    "anchor_id": "opt-nix.linux-builder.config",
+    "summary": "This option specifies extra NixOS configuration for the builder. You should first use the Linux builder without changing the builder configuration otherwise you may not be able to build the Linux builder.",
+    "option_type": "module"
+  },
+  {
+    "option_path": "nix.linux-builder.ephemeral",
+    "anchor_id": "opt-nix.linux-builder.ephemeral",
+    "summary": "Whether to enable wipe the builder’s filesystem on every restart.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "nix.linux-builder.mandatoryFeatures",
+    "anchor_id": "opt-nix.linux-builder.mandatoryFeatures",
+    "summary": "A list of features mandatory for the Linux builder. The builder will be ignored for derivations that don’t require all features in this list. All mandatory features are automatically included in supportedFeatures .",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "nix.linux-builder.maxJobs",
+    "anchor_id": "opt-nix.linux-builder.maxJobs",
+    "summary": "Instead of setting this directly, you should set nix.linux-builder.config.virtualisation.cores to configure the amount of cores the Linux builder should have.",
+    "option_type": "positive integer, meaning >0"
+  },
+  {
+    "option_path": "nix.linux-builder.protocol",
+    "anchor_id": "opt-nix.linux-builder.protocol",
+    "summary": "The protocol used for communicating with the build machine. Use ssh-ng if your remote builder and your local Nix version support that improved protocol.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "nix.linux-builder.speedFactor",
+    "anchor_id": "opt-nix.linux-builder.speedFactor",
+    "summary": "The relative speed of the Linux builder. This is an arbitrary integer that indicates the speed of this builder, relative to other builders. Higher is faster.",
+    "option_type": "positive integer, meaning >0"
+  },
+  {
+    "option_path": "nix.linux-builder.supportedFeatures",
+    "anchor_id": "opt-nix.linux-builder.supportedFeatures",
+    "summary": "A list of features supported by the Linux builder. The builder will be ignored for derivations that require features not in this list.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "nix.linux-builder.systems",
+    "anchor_id": "opt-nix.linux-builder.systems",
+    "summary": "This option specifies system types the build machine can execute derivations on.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "nix.linux-builder.workingDirectory",
+    "anchor_id": "opt-nix.linux-builder.workingDirectory",
+    "summary": "The working directory of the Linux builder daemon process.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "nix.nixPath",
+    "anchor_id": "opt-nix.nixPath",
+    "summary": "The default Nix expression search path, used by the Nix evaluator to look up paths enclosed in angle brackets (e.g. <nixpkgs> ).",
+    "option_type": "nix path"
+  },
+  {
+    "option_path": "nix.nrBuildUsers",
+    "anchor_id": "opt-nix.nrBuildUsers",
+    "summary": "Number of nixbld user accounts created to perform secure concurrent builds. If you receive an error message saying that “all build users are currently in use”, you should increase this value.",
+    "option_type": "signed integer"
+  },
+  {
+    "option_path": "nix.optimise.automatic",
+    "anchor_id": "opt-nix.optimise.automatic",
+    "summary": "Automatically run the nix store optimiser at a specific time.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "nix.optimise.interval",
+    "anchor_id": "opt-nix.optimise.interval",
+    "summary": "The calendar interval at which the optimiser will run. See the serviceConfig.StartCalendarInterval option of the launchd module for more info.",
+    "option_type": "(submodule) or unique (non-empty (list of (submodule)))"
+  },
+  {
+    "option_path": "nix.registry",
+    "anchor_id": "opt-nix.registry",
+    "summary": "A system-wide flake registry.",
+    "option_type": "attribute set of (submodule)"
+  },
+  {
+    "option_path": "nix.settings",
+    "anchor_id": "opt-nix.settings",
+    "summary": "Configuration for Nix, see https://nixos.org/manual/nix/stable/#sec-conf-file for avalaible options. The value declared here will be translated directly to the key-value pairs Nix expects.",
+    "option_type": "open submodule of attribute set of (Nix config atom (null, bool, int, float, str, path or package) or list of (Nix config atom (null, bool, int, float, str, path or package)))"
+  },
+  {
+    "option_path": "nix.settings.allowed-users",
+    "anchor_id": "opt-nix.settings.allowed-users",
+    "summary": "A list of names of users (separated by whitespace) that are allowed to connect to the Nix daemon. As with nix.settings.trusted-users , you can specify groups by prefixing them with @ . Also, you can allow all users by specifying * . The default is * . Note that trusted users are always allowed to connect.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "nix.settings.auto-optimise-store",
+    "anchor_id": "opt-nix.settings.auto-optimise-store",
+    "summary": "If set to true, Nix automatically detects files in the store that have identical contents, and replaces them with hard links to a single copy. This saves disk space. If set to false (the default), you can enable nix.optimise.automatic to run nix-store --optimise periodically to get rid of duplicate files. You can also run nix-store --optimise manually.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "nix.settings.cores",
+    "anchor_id": "opt-nix.settings.cores",
+    "summary": "This option defines the maximum number of concurrent tasks during one build. It affects, e.g., -j option for make. The special value 0 means that the builder should use all available CPU cores in the system. Some builds may become non-deterministic with this option; use with care! Packages will only be affected if enableParallelBuilding is set for them.",
+    "option_type": "signed integer"
+  },
+  {
+    "option_path": "nix.settings.extra-sandbox-paths",
+    "anchor_id": "opt-nix.settings.extra-sandbox-paths",
+    "summary": "Directories from the host filesystem to be included in the sandbox.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "nix.settings.max-jobs",
+    "anchor_id": "opt-nix.settings.max-jobs",
+    "summary": "This option defines the maximum number of jobs that Nix will try to build in parallel. The default is auto, which means it will use all available logical cores. It is recommend to set it to the total number of logical cores in your system (e.g., 16 for two CPUs with 4 cores each and hyper-threading).",
+    "option_type": "signed integer or value “auto” (singular enum)"
+  },
+  {
+    "option_path": "nix.settings.require-sigs",
+    "anchor_id": "opt-nix.settings.require-sigs",
+    "summary": "If enabled (the default), Nix will only download binaries from binary caches if they are cryptographically signed with any of the keys listed in nix.settings.trusted-public-keys . If disabled, signatures are neither required nor checked, so it’s strongly recommended that you use only trustworthy caches and https to prevent man-in-the-middle attacks.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "nix.settings.sandbox",
+    "anchor_id": "opt-nix.settings.sandbox",
+    "summary": "If set, Nix will perform builds in a sandboxed environment that it will set up automatically for each build. This prevents impurities in builds by disallowing access to dependencies outside of the Nix store by using network and mount namespaces in a chroot environment. It doesn’t affect derivation hashes, so changing this option will not trigger a rebuild of packages.",
+    "option_type": "boolean or value “relaxed” (singular enum)"
+  },
+  {
+    "option_path": "nix.settings.substituters",
+    "anchor_id": "opt-nix.settings.substituters",
+    "summary": "List of binary cache URLs used to obtain pre-built binaries of Nix packages.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "nix.settings.trusted-public-keys",
+    "anchor_id": "opt-nix.settings.trusted-public-keys",
+    "summary": "List of public keys used to sign binary caches. If nix.settings.trusted-public-keys is enabled, then Nix will use a binary from a binary cache if and only if it is signed by any of the keys listed here. By default, only the key for cache.nixos.org is included.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "nix.settings.trusted-substituters",
+    "anchor_id": "opt-nix.settings.trusted-substituters",
+    "summary": "List of binary cache URLs that non-root users can use (in addition to those specified using nix.settings.substituters ) by passing --option binary-caches to Nix commands.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "nix.settings.trusted-users",
+    "anchor_id": "opt-nix.settings.trusted-users",
+    "summary": "A list of names of users that have additional rights when connecting to the Nix daemon, such as the ability to specify additional binary caches, or to import unsigned NARs. You can also specify groups by prefixing them with @ ; for instance, @admin means all users in the wheel group.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "nixpkgs.buildPlatform",
+    "anchor_id": "opt-nixpkgs.buildPlatform",
+    "summary": "Specifies the platform on which nix-darwin should be built. By default, nix-darwin is built on the system where it runs, but you can change where it’s built. Setting this option will cause nix-darwin to be cross-compiled.",
+    "option_type": "string or (attribute set)"
+  },
+  {
+    "option_path": "nixpkgs.config",
+    "anchor_id": "opt-nixpkgs.config",
+    "summary": "Global configuration for Nixpkgs. The complete list of Nixpkgs configuration options is in the Nixpkgs manual section on global configuration .",
+    "option_type": "nixpkgs config"
+  },
+  {
+    "option_path": "nixpkgs.flake.setFlakeRegistry",
+    "anchor_id": "opt-nixpkgs.flake.setFlakeRegistry",
+    "summary": "Whether to pin nixpkgs in the system-wide flake registry ( /etc/nix/registry.json ) to the store path of the sources of nixpkgs used to build the nix-darwin system.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "nixpkgs.flake.setNixPath",
+    "anchor_id": "opt-nixpkgs.flake.setNixPath",
+    "summary": "Whether to set NIX_PATH to include nixpkgs=flake:nixpkgs such that <nixpkgs> lookups receive the version of nixpkgs that the system was built with, in concert with nixpkgs.flake.setFlakeRegistry .",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "nixpkgs.flake.source",
+    "anchor_id": "opt-nixpkgs.flake.source",
+    "summary": "The path to the nixpkgs sources used to build the system. This is automatically set up to be the store path of the nixpkgs flake used to build the system if using nixpkgs.lib.darwinSystem , and is otherwise null by default.",
+    "option_type": "null or string or absolute path"
+  },
+  {
+    "option_path": "nixpkgs.hostPlatform",
+    "anchor_id": "opt-nixpkgs.hostPlatform",
+    "summary": "Specifies the platform where the nix-darwin configuration will run.",
+    "option_type": "string or (attribute set)"
+  },
+  {
+    "option_path": "nixpkgs.overlays",
+    "anchor_id": "opt-nixpkgs.overlays",
+    "summary": "List of overlays to apply to Nixpkgs. This option allows modifying the Nixpkgs package set accessed through the pkgs module argument.",
+    "option_type": "list of (nixpkgs overlay)"
+  },
+  {
+    "option_path": "nixpkgs.pkgs",
+    "anchor_id": "opt-nixpkgs.pkgs",
+    "summary": "If set, the pkgs argument to all nix-darwin modules is the value of this option, extended with nixpkgs.overlays , if that is also set. The nix-darwin and Nixpkgs architectures must match. Any other options in nixpkgs.* , notably config , will be ignored.",
+    "option_type": "An evaluation of Nixpkgs; the top level attribute set of packages"
+  },
+  {
+    "option_path": "nixpkgs.source",
+    "anchor_id": "opt-nixpkgs.source",
+    "summary": "The path to import Nixpkgs from. If you’re setting a custom nixpkgs.pkgs or _module.args.pkgs , setting this to something with rev and shortRev attributes (such as a flake input or builtins.fetchGit result) will also set system.nixpkgsRevision and related options. (nix-darwin only)",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "nixpkgs.system",
+    "anchor_id": "opt-nixpkgs.system",
+    "summary": "Specifies the Nix platform type on which nix-darwin should be built. It is better to specify nixpkgs.hostPlatform instead.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "power.restartAfterFreeze",
+    "anchor_id": "opt-power.restartAfterFreeze",
+    "summary": "Whether to restart the computer after a system freeze.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "power.restartAfterPowerFailure",
+    "anchor_id": "opt-power.restartAfterPowerFailure",
+    "summary": "Whether to restart the computer after a power failure.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "power.sleep.allowSleepByPowerButton",
+    "anchor_id": "opt-power.sleep.allowSleepByPowerButton",
+    "summary": "Whether the power button can sleep the computer.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "power.sleep.computer",
+    "anchor_id": "opt-power.sleep.computer",
+    "summary": "Amount of idle time (in minutes) until the computer sleeps.",
+    "option_type": "null or positive integer, meaning >0, or value “never” (singular enum)"
+  },
+  {
+    "option_path": "power.sleep.display",
+    "anchor_id": "opt-power.sleep.display",
+    "summary": "Amount of idle time (in minutes) until displays sleep.",
+    "option_type": "null or positive integer, meaning >0, or value “never” (singular enum)"
+  },
+  {
+    "option_path": "power.sleep.harddisk",
+    "anchor_id": "opt-power.sleep.harddisk",
+    "summary": "Amount of idle time (in minutes) until hard disks sleep.",
+    "option_type": "null or positive integer, meaning >0, or value “never” (singular enum)"
+  },
+  {
+    "option_path": "programs._1password.enable",
+    "anchor_id": "opt-programs._1password.enable",
+    "summary": "Whether to enable the 1Password CLI tool.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs._1password.package",
+    "anchor_id": "opt-programs._1password.package",
+    "summary": "The 1Password CLI package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "programs._1password-gui.enable",
+    "anchor_id": "opt-programs._1password-gui.enable",
+    "summary": "Whether to enable the 1Password GUI application.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs._1password-gui.package",
+    "anchor_id": "opt-programs._1password-gui.package",
+    "summary": "The 1Password GUI package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "programs.arqbackup.enable",
+    "anchor_id": "opt-programs.arqbackup.enable",
+    "summary": "Whether to enable Arq backup.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.arqbackup.package",
+    "anchor_id": "opt-programs.arqbackup.package",
+    "summary": "The arq package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "programs.bash.enable",
+    "anchor_id": "opt-programs.bash.enable",
+    "summary": "Whether to configure bash as an interactive shell.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.bash.completion.enable",
+    "anchor_id": "opt-programs.bash.completion.enable",
+    "summary": "Enable bash completion for all interactive bash shells.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.bash.completion.package",
+    "anchor_id": "opt-programs.bash.completion.package",
+    "summary": "The bash-completion package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "programs.bash.interactiveShellInit",
+    "anchor_id": "opt-programs.bash.interactiveShellInit",
+    "summary": "Shell script code called during interactive bash shell initialisation.",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "programs.direnv.enable",
+    "anchor_id": "opt-programs.direnv.enable",
+    "summary": "Whether to enable direnv integration. Takes care of both installation and setting up the sourcing of the shell. Additionally enables nix-direnv integration. .",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.direnv.enableBashIntegration",
+    "anchor_id": "opt-programs.direnv.enableBashIntegration",
+    "summary": "Whether to enable Bash integration .",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.direnv.enableFishIntegration",
+    "anchor_id": "opt-programs.direnv.enableFishIntegration",
+    "summary": "Whether to enable Fish integration .",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.direnv.enableZshIntegration",
+    "anchor_id": "opt-programs.direnv.enableZshIntegration",
+    "summary": "Whether to enable Zsh integration .",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.direnv.package",
+    "anchor_id": "opt-programs.direnv.package",
+    "summary": "The direnv package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "programs.direnv.direnvrcExtra",
+    "anchor_id": "opt-programs.direnv.direnvrcExtra",
+    "summary": "Extra lines to append to the sourced direnvrc",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "programs.direnv.finalPackage",
+    "anchor_id": "opt-programs.direnv.finalPackage",
+    "summary": "The wrapped direnv package.",
+    "option_type": "package (read only)"
+  },
+  {
+    "option_path": "programs.direnv.loadInNixShell",
+    "anchor_id": "opt-programs.direnv.loadInNixShell",
+    "summary": "Whether to enable loading direnv in nix-shell nix shell or nix develop .",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.direnv.nix-direnv.enable",
+    "anchor_id": "opt-programs.direnv.nix-direnv.enable",
+    "summary": "Whether to enable a faster, persistent implementation of use_nix and use_flake, to replace the built-in one .",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.direnv.nix-direnv.package",
+    "anchor_id": "opt-programs.direnv.nix-direnv.package",
+    "summary": "The nix-direnv package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "programs.direnv.settings",
+    "anchor_id": "opt-programs.direnv.settings",
+    "summary": "Direnv configuration. Refer to direnv.toml (1) .",
+    "option_type": "TOML value"
+  },
+  {
+    "option_path": "programs.direnv.silent",
+    "anchor_id": "opt-programs.direnv.silent",
+    "summary": "Whether to enable the hiding of direnv logging .",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.fish.enable",
+    "anchor_id": "opt-programs.fish.enable",
+    "summary": "Whether to configure fish as an interactive shell.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.fish.package",
+    "anchor_id": "opt-programs.fish.package",
+    "summary": "The fish package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "programs.fish.babelfishPackage",
+    "anchor_id": "opt-programs.fish.babelfishPackage",
+    "summary": "The babelfish package to use when useBabelfish is set to true.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "programs.fish.interactiveShellInit",
+    "anchor_id": "opt-programs.fish.interactiveShellInit",
+    "summary": "Shell script code called during interactive fish shell initialisation.",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "programs.fish.loginShellInit",
+    "anchor_id": "opt-programs.fish.loginShellInit",
+    "summary": "Shell script code called during fish login shell initialisation.",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "programs.fish.promptInit",
+    "anchor_id": "opt-programs.fish.promptInit",
+    "summary": "Shell script code used to initialise fish prompt.",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "programs.fish.shellAbbrs",
+    "anchor_id": "opt-programs.fish.shellAbbrs",
+    "summary": "Set of fish abbreviations.",
+    "option_type": "attribute set of string"
+  },
+  {
+    "option_path": "programs.fish.shellAliases",
+    "anchor_id": "opt-programs.fish.shellAliases",
+    "summary": "Set of aliases for fish shell. See environment.shellAliases for an option format description.",
+    "option_type": "attribute set"
+  },
+  {
+    "option_path": "programs.fish.shellInit",
+    "anchor_id": "opt-programs.fish.shellInit",
+    "summary": "Shell script code called during fish shell initialisation.",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "programs.fish.useBabelfish",
+    "anchor_id": "opt-programs.fish.useBabelfish",
+    "summary": "If enabled, the configured environment will be translated to native fish using babelfish . Otherwise, foreign-env will be used.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.fish.vendor.completions.enable",
+    "anchor_id": "opt-programs.fish.vendor.completions.enable",
+    "summary": "Whether fish should use completion files provided by other packages.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.fish.vendor.config.enable",
+    "anchor_id": "opt-programs.fish.vendor.config.enable",
+    "summary": "Whether fish should source configuration snippets provided by other packages.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.fish.vendor.functions.enable",
+    "anchor_id": "opt-programs.fish.vendor.functions.enable",
+    "summary": "Whether fish should autoload fish functions provided by other packages.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.gnupg.package",
+    "anchor_id": "opt-programs.gnupg.package",
+    "summary": "The gnupg package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "programs.gnupg.agent.enable",
+    "anchor_id": "opt-programs.gnupg.agent.enable",
+    "summary": "Enables GnuPG agent for every user session.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.gnupg.agent.enableSSHSupport",
+    "anchor_id": "opt-programs.gnupg.agent.enableSSHSupport",
+    "summary": "Enable SSH agent support in GnuPG agent. Also sets SSH_AUTH_SOCK environment variable correctly.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.info.enable",
+    "anchor_id": "opt-programs.info.enable",
+    "summary": "Whether to enable info pages and the info command.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.man.enable",
+    "anchor_id": "opt-programs.man.enable",
+    "summary": "Whether to enable manual pages and the man command. This also includes “man” outputs of all systemPackages .",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.nix-index.enable",
+    "anchor_id": "opt-programs.nix-index.enable",
+    "summary": "Whether to enable nix-index and its command-not-found helper.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.nix-index.package",
+    "anchor_id": "opt-programs.nix-index.package",
+    "summary": "This option specifies the nix-index package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "programs.ssh.extraConfig",
+    "anchor_id": "opt-programs.ssh.extraConfig",
+    "summary": "Extra configuration text loaded in ssh_config . See ssh_config (5) for help.",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "programs.ssh.knownHosts",
+    "anchor_id": "opt-programs.ssh.knownHosts",
+    "summary": "The set of system-wide known SSH hosts. To make simple setups more convenient the name of an attribute in this set is used as a host name for the entry. This behaviour can be disabled by setting hostNames explicitly. You can use extraHostNames to add additional host names without disabling this default.",
+    "option_type": "attribute set of (submodule)"
+  },
+  {
+    "option_path": "programs.tmux.enable",
+    "anchor_id": "opt-programs.tmux.enable",
+    "summary": "Whether to configure tmux.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.tmux.enableFzf",
+    "anchor_id": "opt-programs.tmux.enableFzf",
+    "summary": "Enable fzf keybindings for selecting tmux sessions and panes.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.tmux.enableMouse",
+    "anchor_id": "opt-programs.tmux.enableMouse",
+    "summary": "Enable mouse support for tmux.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.tmux.enableSensible",
+    "anchor_id": "opt-programs.tmux.enableSensible",
+    "summary": "Enable sensible configuration options for tmux.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.tmux.enableVim",
+    "anchor_id": "opt-programs.tmux.enableVim",
+    "summary": "Enable vim style keybindings for copy mode, and navigation of tmux panes.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.tmux.extraConfig",
+    "anchor_id": "opt-programs.tmux.extraConfig",
+    "summary": "Extra configuration to add to tmux.conf .",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "programs.tmux.iTerm2",
+    "anchor_id": "opt-programs.tmux.iTerm2",
+    "summary": "Cater to iTerm2 and its tmux integration, as appropriate.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.tmux.tmuxOptions",
+    "anchor_id": "opt-programs.tmux.tmuxOptions._name_.enable",
+    "summary": "Whether this file should be generated. This option allows specific files to be disabled.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.vim.enable",
+    "anchor_id": "opt-programs.vim.enable",
+    "summary": "Whether to configure vim.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.vim.enableSensible",
+    "anchor_id": "opt-programs.vim.enableSensible",
+    "summary": "Enable sensible configuration options for vim.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.vim.extraKnownPlugins",
+    "anchor_id": "opt-programs.vim.extraKnownPlugins",
+    "summary": "Custom plugin declarations to add to VAM’s knownPlugins.",
+    "option_type": "attribute set of package"
+  },
+  {
+    "option_path": "programs.vim.plugins",
+    "anchor_id": "opt-programs.vim.plugins",
+    "summary": "VAM plugin dictionaries to use for vim_configurable.",
+    "option_type": "list of (attribute set)"
+  },
+  {
+    "option_path": "programs.vim.vimConfig",
+    "anchor_id": "opt-programs.vim.vimConfig",
+    "summary": "Extra vimrcConfig to use for vim_configurable.",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "programs.vim.vimOptions",
+    "anchor_id": "opt-programs.vim.vimOptions._name_.enable",
+    "summary": "Whether this file should be generated. This option allows specific files to be disabled.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.zsh.enable",
+    "anchor_id": "opt-programs.zsh.enable",
+    "summary": "Whether to configure zsh as an interactive shell.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.zsh.enableAutosuggestions",
+    "anchor_id": "opt-programs.zsh.enableAutosuggestions",
+    "summary": "Enable zsh-autosuggestions.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.zsh.enableBashCompletion",
+    "anchor_id": "opt-programs.zsh.enableBashCompletion",
+    "summary": "Enable bash completion for all interactive zsh shells.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.zsh.enableCompletion",
+    "anchor_id": "opt-programs.zsh.enableCompletion",
+    "summary": "Enable zsh completion for all interactive zsh shells.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.zsh.enableFastSyntaxHighlighting",
+    "anchor_id": "opt-programs.zsh.enableFastSyntaxHighlighting",
+    "summary": "Whether to enable zsh-fast-syntax-highlighting.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.zsh.enableFzfCompletion",
+    "anchor_id": "opt-programs.zsh.enableFzfCompletion",
+    "summary": "Enable fzf completion.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.zsh.enableFzfGit",
+    "anchor_id": "opt-programs.zsh.enableFzfGit",
+    "summary": "Enable fzf keybindings for C-g git browsing.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.zsh.enableFzfHistory",
+    "anchor_id": "opt-programs.zsh.enableFzfHistory",
+    "summary": "Enable fzf keybinding for Ctrl-r history search.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.zsh.enableGlobalCompInit",
+    "anchor_id": "opt-programs.zsh.enableGlobalCompInit",
+    "summary": "Enable execution of compinit call for all interactive zsh shells.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.zsh.enableSyntaxHighlighting",
+    "anchor_id": "opt-programs.zsh.enableSyntaxHighlighting",
+    "summary": "Enable zsh-syntax-highlighting.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "programs.zsh.histFile",
+    "anchor_id": "opt-programs.zsh.histFile",
+    "summary": "Change history file.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "programs.zsh.histSize",
+    "anchor_id": "opt-programs.zsh.histSize",
+    "summary": "Change history size.",
+    "option_type": "signed integer"
+  },
+  {
+    "option_path": "programs.zsh.interactiveShellInit",
+    "anchor_id": "opt-programs.zsh.interactiveShellInit",
+    "summary": "Shell script code called during interactive zsh shell initialisation.",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "programs.zsh.loginShellInit",
+    "anchor_id": "opt-programs.zsh.loginShellInit",
+    "summary": "Shell script code called during zsh login shell initialisation.",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "programs.zsh.promptInit",
+    "anchor_id": "opt-programs.zsh.promptInit",
+    "summary": "Shell script code used to initialise the zsh prompt.",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "programs.zsh.shellInit",
+    "anchor_id": "opt-programs.zsh.shellInit",
+    "summary": "Shell script code called during zsh shell initialisation.",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "programs.zsh.variables",
+    "anchor_id": "opt-programs.zsh.variables",
+    "summary": "A set of environment variables used in the global environment. These variables will be set on shell initialisation. The value of each variable can be either a string or a list of strings. The latter is concatenated, interspersed with colon characters.",
+    "option_type": "attribute set of (string or list of string)"
+  },
+  {
+    "option_path": "security.pam.services.sudo_local.enable",
+    "anchor_id": "opt-security.pam.services.sudo_local.enable",
+    "summary": "Whether to enable managing /etc/pam.d/sudo_local with nix-darwin.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "security.pam.services.sudo_local.reattach",
+    "anchor_id": "opt-security.pam.services.sudo_local.reattach",
+    "summary": "Whether to enable reattaching a program to the user’s bootstrap session.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "security.pam.services.sudo_local.text",
+    "anchor_id": "opt-security.pam.services.sudo_local.text",
+    "summary": "Contents of /etc/pam.d/sudo_local",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "security.pam.services.sudo_local.touchIdAuth",
+    "anchor_id": "opt-security.pam.services.sudo_local.touchIdAuth",
+    "summary": "Whether to enable Touch ID with sudo.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "security.pam.services.sudo_local.watchIdAuth",
+    "anchor_id": "opt-security.pam.services.sudo_local.watchIdAuth",
+    "summary": "Use Apple Watch for sudo authentication, for devices without Touch ID or laptops with lids closed, consider using this.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "security.pki.caCertificateBlacklist",
+    "anchor_id": "opt-security.pki.caCertificateBlacklist",
+    "summary": "A list of blacklisted CA certificate names that won’t be imported from the Mozilla Trust Store into /etc/ssl/certs/ca-certificates.crt . Use the names from that file.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "security.pki.certificateFiles",
+    "anchor_id": "opt-security.pki.certificateFiles",
+    "summary": "A list of files containing trusted root certificates in PEM format. These are concatenated to form /etc/ssl/certs/ca-certificates.crt , which is used by many programs that use OpenSSL, such as curl and git .",
+    "option_type": "list of absolute path"
+  },
+  {
+    "option_path": "security.pki.certificates",
+    "anchor_id": "opt-security.pki.certificates",
+    "summary": "A list of trusted root certificates in PEM format.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "security.pki.installCACerts",
+    "anchor_id": "opt-security.pki.installCACerts",
+    "summary": "Whether to enable certificate management with nix-darwin.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "security.sandbox.profiles",
+    "anchor_id": "opt-security.sandbox.profiles",
+    "summary": "Definition of sandbox profiles.",
+    "option_type": "attribute set of (submodule)"
+  },
+  {
+    "option_path": "security.sudo.extraConfig",
+    "anchor_id": "opt-security.sudo.extraConfig",
+    "summary": "Extra configuration text appended to sudoers .",
+    "option_type": "null or strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "security.sudo.keepTerminfo",
+    "anchor_id": "opt-security.sudo.keepTerminfo",
+    "summary": "Whether to preserve the TERMINFO and TERMINFO_DIRS environment variables, for root and the admin group.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.aerospace.enable",
+    "anchor_id": "opt-services.aerospace.enable",
+    "summary": "Whether to enable AeroSpace window manager.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.aerospace.package",
+    "anchor_id": "opt-services.aerospace.package",
+    "summary": "The aerospace package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "services.aerospace.settings",
+    "anchor_id": "opt-services.aerospace.settings",
+    "summary": "AeroSpace configuration, see <link xlink:href=“https://nikitabobko.github.io/AeroSpace/guide#configuring-aerospace”/> for supported values.",
+    "option_type": "open submodule of (TOML value)"
+  },
+  {
+    "option_path": "services.aerospace.settings.enable-normalization-flatten-containers",
+    "anchor_id": "opt-services.aerospace.settings.enable-normalization-flatten-containers",
+    "summary": "Containers that have only one child are “flattened”.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.aerospace.settings.enable-normalization-opposite-orientation-for-nested-containers",
+    "anchor_id": "opt-services.aerospace.settings.enable-normalization-opposite-orientation-for-nested-containers",
+    "summary": "Containers that nest into each other must have opposite orientations.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.aerospace.settings.accordion-padding",
+    "anchor_id": "opt-services.aerospace.settings.accordion-padding",
+    "summary": "Padding between windows in an accordion container.",
+    "option_type": "signed integer"
+  },
+  {
+    "option_path": "services.aerospace.settings.after-login-command",
+    "anchor_id": "opt-services.aerospace.settings.after-login-command",
+    "summary": "Do not use AeroSpace to run commands after login. (Managed by launchd instead)",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "services.aerospace.settings.after-startup-command",
+    "anchor_id": "opt-services.aerospace.settings.after-startup-command",
+    "summary": "Add commands that run after AeroSpace startup",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "services.aerospace.settings.default-root-container-layout",
+    "anchor_id": "opt-services.aerospace.settings.default-root-container-layout",
+    "summary": "Default layout for the root container.",
+    "option_type": "one of “tiles”, “accordion”"
+  },
+  {
+    "option_path": "services.aerospace.settings.default-root-container-orientation",
+    "anchor_id": "opt-services.aerospace.settings.default-root-container-orientation",
+    "summary": "Default orientation for the root container.",
+    "option_type": "one of “horizontal”, “vertical”, “auto”"
+  },
+  {
+    "option_path": "services.aerospace.settings.exec-on-workspace-change",
+    "anchor_id": "opt-services.aerospace.settings.exec-on-workspace-change",
+    "summary": "Commands to run every time workspace changes.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "services.aerospace.settings.key-mapping.preset",
+    "anchor_id": "opt-services.aerospace.settings.key-mapping.preset",
+    "summary": "Keymapping preset.",
+    "option_type": "one of “qwerty”, “dvorak”, “colemak”"
+  },
+  {
+    "option_path": "services.aerospace.settings.on-focus-changed",
+    "anchor_id": "opt-services.aerospace.settings.on-focus-changed",
+    "summary": "Commands to run every time focused window or workspace changes.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "services.aerospace.settings.on-focused-monitor-changed",
+    "anchor_id": "opt-services.aerospace.settings.on-focused-monitor-changed",
+    "summary": "Commands to run every time focused monitor changes.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "services.aerospace.settings.on-window-detected",
+    "anchor_id": "opt-services.aerospace.settings.on-window-detected",
+    "summary": "Commands to run every time a new window is detected with optional conditions.",
+    "option_type": "list of (submodule)"
+  },
+  {
+    "option_path": "services.aerospace.settings.start-at-login",
+    "anchor_id": "opt-services.aerospace.settings.start-at-login",
+    "summary": "Do not start AeroSpace at login. (Managed by launchd instead)",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.aerospace.settings.workspace-to-monitor-force-assignment",
+    "anchor_id": "opt-services.aerospace.settings.workspace-to-monitor-force-assignment",
+    "summary": "Map workspaces to specific monitors. Left-hand side is the workspace name, and right-hand side is the monitor pattern.",
+    "option_type": "attribute set of (signed integer or string or list of string)"
+  },
+  {
+    "option_path": "services.autossh.sessions",
+    "anchor_id": "opt-services.autossh.sessions",
+    "summary": "List of AutoSSH sessions to start as launchd daemon. Each daemon is named ‘autossh-{session.name}’.",
+    "option_type": "list of (submodule)"
+  },
+  {
+    "option_path": "services.buildkite-agents",
+    "anchor_id": "opt-services.buildkite-agents",
+    "summary": "Attribute set of buildkite agents. The attribute key is combined with the hostname and a unique integer to create the final agent name. This can be overridden by setting the name attribute.",
+    "option_type": "attribute set of (submodule)"
+  },
+  {
+    "option_path": "services.cachix-agent.enable",
+    "anchor_id": "opt-services.cachix-agent.enable",
+    "summary": "Enable to run Cachix Agent as a system service.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.cachix-agent.package",
+    "anchor_id": "opt-services.cachix-agent.package",
+    "summary": "Package containing cachix executable.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "services.cachix-agent.credentialsFile",
+    "anchor_id": "opt-services.cachix-agent.credentialsFile",
+    "summary": "Required file that needs to contain:",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.cachix-agent.logFile",
+    "anchor_id": "opt-services.cachix-agent.logFile",
+    "summary": "Absolute path to log all stderr and stdout",
+    "option_type": "null or absolute path"
+  },
+  {
+    "option_path": "services.cachix-agent.name",
+    "anchor_id": "opt-services.cachix-agent.name",
+    "summary": "Agent name, usually the same as the hostname.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "services.chunkwm.enable",
+    "anchor_id": "opt-services.chunkwm.enable",
+    "summary": "Whether to enable the chunkwm window manager.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.chunkwm.package",
+    "anchor_id": "opt-services.chunkwm.package",
+    "summary": "This option specifies the chunkwm package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "services.chunkwm.extraConfig",
+    "anchor_id": "opt-services.chunkwm.extraConfig",
+    "summary": "Additional commands for chunkwmrc .",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "services.chunkwm.hotload",
+    "anchor_id": "opt-services.chunkwm.hotload",
+    "summary": "Whether to enable hotload.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.chunkwm.plugins.border.config",
+    "anchor_id": "opt-services.chunkwm.plugins.border.config",
+    "summary": "Optional border plugin configuration.",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "services.chunkwm.plugins.dir",
+    "anchor_id": "opt-services.chunkwm.plugins.dir",
+    "summary": "Chunkwm Plugins directory.",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.chunkwm.plugins.list",
+    "anchor_id": "opt-services.chunkwm.plugins.list",
+    "summary": "Chunkwm Plugins to enable.",
+    "option_type": "list of (one of “border”, “ffm”, “tiling”)"
+  },
+  {
+    "option_path": "services.chunkwm.plugins.tiling.config",
+    "anchor_id": "opt-services.chunkwm.plugins.tiling.config",
+    "summary": "Optional tiling plugin configuration.",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "services.dnscrypt-proxy.enable",
+    "anchor_id": "opt-services.dnscrypt-proxy.enable",
+    "summary": "Whether to enable the dnscrypt-proxy service…",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.dnscrypt-proxy.package",
+    "anchor_id": "opt-services.dnscrypt-proxy.package",
+    "summary": "The dnscrypt-proxy package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "services.dnscrypt-proxy.settings",
+    "anchor_id": "opt-services.dnscrypt-proxy.settings",
+    "summary": "Attrset that is converted and passed as TOML config file. For available params, see: https://github.com/DNSCrypt/dnscrypt-proxy/blob/2.1.15/dnscrypt-proxy/example-dnscrypt-proxy.toml",
+    "option_type": "TOML value"
+  },
+  {
+    "option_path": "services.dnsmasq.enable",
+    "anchor_id": "opt-services.dnsmasq.enable",
+    "summary": "Whether to enable DNSmasq.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.dnsmasq.package",
+    "anchor_id": "opt-services.dnsmasq.package",
+    "summary": "This option specifies the dnsmasq package to use.",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.dnsmasq.addresses",
+    "anchor_id": "opt-services.dnsmasq.addresses",
+    "summary": "List of domains that will be redirected by the DNSmasq.",
+    "option_type": "attribute set"
+  },
+  {
+    "option_path": "services.dnsmasq.bind",
+    "anchor_id": "opt-services.dnsmasq.bind",
+    "summary": "This option specifies the interface on which DNSmasq will listen.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "services.dnsmasq.port",
+    "anchor_id": "opt-services.dnsmasq.port",
+    "summary": "This option specifies port on which DNSmasq will listen.",
+    "option_type": "signed integer"
+  },
+  {
+    "option_path": "services.dnsmasq.servers",
+    "anchor_id": "opt-services.dnsmasq.servers",
+    "summary": "List of upstream DNS servers to forward queries to. If empty, dnsmasq will use the servers from /etc/resolv.conf. Each entry can be:",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "services.emacs.enable",
+    "anchor_id": "opt-services.emacs.enable",
+    "summary": "Whether to enable the Emacs Daemon.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.emacs.package",
+    "anchor_id": "opt-services.emacs.package",
+    "summary": "This option specifies the emacs package to use.",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.emacs.additionalPath",
+    "anchor_id": "opt-services.emacs.additionalPath",
+    "summary": "This option specifies additional PATH that the emacs daemon would have. Typically if you have binaries in your home directory that is what you would add your home path here. One caveat is that there won’t be shell variable expansion, so you can’t use $HOME for example",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "services.emacs.exec",
+    "anchor_id": "opt-services.emacs.exec",
+    "summary": "Emacs command/binary to execute.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "services.eternal-terminal.enable",
+    "anchor_id": "opt-services.eternal-terminal.enable",
+    "summary": "Whether to enable Eternal Terminal server.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.eternal-terminal.package",
+    "anchor_id": "opt-services.eternal-terminal.package",
+    "summary": "This option specifies the eternal-terminal package to use.",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.eternal-terminal.logSize",
+    "anchor_id": "opt-services.eternal-terminal.logSize",
+    "summary": "The maximum log size.",
+    "option_type": "signed integer"
+  },
+  {
+    "option_path": "services.eternal-terminal.port",
+    "anchor_id": "opt-services.eternal-terminal.port",
+    "summary": "The port the server should listen on. Will use the server’s default (2022) if not specified.",
+    "option_type": "16 bit unsigned integer; between 0 and 65535 (both inclusive)"
+  },
+  {
+    "option_path": "services.eternal-terminal.silent",
+    "anchor_id": "opt-services.eternal-terminal.silent",
+    "summary": "If enabled, disables all logging.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.eternal-terminal.verbosity",
+    "anchor_id": "opt-services.eternal-terminal.verbosity",
+    "summary": "The verbosity level (0-9).",
+    "option_type": "one of 0, 1, 2, 3, 4, 5, 6, 7, 8, 9"
+  },
+  {
+    "option_path": "services.github-runners",
+    "anchor_id": "opt-services.github-runners",
+    "summary": "Multiple GitHub Runners.",
+    "option_type": "attribute set of (submodule)"
+  },
+  {
+    "option_path": "services.gitlab-runner.enable",
+    "anchor_id": "opt-services.gitlab-runner.enable",
+    "summary": "Whether to enable Gitlab Runner.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.gitlab-runner.package",
+    "anchor_id": "opt-services.gitlab-runner.package",
+    "summary": "Gitlab Runner package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "services.gitlab-runner.checkInterval",
+    "anchor_id": "opt-services.gitlab-runner.checkInterval",
+    "summary": "Defines the interval length, in seconds, between new jobs check. The default value is 3; if set to 0 or lower, the default value will be used. See runner documentation for more information.",
+    "option_type": "signed integer"
+  },
+  {
+    "option_path": "services.gitlab-runner.concurrent",
+    "anchor_id": "opt-services.gitlab-runner.concurrent",
+    "summary": "Limits how many jobs globally can be run concurrently. The most upper limit of jobs using all defined runners. 0 does not mean unlimited.",
+    "option_type": "signed integer"
+  },
+  {
+    "option_path": "services.gitlab-runner.configFile",
+    "anchor_id": "opt-services.gitlab-runner.configFile",
+    "summary": "Configuration file for gitlab-runner.",
+    "option_type": "null or absolute path"
+  },
+  {
+    "option_path": "services.gitlab-runner.extraPackages",
+    "anchor_id": "opt-services.gitlab-runner.extraPackages",
+    "summary": "Extra packages to add to PATH for the gitlab-runner process.",
+    "option_type": "list of package"
+  },
+  {
+    "option_path": "services.gitlab-runner.gracefulTermination",
+    "anchor_id": "opt-services.gitlab-runner.gracefulTermination",
+    "summary": "Finish all remaining jobs before stopping. If not set gitlab-runner will stop immediatly without waiting for jobs to finish, which will lead to failed builds.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.gitlab-runner.gracefulTimeout",
+    "anchor_id": "opt-services.gitlab-runner.gracefulTimeout",
+    "summary": "Time to wait until a graceful shutdown is turned into a forceful one.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "services.gitlab-runner.prometheusListenAddress",
+    "anchor_id": "opt-services.gitlab-runner.prometheusListenAddress",
+    "summary": "Address (<host>:<port>) on which the Prometheus metrics HTTP server should be listening.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "services.gitlab-runner.sentryDSN",
+    "anchor_id": "opt-services.gitlab-runner.sentryDSN",
+    "summary": "Data Source Name for tracking of all system level errors to Sentry.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "services.gitlab-runner.services",
+    "anchor_id": "opt-services.gitlab-runner.services",
+    "summary": "GitLab Runner services.",
+    "option_type": "attribute set of (submodule)"
+  },
+  {
+    "option_path": "services.gitlab-runner.sessionServer",
+    "anchor_id": "opt-services.gitlab-runner.sessionServer",
+    "summary": "The session server allows the user to interact with jobs that the Runner is responsible for. A good example of this is the interactive web terminal .",
+    "option_type": "submodule"
+  },
+  {
+    "option_path": "services.gitlab-runner.sessionServer.advertiseAddress",
+    "anchor_id": "opt-services.gitlab-runner.sessionServer.advertiseAddress",
+    "summary": "The URL that the Runner will expose to GitLab to be used to access the session server. Fallbacks to listenAddress if not defined.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "services.gitlab-runner.sessionServer.listenAddress",
+    "anchor_id": "opt-services.gitlab-runner.sessionServer.listenAddress",
+    "summary": "An internal URL to be used for the session server.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "services.gitlab-runner.sessionServer.sessionTimeout",
+    "anchor_id": "opt-services.gitlab-runner.sessionServer.sessionTimeout",
+    "summary": "How long in seconds the session can stay active after the job completes (which will block the job from finishing).",
+    "option_type": "signed integer"
+  },
+  {
+    "option_path": "services.hercules-ci-agent.enable",
+    "anchor_id": "opt-services.hercules-ci-agent.enable",
+    "summary": "Enable to run Hercules CI Agent as a system service.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.hercules-ci-agent.package",
+    "anchor_id": "opt-services.hercules-ci-agent.package",
+    "summary": "Package containing the bin/hercules-ci-agent executable.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "services.hercules-ci-agent.logFile",
+    "anchor_id": "opt-services.hercules-ci-agent.logFile",
+    "summary": "Stdout and sterr of hercules-ci-agent process.",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.hercules-ci-agent.settings",
+    "anchor_id": "opt-services.hercules-ci-agent.settings",
+    "summary": "These settings are written to the agent.toml file.",
+    "option_type": "open submodule of (TOML value)"
+  },
+  {
+    "option_path": "services.hercules-ci-agent.settings.apiBaseUrl",
+    "anchor_id": "opt-services.hercules-ci-agent.settings.apiBaseUrl",
+    "summary": "API base URL that the agent will connect to.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "services.hercules-ci-agent.settings.baseDirectory",
+    "anchor_id": "opt-services.hercules-ci-agent.settings.baseDirectory",
+    "summary": "State directory (secrets, work directory, etc) for agent",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.hercules-ci-agent.settings.binaryCachesPath",
+    "anchor_id": "opt-services.hercules-ci-agent.settings.binaryCachesPath",
+    "summary": "Path to a JSON file containing binary cache secret keys.",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.hercules-ci-agent.settings.clusterJoinTokenPath",
+    "anchor_id": "opt-services.hercules-ci-agent.settings.clusterJoinTokenPath",
+    "summary": "Location of the cluster-join-token.key file.",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.hercules-ci-agent.settings.concurrentTasks",
+    "anchor_id": "opt-services.hercules-ci-agent.settings.concurrentTasks",
+    "summary": "Number of tasks to perform simultaneously.",
+    "option_type": "positive integer, meaning >0, or value “auto” (singular enum)"
+  },
+  {
+    "option_path": "services.hercules-ci-agent.settings.labels",
+    "anchor_id": "opt-services.hercules-ci-agent.settings.labels",
+    "summary": "A key-value map of user data.",
+    "option_type": "TOML value"
+  },
+  {
+    "option_path": "services.hercules-ci-agent.settings.secretsJsonPath",
+    "anchor_id": "opt-services.hercules-ci-agent.settings.secretsJsonPath",
+    "summary": "Path to a JSON file containing secrets for effects.",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.hercules-ci-agent.settings.staticSecretsDirectory",
+    "anchor_id": "opt-services.hercules-ci-agent.settings.staticSecretsDirectory",
+    "summary": "This is the default directory to look for statically configured secrets like cluster-join-token.key .",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.hercules-ci-agent.settings.workDirectory",
+    "anchor_id": "opt-services.hercules-ci-agent.settings.workDirectory",
+    "summary": "The directory in which temporary subdirectories are created for task state. This includes sources for Nix evaluation.",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.ipfs.enable",
+    "anchor_id": "opt-services.ipfs.enable",
+    "summary": "Whether to enable the ipfs daemon.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.ipfs.enableGarbageCollection",
+    "anchor_id": "opt-services.ipfs.enableGarbageCollection",
+    "summary": "Passes --enable-gc flag to ipfs daemon.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.ipfs.package",
+    "anchor_id": "opt-services.ipfs.package",
+    "summary": "The ipfs package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "services.ipfs.ipfsPath",
+    "anchor_id": "opt-services.ipfs.ipfsPath",
+    "summary": "Set the IPFS_PATH environment variable.",
+    "option_type": "null or absolute path"
+  },
+  {
+    "option_path": "services.ipfs.logFile",
+    "anchor_id": "opt-services.ipfs.logFile",
+    "summary": "The logfile to use for the ipfs service. Alternatively sudo launchctl debug system/org.nixos.ipfs --stderr can be used to stream the logs to a shell after restarting the service with sudo launchctl kickstart -k system/org.nixos.ipfs .",
+    "option_type": "null or absolute path"
+  },
+  {
+    "option_path": "services.jankyborders.enable",
+    "anchor_id": "opt-services.jankyborders.enable",
+    "summary": "Whether to enable the jankyborders service…",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.jankyborders.package",
+    "anchor_id": "opt-services.jankyborders.package",
+    "summary": "The jankyborders package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "services.jankyborders.active_color",
+    "anchor_id": "opt-services.jankyborders.active_color",
+    "summary": "Sets the border color for the focused window (format: 0xAARRGGBB). For instance, active_color=“0xff00ff00” creates a green border. For Gradient Border : active_color=“gradient(top_right=0x9992B3F5,bottom_left=0x9992B3F5)”",
+    "option_type": "string"
+  },
+  {
+    "option_path": "services.jankyborders.ax_focus",
+    "anchor_id": "opt-services.jankyborders.ax_focus",
+    "summary": "If set to true, the (slower) accessibility API is used to resolve the focused window.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.jankyborders.background_color",
+    "anchor_id": "opt-services.jankyborders.background_color",
+    "summary": "Sets the background fill color for all windows (only 0xAARRGGBB arguments supported).",
+    "option_type": "string"
+  },
+  {
+    "option_path": "services.jankyborders.blacklist",
+    "anchor_id": "opt-services.jankyborders.blacklist",
+    "summary": "The applications specified here are excluded from being bordered. For example, blacklist = [ “Safari” “kitty” ] excludes Safari and kitty from being bordered.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "services.jankyborders.blur_radius",
+    "anchor_id": "opt-services.jankyborders.blur_radius",
+    "summary": "Sets the blur radius applied to the borders or backgrounds with transparency.",
+    "option_type": "floating point number"
+  },
+  {
+    "option_path": "services.jankyborders.hidpi",
+    "anchor_id": "opt-services.jankyborders.hidpi",
+    "summary": "If set to on, the border will be drawn with retina resolution.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.jankyborders.inactive_color",
+    "anchor_id": "opt-services.jankyborders.inactive_color",
+    "summary": "Sets the border color for all windows not in focus (format: 0xAARRGGBB). For Gradient Border : inactive_color=“gradient(top_right=0x9992B3F5,bottom_left=0x9992B3F5)”",
+    "option_type": "string"
+  },
+  {
+    "option_path": "services.jankyborders.order",
+    "anchor_id": "opt-services.jankyborders.order",
+    "summary": "Specifies whether borders should be drawn above or below windows.",
+    "option_type": "one of “above”, “below”"
+  },
+  {
+    "option_path": "services.jankyborders.style",
+    "anchor_id": "opt-services.jankyborders.style",
+    "summary": "Specifies the style of the border (either round or square).",
+    "option_type": "string"
+  },
+  {
+    "option_path": "services.jankyborders.whitelist",
+    "anchor_id": "opt-services.jankyborders.whitelist",
+    "summary": "Once this list is populated, only applications listed here are considered for receiving a border. If the whitelist is empty (default) it is inactive.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "services.jankyborders.width",
+    "anchor_id": "opt-services.jankyborders.width",
+    "summary": "Determines the width of the border. For example, width=5.0 creates a border 5.0 points wide.",
+    "option_type": "floating point number"
+  },
+  {
+    "option_path": "services.karabiner-elements.enable",
+    "anchor_id": "opt-services.karabiner-elements.enable",
+    "summary": "Whether to enable Karabiner-Elements.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.karabiner-elements.package",
+    "anchor_id": "opt-services.karabiner-elements.package",
+    "summary": "The karabiner-elements package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "services.khd.enable",
+    "anchor_id": "opt-services.khd.enable",
+    "summary": "Whether to enable the khd hotkey daemon.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.khd.package",
+    "anchor_id": "opt-services.khd.package",
+    "summary": "This option specifies the khd package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "services.khd.i3Keybindings",
+    "anchor_id": "opt-services.khd.i3Keybindings",
+    "summary": "Whether to configure i3 style keybindings for kwm.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.khd.khdConfig",
+    "anchor_id": "opt-services.khd.khdConfig",
+    "summary": "Config to use for khdrc .",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "services.kwm.enable",
+    "anchor_id": "opt-services.kwm.enable",
+    "summary": "Whether to enable the khd window manager.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.kwm.package",
+    "anchor_id": "opt-services.kwm.package",
+    "summary": "This option specifies the kwm package to use.",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.kwm.kwmConfig",
+    "anchor_id": "opt-services.kwm.kwmConfig",
+    "summary": "Config to use for kwmrc .",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "services.lorri.enable",
+    "anchor_id": "opt-services.lorri.enable",
+    "summary": "Whether to enable the lorri service.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.lorri.logFile",
+    "anchor_id": "opt-services.lorri.logFile",
+    "summary": "The logfile to use for the lorri service. Alternatively sudo launchctl debug system/org.nixos.lorri --stderr can be used to stream the logs to a shell after restarting the service with sudo launchctl kickstart -k system/org.nixos.lorri .",
+    "option_type": "null or absolute path"
+  },
+  {
+    "option_path": "services.mopidy.enable",
+    "anchor_id": "opt-services.mopidy.enable",
+    "summary": "Whether to enable the Mopidy Daemon.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.mopidy.package",
+    "anchor_id": "opt-services.mopidy.package",
+    "summary": "This option specifies the mopidy package to use.",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.mopidy.mediakeys.enable",
+    "anchor_id": "opt-services.mopidy.mediakeys.enable",
+    "summary": "Whether to enable the Mopidy OSX Media Keys support daemon.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.mopidy.mediakeys.package",
+    "anchor_id": "opt-services.mopidy.mediakeys.package",
+    "summary": "This option specifies the mediakeys package to use.",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.netbird.enable",
+    "anchor_id": "opt-services.netbird.enable",
+    "summary": "Whether to enable Netbird daemon.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.netbird.package",
+    "anchor_id": "opt-services.netbird.package",
+    "summary": "The package to use for netbird",
+    "option_type": "package"
+  },
+  {
+    "option_path": "services.netdata.enable",
+    "anchor_id": "opt-services.netdata.enable",
+    "summary": "Whether to enable Netdata daemon.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.netdata.package",
+    "anchor_id": "opt-services.netdata.package",
+    "summary": "The netdata package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "services.netdata.cacheDir",
+    "anchor_id": "opt-services.netdata.cacheDir",
+    "summary": "Cache directory for Netdata",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.netdata.config",
+    "anchor_id": "opt-services.netdata.config",
+    "summary": "Custom configuration for Netdata",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "services.netdata.logDir",
+    "anchor_id": "opt-services.netdata.logDir",
+    "summary": "Log directory for Netdata",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.netdata.workDir",
+    "anchor_id": "opt-services.netdata.workDir",
+    "summary": "Working directory for Netdata",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.nextdns.enable",
+    "anchor_id": "opt-services.nextdns.enable",
+    "summary": "Whether to enable the NextDNS DNS/53 to DoH Proxy service.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.nextdns.arguments",
+    "anchor_id": "opt-services.nextdns.arguments",
+    "summary": "Additional arguments to be passed to nextdns run.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "services.nix-daemon.enableSocketListener",
+    "anchor_id": "opt-services.nix-daemon.enableSocketListener",
+    "summary": "Whether to make the nix-daemon service socket activated.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.nix-daemon.logFile",
+    "anchor_id": "opt-services.nix-daemon.logFile",
+    "summary": "The logfile to use for the nix-daemon service. Alternatively sudo launchctl debug system/org.nixos.nix-daemon --stderr can be used to stream the logs to a shell after restarting the service with sudo launchctl kickstart -k system/org.nixos.nix-daemon .",
+    "option_type": "null or absolute path"
+  },
+  {
+    "option_path": "services.nix-daemon.tempDir",
+    "anchor_id": "opt-services.nix-daemon.tempDir",
+    "summary": "The TMPDIR to use for nix-daemon.",
+    "option_type": "null or absolute path"
+  },
+  {
+    "option_path": "services.ofborg.enable",
+    "anchor_id": "opt-services.ofborg.enable",
+    "summary": "Whether to enable the ofborg builder service.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.ofborg.package",
+    "anchor_id": "opt-services.ofborg.package",
+    "summary": "This option specifies the ofborg package to use. eg.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "services.ofborg.configFile",
+    "anchor_id": "opt-services.ofborg.configFile",
+    "summary": "Configuration file to use for ofborg.",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.ofborg.logFile",
+    "anchor_id": "opt-services.ofborg.logFile",
+    "summary": "The logfile to use for the ofborg service.",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.offlineimap.enable",
+    "anchor_id": "opt-services.offlineimap.enable",
+    "summary": "Whether to enable Offlineimap, a software to dispose your mailbox(es) as a local Maildir(s).",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.offlineimap.package",
+    "anchor_id": "opt-services.offlineimap.package",
+    "summary": "Offlineimap derivation to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "services.offlineimap.extraConfig",
+    "anchor_id": "opt-services.offlineimap.extraConfig",
+    "summary": "Additional text to be appended to offlineimaprc .",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "services.offlineimap.path",
+    "anchor_id": "opt-services.offlineimap.path",
+    "summary": "List of derivations to put in Offlineimap’s path.",
+    "option_type": "list of absolute path"
+  },
+  {
+    "option_path": "services.offlineimap.runQuick",
+    "anchor_id": "opt-services.offlineimap.runQuick",
+    "summary": "Run only quick synchronizations. Ignore any flag updates on IMAP servers. If a flag on the remote IMAP changes, and we have the message locally, it will be left untouched in a quick run.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.offlineimap.startInterval",
+    "anchor_id": "opt-services.offlineimap.startInterval",
+    "summary": "Optional key to start offlineimap services each N seconds",
+    "option_type": "null or signed integer"
+  },
+  {
+    "option_path": "services.openssh.enable",
+    "anchor_id": "opt-services.openssh.enable",
+    "summary": "Whether to enable Apple’s built-in OpenSSH server.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "services.openssh.extraConfig",
+    "anchor_id": "opt-services.openssh.extraConfig",
+    "summary": "Extra configuration text loaded in sshd_config . See sshd_config (5) for help.",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "services.openssh.hostKeys",
+    "anchor_id": "opt-services.openssh.hostKeys",
+    "summary": "SSH host key declarations. Each entry specifies a key type and path. HostKey directives are written to the sshd configuration for each entry.",
+    "option_type": "list of (submodule)"
+  },
+  {
+    "option_path": "services.postgresql.enable",
+    "anchor_id": "opt-services.postgresql.enable",
+    "summary": "Whether to enable PostgreSQL Server.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.postgresql.enableTCPIP",
+    "anchor_id": "opt-services.postgresql.enableTCPIP",
+    "summary": "Whether PostgreSQL should listen on all network interfaces. If disabled, the database can only be accessed via its Unix domain socket or via TCP connections to localhost.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.postgresql.package",
+    "anchor_id": "opt-services.postgresql.package",
+    "summary": "PostgreSQL package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "services.postgresql.authentication",
+    "anchor_id": "opt-services.postgresql.authentication",
+    "summary": "Defines how users authenticate themselves to the server. See the PostgreSQL documentation for pg_hba.conf for details on the expected format of this option. By default, peer based authentication will be used for users connecting via the Unix socket, and md5 password authentication will be used for users connecting via TCP. Any added rules will be inserted above the default rules. If you’d like to replace the default rules entirely, you can use lib.mkForce in your module.",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "services.postgresql.checkConfig",
+    "anchor_id": "opt-services.postgresql.checkConfig",
+    "summary": "Check the syntax of the configuration file at compile time",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.postgresql.dataDir",
+    "anchor_id": "opt-services.postgresql.dataDir",
+    "summary": "The data directory for PostgreSQL. If left as the default value this directory will automatically be created before the PostgreSQL server starts, otherwise the sysadmin is responsible for ensuring the directory exists with appropriate ownership and permissions.",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.postgresql.ensureDatabases",
+    "anchor_id": "opt-services.postgresql.ensureDatabases",
+    "summary": "Ensures that the specified databases exist. This option will never delete existing databases, especially not when the value of this option is changed. This means that databases created once through this option or otherwise have to be removed manually.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "services.postgresql.ensureUsers",
+    "anchor_id": "opt-services.postgresql.ensureUsers",
+    "summary": "Ensures that the specified users exist and have at least the ensured permissions. The PostgreSQL users will be identified using peer authentication. This authenticates the Unix user with the same name only, and that without the need for a password. This option will never delete existing users or remove permissions, especially not when the value of this option is changed. This means that users created and permissions assigned once through this option or otherwise have to be removed manually.",
+    "option_type": "list of (submodule)"
+  },
+  {
+    "option_path": "services.postgresql.extraPlugins",
+    "anchor_id": "opt-services.postgresql.extraPlugins",
+    "summary": "List of PostgreSQL plugins. PostgreSQL version for each plugin should match version for services.postgresql.package value.",
+    "option_type": "list of absolute path"
+  },
+  {
+    "option_path": "services.postgresql.identMap",
+    "anchor_id": "opt-services.postgresql.identMap",
+    "summary": "Defines the mapping from system users to database users.",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "services.postgresql.initdbArgs",
+    "anchor_id": "opt-services.postgresql.initdbArgs",
+    "summary": "Additional arguments passed to initdb during data dir initialisation.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "services.postgresql.initialScript",
+    "anchor_id": "opt-services.postgresql.initialScript",
+    "summary": "A file containing SQL statements to execute on first startup.",
+    "option_type": "null or absolute path"
+  },
+  {
+    "option_path": "services.postgresql.logLinePrefix",
+    "anchor_id": "opt-services.postgresql.logLinePrefix",
+    "summary": "A printf-style string that is output at the beginning of each log line. Upstream default is '%m [%p] ' , i.e. it includes the timestamp. We do not include the timestamp, because journal has it anyway.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "services.postgresql.port",
+    "anchor_id": "opt-services.postgresql.port",
+    "summary": "The port on which PostgreSQL listens.",
+    "option_type": "signed integer"
+  },
+  {
+    "option_path": "services.postgresql.recoveryConfig",
+    "anchor_id": "opt-services.postgresql.recoveryConfig",
+    "summary": "Contents of the recovery.conf file.",
+    "option_type": "null or strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "services.postgresql.settings",
+    "anchor_id": "opt-services.postgresql.settings",
+    "summary": "PostgreSQL configuration. Refer to https://www.postgresql.org/docs/11/config-setting.html#CONFIG-SETTING-CONFIGURATION-FILE for an overview of postgresql.conf .",
+    "option_type": "attribute set of (boolean or floating point number or signed integer or string)"
+  },
+  {
+    "option_path": "services.privoxy.enable",
+    "anchor_id": "opt-services.privoxy.enable",
+    "summary": "Whether to enable the privoxy proxy service.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.privoxy.package",
+    "anchor_id": "opt-services.privoxy.package",
+    "summary": "This option specifies the privoxy package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "services.privoxy.confdir",
+    "anchor_id": "opt-services.privoxy.confdir",
+    "summary": "Directory for privoxy files such as .action and .filter.",
+    "option_type": "null or absolute path"
+  },
+  {
+    "option_path": "services.privoxy.config",
+    "anchor_id": "opt-services.privoxy.config",
+    "summary": "Config to use for privoxy",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "services.privoxy.listenAddress",
+    "anchor_id": "opt-services.privoxy.listenAddress",
+    "summary": "The address and TCP port on which privoxy will listen.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "services.privoxy.templdir",
+    "anchor_id": "opt-services.privoxy.templdir",
+    "summary": "Directory for privoxy template files.",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.prometheus.exporters.node.enable",
+    "anchor_id": "opt-services.prometheus.exporters.node.enable",
+    "summary": "Whether to enable Prometheus Node exporter.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.prometheus.exporters.node.enabledCollectors",
+    "anchor_id": "opt-services.prometheus.exporters.node.enabledCollectors",
+    "summary": "Collectors to enable in addition to the ones that are enabled by default .",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "services.prometheus.exporters.node.package",
+    "anchor_id": "opt-services.prometheus.exporters.node.package",
+    "summary": "The prometheus-node-exporter package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "services.prometheus.exporters.node.disabledCollectors",
+    "anchor_id": "opt-services.prometheus.exporters.node.disabledCollectors",
+    "summary": "Collectors to disable from the list of collectors that are enabled by default .",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "services.prometheus.exporters.node.extraFlags",
+    "anchor_id": "opt-services.prometheus.exporters.node.extraFlags",
+    "summary": "Extra commandline options to pass to the Node exporter executable.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "services.prometheus.exporters.node.listenAddress",
+    "anchor_id": "opt-services.prometheus.exporters.node.listenAddress",
+    "summary": "Address where Node exporter exposes its HTTP interface. Leave empty to bind to all addresses.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "services.prometheus.exporters.node.port",
+    "anchor_id": "opt-services.prometheus.exporters.node.port",
+    "summary": "Port where the Node exporter exposes its HTTP interface.",
+    "option_type": "16 bit unsigned integer; between 0 and 65535 (both inclusive)"
+  },
+  {
+    "option_path": "services.redis.enable",
+    "anchor_id": "opt-services.redis.enable",
+    "summary": "Whether to enable the redis database service.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.redis.package",
+    "anchor_id": "opt-services.redis.package",
+    "summary": "This option specifies the redis package to use",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.redis.appendOnly",
+    "anchor_id": "opt-services.redis.appendOnly",
+    "summary": "By default data is only periodically persisted to disk, enable this option to use an append-only file for improved persistence.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.redis.bind",
+    "anchor_id": "opt-services.redis.bind",
+    "summary": "The IP interface to bind to.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "services.redis.dataDir",
+    "anchor_id": "opt-services.redis.dataDir",
+    "summary": "Data directory for the redis database.",
+    "option_type": "null or absolute path"
+  },
+  {
+    "option_path": "services.redis.extraConfig",
+    "anchor_id": "opt-services.redis.extraConfig",
+    "summary": "Additional text to be appended to redis.conf .",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "services.redis.port",
+    "anchor_id": "opt-services.redis.port",
+    "summary": "The port for Redis to listen to.",
+    "option_type": "signed integer"
+  },
+  {
+    "option_path": "services.redis.unixSocket",
+    "anchor_id": "opt-services.redis.unixSocket",
+    "summary": "The path to the socket to bind to.",
+    "option_type": "null or absolute path"
+  },
+  {
+    "option_path": "services.sketchybar.enable",
+    "anchor_id": "opt-services.sketchybar.enable",
+    "summary": "Whether to enable sketchybar.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.sketchybar.package",
+    "anchor_id": "opt-services.sketchybar.package",
+    "summary": "The sketchybar package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "services.sketchybar.config",
+    "anchor_id": "opt-services.sketchybar.config",
+    "summary": "Contents of sketchybar’s configuration file. If empty (the default), the configuration file won’t be managed.",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "services.sketchybar.extraPackages",
+    "anchor_id": "opt-services.sketchybar.extraPackages",
+    "summary": "Extra packages to add to PATH.",
+    "option_type": "list of package"
+  },
+  {
+    "option_path": "services.skhd.enable",
+    "anchor_id": "opt-services.skhd.enable",
+    "summary": "Whether to enable the skhd hotkey daemon.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.skhd.package",
+    "anchor_id": "opt-services.skhd.package",
+    "summary": "This option specifies the skhd package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "services.skhd.skhdConfig",
+    "anchor_id": "opt-services.skhd.skhdConfig",
+    "summary": "Config to use for skhdrc .",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "services.spacebar.enable",
+    "anchor_id": "opt-services.spacebar.enable",
+    "summary": "Whether to enable the spacebar.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.spacebar.package",
+    "anchor_id": "opt-services.spacebar.package",
+    "summary": "The spacebar package to use.",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.spacebar.config",
+    "anchor_id": "opt-services.spacebar.config",
+    "summary": "Key/Value pairs to pass to spacebar’s ‘config’ domain, via the configuration file.",
+    "option_type": "attribute set"
+  },
+  {
+    "option_path": "services.spacebar.extraConfig",
+    "anchor_id": "opt-services.spacebar.extraConfig",
+    "summary": "Extra arbitrary configuration to append to the configuration file.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "services.spotifyd.enable",
+    "anchor_id": "opt-services.spotifyd.enable",
+    "summary": "Whether to enable the spotifyd service.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.spotifyd.package",
+    "anchor_id": "opt-services.spotifyd.package",
+    "summary": "The spotifyd package to use.",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.spotifyd.settings",
+    "anchor_id": "opt-services.spotifyd.settings",
+    "summary": "Configuration for spotifyd, see https://spotifyd.github.io/spotifyd/config/File.html for supported values.",
+    "option_type": "null or TOML value"
+  },
+  {
+    "option_path": "services.synapse-bt.enable",
+    "anchor_id": "opt-services.synapse-bt.enable",
+    "summary": "Whether to run Synapse BitTorrent Daemon.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.synapse-bt.package",
+    "anchor_id": "opt-services.synapse-bt.package",
+    "summary": "Synapse BitTorrent package to use.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "services.synapse-bt.downloadDir",
+    "anchor_id": "opt-services.synapse-bt.downloadDir",
+    "summary": "Download directory for Synapse BitTorrent.",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.synapse-bt.extraConfig",
+    "anchor_id": "opt-services.synapse-bt.extraConfig",
+    "summary": "Extra configuration options for Synapse BitTorrent.",
+    "option_type": "attribute set"
+  },
+  {
+    "option_path": "services.synapse-bt.port",
+    "anchor_id": "opt-services.synapse-bt.port",
+    "summary": "The port on which Synapse BitTorrent listens.",
+    "option_type": "signed integer"
+  },
+  {
+    "option_path": "services.synergy.package",
+    "anchor_id": "opt-services.synergy.package",
+    "summary": "The package used for the synergy client and server.",
+    "option_type": "package"
+  },
+  {
+    "option_path": "services.synergy.client.enable",
+    "anchor_id": "opt-services.synergy.client.enable",
+    "summary": "Whether to enable the Synergy client (receive keyboard and mouse events from a Synergy server).",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.synergy.client.autoStart",
+    "anchor_id": "opt-services.synergy.client.autoStart",
+    "summary": "Whether the Synergy client should be started automatically.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.synergy.client.screenName",
+    "anchor_id": "opt-services.synergy.client.screenName",
+    "summary": "Use the given name instead of the hostname to identify ourselves to the server.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "services.synergy.client.serverAddress",
+    "anchor_id": "opt-services.synergy.client.serverAddress",
+    "summary": "The server address is of the form: [hostname][:port]. The hostname must be the address or hostname of the server. The port overrides the default port, 24800.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "services.synergy.client.tls.enable",
+    "anchor_id": "opt-services.synergy.client.tls.enable",
+    "summary": "Whether to enable Whether TLS encryption should be used.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.synergy.client.tls.cert",
+    "anchor_id": "opt-services.synergy.client.tls.cert",
+    "summary": "The TLS certificate to use for encryption.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "services.synergy.server.enable",
+    "anchor_id": "opt-services.synergy.server.enable",
+    "summary": "Whether to enable the Synergy server (send keyboard and mouse events).",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.synergy.server.address",
+    "anchor_id": "opt-services.synergy.server.address",
+    "summary": "Address on which to listen for clients.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "services.synergy.server.autoStart",
+    "anchor_id": "opt-services.synergy.server.autoStart",
+    "summary": "Whether the Synergy server should be started automatically.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.synergy.server.configFile",
+    "anchor_id": "opt-services.synergy.server.configFile",
+    "summary": "The Synergy server configuration file.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "services.synergy.server.screenName",
+    "anchor_id": "opt-services.synergy.server.screenName",
+    "summary": "Use the given name instead of the hostname to identify this screen in the configuration.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "services.synergy.server.tls.enable",
+    "anchor_id": "opt-services.synergy.server.tls.enable",
+    "summary": "Whether to enable Whether TLS encryption should be used.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.synergy.server.tls.cert",
+    "anchor_id": "opt-services.synergy.server.tls.cert",
+    "summary": "The TLS certificate to use for encryption.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "services.tailscale.enable",
+    "anchor_id": "opt-services.tailscale.enable",
+    "summary": "Whether to enable Tailscale client daemon.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.tailscale.package",
+    "anchor_id": "opt-services.tailscale.package",
+    "summary": "The package to use for tailscale",
+    "option_type": "package"
+  },
+  {
+    "option_path": "services.tailscale.overrideLocalDns",
+    "anchor_id": "opt-services.tailscale.overrideLocalDns",
+    "summary": "This option implements Override local DNS as it is not yet implemented in Tailscaled-on-macOS.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.telegraf.enable",
+    "anchor_id": "opt-services.telegraf.enable",
+    "summary": "Whether to enable telegraf agent.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.telegraf.package",
+    "anchor_id": "opt-services.telegraf.package",
+    "summary": "Which telegraf derivation to use",
+    "option_type": "package"
+  },
+  {
+    "option_path": "services.telegraf.configUrl",
+    "anchor_id": "opt-services.telegraf.configUrl",
+    "summary": "Url to fetch config from",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "services.telegraf.environmentFiles",
+    "anchor_id": "opt-services.telegraf.environmentFiles",
+    "summary": "File to load as environment file. This is useful to avoid putting secrets into the nix store.",
+    "option_type": "list of absolute path"
+  },
+  {
+    "option_path": "services.telegraf.extraConfig",
+    "anchor_id": "opt-services.telegraf.extraConfig",
+    "summary": "Extra configuration options for telegraf",
+    "option_type": "TOML value"
+  },
+  {
+    "option_path": "services.trezord.enable",
+    "anchor_id": "opt-services.trezord.enable",
+    "summary": "Enable Trezor bridge daemon, for use with Trezor hardware wallets.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.trezord.emulator.enable",
+    "anchor_id": "opt-services.trezord.emulator.enable",
+    "summary": "Enable Trezor emulator support.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.trezord.emulator.port",
+    "anchor_id": "opt-services.trezord.emulator.port",
+    "summary": "Listening port for the Trezor emulator.",
+    "option_type": "16 bit unsigned integer; between 0 and 65535 (both inclusive)"
+  },
+  {
+    "option_path": "services.yabai.enable",
+    "anchor_id": "opt-services.yabai.enable",
+    "summary": "Whether to enable the yabai window manager.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.yabai.enableScriptingAddition",
+    "anchor_id": "opt-services.yabai.enableScriptingAddition",
+    "summary": "Whether to enable yabai’s scripting-addition. SIP must be disabled for this to work.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "services.yabai.package",
+    "anchor_id": "opt-services.yabai.package",
+    "summary": "The yabai package to use.",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "services.yabai.config",
+    "anchor_id": "opt-services.yabai.config",
+    "summary": "Key/Value pairs to pass to yabai’s ‘config’ domain, via the configuration file.",
+    "option_type": "attribute set"
+  },
+  {
+    "option_path": "services.yabai.extraConfig",
+    "anchor_id": "opt-services.yabai.extraConfig",
+    "summary": "Extra arbitrary configuration to append to the configuration file",
+    "option_type": "strings concatenated with “\\n”"
+  },
+  {
+    "option_path": "system.activationScripts",
+    "anchor_id": "opt-system.activationScripts._name_.enable",
+    "summary": "Whether this file should be generated. This option allows specific files to be disabled.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "system.checks.verifyBuildUsers",
+    "anchor_id": "opt-system.checks.verifyBuildUsers",
+    "summary": "Whether to run the Nix build users validation checks.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "system.checks.verifyMacOSVersion",
+    "anchor_id": "opt-system.checks.verifyMacOSVersion",
+    "summary": "Whether to run the macOS version check.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "system.checks.verifyNixPath",
+    "anchor_id": "opt-system.checks.verifyNixPath",
+    "summary": "Whether to run the NIX_PATH validation checks.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "system.configurationRevision",
+    "anchor_id": "opt-system.configurationRevision",
+    "summary": "The Git revision of the top-level flake from which this configuration was built.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "system.darwinLabel",
+    "anchor_id": "opt-system.darwinLabel",
+    "summary": "Label to be used in the names of generated outputs.",
+    "option_type": "string"
+  },
+  {
+    "option_path": "system.darwinRelease",
+    "anchor_id": "opt-system.darwinRelease",
+    "summary": "The nix-darwin release (e.g. 24.11 ).",
+    "option_type": "string (read only)"
+  },
+  {
+    "option_path": "system.defaults",
+    "anchor_id": "opt-system.defaults._.GlobalPreferences_._com.apple.mouse.scaling_",
+    "summary": "Sets the mouse tracking speed. Found in the “Mouse” section of “System Preferences”. Set to -1.0 to disable mouse acceleration.",
+    "option_type": "null or floating point number"
+  },
+  {
+    "option_path": "system.defaults.ActivityMonitor.IconType",
+    "anchor_id": "opt-system.defaults.ActivityMonitor.IconType",
+    "summary": "Change the icon in the dock when running.",
+    "option_type": "null or signed integer"
+  },
+  {
+    "option_path": "system.defaults.ActivityMonitor.OpenMainWindow",
+    "anchor_id": "opt-system.defaults.ActivityMonitor.OpenMainWindow",
+    "summary": "Open the main window when opening Activity Monitor. Default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.ActivityMonitor.ShowCategory",
+    "anchor_id": "opt-system.defaults.ActivityMonitor.ShowCategory",
+    "summary": "Change which processes to show.",
+    "option_type": "null or one of 100, 101, 102, 103, 104, 105, 106, 107"
+  },
+  {
+    "option_path": "system.defaults.ActivityMonitor.SortColumn",
+    "anchor_id": "opt-system.defaults.ActivityMonitor.SortColumn",
+    "summary": "Which column to sort the main activity page (such as “CPUUsage”). Default is null.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "system.defaults.ActivityMonitor.SortDirection",
+    "anchor_id": "opt-system.defaults.ActivityMonitor.SortDirection",
+    "summary": "The sort direction of the sort column (0 is decending). Default is null.",
+    "option_type": "null or signed integer"
+  },
+  {
+    "option_path": "system.defaults.CustomSystemPreferences",
+    "anchor_id": "opt-system.defaults.CustomSystemPreferences",
+    "summary": "Sets custom system preferences",
+    "option_type": "open submodule of (plist value)"
+  },
+  {
+    "option_path": "system.defaults.CustomUserPreferences",
+    "anchor_id": "opt-system.defaults.CustomUserPreferences",
+    "summary": "Sets custom user preferences",
+    "option_type": "open submodule of (plist value)"
+  },
+  {
+    "option_path": "system.defaults.LaunchServices.LSQuarantine",
+    "anchor_id": "opt-system.defaults.LaunchServices.LSQuarantine",
+    "summary": "Whether to enable quarantine for downloaded applications. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.AppleEnableMouseSwipeNavigateWithScrolls",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.AppleEnableMouseSwipeNavigateWithScrolls",
+    "summary": "Enables swiping left or right with two fingers to navigate backward or forward. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.AppleEnableSwipeNavigateWithScrolls",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.AppleEnableSwipeNavigateWithScrolls",
+    "summary": "Enables swiping left or right with two fingers to navigate backward or forward. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.AppleFontSmoothing",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.AppleFontSmoothing",
+    "summary": "Sets the level of font smoothing (sub-pixel font rendering).",
+    "option_type": "null or one of 0, 1, 2"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.AppleICUForce24HourTime",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.AppleICUForce24HourTime",
+    "summary": "Whether to use 24-hour or 12-hour time. The default is based on region settings.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.AppleIconAppearanceTheme",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.AppleIconAppearanceTheme",
+    "summary": "Set icon and widget style",
+    "option_type": "null or one of “RegularDark”, “RegularAutomatic”, “ClearLight”, “ClearDark”, “ClearAutomatic”, “TintedLight”, “TintedDark”, “TintedAutomatic”"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.AppleInterfaceStyle",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.AppleInterfaceStyle",
+    "summary": "Set to ‘Dark’ to enable dark mode.",
+    "option_type": "null or value “Dark” (singular enum)"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.AppleInterfaceStyleSwitchesAutomatically",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.AppleInterfaceStyleSwitchesAutomatically",
+    "summary": "Whether to automatically switch between light and dark mode. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.AppleKeyboardUIMode",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.AppleKeyboardUIMode",
+    "summary": "Configures the keyboard control behavior. The default is 0.",
+    "option_type": "null or one of 0, 2, 3"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.AppleMeasurementUnits",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.AppleMeasurementUnits",
+    "summary": "Whether to use centimeters (metric) or inches (US, UK) as the measurement unit. The default is based on region settings.",
+    "option_type": "null or one of “Centimeters”, “Inches”"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.AppleMetricUnits",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.AppleMetricUnits",
+    "summary": "Whether to use the metric system. The default is based on region settings.",
+    "option_type": "null or one of 0, 1"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.ApplePressAndHoldEnabled",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.ApplePressAndHoldEnabled",
+    "summary": "Whether to enable the press-and-hold feature. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.AppleScrollerPagingBehavior",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.AppleScrollerPagingBehavior",
+    "summary": "Jump to the spot that’s clicked on the scroll bar. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.AppleShowAllExtensions",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.AppleShowAllExtensions",
+    "summary": "Whether to show all file extensions in Finder. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.AppleShowAllFiles",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.AppleShowAllFiles",
+    "summary": "Whether to always show hidden files. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.AppleShowScrollBars",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.AppleShowScrollBars",
+    "summary": "When to show the scrollbars. Options are ‘WhenScrolling’, ‘Automatic’ and ‘Always’.",
+    "option_type": "null or one of “WhenScrolling”, “Automatic”, “Always”"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.AppleSpacesSwitchOnActivate",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.AppleSpacesSwitchOnActivate",
+    "summary": "Whether or not to switch to a workspace that has a window of the application open, that is switched to. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.AppleTemperatureUnit",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.AppleTemperatureUnit",
+    "summary": "Whether to use Celsius or Fahrenheit. The default is based on region settings.",
+    "option_type": "null or one of “Celsius”, “Fahrenheit”"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.AppleWindowTabbingMode",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.AppleWindowTabbingMode",
+    "summary": "Sets the window tabbing when opening a new document: ‘manual’, ‘always’, or ‘fullscreen’. The default is ‘fullscreen’.",
+    "option_type": "null or one of “manual”, “always”, “fullscreen”"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.InitialKeyRepeat",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.InitialKeyRepeat",
+    "summary": "Apple menu > System Preferences > Keyboard",
+    "option_type": "null or signed integer"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.KeyRepeat",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.KeyRepeat",
+    "summary": "Apple menu > System Preferences > Keyboard",
+    "option_type": "null or signed integer"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.NSAutomaticCapitalizationEnabled",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.NSAutomaticCapitalizationEnabled",
+    "summary": "Whether to enable automatic capitalization. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.NSAutomaticDashSubstitutionEnabled",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.NSAutomaticDashSubstitutionEnabled",
+    "summary": "Whether to enable smart dash substitution. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.NSAutomaticInlinePredictionEnabled",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.NSAutomaticInlinePredictionEnabled",
+    "summary": "Whether to enable inline predictive text. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.NSAutomaticPeriodSubstitutionEnabled",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.NSAutomaticPeriodSubstitutionEnabled",
+    "summary": "Whether to enable smart period substitution. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.NSAutomaticQuoteSubstitutionEnabled",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.NSAutomaticQuoteSubstitutionEnabled",
+    "summary": "Whether to enable smart quote substitution. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.NSAutomaticSpellingCorrectionEnabled",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.NSAutomaticSpellingCorrectionEnabled",
+    "summary": "Whether to enable automatic spelling correction. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.NSAutomaticWindowAnimationsEnabled",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.NSAutomaticWindowAnimationsEnabled",
+    "summary": "Whether to animate opening and closing of windows and popovers. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.NSDisableAutomaticTermination",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.NSDisableAutomaticTermination",
+    "summary": "Whether to disable the automatic termination of inactive apps.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.NSDocumentSaveNewDocumentsToCloud",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.NSDocumentSaveNewDocumentsToCloud",
+    "summary": "Whether to save new documents to iCloud by default. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.NSNavPanelExpandedStateForSaveMode",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.NSNavPanelExpandedStateForSaveMode",
+    "summary": "Whether to use expanded save panel by default. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.NSNavPanelExpandedStateForSaveMode2",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.NSNavPanelExpandedStateForSaveMode2",
+    "summary": "Whether to use expanded save panel by default. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.NSScrollAnimationEnabled",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.NSScrollAnimationEnabled",
+    "summary": "Whether to enable smooth scrolling. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.NSStatusItemSelectionPadding",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.NSStatusItemSelectionPadding",
+    "summary": "Sets the padding around status icons in the menu bar.",
+    "option_type": "null or signed integer"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.NSStatusItemSpacing",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.NSStatusItemSpacing",
+    "summary": "Sets the spacing between status icons in the menu bar.",
+    "option_type": "null or signed integer"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.NSTableViewDefaultSizeMode",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.NSTableViewDefaultSizeMode",
+    "summary": "Sets the size of the finder sidebar icons: 1 (small), 2 (medium) or 3 (large). The default is 3.",
+    "option_type": "null or one of 1, 2, 3"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.NSTextShowsControlCharacters",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.NSTextShowsControlCharacters",
+    "summary": "Whether to display ASCII control characters using caret notation in standard text views. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.NSUseAnimatedFocusRing",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.NSUseAnimatedFocusRing",
+    "summary": "Whether to enable the focus ring animation. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.NSWindowResizeTime",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.NSWindowResizeTime",
+    "summary": "Sets the speed speed of window resizing. The default is given in the example.",
+    "option_type": "null or floating point number"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.NSWindowShouldDragOnGesture",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.NSWindowShouldDragOnGesture",
+    "summary": "Whether to enable moving window by holding anywhere on it like on Linux. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.PMPrintingExpandedStateForPrint",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.PMPrintingExpandedStateForPrint",
+    "summary": "Whether to use the expanded print panel by default. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain.PMPrintingExpandedStateForPrint2",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain.PMPrintingExpandedStateForPrint2",
+    "summary": "Whether to use the expanded print panel by default. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain._HIHideMenuBar",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain._HIHideMenuBar",
+    "summary": "Whether to autohide the menu bar. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.NSGlobalDomain",
+    "anchor_id": "opt-system.defaults.NSGlobalDomain._com.apple.keyboard.fnState_",
+    "summary": "Use F1, F2, etc. keys as standard function keys.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.SoftwareUpdate.AutomaticallyInstallMacOSUpdates",
+    "anchor_id": "opt-system.defaults.SoftwareUpdate.AutomaticallyInstallMacOSUpdates",
+    "summary": "Automatically install Mac OS software updates. Defaults to false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.WindowManager.AppWindowGroupingBehavior",
+    "anchor_id": "opt-system.defaults.WindowManager.AppWindowGroupingBehavior",
+    "summary": "Grouping strategy when showing windows from an application. false means “One at a time” true means “All at once”",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.WindowManager.AutoHide",
+    "anchor_id": "opt-system.defaults.WindowManager.AutoHide",
+    "summary": "Auto hide stage strip showing recent apps. Default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.WindowManager.EnableStandardClickToShowDesktop",
+    "anchor_id": "opt-system.defaults.WindowManager.EnableStandardClickToShowDesktop",
+    "summary": "Click wallpaper to reveal desktop Clicking your wallpaper will move all windows out of the way to allow access to your desktop items and widgets. Default is true. false means “Only in Stage Manager” true means “Always”",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.WindowManager.EnableTiledWindowMargins",
+    "anchor_id": "opt-system.defaults.WindowManager.EnableTiledWindowMargins",
+    "summary": "Enable window margins when tiling windows. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.WindowManager.EnableTilingByEdgeDrag",
+    "anchor_id": "opt-system.defaults.WindowManager.EnableTilingByEdgeDrag",
+    "summary": "Enable dragging windows to screen edges to tile them. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.WindowManager.EnableTilingOptionAccelerator",
+    "anchor_id": "opt-system.defaults.WindowManager.EnableTilingOptionAccelerator",
+    "summary": "Enable holding alt to tile windows. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.WindowManager.EnableTopTilingByEdgeDrag",
+    "anchor_id": "opt-system.defaults.WindowManager.EnableTopTilingByEdgeDrag",
+    "summary": "Enable dragging windows to the menu bar to fill the screen. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.WindowManager.GloballyEnabled",
+    "anchor_id": "opt-system.defaults.WindowManager.GloballyEnabled",
+    "summary": "Enable Stage Manager Stage Manager arranges your recent windows into a single strip for reduced clutter and quick access. Default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.WindowManager.HideDesktop",
+    "anchor_id": "opt-system.defaults.WindowManager.HideDesktop",
+    "summary": "Hide items in Stage Manager.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.WindowManager.StageManagerHideWidgets",
+    "anchor_id": "opt-system.defaults.WindowManager.StageManagerHideWidgets",
+    "summary": "Hide widgets in Stage Manager.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.WindowManager.StandardHideDesktopIcons",
+    "anchor_id": "opt-system.defaults.WindowManager.StandardHideDesktopIcons",
+    "summary": "Hide items on desktop.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.WindowManager.StandardHideWidgets",
+    "anchor_id": "opt-system.defaults.WindowManager.StandardHideWidgets",
+    "summary": "Hide widgets on desktop.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.controlcenter.AirDrop",
+    "anchor_id": "opt-system.defaults.controlcenter.AirDrop",
+    "summary": "Apple menu > System Preferences > Control Center > AirDrop",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.controlcenter.BatteryShowPercentage",
+    "anchor_id": "opt-system.defaults.controlcenter.BatteryShowPercentage",
+    "summary": "Apple menu > System Preferences > Control Center > Battery",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.controlcenter.Bluetooth",
+    "anchor_id": "opt-system.defaults.controlcenter.Bluetooth",
+    "summary": "Apple menu > System Preferences > Control Center > Bluetooth",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.controlcenter.Display",
+    "anchor_id": "opt-system.defaults.controlcenter.Display",
+    "summary": "Apple menu > System Preferences > Control Center > Display",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.controlcenter.FocusModes",
+    "anchor_id": "opt-system.defaults.controlcenter.FocusModes",
+    "summary": "Apple menu > System Preferences > Control Center > Focus",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.controlcenter.NowPlaying",
+    "anchor_id": "opt-system.defaults.controlcenter.NowPlaying",
+    "summary": "Apple menu > System Preferences > Control Center > Now Playing",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.controlcenter.Sound",
+    "anchor_id": "opt-system.defaults.controlcenter.Sound",
+    "summary": "Apple menu > System Preferences > Control Center > Sound",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.dock.enable-spring-load-actions-on-all-items",
+    "anchor_id": "opt-system.defaults.dock.enable-spring-load-actions-on-all-items",
+    "summary": "Enable spring loading for all Dock items. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.dock.appswitcher-all-displays",
+    "anchor_id": "opt-system.defaults.dock.appswitcher-all-displays",
+    "summary": "Whether to display the appswitcher on all displays or only the main one. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.dock.autohide",
+    "anchor_id": "opt-system.defaults.dock.autohide",
+    "summary": "Whether to automatically hide and show the dock. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.dock.autohide-delay",
+    "anchor_id": "opt-system.defaults.dock.autohide-delay",
+    "summary": "Sets the speed of the autohide delay. The default is given in the example.",
+    "option_type": "null or floating point number"
+  },
+  {
+    "option_path": "system.defaults.dock.autohide-time-modifier",
+    "anchor_id": "opt-system.defaults.dock.autohide-time-modifier",
+    "summary": "Sets the speed of the animation when hiding/showing the Dock. The default is given in the example.",
+    "option_type": "null or floating point number"
+  },
+  {
+    "option_path": "system.defaults.dock.dashboard-in-overlay",
+    "anchor_id": "opt-system.defaults.dock.dashboard-in-overlay",
+    "summary": "Whether to hide Dashboard as a Space. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.dock.expose-animation-duration",
+    "anchor_id": "opt-system.defaults.dock.expose-animation-duration",
+    "summary": "Sets the speed of the Mission Control animations. The default is given in the example.",
+    "option_type": "null or floating point number"
+  },
+  {
+    "option_path": "system.defaults.dock.expose-group-apps",
+    "anchor_id": "opt-system.defaults.dock.expose-group-apps",
+    "summary": "Whether to group windows by application in Mission Control’s Exposé. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.dock.largesize",
+    "anchor_id": "opt-system.defaults.dock.largesize",
+    "summary": "Magnified icon size on hover. The default is 16.",
+    "option_type": "null or integer between 16 and 128 (both inclusive)"
+  },
+  {
+    "option_path": "system.defaults.dock.launchanim",
+    "anchor_id": "opt-system.defaults.dock.launchanim",
+    "summary": "Animate opening applications from the Dock. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.dock.magnification",
+    "anchor_id": "opt-system.defaults.dock.magnification",
+    "summary": "Magnify icon on hover. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.dock.mineffect",
+    "anchor_id": "opt-system.defaults.dock.mineffect",
+    "summary": "Set the minimize/maximize window effect. The default is genie.",
+    "option_type": "null or one of “genie”, “suck”, “scale”"
+  },
+  {
+    "option_path": "system.defaults.dock.minimize-to-application",
+    "anchor_id": "opt-system.defaults.dock.minimize-to-application",
+    "summary": "Whether to minimize windows into their application icon. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.dock.mouse-over-hilite-stack",
+    "anchor_id": "opt-system.defaults.dock.mouse-over-hilite-stack",
+    "summary": "Enable highlight hover effect for the grid view of a stack in the Dock.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.dock.mru-spaces",
+    "anchor_id": "opt-system.defaults.dock.mru-spaces",
+    "summary": "Whether to automatically rearrange spaces based on most recent use. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.dock.orientation",
+    "anchor_id": "opt-system.defaults.dock.orientation",
+    "summary": "Position of the dock on screen. The default is “bottom”.",
+    "option_type": "null or one of “bottom”, “left”, “right”"
+  },
+  {
+    "option_path": "system.defaults.dock.persistent-apps",
+    "anchor_id": "opt-system.defaults.dock.persistent-apps",
+    "summary": "Persistent applications, spacers, files, and folders in the dock.",
+    "option_type": "null or (list of (attribute-tagged union with choices: app, file, folder, spacer or (string or absolute path) convertible to it))"
+  },
+  {
+    "option_path": "system.defaults.dock.persistent-others",
+    "anchor_id": "opt-system.defaults.dock.persistent-others",
+    "summary": "Persistent files, and folders in the dock.",
+    "option_type": "null or (list of (attribute-tagged union with choices: file, folder or (string or absolute path) convertible to it))"
+  },
+  {
+    "option_path": "system.defaults.dock.scroll-to-open",
+    "anchor_id": "opt-system.defaults.dock.scroll-to-open",
+    "summary": "Scroll up on a Dock icon to show all Space’s opened windows for an app, or open stack. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.dock.show-process-indicators",
+    "anchor_id": "opt-system.defaults.dock.show-process-indicators",
+    "summary": "Show indicator lights for open applications in the Dock. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.dock.show-recents",
+    "anchor_id": "opt-system.defaults.dock.show-recents",
+    "summary": "Show recent applications in the dock. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.dock.showAppExposeGestureEnabled",
+    "anchor_id": "opt-system.defaults.dock.showAppExposeGestureEnabled",
+    "summary": "Whether to enable trackpad gestures (three- or four-finger vertical swipe) to show App Exposé. The default is false. This feature interacts with system.defaults.trackpad.TrackpadFourFingerVertSwipeGesture and system.defaults.trackpad.TrackpadThreeFingerVertSwipeGesture to determine which gesture triggers App Exposé.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.dock.showDesktopGestureEnabled",
+    "anchor_id": "opt-system.defaults.dock.showDesktopGestureEnabled",
+    "summary": "Whether to enable four-finger spread gesture to show the Desktop. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.dock.showLaunchpadGestureEnabled",
+    "anchor_id": "opt-system.defaults.dock.showLaunchpadGestureEnabled",
+    "summary": "Whether to enable four-finger pinch gesture to show the Launchpad. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.dock.showMissionControlGestureEnabled",
+    "anchor_id": "opt-system.defaults.dock.showMissionControlGestureEnabled",
+    "summary": "Whether to enable trackpad gestures (three- or four-finger vertical swipe) to show Mission Control. The default is false. This feature interacts with system.defaults.trackpad.TrackpadFourFingerVertSwipeGesture and system.defaults.trackpad.TrackpadThreeFingerVertSwipeGesture to determine which gesture triggers Mission Control.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.dock.showhidden",
+    "anchor_id": "opt-system.defaults.dock.showhidden",
+    "summary": "Whether to make icons of hidden applications tranclucent. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.dock.slow-motion-allowed",
+    "anchor_id": "opt-system.defaults.dock.slow-motion-allowed",
+    "summary": "Allow for slow-motion minimize effect while holding Shift key. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.dock.static-only",
+    "anchor_id": "opt-system.defaults.dock.static-only",
+    "summary": "Show only open applications in the Dock. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.dock.tilesize",
+    "anchor_id": "opt-system.defaults.dock.tilesize",
+    "summary": "Size of the icons in the dock. The default is 64.",
+    "option_type": "null or signed integer"
+  },
+  {
+    "option_path": "system.defaults.dock.wvous-bl-corner",
+    "anchor_id": "opt-system.defaults.dock.wvous-bl-corner",
+    "summary": "Hot corner action for bottom left corner. Valid values include:",
+    "option_type": "null or (positive integer, meaning >0)"
+  },
+  {
+    "option_path": "system.defaults.dock.wvous-br-corner",
+    "anchor_id": "opt-system.defaults.dock.wvous-br-corner",
+    "summary": "Hot corner action for bottom right corner. Valid values include:",
+    "option_type": "null or (positive integer, meaning >0)"
+  },
+  {
+    "option_path": "system.defaults.dock.wvous-tl-corner",
+    "anchor_id": "opt-system.defaults.dock.wvous-tl-corner",
+    "summary": "Hot corner action for top left corner. Valid values include:",
+    "option_type": "null or (positive integer, meaning >0)"
+  },
+  {
+    "option_path": "system.defaults.dock.wvous-tr-corner",
+    "anchor_id": "opt-system.defaults.dock.wvous-tr-corner",
+    "summary": "Hot corner action for top right corner. Valid values include:",
+    "option_type": "null or (positive integer, meaning >0)"
+  },
+  {
+    "option_path": "system.defaults.finder.AppleShowAllExtensions",
+    "anchor_id": "opt-system.defaults.finder.AppleShowAllExtensions",
+    "summary": "Whether to always show file extensions. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.finder.AppleShowAllFiles",
+    "anchor_id": "opt-system.defaults.finder.AppleShowAllFiles",
+    "summary": "Whether to always show hidden files. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.finder.CreateDesktop",
+    "anchor_id": "opt-system.defaults.finder.CreateDesktop",
+    "summary": "Whether to show icons on the desktop or not. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.finder.FXDefaultSearchScope",
+    "anchor_id": "opt-system.defaults.finder.FXDefaultSearchScope",
+    "summary": "Change the default search scope. Use “SCcf” to default to current folder. The default is unset (“This Mac”).",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "system.defaults.finder.FXEnableExtensionChangeWarning",
+    "anchor_id": "opt-system.defaults.finder.FXEnableExtensionChangeWarning",
+    "summary": "Whether to show warnings when change the file extension of files. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.finder.FXPreferredViewStyle",
+    "anchor_id": "opt-system.defaults.finder.FXPreferredViewStyle",
+    "summary": "Change the default finder view. “icnv” = Icon view, “Nlsv” = List view, “clmv” = Column View, “Flwv” = Gallery View The default is icnv.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "system.defaults.finder.FXRemoveOldTrashItems",
+    "anchor_id": "opt-system.defaults.finder.FXRemoveOldTrashItems",
+    "summary": "Remove items in the trash after 30 days. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.finder.NewWindowTarget",
+    "anchor_id": "opt-system.defaults.finder.NewWindowTarget",
+    "summary": "Change the default folder shown in Finder windows. “Other” corresponds to the value of NewWindowTargetPath. The default is unset (“Recents”).",
+    "option_type": "null or one of “Computer”, “OS volume”, “Home”, “Desktop”, “Documents”, “Recents”, “iCloud Drive”, “Other”"
+  },
+  {
+    "option_path": "system.defaults.finder.NewWindowTargetPath",
+    "anchor_id": "opt-system.defaults.finder.NewWindowTargetPath",
+    "summary": "Sets the URI to open when NewWindowTarget is “Other”. Spaces and similar characters must be escaped. If the value is invalid, Finder will open your home directory. Example: “file:///Users/foo/long%20cat%20pics”. The default is unset.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "system.defaults.finder.QuitMenuItem",
+    "anchor_id": "opt-system.defaults.finder.QuitMenuItem",
+    "summary": "Whether to allow quitting of the Finder. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.finder.ShowExternalHardDrivesOnDesktop",
+    "anchor_id": "opt-system.defaults.finder.ShowExternalHardDrivesOnDesktop",
+    "summary": "Whether to show external disks on desktop. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.finder.ShowHardDrivesOnDesktop",
+    "anchor_id": "opt-system.defaults.finder.ShowHardDrivesOnDesktop",
+    "summary": "Whether to show hard disks on desktop. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.finder.ShowMountedServersOnDesktop",
+    "anchor_id": "opt-system.defaults.finder.ShowMountedServersOnDesktop",
+    "summary": "Whether to show connected servers on desktop. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.finder.ShowPathbar",
+    "anchor_id": "opt-system.defaults.finder.ShowPathbar",
+    "summary": "Show path breadcrumbs in finder windows. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.finder.ShowRemovableMediaOnDesktop",
+    "anchor_id": "opt-system.defaults.finder.ShowRemovableMediaOnDesktop",
+    "summary": "Whether to show removable media (CDs, DVDs and iPods) on desktop. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.finder.ShowStatusBar",
+    "anchor_id": "opt-system.defaults.finder.ShowStatusBar",
+    "summary": "Show status bar at bottom of finder windows with item/disk space stats. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.finder._FXEnableColumnAutoSizing",
+    "anchor_id": "opt-system.defaults.finder._FXEnableColumnAutoSizing",
+    "summary": "Resize columns to fit filenames. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.finder._FXShowPosixPathInTitle",
+    "anchor_id": "opt-system.defaults.finder._FXShowPosixPathInTitle",
+    "summary": "Whether to show the full POSIX filepath in the window title. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.finder._FXSortFoldersFirst",
+    "anchor_id": "opt-system.defaults.finder._FXSortFoldersFirst",
+    "summary": "Keep folders on top when sorting by name. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.finder._FXSortFoldersFirstOnDesktop",
+    "anchor_id": "opt-system.defaults.finder._FXSortFoldersFirstOnDesktop",
+    "summary": "Keep folders on top when sorting by name on the desktop. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.hitoolbox.AppleFnUsageType",
+    "anchor_id": "opt-system.defaults.hitoolbox.AppleFnUsageType",
+    "summary": "Chooses what happens when you press the Fn key on the keyboard. A restart is required for this setting to take effect.",
+    "option_type": "null or one of “Do Nothing”, “Change Input Source”, “Show Emoji & Symbols”, “Start Dictation”"
+  },
+  {
+    "option_path": "system.defaults.iCal.CalendarSidebarShown",
+    "anchor_id": "opt-system.defaults.iCal.CalendarSidebarShown",
+    "summary": "Show calendar list. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.iCal",
+    "anchor_id": "opt-system.defaults.iCal._TimeZone_support_enabled_",
+    "summary": "Turn on time zone support. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.loginwindow.DisableConsoleAccess",
+    "anchor_id": "opt-system.defaults.loginwindow.DisableConsoleAccess",
+    "summary": "Disables the ability for a user to access the console by typing “>console” for a username at the login window. Default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.loginwindow.GuestEnabled",
+    "anchor_id": "opt-system.defaults.loginwindow.GuestEnabled",
+    "summary": "Apple menu > System Preferences > Users and Groups > Login Options",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.loginwindow.LoginwindowText",
+    "anchor_id": "opt-system.defaults.loginwindow.LoginwindowText",
+    "summary": "Text to be shown on the login window. Default is “\\\\U03bb”.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "system.defaults.loginwindow.PowerOffDisabledWhileLoggedIn",
+    "anchor_id": "opt-system.defaults.loginwindow.PowerOffDisabledWhileLoggedIn",
+    "summary": "Apple menu > System Preferences > Users and Groups > Login Options",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.loginwindow.RestartDisabled",
+    "anchor_id": "opt-system.defaults.loginwindow.RestartDisabled",
+    "summary": "Apple menu > System Preferences > Users and Groups > Login Options",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.loginwindow.RestartDisabledWhileLoggedIn",
+    "anchor_id": "opt-system.defaults.loginwindow.RestartDisabledWhileLoggedIn",
+    "summary": "Apple menu > System Preferences > Users and Groups > Login Options",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.loginwindow.SHOWFULLNAME",
+    "anchor_id": "opt-system.defaults.loginwindow.SHOWFULLNAME",
+    "summary": "Apple menu > System Preferences > Users and Groups > Login Options",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.loginwindow.ShutDownDisabled",
+    "anchor_id": "opt-system.defaults.loginwindow.ShutDownDisabled",
+    "summary": "Apple menu > System Preferences > Users and Groups > Login Options",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.loginwindow.ShutDownDisabledWhileLoggedIn",
+    "anchor_id": "opt-system.defaults.loginwindow.ShutDownDisabledWhileLoggedIn",
+    "summary": "Apple menu > System Preferences > Users and Groups > Login Options",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.loginwindow.SleepDisabled",
+    "anchor_id": "opt-system.defaults.loginwindow.SleepDisabled",
+    "summary": "Apple menu > System Preferences > Users and Groups > Login Options",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.loginwindow.autoLoginUser",
+    "anchor_id": "opt-system.defaults.loginwindow.autoLoginUser",
+    "summary": "Apple menu > System Preferences > Users and Groups > Login Options",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "system.defaults.magicmouse.MouseButtonMode",
+    "anchor_id": "opt-system.defaults.magicmouse.MouseButtonMode",
+    "summary": "“OneButton”: any tap is a left click. “TwoButton”: allow left- and right-clicking.",
+    "option_type": "null or one of “OneButton”, “TwoButton”"
+  },
+  {
+    "option_path": "system.defaults.menuExtraClock.FlashDateSeparators",
+    "anchor_id": "opt-system.defaults.menuExtraClock.FlashDateSeparators",
+    "summary": "When enabled, the clock indicator (which by default is the colon) will flash on and off each second. Default is null.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.menuExtraClock.IsAnalog",
+    "anchor_id": "opt-system.defaults.menuExtraClock.IsAnalog",
+    "summary": "Show an analog clock instead of a digital one. Default is null.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.menuExtraClock.Show24Hour",
+    "anchor_id": "opt-system.defaults.menuExtraClock.Show24Hour",
+    "summary": "Show a 24-hour clock, instead of a 12-hour clock. Default is null.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.menuExtraClock.ShowAMPM",
+    "anchor_id": "opt-system.defaults.menuExtraClock.ShowAMPM",
+    "summary": "Show the AM/PM label. Useful if Show24Hour is false. Default is null.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.menuExtraClock.ShowDate",
+    "anchor_id": "opt-system.defaults.menuExtraClock.ShowDate",
+    "summary": "Show the full date. Default is null.",
+    "option_type": "null or one of 0, 1, 2"
+  },
+  {
+    "option_path": "system.defaults.menuExtraClock.ShowDayOfMonth",
+    "anchor_id": "opt-system.defaults.menuExtraClock.ShowDayOfMonth",
+    "summary": "Show the day of the month. Default is null.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.menuExtraClock.ShowDayOfWeek",
+    "anchor_id": "opt-system.defaults.menuExtraClock.ShowDayOfWeek",
+    "summary": "Show the day of the week. Default is null.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.menuExtraClock.ShowSeconds",
+    "anchor_id": "opt-system.defaults.menuExtraClock.ShowSeconds",
+    "summary": "Show the clock with second precision, instead of minutes. Default is null.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.screencapture.disable-shadow",
+    "anchor_id": "opt-system.defaults.screencapture.disable-shadow",
+    "summary": "Disable drop shadow border around screencaptures. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.screencapture.include-date",
+    "anchor_id": "opt-system.defaults.screencapture.include-date",
+    "summary": "Include date and time in screenshot filenames. The default is true. Screenshot 2024-01-09 at 13.27.20.png would be an example for true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.screencapture.location",
+    "anchor_id": "opt-system.defaults.screencapture.location",
+    "summary": "The filesystem path to which screencaptures should be written.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "system.defaults.screencapture.save-selections",
+    "anchor_id": "opt-system.defaults.screencapture.save-selections",
+    "summary": "Remember the selection window of the last screencapture. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.screencapture.show-thumbnail",
+    "anchor_id": "opt-system.defaults.screencapture.show-thumbnail",
+    "summary": "Show thumbnail after screencapture before writing to file. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.screencapture.target",
+    "anchor_id": "opt-system.defaults.screencapture.target",
+    "summary": "Target to which screencapture should save screenshot to. The default is “file”. Valid values include:",
+    "option_type": "null or one of “file”, “clipboard”, “preview”, “mail”, “messages”"
+  },
+  {
+    "option_path": "system.defaults.screencapture.type",
+    "anchor_id": "opt-system.defaults.screencapture.type",
+    "summary": "The image format to use, such as “jpg”.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "system.defaults.screensaver.askForPassword",
+    "anchor_id": "opt-system.defaults.screensaver.askForPassword",
+    "summary": "If true, the user is prompted for a password when the screen saver is unlocked or stopped. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.screensaver.askForPasswordDelay",
+    "anchor_id": "opt-system.defaults.screensaver.askForPasswordDelay",
+    "summary": "The number of seconds to delay before the password will be required to unlock or stop the screen saver (the grace period).",
+    "option_type": "null or signed integer"
+  },
+  {
+    "option_path": "system.defaults.smb.NetBIOSName",
+    "anchor_id": "opt-system.defaults.smb.NetBIOSName",
+    "summary": "Hostname to use for NetBIOS.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "system.defaults.smb.ServerDescription",
+    "anchor_id": "opt-system.defaults.smb.ServerDescription",
+    "summary": "Hostname to use for sharing services.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "system.defaults.spaces.spans-displays",
+    "anchor_id": "opt-system.defaults.spaces.spans-displays",
+    "summary": "Apple menu > System Preferences > Mission Control",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.trackpad.ActuateDetents",
+    "anchor_id": "opt-system.defaults.trackpad.ActuateDetents",
+    "summary": "Whether to enable haptic feedback. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.trackpad.ActuationStrength",
+    "anchor_id": "opt-system.defaults.trackpad.ActuationStrength",
+    "summary": "0 to enable Silent Clicking, 1 to disable. The default is 1.",
+    "option_type": "null or one of 0, 1"
+  },
+  {
+    "option_path": "system.defaults.trackpad.Clicking",
+    "anchor_id": "opt-system.defaults.trackpad.Clicking",
+    "summary": "Whether to enable tap to click. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.trackpad.DragLock",
+    "anchor_id": "opt-system.defaults.trackpad.DragLock",
+    "summary": "Whether to enable drag lock. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.trackpad.Dragging",
+    "anchor_id": "opt-system.defaults.trackpad.Dragging",
+    "summary": "Whether to enable tap to drag. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.trackpad.FirstClickThreshold",
+    "anchor_id": "opt-system.defaults.trackpad.FirstClickThreshold",
+    "summary": "For normal click: 0 for light clicking, 1 for medium, 2 for firm. The default is 1.",
+    "option_type": "null or one of 0, 1, 2"
+  },
+  {
+    "option_path": "system.defaults.trackpad.ForceSuppressed",
+    "anchor_id": "opt-system.defaults.trackpad.ForceSuppressed",
+    "summary": "Whether to disable force click. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.trackpad.SecondClickThreshold",
+    "anchor_id": "opt-system.defaults.trackpad.SecondClickThreshold",
+    "summary": "For force touch: 0 for light clicking, 1 for medium, 2 for firm. The default is 1.",
+    "option_type": "null or one of 0, 1, 2"
+  },
+  {
+    "option_path": "system.defaults.trackpad.TrackpadCornerSecondaryClick",
+    "anchor_id": "opt-system.defaults.trackpad.TrackpadCornerSecondaryClick",
+    "summary": "Whether to enable secondary click: 0 to disable, 1 to set bottom-left corner, 2 to set bottom-right corner. The default is 0.",
+    "option_type": "null or one of 0, 1, 2"
+  },
+  {
+    "option_path": "system.defaults.trackpad.TrackpadFourFingerHorizSwipeGesture",
+    "anchor_id": "opt-system.defaults.trackpad.TrackpadFourFingerHorizSwipeGesture",
+    "summary": "Whether to enable four-finger horizontal swipe gesture: 0 to disable, 2 to swipe between full-screen applications. The default is 0.",
+    "option_type": "null or one of 0, 2"
+  },
+  {
+    "option_path": "system.defaults.trackpad.TrackpadFourFingerPinchGesture",
+    "anchor_id": "opt-system.defaults.trackpad.TrackpadFourFingerPinchGesture",
+    "summary": "Whether to enable four-finger pinch gesture (spread shows the Desktop, pinch shows the Launchpad): 0 to disable, 2 to enable. The default is 0. This setting interacts with system.defaults.dock.showDesktopGestureEnabled and system.defaults.dock.showLaunchpadGestureEnabled to determine whether gestures are enabled for the Desktop, Launchpad, or both.",
+    "option_type": "null or one of 0, 2"
+  },
+  {
+    "option_path": "system.defaults.trackpad.TrackpadFourFingerVertSwipeGesture",
+    "anchor_id": "opt-system.defaults.trackpad.TrackpadFourFingerVertSwipeGesture",
+    "summary": "0 to disable four finger vertical swipe gestures, 2 to enable (down for Mission Control, up for App Exposé). The default is 2. When both three- and four-finger vertical swipe gestures are enabled, the three-finger variant takes precedence. This setting interacts with system.defaults.dock.showAppExposeGestureEnabled and system.defaults.dock.showMissionControlGestureEnabled to determine whether vertical swipe gestures are enabled for App Exposé, Mission Control, or both.",
+    "option_type": "null or one of 0, 2"
+  },
+  {
+    "option_path": "system.defaults.trackpad.TrackpadMomentumScroll",
+    "anchor_id": "opt-system.defaults.trackpad.TrackpadMomentumScroll",
+    "summary": "Whether to use inertia when scrolling. The default is true.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.trackpad.TrackpadPinch",
+    "anchor_id": "opt-system.defaults.trackpad.TrackpadPinch",
+    "summary": "Whether to enable two-finger pinch gesture for zooming in and out. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.trackpad.TrackpadRightClick",
+    "anchor_id": "opt-system.defaults.trackpad.TrackpadRightClick",
+    "summary": "Whether to enable trackpad right click (two-finger tap/click). The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.trackpad.TrackpadRotate",
+    "anchor_id": "opt-system.defaults.trackpad.TrackpadRotate",
+    "summary": "Whether to enable two-finger rotation gesture. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.trackpad.TrackpadThreeFingerDrag",
+    "anchor_id": "opt-system.defaults.trackpad.TrackpadThreeFingerDrag",
+    "summary": "Whether to enable three-finger drag. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.trackpad.TrackpadThreeFingerHorizSwipeGesture",
+    "anchor_id": "opt-system.defaults.trackpad.TrackpadThreeFingerHorizSwipeGesture",
+    "summary": "Whether to enable three-finger horizontal swipe gesture: 0 to disable, 1 to swipe between pages, 2 to swipe between full-screen applications. The default is 2.",
+    "option_type": "null or one of 0, 1, 2"
+  },
+  {
+    "option_path": "system.defaults.trackpad.TrackpadThreeFingerTapGesture",
+    "anchor_id": "opt-system.defaults.trackpad.TrackpadThreeFingerTapGesture",
+    "summary": "Whether to enable three-finger tap gesture: 0 to disable, 2 to trigger Look up & data detectors. The default is 2.",
+    "option_type": "null or one of 0, 2"
+  },
+  {
+    "option_path": "system.defaults.trackpad.TrackpadThreeFingerVertSwipeGesture",
+    "anchor_id": "opt-system.defaults.trackpad.TrackpadThreeFingerVertSwipeGesture",
+    "summary": "Whether to enable three-finger vertical swipe gesture (down for Mission Control, up for App Exposé): 0 to disable, 2 to enable. The default is 2. This setting interacts with system.defaults.dock.showAppExposeGestureEnabled and system.defaults.dock.showMissionControlGestureEnabled to determine whether vertical swipe gestures are enabled for App Exposé, Mission Control, or both.",
+    "option_type": "null or one of 0, 2"
+  },
+  {
+    "option_path": "system.defaults.trackpad.TrackpadTwoFingerDoubleTapGesture",
+    "anchor_id": "opt-system.defaults.trackpad.TrackpadTwoFingerDoubleTapGesture",
+    "summary": "Whether to enable smart zoom when double-tapping with two fingers. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.trackpad.TrackpadTwoFingerFromRightEdgeSwipeGesture",
+    "anchor_id": "opt-system.defaults.trackpad.TrackpadTwoFingerFromRightEdgeSwipeGesture",
+    "summary": "Whether to enable two-finger swipe-from-right-edge gesture: 0 to disable, 3 to open Notification Center. The default is 0.",
+    "option_type": "null or one of 0, 3"
+  },
+  {
+    "option_path": "system.defaults.universalaccess.closeViewScrollWheelToggle",
+    "anchor_id": "opt-system.defaults.universalaccess.closeViewScrollWheelToggle",
+    "summary": "Use scroll gesture with the Ctrl (^) modifier key to zoom. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.universalaccess.closeViewZoomFollowsFocus",
+    "anchor_id": "opt-system.defaults.universalaccess.closeViewZoomFollowsFocus",
+    "summary": "Follow the keyboard focus while zoomed in. Without setting closeViewScrollWheelToggle this has no effect. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.universalaccess.mouseDriverCursorSize",
+    "anchor_id": "opt-system.defaults.universalaccess.mouseDriverCursorSize",
+    "summary": "Set the size of cursor. 1 for normal, 4 for maximum. The default is 1.",
+    "option_type": "null or floating point number"
+  },
+  {
+    "option_path": "system.defaults.universalaccess.reduceMotion",
+    "anchor_id": "opt-system.defaults.universalaccess.reduceMotion",
+    "summary": "Disable animation when switching screens or opening apps",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.defaults.universalaccess.reduceTransparency",
+    "anchor_id": "opt-system.defaults.universalaccess.reduceTransparency",
+    "summary": "Disable transparency in the menu bar and elsewhere. The default is false.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.keyboard.enableKeyMapping",
+    "anchor_id": "opt-system.keyboard.enableKeyMapping",
+    "summary": "Whether to enable keyboard mappings.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "system.keyboard.nonUS.remapTilde",
+    "anchor_id": "opt-system.keyboard.nonUS.remapTilde",
+    "summary": "Whether to remap the Tilde key on non-us keyboards.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "system.keyboard.remapCapsLockToControl",
+    "anchor_id": "opt-system.keyboard.remapCapsLockToControl",
+    "summary": "Whether to remap the Caps Lock key to Control.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "system.keyboard.remapCapsLockToEscape",
+    "anchor_id": "opt-system.keyboard.remapCapsLockToEscape",
+    "summary": "Whether to remap the Caps Lock key to Escape.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "system.keyboard.swapLeftCommandAndLeftAlt",
+    "anchor_id": "opt-system.keyboard.swapLeftCommandAndLeftAlt",
+    "summary": "Whether to swap the left Command key and left Alt key.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "system.keyboard.swapLeftCtrlAndFn",
+    "anchor_id": "opt-system.keyboard.swapLeftCtrlAndFn",
+    "summary": "Whether to swap the left Control key and Fn (Globe) key.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "system.nixpkgsRelease",
+    "anchor_id": "opt-system.nixpkgsRelease",
+    "summary": "The nixpkgs release (e.g. 24.11 ).",
+    "option_type": "string (read only)"
+  },
+  {
+    "option_path": "system.patches",
+    "anchor_id": "opt-system.patches",
+    "summary": "Set of patches to apply to / .",
+    "option_type": "list of absolute path"
+  },
+  {
+    "option_path": "system.primaryUser",
+    "anchor_id": "opt-system.primaryUser",
+    "summary": "The user used for options that previously applied to the user running darwin-rebuild .",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "system.profile",
+    "anchor_id": "opt-system.profile",
+    "summary": "Profile to use for the system.",
+    "option_type": "absolute path"
+  },
+  {
+    "option_path": "system.startup.chime",
+    "anchor_id": "opt-system.startup.chime",
+    "summary": "Whether to enable the startup chime.",
+    "option_type": "null or boolean"
+  },
+  {
+    "option_path": "system.stateVersion",
+    "anchor_id": "opt-system.stateVersion",
+    "summary": "Every once in a while, a new nix-darwin release may change configuration defaults in a way incompatible with stateful data. For instance, if the default version of PostgreSQL changes, the new version will probably be unable to read your existing databases. To prevent such breakage, you can set the value of this option to the nix-darwin release with which you want to be compatible. The effect is that nix-darwin will option defaults corresponding to the specified release (such as using an older version of PostgreSQL).",
+    "option_type": "integer between 1 and 6 (both inclusive)"
+  },
+  {
+    "option_path": "system.tools.darwin-option.enable",
+    "anchor_id": "opt-system.tools.darwin-option.enable",
+    "summary": "Whether to enable darwin-option script.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "system.tools.darwin-rebuild.enable",
+    "anchor_id": "opt-system.tools.darwin-rebuild.enable",
+    "summary": "Whether to enable darwin-rebuild script.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "system.tools.darwin-uninstaller.enable",
+    "anchor_id": "opt-system.tools.darwin-uninstaller.enable",
+    "summary": "Whether to enable darwin-uninstaller script.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "system.tools.darwin-version.enable",
+    "anchor_id": "opt-system.tools.darwin-version.enable",
+    "summary": "Whether to enable darwin-version script.",
+    "option_type": "boolean"
+  },
+  {
+    "option_path": "time.timeZone",
+    "anchor_id": "opt-time.timeZone",
+    "summary": "The time zone used when displaying times and dates. See https://en.wikipedia.org/wiki/List_of_tz_database_time_zones or run sudo systemsetup -listtimezones for a comprehensive list of possible values for this setting.",
+    "option_type": "null or string"
+  },
+  {
+    "option_path": "users.groups",
+    "anchor_id": "opt-users.groups",
+    "summary": "Configuration for groups.",
+    "option_type": "attribute set of (submodule)"
+  },
+  {
+    "option_path": "users.knownGroups",
+    "anchor_id": "opt-users.knownGroups",
+    "summary": "List of groups owned and managed by nix-darwin. Used to indicate what users are safe to create/delete based on the configuration. Don’t add system groups to this.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "users.knownUsers",
+    "anchor_id": "opt-users.knownUsers",
+    "summary": "List of users owned and managed by nix-darwin. Used to indicate what users are safe to create/delete based on the configuration. Don’t add the admin user or other system users to this.",
+    "option_type": "list of string"
+  },
+  {
+    "option_path": "users.users",
+    "anchor_id": "opt-users.users",
+    "summary": "Configuration for users.",
+    "option_type": "attribute set of (submodule)"
+  }
+]

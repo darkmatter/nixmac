@@ -295,7 +295,7 @@ pub fn create_tools() -> Vec<Tool> {
             description: "Search nix-darwin configuration option docs by structure-aware scoring. \
                          Use this tool to discover the correct fully-qualified option path shape \
                          (for example: `homebrew.caskArgs.colorpickerdir`). \
-                         Returns top matches with anchor IDs and concise summaries.".to_string(),
+                         Returns top matches with option paths and concise summaries.".to_string(),
             parameters: serde_json::json!({
                 "type": "object",
                 "properties": {
