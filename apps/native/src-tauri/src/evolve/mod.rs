@@ -252,8 +252,8 @@ const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 const DEFAULT_MAX_BUILD_ATTEMPTS: usize = 5;
 
 // Percentage of max_iterations after which we require at least one edit/build_check.
-// Example: with max_iterations=50 and this set to 60, threshold is 30 iterations.
-const MAX_ITERATIONS_BEFORE_EDIT_PERCENT: usize = 60;
+// Example: with max_iterations=50 and this set to 75, threshold is 37 iterations.
+const MAX_ITERATIONS_BEFORE_EDIT_PERCENT: usize = 75;
 
 // Applied separately to stdout and stderr. So when thinking about tokens,
 // the effective output limit could be up to double this if both are long.

@@ -408,6 +408,8 @@ fn run_gui_mode(
             let _ = secret_scanner::SecretScanner::global(handle);
 
             // Build the nix-darwin docs index once at startup for fast option-shape lookup.
+            // CONSIDER: Moving this to background or do it on first search_docs call
+            // if we start to get concerned about startup time.
             evolve::search_docs::initialize_docs_index();
 
             let send_diagnostics = store::get_send_diagnostics(handle).unwrap_or(false);

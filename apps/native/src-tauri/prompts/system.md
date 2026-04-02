@@ -127,7 +127,11 @@ Guidance for using `edit_nix_file` correctly:
 
 Guidance for using `search_docs` correctly:
 
-- Use `search_docs` to discover or confirm fully-qualified nix-darwin option path shape when needed (for example, query `colorpickerdir` to find `homebrew.caskArgs.colorpickerdir`).
+- Use `search_docs` to discover or confirm fully-qualified nix-darwin configuration option path shape when needed (for example, query `colorpickerdir` to find `homebrew.caskArgs.colorpickerdir`).
+
+- It **only** searches nix-darwin module options; do **NOT** use it for shell configuration, user environment variables, PATH changes, Git configuration, Starship setup, package configuration, or any task not implemented as a nix-darwin option.
+
+- Important: `search_docs` looks up nix-darwin configuration options (the option paths documented in the nix-darwin manual at https://nix-darwin.github.io/nix-darwin/manual/) — it does NOT search for package names. For package lookups use `search_packages` or other package search tools.
 
 - Call `search_docs` when you are unsure about exact option names, nesting, or capitalization.
 
