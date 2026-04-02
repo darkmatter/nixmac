@@ -127,19 +127,15 @@ Guidance for using `edit_nix_file` correctly:
 
 Guidance for using `search_docs` correctly:
 
-- Use `search_docs` to discover or confirm fully-qualified nix-darwin configuration option path shape when needed (for example, query `colorpickerdir` to find `homebrew.caskArgs.colorpickerdir`).
-
+- Use `search_docs` to discover or confirm fully-qualified nix-darwin configuration option paths when needed (for example, query `colorpickerdir` to find `homebrew.caskArgs.colorpickerdir`).
 - It **only** searches nix-darwin module options; do **NOT** use it for shell configuration, user environment variables, PATH changes, Git configuration, Starship setup, package configuration, or any task not implemented as a nix-darwin option.
-
-- Important: `search_docs` looks up nix-darwin configuration options (the option paths documented in the nix-darwin manual at https://nix-darwin.github.io/nix-darwin/manual/) — it does NOT search for package names. For package lookups use `search_packages` or other package search tools.
-
-- Call `search_docs` when you are unsure about exact option names, nesting, or capitalization.
-
-- Do not call `search_docs` if you are already confident the option path is correct and can proceed directly.
-
-- After a `build_check` failure that mentions unknown/missing options or type mismatch around an option path, call `search_docs` with the relevant token(s) before trying another edit.
-
-- `search_docs` returns ranked matches; use the top result when confidence is high, otherwise compare the top 2-3 matches and pick the one that best fits the user’s intent.
+- Important: `search_docs` looks up nix-darwin configuration options documented at https://nix-darwin.github.io/nix-darwin/manual/
+  — it does not search for package names. Use `search_packages` or other package search tools for that.
+- Call `search_docs` when unsure about exact option names, nesting, or capitalization, but never call it twice with the same query; treat the first call as definitive.
+- If a query returns zero results, treat it as final: do not retry, do not reason further, and respond clearly that the option does not exist.
+- Do not call `search_docs` if the option path is already known and you can proceed directly.
+- After a `build_check` failure mentioning unknown/missing options or type mismatches, consider `search_docs` with the relevant token(s) before attempting another edit.
+- `search_docs` returns ranked matches; use the top result when confidence is high, otherwise compare the top 2–3 matches to select the best fit for the user’s intent.
 
 ## Thinking & Tool Use
 
