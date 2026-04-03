@@ -332,7 +332,6 @@ fn run_gui_mode(
             commands::flake_exists,
             commands::bootstrap_default_config,
             // Summarization
-            commands::find_summarized_changes,
             commands::find_change_map,
             commands::get_history,
             commands::generate_history_from,

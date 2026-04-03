@@ -2,13 +2,14 @@
 
 use std::collections::HashMap;
 
+use crate::summarize::find_existing::FoundSetForCurrent;
 use crate::summarize::sumlog as dbg;
 use crate::shared_types::{
-    ChangeWithSummary, SemanticChangeGroup, SemanticChangeMap, SummarizedChangeSet,
+    ChangeWithSummary, SemanticChangeGroup, SemanticChangeMap,
 };
 use crate::sqlite_types::ChangeSummary;
 
-pub fn from_change_sets(change_sets: Vec<SummarizedChangeSet>) -> SemanticChangeMap {
+pub fn from_change_sets(change_sets: Vec<FoundSetForCurrent>) -> SemanticChangeMap {
     let mut groups: HashMap<i64, (ChangeSummary, Vec<ChangeWithSummary>)> = HashMap::new();
     let mut singles: Vec<ChangeWithSummary> = vec![];
     let mut missed_hashes: Vec<String> = vec![];

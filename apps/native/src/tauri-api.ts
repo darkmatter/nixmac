@@ -306,7 +306,6 @@ export const darwinAPI = {
     finalizeFlakeLock: () => invoke("finalize_flake_lock"),
   },
   summarizedChanges: {
-    find: () => invoke<SummarizedChangeSet[]>("find_summarized_changes"),
     findChangeMap: () => invoke<SemanticChangeMap>("find_change_map"),
     summarizeCurrent: () => invoke<void>("summarize_current"),
     generateCommitMessage: () => invoke<string>("generate_commit_message"),

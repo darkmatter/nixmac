@@ -29,7 +29,7 @@ pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::ty
             crate::summarize::find_existing::by_commit_pair(&db_path, commit.id, parent_db.id)
                 .ok()
                 .flatten()
-                .map(|cs| crate::summarize::group_existing::from_change_sets(vec![cs]))
+                .map(|cs| crate::summarize::group_existing::from_change_sets(vec![cs.into()]))
         });
 
         let is_built = last_built_sha
