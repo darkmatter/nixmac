@@ -9,6 +9,7 @@ use crate::sqlite_types::Change;
 use crate::summarize::sumlog as dbg;
 use crate::summarize::{assignments, build_prompt, simplify_grouped};
 
+#[allow(clippy::too_many_arguments)]
 pub async fn analyze<R: Runtime>(
     semantic_map: SemanticChangeMap,
     missed_changes: Vec<Change>,

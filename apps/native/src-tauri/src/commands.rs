@@ -509,18 +509,6 @@ pub async fn flake_list_hosts(app: AppHandle) -> Result<Vec<String>, String> {
 // Summarization Commands
 // =============================================================================
 
-/// Routes to commit-pair lookup (clean HEAD) or base-commit lookup (dirty HEAD).
-#[tauri::command]
-pub async fn find_summarized_changes(
-    app: AppHandle,
-) -> Result<Vec<crate::shared_types::SummarizedChangeSet>, String> {
-    let db_path =
-        db::get_db_path(&app).map_err(|e| capture_err("find_summarized_changes", e))?;
-    let dir = store::get_config_dir(&app).map_err(|e| capture_err("find_summarized_changes", e))?;
-    crate::summarize::find_existing::for_current_state(&db_path, &dir)
-        .map_err(|e| capture_err("find_summarized_changes", e))
-}
-
 #[tauri::command]
 pub async fn find_change_map(
     app: AppHandle,

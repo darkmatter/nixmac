@@ -44,13 +44,13 @@ function GroupItem({ group, index }: { group: SemanticChangeGroup; index: number
     return <SkeletonItem index={index} />;
   }
 
-  const titleColor = getCategoryStyle(group.summary.title).text;
+  const style = getCategoryStyle(group.summary.title);
 
   return (
     <Collapsible className="group/root mb-2 last:mb-0">
       <div className="px-1 pb-2 pt-3">
         <div className="flex items-center gap-2">
-          <span className={cn("text-[14px] font-medium leading-snug", titleColor)}>
+          <span className={cn("text-[14px] font-medium leading-snug", style.text)}>
             {group.summary.title}
           </span>
           <CollapsibleTrigger className="flex h-[18px] w-[26px] items-center justify-center rounded bg-white/[0.06] font-mono text-[11.5px] text-neutral-300 transition-colors hover:bg-white/[0.1] hover:text-neutral-300">
@@ -67,7 +67,7 @@ function GroupItem({ group, index }: { group: SemanticChangeGroup; index: number
           {group.changes.map((change) => (
             <div
               key={change.hash}
-              className="rounded border-l-2 border-white/20 bg-white/[0.02] px-2 py-1.5"
+              className={cn("rounded border-l-2 bg-white/[0.02] px-2 py-1.5", style.border)}
             >
               <div className="truncate text-[11px] text-neutral-300">
                 {change.title || getShortFilename(change.filename)}
@@ -88,11 +88,9 @@ function SingleItem({ change, index }: { change: ChangeWithSummary; index: numbe
     return <SkeletonItem index={index} />;
   }
 
-  const titleColor = getCategoryStyle(change.title);
-
   return (
     <div className="mb-2 px-1 py-3 last:mb-0">
-      <span className={cn("text-[14px] font-medium leading-snug", titleColor)}>
+      <span className="text-[14px] font-medium leading-snug text-neutral-200">
         {change.title || getShortFilename(change.filename)}
       </span>
       {change.description && (

@@ -14,7 +14,7 @@ pub const EVOLVED_CHANGESET: bool = false;
 
 // ── Imports ───────────────────────────────────────────────────────────────────
 
-use crate::shared_types::{SemanticChangeMap, SummarizedChangeSet};
+use crate::shared_types::SemanticChangeMap;
 use crate::sqlite_types::Change;
 use crate::summarize::assignments::Assignments;
 use crate::summarize::model_output_types::{RawHunkPlacement, RawNewMapEntry};
@@ -64,28 +64,26 @@ pub fn find_log_path(path: &FindPath) {
     );
 }
 
-pub fn find_log_result(result: &[SummarizedChangeSet]) {
+/// Log the result of `find_existing::for_current_state`.
+/// `entries` is an iterator of `(change_set_exists, changes_len, missed_hashes_len)`.
+pub fn find_log_result(entries: impl Iterator<Item = (bool, usize, usize)> + Clone) {
     if !FIND_EXISTING {
         return;
     }
-    let change_sets = result
-        .iter()
-        .map(|cs| {
+    let rows: Vec<_> = entries
+        .clone()
+        .map(|(has_cs, changes, missed)| {
             serde_json::json!({
-                "change_set_id": cs.change_set.id,
-                "commit_id": cs.change_set.commit_id,
-                "base_commit_id": cs.change_set.base_commit_id,
-                "commit_message": cs.change_set.commit_message,
-                "generated_message": cs.change_set.generated_commit_message,
-                "changes": cs.changes.len(),
-                "missed_hashes": cs.missed_hashes.len(),
+                "has_change_set": has_cs,
+                "changes": changes,
+                "missed_hashes": missed,
             })
         })
-        .collect::<Vec<_>>();
+        .collect();
     emit_json(
         "FIND_EXISTING",
         "result",
-        &serde_json::json!({ "count": result.len(), "change_sets": change_sets }),
+        &serde_json::json!({ "count": rows.len(), "entries": rows }),
     );
 }
 

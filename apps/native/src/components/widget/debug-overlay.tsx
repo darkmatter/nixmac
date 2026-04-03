@@ -46,14 +46,6 @@ export function DebugOverlay() {
         <GitStatusDebug />
       </div>
       <button
-        className="pointer-events-auto rounded bg-black/80 px-2 py-1 font-mono text-xs text-teal-400/60 hover:text-teal-400"
-        onClick={() => darwinAPI.summarizedChanges.summarizeCurrent().then(() => console.log("[summarize_current] done"))}
-        style={{ backdropFilter: "blur(4px)" }}
-        type="button"
-      >
-        scm
-      </button>
-      <button
         className="pointer-events-auto rounded bg-black/80 px-2 py-1 font-mono text-xs text-rose-400/60 hover:text-rose-400"
         onClick={() => darwinAPI.evolveState.clear().then((s) => useWidgetStore.getState().setEvolveState(s))}
         style={{ backdropFilter: "blur(4px)" }}

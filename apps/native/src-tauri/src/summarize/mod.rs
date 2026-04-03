@@ -39,7 +39,7 @@ pub async fn new_changeset<R: Runtime>(
 
     let existing = find_existing::for_current_state(&db_path, &config_dir)?;
 
-    if existing.is_empty() {
+    if !existing.iter().any(|e| e.change_set.is_some()) {
         let (_, changes): (Vec<_>, Vec<_>) = all_changes
             .into_iter()
             .partition(crate::changes_from_diff::is_sensitive_or_opaque);

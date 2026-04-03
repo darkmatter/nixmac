@@ -73,17 +73,18 @@ export type CategoryStyle = {
   text: string;
   bg: string;
   dot: string;
+  border: string;
 };
 
 const CATEGORY_PALETTE: CategoryStyle[] = [
-  { text: "text-emerald-500", bg: "bg-emerald-500/[0.08]", dot: "bg-emerald-500" },
-  { text: "text-blue-500",    bg: "bg-blue-500/[0.08]",    dot: "bg-blue-500" },
-  { text: "text-amber-500",   bg: "bg-amber-500/[0.08]",   dot: "bg-amber-500" },
-  { text: "text-violet-500",  bg: "bg-violet-500/[0.08]",  dot: "bg-violet-500" },
-  { text: "text-rose-500",    bg: "bg-rose-500/[0.08]",    dot: "bg-rose-500" },
-  { text: "text-cyan-500",    bg: "bg-cyan-500/[0.08]",    dot: "bg-cyan-500" },
-  { text: "text-orange-400",  bg: "bg-orange-400/[0.08]",  dot: "bg-orange-400" },
-  { text: "text-teal-500",    bg: "bg-teal-500/[0.08]",    dot: "bg-teal-500" },
+  { text: "text-emerald-500", bg: "bg-emerald-500/[0.08]", dot: "bg-emerald-500", border: "border-emerald-500/40" },
+  { text: "text-blue-500",    bg: "bg-blue-500/[0.08]",    dot: "bg-blue-500",    border: "border-blue-500/40" },
+  { text: "text-amber-500",   bg: "bg-amber-500/[0.08]",   dot: "bg-amber-500",   border: "border-amber-500/40" },
+  { text: "text-violet-500",  bg: "bg-violet-500/[0.08]",  dot: "bg-violet-500",  border: "border-violet-500/40" },
+  { text: "text-rose-500",    bg: "bg-rose-500/[0.08]",    dot: "bg-rose-500",    border: "border-rose-500/40" },
+  { text: "text-cyan-500",    bg: "bg-cyan-500/[0.08]",    dot: "bg-cyan-500",    border: "border-cyan-500/40" },
+  { text: "text-orange-400",  bg: "bg-orange-400/[0.08]",  dot: "bg-orange-400",  border: "border-orange-400/40" },
+  { text: "text-teal-500",    bg: "bg-teal-500/[0.08]",    dot: "bg-teal-500",    border: "border-teal-500/40" },
 ];
 
 export function getCategoryStyle(title: string): CategoryStyle {

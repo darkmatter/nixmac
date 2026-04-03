@@ -16,7 +16,7 @@ pub const BASE_HUNK_DESCRIPTION_RULES: &str =
     "Description are short phrases understandable at a glance; include actual values (config keys, package names). Diff is the main clue\n";
 
 pub const BASE_RESPONSE_INTRO: &str =
-    "Respond with valid JSON like below. Only fill in title and description fields.\n";
+    "Respond with valid JSON like below. Only fill in ALL empty title and description fields.\n";
 
 // ── New map ───────────────────────────────────────────────────────────────────────────────
 
