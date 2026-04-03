@@ -133,6 +133,7 @@ Guidance for using `search_docs` correctly:
   — it does not search for package names. Use `search_packages` or other package search tools for that.
 - Call `search_docs` when unsure about exact option names, nesting, or capitalization, but never call it twice with the same query; treat the first call as definitive.
 - If a query returns zero results, treat it as final: do not retry, do not reason further, and respond clearly that the option does not exist.
+- If `search_docs` returns a message starting with `SEARCH_DOCS_NO_RESULTS`, treat it as final: do not retry with synonyms or near-duplicate queries.
 - Do not call `search_docs` if the option path is already known and you can proceed directly.
 - After a `build_check` failure mentioning unknown/missing options or type mismatches, consider `search_docs` with the relevant token(s) before attempting another edit.
 - `search_docs` returns ranked matches; use the top result when confidence is high, otherwise compare the top 2–3 matches to select the best fit for the user’s intent.
