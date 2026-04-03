@@ -69,10 +69,14 @@ pub fn for_current_state(db_path: &Path, dir: &str) -> Result<Vec<FoundSetForCur
     });
     let conn = Connection::open(db_path)?;
     let result: Vec<FoundSetForCurrent> =
-        crate::db::changesets::query_change_set_for_base_with_hashes(&conn, commit.id, &diff_hashes)?
-            .into_iter()
-            .map(FoundSetForCurrent::from)
-            .collect();
+        match crate::db::changesets::query_change_set_for_base_with_hashes(&conn, commit.id, &diff_hashes)? {
+            Some(cs) => vec![FoundSetForCurrent::from(cs)],
+            None => vec![FoundSetForCurrent {
+                change_set: None,
+                changes: vec![],
+                missed_hashes: diff_hashes,
+            }],
+        };
 
     dbg::find_log_result(result.iter().map(|e| (e.change_set.is_some(), e.changes.len(), e.missed_hashes.len())));
     Ok(result)
