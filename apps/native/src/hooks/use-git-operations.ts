@@ -50,18 +50,21 @@ export function useGitOperations() {
   );
 
   const handleCommit = useCallback(
-    async (commitMessage: string) => {
+    async ({ message, tagAsBuilt = false }: { message: string; tagAsBuilt?: boolean }) => {
       const store = useWidgetStore.getState();
       store.setProcessing(true, "merge");
       store.appendLog(`\n> Committing changes...\n`);
 
       try {
-        const result = await darwinAPI.git.commit(commitMessage);
+        const result = await darwinAPI.git.commit(message);
         useWidgetStore.getState().appendLog("✓ Committed successfully\n");
         useWidgetStore.getState().setError(null);
         toast.success("Committed successfully");
         useWidgetStore.getState().clearPreview();
         useWidgetStore.getState().setEvolveState(result.evolveState);
+        if (tagAsBuilt) {
+          await darwinAPI.git.tagAsBuilt();
+        }
         await refreshGitStatus();
       } catch (e: unknown) {
         const msg = (e as Error)?.message || String(e);
