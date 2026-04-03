@@ -68,7 +68,7 @@ export function BeginEvolveWarning({ open, onOpenChange, handleEvolve }: BeginEv
   const handleCommit = async () => {
     const message = commitRef.current?.value.trim();
     if (!message) return;
-    await gitHandleCommit(message);
+    await gitHandleCommit({ message });
   };
 
   const handleContinue = async () => {
