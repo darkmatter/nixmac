@@ -154,9 +154,10 @@ def normalize_whitespace(s: str) -> str:
 
 
 def first_sentence(s: str, max_len: int) -> str:
-	sentence = s.split(".").next() if hasattr(s.split("."), '__iter__') else s.split(".")[0]
-	# fallback without panicking
-	sentence = s.split(".")[0].strip()
+	# Safely return the first sentence (text before the first period).
+	if not s:
+		return ""
+	sentence = s.partition(".")[0].strip()
 	if len(sentence) <= max_len:
 		return sentence
 	return f"{sentence[:max_len]}..."

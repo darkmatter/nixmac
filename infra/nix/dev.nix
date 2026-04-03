@@ -24,6 +24,10 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     pkgs.uv
     pkgs.pyright
     pkgs.ruff
+
+    # Python packages used in one-off scripts
+    pkgs.python312Packages.requests
+    pkgs.python312Packages.beautifulsoup4
   ]
   ++ lib.optionals (pkgs.stdenv.isDarwin) [
     pkgs.apple-sdk_15

@@ -62,7 +62,7 @@ The native Tauri app ships a pre-parsed copy of the nix-darwin manual used by th
 Quick steps:
 
 ```sh
-# install parser dependencies (if needed)
+# install parser dependencies (should not be needed since they are in the nix dev env)
 python -m pip install --user requests beautifulsoup4
 
 # fetch the manual and write the JSON (default output path)
