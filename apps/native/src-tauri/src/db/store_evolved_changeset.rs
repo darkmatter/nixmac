@@ -6,12 +6,12 @@ use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::db::changesets::{
-    get_change_id_by_hash, insert_change_set, insert_change_summary, insert_queued_summary,
-    link_change_to_group_summary, link_change_to_set, upsert_change,
+    build_pairs_json, get_change_id_by_hash, insert_change_set, insert_change_summary,
+    insert_queued_summary, link_change_to_group_summary, link_change_to_set, upsert_change,
 };
 use crate::shared_types::SemanticChangeMap;
 use crate::summarize::assignments::{
-    Assignments, EvolvedGroupAssignment, NewGroupAssignment, NewSingleAssignment, PendingChange,
+    Assignments, EvolvedGroupAssignment, NewGroupAssignment, NewSingleAssignment,
 };
 
 pub fn store(
@@ -145,19 +145,6 @@ fn store_new_single(tx: &Transaction, a: &mut NewSingleAssignment, now: i64) -> 
     let queued_id = insert_queued_summary(tx, &a.prompt, "NEW_SINGLE", None, Some(&pairs))?;
 
     Ok(queued_id)
-}
-
-fn build_pairs_json(changes: &[PendingChange]) -> String {
-    let pairs: Vec<serde_json::Value> = changes
-        .iter()
-        .filter_map(|c| {
-            Some(serde_json::json!({
-                "hash": &c.change.hash[..crate::changes_from_diff::SHORT_HASH_LEN],
-                "summary_id": c.own_summary_id?
-            }))
-        })
-        .collect();
-    serde_json::to_string(&pairs).unwrap_or_default()
 }
 
 fn unix_now() -> i64 {
