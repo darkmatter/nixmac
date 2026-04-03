@@ -1659,28 +1659,6 @@ pub fn inject_module_import(content: &str, module_path: &str) -> Result<String, 
 
 /// Build a summary of applied defaults grouped by category.
 /// Returns a list of (title, description) pairs for display in the UI.
-pub fn build_summary(defaults: &[SystemDefault]) -> Vec<(String, String)> {
-    let mut by_category: BTreeMap<String, Vec<&SystemDefault>> = BTreeMap::new();
-    for d in defaults {
-        by_category.entry(d.category.clone()).or_default().push(d);
-    }
-
-    by_category
-        .into_iter()
-        .map(|(category, defs)| {
-            let examples: Vec<&str> = defs.iter().take(3).map(|d| d.label.as_str()).collect();
-            let suffix = if defs.len() > 3 {
-                format!(", +{} more", defs.len() - 3)
-            } else {
-                String::new()
-            };
-            (
-                format!("{} ({})", category, defs.len()),
-                format!("{}{}", examples.join(", "), suffix),
-            )
-        })
-        .collect()
-}
 
 // =============================================================================
 // Recommended prompt selection

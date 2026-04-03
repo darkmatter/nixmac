@@ -1,12 +1,13 @@
 //! Applies detected macOS system defaults to the nix-darwin configuration.
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use tauri::AppHandle;
 
-use crate::{git, nix, shared_types, scanner, store};
+use crate::{db, evolve_state, git, scanner, shared_types, store, summarize};
 
 /// Writes detected system defaults to a .nix module file, injects the import
-/// into flake.nix, creates a git branch, commits, and caches a summary.
+/// into flake.nix, creates an evolution + summarization pipeline so the
+/// frontend lands on the evolve step with a populated changeMap.
 pub async fn apply_system_defaults(
     app: &AppHandle,
     defaults: Vec<scanner::SystemDefault>,
@@ -33,21 +34,19 @@ pub async fn apply_system_defaults(
         nix_path
     );
 
-    // 4. Inject import into the file that contains `modules = [`.
+    // 4. Inject import into the file that contains `modules = [`
     //    - nix-darwin-determinate template: `flake.nix` with `./modules/darwin/...`
     //    - flake-parts template: `flake-modules/darwin.nix` with `../modules/darwin/...`
     let flake_path = std::path::Path::new(&dir).join("flake.nix");
     let flake_content = std::fs::read_to_string(&flake_path).context("Failed to read flake.nix")?;
 
     let (target_path, module_ref) = if flake_content.contains("modules = [") {
-        // Direct template — modules list is in flake.nix
         log::info!("[apply_system_defaults] Found modules list in flake.nix");
         (
             flake_path,
             "./modules/darwin/system-defaults.nix".to_string(),
         )
     } else {
-        // Flake-parts template — modules list is in flake-modules/darwin.nix
         let darwin_mod = std::path::Path::new(&dir)
             .join("flake-modules")
             .join("darwin.nix");
@@ -58,7 +57,7 @@ pub async fn apply_system_defaults(
                 "../modules/darwin/system-defaults.nix".to_string(),
             )
         } else {
-            bail!("Could not find 'modules = [' in flake.nix or flake-modules/darwin.nix");
+            anyhow::bail!("Could not find 'modules = [' in flake.nix or flake-modules/darwin.nix");
         }
     };
 
@@ -75,71 +74,75 @@ pub async fn apply_system_defaults(
         target_path
     );
 
-    // 5. Create git branch and commit
-    let branch = git::checkout_new_branch(&dir, "nixmac-scan/system-defaults")
-        .context("Failed to create branch")?;
-    log::info!("[apply_system_defaults] Created branch: {}", branch);
+    // 5. Wire into the evolve pipeline — leave changes in the working tree so
+    //    the summarizer can read the diff, then set EvolveState so the frontend
+    //    transitions to the evolve step.
+    let db_path = db::get_db_path(app).context("Failed to get DB path")?;
 
-    // Stage and commit — check if there's actually something to commit
-    let status_output = std::process::Command::new("git")
-        .args(["status", "--porcelain"])
-        .current_dir(&dir)
-        .env("PATH", nix::get_nix_path())
-        .output()
-        .context("git status --porcelain failed")?;
+    // Store the current HEAD commit so the changeset has a base.
+    let _base_commit_id =
+        db::commits::store_head_commit(&db_path, &dir, None).context("Failed to store HEAD commit")?;
 
-    let porcelain = String::from_utf8_lossy(&status_output.stdout);
-    let has_changes = !porcelain.trim().is_empty();
+    // Reuse an existing evolution if one is already active.
+    let existing_evo_id = evolve_state::get(app).ok().and_then(|s| s.evolution_id);
+    let branch = git::current_branch(&dir).unwrap_or_else(|| "main".to_string());
+    let evolution_id = db::evolutions::upsert(&db_path, existing_evo_id, &branch)
+        .context("Failed to upsert evolution")?;
+    log::info!("[apply_system_defaults] Using evolution_id={}", evolution_id);
 
-    if has_changes {
-        git::commit_all(&dir, "feat: add detected macOS system defaults")
-            .context("Failed to commit")?;
-        log::info!("[apply_system_defaults] Committed system defaults");
-    } else {
-        log::warn!("[apply_system_defaults] No new changes to commit (porcelain was empty)");
-    }
-
-    // 6. Build a SemanticChangeMap from the deterministic summary so the frontend
-    //    changeMap store field gets populated after applying defaults.
-    let summary = scanner::build_summary(&defaults);
-    let change_map = shared_types::SemanticChangeMap {
-        groups: vec![],
-        singles: summary
-            .into_iter()
-            .enumerate()
-            .map(|(i, (title, description))| shared_types::ChangeWithSummary {
-                id: i as i64,
-                hash: title.replace(' ', "-").to_lowercase(),
-                filename: String::new(),
-                diff: String::new(),
-                line_count: 0,
-                created_at: 0,
-                own_summary_id: None,
-                title,
-                description,
-            })
-            .collect(),
-        missed_hashes: vec![],
+    // Persist the evolve state so the frontend can start rendering the evolve step.
+    let initial_state = shared_types::EvolveState {
+        evolution_id: Some(evolution_id),
+        current_changeset_id: None,
+        changeset_at_build: None,
+        committable: false,
+        backup_branch: None,
+        step: shared_types::EvolveStep::Evolve,
     };
+    let mut evolve_state = evolve_state::set(app, initial_state).context("Failed to set evolve state")?;
 
-    // Get the current git status and cache it in the store so the watcher
-    // won't fire a spurious change event on its next poll.
-    let git_status = git::status(&dir).context("Failed to get git status")?;
-    if let Err(e) = store::set_cached_git_status(app, &git_status) {
-        log::error!("[apply_system_defaults] Failed to cache git status: {}", e);
+    // Run the summarization pipeline against the working tree diff.
+    // `new_changeset` reads `git::status().diff` which includes untracked files,
+    // so system-defaults.nix and the modified import file are both captured.
+    match summarize::new_changeset(app, Some(evolution_id)).await {
+        Ok(Some(changeset_id)) => {
+            log::info!(
+                "[apply_system_defaults] Changeset created: id={}",
+                changeset_id
+            );
+            evolve_state.current_changeset_id = Some(changeset_id);
+            evolve_state =
+                evolve_state::set(app, evolve_state).context("Failed to update evolve state with changeset")?;
+        }
+        Ok(None) => {
+            log::warn!("[apply_system_defaults] Summarizer returned None — diff may be empty");
+        }
+        Err(e) => {
+            log::error!("[apply_system_defaults] Summarizer error: {}", e);
+            // Non-fatal — evolve state is already set; summaries will be pending.
+        }
     }
+
+    // Build the change map from whatever the DB has right now (may include
+    // queued/pending summaries that the background processor will fill in).
+    let change_sets = summarize::find_existing::for_current_state(&db_path, &dir)
+        .unwrap_or_default();
+    let change_map = summarize::group_existing::from_change_sets(change_sets);
+
+    // Get current git status and cache it so the watcher doesn't fire spuriously.
+    let git_status = git::status_and_cache(&dir, app).context("Failed to get git status")?;
 
     log::info!(
-        "[apply_system_defaults] Complete — {} defaults applied",
-        defaults.len()
+        "[apply_system_defaults] Complete — {} defaults applied, evolution_id={}",
+        defaults.len(),
+        evolution_id
     );
 
-    // Return changeMap + git status directly so the frontend can set them
-    // atomically, avoiding race conditions with the watcher.
     Ok(serde_json::json!({
         "ok": true,
         "count": defaults.len(),
         "changeMap": change_map,
         "gitStatus": git_status,
+        "evolveState": evolve_state,
     }))
 }
