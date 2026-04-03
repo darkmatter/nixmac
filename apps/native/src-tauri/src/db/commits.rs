@@ -16,7 +16,7 @@ pub fn upsert_commit(
 
     if let Ok(existing_id) =
         conn.query_row("SELECT id FROM commits WHERE hash = ?1", [hash], |row| {
-            row.get::<_, i64>(0)
+            row.get::<_, i64>("id")
         })
     {
         return Ok(existing_id);
@@ -63,11 +63,11 @@ pub fn get_commit_by_hash(
         [hash],
         |row| {
             Ok(crate::sqlite_types::Commit {
-                id: row.get(0)?,
-                hash: row.get(1)?,
-                tree_hash: row.get(2)?,
-                message: row.get(3)?,
-                created_at: row.get(4)?,
+                id: row.get("id")?,
+                hash: row.get("hash")?,
+                tree_hash: row.get("tree_hash")?,
+                message: row.get("message")?,
+                created_at: row.get("created_at")?,
             })
         },
     );

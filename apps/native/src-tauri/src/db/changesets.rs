@@ -99,7 +99,7 @@ pub fn get_change_id_by_hash(tx: &Transaction, hash: &str) -> Result<i64> {
     Ok(tx.query_row(
         "SELECT id FROM changes WHERE hash = ?1",
         [hash],
-        |row| row.get(0),
+        |row| row.get("id"),
     )?)
 }
 
@@ -129,32 +129,32 @@ pub fn insert_queued_summary(
 
 fn map_summarized_change(row: &rusqlite::Row) -> rusqlite::Result<SummarizedChange> {
     let change = Change {
-        id: row.get(0)?,
-        hash: row.get(1)?,
-        filename: row.get(2)?,
-        diff: row.get(3)?,
-        line_count: row.get(4)?,
-        created_at: row.get(5)?,
-        own_summary_id: row.get(6)?,
+        id: row.get("c_id")?,
+        hash: row.get("c_hash")?,
+        filename: row.get("c_filename")?,
+        diff: row.get("c_diff")?,
+        line_count: row.get("c_line_count")?,
+        created_at: row.get("c_created_at")?,
+        own_summary_id: row.get("c_own_summary_id")?,
     };
-    let own_summary = if row.get::<_, Option<i64>>(7)?.is_some() {
+    let own_summary = if row.get::<_, Option<i64>>("os_id")?.is_some() {
         Some(ChangeSummary {
-            id: row.get(7)?,
-            title: row.get(8)?,
-            description: row.get(9)?,
-            status: row.get(10)?,
-            created_at: row.get(11)?,
+            id: row.get("os_id")?,
+            title: row.get("os_title")?,
+            description: row.get("os_description")?,
+            status: row.get("os_status")?,
+            created_at: row.get("os_created_at")?,
         })
     } else {
         None
     };
-    let group_summary = if row.get::<_, Option<i64>>(12)?.is_some() {
+    let group_summary = if row.get::<_, Option<i64>>("gs_id")?.is_some() {
         Some(ChangeSummary {
-            id: row.get(12)?,
-            title: row.get(13)?,
-            description: row.get(14)?,
-            status: row.get(15)?,
-            created_at: row.get(16)?,
+            id: row.get("gs_id")?,
+            title: row.get("gs_title")?,
+            description: row.get("gs_description")?,
+            status: row.get("gs_status")?,
+            created_at: row.get("gs_created_at")?,
         })
     } else {
         None
@@ -162,10 +162,14 @@ fn map_summarized_change(row: &rusqlite::Row) -> rusqlite::Result<SummarizedChan
     Ok(SummarizedChange { change, own_summary, group_summary })
 }
 
-const CHANGE_SELECT: &str = "SELECT c.id, c.hash, c.filename, c.diff, c.line_count, c.created_at,
-        c.own_summary_id,
-        os.id, os.title, os.description, os.status, os.created_at,
-        gs.id, gs.title, gs.description, gs.status, gs.created_at";
+const CHANGE_SELECT: &str = "SELECT \
+        c.id AS c_id, c.hash AS c_hash, c.filename AS c_filename, c.diff AS c_diff, \
+        c.line_count AS c_line_count, c.created_at AS c_created_at, \
+        c.own_summary_id AS c_own_summary_id, \
+        os.id AS os_id, os.title AS os_title, os.description AS os_description, \
+        os.status AS os_status, os.created_at AS os_created_at, \
+        gs.id AS gs_id, gs.title AS gs_title, gs.description AS gs_description, \
+        gs.status AS gs_status, gs.created_at AS gs_created_at";
 
 pub fn query_change_set_for_commit_pair(
     conn: &Connection,
@@ -179,13 +183,13 @@ pub fn query_change_set_for_commit_pair(
         rusqlite::params![commit_id, base_commit_id],
         |row| {
             Ok(ChangeSet {
-                id: row.get(0)?,
-                commit_id: row.get(1)?,
-                base_commit_id: row.get(2)?,
-                commit_message: row.get(3)?,
-                generated_commit_message: row.get(4)?,
-                created_at: row.get(5)?,
-                evolution_id: row.get(6)?,
+                id: row.get("id")?,
+                commit_id: row.get("commit_id")?,
+                base_commit_id: row.get("base_commit_id")?,
+                commit_message: row.get("commit_message")?,
+                generated_commit_message: row.get("generated_commit_message")?,
+                created_at: row.get("created_at")?,
+                evolution_id: row.get("evolution_id")?,
             })
         },
     );
@@ -238,13 +242,13 @@ pub fn query_change_set_for_base_with_hashes(
         [base_commit_id],
         |row| {
             Ok(ChangeSet {
-                id: row.get(0)?,
-                commit_id: row.get(1)?,
-                base_commit_id: row.get(2)?,
-                commit_message: row.get(3)?,
-                generated_commit_message: row.get(4)?,
-                created_at: row.get(5)?,
-                evolution_id: row.get(6)?,
+                id: row.get("id")?,
+                commit_id: row.get("commit_id")?,
+                base_commit_id: row.get("base_commit_id")?,
+                commit_message: row.get("commit_message")?,
+                generated_commit_message: row.get("generated_commit_message")?,
+                created_at: row.get("created_at")?,
+                evolution_id: row.get("evolution_id")?,
             })
         },
     );
@@ -316,14 +320,14 @@ fn query_changes_by_hashes_for_base(
 
 fn map_queued_summary(row: &rusqlite::Row) -> rusqlite::Result<QueuedSummary> {
     Ok(QueuedSummary {
-        id: row.get(0)?,
-        status: row.get(1)?,
-        attempted_count: row.get(2)?,
-        prompt: row.get(3)?,
-        model_response: row.get(4)?,
-        group_summary_id: row.get(5)?,
-        hash_own_summary_id_pairs: row.get(6)?,
-        summary_type: row.get(7)?,
+        id: row.get("id")?,
+        status: row.get("status")?,
+        attempted_count: row.get("attempted_count")?,
+        prompt: row.get("prompt")?,
+        model_response: row.get("model_response")?,
+        group_summary_id: row.get("group_summary_id")?,
+        hash_own_summary_id_pairs: row.get("hash_own_summary_id_pairs")?,
+        summary_type: row.get("type")?,
     })
 }
 
