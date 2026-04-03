@@ -6,11 +6,11 @@
 //!   TURN SWITCHES ON/OFF HERE ↓
 
 // ── Per-pipeline verbosity switches ──────────────────────────────────────────
-pub const FIND_EXISTING: bool = true;
-pub const GROUP_EXISTING: bool = true;
-pub const SIMPLIFY_GROUP: bool = true;
-pub const FRESH_CHANGESET: bool = true;
-pub const EVOLVED_CHANGESET: bool = true;
+pub const FIND_EXISTING: bool = false;
+pub const GROUP_EXISTING: bool = false;
+pub const SIMPLIFY_GROUP: bool = false;
+pub const FRESH_CHANGESET: bool = false;
+pub const EVOLVED_CHANGESET: bool = false;
 
 // ── Imports ───────────────────────────────────────────────────────────────────
 
