@@ -420,13 +420,13 @@ export function RebuildOverlayPanel() {
 
                   {/* Error Message */}
                   {errorMessage && (
-                    <p className="max-h-24 w-full max-w-md overflow-y-auto rounded-lg bg-black/30 px-4 py-3 text-center font-mono text-xs text-zinc-400">
+                    <p className="max-h-48 w-full max-w-xl overflow-y-auto rounded-lg bg-black/30 px-4 py-3 text-center font-mono text-xs text-zinc-400">
                       {errorMessage}
                     </p>
                   )}
 
                   {/* Suggestion */}
-                  <p className="max-w-md text-center text-sm text-zinc-300">
+                  <p className="max-w-xl text-center text-sm text-zinc-300">
                     {getErrorSuggestion(errorType)}
                   </p>
                 </motion.div>
