@@ -347,6 +347,7 @@ export const darwinAPI = {
         count: number;
         changeMap: SemanticChangeMap;
         gitStatus: GitStatus;
+        evolveState: EvolveState;
       }>("apply_system_defaults", { defaults }),
   },
   permissions: {
