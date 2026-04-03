@@ -4,9 +4,9 @@
 //! Change detection compares current git status against the persisted store cache,
 //! which is kept in sync by both this watcher and the evolution/summarize handlers.
 
-use crate::shared_types::SemanticChangeMap;
+use crate::shared_types::{EvolveState, SemanticChangeMap};
 use crate::types::GitStatus;
-use crate::{db, git, store, summarize};
+use crate::{db, evolve_state, git, store, summarize};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
@@ -27,6 +27,7 @@ static WATCHER_THREAD: Mutex<Option<std::thread::JoinHandle<()>>> = Mutex::new(N
 pub struct WatcherEvent {
     pub git_status: GitStatus,
     pub change_map: SemanticChangeMap,
+    pub evolve_state: Option<EvolveState>,
 }
 
 /// Starts the git status watcher for the given directory.
@@ -87,11 +88,19 @@ where
                             })
                             .map(summarize::group_existing::from_change_sets)
                             .unwrap_or_default();
+                        let evolve_state_non_committable = evolve_state::get(&app_handle)
+                            .ok()
+                            .filter(|es| es.committable)
+                            .and_then(|mut es| {
+                                es.committable = false;
+                                evolve_state::set(&app_handle, es).ok()
+                            });
                         let _ = app_handle.emit(
                             "git:status-changed",
                             WatcherEvent {
                                 git_status: status.clone(),
                                 change_map,
+                                evolve_state: evolve_state_non_committable,
                             },
                         );
                         let _ = store::set_cached_git_status(&app_handle, &status);

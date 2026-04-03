@@ -4,7 +4,7 @@ import {
   checkFullDiskAccessPermission,
   requestFullDiskAccessPermission,
 } from "tauri-plugin-macos-permissions-api";
-import type { EvolveState, SemanticChangeMap, SummarizedChangeSet } from "./types/shared";
+import type { EvolveState, SemanticChangeMap } from "./types/shared";
 import type { Change, Commit } from "./types/sqlite";
 export type { EvolveState, EvolveStep, SemanticChangeMap, SummarizedChangeSet } from "./types/shared";
 export type { Change, Commit } from "./types/sqlite";
@@ -74,6 +74,7 @@ export interface GitStatus {
 export interface WatcherEvent {
   gitStatus: GitStatus;
   changeMap: SemanticChangeMap;
+  evolveState?: EvolveState;
 }
 
 
