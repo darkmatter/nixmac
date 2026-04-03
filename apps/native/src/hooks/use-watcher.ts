@@ -25,6 +25,9 @@ export function useWatcher() {
           store.setChangeMap(event.payload.changeMap);
           const map = event.payload.changeMap;
           store.setSummaryAvailable(map.groups.length > 0 || map.singles.length > 0);
+          if (event.payload.evolveState) {
+            store.setEvolveState(event.payload.evolveState);
+          }
         }
       }
     );

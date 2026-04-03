@@ -1657,9 +1657,6 @@ pub fn inject_module_import(content: &str, module_path: &str) -> Result<String, 
     Ok(result)
 }
 
-/// Build a summary of applied defaults grouped by category.
-/// Returns a list of (title, description) pairs for display in the UI.
-
 // =============================================================================
 // Recommended prompt selection
 // =============================================================================
