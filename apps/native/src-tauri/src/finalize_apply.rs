@@ -18,8 +18,6 @@ pub async fn finalize_apply(app: &AppHandle) -> Result<ApplyResult> {
     let config_dir =
         store::ensure_config_dir_exists(app).context("Failed to get config directory")?;
 
-    git::tag_as_built(&config_dir).context("Failed to tag HEAD as built")?;
-
     let final_status = git::status(&config_dir).context("Failed to get final git status")?;
     let _ = store::set_cached_git_status(app, &final_status);
 

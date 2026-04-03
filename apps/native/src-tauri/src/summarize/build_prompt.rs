@@ -205,6 +205,7 @@ pub fn commit_message(map: &crate::shared_types::SemanticChangeMap) -> String {
 
     prompt.push('\n');
     prompt.push_str("Write a conventional commit message for these changes.\n");
-    prompt.push_str("Format: <type>(<scope>): <description> — types: feat, fix, chore, refactor, docs, style, test, perf\n");
+    prompt.push_str("Use the format: <type>(<scope>): <description> — types: feat, fix, chore, refactor, docs, style, test, perf\n");
+    prompt.push_str("Return JSON: {\"message\": \"<full commit message string>\"}\n");
     prompt
 }
