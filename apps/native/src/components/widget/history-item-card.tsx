@@ -76,7 +76,16 @@ export function HistoryItemCard({ item }: HistoryItemCardProps) {
           </div>
           {badges.length > 0 && (
             <div className="mt-[6px] flex flex-wrap gap-1">
-              {badges.map((badge) => {
+              {badges.map((badge, i) => {
+                if (!badge.title) {
+                  return (
+                    <span
+                      key={i}
+                      className="inline-block h-[18px] w-12 rounded animate-shimmer bg-[length:200%_100%] bg-gradient-to-r from-white/[0.03] via-white/[0.065] to-white/[0.03]"
+                      style={{ width: `${[48, 56, 44][i % 3]}px` }}
+                    />
+                  );
+                }
                 const style = getCategoryStyle(badge.title);
                 return (
                   <span

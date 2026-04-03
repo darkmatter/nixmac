@@ -1,3 +1,4 @@
+import { useHistory } from "@/hooks/use-history";
 import { useWidgetStore } from "@/stores/widget-store";
 import type { SemanticChangeMap } from "@/types/shared";
 import { ipcRenderer } from "@/tauri-api";
@@ -12,6 +13,7 @@ interface SummarizerEvent {
  * queue_summarizer background service after each model call completes.
  */
 export function useQueueSummarizer() {
+  const { loadHistory } = useHistory();
   const unlistenRef = useRef<(() => void) | null>(null);
   const isSubscribingRef = useRef(false);
 
@@ -28,6 +30,9 @@ export function useQueueSummarizer() {
         store.setSummaryAvailable(
           map.groups.length > 0 || map.singles.length > 0,
         );
+        if (store.showHistory) {
+          loadHistory();
+        }
       },
     );
 
@@ -35,7 +40,7 @@ export function useQueueSummarizer() {
       unlistenRef.current = unlisten;
       isSubscribingRef.current = false;
     });
-  }, []);
+  }, [loadHistory]);
 
   const unqueueForSummaries = useCallback(() => {
     isSubscribingRef.current = false;
