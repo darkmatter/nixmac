@@ -13,12 +13,14 @@ pub struct PendingChange {
     pub change_id: Option<i64>,
 }
 
+/// A new change the model deemed standalone — no group placement.
 #[derive(Serialize)]
 pub struct NewSingleAssignment {
     pub pending: PendingChange,
     pub prompt: String,
 }
 
+/// A group composed entirely of new changes — no pre-existing members.
 #[derive(Serialize)]
 pub struct NewGroupAssignment {
     pub changes: Vec<PendingChange>,
@@ -27,7 +29,8 @@ pub struct NewGroupAssignment {
     pub prompt: String,
 }
 
-/// Covers both `changing_groups` and grouns from exisitng singles.
+/// An existing group (or single) gaining new members; needs a revised group summary.
+/// `former_group_id: None` means a previously standalone change is now forming a group.
 #[derive(Serialize)]
 pub struct EvolvedGroupAssignment {
     pub former_group_id: Option<i64>,
