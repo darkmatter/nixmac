@@ -405,7 +405,7 @@ def main(parsed_args: argparse.Namespace) -> None:
         else:
             rows = None
 
-        # Read test cases from CSV if specified, otherwise use Excel spreadsheet
+        # Read test cases from CSV
         cases: list[EvalTestCase]
         if parsed_args.csv:
             csv_path = Path(parsed_args.csv)
@@ -441,18 +441,23 @@ def main(parsed_args: argparse.Namespace) -> None:
             print(f"Running case {case.num}: {case.scenario}...")
             nixmac_path = Path(parsed_args.nixmac)
             try:
-                # Build auth_props: prefer ollama if set, otherwise use vllm props
+                # Build auth_props based on which backend URL is provided (ollama or vllm); validate that both are not provided at the same time
                 auth_props: dict | None = None
-                if getattr(parsed_args, "ollama_url", None):
-                    if parsed_args.ollama_url:
-                        auth_props = {"ollamaApiBaseUrl": parsed_args.ollama_url}
-                elif getattr(parsed_args, "vllm_url", None):
-                    if parsed_args.vllm_url:
-                        auth_props = {"vllmApiBaseUrl": parsed_args.vllm_url}
-                        if getattr(parsed_args, "vllm_api_key", None):
-                            if parsed_args.vllm_api_key:
-                                auth_props["vllmApiKey"] = parsed_args.vllm_api_key
+                ollama_url = getattr(parsed_args, "ollama_url", "").strip()
+                vllm_url = getattr(parsed_args, "vllm_url", "").strip()
+                
+                if ollama_url and vllm_url:
+                    raise ValueError("Cannot specify both --ollama-url and --vllm-url; please provide only one backend")
+                
+                if ollama_url:
+                    auth_props = {"ollamaApiBaseUrl": ollama_url}
+                elif vllm_url:
+                    auth_props = {"vllmApiBaseUrl": vllm_url}
+                    vllm_api_key = getattr(parsed_args, "vllm_api_key", None)
+                    if vllm_api_key:
+                        auth_props["vllmApiKey"] = vllm_api_key
 
+                # Run the test case and capture the result
                 result = run_test_case(
                     case,
                     nixmac_path,
