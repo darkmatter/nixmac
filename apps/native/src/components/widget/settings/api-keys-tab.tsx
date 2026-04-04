@@ -1,4 +1,5 @@
-import { Check, Loader2, X } from "lucide-react";
+import React, { useState } from "react";
+import { Check, Loader2, X, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AnyFieldApi, AnyFormApi } from "@tanstack/react-form";
 
@@ -9,12 +10,12 @@ interface ApiKeysTabProps {
   openrouterApiKeyField: AnyFieldApi;
   openrouterKeyStatus: ApiKeyStatus;
   verifyOpenrouterKey: (key: string) => Promise<void>;
-  openrouterTimeoutRef: React.MutableRefObject<NodeJS.Timeout | null>;
+  openrouterTimeoutRef: React.RefObject<NodeJS.Timeout | null>;
   // OpenAI
   openaiApiKeyField: AnyFieldApi;
   openaiKeyStatus: ApiKeyStatus;
   verifyOpenaiKey: (key: string) => Promise<void>;
-  openaiTimeoutRef: React.MutableRefObject<NodeJS.Timeout | null>;
+  openaiTimeoutRef: React.RefObject<NodeJS.Timeout | null>;
   // Ollama
   ollamaApiBaseUrlField: AnyFieldApi;
   onSaveOllamaUrl: (url: string) => Promise<void>;
@@ -49,9 +50,24 @@ function ApiKeyInput({
   field: AnyFieldApi;
   status: ApiKeyStatus;
   verifyKey: (key: string) => Promise<void>;
-  timeoutRef: React.MutableRefObject<NodeJS.Timeout | null>;
+  timeoutRef: React.RefObject<NodeJS.Timeout | null>;
   form: AnyFormApi;
 }) {
+  const [show, setShow] = useState(false);
+
+  function VisibilityToggle() {
+    return (
+      <button
+        type="button"
+        aria-label={show ? "Hide API key" : "Show API key"}
+        onClick={() => setShow((s) => !s)}
+        className="rounded p-1 text-muted-foreground hover:text-foreground"
+      >
+        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    );
+  }
+
   return (
     <div className="space-y-2">
       <label className="font-medium text-sm" htmlFor={id}>
@@ -61,7 +77,7 @@ function ApiKeyInput({
         <input
           id={id}
           className={cn(
-            "w-full rounded-md border bg-background px-3 py-2 pr-10 font-mono text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50",
+            "w-full rounded-md border bg-background px-3 py-2 pr-14 font-mono text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50",
             status === "valid"
               ? "border-green-500"
               : status === "invalid"
@@ -86,10 +102,10 @@ function ApiKeyInput({
             }
           }}
           placeholder={placeholder}
-          type="password"
+          type={show ? "text" : "password"}
           value={field.state.value}
         />
-        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+        <div className="absolute inset-y-0 right-0 flex items-center pr-3 space-x-2 pointer-events-none">
           {status === "verifying" && (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           )}
@@ -103,6 +119,10 @@ function ApiKeyInput({
               <X className="h-3 w-3 text-white" />
             </div>
           )}
+          {/* visibility toggle */}
+          <div className="pointer-events-auto">
+            <VisibilityToggle />
+          </div>
         </div>
       </div>
       <p className="text-muted-foreground text-xs">
@@ -132,6 +152,7 @@ function UrlInput({
   field,
   form,
   onSave,
+  type = "text",
 }: {
   id: string;
   label: string;
@@ -140,33 +161,52 @@ function UrlInput({
   field: AnyFieldApi;
   form: AnyFormApi;
   onSave: (value: string) => Promise<void>;
+  type?: string;
 }) {
+  const [show, setShow] = useState(false);
+
   return (
     <div className="space-y-2">
       <label className="font-medium text-sm" htmlFor={id}>
         {label}
       </label>
-      <input
-        id={id}
-        className={cn(
-          "w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50",
+      <div className="relative">
+        <input
+          id={id}
+          className={cn(
+            "w-full rounded-md border border-border bg-background px-3 py-2",
+            type === "password" ? "pr-12 font-mono text-sm" : "font-mono text-sm",
+            "placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50",
+          )}
+          onBlur={(e) => {
+            field.handleBlur();
+            onSave(e.target.value);
+          }}
+          onChange={(e) => {
+            field.handleChange(e.target.value);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              form.handleSubmit();
+            }
+          }}
+          placeholder={placeholder}
+          type={type === "password" ? (show ? "text" : "password") : type}
+          value={field.state.value}
+        />
+        {type === "password" && (
+          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+            <button
+              type="button"
+              aria-label={show ? "Hide" : "Show"}
+              onClick={() => setShow((s) => !s)}
+              className="rounded p-1 text-muted-foreground hover:text-foreground pointer-events-auto"
+            >
+              {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
         )}
-        onBlur={(e) => {
-          field.handleBlur();
-          onSave(e.target.value);
-        }}
-        onChange={(e) => {
-          field.handleChange(e.target.value);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            form.handleSubmit();
-          }
-        }}
-        placeholder={placeholder}
-        type="text"
-        value={field.state.value}
-      />
+      </div>
       <p className="text-muted-foreground text-xs">{description}</p>
     </div>
   );
@@ -305,6 +345,7 @@ export function ApiKeysTab({
                 field={vllmApiKeyField}
                 form={form}
                 onSave={onSaveVllmKey}
+                type="password"
               />
             </div>
           </div>
