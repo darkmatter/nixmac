@@ -303,7 +303,7 @@ fn run_gui_mode(
             #[cfg(debug_assertions)]
             commands::trigger_test_panic,
             // Git
-            commands::git_init_if_needed,
+            commands::git_init_repo,
             commands::git_status,
             commands::git_status_and_cache,
             commands::git_cached,
