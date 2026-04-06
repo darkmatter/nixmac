@@ -21,48 +21,7 @@ pub struct Config {
     pub host_attr: Option<String>,
 }
 
-/// Comprehensive git repository status.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GitStatus {
-    /// All files with changes, parsed from diff headers.
-    pub files: Vec<GitFileStatus>,
-
-    /// Current branch name.
-    pub branch: Option<String>,
-
-    /// Whether HEAD has the nixmac-built tag (changes have been built/applied).
-    pub head_is_built: bool,
-
-    /// The raw unified diff content (git diff HEAD + untracked file contents).
-    pub diff: String,
-
-    /// Number of lines added.
-    pub additions: usize,
-
-    /// Number of lines deleted.
-    pub deletions: usize,
-
-    /// SHA hash of the current HEAD commit.
-    pub head_commit_hash: Option<String>,
-
-    /// Whether the working tree is clean (no uncommitted changes).
-    pub clean_head: bool,
-
-    /// Parsed hunks from the current diff. Empty when `clean_head` is true.
-    pub changes: Vec<crate::sqlite_types::Change>,
-}
-
-/// Individual file status parsed from diff headers.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GitFileStatus {
-    /// Relative path to the file.
-    pub path: String,
-
-    /// Type of change: "new", "edited", "removed", or "renamed".
-    pub change_type: String,
-}
+pub use crate::shared_types::{GitFileStatus, GitStatus};
 
 /// User interface preferences.
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -6,6 +6,53 @@ use specta::Type;
 use crate::sqlite_types::{Change, ChangeSet, ChangeSummary};
 
 // =============================================================================
+// Git status types
+// =============================================================================
+
+/// Type of change for a file in git status.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum ChangeType {
+    New,
+    Edited,
+    Removed,
+    Renamed,
+}
+
+/// Individual file status parsed from diff headers.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct GitFileStatus {
+    pub path: String,
+    pub change_type: ChangeType,
+}
+
+/// Comprehensive git repository status.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct GitStatus {
+    pub files: Vec<GitFileStatus>,
+    pub branch: Option<String>,
+    pub head_is_built: bool,
+    pub diff: String,
+    pub additions: usize,
+    pub deletions: usize,
+    pub head_commit_hash: Option<String>,
+    pub clean_head: bool,
+    pub changes: Vec<Change>,
+}
+
+/// Event payload emitted by the git status watcher.
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct WatcherEvent {
+    pub git_status: Option<GitStatus>,
+    pub change_map: Option<SemanticChangeMap>,
+    pub evolve_state: Option<EvolveState>,
+    pub error: Option<String>,
+}
+
+// =============================================================================
 // Query return types
 // =============================================================================
 
