@@ -197,7 +197,7 @@ pub fn bootstrap(app: &AppHandle, hostname: &str) -> Result<(), String> {
     copy_template_dir(&template_path, dest_path, hostname, platform, &username)?;
 
     // Initialize git repository and commit templates (without flake.lock)
-    git::init_if_needed(&dir).map_err(|e| format!("Failed to init git: {}", e))?;
+    git::init_repo(&dir).map_err(|e| format!("Failed to init git: {}", e))?;
     let info = git::commit_all(&dir, "chore: initial nix-darwin configuration")
         .map_err(|e| format!("Failed to commit: {}", e))?;
     if let Err(e) = git::tag_commit(&dir, &format!("nixmac-base-{}", &info.hash[..8]), &info.hash, false) {

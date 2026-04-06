@@ -143,10 +143,10 @@ pub async fn trigger_test_panic() -> Result<(), String> {
 
 /// Initializes a git repository in the config directory if one doesn't exist.
 #[tauri::command]
-pub async fn git_init_if_needed(app: AppHandle) -> Result<serde_json::Value, String> {
+pub async fn git_init_repo(app: AppHandle) -> Result<serde_json::Value, String> {
     let dir =
-        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_init_if_needed", e))?;
-    git::init_if_needed(&dir).map_err(|e| capture_err("git_init_if_needed", e))?;
+        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_init_repo", e))?;
+    git::init_repo(&dir).map_err(|e| capture_err("git_init_repo", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
@@ -154,7 +154,6 @@ pub async fn git_init_if_needed(app: AppHandle) -> Result<serde_json::Value, Str
 #[tauri::command]
 pub async fn git_status(app: AppHandle) -> Result<types::GitStatus, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_status", e))?;
-    git::init_if_needed(&dir).map_err(|e| capture_err("git_status", e))?;
     let status = git::status(&dir).map_err(|e| capture_err("git_status", e))?;
     Ok(status)
 }
@@ -164,7 +163,6 @@ pub async fn git_status(app: AppHandle) -> Result<types::GitStatus, String> {
 pub async fn git_status_and_cache(app: AppHandle) -> Result<types::GitStatus, String> {
     let dir = store::ensure_config_dir_exists(&app)
         .map_err(|e| capture_err("git_status_and_cache", e))?;
-    git::init_if_needed(&dir).map_err(|e| capture_err("git_status_and_cache", e))?;
     let status =
         git::status_and_cache(&dir, &app).map_err(|e| capture_err("git_status_and_cache", e))?;
     Ok(status)

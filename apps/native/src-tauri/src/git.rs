@@ -32,8 +32,8 @@ pub fn is_repo(dir: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// Initializes git repo if needed with sensible .gitignore for Nix projects.
-pub fn init_if_needed(dir: &str) -> Result<()> {
+/// Initializes a git repo with a .gitignore for Nix projects. Call explicitly during setup only.
+pub fn init_repo(dir: &str) -> Result<()> {
     if !is_repo(dir) {
         std::fs::create_dir_all(dir)?;
         git_command().args(["init"]).current_dir(dir).output()?;
@@ -45,6 +45,14 @@ pub fn init_if_needed(dir: &str) -> Result<()> {
                 "node_modules\nresult\nrelease\ndist\ndist-electron\n",
             )?;
         }
+    }
+    Ok(())
+}
+
+/// Errors if `dir` is not a git repository. Use at the top of functions that require a repo.
+pub fn require_repo(dir: &str) -> Result<()> {
+    if !is_repo(dir) {
+        anyhow::bail!("'{}' is not a git repository", dir);
     }
     Ok(())
 }
@@ -190,7 +198,7 @@ pub fn count_diff_changes(diff: &str) -> (usize, usize) {
 pub fn parse_files_from_diff(diff: &str) -> Vec<GitFileStatus> {
     let mut files = Vec::new();
     let mut current_file: Option<String> = None;
-    let mut current_change_type = "edited";
+    let mut current_change_type = crate::shared_types::ChangeType::Edited;
 
     for line in diff.lines() {
         // Match "diff --git a/path b/path" - same pattern as diff.tsx
@@ -199,7 +207,7 @@ pub fn parse_files_from_diff(diff: &str) -> Vec<GitFileStatus> {
             if let Some(path) = current_file.take() {
                 files.push(GitFileStatus {
                     path,
-                    change_type: current_change_type.to_string(),
+                    change_type: current_change_type,
                 });
             }
 
@@ -208,16 +216,16 @@ pub fn parse_files_from_diff(diff: &str) -> Vec<GitFileStatus> {
             if let Some(b_index) = line.find(" b/") {
                 let path = &line[b_index + 3..]; // Skip " b/"
                 current_file = Some(path.to_string());
-                current_change_type = "edited"; // Default, may be overridden
+                current_change_type = crate::shared_types::ChangeType::Edited; // Default, may be overridden
             }
         }
         // Detect change type
         else if line.starts_with("new file mode") {
-            current_change_type = "new";
+            current_change_type = crate::shared_types::ChangeType::New;
         } else if line.starts_with("deleted file mode") {
-            current_change_type = "removed";
+            current_change_type = crate::shared_types::ChangeType::Removed;
         } else if line.starts_with("rename from") {
-            current_change_type = "renamed";
+            current_change_type = crate::shared_types::ChangeType::Renamed;
         }
     }
 
@@ -225,7 +233,7 @@ pub fn parse_files_from_diff(diff: &str) -> Vec<GitFileStatus> {
     if let Some(path) = current_file {
         files.push(GitFileStatus {
             path,
-            change_type: current_change_type.to_string(),
+            change_type: current_change_type,
         });
     }
 
@@ -299,6 +307,7 @@ pub fn current_branch(dir: &str) -> Option<String> {
 
 /// Comprehensive git status against HEAD.
 pub fn status(dir: &str) -> Result<GitStatus> {
+    require_repo(dir)?;
     let branch = current_branch(dir);
 
     let diff = get_full_diff(dir).unwrap_or_default();
@@ -711,10 +720,10 @@ mod tests {
 
     // mk temp repo
     #[test]
-    fn test_init_if_needed() {
+    fn test_init_repo() {
         let temp_dir = TempDir::new().unwrap();
         let repo_dir = temp_dir.path().join("repo");
-        init_if_needed(&repo_dir.to_string_lossy()).unwrap();
+        init_repo(&repo_dir.to_string_lossy()).unwrap();
         assert!(is_repo(&repo_dir.to_string_lossy()));
     }
 
@@ -722,7 +731,7 @@ mod tests {
     fn test_status() {
         let temp_dir = TempDir::new().unwrap();
         let repo_dir = temp_dir.path().join("repo");
-        init_if_needed(&repo_dir.to_string_lossy()).unwrap();
+        init_repo(&repo_dir.to_string_lossy()).unwrap();
         fs::write(repo_dir.join("file.txt"), "hello").unwrap();
         let status = status(&repo_dir.to_string_lossy()).unwrap();
         // New file should appear in diff and files list
@@ -755,11 +764,11 @@ deleted file mode 100644
         let files = parse_files_from_diff(diff);
         assert_eq!(files.len(), 3);
         assert_eq!(files[0].path, "new-file.txt");
-        assert_eq!(files[0].change_type, "new");
+        assert!(matches!(files[0].change_type, crate::shared_types::ChangeType::New));
         assert_eq!(files[1].path, "existing.txt");
-        assert_eq!(files[1].change_type, "edited");
+        assert!(matches!(files[1].change_type, crate::shared_types::ChangeType::Edited));
         assert_eq!(files[2].path, "removed.txt");
-        assert_eq!(files[2].change_type, "removed");
+        assert!(matches!(files[2].change_type, crate::shared_types::ChangeType::Removed));
     }
 
     #[test]
@@ -767,7 +776,7 @@ deleted file mode 100644
         let temp_dir = TempDir::new().unwrap();
         let repo_dir = temp_dir.path().join("repo");
         let repo_dir_str = repo_dir.to_string_lossy().to_string();
-        init_if_needed(&repo_dir_str).unwrap();
+        init_repo(&repo_dir_str).unwrap();
 
         fs::write(repo_dir.join("file.txt"), "main\n").unwrap();
         run_git_ok(&repo_dir, &["add", "-A"]);
