@@ -14,6 +14,9 @@ export interface HistoryItem {
   message: string | null;
   createdAt: number;
   isBuilt: boolean;
+  isBase: boolean;
+  isExternal: boolean;
+  fileCount: number;
   commit: Commit | null;
   changeMap: SemanticChangeMap | null;
 }

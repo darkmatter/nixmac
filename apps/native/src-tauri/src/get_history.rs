@@ -37,11 +37,24 @@ pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::ty
             .map(|sha| sha == git_commit.hash)
             .unwrap_or(false);
 
+        let tags = crate::git::read_tags(&config_dir, &git_commit.hash);
+        let is_base = tags.iter().any(|t| t.starts_with("nixmac-base-"));
+        let is_external = !tags.iter().any(|t| {
+            t.starts_with("nixmac-commit-") || t.starts_with("nixmac-base-")
+        });
+
+        let file_count = change_map.as_ref().map(|cm| {
+            cm.groups.iter().map(|g| g.changes.len()).sum::<usize>() + cm.singles.len()
+        }).unwrap_or(0);
+
         entries.push(crate::types::HistoryItem {
             hash: git_commit.hash.clone(),
             message: git_commit.message.clone(),
             created_at: git_commit.created_at,
             is_built,
+            is_base,
+            is_external,
+            file_count,
             commit: db_commit,
             change_map,
         });

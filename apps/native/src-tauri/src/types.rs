@@ -266,8 +266,14 @@ pub struct HistoryItem {
     pub message: Option<String>,
     /// Unix timestamp (always from git log).
     pub created_at: i64,
-    /// True if this commit has the `nixmac-last-build` tag (most recently built).
+    /// Has `nixmac-last-build` tag.
     pub is_built: bool,
+    /// Has `nixmac-base-<hash>` tag.
+    pub is_base: bool,
+    /// Has no `nixmac-commit-*` or `nixmac-base-*` tag.
+    pub is_external: bool,
+    /// Changed file count from change_map, or 0.
+    pub file_count: usize,
     /// DB record — present only if metadata has been generated for this commit.
     pub commit: Option<crate::sqlite_types::Commit>,
     /// Grouped change map — present only if the summarize pipeline has run for this commit pair.

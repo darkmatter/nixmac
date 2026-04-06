@@ -73,6 +73,20 @@ export function HistoryItemCard({ item }: HistoryItemCardProps) {
             <span className="text-[10px] text-neutral-500">
               {formatRelativeTime(item.createdAt)}
             </span>
+            {item.fileCount > 0 && (
+              <span className="inline-flex items-center gap-[3px] text-[10px] text-neutral-500">
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
+                  <path d="M4 2h5l4 4v8H4V2z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+                  <path d="M9 2v4h4" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+                </svg>
+                {item.fileCount} {item.fileCount === 1 ? "file" : "files"}
+              </span>
+            )}
+            {item.isExternal && (
+              <span className="rounded bg-violet-400/10 px-[7px] py-0.5 font-mono text-[10px] italic text-violet-400">
+                External commit
+              </span>
+            )}
           </div>
           {badges.length > 0 && (
             <div className="mt-[6px] flex flex-wrap gap-1">
@@ -107,7 +121,7 @@ export function HistoryItemCard({ item }: HistoryItemCardProps) {
 
         {/* Right: action buttons */}
         <div className="flex shrink-0 flex-col items-end gap-1">
-          <HistoryRestoreItemButton hash={item.hash} isBuilt={item.isBuilt} />
+          <HistoryRestoreItemButton hash={item.hash} isBuilt={item.isBuilt} isBase={item.isBase} />
           {!changeMap && (
             <AnalyzeHistoryItemButton
               hash={item.hash}
