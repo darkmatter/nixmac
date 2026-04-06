@@ -54,6 +54,22 @@ pub struct SummarizedChangeSet {
     pub missed_hashes: Vec<String>,
 }
 
+/// A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryItem {
+    pub hash: String,
+    pub message: Option<String>,
+    pub created_at: i64,
+    pub is_built: bool,
+    pub is_base: bool,
+    pub is_external: bool,
+    pub file_count: usize,
+    pub commit: Option<crate::sqlite_types::Commit>,
+    pub change_map: Option<SemanticChangeMap>,
+    pub raw_changes: Vec<crate::sqlite_types::Change>,
+}
+
 // =============================================================================
 // Evolve routing state
 // =============================================================================

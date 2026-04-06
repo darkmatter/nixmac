@@ -549,7 +549,7 @@ pub async fn summarize_current(app: AppHandle) -> Result<(), String> {
 /// Returns all commits on the main branch, each paired with optional DB metadata, summary,
 /// and build/head status.
 #[tauri::command]
-pub async fn get_history(app: AppHandle) -> Result<Vec<types::HistoryItem>, String> {
+pub async fn get_history(app: AppHandle) -> Result<Vec<crate::shared_types::HistoryItem>, String> {
     crate::get_history::get_history(&app)
         .await
         .map_err(|e| capture_err("get_history", e))
