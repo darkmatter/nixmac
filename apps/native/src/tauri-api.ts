@@ -4,22 +4,10 @@ import {
   checkFullDiskAccessPermission,
   requestFullDiskAccessPermission,
 } from "tauri-plugin-macos-permissions-api";
-import type { EvolveState, SemanticChangeMap } from "./types/shared";
-import type { Change, Commit } from "./types/sqlite";
-export type { EvolveState, EvolveStep, SemanticChangeMap, SummarizedChangeSet } from "./types/shared";
+import type { EvolveState, HistoryItem, SemanticChangeMap } from "./types/shared";
+import type { Change } from "./types/sqlite";
+export type { EvolveState, EvolveStep, HistoryItem, SemanticChangeMap, SummarizedChangeSet } from "./types/shared";
 export type { Change, Commit } from "./types/sqlite";
-
-export interface HistoryItem {
-  hash: string;
-  message: string | null;
-  createdAt: number;
-  isBuilt: boolean;
-  isBase: boolean;
-  isExternal: boolean;
-  fileCount: number;
-  commit: Commit | null;
-  changeMap: SemanticChangeMap | null;
-}
 
 export interface UnknownRecord {
   [key: string]: unknown;

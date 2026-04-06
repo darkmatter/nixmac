@@ -16,6 +16,8 @@ status: string; createdAt: number }
 
 export type ChangeWithSummary = { id: number; hash: string; filename: string; diff: string; lineCount: number; createdAt: number; ownSummaryId: number | null; title: string; description: string }
 
+export type Commit = { id: number; hash: string; treeHash: string; message: string | null; createdAt: number }
+
 /**
  * Persisted evolve state stored in `evolve-state.json`.
  */
@@ -29,6 +31,11 @@ step: EvolveStep }
  * Widget step derived from `EvolveState` fields.
  */
 export type EvolveStep = "begin" | "evolve" | "merge"
+
+/**
+ * A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.
+ */
+export type HistoryItem = { hash: string; message: string | null; createdAt: number; isBuilt: boolean; isBase: boolean; isExternal: boolean; fileCount: number; commit: Commit | null; changeMap: SemanticChangeMap | null; rawChanges: Change[] }
 
 export type SemanticChangeGroup = { summary: ChangeSummary; changes: ChangeWithSummary[] }
 

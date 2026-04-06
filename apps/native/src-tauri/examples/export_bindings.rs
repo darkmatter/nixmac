@@ -42,7 +42,8 @@ fn main() {
         .register::<shared_types::SemanticChangeGroup>()
         .register::<shared_types::SemanticChangeMap>()
         .register::<shared_types::EvolveStep>()
-        .register::<shared_types::EvolveState>();
+        .register::<shared_types::EvolveState>()
+        .register::<shared_types::HistoryItem>();
 
     let shared_output_path = "../src/types/shared.ts";
 

@@ -253,34 +253,6 @@ pub struct FeedbackPanicDetails {
 }
 
 // =============================================================================
-// History
-// =============================================================================
-
-/// A git commit from the log, with optional DB metadata and change map.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct HistoryItem {
-    /// Commit hash (always from git log).
-    pub hash: String,
-    /// Commit message (always from git log).
-    pub message: Option<String>,
-    /// Unix timestamp (always from git log).
-    pub created_at: i64,
-    /// Has `nixmac-last-build` tag.
-    pub is_built: bool,
-    /// Has `nixmac-base-<hash>` tag.
-    pub is_base: bool,
-    /// Has no `nixmac-commit-*` or `nixmac-base-*` tag.
-    pub is_external: bool,
-    /// Changed file count from change_map, or 0.
-    pub file_count: usize,
-    /// DB record — present only if metadata has been generated for this commit.
-    pub commit: Option<crate::sqlite_types::Commit>,
-    /// Grouped change map — present only if the summarize pipeline has run for this commit pair.
-    pub change_map: Option<crate::shared_types::SemanticChangeMap>,
-}
-
-// =============================================================================
 // Evolve Streaming Events
 // =============================================================================
 
