@@ -14,6 +14,11 @@ export type ChangeSummary = { id: number; title: string; description: string;
  */
 status: string; createdAt: number }
 
+/**
+ * Type of change for a file in git status.
+ */
+export type ChangeType = "new" | "edited" | "removed" | "renamed"
+
 export type ChangeWithSummary = { id: number; hash: string; filename: string; diff: string; lineCount: number; createdAt: number; ownSummaryId: number | null; title: string; description: string }
 
 export type Commit = { id: number; hash: string; treeHash: string; message: string | null; createdAt: number }
@@ -33,6 +38,16 @@ step: EvolveStep }
 export type EvolveStep = "begin" | "evolve" | "merge"
 
 /**
+ * Individual file status parsed from diff headers.
+ */
+export type GitFileStatus = { path: string; changeType: ChangeType }
+
+/**
+ * Comprehensive git repository status.
+ */
+export type GitStatus = { files: GitFileStatus[]; branch: string | null; headIsBuilt: boolean; diff: string; additions: number; deletions: number; headCommitHash: string | null; cleanHead: boolean; changes: Change[] }
+
+/**
  * A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.
  */
 export type HistoryItem = { hash: string; message: string | null; createdAt: number; isBuilt: boolean; isBase: boolean; isExternal: boolean; fileCount: number; commit: Commit | null; changeMap: SemanticChangeMap | null; rawChanges: Change[] }
@@ -44,4 +59,9 @@ export type SemanticChangeMap = { groups: SemanticChangeGroup[]; singles: Change
 export type SummarizedChange = { change: Change; ownSummary: ChangeSummary | null; groupSummary: ChangeSummary | null }
 
 export type SummarizedChangeSet = { changeSet: ChangeSet; changes: SummarizedChange[]; missedHashes: string[] }
+
+/**
+ * Event payload emitted by the git status watcher.
+ */
+export type WatcherEvent = { gitStatus: GitStatus | null; changeMap: SemanticChangeMap | null; evolveState: EvolveState | null; error: string | null }
 
