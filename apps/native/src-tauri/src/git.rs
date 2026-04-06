@@ -559,10 +559,7 @@ pub fn checkout_branch(dir: &str, branch_name: &str) -> Result<()> {
 /// Adds `nixmac-last-build` - to track latest build
 /// & `nixmac-built-<timestamp>` permanently
 pub fn tag_as_built(dir: &str) -> Result<()> {
-    let timestamp = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
+    let timestamp = crate::utils::unix_now();
     let timestamped_tag = format!("nixmac-built-{}", timestamp);
 
     let output = git_command()

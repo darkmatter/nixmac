@@ -187,10 +187,7 @@ pub async fn git_commit(
 
     // Save commit to database
     if let Ok(db_path) = db::get_db_path(&app) {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs() as i64;
+        let now = crate::utils::unix_now();
         match db::commits::upsert_commit(
             &db_path,
             &commit_info.hash,
