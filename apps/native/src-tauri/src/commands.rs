@@ -185,6 +185,10 @@ pub async fn git_commit(
     let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_commit", e))?;
     let commit_info = git::commit_all(&dir, &message).map_err(|e| capture_err("git_commit", e))?;
 
+    if let Err(e) = git::tag_commit(&dir, &format!("nixmac-commit-{}", &commit_info.hash[..8]), &commit_info.hash, false) {
+        log::warn!("[git_commit] Failed to tag commit: {}", e);
+    }
+
     // Save commit to database
     if let Ok(db_path) = db::get_db_path(&app) {
         let now = crate::utils::unix_now();
@@ -560,8 +564,11 @@ pub async fn restore_to_commit(app: AppHandle, target_hash: String) -> Result<()
     let label = &target_hash[..target_hash.len().min(8)];
     git::restore_files_at_commit(&config_dir, &target_hash)
         .map_err(|e| capture_err("restore_to_commit", e))?;
-    git::commit_all(&config_dir, &format!("nixmac: restore {label}"))
+    let info = git::commit_all(&config_dir, &format!("chore(restore): restore {label}"))
         .map_err(|e| capture_err("restore_to_commit", e))?;
+    if let Err(e) = git::tag_commit(&config_dir, &format!("nixmac-commit-{}", &info.hash[..8]), &info.hash, false) {
+        log::warn!("[restore_to_commit] Failed to tag commit: {}", e);
+    }
     Ok(())
 }
 

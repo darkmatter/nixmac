@@ -556,32 +556,43 @@ pub fn checkout_branch(dir: &str, branch_name: &str) -> Result<()> {
 }
 
 
-/// Adds `nixmac-last-build` - to track latest build
-/// & `nixmac-built-<timestamp>` permanently
+/// Returns all tags for `hash`.
+pub fn read_tags(dir: &str, hash: &str) -> Vec<String> {
+    let Ok(output) = git_command()
+        .args(["tag", "--points-at", hash])
+        .current_dir(dir)
+        .output()
+    else {
+        return vec![];
+    };
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter(|l| !l.is_empty())
+        .map(str::to_owned)
+        .collect()
+}
+
+/// Git tags (any ref or hash) `target`, `force = true` overwrites.
+pub fn tag_commit(dir: &str, tag: &str, target: &str, force: bool) -> Result<()> {
+    let mut args = vec!["tag"];
+    if force {
+        args.push("-f");
+    }
+    args.push(tag);
+    args.push(target);
+    let output = git_command().args(&args).current_dir(dir).output()?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("Failed to create tag `{}`: {}", tag, stderr);
+    }
+    Ok(())
+}
+
+/// Git tags `nixmac-last-build` & `nixmac-built-<timestamp>`
 pub fn tag_as_built(dir: &str) -> Result<()> {
-    let timestamp = crate::utils::unix_now();
-    let timestamped_tag = format!("nixmac-built-{}", timestamp);
-
-    let output = git_command()
-        .args(["tag", &timestamped_tag, "HEAD"])
-        .current_dir(dir)
-        .output()?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("Failed to create timestamped tag: {}", stderr);
-    }
-
-    let output = git_command()
-        .args(["tag", "-f", "nixmac-last-build", "HEAD"])
-        .current_dir(dir)
-        .output()?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("Failed to update last-build tag: {}", stderr);
-    }
-
+    let timestamped_tag = format!("nixmac-built-{}", crate::utils::unix_now());
+    tag_commit(dir, &timestamped_tag, "HEAD", false)?;
+    tag_commit(dir, "nixmac-last-build", "HEAD", true)?;
     Ok(())
 }
 
