@@ -30,10 +30,7 @@ pub async fn new_changeset<R: Runtime>(
         return Ok(None);
     }
 
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs() as i64;
+    let now = crate::utils::unix_now();
     // Truncated diffs — content capped at DIFF_EXCERPT_LINES, sufficient for placement
     let all_changes = crate::changes_from_diff::changes_from_diff(&diff, now, true);
 

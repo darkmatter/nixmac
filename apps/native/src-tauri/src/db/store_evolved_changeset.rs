@@ -3,7 +3,6 @@
 use anyhow::Result;
 use rusqlite::Transaction;
 use std::path::Path;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::db::changesets::{
     build_pairs_json, get_change_id_by_hash, insert_change_set, insert_change_summary,
@@ -24,7 +23,7 @@ pub fn store(
     evolution_id: Option<i64>,
 ) -> Result<(i64, Vec<i64>)> {
     let mut conn = rusqlite::Connection::open(db_path)?;
-    let now = unix_now();
+    let now = crate::utils::unix_now();
     let tx = conn.transaction()?;
 
     let mut queued_ids = Vec::new();
@@ -147,9 +146,3 @@ fn store_new_single(tx: &Transaction, a: &mut NewSingleAssignment, now: i64) -> 
     Ok(queued_id)
 }
 
-fn unix_now() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs() as i64
-}
