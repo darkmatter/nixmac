@@ -5,7 +5,7 @@ import type {
 
 export function computeCurrentStep(state: WidgetState): WidgetStep {
   const hasConfigDir = !!state.configDir;
-  const hasHost = !!state.host;
+  const hasHost = !!state.host && state.hosts.includes(state.host);
   const permissionsCheckedAndIncomplete =
     state.permissionsChecked &&
     state.permissionsState &&
