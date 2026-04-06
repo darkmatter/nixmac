@@ -79,8 +79,14 @@ describe("DarwinWidget", () => {
     const store = useWidgetStore.getState();
     store.setGitStatus({
       files: [{ path: "test.nix", changeType: "edited" }],
+      branch: null,
+      headIsBuilt: false,
+      diff: "",
+      additions: 0,
+      deletions: 0,
       headCommitHash: null,
       cleanHead: false,
+      changes: [],
     });
 
     const { container } = render(<DarwinWidget />);
