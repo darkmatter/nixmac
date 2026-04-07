@@ -1,4 +1,6 @@
 inputs:
+  devenv:
+    url: github:cachix/devenv
   bun2nix:
     url: github:nix-community/bun2nix
     inputs:
