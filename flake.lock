@@ -623,6 +623,28 @@
         "type": "github"
       }
     },
+    "microvm": {
+      "inputs": {
+        "nixpkgs": [
+          "stackpanel",
+          "nixpkgs"
+        ],
+        "spectrum": "spectrum"
+      },
+      "locked": {
+        "lastModified": 1774448302,
+        "narHash": "sha256-Z7QLau4WR38/pMPNVH3MEGeMybBTaAzn+PUCErMngFw=",
+        "owner": "astro",
+        "repo": "microvm.nix",
+        "rev": "da28962a2ba84718895b7325f600686c3b4ee099",
+        "type": "github"
+      },
+      "original": {
+        "owner": "astro",
+        "repo": "microvm.nix",
+        "type": "github"
+      }
+    },
     "namaka": {
       "inputs": {
         "haumea": "haumea",
@@ -766,11 +788,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1774709303,
-        "narHash": "sha256-D3Q07BbIA2KnTcSXIqqu9P586uWxN74zNoCH3h2ESHg=",
+        "lastModified": 1775423009,
+        "narHash": "sha256-vPKLpjhIVWdDrfiUM8atW6YkIggCEKdSAlJPzzhkQlw=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "8110df5ad7abf5d4c0f6fb0f8f978390e77f9685",
+        "rev": "68d8aa3d661f0e6bd5862291b5bb263b2a6595c9",
         "type": "github"
       },
       "original": {
@@ -871,6 +893,22 @@
         "stackpanel-root": "stackpanel-root"
       }
     },
+    "spectrum": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1772189877,
+        "narHash": "sha256-i1p90Rgssb//aNiTDFq46ZG/fk3LmyRLChtp/9lddyA=",
+        "ref": "refs/heads/main",
+        "rev": "fe39e122d898f66e89ffa17d4f4209989ccb5358",
+        "revCount": 1255,
+        "type": "git",
+        "url": "https://spectrum-os.org/git/spectrum"
+      },
+      "original": {
+        "type": "git",
+        "url": "https://spectrum-os.org/git/spectrum"
+      }
+    },
     "stable": {
       "locked": {
         "lastModified": 1750133334,
@@ -898,6 +936,7 @@
         "flake-utils": "flake-utils_3",
         "git-hooks": "git-hooks_2",
         "gomod2nix": "gomod2nix",
+        "microvm": "microvm",
         "namaka": "namaka",
         "nix2container": "nix2container",
         "nixpkgs": "nixpkgs_2",
@@ -906,11 +945,11 @@
         "treefmt-nix": "treefmt-nix_4"
       },
       "locked": {
-        "lastModified": 1774881540,
-        "narHash": "sha256-z42ARXanL+1Ow44zEsCyWzhBv3cZj0p7xl6lLH9vwaU=",
+        "lastModified": 1774970341,
+        "narHash": "sha256-aesBQmzEDM7f9nFY7Vk+C40R55eavSKzrzrJOjT8Sh0=",
         "owner": "darkmatter",
         "repo": "stackpanel",
-        "rev": "0c323f2ed168b4cfe3c4190de139ca39be52ffee",
+        "rev": "cec7c987cc41feabe68032ddb70b39eeb507596e",
         "type": "github"
       },
       "original": {
