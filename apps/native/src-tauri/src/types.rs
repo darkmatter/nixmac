@@ -21,48 +21,7 @@ pub struct Config {
     pub host_attr: Option<String>,
 }
 
-/// Comprehensive git repository status.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GitStatus {
-    /// All files with changes, parsed from diff headers.
-    pub files: Vec<GitFileStatus>,
-
-    /// Current branch name.
-    pub branch: Option<String>,
-
-    /// Whether HEAD has the nixmac-built tag (changes have been built/applied).
-    pub head_is_built: bool,
-
-    /// The raw unified diff content (git diff HEAD + untracked file contents).
-    pub diff: String,
-
-    /// Number of lines added.
-    pub additions: usize,
-
-    /// Number of lines deleted.
-    pub deletions: usize,
-
-    /// SHA hash of the current HEAD commit.
-    pub head_commit_hash: Option<String>,
-
-    /// Whether the working tree is clean (no uncommitted changes).
-    pub clean_head: bool,
-
-    /// Parsed hunks from the current diff. Empty when `clean_head` is true.
-    pub changes: Vec<crate::sqlite_types::Change>,
-}
-
-/// Individual file status parsed from diff headers.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GitFileStatus {
-    /// Relative path to the file.
-    pub path: String,
-
-    /// Type of change: "new", "edited", "removed", or "renamed".
-    pub change_type: String,
-}
+pub use crate::shared_types::{GitFileStatus, GitStatus};
 
 /// User interface preferences.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -250,28 +209,6 @@ pub struct FeedbackPanicDetails {
     pub location: Option<String>,
     pub backtrace: Option<String>,
     pub timestamp: String,
-}
-
-// =============================================================================
-// History
-// =============================================================================
-
-/// A git commit from the log, with optional DB metadata and change map.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct HistoryItem {
-    /// Commit hash (always from git log).
-    pub hash: String,
-    /// Commit message (always from git log).
-    pub message: Option<String>,
-    /// Unix timestamp (always from git log).
-    pub created_at: i64,
-    /// True if this commit has the `nixmac-last-build` tag (most recently built).
-    pub is_built: bool,
-    /// DB record — present only if metadata has been generated for this commit.
-    pub commit: Option<crate::sqlite_types::Commit>,
-    /// Grouped change map — present only if the summarize pipeline has run for this commit pair.
-    pub change_map: Option<crate::shared_types::SemanticChangeMap>,
 }
 
 // =============================================================================

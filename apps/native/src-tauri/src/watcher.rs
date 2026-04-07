@@ -4,8 +4,7 @@
 //! Change detection compares current git status against the persisted store cache,
 //! which is kept in sync by both this watcher and the evolution/summarize handlers.
 
-use crate::shared_types::{EvolveState, SemanticChangeMap};
-use crate::types::GitStatus;
+use crate::shared_types::WatcherEvent;
 use crate::{db, evolve_state, git, store, summarize};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
@@ -21,14 +20,6 @@ static WATCH_DIR: Mutex<Option<String>> = Mutex::new(None);
 /// Holds handle to current watcher so we can wait for it to stop on restart.
 static WATCHER_THREAD: Mutex<Option<std::thread::JoinHandle<()>>> = Mutex::new(None);
 
-/// Event payload sent to frontend when git status changes.
-#[derive(Debug, Clone, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct WatcherEvent {
-    pub git_status: GitStatus,
-    pub change_map: SemanticChangeMap,
-    pub evolve_state: Option<EvolveState>,
-}
 
 /// Starts the git status watcher for the given directory.
 ///
@@ -71,39 +62,53 @@ where
             };
 
             if let Some(ref dir) = current_dir {
-                if let Ok(status) = git::status(dir) {
-                    // Compare against the store-persisted cache (source of truth).
-                    // Both this watcher and evolution/summarize keep the cache in sync.
-                    let cached_json = store::get_cached_git_status(&app_handle)
-                        .ok()
-                        .flatten()
-                        .and_then(|s| serde_json::to_string(&s).ok());
-                    let current_json = serde_json::to_string(&status).ok();
+                match git::status(dir) {
+                    Ok(status) => {
+                        // Compare against the store-persisted cache (source of truth).
+                        // Both this watcher and evolution/summarize keep the cache in sync.
+                        let cached_json = store::get_cached_git_status(&app_handle)
+                            .ok()
+                            .flatten()
+                            .and_then(|s| serde_json::to_string(&s).ok());
+                        let current_json = serde_json::to_string(&status).ok();
 
-                    if current_json != cached_json {
-                        let change_map = db::get_db_path(&app_handle)
-                            .ok()
-                            .and_then(|db_path| {
-                                summarize::find_existing::for_current_state(&db_path, dir).ok()
-                            })
-                            .map(summarize::group_existing::from_change_sets)
-                            .unwrap_or_default();
-                        let evolve_state_non_committable = evolve_state::get(&app_handle)
-                            .ok()
-                            .filter(|es| es.committable)
-                            .and_then(|mut es| {
-                                es.committable = false;
-                                evolve_state::set(&app_handle, es).ok()
-                            });
+                        if current_json != cached_json {
+                            let change_map = db::get_db_path(&app_handle)
+                                .ok()
+                                .and_then(|db_path| {
+                                    summarize::find_existing::for_current_state(&db_path, dir).ok()
+                                })
+                                .map(summarize::group_existing::from_change_sets)
+                                .unwrap_or_default();
+                            let evolve_state_non_committable = evolve_state::get(&app_handle)
+                                .ok()
+                                .filter(|es| es.committable)
+                                .and_then(|mut es| {
+                                    es.committable = false;
+                                    evolve_state::set(&app_handle, es).ok()
+                                });
+                            let _ = app_handle.emit(
+                                "git:status-changed",
+                                WatcherEvent {
+                                    git_status: Some(status.clone()),
+                                    change_map: Some(change_map),
+                                    evolve_state: evolve_state_non_committable,
+                                    error: None,
+                                },
+                            );
+                            let _ = store::set_cached_git_status(&app_handle, &status);
+                        }
+                    }
+                    Err(e) => {
                         let _ = app_handle.emit(
                             "git:status-changed",
                             WatcherEvent {
-                                git_status: status.clone(),
-                                change_map,
-                                evolve_state: evolve_state_non_committable,
+                                git_status: None,
+                                change_map: None,
+                                evolve_state: None,
+                                error: Some(e.to_string()),
                             },
                         );
-                        let _ = store::set_cached_git_status(&app_handle, &status);
                     }
                 }
             }
