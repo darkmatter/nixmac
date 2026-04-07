@@ -4,13 +4,15 @@ import { Button } from "@/components/ui/button";
 import { darwinAPI } from "@/tauri-api";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { HistoryCurrentItemBadge } from "@/components/widget/history-current-item-badge";
+import { HistoryBaseItemBadge } from "@/components/widget/history-base-item-badge";
 
 interface HistoryRestoreItemButtonProps {
   hash: string;
   isBuilt?: boolean;
+  isBase?: boolean;
 }
 
-export function HistoryRestoreItemButton({ hash, isBuilt = false }: HistoryRestoreItemButtonProps) {
+export function HistoryRestoreItemButton({ hash, isBuilt = false, isBase = false }: HistoryRestoreItemButtonProps) {
   const [restoring, setRestoring] = useState(false);
   const { triggerRebuild } = useRebuildStream();
 
@@ -29,6 +31,7 @@ export function HistoryRestoreItemButton({ hash, isBuilt = false }: HistoryResto
   );
 
   if (isBuilt) return <HistoryCurrentItemBadge />;
+  if (isBase) return <HistoryBaseItemBadge />;
 
   return (
     <Button

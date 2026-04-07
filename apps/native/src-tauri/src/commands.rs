@@ -143,10 +143,10 @@ pub async fn trigger_test_panic() -> Result<(), String> {
 
 /// Initializes a git repository in the config directory if one doesn't exist.
 #[tauri::command]
-pub async fn git_init_if_needed(app: AppHandle) -> Result<serde_json::Value, String> {
+pub async fn git_init_repo(app: AppHandle) -> Result<serde_json::Value, String> {
     let dir =
-        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_init_if_needed", e))?;
-    git::init_if_needed(&dir).map_err(|e| capture_err("git_init_if_needed", e))?;
+        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_init_repo", e))?;
+    git::init_repo(&dir).map_err(|e| capture_err("git_init_repo", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
@@ -154,7 +154,6 @@ pub async fn git_init_if_needed(app: AppHandle) -> Result<serde_json::Value, Str
 #[tauri::command]
 pub async fn git_status(app: AppHandle) -> Result<types::GitStatus, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_status", e))?;
-    git::init_if_needed(&dir).map_err(|e| capture_err("git_status", e))?;
     let status = git::status(&dir).map_err(|e| capture_err("git_status", e))?;
     Ok(status)
 }
@@ -164,7 +163,6 @@ pub async fn git_status(app: AppHandle) -> Result<types::GitStatus, String> {
 pub async fn git_status_and_cache(app: AppHandle) -> Result<types::GitStatus, String> {
     let dir = store::ensure_config_dir_exists(&app)
         .map_err(|e| capture_err("git_status_and_cache", e))?;
-    git::init_if_needed(&dir).map_err(|e| capture_err("git_status_and_cache", e))?;
     let status =
         git::status_and_cache(&dir, &app).map_err(|e| capture_err("git_status_and_cache", e))?;
     Ok(status)
@@ -185,12 +183,13 @@ pub async fn git_commit(
     let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_commit", e))?;
     let commit_info = git::commit_all(&dir, &message).map_err(|e| capture_err("git_commit", e))?;
 
+    if let Err(e) = git::tag_commit(&dir, &format!("nixmac-commit-{}", &commit_info.hash[..8]), &commit_info.hash, false) {
+        log::warn!("[git_commit] Failed to tag commit: {}", e);
+    }
+
     // Save commit to database
     if let Ok(db_path) = db::get_db_path(&app) {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs() as i64;
+        let now = crate::utils::unix_now();
         match db::commits::upsert_commit(
             &db_path,
             &commit_info.hash,
@@ -548,7 +547,7 @@ pub async fn summarize_current(app: AppHandle) -> Result<(), String> {
 /// Returns all commits on the main branch, each paired with optional DB metadata, summary,
 /// and build/head status.
 #[tauri::command]
-pub async fn get_history(app: AppHandle) -> Result<Vec<types::HistoryItem>, String> {
+pub async fn get_history(app: AppHandle) -> Result<Vec<crate::shared_types::HistoryItem>, String> {
     crate::get_history::get_history(&app)
         .await
         .map_err(|e| capture_err("get_history", e))
@@ -563,8 +562,11 @@ pub async fn restore_to_commit(app: AppHandle, target_hash: String) -> Result<()
     let label = &target_hash[..target_hash.len().min(8)];
     git::restore_files_at_commit(&config_dir, &target_hash)
         .map_err(|e| capture_err("restore_to_commit", e))?;
-    git::commit_all(&config_dir, &format!("nixmac: restore {label}"))
+    let info = git::commit_all(&config_dir, &format!("chore(restore): restore {label}"))
         .map_err(|e| capture_err("restore_to_commit", e))?;
+    if let Err(e) = git::tag_commit(&config_dir, &format!("nixmac-commit-{}", &info.hash[..8]), &info.hash, false) {
+        log::warn!("[restore_to_commit] Failed to tag commit: {}", e);
+    }
     Ok(())
 }
 

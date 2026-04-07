@@ -4,19 +4,10 @@ import {
   checkFullDiskAccessPermission,
   requestFullDiskAccessPermission,
 } from "tauri-plugin-macos-permissions-api";
-import type { EvolveState, SemanticChangeMap } from "./types/shared";
-import type { Change, Commit } from "./types/sqlite";
-export type { EvolveState, EvolveStep, SemanticChangeMap, SummarizedChangeSet } from "./types/shared";
-export type { Change, Commit } from "./types/sqlite";
+import type { EvolveState, GitStatus, HistoryItem, SemanticChangeMap } from "./types/shared";
 
-export interface HistoryItem {
-  hash: string;
-  message: string | null;
-  createdAt: number;
-  isBuilt: boolean;
-  commit: Commit | null;
-  changeMap: SemanticChangeMap | null;
-}
+export type { ChangeType, EvolveState, EvolveStep, GitFileStatus, GitStatus, HistoryItem, SemanticChangeMap, SummarizedChangeSet, WatcherEvent } from "./types/shared";
+export type { Change, Commit } from "./types/sqlite";
 
 export interface UnknownRecord {
   [key: string]: unknown;
@@ -47,35 +38,6 @@ export interface DarwinPrefs {
 
 export const DEFAULT_MAX_ITERATIONS = 25;
 
-export interface GitFileStatus {
-  path: string;
-  changeType: "new" | "edited" | "removed" | "renamed";
-}
-
-/**
- * Git status returned from the backend.
- * Files are parsed from diff headers against main/master.
- */
-export interface GitStatus {
-  files?: GitFileStatus[];
-  branch?: string;
-  branchCommitMessages?: string[];
-  headIsBuilt?: boolean;
-  isMainBranch?: boolean;
-  branchHasBuiltCommit?: boolean;
-  diff?: string;
-  additions?: number;
-  deletions?: number;
-  headCommitHash: string | null;
-  cleanHead: boolean;
-  changes?: Change[];
-}
-
-export interface WatcherEvent {
-  gitStatus: GitStatus;
-  changeMap: SemanticChangeMap;
-  evolveState?: EvolveState;
-}
 
 
 export interface EvolutionResult {

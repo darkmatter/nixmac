@@ -11,7 +11,7 @@ import { BootstrapConfig } from "@/components/widget/bootstrap-config";
 import { DirectoryPicker } from "@/components/widget/directory-picker";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { useWidgetStore } from "@/stores/widget-store";
-import { Monitor, Sparkles } from "lucide-react";
+import { Monitor } from "lucide-react";
 
 export function SetupStep() {
   const configDir = useWidgetStore((state) => state.configDir);
@@ -25,8 +25,8 @@ export function SetupStep() {
 
   return (
     <div className="flex flex-col items-center justify-center space-y-6 py-8">
+      <img src="/outline-white.png" alt="" className="h-16 w-16 object-contain" />
       <div className="text-center">
-        <Sparkles className="mx-auto mb-3 h-10 w-10 text-primary" />
         <h2 className="font-semibold text-foreground text-lg">
           Welcome to nixmac
         </h2>

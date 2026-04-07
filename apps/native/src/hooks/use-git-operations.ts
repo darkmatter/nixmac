@@ -1,3 +1,4 @@
+import { loadHosts } from "@/hooks/use-widget-initialization";
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
 import { useCallback } from "react";
@@ -19,7 +20,14 @@ export function useGitOperations() {
         useWidgetStore.getState().setGitStatus(status);
 
         return status;
-      } catch {
+      } catch (e: unknown) {
+        const msg = (e as Error)?.message || String(e);
+        useWidgetStore.getState().setError(msg);
+        if (msg.includes("is not a git repository")) {
+          useWidgetStore.getState().setHosts([]);
+        } else {
+          await loadHosts();
+        }
         return null;
       }
     },
@@ -31,7 +39,14 @@ export function useGitOperations() {
     try {
       const currentStatus = await darwinAPI.git.statusAndCache();
       useWidgetStore.getState().setGitStatus(currentStatus);
-    } catch {
+    } catch (e: unknown) {
+      const msg = (e as Error)?.message || String(e);
+      useWidgetStore.getState().setError(msg);
+      if (msg.includes("is not a git repository")) {
+        useWidgetStore.getState().setHosts([]);
+      } else {
+        await loadHosts();
+      }
       return null;
     }
   }, []);

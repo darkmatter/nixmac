@@ -45,10 +45,7 @@ pub fn store_head_commit(
     let Some(tree_hash) = crate::git::get_ref_sha(config_dir, "HEAD^{tree}") else {
         return Ok(None);
     };
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs() as i64;
+    let now = crate::utils::unix_now();
     Ok(Some(upsert_commit(db_path, &hash, &tree_hash, None, now)?))
 }
 
