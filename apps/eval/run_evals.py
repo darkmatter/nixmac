@@ -1,3 +1,8 @@
+# Example command line to do full logging and capture those, and keep the process caffeinated to prevent sleep during long test runs:
+#
+# RUST_LOG=nixmac=debug NIXMAC_LOGFILE=2025-04-02-evals.out caffeinate python run_evals.py --csv data/test_prompts.csv --priority Critical --vllm-url "http://100.111.97.14:8002/v1" --vllm-api-key "$VLLM_API_KEY"
+
+
 import argparse
 import csv
 import json
@@ -13,7 +18,13 @@ from pathlib import Path
 from typing import Any
 
 from git import Actor, Repo
-from openpyxl import load_workbook
+
+# DEFAULT_EVOLVE_MODEL = "gpt-oss-200k:latest"
+# DEFAULT_SUMMARY_MODEL = "gpt-oss:120b"
+
+DEFAULT_EVOLVE_MODEL = "gpt-4o"
+DEFAULT_SUMMARY_MODEL = "gpt-4o"
+DEFAULT_MAX_ITERATIONS = 25
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 
@@ -50,41 +61,6 @@ class EvalTestCase:
     expected: str
     status: str
     skip: bool = False
-
-
-def read_test_cases_from_xl(
-    rows: list[int] | None = None, priority: str | None = None, persona: str | None = None
-) -> list[EvalTestCase]:
-    """Read test cases from the spreadsheet."""
-
-    wb = load_workbook(SPREADSHEET)
-    ws = wb["Test Matrix"]
-    cases: list[EvalTestCase] = []
-    for r in range(5, ws.max_row + 1):
-        num = ws.cell(r, 1).value
-        if num is None:
-            continue
-        case = EvalTestCase(
-            row=r,
-            num=num,
-            feature=str(ws.cell(r, 2).value or ""),
-            scenario=str(ws.cell(r, 3).value or ""),
-            persona=str(ws.cell(r, 4).value or ""),
-            priority=str(ws.cell(r, 5).value or ""),
-            request=str(ws.cell(r, 6).value or ""),
-            expected=str(ws.cell(r, 7).value or ""),
-            status=str(ws.cell(r, 8).value or ""),
-        )
-        if rows and case.num not in rows:
-            continue
-        if priority and case.priority != priority:
-            continue
-        if persona and case.persona != persona:
-            continue
-        if case.request:
-            cases.append(case)
-    wb.close()
-    return cases
 
 
 def read_test_cases_from_csv(
@@ -235,13 +211,12 @@ def create_nix_config_git_repo(hostname: str | None = None):
 def run_test_case(
     case: EvalTestCase,
     nixmac: Path,
-    evolve_provider: str | None = None,
     evolve_model: str | None = None,
-    summary_provider: str | None = None,
     summary_model: str | None = None,
     openai_key: str | None = None,
     openrouter_key: str | None = None,
-    ollama_url: str | None = None,
+    auth_props: dict | None = None,
+    max_iterations: int | None = None,
     host: str | None = None,
 ) -> Any:
     """Run a single test case.
@@ -263,13 +238,12 @@ def run_test_case(
         # Generate nixmac settings.json pointing to the config dir
         # Use the same eval_hostname for hostAttr so template and build agree
         generate_nixmac_settings(
-            evolve_provider,
             evolve_model,
-            summary_provider,
             summary_model,
             openai_key,
             openrouter_key,
-            ollama_url,
+            auth_props,
+            max_iterations,
             eval_hostname,
             str(config_dir),
         )
@@ -362,13 +336,12 @@ def restore_nixmac_settings(backup_path: Path | None) -> None:
 
 
 def generate_nixmac_settings(
-    evolve_provider: str | None = None,
     evolve_model: str | None = None,
-    summary_provider: str | None = None,
     summary_model: str | None = None,
     openai_key: str | None = None,
     openrouter_key: str | None = None,
-    ollama_url: str | None = None,
+    auth_props: dict | None = None,
+    max_iterations: int | None = None,
     host: str | None = None,
     configDir: str | None = None,
 ) -> None:
@@ -377,16 +350,35 @@ def generate_nixmac_settings(
         host = _get_eval_hostname()
 
     settings = {
-        "evolveProvider": evolve_provider,
         "evolveModel": evolve_model,
-        "summaryProvider": summary_provider,
         "summaryModel": summary_model,
         "openaiApiKey": openai_key,
         "openrouterApiKey": openrouter_key,
-        "ollamaApiBaseUrl": ollama_url,
         "hostAttr": host,
         "configDir": configDir,
     }
+
+    # Ensure maxIterations is set (use default if not provided)
+    settings["maxIterations"] = (
+        max_iterations if max_iterations is not None else DEFAULT_MAX_ITERATIONS
+    )
+
+    # Merge any auth_props (e.g., ollamaApiBaseUrl OR vllmApiBaseUrl/vllmApiKey)
+    # Also set provider per auth type.
+    if auth_props is not None:
+        for (k, v) in auth_props.items():
+            settings[k] = v
+
+        # Derive provider kind from auth_props after merging: prefer ollama, else vllm
+        provider: str | None = None
+        if "ollamaApiBaseUrl" in auth_props:
+            provider = "ollama"
+        elif "vllmApiBaseUrl" in auth_props:
+            provider = "vllm"
+
+        settings["evolveProvider"] = provider
+        settings["summaryProvider"] = provider
+    
     NIXMAC_SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(NIXMAC_SETTINGS_PATH, "w") as f:
         json.dump(settings, f, indent=4)
@@ -413,7 +405,7 @@ def main(parsed_args: argparse.Namespace) -> None:
         else:
             rows = None
 
-        # Read test cases from CSV if specified, otherwise use Excel spreadsheet
+        # Read test cases from CSV
         cases: list[EvalTestCase]
         if parsed_args.csv:
             csv_path = Path(parsed_args.csv)
@@ -423,9 +415,8 @@ def main(parsed_args: argparse.Namespace) -> None:
                 csv_path, rows=rows, priority=parsed_args.priority, persona=parsed_args.persona
             )
         else:
-            cases = read_test_cases_from_xl(
-                rows=rows, priority=parsed_args.priority, persona=parsed_args.persona
-            )
+            raise ValueError("Currently only CSV input is supported; please provide --csv argument pointing to test cases CSV file.")
+        
         # Apply --limit if provided to cap number of cases run
         if parsed_args.limit is not None:
             total_cases = len(cases)
@@ -450,16 +441,32 @@ def main(parsed_args: argparse.Namespace) -> None:
             print(f"Running case {case.num}: {case.scenario}...")
             nixmac_path = Path(parsed_args.nixmac)
             try:
+                # Build auth_props based on which backend URL is provided (ollama or vllm); validate that both are not provided at the same time
+                auth_props: dict | None = None
+                ollama_url = getattr(parsed_args, "ollama_url", "").strip()
+                vllm_url = getattr(parsed_args, "vllm_url", "").strip()
+                
+                if ollama_url and vllm_url:
+                    raise ValueError("Cannot specify both --ollama-url and --vllm-url; please provide only one backend")
+                
+                if ollama_url:
+                    auth_props = {"ollamaApiBaseUrl": ollama_url}
+                elif vllm_url:
+                    auth_props = {"vllmApiBaseUrl": vllm_url}
+                    vllm_api_key = getattr(parsed_args, "vllm_api_key", None)
+                    if vllm_api_key:
+                        auth_props["vllmApiKey"] = vllm_api_key
+
+                # Run the test case and capture the result
                 result = run_test_case(
                     case,
                     nixmac_path,
-                    parsed_args.evolve_provider,
                     parsed_args.evolve_model,
-                    parsed_args.summary_provider,
                     parsed_args.summary_model,
                     parsed_args.openai_key,
                     parsed_args.openrouter_key,
-                    parsed_args.ollama_url,
+                    auth_props,
+                    parsed_args.max_iterations,
                     parsed_args.host,
                 )
             except KeyboardInterrupt:
@@ -495,16 +502,10 @@ if __name__ == "__main__":
     )
     # Flags mirroring main nixmac app settings
     parser.add_argument(
-        "--evolve-provider", type=str, default="ollama", help="Evolve provider (e.g. openai)"
+        "--evolve-model", type=str, default=DEFAULT_EVOLVE_MODEL, help="Evolve model (e.g. gpt-4)"
     )
     parser.add_argument(
-        "--evolve-model", type=str, default="gpt-oss-200k:latest", help="Evolve model (e.g. gpt-4)"
-    )
-    parser.add_argument(
-        "--summary-provider", type=str, default="ollama", help="Summary provider (e.g. openai)"
-    )
-    parser.add_argument(
-        "--summary-model", type=str, default="gpt-oss:120b", help="Summary model (e.g. gpt-4)"
+        "--summary-model", type=str, default=DEFAULT_SUMMARY_MODEL, help="Summary model (e.g. gpt-4)"
     )
     parser.add_argument(
         "--openai-key", dest="openai_key", type=str, default=None, help="OpenAI API key"
@@ -512,6 +513,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--openrouter-key", dest="openrouter_key", type=str, default=None, help="OpenRouter API key"
     )
+    
+    # One of (ollama or vllm) must be provided to specify the engine backend for testing.
+    # The summary and evolve providers will be derived from these arguments.
     parser.add_argument(
         "--ollama-url",
         dest="ollama_url",
@@ -519,7 +523,29 @@ if __name__ == "__main__":
         default="",
         help="Ollama base URL (e.g. http://localhost:11434)",
     )
+    parser.add_argument(
+        "--vllm-url",
+        dest="vllm_url",
+        type=str,
+        default="",
+        help="vLLM base URL (e.g. http://100.111.97.14:8002/v1)",
+    )
+    parser.add_argument(
+        "--vllm-api-key",
+        dest="vllm_api_key",
+        type=str,
+        default=None,
+        help="vLLM API key (if required)",
+    )
     parser.add_argument("--host", type=str, default=None, help="Host name for your Mac")
+
+    parser.add_argument(
+        "--max-iterations",
+        dest="max_iterations",
+        type=int,
+        default=None,
+        help=f"Maximum iterations for evolution (default: {DEFAULT_MAX_ITERATIONS})",
+    )
 
     parser.add_argument(
         "--csv",
@@ -547,4 +573,12 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+
+    # Validate that at least one backend is configured: either ollama or vllm
+    ollama_set = bool(getattr(args, "ollama_url", None)) and args.ollama_url.strip() != ""
+    vllm_set = bool(getattr(args, "vllm_url", None)) and args.vllm_url.strip() != ""
+    if not (ollama_set or vllm_set):
+        print("Error: you must provide either --ollama-url or --vllm-url (and optionally --vllm-api-key)")
+        raise SystemExit(2)
+
     main(args)
