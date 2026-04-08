@@ -16,6 +16,7 @@ mod db;
 mod default_config;
 mod evolution;
 mod evolve;
+mod evolve_state;
 mod feedback;
 mod finalize_apply;
 mod get_history;
@@ -25,19 +26,18 @@ mod nix;
 mod panic_handler;
 mod peek;
 mod permissions;
+mod provider_errors;
 mod providers;
-mod shared_types;
 mod rollback;
 mod scanner;
 mod secret_scanner;
+mod shared_types;
 mod sqlite_types;
 mod statistics;
-mod evolve_state;
 mod store;
 mod summarize;
 mod template;
 mod types;
-mod provider_errors;
 mod utils;
 mod watcher;
 
@@ -302,6 +302,8 @@ fn run_gui_mode(
             commands::feedback_submit,
             #[cfg(debug_assertions)]
             commands::trigger_test_panic,
+            #[cfg(debug_assertions)]
+            commands::debug_sentry_event,
             // Git
             commands::git_init_repo,
             commands::git_status,

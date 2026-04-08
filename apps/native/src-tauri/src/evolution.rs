@@ -7,49 +7,17 @@
 //! All steps are atomic from the frontend's perspective - one call does everything.
 
 use log::info;
-use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 
 use crate::{
     db,
     evolve::{self, EvolutionState},
     evolve_state, git, store, summarize,
-    shared_types::SemanticChangeMap,
+    shared_types::{
+        EvolutionFailureResult, EvolutionResult, EvolutionTelemetry, SemanticChangeMap,
+    },
     types::{emit_evolve_event, EvolveEvent},
 };
-
-/// Evolution result returned to the frontend on completion.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EvolutionResult {
-    pub change_map: SemanticChangeMap,
-    pub git_status: crate::types::GitStatus,
-    pub evolve_state: evolve_state::EvolveState,
-    #[serde(flatten)]
-    pub telemetry: EvolutionTelemetry,
-}
-
-/// Shared evolution telemetry for success/failure payloads.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EvolutionTelemetry {
-    /// Evolution state.
-    pub state: EvolutionState,
-    /// Number of iterations performed.
-    pub iterations: usize,
-    /// Number of build attempts.
-    pub build_attempts: usize,
-    /// Total tokens consumed.
-    pub total_tokens: u32,
-    /// Number of file edits produced.
-    pub edits_count: usize,
-    /// Number of thinking / reasoning entries.
-    pub thinking_count: usize,
-    /// Number of tool call activity records.
-    pub tool_calls_count: usize,
-    /// Elapsed time for the evolution operation in milliseconds.
-    pub duration_ms: i64,
-}
 
 impl EvolutionTelemetry {
     fn failed_defaults(duration_ms: i64) -> Self {
@@ -90,18 +58,6 @@ impl EvolutionTelemetry {
             duration_ms,
         }
     }
-}
-
-/// Evolution failure payload with partial telemetry for CLI/reporting.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EvolutionFailureResult {
-    /// Human-readable error message.
-    pub error: String,
-    /// Best-effort git status at failure time.
-    pub git_status: Option<crate::types::GitStatus>,
-    #[serde(flatten)]
-    pub telemetry: EvolutionTelemetry,
 }
 
 impl EvolutionFailureResult {
@@ -249,6 +205,7 @@ pub async fn backup_evolve_and_record_changeset(
             change_map: SemanticChangeMap::default(),
             git_status: initial_status,
             evolve_state,
+            conversational_response: evolution.summary.clone(),
             telemetry: EvolutionTelemetry::from_evolution(&evolution, elapsed_since(start_time_ms)),
         });
     }
@@ -296,6 +253,7 @@ pub async fn backup_evolve_and_record_changeset(
         change_map,
         git_status: final_status,
         evolve_state,
+        conversational_response: None,
         telemetry: EvolutionTelemetry::from_evolution(&evolution, elapsed_since(start_time_ms)),
     })
 }

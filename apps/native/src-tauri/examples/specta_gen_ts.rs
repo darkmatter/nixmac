@@ -1,6 +1,6 @@
 //! Standalone example for generating TypeScript bindings from schema row types.
 //!
-//! Run with: cargo run --example export_bindings
+//! Run with: cargo run --example specta_gen_ts
 //! Output: apps/native/src/types/sqlite.ts
 //!         apps/native/src/types/shared.ts
 //!
@@ -47,7 +47,11 @@ fn main() {
         .register::<shared_types::ChangeType>()
         .register::<shared_types::GitFileStatus>()
         .register::<shared_types::GitStatus>()
-        .register::<shared_types::WatcherEvent>();
+        .register::<shared_types::WatcherEvent>()
+        .register::<shared_types::EvolutionState>()
+        .register::<shared_types::EvolutionTelemetry>()
+        .register::<shared_types::EvolutionResult>()
+        .register::<shared_types::EvolutionFailureResult>();
 
     let shared_output_path = "../src/types/shared.ts";
 
