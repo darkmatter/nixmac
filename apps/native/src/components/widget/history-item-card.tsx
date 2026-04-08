@@ -145,7 +145,7 @@ export function HistoryItemCard({ item, isRestoring, onRequestRestore }: History
             isRestoring={isRestoring}
             onRequestRestore={onRequestRestore}
           />
-          {!changeMap && (
+          {(!changeMap && !item.isBase) && (
             <AnalyzeHistoryItemButton
               hash={item.hash}
               className="group-hover:bg-accent group-hover:text-accent-foreground"
