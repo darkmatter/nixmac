@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { darwinAPI } from "@/tauri-api";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
+import { useWidgetStore } from "@/stores/widget-store";
 import { HistoryCurrentItemBadge } from "@/components/widget/history-current-item-badge";
 import { HistoryBaseItemBadge } from "@/components/widget/history-base-item-badge";
 
@@ -15,19 +16,22 @@ interface HistoryRestoreItemButtonProps {
 export function HistoryRestoreItemButton({ hash, isBuilt = false, isBase = false }: HistoryRestoreItemButtonProps) {
   const [restoring, setRestoring] = useState(false);
   const { triggerRebuild } = useRebuildStream();
+  const setProcessing = useWidgetStore((s) => s.setProcessing);
 
   const handleRestore = useCallback(
     async (e: React.MouseEvent) => {
       e.stopPropagation();
       setRestoring(true);
+      setProcessing(true);
       try {
         await darwinAPI.darwin.restoreToCommit(hash);
         await triggerRebuild({ context: "rollback" });
       } catch {
         setRestoring(false);
+        setProcessing(false);
       }
     },
-    [hash, triggerRebuild],
+    [hash, triggerRebuild, setProcessing],
   );
 
   if (isBuilt) return <HistoryCurrentItemBadge />;

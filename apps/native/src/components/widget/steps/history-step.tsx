@@ -10,13 +10,10 @@ import { HistoryItemCard } from "@/components/widget/history-item-card";
 export function HistoryStep() {
   const { loadHistory } = useHistory();
   const history = useWidgetStore((state) => state.history);
-  const historyLoading = useWidgetStore((state) => state.historyLoading);
 
   useEffect(() => {
     loadHistory();
   }, [loadHistory]);
-
-  if (historyLoading) return <p>Loading...</p>;
 
   const historyByDay = groupByDay(history);
 
