@@ -26,6 +26,7 @@ export function HistoryRestoreItemButton({ hash, isBuilt = false, isBase = false
       try {
         await darwinAPI.darwin.restoreToCommit(hash);
         await triggerRebuild({ context: "rollback" });
+        setRestoring(false);
       } catch {
         setRestoring(false);
         setProcessing(false);
