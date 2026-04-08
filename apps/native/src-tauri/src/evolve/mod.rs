@@ -1,5 +1,6 @@
 //! Evolution module for AI-assisted configuration changes.
 
+mod chat_memory;
 mod config_dir_context;
 mod edit_nix_file;
 mod file_ops;
@@ -35,6 +36,9 @@ use crate::{
     commands, nix, statistics, store,
     types::{emit_evolve_event, EvolveEvent},
     utils as global_utils,
+};
+use chat_memory::{
+    session_chat_memory_store, to_provider_context_messages, ChatMessage, Role as ChatMemoryRole,
 };
 use config_dir_context::format_config_dir_context;
 use messages::Message;
@@ -460,11 +464,7 @@ pub async fn generate_evolution(
             "OpenAI"
         };
         info!("Using {} provider | Model: {}", provider_name, model);
-        Arc::new(OpenAIProvider::new(
-            api_key,
-            base_url.to_string(),
-            model,
-        ))
+        Arc::new(OpenAIProvider::new(api_key, base_url.to_string(), model))
     };
 
     // Emit start event
@@ -510,6 +510,24 @@ pub async fn generate_evolution(
     let mut build_attempts: usize = 0;
     let mut build_verified = false;
     let mut total_tokens: u32 = 0;
+    let chat_memory_store = session_chat_memory_store();
+
+    // Restore only persisted conversational history (user/assistant, and optionally tool)
+    // to keep iterative requests grounded without requiring users to restate context.
+    let historical_context = to_provider_context_messages(chat_memory_store.as_ref());
+    debug!(
+        "[evolve] restored session chat context messages={}",
+        historical_context.len()
+    );
+
+    // Persist the raw user request at session scope before model execution so the
+    // next evolve run can continue from this thread.
+    chat_memory_store.append(ChatMessage {
+        role: ChatMemoryRole::User,
+        content: prompt.to_string(),
+        timestamp: Utc::now(),
+    });
+    debug!("[evolve] saved user message to session chat memory");
 
     info!("Evolution ID: {}", evolution.id);
     info!("════════════════════════════════════════════════════════════════");
@@ -529,18 +547,19 @@ pub async fn generate_evolution(
         }
     };
 
-    let mut messages: Vec<Message> = vec![
-        Message::System {
-            content: system_prompt.clone(),
-        },
-        Message::User {
-            content: format!(
-                "<user_query>{}</user_query>\n\n<config_dir>\n{}\n</config_dir>\n\nStart by using the 'think' tool to plan your approach.",
-                escape_user_query(prompt),
-                config_dir_context
-            ),
-        },
-    ];
+    let mut messages: Vec<Message> = vec![Message::System {
+        content: system_prompt,
+    }];
+
+    messages.extend(historical_context);
+
+    messages.push(Message::User {
+        content: format!(
+            "<user_query>{}</user_query>\n\n<config_dir>\n{}\n</config_dir>\n\nStart by using the 'think' tool to plan your approach.",
+            escape_user_query(prompt),
+            config_dir_context
+        ),
+    });
 
     // Track whether we've made any actual edits or build checks
     let mut made_edit_or_build_check = false;
@@ -1057,6 +1076,21 @@ Could you provide more specific guidance on what aspects of your configuration n
         .iter()
         .filter_map(|m| serde_json::to_value(m).ok())
         .collect();
+
+    if let Some(content) = messages.iter().rev().find_map(|message| match message {
+        Message::Assistant {
+            content: Some(content),
+            ..
+        } if !content.trim().is_empty() => Some(content.clone()),
+        _ => None,
+    }) {
+        chat_memory_store.append(ChatMessage {
+            role: ChatMemoryRole::Assistant,
+            content,
+            timestamp: Utc::now(),
+        });
+        debug!("[evolve] saved assistant message to session chat memory");
+    }
 
     info!("════════════════════════════════════════════════════════════════");
     info!("EVOLUTION COMPLETE");
