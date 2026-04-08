@@ -9,28 +9,32 @@ use std::sync::{Arc, Mutex};
 pub const DEFAULT_THREAD_MAX_MESSAGES: usize = 10;
 pub const DEFAULT_THREAD_MAX_TOKENS: usize = 4_000;
 
+/// Role type for chat messages, used for chat memory storage.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "lowercase")]
 pub enum Role {
     User,
     Assistant,
     Tool,
 }
 
+/// Chat message type for memory storage, with timestamp for eviction and debugging.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "lowercase")]
 pub struct ChatMessage {
     pub role: Role,
     pub content: String,
     pub timestamp: DateTime<Utc>,
 }
 
+/// Maximum limits for chat memory retention, used to enforce eviction of oldest messages.
 #[derive(Debug, Clone, Copy)]
 pub struct ThreadLimits {
     pub max_messages: usize,
     pub max_tokens: usize,
 }
 
+/// Default limits for chat memory retention if not specified by the app or provider configuration.
 impl Default for ThreadLimits {
     fn default() -> Self {
         Self {
@@ -40,6 +44,7 @@ impl Default for ThreadLimits {
     }
 }
 
+/// Trait for chat memory storage, allowing for different implementations (in-memory, sqlite, etc.).
 pub trait ChatMemoryStore: Send + Sync {
     /// Appends a new message at the tail only.
     ///
@@ -49,11 +54,13 @@ pub trait ChatMemoryStore: Send + Sync {
     fn snapshot(&self) -> Vec<ChatMessage>;
 }
 
+/// In-memory implementation of the ChatMemoryStore trait, using a VecDeque for efficient eviction of oldest messages.
 pub struct InMemoryChatMemoryStore {
     messages: Mutex<VecDeque<ChatMessage>>,
     limits: ThreadLimits,
 }
 
+/// In-memory chat memory store implementation with eviction based on message count and token count limits.
 impl InMemoryChatMemoryStore {
     pub fn new(limits: ThreadLimits) -> Self {
         Self {
@@ -63,6 +70,8 @@ impl InMemoryChatMemoryStore {
     }
 }
 
+/// ChatMemoryStore implementation for InMemoryChatMemoryStore, enforcing limits on message count
+/// and token count by evicting oldest messages when limits are exceeded.
 impl ChatMemoryStore for InMemoryChatMemoryStore {
     fn append(&self, message: ChatMessage) {
         if message.content.trim().is_empty() {
@@ -136,6 +145,8 @@ pub fn to_provider_context_messages(store: &dyn ChatMemoryStore) -> Vec<Message>
     messages
 }
 
+/// Enforces the configured limits on the chat memory by evicting oldest messages until both
+/// the message count and the estimated token count are within limits. Logs eviction actions for debugging.
 fn enforce_limits(messages: &mut VecDeque<ChatMessage>, limits: ThreadLimits) {
     let before_count = messages.len();
 
@@ -158,6 +169,9 @@ fn enforce_limits(messages: &mut VecDeque<ChatMessage>, limits: ThreadLimits) {
     }
 }
 
+/// Estimates the total token count for a list of chat messages using a simple heuristic based on character count.
+/// We could use a more sophisticated tokenization approach if needed, but this is sufficient for
+/// eviction behavior and much faster to compute and doesn't require any external dependencies.
 fn estimate_total_tokens(messages: &VecDeque<ChatMessage>) -> usize {
     messages
         .iter()
