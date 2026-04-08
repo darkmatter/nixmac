@@ -19,11 +19,17 @@ export function ErrorMessage() {
   const step = useCurrentStep();
   const dismissedRef = useRef<string | null>(null);
 
+  // more persistent dismissal for certain looping (watcher) errors
+  const loopingErrorPatterns = ["is not a git repository"];
+  const isDismissed =
+    error === dismissedRef.current &&
+    loopingErrorPatterns.some((pattern) => error?.includes(pattern));
+
   // "not a git repository" is expected on setup when nothing is configured yet.
   // If host is set, we landed here unexpectedly (e.g. repo deleted) — show the error.
   const isExpectedSetupError = step === "setup" && !host;
   const isSuppressedError =
-    error === dismissedRef.current ||
+    isDismissed ||
     (step === "setup" && error?.includes("Failed to list hosts: path")) ||
     (isExpectedSetupError && error?.includes("is not a git repository")) ||
     ((step === "evolving" || step === "begin") && error?.includes("cancelled by user"));
