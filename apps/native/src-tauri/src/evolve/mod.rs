@@ -512,7 +512,7 @@ pub async fn generate_evolution(
     let mut total_tokens: u32 = 0;
     let chat_memory_store = session_chat_memory_store();
 
-    // Restore only persisted conversational history (user/assistant, and optionally tool)
+    // Restore only persisted conversational history (user/assistant, NOT tool)
     // to keep iterative requests grounded without requiring users to restate context.
     let historical_context = to_provider_context_messages(chat_memory_store.as_ref());
     debug!(
@@ -551,6 +551,8 @@ pub async fn generate_evolution(
         content: system_prompt,
     }];
 
+    // Restore historical context after system prompt but before the new user message,
+    // so it's included in the token count and visible to the model in the correct order.
     messages.extend(historical_context);
 
     messages.push(Message::User {
@@ -944,7 +946,7 @@ Do not invent tool names and do not place tool invocations in assistant content.
         // If no tool calls were made (None or empty list), handle as terminal response.
         let no_tool_calls = match &assistant_msg {
             Message::Assistant { tool_calls, .. } => {
-                tool_calls.as_ref().map_or(true, |calls| calls.is_empty())
+                tool_calls.as_ref().is_none_or(|calls| calls.is_empty())
             }
             _ => false,
         };
