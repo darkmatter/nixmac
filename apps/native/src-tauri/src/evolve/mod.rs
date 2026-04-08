@@ -522,6 +522,7 @@ pub async fn generate_evolution(
 
     // Persist the raw user request at session scope before model execution so the
     // next evolve run can continue from this thread.
+    // CONSIDER: Don't store the prompt until the turn finishes (not cancelled or errored).
     chat_memory_store.append(ChatMessage {
         role: ChatMemoryRole::User,
         content: prompt.to_string(),
@@ -1088,13 +1089,26 @@ Could you provide more specific guidance on what aspects of your configuration n
         .filter_map(|m| serde_json::to_value(m).ok())
         .collect();
 
-    if let Some(content) = messages.iter().rev().find_map(|message| match message {
+    // Prefer persisting the summary the user actually saw (set by ToolResult::Done
+    // or the terminal assistant response). This avoids capturing intermediate
+    // assistant messages that the agent emitted while performing tool calls.
+    if let Some(summary) = &evolution.summary {
+        if !summary.trim().is_empty() {
+            chat_memory_store.append(ChatMessage {
+                role: ChatMemoryRole::Assistant,
+                content: summary.clone(),
+                timestamp: Utc::now(),
+            });
+            debug!("[evolve] saved evolution.summary to session chat memory");
+        }
+    } else if let Some(content) = messages.iter().rev().find_map(|message| match message {
         Message::Assistant {
             content: Some(content),
             ..
         } if !content.trim().is_empty() => Some(content.clone()),
         _ => None,
     }) {
+        // Fallback: persist the last assistant message if no summary was produced.
         chat_memory_store.append(ChatMessage {
             role: ChatMemoryRole::Assistant,
             content,
