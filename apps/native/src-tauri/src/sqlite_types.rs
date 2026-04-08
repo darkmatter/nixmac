@@ -1,7 +1,7 @@
 //! Rust structs that mirror schema table rows exactly.
 //!
 //! Keep these in sync with the table definitions in `db/schema.rs`
-//! and the type registrations in `examples/export_bindings.rs`.
+//! and the type registrations in `examples/specta_gen_ts.rs`.
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
