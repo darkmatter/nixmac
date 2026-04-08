@@ -8,8 +8,8 @@
 //! preview mode, etc.) is computed and managed entirely by the client.
 
 use crate::{
-    darwin, db, default_config, evolution, evolve_state, feedback, git, nix,
-    peek, permissions, rollback, scanner, store, types,
+    darwin, db, default_config, evolution, evolve_state, feedback, git, nix, peek, permissions,
+    rollback, scanner, store, types,
 };
 use std::path::Path;
 use std::process::Command;
@@ -137,6 +137,18 @@ pub async fn trigger_test_panic() -> Result<(), String> {
     panic!("This is a test panic to verify the panic handler works correctly");
 }
 
+/// Debug command to capture a Sentry event from the Rust backend.
+/// Used to test end-to-end Sentry integration.
+#[cfg(debug_assertions)]
+#[tauri::command]
+pub async fn debug_sentry_event() -> Result<serde_json::Value, String> {
+    log::info!("[debug_sentry_event] Capturing debug event from Rust backend");
+
+    sentry::capture_message("Debug Sentry event from Rust backend", sentry::Level::Error);
+
+    Ok(serde_json::json!({"ok": true, "message": "Debug event captured from Rust"}))
+}
+
 // =============================================================================
 // Git Commands
 // =============================================================================
@@ -144,8 +156,7 @@ pub async fn trigger_test_panic() -> Result<(), String> {
 /// Initializes a git repository in the config directory if one doesn't exist.
 #[tauri::command]
 pub async fn git_init_repo(app: AppHandle) -> Result<serde_json::Value, String> {
-    let dir =
-        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_init_repo", e))?;
+    let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_init_repo", e))?;
     git::init_repo(&dir).map_err(|e| capture_err("git_init_repo", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
@@ -176,14 +187,16 @@ pub async fn git_cached(app: AppHandle) -> Result<Option<types::GitStatus>, Stri
 
 /// Stages all changes and creates a commit with the given message.
 #[tauri::command]
-pub async fn git_commit(
-    app: AppHandle,
-    message: String,
-) -> Result<CommitResult, String> {
+pub async fn git_commit(app: AppHandle, message: String) -> Result<CommitResult, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_commit", e))?;
     let commit_info = git::commit_all(&dir, &message).map_err(|e| capture_err("git_commit", e))?;
 
-    if let Err(e) = git::tag_commit(&dir, &format!("nixmac-commit-{}", &commit_info.hash[..8]), &commit_info.hash, false) {
+    if let Err(e) = git::tag_commit(
+        &dir,
+        &format!("nixmac-commit-{}", &commit_info.hash[..8]),
+        &commit_info.hash,
+        false,
+    ) {
         log::warn!("[git_commit] Failed to tag commit: {}", e);
     }
 
@@ -207,13 +220,15 @@ pub async fn git_commit(
     }
 
     // Evolution complete — reset state back to idle.
-    let evolve_state = evolve_state::clear(&app)
-        .unwrap_or_else(|e| {
-            log::error!("[git_commit] Failed to clear evolve state: {}", e);
-            evolve_state::EvolveState::default()
-        });
+    let evolve_state = evolve_state::clear(&app).unwrap_or_else(|e| {
+        log::error!("[git_commit] Failed to clear evolve state: {}", e);
+        evolve_state::EvolveState::default()
+    });
 
-    Ok(CommitResult { hash: commit_info.hash, evolve_state })
+    Ok(CommitResult {
+        hash: commit_info.hash,
+        evolve_state,
+    })
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -239,7 +254,6 @@ pub async fn git_tag_as_built(app: AppHandle) -> Result<serde_json::Value, Strin
     git::tag_as_built(&dir).map_err(|e| capture_err("git_tag_as_built", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
-
 
 // =============================================================================
 // Darwin/Nix Commands
@@ -428,9 +442,7 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<serde_json::Va
 
 /// Finalize a successful darwin-rebuild, tags HEAD as built, and marks changes as committable.
 #[tauri::command]
-pub async fn finalize_apply(
-    app: AppHandle,
-) -> Result<crate::finalize_apply::ApplyResult, String> {
+pub async fn finalize_apply(app: AppHandle) -> Result<crate::finalize_apply::ApplyResult, String> {
     crate::finalize_apply::finalize_apply(&app)
         .await
         .map_err(|e| capture_err("finalize_apply", e))
@@ -512,13 +524,13 @@ pub async fn flake_list_hosts(app: AppHandle) -> Result<Vec<String>, String> {
 pub async fn find_change_map(
     app: AppHandle,
 ) -> Result<crate::shared_types::SemanticChangeMap, String> {
-    let db_path =
-        db::get_db_path(&app).map_err(|e| capture_err("find_change_map", e))?;
-    let dir =
-        store::get_config_dir(&app).map_err(|e| capture_err("find_change_map", e))?;
+    let db_path = db::get_db_path(&app).map_err(|e| capture_err("find_change_map", e))?;
+    let dir = store::get_config_dir(&app).map_err(|e| capture_err("find_change_map", e))?;
     let change_sets = crate::summarize::find_existing::for_current_state(&db_path, &dir)
         .map_err(|e| capture_err("find_change_map", e))?;
-    Ok(crate::summarize::group_existing::from_change_sets(change_sets))
+    Ok(crate::summarize::group_existing::from_change_sets(
+        change_sets,
+    ))
 }
 
 /// Walks back `number` commits from `commit_hash`,
@@ -564,7 +576,12 @@ pub async fn restore_to_commit(app: AppHandle, target_hash: String) -> Result<()
         .map_err(|e| capture_err("restore_to_commit", e))?;
     let info = git::commit_all(&config_dir, &format!("chore(restore): restore {label}"))
         .map_err(|e| capture_err("restore_to_commit", e))?;
-    if let Err(e) = git::tag_commit(&config_dir, &format!("nixmac-commit-{}", &info.hash[..8]), &info.hash, false) {
+    if let Err(e) = git::tag_commit(
+        &config_dir,
+        &format!("nixmac-commit-{}", &info.hash[..8]),
+        &info.hash,
+        false,
+    ) {
         log::warn!("[restore_to_commit] Failed to tag commit: {}", e);
     }
     Ok(())
@@ -577,7 +594,6 @@ pub async fn generate_commit_message(app: AppHandle) -> Result<String, String> {
         .await
         .map_err(|e| capture_err("generate_commit_message", e))
 }
-
 
 // =============================================================================
 // UI Preference Commands
@@ -928,10 +944,10 @@ pub async fn darwin_build_check(app: AppHandle) -> Result<serde_json::Value, Str
 pub async fn darwin_adopt_manual_changes(app: AppHandle) -> Result<i64, String> {
     let config_dir = store::ensure_config_dir_exists(&app)
         .map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
-    let git_status = git::status(&config_dir)
-        .map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
-    let db_path = db::get_db_path(&app)
-        .map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
+    let git_status =
+        git::status(&config_dir).map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
+    let db_path =
+        db::get_db_path(&app).map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
     let branch = git_status.branch.as_deref().unwrap_or("unknown");
     let existing_id = evolve_state::get(&app).ok().and_then(|s| s.evolution_id);
     let evolution_id = db::evolutions::upsert(&db_path, existing_id, branch)
@@ -947,7 +963,10 @@ pub async fn darwin_adopt_manual_changes(app: AppHandle) -> Result<i64, String> 
     )
     .map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
 
-    log::info!("[darwin_adopt_manual_changes] evolution record created | id={}", evolution_id);
+    log::info!(
+        "[darwin_adopt_manual_changes] evolution record created | id={}",
+        evolution_id
+    );
     Ok(evolution_id)
 }
 

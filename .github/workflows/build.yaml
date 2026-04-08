@@ -42,6 +42,7 @@ jobs:
       # lower version than what has already shipped, which would produce a
       # false-positive update banner (e.g. embedding 0.5.0 when latest.json is 0.16.2).
       - name: Sync native app version
+        id: sync-version
         run: |
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             VERSION="${GITHUB_REF_NAME#v}"
@@ -74,7 +75,11 @@ jobs:
             echo "Branch/PR build — syncing to version: $VERSION"
           fi
           node scripts/sync-versions.mjs "$VERSION"
-      # Check if code signing secrets are available
+          SHORT_SHA=${GITHUB_SHA::8}
+          BUILD_VERSION="${VERSION}-${SHORT_SHA}"
+
+          echo "VERSION=$BUILD_VERSION" >> "$GITHUB_ENV"
+          echo "build_version=$BUILD_VERSION" >> "$GITHUB_OUTPUT"
       - name: Check for code signing secrets
         id: check-secrets
         shell: 'sops exec-env .secrets.enc.yaml "bash -e {0}"'
@@ -96,6 +101,15 @@ jobs:
       - name: Build Tauri app
         run: bun run desktop:build
         shell: 'sops exec-env .secrets.enc.yaml "bash -e {0}"'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Pass DSNs and build metadata into the tauri action step so build.rs can read them
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          NIXMAC_ENV: prod
+          NIXMAC_VERSION: ${{ steps.sync-version.outputs.build_version }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_NIXMAC_ENV: prod
+          VITE_NIXMAC_VERSION: ${{ steps.sync-version.outputs.build_version }}
       # Import Apple Developer certificate (only for releases with secrets).
       # Placed AFTER the Tauri build to avoid replacing the keychain search list
       # before `bun run desktop:build`, which caused DMG bundling failures on tags.

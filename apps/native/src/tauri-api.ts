@@ -4,9 +4,9 @@ import {
   checkFullDiskAccessPermission,
   requestFullDiskAccessPermission,
 } from "tauri-plugin-macos-permissions-api";
-import type { EvolveState, GitStatus, HistoryItem, SemanticChangeMap } from "./types/shared";
+import type { EvolutionResult, EvolveState, GitStatus, HistoryItem, SemanticChangeMap } from "./types/shared";
 
-export type { ChangeType, EvolveState, EvolveStep, GitFileStatus, GitStatus, HistoryItem, SemanticChangeMap, SummarizedChangeSet, WatcherEvent } from "./types/shared";
+export type { ChangeType, EvolutionFailureResult, EvolutionResult, EvolutionState, EvolutionTelemetry, EvolveState, EvolveStep, GitFileStatus, GitStatus, HistoryItem, SemanticChangeMap, SummarizedChangeSet, WatcherEvent } from "./types/shared";
 export type { Change, Commit } from "./types/sqlite";
 
 export interface UnknownRecord {
@@ -40,12 +40,6 @@ export const DEFAULT_MAX_ITERATIONS = 25;
 
 
 
-export interface EvolutionResult {
-  gitStatus: GitStatus;
-  changeMap: SemanticChangeMap;
-  evolveState: EvolveState;
-  state?: string;
-}
 
 export interface ApplyResult {
   gitStatus: GitStatus;

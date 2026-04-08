@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import * as Sentry from "@sentry/react";
+import { invoke } from "@tauri-apps/api/core";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import {
   Dialog,
@@ -289,6 +291,7 @@ export function FeedbackDialog() {
   const [relatedPrompt, setRelatedPrompt] = useState("");
   const [shareOptions, setShareOptions] = useState<ShareOptions>(DEFAULT_SHARE_OPTIONS);
   const [submitting, setSubmitting] = useState(false);
+  const showSentryDebugButton = import.meta.env.DEV;
 
   useEffect(() => {
     if (!feedbackOpen) {
@@ -415,6 +418,38 @@ export function FeedbackDialog() {
     if (sentSuccessfully) {
       handleClose();
     }
+  };
+
+  const handleDebugSentryEvent = async () => {
+    const client = Sentry.getClient();
+    if (!client) {
+      toast.info("Sentry client is not initialized.");
+      return;
+    }
+
+    // Send from React frontend
+    const error = new Error("Debug Sentry event from feedback dialog");
+    const eventId = Sentry.captureException(error, {
+      level: "error",
+      tags: {
+        source: "feedback-dialog",
+        debug_trigger: "true",
+      },
+      extra: {
+        debugEmail: "debug.user@example.com",
+        debugToken: "ghp_abcdefghijklmnopqrstuvwxyz123456",
+      },
+    });
+
+    // Also send from Rust backend
+    try {
+      await invoke("debug_sentry_event");
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("[debug_sentry_event] Failed to invoke Rust command:", err);
+    }
+
+    toast.success(`Sent debug Sentry events${eventId ? ` (frontend: ${eventId})` : ""}`);
   };
 
   const getTextboxLabel = () => {
@@ -903,11 +938,22 @@ export function FeedbackDialog() {
         </div>
 
         <DialogFooter>
+          {showSentryDebugButton && (
+            <Button variant="secondary" onClick={handleDebugSentryEvent} disabled={submitting}>
+              Send Sentry Debug Event
+            </Button>
+          )}
           <Button variant="outline" onClick={handleClose} disabled={submitting}>
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={submitting}>
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : isReportMode ? "Send Report" : "Send Feedback"}
+            {submitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : isReportMode ? (
+              "Send Report"
+            ) : (
+              "Send Feedback"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

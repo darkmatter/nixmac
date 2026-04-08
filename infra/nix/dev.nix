@@ -88,7 +88,7 @@ lib.mkIf (!(config.container.isBuilding or false)) {
 
   processes.tauri = {
     cwd = "${config.git.root}/apps/native";
-    exec = "${pkgs.sops}/bin/sops exec-env ${config.git.root}/.secrets.enc.yaml 'cd ${config.git.root}/apps/native/src-tauri && cargo run --example export_bindings && cd ${config.git.root}/apps/native && RUST_LOG=nixmac=debug tauri dev'";
+    exec = "${pkgs.sops}/bin/sops exec-env ${config.git.root}/.secrets.enc.yaml 'cd ${config.git.root}/apps/native/src-tauri && cargo run --example specta_gen_ts && cd ${config.git.root}/apps/native && RUST_LOG=nixmac=debug tauri dev'";
   };
 
   # processes.server = {

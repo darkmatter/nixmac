@@ -936,11 +936,20 @@ Do not invent tool names and do not place tool invocations in assistant content.
                     break;
                 }
             } else {
-                info!("Model returned empty tool list");
-                // This shouldn't happen if tool_calls is Some, but good to handle
+                // tool_calls: Some([]) — empty list, treat same as no tool calls.
+                info!("Model returned empty tool list — treating as no tool calls");
             }
-        } else {
-            // Model returned content with no tool calls.
+        }
+
+        // If no tool calls were made (None or empty list), handle as terminal response.
+        let no_tool_calls = match &assistant_msg {
+            Message::Assistant { tool_calls, .. } => {
+                tool_calls.as_ref().map_or(true, |calls| calls.is_empty())
+            }
+            _ => false,
+        };
+
+        if no_tool_calls {
             if let Message::Assistant {
                 content: Some(content),
                 ..
