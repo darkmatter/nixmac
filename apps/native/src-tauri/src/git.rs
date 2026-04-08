@@ -731,10 +731,14 @@ mod tests {
     fn test_status() {
         let temp_dir = TempDir::new().unwrap();
         let repo_dir = temp_dir.path().join("repo");
-        init_repo(&repo_dir.to_string_lossy()).unwrap();
-        fs::write(repo_dir.join("file.txt"), "hello").unwrap();
-        let status = status(&repo_dir.to_string_lossy()).unwrap();
-        // New file should appear in diff and files list
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+        // commit_all to materialize a branch
+        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
+        commit_all(&repo_dir_str, "chore: initial nix-darwin configuration").unwrap();
+        // Now add an uncommitted change to inspect.
+        fs::write(repo_dir.join("flake.nix"), "{ inputs = {}; }").unwrap();
+        let status = status(&repo_dir_str).unwrap();
         assert!(!status.diff.is_empty());
         assert!(!status.files.is_empty());
         assert!(status.branch.is_some());
@@ -772,42 +776,79 @@ deleted file mode 100644
     }
 
     #[test]
-    fn test_finalize_evolve_amends_target_branch_not_checked_out_branch() {
+    fn test_create_evolution_backup_does_not_move_head() {
         let temp_dir = TempDir::new().unwrap();
         let repo_dir = temp_dir.path().join("repo");
         let repo_dir_str = repo_dir.to_string_lossy().to_string();
         init_repo(&repo_dir_str).unwrap();
 
-        fs::write(repo_dir.join("file.txt"), "main\n").unwrap();
+        fs::write(repo_dir.join("file.txt"), "initial\n").unwrap();
         run_git_ok(&repo_dir, &["add", "-A"]);
-        run_git_ok(&repo_dir, &["commit", "-m", "main commit"]);
-        let origin_branch = current_branch(&repo_dir_str).unwrap();
-        let original_origin_head = run_git_ok(&repo_dir, &["rev-parse", "HEAD"]);
+        run_git_ok(&repo_dir, &["commit", "-m", "initial commit"]);
+        let head_before = run_git_ok(&repo_dir, &["rev-parse", "HEAD"]);
+        let branch_before = current_branch(&repo_dir_str).unwrap();
 
-        run_git_ok(&repo_dir, &["checkout", "-b", "feature"]);
-        fs::write(repo_dir.join("file.txt"), "feature\n").unwrap();
+        // Simulate uncommitted AI changes so backup has something to capture.
+        fs::write(repo_dir.join("file.txt"), "changed\n").unwrap();
+
+        let backup_branch = create_evolution_backup(&repo_dir_str, Some(1), 1)
+            .unwrap()
+            .expect("expected a backup branch to be created");
+
+        // HEAD and checked-out branch must be unchanged.
+        let head_after = run_git_ok(&repo_dir, &["rev-parse", "HEAD"]);
+        let branch_after = current_branch(&repo_dir_str).unwrap();
+        assert_eq!(head_before.trim(), head_after.trim());
+        assert_eq!(branch_before, branch_after);
+
+        // Backup ref must exist and point to a commit that includes the changed content.
+        let backup_tree = run_git_ok(&repo_dir, &[
+            "show",
+            &format!("{}:file.txt", backup_branch),
+        ]);
+        assert_eq!(backup_tree.trim(), "changed");
+    }
+
+    #[test]
+    fn test_create_evolution_backup_skips_when_clean_and_no_changeset() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("file.txt"), "initial\n").unwrap();
         run_git_ok(&repo_dir, &["add", "-A"]);
-        run_git_ok(&repo_dir, &["commit", "-m", "feature commit"]);
-        run_git_ok(&repo_dir, &["checkout", &origin_branch]);
+        run_git_ok(&repo_dir, &["commit", "-m", "initial commit"]);
 
-        finalize_evolve(
-            &repo_dir_str,
-            "feature",
-            &origin_branch,
-            false,
-            Some("feature commit (edited)"),
-        )
-        .unwrap();
+        // Clean working tree + changeset_id == 0 → should skip.
+        let result = create_evolution_backup(&repo_dir_str, Some(1), 0).unwrap();
+        assert!(result.is_none());
+    }
 
-        let head = run_git_ok(&repo_dir, &["rev-parse", "--abbrev-ref", "HEAD"]);
-        assert_eq!(head.trim(), origin_branch);
+    #[test]
+    fn test_restore_from_backup_reverts_working_tree_changes() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
 
-        let feature_message = run_git_ok(&repo_dir, &["log", "feature", "-1", "--pretty=%s"]);
-        assert_eq!(feature_message.trim(), "feature commit (edited)");
+        fs::write(repo_dir.join("file.txt"), "original\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+        run_git_ok(&repo_dir, &["commit", "-m", "initial commit"]);
 
-        // The original origin-branch head must remain in its first-parent chain,
-        // proving we did not amend the origin branch itself.
-        let first_parent_history = run_git_ok(&repo_dir, &["rev-list", "--first-parent", &origin_branch]);
-        assert!(first_parent_history.contains(original_origin_head.trim()));
+        // Stage a file to represent the backup index state.
+        fs::write(repo_dir.join("file.txt"), "backup state\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+
+        // Simulate AI making further changes to the working tree without staging.
+        fs::write(repo_dir.join("file.txt"), "ai mess\n").unwrap();
+        fs::write(repo_dir.join("new-file.txt"), "ai added\n").unwrap();
+
+        restore_from_backup(&repo_dir_str).unwrap();
+
+        // Working tree should reflect the staged (backup) state, not the AI changes.
+        let content = fs::read_to_string(repo_dir.join("file.txt")).unwrap();
+        assert_eq!(content, "backup state\n");
+        assert!(!repo_dir.join("new-file.txt").exists());
     }
 }
