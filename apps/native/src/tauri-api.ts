@@ -1,23 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import { type Event, listen, once } from "@tauri-apps/api/event";
-import type { Change, CommitRow, SummaryRow } from "./types/sqlite";
-export type { Change, CommitRow, SummaryRow } from "./types/sqlite";
-import type { SummarizedChanges } from "./types/queries";
-export type { SummarizedChanges } from "./types/queries";
-
-export interface HistoryItem {
-  hash: string;
-  message: string | null;
-  createdAt: number;
-  isBuilt: boolean;
-  commit: CommitRow | null;
-  summary: SummaryRow | null;
-  changeSet: SummarizedChanges | null;
-}
 import {
   checkFullDiskAccessPermission,
   requestFullDiskAccessPermission,
 } from "tauri-plugin-macos-permissions-api";
+import type { EvolutionResult, EvolveState, GitStatus, HistoryItem, SemanticChangeMap } from "./types/shared";
+
+export type { ChangeType, EvolutionFailureResult, EvolutionResult, EvolutionState, EvolutionTelemetry, EvolveState, EvolveStep, GitFileStatus, GitStatus, HistoryItem, SemanticChangeMap, SummarizedChangeSet, WatcherEvent } from "./types/shared";
+export type { Change, Commit } from "./types/sqlite";
 
 export interface UnknownRecord {
   [key: string]: unknown;
@@ -48,53 +38,23 @@ export interface DarwinPrefs {
 
 export const DEFAULT_MAX_ITERATIONS = 25;
 
-export interface GitFileStatus {
-  path: string;
-  changeType: "new" | "edited" | "removed" | "renamed";
-}
 
-/**
- * Git status returned from the backend.
- * Files are parsed from diff headers against main/master.
- */
-export interface GitStatus {
-  files?: GitFileStatus[];
-  branch?: string;
-  branchCommitMessages?: string[];
-  headIsBuilt?: boolean;
-  isMainBranch?: boolean;
-  branchHasBuiltCommit?: boolean;
-  diff?: string;
-  additions?: number;
-  deletions?: number;
-  headCommitHash: string | null;
-  cleanHead: boolean;
-  changes?: Change[];
-}
 
-export interface SummaryItem {
-  title: string;
-  description: string;
-}
 
-/**
- * AI-generated summary of changes.
- */
-export interface SummaryResponse {
-  items: SummaryItem[];
-  instructions: string;
-  commitMessage: string;
-  diff: string;
-}
-
-export interface GitStatusWithSummary<S = SummaryResponse> {
+export interface ApplyResult {
   gitStatus: GitStatus;
-  summary: S;
+  evolveState: EvolveState;
 }
 
-export type EvolutionResult = GitStatusWithSummary & { state?: string };
-export type WatcherEvent = GitStatusWithSummary<SummaryResponse | null>;
-export type RollbackResult = GitStatusWithSummary<SummaryResponse | null>;
+export interface CommitResult {
+  hash: string;
+  evolveState: EvolveState;
+}
+
+export interface RollbackResult {
+  gitStatus: GitStatus;
+  evolveState: EvolveState;
+}
 
 export interface PreviewIndicatorState {
   visible: boolean;
@@ -270,29 +230,21 @@ export const darwinAPI = {
     status: () => invoke<GitStatus | null>("git_status"),
     statusAndCache: () => invoke<GitStatus | null>("git_status_and_cache"),
     cached: () => invoke<GitStatus | null>("git_cached"),
-    commit: (message: string) => invoke("git_commit", { message }),
+    commit: (message: string) => invoke<CommitResult>("git_commit", { message }),
     stash: (message: string) => invoke("git_stash", { message }),
-    stageAll: () => invoke("git_stage_all"),
-    unstageAll: () => invoke("git_unstage_all"),
-    restoreAll: () => invoke("git_restore_all"),
-    checkoutNewBranch: (branchName: string) =>
-      invoke<{ ok: boolean; branch: string }>("git_checkout_new_branch", { branchName }),
-    checkoutBranch: (branchName: string) => invoke("git_checkout_branch", { branchName }),
-    checkoutMainBranch: () => invoke("git_checkout_main_branch"),
     tagAsBuilt: () => invoke("git_tag_as_built"),
-    mergeBranch: (branchName: string, squash?: boolean, commitMessage?: string) =>
-      invoke("git_finalize_evolve", { branchName, squash, commitMessage }),
   },
   darwin: {
     evolve: (description: string) => invoke<EvolutionResult>("darwin_evolve", { description }),
+    buildCheck: () => invoke<{ passed: boolean; output: string }>("darwin_build_check"),
+    evolveFromManual: () => invoke<number>("darwin_adopt_manual_changes"),
     evolveCancel: () => invoke("darwin_evolve_cancel"),
     apply: (hostOverride?: string) => invoke("darwin_apply", { hostOverride }),
     applyStreamStart: (hostOverride?: string) =>
       invoke("darwin_apply_stream_start", { hostOverride }),
     applyStreamCancel: () => invoke("darwin_apply_stream_cancel"),
-    finalizeApply: () => invoke<EvolutionResult>("finalize_apply"),
-    rollbackErase: (keepBranch?: boolean) =>
-      invoke<RollbackResult>("rollback_erase", { keepBranch }),
+    finalizeApply: () => invoke<ApplyResult>("finalize_apply"),
+    rollbackErase: () => invoke<RollbackResult>("rollback_erase"),
     restoreToCommit: (targetHash: string) => invoke<void>("restore_to_commit", { targetHash }),
   },
   nix: {
@@ -310,9 +262,10 @@ export const darwinAPI = {
     bootstrapDefault: (hostname: string) => invoke<void>("bootstrap_default_config", { hostname }),
     finalizeFlakeLock: () => invoke("finalize_flake_lock"),
   },
-  summary: {
-    find: () => invoke<SummaryResponse | null>("find_summary"),
-    generate: () => invoke<SummaryResponse>("summarize_changes"),
+  summarizedChanges: {
+    findChangeMap: () => invoke<SemanticChangeMap>("find_change_map"),
+    summarizeCurrent: () => invoke<void>("summarize_current"),
+    generateCommitMessage: () => invoke<string>("generate_commit_message"),
   },
   feedback: {
     gatherMetadata: (feedbackType: string, share: FeedbackShareOptions) =>
@@ -349,8 +302,9 @@ export const darwinAPI = {
       invoke<{
         ok: boolean;
         count: number;
-        summary: SummaryResponse;
+        changeMap: SemanticChangeMap;
         gitStatus: GitStatus;
+        evolveState: EvolveState;
       }>("apply_system_defaults", { defaults }),
   },
   permissions: {
@@ -360,6 +314,11 @@ export const darwinAPI = {
     // macOS-specific permission checks via tauri-plugin-macos-permissions
     checkFullDiskAccess: () => checkFullDiskAccessPermission(),
     requestFullDiskAccess: () => requestFullDiskAccessPermission(),
+  },
+
+  evolveState: {
+    get: () => invoke<EvolveState>("routing_state_get"),
+    clear: () => invoke<EvolveState>("routing_state_clear"),
   },
 
   history: {

@@ -28,6 +28,8 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     # Python packages used in one-off scripts
     pkgs.python312Packages.requests
     pkgs.python312Packages.beautifulsoup4
+
+    pkgs.process-compose
   ]
   ++ lib.optionals (pkgs.stdenv.isDarwin) [
     pkgs.apple-sdk_15
@@ -86,9 +88,12 @@ lib.mkIf (!(config.container.isBuilding or false)) {
   env.SOPS_KEYSERVICE = "tcp://100.116.189.36:5000";
 
   # https://devenv.sh/processes/
+  # Use process-compose as the process manager for the TUI
+  process.manager.implementation = "process-compose";
+
   processes.tauri = {
     cwd = "${config.git.root}/apps/native";
-    exec = "${pkgs.sops}/bin/sops exec-env ${config.git.root}/.secrets.enc.yaml 'cd ${config.git.root}/apps/native/src-tauri && cargo run --example export_bindings && cd ${config.git.root}/apps/native && RUST_LOG=nixmac=debug tauri dev'";
+    exec = "${pkgs.sops}/bin/sops exec-env ${config.git.root}/.secrets.enc.yaml 'cd ${config.git.root}/apps/native/src-tauri && cargo run --example specta_gen_ts && cd ${config.git.root}/apps/native && RUST_LOG=nixmac=debug tauri dev'";
   };
 
   # processes.server = {
@@ -99,7 +104,7 @@ lib.mkIf (!(config.container.isBuilding or false)) {
   processes.storybook = {
     cwd = "${config.git.root}/apps/native";
     exec = "${pkgs.bun}/bin/bun run storybook";
-    process-compose = {
+        process-compose = {
       is_foreground = true;
       disabled = true;
     };

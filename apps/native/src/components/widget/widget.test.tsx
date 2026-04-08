@@ -1,4 +1,4 @@
-import { initialSummaryState, useWidgetStore } from "@/stores/widget-store";
+import { useWidgetStore } from "@/stores/widget-store";
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DarwinWidget } from "./widget";
@@ -59,7 +59,6 @@ describe("DarwinWidget", () => {
     store.setError(null);
     store.clearEvolveEvents();
     store.clearLogs();
-    store.setSummary(initialSummaryState);
   });
 
   it("renders without crashing", () => {
@@ -80,8 +79,14 @@ describe("DarwinWidget", () => {
     const store = useWidgetStore.getState();
     store.setGitStatus({
       files: [{ path: "test.nix", changeType: "edited" }],
+      branch: null,
+      headIsBuilt: false,
+      diff: "",
+      additions: 0,
+      deletions: 0,
       headCommitHash: null,
       cleanHead: false,
+      changes: [],
     });
 
     const { container } = render(<DarwinWidget />);

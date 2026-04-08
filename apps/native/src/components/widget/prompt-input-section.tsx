@@ -2,14 +2,13 @@
 
 import { ConversationalResponse } from "@/components/widget/conversational-response";
 import { PromptInput } from "@/components/widget/prompt-input";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useCurrentStep } from "@/stores/widget-store";
 
 export function PromptInputSection() {
-  const gitStatus = useWidgetStore((s) => s.gitStatus);
+  const step = useCurrentStep();
 
-  const hasChanges = Boolean(gitStatus?.diff);
-  const isCommitStep = gitStatus?.isMainBranch === false && gitStatus?.headIsBuilt === true;
-  const showTitle = hasChanges || isCommitStep;
+  const isCommitStep = step === "merge";
+  const showTitle = step === "evolving" || isCommitStep;
 
   const title = isCommitStep ? "Back to the drawing board!" : "What else can I change for you?";
 

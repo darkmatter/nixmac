@@ -247,6 +247,7 @@ fn log_api_error(
 
 // Use OpenRouter with Claude for evolution - better reasoning without strict content policies
 const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
+const OPENAI_BASE_URL: &str = "https://api.openai.com/v1";
 const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 const DEFAULT_MAX_BUILD_ATTEMPTS: usize = 5;
@@ -416,21 +417,30 @@ pub async fn generate_evolution(
         info!("Using vLLM provider | Model: {} | URL: {}", model, base_url);
         Arc::new(OpenAIProvider::new(api_key, base_url, model))
     } else {
-        // Init OpenAI / OpenRouter - try OpenRouter key first, then OpenAI key
-        let api_key = store::get_openrouter_api_key(app)
+        // Resolve API key and matching base URL together.
+        // Prefer OpenRouter; fall back to direct OpenAI.
+        let (api_key, base_url) = store::get_openrouter_api_key(app)
             .ok()
             .flatten()
+            .map(|k| (k, OPENROUTER_BASE_URL))
             .or_else(|| {
                 info!("OpenRouter key not found, trying OpenAI key from store");
-                store::get_openai_api_key(app).ok().flatten()
+                store::get_openai_api_key(app)
+                    .ok()
+                    .flatten()
+                    .map(|k| (k, OPENAI_BASE_URL))
             })
             .or_else(|| {
                 info!("Falling back to OPENROUTER_API_KEY environment variable");
-                std::env::var("OPENROUTER_API_KEY").ok()
+                std::env::var("OPENROUTER_API_KEY")
+                    .ok()
+                    .map(|k| (k, OPENROUTER_BASE_URL))
             })
             .or_else(|| {
                 info!("Falling back to OPENAI_API_KEY environment variable");
-                std::env::var("OPENAI_API_KEY").ok()
+                std::env::var("OPENAI_API_KEY")
+                    .ok()
+                    .map(|k| (k, OPENAI_BASE_URL))
             })
             .ok_or_else(|| {
                 anyhow!("No API key found. Please add your API key in Settings to get started.")
@@ -439,10 +449,21 @@ pub async fn generate_evolution(
         let model = store_model
             .or_else(|| std::env::var("EVOLVE_MODEL").ok())
             .unwrap_or_else(|| DEFAULT_MODEL.to_string());
-        info!("Using OpenRouter provider | Model: {}", model);
+        // Strip OpenRouter-style "openai/" prefix for direct OpenAI usage
+        let model = if base_url == OPENAI_BASE_URL {
+            model.strip_prefix("openai/").unwrap_or(&model).to_string()
+        } else {
+            model
+        };
+        let provider_name = if base_url.contains("openrouter") {
+            "OpenRouter"
+        } else {
+            "OpenAI"
+        };
+        info!("Using {} provider | Model: {}", provider_name, model);
         Arc::new(OpenAIProvider::new(
             api_key,
-            OPENROUTER_BASE_URL.to_string(),
+            base_url.to_string(),
             model,
         ))
     };
@@ -897,11 +918,20 @@ Do not invent tool names and do not place tool invocations in assistant content.
                     break;
                 }
             } else {
-                info!("Model returned empty tool list");
-                // This shouldn't happen if tool_calls is Some, but good to handle
+                // tool_calls: Some([]) — empty list, treat same as no tool calls.
+                info!("Model returned empty tool list — treating as no tool calls");
             }
-        } else {
-            // Model returned content with no tool calls.
+        }
+
+        // If no tool calls were made (None or empty list), handle as terminal response.
+        let no_tool_calls = match &assistant_msg {
+            Message::Assistant { tool_calls, .. } => {
+                tool_calls.as_ref().map_or(true, |calls| calls.is_empty())
+            }
+            _ => false,
+        };
+
+        if no_tool_calls {
             if let Message::Assistant {
                 content: Some(content),
                 ..

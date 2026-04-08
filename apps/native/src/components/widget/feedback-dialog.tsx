@@ -271,11 +271,7 @@ function shouldShowAppLogs(
   }
 }
 
-interface FeedbackDialogProps {
-  mainWindowError?: string;
-}
-
-export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
+export function FeedbackDialog() {
   const feedbackOpen = useWidgetStore((s) => s.feedbackOpen);
   const setFeedbackOpen = useWidgetStore((s) => s.setFeedbackOpen);
   const feedbackTypeOverride = useWidgetStore((s) => s.feedbackTypeOverride);
@@ -283,6 +279,7 @@ export function FeedbackDialog({ mainWindowError }: FeedbackDialogProps) {
   const panicDetails = useWidgetStore((s) => s.panicDetails);
   const setFeedbackTypeOverride = useWidgetStore((s) => s.setFeedbackTypeOverride);
   const step = useCurrentStep();
+  const mainWindowError = useWidgetStore((s) => s.error) ?? undefined;
 
   const [feedbackType, setFeedbackType] = useState<FeedbackType>(FeedbackType.Suggestion);
   const [feedbackText, setFeedbackText] = useState("");

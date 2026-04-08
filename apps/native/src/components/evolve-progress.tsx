@@ -259,6 +259,8 @@ export function EvolveProgress({
     setAutoScroll(isAtBottom);
   };
 
+  const isAnalyzing = isGenerating && events[events.length - 1]?.eventType === "summarizing";
+
   if (events.length === 0 && !isGenerating) {
     return null;
   }
@@ -274,7 +276,7 @@ export function EvolveProgress({
             <Check className="h-4 w-4 text-green-400" />
           )}
           <span className="font-medium text-foreground text-sm">
-            {isGenerating ? "Evolving..." : "Evolution Complete"}
+            {isAnalyzing ? "Analyzing changes..." : isGenerating ? "Evolving..." : "Evolution Complete"}
           </span>
         </div>
         <div className="flex items-center gap-2">

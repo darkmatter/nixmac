@@ -197,10 +197,12 @@ pub fn bootstrap(app: &AppHandle, hostname: &str) -> Result<(), String> {
     copy_template_dir(&template_path, dest_path, hostname, platform, &username)?;
 
     // Initialize git repository and commit templates (without flake.lock)
-    git::init_if_needed(&dir).map_err(|e| format!("Failed to init git: {}", e))?;
-    git::stage_all(&dir).map_err(|e| format!("Failed to stage files: {}", e))?;
-    git::commit_all(&dir, "Initial nix-darwin configuration")
+    git::init_repo(&dir).map_err(|e| format!("Failed to init git: {}", e))?;
+    let info = git::commit_all(&dir, "chore: initial nix-darwin configuration")
         .map_err(|e| format!("Failed to commit: {}", e))?;
+    if let Err(e) = git::tag_commit(&dir, &format!("nixmac-base-{}", &info.hash[..8]), &info.hash, false) {
+        log::warn!("Failed to tag initial commit as base: {}", e);
+    }
 
     if nix::is_nix_installed() {
         if let Err(e) = finalize_flake_lock(app) {
@@ -236,9 +238,11 @@ pub fn finalize_flake_lock(app: &AppHandle) -> Result<(), String> {
     }
 
     // Stage lock file and commit
-    git::stage_all(&dir).map_err(|e| format!("Failed to stage flake.lock: {}", e))?;
-    git::commit_all(&dir, "Add flake.lock")
+    let info = git::commit_all(&dir, "chore: add flake.lock")
         .map_err(|e| format!("Failed to commit flake.lock: {}", e))?;
+    if let Err(e) = git::tag_commit(&dir, &format!("nixmac-base-{}", &info.hash[..8]), &info.hash, false) {
+        log::warn!("Failed to tag flake.lock commit as base: {}", e);
+    }
 
     Ok(())
 }

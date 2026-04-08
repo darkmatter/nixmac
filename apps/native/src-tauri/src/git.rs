@@ -1,17 +1,24 @@
-//! Git operations for tracking configuration changes.
-//!
-//! Provides a minimal git interface for version control of the Nix flake.
-//! This enables safe rollback and change tracking.
+//! Git operations for tracking and recording configuration changes.
 
 use crate::types::{GitFileStatus, GitStatus};
 use anyhow::Result;
 use std::process::Command;
 use tauri::AppHandle;
 
-/// Create a git command with proper PATH for macOS GUI apps
+/// Identity and hooks injected so nixmac doesn't inherit user's config
 fn git_command() -> Command {
     let mut cmd = Command::new("git");
     cmd.env("PATH", crate::nix::get_nix_path());
+    cmd.args([
+        "-c",
+        "user.name=nixmac",
+        "-c",
+        "user.email=nixmac@local",
+        "-c",
+        "commit.gpgsign=false",
+        "-c",
+        "core.hooksPath=/dev/null",
+    ]);
     cmd
 }
 
@@ -25,9 +32,8 @@ pub fn is_repo(dir: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// Initializes a git repository if the directory isn't already one.
-/// Also creates a sensible .gitignore for Nix projects.
-pub fn init_if_needed(dir: &str) -> Result<()> {
+/// Initializes a git repo with a .gitignore for Nix projects. Call explicitly during setup only.
+pub fn init_repo(dir: &str) -> Result<()> {
     if !is_repo(dir) {
         std::fs::create_dir_all(dir)?;
         git_command().args(["init"]).current_dir(dir).output()?;
@@ -43,63 +49,19 @@ pub fn init_if_needed(dir: &str) -> Result<()> {
     Ok(())
 }
 
-/// Probes in order: local main, local master, then remote HEAD as a last resort
-pub fn get_default_branch(dir: &str) -> Option<String> {
-    if git_command()
-        .args(["rev-parse", "--verify", "main"])
-        .current_dir(dir)
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
-    {
-        return Some("main".to_string());
+/// Errors if `dir` is not a git repository. Use at the top of functions that require a repo.
+pub fn require_repo(dir: &str) -> Result<()> {
+    if !is_repo(dir) {
+        anyhow::bail!("'{}' is not a git repository", dir);
     }
-    if git_command()
-        .args(["rev-parse", "--verify", "master"])
-        .current_dir(dir)
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
-    {
-        return Some("master".to_string());
-    }
-    // Only reached if neither main nor master exist locally.
-    if let Ok(output) = git_command()
-        .args(["symbolic-ref", "refs/remotes/origin/HEAD"])
-        .current_dir(dir)
-        .output()
-    {
-        if output.status.success() {
-            let refname = String::from_utf8_lossy(&output.stdout);
-            if let Some(branch) = refname.trim().strip_prefix("refs/remotes/origin/") {
-                return Some(branch.to_string());
-            }
-        }
-    }
-    None
+    Ok(())
 }
 
-/// For write operations that MUST act on the default branch.
-fn require_default_branch(dir: &str) -> Result<String> {
-    get_default_branch(dir).ok_or_else(|| {
-        anyhow::anyhow!(
-            "No default branch (main or master) found in this repository. \
-             Ensure the repository has at least one commit on a main or master branch, \
-             or that a remote is configured with a default branch."
-        )
-    })
-}
-
-/// Gets the full diff against main/master branch, including tracked changes and untracked file contents.
-/// This shows all changes since diverging from the default branch, which is used for AI summaries.
-/// Falls back to HEAD if neither main nor master exist.
-/// Untracked files are formatted as diffs showing the entire file as added.
+/// Full diff vs HEAD, including tracked changes and untracked files as diffs.
 pub fn get_full_diff(dir: &str) -> Result<String> {
-    let base = get_default_branch(dir).unwrap_or_else(|| "HEAD".to_string());
-
     // Get git diff for tracked files
     let diff_output = git_command()
-        .args(["diff", &base])
+        .args(["diff", "HEAD"])
         .current_dir(dir)
         .output()?;
 
@@ -177,10 +139,8 @@ pub fn get_head_diff(dir: &str) -> Result<String> {
 
 /// Gets a diff containing only .nix files (including untracked .nix files).
 pub fn get_nix_diff(dir: &str) -> Result<String> {
-    let base = get_default_branch(dir).unwrap_or_else(|| "HEAD".to_string());
-
     let diff_output = git_command()
-        .args(["diff", &base, "--", "*.nix"])
+        .args(["diff", "HEAD", "--", "*.nix"])
         .current_dir(dir)
         .output()?;
 
@@ -220,15 +180,12 @@ pub fn count_diff_changes(diff: &str) -> (usize, usize) {
     let mut deletions = 0;
 
     for line in diff.lines() {
-        // Skip diff headers (--- and +++)
         if line.starts_with("+++") || line.starts_with("---") {
             continue;
         }
-        // Count added lines
         if line.starts_with('+') {
             additions += 1;
         }
-        // Count deleted lines
         else if line.starts_with('-') {
             deletions += 1;
         }
@@ -237,13 +194,11 @@ pub fn count_diff_changes(diff: &str) -> (usize, usize) {
     (additions, deletions)
 }
 
-/// Parses file information from diff output.
-/// Extracts file paths and change types from diff headers.
-/// Uses the same pattern as diff.tsx: `diff --git a/<path> b/<path>`
+/// Parses file info from diffs. Filename and path from diff headers.
 pub fn parse_files_from_diff(diff: &str) -> Vec<GitFileStatus> {
     let mut files = Vec::new();
     let mut current_file: Option<String> = None;
-    let mut current_change_type = "edited";
+    let mut current_change_type = crate::shared_types::ChangeType::Edited;
 
     for line in diff.lines() {
         // Match "diff --git a/path b/path" - same pattern as diff.tsx
@@ -252,7 +207,7 @@ pub fn parse_files_from_diff(diff: &str) -> Vec<GitFileStatus> {
             if let Some(path) = current_file.take() {
                 files.push(GitFileStatus {
                     path,
-                    change_type: current_change_type.to_string(),
+                    change_type: current_change_type,
                 });
             }
 
@@ -261,58 +216,31 @@ pub fn parse_files_from_diff(diff: &str) -> Vec<GitFileStatus> {
             if let Some(b_index) = line.find(" b/") {
                 let path = &line[b_index + 3..]; // Skip " b/"
                 current_file = Some(path.to_string());
-                current_change_type = "edited"; // Default, may be overridden
+                current_change_type = crate::shared_types::ChangeType::Edited; // Default, may be overridden
             }
         }
-        // Detect change type from subsequent lines
+        // Detect change type
         else if line.starts_with("new file mode") {
-            current_change_type = "new";
+            current_change_type = crate::shared_types::ChangeType::New;
         } else if line.starts_with("deleted file mode") {
-            current_change_type = "removed";
+            current_change_type = crate::shared_types::ChangeType::Removed;
         } else if line.starts_with("rename from") {
-            current_change_type = "renamed";
+            current_change_type = crate::shared_types::ChangeType::Renamed;
         }
     }
 
-    // Don't forget the last file
+    // Pick up last file
     if let Some(path) = current_file {
         files.push(GitFileStatus {
             path,
-            change_type: current_change_type.to_string(),
+            change_type: current_change_type,
         });
     }
 
     files
 }
 
-/// Gets commit messages on the current branch since diverging from main.
-/// Returns commits in reverse chronological order (newest first).
-fn get_commit_messages_since_main(dir: &str) -> Vec<String> {
-    let Some(base) = get_default_branch(dir) else {
-        return vec![];
-    };
-
-    let range = format!("{}..HEAD", base);
-    let output = git_command()
-        .args(["log", &range, "--pretty=format:%s"])
-        .current_dir(dir)
-        .output();
-
-    match output {
-        Ok(o) if o.status.success() => {
-            let stdout = String::from_utf8_lossy(&o.stdout);
-            stdout
-                .lines()
-                .filter(|line| !line.is_empty())
-                .map(String::from)
-                .collect()
-        }
-        _ => vec![],
-    }
-}
-
-/// Gets the SHA of the commit with the nixmac-last-build tag.
-/// Returns None if the tag doesn't exist.
+/// Returns the SHA of the commit with the nixmac-last-build tag or None
 pub fn get_last_built_commit_sha(dir: &str) -> Option<String> {
     let output = git_command()
         .args(["rev-parse", "--verify", "refs/tags/nixmac-last-build"])
@@ -327,14 +255,13 @@ pub fn get_last_built_commit_sha(dir: &str) -> Option<String> {
     }
 }
 
-/// Gets the SHA of the current HEAD commit.
-fn get_head_sha(dir: &str) -> Option<String> {
+/// Gets the SHA of any ref (branch name, tag, or symbolic ref like HEAD).
+pub fn get_ref_sha(dir: &str, ref_name: &str) -> Option<String> {
     let output = git_command()
-        .args(["rev-parse", "HEAD"])
+        .args(["rev-parse", ref_name])
         .current_dir(dir)
         .output()
         .ok()?;
-
     if output.status.success() {
         Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
     } else {
@@ -342,8 +269,12 @@ fn get_head_sha(dir: &str) -> Option<String> {
     }
 }
 
-/// Checks if HEAD has the nixmac-last-build tag.
-/// Returns true if HEAD is the most recently built commit.
+/// Gets the SHA of the current HEAD commit.
+fn get_head_sha(dir: &str) -> Option<String> {
+    get_ref_sha(dir, "HEAD")
+}
+
+/// True if HEAD has the nixmac-last-build tag
 pub fn head_is_built(dir: &str) -> bool {
     let Some(built_sha) = get_last_built_commit_sha(dir) else {
         return false;
@@ -354,28 +285,8 @@ pub fn head_is_built(dir: &str) -> bool {
     built_sha == head_sha
 }
 
-/// Returns true if `built_sha` appears in the commits between main and HEAD.
-/// Walks HEAD backwards and stops at main's tip, so only branch-exclusive
-/// commits are considered. A commit shared with main does not count.
-fn built_sha_on_branch_since_main(dir: &str, built_sha: &str) -> bool {
-    let Some(main_ref) = get_default_branch(dir) else {
-        return false;
-    };
-    let range = format!("{}..HEAD", main_ref);
-    let Ok(output) = git_command()
-        .args(["log", &range, "--format=%H"])
-        .current_dir(dir)
-        .output()
-    else {
-        return false;
-    };
-    String::from_utf8_lossy(&output.stdout)
-        .lines()
-        .any(|hash| hash.trim() == built_sha)
-}
-
-/// Returns the current branch name.
-fn get_current_branch(dir: &str) -> Option<String> {
+/// Returns the current branch name (None if detached HEAD)
+pub fn current_branch(dir: &str) -> Option<String> {
     let output = git_command()
         .args(["rev-parse", "--abbrev-ref", "HEAD"])
         .current_dir(dir)
@@ -394,48 +305,20 @@ fn get_current_branch(dir: &str) -> Option<String> {
     }
 }
 
-/// Gets comprehensive git status by parsing the diff against main/master.
+/// Comprehensive git status against HEAD.
 pub fn status(dir: &str) -> Result<GitStatus> {
-    // Get current branch
-    let branch = get_current_branch(dir);
+    require_repo(dir)?;
+    let branch = current_branch(dir);
 
-    // Check if on the default branch
-    let default_branch = get_default_branch(dir);
-    let is_main_branch = branch
-        .as_ref()
-        .zip(default_branch.as_ref())
-        .map(|(b, d)| b == d)
-        .unwrap_or(false);
-
-    // Compute diff and stats
     let diff = get_full_diff(dir).unwrap_or_default();
     let (additions, deletions) = count_diff_changes(&diff);
 
-    // Parse files from diff
     let files = parse_files_from_diff(&diff);
 
-    // Check if HEAD has the nixmac-built tag
     let head_is_built = head_is_built(dir);
 
-    // Get the last built commit SHA and check if it appears in the commits
-    // exclusive to this branch (between main and HEAD).
-    let last_built_commit_sha = get_last_built_commit_sha(dir);
-    let branch_has_built_commit = last_built_commit_sha
-        .as_ref()
-        .map(|sha| built_sha_on_branch_since_main(dir, sha))
-        .unwrap_or(false);
-
-    // Get commit messages since main (only if not on main branch)
-    let branch_commit_messages = if is_main_branch {
-        vec![]
-    } else {
-        get_commit_messages_since_main(dir)
-    };
-
-    // Get HEAD commit hash
     let head_commit_hash = get_head_sha(dir);
 
-    // Determine clean_head (no changes)
     let head_diff = get_head_diff(dir).unwrap_or_default();
     let clean_head = head_diff.is_empty();
 
@@ -444,10 +327,7 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     Ok(GitStatus {
         files,
         branch,
-        branch_commit_messages,
         head_is_built,
-        is_main_branch,
-        branch_has_built_commit,
         diff,
         additions,
         deletions,
@@ -457,36 +337,24 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     })
 }
 
-/// Gets status and caches it in the store so the watcher won't fire a spurious
-/// change event on the next poll.
+/// Gets status and caches it to loop in watcher
 pub fn status_and_cache<R: tauri::Runtime>(dir: &str, app: &AppHandle<R>) -> Result<GitStatus> {
     let status = status(dir)?;
     cache_status(app, &status)?;
     Ok(status)
 }
 
-/// Caches a git status for later comparison.
 pub fn cache_status<R: tauri::Runtime>(app: &AppHandle<R>, status: &GitStatus) -> Result<()> {
     crate::store::set_cached_git_status(app, status)
 }
 
-/// Cached git status (currently used only to check summary stale on widget mount)
+/// Returns cached
 pub fn cached<R: tauri::Runtime>(app: &AppHandle<R>) -> Result<Option<GitStatus>> {
     crate::store::get_cached_git_status(app)
 }
 
-/// Stages all changes (git add -A).
-pub fn stage_all(dir: &str) -> Result<()> {
-    git_command()
-        .args(["add", "-A"])
-        .current_dir(dir)
-        .output()?;
-    Ok(())
-}
-
 /// Registers all untracked files as intent-to-add in the git index.
-/// This makes new files visible to `git ls-files` (and therefore Nix flakes)
-/// without fully staging them. No-op if there are no untracked files.
+/// Makes files visible to `git ls-files` (and therefore Nix flakes)
 pub fn intent_add_untracked(dir: &str) -> Result<()> {
     let output = git_command()
         .args(["ls-files", "--others", "--exclude-standard"])
@@ -519,30 +387,18 @@ pub fn intent_add_untracked(dir: &str) -> Result<()> {
     Ok(())
 }
 
-/// Unstages all staged changes (git reset HEAD).
-/// This keeps the working directory changes but removes them from the index.
-pub fn unstage_all(dir: &str) -> Result<()> {
-    git_command()
-        .args(["reset", "HEAD", "--"])
-        .current_dir(dir)
-        .output()?;
-    Ok(())
-}
-
 /// Info about a created commit.
 pub struct CommitInfo {
     pub hash: String,
     pub tree_hash: String,
 }
 
-/// Fetch commits starting from `start_hash` going backwards.
-/// `limit` caps the number returned; pass `None` to return all commits.
-/// Returns CommitRow values with id = 0 (placeholder; real id assigned on DB upsert).
+/// Returns commits as Row Type (id = 0), from `start_hash` for `limit`(None for all)
 pub fn log(
     dir: &str,
     start_hash: &str,
     limit: Option<usize>,
-) -> Result<Vec<crate::sqlite_types::CommitRow>> {
+) -> Result<Vec<crate::sqlite_types::Commit>> {
     let mut cmd = git_command();
     cmd.arg("log").arg("--format=%H%n%T%n%at%n%s");
     if let Some(n) = limit {
@@ -564,7 +420,7 @@ pub fn log(
         let timestamp: i64 = lines.next().unwrap_or("0").trim().parse().unwrap_or(0);
         let subject = lines.next().unwrap_or("").to_string();
 
-        commits.push(crate::sqlite_types::CommitRow {
+        commits.push(crate::sqlite_types::Commit {
             id: 0,
             hash,
             tree_hash,
@@ -580,7 +436,7 @@ pub fn log(
     Ok(commits)
 }
 
-/// Get the unified diff between parent_hash and commit_hash.
+/// Diff between parent_hash and commit_hash.
 pub fn commit_diff(dir: &str, parent_hash: &str, commit_hash: &str) -> Result<String> {
     let output = git_command()
         .args(["diff", parent_hash, commit_hash])
@@ -589,8 +445,7 @@ pub fn commit_diff(dir: &str, parent_hash: &str, commit_hash: &str) -> Result<St
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
-/// Stages all changes and commits with the given message.
-/// Returns the commit hash and tree hash on success.
+/// Stages all and commits with msg, returns hash and tree hash.
 pub fn commit_all(dir: &str, message: &str) -> Result<CommitInfo> {
     git_command()
         .args(["add", "-A"])
@@ -602,7 +457,7 @@ pub fn commit_all(dir: &str, message: &str) -> Result<CommitInfo> {
         .current_dir(dir)
         .output()?;
 
-    // Get the commit hash
+    // Get commit hash
     let hash_output = git_command()
         .args(["rev-parse", "HEAD"])
         .current_dir(dir)
@@ -611,7 +466,7 @@ pub fn commit_all(dir: &str, message: &str) -> Result<CommitInfo> {
         .trim()
         .to_string();
 
-    // Get the tree hash
+    // Get tree hash
     let tree_output = git_command()
         .args(["rev-parse", "HEAD^{tree}"])
         .current_dir(dir)
@@ -632,7 +487,7 @@ pub fn restore_files_at_commit(dir: &str, target_hash: &str) -> Result<()> {
     Ok(())
 }
 
-/// Stages all changes and commits with the given message.
+/// Stages all changes and stashes with msg.
 pub fn stash(dir: &str, message: &str) -> Result<()> {
     git_command()
         .args(["add", "-A"])
@@ -647,22 +502,18 @@ pub fn stash(dir: &str, message: &str) -> Result<()> {
     Ok(())
 }
 
-/// Discards all uncommitted changes (both staged and unstaged).
-/// This restores tracked files to HEAD and removes untracked files.
+/// Restore all uncommitted, discard untracked.
 pub fn restore_all(dir: &str) -> Result<()> {
-    // Reset staged changes
     git_command()
         .args(["reset", "HEAD", "--"])
         .current_dir(dir)
         .output()?;
 
-    // Discard changes to tracked files
     git_command()
         .args(["checkout", "--", "."])
         .current_dir(dir)
         .output()?;
 
-    // Remove untracked files and directories
     git_command()
         .args(["clean", "-fd"])
         .current_dir(dir)
@@ -671,9 +522,7 @@ pub fn restore_all(dir: &str) -> Result<()> {
     Ok(())
 }
 
-/// Creates and checks out a new branch.
-/// If the branch already exists, appends -v2, -v3, etc. until a unique name is found.
-/// Returns the branch name that was created.
+#[allow(dead_code)]
 pub fn checkout_new_branch(dir: &str, branch_name: &str) -> Result<String> {
     for version in 1..=100 {
         let name = if version == 1 {
@@ -700,7 +549,7 @@ pub fn checkout_new_branch(dir: &str, branch_name: &str) -> Result<String> {
     anyhow::bail!("Too many versions of branch {}", branch_name)
 }
 
-/// Checks out an existing branch.
+#[allow(dead_code)]
 pub fn checkout_branch(dir: &str, branch_name: &str) -> Result<()> {
     let output = git_command()
         .args(["checkout", branch_name])
@@ -715,165 +564,139 @@ pub fn checkout_branch(dir: &str, branch_name: &str) -> Result<()> {
     Ok(())
 }
 
-/// Checks out the main branch (tries main, falls back to master).
-pub fn checkout_main_branch(dir: &str) -> Result<()> {
-    let Some(branch) = get_default_branch(dir) else {
-        anyhow::bail!("No main or master branch found");
+
+/// Returns all tags for `hash`.
+pub fn read_tags(dir: &str, hash: &str) -> Vec<String> {
+    let Ok(output) = git_command()
+        .args(["tag", "--points-at", hash])
+        .current_dir(dir)
+        .output()
+    else {
+        return vec![];
     };
-    checkout_branch(dir, &branch)
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter(|l| !l.is_empty())
+        .map(str::to_owned)
+        .collect()
 }
 
-/// Deletes a local branch by name. Must not be the currently checked-out branch.
-pub fn delete_branch(dir: &str, branch: &str) -> Result<()> {
-    let output = git_command()
-        .args(["branch", "-D", branch])
-        .current_dir(dir)
-        .output()?;
+/// Git tags (any ref or hash) `target`, `force = true` overwrites.
+pub fn tag_commit(dir: &str, tag: &str, target: &str, force: bool) -> Result<()> {
+    let mut args = vec!["tag"];
+    if force {
+        args.push("-f");
+    }
+    args.push(tag);
+    args.push(target);
+    let output = git_command().args(&args).current_dir(dir).output()?;
     if !output.status.success() {
-        anyhow::bail!(
-            "Failed to delete branch {}: {}",
-            branch,
-            String::from_utf8_lossy(&output.stderr)
-        );
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("Failed to create tag `{}`: {}", tag, stderr);
     }
     Ok(())
 }
 
-/// Adds build tags to HEAD:
-/// - `nixmac-built-<timestamp>` - permanent tag for build history
-/// - `nixmac-last-build` - moving tag that always points to latest build
+/// Git tags `nixmac-last-build` & `nixmac-built-<timestamp>`
 pub fn tag_as_built(dir: &str) -> Result<()> {
-    // Create timestamped tag for history (e.g., nixmac-built-1708123456)
-    let timestamp = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    let timestamped_tag = format!("nixmac-built-{}", timestamp);
+    let timestamped_tag = format!("nixmac-built-{}", crate::utils::unix_now());
+    tag_commit(dir, &timestamped_tag, "HEAD", false)?;
+    tag_commit(dir, "nixmac-last-build", "HEAD", true)?;
+    Ok(())
+}
 
-    let output = git_command()
-        .args(["tag", &timestamped_tag, "HEAD"])
-        .current_dir(dir)
-        .output()?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("Failed to create timestamped tag: {}", stderr);
+/// Stage everything and create a backup branch without moving HEAD.
+/// Returns the branch name, or None if skipped (clean tree + changeset_id == 0).
+pub fn create_evolution_backup(
+    repo_path: &str,
+    evolution_id: Option<i64>,
+    changeset_id: i64,
+) -> Result<Option<String>> {
+    let head_diff = get_head_diff(repo_path).unwrap_or_default();
+    if head_diff.is_empty() && changeset_id == 0 {
+        return Ok(None);
     }
 
-    // Create/move the "last build" tag for easy checking
-    let output = git_command()
-        .args(["tag", "-f", "nixmac-last-build", "HEAD"])
-        .current_dir(dir)
-        .output()?;
+    let branch_name = format!(
+        "nixmac-evolve/evolution{}-changeset{}",
+        evolution_id.map_or_else(|| "unknown".to_string(), |id| id.to_string()),
+        changeset_id
+    );
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("Failed to update last-build tag: {}", stderr);
+    let add_output = git_command()
+        .args(["add", "--all"])
+        .current_dir(repo_path)
+        .output()?;
+    if !add_output.status.success() {
+        let stderr = String::from_utf8_lossy(&add_output.stderr);
+        anyhow::bail!("git add --all failed: {}", stderr);
     }
+
+    let tree_output = git_command()
+        .args(["write-tree"])
+        .current_dir(repo_path)
+        .output()?;
+    if !tree_output.status.success() {
+        let stderr = String::from_utf8_lossy(&tree_output.stderr);
+        anyhow::bail!("git write-tree failed: {}", stderr);
+    }
+    let tree_hash = String::from_utf8_lossy(&tree_output.stdout).trim().to_string();
+
+    let head_hash = get_head_sha(repo_path)
+        .ok_or_else(|| anyhow::anyhow!("failed to resolve HEAD"))?;
+
+    let commit_msg = format!("nixmac backup: {}", branch_name);
+    let commit_output = git_command()
+        .args(["commit-tree", &tree_hash, "-p", &head_hash, "-m", &commit_msg])
+        .current_dir(repo_path)
+        .output()?;
+    if !commit_output.status.success() {
+        let stderr = String::from_utf8_lossy(&commit_output.stderr);
+        anyhow::bail!("git commit-tree failed: {}", stderr);
+    }
+    let commit_hash = String::from_utf8_lossy(&commit_output.stdout).trim().to_string();
+
+    let ref_path = format!("refs/heads/{}", branch_name);
+    let ref_output = git_command()
+        .args(["update-ref", &ref_path, &commit_hash])
+        .current_dir(repo_path)
+        .output()?;
+    if !ref_output.status.success() {
+        let stderr = String::from_utf8_lossy(&ref_output.stderr);
+        anyhow::bail!("git update-ref failed: {}", stderr);
+    }
+
+    Ok(Some(branch_name))
+}
+
+/// Restore working tree from backup index state without moving HEAD.
+/// Assumes the real index is still in the backup state (AI does not run git commands).
+pub fn restore_from_backup(repo_path: &str) -> Result<()> {
+    let checkout_output = git_command()
+        .args(["checkout-index", "-f", "-a"])
+        .current_dir(repo_path)
+        .output()?;
+    if !checkout_output.status.success() {
+        let stderr = String::from_utf8_lossy(&checkout_output.stderr);
+        anyhow::bail!("git checkout-index failed: {}", stderr);
+    }
+
+    git_command()
+        .args(["clean", "-fd"])
+        .current_dir(repo_path)
+        .output()?;
 
     Ok(())
 }
 
-/// Finalizes an evolve by merging the branch to main.
-/// If squash is true, squashes all commits into one with the provided message.
-pub fn finalize_evolve(
-    dir: &str,
-    branch_name: &str,
-    squash: bool,
-    commit_message: Option<&str>,
-) -> Result<()> {
-    let default_branch = require_default_branch(dir)?;
-
-    // Branch-specific operations below (amend/squash) must run on the branch
-    // being finalized, not whichever branch happens to be currently checked out.
-    let output = git_command()
-        .args(["checkout", branch_name])
-        .current_dir(dir)
+/// Delete a backup branch ref.
+#[allow(dead_code)]
+pub fn delete_backup_branch(repo_path: &str, branch_name: &str) -> Result<()> {
+    let ref_path = format!("refs/heads/{}", branch_name);
+    git_command()
+        .args(["update-ref", "-d", &ref_path])
+        .current_dir(repo_path)
         .output()?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("Failed to checkout {}: {}", branch_name, stderr);
-    }
-
-    // If a commit message is provided without squashing, amend the latest commit before merging
-    if !squash {
-        if let Some(msg) = commit_message {
-            let output = git_command()
-                .args(["commit", "--amend", "-m", msg])
-                .current_dir(dir)
-                .output()?;
-
-            if !output.status.success() {
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                anyhow::bail!("Failed to amend commit message: {}", stderr);
-            }
-        }
-    }
-
-    // If squashing, reset soft to the default branch and create a new commit on the branch
-    if squash {
-        let output = git_command()
-            .args(["reset", "--soft", &default_branch])
-            .current_dir(dir)
-            .output()?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            anyhow::bail!("Failed to reset to {}: {}", default_branch, stderr);
-        }
-
-        let msg = commit_message.unwrap_or("chore: squash evolve commits");
-        let output = git_command()
-            .args(["commit", "-m", msg])
-            .current_dir(dir)
-            .output()?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            anyhow::bail!("Failed to create squash commit: {}", stderr);
-        }
-    }
-
-    // 1. Checkout default branch
-    let output = git_command()
-        .args(["checkout", &default_branch])
-        .current_dir(dir)
-        .output()?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("Failed to checkout {}: {}", default_branch, stderr);
-    }
-
-    // 2. Merge the evolve branch (fast-forward if squashed)
-    let output = git_command()
-        .args(["merge", branch_name])
-        .current_dir(dir)
-        .output()?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-
-        // Abort the failed merge to clean up
-        let _ = git_command()
-            .args(["merge", "--abort"])
-            .current_dir(dir)
-            .output();
-
-        // Checkout the branch again so user stays on their working branch
-        let _ = git_command()
-            .args(["checkout", branch_name])
-            .current_dir(dir)
-            .output();
-
-        // Provide helpful error message suggesting squash for conflicts
-        anyhow::bail!(
-            "Merge conflict detected. Try 'Squash' to succesfully merge your changes . Details: {}",
-            stderr
-        );
-    }
-
     Ok(())
 }
 
@@ -897,10 +720,10 @@ mod tests {
 
     // mk temp repo
     #[test]
-    fn test_init_if_needed() {
+    fn test_init_repo() {
         let temp_dir = TempDir::new().unwrap();
         let repo_dir = temp_dir.path().join("repo");
-        init_if_needed(&repo_dir.to_string_lossy()).unwrap();
+        init_repo(&repo_dir.to_string_lossy()).unwrap();
         assert!(is_repo(&repo_dir.to_string_lossy()));
     }
 
@@ -908,10 +731,14 @@ mod tests {
     fn test_status() {
         let temp_dir = TempDir::new().unwrap();
         let repo_dir = temp_dir.path().join("repo");
-        init_if_needed(&repo_dir.to_string_lossy()).unwrap();
-        fs::write(repo_dir.join("file.txt"), "hello").unwrap();
-        let status = status(&repo_dir.to_string_lossy()).unwrap();
-        // New file should appear in diff and files list
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+        // commit_all to materialize a branch
+        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
+        commit_all(&repo_dir_str, "chore: initial nix-darwin configuration").unwrap();
+        // Now add an uncommitted change to inspect.
+        fs::write(repo_dir.join("flake.nix"), "{ inputs = {}; }").unwrap();
+        let status = status(&repo_dir_str).unwrap();
         assert!(!status.diff.is_empty());
         assert!(!status.files.is_empty());
         assert!(status.branch.is_some());
@@ -941,52 +768,87 @@ deleted file mode 100644
         let files = parse_files_from_diff(diff);
         assert_eq!(files.len(), 3);
         assert_eq!(files[0].path, "new-file.txt");
-        assert_eq!(files[0].change_type, "new");
+        assert!(matches!(files[0].change_type, crate::shared_types::ChangeType::New));
         assert_eq!(files[1].path, "existing.txt");
-        assert_eq!(files[1].change_type, "edited");
+        assert!(matches!(files[1].change_type, crate::shared_types::ChangeType::Edited));
         assert_eq!(files[2].path, "removed.txt");
-        assert_eq!(files[2].change_type, "removed");
+        assert!(matches!(files[2].change_type, crate::shared_types::ChangeType::Removed));
     }
 
     #[test]
-    fn test_finalize_evolve_amends_target_branch_not_checked_out_branch() {
+    fn test_create_evolution_backup_does_not_move_head() {
         let temp_dir = TempDir::new().unwrap();
         let repo_dir = temp_dir.path().join("repo");
         let repo_dir_str = repo_dir.to_string_lossy().to_string();
-        init_if_needed(&repo_dir_str).unwrap();
+        init_repo(&repo_dir_str).unwrap();
 
-        run_git_ok(&repo_dir, &["config", "user.email", "test@example.com"]);
-        run_git_ok(&repo_dir, &["config", "user.name", "Test User"]);
-
-        fs::write(repo_dir.join("file.txt"), "main\n").unwrap();
+        fs::write(repo_dir.join("file.txt"), "initial\n").unwrap();
         run_git_ok(&repo_dir, &["add", "-A"]);
-        run_git_ok(&repo_dir, &["commit", "-m", "main commit"]);
-        let default_branch = get_default_branch(&repo_dir_str).unwrap();
-        let original_default_head = run_git_ok(&repo_dir, &["rev-parse", "HEAD"]);
+        run_git_ok(&repo_dir, &["commit", "-m", "initial commit"]);
+        let head_before = run_git_ok(&repo_dir, &["rev-parse", "HEAD"]);
+        let branch_before = current_branch(&repo_dir_str).unwrap();
 
-        run_git_ok(&repo_dir, &["checkout", "-b", "feature"]);
-        fs::write(repo_dir.join("file.txt"), "feature\n").unwrap();
+        // Simulate uncommitted AI changes so backup has something to capture.
+        fs::write(repo_dir.join("file.txt"), "changed\n").unwrap();
+
+        let backup_branch = create_evolution_backup(&repo_dir_str, Some(1), 1)
+            .unwrap()
+            .expect("expected a backup branch to be created");
+
+        // HEAD and checked-out branch must be unchanged.
+        let head_after = run_git_ok(&repo_dir, &["rev-parse", "HEAD"]);
+        let branch_after = current_branch(&repo_dir_str).unwrap();
+        assert_eq!(head_before.trim(), head_after.trim());
+        assert_eq!(branch_before, branch_after);
+
+        // Backup ref must exist and point to a commit that includes the changed content.
+        let backup_tree = run_git_ok(&repo_dir, &[
+            "show",
+            &format!("{}:file.txt", backup_branch),
+        ]);
+        assert_eq!(backup_tree.trim(), "changed");
+    }
+
+    #[test]
+    fn test_create_evolution_backup_skips_when_clean_and_no_changeset() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("file.txt"), "initial\n").unwrap();
         run_git_ok(&repo_dir, &["add", "-A"]);
-        run_git_ok(&repo_dir, &["commit", "-m", "feature commit"]);
-        run_git_ok(&repo_dir, &["checkout", &default_branch]);
+        run_git_ok(&repo_dir, &["commit", "-m", "initial commit"]);
 
-        finalize_evolve(
-            &repo_dir_str,
-            "feature",
-            false,
-            Some("feature commit (edited)"),
-        )
-        .unwrap();
+        // Clean working tree + changeset_id == 0 → should skip.
+        let result = create_evolution_backup(&repo_dir_str, Some(1), 0).unwrap();
+        assert!(result.is_none());
+    }
 
-        let current_branch = run_git_ok(&repo_dir, &["rev-parse", "--abbrev-ref", "HEAD"]);
-        assert_eq!(current_branch.trim(), default_branch);
+    #[test]
+    fn test_restore_from_backup_reverts_working_tree_changes() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
 
-        let feature_message = run_git_ok(&repo_dir, &["log", "feature", "-1", "--pretty=%s"]);
-        assert_eq!(feature_message.trim(), "feature commit (edited)");
+        fs::write(repo_dir.join("file.txt"), "original\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+        run_git_ok(&repo_dir, &["commit", "-m", "initial commit"]);
 
-        // The original default-branch head must remain in the default branch's
-        // first-parent chain, proving we did not amend the default branch itself.
-        let first_parent_history = run_git_ok(&repo_dir, &["rev-list", "--first-parent", &default_branch]);
-        assert!(first_parent_history.contains(original_default_head.trim()));
+        // Stage a file to represent the backup index state.
+        fs::write(repo_dir.join("file.txt"), "backup state\n").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+
+        // Simulate AI making further changes to the working tree without staging.
+        fs::write(repo_dir.join("file.txt"), "ai mess\n").unwrap();
+        fs::write(repo_dir.join("new-file.txt"), "ai added\n").unwrap();
+
+        restore_from_backup(&repo_dir_str).unwrap();
+
+        // Working tree should reflect the staged (backup) state, not the AI changes.
+        let content = fs::read_to_string(repo_dir.join("file.txt")).unwrap();
+        assert_eq!(content, "backup state\n");
+        assert!(!repo_dir.join("new-file.txt").exists());
     }
 }

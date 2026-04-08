@@ -1,24 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-/// Legacy evolution state - kept for backwards compatibility during generation
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum EvolutionState {
-    /// Initial state before generation starts
-    Pending,
-    /// Currently generating/processing
-    Loading,
-    /// Generation complete, ready for review
-    Generated,
-    /// Changes have been applied (darwin-rebuild ran)
-    Applied,
-    /// Changes have been committed
-    Committed,
-    /// An error occurred
-    Failed,
-    /// Agent responded conversationally without making any environment changes
-    Conversational,
-}
+pub use crate::shared_types::EvolutionState;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

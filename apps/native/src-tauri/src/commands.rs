@@ -8,8 +8,8 @@
 //! preview mode, etc.) is computed and managed entirely by the client.
 
 use crate::{
-    darwin, db, default_config, evolution, feedback, find_summary, git, nix, peek, permissions,
-    rollback, scanner, store, summarize, types,
+    darwin, db, default_config, evolution, evolve_state, feedback, git, nix,
+    peek, permissions, rollback, scanner, store, types,
 };
 use std::path::Path;
 use std::process::Command;
@@ -143,10 +143,10 @@ pub async fn trigger_test_panic() -> Result<(), String> {
 
 /// Initializes a git repository in the config directory if one doesn't exist.
 #[tauri::command]
-pub async fn git_init_if_needed(app: AppHandle) -> Result<serde_json::Value, String> {
+pub async fn git_init_repo(app: AppHandle) -> Result<serde_json::Value, String> {
     let dir =
-        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_init_if_needed", e))?;
-    git::init_if_needed(&dir).map_err(|e| capture_err("git_init_if_needed", e))?;
+        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_init_repo", e))?;
+    git::init_repo(&dir).map_err(|e| capture_err("git_init_repo", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
@@ -154,7 +154,6 @@ pub async fn git_init_if_needed(app: AppHandle) -> Result<serde_json::Value, Str
 #[tauri::command]
 pub async fn git_status(app: AppHandle) -> Result<types::GitStatus, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_status", e))?;
-    git::init_if_needed(&dir).map_err(|e| capture_err("git_status", e))?;
     let status = git::status(&dir).map_err(|e| capture_err("git_status", e))?;
     Ok(status)
 }
@@ -164,7 +163,6 @@ pub async fn git_status(app: AppHandle) -> Result<types::GitStatus, String> {
 pub async fn git_status_and_cache(app: AppHandle) -> Result<types::GitStatus, String> {
     let dir = store::ensure_config_dir_exists(&app)
         .map_err(|e| capture_err("git_status_and_cache", e))?;
-    git::init_if_needed(&dir).map_err(|e| capture_err("git_status_and_cache", e))?;
     let status =
         git::status_and_cache(&dir, &app).map_err(|e| capture_err("git_status_and_cache", e))?;
     Ok(status)
@@ -178,16 +176,20 @@ pub async fn git_cached(app: AppHandle) -> Result<Option<types::GitStatus>, Stri
 
 /// Stages all changes and creates a commit with the given message.
 #[tauri::command]
-pub async fn git_commit(app: AppHandle, message: String) -> Result<serde_json::Value, String> {
+pub async fn git_commit(
+    app: AppHandle,
+    message: String,
+) -> Result<CommitResult, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_commit", e))?;
     let commit_info = git::commit_all(&dir, &message).map_err(|e| capture_err("git_commit", e))?;
 
+    if let Err(e) = git::tag_commit(&dir, &format!("nixmac-commit-{}", &commit_info.hash[..8]), &commit_info.hash, false) {
+        log::warn!("[git_commit] Failed to tag commit: {}", e);
+    }
+
     // Save commit to database
     if let Ok(db_path) = db::get_db_path(&app) {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs() as i64;
+        let now = crate::utils::unix_now();
         match db::commits::upsert_commit(
             &db_path,
             &commit_info.hash,
@@ -204,7 +206,21 @@ pub async fn git_commit(app: AppHandle, message: String) -> Result<serde_json::V
         }
     }
 
-    Ok(serde_json::json!({"ok": true, "hash": commit_info.hash}))
+    // Evolution complete — reset state back to idle.
+    let evolve_state = evolve_state::clear(&app)
+        .unwrap_or_else(|e| {
+            log::error!("[git_commit] Failed to clear evolve state: {}", e);
+            evolve_state::EvolveState::default()
+        });
+
+    Ok(CommitResult { hash: commit_info.hash, evolve_state })
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommitResult {
+    pub hash: String,
+    pub evolve_state: evolve_state::EvolveState,
 }
 
 /// Stash changes
@@ -212,66 +228,6 @@ pub async fn git_commit(app: AppHandle, message: String) -> Result<serde_json::V
 pub async fn git_stash(app: AppHandle, message: String) -> Result<serde_json::Value, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_stash", e))?;
     git::stash(&dir, &message).map_err(|e| capture_err("git_stash", e))?;
-    Ok(serde_json::json!({"ok": true}))
-}
-
-/// Stage all changes (git add -A)
-#[tauri::command]
-pub async fn git_stage_all(app: AppHandle) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_stage_all", e))?;
-    git::stage_all(&dir).map_err(|e| capture_err("git_stage_all", e))?;
-    Ok(serde_json::json!({"ok": true}))
-}
-
-/// Unstage all staged changes (keeps working directory changes)
-#[tauri::command]
-pub async fn git_unstage_all(app: AppHandle) -> Result<serde_json::Value, String> {
-    let dir =
-        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_unstage_all", e))?;
-    git::unstage_all(&dir).map_err(|e| capture_err("git_unstage_all", e))?;
-    Ok(serde_json::json!({"ok": true}))
-}
-
-/// Discard all uncommitted changes (restore to HEAD)
-#[tauri::command]
-pub async fn git_restore_all(app: AppHandle) -> Result<serde_json::Value, String> {
-    let dir =
-        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_restore_all", e))?;
-    git::restore_all(&dir).map_err(|e| capture_err("git_restore_all", e))?;
-    Ok(serde_json::json!({"ok": true}))
-}
-
-/// Creates and checks out a new branch
-#[tauri::command]
-pub async fn git_checkout_new_branch(
-    app: AppHandle,
-    branch_name: String,
-) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app)
-        .map_err(|e| capture_err("git_checkout_new_branch", e))?;
-    let created_branch = git::checkout_new_branch(&dir, &branch_name)
-        .map_err(|e| capture_err("git_checkout_new_branch", e))?;
-    Ok(serde_json::json!({"ok": true, "branch": created_branch}))
-}
-
-/// Checks out an existing branch
-#[tauri::command]
-pub async fn git_checkout_branch(
-    app: AppHandle,
-    branch_name: String,
-) -> Result<serde_json::Value, String> {
-    let dir =
-        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_checkout_branch", e))?;
-    git::checkout_branch(&dir, &branch_name).map_err(|e| capture_err("git_checkout_branch", e))?;
-    Ok(serde_json::json!({"ok": true}))
-}
-
-/// Checks out the main branch (tries main, falls back to master)
-#[tauri::command]
-pub async fn git_checkout_main_branch(app: AppHandle) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app)
-        .map_err(|e| capture_err("git_checkout_main_branch", e))?;
-    git::checkout_main_branch(&dir).map_err(|e| capture_err("git_checkout_main_branch", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
@@ -284,25 +240,6 @@ pub async fn git_tag_as_built(app: AppHandle) -> Result<serde_json::Value, Strin
     Ok(serde_json::json!({"ok": true}))
 }
 
-/// Finalizes an evolve by merging the branch to main
-#[tauri::command]
-pub async fn git_finalize_evolve(
-    app: AppHandle,
-    branch_name: String,
-    squash: Option<bool>,
-    commit_message: Option<String>,
-) -> Result<serde_json::Value, String> {
-    let dir =
-        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_finalize_evolve", e))?;
-    git::finalize_evolve(
-        &dir,
-        &branch_name,
-        squash.unwrap_or(false),
-        commit_message.as_deref(),
-    )
-    .map_err(|e| capture_err("git_finalize_evolve", e))?;
-    Ok(serde_json::json!({"ok": true}))
-}
 
 // =============================================================================
 // Darwin/Nix Commands
@@ -330,7 +267,7 @@ pub async fn darwin_evolve(
     // Reset cancellation flag at the start of a new evolution
     reset_evolve_cancelled();
 
-    let result = match evolution::evolve_and_commit(&app, &description).await {
+    let result = match evolution::backup_evolve_and_record_changeset(&app, &description).await {
         Ok(result) => result,
         Err(failure) => {
             let is_cancelled = is_evolve_cancelled()
@@ -489,13 +426,14 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<serde_json::Va
     Ok(serde_json::json!({"ok": true}))
 }
 
-/// Finalize a successful darwin-rebuild, commits and records manual changes when detected.
+/// Finalize a successful darwin-rebuild, tags HEAD as built, and marks changes as committable.
 #[tauri::command]
-pub async fn finalize_apply(app: AppHandle) -> Result<serde_json::Value, String> {
-    let result = crate::finalize_apply::finalize_apply(&app)
+pub async fn finalize_apply(
+    app: AppHandle,
+) -> Result<crate::finalize_apply::ApplyResult, String> {
+    crate::finalize_apply::finalize_apply(&app)
         .await
-        .map_err(|e| capture_err("finalize_apply", e))?;
-    Ok(serde_json::to_value(result).unwrap_or_default())
+        .map_err(|e| capture_err("finalize_apply", e))
 }
 
 #[tauri::command]
@@ -570,10 +508,17 @@ pub async fn flake_list_hosts(app: AppHandle) -> Result<Vec<String>, String> {
 // Summarization Commands
 // =============================================================================
 
-/// Returns the cached summary if available.
 #[tauri::command]
-pub async fn summary_get_cached(app: AppHandle) -> Result<Option<types::SummaryResponse>, String> {
-    store::get_cached_summary(&app).map_err(|e| e.to_string())
+pub async fn find_change_map(
+    app: AppHandle,
+) -> Result<crate::shared_types::SemanticChangeMap, String> {
+    let db_path =
+        db::get_db_path(&app).map_err(|e| capture_err("find_change_map", e))?;
+    let dir =
+        store::get_config_dir(&app).map_err(|e| capture_err("find_change_map", e))?;
+    let change_sets = crate::summarize::find_existing::for_current_state(&db_path, &dir)
+        .map_err(|e| capture_err("find_change_map", e))?;
+    Ok(crate::summarize::group_existing::from_change_sets(change_sets))
 }
 
 /// Walks back `number` commits from `commit_hash`,
@@ -584,15 +529,25 @@ pub async fn generate_history_from(
     commit_hash: String,
     number: usize,
 ) -> Result<(), String> {
-    crate::generate_history_from::generate_history_from(&app, &commit_hash, number)
+    crate::summarize::pipelines::history::from_commit_times_number(&app, &commit_hash, number)
         .await
         .map_err(|e| capture_err("generate_history_from", e))
+}
+
+/// Summarizes the current working state, running the from-scratch pipeline if
+/// no existing summaries are found, or grouping and simplifying existing ones.
+#[tauri::command]
+pub async fn summarize_current(app: AppHandle) -> Result<(), String> {
+    crate::summarize::new_changeset(&app, None)
+        .await
+        .map(|_| ())
+        .map_err(|e| capture_err("summarize_current", e))
 }
 
 /// Returns all commits on the main branch, each paired with optional DB metadata, summary,
 /// and build/head status.
 #[tauri::command]
-pub async fn get_history(app: AppHandle) -> Result<Vec<types::HistoryItem>, String> {
+pub async fn get_history(app: AppHandle) -> Result<Vec<crate::shared_types::HistoryItem>, String> {
     crate::get_history::get_history(&app)
         .await
         .map_err(|e| capture_err("get_history", e))
@@ -607,80 +562,22 @@ pub async fn restore_to_commit(app: AppHandle, target_hash: String) -> Result<()
     let label = &target_hash[..target_hash.len().min(8)];
     git::restore_files_at_commit(&config_dir, &target_hash)
         .map_err(|e| capture_err("restore_to_commit", e))?;
-    git::commit_all(&config_dir, &format!("nixmac: restore {label}"))
+    let info = git::commit_all(&config_dir, &format!("chore(restore): restore {label}"))
         .map_err(|e| capture_err("restore_to_commit", e))?;
+    if let Err(e) = git::tag_commit(&config_dir, &format!("nixmac-commit-{}", &info.hash[..8]), &info.hash, false) {
+        log::warn!("[restore_to_commit] Failed to tag commit: {}", e);
+    }
     Ok(())
 }
 
-/// Finds the relevant summary for the current git state, flags availability.
+/// Generates a commit message from the current semantic change map via the pipeline.
 #[tauri::command]
-pub async fn find_summary(app: AppHandle) -> Result<Option<types::SummaryResponse>, String> {
-    let result = find_summary::find_summary(&app).map_err(|e| e.to_string())?;
-    let _ = store::set_summary_available(&app, result.is_some());
-    Ok(result)
-}
-
-#[tauri::command]
-pub async fn summarize_changes(app: AppHandle) -> Result<types::SummaryResponse, String> {
-    let dir =
-        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("summarize_changes", e))?;
-
-    // Get git status for diff and file list
-    let status = git::status(&dir).map_err(|e| capture_err("summarize_changes", e))?;
-    let diff = &status.diff;
-    let file_list: Vec<String> = status.files.iter().map(|f| f.path.clone()).collect();
-
-    // Try to generate AI summary, but don't fail if it errors (e.g., no API key)
-    let (items, instructions, commit_message) =
-        match summarize::summarize_for_preview(diff, &file_list, Some(&app)).await {
-            Ok((change_summary, msg)) => {
-                let items: Vec<types::SummaryItem> = change_summary
-                    .items
-                    .into_iter()
-                    .map(|item| types::SummaryItem {
-                        title: item.title,
-                        description: item.description,
-                    })
-                    .collect();
-                (items, change_summary.instructions, msg)
-            }
-            Err(e) => {
-                log::error!("[summarize_changes] AI summarization failed: {}", e);
-                // Return empty summary on error
-                (Vec::new(), String::new(), String::new())
-            }
-        };
-
-    let response = types::SummaryResponse {
-        items,
-        instructions,
-        commit_message,
-        diff: status.diff.clone(),
-    };
-
-    // Cache the summary and mark it as available
-    let _ = store::set_cached_summary(&app, &response);
-    let _ = store::set_summary_available(&app, true);
-
-    Ok(response)
-}
-
-/// Generates just a commit message suggestion based on current changes.
-#[tauri::command]
-pub async fn suggest_commit_message(app: AppHandle) -> Result<String, String> {
-    let dir = store::ensure_config_dir_exists(&app)
-        .map_err(|e| capture_err("suggest_commit_message", e))?;
-
-    // Get git status which includes diff
-    let status = git::status(&dir).map_err(|e| capture_err("suggest_commit_message", e))?;
-    let file_list: Vec<String> = status.files.iter().map(|f| f.path.clone()).collect();
-
-    let message = summarize::generate_commit_message(&status.diff, &file_list, Some(&app))
+pub async fn generate_commit_message(app: AppHandle) -> Result<String, String> {
+    crate::summarize::pipelines::commit_message::generate(&app)
         .await
-        .map_err(|e| capture_err("suggest_commit_message", e))?;
-
-    Ok(message)
+        .map_err(|e| capture_err("generate_commit_message", e))
 }
+
 
 // =============================================================================
 // UI Preference Commands
@@ -1001,14 +898,57 @@ pub async fn apply_system_defaults(
 // Rollback Commands
 // =============================================================================
 
-/// Restore uncommitted changes, return to main, and optionally purge branch DB records.
+/// Restore uncommitted changes.
 #[tauri::command]
-pub async fn rollback_erase(
-    app: AppHandle,
-    keep_branch: Option<bool>,
-) -> Result<rollback::RollbackResult, String> {
-    rollback::rollback_erase(&app, keep_branch.unwrap_or(false))
-        .map_err(|e| capture_err("rollback_erase", e))
+pub async fn rollback_erase(app: AppHandle) -> Result<rollback::RollbackResult, String> {
+    rollback::rollback_erase(&app).map_err(|e| capture_err("rollback_erase", e))
+}
+
+/// Dry-run build check against the current working tree. Returns `{ passed: bool, output: string }`.
+#[tauri::command]
+pub async fn darwin_build_check(app: AppHandle) -> Result<serde_json::Value, String> {
+    let config_dir =
+        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("darwin_build_check", e))?;
+    let host_attr = store::get_host_attr(&app)
+        .map_err(|e| capture_err("darwin_build_check", e))?
+        .ok_or_else(|| "No host configured — cannot run build check".to_string())?;
+
+    let (passed, stdout, stderr) = darwin::dry_run_build_check(&config_dir, &host_attr, false)
+        .map_err(|e| capture_err("darwin_build_check", e))?;
+
+    let output = if stderr.is_empty() { stdout } else { stderr };
+    Ok(serde_json::json!({ "passed": passed, "output": output }))
+}
+
+/// Adopt pre-existing uncommitted changes as a nixmac evolution without AI.
+/// Inserts a new evolution DB record and seeds EvolveState so the subsequent AI evolve
+/// can link its changeset to the same evolution.
+/// The caller must run `darwin_build_check` first and confirm the build passes.
+#[tauri::command]
+pub async fn darwin_adopt_manual_changes(app: AppHandle) -> Result<i64, String> {
+    let config_dir = store::ensure_config_dir_exists(&app)
+        .map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
+    let git_status = git::status(&config_dir)
+        .map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
+    let db_path = db::get_db_path(&app)
+        .map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
+    let branch = git_status.branch.as_deref().unwrap_or("unknown");
+    let existing_id = evolve_state::get(&app).ok().and_then(|s| s.evolution_id);
+    let evolution_id = db::evolutions::upsert(&db_path, existing_id, branch)
+        .map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
+
+    evolve_state::set(
+        &app,
+        evolve_state::EvolveState {
+            evolution_id: Some(evolution_id),
+            current_changeset_id: None,
+            ..Default::default()
+        },
+    )
+    .map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
+
+    log::info!("[darwin_adopt_manual_changes] evolution record created | id={}", evolution_id);
+    Ok(evolution_id)
 }
 
 // =============================================================================
@@ -1065,4 +1005,20 @@ pub fn relaunch_after_update(app: AppHandle) -> Result<(), String> {
     // `app.exit` schedules an exit through the Tauri event loop and returns
     // (it does not call std::process::exit directly), so we must return Ok here.
     Ok(())
+}
+
+// =============================================================================
+// Evolve State Commands
+// =============================================================================
+
+/// Load persisted evolve state (called on startup).
+#[tauri::command]
+pub async fn routing_state_get(app: AppHandle) -> Result<evolve_state::EvolveState, String> {
+    evolve_state::get(&app).map_err(|e| capture_err("routing_state_get", e))
+}
+
+/// Clear evolve state back to idle (called after a successful git commit).
+#[tauri::command]
+pub async fn routing_state_clear(app: AppHandle) -> Result<evolve_state::EvolveState, String> {
+    evolve_state::clear(&app).map_err(|e| capture_err("routing_state_clear", e))
 }

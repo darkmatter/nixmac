@@ -5,15 +5,11 @@ import type {
 
 export function computeCurrentStep(state: WidgetState): WidgetStep {
   const hasConfigDir = !!state.configDir;
-  const hasHost = !!state.host;
-  const notMainBranch = !(state.gitStatus?.isMainBranch ?? true);
-  const headIsClean = state.gitStatus?.cleanHead ?? false;
-  const headIsBuilt = state.gitStatus?.headIsBuilt ?? false;
+  const hasHost = !!state.host && state.hosts.includes(state.host);
   const permissionsCheckedAndIncomplete =
     state.permissionsChecked &&
     state.permissionsState &&
     !state.permissionsState.allRequiredGranted;
-  const isBootstrapping = state.isBootstrapping;
 
   if (permissionsCheckedAndIncomplete) {
     return "permissions";
@@ -23,7 +19,7 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
     return "nix-setup";
   }
 
-  if (isBootstrapping) {
+  if (state.isBootstrapping) {
     return "setup";
   }
 
@@ -35,9 +31,11 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
     return "history";
   }
 
-  if (notMainBranch && headIsBuilt && headIsClean) {
-    return "merge";
-  }
+  // Backend is the source of truth for evolve/merge routing.
+  const routingStep = state.evolveState?.step;
+  if (routingStep === "merge") return "merge";
+  if (routingStep === "evolve") return "evolving";
+  if (routingStep === "begin") return "begin";
 
   return "evolving";
 }
@@ -53,54 +51,6 @@ export function getDirectory(path: string): string {
   return parts.slice(0, -1).join("/");
 }
 
-export interface FileDiff {
-  filename: string;
-  chunks: string;
-}
-
-/**
- * Parse a unified diff into sections per file
- */
-export function parseDiffIntoSections(diffContent: string): FileDiff[] {
-  const sections: FileDiff[] = [];
-  const lines = diffContent.split("\n");
-
-  let currentFilename = "";
-  let currentChunks: string[] = [];
-
-  for (const line of lines) {
-    const gitDiffMatch = line.match(/^diff --git a\/(.+?) b\/(.+)$/);
-    if (gitDiffMatch) {
-      if (currentFilename && currentChunks.length > 0) {
-        sections.push({ filename: currentFilename, chunks: currentChunks.join("\n") });
-      }
-      currentFilename = gitDiffMatch[2];
-      currentChunks = [];
-      continue;
-    }
-
-    if (
-      line.startsWith("--- ") ||
-      line.startsWith("+++ ") ||
-      line.startsWith("index ") ||
-      line.startsWith("new file mode") ||
-      line.startsWith("deleted file mode")
-    ) {
-      continue;
-    }
-
-    if (currentFilename) {
-      currentChunks.push(line);
-    }
-  }
-
-  if (currentFilename && currentChunks.length > 0) {
-    sections.push({ filename: currentFilename, chunks: currentChunks.join("\n") });
-  }
-
-  return sections;
-}
-
 /**
  * Infer change type from diff chunk content.
  */
@@ -114,6 +64,36 @@ export function getChangeTypeFromChunks(chunks: string): "new" | "edited" | "rem
   return "edited";
 }
 
+
+// =============================================================================
+// CATEGORY COLORS
+// =============================================================================
+
+export type CategoryStyle = {
+  text: string;
+  bg: string;
+  dot: string;
+  border: string;
+};
+
+const CATEGORY_PALETTE: CategoryStyle[] = [
+  { text: "text-emerald-500", bg: "bg-emerald-500/[0.08]", dot: "bg-emerald-500", border: "border-emerald-500/40" },
+  { text: "text-blue-500",    bg: "bg-blue-500/[0.08]",    dot: "bg-blue-500",    border: "border-blue-500/40" },
+  { text: "text-amber-500",   bg: "bg-amber-500/[0.08]",   dot: "bg-amber-500",   border: "border-amber-500/40" },
+  { text: "text-violet-500",  bg: "bg-violet-500/[0.08]",  dot: "bg-violet-500",  border: "border-violet-500/40" },
+  { text: "text-rose-500",    bg: "bg-rose-500/[0.08]",    dot: "bg-rose-500",    border: "border-rose-500/40" },
+  { text: "text-cyan-500",    bg: "bg-cyan-500/[0.08]",    dot: "bg-cyan-500",    border: "border-cyan-500/40" },
+  { text: "text-orange-400",  bg: "bg-orange-400/[0.08]",  dot: "bg-orange-400",  border: "border-orange-400/40" },
+  { text: "text-teal-500",    bg: "bg-teal-500/[0.08]",    dot: "bg-teal-500",    border: "border-teal-500/40" },
+];
+
+export function getCategoryStyle(title: string): CategoryStyle {
+  let hash = 0;
+  for (let i = 0; i < title.length; i++) {
+    hash = (hash * 31 + title.charCodeAt(i)) >>> 0;
+  }
+  return CATEGORY_PALETTE[hash % CATEGORY_PALETTE.length];
+}
 
 // =============================================================================
 // HISTORY UTILS

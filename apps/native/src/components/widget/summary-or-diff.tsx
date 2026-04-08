@@ -1,63 +1,56 @@
 "use client";
 
+import { AnimatedTabsList, AnimatedTabsTrigger } from "@/components/ui/animated-tabs";
+import { Tabs } from "@/components/ui/tabs";
 import { Diff } from "@/components/widget/diff";
 import { SummaryItems } from "@/components/widget/summary-items";
-import { parseDiffIntoSections } from "@/components/widget/utils";
-import { AnimatedTabsList, AnimatedTabsTrigger } from "@/components/ui/animated-tabs";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
-import { Loader2, Sparkles, Wrench } from "lucide-react";
+import { Dna, Wrench } from "lucide-react";
+import { Activity, useState } from "react";
 
 interface SummaryOrDiffProps {
   variant?: "default" | "outline";
 }
 
 export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
-  const summaryLoading = useWidgetStore((s) => s.summaryLoading);
   const gitStatus = useWidgetStore((s) => s.gitStatus);
+  const changeMap = useWidgetStore((s) => s.changeMap);
+  const evolveState = useWidgetStore((s) => s.evolveState);
+  const [activeTab, setActiveTab] = useState("summary");
 
-  const cleanOnMain = gitStatus?.cleanHead && gitStatus?.isMainBranch;
-
-  if (!gitStatus || cleanOnMain) {
+  if (!gitStatus || !evolveState || evolveState.step === "begin") {
     return null;
   }
-
-  const diffSections = parseDiffIntoSections(gitStatus.diff || "");
+  const changes = gitStatus.changes ?? [];
 
   return (
     <Tabs
-      defaultValue="summary"
+      value={activeTab}
+      onValueChange={setActiveTab}
       className={cn(
-        "flex max-h-[400px] min-h-0 max-w-full shrink-0 flex-col overflow-hidden rounded-lg gap-0",
+        "flex max-w-full flex-col rounded-lg gap-0",
         variant === "outline" && "border border-border"
       )}
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-border/50 border-b py-2">
         <div className="flex items-center gap-2">
-          {gitStatus.headIsBuilt ? <Wrench className="h-4 w-4 text-primary" /> : <Sparkles className="h-4 w-4 text-primary" />}
-          <h2 className="font-medium text-sm">{gitStatus.headIsBuilt ? "Active Changes" : "What's changed"}</h2>
+          {evolveState.committable ? <Wrench className="h-4 w-4 text-primary" /> : <Dna className="h-4 w-4 text-primary" />}
+          <h2 className="font-medium text-sm">{evolveState.committable ? "Active Changes" : "What's changed"}</h2>
         </div>
         <AnimatedTabsList defaultValue="summary">
           <AnimatedTabsTrigger value="summary">Summary</AnimatedTabsTrigger>
           <AnimatedTabsTrigger value="diff">Diff</AnimatedTabsTrigger>
         </AnimatedTabsList>
       </div>
-      {summaryLoading ? (
-        <div className="flex items-center gap-2 p-4 text-muted-foreground text-sm">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Summarizing changes...
-        </div>
-      ) : (
-        <>
-          <TabsContent value="summary" className="mt-0">
-            <SummaryItems variant={variant} diffSections={diffSections} />
-          </TabsContent>
-          <TabsContent value="diff" className="mt-0">
-            <Diff diffSections={diffSections} />
-          </TabsContent>
-        </>
-      )}
+      <>
+        <Activity mode={activeTab === "summary" ? "visible" : "hidden"}>
+          {changeMap && <SummaryItems map={changeMap} />}
+        </Activity>
+        <Activity mode={activeTab === "diff" ? "visible" : "hidden"}>
+          <Diff changes={changes} />
+        </Activity>
+      </>
     </Tabs>
   );
 }

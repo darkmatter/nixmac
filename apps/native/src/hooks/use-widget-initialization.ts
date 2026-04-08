@@ -1,6 +1,7 @@
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
 
+
 export type Config = {
   configDir: string;
   hostAttr?: string;
@@ -16,6 +17,16 @@ export async function loadConfig() {
   }
   if (cfg?.hostAttr) {
     useWidgetStore.getState().setHost(cfg.hostAttr);
+  }
+}
+
+/** Loads persisted evolve state from backend and syncs to store on startup. */
+export async function loadEvolveState() {
+  try {
+    const evolveState = await darwinAPI.evolveState.get();
+    useWidgetStore.getState().setEvolveState(evolveState);
+  } catch {
+    // Non-fatal — evolve state defaults to Begin if unavailable.
   }
 }
 
