@@ -78,19 +78,17 @@ impl ChatMemoryStore for InMemoryChatMemoryStore {
             debug!("[chat_memory] skipping empty message append");
             return;
         }
-
         let role = message.role.clone();
-        let before_count = {
-            let messages = self.messages.lock().unwrap_or_else(|e| e.into_inner());
-            messages.len()
-        };
 
-        let mut messages = self.messages.lock().unwrap_or_else(|e| e.into_inner());
-        messages.push_back(message);
-        enforce_limits(&mut messages, self.limits);
+        // Lock once to compute before_count, push the new message, enforce limits,
+        // and compute the post-update metrics.
+        let mut guard = self.messages.lock().unwrap_or_else(|e| e.into_inner());
+        let before_count = guard.len();
+        guard.push_back(message);
+        enforce_limits(&mut guard, self.limits);
 
-        let after_count = messages.len();
-        let total_tokens = estimate_total_tokens(&messages);
+        let after_count = guard.len();
+        let total_tokens = estimate_total_tokens(&guard);
         debug!(
             "[chat_memory] append role={:?} before={} after={} total_tokens={} max_messages={} max_tokens={}",
             role,
@@ -154,8 +152,39 @@ fn enforce_limits(messages: &mut VecDeque<ChatMessage>, limits: ThreadLimits) {
         messages.pop_front();
     }
 
+    // Evict oldest messages while we have more than one message and are over the
+    // token budget. We intentionally keep at least one message in the queue to
+    // avoid dropping the entire thread, but if that single remaining message
+    // itself exceeds the token budget we must truncate it so `max_tokens` is
+    // always respected.
     while messages.len() > 1 && estimate_total_tokens(messages) > limits.max_tokens {
         messages.pop_front();
+    }
+
+    // If after evictions we're still over the token budget and only a single
+    // message remains, truncate its content to fit the budget instead of
+    // keeping an oversized message.
+    if estimate_total_tokens(messages) > limits.max_tokens {
+        if messages.len() == 1 {
+            if let Some(msg) = messages.front_mut() {
+                // Approximate max chars from token budget using same heuristic
+                // as `estimate_tokens` (chars / 4). Multiply tokens by 4 to get
+                // an allowed character budget.
+                let max_chars = limits.max_tokens.saturating_mul(4);
+
+                crate::evolve::global_utils::truncate_utf8(&mut msg.content, max_chars);
+                debug!(
+                    "[chat_memory] truncated single oversized message to fit token budget max_tokens={} resulting_chars={}",
+                    limits.max_tokens,
+                    msg.content.chars().count()
+                );
+            }
+        } else {
+            // As a fallback keep popping until within budget.
+            while messages.len() > 1 && estimate_total_tokens(messages) > limits.max_tokens {
+                messages.pop_front();
+            }
+        }
     }
 
     let after_count = messages.len();
@@ -230,7 +259,7 @@ mod tests {
     fn evicts_oldest_when_token_limit_exceeded() {
         let store = InMemoryChatMemoryStore::new(ThreadLimits {
             max_messages: 10,
-            max_tokens: 8,
+            max_tokens: 2,
         });
 
         // ~2 tokens each using the chars/4 heuristic.
@@ -238,7 +267,7 @@ mod tests {
         store.append(msg(Role::Assistant, "bbbb", 2));
         store.append(msg(Role::User, "cccc", 3));
         store.append(msg(Role::Assistant, "dddd", 4));
-        // Total would exceed 8 tokens after this append; oldest should be evicted.
+        // Total would exceed 2 tokens after this append; oldest should be evicted.
         store.append(msg(Role::User, "eeee", 5));
 
         let snapshot = store.snapshot();
@@ -247,9 +276,33 @@ mod tests {
             .map(|m| estimate_tokens(&m.content))
             .sum::<usize>();
 
-        assert!(total_tokens <= 8);
-        assert_eq!(snapshot.first().map(|m| m.content.as_str()), Some("bbbb"));
+        assert!(total_tokens <= 2);
+        assert_eq!(snapshot.len(), 2);
+        assert_eq!(snapshot.first().map(|m| m.content.as_str()), Some("dddd"));
         assert_eq!(snapshot.last().map(|m| m.content.as_str()), Some("eeee"));
+    }
+
+    #[test]
+    fn truncates_single_oversized_message() {
+        let store = InMemoryChatMemoryStore::new(ThreadLimits {
+            max_messages: 10,
+            max_tokens: 1,
+        });
+
+        // Append a single very long message which exceeds the token budget.
+        let long = "x".repeat(20);
+        store.append(msg(Role::Assistant, &long, 1));
+
+        let snapshot = store.snapshot();
+        assert_eq!(snapshot.len(), 1);
+
+        // With max_tokens=1 and the heuristic chars/4, allowed chars ~= 4.
+        let content_chars = snapshot[0].content.chars().count();
+        assert!(
+            content_chars <= 4,
+            "message was not truncated: {} chars",
+            content_chars
+        );
     }
 
     #[test]
