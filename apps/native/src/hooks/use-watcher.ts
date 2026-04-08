@@ -1,5 +1,5 @@
 import { useWidgetStore } from "@/stores/widget-store";
-import type { WatcherEvent } from "@/tauri-api";
+import type { WatcherEvent } from "@/types/shared";
 import { ipcRenderer } from "@/tauri-api";
 import { useCallback, useRef } from "react";
 
@@ -19,12 +19,25 @@ export function useWatcher() {
     const gitStatusSub = ipcRenderer.on<WatcherEvent>(
       "git:status-changed",
       (event) => {
+        const { error, gitStatus, changeMap, evolveState } = event.payload;
+
+        if (error) {
+          useWidgetStore.getState().setError(error);
+          if (error.includes("is not a git repository")) {
+            useWidgetStore.getState().setHosts([]);
+          }
+          return;
+        }
+
         const store = useWidgetStore.getState();
         if (!store.isProcessing && !store.isGenerating) {
-          store.setGitStatus(event.payload.gitStatus);
-          store.setSummaryAvailable(event.payload.summary !== null);
-          if (event.payload.summary) {
-            store.setSummary(event.payload.summary);
+          store.setGitStatus(gitStatus ?? null);
+          if (changeMap) {
+            store.setChangeMap(changeMap);
+            store.setSummaryAvailable(changeMap.groups.length > 0 || changeMap.singles.length > 0);
+          }
+          if (evolveState) {
+            store.setEvolveState(evolveState);
           }
         }
       }

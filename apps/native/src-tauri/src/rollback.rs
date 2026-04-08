@@ -1,57 +1,34 @@
-//! Rollback/erase orchestration: restore uncommitted changes and return to main.
+//! Rollback/erase orchestration: restore uncommitted changes.
 
 use anyhow::{Context, Result};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Runtime};
 
 use crate::{
-    db, find_summary, git, store,
-    types::{GitStatus, SummaryResponse},
+    evolve_state, git, store,
+    types::GitStatus,
 };
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RollbackResult {
     pub git_status: GitStatus,
-    pub summary: Option<SummaryResponse>,
+    pub evolve_state: evolve_state::EvolveState,
 }
 
-pub fn rollback_erase<R: Runtime>(app: &AppHandle<R>, keep_branch: bool) -> Result<RollbackResult> {
+pub fn rollback_erase<R: Runtime>(app: &AppHandle<R>) -> Result<RollbackResult> {
     let config_dir =
         store::ensure_config_dir_exists(app).context("Failed to get config directory")?;
 
-    // Capture branch name before any git changes
-    let pre_status = git::status(&config_dir).context("Failed to get git status")?;
-    let branch_name = pre_status.branch.clone();
-
     git::restore_all(&config_dir).context("Failed to restore uncommitted changes")?;
-
-    if !pre_status.is_main_branch {
-        git::checkout_main_branch(&config_dir).context("Failed to checkout main branch")?;
-    }
-
-    if !keep_branch {
-        if let Some(branch) = branch_name.filter(|_| !pre_status.is_main_branch) {
-            let db_path = db::get_db_path(app).context("Failed to get database path")?;
-            match db::operations::delete_evolution_by_branch(&db_path, &branch) {
-                Ok(()) => {
-                    if let Err(e) = git::delete_branch(&config_dir, &branch) {
-                        tracing::warn!("Failed to delete branch {branch}: {e}");
-                    }
-                }
-                Err(e) => tracing::warn!("Failed to purge branch records for {branch}: {e}"),
-            }
-        }
-    }
 
     let final_status = git::status(&config_dir).context("Failed to get final git status")?;
     let _ = store::set_cached_git_status(app, &final_status);
 
-    // Load main's last commit summary (what the user is landing on)
-    let summary = find_summary::find_summary(app).ok().flatten();
+    let evolve_state = evolve_state::clear(app).context("Failed to clear evolve state")?;
 
     Ok(RollbackResult {
         git_status: final_status,
-        summary,
+        evolve_state,
     })
 }

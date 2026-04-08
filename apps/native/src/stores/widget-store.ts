@@ -1,21 +1,20 @@
-import { create } from "zustand";
-import { FeedbackType } from "@/types/feedback";
+import { computeCurrentStep } from "@/components/widget/utils";
 import type {
-  HistoryItem,
-  SummaryResponse,
   EvolveEvent,
+  EvolveState,
   GitStatus,
+  HistoryItem,
   PermissionsState,
   RecommendedPrompt,
 } from "@/tauri-api";
-import { computeCurrentStep } from "@/components/widget/utils";
+import { FeedbackType } from "@/types/feedback";
+import type { SemanticChangeMap } from "@/types/shared";
+import { create } from "zustand";
 export type {
-  SummaryResponse,
   EvolveEvent,
-  EvolveEventType,
-  GitFileStatus,
+  EvolveEventType, EvolveState, GitFileStatus,
   GitStatus,
-  PermissionsState,
+  PermissionsState
 } from "@/tauri-api";
 
 // =============================================================================
@@ -26,7 +25,7 @@ export type {
  * Widget step state - updated by useEffect based on app state.
  */
 export type SettingsTab = "general" | "api-keys" | "ai-models" | "preferences";
-export type WidgetStep = "permissions" | "nix-setup" | "setup" | "evolving" | "merge" | "history";
+export type WidgetStep = "permissions" | "nix-setup" | "setup" | "begin" | "evolving" | "merge" | "history";
 export type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
 export type ConfirmPrefKey = "confirmBuild" | "confirmClear" | "confirmRollback";
 
@@ -82,6 +81,9 @@ export interface WidgetState {
   darwinRebuildAvailable: boolean | null; // null = not checked yet
   darwinRebuildPrefetching: boolean;
 
+  // Evolve state derived from backend source of truth
+  evolveState: EvolveState | null;
+
   // Git (from backend)
   gitStatus: GitStatus | null;
   // Evolution
@@ -92,8 +94,10 @@ export interface WidgetState {
   promptHistory: string[];
   conversationalResponse: string | null;
 
-  // Summary (AI-generated)
-  summary: SummaryResponse;
+  changeMap: SemanticChangeMap | null;
+
+  // Commit message suggestion (generated on merge screen)
+  commitMessageSuggestion: string | null;
 
   // Rebuild state (for inline rebuild progress)
   rebuild: RebuildState;
@@ -107,7 +111,6 @@ export interface WidgetState {
   analyzingHistoryForHashes: Set<string>;
 
   // UI
-  summaryLoading: boolean;
   summaryAvailable: boolean;
   isGenerating: boolean;
   settingsOpen: boolean;
@@ -150,11 +153,12 @@ export interface WidgetActions {
   setNixDownloadProgress: (progress: { downloaded: number; total: number } | null) => void;
   setDarwinRebuildAvailable: (available: boolean | null) => void;
   setDarwinRebuildPrefetching: (prefetching: boolean) => void;
+  setEvolveState: (state: EvolveState | null) => void;
   setGitStatus: (status: GitStatus | null) => void;
   setEvolvePrompt: (prompt: string) => void;
   setProcessing: (isProcessing: boolean, action?: ProcessingAction) => void;
-  setSummary: (summary: SummaryResponse) => void;
-  setSettingsOpen: (open: boolean, tab?: SettingsTab) => void;
+  setChangeMap: (map: SemanticChangeMap | null) => void;
+  setSettingsOpen: (open: boolean, tab?: SettingsTab | null) => void;
   setShowHistory: (show: boolean) => void;
   setFeedbackOpen: (open: boolean) => void;
   setError: (error: string | null) => void;
@@ -176,7 +180,6 @@ export interface WidgetActions {
   initConfirmPrefs: (prefs: Partial<Record<ConfirmPrefKey, boolean>>) => void;
 
   // Client-side state (NOT from server)
-  setSummaryLoading: (loading: boolean) => void;
   setGenerating: (generating: boolean) => void;
   clearPreview: () => void;
   setFeedbackTypeOverride: (type: FeedbackType | null) => void;
@@ -191,6 +194,9 @@ export interface WidgetActions {
   clearEvolveEvents: () => void;
 
   setConversationalResponse: (response: string | null) => void;
+
+  // Commit message suggestion
+  setCommitMessageSuggestion: (msg: string | null) => void;
 
   // Rebuild state
   startRebuild: (context: RebuildContext) => void;
@@ -218,13 +224,6 @@ export const initialRebuildState: RebuildState = {
   errorMessage: undefined,
 };
 
-export const initialSummaryState: SummaryResponse = {
-  items: [],
-  instructions: "",
-  commitMessage: "",
-  diff: "",
-};
-
 export const initialWidgetState: WidgetState = {
   // Permissions
   permissionsState: null,
@@ -245,6 +244,9 @@ export const initialWidgetState: WidgetState = {
   darwinRebuildAvailable: null,
   darwinRebuildPrefetching: false,
 
+  // Routing state
+  evolveState: null,
+
   // Git
   gitStatus: null,
 
@@ -261,9 +263,11 @@ export const initialWidgetState: WidgetState = {
   historyLoading: false,
   analyzingHistoryForHashes: new Set<string>(),
 
-  // Summary
-  summary: initialSummaryState,
+  changeMap: null,
   summaryAvailable: false,
+
+  // Commit message suggestion
+  commitMessageSuggestion: null,
 
   // Rebuild
   rebuild: initialRebuildState,
@@ -272,7 +276,6 @@ export const initialWidgetState: WidgetState = {
   consoleLogs: "",
 
   // UI
-  summaryLoading: false,
   isBootstrapping: false,
   isGenerating: false,
   settingsOpen: false,
@@ -312,6 +315,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setConfigDir: (configDir) => set({ configDir }),
     setHosts: (hosts) => set({ hosts }),
     setHost: (host) => set({ host }),
+    setEvolveState: (evolveState) => set({ evolveState: evolveState }),
     setGitStatus: (gitStatus) => set({ gitStatus }),
     setEvolvePrompt: (evolvePrompt) => set({ evolvePrompt }),
     setProcessing: (isProcessing, action = null) =>
@@ -319,8 +323,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
         isProcessing,
         processingAction: isProcessing ? action : null,
       }),
-    setSummary: (summary) => set({ summary, summaryAvailable: true }),
-    setSummaryLoading: (summaryLoading) => set({ summaryLoading }),
+    setChangeMap: (changeMap) => set({ changeMap }),
     setSummaryAvailable: (summaryAvailable) => set({ summaryAvailable }),
     setConfirmPref: (key, value) => set({ [key]: value }),
     initConfirmPrefs: (prefs) =>
@@ -368,8 +371,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setGenerating: (isGenerating) => set({ isGenerating }),
     clearPreview: () =>
       set({
-        summary: initialSummaryState,
-        summaryLoading: false,
+        changeMap: null,
         summaryAvailable: false,
       }),
 
@@ -384,6 +386,9 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
 
     // Conversational response
     setConversationalResponse: (conversationalResponse) => set({ conversationalResponse }),
+
+    // Commit message suggestion
+    setCommitMessageSuggestion: (commitMessageSuggestion) => set({ commitMessageSuggestion }),
 
     // Rebuild state
     startRebuild: (context) =>

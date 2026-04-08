@@ -10,7 +10,7 @@ export function AnalyzeHistoryButton() {
   const analyzingSize = useWidgetStore((state) => state.analyzingHistoryForHashes.size);
   const { analyzeMany, stopAnalyzing } = useHistory();
 
-  const unsummarizedHashes = history.filter((item) => !item.summary).map((item) => item.hash);
+  const unsummarizedHashes = history.filter((item) => !item.changeMap).map((item) => item.hash);
 
   //stop only works for queued items
   if (analyzingSize > 1) {

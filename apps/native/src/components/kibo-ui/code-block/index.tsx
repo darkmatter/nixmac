@@ -253,12 +253,12 @@ const codeBlockClassName = cn(
   "[&_pre]:py-4",
   // "[&_.shiki]:!bg-[var(--shiki-bg)]",
   "[&_.shiki]:!bg-transparent",
-  "[&_code]:w-full",
+  "[&_code]:min-w-full",
   "[&_code]:grid",
   "[&_code]:overflow-x-auto",
   "[&_code]:bg-transparent",
   "[&_.line]:px-4",
-  "[&_.line]:w-full",
+  "[&_.line]:min-w-full",
   "[&_.line]:relative"
 );
 

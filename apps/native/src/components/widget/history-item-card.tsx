@@ -1,31 +1,10 @@
 import { useState } from "react";
 import type { HistoryItem } from "@/tauri-api";
-import type { SummarizedChange } from "@/types/queries";
+import type { SemanticChangeMap } from "@/types/shared";
 import { cn } from "@/lib/utils";
 import { AnalyzeHistoryItemButton } from "@/components/widget/analyze-history-item-button";
 import { HistoryRestoreItemButton } from "@/components/widget/history-restore-item-button";
-
-type CategoryStyle = {
-  text: string;
-  bg: string;
-  dot: string;
-};
-
-const CATEGORY_STYLES: Record<string, CategoryStyle> = {
-  packages: { text: "text-emerald-500", bg: "bg-emerald-500/[0.08]", dot: "bg-emerald-500" },
-  settings: { text: "text-blue-500", bg: "bg-blue-500/[0.08]", dot: "bg-blue-500" },
-  shell: { text: "text-amber-500", bg: "bg-amber-500/[0.08]", dot: "bg-amber-500" },
-  home: { text: "text-violet-500", bg: "bg-violet-500/[0.08]", dot: "bg-violet-500" },
-  system: { text: "text-gray-500", bg: "bg-gray-500/[0.08]", dot: "bg-gray-500" },
-};
-
-function getCategoryStyle(title: string): CategoryStyle {
-  const key = title.toLowerCase();
-  for (const [k, v] of Object.entries(CATEGORY_STYLES)) {
-    if (key.includes(k)) return v;
-  }
-  return { text: "text-gray-500", bg: "bg-gray-500/[0.08]", dot: "bg-gray-500" };
-}
+import { getCategoryStyle } from "@/components/widget/utils";
 
 function formatRelativeTime(unixSeconds: number): string {
   const diff = Math.floor(Date.now() / 1000 - unixSeconds);
@@ -40,18 +19,13 @@ interface SummaryBadge {
   description: string;
 }
 
-function getSummaryBadges(changes: SummarizedChange[]): SummaryBadge[] {
-  const seen = new Set<number>();
+function getSummaryBadges(changeMap: SemanticChangeMap): SummaryBadge[] {
   const badges: SummaryBadge[] = [];
-  for (const sc of changes) {
-    if (sc.groupSummary) {
-      if (!seen.has(sc.groupSummary.id)) {
-        seen.add(sc.groupSummary.id);
-        badges.push({ title: sc.groupSummary.title, description: sc.groupSummary.description });
-      }
-    } else if (sc.ownSummary) {
-      badges.push({ title: sc.ownSummary.title, description: sc.ownSummary.description });
-    }
+  for (const group of changeMap.groups) {
+    badges.push({ title: group.summary.title, description: group.summary.description });
+  }
+  for (const single of changeMap.singles) {
+    badges.push({ title: single.title, description: single.description });
   }
   return badges;
 }
@@ -63,8 +37,8 @@ interface HistoryItemCardProps {
 export function HistoryItemCard({ item }: HistoryItemCardProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const changeSet = item.changeSet;
-  const badges = changeSet ? getSummaryBadges(changeSet.changes) : [];
+  const changeMap = item.changeMap;
+  const badges = changeMap ? getSummaryBadges(changeMap) : [];
 
   const toggle = () => setExpanded((prev) => !prev);
 
@@ -73,17 +47,17 @@ export function HistoryItemCard({ item }: HistoryItemCardProps) {
       className={cn(
         "group rounded-[10px] border-2 bg-[#111111] px-[14px] py-3 mb-2 select-none transition-colors duration-150",
         item.isBuilt ? "border-teal-400/40" : "border-white/[0.12]",
-        changeSet
+        changeMap
           ? cn("cursor-pointer", !item.isBuilt && "hover:border-white/25 hover:bg-[#141414]")
           : "cursor-default",
         expanded && cn("bg-[#151515]", item.isBuilt ? "border-teal-400/50" : "border-white/35"),
       )}
-      onClick={changeSet ? toggle : undefined}
-      onKeyDown={changeSet ? (e) => {
+      onClick={changeMap ? toggle : undefined}
+      onKeyDown={changeMap ? (e) => {
         if (e.key === "Enter" || e.key === " ") toggle();
       } : undefined}
-      role={changeSet ? "button" : undefined}
-      tabIndex={changeSet ? 0 : undefined}
+      role={changeMap ? "button" : undefined}
+      tabIndex={changeMap ? 0 : undefined}
     >
       {/* Collapsed body: left content + right actions */}
       <div className="flex items-start justify-between gap-[10px]">
@@ -99,10 +73,48 @@ export function HistoryItemCard({ item }: HistoryItemCardProps) {
             <span className="text-[10px] text-neutral-500">
               {formatRelativeTime(item.createdAt)}
             </span>
+            {item.fileCount > 0 && (
+              <span className="inline-flex items-center gap-[3px] text-[10px] text-neutral-500">
+                <svg width="10" height="10" viewBox="0 0 16 16" fill="none" className="relative -top-px">
+                  <path d="M4 2h5l4 4v8H4V2z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+                  <path d="M9 2v4h4" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+                </svg>
+                {item.fileCount} {item.fileCount === 1 ? "file" : "files"}
+              </span>
+            )}
+            {item.isExternal && (
+              <span className="rounded bg-violet-400/10 px-[7px] py-0.5 font-mono text-[10px] italic text-violet-400">
+                External commit
+              </span>
+            )}
           </div>
+          {!changeMap && item.rawChanges.length > 0 && (
+            <div className="mt-[6px] flex flex-wrap gap-1">
+              {[...new Set(item.rawChanges.map((c) => c.filename))].map((filename) => {
+                const basename = filename.split("/").pop() ?? filename;
+                return (
+                  <span
+                    key={filename}
+                    className="inline-flex items-center rounded bg-white/[0.04] px-[7px] py-0.5 text-[10px] text-neutral-400"
+                  >
+                    {basename}
+                  </span>
+                );
+              })}
+            </div>
+          )}
           {badges.length > 0 && (
             <div className="mt-[6px] flex flex-wrap gap-1">
-              {badges.map((badge) => {
+              {badges.map((badge, i) => {
+                if (!badge.title) {
+                  return (
+                    <span
+                      key={i}
+                      className="inline-block h-[18px] w-12 rounded animate-shimmer bg-[length:200%_100%] bg-gradient-to-r from-white/[0.03] via-white/[0.065] to-white/[0.03]"
+                      style={{ width: `${[48, 56, 44][i % 3]}px` }}
+                    />
+                  );
+                }
                 const style = getCategoryStyle(badge.title);
                 return (
                   <span
@@ -124,8 +136,8 @@ export function HistoryItemCard({ item }: HistoryItemCardProps) {
 
         {/* Right: action buttons */}
         <div className="flex shrink-0 flex-col items-end gap-1">
-          <HistoryRestoreItemButton hash={item.hash} isBuilt={item.isBuilt} />
-          {!changeSet && (
+          <HistoryRestoreItemButton hash={item.hash} isBuilt={item.isBuilt} isBase={item.isBase} />
+          {!changeMap && (
             <AnalyzeHistoryItemButton
               hash={item.hash}
               className="group-hover:bg-accent group-hover:text-accent-foreground"

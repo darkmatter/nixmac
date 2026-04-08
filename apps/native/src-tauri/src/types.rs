@@ -21,58 +21,7 @@ pub struct Config {
     pub host_attr: Option<String>,
 }
 
-/// Comprehensive git repository status.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GitStatus {
-    /// All files with changes, parsed from diff headers.
-    pub files: Vec<GitFileStatus>,
-
-    /// Current branch name.
-    pub branch: Option<String>,
-
-    /// Commit messages on current branch since diverging from main.
-    pub branch_commit_messages: Vec<String>,
-
-    /// Whether HEAD has the nixmac-built tag (changes have been built/applied).
-    pub head_is_built: bool,
-
-    /// Whether the current branch is main or master.
-    pub is_main_branch: bool,
-
-    /// True if nixmac-last-build tag points to a commit on current branch
-    /// (i.e., the built commit is an ancestor of HEAD).
-    pub branch_has_built_commit: bool,
-
-    /// The raw unified diff content (git diff main + untracked file contents).
-    pub diff: String,
-
-    /// Number of lines added.
-    pub additions: usize,
-
-    /// Number of lines deleted.
-    pub deletions: usize,
-
-    /// SHA hash of the current HEAD commit.
-    pub head_commit_hash: Option<String>,
-
-    /// Whether the working tree is clean (no uncommitted changes).
-    pub clean_head: bool,
-
-    /// Parsed hunks from the current diff. Empty when `clean_head` is true.
-    pub changes: Vec<crate::sqlite_types::Change>,
-}
-
-/// Individual file status parsed from diff headers.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GitFileStatus {
-    /// Relative path to the file.
-    pub path: String,
-
-    /// Type of change: "new", "edited", "removed", or "renamed".
-    pub change_type: String,
-}
+pub use crate::shared_types::{GitFileStatus, GitStatus};
 
 /// User interface preferences.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -260,61 +209,6 @@ pub struct FeedbackPanicDetails {
     pub location: Option<String>,
     pub backtrace: Option<String>,
     pub timestamp: String,
-}
-
-/// A single summary item with a title and description
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SummaryItem {
-    /// Short title for the change (2-5 words)
-    pub title: String,
-
-    /// Friendly description of what this change does
-    pub description: String,
-}
-
-/// Response for summarization requests.
-/// Contains only AI-generated content. Raw git data (diff, additions, deletions)
-/// comes from GitStatus instead.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SummaryResponse {
-    /// List of changes with title and description
-    pub items: Vec<SummaryItem>,
-
-    /// Helpful suggestion for testing the changes
-    pub instructions: String,
-
-    /// Suggested commit message
-    #[serde(default)]
-    pub commit_message: String,
-
-    /// The diff this summary was generated for (used for cache validation)
-    #[serde(default)]
-    pub diff: String,
-}
-
-// =============================================================================
-// History
-// =============================================================================
-
-/// A git commit from the log, with optional DB metadata and summary.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct HistoryItem {
-    /// Commit hash (always from git log).
-    pub hash: String,
-    /// Commit message (always from git log).
-    pub message: Option<String>,
-    /// Unix timestamp (always from git log).
-    pub created_at: i64,
-    /// True if this commit has the `nixmac-last-build` tag (most recently built).
-    pub is_built: bool,
-    /// DB record — present only if metadata has been generated for this commit.
-    pub commit: Option<crate::sqlite_types::CommitRow>,
-    /// AI summary — present only if a summary has been generated.
-    pub summary: Option<crate::sqlite_types::SummaryRow>,
-    /// Change set with granular changes and summaries — present only if the pipeline has run.
-    pub change_set: Option<crate::query_return_types::SummarizedChanges>,
 }
 
 // =============================================================================
@@ -549,11 +443,11 @@ impl EvolveEvent {
         )
     }
 
-    pub fn summarizing(start_time: i64, iter: Option<usize>) -> Self {
+    pub fn analyzing(start_time: i64, iter: Option<usize>) -> Self {
         Self::new(
             EvolveEventType::Summarizing,
-            "Summarizing changes...".to_string(),
-            "Summarizing changes...".to_string(),
+            "Analyzing changes...".to_string(),
+            "Analyzing changes...".to_string(),
             iter,
             start_time,
         )
@@ -582,44 +476,3 @@ pub fn emit_evolve_event<R: tauri::Runtime>(app: &tauri::AppHandle<R>, event: Ev
     }
 }
 
-/// Convert text to a URL-safe slug for branch names.
-/// Mirrors the frontend slugify function from widget/utils.ts.
-pub fn slugify(text: &str) -> String {
-    use regex::Regex;
-
-    // Start with lowercase trimmed text
-    let mut result = text.to_lowercase().trim().to_string();
-
-    // Remove conventional commit prefixes like "feat(scope): " or "fix: "
-    let commit_prefix_re = Regex::new(
-        r"^\s*(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)(\([^)]*\))?:\s*",
-    )
-    .unwrap();
-    result = commit_prefix_re.replace(&result, "").to_string();
-
-    // Remove "(manual changes)" suffix
-    let manual_suffix_re = Regex::new(r"\s*\(manual changes\)\s*$").unwrap();
-    result = manual_suffix_re.replace(&result, "").to_string();
-
-    // Keep only alphanumeric, spaces, and hyphens
-    let non_alphanum_re = Regex::new(r"[^a-z0-9\s-]").unwrap();
-    result = non_alphanum_re.replace_all(&result, "").to_string();
-
-    // Replace whitespace with hyphens
-    let whitespace_re = Regex::new(r"\s+").unwrap();
-    result = whitespace_re.replace_all(&result, "-").to_string();
-
-    // Collapse multiple hyphens
-    let multi_hyphen_re = Regex::new(r"-+").unwrap();
-    result = multi_hyphen_re.replace_all(&result, "-").to_string();
-
-    // Trim leading/trailing hyphens
-    result = result.trim_matches('-').to_string();
-
-    // Limit to 50 characters
-    global_utils::truncate_utf8(&mut result, 50);
-    // Don't end with a hyphen after truncation
-    result = result.trim_end_matches('-').to_string();
-
-    result
-}

@@ -1,3 +1,10 @@
+pub fn unix_now() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64
+}
+
 // Helper to truncate a string in-place without breaking UTF-8 encoding
 // and causing a panic, thereby avoiding annoying AI code review comments
 // about "don't truncate UTF-8 strings".

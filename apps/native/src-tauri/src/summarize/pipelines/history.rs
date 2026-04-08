@@ -1,7 +1,9 @@
+//! Pipeline entry point for generating summaries over a historical commit range.
+
 use anyhow::Result;
 use tauri::{AppHandle, Runtime};
 
-pub async fn generate_history_from<R: Runtime>(
+pub async fn from_commit_times_number<R: Runtime>(
     app: &AppHandle<R>,
     commit_hash: &str,
     number: usize,
@@ -9,9 +11,7 @@ pub async fn generate_history_from<R: Runtime>(
     let config_dir = crate::store::get_config_dir(app)?;
     let db_path = crate::db::get_db_path(app)?;
 
-    let main_branch =
-        crate::git::get_default_branch(&config_dir).unwrap_or_else(|| "main".to_string());
-    let all_commits = crate::git::log(&config_dir, &main_branch, None)?;
+    let all_commits = crate::git::log(&config_dir, "HEAD", None)?;
     let start = match all_commits.iter().position(|c| c.hash == commit_hash) {
         Some(i) => i,
         None => return Ok(()),
@@ -51,41 +51,25 @@ pub async fn generate_history_from<R: Runtime>(
         }
 
         let diff = crate::git::commit_diff(&config_dir, &commits[i + 1].hash, &commits[i].hash)?;
-
-        let all_changes = crate::changes_from_diff::changes_from_diff(&diff, commits[i].created_at, true);
-
-        let (sensitive_or_opaque, changes): (Vec<_>, Vec<_>) = all_changes
+        let now = crate::utils::unix_now();
+        let all_changes = crate::changes_from_diff::changes_from_diff(&diff, now, true);
+        let (_, changes): (Vec<_>, Vec<_>) = all_changes
             .into_iter()
             .partition(crate::changes_from_diff::is_sensitive_or_opaque);
 
-        let result = match crate::summarize_pipeline::run(
+        if let Err(e) = super::fresh_changeset::analyze(
             changes,
-            sensitive_or_opaque,
+            app,
+            &db_path,
+            Some(commit_id),
+            Some(base_commit_id),
             commits[i].message.as_deref(),
-            Some(app),
+            None,
         )
         .await
         {
-            Ok(r) => r,
-            Err(e) => {
-                log::error!(
-                    "[generate_history_from] pipeline failed for {}: {}",
-                    commits[i].hash,
-                    e
-                );
-                continue;
-            }
-        };
-
-        if let Err(e) = crate::store_changeset::store_change_set(
-            &db_path,
-            Some(commit_id),
-            base_commit_id,
-            commits[i].message.as_deref(),
-            &result,
-        ) {
             log::error!(
-                "[generate_history_from] store_change_set failed for {}: {}",
+                "[history] pipeline failed for {}: {}",
                 commits[i].hash,
                 e
             );

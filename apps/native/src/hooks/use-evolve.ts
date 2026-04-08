@@ -3,6 +3,7 @@ import { darwinAPI, EVOLVE_EVENT_CHANNEL, ipcRenderer, type EvolveEvent } from "
 import { useCallback } from "react";
 import { useGitOperations } from "./use-git-operations";
 import { usePromptHistory } from "./use-prompt-history";
+import { useSummary } from "./use-summary";
 
 /**
  * Hook for the evolution operation.
@@ -19,6 +20,15 @@ import { usePromptHistory } from "./use-prompt-history";
 export function useEvolve() {
   const { refreshGitStatus } = useGitOperations();
   const { refreshPromptHistory } = usePromptHistory();
+  const { findChangeMap } = useSummary();
+
+  const evolveFromManual = useCallback(async () => {
+    await darwinAPI.darwin.evolveFromManual();
+  }, []);
+
+  const buildCheck = useCallback(async () => {
+    return await darwinAPI.darwin.buildCheck();
+  }, []);
 
   const handleEvolve = useCallback(async () => {
     // Get fresh state each time
@@ -55,18 +65,19 @@ export function useEvolve() {
 
       useWidgetStore.getState().appendLog("✓ Evolution complete\n");
 
-      // Set the summary and git status from the result.
-      // For conversational responses (no nix changes), show the agent's reply in a
-      // dedicated UI panel below the prompt — do not open the review / merge UI.
-      if (result?.state === "conversational") {
-        const response = result.summary?.instructions;
-        useWidgetStore.getState().setConversationalResponse(response ?? null);
-      } else if (result?.summary) {
+      if (result?.telemetry?.state === "conversational") {
+        useWidgetStore.getState().setConversationalResponse(result.conversationalResponse ?? null);
+      } else {
         store.setSummaryAvailable(true);
-        useWidgetStore.getState().setSummary(result.summary);
       }
       if (result?.gitStatus) {
         useWidgetStore.getState().setGitStatus(result.gitStatus);
+      }
+      if (result?.evolveState) {
+        useWidgetStore.getState().setEvolveState(result.evolveState);
+      }
+      if (result?.changeMap) {
+        useWidgetStore.getState().setChangeMap(result.changeMap);
       }
 
       store.setEvolvePrompt("");
@@ -82,12 +93,13 @@ export function useEvolve() {
 
       useWidgetStore.getState().setError(msg);
       useWidgetStore.getState().appendLog(`✗ Error: ${msg}\n`);
+      await findChangeMap();
     } finally {
       useWidgetStore.getState().setGenerating(false);
       useWidgetStore.getState().setProcessing(false, "evolve");
       unlistenEvolve();
     }
-  }, [refreshGitStatus, refreshPromptHistory]);
+  }, [refreshGitStatus, refreshPromptHistory, findChangeMap]);
 
-  return { handleEvolve };
+  return { handleEvolve, evolveFromManual, buildCheck };
 }

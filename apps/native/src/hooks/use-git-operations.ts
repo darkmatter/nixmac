@@ -1,3 +1,4 @@
+import { loadHosts } from "@/hooks/use-widget-initialization";
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
 import { useCallback } from "react";
@@ -19,7 +20,14 @@ export function useGitOperations() {
         useWidgetStore.getState().setGitStatus(status);
 
         return status;
-      } catch {
+      } catch (e: unknown) {
+        const msg = (e as Error)?.message || String(e);
+        useWidgetStore.getState().setError(msg);
+        if (msg.includes("is not a git repository")) {
+          useWidgetStore.getState().setHosts([]);
+        } else {
+          await loadHosts();
+        }
         return null;
       }
     },
@@ -31,7 +39,14 @@ export function useGitOperations() {
     try {
       const currentStatus = await darwinAPI.git.statusAndCache();
       useWidgetStore.getState().setGitStatus(currentStatus);
-    } catch {
+    } catch (e: unknown) {
+      const msg = (e as Error)?.message || String(e);
+      useWidgetStore.getState().setError(msg);
+      if (msg.includes("is not a git repository")) {
+        useWidgetStore.getState().setHosts([]);
+      } else {
+        await loadHosts();
+      }
       return null;
     }
   }, []);
@@ -49,25 +64,22 @@ export function useGitOperations() {
     [refreshGitStatus],
   );
 
-  const handleMerge = useCallback(
-    async (squash = false, commitMessage?: string) => {
+  const handleCommit = useCallback(
+    async ({ message, tagAsBuilt = false }: { message: string; tagAsBuilt?: boolean }) => {
       const store = useWidgetStore.getState();
-      const currentBranch = store.gitStatus?.branch;
-
-      if (!currentBranch) {
-        return;
-      }
-
       store.setProcessing(true, "merge");
-      store.appendLog(`\n> Merging ${currentBranch} to main...\n`);
+      store.appendLog(`\n> Committing changes...\n`);
 
       try {
-        await darwinAPI.git.mergeBranch(currentBranch, squash, commitMessage);
-        useWidgetStore.getState().appendLog("✓ Merged successfully\n");
+        const result = await darwinAPI.git.commit(message);
+        useWidgetStore.getState().appendLog("✓ Committed successfully\n");
         useWidgetStore.getState().setError(null);
-        toast.success("Merged successfully", { description: `${currentBranch} merged to main` });
-        useWidgetStore.getState().setEvolvePrompt("");
+        toast.success("Committed successfully");
         useWidgetStore.getState().clearPreview();
+        useWidgetStore.getState().setEvolveState(result.evolveState);
+        if (tagAsBuilt) {
+          await darwinAPI.git.tagAsBuilt();
+        }
         await refreshGitStatus();
       } catch (e: unknown) {
         const msg = (e as Error)?.message || String(e);
@@ -80,5 +92,5 @@ export function useGitOperations() {
     [refreshGitStatus],
   );
 
-  return { refreshGitStatus, getInitialStatus, gitStash, handleMerge };
+  return { refreshGitStatus, getInitialStatus, gitStash, handleCommit };
 }

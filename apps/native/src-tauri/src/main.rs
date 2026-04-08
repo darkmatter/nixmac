@@ -18,9 +18,6 @@ mod evolution;
 mod evolve;
 mod feedback;
 mod finalize_apply;
-mod find_change_summaries;
-mod find_summary;
-mod generate_history_from;
 mod get_history;
 mod git;
 mod log_summarizer;
@@ -30,19 +27,15 @@ mod peek;
 mod permissions;
 mod provider_errors;
 mod providers;
-mod query_return_types;
+mod shared_types;
 mod rollback;
 mod scanner;
 mod secret_scanner;
 mod sqlite_types;
 mod statistics;
+mod evolve_state;
 mod store;
-mod store_changeset;
 mod summarize;
-mod summarize_changes;
-mod summarize_pipeline;
-mod summarize_pipeline_logging;
-mod summarize_token_budgets;
 mod template;
 mod types;
 mod utils;
@@ -310,20 +303,13 @@ fn run_gui_mode(
             #[cfg(debug_assertions)]
             commands::trigger_test_panic,
             // Git
-            commands::git_init_if_needed,
+            commands::git_init_repo,
             commands::git_status,
             commands::git_status_and_cache,
             commands::git_cached,
             commands::git_commit,
             commands::git_stash,
-            commands::git_stage_all,
-            commands::git_unstage_all,
-            commands::git_restore_all,
-            commands::git_checkout_new_branch,
-            commands::git_checkout_branch,
-            commands::git_checkout_main_branch,
             commands::git_tag_as_built,
-            commands::git_finalize_evolve,
             // Darwin/Nix
             commands::darwin_evolve,
             commands::darwin_evolve_cancel,
@@ -332,6 +318,11 @@ fn run_gui_mode(
             commands::darwin_apply_stream_cancel,
             commands::finalize_apply,
             commands::rollback_erase,
+            commands::darwin_build_check,
+            commands::darwin_adopt_manual_changes,
+            // Routing state
+            commands::routing_state_get,
+            commands::routing_state_clear,
             commands::nix_check,
             commands::nix_install_start,
             commands::darwin_rebuild_prefetch,
@@ -341,13 +332,12 @@ fn run_gui_mode(
             commands::flake_exists,
             commands::bootstrap_default_config,
             // Summarization
-            commands::find_summary,
+            commands::find_change_map,
             commands::get_history,
             commands::generate_history_from,
+            commands::summarize_current,
             commands::restore_to_commit,
-            commands::summarize_changes,
-            commands::summary_get_cached,
-            commands::suggest_commit_message,
+            commands::generate_commit_message,
             // UI preferences
             commands::ui_get_prefs,
             commands::ui_set_prefs,

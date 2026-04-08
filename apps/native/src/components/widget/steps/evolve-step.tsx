@@ -7,28 +7,30 @@ import { StepActionsHeader } from "@/components/widget/step-actions-header";
 import { SummaryOrDiff } from "@/components/widget/summary-or-diff";
 import { useApply } from "@/hooks/use-apply";
 import { useRollback } from "@/hooks/use-rollback";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { Eraser, Undo2, Wrench } from "lucide-react";
 
 /**
- * Evolve Step component, allowing users to plan, apply, or clear configuration changes.
+ * Evolve Step has two states:.
+ *   - "begin"    → GetStartedMessage (idle, no active evolution)
+ *   - "evolving" → action header with Discard / Build&Test buttons
  */
 export function EvolveStep() {
-  const gitStatus = useWidgetStore((s) => s.gitStatus);
+  const step = useCurrentStep();
+  const evolveState = useWidgetStore((s) => s.evolveState);
   const { handleApply } = useApply();
   const { handleRollback } = useRollback();
 
-  if (!gitStatus) return null;
+  const isBegin = step === "begin";
 
-  const cleanOnMain = gitStatus.cleanHead && gitStatus.isMainBranch;
-  const needsRebuild = !gitStatus.isMainBranch && gitStatus.branchHasBuiltCommit;
+  const needsRebuild = evolveState != null && evolveState.changesetAtBuild !== null;
 
   const clearIcon = needsRebuild ? <Undo2 className="h-3.5 w-3.5" /> : <Eraser className="h-3.5 w-3.5" />;
   const clearLabel = needsRebuild ? "Undo All" : "Discard";
   const clearMessage = needsRebuild ? "Discard changes and rebuild to previous state?" : "Discard all current changes?";
 
   const header = () => {
-    if (cleanOnMain) return <GetStartedMessage />;
+    if (isBegin) return <GetStartedMessage />;
     return (
       <StepActionsHeader label="Ready to test-drive your changes?">
         <ConfirmButton
