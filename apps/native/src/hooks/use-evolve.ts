@@ -65,8 +65,8 @@ export function useEvolve() {
 
       useWidgetStore.getState().appendLog("✓ Evolution complete\n");
 
-      if (result?.state === "conversational") {
-        useWidgetStore.getState().setConversationalResponse(null);
+      if (result?.telemetry?.state === "conversational") {
+        useWidgetStore.getState().setConversationalResponse(result.conversationalResponse ?? null);
       } else {
         store.setSummaryAvailable(true);
       }

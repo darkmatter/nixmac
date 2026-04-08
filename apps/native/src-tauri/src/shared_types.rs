@@ -167,3 +167,61 @@ impl EvolveState {
         };
     }
 }
+
+// =============================================================================
+// Evolution command result types
+// =============================================================================
+
+/// Evolution lifecycle state.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum EvolutionState {
+    /// Initial state before generation starts
+    Pending,
+    /// Currently generating/processing
+    Loading,
+    /// Generation complete, ready for review
+    Generated,
+    /// Changes have been applied (darwin-rebuild ran)
+    Applied,
+    /// Changes have been committed
+    Committed,
+    /// An error occurred
+    Failed,
+    /// Agent responded conversationally without making any environment changes
+    Conversational,
+}
+
+/// Telemetry counters from a completed evolution run.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct EvolutionTelemetry {
+    pub state: EvolutionState,
+    pub iterations: usize,
+    pub build_attempts: usize,
+    pub total_tokens: u32,
+    pub edits_count: usize,
+    pub thinking_count: usize,
+    pub tool_calls_count: usize,
+    pub duration_ms: i64,
+}
+
+/// Evolution result returned to the frontend on completion.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct EvolutionResult {
+    pub change_map: SemanticChangeMap,
+    pub git_status: GitStatus,
+    pub evolve_state: EvolveState,
+    pub conversational_response: Option<String>,
+    pub telemetry: EvolutionTelemetry,
+}
+
+/// Evolution failure payload with partial telemetry.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct EvolutionFailureResult {
+    pub error: String,
+    pub git_status: Option<GitStatus>,
+    pub telemetry: EvolutionTelemetry,
+}

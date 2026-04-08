@@ -24,6 +24,54 @@ export type ChangeWithSummary = { id: number; hash: string; filename: string; di
 export type Commit = { id: number; hash: string; treeHash: string; message: string | null; createdAt: number }
 
 /**
+ * Evolution failure payload with partial telemetry.
+ */
+export type EvolutionFailureResult = { error: string; gitStatus: GitStatus | null; telemetry: EvolutionTelemetry }
+
+/**
+ * Evolution result returned to the frontend on completion.
+ */
+export type EvolutionResult = { changeMap: SemanticChangeMap; gitStatus: GitStatus; evolveState: EvolveState; conversationalResponse: string | null; telemetry: EvolutionTelemetry }
+
+/**
+ * Evolution lifecycle state.
+ */
+export type EvolutionState = 
+/**
+ * Initial state before generation starts
+ */
+"pending" | 
+/**
+ * Currently generating/processing
+ */
+"loading" | 
+/**
+ * Generation complete, ready for review
+ */
+"generated" | 
+/**
+ * Changes have been applied (darwin-rebuild ran)
+ */
+"applied" | 
+/**
+ * Changes have been committed
+ */
+"committed" | 
+/**
+ * An error occurred
+ */
+"failed" | 
+/**
+ * Agent responded conversationally without making any environment changes
+ */
+"conversational"
+
+/**
+ * Telemetry counters from a completed evolution run.
+ */
+export type EvolutionTelemetry = { state: EvolutionState; iterations: number; buildAttempts: number; totalTokens: number; editsCount: number; thinkingCount: number; toolCallsCount: number; durationMs: number }
+
+/**
  * Persisted evolve state stored in `evolve-state.json`.
  */
 export type EvolveState = { evolutionId: number | null; currentChangesetId: number | null; changesetAtBuild: number | null; committable: boolean; backupBranch: string | null; 
