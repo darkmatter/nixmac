@@ -67,11 +67,17 @@ module.exports = {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
         },
+        "attention-flash-text": {
+          "0%": { color: "rgb(252, 165, 165)" },
+          "100%": { color: "rgb(251, 113, 133)" },
+        },
       },
       animation: {
         "collapsible-down": "collapsible-down 0.15s ease-out",
         "collapsible-up": "collapsible-up 0.15s ease-out",
         shimmer: "shimmer 4s linear infinite",
+        "attention-flash": "attention-flash 0.4s ease-out 0.5s forwards",
+        "attention-flash-text": "attention-flash-text 0.4s ease-out 0.5s forwards",
       },
     },
   },

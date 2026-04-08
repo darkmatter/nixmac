@@ -1,8 +1,6 @@
-import { useState, useCallback } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { darwinAPI } from "@/tauri-api";
-import { useRebuildStream } from "@/hooks/use-rebuild-stream";
+import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
 import { HistoryCurrentItemBadge } from "@/components/widget/history-current-item-badge";
 import { HistoryBaseItemBadge } from "@/components/widget/history-base-item-badge";
@@ -11,29 +9,18 @@ interface HistoryRestoreItemButtonProps {
   hash: string;
   isBuilt?: boolean;
   isBase?: boolean;
+  isRestoring?: boolean;
+  onRequestRestore: (hash: string) => void;
 }
 
-export function HistoryRestoreItemButton({ hash, isBuilt = false, isBase = false }: HistoryRestoreItemButtonProps) {
-  const [restoring, setRestoring] = useState(false);
-  const { triggerRebuild } = useRebuildStream();
-  const setProcessing = useWidgetStore((s) => s.setProcessing);
-
-  const handleRestore = useCallback(
-    async (e: React.MouseEvent) => {
-      e.stopPropagation();
-      setRestoring(true);
-      setProcessing(true);
-      try {
-        await darwinAPI.darwin.restoreToCommit(hash);
-        await triggerRebuild({ context: "rollback" });
-        setRestoring(false);
-      } catch {
-        setRestoring(false);
-        setProcessing(false);
-      }
-    },
-    [hash, triggerRebuild, setProcessing],
-  );
+export function HistoryRestoreItemButton({
+  hash,
+  isBuilt = false,
+  isBase = false,
+  isRestoring = false,
+  onRequestRestore,
+}: HistoryRestoreItemButtonProps) {
+  const uncommittedChanges = useWidgetStore((s) => (s.gitStatus?.files?.length ?? 0) > 0);
 
   if (isBuilt) return <HistoryCurrentItemBadge />;
   if (isBase) return <HistoryBaseItemBadge />;
@@ -43,11 +30,17 @@ export function HistoryRestoreItemButton({ hash, isBuilt = false, isBase = false
       type="button"
       variant="outline"
       size="sm"
-      disabled={restoring}
-      className="h-auto whitespace-nowrap border-white/10 bg-white/[0.06] px-[10px] py-1 text-[10px] text-neutral-400 hover:border-white/30"
-      onClick={handleRestore}
+      disabled={isRestoring}
+      className={cn(
+        "h-auto whitespace-nowrap border-white/10 bg-white/[0.06] px-[10px] py-1 text-[10px] text-neutral-400 hover:border-white/30",
+        uncommittedChanges && "opacity-40 cursor-default hover:border-white/10 hover:bg-white/[0.06] hover:text-neutral-400",
+      )}
+      onClick={(e) => {
+        e.stopPropagation();
+        onRequestRestore(hash);
+      }}
     >
-      {restoring ? (
+      {isRestoring ? (
         <>
           <Loader2 className="h-[10px] w-[10px] animate-spin" />
           Restoring…

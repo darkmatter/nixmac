@@ -32,9 +32,11 @@ function getSummaryBadges(changeMap: SemanticChangeMap): SummaryBadge[] {
 
 interface HistoryItemCardProps {
   item: HistoryItem;
+  isRestoring: boolean;
+  onRequestRestore: (hash: string) => void;
 }
 
-export function HistoryItemCard({ item }: HistoryItemCardProps) {
+export function HistoryItemCard({ item, isRestoring, onRequestRestore }: HistoryItemCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   const changeMap = item.changeMap;
@@ -136,7 +138,13 @@ export function HistoryItemCard({ item }: HistoryItemCardProps) {
 
         {/* Right: action buttons */}
         <div className="flex shrink-0 flex-col items-end gap-1">
-          <HistoryRestoreItemButton hash={item.hash} isBuilt={item.isBuilt} isBase={item.isBase} />
+          <HistoryRestoreItemButton
+            hash={item.hash}
+            isBuilt={item.isBuilt}
+            isBase={item.isBase}
+            isRestoring={isRestoring}
+            onRequestRestore={onRequestRestore}
+          />
           {!changeMap && (
             <AnalyzeHistoryItemButton
               hash={item.hash}
