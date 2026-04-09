@@ -98,7 +98,7 @@ export type GitStatus = { files: GitFileStatus[]; branch: string | null; headIsB
 /**
  * A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.
  */
-export type HistoryItem = { hash: string; message: string | null; createdAt: number; isBuilt: boolean; isBase: boolean; isExternal: boolean; fileCount: number; commit: Commit | null; changeMap: SemanticChangeMap | null; rawChanges: Change[] }
+export type HistoryItem = { hash: string; message: string | null; createdAt: number; isBuilt: boolean; isBase: boolean; isExternal: boolean; fileCount: number; commit: Commit | null; changeMap: SemanticChangeMap | null; rawChanges: Change[]; originMessage: string | null }
 
 export type SemanticChangeGroup = { summary: ChangeSummary; changes: ChangeWithSummary[] }
 

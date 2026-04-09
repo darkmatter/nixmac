@@ -203,7 +203,8 @@ export const storybookDarwinAPI = {
     applyStreamCancel: async () => undefined,
     finalizeApply: async () => ({ gitStatus: baseGitStatus(), summary: { ...summaryResponse } }),
     rollbackErase: async () => ({ gitStatus: baseGitStatus(), summary: null }),
-    restoreToCommit: async () => undefined,
+    prepareRestore: async () => undefined,
+    finalizeRestore: async () => baseGitStatus(),
   },
   nix: {
     check: async () => ({ installed: true, version: "2.20.0", darwin_rebuild_available: true }),

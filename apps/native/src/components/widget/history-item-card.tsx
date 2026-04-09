@@ -68,6 +68,11 @@ export function HistoryItemCard({ item, isRestoring, onRequestRestore }: History
           <span className="text-[13px] font-medium leading-[1.4] text-white">
             {item.message ?? "(no message)"}
           </span>
+          {item.originMessage && (
+            <p className="mt-0.5 text-[11px] leading-snug text-neutral-500">
+              {item.originMessage}
+            </p>
+          )}
           <div className="mt-[6px] flex w-fit flex-wrap items-center gap-2">
             <span className="rounded bg-teal-400/[0.08] px-[7px] py-0.5 font-mono text-[10px] text-teal-400">
               {item.hash.slice(0, 7)}

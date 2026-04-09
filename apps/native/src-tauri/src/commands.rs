@@ -345,6 +345,7 @@ pub async fn darwin_apply(
 pub async fn darwin_apply_stream_start(
     app: AppHandle,
     host_override: Option<String>,
+    defer_built_tag: Option<bool>,
 ) -> Result<serde_json::Value, String> {
     let dir = store::ensure_config_dir_exists(&app)
         .map_err(|e| capture_err("darwin_apply_stream_start", e))?;
@@ -370,7 +371,7 @@ pub async fn darwin_apply_stream_start(
             "Host attribute not found. Set a host in Settings or ensure your flake defines exactly one darwinConfiguration.".to_string()
         })?;
 
-    darwin::apply_stream(&app, &dir, &host)
+    darwin::apply_stream(&app, &dir, &host, !defer_built_tag.unwrap_or(false))
         .map_err(|e| capture_err("darwin_apply_stream_start", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
@@ -565,26 +566,67 @@ pub async fn get_history(app: AppHandle) -> Result<Vec<crate::shared_types::Hist
         .map_err(|e| capture_err("get_history", e))
 }
 
-/// Restores the working tree to `target_hash` by checking out its files and
-/// creating a new forward commit on main. Rebuild is triggered by the frontend.
+/// Checks out `target_hash` for history restore rebuild
 #[tauri::command]
-pub async fn restore_to_commit(app: AppHandle, target_hash: String) -> Result<(), String> {
+pub async fn prepare_restore(app: AppHandle, target_hash: String) -> Result<(), String> {
     let config_dir =
-        store::get_config_dir(&app).map_err(|e| capture_err("restore_to_commit", e))?;
+        store::get_config_dir(&app).map_err(|e| capture_err("prepare_restore", e))?;
+    git::checkout_files_at_commit(&config_dir, &target_hash)
+        .map_err(|e| capture_err("prepare_restore", e))?;
+    crate::historelog::log_prepare(&config_dir);
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn abort_restore(app: AppHandle) -> Result<(), String> {
+    let config_dir =
+        store::get_config_dir(&app).map_err(|e| capture_err("abort_restore", e))?;
+    git::restore_all(&config_dir).map_err(|e| capture_err("abort_restore", e))?;
+    crate::historelog::log_abort(&config_dir);
+    Ok(())
+}
+
+/// Commits, tags and stored on succesful history restore
+#[tauri::command]
+pub async fn finalize_restore(
+    app: AppHandle,
+    target_hash: String,
+) -> Result<crate::types::GitStatus, String> {
+    let config_dir =
+        store::get_config_dir(&app).map_err(|e| capture_err("finalize_restore", e))?;
     let label = &target_hash[..target_hash.len().min(8)];
-    git::restore_files_at_commit(&config_dir, &target_hash)
-        .map_err(|e| capture_err("restore_to_commit", e))?;
-    let info = git::commit_all(&config_dir, &format!("chore(restore): restore {label}"))
-        .map_err(|e| capture_err("restore_to_commit", e))?;
+    let info = git::commit_all(&config_dir, &format!("Restore commit {label}"))
+        .map_err(|e| capture_err("finalize_restore", e))?;
+    crate::historelog::log_finalize(&info.hash);
     if let Err(e) = git::tag_commit(
         &config_dir,
         &format!("nixmac-commit-{}", &info.hash[..8]),
         &info.hash,
         false,
     ) {
-        log::warn!("[restore_to_commit] Failed to tag commit: {}", e);
+        log::warn!("[finalize_restore] Failed to tag commit: {}", e);
     }
-    Ok(())
+    if let Err(e) = git::tag_as_built(&config_dir) {
+        log::warn!("[finalize_restore] Failed to tag as built: {}", e);
+    }
+    // Link the commit to its origin for metadata
+    if let Ok(db_path) = db::get_db_path(&app) {
+        let commit_hash = info.hash.clone();
+        let origin = target_hash.clone();
+        match tokio::task::spawn_blocking(move || {
+            db::restore_commits::insert(&db_path, &commit_hash, &origin)
+        })
+        .await
+        {
+            Ok(Ok(())) => {}
+            Ok(Err(e)) => log::warn!("[finalize_restore] Failed to record restore origin: {}", e),
+            Err(e) => log::warn!("[finalize_restore] Failed to record restore origin (panic): {}", e),
+        }
+    }
+    let git_status =
+        git::status(&config_dir).map_err(|e| capture_err("finalize_restore", e))?;
+    let _ = store::set_cached_git_status(&app, &git_status);
+    Ok(git_status)
 }
 
 /// Generates a commit message from the current semantic change map via the pipeline.

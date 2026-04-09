@@ -28,20 +28,33 @@ export function HistoryStep() {
     loadHistory();
   }, [loadHistory]);
 
+  const setGitStatus = useWidgetStore((state) => state.setGitStatus);
+
   const doRestore = useCallback(
     async (hash: string) => {
       setRestoringHash(hash);
       setProcessing(true);
       try {
-        await darwinAPI.darwin.restoreToCommit(hash);
-        await triggerRebuild({ context: "rollback" });
+        await darwinAPI.darwin.prepareRestore(hash);
+        await triggerRebuild({
+          context: "rollback",
+          deferBuiltTag: true,
+          onSuccess: async () => {
+            const result = await darwinAPI.darwin.finalizeRestore(hash);
+            setGitStatus(result);
+            await loadHistory();
+          },
+          onFailure: async () => {
+            await darwinAPI.darwin.abortRestore();
+          },
+        });
       } catch {
         setProcessing(false);
       } finally {
         setRestoringHash(null);
       }
     },
-    [setProcessing, triggerRebuild],
+    [loadHistory, setProcessing, setGitStatus, triggerRebuild],
   );
 
   const handleRequestRestore = useCallback(

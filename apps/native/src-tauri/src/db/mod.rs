@@ -3,6 +3,7 @@
 pub mod changesets;
 pub mod commits;
 pub mod evolutions;
+pub mod restore_commits;
 mod schema;
 pub mod store_evolved_changeset;
 pub mod store_new_changeset;

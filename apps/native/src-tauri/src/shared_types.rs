@@ -115,6 +115,7 @@ pub struct HistoryItem {
     pub commit: Option<crate::sqlite_types::Commit>,
     pub change_map: Option<SemanticChangeMap>,
     pub raw_changes: Vec<crate::sqlite_types::Change>,
+    pub origin_message: Option<String>,
 }
 
 // =============================================================================

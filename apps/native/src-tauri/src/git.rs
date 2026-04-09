@@ -458,10 +458,10 @@ pub fn commit_all(dir: &str, message: &str) -> Result<CommitInfo> {
     Ok(CommitInfo { hash, tree_hash })
 }
 
-/// Checks out all files from `target_hash` into the working tree without moving HEAD.
-pub fn restore_files_at_commit(dir: &str, target_hash: &str) -> Result<()> {
+/// Checks out all files from `commit_hash` into the working tree without moving HEAD.
+pub fn checkout_files_at_commit(dir: &str, commit_hash: &str) -> Result<()> {
     git_command()
-        .args(["checkout", target_hash, "--", "."])
+        .args(["checkout", commit_hash, "--", "."])
         .current_dir(dir)
         .output()?;
     Ok(())
