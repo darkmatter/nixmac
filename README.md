@@ -1,285 +1,219 @@
-# nixmac
+<p align="center">
+  <img src="apps/web/public/favicon.svg" width="80" alt="nixmac">
+</p>
 
-This project was created with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack), a modern TypeScript stack that combines React, TanStack Router, Hono, TRPC, and more.
+<h1 align="center">nixmac</h1>
 
-## Features
+<p align="center">
+  An AI-powered macOS configuration manager built on nix-darwin.<br>
+  Describe what you want in plain English. nixmac evolves your Nix config, builds it, and applies it.
+</p>
 
-- **TypeScript** - For type safety and improved developer experience
-- **TanStack Router** - File-based routing with full type safety
-- **TailwindCSS** - Utility-first CSS for rapid UI development
-- **shadcn/ui** - Reusable UI components
-- **Hono** - Lightweight, performant server framework
-- **tRPC** - End-to-end type-safe APIs
-- **Bun** - Runtime environment
-- **Drizzle** - TypeScript-first ORM
-- **PostgreSQL** - Database engine
-- **Authentication** - Better-Auth
-- **Biome** - Linting and formatting
-- **Starlight** - Documentation site with Astro
-- **Tauri** - Build native desktop applications
-- **Turborepo** - Optimized monorepo build system
+<p align="center">
+  <a href="https://github.com/darkmatter/nixmac/releases/latest"><img src="https://img.shields.io/github/v/release/darkmatter/nixmac" alt="Latest Release"></a>
+  <a href="https://github.com/darkmatter/nixmac/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"></a>
+</p>
 
-## Getting Started
+---
 
-### Install nix
+## What is nixmac?
 
-Recommendation: Use [Determinate](https://docs.determinate.systems/).
+nixmac is a native macOS app (Tauri + Rust) that puts an AI agent in front of your [nix-darwin](https://github.com/LnL7/nix-darwin) configuration. Instead of hand-editing `.nix` files, you chat with nixmac:
 
-```sh
-nix --version
-nix-store --version
-```
+> "Install Tailscale and make it start at login"
 
-### Install devenv
+The agent reads your config, plans the changes, edits the Nix files, builds the system, and applies it — all while you watch. If something breaks, roll back in one click.
 
-```sh
-nix profile add github:cachix/devenv/latest
-devenv --version
-```
+### Key Features
 
-### Install the dependencies in the shell:
+- **Natural-language config evolution** — an agentic loop with tool use (read, edit, search) that iterates until your system matches the prompt
+- **Multi-provider AI** — OpenAI/OpenRouter (default), Ollama for fully local operation
+- **Tool-augmented agent** — `read_file`, `write_file`, `search_packages`, `search_docs`, `search_code` tools give the model deep context about nix-darwin options and nixpkgs
+- **Chat memory** — session context persists across turns for multi-step conversations
+- **Smart summarization** — every changeset and commit gets an AI-generated summary with token-budgeted batching
+- **Git-native history** — every evolution creates a branch, every apply is a commit; full diff-based change tracking
+- **One-click rollback** — revert to any previous system generation
+- **Secret scanning** — detects accidentally committed API keys and credentials
+- **Sentry integration** — opt-in crash reporting with automatic PII scrubbing
+- **CLI + GUI** — use the menu bar app or `nixmac evolve "..."` from the terminal
+- **Eval suite** — reproducible benchmarks for measuring agent accuracy across models
 
-```bash
-devenv shell
-bun install
-```
-
-### Build nixmac
-
-```bash
-devenv shell
-
-cd apps/native && tauri build --bundles app
-```
-
-### Updating nix-darwin docs (native app)
-
-The native Tauri app ships a pre-parsed copy of the nix-darwin manual used by the UI. To refresh that data run the provided script:
-
-- Script: [scripts/update-nix-darwin-docs.py](scripts/update-nix-darwin-docs.py#L1-L200)
-- Output JSON (used by the app): [apps/native/src-tauri/resources/nix-darwin-docs.json](apps/native/src-tauri/resources/nix-darwin-docs.json#L1-L5)
-
-Quick steps:
-
-```sh
-# install parser dependencies (should not be needed since they are in the nix dev env)
-python -m pip install --user requests beautifulsoup4
-
-# fetch the manual and write the JSON (default output path)
-python scripts/update-nix-darwin-docs.py
-
-# or specify URL/output explicitly
-python scripts/update-nix-darwin-docs.py --url https://nix-darwin.github.io/nix-darwin/manual/ --out apps/native/src-tauri/resources/nix-darwin-docs.json
-
-# for a local manual HTML file
-python scripts/update-nix-darwin-docs.py --url file:///path/to/manual.html
-```
-
-The script is conservative and best-effort; inspect the resulting JSON before committing.
-
-### Install and Use nix-darwin
-
-By default, nixmac expects to find a flake-enabled nix configuration at `~/.darwin`. Here is how you can create a minimalist one if you don't already have such a thing *assuming you are using Determinate* since non-Determinate steps will be slightly different:
-
-1. `cd ~ && mkdir ./darwin`
-1. `git init`.
-   1. Add `result` to `.gitignore`.
-1. Copy a `flake.nix` to `~/.darwin`, you can find a basic one [here](./apps/native/templates/nix-darwin-determinate/flake.nix).
-   1. For cross-platform (Linux + macOS) testing, use the unified template at [`./apps/native/templates/nixos-unified`](./apps/native/templates/nixos-unified).
-1. This nix setup is going to take over management of your shell files in `/etc` and you need to back them up first or else the following command will fail:
-   1. `sudo cp /etc/bashrc /etc/bashrc.before-nix-darwin`
-   1. `sudo cp /etc/zshrc /etc/zshrc.before-nix-darwin`
-   1. `sudo cp /etc/zshenv /etc/zshenv.before-nix-darwin`
-1. `sudo -i nix run nix-darwin/master#darwin-rebuild -- switch --flake ~/.darwin#$HOSTNAME`
-1. Verify it "worked":
-   1. `ls -l /nix/var/nix/profiles/system` should point to system link.
-   1. `sudo -i nix run nix-darwin/master#darwin-rebuild --version` should return something, namely "Determinate Nix" if you're using Determinate.
-1. **NOTE**: Determinate does not install `darwin-rebuild` globally to the Mac system path. So to do the usual workflow to update your system after making flake changes, execute it with:
-   1. `sudo -i nix run nix-darwin/master#darwin-rebuild`
-
-### Run apps
-
-```sh
-export SOPS_AGE_KEY={your_sops_key} devenv up
-```
-
-or add `your_sops_key` to `~/.config/sops/age/keys.txt`
-Key doesn't have to be formatted a certain way (just the key on its own line somewhere)
-
-**Optional: Set Up Sentry Integration**
-
-Sentry is disabled by default. If you want to enable it, set an environment variable as follows:
-
-```sh
-# To enable Rust-side integration:
-export SENTRY_DSN=http://<public_key_for_rust_project>@<host>:<port>/<project_id_for_rust_project>
-
-# To enable TypeScript-side integration:
-export VITE_SENTRY_DSN=http://<public_key_for_react_project>@<host>:<port>/<project_id_for_react_project>
-```
-
-*Note that the recommended way to use Sentry is to have different projects for different "parts" of your application. Accordingly for the Tauri app it seems prudent to separate Rust and React.*
-
-**Optional: Disable Mac Permissions Checks**
-
-The frontend will do a permissions check and block you if you aren't running with all permissions. For full disk access, this is problematic because you may not have installed the application such that it is available in System Settings. You can disable the permissions check with:
-
-```sh
-export VITE_NIXMAC_SKIP_PERMISSIONS=true
-```
-
-### Logs
-
-`darwin-rebuild` logs are written to `~/Library/Logs/nixmac/*`.
-
-Application logs go to stdout/stderr by default. If you want to log them to a file, set the `NIXMAC_LOGFILE` environment variable. Pro tip: If you set this to a relative path on the command line in which you execute `devenv up` it will resolve under `apps/native/src-tauri`.
-
-To get a merged tail of both the app logs and darwin-rebuild logs, run this in a separate terminal:
-
-```sh
-tail -F ${NIXMAC_LOGFILE} ~/Library/Logs/nixmac/*
-```
-
-## AI Setup
-
-We have a pluggable "provider" design for AI models. Currently we have the following implementations:
-
-- OpenAI / OpenRouter (default)
-- Ollama
-
-NOTE: By default, we use OpenAI with *anthropic/claude-sonnet-4* for configuration evolution and *openai/gpt-4o-mini* for summarization, and OpenRouter at https://openrouter.ai/api/v1.
-
-### Configuration
-
-We allow you to set the "summarize" (for commit and UI messages) and "evolve" messages separately, primarily because evolving your nix config is implemented as a "tool" and a lot of otherwise-good models don't do tools particularly well.
-
-Environment variables:
-
-- `SUMMARY_AI_PROVIDER` (default = openai)
-- `EVOLVE_PROVIDER` (default = openai)
-
-#### OpenAI Configuration:
-
-- `SUMMARY_MODEL` (default = "openai/gpt-4o-mini")
-- `EVOLVE_MODEL` (default = "anthropic/claude-sonnet-4")
-
-#### Ollama Configuration:
-
-Quick dev: `SUMMARY_AI_PROVIDER=ollama EVOLVE_PROVIDER=ollama devenv up`
-
-Environment variables:
-
-- `OLLAMA_API_BASE` (default = "http://localhost:11434")
-- `SUMMARY_MODEL` (default = "llama3.1")
-- `EVOLVE_MODEL` (default = "qwen3-coder:30b")
-
-**IMPORTANT NOTE**: Empirically, models under 70B parameters don't seem to do well with the Nix "evolve" tool workflow, either losing tool context and exiting or (if you're lucky) making suboptimal changes.
-
-## Database Setup
-
-This project uses PostgreSQL with Drizzle ORM.
-
-1. Make sure you have a PostgreSQL database set up.
-
-1. Update your `apps/server/.env` and `apps/web/.env` files with your PostgreSQL connection details as `DATABASE_URL`.
-
-1. Apply the schema to your database:
-
-```bash
-bun run db:push
-```
-
-Then, run the development server:
-
-```sh
-# bun run dev
-devenv up
-```
-
-Alternatively, there is a separate script that ensures that the nixmac postgres database is running:
-
-```sh
-./bin/devenv-up
-```
-
-Open [http://localhost:3001](http://localhost:3001) in your browser to see the web application.
-The API is running at [http://localhost:3000](http://localhost:3000).
-
-## CLI
-
-Basic (only `evolve` required):
-
-```sh
-./target/debug/nixmac evolve "your prompt here"
-```
-
-Dump config and evolution results to file:
-
-```sh
-./target/debug/nixmac evolve "your prompt here" --out evolution_result.json
-```
-
-Optional settings overrides
-
-```sh
-./target/debug/nixmac evolve "your prompt" \
-  --config /path/to/config \
-  --max-iterations 50 \
-  --evolve-provider openai \
-  --evolve-model gpt-4 \
-  --summary-provider openai \
-  --summary-model gpt-4 \
-  --openai-key YOUR_KEY \
-  --openrouter-key YOUR_KEY \
-  --ollama-url http://localhost:11434 \
-  --host your-mac
-```
-
-## Useful Tips
-
-Delete dangling local `nixmac-evolve/` git branches:
-
-```sh
-git branch --list 'nixmac-evolve*' | awk '{print $NF}' | while read -r br; do git branch -D "$br"; done
-```
-
-## Deployment (Alchemy)
-
-- Web dev: cd apps/web && bun run dev
-- Web deploy: cd apps/web && bun run deploy
-- Web destroy: cd apps/web && bun run destroy
-
-## Project Structure
+## Architecture
 
 ```
 nixmac/
 ├── apps/
-│   ├── web/         # Frontend application (React + TanStack Router)
-│   ├── docs/        # Documentation site (Astro Starlight)
-│   └── server/      # Backend API (Hono, TRPC)
+│   ├── native/        # Tauri + Rust desktop app (core agent, tools, git, nix)
+│   ├── web/           # React + TanStack Router frontend (dashboard, onboarding)
+│   ├── server/        # Hono + tRPC API server
+│   ├── fumadocs/      # Documentation site (Next.js / Fumadocs)
+│   └── eval/          # Python eval harness for model benchmarking
 ├── packages/
-│   ├── api/         # API layer / business logic
-│   ├── auth/        # Authentication configuration & logic
-│   └── db/          # Database schema & queries
+│   ├── api/           # Shared business logic
+│   ├── auth/          # Better-Auth configuration
+│   ├── db/            # Drizzle ORM + PostgreSQL schema
+│   ├── ui/            # Shared UI components
+│   ├── config/        # Shared config utilities
+│   ├── env/           # Environment variable validation
+│   ├── hono-api/      # Hono middleware and API helpers
+│   └── znv/           # Zod + env parsing
 ```
 
-## Available Scripts
+### The Evolution Loop
 
-- `bun run dev`: Start all applications in development mode
-- `bun run build`: Build all applications
-- `bun run dev:web`: Start only the web application
-- `bun run dev:server`: Start only the server
-- `bun run check-types`: Check TypeScript types across all apps
-- `bun run db:push`: Push schema changes to database
-- `bun run db:studio`: Open database studio UI
-- `bun run check`: Run Biome formatting and linting
-- `cd apps/web && bun run desktop:dev`: Start Tauri desktop app in development
-- `cd apps/web && bun run desktop:build`: Build Tauri desktop app
-- `cd apps/docs && bun run dev`: Start documentation site
-- `cd apps/docs && bun run build`: Build documentation site
+1. **User prompt** → agent receives the request
+2. **Tool use** → agent reads config files, searches nix-darwin docs, searches nixpkgs
+3. **Edit** → agent writes changes via semantic file edits
+4. **Build** → `darwin-rebuild build` validates the configuration
+5. **Iterate** → if the build fails, agent reads errors and tries again (up to N iterations)
+6. **Apply** → `darwin-rebuild switch` activates the new system generation
+7. **Summarize** → changeset and commit get AI-generated descriptions
 
-## Release a Build
+## Getting Started
 
-There's a CI/CD pipeline that will create a release build for any tagged commit. To create a
-release, run `npx release-it` and follow the instructions to push a versioned tag. This will
-automatically create a release on Github that can be downloaded and installed via a .dmg bundle.
+### Prerequisites
+
+- macOS (Apple Silicon or Intel)
+- [Nix](https://nixos.org/download.html) with flakes enabled ([Determinate Nix Installer](https://github.com/DeterminateSystems/nix-installer) recommended)
+- [devenv](https://devenv.sh/) — `nix profile add github:cachix/devenv/latest`
+- A nix-darwin flake at `~/.darwin` (see [Setup Guide](#setting-up-nix-darwin) below)
+
+### Install from Release
+
+Download the latest `.dmg` from [Releases](https://github.com/darkmatter/nixmac/releases/latest).
+
+### Build from Source
+
+```bash
+git clone https://github.com/darkmatter/nixmac.git
+cd nixmac
+devenv shell
+bun install
+cd apps/native && bun run tauri build --bundles app
+```
+
+### Development
+
+```bash
+devenv shell
+bun install
+
+# Start everything (web + server + native app in dev mode)
+devenv up
+
+# Or start individual pieces
+bun run dev:web        # React frontend at http://localhost:3001
+bun run dev:server     # API server at http://localhost:3000
+bun run dev:native     # Tauri desktop app
+```
+
+### Setting Up nix-darwin
+
+If you don't already have a nix-darwin configuration:
+
+```bash
+mkdir -p ~/.darwin && cd ~/.darwin
+git init
+```
+
+Copy one of the included templates:
+
+| Template | Description |
+|----------|-------------|
+| [`nix-darwin-determinate`](apps/native/templates/nix-darwin-determinate) | Minimal nix-darwin for Determinate Nix |
+| [`nixos-unified`](apps/native/templates/nixos-unified) | Cross-platform (macOS + NixOS) |
+| [`minimal`](apps/native/templates/minimal) | Bare-bones starting point |
+
+Then activate:
+
+```bash
+sudo cp /etc/{bashrc,zshrc,zshenv} /etc/{bashrc,zshrc,zshenv}.before-nix-darwin
+sudo -i nix run nix-darwin/master#darwin-rebuild -- switch --flake ~/.darwin#$HOSTNAME
+```
+
+> **Determinate Nix note:** `darwin-rebuild` isn't installed globally. Run it via `sudo -i nix run nix-darwin/master#darwin-rebuild`.
+
+## AI Configuration
+
+nixmac uses separate models for **evolution** (config changes via tool use) and **summarization** (commit messages, UI labels).
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `EVOLVE_PROVIDER` | `openai` | `openai`, `openrouter`, or `ollama` |
+| `EVOLVE_MODEL` | `anthropic/claude-sonnet-4` | Model for config evolution |
+| `SUMMARY_AI_PROVIDER` | `openai` | Provider for summarization |
+| `SUMMARY_MODEL` | `openai/gpt-4o-mini` | Model for summaries |
+| `OLLAMA_API_BASE` | `http://localhost:11434` | Ollama endpoint |
+
+For fully local operation: `EVOLVE_PROVIDER=ollama SUMMARY_AI_PROVIDER=ollama devenv up`
+
+> **Note:** Models under ~70B parameters tend to struggle with the multi-tool evolution workflow.
+
+## CLI
+
+```bash
+# Basic evolution
+nixmac evolve "install ripgrep and fd"
+
+# With options
+nixmac evolve "enable Touch ID for sudo" \
+  --config ~/.darwin \
+  --max-iterations 10 \
+  --evolve-provider ollama \
+  --evolve-model qwen3-coder:30b
+
+# Dump results to JSON
+nixmac evolve "add Homebrew casks for Firefox and 1Password" --out result.json
+```
+
+## Eval Suite
+
+The `apps/eval/` directory contains a reproducible benchmark harness for measuring evolution accuracy across models and providers, including support for vLLM and Ollama backends.
+
+```bash
+cd apps/eval
+uv sync
+python run_evals.py --provider ollama --model qwen3-coder:30b
+python calc_stats.py
+```
+
+## Deployment
+
+The web app deploys via [Alchemy](https://alchemy.run):
+
+```bash
+cd apps/web && bun run deploy    # deploy
+cd apps/web && bun run destroy   # tear down
+```
+
+## Releases
+
+Tagged commits trigger CI to produce signed `.dmg` builds:
+
+```bash
+npx release-it   # interactive version bump + tag + GitHub release
+```
+
+## Database
+
+nixmac uses PostgreSQL with Drizzle ORM for the web app and server:
+
+```bash
+bun run db:push      # apply schema
+bun run db:studio    # open Drizzle Studio
+bun run db:generate  # generate migrations
+```
+
+## Logs
+
+- **darwin-rebuild logs:** `~/Library/Logs/nixmac/`
+- **App logs:** stdout/stderr (or set `NIXMAC_LOGFILE` for file output)
+
+```bash
+# Merged tail of everything
+tail -F ${NIXMAC_LOGFILE} ~/Library/Logs/nixmac/*
+```
+
+## License
+
+MIT
