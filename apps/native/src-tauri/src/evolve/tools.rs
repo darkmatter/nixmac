@@ -8,6 +8,7 @@ use super::file_ops::{
 };
 use super::messages::Tool;
 use super::search_code::execute_search_code;
+use super::search_docs::{default_limit as search_docs_default_limit, execute_search_docs};
 use super::search_packages::execute_search_packages;
 use super::types::FileEdit;
 
@@ -283,6 +284,27 @@ pub fn create_tools() -> Vec<Tool> {
                     "channel": {
                         "type": "string",
                         "description": "Flake/channel to search in: 'nixpkgs' (default), 'nixpkgs-unstable', 'nixpkgs-master', etc."
+                    }
+                },
+                "required": ["query"]
+            }),
+        },
+        Tool {
+            name: "search_docs".to_string(),
+            description: "Search nix-darwin configuration option docs by structure-aware scoring. \
+                         Use this tool to discover the correct fully-qualified option path shape \
+                         (for example: `homebrew.caskArgs.colorpickerdir`). \
+                         Returns top matches with option paths and concise summaries.".to_string(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query for option names or path segments"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum results to return (default: 3, max: 10)"
                     }
                 },
                 "required": ["query"]
@@ -651,6 +673,20 @@ pub fn execute_tool(
 
             let result =
                 execute_search_packages(config_dir, query, limit, search_type, use_regex, channel)?;
+            Ok(ToolResult::Continue(result))
+        }
+
+        "search_docs" => {
+            let query = args["query"]
+                .as_str()
+                .ok_or_else(|| anyhow!("search_docs: missing query"))?;
+            let limit = args["limit"]
+                .as_u64()
+                .map(|n| n as usize)
+                .unwrap_or_else(search_docs_default_limit)
+                .clamp(1, 10);
+
+            let result = execute_search_docs(query, limit)?;
             Ok(ToolResult::Continue(result))
         }
 
