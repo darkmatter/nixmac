@@ -8,7 +8,9 @@ use super::file_ops::{
 };
 use super::messages::Tool;
 use super::search_code::execute_search_code;
-use super::search_docs::{default_limit as search_docs_default_limit, execute_search_docs};
+use super::search_docs::{
+    default_limit as search_docs_default_limit, execute_search_docs, DocsSource,
+};
 use super::search_packages::execute_search_packages;
 use super::types::FileEdit;
 
@@ -291,10 +293,12 @@ pub fn create_tools() -> Vec<Tool> {
         },
         Tool {
             name: "search_docs".to_string(),
-            description: "Search nix-darwin configuration option docs by structure-aware scoring. \
+            description: "Search nix-darwin and home-manager configuration option docs by structure-aware scoring. \
                          Use this tool to discover the correct fully-qualified option path shape \
-                         (for example: `homebrew.caskArgs.colorpickerdir`). \
-                         Returns top matches with option paths and concise summaries.".to_string(),
+                         (for example: `homebrew.caskArgs.colorpickerdir` for nix-darwin, or \
+                         `programs.git.signing` for home-manager). \
+                         Returns top matches with option paths and concise summaries. \
+                         Use the 'source' parameter to narrow results to a specific doc set.".to_string(),
             parameters: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -305,6 +309,11 @@ pub fn create_tools() -> Vec<Tool> {
                     "limit": {
                         "type": "integer",
                         "description": "Maximum results to return (default: 3, max: 10)"
+                    },
+                    "source": {
+                        "type": "string",
+                        "enum": ["nix-darwin", "home-manager", "all"],
+                        "description": "Which doc set to search: 'nix-darwin', 'home-manager', or 'all' (default: 'all')"
                     }
                 },
                 "required": ["query"]
@@ -685,8 +694,11 @@ pub fn execute_tool(
                 .map(|n| n as usize)
                 .unwrap_or_else(search_docs_default_limit)
                 .clamp(1, 10);
+            let source_filter = args["source"]
+                .as_str()
+                .and_then(DocsSource::from_filter);
 
-            let result = execute_search_docs(query, limit)?;
+            let result = execute_search_docs(query, limit, source_filter)?;
             Ok(ToolResult::Continue(result))
         }
 

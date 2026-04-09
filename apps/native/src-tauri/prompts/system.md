@@ -69,7 +69,7 @@ You may call the following tools:
 - build_check
 - search_code
 - search_packages
-- search_docs
+- search_docs (searches both nix-darwin and home-manager option docs; use `source` param to filter)
 - done
 
 **Do not invent new tools.**
