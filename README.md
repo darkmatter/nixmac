@@ -52,6 +52,31 @@ devenv shell
 cd apps/native && tauri build --bundles app
 ```
 
+### Updating nix-darwin docs (native app)
+
+The native Tauri app ships a pre-parsed copy of the nix-darwin manual used by the UI. To refresh that data run the provided script:
+
+- Script: [scripts/update-nix-darwin-docs.py](scripts/update-nix-darwin-docs.py#L1-L200)
+- Output JSON (used by the app): [apps/native/src-tauri/resources/nix-darwin-docs.json](apps/native/src-tauri/resources/nix-darwin-docs.json#L1-L5)
+
+Quick steps:
+
+```sh
+# install parser dependencies (should not be needed since they are in the nix dev env)
+python -m pip install --user requests beautifulsoup4
+
+# fetch the manual and write the JSON (default output path)
+python scripts/update-nix-darwin-docs.py
+
+# or specify URL/output explicitly
+python scripts/update-nix-darwin-docs.py --url https://nix-darwin.github.io/nix-darwin/manual/ --out apps/native/src-tauri/resources/nix-darwin-docs.json
+
+# for a local manual HTML file
+python scripts/update-nix-darwin-docs.py --url file:///path/to/manual.html
+```
+
+The script is conservative and best-effort; inspect the resulting JSON before committing.
+
 ### Install and Use nix-darwin
 
 By default, nixmac expects to find a flake-enabled nix configuration at `~/.darwin`. Here is how you can create a minimalist one if you don't already have such a thing *assuming you are using Determinate* since non-Determinate steps will be slightly different:

@@ -37,6 +37,12 @@
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/apps/ai-engine-eval:${env:PYTHONPATH}"
             }
+        },
+        {
+            "name": "Update nix-darwin docs (Python)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/update-nix-darwin_docs.py"
         }
     ]
 }

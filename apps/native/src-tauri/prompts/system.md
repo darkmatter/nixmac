@@ -69,6 +69,7 @@ You may call the following tools:
 - build_check
 - search_code
 - search_packages
+- search_docs
 - done
 
 **Do not invent new tools.**
@@ -124,6 +125,19 @@ Guidance for using `edit_nix_file` correctly:
 
 - If the attribute does not exist, the tool will insert a new list assignment into the module body; prefer to target the correct module file to avoid surprising insertions.
 
+Guidance for using `search_docs` correctly:
+
+- Use `search_docs` to discover or confirm fully-qualified nix-darwin configuration option paths when needed (for example, query `colorpickerdir` to find `homebrew.caskArgs.colorpickerdir`).
+- It **only** searches nix-darwin module options; do **NOT** use it for shell configuration, user environment variables, PATH changes, Git configuration, Starship setup, package configuration, or any task not implemented as a nix-darwin option.
+- Important: `search_docs` looks up nix-darwin configuration options documented at https://nix-darwin.github.io/nix-darwin/manual/
+  — it does not search for package names. Use `search_packages` or other package search tools for that.
+- Call `search_docs` when unsure about exact option names, nesting, or capitalization, but never call it twice with the same query; treat the first call as definitive.
+- If a query returns zero results, treat it as final: do not retry, do not reason further, and respond clearly that the option does not exist.
+- If `search_docs` returns a message starting with `SEARCH_DOCS_NO_RESULTS`, treat it as final: do not retry with synonyms or near-duplicate queries.
+- Do not call `search_docs` if the option path is already known and you can proceed directly.
+- After a `build_check` failure mentioning unknown/missing options or type mismatches, consider `search_docs` with the relevant token(s) before attempting another edit.
+- `search_docs` returns ranked matches; use the top result when confidence is high, otherwise compare the top 2–3 matches to select the best fit for the user’s intent.
+
 ## Thinking & Tool Use
 
 - You have a `think` tool. Use it FREQUENTLY to reason:
@@ -151,6 +165,8 @@ Guidance for using `edit_nix_file` correctly:
 - Keep `think` outputs concise: 1–2 sentences, \<= 200 characters.
 
 - **Think outputs should summarize reasoning and next steps concisely; do not include file edits or commands.**
+
+- If uncertain about option shape during planning/debugging, call `search_docs` before making edits. If confident, skip it.
 
 ## Typical Directory Structure
 
