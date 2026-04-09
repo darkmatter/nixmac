@@ -2,12 +2,14 @@ import { useWidgetStore } from "@/stores/widget-store";
 import type { WatcherEvent } from "@/types/shared";
 import { ipcRenderer } from "@/tauri-api";
 import { useCallback, useRef } from "react";
+import { useHistory } from "@/hooks/use-history";
 
 /**
  * Hook that provides a function to start watching git status changes.
  * Call startWatching() after initialization to subscribe to backend events.
  */
 export function useWatcher() {
+  const { loadHistory } = useHistory();
   const unlistenRef = useRef<(() => void) | null>(null);
   const isSubscribingRef = useRef(false);
 
@@ -38,6 +40,9 @@ export function useWatcher() {
           }
           if (evolveState) {
             store.setEvolveState(evolveState);
+          }
+          if (store.showHistory) {
+            loadHistory();
           }
         }
       }

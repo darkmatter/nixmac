@@ -26,21 +26,6 @@ pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::sh
                 .flatten()
         });
 
-        let change_map = db_commit.as_ref().zip(parent_db.as_ref()).and_then(|(commit, parent_db)| {
-            crate::summarize::find_existing::by_commit_pair(&db_path, commit.id, parent_db.id)
-                .ok()
-                .flatten()
-                .map(|cs| crate::summarize::group_existing::from_change_sets(vec![cs.into()]))
-        });
-
-        let origin_hash = if change_map.is_none() {
-            crate::db::restore_commits::get_origin_hash(&db_path, &git_commit.hash)
-                .ok()
-                .flatten()
-        } else {
-            None
-        };
-
         let raw_changes = git_commits.get(i + 1).and_then(|parent| {
             crate::git::commit_diff(&config_dir, &parent.hash, &git_commit.hash)
                 .ok()
@@ -50,6 +35,33 @@ pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::sh
         let file_count = {
             let unique: HashSet<&str> = raw_changes.iter().map(|c| c.filename.as_str()).collect();
             unique.len()
+        };
+
+        let (change_map, missed_hashes) = if let Some(ref parent) = parent_db {
+            let diff_hashes: Vec<String> = raw_changes.iter().map(|c| c.hash.clone()).collect();
+            match crate::summarize::find_existing::by_base_with_hashes(&db_path, parent.id, &diff_hashes) {
+                Ok(found) => {
+                    let missed = found.missed_hashes.clone();
+                    let grouped = crate::summarize::group_existing::from_change_sets(vec![found]);
+                    let map = if grouped.groups.is_empty() && grouped.singles.is_empty() {
+                        None
+                    } else {
+                        Some(grouped)
+                    };
+                    (map, missed)
+                }
+                Err(_) => (None, vec![]),
+            }
+        } else {
+            (None, vec![])
+        };
+
+        let origin_hash = if change_map.is_none() {
+            crate::db::restore_commits::get_origin_hash(&db_path, &git_commit.hash)
+                .ok()
+                .flatten()
+        } else {
+            None
         };
 
         let is_built = last_built_sha
@@ -74,6 +86,7 @@ pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::sh
             file_count,
             commit: db_commit,
             change_map,
+            missed_hashes,
             raw_changes,
             origin_message: None,
         });
@@ -85,7 +98,7 @@ pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::sh
 }
 
 fn populate_restore_history_items(
-    entries: &mut Vec<crate::shared_types::HistoryItem>,
+    entries: &mut [crate::shared_types::HistoryItem],
     origin_hashes: Vec<Option<String>>,
 ) {
     let hash_to_idx: HashMap<&str, usize> =

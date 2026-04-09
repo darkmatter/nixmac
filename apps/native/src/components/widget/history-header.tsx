@@ -7,7 +7,7 @@ interface HistoryHeaderProps {
 
 export function HistoryHeader({ count }: HistoryHeaderProps) {
   return (
-    <div className="grid grid-cols-2 items-center border-b border-[#2a2a2a] pb-3">
+    <div className="grid grid-cols-2 items-center border-b border-[#2a2a2a] pb-3 mr-4">
       <div className="flex items-center gap-2">
         <Clock className="h-4 w-4 text-neutral-500" />
         <h2 className="text-md font-semibold">History</h2>

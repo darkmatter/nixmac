@@ -41,6 +41,7 @@ export function HistoryItemCard({ item, isRestoring, onRequestRestore }: History
 
   const changeMap = item.changeMap;
   const badges = changeMap ? getSummaryBadges(changeMap) : [];
+  const showAnalyze = (!changeMap || item.missedHashes.length > 0) && !item.isBase;
 
   const toggle = () => setExpanded((prev) => !prev);
 
@@ -94,6 +95,12 @@ export function HistoryItemCard({ item, isRestoring, onRequestRestore }: History
                 External commit
               </span>
             )}
+            {showAnalyze && (
+              <AnalyzeHistoryItemButton
+                hash={item.hash}
+                isPartial={!!(changeMap && item.missedHashes.length > 0)}
+              />
+            )}
           </div>
           {!changeMap && item.rawChanges.length > 0 && (
             <div className="mt-[6px] flex flex-wrap gap-1">
@@ -141,7 +148,7 @@ export function HistoryItemCard({ item, isRestoring, onRequestRestore }: History
           )}
         </div>
 
-        {/* Right: action buttons */}
+        {/* Right: restore button */}
         <div className="flex shrink-0 flex-col items-end gap-1">
           <HistoryRestoreItemButton
             hash={item.hash}
@@ -150,12 +157,6 @@ export function HistoryItemCard({ item, isRestoring, onRequestRestore }: History
             isRestoring={isRestoring}
             onRequestRestore={onRequestRestore}
           />
-          {(!changeMap && !item.isBase) && (
-            <AnalyzeHistoryItemButton
-              hash={item.hash}
-              className="group-hover:bg-accent group-hover:text-accent-foreground"
-            />
-          )}
         </div>
       </div>
 

@@ -172,6 +172,7 @@ const CHANGE_SELECT: &str = "SELECT \
         gs.id AS gs_id, gs.title AS gs_title, gs.description AS gs_description, \
         gs.status AS gs_status, gs.created_at AS gs_created_at";
 
+#[allow(dead_code)]
 pub fn query_change_set_for_commit_pair(
     conn: &Connection,
     commit_id: i64,
