@@ -102,7 +102,11 @@ export type HistoryItem = { hash: string; message: string | null; createdAt: num
 /**
  * Hashes from the commit diff that have no summary in the DB.
  */
-missedHashes: string[]; rawChanges: Change[]; originMessage: string | null }
+missedHashes: string[]; rawChanges: Change[]; originMessage: string | null; 
+/**
+ * True when this is a restore commit whose original commit is no longer in the log.
+ */
+isOrphanedRestore: boolean }
 
 export type SemanticChangeGroup = { summary: ChangeSummary; changes: ChangeWithSummary[] }
 

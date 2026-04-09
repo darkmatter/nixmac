@@ -114,10 +114,10 @@ pub struct HistoryItem {
     pub file_count: usize,
     pub commit: Option<crate::sqlite_types::Commit>,
     pub change_map: Option<SemanticChangeMap>,
-    /// Hashes from the commit diff that have no summary in the DB.
     pub missed_hashes: Vec<String>,
     pub raw_changes: Vec<crate::sqlite_types::Change>,
     pub origin_message: Option<String>,
+    pub is_orphaned_restore: bool,
 }
 
 // =============================================================================

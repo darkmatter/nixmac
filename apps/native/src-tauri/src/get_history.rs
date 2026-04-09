@@ -89,6 +89,7 @@ pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::sh
             missed_hashes,
             raw_changes,
             origin_message: None,
+            is_orphaned_restore: false,
         });
     }
 
@@ -104,31 +105,54 @@ fn populate_restore_history_items(
     let hash_to_idx: HashMap<&str, usize> =
         entries.iter().enumerate().map(|(i, e)| (e.hash.as_str(), i)).collect();
 
-    let inherited: Vec<(usize, String, Option<String>, Option<crate::shared_types::SemanticChangeMap>)> =
-        origin_hashes
-            .iter()
-            .enumerate()
-            .filter_map(|(i, oh)| {
-                oh.as_ref().and_then(|origin_hash| {
-                    let ultimate_idx =
-                        dig_for_origin(&origin_hashes, &hash_to_idx, origin_hash)?;
-                    Some((
+    type Inherited = (
+        usize,
+        String,
+        Option<String>,
+        Option<crate::shared_types::SemanticChangeMap>,
+        Vec<crate::sqlite_types::Change>,
+        Vec<String>,
+        usize,
+    );
+    let mut inherited: Vec<Inherited> = vec![];
+    let mut orphaned_indices: Vec<usize> = vec![];
+
+    for (i, oh) in origin_hashes.iter().enumerate() {
+        if let Some(origin_hash) = oh {
+            match dig_for_origin(&origin_hashes, &hash_to_idx, origin_hash) {
+                Some(ultimate_idx) => {
+                    inherited.push((
                         i,
                         origin_hash.clone(),
                         entries[ultimate_idx].message.clone(),
                         entries[ultimate_idx].change_map.clone(),
-                    ))
-                })
-            })
-            .collect();
+                        entries[ultimate_idx].raw_changes.clone(),
+                        entries[ultimate_idx].missed_hashes.clone(),
+                        entries[ultimate_idx].file_count,
+                    ));
+                }
+                None => orphaned_indices.push(i),
+            }
+        }
+    }
 
     drop(hash_to_idx);
 
-    for (i, origin_hash, origin_message, change_map) in inherited {
+    for (i, origin_hash, origin_message, change_map, raw_changes, missed_hashes, file_count) in inherited {
         let short_hash = &origin_hash[..origin_hash.len().min(8)];
         entries[i].message = Some(format!("Restore commit {short_hash}"));
         entries[i].origin_message = origin_message;
         entries[i].change_map = change_map;
+        entries[i].raw_changes = raw_changes;
+        entries[i].missed_hashes = missed_hashes;
+        entries[i].file_count = file_count;
+    }
+
+    for i in orphaned_indices {
+        let origin_hash = origin_hashes[i].as_ref().unwrap();
+        let short_hash = &origin_hash[..origin_hash.len().min(8)];
+        entries[i].message = Some(format!("Restore commit {short_hash}"));
+        entries[i].is_orphaned_restore = true;
     }
 }
 
