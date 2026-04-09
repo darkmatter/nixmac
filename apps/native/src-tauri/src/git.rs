@@ -431,7 +431,7 @@ pub fn commit_all(dir: &str, message: &str) -> Result<CommitInfo> {
         .current_dir(dir)
         .output()?;
 
-    git_command()
+    let commit_output = git_command()
         .args(["commit", "-m", message])
         .current_dir(dir)
         .output()

@@ -113,9 +113,14 @@ export function useRebuildStream() {
         // Handle success
         if (event.payload.ok) {
           if (options?.onSuccess) {
-            await options.onSuccess();
+            try {
+              await options.onSuccess();
+            } catch (e: unknown) {
+              const msg = (e as Error)?.message || String(e);
+              useWidgetStore.getState().setError(msg);
+            }
           }
-          // Auto-dismiss rebuild panel after success
+          // Auto-dismiss rebuild panel after success (even if onSuccess failed)
           useWidgetStore.getState().clearRebuild();
           currentStore.setProcessing(false);
         } else {

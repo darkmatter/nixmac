@@ -1,7 +1,8 @@
-import { Loader2 } from "lucide-react";
+import { Loader2, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
+import { useApply } from "@/hooks/use-apply";
 import { HistoryCurrentItemBadge } from "@/components/widget/history-current-item-badge";
 import { HistoryBaseItemBadge } from "@/components/widget/history-base-item-badge";
 
@@ -21,9 +22,35 @@ export function HistoryRestoreItemButton({
   onRequestRestore,
 }: HistoryRestoreItemButtonProps) {
   const uncommittedChanges = useWidgetStore((s) => (s.gitStatus?.files?.length ?? 0) > 0);
+  const isHead = useWidgetStore((s) => s.gitStatus?.headCommitHash === hash);
+  const { handleHistoryBuild } = useApply();
 
   if (isBuilt) return <HistoryCurrentItemBadge />;
   if (isBase) return <HistoryBaseItemBadge />;
+
+  const sharedClass = cn(
+    "h-auto whitespace-nowrap border-white/10 bg-white/[0.06] px-[10px] py-1 text-[10px] text-neutral-400 hover:border-white/30",
+    uncommittedChanges && "opacity-40 cursor-default hover:border-white/10 hover:bg-white/[0.06] hover:text-neutral-400",
+  );
+
+  if (isHead) {
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={isRestoring}
+        className={sharedClass}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleHistoryBuild();
+        }}
+      >
+        <Wrench className="h-[10px] w-[10px]" />
+        Build
+      </Button>
+    );
+  }
 
   return (
     <Button
@@ -31,10 +58,7 @@ export function HistoryRestoreItemButton({
       variant="outline"
       size="sm"
       disabled={isRestoring}
-      className={cn(
-        "h-auto whitespace-nowrap border-white/10 bg-white/[0.06] px-[10px] py-1 text-[10px] text-neutral-400 hover:border-white/30",
-        uncommittedChanges && "opacity-40 cursor-default hover:border-white/10 hover:bg-white/[0.06] hover:text-neutral-400",
-      )}
+      className={sharedClass}
       onClick={(e) => {
         e.stopPropagation();
         onRequestRestore(hash);
