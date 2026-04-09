@@ -1,36 +1,47 @@
 //! Database schema initialization and migrations.
 //!
-//! Keep table definitions here in sync with the Rust structs in `src/sqlite_types.rs`
+//! ## Adding a migration
+//! 1. Increment `SCHEMA_VERSION`.
+//! 2. Add a `migrate_N` function with the SQL delta (ALTER TABLE, CREATE TABLE, etc.).
+//! 3. Add `if version < N { migrate_N(&conn)?; }` to `init_schema`.
+//!
+//! Each migration only runs when the DB is below its version, so parallel
+//! feature branches can add independent migrations without stomping each other.
+//!
+//! Keep table definitions in sync with the Rust structs in `src/sqlite_types.rs`.
 
 use anyhow::Result;
 use rusqlite::Connection;
 use std::path::Path;
 
-const SCHEMA_VERSION: i32 = 1;
+const SCHEMA_VERSION: i32 = 2;
 
-/// Initialize schema, creating tables if needed
+/// Initialize schema, running any pending migrations.
 pub async fn init_schema(db_path: &Path) -> Result<()> {
     let path = db_path.to_path_buf();
 
     tokio::task::spawn_blocking(move || {
         let conn = Connection::open(&path)?;
 
-        // Check current version
         let version: i32 = conn
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .unwrap_or(0);
 
-        if version < SCHEMA_VERSION {
-            create_tables(&conn)?;
-            conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
+        if version < 1 {
+            migrate_1(&conn)?;
+        }
+        if version < 2 {
+            migrate_2(&conn)?;
         }
 
+        conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
         Ok(())
     })
     .await?
 }
 
-fn create_tables(conn: &Connection) -> Result<()> {
+/// Initial schema — all tables and indexes present at launch.
+fn migrate_1(conn: &Connection) -> Result<()> {
     conn.execute_batch(
         r#"
         CREATE TABLE IF NOT EXISTS commits (
@@ -112,6 +123,20 @@ fn create_tables(conn: &Connection) -> Result<()> {
         CREATE INDEX IF NOT EXISTS idx_change_sets_base ON change_sets(base_commit_id);
         CREATE INDEX IF NOT EXISTS idx_set_changes_change ON set_changes(change_id);
         CREATE INDEX IF NOT EXISTS idx_queued_summaries_status ON queued_summaries(status);
+        "#,
+    )?;
+
+    Ok(())
+}
+
+/// Add restore_commits table for tracking restore provenance.
+fn migrate_2(conn: &Connection) -> Result<()> {
+    conn.execute_batch(
+        r#"
+        CREATE TABLE IF NOT EXISTS restore_commits (
+            commit_hash TEXT PRIMARY KEY,
+            origin_hash TEXT NOT NULL
+        );
         "#,
     )?;
 
