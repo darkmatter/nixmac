@@ -1,7 +1,7 @@
 //! Git operations for tracking and recording configuration changes.
 
 use crate::types::{GitFileStatus, GitStatus};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use std::ffi::OsStr;
 use std::path::Path;
 use std::process::{Command, Output};
@@ -243,11 +243,7 @@ pub fn get_last_built_commit_sha(dir: &str) -> Option<String> {
         .output()
         .ok()?;
 
-    if output.status.success() {
-        Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
-    } else {
-        None
-    }
+    Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
 /// Gets the SHA of any ref (branch name, tag, or symbolic ref like HEAD).
@@ -257,11 +253,8 @@ pub fn get_ref_sha(dir: &str, ref_name: &str) -> Option<String> {
         .current_dir(dir)
         .output()
         .ok()?;
-    if output.status.success() {
-        Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
-    } else {
-        None
-    }
+
+    Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
 /// Gets the SHA of the current HEAD commit.
@@ -288,16 +281,8 @@ pub fn current_branch(dir: &str) -> Option<String> {
         .output()
         .ok()?;
 
-    if output.status.success() {
-        let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        if branch != "HEAD" {
-            Some(branch)
-        } else {
-            None
-        }
-    } else {
-        None
-    }
+    let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if branch != "HEAD" { Some(branch) } else { None }
 }
 
 /// Comprehensive git status against HEAD.
@@ -541,11 +526,8 @@ pub fn tag_commit(dir: &str, tag: &str, target: &str, force: bool) -> Result<()>
     }
     args.push(tag);
     args.push(target);
-    let output = git_command().args(&args).current_dir(dir).output()?;
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("Failed to create tag `{}`: {}", tag, stderr);
-    }
+    git_command().args(&args).current_dir(dir).output()
+        .with_context(|| format!("failed to create tag `{}`", tag))?;
     Ok(())
 }
 
@@ -564,7 +546,7 @@ pub fn create_evolution_backup(
     evolution_id: Option<i64>,
     changeset_id: i64,
 ) -> Result<Option<String>> {
-    let head_diff = get_full_diff(repo_path).unwrap_or_default();
+    let head_diff = get_full_diff(repo_path)?;
     if head_diff.is_empty() && changeset_id == 0 {
         return Ok(None);
     }
@@ -575,48 +557,36 @@ pub fn create_evolution_backup(
         changeset_id
     );
 
-    let add_output = git_command()
+    git_command()
         .args(["add", "--all"])
         .current_dir(repo_path)
-        .output()?;
-    if !add_output.status.success() {
-        let stderr = String::from_utf8_lossy(&add_output.stderr);
-        anyhow::bail!("git add --all failed: {}", stderr);
-    }
+        .output()
+        .context("git add --all")?;
 
-    let tree_output = git_command()
+    let tree_hash = git_command()
         .args(["write-tree"])
         .current_dir(repo_path)
-        .output()?;
-    if !tree_output.status.success() {
-        let stderr = String::from_utf8_lossy(&tree_output.stderr);
-        anyhow::bail!("git write-tree failed: {}", stderr);
-    }
-    let tree_hash = String::from_utf8_lossy(&tree_output.stdout).trim().to_string();
+        .output()
+        .context("git write-tree")
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())?;
 
     let head_hash = get_head_sha(repo_path)
         .ok_or_else(|| anyhow::anyhow!("failed to resolve HEAD"))?;
 
     let commit_msg = format!("nixmac backup: {}", branch_name);
-    let commit_output = git_command()
+    let commit_hash = git_command()
         .args(["commit-tree", &tree_hash, "-p", &head_hash, "-m", &commit_msg])
         .current_dir(repo_path)
-        .output()?;
-    if !commit_output.status.success() {
-        let stderr = String::from_utf8_lossy(&commit_output.stderr);
-        anyhow::bail!("git commit-tree failed: {}", stderr);
-    }
-    let commit_hash = String::from_utf8_lossy(&commit_output.stdout).trim().to_string();
+        .output()
+        .context("git commit-tree")
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())?;
 
     let ref_path = format!("refs/heads/{}", branch_name);
-    let ref_output = git_command()
+    git_command()
         .args(["update-ref", &ref_path, &commit_hash])
         .current_dir(repo_path)
-        .output()?;
-    if !ref_output.status.success() {
-        let stderr = String::from_utf8_lossy(&ref_output.stderr);
-        anyhow::bail!("git update-ref failed: {}", stderr);
-    }
+        .output()
+        .context("git update-ref")?;
 
     Ok(Some(branch_name))
 }
@@ -624,14 +594,11 @@ pub fn create_evolution_backup(
 /// Restore working tree from backup index state without moving HEAD.
 /// Assumes the real index is still in the backup state (AI does not run git commands).
 pub fn restore_from_backup(repo_path: &str) -> Result<()> {
-    let checkout_output = git_command()
+    git_command()
         .args(["checkout-index", "-f", "-a"])
         .current_dir(repo_path)
-        .output()?;
-    if !checkout_output.status.success() {
-        let stderr = String::from_utf8_lossy(&checkout_output.stderr);
-        anyhow::bail!("git checkout-index failed: {}", stderr);
-    }
+        .output()
+        .context("git checkout-index")?;
 
     git_command()
         .args(["clean", "-fd"])
