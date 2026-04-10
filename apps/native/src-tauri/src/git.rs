@@ -97,46 +97,6 @@ pub fn get_full_diff(dir: &str) -> Result<String> {
     Ok(diff)
 }
 
-/// Gets the diff of uncommitted changes against HEAD (staged + unstaged + untracked).
-pub fn get_head_diff(dir: &str) -> Result<String> {
-    // Get diff for tracked files (both staged and unstaged)
-    let diff_output = git_command()
-        .args(["diff", "HEAD"])
-        .current_dir(dir)
-        .output()?;
-
-    let mut diff = String::from_utf8_lossy(&diff_output.stdout).to_string();
-
-    // Also get untracked files and show their contents as diffs
-    let untracked_output = git_command()
-        .args(["ls-files", "--others", "--exclude-standard"])
-        .current_dir(dir)
-        .output()?;
-
-    let untracked_files = String::from_utf8_lossy(&untracked_output.stdout);
-
-    for file in untracked_files.lines() {
-        if file.is_empty() {
-            continue;
-        }
-        let file_path = std::path::Path::new(dir).join(file);
-        if let Ok(contents) = std::fs::read_to_string(&file_path) {
-            // Format as a diff showing the entire file as added
-            diff.push_str(&format!("\ndiff --git a/{} b/{}\n", file, file));
-            diff.push_str("new file mode 100644\n");
-            diff.push_str("--- /dev/null\n");
-            diff.push_str(&format!("+++ b/{}\n", file));
-            let line_count = contents.lines().count();
-            diff.push_str(&format!("@@ -0,0 +1,{} @@\n", line_count));
-            for line in contents.lines() {
-                diff.push_str(&format!("+{}\n", line));
-            }
-        }
-    }
-
-    Ok(diff)
-}
-
 /// Gets a diff containing only .nix files (including untracked .nix files).
 pub fn get_nix_diff(dir: &str) -> Result<String> {
     let diff_output = git_command()
@@ -319,8 +279,7 @@ pub fn status(dir: &str) -> Result<GitStatus> {
 
     let head_commit_hash = get_head_sha(dir);
 
-    let head_diff = get_head_diff(dir).unwrap_or_default();
-    let clean_head = head_diff.is_empty();
+    let clean_head = diff.is_empty();
 
     let changes = crate::changes_from_diff::changes_from_diff(&diff, 0, false);
 
@@ -522,49 +481,6 @@ pub fn restore_all(dir: &str) -> Result<()> {
     Ok(())
 }
 
-#[allow(dead_code)]
-pub fn checkout_new_branch(dir: &str, branch_name: &str) -> Result<String> {
-    for version in 1..=100 {
-        let name = if version == 1 {
-            branch_name.to_string()
-        } else {
-            format!("{}-v{}", branch_name, version)
-        };
-
-        let output = git_command()
-            .args(["checkout", "-b", &name])
-            .current_dir(dir)
-            .output()?;
-
-        if output.status.success() {
-            return Ok(name);
-        }
-
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        if !stderr.contains("already exists") {
-            anyhow::bail!("Failed to create branch: {}", stderr);
-        }
-    }
-
-    anyhow::bail!("Too many versions of branch {}", branch_name)
-}
-
-#[allow(dead_code)]
-pub fn checkout_branch(dir: &str, branch_name: &str) -> Result<()> {
-    let output = git_command()
-        .args(["checkout", branch_name])
-        .current_dir(dir)
-        .output()?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("Failed to checkout branch: {}", stderr);
-    }
-
-    Ok(())
-}
-
-
 /// Returns all tags for `hash`.
 pub fn read_tags(dir: &str, hash: &str) -> Vec<String> {
     let Ok(output) = git_command()
@@ -612,7 +528,7 @@ pub fn create_evolution_backup(
     evolution_id: Option<i64>,
     changeset_id: i64,
 ) -> Result<Option<String>> {
-    let head_diff = get_head_diff(repo_path).unwrap_or_default();
+    let head_diff = get_full_diff(repo_path).unwrap_or_default();
     if head_diff.is_empty() && changeset_id == 0 {
         return Ok(None);
     }
