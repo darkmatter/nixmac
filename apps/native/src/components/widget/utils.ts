@@ -76,15 +76,19 @@ export type CategoryStyle = {
   border: string;
 };
 
-const CATEGORY_PALETTE: CategoryStyle[] = [
-  { text: "text-emerald-500", bg: "bg-emerald-500/[0.08]", dot: "bg-emerald-500", border: "border-emerald-500/40" },
-  { text: "text-blue-500",    bg: "bg-blue-500/[0.08]",    dot: "bg-blue-500",    border: "border-blue-500/40" },
-  { text: "text-amber-500",   bg: "bg-amber-500/[0.08]",   dot: "bg-amber-500",   border: "border-amber-500/40" },
-  { text: "text-violet-500",  bg: "bg-violet-500/[0.08]",  dot: "bg-violet-500",  border: "border-violet-500/40" },
-  { text: "text-rose-500",    bg: "bg-rose-500/[0.08]",    dot: "bg-rose-500",    border: "border-rose-500/40" },
-  { text: "text-cyan-500",    bg: "bg-cyan-500/[0.08]",    dot: "bg-cyan-500",    border: "border-cyan-500/40" },
-  { text: "text-orange-400",  bg: "bg-orange-400/[0.08]",  dot: "bg-orange-400",  border: "border-orange-400/40" },
-  { text: "text-teal-500",    bg: "bg-teal-500/[0.08]",    dot: "bg-teal-500",    border: "border-teal-500/40" },
+const EMERALD: CategoryStyle = { text: "text-emerald-500", bg: "bg-emerald-500/[0.08]", dot: "bg-emerald-500", border: "border-emerald-500/40" };
+const BLUE: CategoryStyle    = { text: "text-blue-500",    bg: "bg-blue-500/[0.08]",    dot: "bg-blue-500",    border: "border-blue-500/40" };
+const AMBER: CategoryStyle   = { text: "text-amber-500",   bg: "bg-amber-500/[0.08]",   dot: "bg-amber-500",   border: "border-amber-500/40" };
+const VIOLET: CategoryStyle  = { text: "text-violet-500",  bg: "bg-violet-500/[0.08]",  dot: "bg-violet-500",  border: "border-violet-500/40" };
+const GRAY: CategoryStyle    = { text: "text-gray-500",    bg: "bg-gray-500/[0.08]",    dot: "bg-gray-500",    border: "border-gray-500/40" };
+
+const CATEGORY_PALETTE: CategoryStyle[] = [EMERALD, BLUE, AMBER, VIOLET, GRAY];
+
+const KEYWORD_STYLES: Array<{ keywords: string[]; style: CategoryStyle }> = [
+  { keywords: ["config", "settings", "option", "nix", "darwin", "home", "profile"], style: EMERALD },
+  { keywords: ["service", "system", "network", "daemon", "module"],                 style: BLUE },
+  { keywords: ["package", "program", "install", "app", "plugin", "tool"],           style: AMBER },
+  { keywords: ["theme", "visual", "color", "style", "font", "ui", "appearance"],    style: VIOLET },
 ];
 
 export function getCategoryStyle(title: string): CategoryStyle {
@@ -93,6 +97,39 @@ export function getCategoryStyle(title: string): CategoryStyle {
     hash = (hash * 31 + title.charCodeAt(i)) >>> 0;
   }
   return CATEGORY_PALETTE[hash % CATEGORY_PALETTE.length];
+}
+
+export type ColorMap = Map<string, CategoryStyle>;
+
+import type { SemanticChangeMap } from "@/types/shared";
+
+export function buildColorMap(changeMap: SemanticChangeMap): ColorMap {
+  const map: ColorMap = new Map();
+  const used = new Set<CategoryStyle>();
+  const assignable = [EMERALD, BLUE, AMBER, VIOLET];
+
+  const assign = (key: string, title: string, forceColor: boolean) => {
+    const lower = title.toLowerCase();
+    const preferred = KEYWORD_STYLES.find(({ keywords }) => keywords.some((k) => lower.includes(k)))?.style ?? null;
+
+    if (preferred && !used.has(preferred)) {
+      map.set(key, preferred);
+      used.add(preferred);
+    } else {
+      const next = assignable.find((s) => !used.has(s));
+      if (next) {
+        map.set(key, next);
+        used.add(next);
+      } else {
+        map.set(key, forceColor ? (preferred ?? GRAY) : GRAY);
+      }
+    }
+  };
+
+  for (const g of changeMap.groups) assign(String(g.summary.id), g.summary.title, true);
+  for (const s of changeMap.singles) assign(s.hash, s.title, false);
+
+  return map;
 }
 
 // =============================================================================
@@ -112,6 +149,14 @@ function isSameDay(a: Date, b: Date): boolean {
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate()
   );
+}
+
+export function formatRelativeTime(unixSeconds: number): string {
+  const diff = Math.floor(Date.now() / 1000 - unixSeconds);
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} hr ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
 }
 
 export function getDayLabel(unixSeconds: number): string {

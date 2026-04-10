@@ -5,9 +5,9 @@ import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { darwinAPI } from "@/tauri-api";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { groupByDay } from "@/components/widget/utils";
-import { HistoryDayLabel } from "@/components/widget/history-day-label";
-import { HistoryHeader } from "@/components/widget/history-header";
-import { HistoryItemCard } from "@/components/widget/history-item-card";
+import { HistoryDayLabel } from "@/components/widget/history/history-day-label";
+import { HistoryHeader } from "@/components/widget/history/history-header";
+import { HistoryItemCard } from "@/components/widget/history/history-item-card";
 import { UncommittedChangesDetected } from "@/components/widget/uncommitted-changes-detected";
 import { DiscardUncommittedDialog } from "@/components/widget/discard-uncommitted-dialog";
 
@@ -17,7 +17,6 @@ export function HistoryStep() {
   const gitStatus = useWidgetStore((state) => state.gitStatus);
   const setProcessing = useWidgetStore((state) => state.setProcessing);
   const { triggerRebuild } = useRebuildStream();
-
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const [restoringHash, setRestoringHash] = useState<string | null>(null);

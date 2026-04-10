@@ -38,7 +38,10 @@ pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::sh
         };
 
         let (change_map, missed_hashes) = if let Some(ref parent) = parent_db {
-            let diff_hashes: Vec<String> = raw_changes.iter().map(|c| c.hash.clone()).collect();
+            let diff_hashes: Vec<String> = raw_changes.iter()
+            .filter(|c| !crate::changes_from_diff::is_sensitive_or_opaque(c))
+            .map(|c| c.hash.clone())
+            .collect();
             match crate::summarize::find_existing::by_base_with_hashes(&db_path, parent.id, &diff_hashes) {
                 Ok(found) => {
                     let missed = found.missed_hashes.clone();

@@ -98,15 +98,7 @@ export type GitStatus = { files: GitFileStatus[]; branch: string | null; headIsB
 /**
  * A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.
  */
-export type HistoryItem = { hash: string; message: string | null; createdAt: number; isBuilt: boolean; isBase: boolean; isExternal: boolean; fileCount: number; commit: Commit | null; changeMap: SemanticChangeMap | null; 
-/**
- * Hashes from the commit diff that have no summary in the DB.
- */
-missedHashes: string[]; rawChanges: Change[]; originMessage: string | null; 
-/**
- * True when this is a restore commit whose original commit is no longer in the log.
- */
-isOrphanedRestore: boolean }
+export type HistoryItem = { hash: string; message: string | null; createdAt: number; isBuilt: boolean; isBase: boolean; isExternal: boolean; fileCount: number; commit: Commit | null; changeMap: SemanticChangeMap | null; missedHashes: string[]; rawChanges: Change[]; originMessage: string | null; isOrphanedRestore: boolean }
 
 export type SemanticChangeGroup = { summary: ChangeSummary; changes: ChangeWithSummary[] }
 

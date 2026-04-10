@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
 import { useHistory } from "@/hooks/use-history";
-
 interface AnalyzeHistoryItemButtonProps {
   hash: string;
   isPartial?: boolean;

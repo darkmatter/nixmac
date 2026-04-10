@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import { cn } from "@/lib/utils";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { Check } from "lucide-react";
@@ -41,7 +42,7 @@ export function Stepper() {
 					const isLast = index === 2;
 
 					return (
-						<>
+						<Fragment key={stepInfo.name}>
 							{/* Step cell */}
 							<div
 								role="listitem"
@@ -52,7 +53,6 @@ export function Stepper() {
 									isMiddle && "justify-center",
 									isLast && "justify-start",
 								)}
-								key={stepInfo.name}
 							>
 								{/* Circle - hidden below xs */}
 								<div
@@ -111,7 +111,7 @@ export function Stepper() {
 									)}
 								/>
 							)}
-						</>
+						</Fragment>
 					);
 				})}
 			</div>
