@@ -1,0 +1,29 @@
+{
+  "dependencies": {
+    "@aws-sdk/client-iam": "^3.953.0",
+    "@aws-sdk/client-kms": "^3.953.0",
+    "@aws-sdk/client-ssm": "^3.953.0",
+    "@aws-sdk/client-sts": "^3.953.0",
+    "alchemy": "^0.81.2"
+  },
+  "devDependencies": {
+    "bun2nix": "latest"
+  },
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "name": "@nixmac/infra",
+  "private": true,
+  "scripts": {
+    "alchemy:deploy": "alchemy deploy",
+    "alchemy:destroy": "alchemy destroy",
+    "alchemy:dev": "alchemy dev",
+    "postinstall": "test -f bun.lock && bun2nix -o bun.nix || true"
+  },
+  "type": "module"
+}

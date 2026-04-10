@@ -9,6 +9,13 @@ export default defineConfig({
   server: {
     port: 3001,
   },
+  // In Nix builds, Nitro's nf3/nft file tracer fails in the sandbox because it
+  // tries to resolve symlinks across the build tree. noExternals bundles all
+  // JS deps into the server bundle instead, which is the correct approach for
+  // a self-contained Nix derivation.
+  nitro: {
+    noExternals: true,
+  },
   plugins: [
     tsConfigPaths({
       projects: ["./tsconfig.json"],

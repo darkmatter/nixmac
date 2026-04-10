@@ -119,3 +119,17 @@ untracked
 .dolt/
 *.db
 .beads-credential-key
+
+# ── BEGIN stackpanel ──
+# DO NOT EDIT between these markers — managed by stackpanel
+.stack/bin/
+.stack/config.local.nix
+.stack/gen/
+.stack/keys/
+.stack/profile/
+.stack/state/
+.tasks
+/devshell
+packages/scripts/entrypoints/
+process-compose.yaml
+# ── END stackpanel ──
