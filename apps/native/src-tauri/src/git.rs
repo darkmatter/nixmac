@@ -2,11 +2,46 @@
 
 use crate::types::{GitFileStatus, GitStatus};
 use anyhow::Result;
-use std::process::Command;
+use std::ffi::OsStr;
+use std::path::Path;
+use std::process::{Command, Output};
 use tauri::AppHandle;
 
+/// Wraps git commands, errs with Stderr on exit with non-zero status
+struct GitCommand(Command);
+
+impl GitCommand {
+    fn args<I, S>(&mut self, args: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        self.0.args(args);
+        self
+    }
+
+    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
+        self.0.arg(arg);
+        self
+    }
+
+    fn current_dir<P: AsRef<Path>>(&mut self, dir: P) -> &mut Self {
+        self.0.current_dir(dir);
+        self
+    }
+
+    fn output(&mut self) -> Result<Output> {
+        let out = self.0.output()?;
+        if !out.status.success() {
+            let stderr = String::from_utf8_lossy(&out.stderr);
+            anyhow::bail!("Git error: {}", stderr.trim());
+        }
+        Ok(out)
+    }
+}
+
 /// Identity and hooks injected so nixmac doesn't inherit user's config
-fn git_command() -> Command {
+fn git_command() -> GitCommand {
     let mut cmd = Command::new("git");
     cmd.env("PATH", crate::nix::get_nix_path());
     cmd.args([
@@ -19,7 +54,7 @@ fn git_command() -> Command {
         "-c",
         "core.hooksPath=/dev/null",
     ]);
-    cmd
+    GitCommand(cmd)
 }
 
 /// Checks if a directory is inside a git repository.
@@ -270,7 +305,7 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     require_repo(dir)?;
     let branch = current_branch(dir);
 
-    let diff = get_full_diff(dir).unwrap_or_default();
+    let diff = get_full_diff(dir)?;
     let (additions, deletions) = count_diff_changes(&diff);
 
     let files = parse_files_from_diff(&diff);
@@ -414,7 +449,8 @@ pub fn commit_all(dir: &str, message: &str) -> Result<CommitInfo> {
     git_command()
         .args(["commit", "-m", message])
         .current_dir(dir)
-        .output()?;
+        .output()
+        .ok();
 
     // Get commit hash
     let hash_output = git_command()
