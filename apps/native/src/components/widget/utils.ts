@@ -132,58 +132,10 @@ export function buildColorMap(changeMap: SemanticChangeMap): ColorMap {
   return map;
 }
 
-// =============================================================================
-// HISTORY UTILS
-// =============================================================================
-
-import type { HistoryItem } from "@/tauri-api";
-
-export interface HistoryDayGroup {
-  label: string;
-  items: HistoryItem[];
-}
-
-function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-
 export function formatRelativeTime(unixSeconds: number): string {
   const diff = Math.floor(Date.now() / 1000 - unixSeconds);
   if (diff < 60) return "just now";
   if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)} hr ago`;
   return `${Math.floor(diff / 86400)}d ago`;
-}
-
-export function getDayLabel(unixSeconds: number): string {
-  const date = new Date(unixSeconds * 1000);
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-
-  if (isSameDay(date, today)) return "Today";
-  if (isSameDay(date, yesterday)) return "Yesterday";
-  return date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
-}
-
-export function groupByDay(items: HistoryItem[]): HistoryDayGroup[] {
-  const historyByDay: HistoryDayGroup[] = [];
-  const seen = new Map<string, number>();
-
-  for (const item of items) {
-    const label = getDayLabel(item.createdAt);
-    const idx = seen.get(label);
-    if (idx !== undefined) {
-      historyByDay[idx].items.push(item);
-    } else {
-      seen.set(label, historyByDay.length);
-      historyByDay.push({ label, items: [item] });
-    }
-  }
-
-  return historyByDay;
 }

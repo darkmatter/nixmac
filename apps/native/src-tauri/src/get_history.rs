@@ -92,7 +92,9 @@ pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::sh
             missed_hashes,
             raw_changes,
             origin_message: None,
+            origin_hash: None,
             is_orphaned_restore: false,
+            is_undone: false,
         });
     }
 
@@ -110,7 +112,7 @@ fn populate_restore_history_items(
 
     type Inherited = (
         usize,
-        String,
+        String,  // ultimate origin hash — always the deepest non-restore ancestor
         Option<String>,
         Option<crate::shared_types::SemanticChangeMap>,
         Vec<crate::sqlite_types::Change>,
@@ -126,7 +128,7 @@ fn populate_restore_history_items(
                 Some(ultimate_idx) => {
                     inherited.push((
                         i,
-                        origin_hash.clone(),
+                        entries[ultimate_idx].hash.clone(),  // ultimate, not direct
                         entries[ultimate_idx].message.clone(),
                         entries[ultimate_idx].change_map.clone(),
                         entries[ultimate_idx].raw_changes.clone(),
@@ -139,12 +141,30 @@ fn populate_restore_history_items(
         }
     }
 
+    // Mark items between each restore commit and its direct origin as undone.
+    // history is newest-first: restore at index i, origin at index j where j > i.
+    let mut undone_indices = HashSet::new();
+    for (i, oh) in origin_hashes.iter().enumerate() {
+        if let Some(ref oh_str) = oh {
+            if let Some(&origin_idx) = hash_to_idx.get(oh_str.as_str()) {
+                for k in (i + 1)..origin_idx {
+                    undone_indices.insert(k);
+                }
+            }
+        }
+    }
+
     drop(hash_to_idx);
+
+    for k in undone_indices {
+        entries[k].is_undone = true;
+    }
 
     for (i, origin_hash, origin_message, change_map, raw_changes, missed_hashes, file_count) in inherited {
         let short_hash = &origin_hash[..origin_hash.len().min(8)];
         entries[i].message = Some(format!("Restore commit {short_hash}"));
         entries[i].origin_message = origin_message;
+        entries[i].origin_hash = Some(origin_hash);
         entries[i].change_map = change_map;
         entries[i].raw_changes = raw_changes;
         entries[i].missed_hashes = missed_hashes;
@@ -155,6 +175,7 @@ fn populate_restore_history_items(
         let origin_hash = origin_hashes[i].as_ref().unwrap();
         let short_hash = &origin_hash[..origin_hash.len().min(8)];
         entries[i].message = Some(format!("Restore commit {short_hash}"));
+        entries[i].origin_hash = Some(origin_hash.clone());
         entries[i].is_orphaned_restore = true;
     }
 }

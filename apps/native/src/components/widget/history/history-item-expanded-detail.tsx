@@ -3,13 +3,13 @@ import type { ColorMap } from "@/components/widget/utils";
 import { SinglesSection } from "@/components/widget/summaries/singles-section";
 import { SummaryGroup } from "@/components/widget/summaries/summary-group";
 
-interface HistoryItemExpandedDetailProps {
+interface HistoryDetailedChangeInfoProps {
   item: HistoryItem;
   colorMap: ColorMap;
   expanded: boolean;
 }
 
-export function HistoryItemExpandedDetail({ item, colorMap, expanded }: HistoryItemExpandedDetailProps) {
+export function HistoryDetailedChangeInfo({ item, colorMap, expanded }: HistoryDetailedChangeInfoProps) {
   if (!item.changeMap || !expanded) return null;
   const { groups, singles } = item.changeMap;
   if (groups.length === 0 && singles.length === 0) return null;

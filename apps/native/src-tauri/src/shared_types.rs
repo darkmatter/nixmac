@@ -117,7 +117,9 @@ pub struct HistoryItem {
     pub missed_hashes: Vec<String>,
     pub raw_changes: Vec<crate::sqlite_types::Change>,
     pub origin_message: Option<String>,
+    pub origin_hash: Option<String>,
     pub is_orphaned_restore: bool,
+    pub is_undone: bool,
 }
 
 // =============================================================================

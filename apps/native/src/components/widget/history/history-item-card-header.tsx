@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
 
-interface CardContentWrapperProps {
+interface HistoryCommitInfoProps {
   header: ReactNode;
   actions: ReactNode;
   children?: ReactNode;
 }
 
-export function CardContentWrapper({ header, actions, children }: CardContentWrapperProps) {
+export function HistoryCommitInfo({ header, actions, children }: HistoryCommitInfoProps) {
   return (
     <div>
       <div className="flex items-start justify-between gap-[10px]">

@@ -6,7 +6,7 @@ import { buildColorMap } from "@/components/widget/utils";
 import type { ColorMap } from "@/components/widget/utils";
 import { useWidgetStore } from "@/stores/widget-store";
 
-export type ActionType = "current" | "base" | "build" | "restore";
+export type ActionType = "current" | "base" | "build" | "restore" | "preview";
 
 interface UseHistoryCardResult {
   expanded: boolean;
@@ -17,7 +17,7 @@ interface UseHistoryCardResult {
   handleKeyDown: (e: KeyboardEvent) => void;
 }
 
-export function useHistoryCard(item: HistoryItem): UseHistoryCardResult {
+export function useHistoryCard(item: HistoryItem, isPreview = false): UseHistoryCardResult {
   const [expanded, setExpanded] = useState(false);
   const isHead = useWidgetStore((s) => s.gitStatus?.headCommitHash === item.hash);
 
@@ -35,26 +35,33 @@ export function useHistoryCard(item: HistoryItem): UseHistoryCardResult {
 
   const borderColor = item.isBuilt ? "border-teal-400/40" : "border-white/[0.12]";
   const interactivity = item.changeMap
-    ? cn("cursor-pointer", !item.isBuilt && "hover:border-white/25 hover:bg-[#141414]")
+    ? cn(
+        "cursor-pointer",
+        item.isBuilt
+          ? "group-hover:border-teal-400/50"
+          : "group-hover:border-white/35 group-hover:bg-[#151515]",
+      )
     : "cursor-default";
   const expandedStyles = expanded
     ? cn("bg-[#151515]", item.isBuilt ? "border-teal-400/50" : "border-white/35")
     : undefined;
 
   const cardClassName = cn(
-    "group rounded-[10px] border-2 bg-[#111111] px-[14px] py-3 mb-2 transition-colors duration-150",
+    "rounded-[10px] border-2 bg-[#111111] px-[14px] py-3 transition-colors duration-150",
     borderColor,
     interactivity,
     expandedStyles,
   );
 
-  const actionType: ActionType = item.isBuilt
-    ? "current"
-    : item.isBase
-      ? "base"
-      : isHead
-        ? "build"
-        : "restore";
+  const actionType: ActionType = isPreview
+    ? "preview"
+    : item.isBuilt
+      ? "current"
+      : item.isBase
+        ? "base"
+        : isHead
+          ? "build"
+          : "restore";
 
   return { expanded, colorMap, cardClassName, actionType, handleCardClick, handleKeyDown };
 }
