@@ -320,6 +320,28 @@ pub fn create_tools() -> Vec<Tool> {
             }),
         },
         Tool {
+            name: "ask_user".to_string(),
+            description: "Ask the user a question and wait for their response. Use this when you \
+                         need clarification, want to confirm a destructive action, or need the user \
+                         to choose between options. The question should be clear and specific. \
+                         Optionally provide a list of choices for the user to pick from.".to_string(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "question": {
+                        "type": "string",
+                        "description": "The question to ask the user"
+                    },
+                    "choices": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "Optional list of choices for the user to pick from"
+                    }
+                },
+                "required": ["question"]
+            }),
+        },
+        Tool {
             name: "done".to_string(),
             description: "Signal that all changes are complete. IMPORTANT: Only call this AFTER \
                          you have verified your changes with build_check and are confident they work.".to_string(),
@@ -363,6 +385,11 @@ pub enum ToolResult {
         thought: String,
     },
     EditSemantic(SemanticFileEdit),
+    /// Agent wants to ask the user a question
+    Question {
+        question: String,
+        choices: Option<Vec<String>>,
+    },
 }
 
 /// Execute a tool call and return the result
@@ -700,6 +727,23 @@ pub fn execute_tool(
 
             let result = execute_search_docs(query, limit, source_filter)?;
             Ok(ToolResult::Continue(result))
+        }
+
+        "ask_user" => {
+            let question = args["question"]
+                .as_str()
+                .ok_or_else(|| anyhow!("ask_user: missing question"))?
+                .to_string();
+            let choices = args["choices"]
+                .as_array()
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(str::to_string))
+                        .collect::<Vec<_>>()
+                });
+
+            info!("❓ Agent asking user: {}", question);
+            Ok(ToolResult::Question { question, choices })
         }
 
         "done" => {

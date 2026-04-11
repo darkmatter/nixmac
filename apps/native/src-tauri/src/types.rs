@@ -269,6 +269,8 @@ pub enum EvolveEventType {
     Info,
     /// Generating summary
     Summarizing,
+    /// Agent is asking the user a question
+    Question,
 }
 
 impl EvolveEvent {
@@ -379,6 +381,7 @@ impl EvolveEvent {
             "search_docs" => "Searching docs...".to_string(),
             "build_check" => "Running build check...".to_string(),
             "think" => "Thinking...".to_string(),
+            "ask_user" => "Asking a question...".to_string(),
             "done" => "Finishing up...".to_string(),
             _ => format!("Using {} tool...", tool),
         };
@@ -439,6 +442,25 @@ impl EvolveEvent {
             message.to_string(),
             message.to_string(),
             iter,
+            start_time,
+        )
+    }
+
+    pub fn question(
+        start_time: i64,
+        iter: usize,
+        question: &str,
+        choices: &Option<Vec<String>>,
+    ) -> Self {
+        let raw = match choices {
+            Some(c) => format!("{}\nChoices: {}", question, c.join(", ")),
+            None => question.to_string(),
+        };
+        Self::new(
+            EvolveEventType::Question,
+            raw,
+            question.to_string(),
+            Some(iter),
             start_time,
         )
     }

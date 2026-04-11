@@ -272,6 +272,42 @@ fn reset_evolve_cancelled() {
     EVOLVE_CANCELLED.store(false, std::sync::atomic::Ordering::SeqCst);
 }
 
+/// Global channel for user responses to agent questions.
+/// The sender is held here; the receiver is consumed by the evolve loop.
+static QUESTION_RESPONSE: std::sync::OnceLock<
+    tokio::sync::Mutex<(
+        tokio::sync::mpsc::Sender<String>,
+        tokio::sync::mpsc::Receiver<String>,
+    )>,
+> = std::sync::OnceLock::new();
+
+fn get_question_channel() -> &'static tokio::sync::Mutex<(
+    tokio::sync::mpsc::Sender<String>,
+    tokio::sync::mpsc::Receiver<String>,
+)> {
+    QUESTION_RESPONSE.get_or_init(|| {
+        let (tx, rx) = tokio::sync::mpsc::channel(1);
+        tokio::sync::Mutex::new((tx, rx))
+    })
+}
+
+/// Send a user's answer to the evolve loop's pending question.
+pub async fn send_question_response(answer: String) -> anyhow::Result<()> {
+    let channel = get_question_channel();
+    let lock = channel.lock().await;
+    lock.0
+        .send(answer)
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to send question response: {}", e))
+}
+
+/// Wait for a user response to a question (called from the evolve loop).
+pub async fn wait_for_question_response() -> Option<String> {
+    let channel = get_question_channel();
+    let mut lock = channel.lock().await;
+    lock.1.recv().await
+}
+
 /// Handles the complete evolution cycle returning the git status and summary to react
 #[tauri::command]
 pub async fn darwin_evolve(
@@ -318,6 +354,16 @@ pub async fn darwin_evolve_cancel() -> Result<serde_json::Value, String> {
     EVOLVE_CANCELLED.store(true, std::sync::atomic::Ordering::SeqCst);
     log::info!("Evolution cancellation requested");
     Ok(serde_json::json!({"ok": true, "message": "Cancellation requested"}))
+}
+
+/// Respond to an agent question during evolution.
+#[tauri::command]
+pub async fn darwin_evolve_answer(answer: String) -> Result<serde_json::Value, String> {
+    log::info!("User answered agent question: {}", answer);
+    send_question_response(answer)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(serde_json::json!({"ok": true}))
 }
 
 /// Legacy non-streaming apply command. Returns immediately with a hint to use streaming.

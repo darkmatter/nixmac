@@ -10,6 +10,7 @@ import {
   FileEdit,
   FileSearch,
   FileText,
+  HelpCircle,
   Hammer,
   Loader2,
   MessageSquare,
@@ -19,8 +20,9 @@ import {
   Square,
   XCircle,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { darwinAPI } from "@/tauri-api";
 import type { EvolveEvent, EvolveEventType } from "@/stores/widget-store";
 
 // =============================================================================
@@ -78,6 +80,8 @@ function getEventIcon(eventType: EvolveEventType, isLatest: boolean) {
       return <XCircle className={cn(iconClassName, "text-red-400")} />;
     case "summarizing":
       return <FileText className={iconClassName} />;
+    case "question":
+      return <HelpCircle className={iconClassName} />;
     default:
       return <CircleDot className={iconClassName} />;
   }
@@ -113,6 +117,8 @@ function getEventColor(eventType: EvolveEventType): string {
       return "text-red-400";
     case "summarizing":
       return "text-pink-400";
+    case "question":
+      return "text-violet-400";
     default:
       return "text-muted-foreground";
   }
@@ -226,6 +232,111 @@ function EventItem({ event, isLatest }: EventItemProps) {
 }
 
 // =============================================================================
+// Question Prompt Component
+// =============================================================================
+
+function parseQuestionChoices(raw: string): string[] | null {
+  const match = raw.match(/\nChoices: (.+)$/);
+  if (!match) return null;
+  return match[1].split(", ").filter(Boolean);
+}
+
+function QuestionPrompt({
+  event,
+  onAnswer,
+}: {
+  event: EvolveEvent;
+  onAnswer: (answer: string) => void;
+}) {
+  const [input, setInput] = useState("");
+  const [answered, setAnswered] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const choices = parseQuestionChoices(event.raw);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const handleSubmit = useCallback(
+    (value: string) => {
+      if (!value.trim() || answered) return;
+      setAnswered(true);
+      onAnswer(value.trim());
+    },
+    [answered, onAnswer],
+  );
+
+  if (answered) {
+    return (
+      <div className="mx-2 my-2 rounded-lg border border-violet-500/20 bg-violet-500/5 p-3">
+        <div className="flex items-start gap-2">
+          <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-violet-400" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm text-foreground">{event.summary}</p>
+            <p className="mt-1 text-muted-foreground text-xs">
+              Answered: {input}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-2 my-2 rounded-lg border border-violet-500/30 bg-violet-500/5 p-3">
+      <div className="flex items-start gap-2">
+        <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-violet-400" />
+        <div className="min-w-0 flex-1">
+          <p className="font-medium text-foreground text-sm">{event.summary}</p>
+
+          {choices ? (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {choices.map((choice) => (
+                <button
+                  className="rounded-md border border-violet-500/30 bg-violet-500/10 px-3 py-1.5 text-sm text-violet-300 transition-colors hover:bg-violet-500/20"
+                  key={choice}
+                  onClick={() => {
+                    setInput(choice);
+                    handleSubmit(choice);
+                  }}
+                  type="button"
+                >
+                  {choice}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <form
+              className="mt-2 flex gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSubmit(input);
+              }}
+            >
+              <input
+                className="min-w-0 flex-1 rounded-md border border-violet-500/30 bg-black/30 px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-violet-500/50 focus:outline-none"
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Type your answer..."
+                ref={inputRef}
+                type="text"
+                value={input}
+              />
+              <button
+                className="rounded-md bg-violet-500/20 px-3 py-1.5 text-sm text-violet-300 transition-colors hover:bg-violet-500/30 disabled:opacity-50"
+                disabled={!input.trim()}
+                type="submit"
+              >
+                Send
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
 // Main Component
 // =============================================================================
 
@@ -238,6 +349,12 @@ export function EvolveProgress({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const prevEventsLengthRef = useRef(events.length);
+
+  const handleQuestionAnswer = useCallback((answer: string) => {
+    darwinAPI.darwin.evolveAnswer(answer).catch((e) => {
+      console.error("Failed to send answer:", e);
+    });
+  }, []);
 
   // Auto-scroll to bottom when new events arrive
   useEffect(() => {
@@ -303,13 +420,24 @@ export function EvolveProgress({
         ref={scrollRef}
       >
         <div className="space-y-1">
-          {events.map((event, index) => (
-            <EventItem
-              event={event}
-              isLatest={!!(isGenerating && index === events.length - 1)}
-              key={`${event.timestampMs}-${index}`}
-            />
-          ))}
+          {events.map((event, index) => {
+            if (event.eventType === "question") {
+              return (
+                <QuestionPrompt
+                  event={event}
+                  key={`${event.timestampMs}-${index}`}
+                  onAnswer={handleQuestionAnswer}
+                />
+              );
+            }
+            return (
+              <EventItem
+                event={event}
+                isLatest={!!(isGenerating && index === events.length - 1)}
+                key={`${event.timestampMs}-${index}`}
+              />
+            );
+          })}
 
           {/* Loading indicator for next event */}
           {!!isGenerating && (
