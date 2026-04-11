@@ -28,7 +28,7 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::Arc;
 use std::time::Duration;
-use tauri::AppHandle;
+use tauri::{AppHandle, Runtime};
 use tokio::time::sleep;
 use tools::{create_tools, execute_tool, is_editing_tool, ToolResult};
 pub use types::{Evolution, EvolutionState};
@@ -367,8 +367,8 @@ fn escape_user_query(input: &str) -> String {
 /// This runs an agentic loop where the model can read files, make edits,
 /// and signal completion. When the agent signals "done", we verify the
 /// changes by running a nix build check, and send errors back if it fails.
-pub async fn generate_evolution(
-    app: &AppHandle,
+pub async fn generate_evolution<R: Runtime>(
+    app: &AppHandle<R>,
     config_dir: &str,
     prompt: &str,
 ) -> Result<Evolution> {
@@ -861,6 +861,58 @@ pub async fn generate_evolution(
                                         EvolveEvent::complete(start_time, iteration, summary_text),
                                     );
                                 }
+                                ToolResult::Question { question, choices } => {
+                                    emit_evolve_event(
+                                        app,
+                                        EvolveEvent::question(
+                                            start_time, iteration, question, choices,
+                                        ),
+                                    );
+                                }
+                            }
+
+                            // Handle question tool specially: wait for user response
+                            if let ToolResult::Question {
+                                question,
+                                choices: _,
+                            } = res
+                            {
+                                info!("⏳ Waiting for user response to: {}", question);
+                                let user_answer = tokio::select! {
+                                    answer = commands::wait_for_question_response() => {
+                                        match answer {
+                                            Some(a) => a,
+                                            None => {
+                                                warn!("Question response channel closed");
+                                                "No response provided.".to_string()
+                                            }
+                                        }
+                                    }
+                                    _ = async {
+                                        loop {
+                                            if commands::is_evolve_cancelled() {
+                                                break;
+                                            }
+                                            sleep(Duration::from_millis(100)).await;
+                                        }
+                                    } => {
+                                        warn!("Evolution cancelled while waiting for question response");
+                                        evolution.state = EvolutionState::Failed;
+                                        return Err(EvolutionRunError::from_state(
+                                            "Evolution cancelled by user",
+                                            &evolution,
+                                            iteration,
+                                            build_attempts,
+                                            total_tokens,
+                                        ).into());
+                                    }
+                                };
+                                info!("📨 User answered: {}", user_answer);
+                                messages.push(Message::Tool {
+                                    tool_call_id: tool_call.id.clone(),
+                                    content: format!("User response: {}", user_answer),
+                                });
+                                continue;
                             }
 
                             let (msg, break_signal) = match process_tool_result(
@@ -1219,6 +1271,13 @@ fn summarize_result(result: &ToolResult) -> (String, bool) {
             format!("done: {}", global_utils::truncate_with_ellipsis(s, 50)),
             true,
         ),
+        ToolResult::Question { question, .. } => (
+            format!(
+                "asked: {}",
+                global_utils::truncate_with_ellipsis(question, 50)
+            ),
+            true,
+        ),
     }
 }
 
@@ -1408,6 +1467,12 @@ fn process_tool_result(
                 };
                 (msg, Some(true))
             }
+        }
+
+        // Questions are handled before process_tool_result is called,
+        // so this arm should never be reached.
+        ToolResult::Question { .. } => {
+            unreachable!("Question results are handled in the main loop before process_tool_result")
         }
     };
 

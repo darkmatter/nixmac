@@ -8,7 +8,9 @@ use super::file_ops::{
 };
 use super::messages::Tool;
 use super::search_code::execute_search_code;
-use super::search_docs::{default_limit as search_docs_default_limit, execute_search_docs};
+use super::search_docs::{
+    default_limit as search_docs_default_limit, execute_search_docs, DocsSource,
+};
 use super::search_packages::execute_search_packages;
 use super::types::FileEdit;
 
@@ -291,10 +293,12 @@ pub fn create_tools() -> Vec<Tool> {
         },
         Tool {
             name: "search_docs".to_string(),
-            description: "Search nix-darwin configuration option docs by structure-aware scoring. \
+            description: "Search nix-darwin and home-manager configuration option docs by structure-aware scoring. \
                          Use this tool to discover the correct fully-qualified option path shape \
-                         (for example: `homebrew.caskArgs.colorpickerdir`). \
-                         Returns top matches with option paths and concise summaries.".to_string(),
+                         (for example: `homebrew.caskArgs.colorpickerdir` for nix-darwin, or \
+                         `programs.git.signing` for home-manager). \
+                         Returns top matches with option paths and concise summaries. \
+                         Use the 'source' parameter to narrow results to a specific doc set.".to_string(),
             parameters: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -305,9 +309,36 @@ pub fn create_tools() -> Vec<Tool> {
                     "limit": {
                         "type": "integer",
                         "description": "Maximum results to return (default: 3, max: 10)"
+                    },
+                    "source": {
+                        "type": "string",
+                        "enum": ["nix-darwin", "home-manager", "all"],
+                        "description": "Which doc set to search: 'nix-darwin', 'home-manager', or 'all' (default: 'all')"
                     }
                 },
                 "required": ["query"]
+            }),
+        },
+        Tool {
+            name: "ask_user".to_string(),
+            description: "Ask the user a question and wait for their response. Use this when you \
+                         need clarification, want to confirm a destructive action, or need the user \
+                         to choose between options. The question should be clear and specific. \
+                         Optionally provide a list of choices for the user to pick from.".to_string(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "question": {
+                        "type": "string",
+                        "description": "The question to ask the user"
+                    },
+                    "choices": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "Optional list of choices for the user to pick from"
+                    }
+                },
+                "required": ["question"]
             }),
         },
         Tool {
@@ -354,6 +385,11 @@ pub enum ToolResult {
         thought: String,
     },
     EditSemantic(SemanticFileEdit),
+    /// Agent wants to ask the user a question
+    Question {
+        question: String,
+        choices: Option<Vec<String>>,
+    },
 }
 
 /// Execute a tool call and return the result
@@ -685,9 +721,29 @@ pub fn execute_tool(
                 .map(|n| n as usize)
                 .unwrap_or_else(search_docs_default_limit)
                 .clamp(1, 10);
+            let source_filter = args["source"]
+                .as_str()
+                .and_then(DocsSource::from_filter);
 
-            let result = execute_search_docs(query, limit)?;
+            let result = execute_search_docs(query, limit, source_filter)?;
             Ok(ToolResult::Continue(result))
+        }
+
+        "ask_user" => {
+            let question = args["question"]
+                .as_str()
+                .ok_or_else(|| anyhow!("ask_user: missing question"))?
+                .to_string();
+            let choices = args["choices"]
+                .as_array()
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(str::to_string))
+                        .collect::<Vec<_>>()
+                });
+
+            info!("❓ Agent asking user: {}", question);
+            Ok(ToolResult::Question { question, choices })
         }
 
         "done" => {
