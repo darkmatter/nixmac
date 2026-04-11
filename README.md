@@ -14,7 +14,7 @@
   <a href="https://github.com/darkmatter/nixmac/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"></a>
 </p>
 
----
+______________________________________________________________________
 
 ## What is nixmac?
 
@@ -62,12 +62,12 @@ nixmac/
 ### The Evolution Loop
 
 1. **User prompt** → agent receives the request
-2. **Tool use** → agent reads config files, searches nix-darwin docs, searches nixpkgs
-3. **Edit** → agent writes changes via semantic file edits
-4. **Build** → `darwin-rebuild build` validates the configuration
-5. **Iterate** → if the build fails, agent reads errors and tries again (up to N iterations)
-6. **Apply** → `darwin-rebuild switch` activates the new system generation
-7. **Summarize** → changeset and commit get AI-generated descriptions
+1. **Tool use** → agent reads config files, searches nix-darwin docs, searches nixpkgs
+1. **Edit** → agent writes changes via semantic file edits
+1. **Build** → `darwin-rebuild build` validates the configuration
+1. **Iterate** → if the build fails, agent reads errors and tries again (up to N iterations)
+1. **Apply** → `darwin-rebuild switch` activates the new system generation
+1. **Summarize** → changeset and commit get AI-generated descriptions
 
 ## Getting Started
 
@@ -80,7 +80,7 @@ nixmac/
 
 ### Install from Release
 
-Download the latest `.dmg` from [Releases](https://github.com/darkmatter/nixmac/releases/latest).
+Download the latest `.dmg` from [Releases](https://github.com/darkmatter/nixmac/releases/latest), open it, and **drag `nixmac.app` into your Applications folder before launching it**. Running nixmac directly from the DMG triggers macOS App Translocation, which prevents Full Disk Access from being granted.
 
 ### Build from Source
 
