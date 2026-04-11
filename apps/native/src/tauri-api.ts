@@ -210,6 +210,7 @@ export type EvolveEventType =
   | "toolCall"
   | "apiRequest"
   | "apiResponse"
+  | "question"
   | "complete"
   | "error"
   | "info"
@@ -253,6 +254,7 @@ export const darwinAPI = {
   },
   darwin: {
     evolve: (description: string) => invoke<EvolutionResult>("darwin_evolve", { description }),
+    evolveAnswer: (answer: string) => invoke<void>("darwin_evolve_answer", { answer }),
     buildCheck: () => invoke<{ passed: boolean; output: string }>("darwin_build_check"),
     evolveFromManual: () => invoke<number>("darwin_adopt_manual_changes"),
     evolveCancel: () => invoke("darwin_evolve_cancel"),
