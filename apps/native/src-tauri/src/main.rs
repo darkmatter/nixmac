@@ -297,6 +297,9 @@ fn run_gui_mode(
             commands::config_set_host_attr,
             commands::config_set_dir,
             commands::config_pick_dir,
+            commands::flake_exists_at,
+            commands::path_exists,
+            commands::path_normalize,
             // Feedback
             commands::feedback_gather_metadata,
             commands::feedback_submit,
