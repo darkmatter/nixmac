@@ -1,6 +1,6 @@
 [package]
 name = "nixmac"
-version = "0.18.0"
+version = "0.18.1"
 description = "Nixmac - macOS nix-darwin configuration manager"
 authors = ["you"]
 edition = "2021"
