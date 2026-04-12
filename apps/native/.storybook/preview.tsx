@@ -20,6 +20,7 @@ const withDarkTheme: Decorator = (Story) => {
 };
 
 const preview = definePreview({
+  tags: ["autodocs", "test"],
   parameters: {
     layout: "padded",
     controls: {
