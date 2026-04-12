@@ -1,7 +1,9 @@
+pub mod cli;
 mod ollama;
 mod openai;
 
 use anyhow::Result;
+pub use cli::{CliCompletionClient, CliTool};
 pub use ollama::OllamaClient;
 pub use openai::OpenAIClient;
 use tauri::{AppHandle, Runtime};
@@ -78,6 +80,17 @@ pub fn create_provider<R: Runtime>(
         .flatten();
 
     match provider.as_str() {
+        "claude" | "codex" | "opencode" => {
+            let tool = match provider.as_str() {
+                "claude" => CliTool::Claude,
+                "codex" => CliTool::Codex,
+                _ => CliTool::OpenCode,
+            };
+            let model = store_model
+                .or_else(|| std::env::var("SUMMARY_MODEL").ok())
+                .unwrap_or_else(|| provider.clone());
+            Ok(Box::new(CliCompletionClient::new(tool, model)))
+        }
         "ollama" => {
             let model = store_model
                 .or_else(|| std::env::var("SUMMARY_MODEL").ok())

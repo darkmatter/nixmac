@@ -52,7 +52,7 @@
     },
     "apps/native": {
       "name": "native",
-      "version": "0.18.0",
+      "version": "0.18.1",
       "dependencies": {
         "@radix-ui/number": "^1.1.1",
         "@radix-ui/primitive": "^1.1.3",

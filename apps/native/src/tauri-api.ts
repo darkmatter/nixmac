@@ -309,6 +309,11 @@ export const darwinAPI = {
     clearCached: (provider: string) => invoke("clear_cached_models", { provider }),
   },
 
+  cli: {
+    checkTools: () => invoke<Record<string, boolean>>("check_cli_tools"),
+    listModels: (tool: string) => invoke<string[]>("list_cli_models", { tool }),
+  },
+
   promptHistory: {
     get: () => invoke<string[]>("get_prompt_history"),
     add: (prompt: string) => invoke("add_to_prompt_history", { prompt }),

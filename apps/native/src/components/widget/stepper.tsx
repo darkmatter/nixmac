@@ -6,40 +6,47 @@ import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { Check } from "lucide-react";
 
 const STEPS = [
-	{ name: "Describe", description: "What to change" },
-	{ name: "Review", description: "Check & test" },
-	{ name: "Save", description: "Keep changes" },
+  { name: "Describe", description: "What to change" },
+  { name: "Review", description: "Check & test" },
+  { name: "Save", description: "Keep changes" },
 ] as const;
 
 export function Stepper() {
-	const step = useCurrentStep();
-	const isGenerating = useWidgetStore((s) => s.isGenerating);
-	const isRebuilding = useWidgetStore((s) => s.rebuild.isRunning);
+  const step = useCurrentStep();
+  const isGenerating = useWidgetStore((s) => s.isGenerating);
+  const isRebuilding = useWidgetStore((s) => s.rebuild.isRunning);
 
-	if (step === "setup" || step === "permissions" || step === "nix-setup" || step === "history" || isGenerating || isRebuilding) {
-		return null;
-	}
+  if (
+    step === "setup" ||
+    step === "permissions" ||
+    step === "nix-setup" ||
+    step === "history" ||
+    isGenerating ||
+    isRebuilding
+  ) {
+    return null;
+  }
 
-	// Determine current step index based on widget state
-	const currentStepIndex = step === "merge" ? 2 : step === "evolving" ? 1 : 0;
+  // Determine current step index based on widget state
+  const currentStepIndex = step === "merge" ? 2 : step === "evolving" ? 1 : 0;
 
-	const activeStepName = STEPS[currentStepIndex].name;
+  const activeStepName = STEPS[currentStepIndex].name;
 
-	return (
-		<div className="border-border border-b bg-muted/30 px-3 py-4">
-			{/* 5-column grid: step | line | step | line | step */}
-			<div
-				role="list"
-				aria-label={`Progress: step ${currentStepIndex + 1} of ${STEPS.length}, ${activeStepName}`}
-				className="grid grid-cols-[2.5fr_1fr_2.5fr_1fr_2.5fr] items-center max-w-2xl mx-auto xs:-translate-x-3 sm:-translate-x-5"
-			>
-				{STEPS.map((stepInfo, index) => {
-					const isCompleted = currentStepIndex > index;
-					const isActive = currentStepIndex === index;
-					const stepNumber = index + 1;
-					const isFirst = index === 0;
-					const isMiddle = index === 1;
-					const isLast = index === 2;
+  return (
+    <div className="border-border border-b bg-muted/30 px-3 py-4">
+      {/* 5-column grid: step | line | step | line | step */}
+      <div
+        role="list"
+        aria-label={`Progress: step ${currentStepIndex + 1} of ${STEPS.length}, ${activeStepName}`}
+        className="grid grid-cols-[2.5fr_1fr_2.5fr_1fr_2.5fr] items-center max-w-2xl mx-auto xs:-translate-x-3 sm:-translate-x-5"
+      >
+        {STEPS.map((stepInfo, index) => {
+          const isCompleted = currentStepIndex > index;
+          const isActive = currentStepIndex === index;
+          const stepNumber = index + 1;
+          const isFirst = index === 0;
+          const isMiddle = index === 1;
+          const isLast = index === 2;
 
 					return (
 						<Fragment key={stepInfo.name}>
