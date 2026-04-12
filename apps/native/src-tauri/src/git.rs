@@ -92,15 +92,38 @@ pub fn require_repo(dir: &str) -> Result<()> {
     Ok(())
 }
 
+/// Returns true when HEAD resolves to an existing commit.
+fn has_head_commit(dir: &str) -> bool {
+    git_command()
+        .args(["rev-parse", "--verify", "HEAD"])
+        .current_dir(dir)
+        .output()
+        .is_ok()
+}
+
 /// Full diff vs HEAD, including tracked changes and untracked files as diffs.
 pub fn get_full_diff(dir: &str) -> Result<String> {
-    // Get git diff for tracked files
-    let diff_output = git_command()
-        .args(["diff", "HEAD"])
-        .current_dir(dir)
-        .output()?;
-
-    let mut diff = String::from_utf8_lossy(&diff_output.stdout).to_string();
+    // In repos without any commits, `git diff HEAD` fails because HEAD is unborn.
+    // Fall back to combining staged and unstaged diffs in that state.
+    let mut diff = if has_head_commit(dir) {
+        let diff_output = git_command()
+            .args(["diff", "HEAD"])
+            .current_dir(dir)
+            .output()?;
+        String::from_utf8_lossy(&diff_output.stdout).to_string()
+    } else {
+        let staged_output = git_command()
+            .args(["diff", "--cached"])
+            .current_dir(dir)
+            .output()?;
+        let unstaged_output = git_command()
+            .args(["diff"])
+            .current_dir(dir)
+            .output()?;
+        let mut staged = String::from_utf8_lossy(&staged_output.stdout).to_string();
+        staged.push_str(&String::from_utf8_lossy(&unstaged_output.stdout));
+        staged
+    };
 
     // Also get untracked files and show their contents as diffs
     let untracked_output = git_command()
@@ -134,12 +157,25 @@ pub fn get_full_diff(dir: &str) -> Result<String> {
 
 /// Gets a diff containing only .nix files (including untracked .nix files).
 pub fn get_nix_diff(dir: &str) -> Result<String> {
-    let diff_output = git_command()
-        .args(["diff", "HEAD", "--", "*.nix"])
-        .current_dir(dir)
-        .output()?;
-
-    let mut diff = String::from_utf8_lossy(&diff_output.stdout).to_string();
+    let mut diff = if has_head_commit(dir) {
+        let diff_output = git_command()
+            .args(["diff", "HEAD", "--", "*.nix"])
+            .current_dir(dir)
+            .output()?;
+        String::from_utf8_lossy(&diff_output.stdout).to_string()
+    } else {
+        let staged_output = git_command()
+            .args(["diff", "--cached", "--", "*.nix"])
+            .current_dir(dir)
+            .output()?;
+        let unstaged_output = git_command()
+            .args(["diff", "--", "*.nix"])
+            .current_dir(dir)
+            .output()?;
+        let mut staged = String::from_utf8_lossy(&staged_output.stdout).to_string();
+        staged.push_str(&String::from_utf8_lossy(&unstaged_output.stdout));
+        staged
+    };
 
     let untracked_output = git_command()
         .args(["ls-files", "--others", "--exclude-standard", "--", "*.nix"])
@@ -681,6 +717,39 @@ mod tests {
         assert!(!status.diff.is_empty());
         assert!(!status.files.is_empty());
         assert!(status.branch.is_some());
+    }
+
+    #[test]
+    fn test_status_without_head_commit_with_untracked_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
+
+        let status = status(&repo_dir_str).unwrap();
+        assert!(!status.diff.is_empty());
+        assert!(!status.clean_head);
+        assert!(status.head_commit_hash.is_none());
+        assert!(status.files.iter().any(|f| f.path == "flake.nix"));
+    }
+
+    #[test]
+    fn test_status_without_head_commit_with_staged_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+
+        let status = status(&repo_dir_str).unwrap();
+        assert!(!status.diff.is_empty());
+        assert!(!status.clean_head);
+        assert!(status.head_commit_hash.is_none());
+        assert!(status.files.iter().any(|f| f.path == "flake.nix"));
     }
 
     #[test]
