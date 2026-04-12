@@ -143,7 +143,7 @@ pub fn execute_search_docs(
     let entries: Vec<&DocsOptionEntry> = index
         .entries
         .iter()
-        .filter(|e| source_filter.map_or(true, |s| e.source == s))
+        .filter(|e| source_filter.map_or_else(|| true, |s| e.source == s))
         .collect();
 
     let max_results = limit.clamp(1, 10);
@@ -171,9 +171,7 @@ pub fn execute_search_docs(
         return Ok(format_no_results_message(query, source_filter));
     }
 
-    let source_label = source_filter
-        .map(|s| format!("{} ", s))
-        .unwrap_or_default();
+    let source_label = source_filter.map(|s| format!("{} ", s)).unwrap_or_default();
     let mut out = String::new();
     out.push_str(&format!(
         "Top {} {}option matches for '{}':\n",
@@ -251,11 +249,7 @@ fn parse_entries(json: &str, source: DocsSource) -> Vec<DocsOptionEntry> {
             out
         }
         Err(e) => {
-            log::error!(
-                "[search_docs] failed to parse {} docs JSON: {}",
-                source,
-                e
-            );
+            log::error!("[search_docs] failed to parse {} docs JSON: {}", source, e);
             Vec::new()
         }
     }
@@ -466,8 +460,7 @@ mod tests {
     #[test]
     fn no_results_message_has_sentinel_and_query() {
         let query = "zzzzzzzzzzzzzzzzzzzzqqq";
-        let response =
-            execute_search_docs(query, 3, None).expect("search_docs should succeed");
+        let response = execute_search_docs(query, 3, None).expect("search_docs should succeed");
 
         assert!(
             response.starts_with(NO_RESULTS_SENTINEL),
