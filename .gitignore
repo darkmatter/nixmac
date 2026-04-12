@@ -133,3 +133,6 @@ untracked
 packages/scripts/entrypoints/
 process-compose.yaml
 # ── END stackpanel ──
+
+# bv (beads viewer) local config and caches
+.bv/
