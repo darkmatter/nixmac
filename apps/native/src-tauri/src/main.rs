@@ -21,6 +21,7 @@ mod feedback;
 mod finalize_apply;
 mod get_history;
 mod git;
+mod historelog;
 mod log_summarizer;
 mod nix;
 mod panic_handler;
@@ -326,6 +327,9 @@ fn run_gui_mode(
             commands::rollback_erase,
             commands::darwin_build_check,
             commands::darwin_adopt_manual_changes,
+            commands::prepare_restore,
+            commands::abort_restore,
+            commands::finalize_restore,
             // Routing state
             commands::routing_state_get,
             commands::routing_state_clear,
@@ -342,7 +346,6 @@ fn run_gui_mode(
             commands::get_history,
             commands::generate_history_from,
             commands::summarize_current,
-            commands::restore_to_commit,
             commands::generate_commit_message,
             // UI preferences
             commands::ui_get_prefs,

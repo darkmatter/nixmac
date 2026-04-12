@@ -35,7 +35,7 @@ const defaultPermissions = [
     canRequestProgrammatically: false,
     status: "granted",
     instructions:
-      "Go to System Settings -> Privacy & Security -> Full Disk Access, then add nixmac to the list",
+      "First make sure nixmac is in your Applications folder (not running from the install disk image). Then go to System Settings -> Privacy & Security -> Full Disk Access and add nixmac to the list.",
   },
 ];
 
@@ -203,7 +203,8 @@ export const storybookDarwinAPI = {
     applyStreamCancel: async () => undefined,
     finalizeApply: async () => ({ gitStatus: baseGitStatus(), summary: { ...summaryResponse } }),
     rollbackErase: async () => ({ gitStatus: baseGitStatus(), summary: null }),
-    restoreToCommit: async () => undefined,
+    prepareRestore: async () => undefined,
+    finalizeRestore: async () => baseGitStatus(),
   },
   nix: {
     check: async () => ({ installed: true, version: "2.20.0", darwin_rebuild_available: true }),

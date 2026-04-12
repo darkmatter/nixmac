@@ -49,7 +49,7 @@ function getErrorSuggestion(errorType: RebuildErrorType | undefined): string {
     case "build_error":
       return "A package failed to build. You may need to update your flake or fix the package configuration.";
     case "full_disk_access":
-      return "darwin-rebuild requires Full Disk Access to apply system changes. Grant access in System Settings → Privacy & Security → Full Disk Access.";
+      return "darwin-rebuild requires Full Disk Access. Make sure nixmac is in your Applications folder (not running from the install disk image), then grant access in System Settings → Privacy & Security → Full Disk Access.";
     case "user_cancelled":
       return "The activation was cancelled. You can retry the operation.";
     case "authorization_denied":
@@ -397,8 +397,8 @@ export function RebuildOverlayPanel() {
   }
 
   return (
-    <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/95 backdrop-blur-sm">
-      <div className="h-full w-full max-h-[90vh] max-w-[90vw] p-5">
+    <div className="fixed inset-y-8 z-10 w-full max-w-[100vw] flex items-center justify-center bg-background/95 backdrop-blur-sm">
+      <div className="h-full w-full max-h-[600px] max-w-[800px] p-5">
         <div
           className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-white/10 p-6"
           style={{

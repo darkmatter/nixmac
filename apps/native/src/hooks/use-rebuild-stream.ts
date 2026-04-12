@@ -5,8 +5,9 @@ import { useGitOperations } from "./use-git-operations";
 
 interface RebuildOptions {
   context: RebuildContext;
-  /** Called after successful rebuild (before auto-dismiss) */
   onSuccess?: () => Promise<void>;
+  onFailure?: () => Promise<void>;
+  deferBuiltTag?: boolean;
 }
 
 /**
@@ -112,19 +113,27 @@ export function useRebuildStream() {
         // Handle success
         if (event.payload.ok) {
           if (options?.onSuccess) {
-            await options.onSuccess();
+            try {
+              await options.onSuccess();
+            } catch (e: unknown) {
+              const msg = (e as Error)?.message || String(e);
+              useWidgetStore.getState().setError(msg);
+            }
           }
-          // Auto-dismiss rebuild panel after success
+          // Auto-dismiss rebuild panel after success (even if onSuccess failed)
           useWidgetStore.getState().clearRebuild();
           currentStore.setProcessing(false);
         } else {
+          if (options?.onFailure) {
+            await options.onFailure();
+          }
           await refreshGitStatus({ cache: true });
           currentStore.setProcessing(false);
         }
       });
 
       try {
-        await darwinAPI.darwin.applyStreamStart();
+        await darwinAPI.darwin.applyStreamStart(undefined, options.deferBuiltTag);
       } catch (e: unknown) {
         const msg = (e as Error)?.message || String(e);
         useWidgetStore.getState().setRebuildError("generic_error", msg);

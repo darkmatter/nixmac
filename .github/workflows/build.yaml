@@ -167,25 +167,97 @@ jobs:
             echo "No .app found to sign"
             exit 1
           fi
-      # Rebuild DMG with signed app
-      - name: Rebuild DMG with signed app
+      # Replace unsigned app inside the Tauri-built DMG with the signed one.
+      # We mount the DMG read-write, swap the .app in place, and re-compress so
+      # the Finder window layout (background image, /Applications alias, icon
+      # positions) defined in tauri.conf.json's bundle.macOS.dmg is preserved.
+      # Previously this step deleted the DMG and called `hdiutil create`, which
+      # shipped a bare DMG without the drag-to-Applications affordance.
+      - name: Swap signed app into Tauri DMG
         if: startsWith(github.ref, 'refs/tags/') && steps.check-secrets.outputs.has_certificate == 'true'
         run: |
           APP_PATH=$(find target/release/bundle/macos -name "*.app" -type d | head -1)
           DMG_PATH=$(find target/release/bundle/dmg -name "*.dmg" -type f | head -1)
 
-          if [ -n "$APP_PATH" ] && [ -n "$DMG_PATH" ]; then
-            echo "Recreating DMG with signed app..."
-            DMG_NAME=$(basename "$DMG_PATH")
-            
-            # Remove old DMG
-            rm -f "$DMG_PATH"
-            
-            # Create new DMG
-            hdiutil create -volname "nixmac" -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_PATH"
-            
-            echo "New DMG created: $DMG_PATH"
+          if [ -z "$APP_PATH" ] || [ -z "$DMG_PATH" ]; then
+            echo "ERROR: missing APP_PATH or DMG_PATH (APP_PATH=$APP_PATH DMG_PATH=$DMG_PATH)"
+            exit 1
           fi
+
+          APP_NAME=$(basename "$APP_PATH")
+          RW_DMG="${DMG_PATH%.dmg}.rw.dmg"
+          MOUNT_POINT="$RUNNER_TEMP/dmg-mount"
+          mkdir -p "$MOUNT_POINT"
+
+          # Detach with retries. Writes may still be flushing after rsync, and
+          # CI runners occasionally hold file handles briefly after process
+          # exit. Match Tauri's generated create-dmg helper pattern instead of
+          # using -force unconditionally.
+          detach_with_retry() {
+            local mount="$1"
+            for i in 1 2 3 4 5; do
+              if hdiutil detach "$mount"; then
+                return 0
+              fi
+              if [ "$i" -lt 5 ]; then
+                echo "detach of $mount failed, retry $i/5 in 2s..."
+                sleep 2
+              fi
+            done
+            echo "WARNING: all 5 detach attempts failed for $mount, forcing..."
+            hdiutil detach "$mount" -force
+          }
+
+          echo "Converting DMG to read-write so we can swap in the signed app..."
+          hdiutil convert "$DMG_PATH" -format UDRW -o "$RW_DMG"
+
+          # Grow the RW DMG to give the signed bundle headroom, but only if
+          # needed. `hdiutil resize -size` is an exact target (not grow-only),
+          # so a fixed cap could attempt to shrink larger images in the future.
+          # Compute required size from the signed app's on-disk footprint plus
+          # a 50 MB padding buffer, and only resize if the current image is
+          # smaller than required.
+          APP_SIZE_KB=$(du -sk "$APP_PATH" | awk '{print $1}')
+          REQUIRED_KB=$((APP_SIZE_KB + 51200))
+          CURRENT_KB=$(du -k "$RW_DMG" | awk '{print $1}')
+          if [ "$REQUIRED_KB" -gt "$CURRENT_KB" ]; then
+            echo "Growing RW DMG from ${CURRENT_KB}KB to ${REQUIRED_KB}KB (app ${APP_SIZE_KB}KB + 50MB headroom)..."
+            hdiutil resize -size "${REQUIRED_KB}k" "$RW_DMG"
+          else
+            echo "RW DMG already has enough headroom (${CURRENT_KB}KB >= ${REQUIRED_KB}KB required), skipping resize."
+          fi
+
+          echo "Mounting RW DMG at $MOUNT_POINT..."
+          hdiutil attach -readwrite -nobrowse -noautoopen -mountpoint "$MOUNT_POINT" "$RW_DMG"
+
+          if [ ! -d "$MOUNT_POINT/$APP_NAME" ]; then
+            echo "ERROR: expected $APP_NAME inside the DMG, found:"
+            ls -la "$MOUNT_POINT"
+            detach_with_retry "$MOUNT_POINT" || true
+            exit 1
+          fi
+
+          echo "Replacing $APP_NAME inside the DMG with the signed bundle..."
+          # --delete prunes stale files from the old unsigned bundle (e.g. the
+          # previous _CodeSignature). The trailing slashes sync directory
+          # *contents*, keeping the existing .DS_Store and /Applications alias
+          # that define the DMG's Finder layout.
+          rsync -a --delete "$APP_PATH/" "$MOUNT_POINT/$APP_NAME/"
+
+          echo "Detaching RW DMG..."
+          detach_with_retry "$MOUNT_POINT"
+
+          echo "Re-compressing DMG back to UDZO at $DMG_PATH..."
+          rm -f "$DMG_PATH"
+          hdiutil convert "$RW_DMG" -format UDZO -imagekey zlib-level=9 -o "$DMG_PATH"
+          rm -f "$RW_DMG"
+
+          echo "Verifying signed app inside re-packed DMG..."
+          hdiutil attach -readonly -nobrowse -noautoopen -mountpoint "$MOUNT_POINT" "$DMG_PATH"
+          codesign --verify --verbose "$MOUNT_POINT/$APP_NAME"
+          detach_with_retry "$MOUNT_POINT"
+
+          echo "Done: $DMG_PATH now contains the signed app with the preserved Finder layout."
       # Notarize the app (requires Apple Developer account)
       - name: Notarize app
         if: startsWith(github.ref, 'refs/tags/') && steps.check-secrets.outputs.has_notarization == 'true'
@@ -234,9 +306,12 @@ jobs:
           name: nixmac-macos-app
           path: target/release/bundle/macos/*.app
           if-no-files-found: warn
-      # Create GitHub Release for tags
+      # Create GitHub Release for tags.
+      # Skipped for test tags matching `-test.N` so we can exercise the full
+      # signing/notarization + DMG swap path on a disposable tag without
+      # publishing a public release.
       - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-test.')
         uses: softprops/action-gh-release@v2
         with:
           draft: false
@@ -245,9 +320,12 @@ jobs:
             target/release/bundle/dmg/*.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # Upload to R2 for auto-updater (R2 creds come from sops)
+      # Upload to R2 for auto-updater (R2 creds come from sops).
+      # Skipped for test tags matching `-test.N` so we can exercise the full
+      # signing/notarization + DMG swap path on a disposable tag without
+      # overwriting latest.json on the updater CDN.
       - name: Upload to R2
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-test.')
         shell: 'sops exec-env .secrets.enc.yaml "bash -e {0}"'
         env:
           AWS_DEFAULT_REGION: auto

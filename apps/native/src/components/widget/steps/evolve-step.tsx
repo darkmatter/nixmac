@@ -4,7 +4,7 @@ import { ConfirmButton } from "@/components/widget/confirm-button";
 import { GetStartedMessage } from "@/components/widget/get-started-message";
 import { PromptInputSection } from "@/components/widget/prompt-input-section";
 import { StepActionsHeader } from "@/components/widget/step-actions-header";
-import { SummaryOrDiff } from "@/components/widget/summary-or-diff";
+import { SummaryOrDiff } from "@/components/widget/summaries/summary-or-diff";
 import { useApply } from "@/hooks/use-apply";
 import { useRollback } from "@/hooks/use-rollback";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";

@@ -33,5 +33,11 @@ export function useApply() {
     });
   }, [triggerRebuild]);
 
-  return { handleApply };
+  const handleHistoryBuild = useCallback(async () => {
+    const store = useWidgetStore.getState();
+    store.setProcessing(true, "apply");
+    await triggerRebuild({ context: "apply" });
+  }, [triggerRebuild]);
+
+  return { handleApply, handleHistoryBuild };
 }

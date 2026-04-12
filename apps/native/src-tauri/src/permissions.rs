@@ -99,7 +99,7 @@ fn get_default_permissions() -> Vec<Permission> {
             can_request_programmatically: false,
             status: PermissionStatus::Pending,
             instructions: Some(
-                "Go to System Settings → Privacy & Security → Full Disk Access, then add nixmac to the list"
+                "First make sure nixmac is in your Applications folder (not running from the install disk image). Then go to System Settings → Privacy & Security → Full Disk Access and add nixmac to the list."
                     .to_string(),
             ),
         },
@@ -369,7 +369,7 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
                 can_request_programmatically: false,
                 status: check_full_disk_access(),
                 instructions: Some(
-                    "Go to System Settings → Privacy & Security → Full Disk Access, then add nixmac to the list"
+                    "First make sure nixmac is in your Applications folder (not running from the install disk image). Then go to System Settings → Privacy & Security → Full Disk Access and add nixmac to the list."
                         .to_string(),
                 ),
             })

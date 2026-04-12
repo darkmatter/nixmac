@@ -8,9 +8,8 @@ use crate::summarize::sumlog as dbg;
 use crate::shared_types::{SummarizedChange, SummarizedChangeSet};
 use crate::sqlite_types::ChangeSet;
 
-/// Intermediate type shared only between `for_current_state` and `group_existing::from_change_sets`.
-/// Mirrors `SummarizedChangeSet` but with `change_set: Option<ChangeSet>` so that when the DB
-/// has no record for the current HEAD we can still carry all diff hashes as `missed_hashes`.
+/// Type shared only between `for_current_state` and `group_existing::from_change_sets`.
+/// Ensures missing hashes can be passed through when DB had nothing
 pub struct FoundSetForCurrent {
     pub change_set: Option<ChangeSet>,
     pub changes: Vec<SummarizedChange>,
@@ -27,22 +26,24 @@ impl From<SummarizedChangeSet> for FoundSetForCurrent {
     }
 }
 
-/// Used by history to look up each commit's summarized changes.
-pub fn by_commit_pair(
+/// Looks up changes for hashes against a known base commit
+pub fn by_base_with_hashes(
     db_path: &Path,
-    commit_id: i64,
     base_commit_id: i64,
-) -> Result<Option<SummarizedChangeSet>> {
+    hashes: &[String],
+) -> Result<FoundSetForCurrent> {
     let conn = Connection::open(db_path)?;
-    crate::db::changesets::query_change_set_for_commit_pair(&conn, commit_id, base_commit_id)
+    match crate::db::changesets::query_change_set_for_base_with_hashes(&conn, base_commit_id, hashes)? {
+        Some(cs) => Ok(FoundSetForCurrent::from(cs)),
+        None => Ok(FoundSetForCurrent {
+            change_set: None,
+            changes: vec![],
+            missed_hashes: hashes.to_vec(),
+        }),
+    }
 }
 
-/// Looks up summarized changes for the current git state.
-/// Returns [`FoundSetForCurrent`] values consumed by `group_existing::from_change_sets`.
-///
-/// When the DB has no record for the current HEAD (e.g. after dropping the DB), returns a
-/// single entry with no changes but all diff hashes in `missed_hashes`, so callers can
-/// detect that there are unsummarized changes even with an empty DB.
+/// Retuns existing summaries for head and missed hashes for unsummarized
 pub fn for_current_state(db_path: &Path, dir: &str) -> Result<Vec<FoundSetForCurrent>> {
     let status = crate::git::status(dir)?;
 
@@ -53,8 +54,7 @@ pub fn for_current_state(db_path: &Path, dir: &str) -> Result<Vec<FoundSetForCur
     let diff_hashes: Vec<String> = status.changes.iter().map(|c| c.hash.clone()).collect();
 
     let Some(commit) = crate::db::commits::get_commit_by_hash(db_path, head_hash)? else {
-        // DB has no record for this commit — surface all hashes as missed so the
-        // frontend knows there are unsummarized changes.
+        // DB has no record for this commit — surface all hashes as missed
         return Ok(vec![FoundSetForCurrent {
             change_set: None,
             changes: vec![],

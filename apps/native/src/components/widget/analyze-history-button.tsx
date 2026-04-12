@@ -1,4 +1,4 @@
-import { Sparkles, Square } from "lucide-react";
+import { Dna, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWidgetStore } from "@/stores/widget-store";
 import { useHistory } from "@/hooks/use-history";
@@ -10,7 +10,11 @@ export function AnalyzeHistoryButton() {
   const analyzingSize = useWidgetStore((state) => state.analyzingHistoryForHashes.size);
   const { analyzeMany, stopAnalyzing } = useHistory();
 
-  const unsummarizedHashes = history.filter((item) => !item.changeMap).map((item) => item.hash);
+  const recentUnsummarizedHashes = history
+    .filter((item) => !item.isBase)
+    .slice(0, 5)
+    .filter((item) => !item.changeMap || item.missedHashes.length > 0)
+    .map((item) => item.hash);
 
   //stop only works for queued items
   if (analyzingSize > 1) {
@@ -27,19 +31,18 @@ export function AnalyzeHistoryButton() {
       </Button>
     );
   }
-  if (unsummarizedHashes.length > 0) {
+  if (recentUnsummarizedHashes.length > 0) {
     return (
       <Button
         type="button"
-        variant="outline"
+        variant="ghost"
         size="sm"
-        // disabled for analysis in progress
         disabled={analyzingSize === 1}
-        className="h-auto whitespace-nowrap px-[10px] py-1 text-[10px] border border-teal-400/30 bg-teal-400/[0.08] text-neutral-400 hover:border-teal-400/60"
-        onClick={() => analyzeMany(unsummarizedHashes)}
+        className="h-auto gap-[3px] px-[7px] py-0.5 text-[10px] text-neutral-500 hover:bg-transparent hover:text-neutral-300"
+        onClick={() => analyzeMany(recentUnsummarizedHashes)}
       >
-        <Sparkles className="h-[10px] w-[10px]" />
-        Analyze missing change data
+        <Dna className="h-[10px] w-[10px]" />
+        Analyze recent ({recentUnsummarizedHashes.length})
       </Button>
     );
   }
