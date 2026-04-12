@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { darwinAPI } from "@/tauri-api";
 
 interface ModelComboboxProps {
-  provider: "openai" | "ollama" | "vllm";
+  provider: "openai" | "ollama" | "vllm" | "opencode";
   value: string;
   onChange: (value: string) => void;
   onBlur?: () => void;
@@ -116,10 +116,11 @@ export function ModelCombobox({
       if (provider === "openai") {
         freshModels = await fetchOpenRouterModels();
       } else if (provider === "ollama") {
-        // Read the configured Ollama base URL from prefs
         const prefs = await darwinAPI.ui.getPrefs();
         const baseUrl = prefs?.ollamaApiBaseUrl || undefined;
         freshModels = await fetchOllamaModels(baseUrl);
+      } else if (provider === "opencode") {
+        freshModels = await darwinAPI.cli.listModels("opencode");
       }
 
       // Update the models list with fresh results (only if we got any, to avoid wiping the cache-populated list)

@@ -5,9 +5,11 @@ use async_trait::async_trait;
 use reqwest::StatusCode;
 use thiserror::Error;
 
+pub mod cli;
 pub mod ollama;
 pub mod openai;
 
+pub use cli::CliProvider;
 pub use ollama::OllamaProvider;
 pub use openai::OpenAIProvider;
 

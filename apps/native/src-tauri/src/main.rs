@@ -370,6 +370,9 @@ fn run_gui_mode(
             commands::get_recommended_prompt,
             commands::scan_system_defaults,
             commands::apply_system_defaults,
+            // CLI tool detection
+            commands::check_cli_tools,
+            commands::list_cli_models,
             // Updater
             commands::relaunch_after_update,
         ])

@@ -43,7 +43,7 @@ use chat_memory::{
 };
 use config_dir_context::format_config_dir_context;
 use messages::Message;
-use providers::{AiProvider, OllamaProvider, OpenAIProvider, ProviderError};
+use providers::{AiProvider, CliProvider, OllamaProvider, OpenAIProvider, ProviderError};
 
 use self::types::FileEdit;
 
@@ -405,6 +405,17 @@ pub async fn generate_evolution<R: Runtime>(
             model, base_url
         );
         Arc::new(OllamaProvider::new(base_url, model))
+    } else if matches!(provider_type.as_str(), "claude" | "codex" | "opencode") {
+        let tool = match provider_type.as_str() {
+            "claude" => crate::providers::cli::CliTool::Claude,
+            "codex" => crate::providers::cli::CliTool::Codex,
+            _ => crate::providers::cli::CliTool::OpenCode,
+        };
+        let model = store_model
+            .or_else(|| std::env::var("EVOLVE_MODEL").ok())
+            .unwrap_or_else(|| provider_type.clone());
+        info!("Using CLI provider: {} | Model: {}", provider_type, model);
+        Arc::new(CliProvider::new(tool, model))
     } else if provider_type == "vllm" {
         let model = store_model
             .or_else(|| std::env::var("EVOLVE_MODEL").ok())

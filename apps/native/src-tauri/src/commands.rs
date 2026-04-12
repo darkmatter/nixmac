@@ -1120,6 +1120,57 @@ pub fn relaunch_after_update(app: AppHandle) -> Result<(), String> {
 }
 
 // =============================================================================
+// CLI Tool Detection
+// =============================================================================
+
+/// Check which CLI tools (claude, codex, opencode) are available in PATH.
+/// Returns a map of tool name → available boolean.
+#[tauri::command]
+pub async fn check_cli_tools() -> Result<std::collections::HashMap<String, bool>, String> {
+    use crate::providers::cli::augmented_path;
+    let path = augmented_path();
+    let tools = ["claude", "codex", "opencode"];
+    let mut result = std::collections::HashMap::new();
+    for tool in &tools {
+        let found = std::process::Command::new("which")
+            .arg(tool)
+            .env("PATH", &path)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+        result.insert(tool.to_string(), found);
+    }
+    Ok(result)
+}
+
+/// List available models for a CLI tool (currently only opencode supports this).
+#[tauri::command]
+pub async fn list_cli_models(tool: String) -> Result<Vec<String>, String> {
+    use crate::providers::cli::augmented_path;
+    if tool != "opencode" {
+        return Ok(vec![]);
+    }
+    let path = augmented_path();
+    let output = Command::new("opencode")
+        .arg("models")
+        .env("PATH", &path)
+        .output()
+        .map_err(|e| format!("Failed to run 'opencode models': {e}"))?;
+    if !output.status.success() {
+        return Ok(vec![]);
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let models: Vec<String> = stdout
+        .lines()
+        .map(|l| l.trim().to_string())
+        .filter(|l| !l.is_empty())
+        .collect();
+    Ok(models)
+}
+
+// =============================================================================
 // Evolve State Commands
 // =============================================================================
 
