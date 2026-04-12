@@ -298,6 +298,9 @@ fn run_gui_mode(
             commands::config_set_host_attr,
             commands::config_set_dir,
             commands::config_pick_dir,
+            commands::flake_exists_at,
+            commands::path_exists,
+            commands::path_normalize,
             // Feedback
             commands::feedback_gather_metadata,
             commands::feedback_submit,
@@ -316,6 +319,7 @@ fn run_gui_mode(
             // Darwin/Nix
             commands::darwin_evolve,
             commands::darwin_evolve_cancel,
+            commands::darwin_evolve_answer,
             commands::darwin_apply,
             commands::darwin_apply_stream_start,
             commands::darwin_apply_stream_cancel,

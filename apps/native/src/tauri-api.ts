@@ -4,9 +4,29 @@ import {
   checkFullDiskAccessPermission,
   requestFullDiskAccessPermission,
 } from "tauri-plugin-macos-permissions-api";
-import type { EvolutionResult, EvolveState, GitStatus, HistoryItem, SemanticChangeMap } from "./types/shared";
+import type {
+  EvolutionResult,
+  EvolveState,
+  GitStatus,
+  HistoryItem,
+  SemanticChangeMap,
+} from "./types/shared";
 
-export type { ChangeType, EvolutionFailureResult, EvolutionResult, EvolutionState, EvolutionTelemetry, EvolveState, EvolveStep, GitFileStatus, GitStatus, HistoryItem, SemanticChangeMap, SummarizedChangeSet, WatcherEvent } from "./types/shared";
+export type {
+  ChangeType,
+  EvolutionFailureResult,
+  EvolutionResult,
+  EvolutionState,
+  EvolutionTelemetry,
+  EvolveState,
+  EvolveStep,
+  GitFileStatus,
+  GitStatus,
+  HistoryItem,
+  SemanticChangeMap,
+  SummarizedChangeSet,
+  WatcherEvent,
+} from "./types/shared";
 export type { Change, Commit } from "./types/sqlite";
 
 export interface UnknownRecord {
@@ -37,9 +57,6 @@ export interface DarwinPrefs {
 }
 
 export const DEFAULT_MAX_ITERATIONS = 25;
-
-
-
 
 export interface ApplyResult {
   gitStatus: GitStatus;
@@ -193,6 +210,7 @@ export type EvolveEventType =
   | "toolCall"
   | "apiRequest"
   | "apiResponse"
+  | "question"
   | "complete"
   | "error"
   | "info"
@@ -236,6 +254,7 @@ export const darwinAPI = {
   },
   darwin: {
     evolve: (description: string) => invoke<EvolutionResult>("darwin_evolve", { description }),
+    evolveAnswer: (answer: string) => invoke<void>("darwin_evolve_answer", { answer }),
     buildCheck: () => invoke<{ passed: boolean; output: string }>("darwin_build_check"),
     evolveFromManual: () => invoke<number>("darwin_adopt_manual_changes"),
     evolveCancel: () => invoke("darwin_evolve_cancel"),
@@ -261,8 +280,13 @@ export const darwinAPI = {
     listHosts: () => invoke<string[]>("flake_list_hosts"),
     installedApps: () => invoke<unknown[]>("flake_installed_apps"),
     exists: () => invoke<boolean>("flake_exists"),
+    existsAt: (dir: string) => invoke<boolean>("flake_exists_at", { dir }),
     bootstrapDefault: (hostname: string) => invoke<void>("bootstrap_default_config", { hostname }),
     finalizeFlakeLock: () => invoke("finalize_flake_lock"),
+  },
+  path: {
+    exists: (dir: string) => invoke<boolean>("path_exists", { dir }),
+    normalize: (input: string) => invoke<string>("path_normalize", { input }),
   },
   summarizedChanges: {
     findChangeMap: () => invoke<SemanticChangeMap>("find_change_map"),

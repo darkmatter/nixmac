@@ -49,7 +49,7 @@ function getErrorSuggestion(errorType: RebuildErrorType | undefined): string {
     case "build_error":
       return "A package failed to build. You may need to update your flake or fix the package configuration.";
     case "full_disk_access":
-      return "darwin-rebuild requires Full Disk Access to apply system changes. Grant access in System Settings → Privacy & Security → Full Disk Access.";
+      return "darwin-rebuild requires Full Disk Access. Make sure nixmac is in your Applications folder (not running from the install disk image), then grant access in System Settings → Privacy & Security → Full Disk Access.";
     case "user_cancelled":
       return "The activation was cancelled. You can retry the operation.";
     case "authorization_denied":
@@ -130,7 +130,7 @@ const ViewToggleButton = ({
 function LoaderCore({
   loadingStates,
   value = 0,
-  pendingCount = 3,
+  pendingCount = 6,
   children,
 }: {
   loadingStates: RebuildLine[];
@@ -138,7 +138,16 @@ function LoaderCore({
   pendingCount?: number;
   children?: React.ReactNode;
 }) {
-  const skeletonWidths = ["w-24", "w-32", "w-28"];
+  const skeletonWidths = [
+    "w-24",
+    "w-32",
+    "w-28",
+    "w-20",
+    "w-36",
+    "w-30",
+    "w-22",
+    "w-40",
+  ];
   const itemHeight = 36;
 
   // Find the index of the most recently completed step (one before current)
@@ -146,16 +155,16 @@ function LoaderCore({
 
   // Calculate the center point for the gradient (current item position, shifted up by 1 to center the green item)
   const centerY = value * itemHeight + itemHeight / 2 - itemHeight;
-  const gradientRange = itemHeight * 3; // How many items to show clearly
+  const gradientRange = itemHeight * 6; // How many items to show clearly
 
   return (
     <div className="flex h-full w-full flex-col">
       {children}
       <div className="flex min-h-0 flex-1 items-center justify-center">
-        <div className="w-full max-w-xs">
-          <div className="relative flex w-full flex-col items-center">
+          <div className="w-full max-w-2xl mx-auto">
+            <div className="relative flex w-full flex-col items-start">
             <div
-              className="relative w-full max-w-xs"
+              className="relative w-full"
               style={{
                 minHeight: `${(loadingStates.length + pendingCount) * itemHeight}px`,
                 maskImage: `linear-gradient(to bottom,
@@ -176,10 +185,11 @@ function LoaderCore({
             >
               {loadingStates.map((loadingState, index) => {
                 const distance = index - value;
+                // Softer falloff so more lines remain visible
                 const opacity =
                   distance < 0
-                    ? Math.max(1 - Math.abs(distance) * 0.15, 0.4)
-                    : Math.max(1 - distance * 0.3, 0.25);
+                    ? Math.max(1 - Math.abs(distance) * 0.08, 0.28)
+                    : Math.max(1 - distance * 0.12, 0.12);
 
                 const isMostRecentlyCompleted = index === mostRecentlyCompletedIndex;
 
@@ -200,7 +210,7 @@ function LoaderCore({
                 return (
                   <motion.div
                     animate={{ opacity, y }}
-                    className="absolute right-0 left-0 flex items-center gap-3 px-2"
+                      className="absolute left-0 right-0 flex items-center gap-3 px-6"
                     initial={{ opacity: 0, y: y + 8 }}
                     key={loadingState.id}
                     transition={{
@@ -240,7 +250,7 @@ function LoaderCore({
                           <span
                             className={cn(
                               textClass,
-                              "block overflow-hidden text-ellipsis whitespace-nowrap text-sm font-normal transition-colors duration-500",
+                              "block whitespace-pre-wrap break-words text-sm font-normal transition-colors duration-500",
                             )}
                           >
                             {cleanText}
@@ -256,13 +266,13 @@ function LoaderCore({
               {skeletonWidths.slice(0, pendingCount).map((width, i) => {
                 const skeletonIndex = loadingStates.length + i;
                 const distance = skeletonIndex - value;
-                const opacity = Math.max(0.4 - distance * 0.06, 0.1);
+                const opacity = Math.max(0.6 - distance * 0.08, 0.08);
                 const y = skeletonIndex * itemHeight;
 
                 return (
                   <motion.div
                     animate={{ opacity, y }}
-                    className="absolute right-0 left-0 flex items-center gap-3 px-2"
+                      className="absolute left-0 right-0 flex items-center gap-3 px-6"
                     initial={{ opacity: 0, y: y + 8 }}
                     key={`skeleton-${width}`}
                     transition={{
@@ -307,7 +317,7 @@ function RawConsoleOutput({ lines, children }: { lines: string[]; children?: Rea
       {children}
       <div
         ref={scrollRef}
-        className="min-h-0 flex-1 overflow-auto rounded-lg bg-black/40 p-4 font-mono text-xs"
+        className="min-h-0 flex-1 overflow-auto rounded-lg bg-black/40 p-6 font-mono text-xs"
       >
         {lines.map((line, index) => (
           <div
@@ -420,7 +430,7 @@ export function RebuildOverlayPanel() {
 
                   {/* Error Message */}
                   {errorMessage && (
-                    <p className="max-h-48 w-full max-w-xl overflow-y-auto rounded-lg bg-black/30 px-4 py-3 text-center font-mono text-xs text-zinc-400">
+                      <p className="max-h-48 w-full max-w-xl overflow-y-auto rounded-lg bg-black/30 px-6 py-3 text-center font-mono text-xs text-zinc-400">
                       {errorMessage}
                     </p>
                   )}
@@ -438,7 +448,7 @@ export function RebuildOverlayPanel() {
               <LoaderCore
                 loadingStates={displayLines}
                 value={step}
-                pendingCount={isRunning ? 3 : 0}
+                pendingCount={isRunning ? 8 : 0}
               >
                 <ViewToggleButton onClick={() => setShowConsole(true)}>
                   <Terminal className="mr-1.5 h-3.5 w-3.5" />

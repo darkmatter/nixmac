@@ -247,55 +247,80 @@ fn run_build_step(
 }
 
 /// Run the activation step as root using native macOS authentication dialog.
-/// Uses `osascript` to show Touch ID dialog on compatible hardware.
+/// Uses `osascript` to show Touch ID / password dialog on compatible hardware.
 ///
-/// Set `NIXMAC_DISABLE_SUDO_E=1` to skip the `sudo -E` wrapper and run the
-/// activation script directly under the `do shell script … with administrator
-/// privileges` context (useful as an escape hatch if `sudo -E` causes
-/// unintended side-effects in a particular environment).
+/// Root cause of the "updating apps over SSH" error:
+///   `osascript do shell script ... with administrator privileges` spawns the
+///   privileged process in the *system* bootstrap domain (root context), not
+///   the user's Aqua GUI session domain.  The nix-darwin activation script
+///   calls `launchctl managername` and aborts with the "over SSH" error
+///   whenever the result is not "Aqua" — even when called from a GUI app.
+///
+/// Fix: from within the root osascript shell, use `launchctl asuser <uid>`
+///   to re-enter the user's Aqua bootstrap domain before invoking sudo.
+///   fork()/exec() inherits the bootstrap port, so the activation script
+///   sees `launchctl managername == "Aqua"` and the App Management check
+///   proceeds correctly.
+///
+///   A temporary NOPASSWD sudoers rule is created for the exact, content-
+///   addressed, immutable nix store activate path and is removed via a shell
+///   trap — no persistent system configuration is required.
 fn run_activate_step(config_dir: &str) -> Result<ActivateResult, anyhow::Error> {
     let activate_path = format!("{}/result/activate", config_dir);
     let nix_path = crate::nix::get_nix_path();
-    let disable_sudo_e = std::env::var("NIXMAC_DISABLE_SUDO_E")
-        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-        .unwrap_or(false);
+    let home = std::env::var("HOME").unwrap_or_default();
+    let ssh_sock = std::env::var("SSH_AUTH_SOCK").unwrap_or_default();
+    let user = std::env::var("USER").unwrap_or_else(|_| "root".to_string());
 
-    let shell_script = if disable_sudo_e {
-        // Run the activation script directly without sudo -E.
-        // The `do shell script … with administrator privileges` context already
-        // executes as root, so no extra sudo wrapper is needed.
-        format!(
-            "export PATH='{}'; '{}' 2>&1",
-            nix_path.replace('\'', "'\\''"),
-            activate_path.replace('\'', "'\\''"),
-        )
-    } else {
-        // Preserve the user's environment for sudo so macOS does not treat the
-        // elevated process as a remote/SSH-like context (TCC full-disk access).
-        let home = std::env::var("HOME").unwrap_or_default();
-        let ssh_sock = std::env::var("SSH_AUTH_SOCK").unwrap_or_default();
-        format!(
-            "export PATH='{}'; export HOME='{}'; export SSH_AUTH_SOCK='{}'; sudo -E '{}' 2>&1",
-            nix_path.replace('\'', "'\\''"),
-            home.replace('\'', "'\\''"),
-            ssh_sock.replace('\'', "'\\''"),
-            activate_path.replace('\'', "'\\''"),
-        )
-    };
+    // Resolve the symlink to the real nix store path.
+    // sudo / visudo match against the canonical path, not the symlink.
+    let real_activate = std::fs::canonicalize(&activate_path)
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_else(|_| activate_path.clone());
 
+    // Escape a value for safe embedding inside a shell single-quoted string.
+    let sq = |s: &str| s.replace('\'', "'\\''" );
+
+    // Build the privileged shell script that runs as root via osascript.
+    // It:
+    //   1. Creates a temp NOPASSWD sudoers rule for this exact nix store path.
+    //   2. Uses `launchctl asuser` to switch into the user's Aqua bootstrap
+    //      domain before calling sudo, so the activation script sees
+    //      `launchctl managername == "Aqua"`.
+    //   3. Removes the temp sudoers file via a trap on exit.
+    let shell_script = format!(
+        "set -e\n\
+         ACTIVATE='{activate}'\n\
+         USER_ID=$(id -u '{user}')\n\
+         \n\
+         trap 'rm -f /etc/sudoers.d/nixmac-activate-temp' EXIT\n\
+         \n\
+         printf '%s ALL=(ALL) NOPASSWD: %s\\n' '{user}' \"$ACTIVATE\" \
+             > /etc/sudoers.d/nixmac-activate-temp\n\
+         chmod 440 /etc/sudoers.d/nixmac-activate-temp\n\
+         visudo -cf /etc/sudoers.d/nixmac-activate-temp >/dev/null\n\
+         \n\
+         export PATH='{path}'\n\
+         export HOME='{home}'\n\
+         export SSH_AUTH_SOCK='{sock}'\n\
+         launchctl asuser \"$USER_ID\" sudo -E -n \"$ACTIVATE\" 2>&1",
+        activate = sq(&real_activate),
+        user = sq(&user),
+        path = sq(&nix_path),
+        home = sq(&home),
+        sock = sq(&ssh_sock),
+    );
+
+    // Escape the shell script for embedding in an AppleScript string literal:
+    //   \ → \\ and " → \"
     let escaped_script = shell_script.replace('\\', "\\\\").replace('"', "\\\"");
 
-    // Wrap in osascript to get native macOS password / Touch ID dialog
     let osascript_cmd = format!(
         "do shell script \"{}\" with administrator privileges",
         escaped_script
     );
 
-    if disable_sudo_e {
-        info!("[darwin] Running osascript for activation (NIXMAC_DISABLE_SUDO_E enabled)");
-    } else {
-        info!("[darwin] Running osascript for activation with sudo -E");
-    }
+    info!("[darwin] Running activation with launchctl asuser (Aqua bootstrap domain)");
 
     let output = Command::new("osascript")
         .args(["-e", &osascript_cmd])

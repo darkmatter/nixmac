@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "nixmac",
-  "version": "0.17.0",
+  "version": "0.18.1",
   "identifier": "com.darkmatter.nixmac",
   "build": {
     "beforeDevCommand": "bun run dev",
@@ -28,7 +28,13 @@
       "minimumSystemVersion": "10.13",
       "entitlements": "entitlements.plist",
       "infoPlist": "Info.plist",
-      "frameworks": []
+      "frameworks": [],
+      "dmg": {
+        "background": "icons/dmg-background.png",
+        "windowSize": { "width": 660, "height": 400 },
+        "appPosition": { "x": 180, "y": 170 },
+        "applicationFolderPosition": { "x": 480, "y": 170 }
+      }
     }
   },
   "app": {

@@ -35,7 +35,7 @@ const defaultPermissions = [
     canRequestProgrammatically: false,
     status: "granted",
     instructions:
-      "Go to System Settings -> Privacy & Security -> Full Disk Access, then add nixmac to the list",
+      "First make sure nixmac is in your Applications folder (not running from the install disk image). Then go to System Settings -> Privacy & Security -> Full Disk Access and add nixmac to the list.",
   },
 ];
 

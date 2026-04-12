@@ -9,7 +9,7 @@
 
 use crate::{
     darwin, db, default_config, evolution, evolve_state, feedback, git, nix, peek, permissions,
-    rollback, scanner, store, types,
+    rollback, scanner, store, types, utils,
 };
 use std::path::Path;
 use std::process::Command;
@@ -56,8 +56,23 @@ pub async fn config_set_host_attr(
 /// Sets the flake configuration directory path.
 #[tauri::command]
 pub async fn config_set_dir(app: AppHandle, dir: String) -> Result<serde_json::Value, String> {
-    store::set_config_dir(&app, &dir).map_err(|e| capture_err("config_set_dir", e))?;
-    store::ensure_config_dir_exists(&app).map_err(|e| capture_err("config_set_dir", e))?;
+    let normalized_dir =
+        utils::normalize_dir_input(&dir).map_err(|e| capture_err("config_set_dir", e))?;
+
+    // Require that the provided path already exists and is a directory.
+    // If we don't, then we'll always silently create directories even when
+    // the user is making typos trying to set the path, which is particularly
+    // annoying when dealing with hidden directories like ~/.darwin-ish things.
+    let p = normalized_dir.as_path();
+    if !p.exists() || !p.is_dir() {
+        return Err(format!(
+            "Directory does not exist: {}",
+            normalized_dir.display()
+        ));
+    }
+
+    store::set_config_dir(&app, &normalized_dir.to_string_lossy())
+        .map_err(|e| capture_err("config_set_dir", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
@@ -65,11 +80,14 @@ pub async fn config_set_dir(app: AppHandle, dir: String) -> Result<serde_json::V
 #[tauri::command]
 pub async fn config_pick_dir(app: AppHandle) -> Result<Option<String>, String> {
     let dialog = app.dialog();
+    // Try to open the picker at the currently configured directory
+    let default_dir = store::get_config_dir(&app).map_err(|e| capture_err("config_pick_dir", e))?;
     let result = dialog
         .file()
         .set_title(
             "Select Configuration Directory - TIP: press '⌘'+'⇧'+'.' to show hidden directories",
         )
+        .set_directory(std::path::PathBuf::from(default_dir))
         .blocking_pick_folder();
 
     if let Some(path) = result {
@@ -87,6 +105,35 @@ pub async fn config_pick_dir(app: AppHandle) -> Result<Option<String>, String> {
 pub async fn flake_exists(app: AppHandle) -> Result<bool, String> {
     let dir = store::get_config_dir(&app).map_err(|e| capture_err("flake_exists", e))?;
     Ok(Path::new(&dir).join("flake.nix").exists())
+}
+
+/// Checks if a flake.nix exists at the provided directory path
+#[tauri::command]
+pub async fn flake_exists_at(_app: AppHandle, dir: String) -> Result<bool, String> {
+    let normalized_dir =
+        utils::normalize_dir_input(&dir).map_err(|e| capture_err("flake_exists_at", e))?;
+    Ok(normalized_dir.join("flake.nix").exists())
+}
+
+/// Checks whether the provided path exists and is a directory.
+#[tauri::command]
+pub async fn path_exists(_app: AppHandle, dir: String) -> Result<bool, String> {
+    let normalized_dir =
+        utils::normalize_dir_input(&dir).map_err(|e| capture_err("path_exists", e))?;
+    Ok(normalized_dir.exists() && normalized_dir.is_dir())
+}
+
+/// Normalizes a user-provided directory path for validation and persistence.
+///
+/// Behavior:
+/// - trims surrounding whitespace
+/// - expands a leading `~` or `~/...` to the user's home directory
+/// - resolves relative paths against the current working directory
+#[tauri::command]
+pub async fn path_normalize(_app: AppHandle, input: String) -> Result<String, String> {
+    let normalized =
+        utils::normalize_dir_input(&input).map_err(|e| capture_err("path_normalize", e))?;
+    Ok(normalized.to_string_lossy().into_owned())
 }
 
 /// Creates a new nix-darwin configuration from the bundled template.
@@ -272,6 +319,42 @@ fn reset_evolve_cancelled() {
     EVOLVE_CANCELLED.store(false, std::sync::atomic::Ordering::SeqCst);
 }
 
+/// Global channel for user responses to agent questions.
+/// The sender is held here; the receiver is consumed by the evolve loop.
+static QUESTION_RESPONSE: std::sync::OnceLock<
+    tokio::sync::Mutex<(
+        tokio::sync::mpsc::Sender<String>,
+        tokio::sync::mpsc::Receiver<String>,
+    )>,
+> = std::sync::OnceLock::new();
+
+fn get_question_channel() -> &'static tokio::sync::Mutex<(
+    tokio::sync::mpsc::Sender<String>,
+    tokio::sync::mpsc::Receiver<String>,
+)> {
+    QUESTION_RESPONSE.get_or_init(|| {
+        let (tx, rx) = tokio::sync::mpsc::channel(1);
+        tokio::sync::Mutex::new((tx, rx))
+    })
+}
+
+/// Send a user's answer to the evolve loop's pending question.
+pub async fn send_question_response(answer: String) -> anyhow::Result<()> {
+    let channel = get_question_channel();
+    let lock = channel.lock().await;
+    lock.0
+        .send(answer)
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to send question response: {}", e))
+}
+
+/// Wait for a user response to a question (called from the evolve loop).
+pub async fn wait_for_question_response() -> Option<String> {
+    let channel = get_question_channel();
+    let mut lock = channel.lock().await;
+    lock.1.recv().await
+}
+
 /// Handles the complete evolution cycle returning the git status and summary to react
 #[tauri::command]
 pub async fn darwin_evolve(
@@ -318,6 +401,16 @@ pub async fn darwin_evolve_cancel() -> Result<serde_json::Value, String> {
     EVOLVE_CANCELLED.store(true, std::sync::atomic::Ordering::SeqCst);
     log::info!("Evolution cancellation requested");
     Ok(serde_json::json!({"ok": true, "message": "Cancellation requested"}))
+}
+
+/// Respond to an agent question during evolution.
+#[tauri::command]
+pub async fn darwin_evolve_answer(answer: String) -> Result<serde_json::Value, String> {
+    log::info!("User answered agent question: {}", answer);
+    send_question_response(answer)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(serde_json::json!({"ok": true}))
 }
 
 /// Legacy non-streaming apply command. Returns immediately with a hint to use streaming.

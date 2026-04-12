@@ -1,6 +1,6 @@
 [package]
 name = "nixmac"
-version = "0.17.0"
+version = "0.18.1"
 description = "Nixmac - macOS nix-darwin configuration manager"
 authors = ["you"]
 edition = "2021"
@@ -70,6 +70,7 @@ tauri-specta = { version = "2.0.0-rc.21", features = ["derive", "typescript"] }
 rnix = "0.14.0"
 rowan = "0.16.1"
 fuzzy-matcher = "0.3.7"
+rusqlite_migration = "1.2"
 
 [dependencies.tauri-plugin-sql]
 features = ["sqlite"] # or "postgres", or "mysql"
