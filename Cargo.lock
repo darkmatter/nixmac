@@ -3529,7 +3529,7 @@ dependencies = [
 
 [[package]]
 name = "nixmac"
-version = "0.17.0"
+version = "0.18.1"
 dependencies = [
  "anyhow",
  "async-openai",
@@ -3551,6 +3551,7 @@ dependencies = [
  "rnix",
  "rowan",
  "rusqlite",
+ "rusqlite_migration",
  "sentry",
  "serde",
  "serde_json",
@@ -5103,6 +5104,16 @@ dependencies = [
  "hashlink",
  "libsqlite3-sys",
  "smallvec",
+]
+
+[[package]]
+name = "rusqlite_migration"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "55709bc01054c69e2f1cefdc886642b5e6376a8db3c86f761be0c423eebf178b"
+dependencies = [
+ "log",
+ "rusqlite",
 ]
 
 [[package]]
