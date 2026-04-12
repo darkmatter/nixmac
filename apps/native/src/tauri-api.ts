@@ -259,12 +259,14 @@ export const darwinAPI = {
     evolveFromManual: () => invoke<number>("darwin_adopt_manual_changes"),
     evolveCancel: () => invoke("darwin_evolve_cancel"),
     apply: (hostOverride?: string) => invoke("darwin_apply", { hostOverride }),
-    applyStreamStart: (hostOverride?: string) =>
-      invoke("darwin_apply_stream_start", { hostOverride }),
+    applyStreamStart: (hostOverride?: string, deferBuiltTag?: boolean) =>
+      invoke("darwin_apply_stream_start", { hostOverride, deferBuiltTag }),
     applyStreamCancel: () => invoke("darwin_apply_stream_cancel"),
     finalizeApply: () => invoke<ApplyResult>("finalize_apply"),
     rollbackErase: () => invoke<RollbackResult>("rollback_erase"),
-    restoreToCommit: (targetHash: string) => invoke<void>("restore_to_commit", { targetHash }),
+    prepareRestore: (targetHash: string) => invoke<void>("prepare_restore", { targetHash }),
+    abortRestore: () => invoke<void>("abort_restore"),
+    finalizeRestore: (targetHash: string) => invoke<GitStatus>("finalize_restore", { targetHash }),
   },
   nix: {
     check: () =>

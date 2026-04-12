@@ -122,14 +122,16 @@ export function DarwinWidget() {
       <StepContentWrapper>
         <ErrorMessage />
         {getActiveStepComponent()}
-        <EvolveOverlayPanel />
-        <RebuildOverlayPanel />
         <ReportIssueButton />
       </StepContentWrapper>
 
-      <Console />
+      <EvolveOverlayPanel />
+      <RebuildOverlayPanel />
+
       <SettingsDialog />
       <FeedbackDialog />
+
+      <Console />
     </div>
   );
 }

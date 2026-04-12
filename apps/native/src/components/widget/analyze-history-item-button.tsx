@@ -1,16 +1,16 @@
 import { useState } from "react";
-import { Loader2, Sparkles } from "lucide-react";
+import { Dna, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
 import { useHistory } from "@/hooks/use-history";
-
 interface AnalyzeHistoryItemButtonProps {
   hash: string;
+  isPartial?: boolean;
   className?: string;
 }
 
-export function AnalyzeHistoryItemButton({ hash, className }: AnalyzeHistoryItemButtonProps) {
+export function AnalyzeHistoryItemButton({ hash, isPartial, className }: AnalyzeHistoryItemButtonProps) {
   const [localAnalyzing, setLocalAnalyzing] = useState(false);
   const queuedByMany = useWidgetStore((state) => state.analyzingHistoryForHashes.has(hash));
   const isAnalyzing = localAnalyzing || queuedByMany;
@@ -19,10 +19,10 @@ export function AnalyzeHistoryItemButton({ hash, className }: AnalyzeHistoryItem
   return (
     <Button
       type="button"
-      variant="outline"
+      variant="ghost"
       size="sm"
       disabled={isAnalyzing}
-      className={cn("h-auto whitespace-nowrap border-teal-400/30 bg-teal-400/[0.08] px-[10px] py-1 text-[10px] text-neutral-400", className)}
+      className={cn("h-auto gap-[3px] px-[7px] py-0.5 text-[10px] text-neutral-500 hover:bg-transparent hover:text-neutral-300", className)}
       onClick={async (e) => {
         e.stopPropagation();
         setLocalAnalyzing(true);
@@ -36,12 +36,12 @@ export function AnalyzeHistoryItemButton({ hash, className }: AnalyzeHistoryItem
       {isAnalyzing ? (
         <>
           <Loader2 className="h-[10px] w-[10px] animate-spin" />
-          Analyzing…
+          {isPartial ? "Updating…" : "Analyzing…"}
         </>
       ) : (
         <>
-          <Sparkles className="h-[10px] w-[10px]" />
-          Analyze changes
+          <Dna className="h-[10px] w-[10px]" />
+          {isPartial ? "Update" : "Analyze"}
         </>
       )}
     </Button>

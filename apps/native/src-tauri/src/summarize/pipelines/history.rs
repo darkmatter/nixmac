@@ -39,17 +39,6 @@ pub async fn from_commit_times_number<R: Runtime>(
         let commit_id = db_ids[i];
         let base_commit_id = db_ids[i + 1];
 
-        let conn = rusqlite::Connection::open(&db_path)?;
-        if crate::db::changesets::query_change_set_for_commit_pair(
-            &conn,
-            commit_id,
-            base_commit_id,
-        )?
-        .is_some()
-        {
-            continue;
-        }
-
         let diff = crate::git::commit_diff(&config_dir, &commits[i + 1].hash, &commits[i].hash)?;
         let now = crate::utils::unix_now();
         let all_changes = crate::changes_from_diff::changes_from_diff(&diff, now, true);
@@ -57,22 +46,65 @@ pub async fn from_commit_times_number<R: Runtime>(
             .into_iter()
             .partition(crate::changes_from_diff::is_sensitive_or_opaque);
 
-        if let Err(e) = super::fresh_changeset::analyze(
-            changes,
-            app,
+        let diff_hashes: Vec<String> = changes.iter().map(|c| c.hash.clone()).collect();
+
+        let found = crate::summarize::find_existing::by_base_with_hashes(
             &db_path,
-            Some(commit_id),
-            Some(base_commit_id),
-            commits[i].message.as_deref(),
-            None,
-        )
-        .await
-        {
-            log::error!(
-                "[history] pipeline failed for {}: {}",
-                commits[i].hash,
-                e
-            );
+            base_commit_id,
+            &diff_hashes,
+        )?;
+
+        if found.change_set.is_some() && found.missed_hashes.is_empty() {
+            // fully covered — nothing to do
+            continue;
+        }
+
+        if found.change_set.is_some() {
+            // partially covered — evolve with missed changes
+            let missed_set: std::collections::HashSet<&str> =
+                found.missed_hashes.iter().map(String::as_str).collect();
+            let missed_changes: Vec<_> = changes
+                .into_iter()
+                .filter(|c| missed_set.contains(c.hash.as_str()))
+                .collect();
+            let semantic_map = crate::summarize::group_existing::from_change_sets(vec![found]);
+            if let Err(e) = super::evolved_changeset::analyze(
+                semantic_map,
+                missed_changes,
+                app,
+                &db_path,
+                Some(commit_id),
+                base_commit_id,
+                commits[i].message.as_deref(),
+                None,
+            )
+            .await
+            {
+                log::error!(
+                    "[history] evolved pipeline failed for {}: {}",
+                    commits[i].hash,
+                    e
+                );
+            }
+        } else {
+            // no changeset yet — run fresh
+            if let Err(e) = super::fresh_changeset::analyze(
+                changes,
+                app,
+                &db_path,
+                Some(commit_id),
+                Some(base_commit_id),
+                commits[i].message.as_deref(),
+                None,
+            )
+            .await
+            {
+                log::error!(
+                    "[history] pipeline failed for {}: {}",
+                    commits[i].hash,
+                    e
+                );
+            }
         }
     }
 

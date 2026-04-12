@@ -2,8 +2,8 @@
 
 import { AnimatedTabsList, AnimatedTabsTrigger } from "@/components/ui/animated-tabs";
 import { Tabs } from "@/components/ui/tabs";
-import { Diff } from "@/components/widget/diff";
-import { SummaryItems } from "@/components/widget/summary-items";
+import { Diff } from "@/components/widget/summaries/diff";
+import { SummaryItems } from "@/components/widget/summaries/summary-items";
 import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
 import { Dna, Wrench } from "lucide-react";

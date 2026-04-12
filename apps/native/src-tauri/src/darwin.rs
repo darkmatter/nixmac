@@ -84,6 +84,7 @@ pub fn apply_stream(
     app: &AppHandle,
     config_dir: &str,
     host_attr: &str,
+    tag_head_as_built: bool,
 ) -> Result<(), anyhow::Error> {
     info!(
         "[darwin] apply_stream: config_dir={}, host_attr={}",
@@ -95,7 +96,7 @@ pub fn apply_stream(
     let app_handle = app.clone();
 
     std::thread::spawn(move || {
-        match run_darwin_rebuild(&app_handle, &config_dir_owned, &host_attr_owned) {
+        match run_darwin_rebuild(&app_handle, &config_dir_owned, &host_attr_owned, tag_head_as_built) {
             Ok(payload) => {
                 info!("[darwin] darwin-rebuild completed successfully");
                 let _ = app_handle.emit("darwin:apply:end", payload);
@@ -326,15 +327,6 @@ fn run_activate_step(config_dir: &str) -> Result<ActivateResult, anyhow::Error> 
         .output()
         .map_err(|e| anyhow::anyhow!("Failed to run osascript: {}", e))?;
 
-    // Tag HEAD as built on success. For the rollback-rebuild flow this is the
-    // final tag (main is clean). For the apply flow, finalize_apply will
-    // overwrite nixmac-last-build with the post-commit SHA.
-    if output.status.success() {
-        if let Err(e) = crate::git::tag_as_built(config_dir) {
-            error!("[darwin] Failed to tag HEAD as built: {}", e);
-        }
-    }
-
     let stdout_str = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr_str = String::from_utf8_lossy(&output.stderr).to_string();
     let code = output.status.code().unwrap_or(-1);
@@ -447,6 +439,7 @@ fn run_darwin_rebuild(
     app: &AppHandle,
     config_dir: &str,
     host_attr: &str,
+    tag_head_as_built: bool,
 ) -> Result<serde_json::Value, serde_json::Value> {
     let (log_file, log_path) = create_log_file().map_err(|e| {
         serde_json::json!({
@@ -633,6 +626,12 @@ fn run_darwin_rebuild(
     }
 
     summarizer.complete(true);
+
+    if tag_head_as_built {
+        if let Err(e) = crate::git::tag_as_built(config_dir) {
+            error!("[darwin] Failed to tag HEAD as built: {}", e);
+        }
+    }
 
     // Log completion
     {
