@@ -18,6 +18,7 @@ vi.mock("@/tauri-api", () => ({
     on: vi.fn().mockReturnValue(Promise.resolve(() => {})),
   },
   CONFIG_CHANGED_CHANNEL: "config-changed",
+  DEFAULT_MAX_ITERATIONS: 25,
 }));
 
 // Mock hooks
