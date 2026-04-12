@@ -17,8 +17,8 @@ const config: StorybookConfig = {
     name: "@storybook/react-vite",
     options: {},
   },
-  viteFinal: async (config) =>
-    mergeConfig(config, {
+  viteFinal: async (config) => {
+    const merged = mergeConfig(config, {
       resolve: {
         alias: {
           "@/tauri-api": path.resolve(storybookDir, "mocks/tauri-api.ts"),
@@ -31,7 +31,11 @@ const config: StorybookConfig = {
           ),
         },
       },
-    }),
+    });
+    merged.build ??= {};
+    merged.build.target = "esnext";
+    return merged;
+  },
 };
 
 export default config;
