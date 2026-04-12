@@ -49,7 +49,7 @@ function getErrorSuggestion(errorType: RebuildErrorType | undefined): string {
     case "build_error":
       return "A package failed to build. You may need to update your flake or fix the package configuration.";
     case "full_disk_access":
-      return "darwin-rebuild requires Full Disk Access to apply system changes. Grant access in System Settings → Privacy & Security → Full Disk Access.";
+      return "darwin-rebuild requires Full Disk Access. Make sure nixmac is in your Applications folder (not running from the install disk image), then grant access in System Settings → Privacy & Security → Full Disk Access.";
     case "user_cancelled":
       return "The activation was cancelled. You can retry the operation.";
     case "authorization_denied":
