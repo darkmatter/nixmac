@@ -180,8 +180,7 @@ pub fn count_diff_changes(diff: &str) -> (usize, usize) {
         }
         if line.starts_with('+') {
             additions += 1;
-        }
-        else if line.starts_with('-') {
+        } else if line.starts_with('-') {
             deletions += 1;
         }
     }
@@ -282,7 +281,11 @@ pub fn current_branch(dir: &str) -> Option<String> {
         .ok()?;
 
     let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if branch != "HEAD" { Some(branch) } else { None }
+    if branch != "HEAD" {
+        Some(branch)
+    } else {
+        None
+    }
 }
 
 /// Comprehensive git status against HEAD.
@@ -431,7 +434,10 @@ pub fn commit_all(dir: &str, message: &str) -> Result<CommitInfo> {
         .current_dir(dir)
         .output()?;
 
-    let commit_output = git_command()
+    // TODO: _commit_output being unused looks sketchy because if you remove it
+    // then the message parameter is ALSO unused, and checking the call sites
+    // "message" looks important.
+    let _commit_output = git_command()
         .args(["commit", "-m", message])
         .current_dir(dir)
         .output()
@@ -526,7 +532,10 @@ pub fn tag_commit(dir: &str, tag: &str, target: &str, force: bool) -> Result<()>
     }
     args.push(tag);
     args.push(target);
-    git_command().args(&args).current_dir(dir).output()
+    git_command()
+        .args(&args)
+        .current_dir(dir)
+        .output()
         .with_context(|| format!("failed to create tag `{}`", tag))?;
     Ok(())
 }
@@ -570,12 +579,19 @@ pub fn create_evolution_backup(
         .context("git write-tree")
         .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())?;
 
-    let head_hash = get_head_sha(repo_path)
-        .ok_or_else(|| anyhow::anyhow!("failed to resolve HEAD"))?;
+    let head_hash =
+        get_head_sha(repo_path).ok_or_else(|| anyhow::anyhow!("failed to resolve HEAD"))?;
 
     let commit_msg = format!("nixmac backup: {}", branch_name);
     let commit_hash = git_command()
-        .args(["commit-tree", &tree_hash, "-p", &head_hash, "-m", &commit_msg])
+        .args([
+            "commit-tree",
+            &tree_hash,
+            "-p",
+            &head_hash,
+            "-m",
+            &commit_msg,
+        ])
         .current_dir(repo_path)
         .output()
         .context("git commit-tree")
@@ -627,7 +643,11 @@ mod tests {
     use tempfile::TempDir;
 
     fn run_git_ok(repo_dir: &Path, args: &[&str]) -> String {
-        let output = git_command().args(args).current_dir(repo_dir).output().unwrap();
+        let output = git_command()
+            .args(args)
+            .current_dir(repo_dir)
+            .output()
+            .unwrap();
         assert!(
             output.status.success(),
             "git {:?} failed: {}",
@@ -687,11 +707,20 @@ deleted file mode 100644
         let files = parse_files_from_diff(diff);
         assert_eq!(files.len(), 3);
         assert_eq!(files[0].path, "new-file.txt");
-        assert!(matches!(files[0].change_type, crate::shared_types::ChangeType::New));
+        assert!(matches!(
+            files[0].change_type,
+            crate::shared_types::ChangeType::New
+        ));
         assert_eq!(files[1].path, "existing.txt");
-        assert!(matches!(files[1].change_type, crate::shared_types::ChangeType::Edited));
+        assert!(matches!(
+            files[1].change_type,
+            crate::shared_types::ChangeType::Edited
+        ));
         assert_eq!(files[2].path, "removed.txt");
-        assert!(matches!(files[2].change_type, crate::shared_types::ChangeType::Removed));
+        assert!(matches!(
+            files[2].change_type,
+            crate::shared_types::ChangeType::Removed
+        ));
     }
 
     #[test]
@@ -721,10 +750,7 @@ deleted file mode 100644
         assert_eq!(branch_before, branch_after);
 
         // Backup ref must exist and point to a commit that includes the changed content.
-        let backup_tree = run_git_ok(&repo_dir, &[
-            "show",
-            &format!("{}:file.txt", backup_branch),
-        ]);
+        let backup_tree = run_git_ok(&repo_dir, &["show", &format!("{}:file.txt", backup_branch)]);
         assert_eq!(backup_tree.trim(), "changed");
     }
 
