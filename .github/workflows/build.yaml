@@ -306,9 +306,12 @@ jobs:
           name: nixmac-macos-app
           path: target/release/bundle/macos/*.app
           if-no-files-found: warn
-      # Create GitHub Release for tags
+      # Create GitHub Release for tags.
+      # Skipped for test tags matching `-test.N` so we can exercise the full
+      # signing/notarization + DMG swap path on a disposable tag without
+      # publishing a public release.
       - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-test.')
         uses: softprops/action-gh-release@v2
         with:
           draft: false
@@ -317,9 +320,12 @@ jobs:
             target/release/bundle/dmg/*.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # Upload to R2 for auto-updater (R2 creds come from sops)
+      # Upload to R2 for auto-updater (R2 creds come from sops).
+      # Skipped for test tags matching `-test.N` so we can exercise the full
+      # signing/notarization + DMG swap path on a disposable tag without
+      # overwriting latest.json on the updater CDN.
       - name: Upload to R2
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-test.')
         shell: 'sops exec-env .secrets.enc.yaml "bash -e {0}"'
         env:
           AWS_DEFAULT_REGION: auto
