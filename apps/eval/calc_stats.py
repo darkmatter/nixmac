@@ -44,7 +44,13 @@ def extract_metrics(result_path: Path) -> ResultMetrics | None:
 
         def optional_int(d: dict[str, Any], key: str) -> int | None:
             value = d.get(key)
-            return value if isinstance(value, int) else None
+            if isinstance(value, int):
+                return value
+            if isinstance(value, float):
+                return int(value)
+            if isinstance(value, str) and value.isdigit():
+                return int(value)
+            return None
 
         # prefer top-level summary, fall back to result.summary
         commit_message = (
@@ -65,18 +71,35 @@ def extract_metrics(result_path: Path) -> ResultMetrics | None:
             or None
         )
 
+        # Assume the new result shape: metrics are under `result.telemetry`
+        telemetry = result["telemetry"]
+
+        duration_ms = int(telemetry["durationMs"])
+        iterations = int(telemetry["iterations"])
+        build_attempts = int(telemetry["buildAttempts"])
+        edits_count = int(telemetry["editsCount"])
+        total_tokens = int(telemetry["totalTokens"])
+
+        thinking_count = optional_int(telemetry, "thinkingCount")
+        tool_calls_count = optional_int(telemetry, "toolCallsCount")
+
+        git_status = result.get("gitStatus", {})
+        # Support older files that used `headIsBuilt` while preferring the
+        # newer `branchHasBuiltCommit` key.
+        branch_has_built_commit = bool(git_status.get("branchHasBuiltCommit", git_status.get("headIsBuilt", False)))
+
         return ResultMetrics(
             case_num=case_num,
             prompt=data.get("prompt", ""),
             ok=data.get("ok", False),
-            duration_ms=result.get("durationMs", 0),
-            iterations=result.get("iterations", 0),
-            build_attempts=result.get("buildAttempts", 0),
-            edits_count=result.get("editsCount", 0),
-            total_tokens=result.get("totalTokens", 0),
-            thinking_count=optional_int(result, "thinkingCount"),
-            tool_calls_count=optional_int(result, "toolCallsCount"),
-            branch_has_built_commit=result.get("gitStatus", {}).get("branchHasBuiltCommit", False),
+            duration_ms=duration_ms,
+            iterations=iterations,
+            build_attempts=build_attempts,
+            edits_count=edits_count,
+            total_tokens=total_tokens,
+            thinking_count=thinking_count,
+            tool_calls_count=tool_calls_count,
+            branch_has_built_commit=branch_has_built_commit,
             commit_message=commit_message,
             state=state,
             conversational_reply=conversational_reply,
@@ -318,6 +341,11 @@ def main() -> None:
         action="store_true",
         help="Show only summary statistics, not individual cases",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Print first parsed ResultMetrics for debugging",
+    )
     args = parser.parse_args()
 
     input_dir = args.input_dir
@@ -337,6 +365,12 @@ def main() -> None:
         metrics = extract_metrics(result_file)
         if metrics:
             metrics_list.append(metrics)
+
+    if args.debug:
+        print("\nDEBUG: first parsed metrics:\n")
+        for m in metrics_list[:3]:
+            print(m.__dict__)
+        print("\n")
 
     if not metrics_list:
         print("No valid metrics could be extracted from result files")
