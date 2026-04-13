@@ -303,7 +303,9 @@ fn run_activate_step(config_dir: &str) -> Result<ActivateResult, anyhow::Error> 
          export PATH='{path}'\n\
          export HOME='{home}'\n\
          export SSH_AUTH_SOCK='{sock}'\n\
-         launchctl asuser \"$USER_ID\" sudo -E -n \"$ACTIVATE\" 2>&1",
+         launchctl asuser \"$USER_ID\" sudo -E -n \"$ACTIVATE\" 2>&1\n\
+         SYSTEM_PATH=$(dirname \"$ACTIVATE\")\n\
+         nix-env -p /nix/var/nix/profiles/system --set \"$SYSTEM_PATH\" || true",
         activate = sq(&real_activate),
         user = sq(&user),
         path = sq(&nix_path),
