@@ -470,14 +470,10 @@ pub fn commit_all(dir: &str, message: &str) -> Result<CommitInfo> {
         .current_dir(dir)
         .output()?;
 
-    // TODO: _commit_output being unused looks sketchy because if you remove it
-    // then the message parameter is ALSO unused, and checking the call sites
-    // "message" looks important.
-    let _commit_output = git_command()
+    git_command()
         .args(["commit", "-m", message])
         .current_dir(dir)
-        .output()
-        .ok();
+        .output()?;
 
     // Get commit hash
     let hash_output = git_command()
