@@ -189,6 +189,10 @@ fn render_nix_path_literal(
     Ok(Some(path.to_string()))
 }
 
+/// Render a Nix expression from a JSON object with a specific marker key, allowing tools to pass raw Nix expressions in edits.
+/// This is intentionally restricted and should only be used by trusted internal tool flows, for reasons not the least of which
+/// is that it does not perform any validation or sanitization on the expression string, and it doesn't allow
+/// all possible Nix expressions. It is an internal contract between evolve tools.
 fn render_nix_expression_literal(
     map: &serde_json::Map<String, serde_json::Value>,
 ) -> Result<Option<String>> {
@@ -687,7 +691,7 @@ fn set_attrs(
                 })?;
                 let indent = infer_inner_indent(&attrset_text);
                 let insert_pos = attrset_range.start + close_offset;
-                let kv = format!("{}{} = {};\n", indent, key, rendered);
+                let kv = format!("{}{} = {};\n", indent, render_nix_attr_key(key), rendered);
                 info!(
                     "Inserting key {} into attrset {} at {}",
                     key, path, insert_pos
@@ -707,7 +711,12 @@ fn set_attrs(
         let body = pending
             .iter()
             .map(|(k, v)| -> Result<String> {
-                Ok(format!("{}{} = {};", inner_indent, k, render_nix_value(v)?))
+                Ok(format!(
+                    "{}{} = {};",
+                    inner_indent,
+                    render_nix_attr_key(k),
+                    render_nix_value(v)?
+                ))
             })
             .collect::<Result<Vec<_>>>()?
             .join("\n");
