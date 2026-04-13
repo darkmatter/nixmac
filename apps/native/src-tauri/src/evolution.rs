@@ -12,10 +12,11 @@ use tauri::AppHandle;
 use crate::{
     db,
     evolve::{self, EvolutionState},
-    evolve_state, git, store, summarize,
+    evolve_state, git,
     shared_types::{
         EvolutionFailureResult, EvolutionResult, EvolutionTelemetry, SemanticChangeMap,
     },
+    store, summarize,
     types::{emit_evolve_event, EvolveEvent},
 };
 
@@ -229,23 +230,23 @@ pub async fn backup_evolve_and_record_changeset(
     let _ = store::set_cached_git_status(app, &final_status);
 
     // Insert a DB evolution record and run the appropriate summarization pipeline.
-    let (db_evolution_id, new_changeset_id) =
-        store_metadata(app, &final_status).await;
+    let (db_evolution_id, new_changeset_id) = store_metadata(app, &final_status).await;
 
-    let evolve_state = evolve_state::set(app, evolve_state::EvolveState {
-        evolution_id: db_evolution_id,
-        current_changeset_id: new_changeset_id,
-        backup_branch,
-        ..Default::default()
-    })
+    let evolve_state = evolve_state::set(
+        app,
+        evolve_state::EvolveState {
+            evolution_id: db_evolution_id,
+            current_changeset_id: new_changeset_id,
+            backup_branch,
+            ..Default::default()
+        },
+    )
     .unwrap_or_default();
 
     // Build the change map from whatever is now stored in the DB.
     let change_map = db::get_db_path(app)
         .ok()
-        .and_then(|db_path| {
-            summarize::find_existing::for_current_state(&db_path, &config_dir).ok()
-        })
+        .and_then(|db_path| summarize::find_existing::for_current_state(&db_path, &config_dir).ok())
         .map(summarize::group_existing::from_change_sets)
         .unwrap_or_default();
 
@@ -259,18 +260,34 @@ pub async fn backup_evolve_and_record_changeset(
 }
 
 fn restore_after_failure(app: &AppHandle, config_dir: &str, backup_branch: &Option<String>) {
+    // Allow skipping the actual git restore calls for debugging/testing.
+    // If `DEBUG_SKIP_RESTORE_ALL` is set to a non-zero value, skip restore operations
+    // but keep the same state updates and logging behavior.
+    let skip_restore = match std::env::var("DEBUG_SKIP_RESTORE_ALL") {
+        Ok(val) => val != "0",
+        Err(_) => false,
+    };
+
     match backup_branch {
         Some(_) => {
-            if let Err(e) = git::restore_from_backup(config_dir) {
+            if skip_restore {
+                log::warn!("[evolution] DEBUG_SKIP_RESTORE_ALL set — skipping restore_from_backup");
+            } else if let Err(e) = git::restore_from_backup(config_dir) {
                 log::error!("[evolution] restore_from_backup failed: {}", e);
             }
-            let _ = evolve_state::set(app, evolve_state::EvolveState {
-                backup_branch: None,
-                ..evolve_state::get(app).unwrap_or_default()
-            });
+
+            let _ = evolve_state::set(
+                app,
+                evolve_state::EvolveState {
+                    backup_branch: None,
+                    ..evolve_state::get(app).unwrap_or_default()
+                },
+            );
         }
         None => {
-            if let Err(e) = git::restore_all(config_dir) {
+            if skip_restore {
+                log::warn!("[evolution] DEBUG_SKIP_RESTORE_ALL set — skipping restore_all");
+            } else if let Err(e) = git::restore_all(config_dir) {
                 log::error!("[evolution] restore_all failed: {}", e);
             }
         }
