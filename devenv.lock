@@ -1025,6 +1025,9 @@
         "nix2container": "nix2container",
         "nixpkgs": "nixpkgs_5",
         "nixpkgs-python": "nixpkgs-python",
+        "pre-commit-hooks": [
+          "git-hooks"
+        ],
         "rust-overlay": "rust-overlay_2",
         "treefmt-nix": "treefmt-nix_3"
       }
