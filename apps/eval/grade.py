@@ -26,8 +26,12 @@ DEFAULT_RESULTS_DIR = SCRIPT_DIR / "data" / "results"
 
 GRADER_VERSION = "0.1.0"
 
-# Protected files the agent must never edit
-PROTECTED_FILE_PREFIXES = ("flake.nix", "flake-modules/")
+# Protected files the agent should not edit without explicit user request.
+# Note: flake.nix was removed from this list per the March 2026 team decision —
+# the agent legitimately needs to edit flake.nix to add flake inputs, enable
+# home-manager, or add modules. The system prompt still steers the agent away
+# from root flake.nix by default, but explicit user requests are honored.
+PROTECTED_FILE_PREFIXES = ("flake-modules/",)
 
 
 @dataclass
