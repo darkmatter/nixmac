@@ -91,9 +91,27 @@ pub fn create_tools() -> Vec<Tool> {
         },
         Tool {
             name: "edit_nix_file".to_string(),
-            description: "Edit a Nix file with semantic operations using attribute-path Add/Remove/Set/SetAttrs actions.\n\nUse this tool whenever you need the agent to make structured edits to Nix config. `add` and `remove` operate on list-valued attributes such as `home.packages` or `environment.systemPackages`. `set` assigns a scalar value such as a boolean, string, number, or null to an attribute path like `services.tailscale.enable`. `set_attrs` creates or updates a Nix attribute set (object) at a given path and sets multiple scalar key-value pairs inside it — use this for options like `system.defaults.dock` that take an attrset value. The tool understands Nix syntax and will modify existing assignments when possible, or insert a new assignment into the module body if missing.\n\nAlways: provide an `action` object with exactly one of `add`, `remove`, `set`, or `set_attrs`. After calling this tool, run `build_check` to verify changes.".to_string(),
-            parameters: serde_json::json!({
+            description: "Edit a Nix file with semantic operations using attribute-path Add/Remove/Set/SetAttrs actions.\n\nUse this tool whenever you need the agent to make structured edits to Nix config. `add` and `remove` operate on list-valued attributes such as `home.packages` or `environment.systemPackages`. `set` assigns a scalar value such as a boolean, string, number, or null to an attribute path like `services.tailscale.enable`. `set_attrs` creates or updates a Nix attribute set (object) at a given path and sets key-value pairs inside it, including nested JSON objects/arrays that map to nested Nix attrsets/lists. Use this for options like `system.defaults.dock` that take an attrset value. The tool understands Nix syntax and will modify existing assignments when possible, or insert a new assignment into the module body if missing.\n\nAlways: provide an `action` object with exactly one of `add`, `remove`, `set`, or `set_attrs`. After calling this tool, run `build_check` to verify changes.".to_string(),            parameters: serde_json::json!({
                 "type": "object",
+                "$defs": {
+                    "jsonValue": {
+                        "oneOf": [
+                            { "type": "boolean" },
+                            { "type": "string" },
+                            { "type": "number" },
+                            { "type": "integer" },
+                            { "type": "null" },
+                            {
+                                "type": "array",
+                                "items": { "$ref": "#/$defs/jsonValue" }
+                            },
+                            {
+                                "type": "object",
+                                "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+                            }
+                        ]
+                    }
+                },
                 "properties": {
                     "path": {
                         "type": "string",
@@ -507,7 +525,16 @@ pub fn execute_tool(
                     search: search.to_string(),
                     replace: replace.to_string(),
                 },
-            )?;
+            )
+            .map_err(|e| {
+                anyhow!(
+                    "edit_file failed for path='{}' (search_len={}, replace_len={}): {}",
+                    path,
+                    search.len(),
+                    replace.len(),
+                    e
+                )
+            })?;
 
             Ok(ToolResult::Edit(FileEdit {
                 path: path.to_string(),
@@ -619,20 +646,6 @@ pub fn execute_tool(
                 let attrs_map = attrs_val
                     .as_object()
                     .ok_or_else(|| anyhow!("edit_nix_file.set_attrs: attrs must be an object"))?;
-                for (k, v) in attrs_map {
-                    match v {
-                        serde_json::Value::Bool(_)
-                        | serde_json::Value::String(_)
-                        | serde_json::Value::Number(_)
-                        | serde_json::Value::Null => {}
-                        _ => {
-                            return Err(anyhow!(
-                                "edit_nix_file.set_attrs: value for key '{}' must be a scalar",
-                                k
-                            ));
-                        }
-                    }
-                }
                 FileEditAction::SetAttrs {
                     path: attr_path.to_string(),
                     attrs: attrs_map.clone(),
@@ -721,9 +734,7 @@ pub fn execute_tool(
                 .map(|n| n as usize)
                 .unwrap_or_else(search_docs_default_limit)
                 .clamp(1, 10);
-            let source_filter = args["source"]
-                .as_str()
-                .and_then(DocsSource::from_filter);
+            let source_filter = args["source"].as_str().and_then(DocsSource::from_filter);
 
             let result = execute_search_docs(query, limit, source_filter)?;
             Ok(ToolResult::Continue(result))
@@ -734,13 +745,11 @@ pub fn execute_tool(
                 .as_str()
                 .ok_or_else(|| anyhow!("ask_user: missing question"))?
                 .to_string();
-            let choices = args["choices"]
-                .as_array()
-                .map(|arr| {
-                    arr.iter()
-                        .filter_map(|v| v.as_str().map(str::to_string))
-                        .collect::<Vec<_>>()
-                });
+            let choices = args["choices"].as_array().map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(str::to_string))
+                    .collect::<Vec<_>>()
+            });
 
             info!("❓ Agent asking user: {}", question);
             Ok(ToolResult::Question { question, choices })

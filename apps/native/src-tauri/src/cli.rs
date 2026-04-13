@@ -114,6 +114,12 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
     } = cfg;
     // Config
     if let Some(config_path) = config {
+        if !config_path.exists() || !config_path.is_dir() {
+            return Err(format!(
+                "Config path must be an existing directory: {}",
+                config_path.display()
+            ));
+        }
         crate::store::set_config_dir(app, &config_path.to_string_lossy())
             .map_err(|e| format!("Failed to set config dir: {}", e))?;
     }

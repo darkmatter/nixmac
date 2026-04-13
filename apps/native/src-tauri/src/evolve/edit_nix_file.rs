@@ -59,6 +59,57 @@ fn render_nix_scalar(value: &serde_json::Value) -> Result<String> {
     }
 }
 
+fn render_nix_attr_key(key: &str) -> String {
+    let mut chars = key.chars();
+    let starts_with_valid = chars
+        .next()
+        .map(|ch| ch.is_ascii_alphabetic() || ch == '_')
+        .unwrap_or(false);
+    let rest_valid =
+        chars.all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == '-' || ch == '\'');
+
+    if starts_with_valid && rest_valid {
+        key.to_string()
+    } else {
+        render_nix_string(key)
+    }
+}
+
+fn render_nix_value(value: &serde_json::Value) -> Result<String> {
+    match value {
+        serde_json::Value::Array(items) => {
+            if items.is_empty() {
+                return Ok("[ ]".to_string());
+            }
+
+            let rendered_items = items
+                .iter()
+                .map(render_nix_value)
+                .collect::<Result<Vec<_>>>()?;
+            Ok(format!("[ {} ]", rendered_items.join(" ")))
+        }
+        serde_json::Value::Object(map) => {
+            if map.is_empty() {
+                return Ok("{ }".to_string());
+            }
+
+            let rendered_pairs = map
+                .iter()
+                .map(|(key, nested)| -> Result<String> {
+                    Ok(format!(
+                        "{} = {};",
+                        render_nix_attr_key(key),
+                        render_nix_value(nested)?
+                    ))
+                })
+                .collect::<Result<Vec<_>>>()?;
+
+            Ok(format!("{{ {} }}", rendered_pairs.join(" ")))
+        }
+        _ => render_nix_scalar(value),
+    }
+}
+
 /// Apply a semantic file edit to the filesystem, with Nix-aware handling for specific edit types.
 pub fn apply_semantic_edit(base: &Path, edit: &SemanticFileEdit) -> anyhow::Result<()> {
     rewrite_existing_file_in_dir(base, &edit.path, "apply semantic nix edit", |content| {
@@ -493,7 +544,7 @@ fn set_attrs(
     if attrset_exists {
         // Merge into existing attrset; re-query range after each mutation.
         for (key, value) in pending {
-            let rendered = render_nix_scalar(value)?;
+            let rendered = render_nix_value(value)?;
             let attrset_range = find_assignment_value_range(&current, path)
                 .ok_or_else(|| anyhow::anyhow!("set_attrs: lost attrset range during update"))?;
             let attrset_text = current[attrset_range.clone()].to_string();
@@ -534,12 +585,7 @@ fn set_attrs(
         let body = pending
             .iter()
             .map(|(k, v)| -> Result<String> {
-                Ok(format!(
-                    "{}{} = {};",
-                    inner_indent,
-                    k,
-                    render_nix_scalar(v)?
-                ))
+                Ok(format!("{}{} = {};", inner_indent, k, render_nix_value(v)?))
             })
             .collect::<Result<Vec<_>>>()?
             .join("\n");
@@ -837,6 +883,40 @@ environment.systemPackages = with pkgs; [
             edited.matches("system.defaults.dock").count(),
             1,
             "should not duplicate the attrset assignment"
+        );
+    }
+
+    #[test]
+    fn set_attrs_supports_nested_json_values() {
+        let mut attrs = serde_json::Map::new();
+        attrs.insert(
+            "script".to_string(),
+            serde_json::json!("source /run/secrets/myapp && exec /usr/local/bin/myapp"),
+        );
+        attrs.insert(
+            "serviceConfig".to_string(),
+            serde_json::json!({
+                "Label": "org.myapp.service",
+                "RunAtLoad": true,
+                "StandardOutPath": "/tmp/myapp.out.log",
+                "StandardErrorPath": "/tmp/myapp.err.log"
+            }),
+        );
+
+        let edited = set_attrs(WITH_PKGS_EMPTY, "launchd.user.agents.myapp", &attrs)
+            .expect("set_attrs should support nested values");
+
+        assert!(
+            edited.contains("launchd.user.agents.myapp = {"),
+            "expected set_attrs to create target attrset"
+        );
+        assert!(
+            edited.contains("script = \"source /run/secrets/myapp && exec /usr/local/bin/myapp\";"),
+            "expected script string to render"
+        );
+        assert!(
+            edited.contains("serviceConfig = { Label = \"org.myapp.service\"; RunAtLoad = true; StandardErrorPath = \"/tmp/myapp.err.log\"; StandardOutPath = \"/tmp/myapp.out.log\"; };"),
+            "expected nested object to render as Nix attrset"
         );
     }
 

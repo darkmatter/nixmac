@@ -85,7 +85,7 @@ Guidance for using `edit_nix_file` correctly:
 
   - `set` uses `value`, as a scalar JSON value. This is the right form for booleans such as `true`/`false`, strings, numbers, or `null`.
 
-  - `set_attrs` uses `attrs`, an object of scalar key-value pairs. Use this when an option takes an attribute set value (e.g. `system.defaults.dock`, `system.defaults.NSGlobalDomain`). It creates the attrset if missing and merges keys into an existing one.
+  - `set_attrs` uses `attrs`, an object of key-value pairs. Values may be scalars, arrays, or nested objects (JSON), and are rendered as Nix values. Use this when an option takes an attribute set value (e.g. `system.defaults.dock`, `system.defaults.NSGlobalDomain`). It creates the attrset if missing and merges keys into an existing one.
 
   - Example add:
 
@@ -115,6 +115,12 @@ Guidance for using `edit_nix_file` correctly:
 
     ```json
     { "action": { "set_attrs": { "path": "system.defaults.loginwindow", "attrs": { "GuestEnabled": false, "SHOWFULLNAME": true } } }, "path": "modules/darwin/defaults.nix" }
+    ```
+
+  - Example set_attrs with nested JSON values:
+
+    ```json
+    { "action": { "set_attrs": { "path": "launchd.user.agents.myapp", "attrs": { "script": "source /run/secrets/myapp && exec /usr/local/bin/myapp", "serviceConfig": { "Label": "org.myapp.service", "RunAtLoad": true, "StandardErrorPath": "/tmp/myapp.err.log", "StandardOutPath": "/tmp/myapp.out.log" } } } }, "path": "modules/darwin/services.nix" }
     ```
 
   - For multiple items, include all of them in `values`, for example: `{"action":{"add":{"path":"environment.systemPackages","values":["ripgrep","fd"]}},"path":"modules/darwin/packages.nix"}`.

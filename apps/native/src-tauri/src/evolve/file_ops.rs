@@ -85,7 +85,15 @@ pub(crate) fn resolve_path_in_dir_allow_create(base: &Path, rel: &str) -> anyhow
     let suffix = full_path
         .strip_prefix(existing_ancestor)
         .map_err(|_| anyhow::anyhow!("Failed to compute relative path for {}", rel))?;
-    let resolved_path = ancestor_canonical.join(suffix);
+    // If the target already exists, suffix is empty. Returning
+    // `ancestor_canonical.join("")` can produce a path that behaves like a
+    // directory traversal target (trailing separator), which causes ENOTDIR
+    // on file writes.
+    let resolved_path = if suffix.as_os_str().is_empty() {
+        ancestor_canonical
+    } else {
+        ancestor_canonical.join(suffix)
+    };
     Ok(resolved_path)
 }
 
@@ -183,9 +191,27 @@ fn path_scope_error(input: &str, base: &Path, resolved: &Path, operation: &str) 
 ///
 pub fn apply_file_edits(base: &Path, edit: &super::types::FileEdit) -> anyhow::Result<()> {
     if edit.search.is_empty() {
-        // New file — validate the (not-yet-existing) target is under base.
+        // Empty search means full-file replace. If the file already exists,
+        // treat this as an existing-file rewrite (not a create path).
         let full_path = resolve_path_in_dir_allow_create(base, &edit.path)?;
+        if full_path.exists() {
+            if full_path.is_dir() {
+                return Err(anyhow::anyhow!(
+                    "Path is a directory, not a file: {}",
+                    full_path.display()
+                ));
+            }
+            std::fs::write(&full_path, &edit.replace)?;
+            return Ok(());
+        }
+
         if let Some(parent) = full_path.parent() {
+            if parent.exists() && !parent.is_dir() {
+                return Err(anyhow::anyhow!(
+                    "Parent path is not a directory: {}",
+                    parent.display()
+                ));
+            }
             std::fs::create_dir_all(parent)?;
         }
         std::fs::write(&full_path, &edit.replace)?;
@@ -213,4 +239,81 @@ pub fn apply_file_edits(base: &Path, edit: &super::types::FileEdit) -> anyhow::R
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::apply_file_edits;
+    use crate::evolve::types::FileEdit;
+    use std::fs;
+
+    #[test]
+    fn empty_search_overwrites_existing_file() {
+        let temp = tempfile::tempdir().expect("create temp dir");
+        let base = temp.path();
+        let file_path = base.join("flake.nix");
+        fs::write(&file_path, "old").expect("seed file");
+
+        let edit = FileEdit {
+            path: "flake.nix".to_string(),
+            search: "".to_string(),
+            replace: "new".to_string(),
+        };
+
+        apply_file_edits(base, &edit).expect("apply edit");
+
+        let updated = fs::read_to_string(&file_path).expect("read updated file");
+        assert_eq!(updated, "new");
+    }
+
+    #[test]
+    fn empty_search_creates_new_file_with_parents() {
+        let temp = tempfile::tempdir().expect("create temp dir");
+        let base = temp.path();
+        let file_path = base.join("modules/darwin/new.nix");
+
+        let edit = FileEdit {
+            path: "modules/darwin/new.nix".to_string(),
+            search: "".to_string(),
+            replace: "{}\n".to_string(),
+        };
+
+        apply_file_edits(base, &edit).expect("apply create edit");
+
+        let created = fs::read_to_string(&file_path).expect("read created file");
+        assert_eq!(created, "{}\n");
+    }
+
+    #[test]
+    fn empty_search_errors_when_target_path_is_directory() {
+        let temp = tempfile::tempdir().expect("create temp dir");
+        let base = temp.path();
+        let dir_path = base.join("flake.nix");
+        fs::create_dir_all(&dir_path).expect("create directory with file-like name");
+
+        let edit = FileEdit {
+            path: "flake.nix".to_string(),
+            search: "".to_string(),
+            replace: "new".to_string(),
+        };
+
+        let err = apply_file_edits(base, &edit).expect_err("expected directory-path error");
+        assert!(err.to_string().contains("Path is a directory, not a file"));
+    }
+
+    #[test]
+    fn empty_search_errors_when_parent_is_not_directory() {
+        let temp = tempfile::tempdir().expect("create temp dir");
+        let base = temp.path();
+        fs::write(base.join("flake.nix"), "old").expect("seed file");
+
+        let edit = FileEdit {
+            path: "flake.nix/child.nix".to_string(),
+            search: "".to_string(),
+            replace: "new".to_string(),
+        };
+
+        let err = apply_file_edits(base, &edit).expect_err("expected parent-not-dir error");
+        assert!(err.to_string().contains("Parent path is not a directory"));
+    }
 }
