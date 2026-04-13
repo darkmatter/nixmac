@@ -565,7 +565,8 @@ fn set_attrs(
                 })?;
                 let indent = infer_inner_indent(&attrset_text);
                 let insert_pos = attrset_range.start + close_offset;
-                let kv = format!("{}{} = {};\n", indent, key, rendered);
+                let rendered_key = render_nix_attr_key(key);
+                let kv = format!("{}{} = {};\n", indent, rendered_key, rendered);
                 info!(
                     "Inserting key {} into attrset {} at {}",
                     key, path, insert_pos
@@ -585,7 +586,12 @@ fn set_attrs(
         let body = pending
             .iter()
             .map(|(k, v)| -> Result<String> {
-                Ok(format!("{}{} = {};", inner_indent, k, render_nix_value(v)?))
+                Ok(format!(
+                    "{}{} = {};",
+                    inner_indent,
+                    render_nix_attr_key(k),
+                    render_nix_value(v)?
+                ))
             })
             .collect::<Result<Vec<_>>>()?
             .join("\n");
@@ -917,6 +923,44 @@ environment.systemPackages = with pkgs; [
         assert!(
             edited.contains("serviceConfig = { Label = \"org.myapp.service\"; RunAtLoad = true; StandardErrorPath = \"/tmp/myapp.err.log\"; StandardOutPath = \"/tmp/myapp.out.log\"; };"),
             "expected nested object to render as Nix attrset"
+        );
+    }
+
+    #[test]
+    fn set_attrs_quotes_invalid_keys_when_creating_attrset() {
+        let mut attrs = serde_json::Map::new();
+        attrs.insert("my.key".to_string(), serde_json::json!(true));
+        attrs.insert("my key".to_string(), serde_json::json!("value"));
+
+        let edited = set_attrs(WITH_PKGS_EMPTY, "system.defaults.custom", &attrs)
+            .expect("set_attrs should quote invalid keys when creating attrset");
+
+        assert!(
+            edited.contains("\"my.key\" = true;"),
+            "expected dotted key to be quoted"
+        );
+        assert!(
+            edited.contains("\"my key\" = \"value\";"),
+            "expected spaced key to be quoted"
+        );
+    }
+
+    #[test]
+    fn set_attrs_quotes_invalid_keys_when_inserting_into_existing_attrset() {
+        let mut attrs = serde_json::Map::new();
+        attrs.insert("my.key".to_string(), serde_json::json!(true));
+
+        let edited = set_attrs(DOCK_ATTRSET, "system.defaults.dock", &attrs)
+            .expect("set_attrs should quote invalid keys when inserting into existing attrset");
+
+        assert!(
+            edited.contains("\"my.key\" = true;"),
+            "expected dotted key to be quoted inside existing attrset"
+        );
+        assert_eq!(
+            edited.matches("system.defaults.dock =").count(),
+            1,
+            "should not duplicate the attrset assignment"
         );
     }
 

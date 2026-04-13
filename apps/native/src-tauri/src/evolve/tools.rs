@@ -14,7 +14,7 @@ use super::search_docs::{
 use super::search_packages::execute_search_packages;
 use super::types::FileEdit;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use log::{debug, error, info};
 use std::path::{Component, Path};
 
@@ -67,7 +67,8 @@ pub fn create_tools() -> Vec<Tool> {
         Tool {
             name: "edit_file".to_string(),
             description: "Edit a file by finding and replacing text. The search string must be \
-                         unique in the file. For new files, use empty search string. \
+                         unique in the file. For creating a new file or replacing an entire file, \
+                         use empty search string. \
                          IMPORTANT: Always provide complete, production-ready code - never use \
                          placeholders, TODOs, or abbreviated implementations.".to_string(),
             parameters: serde_json::json!({
@@ -194,15 +195,9 @@ pub fn create_tools() -> Vec<Tool> {
                                             "path": { "type": "string", "description": "Dot-separated attribute path of the attrset to create or update (e.g. system.defaults.dock)" },
                                             "attrs": {
                                                 "type": "object",
-                                                "description": "Key-value pairs to set inside the attrset. All values must be scalars (boolean, string, number, or null).",
+                                                "description": "Key-value pairs to set inside the attrset. Values may be scalars, arrays, or nested objects.",
                                                 "additionalProperties": {
-                                                    "oneOf": [
-                                                        { "type": "boolean" },
-                                                        { "type": "string" },
-                                                        { "type": "number" },
-                                                        { "type": "integer" },
-                                                        { "type": "null" }
-                                                    ]
+                                                    "$ref": "#/$defs/jsonValue"
                                                 }
                                             }
                                         },
@@ -526,13 +521,12 @@ pub fn execute_tool(
                     replace: replace.to_string(),
                 },
             )
-            .map_err(|e| {
-                anyhow!(
-                    "edit_file failed for path='{}' (search_len={}, replace_len={}): {}",
+            .with_context(|| {
+                format!(
+                    "edit_file failed for path='{}' (search_len={}, replace_len={})",
                     path,
                     search.len(),
                     replace.len(),
-                    e
                 )
             })?;
 
