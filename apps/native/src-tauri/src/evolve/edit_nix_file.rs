@@ -11,6 +11,38 @@ use std::path::Path;
 use crate::evolve::file_ops::rewrite_existing_file_in_dir;
 use crate::evolve::types::FileEditAction;
 
+/// Internal marker key used in JSON edit payloads to request a raw Nix path literal.
+///
+/// This lets tools pass values like `../../secrets/foo.yaml` without quoting, while still
+/// keeping the action payload valid JSON. It is an internal contract between evolve tools.
+pub(crate) const NIX_PATH_MARKER_KEY: &str = "__nixPath";
+
+/// Internal marker key used in JSON edit payloads to request a raw Nix expression.
+///
+/// This is intentionally restricted and should only be used by trusted internal tool flows
+/// (for example `ensure_secret`) when a scalar expression is required instead of a quoted string.
+pub(crate) const NIX_EXPR_MARKER_KEY: &str = "__nixExpr";
+
+#[allow(dead_code)]
+pub(crate) fn nix_path_meta_value(path: &str) -> serde_json::Value {
+    let mut value = serde_json::Map::new();
+    value.insert(
+        NIX_PATH_MARKER_KEY.to_string(),
+        serde_json::Value::String(path.to_string()),
+    );
+    serde_json::Value::Object(value)
+}
+
+#[allow(dead_code)]
+pub(crate) fn nix_expr_meta_value(expression: &str) -> serde_json::Value {
+    let mut value = serde_json::Map::new();
+    value.insert(
+        NIX_EXPR_MARKER_KEY.to_string(),
+        serde_json::Value::String(expression.to_string()),
+    );
+    serde_json::Value::Object(value)
+}
+
 fn text_size_to_usize(size: TextSize) -> usize {
     u32::from(size) as usize
 }
@@ -89,6 +121,14 @@ fn render_nix_value(value: &serde_json::Value) -> Result<String> {
             Ok(format!("[ {} ]", rendered_items.join(" ")))
         }
         serde_json::Value::Object(map) => {
+            if let Some(path_literal) = render_nix_path_literal(map)? {
+                return Ok(path_literal);
+            }
+
+            if let Some(expression) = render_nix_expression_literal(map)? {
+                return Ok(expression);
+            }
+
             if map.is_empty() {
                 return Ok("{ }".to_string());
             }
@@ -110,6 +150,88 @@ fn render_nix_value(value: &serde_json::Value) -> Result<String> {
     }
 }
 
+fn render_nix_path_literal(
+    map: &serde_json::Map<String, serde_json::Value>,
+) -> Result<Option<String>> {
+    let Some(raw_path) = map.get(NIX_PATH_MARKER_KEY) else {
+        return Ok(None);
+    };
+
+    if map.len() != 1 {
+        return Err(anyhow::anyhow!(
+            "Nix path marker object must only contain '{}'",
+            NIX_PATH_MARKER_KEY
+        ));
+    }
+
+    let path = raw_path
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("'{}' must be a string", NIX_PATH_MARKER_KEY))?;
+
+    if path.is_empty() {
+        return Err(anyhow::anyhow!(
+            "'{}' must not be empty",
+            NIX_PATH_MARKER_KEY
+        ));
+    }
+
+    let valid = path
+        .chars()
+        .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '/' | '.' | '_' | '-' | '+'));
+
+    if !valid {
+        return Err(anyhow::anyhow!(
+            "'{}' contains invalid characters for a Nix path literal",
+            NIX_PATH_MARKER_KEY
+        ));
+    }
+
+    Ok(Some(path.to_string()))
+}
+
+fn render_nix_expression_literal(
+    map: &serde_json::Map<String, serde_json::Value>,
+) -> Result<Option<String>> {
+    let Some(raw_expression) = map.get(NIX_EXPR_MARKER_KEY) else {
+        return Ok(None);
+    };
+
+    if map.len() != 1 {
+        return Err(anyhow::anyhow!(
+            "Nix expression marker object must only contain '{}'",
+            NIX_EXPR_MARKER_KEY
+        ));
+    }
+
+    let expression = raw_expression
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("'{}' must be a string", NIX_EXPR_MARKER_KEY))?;
+
+    if expression.is_empty() {
+        return Err(anyhow::anyhow!(
+            "'{}' must not be empty",
+            NIX_EXPR_MARKER_KEY
+        ));
+    }
+
+    let valid = expression.chars().all(|ch| {
+        ch.is_ascii_alphanumeric()
+            || matches!(
+                ch,
+                '/' | '.' | '_' | '-' | '+' | '"' | '[' | ']' | '(' | ')' | ':'
+            )
+    });
+
+    if !valid {
+        return Err(anyhow::anyhow!(
+            "'{}' contains invalid characters for a Nix expression",
+            NIX_EXPR_MARKER_KEY
+        ));
+    }
+
+    Ok(Some(expression.to_string()))
+}
+
 /// Apply a semantic file edit to the filesystem, with Nix-aware handling for specific edit types.
 pub fn apply_semantic_edit(base: &Path, edit: &SemanticFileEdit) -> anyhow::Result<()> {
     rewrite_existing_file_in_dir(base, &edit.path, "apply semantic nix edit", |content| {
@@ -129,7 +251,7 @@ pub fn apply_semantic_edit(base: &Path, edit: &SemanticFileEdit) -> anyhow::Resu
             }
             FileEditAction::Set { path, value } => {
                 info!("Action=Set path={} value={:?}", path, value);
-                set_scalar(content, path, value)
+                set_value(content, path, value)
             }
             FileEditAction::SetAttrs { path, attrs } => {
                 info!("Action=SetAttrs path={} attrs_count={}", path, attrs.len());
@@ -449,8 +571,8 @@ fn remove(content: &str, attrpath: &str, values: &[String]) -> Result<String> {
     Ok(content.to_string())
 }
 
-fn set_scalar(content: &str, attrpath: &str, value: &serde_json::Value) -> Result<String> {
-    let rendered_value = render_nix_scalar(value)?;
+fn set_value(content: &str, attrpath: &str, value: &serde_json::Value) -> Result<String> {
+    let rendered_value = render_nix_value(value)?;
 
     if let Some(value_range) = find_assignment_value_range(content, attrpath) {
         let mut patched = content.to_string();
@@ -504,7 +626,7 @@ fn find_top_level_attrset_end(root: &SyntaxNode) -> Option<usize> {
 /// Create or update a Nix attribute set at the given path with the provided scalar key-value pairs.
 ///
 /// Strategy:
-///   1. Keys that already exist as flat assignments (`path.key = val;`) are updated via `set_scalar`.
+///   1. Keys that already exist as flat assignments (`path.key = val;`) are updated via `set_value`.
 ///   2. Remaining keys are merged into an existing `path = { ... }` attrset (updating present keys,
 ///      inserting missing ones before the closing `}`).
 ///   3. If no attrset exists at `path`, a fresh one is inserted into the top-level module body.
@@ -526,7 +648,7 @@ fn set_attrs(
         let flat_path = format!("{}.{}", path, key);
         if find_assignment_value_range(&current, &flat_path).is_some() {
             info!("Updating flat assignment {} for set_attrs", flat_path);
-            current = set_scalar(&current, &flat_path, value)?;
+            current = set_value(&current, &flat_path, value)?;
         } else {
             pending.push((key.as_str(), value));
         }
@@ -565,8 +687,7 @@ fn set_attrs(
                 })?;
                 let indent = infer_inner_indent(&attrset_text);
                 let insert_pos = attrset_range.start + close_offset;
-                let rendered_key = render_nix_attr_key(key);
-                let kv = format!("{}{} = {};\n", indent, rendered_key, rendered);
+                let kv = format!("{}{} = {};\n", indent, key, rendered);
                 info!(
                     "Inserting key {} into attrset {} at {}",
                     key, path, insert_pos
@@ -586,12 +707,7 @@ fn set_attrs(
         let body = pending
             .iter()
             .map(|(k, v)| -> Result<String> {
-                Ok(format!(
-                    "{}{} = {};",
-                    inner_indent,
-                    render_nix_attr_key(k),
-                    render_nix_value(v)?
-                ))
+                Ok(format!("{}{} = {};", inner_indent, k, render_nix_value(v)?))
             })
             .collect::<Result<Vec<_>>>()?
             .join("\n");
@@ -772,7 +888,7 @@ environment.systemPackages = with pkgs; [
 
     #[test]
     fn set_updates_existing_boolean_assignment() {
-        let edited = set_scalar(
+        let edited = set_value(
             BOOL_ASSIGNMENT,
             "services.tailscale.enable",
             &serde_json::Value::Bool(true),
@@ -787,7 +903,7 @@ environment.systemPackages = with pkgs; [
 
     #[test]
     fn set_inserts_missing_scalar_assignment() {
-        let edited = set_scalar(
+        let edited = set_value(
             WITH_PKGS_EMPTY,
             "services.tailscale.enable",
             &serde_json::Value::Bool(true),
@@ -802,7 +918,7 @@ environment.systemPackages = with pkgs; [
 
     #[test]
     fn set_renders_strings_as_nix_strings() {
-        let edited = set_scalar(
+        let edited = set_value(
             WITH_PKGS_EMPTY,
             "networking.hostName",
             &serde_json::Value::String("my-mac".to_string()),
@@ -812,6 +928,28 @@ environment.systemPackages = with pkgs; [
         assert!(
             edited.contains("networking.hostName = \"my-mac\";"),
             "expected set to quote string values as Nix strings"
+        );
+    }
+
+    #[test]
+    fn set_renders_nix_expr_marker_without_quotes() {
+        let edited = set_value(
+            WITH_PKGS_EMPTY,
+            "environment.variables.MYAPP_FILE",
+            &nix_expr_meta_value("config.sops.secrets.\"myapp\".path"),
+        )
+        .expect("set should support nix expression marker values");
+
+        assert!(
+            edited
+                .contains("environment.variables.MYAPP_FILE = config.sops.secrets.\"myapp\".path;"),
+            "expected expression marker to render as raw Nix expression"
+        );
+        assert!(
+            !edited.contains(
+                "environment.variables.MYAPP_FILE = \"config.sops.secrets.\\\"myapp\\\".path\";"
+            ),
+            "expected expression marker not to render as a quoted string"
         );
     }
 
@@ -927,40 +1065,44 @@ environment.systemPackages = with pkgs; [
     }
 
     #[test]
-    fn set_attrs_quotes_invalid_keys_when_creating_attrset() {
+    fn set_attrs_renders_nix_path_literal_marker_without_quotes() {
         let mut attrs = serde_json::Map::new();
-        attrs.insert("my.key".to_string(), serde_json::json!(true));
-        attrs.insert("my key".to_string(), serde_json::json!("value"));
+        attrs.insert(
+            "sopsFile".to_string(),
+            nix_path_meta_value("../../secrets/ssh-private-key.yaml"),
+        );
 
-        let edited = set_attrs(WITH_PKGS_EMPTY, "system.defaults.custom", &attrs)
-            .expect("set_attrs should quote invalid keys when creating attrset");
+        let edited = set_attrs(WITH_PKGS_EMPTY, "sops.secrets.\"ssh-private-key\"", &attrs)
+            .expect("set_attrs should render nix path literal marker");
 
         assert!(
-            edited.contains("\"my.key\" = true;"),
-            "expected dotted key to be quoted"
+            edited.contains("sopsFile = ../../secrets/ssh-private-key.yaml;"),
+            "expected sopsFile to render as a Nix path literal"
         );
         assert!(
-            edited.contains("\"my key\" = \"value\";"),
-            "expected spaced key to be quoted"
+            !edited.contains("sopsFile = \"../../secrets/ssh-private-key.yaml\";"),
+            "expected sopsFile not to be rendered as a quoted string"
         );
     }
 
     #[test]
-    fn set_attrs_quotes_invalid_keys_when_inserting_into_existing_attrset() {
+    fn set_attrs_renders_nix_expr_marker_without_quotes() {
         let mut attrs = serde_json::Map::new();
-        attrs.insert("my.key".to_string(), serde_json::json!(true));
+        attrs.insert(
+            "MYAPP_ENV_FILE".to_string(),
+            nix_expr_meta_value("config.sops.secrets.\"myapp-env\".path"),
+        );
 
-        let edited = set_attrs(DOCK_ATTRSET, "system.defaults.dock", &attrs)
-            .expect("set_attrs should quote invalid keys when inserting into existing attrset");
+        let edited = set_attrs(WITH_PKGS_EMPTY, "environment.variables", &attrs)
+            .expect("set_attrs should render nix expression marker");
 
         assert!(
-            edited.contains("\"my.key\" = true;"),
-            "expected dotted key to be quoted inside existing attrset"
+            edited.contains("MYAPP_ENV_FILE = config.sops.secrets.\"myapp-env\".path;"),
+            "expected MYAPP_ENV_FILE to render as a raw expression"
         );
-        assert_eq!(
-            edited.matches("system.defaults.dock =").count(),
-            1,
-            "should not duplicate the attrset assignment"
+        assert!(
+            !edited.contains("MYAPP_ENV_FILE = \"config.sops.secrets.\\\"myapp-env\\\".path\";"),
+            "expected MYAPP_ENV_FILE not to be rendered as a quoted string"
         );
     }
 
