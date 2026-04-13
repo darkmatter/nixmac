@@ -95,6 +95,7 @@
     "@cloudflare/workers-types": "^4.20251213.0",
     "@types/bun": "catalog:",
     "bun2nix": "^2.0.6",
+    "danger": "^12.3.3",
     "oxlint": "^1.0.0",
     "sonner": "^2.0.7",
     "release-it": "^19.0.3",
