@@ -186,6 +186,7 @@ def extract_added_lines(diff: str) -> str:
 def grade_succeed(
     result: dict[str, Any],
     expectations: dict[str, Any] | None,
+    csv_row: dict[str, str] | None = None,
 ) -> GradeResult:
     """Grade a case with expected_outcome=succeed."""
     case_id = result.get("_case_id", 0)
@@ -294,8 +295,15 @@ def grade_succeed(
     # The system prompt still requires flake.nix / flake-modules edits to be explicitly
     # requested — this check catches models that hallucinate flake edits on unrelated
     # prompts. Bypassed when the case is intentionally about flake editing.
+    #
+    # Bypass signals (any one is sufficient):
+    # 1. Golden JSON expectations.type == "flake_management" — explicit per-case metadata
+    # 2. Golden JSON expected_files lists a flake path
+    # 3. CSV subcategory == "flake_management" — avoids expanding the golden-set cohort
+    #    just to unblock the check for cases that aren't in the golden set
     is_flake_management = bool(
-        expectations and expectations.get("type") == "flake_management"
+        (expectations and expectations.get("type") == "flake_management")
+        or (csv_row and csv_row.get("subcategory") == "flake_management")
     )
     expected_is_flake = bool(
         expectations
@@ -514,10 +522,11 @@ def grade_case(
     result: dict[str, Any],
     expected_outcome: str,
     expectations: dict[str, Any] | None,
+    csv_row: dict[str, str] | None = None,
 ) -> GradeResult:
     """Grade a single eval case based on expected outcome."""
     if expected_outcome == "succeed":
-        return grade_succeed(result, expectations)
+        return grade_succeed(result, expectations, csv_row)
     if expected_outcome == "fail_gracefully":
         return grade_fail_gracefully(result, expectations)
     if expected_outcome == "refuse":
@@ -637,7 +646,7 @@ def main() -> None:
         case_expectations = expectations.get(str(case_id))
 
         # Grade
-        grade = grade_case(result, expected_outcome, case_expectations)
+        grade = grade_case(result, expected_outcome, case_expectations, csv_row)
         grades.append(grade)
 
         # Detect ok=true / graded-fail mismatches (false passes)
