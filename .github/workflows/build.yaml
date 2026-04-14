@@ -82,7 +82,7 @@ jobs:
           echo "build_version=$BUILD_VERSION" >> "$GITHUB_OUTPUT"
       - name: Check for code signing secrets
         id: check-secrets
-        shell: 'sops exec-env .secrets.enc.yaml "bash -e {0}"'
+        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
         run: |
           if [ -n "$APPLE_CERTIFICATE" ]; then
             echo "has_certificate=true" >> $GITHUB_OUTPUT
@@ -100,7 +100,7 @@ jobs:
       # replaces the keychain search list and breaks DMG bundling on tag runs.
       - name: Build Tauri app
         run: bun run desktop:build
-        shell: 'sops exec-env .secrets.enc.yaml "bash -e {0}"'
+        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Pass DSNs and build metadata into the tauri action step so build.rs can read them
@@ -115,7 +115,7 @@ jobs:
       # before `bun run desktop:build`, which caused DMG bundling failures on tags.
       - name: Import Apple Developer certificate
         if: startsWith(github.ref, 'refs/tags/') && steps.check-secrets.outputs.has_certificate == 'true'
-        shell: 'sops exec-env .secrets.enc.yaml "bash -e {0}"'
+        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
         run: |
           # Create a temporary keychain
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
@@ -261,7 +261,7 @@ jobs:
       # Notarize the app (requires Apple Developer account)
       - name: Notarize app
         if: startsWith(github.ref, 'refs/tags/') && steps.check-secrets.outputs.has_notarization == 'true'
-        shell: 'sops exec-env .secrets.enc.yaml "bash -e {0}"'
+        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
         run: |
           # Write the API key to a file
           echo "$APPLE_API_KEY_CONTENT" > $RUNNER_TEMP/AuthKey.p8
@@ -326,7 +326,7 @@ jobs:
       # overwriting latest.json on the updater CDN.
       - name: Upload to R2
         if: startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-test.')
-        shell: 'sops exec-env .secrets.enc.yaml "bash -e {0}"'
+        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
         env:
           AWS_DEFAULT_REGION: auto
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
