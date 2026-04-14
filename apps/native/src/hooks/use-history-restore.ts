@@ -158,7 +158,7 @@ function makePreviewItem(target: HistoryItem): HistoryItem {
     fileCount: target.fileCount,
     commit: null,
     changeMap: target.changeMap,
-    missedHashes: target.missedHashes,
+    unsummarizedHashes: target.unsummarizedHashes,
     rawChanges: target.rawChanges,
     originMessage: target.message,
     originHash: target.hash,

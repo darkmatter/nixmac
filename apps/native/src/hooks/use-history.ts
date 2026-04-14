@@ -41,7 +41,7 @@ export function useHistory() {
       for (const hash of hashes) {
         if (!useWidgetStore.getState().analyzingHistoryForHashes.has(hash)) break;
         const item = useWidgetStore.getState().history.find((h) => h.hash === hash);
-        if (item?.changeMap && item.missedHashes.length === 0) {
+        if (item?.changeMap && item.unsummarizedHashes.length === 0) {
           removeAnalyzingHistoryHash(hash);
           continue;
         }

@@ -98,11 +98,11 @@ export type GitStatus = { files: GitFileStatus[]; branch: string | null; headIsB
 /**
  * A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.
  */
-export type HistoryItem = { hash: string; message: string | null; createdAt: number; isBuilt: boolean; isBase: boolean; isExternal: boolean; fileCount: number; commit: Commit | null; changeMap: SemanticChangeMap | null; missedHashes: string[]; rawChanges: Change[]; originMessage: string | null; originHash: string | null; isOrphanedRestore: boolean; isUndone: boolean }
+export type HistoryItem = { hash: string; message: string | null; createdAt: number; isBuilt: boolean; isBase: boolean; isExternal: boolean; fileCount: number; commit: Commit | null; changeMap: SemanticChangeMap | null; unsummarizedHashes: string[]; rawChanges: Change[]; originMessage: string | null; originHash: string | null; isOrphanedRestore: boolean; isUndone: boolean }
 
 export type SemanticChangeGroup = { summary: ChangeSummary; changes: ChangeWithSummary[] }
 
-export type SemanticChangeMap = { groups: SemanticChangeGroup[]; singles: ChangeWithSummary[]; missedHashes: string[] }
+export type SemanticChangeMap = { groups: SemanticChangeGroup[]; singles: ChangeWithSummary[]; unsummarizedHashes: string[] }
 
 export type SummarizedChange = { change: Change; ownSummary: ChangeSummary | null; groupSummary: ChangeSummary | null }
 

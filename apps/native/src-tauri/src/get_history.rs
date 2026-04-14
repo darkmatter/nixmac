@@ -37,21 +37,21 @@ pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::sh
             unique.len()
         };
 
-        let (change_map, missed_hashes) = if let Some(ref parent) = parent_db {
+        let (change_map, unsummarized_hashes) = if let Some(ref parent) = parent_db {
             let diff_hashes: Vec<String> = raw_changes.iter()
             .filter(|c| !crate::changes_from_diff::is_sensitive_or_opaque(c))
             .map(|c| c.hash.clone())
             .collect();
             match crate::summarize::find_existing::by_base_with_hashes(&db_path, parent.id, &diff_hashes) {
                 Ok(found) => {
-                    let missed = found.missed_hashes.clone();
                     let grouped = crate::summarize::group_existing::from_change_sets(vec![found]);
+                    let unsummarized = grouped.unsummarized_hashes.clone();
                     let map = if grouped.groups.is_empty() && grouped.singles.is_empty() {
                         None
                     } else {
                         Some(grouped)
                     };
-                    (map, missed)
+                    (map, unsummarized)
                 }
                 Err(_) => (None, vec![]),
             }
@@ -89,7 +89,7 @@ pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::sh
             file_count,
             commit: db_commit,
             change_map,
-            missed_hashes,
+            unsummarized_hashes,
             raw_changes,
             origin_message: None,
             origin_hash: None,
@@ -132,7 +132,7 @@ fn populate_restore_history_items(
                         entries[ultimate_idx].message.clone(),
                         entries[ultimate_idx].change_map.clone(),
                         entries[ultimate_idx].raw_changes.clone(),
-                        entries[ultimate_idx].missed_hashes.clone(),
+                        entries[ultimate_idx].unsummarized_hashes.clone(),
                         entries[ultimate_idx].file_count,
                     ));
                 }
@@ -160,14 +160,14 @@ fn populate_restore_history_items(
         entries[k].is_undone = true;
     }
 
-    for (i, origin_hash, origin_message, change_map, raw_changes, missed_hashes, file_count) in inherited {
+    for (i, origin_hash, origin_message, change_map, raw_changes, unsummarized_hashes, file_count) in inherited {
         let short_hash = &origin_hash[..origin_hash.len().min(8)];
         entries[i].message = Some(format!("Restore commit {short_hash}"));
         entries[i].origin_message = origin_message;
         entries[i].origin_hash = Some(origin_hash);
         entries[i].change_map = change_map;
         entries[i].raw_changes = raw_changes;
-        entries[i].missed_hashes = missed_hashes;
+        entries[i].unsummarized_hashes = unsummarized_hashes;
         entries[i].file_count = file_count;
     }
 

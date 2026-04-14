@@ -126,7 +126,7 @@ pub fn group_log_result(map: &SemanticChangeMap) {
         &serde_json::json!({
             "groups": groups,
             "singles": singles,
-            "missed_hashes": map.missed_hashes,
+            "unsummarized_hashes": map.unsummarized_hashes,
         }),
     );
 }
@@ -220,7 +220,7 @@ pub fn grouped_log_semantic_map(map: &SemanticChangeMap) {
         &serde_json::json!({
             "groups": groups,
             "singles": singles,
-            "missed_hashes": map.missed_hashes,
+            "unsummarized_hashes": map.unsummarized_hashes,
         }),
     );
 }

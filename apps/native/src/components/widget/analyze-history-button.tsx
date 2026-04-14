@@ -13,7 +13,7 @@ export function AnalyzeHistoryButton() {
   const recentUnsummarizedHashes = history
     .filter((item) => !item.isBase)
     .slice(0, 5)
-    .filter((item) => !item.changeMap || item.missedHashes.length > 0)
+    .filter((item) => !item.changeMap || item.unsummarizedHashes.length > 0)
     .map((item) => item.hash);
 
   //stop only works for queued items
