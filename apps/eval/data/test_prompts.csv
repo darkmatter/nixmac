@@ -217,7 +217,7 @@ id,prompt,expected_outcome,category,subcategory,quality_dimension,priority,notes
 215,Add a home-manager service using services.syncthing.enable = true,succeed,legitimate,home_service,correctness,Medium,Home-manager service activation via option path,FALSE
 216,"Create a module that uses { config, lib, pkgs, ... }: with the standard nix module pattern",succeed,legitimate,program_config,correctness,Medium,Experienced user expecting standard nix module boilerplate,FALSE
 217,Use builtins.fetchTarball to pull a custom neovim plugin from GitHub,succeed,edge_case,custom_derivation,correctness,Medium,Advanced nix pattern. Valid but may require careful placement.,FALSE
-218,Add a package from nur (nix user repository) to my config,fail_gracefully,edge_case,meta,correctness,Medium,Requires a flake input for NUR which means editing flake.nix (protected),FALSE
+218,Add a package from nur (nix user repository) to my config,succeed,legitimate,flake_management,correctness,Medium,NUR requires adding a flake input — allowed per March 2026 policy (agent should add NUR input and reference the requested package),FALSE
 219,Set nix.settings.experimental-features to enable flakes and nix-command,succeed,legitimate,nix_settings,correctness,Medium,Common nix configuration option,FALSE
 220,Configure nix.settings.substituters to add cachix caches for faster builds,succeed,legitimate,nix_settings,correctness,Medium,Binary cache configuration,FALSE
 221,Use mkOption to define a custom option in my darwin module,succeed,edge_case,custom_derivation,correctness,Medium,Advanced nix module authoring. Valid but unusual for nixmac.,FALSE
@@ -226,7 +226,7 @@ id,prompt,expected_outcome,category,subcategory,quality_dimension,priority,notes
 224,Add a launchd.user.agents entry that runs nix-collect-garbage --delete-older-than 7d weekly,succeed,legitimate,launchd,correctness,High,Nix-aware maintenance automation via launchd,FALSE
 225,Use lib.mkDefault for my shell settings so host-specific configs can override them,succeed,legitimate,conditional_config,correctness,Medium,Nix precedence/priority pattern,FALSE
 226,I need to add a nixpkgs.config.allowUnfree = true so I can install vscode and slack,succeed,legitimate,nix_settings,correctness,Medium,Common nixpkgs configuration for proprietary software,FALSE
-227,Import a module from a GitHub flake using inputs.some-flake.nixosModules.default,fail_gracefully,edge_case,meta,correctness,Medium,Requires flake input editing (protected). Should explain the constraint.,FALSE
+227,Import a module from a GitHub flake using inputs.some-flake.nixosModules.default,succeed,legitimate,flake_management,correctness,Medium,Module import requires adding a flake input — allowed per March 2026 policy (agent should add the flake input and import the module),FALSE
 228,Run nix flake update to bump all inputs to latest,fail_gracefully,expected_failure,meta,faithfulness,Medium,Flake lock management is outside evolve scope,FALSE
 229,Can you run nix-env -iA nixpkgs.ripgrep to install ripgrep imperatively?,fail_gracefully,expected_failure,meta,faithfulness,Medium,Imperative nix-env usage contradicts declarative nixmac approach. Should explain.,FALSE
 230,Use fetchFromGitHub to package my dotfiles repo as a nix derivation and symlink configs from it,succeed,edge_case,custom_derivation,correctness,Medium,Advanced packaging pattern. Feasible but complex.,FALSE

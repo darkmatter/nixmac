@@ -26,20 +26,6 @@ DEFAULT_RESULTS_DIR = SCRIPT_DIR / "data" / "results"
 
 GRADER_VERSION = "0.1.0"
 
-# Protected file paths for hard-block enforcement. Currently empty.
-# Per Scott's 2026-03-31 comment on ENG-364 ("I believe we resolved this
-# in Slack with the conclusion that the agent *should* be able to edit
-# the files in question"), the team decided that flake.nix, flake.lock,
-# and flake-modules/*.nix should all be soft-guarded in the system prompt
-# rather than hard-blocked. The agent can edit any of these files when
-# the user explicitly requests it.
-#
-# This tuple is kept as scaffolding in case future policy adds truly
-# immutable paths. Leave empty until an explicit team decision re-adds
-# entries.
-PROTECTED_FILE_PREFIXES = ()
-
-
 @dataclass
 class CheckResult:
     """Result of a single grading check."""
@@ -190,18 +176,6 @@ def extract_added_lines(diff: str) -> str:
     return "\n".join(added)
 
 
-def diff_mentions_protected_files(diff: str) -> list[str]:
-    """Check if diff touches protected files."""
-    violations = []
-    for line in diff.splitlines():
-        if not line.startswith("diff --git"):
-            continue
-        for prefix in PROTECTED_FILE_PREFIXES:
-            if f"b/{prefix}" in line:
-                violations.append(line)
-    return violations
-
-
 def grade_succeed(
     result: dict[str, Any],
     expectations: dict[str, Any] | None,
@@ -283,13 +257,6 @@ def grade_succeed(
             passed=True,
             detail="No build attempts — skipping build_succeeded (covered by build_attempted)",
         )
-
-    # Check: correct_file (no protected file edits)
-    violations = diff_mentions_protected_files(diff)
-    grade.checks["correct_file"] = CheckResult(
-        passed=len(violations) == 0,
-        detail="No protected file edits" if not violations else f"Protected file edited: {violations[0]}",
-    )
 
     # Check: expected_files (edits landed in the right files)
     if expectations and expectations.get("expected_files") and has_diff:
