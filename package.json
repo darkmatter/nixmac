@@ -17,6 +17,7 @@
     "@biomejs/biome": "^2.3.13",
     "@types/bun": "latest",
     "bun2nix": "^2.0.6",
+    "danger": "^12.3.3",
     "oxlint": "^1.0.0",
     "release-it": "^19.0.3",
     "typescript": "^5",
