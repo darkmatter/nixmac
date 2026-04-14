@@ -14,7 +14,7 @@ in
         specialArgs = {
           inherit inputs self;
           hostname = "macbook-pro";
-          user = users.cooperm;
+          user = users.USERNAME_PLACEHOLDER;
         };
         modules = [
           # Core darwin modules
@@ -36,9 +36,9 @@ in
               extraSpecialArgs = {
                 inherit inputs self;
                 hostname = "macbook-pro";
-                user = users.cooperm;
+                user = users.USERNAME_PLACEHOLDER;
               };
-              users.${users.coopermaruyama.username} = {
+              users.${users.USERNAME_PLACEHOLDER.username} = {
                 imports = [
                   ../hosts/macbook-pro/home.nix
                   inputs.catppuccin.homeModules.catppuccin
@@ -54,7 +54,7 @@ in
         specialArgs = {
           inherit inputs self;
           hostname = "mac-pro";
-          user = users.cooperm;
+          user = users.USERNAME_PLACEHOLDER;
         };
         modules = [
           ../modules/darwin
@@ -69,9 +69,9 @@ in
               extraSpecialArgs = {
                 inherit inputs self;
                 hostname = "mac-pro";
-                user = users.cooperm;
+                user = users.USERNAME_PLACEHOLDER;
               };
-              users.${users.coopermaruyama.username} = {
+              users.${users.USERNAME_PLACEHOLDER.username} = {
                 imports = [
                   ../hosts/mac-pro/home.nix
                   inputs.catppuccin.homeModules.catppuccin

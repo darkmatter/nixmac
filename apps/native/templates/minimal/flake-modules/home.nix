@@ -7,12 +7,12 @@ in
 {
   flake = {
     homeConfigurations = {
-      "cooperm@macbook-pro" = inputs.home-manager.lib.homeManagerConfiguration {
+      "USERNAME_PLACEHOLDER@macbook-pro" = inputs.home-manager.lib.homeManagerConfiguration {
         pkgs = inputs.nixpkgs.legacyPackages.aarch64-darwin;
         extraSpecialArgs = {
           inherit inputs self;
           hostname = "macbook-pro";
-          user = users.cooperm;
+          user = users.USERNAME_PLACEHOLDER;
         };
         modules = [
           ../hosts/macbook-pro/home.nix
@@ -20,12 +20,12 @@ in
         ];
       };
 
-      "cooperm@mac-pro" = inputs.home-manager.lib.homeManagerConfiguration {
+      "USERNAME_PLACEHOLDER@mac-pro" = inputs.home-manager.lib.homeManagerConfiguration {
         pkgs = inputs.nixpkgs.legacyPackages.aarch64-darwin;
         extraSpecialArgs = {
           inherit inputs self;
           hostname = "mac-pro";
-          user = users.cooperm;
+          user = users.USERNAME_PLACEHOLDER;
         };
         modules = [
           ../hosts/mac-pro/home.nix
@@ -35,4 +35,3 @@ in
     };
   };
 }
-

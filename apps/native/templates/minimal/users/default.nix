@@ -1,11 +1,11 @@
 # User profiles - centralized user information
 {
-  coopermaruyama = {
-    username = "coopermaruyama";
-    fullName = "Cooper Maruyama";
-    email = "cooper@darkmatter.io";
-    gitKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA+M/DHDlKgayM6wsiX6r704pE+2qENOsKcytC7sBhKA";
-    homeDirectory = "/Users/coopermaruyama";
+  USERNAME_PLACEHOLDER = {
+    username = "USERNAME_PLACEHOLDER";
+    fullName = "USERNAME_PLACEHOLDER";
+    email = "USERNAME_PLACEHOLDER@example.com";
+    gitKey = null;
+    homeDirectory = "/Users/USERNAME_PLACEHOLDER";
   };
 
   # Add more users here as needed:
@@ -17,4 +17,3 @@
   #   homeDirectory = "/Users/example";
   # };
 }
-
