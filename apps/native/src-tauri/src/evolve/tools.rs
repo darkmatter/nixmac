@@ -70,7 +70,9 @@ pub fn create_tools() -> Vec<Tool> {
                          unique in the file. For creating a new file or replacing an entire file, \
                          use empty search string. \
                          IMPORTANT: Always provide complete, production-ready code - never use \
-                         placeholders, TODOs, or abbreviated implementations.".to_string(),
+                         placeholders, TODOs, or abbreviated implementations. \
+                         NOTE: For .nix, .yaml, and .yml files, the edit will be rejected if syntax is invalid \
+                         (e.g., unmatched braces/brackets, unclosed strings). Ensure edits maintain valid syntax.".to_string(),
             parameters: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -92,7 +94,10 @@ pub fn create_tools() -> Vec<Tool> {
         },
         Tool {
             name: "edit_nix_file".to_string(),
-            description: "Edit a Nix file with semantic operations using attribute-path Add/Remove/Set/SetAttrs actions.\n\nUse this tool whenever you need the agent to make structured edits to Nix config. `add` and `remove` operate on list-valued attributes such as `home.packages` or `environment.systemPackages`. `set` assigns a scalar value such as a boolean, string, number, or null to an attribute path like `services.tailscale.enable`. `set_attrs` creates or updates a Nix attribute set (object) at a given path and sets key-value pairs inside it, including nested JSON objects/arrays that map to nested Nix attrsets/lists. Use this for options like `system.defaults.dock` that take an attrset value. The tool understands Nix syntax and will modify existing assignments when possible, or insert a new assignment into the module body if missing.\n\nAlways: provide an `action` object with exactly one of `add`, `remove`, `set`, or `set_attrs`. After calling this tool, run `build_check` to verify changes.".to_string(),            parameters: serde_json::json!({
+            description: r#"Edit a Nix file with semantic operations using attribute-path Add/Remove/Set/SetAttrs actions.
+Use this tool whenever you need the agent to make structured edits to Nix config. `add` and `remove` operate on list-valued attributes such as `home.packages` or `environment.systemPackages`. `set` assigns a scalar value such as a boolean, string, number, or `null` to an attribute path like `services.tailscale.enable`. `set_attrs` creates or updates a Nix attribute set (object) at a given path and sets key-value pairs inside it, including nested JSON objects/arrays that map to nested Nix attrsets/lists. Use this for options like `system.defaults.dock` that take an attrset value. The tool understands Nix syntax and will modify existing assignments when possible, or insert a new assignment into the module body if missing.
+Always: provide an `action` object with exactly one of `add`, `remove`, `set`, or `set_attrs`. After calling this tool, run `build_check` to verify changes.
+IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with syntax errors (unmatched braces/brackets, unclosed strings, etc) will be rejected. Ensure all generated code is syntactically complete and correct."#.to_string(),            parameters: serde_json::json!({
                 "type": "object",
                 "$defs": {
                     "jsonValue": {

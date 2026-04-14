@@ -68,6 +68,7 @@ specta = { version = "=2.0.0-rc.22", features = ["derive"] }
 specta-typescript = "0.0.9"
 tauri-specta = { version = "2.0.0-rc.21", features = ["derive", "typescript"] }
 rnix = "0.14.0"
+serde_yaml = "0.9"
 rowan = "0.16.1"
 fuzzy-matcher = "0.3.7"
 rusqlite_migration = "1.2"
