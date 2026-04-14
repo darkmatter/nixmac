@@ -1,5 +1,6 @@
+
 <p align="center">
-  <img src="apps/web/public/favicon.svg" width="80" alt="nixmac">
+  <img width="256" height="256" alt="icon" src="https://github.com/user-attachments/assets/31313c7d-e83b-43a7-b668-6d6d8ac687d4" />
 </p>
 
 <h1 align="center">nixmac</h1>

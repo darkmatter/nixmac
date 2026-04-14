@@ -8,6 +8,7 @@
 use std::path::{Component, Path, PathBuf};
 
 use anyhow::Context;
+use log::debug;
 
 const PATH_SCOPE_ERROR_CODE: &str = "E_PATH_OUTSIDE_CONFIG_DIR";
 
@@ -187,6 +188,209 @@ fn path_scope_error(input: &str, base: &Path, resolved: &Path, operation: &str) 
     )
 }
 
+/// Validate basic syntax of a .nix file using a simple custom validator that checks for balanced braces, brackets
+/// parens, and closed strings.
+/// We can't use rnix because it is error-tolerant and will produce an AST
+/// even for complete junk, which isn't helpful for our use case of validating AI-generated edits.
+/// Instead, we check basic structural validity: balanced braces/brackets/parens, closed strings.
+fn validate_nix_syntax(content: &str, file_path: &str) -> anyhow::Result<()> {
+    // Simple validation: track bracket/brace/paren balance across the content,
+    // respecting string contexts. This catches obvious errors like unmatched braces.
+
+    let mut brace_depth = 0;
+    let mut bracket_depth = 0;
+    let mut paren_depth = 0;
+    let mut in_string = false;
+    let mut in_multiline_string = false;
+    let mut in_line_comment = false;
+    let mut in_block_comment = false;
+    let mut escape_next = false;
+
+    let chars: Vec<char> = content.chars().collect();
+    let mut i = 0;
+
+    while i < chars.len() {
+        let ch = chars[i];
+
+        if in_line_comment {
+            if ch == '\n' {
+                in_line_comment = false;
+            }
+            i += 1;
+            continue;
+        }
+
+        if in_block_comment {
+            if i + 1 < chars.len() && ch == '*' && chars[i + 1] == '/' {
+                in_block_comment = false;
+                i += 2;
+                continue;
+            }
+            i += 1;
+            continue;
+        }
+
+        if escape_next {
+            escape_next = false;
+            i += 1;
+            continue;
+        }
+
+        // Check for multiline strings: '' ... ''
+        if !in_string && i + 1 < chars.len() && ch == '\'' && chars[i + 1] == '\'' {
+            if in_multiline_string {
+                // In an indented string, '' introduces either an escape sequence
+                // (e.g. ''', ''$, ''\) or the closing delimiter.
+                // Only treat it as closing when it is not an escape prefix.
+                if i + 2 < chars.len()
+                    && (chars[i + 2] == '\'' || chars[i + 2] == '$' || chars[i + 2] == '\\')
+                {
+                    i += 3;
+                    continue;
+                }
+            }
+
+            in_multiline_string = !in_multiline_string;
+            i += 2;
+            continue;
+        }
+
+        if in_multiline_string {
+            i += 1;
+            continue;
+        }
+
+        if !in_string {
+            if ch == '#' {
+                in_line_comment = true;
+                i += 1;
+                continue;
+            }
+            if i + 1 < chars.len() && ch == '/' && chars[i + 1] == '*' {
+                in_block_comment = true;
+                i += 2;
+                continue;
+            }
+        }
+
+        match ch {
+            '\\' if in_string => escape_next = true,
+            '"' => in_string = !in_string,
+            '{' if !in_string => brace_depth += 1,
+            '}' if !in_string => {
+                brace_depth -= 1;
+                if brace_depth < 0 {
+                    return Err(anyhow::anyhow!(
+                        "Syntax error in {}: unmatched closing brace '}}'",
+                        file_path
+                    ));
+                }
+            }
+            '[' if !in_string => bracket_depth += 1,
+            ']' if !in_string => {
+                bracket_depth -= 1;
+                if bracket_depth < 0 {
+                    return Err(anyhow::anyhow!(
+                        "Syntax error in {}: unmatched closing bracket ']'",
+                        file_path
+                    ));
+                }
+            }
+            '(' if !in_string => paren_depth += 1,
+            ')' if !in_string => {
+                paren_depth -= 1;
+                if paren_depth < 0 {
+                    return Err(anyhow::anyhow!(
+                        "Syntax error in {}: unmatched closing parenthesis ')'",
+                        file_path
+                    ));
+                }
+            }
+            _ => {}
+        }
+
+        i += 1;
+    }
+
+    if in_string {
+        return Err(anyhow::anyhow!(
+            "Syntax error in {}: unclosed string literal",
+            file_path
+        ));
+    }
+
+    if in_multiline_string {
+        return Err(anyhow::anyhow!(
+            "Syntax error in {}: unclosed multiline string ''...''",
+            file_path
+        ));
+    }
+
+    if in_block_comment {
+        return Err(anyhow::anyhow!(
+            "Syntax error in {}: unclosed block comment /*...*/",
+            file_path
+        ));
+    }
+
+    if brace_depth != 0 {
+        return Err(anyhow::anyhow!(
+            "Syntax error in {}: {} unmatched opening brace(s)",
+            file_path,
+            brace_depth
+        ));
+    }
+
+    if bracket_depth != 0 {
+        return Err(anyhow::anyhow!(
+            "Syntax error in {}: {} unmatched opening bracket(s)",
+            file_path,
+            bracket_depth
+        ));
+    }
+
+    if paren_depth != 0 {
+        return Err(anyhow::anyhow!(
+            "Syntax error in {}: {} unmatched opening parenthesis/parentheses",
+            file_path,
+            paren_depth
+        ));
+    }
+
+    Ok(())
+}
+
+/// Validate basic syntax of a .yaml or .yml file using serde_yaml.
+fn validate_yaml_syntax(content: &str, file_path: &str) -> anyhow::Result<()> {
+    // Try to parse the YAML content. yaml_serde will catch syntax errors
+    // like unmatched quotes, braces, brackets, etc.
+    yaml_serde::from_str::<yaml_serde::Value>(content)
+        .map_err(|e| anyhow::anyhow!("Syntax error in {}: {}", file_path, e))?;
+
+    Ok(())
+}
+
+/// Validate file content based on extension before writing.
+fn validate_file_content(file_path: &str, content: &str) -> anyhow::Result<()> {
+    if file_path.ends_with(".nix") {
+        if let Err(e) = validate_nix_syntax(content, file_path) {
+            debug!("Nix syntax validation failed for {}: {}", file_path, e);
+            return Err(e);
+        } else {
+            debug!("Nix syntax validation succeeded for {}", file_path);
+        }
+    } else if file_path.ends_with(".yaml") || file_path.ends_with(".yml") {
+        if let Err(e) = validate_yaml_syntax(content, file_path) {
+            debug!("YAML syntax validation failed for {}: {}", file_path, e);
+            return Err(e);
+        } else {
+            debug!("YAML syntax validation succeeded for {}", file_path);
+        }
+    }
+
+    Ok(())
+}
+
 /// Apply an evolution's edits to the filesystem.
 ///
 pub fn apply_file_edits(base: &Path, edit: &super::types::FileEdit) -> anyhow::Result<()> {
@@ -201,6 +405,7 @@ pub fn apply_file_edits(base: &Path, edit: &super::types::FileEdit) -> anyhow::R
                     full_path.display()
                 ));
             }
+            validate_file_content(&edit.path, &edit.replace)?;
             std::fs::write(&full_path, &edit.replace)?;
             return Ok(());
         }
@@ -214,6 +419,7 @@ pub fn apply_file_edits(base: &Path, edit: &super::types::FileEdit) -> anyhow::R
             }
             std::fs::create_dir_all(parent)?;
         }
+        validate_file_content(&edit.path, &edit.replace)?;
         std::fs::write(&full_path, &edit.replace)?;
     } else {
         rewrite_existing_file_in_dir(base, &edit.path, "edit existing file", |content| {
@@ -234,7 +440,9 @@ pub fn apply_file_edits(base: &Path, edit: &super::types::FileEdit) -> anyhow::R
                 ));
             }
 
-            Ok(content.replace(&edit.search, &edit.replace))
+            let new_content = content.replace(&edit.search, &edit.replace);
+            validate_file_content(&edit.path, &new_content)?;
+            Ok(new_content)
         })?;
     }
 
@@ -315,5 +523,212 @@ mod tests {
 
         let err = apply_file_edits(base, &edit).expect_err("expected parent-not-dir error");
         assert!(err.to_string().contains("Parent path is not a directory"));
+    }
+
+    #[test]
+    fn validate_nix_syntax_accepts_valid_nix() {
+        let valid_nix = r#"
+{
+  config,
+  pkgs,
+  ...
+}:
+{
+  environment.systemPackages = [ pkgs.git pkgs.vim ];
+  system.stateVersion = "24.05";
+}
+"#;
+
+        super::validate_nix_syntax(valid_nix, "test.nix").expect("should parse valid nix syntax");
+    }
+
+    #[test]
+    fn validate_nix_syntax_rejects_unmatched_braces() {
+        let invalid_nix = r#"
+{
+  environment.systemPackages = [ pkgs.git ];
+  # Missing closing brace
+"#;
+
+        let err = super::validate_nix_syntax(invalid_nix, "test.nix")
+            .expect_err("should reject unmatched braces");
+        assert!(err.to_string().contains("Syntax error"));
+    }
+
+    #[test]
+    fn validate_nix_syntax_rejects_unmatched_brackets() {
+        let invalid_nix = r#"
+{
+  environment.systemPackages = [ pkgs.git pkgs.vim;
+}
+"#;
+
+        let err = super::validate_nix_syntax(invalid_nix, "test.nix")
+            .expect_err("should reject unmatched brackets");
+        assert!(err.to_string().contains("Syntax error"));
+    }
+
+    #[test]
+    fn validate_nix_syntax_rejects_unclosed_string() {
+        let invalid_nix = r#"
+{
+  description = "My config;
+}
+"#;
+
+        let err = super::validate_nix_syntax(invalid_nix, "test.nix")
+            .expect_err("should reject unclosed string");
+        assert!(err.to_string().contains("Syntax error"));
+    }
+
+    #[test]
+    fn validate_nix_syntax_accepts_multiline_string_escapes() {
+        let valid_nix = r#"
+{
+    script = ''
+        echo "It'''s working"
+        echo ''$HOME
+        echo ''\n
+    '';
+}
+"#;
+
+        super::validate_nix_syntax(valid_nix, "test.nix")
+            .expect("should accept multiline string escapes without closing early");
+    }
+
+    #[test]
+    fn validate_nix_syntax_ignores_hash_comments() {
+        let nix_with_comment = r#"
+{
+  # this unmatched stuff should be ignored: } ] )
+  environment.systemPackages = [ pkgs.git ];
+}
+"#;
+
+        super::validate_nix_syntax(nix_with_comment, "test.nix")
+            .expect("should ignore delimiters inside hash comments");
+    }
+
+    #[test]
+    fn validate_nix_syntax_ignores_block_comments() {
+        let nix_with_block_comment = r#"
+{
+  /* unmatched delimiters in comment should be ignored: } ] ) */
+  environment.systemPackages = [ pkgs.git ];
+}
+"#;
+
+        super::validate_nix_syntax(nix_with_block_comment, "test.nix")
+            .expect("should ignore delimiters inside block comments");
+    }
+
+    #[test]
+    fn validate_nix_syntax_rejects_unclosed_block_comment() {
+        let invalid_nix = r#"
+{
+  /* block comment never closes
+  environment.systemPackages = [ pkgs.git ];
+}
+"#;
+
+        let err = super::validate_nix_syntax(invalid_nix, "test.nix")
+            .expect_err("should reject unclosed block comment");
+        assert!(err.to_string().contains("unclosed block comment"));
+    }
+
+    #[test]
+    fn validate_yaml_syntax_accepts_valid_yaml() {
+        let valid_yaml = r#"
+name: test
+config:
+  enable: true
+  items:
+    - first
+    - second
+"#;
+
+        super::validate_yaml_syntax(valid_yaml, "test.yaml")
+            .expect("should parse valid yaml syntax");
+    }
+
+    #[test]
+    fn validate_yaml_syntax_rejects_unmatched_braces() {
+        let invalid_yaml = r#"
+config: { unclosed: value
+"#;
+
+        let err = super::validate_yaml_syntax(invalid_yaml, "test.yaml")
+            .expect_err("should reject unmatched braces");
+        assert!(err.to_string().contains("Syntax error"));
+    }
+
+    #[test]
+    fn validate_yaml_syntax_rejects_unclosed_string() {
+        let invalid_yaml = r#"
+key: "unclosed string value
+"#;
+
+        let err = super::validate_yaml_syntax(invalid_yaml, "test.yaml")
+            .expect_err("should reject unclosed string");
+        assert!(err.to_string().contains("Syntax error"));
+    }
+
+    #[test]
+    fn validate_file_content_delegates_by_extension() {
+        // Test .nix file
+        let valid_nix = "{ }";
+        super::validate_file_content("modules/test.nix", valid_nix).expect("should validate .nix");
+
+        // Test .yaml file
+        let valid_yaml = "key: value";
+        super::validate_file_content("config.yaml", valid_yaml).expect("should validate .yaml");
+
+        // Test .yml file
+        super::validate_file_content("config.yml", valid_yaml).expect("should validate .yml");
+
+        // Test non-validated file (should always pass)
+        super::validate_file_content("readme.md", "anything here")
+            .expect("should accept non-validated file types");
+    }
+
+    #[test]
+    fn file_edit_rejects_invalid_nix() {
+        let temp = tempfile::tempdir().expect("create temp dir");
+        let base = temp.path();
+        let file_path = base.join("test.nix");
+        fs::write(&file_path, "{ }").expect("seed file");
+
+        let edit = FileEdit {
+            path: "test.nix".to_string(),
+            search: "".to_string(),
+            replace: "{ broken".to_string(), // Unmatched brace
+        };
+
+        let err = apply_file_edits(base, &edit).expect_err("should reject invalid nix");
+        assert!(err.to_string().contains("Syntax error"));
+        // Verify file was NOT written
+        let content = fs::read_to_string(&file_path).expect("read file");
+        assert_eq!(content, "{ }"); // Original content unchanged
+    }
+
+    #[test]
+    fn file_edit_rejects_invalid_yaml() {
+        let temp = tempfile::tempdir().expect("create temp dir");
+        let base = temp.path();
+        let file_path = base.join("config.yaml");
+        fs::write(&file_path, "key: value").expect("seed file");
+
+        let edit = FileEdit {
+            path: "config.yaml".to_string(),
+            search: "".to_string(),
+            replace: "key: [unclosed".to_string(), // Unmatched bracket
+        };
+
+        let err = apply_file_edits(base, &edit).expect_err("should reject invalid yaml");
+        assert!(err.to_string().contains("Syntax error"));
+        // Verify file was NOT written
+        let content = fs::read_to_string(&file_path).expect("read file");
+        assert_eq!(content, "key: value"); // Original content unchanged
     }
 }
