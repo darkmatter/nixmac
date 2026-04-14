@@ -41,8 +41,14 @@ jobs:
         run: bun install --frozen-lockfile
       # Decide what kind of build this is:
       #   - tag:     push of refs/tags/v* → ship that exact version
-      #   - release: push to main → patch-bump and ship (unless HEAD is already a release commit)
+      #   - release: push to main → patch-bump the latest tag and ship
       #   - branch:  PR / feature branch / workflow_dispatch → build-only
+      #
+      # Tags are the source of truth for shipped versions, so the bump is
+      # computed from `git describe` rather than root package.json. This
+      # avoids needing to commit back to main (the `main` ruleset blocks
+      # pushes that don't satisfy the "build" check — which we can't
+      # satisfy from the same run that's pushing).
       - name: Compute release version
         id: release-version
         run: |
@@ -54,17 +60,16 @@ jobs:
             VERSION="${GITHUB_REF_NAME#v}"
             TAG="$GITHUB_REF_NAME"
           elif [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/main" ]]; then
-            COMMIT_MSG=$(git log -1 --pretty=%s)
-            if [[ "$COMMIT_MSG" == "chore: release v"* ]]; then
-              echo "HEAD is a release commit — treating as branch build to avoid loop"
-            else
-              MODE="release"
-              CURRENT=$(node -p "require('./package.json').version")
-              IFS='.' read -r MAJ MIN PAT <<< "$CURRENT"
-              PAT=$((PAT + 1))
-              VERSION="${MAJ}.${MIN}.${PAT}"
-              TAG="v${VERSION}"
+            MODE="release"
+            BASE=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "")
+            if [[ -z "$BASE" ]]; then
+              BASE=$(node -p "require('./package.json').version")
+              echo "No tags found — bumping from package.json version $BASE"
             fi
+            IFS='.' read -r MAJ MIN PAT <<< "$BASE"
+            PAT=$((PAT + 1))
+            VERSION="${MAJ}.${MIN}.${PAT}"
+            TAG="v${VERSION}"
           fi
           echo "mode=$MODE" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -346,26 +351,19 @@ jobs:
           name: nixmac-macos-app
           path: target/release/bundle/macos/*.app
           if-no-files-found: warn
-      # On push-to-main releases: commit the bumped version files and push a
-      # tag. GITHUB_TOKEN pushes do NOT retrigger workflows, so this doesn't
-      # cause a loop — the safety net in "Compute release version" is just
-      # defense-in-depth.
-      - name: Commit + tag release
+      # On push-to-main releases: tag HEAD and push the tag. Tags are the
+      # source of truth for shipped versions — no commit is pushed to main,
+      # so the repo ruleset (which requires the `build` check on any branch
+      # ref update) can't block us. GITHUB_TOKEN pushes don't retrigger
+      # workflows, so tagging here is safe.
+      - name: Tag release
         if: steps.release-version.outputs.mode == 'release'
         env:
-          VERSION: ${{ steps.release-version.outputs.version }}
           TAG: ${{ steps.release-version.outputs.tag }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            package.json \
-            apps/native/package.json \
-            apps/native/src-tauri/tauri.conf.json \
-            apps/native/src-tauri/Cargo.toml
-          git commit -m "chore: release v${VERSION}"
           git tag "${TAG}"
-          git push origin "HEAD:${GITHUB_REF#refs/heads/}"
           git push origin "${TAG}"
       # Create GitHub Release for tag and release modes.
       # Skipped for test tags matching `-test.N` so we can exercise the full
