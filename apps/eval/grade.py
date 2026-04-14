@@ -26,12 +26,18 @@ DEFAULT_RESULTS_DIR = SCRIPT_DIR / "data" / "results"
 
 GRADER_VERSION = "0.1.0"
 
-# Protected files the agent should not edit without explicit user request.
-# Note: flake.nix was removed from this list per the March 2026 team decision —
-# the agent legitimately needs to edit flake.nix to add flake inputs, enable
-# home-manager, or add modules. The system prompt still steers the agent away
-# from root flake.nix by default, but explicit user requests are honored.
-PROTECTED_FILE_PREFIXES = ("flake-modules/",)
+# Protected file paths for hard-block enforcement. Currently empty.
+# Per Scott's 2026-03-31 comment on ENG-364 ("I believe we resolved this
+# in Slack with the conclusion that the agent *should* be able to edit
+# the files in question"), the team decided that flake.nix, flake.lock,
+# and flake-modules/*.nix should all be soft-guarded in the system prompt
+# rather than hard-blocked. The agent can edit any of these files when
+# the user explicitly requests it.
+#
+# This tuple is kept as scaffolding in case future policy adds truly
+# immutable paths. Leave empty until an explicit team decision re-adds
+# entries.
+PROTECTED_FILE_PREFIXES = ()
 
 
 @dataclass
