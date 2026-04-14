@@ -26,6 +26,13 @@ DEFAULT_RESULTS_DIR = SCRIPT_DIR / "data" / "results"
 
 GRADER_VERSION = "0.1.0"
 
+# Flake infrastructure path prefixes used by the flake_scope check in grade_succeed().
+# Kept in sync with the soft-guard list in apps/native/src-tauri/prompts/system.md
+# (lines 215-218). flake.lock is intentionally excluded — run_evals.py gitignores it
+# during test fixture setup, so lockfile diffs are never presented to the grader.
+FLAKE_PATH_PREFIXES = ("flake.nix", "flake-modules/")
+
+
 @dataclass
 class CheckResult:
     """Result of a single grading check."""
@@ -287,20 +294,19 @@ def grade_succeed(
     # The system prompt still requires flake.nix / flake-modules edits to be explicitly
     # requested — this check catches models that hallucinate flake edits on unrelated
     # prompts. Bypassed when the case is intentionally about flake editing.
-    FLAKE_PREFIXES = ("flake.nix", "flake-modules/")
     is_flake_management = bool(
         expectations and expectations.get("type") == "flake_management"
     )
     expected_is_flake = bool(
         expectations
         and any(
-            f.startswith(FLAKE_PREFIXES)
+            f.startswith(FLAKE_PATH_PREFIXES)
             for f in expectations.get("expected_files", [])
         )
     )
     if has_diff and not is_flake_management and not expected_is_flake:
         unexpected_flake_edits = [
-            f for f in edited_files if f.startswith(FLAKE_PREFIXES)
+            f for f in edited_files if f.startswith(FLAKE_PATH_PREFIXES)
         ]
         grade.checks["flake_scope"] = CheckResult(
             passed=len(unexpected_flake_edits) == 0,
