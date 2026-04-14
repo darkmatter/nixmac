@@ -17,19 +17,32 @@ export function usePermissions() {
     try {
       const rustPermissions = await darwinAPI.permissions.checkAll();
 
-      // Determine FDA status: prefer the macOS plugin result, fall back to the
-      // Rust backend result if the plugin throws (e.g. when running in a test
-      // harness or when the plugin is unavailable).
+      // Determine FDA status by OR-ing the plugin and backend results: if
+      // either source reports granted, the grant is real. The plugin's probe
+      // set is narrow (Safari + stocks container only), and the backend
+      // probes a wider set, so a single source can be wrong in either
+      // direction.
       const backendFdaPermission = rustPermissions.permissions.find((p) => p.id === "full-disk");
       const backendFdaStatus: PermissionStatus = backendFdaPermission?.status ?? "unknown";
 
-      // Default to the backend result so that a plugin failure never forces
-      // "denied" when the backend already knows the correct status.
       let fdaStatus: PermissionStatus = backendFdaStatus;
       try {
-        const fdaGranted = await darwinAPI.permissions.checkFullDiskAccess();
-        fdaStatus = fdaGranted ? "granted" : "denied";
-        console.log("[permissions] Plugin FDA check succeeded:", fdaStatus);
+        const pluginGranted = await darwinAPI.permissions.checkFullDiskAccess();
+        if (pluginGranted || backendFdaStatus === "granted") {
+          fdaStatus = "granted";
+        } else if (backendFdaStatus === "pending" || backendFdaStatus === "unknown") {
+          fdaStatus = "denied";
+        } else {
+          fdaStatus = backendFdaStatus;
+        }
+        console.log(
+          "[permissions] FDA check — plugin:",
+          pluginGranted,
+          "backend:",
+          backendFdaStatus,
+          "→",
+          fdaStatus,
+        );
       } catch (e) {
         console.warn(
           "[permissions] Plugin FDA check failed – falling back to backend result:",

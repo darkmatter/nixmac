@@ -146,40 +146,64 @@ fn check_folder_access(path: &PathBuf) -> PermissionStatus {
     }
 }
 
-/// Check if we have Full Disk Access
-/// This is done by trying to access restricted system files/folders
-/// Note: This check is imperfect - the definitive check happens via JS plugin
+/// Check if we have Full Disk Access.
+///
+/// Probes several TCC-gated paths. A successful read on any one is proof of
+/// FDA. A PermissionDenied on any one is proof of the opposite — even if the
+/// user has nixmac listed and toggled on in System Settings, a stale TCC
+/// entry (e.g. codesign requirement mismatch after an update-in-place) can
+/// leave the grant silently inactive, and reads will fail with
+/// PermissionDenied. Only if every probe path is missing (NotFound) do we
+/// fall back to Pending.
 fn check_full_disk_access() -> PermissionStatus {
-    // For local development with the frontend, set VITE_NIXMAC_SKIP_PERMISSIONS=true to skip this check
-    // and assume Full Disk Access is granted. not be formally installed such that the setting is available.
     if std::env::var("VITE_NIXMAC_SKIP_PERMISSIONS").is_ok() {
         debug!("VITE_NIXMAC_SKIP_PERMISSIONS is set, assuming Full Disk Access granted");
         return PermissionStatus::Granted;
     }
 
-    // Try to access the TCC database (requires FDA)
-    let tcc_path = PathBuf::from("/Library/Application Support/com.apple.TCC/TCC.db");
-
-    // Also try user's Library folders that require FDA
     let home = match dirs::home_dir() {
         Some(h) => h,
         None => return PermissionStatus::Unknown,
     };
 
-    // ~/Library/Mail is a good test for FDA
-    let mail_path = home.join("Library").join("Mail");
+    // (path, is_dir). Ordered by how reliably the path exists on a typical
+    // macOS install. The Safari probes match what tauri-plugin-macos-permissions
+    // checks so our result stays consistent with the JS plugin.
+    let probes: [(PathBuf, bool); 5] = [
+        (home.join("Library/Safari/Bookmarks.plist"), false),
+        (home.join("Library/Safari"), true),
+        (home.join("Library/Containers/com.apple.stocks"), true),
+        (home.join("Library/Mail"), true),
+        (
+            PathBuf::from("/Library/Application Support/com.apple.TCC/TCC.db"),
+            false,
+        ),
+    ];
 
-    // Try both paths - if either works, we likely have FDA
-    let can_access_tcc = fs::metadata(&tcc_path).is_ok();
-    let can_access_mail = fs::read_dir(&mail_path).is_ok();
+    let mut saw_denied = false;
+    for (path, is_dir) in &probes {
+        let result = if *is_dir {
+            fs::read_dir(path).map(|_| ())
+        } else {
+            fs::metadata(path).map(|_| ())
+        };
+        match result {
+            Ok(_) => {
+                debug!("Full Disk Access granted (probe succeeded: {:?})", path);
+                return PermissionStatus::Granted;
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
+                debug!("Full Disk Access denied (probe blocked: {:?})", path);
+                saw_denied = true;
+            }
+            Err(_) => {}
+        }
+    }
 
-    if can_access_tcc || can_access_mail {
-        debug!("Full Disk Access appears to be granted");
-        PermissionStatus::Granted
+    if saw_denied {
+        PermissionStatus::Denied
     } else {
-        // Can't determine - might be denied or just no Mail folder
-        // Keep as Pending - the JS plugin will give a definitive answer
-        debug!("Full Disk Access check inconclusive");
+        debug!("Full Disk Access check inconclusive — no probe path existed");
         PermissionStatus::Pending
     }
 }

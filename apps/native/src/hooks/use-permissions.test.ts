@@ -87,8 +87,46 @@ describe("usePermissions – FDA merge/fallback logic", () => {
     expect(state!.allRequiredGranted).toBe(true);
   });
 
-  it("uses 'denied' when the plugin returns false", async () => {
+  it("uses 'granted' when backend says granted even if plugin returns false", async () => {
+    // The plugin's probe set is narrower than the backend's, so if either
+    // source sees FDA we must honor it — otherwise a stale Safari container
+    // forces a false "denied" for users who really have FDA.
     mockCheckAll.mockResolvedValue(makeBackendState("granted"));
+    mockCheckFullDiskAccess.mockResolvedValue(false);
+
+    const { usePermissions } = await import("./use-permissions");
+    const { result } = renderHook(() => usePermissions());
+
+    let state: PermissionsState | null = null;
+    await act(async () => {
+      state = await result.current.checkPermissions();
+    });
+
+    const fda = state!.permissions.find((p) => p.id === "full-disk")!;
+    expect(fda.status).toBe("granted");
+    expect(state!.allRequiredGranted).toBe(true);
+  });
+
+  it("uses 'denied' when both plugin and backend report not-granted", async () => {
+    mockCheckAll.mockResolvedValue(makeBackendState("denied"));
+    mockCheckFullDiskAccess.mockResolvedValue(false);
+
+    const { usePermissions } = await import("./use-permissions");
+    const { result } = renderHook(() => usePermissions());
+
+    let state: PermissionsState | null = null;
+    await act(async () => {
+      state = await result.current.checkPermissions();
+    });
+
+    const fda = state!.permissions.find((p) => p.id === "full-disk")!;
+    expect(fda.status).toBe("denied");
+  });
+
+  it("uses 'denied' when plugin says false and backend is pending", async () => {
+    // Backend "pending" used to leak through as the final status; under the
+    // OR logic we collapse pending+false to denied so the UI prompts.
+    mockCheckAll.mockResolvedValue(makeBackendState("pending"));
     mockCheckFullDiskAccess.mockResolvedValue(false);
 
     const { usePermissions } = await import("./use-permissions");

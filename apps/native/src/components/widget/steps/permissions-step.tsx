@@ -14,9 +14,14 @@ import { useState, useCallback, useEffect } from "react";
  */
 async function checkAndUpdateFDAPermission(permissions: Permission[]): Promise<Permission[]> {
   try {
-    // For local development: allow skipping FDA check via env var
     const skipFDA = import.meta.env.VITE_NIXMAC_SKIP_PERMISSIONS === "true";
-    const fdaGranted = skipFDA || (await darwinAPI.permissions.checkFullDiskAccess());
+    const pluginGranted = skipFDA || (await darwinAPI.permissions.checkFullDiskAccess());
+    // OR plugin result with the backend's own probe (already in `permissions`)
+    // so a single narrow source can't wrongly force "denied".
+    const backendGranted = permissions.some(
+      (p) => p.id === "full-disk" && p.status === "granted",
+    );
+    const fdaGranted = pluginGranted || backendGranted;
     return permissions.map((p) =>
       p.id === "full-disk"
         ? {

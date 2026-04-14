@@ -6,6 +6,10 @@
   ...
 }:
 {
+  imports = [
+    ./nix
+  ];
+
   cachix.enable = true;
   cachix.pull = [
     "nixpkgs"
