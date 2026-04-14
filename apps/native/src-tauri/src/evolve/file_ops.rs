@@ -188,7 +188,8 @@ fn path_scope_error(input: &str, base: &Path, resolved: &Path, operation: &str) 
     )
 }
 
-/// Validate basic syntax of a .nix file using the rnix parser.
+/// Validate basic syntax of a .nix file using a simple custom validator that checks for balanced braces, brackets
+/// parens, and closed strings.
 /// We can't use rnix because it is error-tolerant and will produce an AST
 /// even for complete junk, which isn't helpful for our use case of validating AI-generated edits.
 /// Instead, we check basic structural validity: balanced braces/brackets/parens, closed strings.
@@ -201,6 +202,8 @@ fn validate_nix_syntax(content: &str, file_path: &str) -> anyhow::Result<()> {
     let mut paren_depth = 0;
     let mut in_string = false;
     let mut in_multiline_string = false;
+    let mut in_line_comment = false;
+    let mut in_block_comment = false;
     let mut escape_next = false;
 
     let chars: Vec<char> = content.chars().collect();
@@ -208,6 +211,24 @@ fn validate_nix_syntax(content: &str, file_path: &str) -> anyhow::Result<()> {
 
     while i < chars.len() {
         let ch = chars[i];
+
+        if in_line_comment {
+            if ch == '\n' {
+                in_line_comment = false;
+            }
+            i += 1;
+            continue;
+        }
+
+        if in_block_comment {
+            if i + 1 < chars.len() && ch == '*' && chars[i + 1] == '/' {
+                in_block_comment = false;
+                i += 2;
+                continue;
+            }
+            i += 1;
+            continue;
+        }
 
         if escape_next {
             escape_next = false;
@@ -217,6 +238,18 @@ fn validate_nix_syntax(content: &str, file_path: &str) -> anyhow::Result<()> {
 
         // Check for multiline strings: '' ... ''
         if !in_string && i + 1 < chars.len() && ch == '\'' && chars[i + 1] == '\'' {
+            if in_multiline_string {
+                // In an indented string, '' introduces either an escape sequence
+                // (e.g. ''', ''$, ''\) or the closing delimiter.
+                // Only treat it as closing when it is not an escape prefix.
+                if i + 2 < chars.len()
+                    && (chars[i + 2] == '\'' || chars[i + 2] == '$' || chars[i + 2] == '\\')
+                {
+                    i += 3;
+                    continue;
+                }
+            }
+
             in_multiline_string = !in_multiline_string;
             i += 2;
             continue;
@@ -225,6 +258,19 @@ fn validate_nix_syntax(content: &str, file_path: &str) -> anyhow::Result<()> {
         if in_multiline_string {
             i += 1;
             continue;
+        }
+
+        if !in_string {
+            if ch == '#' {
+                in_line_comment = true;
+                i += 1;
+                continue;
+            }
+            if i + 1 < chars.len() && ch == '/' && chars[i + 1] == '*' {
+                in_block_comment = true;
+                i += 2;
+                continue;
+            }
         }
 
         match ch {
@@ -280,6 +326,13 @@ fn validate_nix_syntax(content: &str, file_path: &str) -> anyhow::Result<()> {
         ));
     }
 
+    if in_block_comment {
+        return Err(anyhow::anyhow!(
+            "Syntax error in {}: unclosed block comment /*...*/",
+            file_path
+        ));
+    }
+
     if brace_depth != 0 {
         return Err(anyhow::anyhow!(
             "Syntax error in {}: {} unmatched opening brace(s)",
@@ -309,9 +362,9 @@ fn validate_nix_syntax(content: &str, file_path: &str) -> anyhow::Result<()> {
 
 /// Validate basic syntax of a .yaml or .yml file using serde_yaml.
 fn validate_yaml_syntax(content: &str, file_path: &str) -> anyhow::Result<()> {
-    // Try to parse the YAML content. serde_yaml will catch syntax errors
+    // Try to parse the YAML content. yaml_serde will catch syntax errors
     // like unmatched quotes, braces, brackets, etc.
-    serde_yaml::from_str::<serde_yaml::Value>(content)
+    yaml_serde::from_str::<yaml_serde::Value>(content)
         .map_err(|e| anyhow::anyhow!("Syntax error in {}: {}", file_path, e))?;
 
     Ok(())
@@ -526,6 +579,62 @@ mod tests {
         let err = super::validate_nix_syntax(invalid_nix, "test.nix")
             .expect_err("should reject unclosed string");
         assert!(err.to_string().contains("Syntax error"));
+    }
+
+    #[test]
+    fn validate_nix_syntax_accepts_multiline_string_escapes() {
+        let valid_nix = r#"
+{
+    script = ''
+        echo "It'''s working"
+        echo ''$HOME
+        echo ''\n
+    '';
+}
+"#;
+
+        super::validate_nix_syntax(valid_nix, "test.nix")
+            .expect("should accept multiline string escapes without closing early");
+    }
+
+    #[test]
+    fn validate_nix_syntax_ignores_hash_comments() {
+        let nix_with_comment = r#"
+{
+  # this unmatched stuff should be ignored: } ] )
+  environment.systemPackages = [ pkgs.git ];
+}
+"#;
+
+        super::validate_nix_syntax(nix_with_comment, "test.nix")
+            .expect("should ignore delimiters inside hash comments");
+    }
+
+    #[test]
+    fn validate_nix_syntax_ignores_block_comments() {
+        let nix_with_block_comment = r#"
+{
+  /* unmatched delimiters in comment should be ignored: } ] ) */
+  environment.systemPackages = [ pkgs.git ];
+}
+"#;
+
+        super::validate_nix_syntax(nix_with_block_comment, "test.nix")
+            .expect("should ignore delimiters inside block comments");
+    }
+
+    #[test]
+    fn validate_nix_syntax_rejects_unclosed_block_comment() {
+        let invalid_nix = r#"
+{
+  /* block comment never closes
+  environment.systemPackages = [ pkgs.git ];
+}
+"#;
+
+        let err = super::validate_nix_syntax(invalid_nix, "test.nix")
+            .expect_err("should reject unclosed block comment");
+        assert!(err.to_string().contains("unclosed block comment"));
     }
 
     #[test]
