@@ -1,0 +1,18 @@
+keys:
+  - &prod age1c2q5fm3l3gn2tgcs35xstu44mu2zyrft993ksljw5r3z4dzcqcfq6vtakn
+  - &dev age1vapyvpjzqg8wdfay055s574qt0u6avtzv4ch7kv0epvtycpyjqzqk3m4yr
+  - &keyservice age16wuzuxnkcgfuxzvzgk5e5a5f6hhs386adjewyv54m9esr4yj6uuslpn6tp
+  - &github age1zl7nsteyj8lzu0spgd9qav3fhkmekkjd30uzt69mpmxgrev3nq7s3jnreh
+creation_rules:
+  - path_regex: \.dev\.yaml
+    unencrypted_comment_regex: ^\s?(safe|unencrypted)$
+    age:
+      - *dev
+      - *keyservice
+      - *github
+  - path_regex: .*
+    unencrypted_comment_regex: ^\s?(safe|unencrypted)$
+    age:
+      - *prod
+      - *github
+      - *keyservice
