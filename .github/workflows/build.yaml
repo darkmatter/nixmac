@@ -18,6 +18,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Rust cache
@@ -36,17 +39,54 @@ jobs:
           node-version: 20
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
-      # Sync native app version files to the tag version (on tag builds) or the
-      # max(package.json, latest-git-tag) version (on branch/PR builds). Using the
-      # max protects against a stale package.json causing branch builds to embed a
-      # lower version than what has already shipped, which would produce a
-      # false-positive update banner (e.g. embedding 0.5.0 when latest.json is 0.16.2).
+      # Decide what kind of build this is:
+      #   - tag:     push of refs/tags/v* → ship that exact version
+      #   - release: push to main → patch-bump and ship (unless HEAD is already a release commit)
+      #   - branch:  PR / feature branch / workflow_dispatch → build-only
+      - name: Compute release version
+        id: release-version
+        run: |
+          MODE="branch"
+          VERSION=""
+          TAG=""
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            MODE="tag"
+            VERSION="${GITHUB_REF_NAME#v}"
+            TAG="$GITHUB_REF_NAME"
+          elif [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/main" ]]; then
+            COMMIT_MSG=$(git log -1 --pretty=%s)
+            if [[ "$COMMIT_MSG" == "chore: release v"* ]]; then
+              echo "HEAD is a release commit — treating as branch build to avoid loop"
+            else
+              MODE="release"
+              CURRENT=$(node -p "require('./package.json').version")
+              IFS='.' read -r MAJ MIN PAT <<< "$CURRENT"
+              PAT=$((PAT + 1))
+              VERSION="${MAJ}.${MIN}.${PAT}"
+              TAG="v${VERSION}"
+            fi
+          fi
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Computed: mode=$MODE version=$VERSION tag=$TAG"
+      # Sync native app version files. Tag + release modes use the computed
+      # version directly; branch/PR builds fall back to the max(package.json,
+      # latest-git-tag) guard so a stale package.json cannot embed a version
+      # lower than what has already shipped (which would trigger a
+      # false-positive update banner, e.g. embedding 0.5.0 when latest.json is
+      # 0.16.2).
       - name: Sync native app version
         id: sync-version
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            VERSION="${GITHUB_REF_NAME#v}"
-            echo "Tag build — syncing to tag version: $VERSION"
+          MODE="${{ steps.release-version.outputs.mode }}"
+          if [[ "$MODE" == "tag" || "$MODE" == "release" ]]; then
+            VERSION="${{ steps.release-version.outputs.version }}"
+            echo "$MODE build — syncing to version: $VERSION"
+            node scripts/sync-versions.mjs "$VERSION"
+            # sync-versions.mjs doesn't touch root package.json — do it here.
+            node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.version=process.argv[1];fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n');" "$VERSION"
+            BUILD_VERSION="$VERSION"
           else
             PKG_VERSION=$(node -p "require('./package.json').version")
             # Guard against stale package.json: if the latest git tag is newer,
@@ -73,10 +113,10 @@ jobs:
               VERSION="$PKG_VERSION"
             fi
             echo "Branch/PR build — syncing to version: $VERSION"
+            node scripts/sync-versions.mjs "$VERSION"
+            SHORT_SHA=${GITHUB_SHA::8}
+            BUILD_VERSION="${VERSION}-${SHORT_SHA}"
           fi
-          node scripts/sync-versions.mjs "$VERSION"
-          SHORT_SHA=${GITHUB_SHA::8}
-          BUILD_VERSION="${VERSION}-${SHORT_SHA}"
 
           echo "VERSION=$BUILD_VERSION" >> "$GITHUB_ENV"
           echo "build_version=$BUILD_VERSION" >> "$GITHUB_OUTPUT"
@@ -114,7 +154,7 @@ jobs:
       # Placed AFTER the Tauri build to avoid replacing the keychain search list
       # before `bun run desktop:build`, which caused DMG bundling failures on tags.
       - name: Import Apple Developer certificate
-        if: startsWith(github.ref, 'refs/tags/') && steps.check-secrets.outputs.has_certificate == 'true'
+        if: (steps.release-version.outputs.mode == 'tag' || steps.release-version.outputs.mode == 'release') && steps.check-secrets.outputs.has_certificate == 'true'
         shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
         run: |
           # Create a temporary keychain
@@ -137,7 +177,7 @@ jobs:
           echo "=== End identities ==="
       # Sign the app bundle (required for notarization)
       - name: Sign app bundle
-        if: startsWith(github.ref, 'refs/tags/') && steps.check-secrets.outputs.has_certificate == 'true'
+        if: (steps.release-version.outputs.mode == 'tag' || steps.release-version.outputs.mode == 'release') && steps.check-secrets.outputs.has_certificate == 'true'
         run: |
           APP_PATH=$(find target/release/bundle/macos -name "*.app" -type d | head -1)
           if [ -n "$APP_PATH" ]; then
@@ -174,7 +214,7 @@ jobs:
       # Previously this step deleted the DMG and called `hdiutil create`, which
       # shipped a bare DMG without the drag-to-Applications affordance.
       - name: Swap signed app into Tauri DMG
-        if: startsWith(github.ref, 'refs/tags/') && steps.check-secrets.outputs.has_certificate == 'true'
+        if: (steps.release-version.outputs.mode == 'tag' || steps.release-version.outputs.mode == 'release') && steps.check-secrets.outputs.has_certificate == 'true'
         run: |
           APP_PATH=$(find target/release/bundle/macos -name "*.app" -type d | head -1)
           DMG_PATH=$(find target/release/bundle/dmg -name "*.dmg" -type f | head -1)
@@ -260,7 +300,7 @@ jobs:
           echo "Done: $DMG_PATH now contains the signed app with the preserved Finder layout."
       # Notarize the app (requires Apple Developer account)
       - name: Notarize app
-        if: startsWith(github.ref, 'refs/tags/') && steps.check-secrets.outputs.has_notarization == 'true'
+        if: (steps.release-version.outputs.mode == 'tag' || steps.release-version.outputs.mode == 'release') && steps.check-secrets.outputs.has_notarization == 'true'
         shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
         run: |
           # Write the API key to a file
@@ -306,16 +346,38 @@ jobs:
           name: nixmac-macos-app
           path: target/release/bundle/macos/*.app
           if-no-files-found: warn
-      # Create GitHub Release for tags.
+      # On push-to-main releases: commit the bumped version files and push a
+      # tag. GITHUB_TOKEN pushes do NOT retrigger workflows, so this doesn't
+      # cause a loop — the safety net in "Compute release version" is just
+      # defense-in-depth.
+      - name: Commit + tag release
+        if: steps.release-version.outputs.mode == 'release'
+        env:
+          VERSION: ${{ steps.release-version.outputs.version }}
+          TAG: ${{ steps.release-version.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            package.json \
+            apps/native/package.json \
+            apps/native/src-tauri/tauri.conf.json \
+            apps/native/src-tauri/Cargo.toml
+          git commit -m "chore: release v${VERSION}"
+          git tag "${TAG}"
+          git push origin "HEAD:${GITHUB_REF#refs/heads/}"
+          git push origin "${TAG}"
+      # Create GitHub Release for tag and release modes.
       # Skipped for test tags matching `-test.N` so we can exercise the full
       # signing/notarization + DMG swap path on a disposable tag without
       # publishing a public release.
       - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-test.')
+        if: (steps.release-version.outputs.mode == 'tag' || steps.release-version.outputs.mode == 'release') && !contains(steps.release-version.outputs.tag, '-test.')
         uses: softprops/action-gh-release@v2
         with:
           draft: false
           generate_release_notes: true
+          tag_name: ${{ steps.release-version.outputs.tag }}
           files: |
             target/release/bundle/dmg/*.dmg
         env:
@@ -325,17 +387,19 @@ jobs:
       # signing/notarization + DMG swap path on a disposable tag without
       # overwriting latest.json on the updater CDN.
       - name: Upload to R2
-        if: startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-test.')
+        if: (steps.release-version.outputs.mode == 'tag' || steps.release-version.outputs.mode == 'release') && !contains(steps.release-version.outputs.tag, '-test.')
         shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
         env:
           AWS_DEFAULT_REGION: auto
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ steps.release-version.outputs.version }}
+          RELEASE_TAG: ${{ steps.release-version.outputs.tag }}
         run: |
           # Map SOPS env vars to AWS CLI vars
           export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
           export AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
 
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="$RELEASE_VERSION"
 
           # Find the .app.tar.gz and .sig files from Tauri build output
           TAR_GZ=$(find target/release/bundle -name "*.app.tar.gz" -not -name "*.sig" | head -1)
@@ -368,7 +432,7 @@ jobs:
           # Try to get release notes from the GitHub release
           NOTES=""
           if command -v gh &> /dev/null; then
-            NOTES=$(gh release view "$GITHUB_REF_NAME" --json body -q .body 2>/dev/null || echo "")
+            NOTES=$(gh release view "$RELEASE_TAG" --json body -q .body 2>/dev/null || echo "")
           fi
 
           cat > /tmp/latest.json << EOF
