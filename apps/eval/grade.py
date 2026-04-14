@@ -258,16 +258,18 @@ def grade_succeed(
             detail="No build attempts — skipping build_succeeded (covered by build_attempted)",
         )
 
-    # Check: expected_files (edits landed in the right files)
-    if expectations and expectations.get("expected_files") and has_diff:
-        expected_files = expectations["expected_files"]
-        # Extract edited file paths from diff
-        edited_files = []
+    # Extract edited file paths from diff (used by expected_files and flake_scope checks)
+    edited_files = []
+    if has_diff:
         for line in diff.splitlines():
             if line.startswith("diff --git"):
                 parts = line.split(" b/")
                 if len(parts) >= 2:
                     edited_files.append(parts[-1])
+
+    # Check: expected_files (edits landed in the right files)
+    if expectations and expectations.get("expected_files") and has_diff:
+        expected_files = expectations["expected_files"]
         # Check that at least one edited file is in the expected list
         matched = [f for f in edited_files if f in expected_files]
         grade.checks["expected_files"] = CheckResult(
@@ -278,6 +280,32 @@ def grade_succeed(
         grade.checks["expected_files"] = CheckResult(
             passed=True,
             detail="No expected files defined — skipped (needs Scott's input)",
+        )
+
+    # Check: flake_scope (succeed cases shouldn't silently edit flake infrastructure
+    # unless the case is explicitly flake_management or expected_files lists flake paths).
+    # The system prompt still requires flake.nix / flake-modules edits to be explicitly
+    # requested — this check catches models that hallucinate flake edits on unrelated
+    # prompts. Bypassed when the case is intentionally about flake editing.
+    FLAKE_PREFIXES = ("flake.nix", "flake-modules/")
+    is_flake_management = bool(
+        expectations and expectations.get("type") == "flake_management"
+    )
+    expected_is_flake = bool(
+        expectations
+        and any(
+            f.startswith(FLAKE_PREFIXES)
+            for f in expectations.get("expected_files", [])
+        )
+    )
+    if has_diff and not is_flake_management and not expected_is_flake:
+        unexpected_flake_edits = [
+            f for f in edited_files if f.startswith(FLAKE_PREFIXES)
+        ]
+        grade.checks["flake_scope"] = CheckResult(
+            passed=len(unexpected_flake_edits) == 0,
+            detail="No unexpected flake edits" if not unexpected_flake_edits
+            else f"Unexpected flake edit(s) on non-flake_management case: {unexpected_flake_edits}",
         )
 
     # Check: relevant_changes (keyword matching from expectations)
