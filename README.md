@@ -36,7 +36,7 @@ The agent reads your config, plans the changes, edits the Nix files, builds the 
 - **Secret scanning** — detects accidentally committed API keys and credentials
 - **Sentry integration** — opt-in crash reporting with automatic PII scrubbing
 - **CLI + GUI** — use the menu bar app or `nixmac evolve "..."` from the terminal
-- **Eval suite** — reproducible benchmarks for measuring agent accuracy across models
+- **Eval suite** — reproducible benchmarks for measuring agent accuracy across models!
 
 ## Architecture
 
