@@ -312,15 +312,29 @@ def grade_succeed(
             for f in expectations.get("expected_files", [])
         )
     )
-    if has_diff and not is_flake_management and not expected_is_flake:
-        unexpected_flake_edits = [
-            f for f in edited_files if f.startswith(FLAKE_PATH_PREFIXES)
-        ]
-        grade.checks["flake_scope"] = CheckResult(
-            passed=len(unexpected_flake_edits) == 0,
-            detail="No unexpected flake edits" if not unexpected_flake_edits
-            else f"Unexpected flake edit(s) on non-flake_management case: {unexpected_flake_edits}",
-        )
+    if has_diff:
+        flake_edits = [f for f in edited_files if f.startswith(FLAKE_PATH_PREFIXES)]
+        if is_flake_management and not expected_is_flake:
+            # CSV-bypassed flake_management cases have no golden expected_files to
+            # constrain the edit target. Enforce at least that SOME flake path
+            # was edited — catches "agent ignored the flake ask entirely" without
+            # requiring per-case expectations for non-golden cases.
+            grade.checks["flake_scope"] = CheckResult(
+                passed=len(flake_edits) > 0,
+                detail=f"Flake edit present: {flake_edits}" if flake_edits
+                else "flake_management case expects a flake edit but none found",
+            )
+        elif not is_flake_management and not expected_is_flake:
+            # Non-flake cases: any flake edit is unexpected (agent hallucinated
+            # flake work on an unrelated prompt).
+            grade.checks["flake_scope"] = CheckResult(
+                passed=len(flake_edits) == 0,
+                detail="No unexpected flake edits" if not flake_edits
+                else f"Unexpected flake edit(s) on non-flake_management case: {flake_edits}",
+            )
+        # If expected_is_flake (golden expected_files lists a flake path), the
+        # expected_files check above already enforces file-level correctness;
+        # no additional flake_scope check is needed.
 
     # Check: relevant_changes (keyword matching from expectations)
     # Only check added lines to avoid false matches from removed/context lines
