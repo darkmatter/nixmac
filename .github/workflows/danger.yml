@@ -1,0 +1,33 @@
+name: Danger
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+jobs:
+  danger:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      # Generate a coverage report so the dangerfile has something to surface.
+      # `continue-on-error` keeps Danger running even if a test fails — Danger
+      # itself is not the gate for test failures, the test workflow is.
+      - name: Generate coverage (native)
+        continue-on-error: true
+        run: bunx vitest run --project=unit --coverage --coverage.reporter=json-summary --coverage.reporter=text --reporter=basic
+        working-directory: apps/native
+      - name: Run Danger
+        run: bunx danger ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
