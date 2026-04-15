@@ -43,6 +43,13 @@ pub(crate) fn nix_expr_meta_value(expression: &str) -> serde_json::Value {
     serde_json::Value::Object(value)
 }
 
+/// Helper to render a `builtins.path { path = ... }` expression for Nix.
+/// This is used by higher-level tools when they need to emit an expression
+/// that produces a path-of-file (absolute path) from a module-relative value.
+pub(crate) fn builtins_path_expression(path: &str) -> String {
+    format!("builtins.path {{ path = {}; }}", path)
+}
+
 fn text_size_to_usize(size: TextSize) -> usize {
     u32::from(size) as usize
 }
@@ -222,7 +229,21 @@ fn render_nix_expression_literal(
         ch.is_ascii_alphanumeric()
             || matches!(
                 ch,
-                '/' | '.' | '_' | '-' | '+' | '"' | '[' | ']' | '(' | ')' | ':'
+                '/' | '.'
+                    | '_'
+                    | '-'
+                    | '+'
+                    | '"'
+                    | '['
+                    | ']'
+                    | '('
+                    | ')'
+                    | ':'
+                    | '{'
+                    | '}'
+                    | ';'
+                    | '='
+                    | ' '
             )
     });
 
@@ -1112,6 +1133,23 @@ environment.systemPackages = with pkgs; [
         assert!(
             !edited.contains("MYAPP_ENV_FILE = \"config.sops.secrets.\\\"myapp-env\\\".path\";"),
             "expected MYAPP_ENV_FILE not to be rendered as a quoted string"
+        );
+    }
+
+    #[test]
+    fn set_attrs_renders_builtins_path_expression() {
+        let mut attrs = serde_json::Map::new();
+        attrs.insert(
+            "sopsFile".to_string(),
+            nix_expr_meta_value("builtins.path{path=../../secrets/ssh-private-key.yaml;}"),
+        );
+
+        let edited = set_attrs(WITH_PKGS_EMPTY, "sops.secrets.\"ssh-private-key\"", &attrs)
+            .expect("set_attrs should render builtins.path expression");
+
+        assert!(
+            edited.contains("sopsFile = builtins.path{path=../../secrets/ssh-private-key.yaml;};"),
+            "expected sopsFile to render as builtins.path expression"
         );
     }
 

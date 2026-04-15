@@ -1,5 +1,7 @@
 use crate::evolve::age::ensure_age_key;
-use crate::evolve::edit_nix_file::{apply_semantic_edit, nix_expr_meta_value, nix_path_meta_value};
+use crate::evolve::edit_nix_file::{
+    apply_semantic_edit, builtins_path_expression, nix_expr_meta_value,
+};
 use crate::evolve::file_ops::join_in_dir;
 use crate::evolve::sops::{
     edit_secret_blocking, encrypt_in_place, ensure_secret_file, ensure_sops_config,
@@ -159,7 +161,10 @@ fn inject_secret(base: &Path, name: &str, secret_path: &str, inject: &SecretInje
     let sops_file_path = secret_path_relative_to_target_file(base, &target_file, secret_path)?;
 
     let mut attrs = serde_json::Map::new();
-    attrs.insert("sopsFile".to_string(), nix_path_meta_value(&sops_file_path));
+    attrs.insert(
+        "sopsFile".to_string(),
+        nix_expr_meta_value(&builtins_path_expression(&sops_file_path)),
+    );
     attrs.insert(
         "path".to_string(),
         serde_json::Value::String(runtime_path.clone()),
@@ -397,9 +402,10 @@ fn render_initial_secret_content(scaffold: Option<&SecretScaffold>) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        execute_ensure_secret, fallback_binding_target, is_sops_secret_path, nix_path_meta_value,
+        execute_ensure_secret, fallback_binding_target, is_sops_secret_path,
         normalize_binding_target, secret_path_relative_to_target_file,
     };
+    use crate::evolve::edit_nix_file::builtins_path_expression;
     use crate::evolve::edit_nix_file::nix_expr_meta_value;
     use serde_json::json;
     use std::process::Command;
@@ -436,8 +442,7 @@ mod tests {
         let original_home = std::env::var_os("HOME");
         std::env::set_var("HOME", &fake_home);
 
-        // ensure_age_key writes to ~/.config/sops/age/keys.txt; point sops at the same file
-        // so decrypt/edit works across platforms (macOS defaults differ).
+        // Point sops at the explicit key path for deterministic test behavior.
         let age_key_file = fake_home.join(".config/sops/age/keys.txt");
         let original_sops_age_key_file = std::env::var_os("SOPS_AGE_KEY_FILE");
         std::env::set_var("SOPS_AGE_KEY_FILE", &age_key_file);
@@ -606,11 +611,11 @@ mod tests {
     }
 
     #[test]
-    fn nix_path_meta_value_emits_expected_shape() {
-        let value = nix_path_meta_value("../../secrets/github-token.yaml");
+    fn sops_file_expression_emits_builtins_path() {
+        let value = builtins_path_expression("../../secrets/github-token.yaml");
         assert_eq!(
             value,
-            json!({ "__nixPath": "../../secrets/github-token.yaml" })
+            "builtins.path { path = ../../secrets/github-token.yaml; }"
         );
     }
 

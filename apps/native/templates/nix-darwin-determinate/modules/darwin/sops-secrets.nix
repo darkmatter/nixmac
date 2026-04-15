@@ -8,7 +8,7 @@
   sops.secrets = {
     # Example (agent should follow this exact shape):
     # "github-token" = {
-    #   sopsFile = ../../secrets/github-token.yaml;
+    #   sopsFile = builtins.path { path = ../../secrets/github-token.yaml; };
     #   path = "/run/secrets/github-token";
     #   owner = config.system.primaryUser;
     #   group = "staff";
