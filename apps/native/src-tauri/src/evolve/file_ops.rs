@@ -5,7 +5,7 @@
 //!
 //! Uses OpenAI function calling to generate structured file edits.
 
-use super::gitignore::{is_ignored_by_matcher, load_gitignore_matcher};
+use super::gitignore::is_ignored_by_matcher;
 use super::utils::normalize_relative_path;
 use ignore::gitignore::Gitignore;
 use std::path::{Path, PathBuf};
@@ -438,18 +438,13 @@ pub fn apply_file_edits(
 }
 
 fn reject_gitignored_edit_path(
-    base: &Path,
+    _base: &Path,
     rel: &str,
     operation: &str,
     gitignore_matcher: Option<&Gitignore>,
 ) -> anyhow::Result<()> {
     let normalized_rel = normalize_relative_path(Path::new(rel))?;
-    let is_ignored = if let Some(matcher) = gitignore_matcher {
-        is_ignored_by_matcher(Some(matcher), &normalized_rel, false)
-    } else {
-        let gitignore = load_gitignore_matcher(base)?;
-        is_ignored_by_matcher(gitignore.as_ref(), &normalized_rel, false)
-    };
+    let is_ignored = is_ignored_by_matcher(gitignore_matcher, &normalized_rel, false);
 
     if is_ignored {
         return Err(anyhow::anyhow!(
@@ -465,6 +460,7 @@ fn reject_gitignored_edit_path(
 #[cfg(test)]
 mod tests {
     use super::{apply_file_edits, rewrite_existing_file_in_dir};
+    use crate::evolve::gitignore::load_gitignore_matcher;
     use crate::evolve::types::FileEdit;
     use std::fs;
 
@@ -543,6 +539,7 @@ mod tests {
         let temp = tempfile::tempdir().expect("create temp dir");
         let base = temp.path();
         fs::write(base.join(".gitignore"), "secret.txt\n").expect("write .gitignore");
+        let gitignore_matcher = load_gitignore_matcher(base).expect("load matcher");
 
         let edit = FileEdit {
             path: "secret.txt".to_string(),
@@ -550,7 +547,8 @@ mod tests {
             replace: "new".to_string(),
         };
 
-        let err = apply_file_edits(base, &edit, None).expect_err("expected gitignored-path error");
+        let err = apply_file_edits(base, &edit, gitignore_matcher.as_ref())
+            .expect_err("expected gitignored-path error");
         assert!(err.to_string().contains("ignored by .gitignore"));
     }
 
@@ -560,11 +558,16 @@ mod tests {
         let base = temp.path();
         fs::write(base.join(".gitignore"), "secret.txt\n").expect("write .gitignore");
         fs::write(base.join("secret.txt"), "old").expect("seed file");
+        let gitignore_matcher = load_gitignore_matcher(base).expect("load matcher");
 
         let err =
-            rewrite_existing_file_in_dir(base, "secret.txt", "test rewrite", None, |content| {
-                Ok(content.replace("old", "new"))
-            })
+            rewrite_existing_file_in_dir(
+                base,
+                "secret.txt",
+                "test rewrite",
+                gitignore_matcher.as_ref(),
+                |content| Ok(content.replace("old", "new")),
+            )
             .expect_err("expected gitignored-path error");
         assert!(err.to_string().contains("ignored by .gitignore"));
     }

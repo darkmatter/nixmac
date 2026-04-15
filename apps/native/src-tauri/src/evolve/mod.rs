@@ -27,6 +27,7 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::fs::OpenOptions;
 use std::io::Write;
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 use tauri::{AppHandle, Runtime};
@@ -577,6 +578,8 @@ pub async fn generate_evolution<R: Runtime>(
         ),
     });
 
+    let gitignore_matcher = gitignore::load_gitignore_matcher(Path::new(config_dir))?;
+
     // Track whether we've made any actual edits or build checks
     let mut made_edit_or_build_check = false;
 
@@ -780,7 +783,13 @@ pub async fn generate_evolution<R: Runtime>(
                         EvolveEvent::tool_call(start_time, iteration, tool_name, &args_summary),
                     );
 
-                    let result = execute_tool(config_dir, host_attr.as_str(), tool_name, &args);
+                    let result = execute_tool(
+                        config_dir,
+                        host_attr.as_str(),
+                        tool_name,
+                        &args,
+                        gitignore_matcher.as_ref(),
+                    );
 
                     match result {
                         Ok(ref res) => {
