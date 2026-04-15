@@ -42,6 +42,7 @@ export function useEvolve() {
     store.setProcessing(true, "evolve");
     store.setGenerating(true);
     store.setError(null);
+    store.setExternalBuildDetected(false);
     store.clearEvolveEvents();
     store.clearLogs();
     store.clearPreview();

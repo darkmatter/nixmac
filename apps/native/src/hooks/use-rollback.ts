@@ -5,8 +5,8 @@ import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 
 /**
  * Hook for discarding changes and restoring the working tree to HEAD.
- * If the AI's changes were applied (committable === true), rebuilds after
- * discarding to sync the running system with the restored HEAD files.
+ * If the last build matches the running system, rebuilds after discarding
+ * to sync the running system with the restored HEAD files.
  */
 export function useRollback() {
   const { triggerRebuild } = useRebuildStream();
@@ -27,7 +27,12 @@ export function useRollback() {
       store.appendLog("✓ Changes discarded\n");
 
       if (wasCommittable) {
-        await triggerRebuild({ context: "rollback" });
+        await triggerRebuild({
+          context: "rollback",
+          onSuccess: async () => {
+            await darwinAPI.darwin.finalizeApply();
+          },
+        });
       } else {
         useWidgetStore.getState().setProcessing(false);
       }

@@ -74,7 +74,11 @@ export type EvolutionTelemetry = { state: EvolutionState; iterations: number; bu
 /**
  * Persisted evolve state stored in `evolve-state.json`.
  */
-export type EvolveState = { evolutionId: number | null; currentChangesetId: number | null; changesetAtBuild: number | null; committable: boolean; backupBranch: string | null; 
+export type EvolveState = { evolutionId: number | null; currentChangesetId: number | null; 
+/**
+ * current state verifyably built
+ */
+committable: boolean; backupBranch: string | null; 
 /**
  * Computed from the other fields — always kept in sync by `set`.
  */
@@ -93,7 +97,7 @@ export type GitFileStatus = { path: string; changeType: ChangeType }
 /**
  * Comprehensive git repository status.
  */
-export type GitStatus = { files: GitFileStatus[]; branch: string | null; headIsBuilt: boolean; diff: string; additions: number; deletions: number; headCommitHash: string | null; cleanHead: boolean; changes: Change[] }
+export type GitStatus = { files: GitFileStatus[]; branch: string | null; diff: string; additions: number; deletions: number; headCommitHash: string | null; cleanHead: boolean; changes: Change[] }
 
 /**
  * A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.
@@ -111,5 +115,5 @@ export type SummarizedChangeSet = { changeSet: ChangeSet; changes: SummarizedCha
 /**
  * Event payload emitted by the git status watcher.
  */
-export type WatcherEvent = { gitStatus: GitStatus | null; changeMap: SemanticChangeMap | null; evolveState: EvolveState | null; error: string | null }
+export type WatcherEvent = { gitStatus: GitStatus | null; changeMap: SemanticChangeMap | null; evolveState: EvolveState | null; error: string | null; externalBuildDetected: boolean }
 

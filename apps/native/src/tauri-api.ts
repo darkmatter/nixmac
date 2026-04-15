@@ -250,7 +250,6 @@ export const darwinAPI = {
     cached: () => invoke<GitStatus | null>("git_cached"),
     commit: (message: string) => invoke<CommitResult>("git_commit", { message }),
     stash: (message: string) => invoke("git_stash", { message }),
-    tagAsBuilt: () => invoke("git_tag_as_built"),
   },
   darwin: {
     evolve: (description: string) => invoke<EvolutionResult>("darwin_evolve", { description }),
@@ -259,8 +258,8 @@ export const darwinAPI = {
     evolveFromManual: () => invoke<number>("darwin_adopt_manual_changes"),
     evolveCancel: () => invoke("darwin_evolve_cancel"),
     apply: (hostOverride?: string) => invoke("darwin_apply", { hostOverride }),
-    applyStreamStart: (hostOverride?: string, deferBuiltTag?: boolean) =>
-      invoke("darwin_apply_stream_start", { hostOverride, deferBuiltTag }),
+    applyStreamStart: (hostOverride?: string) =>
+      invoke("darwin_apply_stream_start", { hostOverride }),
     applyStreamCancel: () => invoke("darwin_apply_stream_cancel"),
     finalizeApply: () => invoke<ApplyResult>("finalize_apply"),
     rollbackErase: () => invoke<RollbackResult>("rollback_erase"),

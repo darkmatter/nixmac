@@ -84,7 +84,6 @@ pub fn apply_stream(
     app: &AppHandle,
     config_dir: &str,
     host_attr: &str,
-    tag_head_as_built: bool,
 ) -> Result<(), anyhow::Error> {
     info!(
         "[darwin] apply_stream: config_dir={}, host_attr={}",
@@ -96,7 +95,7 @@ pub fn apply_stream(
     let app_handle = app.clone();
 
     std::thread::spawn(move || {
-        match run_darwin_rebuild(&app_handle, &config_dir_owned, &host_attr_owned, tag_head_as_built) {
+        match run_darwin_rebuild(&app_handle, &config_dir_owned, &host_attr_owned) {
             Ok(payload) => {
                 info!("[darwin] darwin-rebuild completed successfully");
                 let _ = app_handle.emit("darwin:apply:end", payload);
@@ -441,7 +440,6 @@ fn run_darwin_rebuild(
     app: &AppHandle,
     config_dir: &str,
     host_attr: &str,
-    tag_head_as_built: bool,
 ) -> Result<serde_json::Value, serde_json::Value> {
     let (log_file, log_path) = create_log_file().map_err(|e| {
         serde_json::json!({
@@ -628,12 +626,6 @@ fn run_darwin_rebuild(
     }
 
     summarizer.complete(true);
-
-    if tag_head_as_built {
-        if let Err(e) = crate::git::tag_as_built(config_dir) {
-            error!("[darwin] Failed to tag HEAD as built: {}", e);
-        }
-    }
 
     // Log completion
     {

@@ -1,6 +1,7 @@
 "use client";
 
 import { ConfirmButton } from "@/components/widget/confirm-button";
+import { ExternalBuildDetected } from "@/components/widget/external-build-detected";
 import { GetStartedMessage } from "@/components/widget/get-started-message";
 import { PromptInputSection } from "@/components/widget/prompt-input-section";
 import { StepActionsHeader } from "@/components/widget/step-actions-header";
@@ -23,7 +24,7 @@ export function EvolveStep() {
 
   const isBegin = step === "begin";
 
-  const needsRebuild = evolveState != null && evolveState.changesetAtBuild !== null;
+  const needsRebuild = evolveState != null && evolveState.committable;
 
   const clearIcon = needsRebuild ? <Undo2 className="h-3.5 w-3.5" /> : <Eraser className="h-3.5 w-3.5" />;
   const clearLabel = needsRebuild ? "Undo All" : "Discard";
@@ -62,6 +63,7 @@ export function EvolveStep() {
 
   return (
     <>
+      <ExternalBuildDetected />
       {header()}
       <SummaryOrDiff />
       <PromptInputSection />

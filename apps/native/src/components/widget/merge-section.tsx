@@ -23,7 +23,7 @@ export function MergeSection() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const msg = new FormData(e.currentTarget).get("commitMsg")?.toString() ?? "";
-    await handleCommit({ message: msg, tagAsBuilt: true });
+    await handleCommit({ message: msg });
     useWidgetStore.getState().setEvolvePrompt("");
   }
 

@@ -7,7 +7,6 @@ interface RebuildOptions {
   context: RebuildContext;
   onSuccess?: () => Promise<void>;
   onFailure?: () => Promise<void>;
-  deferBuiltTag?: boolean;
 }
 
 /**
@@ -133,7 +132,7 @@ export function useRebuildStream() {
       });
 
       try {
-        await darwinAPI.darwin.applyStreamStart(undefined, options.deferBuiltTag);
+        await darwinAPI.darwin.applyStreamStart();
       } catch (e: unknown) {
         const msg = (e as Error)?.message || String(e);
         useWidgetStore.getState().setRebuildError("generic_error", msg);
