@@ -1,14 +1,17 @@
 //! Evolution module for AI-assisted configuration changes.
 
+mod age;
 mod chat_memory;
 mod config_dir_context;
 mod edit_nix_file;
+mod ensure_secret;
 mod file_ops;
 pub mod messages;
 pub mod providers;
 mod search_code;
 pub mod search_docs;
 mod search_packages;
+mod sops;
 mod tools;
 mod types;
 mod utils;

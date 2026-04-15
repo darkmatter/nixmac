@@ -1,6 +1,7 @@
 //! Tools used by AI
 
 use crate::evolve::edit_nix_file::apply_semantic_edit;
+use crate::evolve::ensure_secret::execute_ensure_secret;
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
 
 use super::file_ops::{
@@ -335,6 +336,67 @@ IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with
                     }
                 },
                 "required": ["query"]
+            }),
+        },
+        Tool {
+            name: "ensure_secret".to_string(),
+            description: "Create and wire a SOPS-managed secret end-to-end without exposing plaintext to the agent. \
+                         This tool ensures an age key exists, maintains SOPS config, creates/initializes an encrypted \
+                         secret file under secrets/<name>.yaml, launches a blocking `sops <file>` editor session for \
+                         user input, then optionally injects secret path wiring into Nix config. \
+                         You can optionally provide a `scaffold` to prefill initial plaintext before encryption/editor \
+                         (for example env-file keys or a raw YAML skeleton).".to_string(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Secret name used for both secrets/<name>.yaml and /run/secrets/<name>"
+                    },
+                    "inject": {
+                        "type": "object",
+                        "description": "Optional Nix injection mapping with explicit file path and attribute path.",
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "enum": ["nix_env", "nix_file", "service_binding"]
+                            },
+                            "file": {
+                                "type": "string",
+                                "description": "Relative path to the nix file to edit. Example: modules/darwin/services.nix"
+                            },
+                            "target": {
+                                "type": "string",
+                                "description": "Dot-separated target attribute path in the selected file. Example: services.github.tokenFile"
+                            }
+                        },
+                        "required": ["type", "file", "target"],
+                        "additionalProperties": false
+                    },
+                    "scaffold": {
+                        "type": "object",
+                        "description": "Optional skeleton for first-time secret file initialization. If the file already exists, it is left unchanged.",
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "enum": ["raw", "raw_yaml", "raw-yaml", "envFile", "env_file", "env-file", "yamlMap", "yaml_map", "yaml-map"],
+                                "description": "Skeleton strategy. `env_file` renders value: | with KEY= lines. `yaml_map` renders KEY: \"\" entries. `raw` uses content as-is."
+                            },
+                            "keys": {
+                                "type": "array",
+                                "items": { "type": "string" },
+                                "description": "Optional key names used by env_file/yaml_map scaffold types"
+                            },
+                            "content": {
+                                "type": "string",
+                                "description": "Optional raw YAML to use verbatim as initial plaintext content"
+                            }
+                        },
+                        "additionalProperties": false
+                    }
+                },
+                "required": ["name"],
+                "additionalProperties": false
             }),
         },
         Tool {
@@ -739,6 +801,11 @@ pub fn execute_tool(
             Ok(ToolResult::Continue(result))
         }
 
+        "ensure_secret" => {
+            let result = execute_ensure_secret(base, args)?;
+            Ok(ToolResult::Continue(serde_json::to_string(&result)?))
+        }
+
         "ask_user" => {
             let question = args["question"]
                 .as_str()
@@ -771,7 +838,7 @@ pub fn execute_tool(
 /// makes changes to the nix config that count as "edits" in the
 /// evolution process and should be tracked as such.
 pub fn is_editing_tool(name: &str) -> bool {
-    matches!(name, "edit_file" | "edit_nix_file")
+    matches!(name, "edit_file" | "edit_nix_file" | "ensure_secret")
 }
 
 // Truncate string for logging (single line preview)
@@ -792,6 +859,7 @@ mod tests {
     fn returns_true_for_editing_tools() {
         assert!(is_editing_tool("edit_file"));
         assert!(is_editing_tool("edit_nix_file"));
+        assert!(is_editing_tool("ensure_secret"));
     }
 
     #[test]
