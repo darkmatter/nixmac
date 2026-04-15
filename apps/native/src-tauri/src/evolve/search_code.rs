@@ -14,9 +14,17 @@ pub fn execute_search_code(
     config_dir: &str,
     pattern: &str,
     file_pattern: Option<&str>,
+    gitignore: Option<&Gitignore>,
 ) -> Result<String> {
+    let gitignore_owned;
+    let gitignore = if let Some(m) = gitignore {
+        Some(m)
+    } else {
+        gitignore_owned = super::gitignore::load_gitignore_matcher(Path::new(config_dir))?;
+        gitignore_owned.as_ref()
+    };
+
     info!("Searching for pattern: {}", pattern);
-    let gitignore = super::gitignore::load_gitignore_matcher(Path::new(config_dir))?;
 
     let mut cmd = Command::new("rg");
     cmd.args([
@@ -59,7 +67,7 @@ pub fn execute_search_code(
         Ok(out) => {
             let status = out.status;
             if status.success() {
-                let formatted = format_rg_json_matches(&out.stdout, gitignore.as_ref());
+                let formatted = format_rg_json_matches(&out.stdout, gitignore);
                 if formatted.is_empty() {
                     Ok("No matches found.".to_string())
                 } else {
@@ -101,7 +109,7 @@ pub fn execute_search_code(
                 .current_dir(config_dir)
                 .output()?;
             let stdout = String::from_utf8_lossy(&output.stdout);
-            let filtered = filter_grep_matches(&stdout, gitignore.as_ref());
+            let filtered = filter_grep_matches(&stdout, gitignore);
             if filtered.trim().is_empty() {
                 Ok("No matches found.".to_string())
             } else {
@@ -157,9 +165,20 @@ fn filter_grep_matches(stdout: &str, gitignore: Option<&Gitignore>) -> String {
             break;
         }
 
-        let Some((path, _rest)) = line.split_once(':') else {
+        let mut parts = line.rsplitn(3, ':');
+        let Some(_text) = parts.next() else {
             continue;
         };
+        let Some(line_no) = parts.next() else {
+            continue;
+        };
+        let Some(path) = parts.next() else {
+            continue;
+        };
+
+        if line_no.parse::<u64>().is_err() {
+            continue;
+        }
 
         if is_ignored_match(path, false, gitignore) {
             continue;
@@ -189,7 +208,7 @@ fn normalize_match_path(path: &str) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::execute_search_code;
+    use super::{execute_search_code, filter_grep_matches};
     use std::fs;
     use tempfile::tempdir;
 
@@ -200,8 +219,13 @@ mod tests {
         fs::write(tmp.path().join("visible.txt"), "NEEDLE").expect("write visible file");
         fs::write(tmp.path().join("secret.txt"), "NEEDLE").expect("write secret file");
 
-        let output = execute_search_code(tmp.path().to_str().expect("utf-8 path"), "NEEDLE", None)
-            .expect("search should succeed");
+        let output = execute_search_code(
+            tmp.path().to_str().expect("utf-8 path"),
+            "NEEDLE",
+            None,
+            None,
+        )
+        .expect("search should succeed");
 
         assert!(output.contains("visible.txt"), "output: {output}");
         assert!(!output.contains("secret.txt"), "output: {output}");
@@ -217,6 +241,7 @@ mod tests {
             tmp.path().to_str().expect("utf-8 path"),
             "NEEDLE",
             Some("secret.txt"),
+            None,
         )
         .expect("search should succeed");
 
@@ -234,10 +259,31 @@ mod tests {
         fs::write(tmp.path().join("nested/secret.txt"), "NEEDLE")
             .expect("write nested secret file");
 
-        let output = execute_search_code(tmp.path().to_str().expect("utf-8 path"), "NEEDLE", None)
-            .expect("search should succeed");
+        let output = execute_search_code(
+            tmp.path().to_str().expect("utf-8 path"),
+            "NEEDLE",
+            None,
+            None,
+        )
+        .expect("search should succeed");
 
         assert!(output.contains("nested/visible.txt"), "output: {output}");
         assert!(!output.contains("nested/secret.txt"), "output: {output}");
+    }
+
+    #[test]
+    fn grep_fallback_parser_handles_colons_in_filename() {
+        let stdout = "dir:with:colon/file.txt:12:match text\ndir/file.txt:not-a-line:ignored\n";
+
+        let output = filter_grep_matches(stdout, None);
+
+        assert!(
+            output.contains("dir:with:colon/file.txt:12:match text"),
+            "output: {output}"
+        );
+        assert!(
+            !output.contains("dir/file.txt:not-a-line:ignored"),
+            "output: {output}"
+        );
     }
 }

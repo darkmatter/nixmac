@@ -420,6 +420,7 @@ pub fn execute_tool(
     args: &serde_json::Value,
 ) -> Result<ToolResult> {
     let base = Path::new(config_dir);
+    let gitignore_matcher = load_gitignore_matcher(base)?;
     match name {
         "think" => {
             let category = args["category"].as_str().unwrap_or("other").to_string();
@@ -443,8 +444,7 @@ pub fn execute_tool(
                 .as_str()
                 .ok_or_else(|| anyhow!("read_file: missing path"))?;
             let normalized_rel = normalize_relative_path(Path::new(path))?;
-            let gitignore = load_gitignore_matcher(base)?;
-            if is_ignored_by_matcher(gitignore.as_ref(), &normalized_rel, false) {
+            if is_ignored_by_matcher(gitignore_matcher.as_ref(), &normalized_rel, false) {
                 return Err(anyhow!(
                     "read_file: '{}' is ignored by .gitignore in config_dir",
                     path
@@ -467,7 +467,6 @@ pub fn execute_tool(
             info!("Listing files matching: {}", full_pattern.display());
 
             let ignored_dirs = super::IGNORED_DIRS;
-            let gitignore = load_gitignore_matcher(base)?;
             let matched_files = glob::glob(full_pattern.to_str().unwrap())
                 .map_err(|e| anyhow!("Invalid glob pattern: {}", e))?
                 .filter_map(|p| p.ok())
@@ -495,7 +494,7 @@ pub fn execute_tool(
                     }
                 }
 
-                if is_ignored_by_matcher(gitignore.as_ref(), rel, false) {
+                if is_ignored_by_matcher(gitignore_matcher.as_ref(), rel, false) {
                     continue;
                 }
 
@@ -541,6 +540,7 @@ pub fn execute_tool(
                     search: search.to_string(),
                     replace: replace.to_string(),
                 },
+                gitignore_matcher.as_ref(),
             )
             .with_context(|| {
                 format!(
@@ -675,6 +675,7 @@ pub fn execute_tool(
                     path: path.to_string(),
                     action: action.clone(),
                 },
+                gitignore_matcher.as_ref(),
             )?;
 
             Ok(ToolResult::EditSemantic(SemanticFileEdit {
@@ -720,7 +721,12 @@ pub fn execute_tool(
                 .as_str()
                 .ok_or_else(|| anyhow!("search_code: missing pattern"))?;
             let file_pattern = args["file_pattern"].as_str();
-            let output = execute_search_code(config_dir, pattern, file_pattern)?;
+            let output = execute_search_code(
+                config_dir,
+                pattern,
+                file_pattern,
+                gitignore_matcher.as_ref(),
+            )?;
             Ok(ToolResult::Continue(output))
         }
 

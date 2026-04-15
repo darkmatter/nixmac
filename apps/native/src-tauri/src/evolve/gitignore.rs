@@ -1,12 +1,13 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
+use log::warn;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 /// Load all `.gitignore` files under the base config directory.
 pub(crate) fn load_gitignore_matcher(base: &Path) -> Result<Option<Gitignore>> {
     let mut gitignore_paths = Vec::new();
-    collect_gitignore_files(base, &mut gitignore_paths)?;
+    collect_gitignore_files(base, &mut gitignore_paths);
 
     if gitignore_paths.is_empty() {
         return Ok(None);
@@ -14,20 +15,7 @@ pub(crate) fn load_gitignore_matcher(base: &Path) -> Result<Option<Gitignore>> {
 
     gitignore_paths.sort();
 
-    let mut builder = GitignoreBuilder::new(base);
-    for gitignore_path in gitignore_paths {
-        builder.add(gitignore_path);
-    }
-
-    let matcher = builder.build().map_err(|e| {
-        anyhow!(
-            "Failed to parse one or more .gitignore files in {}: {}",
-            base.display(),
-            e
-        )
-    })?;
-
-    Ok(Some(matcher))
+    Ok(build_matcher(base, &gitignore_paths))
 }
 
 /// Returns true when `relative_path` is ignored by the provided gitignore matcher.
@@ -37,19 +25,51 @@ pub(crate) fn is_ignored_by_matcher(
     is_dir: bool,
 ) -> bool {
     matcher
-        .map(|m| m.matched_path_or_any_parents(relative_path, is_dir).is_ignore())
+        .map(|m| {
+            m.matched_path_or_any_parents(relative_path, is_dir)
+                .is_ignore()
+        })
         .unwrap_or(false)
 }
 
-fn collect_gitignore_files(dir: &Path, out: &mut Vec<PathBuf>) -> Result<()> {
-    for entry in fs::read_dir(dir)
-        .map_err(|e| anyhow!("Failed to read directory {}: {}", dir.display(), e))?
-    {
-        let entry = entry
-            .map_err(|e| anyhow!("Failed to read directory entry in {}: {}", dir.display(), e))?;
-        let file_type = entry
-            .file_type()
-            .map_err(|e| anyhow!("Failed to get file type for {}: {}", entry.path().display(), e))?;
+fn collect_gitignore_files(dir: &Path, out: &mut Vec<PathBuf>) {
+    let entries = match fs::read_dir(dir) {
+        Ok(e) => e,
+        Err(e) => {
+            warn!(
+                "Unable to read directory {} while collecting .gitignore files: {}",
+                dir.display(),
+                e
+            );
+            return;
+        }
+    };
+
+    for entry in entries {
+        let entry = match entry {
+            Ok(e) => e,
+            Err(e) => {
+                warn!(
+                    "Unable to read directory entry in {} while collecting .gitignore files: {}",
+                    dir.display(),
+                    e
+                );
+                continue;
+            }
+        };
+
+        let file_type = match entry.file_type() {
+            Ok(t) => t,
+            Err(e) => {
+                warn!(
+                    "Unable to get file type for {} while collecting .gitignore files: {}",
+                    entry.path().display(),
+                    e
+                );
+                continue;
+            }
+        };
+
         let path = entry.path();
         let name = entry.file_name();
 
@@ -66,8 +86,154 @@ fn collect_gitignore_files(dir: &Path, out: &mut Vec<PathBuf>) -> Result<()> {
             continue;
         }
 
-        collect_gitignore_files(&path, out)?;
+        collect_gitignore_files(&path, out);
+    }
+}
+
+/// Build a Gitignore matcher from the provided .gitignore paths, skipping any that are invalid or unreadable.
+/// There is a fallback that attempts to salvage as many valid .gitignore files as possible in the case
+/// where the initial build fails, but if none can be loaded then this returns None.
+fn build_matcher(base: &Path, gitignore_paths: &[PathBuf]) -> Option<Gitignore> {
+    let mut full_builder = GitignoreBuilder::new(base);
+    for path in gitignore_paths {
+        full_builder.add(path);
     }
 
-    Ok(())
+    if let Ok(matcher) = full_builder.build() {
+        return Some(matcher);
+    }
+
+    // Fallback: keep as many valid .gitignore files as possible.
+    let mut accepted_paths: Vec<PathBuf> = Vec::new();
+    for path in gitignore_paths {
+        let mut trial_builder = GitignoreBuilder::new(base);
+        for accepted in &accepted_paths {
+            trial_builder.add(accepted);
+        }
+        trial_builder.add(path);
+
+        match trial_builder.build() {
+            Ok(_) => accepted_paths.push(path.clone()),
+            Err(e) => warn!(
+                "Skipping invalid or unreadable .gitignore file {}: {}",
+                path.display(),
+                e
+            ),
+        }
+    }
+
+    if accepted_paths.is_empty() {
+        warn!(
+            "Failed to build gitignore matcher for {}: no valid .gitignore files could be loaded; continuing without matcher",
+            base.display()
+        );
+        return None;
+    }
+
+    let mut final_builder = GitignoreBuilder::new(base);
+    for accepted in &accepted_paths {
+        final_builder.add(accepted);
+    }
+
+    match final_builder.build() {
+        Ok(matcher) => Some(matcher),
+        Err(e) => {
+            warn!(
+                "Failed to build final gitignore matcher for {}: {}; continuing without matcher",
+                base.display(),
+                e
+            );
+            None
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{is_ignored_by_matcher, load_gitignore_matcher};
+    use std::fs;
+    use std::path::Path;
+    use tempfile::tempdir;
+
+    #[test]
+    fn loads_matcher_when_subdir_is_unreadable() {
+        let temp = tempdir().expect("create temp dir");
+        let base = temp.path();
+        fs::write(base.join(".gitignore"), "secret.txt\n").expect("write root .gitignore");
+
+        let blocked = base.join("blocked");
+        fs::create_dir_all(&blocked).expect("create blocked dir");
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&blocked).expect("metadata").permissions();
+            perms.set_mode(0o000);
+            fs::set_permissions(&blocked, perms).expect("make blocked dir unreadable");
+        }
+
+        let matcher = load_gitignore_matcher(base).expect("load matcher should not fail");
+        assert!(matcher.is_some(), "expected matcher from root .gitignore");
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&blocked).expect("metadata").permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&blocked, perms).expect("restore permissions for cleanup");
+        }
+    }
+
+    #[test]
+    fn malformed_gitignore_does_not_error() {
+        let temp = tempdir().expect("create temp dir");
+        let base = temp.path();
+        fs::write(base.join(".gitignore"), "[unterminated").expect("write malformed .gitignore");
+
+        let _matcher = load_gitignore_matcher(base).expect("load matcher should not fail");
+    }
+
+    #[test]
+    fn preserves_valid_rules_when_some_gitignore_files_unreadable() {
+        let temp = tempdir().expect("create temp dir");
+        let base = temp.path();
+        fs::write(base.join(".gitignore"), "secret.txt\n").expect("write root .gitignore");
+
+        let nested = base.join("nested");
+        fs::create_dir_all(&nested).expect("create nested dir");
+        let nested_gitignore = nested.join(".gitignore");
+        fs::write(&nested_gitignore, "ignored-in-nested.txt\n").expect("write nested .gitignore");
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&nested_gitignore)
+                .expect("metadata")
+                .permissions();
+            perms.set_mode(0o000);
+            fs::set_permissions(&nested_gitignore, perms)
+                .expect("make nested .gitignore unreadable");
+        }
+
+        let matcher = load_gitignore_matcher(base).expect("matcher load should not fail");
+        assert!(
+            matcher.is_some(),
+            "expected matcher from readable .gitignore files"
+        );
+
+        assert!(
+            is_ignored_by_matcher(matcher.as_ref(), Path::new("secret.txt"), false),
+            "expected root rule to still apply"
+        );
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&nested_gitignore)
+                .expect("metadata")
+                .permissions();
+            perms.set_mode(0o644);
+            fs::set_permissions(&nested_gitignore, perms).expect("restore permissions for cleanup");
+        }
+    }
 }
