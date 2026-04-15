@@ -16,6 +16,7 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     pkgs.cargo-watch
     pkgs.cargo-nextest
     pkgs.flyctl
+    pkgs.age
     pkgs.sops
     pkgs.git
     pkgs.libiconv
@@ -24,6 +25,7 @@ lib.mkIf (!(config.container.isBuilding or false)) {
     pkgs.uv
     pkgs.pyright
     pkgs.ruff
+    pkgs.yq
 
     # Python packages used in one-off scripts
     pkgs.python312Packages.requests
@@ -104,7 +106,7 @@ lib.mkIf (!(config.container.isBuilding or false)) {
   processes.storybook = {
     cwd = "${config.git.root}/apps/native";
     exec = "${pkgs.bun}/bin/bun run storybook";
-        process-compose = {
+    process-compose = {
       is_foreground = true;
       disabled = true;
     };

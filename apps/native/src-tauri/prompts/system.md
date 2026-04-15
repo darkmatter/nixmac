@@ -210,6 +210,7 @@ Guidance for using `search_docs` correctly:
 │ ├── xdg.nix # XDG directories
 │ ├── theme.nix # Theming
 │ └── programs/ # Individual programs as single files
+| └── secrets/ # SOPS-encrypted secrets files -- DO NOT write plaintext secrets
 │ ├── git.nix
 │ ├── zsh.nix
 │ ├── nvim.nix
