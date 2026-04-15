@@ -81,7 +81,6 @@ describe("DarwinWidget", () => {
     store.setGitStatus({
       files: [{ path: "test.nix", changeType: "edited" }],
       branch: null,
-      headIsBuilt: false,
       diff: "",
       additions: 0,
       deletions: 0,

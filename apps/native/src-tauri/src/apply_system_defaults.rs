@@ -99,7 +99,10 @@ pub async fn apply_system_defaults(
         backup_branch: None,
         step: shared_types::EvolveStep::Evolve,
     };
-    let mut evolve_state = evolve_state::set(app, initial_state).context("Failed to set evolve state")?;
+    let working_tree_status =
+        git::status(&dir).context("Failed to get working tree status for evolve state")?;
+    let mut evolve_state = evolve_state::set(app, initial_state, &working_tree_status.changes)
+        .context("Failed to set evolve state")?;
 
     // Run the summarization pipeline against the working tree diff.
     // `new_changeset` reads `git::status().diff` which includes untracked files,
@@ -112,7 +115,8 @@ pub async fn apply_system_defaults(
             );
             evolve_state.current_changeset_id = Some(changeset_id);
             evolve_state =
-                evolve_state::set(app, evolve_state).context("Failed to update evolve state with changeset")?;
+                evolve_state::set(app, evolve_state, &working_tree_status.changes)
+                    .context("Failed to update evolve state with changeset")?;
         }
         Ok(None) => {
             log::warn!("[apply_system_defaults] Summarizer returned None — diff may be empty");

@@ -21,7 +21,7 @@ export function useWatcher() {
     const gitStatusSub = ipcRenderer.on<WatcherEvent>(
       "git:status-changed",
       (event) => {
-        const { error, gitStatus, changeMap, evolveState } = event.payload;
+        const { error, gitStatus, changeMap, evolveState, externalBuildDetected } = event.payload;
 
         if (error) {
           useWidgetStore.getState().setError(error);
@@ -41,6 +41,7 @@ export function useWatcher() {
           if (evolveState) {
             store.setEvolveState(evolveState);
           }
+          store.setExternalBuildDetected(externalBuildDetected);
           if (store.showHistory) {
             loadHistory();
           }

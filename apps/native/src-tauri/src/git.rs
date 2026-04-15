@@ -270,17 +270,6 @@ pub fn parse_files_from_diff(diff: &str) -> Vec<GitFileStatus> {
     files
 }
 
-/// Returns the SHA of the commit with the nixmac-last-build tag or None
-pub fn get_last_built_commit_sha(dir: &str) -> Option<String> {
-    let output = git_command()
-        .args(["rev-parse", "--verify", "refs/tags/nixmac-last-build"])
-        .current_dir(dir)
-        .output()
-        .ok()?;
-
-    Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
-}
-
 /// Gets the SHA of any ref (branch name, tag, or symbolic ref like HEAD).
 pub fn get_ref_sha(dir: &str, ref_name: &str) -> Option<String> {
     let output = git_command()
@@ -295,17 +284,6 @@ pub fn get_ref_sha(dir: &str, ref_name: &str) -> Option<String> {
 /// Gets the SHA of the current HEAD commit.
 fn get_head_sha(dir: &str) -> Option<String> {
     get_ref_sha(dir, "HEAD")
-}
-
-/// True if HEAD has the nixmac-last-build tag
-pub fn head_is_built(dir: &str) -> bool {
-    let Some(built_sha) = get_last_built_commit_sha(dir) else {
-        return false;
-    };
-    let Some(head_sha) = get_head_sha(dir) else {
-        return false;
-    };
-    built_sha == head_sha
 }
 
 /// Returns the current branch name (None if detached HEAD)
@@ -334,8 +312,6 @@ pub fn status(dir: &str) -> Result<GitStatus> {
 
     let files = parse_files_from_diff(&diff);
 
-    let head_is_built = head_is_built(dir);
-
     let head_commit_hash = get_head_sha(dir);
 
     let clean_head = diff.is_empty();
@@ -345,7 +321,6 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     Ok(GitStatus {
         files,
         branch,
-        head_is_built,
         diff,
         additions,
         deletions,
@@ -569,14 +544,6 @@ pub fn tag_commit(dir: &str, tag: &str, target: &str, force: bool) -> Result<()>
         .current_dir(dir)
         .output()
         .with_context(|| format!("failed to create tag `{}`", tag))?;
-    Ok(())
-}
-
-/// Git tags `nixmac-last-build` & `nixmac-built-<timestamp>`
-pub fn tag_as_built(dir: &str) -> Result<()> {
-    let timestamped_tag = format!("nixmac-built-{}", crate::utils::unix_now());
-    tag_commit(dir, &timestamped_tag, "HEAD", false)?;
-    tag_commit(dir, "nixmac-last-build", "HEAD", true)?;
     Ok(())
 }
 

@@ -168,7 +168,7 @@ pub async fn backup_evolve_and_record_changeset(
             backup_branch: Some(branch.clone()),
             ..pre_evolve_state.clone()
         };
-        let _ = evolve_state::set(app, updated);
+        let _ = evolve_state::set(app, updated, &initial_status.changes);
     }
 
     // Step 2: Run AI evolution
@@ -240,6 +240,7 @@ pub async fn backup_evolve_and_record_changeset(
             backup_branch,
             ..Default::default()
         },
+        &final_status.changes,
     )
     .unwrap_or_default();
 
@@ -282,6 +283,7 @@ fn restore_after_failure(app: &AppHandle, config_dir: &str, backup_branch: &Opti
                     backup_branch: None,
                     ..evolve_state::get(app).unwrap_or_default()
                 },
+                &[],
             );
         }
         None => {

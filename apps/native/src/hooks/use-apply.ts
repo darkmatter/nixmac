@@ -20,6 +20,7 @@ export function useApply() {
       onSuccess: async () => {
         try {
           const result = await darwinAPI.darwin.finalizeApply();
+          useWidgetStore.getState().setExternalBuildDetected(false);
           if (result?.gitStatus) {
             useWidgetStore.getState().setGitStatus(result.gitStatus);
           }
@@ -36,8 +37,28 @@ export function useApply() {
   const handleHistoryBuild = useCallback(async () => {
     const store = useWidgetStore.getState();
     store.setProcessing(true, "apply");
-    await triggerRebuild({ context: "apply" });
+    await triggerRebuild({
+      context: "apply",
+      onSuccess: async () => {
+        await darwinAPI.darwin.finalizeApply();
+      },
+    });
   }, [triggerRebuild]);
 
-  return { handleApply, handleHistoryBuild };
+  const handleManualBuildConfirm = useCallback(async () => {
+    try {
+      const result = await darwinAPI.darwin.finalizeApply();
+      useWidgetStore.getState().setExternalBuildDetected(false);
+      if (result?.gitStatus) {
+        useWidgetStore.getState().setGitStatus(result.gitStatus);
+      }
+      if (result?.evolveState) {
+        useWidgetStore.getState().setEvolveState(result.evolveState);
+      }
+    } catch (e) {
+      console.error("Failed to finalize manual build:", e);
+    }
+  }, []);
+
+  return { handleApply, handleHistoryBuild, handleManualBuildConfirm };
 }
