@@ -7,6 +7,11 @@
     nix-darwin.url = "github:nix-darwin/nix-darwin/master";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
 
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # ============================================================================
     # home-manager (OPTIONAL - currently commented out)
     # ============================================================================
@@ -31,6 +36,7 @@
       self,
       nix-darwin,
       nixpkgs,
+      sops-nix,
       # home-manager,
     }:
     let
@@ -78,6 +84,7 @@
       darwinConfigurations."HOSTNAME_PLACEHOLDER" = nix-darwin.lib.darwinSystem {
         modules = [
           configuration
+          inputs.sops-nix.darwinModules.sops,
           # home-manager.darwinModules.home-manager
           ./modules/darwin/fonts.nix
           ./modules/darwin/defaults.nix
@@ -88,6 +95,8 @@
           ./modules/darwin/packages.nix
           ./modules/darwin/security.nix
           ./modules/darwin/services.nix
+          ./modules/darwin/sops.nix
+          ./modules/darwin/sops-secrets.nix
           ./modules/darwin/users.nix
           ./nix-overlays.nix
         ];

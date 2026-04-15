@@ -375,6 +375,7 @@ impl EvolveEvent {
         let summary = match tool {
             "read_file" => "Reading file...".to_string(),
             "edit_file" => "Editing file...".to_string(),
+            "edit_nix_file" => "Editing nix config...".to_string(),
             "list_files" => "Listing files...".to_string(),
             "search_code" => "Searching code...".to_string(),
             "search_packages" => "Searching packages...".to_string(),
@@ -382,6 +383,7 @@ impl EvolveEvent {
             "build_check" => "Running build check...".to_string(),
             "think" => "Thinking...".to_string(),
             "ask_user" => "Asking a question...".to_string(),
+            "ensure_secret" => "Ensuring secret exists...".to_string(),
             "done" => "Finishing up...".to_string(),
             _ => format!("Using {} tool...", tool),
         };
@@ -497,4 +499,3 @@ pub fn emit_evolve_event<R: tauri::Runtime>(app: &tauri::AppHandle<R>, event: Ev
         }
     }
 }
-
