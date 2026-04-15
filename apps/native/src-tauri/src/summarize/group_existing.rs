@@ -12,14 +12,21 @@ use crate::sqlite_types::ChangeSummary;
 pub fn from_change_sets(change_sets: Vec<FoundSetForCurrent>) -> SemanticChangeMap {
     let mut groups: HashMap<i64, (ChangeSummary, Vec<ChangeWithSummary>)> = HashMap::new();
     let mut singles: Vec<ChangeWithSummary> = vec![];
-    let mut missed_hashes: Vec<String> = vec![];
+    let mut unsummarized_hashes: Vec<String> = vec![];
     // true = placed in a group, false = placed in singles
     let mut seen: HashMap<i64, bool> = HashMap::new();
 
     for cs in change_sets {
-        missed_hashes.extend(cs.missed_hashes);
+        unsummarized_hashes.extend(cs.missed_hashes);
         for sc in cs.changes {
             let change_id = sc.change.id;
+            if sc.own_summary.is_none() {
+                if !seen.contains_key(&change_id) {
+                    unsummarized_hashes.push(sc.change.hash.clone());
+                    seen.insert(change_id, false);
+                }
+                continue;
+            }
             match seen.get(&change_id).copied() {
                 Some(true) => continue, // already in a group, nothing better to do
                 Some(false) => {
@@ -54,7 +61,7 @@ pub fn from_change_sets(change_sets: Vec<FoundSetForCurrent>) -> SemanticChangeM
             .map(|(summary, changes)| SemanticChangeGroup { summary, changes })
             .collect(),
         singles,
-        missed_hashes,
+        unsummarized_hashes,
     };
     dbg::group_log_result(&map);
     map

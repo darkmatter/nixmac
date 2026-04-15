@@ -174,7 +174,7 @@ const mockChangeMap: SemanticChangeMap = {
       description: "KeyRepeat = 2",
     },
   ],
-  missedHashes: [],
+  unsummarizedHashes: [],
 };
 
 // =============================================================================

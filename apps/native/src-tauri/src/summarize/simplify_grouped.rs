@@ -36,7 +36,7 @@ fn simplify(map: &SemanticChangeMap) -> SimplifiedMap {
     SimplifiedMap {
         groups: map.groups.iter().map(simplify_group).collect(),
         singles: map.singles.iter().map(simplify_change).collect(),
-        missed_hashes: Some(map.missed_hashes.clone()),
+        missed_hashes: Some(map.unsummarized_hashes.clone()),
     }
 }
 
@@ -48,7 +48,7 @@ pub fn full(map: &SemanticChangeMap) -> SimplifiedMap {
 
 pub fn for_hash_placement(map: &SemanticChangeMap) -> SimplifiedMap {
     let mut result = simplify(map);
-    // model sees this for existing, missed hashes are analyzed in full
+    // model sees this for existing, unsummarized hashes are analyzed in full
     result.missed_hashes = None;
     for group in &mut result.groups {
         for change in &mut group.changes {

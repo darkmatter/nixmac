@@ -54,7 +54,7 @@ pub async fn new_changeset<R: Runtime>(
 
     let semantic_map = group_existing::from_change_sets(existing);
     let (missed_changes, unfound) =
-        crate::changes_from_diff::filter_by_hashes(all_changes, &semantic_map.missed_hashes);
+        crate::changes_from_diff::filter_by_hashes(all_changes, &semantic_map.unsummarized_hashes);
     if let Some(unfound_hashes) = unfound {
         log::warn!(
             "[new_changeset] {} missed hash(es) not found in current diff: {:?}",

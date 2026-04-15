@@ -82,7 +82,7 @@ pub struct SemanticChangeGroup {
 pub struct SemanticChangeMap {
     pub groups: Vec<SemanticChangeGroup>,
     pub singles: Vec<ChangeWithSummary>,
-    pub missed_hashes: Vec<String>,
+    pub unsummarized_hashes: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -114,7 +114,7 @@ pub struct HistoryItem {
     pub file_count: usize,
     pub commit: Option<crate::sqlite_types::Commit>,
     pub change_map: Option<SemanticChangeMap>,
-    pub missed_hashes: Vec<String>,
+    pub unsummarized_hashes: Vec<String>,
     pub raw_changes: Vec<crate::sqlite_types::Change>,
     pub origin_message: Option<String>,
     pub origin_hash: Option<String>,

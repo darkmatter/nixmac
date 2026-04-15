@@ -12,7 +12,7 @@ export function UnsummarizedChangesDetected() {
   const configDir = useWidgetStore((s) => s.configDir);
   const { generateCurrentSummary } = useSummary();
   const [isSummarizing, setIsSummarizing] = useState(false);
-  const hasUnsummarized = !changeMap || changeMap.missedHashes.length > 0;
+  const hasUnsummarized = !changeMap || changeMap.unsummarizedHashes.length > 0;
 
   useEffect(() => {
     setIsSummarizing(false);
