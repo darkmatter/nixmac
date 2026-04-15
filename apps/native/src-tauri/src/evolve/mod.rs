@@ -4,6 +4,7 @@ mod chat_memory;
 mod config_dir_context;
 mod edit_nix_file;
 mod file_ops;
+mod gitignore;
 pub mod messages;
 pub mod providers;
 mod search_code;

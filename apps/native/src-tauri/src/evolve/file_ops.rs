@@ -5,6 +5,8 @@
 //!
 //! Uses OpenAI function calling to generate structured file edits.
 
+use super::gitignore::{is_ignored_by_matcher, load_gitignore_matcher};
+use super::utils::normalize_relative_path;
 use std::path::{Component, Path, PathBuf};
 
 use anyhow::Context;
@@ -120,6 +122,7 @@ pub(crate) fn rewrite_existing_file_in_dir<F>(
 where
     F: FnOnce(&str) -> anyhow::Result<String>,
 {
+    reject_gitignored_edit_path(base, rel, operation)?;
     let full_path = resolve_existing_path_in_dir(base, rel)?;
     let fail = |kind: &str| format!("Failed to {} {} for {}", kind, rel, operation);
 
@@ -394,6 +397,8 @@ fn validate_file_content(file_path: &str, content: &str) -> anyhow::Result<()> {
 /// Apply an evolution's edits to the filesystem.
 ///
 pub fn apply_file_edits(base: &Path, edit: &super::types::FileEdit) -> anyhow::Result<()> {
+    reject_gitignored_edit_path(base, &edit.path, "apply file edit")?;
+
     if edit.search.is_empty() {
         // Empty search means full-file replace. If the file already exists,
         // treat this as an existing-file rewrite (not a create path).
@@ -449,9 +454,23 @@ pub fn apply_file_edits(base: &Path, edit: &super::types::FileEdit) -> anyhow::R
     Ok(())
 }
 
+fn reject_gitignored_edit_path(base: &Path, rel: &str, operation: &str) -> anyhow::Result<()> {
+    let normalized_rel = normalize_relative_path(Path::new(rel))?;
+    let gitignore = load_gitignore_matcher(base)?;
+    if is_ignored_by_matcher(gitignore.as_ref(), &normalized_rel, false) {
+        return Err(anyhow::anyhow!(
+            "{}: '{}' is ignored by .gitignore in config_dir; refusing to edit",
+            operation,
+            rel
+        ));
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-    use super::apply_file_edits;
+    use super::{apply_file_edits, rewrite_existing_file_in_dir};
     use crate::evolve::types::FileEdit;
     use std::fs;
 
@@ -523,6 +542,36 @@ mod tests {
 
         let err = apply_file_edits(base, &edit).expect_err("expected parent-not-dir error");
         assert!(err.to_string().contains("Parent path is not a directory"));
+    }
+
+    #[test]
+    fn apply_file_edits_rejects_gitignored_target() {
+        let temp = tempfile::tempdir().expect("create temp dir");
+        let base = temp.path();
+        fs::write(base.join(".gitignore"), "secret.txt\n").expect("write .gitignore");
+
+        let edit = FileEdit {
+            path: "secret.txt".to_string(),
+            search: "".to_string(),
+            replace: "new".to_string(),
+        };
+
+        let err = apply_file_edits(base, &edit).expect_err("expected gitignored-path error");
+        assert!(err.to_string().contains("ignored by .gitignore"));
+    }
+
+    #[test]
+    fn rewrite_existing_file_in_dir_rejects_gitignored_target() {
+        let temp = tempfile::tempdir().expect("create temp dir");
+        let base = temp.path();
+        fs::write(base.join(".gitignore"), "secret.txt\n").expect("write .gitignore");
+        fs::write(base.join("secret.txt"), "old").expect("seed file");
+
+        let err = rewrite_existing_file_in_dir(base, "secret.txt", "test rewrite", |content| {
+            Ok(content.replace("old", "new"))
+        })
+        .expect_err("expected gitignored-path error");
+        assert!(err.to_string().contains("ignored by .gitignore"));
     }
 
     #[test]
