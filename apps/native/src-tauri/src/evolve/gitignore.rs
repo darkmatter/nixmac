@@ -15,7 +15,7 @@ pub(crate) fn load_gitignore_matcher(base: &Path) -> Result<Option<Gitignore>> {
 
     gitignore_paths.sort();
 
-    Ok(build_matcher(base, &gitignore_paths))
+    build_matcher(base, &gitignore_paths)
 }
 
 /// Returns true when `relative_path` is ignored by the provided gitignore matcher.
@@ -90,17 +90,18 @@ fn collect_gitignore_files(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// Build a Gitignore matcher from the provided .gitignore paths, skipping any that are invalid or unreadable.
-/// There is a fallback that attempts to salvage as many valid .gitignore files as possible in the case
-/// where the initial build fails, but if none can be loaded then this returns None.
-fn build_matcher(base: &Path, gitignore_paths: &[PathBuf]) -> Option<Gitignore> {
+/// Build a Gitignore matcher from the provided `.gitignore` paths.
+/// If building with the full set fails, this attempts to salvage as many valid
+/// files as possible. If none can be loaded, this returns an error to fail
+/// closed instead of silently disabling ignore protections.
+fn build_matcher(base: &Path, gitignore_paths: &[PathBuf]) -> Result<Option<Gitignore>> {
     let mut full_builder = GitignoreBuilder::new(base);
     for path in gitignore_paths {
         full_builder.add(path);
     }
 
     if let Ok(matcher) = full_builder.build() {
-        return Some(matcher);
+        return Ok(Some(matcher));
     }
 
     // Fallback: keep as many valid .gitignore files as possible.
@@ -123,11 +124,10 @@ fn build_matcher(base: &Path, gitignore_paths: &[PathBuf]) -> Option<Gitignore> 
     }
 
     if accepted_paths.is_empty() {
-        warn!(
-            "Failed to build gitignore matcher for {}: no valid .gitignore files could be loaded; continuing without matcher",
+        return Err(anyhow::anyhow!(
+            "Failed to build gitignore matcher for {}: no valid .gitignore files could be loaded. Fix or remove malformed/unreadable .gitignore files before running evolve.",
             base.display()
-        );
-        return None;
+        ));
     }
 
     let mut final_builder = GitignoreBuilder::new(base);
@@ -136,14 +136,13 @@ fn build_matcher(base: &Path, gitignore_paths: &[PathBuf]) -> Option<Gitignore> 
     }
 
     match final_builder.build() {
-        Ok(matcher) => Some(matcher),
+        Ok(matcher) => Ok(Some(matcher)),
         Err(e) => {
-            warn!(
-                "Failed to build final gitignore matcher for {}: {}; continuing without matcher",
+            Err(anyhow::anyhow!(
+                "Failed to build final gitignore matcher for {}: {}",
                 base.display(),
                 e
-            );
-            None
+            ))
         }
     }
 }
@@ -185,12 +184,16 @@ mod tests {
     }
 
     #[test]
-    fn malformed_gitignore_does_not_error() {
+    fn malformed_gitignore_fails_closed() {
         let temp = tempdir().expect("create temp dir");
         let base = temp.path();
         fs::write(base.join(".gitignore"), "[unterminated").expect("write malformed .gitignore");
 
-        let _matcher = load_gitignore_matcher(base).expect("load matcher should not fail");
+        let err = load_gitignore_matcher(base).expect_err("malformed .gitignore should fail closed");
+        assert!(
+            err.to_string().contains("no valid .gitignore files could be loaded"),
+            "unexpected error: {err:#}"
+        );
     }
 
     #[test]
