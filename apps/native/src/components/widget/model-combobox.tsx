@@ -55,7 +55,6 @@ async function fetchOpenRouterModels(): Promise<string[]> {
 }
 
 async function fetchOllamaModels(baseUrl?: string): Promise<string[]> {
-  console.log("Fetching Ollama models with base URL:", baseUrl);
   const base = (baseUrl || "http://localhost:11434").replace(/\/$/, "");
   try {
     const response = await fetch(`${base}/api/tags`, {
