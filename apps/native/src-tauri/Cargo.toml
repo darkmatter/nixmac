@@ -2,7 +2,8 @@
 name = "nixmac"
 version = "0.22.0"
 description = "Nixmac - macOS nix-darwin configuration manager"
-authors = ["you"]
+authors = ["Darkmatter Labs"]
+license = "MIT"
 edition = "2021"
 
 [lints.rust]
