@@ -25,13 +25,10 @@ function PreviewIndicatorWindow() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    console.log("[preview-indicator] Component mounted!");
     setMounted(true);
 
-    // Fetch initial state on mount (in case event was sent before we were ready)
     invoke<PreviewState>("preview_indicator_get_state")
       .then((initialState) => {
-        console.log("[preview-indicator] Got initial state:", initialState);
         setState(initialState);
       })
       .catch((err) => {
@@ -39,11 +36,9 @@ function PreviewIndicatorWindow() {
         setError(String(err));
       });
 
-    // Listen for state updates from the main widget
     const unsubscribe = listen<PreviewState>(
       "preview-indicator:update",
       (event) => {
-        console.log("[preview-indicator] Received update:", event.payload);
         setState(event.payload);
       }
     );
