@@ -93,9 +93,26 @@ pub fn current_state_built<R: Runtime>(app: &AppHandle<R>, current_changes: &[Ch
     }
 }
 
-/// Shared post-build write used by all build paths.
-///
-/// Post-build write the nix store path, HEAD commit, and optional changeset.
+pub fn set_active_build<R: Runtime>(
+    app: &AppHandle<R>,
+    store_path: Option<String>,
+    changeset_id: Option<i64>,
+    head_commit_hash: Option<String>,
+) -> Result<()> {
+    set(
+        app,
+        BuildState {
+            nixmac_built_store_path: store_path.clone(),
+            changeset_id,
+            head_commit_hash,
+            built_at: Some(crate::utils::unix_now()),
+            current_nix_store_path: store_path,
+        },
+    )
+    .map(|_| ())
+}
+
+/// Compute build state with a "bare" changeset to verify it
 pub fn record_build<R: Runtime>(app: &AppHandle<R>, git_status: &GitStatus) -> Result<()> {
     let db_path = crate::db::get_db_path(app)?;
     let config_dir = crate::store::get_config_dir(app)?;
@@ -112,19 +129,12 @@ pub fn record_build<R: Runtime>(app: &AppHandle<R>, git_status: &GitStatus) -> R
         None
     };
 
-    let current = read_current_store_path();
-    set(
+    set_active_build(
         app,
-        BuildState {
-            nixmac_built_store_path: current.clone(),
-            changeset_id: build_changeset_id,
-            head_commit_hash: git_status.head_commit_hash.clone(),
-            built_at: Some(crate::utils::unix_now()),
-            current_nix_store_path: current,
-        },
-    )?;
-
-    Ok(())
+        read_current_store_path(),
+        build_changeset_id,
+        git_status.head_commit_hash.clone(),
+    )
 }
 
 #[cfg(test)]

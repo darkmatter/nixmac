@@ -51,7 +51,8 @@ fn main() {
         .register::<shared_types::EvolutionState>()
         .register::<shared_types::EvolutionTelemetry>()
         .register::<shared_types::EvolutionResult>()
-        .register::<shared_types::EvolutionFailureResult>();
+        .register::<shared_types::EvolutionFailureResult>()
+        .register::<shared_types::RollbackResult>();
 
     let shared_output_path = "../src/types/shared.ts";
 

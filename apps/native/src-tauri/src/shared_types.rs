@@ -151,8 +151,12 @@ pub struct EvolveState {
     pub changeset_at_build: Option<i64>,
     /// current state verifyably built
     pub committable: bool,
+    /// branch used to reset repo state on evolve failure
     pub backup_branch: Option<String>,
-    /// Computed from the other fields — always kept in sync by `set`.
+    /// rollback values recover repo state and reapply nix store path
+    pub rollback_branch: Option<String>,
+    pub rollback_store_path: Option<String>,
+    pub rollback_changeset_id: Option<i64>,
     pub step: EvolveStep,
 }
 
@@ -164,11 +168,28 @@ impl Default for EvolveState {
             changeset_at_build: None,
             committable: false,
             backup_branch: None,
+            rollback_branch: None,
+            rollback_store_path: None,
+            rollback_changeset_id: None,
             step: EvolveStep::Begin,
         }
     }
 }
 
+
+// =============================================================================
+// Rollback result types
+// =============================================================================
+
+/// Result returned from a rollback erase operation.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RollbackResult {
+    pub git_status: GitStatus,
+    pub evolve_state: EvolveState,
+    pub rollback_store_path: Option<String>,
+    pub rollback_changeset_id: Option<i64>,
+}
 
 // =============================================================================
 // Evolution command result types

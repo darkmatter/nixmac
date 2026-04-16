@@ -5,6 +5,8 @@ import { useGitOperations } from "./use-git-operations";
 
 interface RebuildOptions {
   context: RebuildContext;
+  /** When set, activates this nix store path instead of triggering a full rebuild. */
+  storePath?: string;
   onSuccess?: () => Promise<void>;
   onFailure?: () => Promise<void>;
 }
@@ -23,13 +25,16 @@ export function useRebuildStream() {
       store.startRebuild(options.context);
       rebuildLineIdRef.current = 1;
 
-      // Listen to raw log data for console output
+      // For store-path activation (no log summarizer), also populate summary lines.
       const unlistenData = await ipcRenderer.on<{ chunk: string }>("darwin:apply:data", (event) => {
         const { chunk } = event.payload;
         const newLines = chunk.split("\n").filter((line) => line.trim() !== "");
         const currentStore = useWidgetStore.getState();
         for (const line of newLines) {
           currentStore.appendRawLine(line);
+          if (options.storePath) {
+            currentStore.appendRebuildLine({ id: rebuildLineIdRef.current++, text: line, type: "info" });
+          }
         }
       });
 
@@ -132,7 +137,11 @@ export function useRebuildStream() {
       });
 
       try {
-        await darwinAPI.darwin.applyStreamStart();
+        if (options.storePath) {
+          await darwinAPI.darwin.activateStorePath(options.storePath);
+        } else {
+          await darwinAPI.darwin.applyStreamStart();
+        }
       } catch (e: unknown) {
         const msg = (e as Error)?.message || String(e);
         useWidgetStore.getState().setRebuildError("generic_error", msg);

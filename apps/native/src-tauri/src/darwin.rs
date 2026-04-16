@@ -266,6 +266,106 @@ fn run_build_step(
 ///   trap — no persistent system configuration is required.
 fn run_activate_step(config_dir: &str) -> Result<ActivateResult, anyhow::Error> {
     let activate_path = format!("{}/result/activate", config_dir);
+    run_activate_with_path(&activate_path)
+}
+
+/// Activate a specific nix store path directly
+fn activate_store_path(store_path: &str) -> Result<ActivateResult, anyhow::Error> {
+    let activate_path = format!("{}/activate", store_path);
+    run_activate_with_path(&activate_path)
+}
+
+/// Classify an activation failure into (error_type, error_message).
+fn classify_activate_error(result: &ActivateResult) -> (&'static str, String) {
+    let stderr_lower = result.stderr.to_lowercase();
+    if stderr_lower.contains("user canceled") {
+        return ("user_cancelled", "Activation cancelled by user".to_string());
+    }
+    const AUTH_PHRASES: &[&str] = &[
+        "authorization failed",
+        "not authorized",
+        "authorization denied",
+        "not permitted",
+        "you do not have permission",
+        "authentication failed",
+        "is not an administrator",
+    ];
+    if AUTH_PHRASES.iter().any(|p| stderr_lower.contains(p)) {
+        return (
+            "authorization_denied",
+            "Authorization denied — administrator credentials required.".to_string(),
+        );
+    }
+    (
+        "generic_error",
+        format!("Activation failed (exit code {})", result.code),
+    )
+}
+
+/// Mimics build but less interesting
+pub fn activate_store_path_stream(app: &AppHandle, store_path: String) -> Result<(), anyhow::Error> {
+    info!("[darwin] activate_store_path_stream: store_path={}", store_path);
+    let app_handle = app.clone();
+
+    std::thread::spawn(move || {
+        let _ = app_handle.emit(
+            "darwin:apply:data",
+            serde_json::json!({"chunk": "Activating previous nix store...\n"}),
+        );
+
+        match activate_store_path(&store_path) {
+            Ok(result) => {
+                for line in result.stdout.lines() {
+                    if !line.is_empty() {
+                        let _ = app_handle.emit(
+                            "darwin:apply:data",
+                            serde_json::json!({"chunk": format!("{}\n", line)}),
+                        );
+                    }
+                }
+
+                if result.success {
+                    info!("[darwin] store path activation succeeded");
+                    let _ = app_handle.emit(
+                        "darwin:apply:end",
+                        serde_json::json!({"ok": true, "code": result.code}),
+                    );
+                } else {
+                    let (error_type, error) = classify_activate_error(&result);
+                    error!(
+                        "[darwin] store path activation failed (code={}): {}",
+                        result.code, error
+                    );
+                    let _ = app_handle.emit(
+                        "darwin:apply:end",
+                        serde_json::json!({
+                            "ok": false,
+                            "code": result.code,
+                            "error_type": error_type,
+                            "error": error,
+                        }),
+                    );
+                }
+            }
+            Err(e) => {
+                error!("[darwin] activate_store_path_stream error: {}", e);
+                let _ = app_handle.emit(
+                    "darwin:apply:end",
+                    serde_json::json!({
+                        "ok": false,
+                        "code": -1,
+                        "error_type": "generic_error",
+                        "error": format!("Activation failed: {}", e),
+                    }),
+                );
+            }
+        }
+    });
+
+    Ok(())
+}
+
+fn run_activate_with_path(activate_path: &str) -> Result<ActivateResult, anyhow::Error> {
     let nix_path = crate::nix::get_nix_path();
     let home = std::env::var("HOME").unwrap_or_default();
     let ssh_sock = std::env::var("SSH_AUTH_SOCK").unwrap_or_default();
@@ -273,9 +373,9 @@ fn run_activate_step(config_dir: &str) -> Result<ActivateResult, anyhow::Error> 
 
     // Resolve the symlink to the real nix store path.
     // sudo / visudo match against the canonical path, not the symlink.
-    let real_activate = std::fs::canonicalize(&activate_path)
+    let real_activate = std::fs::canonicalize(activate_path)
         .map(|p| p.to_string_lossy().into_owned())
-        .unwrap_or_else(|_| activate_path.clone());
+        .unwrap_or_else(|_| activate_path.to_owned());
 
     // Escape a value for safe embedding inside a shell single-quoted string.
     let sq = |s: &str| s.replace('\'', "'\\''" );

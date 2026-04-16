@@ -548,20 +548,14 @@ pub fn tag_commit(dir: &str, tag: &str, target: &str, force: bool) -> Result<()>
 }
 
 /// Stage everything and create a backup branch without moving HEAD.
-/// Returns the branch name, or None if skipped (clean tree + changeset_id == 0).
 pub fn create_evolution_backup(
     repo_path: &str,
     evolution_id: Option<i64>,
     changeset_id: i64,
 ) -> Result<Option<String>> {
-    let head_diff = get_full_diff(repo_path)?;
-    if head_diff.is_empty() && changeset_id == 0 {
-        return Ok(None);
-    }
-
     let branch_name = format!(
         "nixmac-evolve/evolution{}-changeset{}",
-        evolution_id.map_or_else(|| "unknown".to_string(), |id| id.to_string()),
+        evolution_id.unwrap_or(0),
         changeset_id
     );
 
@@ -787,7 +781,7 @@ deleted file mode 100644
     }
 
     #[test]
-    fn test_create_evolution_backup_skips_when_clean_and_no_changeset() {
+    fn test_create_evolution_backup_creates_branch_even_when_clean() {
         let temp_dir = TempDir::new().unwrap();
         let repo_dir = temp_dir.path().join("repo");
         let repo_dir_str = repo_dir.to_string_lossy().to_string();
@@ -797,9 +791,8 @@ deleted file mode 100644
         run_git_ok(&repo_dir, &["add", "-A"]);
         run_git_ok(&repo_dir, &["commit", "-m", "initial commit"]);
 
-        // Clean working tree + changeset_id == 0 → should skip.
         let result = create_evolution_backup(&repo_dir_str, Some(1), 0).unwrap();
-        assert!(result.is_none());
+        assert!(result.is_some());
     }
 
     #[test]

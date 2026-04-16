@@ -78,11 +78,15 @@ export type EvolveState = { evolutionId: number | null; currentChangesetId: numb
 /**
  * current state verifyably built
  */
-committable: boolean; backupBranch: string | null; 
+committable: boolean; 
 /**
- * Computed from the other fields — always kept in sync by `set`.
+ * branch used to reset repo state on evolve failure
  */
-step: EvolveStep }
+backupBranch: string | null; 
+/**
+ * branch etc. to roll back recover repo state, apply build and restore build state
+ */
+rollbackBranch: string | null; rollbackStorePath: string | null; rollbackChangesetId: number | null; step: EvolveStep }
 
 /**
  * Widget step derived from `EvolveState` fields.
@@ -103,6 +107,19 @@ export type GitStatus = { files: GitFileStatus[]; branch: string | null; diff: s
  * A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.
  */
 export type HistoryItem = { hash: string; message: string | null; createdAt: number; isBuilt: boolean; isBase: boolean; isExternal: boolean; fileCount: number; commit: Commit | null; changeMap: SemanticChangeMap | null; unsummarizedHashes: string[]; rawChanges: Change[]; originMessage: string | null; originHash: string | null; isOrphanedRestore: boolean; isUndone: boolean }
+
+/**
+ * Result returned from a rollback erase operation.
+ */
+export type RollbackResult = { gitStatus: GitStatus; evolveState: EvolveState; 
+/**
+ * Non-null means the caller should activate this path to complete the rollback.
+ */
+rollbackStorePath: string | null; 
+/**
+ * Changeset ID at capture time; pass to finalize_rollback to restore correct build state.
+ */
+rollbackChangesetId: number | null }
 
 export type SemanticChangeGroup = { summary: ChangeSummary; changes: ChangeWithSummary[] }
 

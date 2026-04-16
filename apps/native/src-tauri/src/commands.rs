@@ -9,7 +9,7 @@
 
 use crate::{
     darwin, db, default_config, evolution, evolve_state, feedback, finalize_restore, git, nix,
-    peek, permissions, rollback, scanner, store, types, utils,
+    peek, permissions, rollback, scanner, shared_types, store, types, utils,
 };
 use std::path::Path;
 use std::process::Command;
@@ -471,6 +471,17 @@ pub async fn darwin_apply_stream_start(
     Ok(serde_json::json!({"ok": true}))
 }
 
+/// Used by rollback to restore a previous nix store without a full rebuild.
+#[tauri::command]
+pub async fn darwin_activate_store_path(
+    app: AppHandle,
+    store_path: String,
+) -> Result<serde_json::Value, String> {
+    darwin::activate_store_path_stream(&app, store_path)
+        .map(|_| serde_json::json!({"ok": true}))
+        .map_err(|e| capture_err("darwin_activate_store_path", e))
+}
+
 /// Placeholder for canceling an in-progress apply operation.
 #[tauri::command]
 pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<serde_json::Value, String> {
@@ -536,12 +547,24 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<serde_json::Va
     Ok(serde_json::json!({"ok": true}))
 }
 
-/// Finalize a successful darwin-rebuild, tags HEAD as built, and marks changes as committable.
+/// Finalize a successful build
 #[tauri::command]
 pub async fn finalize_apply(app: AppHandle) -> Result<crate::finalize_apply::ApplyResult, String> {
     crate::finalize_apply::finalize_apply(&app)
         .await
         .map_err(|e| capture_err("finalize_apply", e))
+}
+
+/// Finalize a rollback store-path activation — restores the pre-evolution build record.
+#[tauri::command]
+pub async fn finalize_rollback(
+    app: AppHandle,
+    store_path: Option<String>,
+    changeset_id: Option<i64>,
+) -> Result<crate::finalize_apply::ApplyResult, String> {
+    crate::finalize_apply::finalize_rollback(&app, store_path, changeset_id)
+        .await
+        .map_err(|e| capture_err("finalize_rollback", e))
 }
 
 #[tauri::command]
@@ -1021,7 +1044,7 @@ pub async fn apply_system_defaults(
 
 /// Restore uncommitted changes.
 #[tauri::command]
-pub async fn rollback_erase(app: AppHandle) -> Result<rollback::RollbackResult, String> {
+pub async fn rollback_erase(app: AppHandle) -> Result<shared_types::RollbackResult, String> {
     rollback::rollback_erase(&app).map_err(|e| capture_err("rollback_erase", e))
 }
 
@@ -1187,10 +1210,15 @@ pub async fn list_cli_models(tool: String) -> Result<Vec<String>, String> {
 // Evolve State Commands
 // =============================================================================
 
-/// Load persisted evolve state (called on startup).
 #[tauri::command]
 pub async fn routing_state_get(app: AppHandle) -> Result<evolve_state::EvolveState, String> {
-    evolve_state::get(&app).map_err(|e| capture_err("routing_state_get", e))
+    let state = evolve_state::get(&app).map_err(|e| capture_err("routing_state_get", e))?;
+    // Recompute step from live git status to surface manual changes
+    let dir = store::get_config_dir(&app).map_err(|e| capture_err("routing_state_get", e))?;
+    let changes = git::status(&dir)
+        .map(|s| s.changes)
+        .unwrap_or_default();
+    evolve_state::set(&app, state, &changes).map_err(|e| capture_err("routing_state_get", e))
 }
 
 /// Clear evolve state back to idle (called after a successful git commit).

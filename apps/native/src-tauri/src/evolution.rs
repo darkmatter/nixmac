@@ -10,7 +10,7 @@ use log::info;
 use tauri::AppHandle;
 
 use crate::{
-    db,
+    build_state, db,
     evolve::{self, EvolutionState},
     evolve_state, git,
     shared_types::{
@@ -143,8 +143,6 @@ pub async fn backup_evolve_and_record_changeset(
     );
 
     // Step 1: Snapshot the working tree onto a backup branch before AI touches anything.
-    // If evolution_id is None the tree is clean (begin-evolve-warning guarantees this),
-    // so create_evolution_backup will skip (clean + changeset_id==0 → None).
     let pre_evolve_state = evolve_state::get(app).unwrap_or_default();
     let changeset_id = pre_evolve_state.current_changeset_id.unwrap_or(0);
     let backup_branch = match git::create_evolution_backup(
@@ -164,8 +162,24 @@ pub async fn backup_evolve_and_record_changeset(
 
     if let Some(ref branch) = backup_branch {
         info!("[evolution] backup branch created | branch={}", branch);
+        // Rollback branch saves the first evolution, so restore repo to pre-evolution state
+        let rollback_branch = pre_evolve_state.rollback_branch.clone()
+            .or_else(|| Some(branch.clone()));
+        let (rollback_store_path, rollback_changeset_id) =
+            if pre_evolve_state.rollback_store_path.is_some() {
+                (pre_evolve_state.rollback_store_path.clone(), pre_evolve_state.rollback_changeset_id)
+            } else {
+                let bs = build_state::get(app).ok();
+                (
+                    bs.as_ref().and_then(|b| b.nixmac_built_store_path.clone()),
+                    bs.as_ref().and_then(|b| b.changeset_id),
+                )
+            };
         let updated = evolve_state::EvolveState {
             backup_branch: Some(branch.clone()),
+            rollback_branch,
+            rollback_store_path,
+            rollback_changeset_id,
             ..pre_evolve_state.clone()
         };
         let _ = evolve_state::set(app, updated, &initial_status.changes);
@@ -177,7 +191,7 @@ pub async fn backup_evolve_and_record_changeset(
         Err(e) => {
             let duration_ms = elapsed_since(start_time_ms);
             let git_status = git::status(&config_dir).ok();
-            restore_after_failure(app, &config_dir, &backup_branch);
+            restore_after_failure(app, &config_dir);
             if let Some(run_error) = e.downcast_ref::<evolve::EvolutionRunError>() {
                 return Err(EvolutionFailureResult::new(
                     run_error.message.clone(),
@@ -215,7 +229,7 @@ pub async fn backup_evolve_and_record_changeset(
     let final_status = match git::status(&config_dir) {
         Ok(status) => status,
         Err(e) => {
-            restore_after_failure(app, &config_dir, &backup_branch);
+            restore_after_failure(app, &config_dir);
             return Err(EvolutionFailureResult::from_evolution(
                 format!("Failed to get final git status: {}", e),
                 None,
@@ -232,13 +246,14 @@ pub async fn backup_evolve_and_record_changeset(
     // Insert a DB evolution record and run the appropriate summarization pipeline.
     let (db_evolution_id, new_changeset_id) = store_metadata(app, &final_status).await;
 
+    let current_state = evolve_state::get(app).unwrap_or_default();
     let evolve_state = evolve_state::set(
         app,
         evolve_state::EvolveState {
             evolution_id: db_evolution_id,
             current_changeset_id: new_changeset_id,
             backup_branch,
-            ..Default::default()
+            ..current_state
         },
         &final_status.changes,
     )
@@ -260,7 +275,7 @@ pub async fn backup_evolve_and_record_changeset(
     })
 }
 
-fn restore_after_failure(app: &AppHandle, config_dir: &str, backup_branch: &Option<String>) {
+fn restore_after_failure(app: &AppHandle, config_dir: &str) {
     // Allow skipping the actual git restore calls for debugging/testing.
     // If `DEBUG_SKIP_RESTORE_ALL` is set to a non-zero value, skip restore operations
     // but keep the same state updates and logging behavior.
@@ -269,31 +284,20 @@ fn restore_after_failure(app: &AppHandle, config_dir: &str, backup_branch: &Opti
         Err(_) => false,
     };
 
-    match backup_branch {
-        Some(_) => {
-            if skip_restore {
-                log::warn!("[evolution] DEBUG_SKIP_RESTORE_ALL set — skipping restore_from_backup");
-            } else if let Err(e) = git::restore_from_backup(config_dir) {
-                log::error!("[evolution] restore_from_backup failed: {}", e);
-            }
-
-            let _ = evolve_state::set(
-                app,
-                evolve_state::EvolveState {
-                    backup_branch: None,
-                    ..evolve_state::get(app).unwrap_or_default()
-                },
-                &[],
-            );
-        }
-        None => {
-            if skip_restore {
-                log::warn!("[evolution] DEBUG_SKIP_RESTORE_ALL set — skipping restore_all");
-            } else if let Err(e) = git::restore_all(config_dir) {
-                log::error!("[evolution] restore_all failed: {}", e);
-            }
-        }
+    if skip_restore {
+        log::warn!("[evolution] DEBUG_SKIP_RESTORE_ALL set — skipping restore_from_backup");
+    } else if let Err(e) = git::restore_from_backup(config_dir) {
+        log::error!("[evolution] restore_from_backup failed: {}", e);
     }
+
+    let _ = evolve_state::set(
+        app,
+        evolve_state::EvolveState {
+            backup_branch: None,
+            ..evolve_state::get(app).unwrap_or_default()
+        },
+        &[],
+    );
 }
 
 /// Insert a DB evolution (or reuse the active one), and summarize a changeset to link to it.

@@ -9,6 +9,7 @@ import type {
   EvolveState,
   GitStatus,
   HistoryItem,
+  RollbackResult,
   SemanticChangeMap,
 } from "./types/shared";
 
@@ -68,10 +69,6 @@ export interface CommitResult {
   evolveState: EvolveState;
 }
 
-export interface RollbackResult {
-  gitStatus: GitStatus;
-  evolveState: EvolveState;
-}
 
 export interface PreviewIndicatorState {
   visible: boolean;
@@ -260,8 +257,12 @@ export const darwinAPI = {
     apply: (hostOverride?: string) => invoke("darwin_apply", { hostOverride }),
     applyStreamStart: (hostOverride?: string) =>
       invoke("darwin_apply_stream_start", { hostOverride }),
+    activateStorePath: (storePath: string) =>
+      invoke("darwin_activate_store_path", { storePath }),
     applyStreamCancel: () => invoke("darwin_apply_stream_cancel"),
     finalizeApply: () => invoke<ApplyResult>("finalize_apply"),
+    finalizeRollback: (storePath: string | null, changesetId: number | null) =>
+      invoke<ApplyResult>("finalize_rollback", { storePath, changesetId }),
     rollbackErase: () => invoke<RollbackResult>("rollback_erase"),
     prepareRestore: (targetHash: string) => invoke<void>("prepare_restore", { targetHash }),
     abortRestore: () => invoke<void>("abort_restore"),

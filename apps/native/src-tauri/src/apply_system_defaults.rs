@@ -97,6 +97,9 @@ pub async fn apply_system_defaults(
         changeset_at_build: None,
         committable: false,
         backup_branch: None,
+        rollback_branch: None,
+        rollback_store_path: None,
+        rollback_changeset_id: None,
         step: shared_types::EvolveStep::Evolve,
     };
     let working_tree_status =
