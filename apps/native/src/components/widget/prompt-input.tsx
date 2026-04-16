@@ -28,7 +28,7 @@ export function PromptInput() {
   const processingAction = useWidgetStore((s) => s.processingAction);
   const evolveState = useWidgetStore((s) => s.evolveState);
   const gitStatus = useWidgetStore((s) => s.gitStatus);
-  const { handleEvolve } = useEvolve();
+  const { handleEvolve, evolveFromManual } = useEvolve();
   const [warningOpen, setWarningOpen] = useState(false);
 
   const needsResolution = !evolveState?.evolutionId && gitStatus && !gitStatus.cleanHead;
@@ -36,8 +36,7 @@ export function PromptInput() {
   const handleSubmit = () => {
     if (!evolvePrompt.trim()) return;
     if (needsResolution) {
-      setWarningOpen(true);
-      return;
+      evolveFromManual();
     }
     handleEvolve();
   };
