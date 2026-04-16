@@ -87,7 +87,7 @@ step: EvolveStep }
 /**
  * Widget step derived from `EvolveState` fields.
  */
-export type EvolveStep = "begin" | "evolve" | "merge"
+export type EvolveStep = "begin" | "evolve" | "commit" | "manualEvolve" | "manualCommit"
 
 /**
  * Individual file status parsed from diff headers.

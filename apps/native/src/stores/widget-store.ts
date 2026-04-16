@@ -25,7 +25,7 @@ export type {
  * Widget step state - updated by useEffect based on app state.
  */
 export type SettingsTab = "general" | "api-keys" | "ai-models" | "preferences";
-export type WidgetStep = "permissions" | "nix-setup" | "setup" | "begin" | "evolving" | "merge" | "history";
+export type WidgetStep = "permissions" | "nix-setup" | "setup" | "begin" | "evolve" | "commit" | "manualEvolve" | "manualCommit" | "history";
 export type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
 export type ConfirmPrefKey = "confirmBuild" | "confirmClear" | "confirmRollback";
 

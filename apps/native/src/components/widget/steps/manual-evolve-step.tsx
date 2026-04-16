@@ -10,17 +10,17 @@ import { useRollback } from "@/hooks/use-rollback";
 import { Eraser, Wrench } from "lucide-react";
 
 /**
- * Evolve Review Step: AI session active, not yet built.
- * Shows the diff/summary, discard and build actions, and prompt for further changes.
+ * Manual Evolve Step: uncommitted changes present, not yet built.
+ * Shows the file list, a build action, and a prompt that auto-adopts changes into AI evolution.
  */
-export function EvolveStep() {
+export function ManualEvolveStep() {
   const { handleApply } = useApply();
   const { handleRollback } = useRollback();
 
   return (
     <>
       <ExternalBuildDetected />
-      <StepActionsHeader label="Ready to test-drive your changes?">
+      <StepActionsHeader label="Uncommitted changes">
         <ConfirmButton
           variant="ghost"
           size="sm"
@@ -31,7 +31,7 @@ export function EvolveStep() {
           color="amber"
         >
           <Eraser className="h-3.5 w-3.5" />
-          Discard
+          Undo All
         </ConfirmButton>
         <ConfirmButton
           size="sm"

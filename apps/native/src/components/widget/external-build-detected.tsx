@@ -8,11 +8,10 @@ import { useApply } from "@/hooks/use-apply";
 
 export function ExternalBuildDetected() {
   const externalBuildDetected = useWidgetStore((s) => s.externalBuildDetected);
-  const evolveState = useWidgetStore((s) => s.evolveState);
   const { handleManualBuildConfirm } = useApply();
   const [isPending, setIsPending] = useState(false);
 
-  if (!externalBuildDetected || !evolveState?.evolutionId) return null;
+  if (!externalBuildDetected) return null;
 
   const handleProceed = async () => {
     setIsPending(true);

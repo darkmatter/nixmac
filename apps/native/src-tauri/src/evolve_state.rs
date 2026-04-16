@@ -9,12 +9,14 @@ use crate::sqlite_types::Change;
 pub use crate::shared_types::{EvolveState, EvolveStep};
 
 impl EvolveState {
-    pub fn recompute_step(&mut self, is_built: bool) {
-        self.committable = self.evolution_id.is_some() && is_built;
-        self.step = match (self.evolution_id, is_built) {
-            (None, _) => EvolveStep::Begin,
-            (Some(_), false) => EvolveStep::Evolve,
-            (Some(_), true) => EvolveStep::Merge,
+    pub fn recompute_step(&mut self, is_built: bool, has_changes: bool) {
+        self.committable = is_built;
+        self.step = match (self.evolution_id, is_built, has_changes) {
+            (Some(_), true, _)  => EvolveStep::Commit,
+            (Some(_), false, _) => EvolveStep::Evolve,
+            (None, true, true)  => EvolveStep::ManualCommit,
+            (None, false, true) => EvolveStep::ManualEvolve,
+            _                   => EvolveStep::Begin,
         };
     }
 }
@@ -42,7 +44,8 @@ pub fn set<R: Runtime>(
     current_changes: &[Change],
 ) -> Result<EvolveState> {
     let is_built = crate::build_state::current_state_built(app, current_changes);
-    state.recompute_step(is_built);
+    let has_changes = !current_changes.is_empty();
+    state.recompute_step(is_built, has_changes);
     let store = app.store(EVOLVE_STATE_PATH)?;
     store.set(EVOLVE_STATE_KEY, serde_json::to_value(&state)?);
     store.save()?;
