@@ -120,9 +120,9 @@ function shouldShowEvolutionLog(
       switch (step) {
         case "setup":
           return false;
-        case "evolving":
+        case "evolve":
           return true;
-        case "merge":
+        case "commit":
           return true;
         default:
           return false;
@@ -150,9 +150,9 @@ function shouldShowChangedNixFiles(
       switch (step) {
         case "setup":
           return false;
-        case "evolving":
+        case "evolve":
           return true;
-        case "merge":
+        case "commit":
           return true;
         default:
           return false;
@@ -176,9 +176,9 @@ function shouldShowAiProviderModelInfo(
       switch (step) {
         case "setup":
           return false;
-        case "evolving":
+        case "evolve":
           return true;
-        case "merge":
+        case "commit":
           return true;
         default:
           return false;
@@ -204,9 +204,9 @@ function shouldShowBuildErrorOutput(
       switch (step) {
         case "setup":
           return false;
-        case "evolving":
+        case "evolve":
           return !!mainWindowError; // only show if there's an error in the main window
-        case "merge":
+        case "commit":
           return false;
         default:
           return false;
@@ -232,9 +232,9 @@ function shouldShowFlakeInputsSnapshot(
       switch (step) {
         case "setup":
           return false;
-        case "evolving":
+        case "evolve":
           return false;
-        case "merge":
+        case "commit":
           return !!mainWindowError; // only show if there's an error in the main window
         default:
           return false;
@@ -259,9 +259,9 @@ function shouldShowAppLogs(
       switch (step) {
         case "setup":
           return false;
-        case "evolving":
+        case "evolve":
           return true;
-        case "merge":
+        case "commit":
           return true;
         default:
           return false;

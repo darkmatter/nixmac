@@ -7,8 +7,8 @@ import { useCurrentStep } from "@/stores/widget-store";
 export function PromptInputSection() {
   const step = useCurrentStep();
 
-  const isCommitStep = step === "merge";
-  const showTitle = step === "evolving" || isCommitStep;
+  const isCommitStep = step === "commit";
+  const showTitle = step === "evolve" || isCommitStep;
 
   const title = isCommitStep ? "Back to the drawing board!" : "What else can I change for you?";
 

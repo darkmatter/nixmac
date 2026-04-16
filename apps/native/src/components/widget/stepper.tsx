@@ -28,7 +28,9 @@ export function Stepper() {
   }
 
   // Determine current step index based on widget state
-  const currentStepIndex = step === "merge" ? 2 : step === "evolving" ? 1 : 0;
+  const currentStepIndex =
+    step === "commit" || step === "manualCommit" ? 2 :
+    step === "evolve" || step === "manualEvolve" ? 1 : 0;
 
   const activeStepName = STEPS[currentStepIndex].name;
 

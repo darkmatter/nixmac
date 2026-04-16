@@ -133,7 +133,10 @@ pub enum EvolveStep {
     #[default]
     Begin,
     Evolve,
-    Merge,
+    #[serde(alias = "merge")]
+    Commit,
+    ManualEvolve,
+    ManualCommit,
 }
 
 /// Persisted evolve state stored in `evolve-state.json`.
