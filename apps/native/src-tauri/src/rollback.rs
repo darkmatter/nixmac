@@ -21,8 +21,8 @@ pub fn rollback_erase<R: Runtime>(app: &AppHandle<R>) -> Result<RollbackResult> 
     if let Some(ref branch) = current_evolve.rollback_branch {
         let ref_name = format!("refs/heads/{}", branch);
         if git::get_ref_sha(&config_dir, &ref_name).is_some() {
-            git::restore_from_backup(&config_dir)
-                .context("Failed to restore from backup branch")?;
+            git::restore_from_branch_ref(&config_dir, &ref_name)
+                .context("Failed to restore from rollback branch")?;
         } else {
             warn!(
                 "[rollback] rollback branch {} not found, skipping git restore",

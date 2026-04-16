@@ -600,9 +600,16 @@ pub fn create_evolution_backup(
     Ok(Some(branch_name))
 }
 
-/// Restore working tree from backup index state without moving HEAD.
-/// Assumes the real index is still in the backup state (AI does not run git commands).
-pub fn restore_from_backup(repo_path: &str) -> Result<()> {
+
+/// Restore working tree to the content of a specific branch ref.
+/// Replaces the current index with the branch's tree, then checks out the working tree.
+pub fn restore_from_branch_ref(repo_path: &str, ref_name: &str) -> Result<()> {
+    git_command()
+        .args(["read-tree", ref_name])
+        .current_dir(repo_path)
+        .output()
+        .context("git read-tree")?;
+
     git_command()
         .args(["checkout-index", "-f", "-a"])
         .current_dir(repo_path)
@@ -795,30 +802,4 @@ deleted file mode 100644
         assert!(result.is_some());
     }
 
-    #[test]
-    fn test_restore_from_backup_reverts_working_tree_changes() {
-        let temp_dir = TempDir::new().unwrap();
-        let repo_dir = temp_dir.path().join("repo");
-        let repo_dir_str = repo_dir.to_string_lossy().to_string();
-        init_repo(&repo_dir_str).unwrap();
-
-        fs::write(repo_dir.join("file.txt"), "original\n").unwrap();
-        run_git_ok(&repo_dir, &["add", "-A"]);
-        run_git_ok(&repo_dir, &["commit", "-m", "initial commit"]);
-
-        // Stage a file to represent the backup index state.
-        fs::write(repo_dir.join("file.txt"), "backup state\n").unwrap();
-        run_git_ok(&repo_dir, &["add", "-A"]);
-
-        // Simulate AI making further changes to the working tree without staging.
-        fs::write(repo_dir.join("file.txt"), "ai mess\n").unwrap();
-        fs::write(repo_dir.join("new-file.txt"), "ai added\n").unwrap();
-
-        restore_from_backup(&repo_dir_str).unwrap();
-
-        // Working tree should reflect the staged (backup) state, not the AI changes.
-        let content = fs::read_to_string(repo_dir.join("file.txt")).unwrap();
-        assert_eq!(content, "backup state\n");
-        assert!(!repo_dir.join("new-file.txt").exists());
-    }
 }

@@ -74,6 +74,7 @@ pub fn format_config_dir_context_with_max_depth(
     Ok(output.trim_end().to_string())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_dir(
     root: &Path,
     dir: &Path,
