@@ -84,7 +84,7 @@ committable: boolean;
  */
 backupBranch: string | null; 
 /**
- * branch etc. to roll back recover repo state, apply build and restore build state
+ * rollback values recover repo state and reapply nix store path
  */
 rollbackBranch: string | null; rollbackStorePath: string | null; rollbackChangesetId: number | null; step: EvolveStep }
 
@@ -111,15 +111,7 @@ export type HistoryItem = { hash: string; message: string | null; createdAt: num
 /**
  * Result returned from a rollback erase operation.
  */
-export type RollbackResult = { gitStatus: GitStatus; evolveState: EvolveState; 
-/**
- * Non-null means the caller should activate this path to complete the rollback.
- */
-rollbackStorePath: string | null; 
-/**
- * Changeset ID at capture time; pass to finalize_rollback to restore correct build state.
- */
-rollbackChangesetId: number | null }
+export type RollbackResult = { gitStatus: GitStatus; evolveState: EvolveState; rollbackStorePath: string | null; rollbackChangesetId: number | null }
 
 export type SemanticChangeGroup = { summary: ChangeSummary; changes: ChangeWithSummary[] }
 

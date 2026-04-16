@@ -76,6 +76,7 @@ export function useGitOperations() {
         useWidgetStore.getState().setError(null);
         toast.success("Committed successfully");
         useWidgetStore.getState().clearPreview();
+        useWidgetStore.getState().setChangeMap(null);
         useWidgetStore.getState().setEvolveState(result.evolveState);
         await refreshGitStatus();
       } catch (e: unknown) {

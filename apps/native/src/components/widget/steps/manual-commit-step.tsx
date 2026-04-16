@@ -30,7 +30,7 @@ export function ManualCommitStep() {
           color="amber"
         >
           <Undo2 className="h-3.5 w-3.5" />
-          Undo All
+          Undo last build
         </ConfirmButton>
         <Button
           variant="ghost"

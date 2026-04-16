@@ -107,11 +107,7 @@ where
                                 .unwrap_or_default();
                             let evolve_state_updated = evolve_state::get(&app_handle)
                                 .ok()
-                                .filter(|es| es.committable || external_build_detected || !status.changes.is_empty())
-                                .and_then(|mut es| {
-                                    if !external_build_detected {
-                                        es.committable = false;
-                                    }
+                                .and_then(|es| {
                                     evolve_state::set(&app_handle, es, &status.changes).ok()
                                 });
                             let _ = app_handle.emit(

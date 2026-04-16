@@ -41,19 +41,18 @@ export function useRollback() {
             if (finalResult?.evolveState) {
               useWidgetStore.getState().setEvolveState(finalResult.evolveState);
             }
-            await findChangeMap();
           },
         });
-      } else {
-        useWidgetStore.getState().setProcessing(false);
       }
+      await findChangeMap();
+      useWidgetStore.getState().setProcessing(false);
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
       useWidgetStore.getState().setError(msg);
       useWidgetStore.getState().appendLog(`✗ Error: ${msg}\n`);
       useWidgetStore.getState().setProcessing(false);
     }
-  }, [triggerRebuild]);
+  }, [triggerRebuild, findChangeMap]);
 
   return { handleRollback };
 }
