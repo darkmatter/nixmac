@@ -1,8 +1,9 @@
 use super::utils::truncate_error;
 use anyhow::{anyhow, Result};
+use ignore::gitignore::Gitignore;
 use log::info;
 use serde_json::Value;
-use std::path::{Component, Path};
+use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 
 // Maximum number of rg search results to return.
@@ -13,6 +14,7 @@ pub fn execute_search_code(
     config_dir: &str,
     pattern: &str,
     file_pattern: Option<&str>,
+    gitignore: Option<&Gitignore>,
 ) -> Result<String> {
     info!("Searching for pattern: {}", pattern);
 
@@ -57,7 +59,7 @@ pub fn execute_search_code(
         Ok(out) => {
             let status = out.status;
             if status.success() {
-                let formatted = format_rg_json_matches(&out.stdout);
+                let formatted = format_rg_json_matches(&out.stdout, gitignore);
                 if formatted.is_empty() {
                     Ok("No matches found.".to_string())
                 } else {
@@ -99,12 +101,17 @@ pub fn execute_search_code(
                 .current_dir(config_dir)
                 .output()?;
             let stdout = String::from_utf8_lossy(&output.stdout);
-            Ok(truncate_error(&stdout, 8000))
+            let filtered = filter_grep_matches(&stdout, gitignore);
+            if filtered.trim().is_empty() {
+                Ok("No matches found.".to_string())
+            } else {
+                Ok(truncate_error(&filtered, 8000))
+            }
         }
     }
 }
 
-fn format_rg_json_matches(stdout: &[u8]) -> String {
+fn format_rg_json_matches(stdout: &[u8], gitignore: Option<&Gitignore>) -> String {
     let mut lines: Vec<String> = Vec::new();
 
     for json_line in String::from_utf8_lossy(stdout).lines() {
@@ -126,6 +133,10 @@ fn format_rg_json_matches(stdout: &[u8]) -> String {
             continue;
         };
 
+        if is_ignored_match(path, false, gitignore) {
+            continue;
+        }
+
         let line_number = data["line_number"].as_u64().unwrap_or(0);
         let match_text = data["lines"]["text"]
             .as_str()
@@ -136,4 +147,139 @@ fn format_rg_json_matches(stdout: &[u8]) -> String {
     }
 
     lines.join("\n")
+}
+
+fn filter_grep_matches(stdout: &str, gitignore: Option<&Gitignore>) -> String {
+    let mut lines: Vec<String> = Vec::new();
+
+    for line in stdout.lines() {
+        if lines.len() >= MAX_SEARCH_RESULTS {
+            break;
+        }
+
+        let mut parts = line.rsplitn(3, ':');
+        let Some(_text) = parts.next() else {
+            continue;
+        };
+        let Some(line_no) = parts.next() else {
+            continue;
+        };
+        let Some(path) = parts.next() else {
+            continue;
+        };
+
+        if line_no.parse::<u64>().is_err() {
+            continue;
+        }
+
+        if is_ignored_match(path, false, gitignore) {
+            continue;
+        }
+
+        lines.push(line.to_string());
+    }
+
+    lines.join("\n")
+}
+
+fn is_ignored_match(path: &str, is_dir: bool, gitignore: Option<&Gitignore>) -> bool {
+    let rel = normalize_match_path(path);
+    super::gitignore::is_ignored_by_matcher(gitignore, &rel, is_dir)
+}
+
+fn normalize_match_path(path: &str) -> PathBuf {
+    let raw = Path::new(path);
+    let rel = if raw.is_absolute() {
+        raw.to_path_buf()
+    } else {
+        PathBuf::from(path.trim_start_matches("./"))
+    };
+
+    super::utils::normalize_relative_path(&rel).unwrap_or(rel)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{execute_search_code, filter_grep_matches};
+    use crate::evolve::gitignore::load_gitignore_matcher;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn search_code_skips_files_ignored_by_base_gitignore() {
+        let tmp = tempdir().expect("tempdir");
+        fs::write(tmp.path().join(".gitignore"), "secret.txt\n").expect("write .gitignore");
+        fs::write(tmp.path().join("visible.txt"), "NEEDLE").expect("write visible file");
+        fs::write(tmp.path().join("secret.txt"), "NEEDLE").expect("write secret file");
+        let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
+
+        let output = execute_search_code(
+            tmp.path().to_str().expect("utf-8 path"),
+            "NEEDLE",
+            None,
+            gitignore_matcher.as_ref(),
+        )
+        .expect("search should succeed");
+
+        assert!(output.contains("visible.txt"), "output: {output}");
+        assert!(!output.contains("secret.txt"), "output: {output}");
+    }
+
+    #[test]
+    fn search_code_respects_gitignore_even_with_file_pattern() {
+        let tmp = tempdir().expect("tempdir");
+        fs::write(tmp.path().join(".gitignore"), "secret.txt\n").expect("write .gitignore");
+        fs::write(tmp.path().join("secret.txt"), "NEEDLE").expect("write secret file");
+        let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
+
+        let output = execute_search_code(
+            tmp.path().to_str().expect("utf-8 path"),
+            "NEEDLE",
+            Some("secret.txt"),
+            gitignore_matcher.as_ref(),
+        )
+        .expect("search should succeed");
+
+        assert_eq!(output, "No matches found.");
+    }
+
+    #[test]
+    fn search_code_skips_files_ignored_by_subdir_gitignore() {
+        let tmp = tempdir().expect("tempdir");
+        fs::create_dir_all(tmp.path().join("nested")).expect("make nested dir");
+        fs::write(tmp.path().join("nested/.gitignore"), "secret.txt\n")
+            .expect("write nested .gitignore");
+        fs::write(tmp.path().join("nested/visible.txt"), "NEEDLE")
+            .expect("write nested visible file");
+        fs::write(tmp.path().join("nested/secret.txt"), "NEEDLE")
+            .expect("write nested secret file");
+        let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
+
+        let output = execute_search_code(
+            tmp.path().to_str().expect("utf-8 path"),
+            "NEEDLE",
+            None,
+            gitignore_matcher.as_ref(),
+        )
+        .expect("search should succeed");
+
+        assert!(output.contains("nested/visible.txt"), "output: {output}");
+        assert!(!output.contains("nested/secret.txt"), "output: {output}");
+    }
+
+    #[test]
+    fn grep_fallback_parser_handles_colons_in_filename() {
+        let stdout = "dir:with:colon/file.txt:12:match text\ndir/file.txt:not-a-line:ignored\n";
+
+        let output = filter_grep_matches(stdout, None);
+
+        assert!(
+            output.contains("dir:with:colon/file.txt:12:match text"),
+            "output: {output}"
+        );
+        assert!(
+            !output.contains("dir/file.txt:not-a-line:ignored"),
+            "output: {output}"
+        );
+    }
 }
