@@ -17,6 +17,8 @@
   #   runtime environment, document the reason and provide fallback behavior.
   # - Avoid exporting secrets in plaintext. Use a secrets manager or disk
   #   protected store; document how to inject secrets if necessary.
+  # - For sops-nix, export secret *file paths* (for example /run/secrets/...)
+  #   rather than secret values.
   #
   # Examples:
   # - LANG = "en_US.UTF-8";
@@ -29,5 +31,6 @@
     # Example placeholders (uncomment to use):
     # EDITOR = "vim";
     # LANG = "en_US.UTF-8";
+    # GITHUB_TOKEN_FILE = "/run/secrets/github-token";
   };
 }

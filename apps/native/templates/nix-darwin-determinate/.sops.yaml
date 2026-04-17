@@ -1,0 +1,22 @@
+# ============================================================
+# sops configuration template
+# ============================================================
+#
+# 1. Replace AGE_PUBLIC_KEY_PLACEHOLDER with your real age public key
+#    (format: age1...)
+# 2. Keep secrets in the ./secrets directory as YAML files
+# 3. Edit/create secrets with:
+#      sops secrets/<name>.yaml
+#
+# Age key lookup order used by nixmac:
+#   1. $SOPS_AGE_KEY_FILE (when set and the file exists)
+#   2. ~/Library/Application Support/sops/age/keys.txt
+#   3. ~/.config/sops/age/keys.txt
+#
+# If no key exists in any of the locations above, nixmac creates one at:
+#   ~/.config/sops/age/keys.txt
+#
+creation_rules:
+  - path_regex: ^secrets/.*\.yaml$
+    age:
+      - AGE_PUBLIC_KEY_PLACEHOLDER
