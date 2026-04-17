@@ -820,7 +820,7 @@ pub fn execute_tool(
         }
 
         "ensure_secret" => {
-            let result = execute_ensure_secret(base, args)?;
+            let result = execute_ensure_secret(base, args, gitignore_matcher)?;
             Ok(ToolResult::Continue(serde_json::to_string(&result)?))
         }
 

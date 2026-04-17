@@ -9,6 +9,7 @@ use crate::evolve::sops::{
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
 
 use anyhow::{anyhow, Result};
+use ignore::gitignore::Gitignore;
 use serde::{Deserialize, Serialize};
 use std::path::{Component, Path, PathBuf};
 
@@ -76,7 +77,11 @@ pub struct EnsureSecretResult {
 /// If `inject` config is provided, will also handle injecting the secret reference into the target file/attribute as specified by `inject.target`.
 /// Hopefully by bundling these things together we can make the most common case more reliable as well as save
 /// agent turns/tokens.
-pub fn execute_ensure_secret(base: &Path, args: &serde_json::Value) -> Result<EnsureSecretResult> {
+pub fn execute_ensure_secret(
+    base: &Path,
+    args: &serde_json::Value,
+    gitignore_matcher: Option<&Gitignore>,
+) -> Result<EnsureSecretResult> {
     let parsed: EnsureSecretArgs = serde_json::from_value(args.clone()).map_err(|error| {
         anyhow!(
             "ensure_secret: invalid arguments. Expected {{ name, inject?: {{ type, file, target }}, scaffold?: {{ type?, keys?, content? }} }} where inject.type is one of nixEnv|nix_env|nix-env|nixFile|nix_file|nix-file|serviceBinding|service_binding|service-binding and scaffold.type is one of raw|envFile|env_file|env-file|yamlMap|yaml_map|yaml-map. {}",
@@ -108,7 +113,7 @@ pub fn execute_ensure_secret(base: &Path, args: &serde_json::Value) -> Result<En
     edit_secret_blocking(base, &secret_path, &age.key_path)?;
 
     if let Some(inject) = parsed.inject {
-        inject_secret(base, &parsed.name, &secret_path, &inject)?;
+        inject_secret(base, &parsed.name, &secret_path, &inject, gitignore_matcher)?;
     }
 
     let runtime_path = runtime_secret_path(&parsed.name);
@@ -142,7 +147,13 @@ fn validate_secret_name(name: &str) -> Result<()> {
 
 /// Handle injecting the secret reference into the target file/attribute as specified by inject.target.
 /// Leverages the existing semantic edit machinery from `edit_nix_file` to ensure edits are applied in a consistent way.
-fn inject_secret(base: &Path, name: &str, secret_path: &str, inject: &SecretInject) -> Result<()> {
+fn inject_secret(
+    base: &Path,
+    name: &str,
+    secret_path: &str,
+    inject: &SecretInject,
+    gitignore_matcher: Option<&Gitignore>,
+) -> Result<()> {
     if inject.file.trim().is_empty() {
         return Err(anyhow!(
             "ensure_secret: inject.file must not be empty when inject is provided"
@@ -182,6 +193,7 @@ fn inject_secret(base: &Path, name: &str, secret_path: &str, inject: &SecretInje
                 attrs,
             },
         },
+        gitignore_matcher,
     )?;
 
     // Normalize user/model-provided targets into a safe consumer binding location.
@@ -199,6 +211,7 @@ fn inject_secret(base: &Path, name: &str, secret_path: &str, inject: &SecretInje
                 value: nix_expr_meta_value(&format!("config.sops.secrets.\"{}\".path", name)),
             },
         },
+        gitignore_matcher,
     )?;
 
     Ok(())
@@ -452,7 +465,7 @@ mod tests {
             "name": secret_name,
         });
 
-        let result = execute_ensure_secret(&base, &args)
+        let result = execute_ensure_secret(&base, &args, None)
             .expect("execute_ensure_secret should succeed after interactive edit is completed");
 
         if let Some(previous_home) = original_home {
