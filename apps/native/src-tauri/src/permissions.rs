@@ -59,6 +59,13 @@ impl Default for PermissionsState {
     }
 }
 
+/// Instructions shown for the Full Disk Access permission.
+///
+/// Must start with the /Applications move step: running nixmac from a mounted DMG
+/// triggers App Translocation, which makes FDA impossible to grant even after the
+/// toggle flips in System Settings.
+const FDA_INSTRUCTIONS: &str = "First make sure nixmac is in your Applications folder (not running from the install disk image). Then go to System Settings → Privacy & Security → Full Disk Access and add nixmac to the list.";
+
 /// Get the default permissions list with initial pending status
 fn get_default_permissions() -> Vec<Permission> {
     vec![
@@ -98,10 +105,7 @@ fn get_default_permissions() -> Vec<Permission> {
             required: true,
             can_request_programmatically: false,
             status: PermissionStatus::Pending,
-            instructions: Some(
-                "First make sure nixmac is in your Applications folder (not running from the install disk image). Then go to System Settings → Privacy & Security → Full Disk Access and add nixmac to the list."
-                    .to_string(),
-            ),
+            instructions: Some(FDA_INSTRUCTIONS.to_string()),
         },
     ]
 }
@@ -368,10 +372,7 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
                 required: false,
                 can_request_programmatically: false,
                 status: check_full_disk_access(),
-                instructions: Some(
-                    "First make sure nixmac is in your Applications folder (not running from the install disk image). Then go to System Settings → Privacy & Security → Full Disk Access and add nixmac to the list."
-                        .to_string(),
-                ),
+                instructions: Some(FDA_INSTRUCTIONS.to_string()),
             })
         }
         _ => Err(anyhow::anyhow!("Unknown permission: {}", permission_id)),

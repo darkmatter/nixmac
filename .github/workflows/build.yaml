@@ -189,22 +189,27 @@ jobs:
           MOUNT_POINT="$RUNNER_TEMP/dmg-mount"
           mkdir -p "$MOUNT_POINT"
 
+          # Headroom above the signed app's on-disk size when growing the RW DMG.
+          PADDING_KB=$((50 * 1024))
+          # Cap on transient `hdiutil detach` retries before falling back to -force.
+          MAX_DETACH_ATTEMPTS=5
+
           # Detach with retries. Writes may still be flushing after rsync, and
           # CI runners occasionally hold file handles briefly after process
           # exit. Match Tauri's generated create-dmg helper pattern instead of
           # using -force unconditionally.
           detach_with_retry() {
             local mount="$1"
-            for i in 1 2 3 4 5; do
+            for ((i=1; i<=MAX_DETACH_ATTEMPTS; i++)); do
               if hdiutil detach "$mount"; then
                 return 0
               fi
-              if [ "$i" -lt 5 ]; then
-                echo "detach of $mount failed, retry $i/5 in 2s..."
+              if [ "$i" -lt "$MAX_DETACH_ATTEMPTS" ]; then
+                echo "detach of $mount failed, retry $i/$MAX_DETACH_ATTEMPTS in 2s..."
                 sleep 2
               fi
             done
-            echo "WARNING: all 5 detach attempts failed for $mount, forcing..."
+            echo "WARNING: all $MAX_DETACH_ATTEMPTS detach attempts failed for $mount, forcing..."
             hdiutil detach "$mount" -force
           }
 
@@ -215,13 +220,13 @@ jobs:
           # needed. `hdiutil resize -size` is an exact target (not grow-only),
           # so a fixed cap could attempt to shrink larger images in the future.
           # Compute required size from the signed app's on-disk footprint plus
-          # a 50 MB padding buffer, and only resize if the current image is
+          # the PADDING_KB buffer, and only resize if the current image is
           # smaller than required.
           APP_SIZE_KB=$(du -sk "$APP_PATH" | awk '{print $1}')
-          REQUIRED_KB=$((APP_SIZE_KB + 51200))
+          REQUIRED_KB=$((APP_SIZE_KB + PADDING_KB))
           CURRENT_KB=$(du -k "$RW_DMG" | awk '{print $1}')
           if [ "$REQUIRED_KB" -gt "$CURRENT_KB" ]; then
-            echo "Growing RW DMG from ${CURRENT_KB}KB to ${REQUIRED_KB}KB (app ${APP_SIZE_KB}KB + 50MB headroom)..."
+            echo "Growing RW DMG from ${CURRENT_KB}KB to ${REQUIRED_KB}KB (app ${APP_SIZE_KB}KB + ${PADDING_KB}KB headroom)..."
             hdiutil resize -size "${REQUIRED_KB}k" "$RW_DMG"
           else
             echo "RW DMG already has enough headroom (${CURRENT_KB}KB >= ${REQUIRED_KB}KB required), skipping resize."
@@ -306,12 +311,28 @@ jobs:
           name: nixmac-macos-app
           path: target/release/bundle/macos/*.app
           if-no-files-found: warn
+      # Classify the current tag as a disposable `-test.N` tag or a real release.
+      # A disposable tag ends with `-test.<digits>` (e.g. `v0.0.0-dmg-swap-test.1`)
+      # and skips the release/R2 publish steps below. This is stricter than the
+      # previous `contains(..., '-test.')` gate, which matched any occurrence
+      # of the substring anywhere in the tag.
+      - name: Detect test tag
+        id: tag-check
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          TAG="${{ github.ref_name }}"
+          if [[ "$TAG" =~ -test\.[0-9]+$ ]]; then
+            echo "is_test=true" >> "$GITHUB_OUTPUT"
+            echo "Test tag detected: $TAG — release publish + R2 upload will be skipped."
+          else
+            echo "is_test=false" >> "$GITHUB_OUTPUT"
+          fi
       # Create GitHub Release for tags.
       # Skipped for test tags matching `-test.N` so we can exercise the full
       # signing/notarization + DMG swap path on a disposable tag without
       # publishing a public release.
       - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-test.')
+        if: startsWith(github.ref, 'refs/tags/') && steps.tag-check.outputs.is_test != 'true'
         uses: softprops/action-gh-release@v2
         with:
           draft: false
@@ -325,7 +346,7 @@ jobs:
       # signing/notarization + DMG swap path on a disposable tag without
       # overwriting latest.json on the updater CDN.
       - name: Upload to R2
-        if: startsWith(github.ref, 'refs/tags/') && !contains(github.ref_name, '-test.')
+        if: startsWith(github.ref, 'refs/tags/') && steps.tag-check.outputs.is_test != 'true'
         shell: 'sops exec-env .secrets.enc.yaml "bash -e {0}"'
         env:
           AWS_DEFAULT_REGION: auto
