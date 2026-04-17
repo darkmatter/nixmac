@@ -1,7 +1,9 @@
 // Builds a picture of the config_dir for the evolve provider to use as context.
 // This is used to DRAMATICALLY cut down on the amount of file system exploration
 // that the agent needs to do using the `list_files` tool.
+use super::gitignore::{is_ignored_by_matcher, load_gitignore_matcher};
 use anyhow::{Context, Result};
+use ignore::gitignore::Gitignore;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -56,21 +58,33 @@ pub fn format_config_dir_context_with_max_depth(
         ));
     }
 
+    let gitignore = load_gitignore_matcher(root)?;
     let mut output = String::from("CONFIG_DIR/\n");
     let mut rendered_entries = 0usize;
-    render_dir(root, "", 0, max_depth, &mut output, &mut rendered_entries)?;
+    render_dir(
+        root,
+        root,
+        gitignore.as_ref(),
+        "",
+        0,
+        max_depth,
+        &mut output,
+        &mut rendered_entries,
+    )?;
     Ok(output.trim_end().to_string())
 }
 
 fn render_dir(
+    root: &Path,
     dir: &Path,
+    gitignore: Option<&Gitignore>,
     prefix: &str,
     depth: usize,
     max_depth: usize,
     output: &mut String,
     rendered_entries: &mut usize,
 ) -> Result<()> {
-    let mut entries = collect_filtered_entries(dir)?;
+    let mut entries = collect_filtered_entries(root, dir, gitignore)?;
 
     entries.sort_by(|a, b| a.name.cmp(&b.name));
 
@@ -107,7 +121,9 @@ fn render_dir(
                 format!("{}│   ", prefix)
             };
             render_dir(
+                root,
                 &entry.path,
+                gitignore,
                 &child_prefix,
                 depth + 1,
                 max_depth,
@@ -120,7 +136,11 @@ fn render_dir(
     Ok(())
 }
 
-fn collect_filtered_entries(dir: &Path) -> Result<Vec<EntryView>> {
+fn collect_filtered_entries(
+    root: &Path,
+    dir: &Path,
+    gitignore: Option<&Gitignore>,
+) -> Result<Vec<EntryView>> {
     let mut out = Vec::new();
     for entry in
         fs::read_dir(dir).with_context(|| format!("failed to read directory: {}", dir.display()))?
@@ -131,18 +151,27 @@ fn collect_filtered_entries(dir: &Path) -> Result<Vec<EntryView>> {
             .file_type()
             .with_context(|| format!("failed to read file type for {}", entry.path().display()))?;
         let name = entry.file_name().to_string_lossy().to_string();
+        let path = entry.path();
+
+        let relative = path
+            .strip_prefix(root)
+            .with_context(|| format!("failed to strip root prefix from {}", path.display()))?;
 
         if should_skip_name(&name) {
             continue;
         }
 
-        if !file_type.is_dir() && !is_allowed_file(&name, &entry.path()) {
+        if is_ignored_by_matcher(gitignore, relative, file_type.is_dir()) {
+            continue;
+        }
+
+        if !file_type.is_dir() && !is_allowed_file(&name, &path) {
             continue;
         }
 
         out.push(EntryView {
             name,
-            path: entry.path(),
+            path,
             is_dir: file_type.is_dir(),
         });
     }
@@ -172,6 +201,7 @@ fn is_allowed_file(name: &str, path: &Path) -> bool {
 mod tests {
     use super::*;
     use std::path::Path;
+    use tempfile::tempdir;
 
     #[test]
     fn prints_config_dir_context_for_inspection() -> Result<()> {
@@ -193,6 +223,36 @@ mod tests {
             context.starts_with("CONFIG_DIR/"),
             "context should start with CONFIG_DIR/"
         );
+        Ok(())
+    }
+
+    #[test]
+    fn excludes_files_ignored_by_root_gitignore() -> Result<()> {
+        let tmp = tempdir()?;
+        fs::write(tmp.path().join(".gitignore"), "secret.txt\n")?;
+        fs::write(tmp.path().join("visible.txt"), "hello")?;
+        fs::write(tmp.path().join("secret.txt"), "hidden")?;
+
+        let context = format_config_dir_context(tmp.path().to_str().context("utf-8 path")?)?;
+
+        assert!(context.contains("visible.txt"), "context: {context}");
+        assert!(!context.contains("secret.txt"), "context: {context}");
+        Ok(())
+    }
+
+    #[test]
+    fn excludes_files_ignored_by_subdir_gitignore() -> Result<()> {
+        let tmp = tempdir()?;
+        fs::create_dir_all(tmp.path().join("nested"))?;
+        fs::write(tmp.path().join("nested/.gitignore"), "secret.txt\n")?;
+        fs::write(tmp.path().join("nested/visible.txt"), "hello")?;
+        fs::write(tmp.path().join("nested/secret.txt"), "hidden")?;
+
+        let context = format_config_dir_context(tmp.path().to_str().context("utf-8 path")?)?;
+
+        assert!(context.contains("nested/"), "context: {context}");
+        assert!(context.contains("visible.txt"), "context: {context}");
+        assert!(!context.contains("secret.txt"), "context: {context}");
         Ok(())
     }
 }
