@@ -17,6 +17,6 @@
 #   ~/.config/sops/age/keys.txt
 #
 creation_rules:
-  - path_regex: secrets/.*\.yaml
+  - path_regex: ^secrets/.*\.yaml$
     age:
       - AGE_PUBLIC_KEY_PLACEHOLDER
