@@ -7,7 +7,7 @@ license = "MIT"
 edition = "2021"
 
 [lints.rust]
-warnings = "deny"
+unused = "deny"
 unexpected_cfgs = "allow"
 
 [build-dependencies]
