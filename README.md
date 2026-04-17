@@ -166,6 +166,18 @@ nixmac evolve "enable Touch ID for sudo" \
 nixmac evolve "add Homebrew casks for Firefox and 1Password" --out result.json
 ```
 
+## Testing
+
+- Run `bun test` and verify all tests pass.
+
+- Run the app locally with `devenv up`, execute prompt(s) and evalutate results.
+
+- Run the repository's Rust tests from the project root:
+
+  - `cargo test --workspace` — run all workspace tests
+  - `cargo test -p <crate_name>` — run tests for a specific crate
+  - `cargo test --workspace --all-features` — run tests with all features
+
 ## Eval Suite
 
 The `apps/eval/` directory contains a reproducible benchmark harness for measuring evolution accuracy across models and providers, including support for vLLM and Ollama backends.
