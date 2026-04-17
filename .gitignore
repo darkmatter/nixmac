@@ -136,3 +136,6 @@ process-compose.yaml
 
 # bv (beads viewer) local config and caches
 .bv/
+
+# Local dev sops secrets (encrypted with local &dev key per .sops.yaml)
+/ops/secrets/secrets.dev.yaml

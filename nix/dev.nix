@@ -4,6 +4,19 @@
   config,
   ...
 }:
+let
+  # Run a command under `sops exec-env`, preferring a gitignored
+  # ops/secrets/secrets.dev.yaml (encrypted with the local &dev key per
+  # .sops.yaml's \.dev\.yaml rule) and falling back to prod
+  # ops/secrets/secrets.yaml. Selection runs at shell time, not Nix eval time.
+  sopsExecEnv = command: ''
+    SECRETS="${config.git.root}/ops/secrets/secrets.yaml"
+    if [ -f "${config.git.root}/ops/secrets/secrets.dev.yaml" ]; then
+      SECRETS="${config.git.root}/ops/secrets/secrets.dev.yaml"
+    fi
+    exec ${pkgs.sops}/bin/sops exec-env "$SECRETS" ${command}
+  '';
+in
 lib.mkIf (!(config.container.isBuilding or false)) {
   # Dev-only packages (excluded from container builds by conditional import).
   packages = [
@@ -85,7 +98,13 @@ lib.mkIf (!(config.container.isBuilding or false)) {
   languages.javascript.bun.install.enable = true;
   languages.javascript.bun.enable = true;
 
-  env.SOPS_KEYSERVICE = "tcp://100.116.189.36:5000";
+  # Secrets selection: prefer a gitignored ops/secrets/secrets.dev.yaml
+  # (encrypted with your local &dev key per .sops.yaml's \.dev\.yaml rule),
+  # else fall back to the prod-encrypted ops/secrets/secrets.yaml. The check
+  # runs at shell time inside exec, not at Nix eval — builtins.pathExists
+  # under pure flake eval can't verify files created after the devenv shell
+  # is built. To opt in to the remote sops keyservice, set
+  # env.SOPS_KEYSERVICE in your gitignored devenv.local.nix.
 
   # https://devenv.sh/processes/
   # Use process-compose as the process manager for the TUI
@@ -93,7 +112,7 @@ lib.mkIf (!(config.container.isBuilding or false)) {
 
   processes.tauri = {
     cwd = "${config.git.root}/apps/native";
-    exec = "${pkgs.sops}/bin/sops exec-env ${config.git.root}/ops/secrets/secrets.yaml '${config.git.root}/apps/native/src-tauri/scripts/tauri-dev.sh'";
+    exec = sopsExecEnv "'${config.git.root}/apps/native/src-tauri/scripts/tauri-dev.sh'";
   };
 
   # processes.server = {
@@ -112,7 +131,7 @@ lib.mkIf (!(config.container.isBuilding or false)) {
 
   processes.test = {
     cwd = "${config.git.root}/apps/native";
-    exec = "sops exec-env ${config.git.root}/ops/secrets/secrets.yaml 'bun run test:watch'";
+    exec = sopsExecEnv "'bun run test:watch'";
   };
 
   # Formatting
