@@ -10,6 +10,7 @@ use std::path::Path;
 
 use crate::evolve::file_ops::rewrite_existing_file_in_dir;
 use crate::evolve::types::FileEditAction;
+use ignore::gitignore::Gitignore;
 
 /// Internal marker key used in JSON edit payloads to request a raw Nix path literal.
 ///
@@ -258,8 +259,17 @@ fn render_nix_expression_literal(
 }
 
 /// Apply a semantic file edit to the filesystem, with Nix-aware handling for specific edit types.
-pub fn apply_semantic_edit(base: &Path, edit: &SemanticFileEdit) -> anyhow::Result<()> {
-    rewrite_existing_file_in_dir(base, &edit.path, "apply semantic nix edit", |content| {
+pub fn apply_semantic_edit(
+    base: &Path,
+    edit: &SemanticFileEdit,
+    gitignore_matcher: Option<&Gitignore>,
+) -> anyhow::Result<()> {
+    rewrite_existing_file_in_dir(
+        base,
+        &edit.path,
+        "apply semantic nix edit",
+        gitignore_matcher,
+        |content| {
         info!(
             "apply_semantic_edit: path={} | action={:?}",
             edit.path, edit.action
@@ -283,7 +293,8 @@ pub fn apply_semantic_edit(base: &Path, edit: &SemanticFileEdit) -> anyhow::Resu
                 set_attrs(content, path, attrs)
             }
         }
-    })?;
+    },
+    )?;
 
     Ok(())
 }

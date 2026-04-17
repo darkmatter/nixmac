@@ -35,14 +35,6 @@ export function usePermissions() {
         } else {
           fdaStatus = backendFdaStatus;
         }
-        console.log(
-          "[permissions] FDA check — plugin:",
-          pluginGranted,
-          "backend:",
-          backendFdaStatus,
-          "→",
-          fdaStatus,
-        );
       } catch (e) {
         console.warn(
           "[permissions] Plugin FDA check failed – falling back to backend result:",

@@ -7,6 +7,7 @@ use crate::evolve::types::{FileEditAction, SemanticFileEdit};
 use super::file_ops::{
     apply_file_edits, ensure_path_under_base, join_in_dir, resolve_existing_path_in_dir,
 };
+use super::gitignore::is_ignored_by_matcher;
 use super::messages::Tool;
 use super::search_code::execute_search_code;
 use super::search_docs::{
@@ -14,8 +15,10 @@ use super::search_docs::{
 };
 use super::search_packages::execute_search_packages;
 use super::types::FileEdit;
+use super::utils::normalize_relative_path;
 
 use anyhow::{anyhow, Context, Result};
+use ignore::gitignore::Gitignore;
 use log::{debug, error, info};
 use std::path::{Component, Path};
 
@@ -478,6 +481,7 @@ pub fn execute_tool(
     host_attr: &str,
     name: &str,
     args: &serde_json::Value,
+    gitignore_matcher: Option<&Gitignore>,
 ) -> Result<ToolResult> {
     let base = Path::new(config_dir);
     match name {
@@ -502,6 +506,14 @@ pub fn execute_tool(
             let path = args["path"]
                 .as_str()
                 .ok_or_else(|| anyhow!("read_file: missing path"))?;
+            let normalized_rel = normalize_relative_path(Path::new(path))?;
+            if is_ignored_by_matcher(gitignore_matcher, &normalized_rel, false) {
+                return Err(anyhow!(
+                    "read_file: '{}' is ignored by .gitignore in config_dir",
+                    path
+                ));
+            }
+
             let full_path = resolve_existing_path_in_dir(base, path)?;
             info!("Reading file: {}", full_path.display());
             let content = std::fs::read_to_string(&full_path)
@@ -543,6 +555,10 @@ pub fn execute_tool(
                     if ignored_dirs.contains(&name.to_string_lossy().as_ref()) {
                         continue;
                     }
+                }
+
+                if is_ignored_by_matcher(gitignore_matcher, rel, false) {
+                    continue;
                 }
 
                 files.push(rel.to_string_lossy().to_string());
@@ -587,6 +603,7 @@ pub fn execute_tool(
                     search: search.to_string(),
                     replace: replace.to_string(),
                 },
+                gitignore_matcher,
             )
             .with_context(|| {
                 format!(
@@ -721,6 +738,7 @@ pub fn execute_tool(
                     path: path.to_string(),
                     action: action.clone(),
                 },
+                gitignore_matcher,
             )?;
 
             Ok(ToolResult::EditSemantic(SemanticFileEdit {
@@ -766,7 +784,7 @@ pub fn execute_tool(
                 .as_str()
                 .ok_or_else(|| anyhow!("search_code: missing pattern"))?;
             let file_pattern = args["file_pattern"].as_str();
-            let output = execute_search_code(config_dir, pattern, file_pattern)?;
+            let output = execute_search_code(config_dir, pattern, file_pattern, gitignore_matcher)?;
             Ok(ToolResult::Continue(output))
         }
 
@@ -853,7 +871,11 @@ fn truncate_for_log(s: &str, max_len: usize) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::is_editing_tool;
+    use super::{execute_tool, is_editing_tool, ToolResult};
+    use crate::evolve::gitignore::load_gitignore_matcher;
+    use serde_json::json;
+    use std::fs;
+    use tempfile::tempdir;
 
     #[test]
     fn returns_true_for_editing_tools() {
@@ -869,5 +891,165 @@ mod tests {
         assert!(!is_editing_tool("build_check"));
         assert!(!is_editing_tool("done"));
         assert!(!is_editing_tool(""));
+    }
+
+    #[test]
+    fn read_file_rejects_base_gitignored_files() {
+        let tmp = tempdir().expect("tempdir");
+        fs::write(tmp.path().join(".gitignore"), "secret.txt\n").expect("write .gitignore");
+        fs::write(tmp.path().join("secret.txt"), "top secret").expect("write secret file");
+        let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
+
+        let result = execute_tool(
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "read_file",
+            &json!({ "path": "secret.txt" }),
+            gitignore_matcher.as_ref(),
+        );
+
+        let err = result.expect_err("ignored file should be rejected");
+        assert!(
+            err.to_string().contains("ignored by .gitignore"),
+            "unexpected error: {err:#}"
+        );
+    }
+
+    #[test]
+    fn read_file_rejects_subdir_gitignored_files() {
+        let tmp = tempdir().expect("tempdir");
+        fs::create_dir_all(tmp.path().join("nested")).expect("make nested dir");
+        fs::write(tmp.path().join("nested/.gitignore"), "secret.txt\n")
+            .expect("write nested .gitignore");
+        fs::write(tmp.path().join("nested/secret.txt"), "top secret")
+            .expect("write nested secret file");
+        let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
+
+        let result = execute_tool(
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "read_file",
+            &json!({ "path": "nested/secret.txt" }),
+            gitignore_matcher.as_ref(),
+        );
+
+        let err = result.expect_err("nested gitignored file should be rejected");
+        assert!(
+            err.to_string().contains("ignored by .gitignore"),
+            "unexpected error: {err:#}"
+        );
+    }
+
+    #[test]
+    fn list_files_skips_base_gitignored_files() {
+        let tmp = tempdir().expect("tempdir");
+        fs::write(tmp.path().join(".gitignore"), "secret.txt\nignored-dir/\n")
+            .expect("write .gitignore");
+        fs::write(tmp.path().join("visible.txt"), "visible").expect("write visible file");
+        fs::write(tmp.path().join("secret.txt"), "secret").expect("write secret file");
+        fs::create_dir_all(tmp.path().join("ignored-dir")).expect("make ignored dir");
+        fs::write(tmp.path().join("ignored-dir/file.txt"), "ignored").expect("write ignored file");
+        let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
+
+        let result = execute_tool(
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "list_files",
+            &json!({ "pattern": "**/*.txt" }),
+            gitignore_matcher.as_ref(),
+        )
+        .expect("list_files should succeed");
+
+        let ToolResult::Continue(output) = result else {
+            panic!("expected ToolResult::Continue");
+        };
+
+        assert!(output.contains("visible.txt"), "output: {output}");
+        assert!(!output.contains("secret.txt"), "output: {output}");
+        assert!(!output.contains("ignored-dir/file.txt"), "output: {output}");
+    }
+
+    #[test]
+    fn edit_file_rejects_base_gitignored_paths() {
+        let tmp = tempdir().expect("tempdir");
+        fs::write(tmp.path().join(".gitignore"), "secret.txt\n").expect("write .gitignore");
+        let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
+
+        let result = execute_tool(
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_file",
+            &json!({
+                "path": "secret.txt",
+                "search": "",
+                "replace": "hello"
+            }),
+            gitignore_matcher.as_ref(),
+        );
+
+        let err = result.expect_err("edit_file should reject gitignored paths");
+        let err_chain = format!("{err:#}");
+        assert!(
+            err_chain.contains("ignored by .gitignore"),
+            "unexpected error: {err:#}"
+        );
+    }
+
+    #[test]
+    fn edit_nix_file_rejects_base_gitignored_paths() {
+        let tmp = tempdir().expect("tempdir");
+        fs::write(tmp.path().join(".gitignore"), "ignored.nix\n").expect("write .gitignore");
+        fs::write(tmp.path().join("ignored.nix"), "{ ... }: { }\n").expect("write nix file");
+        let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
+
+        let result = execute_tool(
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "path": "ignored.nix",
+                "action": {
+                    "set": {
+                        "path": "services.tailscale.enable",
+                        "value": true
+                    }
+                }
+            }),
+            gitignore_matcher.as_ref(),
+        );
+
+        let err = result.expect_err("edit_nix_file should reject gitignored paths");
+        assert!(
+            err.to_string().contains("ignored by .gitignore"),
+            "unexpected error: {err:#}"
+        );
+    }
+
+    #[test]
+    fn edit_file_rejects_subdir_gitignored_paths() {
+        let tmp = tempdir().expect("tempdir");
+        fs::create_dir_all(tmp.path().join("nested")).expect("make nested dir");
+        fs::write(tmp.path().join("nested/.gitignore"), "secret.txt\n")
+            .expect("write nested .gitignore");
+        let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
+
+        let result = execute_tool(
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_file",
+            &json!({
+                "path": "nested/secret.txt",
+                "search": "",
+                "replace": "hello"
+            }),
+            gitignore_matcher.as_ref(),
+        );
+
+        let err = result.expect_err("edit_file should reject nested gitignored paths");
+        let err_chain = format!("{err:#}");
+        assert!(
+            err_chain.contains("ignored by .gitignore"),
+            "unexpected error: {err:#}"
+        );
     }
 }

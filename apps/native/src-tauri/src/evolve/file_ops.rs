@@ -5,7 +5,10 @@
 //!
 //! Uses OpenAI function calling to generate structured file edits.
 
-use std::path::{Component, Path, PathBuf};
+use super::gitignore::is_ignored_by_matcher;
+use super::utils::normalize_relative_path;
+use ignore::gitignore::Gitignore;
+use std::path::{Path, PathBuf};
 
 use anyhow::Context;
 use log::debug;
@@ -15,34 +18,7 @@ const PATH_SCOPE_ERROR_CODE: &str = "E_PATH_OUTSIDE_CONFIG_DIR";
 /// Join a relative path into `base`, rejecting absolute paths and any path
 /// that would escape `base` using `..` components.
 pub(crate) fn join_in_dir(base: &Path, rel: &str) -> anyhow::Result<PathBuf> {
-    let rel_path = Path::new(rel);
-
-    if rel_path.is_absolute() {
-        return Err(anyhow::anyhow!("Absolute paths are not allowed"));
-    }
-
-    // Build a normalized relative path while validating components. This
-    // prevents inputs like `a/../b` from leaving `..` components present
-    // and avoids creating unnecessary intermediate directories.
-    // In other words, base="base" and rel="a/../b" will yield "base/b", not "base/a/../b".
-    let mut normalized = PathBuf::new();
-    for comp in rel_path.components() {
-        match comp {
-            Component::Normal(s) => normalized.push(s),
-            Component::CurDir => {}
-            Component::ParentDir => {
-                if !normalized.pop() {
-                    return Err(anyhow::anyhow!("Path escapes the config directory"));
-                }
-            }
-            Component::Prefix(_) | Component::RootDir => {
-                return Err(anyhow::anyhow!(
-                    "Path prefixes or root components are not allowed in relative paths"
-                ));
-            }
-        }
-    }
-
+    let normalized = normalize_relative_path(Path::new(rel))?;
     Ok(base.join(normalized))
 }
 
@@ -115,11 +91,13 @@ pub(crate) fn rewrite_existing_file_in_dir<F>(
     base: &Path,
     rel: &str,
     operation: &str,
+    gitignore_matcher: Option<&Gitignore>,
     edit: F,
 ) -> anyhow::Result<()>
 where
     F: FnOnce(&str) -> anyhow::Result<String>,
 {
+    reject_gitignored_edit_path(base, rel, operation, gitignore_matcher)?;
     let full_path = resolve_existing_path_in_dir(base, rel)?;
     let fail = |kind: &str| format!("Failed to {} {} for {}", kind, rel, operation);
 
@@ -391,9 +369,13 @@ fn validate_file_content(file_path: &str, content: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Apply an evolution's edits to the filesystem.
-///
-pub fn apply_file_edits(base: &Path, edit: &super::types::FileEdit) -> anyhow::Result<()> {
+pub fn apply_file_edits(
+    base: &Path,
+    edit: &super::types::FileEdit,
+    gitignore_matcher: Option<&Gitignore>,
+) -> anyhow::Result<()> {
+    reject_gitignored_edit_path(base, &edit.path, "apply file edit", gitignore_matcher)?;
+
     if edit.search.is_empty() {
         // Empty search means full-file replace. If the file already exists,
         // treat this as an existing-file rewrite (not a create path).
@@ -422,28 +404,54 @@ pub fn apply_file_edits(base: &Path, edit: &super::types::FileEdit) -> anyhow::R
         validate_file_content(&edit.path, &edit.replace)?;
         std::fs::write(&full_path, &edit.replace)?;
     } else {
-        rewrite_existing_file_in_dir(base, &edit.path, "edit existing file", |content| {
-            // Verify search string exists and is unique.
-            let count = content.matches(&edit.search).count();
-            if count == 0 {
-                return Err(anyhow::anyhow!(
-                    "Search string not found in {}: {:?}",
-                    edit.path,
-                    edit.search.chars().take(50).collect::<String>()
-                ));
-            }
-            if count > 1 {
-                return Err(anyhow::anyhow!(
-                    "Search string found {} times in {} (must be unique)",
-                    count,
-                    edit.path
-                ));
-            }
+        rewrite_existing_file_in_dir(
+            base,
+            &edit.path,
+            "edit existing file",
+            gitignore_matcher,
+            |content| {
+                // Verify search string exists and is unique.
+                let count = content.matches(&edit.search).count();
+                if count == 0 {
+                    return Err(anyhow::anyhow!(
+                        "Search string not found in {}: {:?}",
+                        edit.path,
+                        edit.search.chars().take(50).collect::<String>()
+                    ));
+                }
+                if count > 1 {
+                    return Err(anyhow::anyhow!(
+                        "Search string found {} times in {} (must be unique)",
+                        count,
+                        edit.path
+                    ));
+                }
 
-            let new_content = content.replace(&edit.search, &edit.replace);
-            validate_file_content(&edit.path, &new_content)?;
-            Ok(new_content)
-        })?;
+                let new_content = content.replace(&edit.search, &edit.replace);
+                validate_file_content(&edit.path, &new_content)?;
+                Ok(new_content)
+            },
+        )?;
+    }
+
+    Ok(())
+}
+
+fn reject_gitignored_edit_path(
+    _base: &Path,
+    rel: &str,
+    operation: &str,
+    gitignore_matcher: Option<&Gitignore>,
+) -> anyhow::Result<()> {
+    let normalized_rel = normalize_relative_path(Path::new(rel))?;
+    let is_ignored = is_ignored_by_matcher(gitignore_matcher, &normalized_rel, false);
+
+    if is_ignored {
+        return Err(anyhow::anyhow!(
+            "{}: '{}' is ignored by .gitignore in config_dir; refusing to edit",
+            operation,
+            rel
+        ));
     }
 
     Ok(())
@@ -451,7 +459,8 @@ pub fn apply_file_edits(base: &Path, edit: &super::types::FileEdit) -> anyhow::R
 
 #[cfg(test)]
 mod tests {
-    use super::apply_file_edits;
+    use super::{apply_file_edits, rewrite_existing_file_in_dir};
+    use crate::evolve::gitignore::load_gitignore_matcher;
     use crate::evolve::types::FileEdit;
     use std::fs;
 
@@ -468,7 +477,7 @@ mod tests {
             replace: "new".to_string(),
         };
 
-        apply_file_edits(base, &edit).expect("apply edit");
+        apply_file_edits(base, &edit, None).expect("apply edit");
 
         let updated = fs::read_to_string(&file_path).expect("read updated file");
         assert_eq!(updated, "new");
@@ -486,7 +495,7 @@ mod tests {
             replace: "{}\n".to_string(),
         };
 
-        apply_file_edits(base, &edit).expect("apply create edit");
+        apply_file_edits(base, &edit, None).expect("apply create edit");
 
         let created = fs::read_to_string(&file_path).expect("read created file");
         assert_eq!(created, "{}\n");
@@ -505,7 +514,7 @@ mod tests {
             replace: "new".to_string(),
         };
 
-        let err = apply_file_edits(base, &edit).expect_err("expected directory-path error");
+        let err = apply_file_edits(base, &edit, None).expect_err("expected directory-path error");
         assert!(err.to_string().contains("Path is a directory, not a file"));
     }
 
@@ -521,8 +530,46 @@ mod tests {
             replace: "new".to_string(),
         };
 
-        let err = apply_file_edits(base, &edit).expect_err("expected parent-not-dir error");
+        let err = apply_file_edits(base, &edit, None).expect_err("expected parent-not-dir error");
         assert!(err.to_string().contains("Parent path is not a directory"));
+    }
+
+    #[test]
+    fn apply_file_edits_rejects_gitignored_target() {
+        let temp = tempfile::tempdir().expect("create temp dir");
+        let base = temp.path();
+        fs::write(base.join(".gitignore"), "secret.txt\n").expect("write .gitignore");
+        let gitignore_matcher = load_gitignore_matcher(base).expect("load matcher");
+
+        let edit = FileEdit {
+            path: "secret.txt".to_string(),
+            search: "".to_string(),
+            replace: "new".to_string(),
+        };
+
+        let err = apply_file_edits(base, &edit, gitignore_matcher.as_ref())
+            .expect_err("expected gitignored-path error");
+        assert!(err.to_string().contains("ignored by .gitignore"));
+    }
+
+    #[test]
+    fn rewrite_existing_file_in_dir_rejects_gitignored_target() {
+        let temp = tempfile::tempdir().expect("create temp dir");
+        let base = temp.path();
+        fs::write(base.join(".gitignore"), "secret.txt\n").expect("write .gitignore");
+        fs::write(base.join("secret.txt"), "old").expect("seed file");
+        let gitignore_matcher = load_gitignore_matcher(base).expect("load matcher");
+
+        let err =
+            rewrite_existing_file_in_dir(
+                base,
+                "secret.txt",
+                "test rewrite",
+                gitignore_matcher.as_ref(),
+                |content| Ok(content.replace("old", "new")),
+            )
+            .expect_err("expected gitignored-path error");
+        assert!(err.to_string().contains("ignored by .gitignore"));
     }
 
     #[test]
@@ -705,7 +752,7 @@ key: "unclosed string value
             replace: "{ broken".to_string(), // Unmatched brace
         };
 
-        let err = apply_file_edits(base, &edit).expect_err("should reject invalid nix");
+        let err = apply_file_edits(base, &edit, None).expect_err("should reject invalid nix");
         assert!(err.to_string().contains("Syntax error"));
         // Verify file was NOT written
         let content = fs::read_to_string(&file_path).expect("read file");
@@ -725,7 +772,7 @@ key: "unclosed string value
             replace: "key: [unclosed".to_string(), // Unmatched bracket
         };
 
-        let err = apply_file_edits(base, &edit).expect_err("should reject invalid yaml");
+        let err = apply_file_edits(base, &edit, None).expect_err("should reject invalid yaml");
         assert!(err.to_string().contains("Syntax error"));
         // Verify file was NOT written
         let content = fs::read_to_string(&file_path).expect("read file");
