@@ -15,7 +15,7 @@ in
 
     age = {
       keyFile =
-        if envAgeKeyFile != "" then
+        if envAgeKeyFile != "" && builtins.pathExists envAgeKeyFile then
           envAgeKeyFile
         else if builtins.pathExists macosAgeKeyFile then
           macosAgeKeyFile
