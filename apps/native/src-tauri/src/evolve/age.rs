@@ -66,6 +66,14 @@ fn find_existing_age_key_path(home: &Path) -> Option<PathBuf> {
 }
 
 fn resolve_age_key_path(home: &Path) -> PathBuf {
+    // If the user sets to a file that doesn't exist yet, we will
+    // attempt to create it at that path, so we should return that path instead of falling back to existing ones.
+    if let Some(path) = std::env::var_os(SOPS_AGE_KEY_FILE_ENV_VAR)
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+    {
+        return path;
+    }
     find_existing_age_key_path(home).unwrap_or_else(|| home.join(SOPS_AGE_KEYS_RELATIVE_PATH))
 }
 
@@ -229,5 +237,52 @@ mod tests {
         let resolved = resolve_age_key_path(&home);
 
         assert_eq!(resolved, home.join(SOPS_AGE_KEYS_RELATIVE_PATH));
+    }
+
+    #[test]
+    fn resolve_age_key_path_returns_env_var_path_even_when_file_does_not_exist() {
+        let _guard = env_lock().lock().expect("lock env var mutations");
+        let temp = tempfile::tempdir().expect("create tempdir");
+        let home = temp.path().join("home");
+
+        // Env var points at a file that has not been created yet.
+        let nonexistent = temp.path().join("will-be-created-by-keygen.txt");
+        assert!(!nonexistent.exists(), "precondition: file must not exist");
+
+        let _env = EnvVarGuard::set(Some(&nonexistent));
+        let resolved = resolve_age_key_path(&home);
+
+        assert_eq!(resolved, nonexistent);
+    }
+
+    #[test]
+    fn resolve_age_key_path_returns_env_var_path_when_file_exists() {
+        let _guard = env_lock().lock().expect("lock env var mutations");
+        let temp = tempfile::tempdir().expect("create tempdir");
+        let home = temp.path().join("home");
+
+        let env_key = temp.path().join("custom-keys.txt");
+        write_file(&env_key);
+
+        let _env = EnvVarGuard::set(Some(&env_key));
+        let resolved = resolve_age_key_path(&home);
+
+        assert_eq!(resolved, env_key);
+    }
+
+    #[test]
+    fn resolve_age_key_path_ignores_env_var_when_empty_and_falls_back() {
+        let _guard = env_lock().lock().expect("lock env var mutations");
+        let temp = tempfile::tempdir().expect("create tempdir");
+        let home = temp.path().join("home");
+
+        // Env var is empty; only the macOS path exists, so that should win.
+        let mac_key = home.join(MACOS_SOPS_AGE_KEYS_RELATIVE_PATH);
+        write_file(&mac_key);
+
+        let _env = EnvVarGuard::set_raw(Some(""));
+        let resolved = resolve_age_key_path(&home);
+
+        assert_eq!(resolved, mac_key);
     }
 }

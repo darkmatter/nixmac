@@ -1,6 +1,6 @@
 use crate::evolve::age::ensure_age_key;
 use crate::evolve::edit_nix_file::{
-    apply_semantic_edit, builtins_path_expression, nix_expr_meta_value,
+    apply_semantic_edit, nix_builtins_path_meta_value, nix_expr_meta_value,
 };
 use crate::evolve::file_ops::join_in_dir;
 use crate::evolve::sops::{
@@ -27,7 +27,6 @@ pub struct SecretScaffold {
     #[serde(rename = "type")]
     pub scaffold_type: Option<SecretScaffoldType>,
     pub keys: Option<Vec<String>>,
-    pub content: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -63,7 +62,7 @@ pub enum SecretInjectType {
     ServiceBinding,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EnsureSecretResult {
     pub name: String,
@@ -84,7 +83,7 @@ pub fn execute_ensure_secret(
 ) -> Result<EnsureSecretResult> {
     let parsed: EnsureSecretArgs = serde_json::from_value(args.clone()).map_err(|error| {
         anyhow!(
-            "ensure_secret: invalid arguments. Expected {{ name, inject?: {{ type, file, target }}, scaffold?: {{ type?, keys?, content? }} }} where inject.type is one of nixEnv|nix_env|nix-env|nixFile|nix_file|nix-file|serviceBinding|service_binding|service-binding and scaffold.type is one of raw|envFile|env_file|env-file|yamlMap|yaml_map|yaml-map. {}",
+            "ensure_secret: invalid arguments. Expected {{ name, inject?: {{ type, file, target }}, scaffold?: {{ type?, keys? }} }} where inject.type is one of nixEnv|nix_env|nix-env|nixFile|nix_file|nix-file|serviceBinding|service_binding|service-binding and scaffold.type is one of raw|envFile|env_file|env-file|yamlMap|yaml_map|yaml-map. {}",
             error
         )
     })?;
@@ -174,7 +173,7 @@ fn inject_secret(
     let mut attrs = serde_json::Map::new();
     attrs.insert(
         "sopsFile".to_string(),
-        nix_expr_meta_value(&builtins_path_expression(&sops_file_path)),
+        nix_builtins_path_meta_value(&sops_file_path),
     );
     attrs.insert(
         "path".to_string(),
@@ -367,16 +366,6 @@ fn render_initial_secret_content(scaffold: Option<&SecretScaffold>) -> String {
         return default();
     };
 
-    if let Some(content) = scaffold.content.as_ref().map(|value| value.trim()) {
-        if !content.is_empty() {
-            let mut rendered = content.to_string();
-            if !rendered.ends_with('\n') {
-                rendered.push('\n');
-            }
-            return rendered;
-        }
-    }
-
     let keys: Vec<String> = scaffold
         .keys
         .as_ref()
@@ -418,8 +407,7 @@ mod tests {
         execute_ensure_secret, fallback_binding_target, is_sops_secret_path,
         normalize_binding_target, secret_path_relative_to_target_file,
     };
-    use crate::evolve::edit_nix_file::builtins_path_expression;
-    use crate::evolve::edit_nix_file::nix_expr_meta_value;
+    use crate::evolve::edit_nix_file::{builtins_path_expression, nix_expr_meta_value};
     use serde_json::json;
     use std::process::Command;
 
@@ -579,7 +567,6 @@ mod tests {
                 "REDIS_URL".to_string(),
                 "JWT_SECRET".to_string(),
             ]),
-            content: None,
         };
 
         let rendered = super::render_initial_secret_content(Some(&scaffold));
@@ -590,15 +577,32 @@ mod tests {
     }
 
     #[test]
-    fn render_initial_secret_content_prefers_content_when_provided() {
+    fn render_initial_secret_content_renders_yaml_map_scaffold() {
         let scaffold = super::SecretScaffold {
             scaffold_type: Some(super::SecretScaffoldType::YamlMap),
-            keys: Some(vec!["IGNORED_KEY".to_string()]),
-            content: Some("DATABASE_URL: \"\"\nREDIS_URL: \"\"".to_string()),
+            keys: Some(vec!["DATABASE_URL".to_string(), "REDIS_URL".to_string()]),
         };
 
         let rendered = super::render_initial_secret_content(Some(&scaffold));
         assert_eq!(rendered, "DATABASE_URL: \"\"\nREDIS_URL: \"\"\n");
+    }
+
+    #[test]
+    fn deserialize_args_ignores_scaffold_content_field() {
+        let args = json!({
+            "name": "db-creds",
+            "scaffold": {
+                "type": "yaml_map",
+                "keys": ["DATABASE_URL"],
+                "content": "DATABASE_URL: \"should-not-be-used\""
+            }
+        });
+
+        let parsed: super::EnsureSecretArgs =
+            serde_json::from_value(args).expect("deserialize ensure_secret args");
+
+        let rendered = super::render_initial_secret_content(parsed.scaffold.as_ref());
+        assert_eq!(rendered, "DATABASE_URL: \"\"\n");
     }
 
     #[test]

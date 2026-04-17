@@ -1,7 +1,7 @@
 //! Tools used by AI
 
 use crate::evolve::edit_nix_file::apply_semantic_edit;
-use crate::evolve::ensure_secret::execute_ensure_secret;
+use crate::evolve::ensure_secret::{execute_ensure_secret, EnsureSecretResult};
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
 
 use super::file_ops::{
@@ -347,8 +347,8 @@ IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with
                          This tool ensures an age key exists, maintains SOPS config, creates/initializes an encrypted \
                          secret file under secrets/<name>.yaml, launches a blocking `sops <file>` editor session for \
                          user input, then optionally injects secret path wiring into Nix config. \
-                         You can optionally provide a `scaffold` to prefill initial plaintext before encryption/editor \
-                         (for example env-file keys or a raw YAML skeleton).".to_string(),
+                         You can optionally provide a `scaffold` to prefill non-sensitive placeholder structure \
+                         (for example env-file keys or YAML map keys) before the editor opens.".to_string(),
             parameters: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -383,16 +383,12 @@ IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with
                             "type": {
                                 "type": "string",
                                 "enum": ["raw", "raw_yaml", "raw-yaml", "envFile", "env_file", "env-file", "yamlMap", "yaml_map", "yaml-map"],
-                                "description": "Skeleton strategy. `env_file` renders value: | with KEY= lines. `yaml_map` renders KEY: \"\" entries. `raw` uses content as-is."
+                                "description": "Skeleton strategy. `env_file` renders value: | with KEY= lines. `yaml_map` renders KEY: \"\" entries. `raw` is accepted for backwards compatibility."
                             },
                             "keys": {
                                 "type": "array",
                                 "items": { "type": "string" },
                                 "description": "Optional key names used by env_file/yaml_map scaffold types"
-                            },
-                            "content": {
-                                "type": "string",
-                                "description": "Optional raw YAML to use verbatim as initial plaintext content"
                             }
                         },
                         "additionalProperties": false
@@ -468,6 +464,8 @@ pub enum ToolResult {
         thought: String,
     },
     EditSemantic(SemanticFileEdit),
+    /// A SOPS secret was created/updated (and possibly injected into a Nix file).
+    EnsureSecret(EnsureSecretResult),
     /// Agent wants to ask the user a question
     Question {
         question: String,
@@ -821,7 +819,7 @@ pub fn execute_tool(
 
         "ensure_secret" => {
             let result = execute_ensure_secret(base, args, gitignore_matcher)?;
-            Ok(ToolResult::Continue(serde_json::to_string(&result)?))
+            Ok(ToolResult::EnsureSecret(result))
         }
 
         "ask_user" => {

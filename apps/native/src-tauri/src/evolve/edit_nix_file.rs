@@ -24,6 +24,12 @@ pub(crate) const NIX_PATH_MARKER_KEY: &str = "__nixPath";
 /// (for example `ensure_secret`) when a scalar expression is required instead of a quoted string.
 pub(crate) const NIX_EXPR_MARKER_KEY: &str = "__nixExpr";
 
+/// Internal marker key used in JSON edit payloads to request a `builtins.path` expression.
+///
+/// This is narrower than `__nixExpr`: it only accepts a validated relative Nix path literal
+/// and renders it as `builtins.path { path = ...; }`.
+pub(crate) const NIX_BUILTINS_PATH_MARKER_KEY: &str = "__nixBuiltinsPath";
+
 #[allow(dead_code)]
 pub(crate) fn nix_path_meta_value(path: &str) -> serde_json::Value {
     let mut value = serde_json::Map::new();
@@ -44,9 +50,19 @@ pub(crate) fn nix_expr_meta_value(expression: &str) -> serde_json::Value {
     serde_json::Value::Object(value)
 }
 
-/// Helper to render a `builtins.path { path = ... }` expression for Nix.
-/// This is used by higher-level tools when they need to emit an expression
-/// that produces a path-of-file (absolute path) from a module-relative value.
+#[allow(dead_code)]
+pub(crate) fn nix_builtins_path_meta_value(path: &str) -> serde_json::Value {
+    let mut value = serde_json::Map::new();
+    value.insert(
+        NIX_BUILTINS_PATH_MARKER_KEY.to_string(),
+        serde_json::Value::String(path.to_string()),
+    );
+    serde_json::Value::Object(value)
+}
+
+/// Helper to render a `builtins.path { path = ...; }` expression for Nix.
+/// This is used when a module expects an absolute path value but the source path
+/// is relative to the edited file.
 pub(crate) fn builtins_path_expression(path: &str) -> String {
     format!("builtins.path {{ path = {}; }}", path)
 }
@@ -133,6 +149,10 @@ fn render_nix_value(value: &serde_json::Value) -> Result<String> {
                 return Ok(path_literal);
             }
 
+            if let Some(builtins_path) = render_nix_builtins_path_literal(map)? {
+                return Ok(builtins_path);
+            }
+
             if let Some(expression) = render_nix_expression_literal(map)? {
                 return Ok(expression);
             }
@@ -197,6 +217,52 @@ fn render_nix_path_literal(
     Ok(Some(path.to_string()))
 }
 
+fn render_nix_builtins_path_literal(
+    map: &serde_json::Map<String, serde_json::Value>,
+) -> Result<Option<String>> {
+    let Some(raw_path) = map.get(NIX_BUILTINS_PATH_MARKER_KEY) else {
+        return Ok(None);
+    };
+
+    if map.len() != 1 {
+        return Err(anyhow::anyhow!(
+            "Nix builtins.path marker object must only contain '{}'",
+            NIX_BUILTINS_PATH_MARKER_KEY
+        ));
+    }
+
+    let path = raw_path
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("'{}' must be a string", NIX_BUILTINS_PATH_MARKER_KEY))?;
+
+    if path.is_empty() {
+        return Err(anyhow::anyhow!(
+            "'{}' must not be empty",
+            NIX_BUILTINS_PATH_MARKER_KEY
+        ));
+    }
+
+    if path.starts_with('/') {
+        return Err(anyhow::anyhow!(
+            "'{}' must be a relative Nix path literal",
+            NIX_BUILTINS_PATH_MARKER_KEY
+        ));
+    }
+
+    let valid = path
+        .chars()
+        .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '/' | '.' | '_' | '-' | '+'));
+
+    if !valid {
+        return Err(anyhow::anyhow!(
+            "'{}' contains invalid characters for a builtins.path literal",
+            NIX_BUILTINS_PATH_MARKER_KEY
+        ));
+    }
+
+    Ok(Some(builtins_path_expression(path)))
+}
+
 /// Render a Nix expression from a JSON object with a specific marker key, allowing tools to pass raw Nix expressions in edits.
 /// This is intentionally restricted and should only be used by trusted internal tool flows, for reasons not the least of which
 /// is that it does not perform any validation or sanitization on the expression string, and it doesn't allow
@@ -226,27 +292,9 @@ fn render_nix_expression_literal(
         ));
     }
 
-    let valid = expression.chars().all(|ch| {
-        ch.is_ascii_alphanumeric()
-            || matches!(
-                ch,
-                '/' | '.'
-                    | '_'
-                    | '-'
-                    | '+'
-                    | '"'
-                    | '['
-                    | ']'
-                    | '('
-                    | ')'
-                    | ':'
-                    | '{'
-                    | '}'
-                    | ';'
-                    | '='
-                    | ' '
-            )
-    });
+    let valid = expression
+        .chars()
+        .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '.' | '_' | '-' | '"'));
 
     if !valid {
         return Err(anyhow::anyhow!(
@@ -270,30 +318,30 @@ pub fn apply_semantic_edit(
         "apply semantic nix edit",
         gitignore_matcher,
         |content| {
-        info!(
-            "apply_semantic_edit: path={} | action={:?}",
-            edit.path, edit.action
-        );
+            info!(
+                "apply_semantic_edit: path={} | action={:?}",
+                edit.path, edit.action
+            );
 
-        match &edit.action {
-            FileEditAction::Add { path, values } => {
-                info!("Action=Add path={} values={:?}", path, values);
-                add(content, path, values)
+            match &edit.action {
+                FileEditAction::Add { path, values } => {
+                    info!("Action=Add path={} values={:?}", path, values);
+                    add(content, path, values)
+                }
+                FileEditAction::Remove { path, values } => {
+                    info!("Action=Remove path={} values={:?}", path, values);
+                    remove(content, path, values)
+                }
+                FileEditAction::Set { path, value } => {
+                    info!("Action=Set path={} value={:?}", path, value);
+                    set_value(content, path, value)
+                }
+                FileEditAction::SetAttrs { path, attrs } => {
+                    info!("Action=SetAttrs path={} attrs_count={}", path, attrs.len());
+                    set_attrs(content, path, attrs)
+                }
             }
-            FileEditAction::Remove { path, values } => {
-                info!("Action=Remove path={} values={:?}", path, values);
-                remove(content, path, values)
-            }
-            FileEditAction::Set { path, value } => {
-                info!("Action=Set path={} value={:?}", path, value);
-                set_value(content, path, value)
-            }
-            FileEditAction::SetAttrs { path, attrs } => {
-                info!("Action=SetAttrs path={} attrs_count={}", path, attrs.len());
-                set_attrs(content, path, attrs)
-            }
-        }
-    },
+        },
     )?;
 
     Ok(())
@@ -994,6 +1042,29 @@ environment.systemPackages = with pkgs; [
         );
     }
 
+    #[test]
+    fn render_nix_value_accepts_builtins_path_marker() {
+        let rendered = render_nix_value(&nix_builtins_path_meta_value(
+            "../../secrets/ssh-private-key.yaml",
+        ))
+        .expect("render_nix_value should accept the builtins.path marker");
+
+        assert_eq!(
+            rendered,
+            "builtins.path { path = ../../secrets/ssh-private-key.yaml; }"
+        );
+    }
+
+    #[test]
+    fn render_nix_value_rejects_builtins_path_expression_via_nix_expr_marker() {
+        let err = render_nix_value(&nix_expr_meta_value(&builtins_path_expression(
+            "../../secrets/ssh-private-key.yaml",
+        )))
+        .expect_err("__nixExpr should remain restricted and reject builtins.path syntax");
+
+        assert!(err.to_string().contains(NIX_EXPR_MARKER_KEY));
+    }
+
     const DOCK_ATTRSET: &str = r#"{ config, pkgs, ... }:
 {
     system.defaults.dock = {
@@ -1148,19 +1219,21 @@ environment.systemPackages = with pkgs; [
     }
 
     #[test]
-    fn set_attrs_renders_builtins_path_expression() {
+    fn set_attrs_renders_builtins_path_expression_for_sops_file() {
         let mut attrs = serde_json::Map::new();
         attrs.insert(
             "sopsFile".to_string(),
-            nix_expr_meta_value("builtins.path{path=../../secrets/ssh-private-key.yaml;}"),
+            nix_builtins_path_meta_value("../../secrets/ssh-private-key.yaml"),
         );
 
         let edited = set_attrs(WITH_PKGS_EMPTY, "sops.secrets.\"ssh-private-key\"", &attrs)
-            .expect("set_attrs should render builtins.path expression");
+            .expect("set_attrs should render builtins.path expression for sopsFile");
 
         assert!(
-            edited.contains("sopsFile = builtins.path{path=../../secrets/ssh-private-key.yaml;};"),
-            "expected sopsFile to render as builtins.path expression"
+            edited.contains(
+                "sopsFile = builtins.path { path = ../../secrets/ssh-private-key.yaml; };"
+            ),
+            "expected sopsFile to render as a builtins.path expression"
         );
     }
 
