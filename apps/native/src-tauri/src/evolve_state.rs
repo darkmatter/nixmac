@@ -32,6 +32,10 @@ pub fn get<R: Runtime>(app: &AppHandle<R>) -> Result<EvolveState> {
 pub fn set<R: Runtime>(app: &AppHandle<R>, mut state: EvolveState) -> Result<EvolveState> {
     state.recompute_step();
 
+    let store = app.store(EVOLVE_STATE_PATH)?;
+    store.set(EVOLVE_STATE_KEY, serde_json::to_value(&state)?);
+    store.save()?;
+
     // Clear conversational thread memory whenever routing returns to Begin.
     // Doing this can prevent weird conversations where the model references past context
     // that is no longer relevant to the "new" prompt (as the UX looks like a "new chat" UX).
@@ -40,9 +44,6 @@ pub fn set<R: Runtime>(app: &AppHandle<R>, mut state: EvolveState) -> Result<Evo
     // is cleared but committable is still true).
     clear_chat_memory_if_begin(&state.step, || session_chat_memory_store().clear());
 
-    let store = app.store(EVOLVE_STATE_PATH)?;
-    store.set(EVOLVE_STATE_KEY, serde_json::to_value(&state)?);
-    store.save()?;
     Ok(state)
 }
 
