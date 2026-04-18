@@ -359,6 +359,50 @@ async function checkDebugStatements(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// 7. Docs-drift gate — behavior code changes need companion docs PR
+// ---------------------------------------------------------------------------
+
+const DOCS_SENSITIVE_PATHS = [
+  "apps/native/src-tauri/src/evolve/",
+  "apps/native/src-tauri/src/recovery_resolver.rs",
+  "apps/native/src-tauri/src/cli.rs",
+  "apps/native/src-tauri/src/darwin.rs",
+  "apps/native/src-tauri/src/nix.rs",
+  "apps/native/src-tauri/src/permissions.rs",
+  "apps/native/src-tauri/src/rollback.rs",
+  "apps/native/src-tauri/prompts/system.md",
+  "apps/native/templates/",
+];
+
+function checkDocsDrift(): void {
+  const allTouched = [...modified, ...created, ...deleted];
+  const touchesDocsSensitivePath = allTouched.some((file) =>
+    DOCS_SENSITIVE_PATHS.some((path) => file.startsWith(path)),
+  );
+
+  if (!touchesDocsSensitivePath) {
+    return;
+  }
+
+  const docsUpdated = body.includes("[x] Docs updated");
+  const noDocsNeeded = body.includes("[x] No docs update needed");
+
+  if (!docsUpdated && !noDocsNeeded) {
+    fail(
+      "This PR touches behavior-sensitive code that is documented in " +
+        "[darkmatter/nixmac-web](https://github.com/darkmatter/nixmac-web). " +
+        "Please either:\n" +
+        "- Open a companion docs PR and check **Docs updated** in the PR description, or\n" +
+        "- Check **No docs update needed** if the change doesn't affect user-facing behavior.",
+    );
+  } else if (docsUpdated) {
+    message("Docs companion PR linked — thank you.");
+  } else {
+    message("No docs update needed — acknowledged.");
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Run
 // ---------------------------------------------------------------------------
 
@@ -372,5 +416,6 @@ async function checkDebugStatements(): Promise<void> {
   checkLockfiles();
   flagInfraAndSecrets();
   reportCoverage();
+  checkDocsDrift();
   await checkDebugStatements();
 })();
