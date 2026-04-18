@@ -1,0 +1,12 @@
+# Behavior-sensitive paths that may require docs updates in darkmatter/nixmac-web.
+# When these paths change, a docs-aware reviewer must approve.
+
+/apps/native/src-tauri/src/evolve/              @fkb032
+/apps/native/src-tauri/src/recovery_resolver.rs @fkb032
+/apps/native/src-tauri/src/cli.rs               @fkb032
+/apps/native/src-tauri/src/darwin.rs             @fkb032
+/apps/native/src-tauri/src/nix.rs                @fkb032
+/apps/native/src-tauri/src/permissions.rs        @fkb032
+/apps/native/src-tauri/src/rollback.rs           @fkb032
+/apps/native/src-tauri/prompts/system.md         @fkb032
+/apps/native/templates/                          @fkb032

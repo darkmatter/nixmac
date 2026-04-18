@@ -340,9 +340,9 @@ fn validate_nix_syntax(content: &str, file_path: &str) -> anyhow::Result<()> {
 
 /// Validate basic syntax of a .yaml or .yml file using serde_yaml.
 fn validate_yaml_syntax(content: &str, file_path: &str) -> anyhow::Result<()> {
-    // Try to parse the YAML content. yaml_serde will catch syntax errors
+    // Try to parse the YAML content. serde_yaml will catch syntax errors
     // like unmatched quotes, braces, brackets, etc.
-    yaml_serde::from_str::<yaml_serde::Value>(content)
+    serde_yaml::from_str::<serde_yaml::Value>(content)
         .map_err(|e| anyhow::anyhow!("Syntax error in {}: {}", file_path, e))?;
 
     Ok(())
@@ -560,15 +560,14 @@ mod tests {
         fs::write(base.join("secret.txt"), "old").expect("seed file");
         let gitignore_matcher = load_gitignore_matcher(base).expect("load matcher");
 
-        let err =
-            rewrite_existing_file_in_dir(
-                base,
-                "secret.txt",
-                "test rewrite",
-                gitignore_matcher.as_ref(),
-                |content| Ok(content.replace("old", "new")),
-            )
-            .expect_err("expected gitignored-path error");
+        let err = rewrite_existing_file_in_dir(
+            base,
+            "secret.txt",
+            "test rewrite",
+            gitignore_matcher.as_ref(),
+            |content| Ok(content.replace("old", "new")),
+        )
+        .expect_err("expected gitignored-path error");
         assert!(err.to_string().contains("ignored by .gitignore"));
     }
 

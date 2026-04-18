@@ -69,6 +69,26 @@ export function DarwinWidget() {
     }
   }, []);
 
+  // Esc closes the settings modal or history panel (settings takes priority since it overlays history).
+  // Respects defaultPrevented so nested Radix layers (Select/Popover/inner dialogs) handle Esc first.
+  // Skips during IME composition — Esc cancels the candidate, not the modal.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
+      const { settingsOpen, showHistory, isProcessing, isGenerating, setSettingsOpen, setShowHistory } =
+        useWidgetStore.getState();
+      if (settingsOpen) {
+        e.preventDefault();
+        setSettingsOpen(false);
+      } else if (showHistory && !(isProcessing || isGenerating)) {
+        e.preventDefault();
+        setShowHistory(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   // Load initial data once on mount, then start watching for changes
   useEffect(() => {
     (async () => {

@@ -7,7 +7,7 @@ license = "MIT"
 edition = "2021"
 
 [lints.rust]
-warnings = "deny"
+unused = "deny"
 unexpected_cfgs = "allow"
 
 [build-dependencies]
@@ -70,7 +70,7 @@ specta = { version = "=2.0.0-rc.22", features = ["derive"] }
 specta-typescript = "0.0.9"
 tauri-specta = { version = "2.0.0-rc.21", features = ["derive", "typescript"] }
 rnix = "0.14.0"
-yaml_serde = "0.10.4"
+serde_yaml = "0.9"
 rowan = "0.16.1"
 fuzzy-matcher = "0.3.7"
 rusqlite_migration = "1.2"
