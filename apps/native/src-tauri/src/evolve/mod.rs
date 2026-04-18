@@ -1,8 +1,10 @@
 //! Evolution module for AI-assisted configuration changes.
 
+mod age;
 mod chat_memory;
 mod config_dir_context;
 mod edit_nix_file;
+mod ensure_secret;
 mod file_ops;
 mod gitignore;
 pub mod messages;
@@ -10,6 +12,7 @@ pub mod providers;
 mod search_code;
 pub mod search_docs;
 mod search_packages;
+mod sops;
 mod tools;
 mod types;
 mod utils;
@@ -771,8 +774,9 @@ pub async fn generate_evolution<R: Runtime>(
                 for tool_call in tool_calls {
                     let tool_name = &tool_call.name;
                     let args_str = &tool_call.arguments;
-                    let args: serde_json::Value =
+                    let args_raw: serde_json::Value =
                         serde_json::from_str(args_str).unwrap_or(serde_json::json!({}));
+                    let args = sanitize_tool_args(tool_name, &args_raw);
 
                     let args_summary = summarize_args(&args);
                     info!("  → {} | args: {}", tool_name, args_summary);
@@ -828,6 +832,13 @@ pub async fn generate_evolution<R: Runtime>(
                                     emit_evolve_event(
                                         app,
                                         EvolveEvent::editing(start_time, iteration, &edit.path),
+                                    );
+                                }
+                                ToolResult::EnsureSecret(result) => {
+                                    let path = format!("secrets/{}.yaml", result.name);
+                                    emit_evolve_event(
+                                        app,
+                                        EvolveEvent::editing(start_time, iteration, &path),
                                     );
                                 }
                                 ToolResult::BuildResult {
@@ -1250,6 +1261,29 @@ fn truncate_build_output_for_model(output: &str) -> String {
     truncated
 }
 
+/// Sanitize sensitive tool arguments before logging, telemetry emission, and execution.
+fn sanitize_tool_args(tool_name: &str, args: &serde_json::Value) -> serde_json::Value {
+    let mut sanitized = args.clone();
+
+    if tool_name == "ensure_secret" {
+        if let Some(args_obj) = sanitized.as_object_mut() {
+            if let Some(scaffold_obj) = args_obj
+                .get_mut("scaffold")
+                .and_then(serde_json::Value::as_object_mut)
+            {
+                if scaffold_obj.contains_key("content") {
+                    scaffold_obj.insert(
+                        "content".to_string(),
+                        serde_json::Value::String("[REDACTED]".to_string()),
+                    );
+                }
+            }
+        }
+    }
+
+    sanitized
+}
+
 /// Summarize tool arguments for logging
 fn summarize_args(args: &serde_json::Value) -> String {
     match args {
@@ -1281,6 +1315,7 @@ fn summarize_result(result: &ToolResult) -> (String, bool) {
         ToolResult::Continue(s) => (format!("{} chars", s.len()), true),
         ToolResult::Edit(e) => (format!("edited {}", e.path), true),
         ToolResult::EditSemantic(e) => (format!("semantic edit {} ({:?})", e.path, e.action), true),
+        ToolResult::EnsureSecret(r) => (format!("ensure_secret {}", r.name), true),
         ToolResult::BuildResult { success, .. } => {
             if *success {
                 ("PASSED".to_string(), true)
@@ -1377,6 +1412,24 @@ fn process_tool_result(
                 content:
                     "Semantic edit applied successfully. Remember to run build_check before calling done."
                         .to_string(),
+            };
+            (msg, Some(false))
+        }
+
+        ToolResult::EnsureSecret(result) => {
+            info!("🔐 Secret | name={} | path={}", result.name, result.path);
+            evolution.edits.push(FileEdit {
+                path: result.path.clone(),
+                search: String::new(),
+                replace: format!("ensure_secret:{}", result.name),
+            });
+            let content = serde_json::to_string(result)
+                .unwrap_or_else(|_| format!("{{\"name\":\"{}\"}}", result.name));
+            let msg = Message::Tool {
+                tool_call_id: tool_call_id.to_string(),
+                content: format!(
+                    "{content}\n\nSecret created/updated successfully. Remember to run build_check before calling done."
+                ),
             };
             (msg, Some(false))
         }

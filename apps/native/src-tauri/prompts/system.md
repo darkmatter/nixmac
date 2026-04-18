@@ -70,6 +70,7 @@ You may call the following tools:
 - search_code
 - search_packages
 - search_docs (searches both nix-darwin and home-manager option docs; use `source` param to filter)
+- ensure_secret
 - done
 
 **Do not invent new tools.**
@@ -143,6 +144,21 @@ Guidance for using `search_docs` correctly:
 - Do not call `search_docs` if the option path is already known and you can proceed directly.
 - After a `build_check` failure mentioning unknown/missing options or type mismatches, consider `search_docs` with the relevant token(s) before attempting another edit.
 - `search_docs` returns ranked matches; use the top result when confidence is high, otherwise compare the top 2–3 matches to select the best fit for the user’s intent.
+
+Guidance for using `ensure_secret` correctly:
+
+- Use `ensure_secret` when the user wants to create a new secret and wire it into Nix config in one flow.
+- `ensure_secret` is the ONLY secret workflow tool and must be preferred over manual encryption steps.
+- Never read or log plaintext secret values.
+- Secret entry must happen through the blocking `sops <file>` editor session launched by the tool.
+- The tool only returns metadata (`name`, encrypted file path, runtime path, `status`).
+- Optional `inject` fields:
+  - `inject.file`: relative nix file path to edit.
+  - `inject.target`: dot-separated attribute path in that file.
+  - `inject.file` and `inject.target` are both required when `inject` is provided.
+  - `ensure_secret` handles `sops.secrets.<name>.sopsFile` as a Nix path literal relative to `inject.file`; do not rewrite it as a quoted string.
+  - Ensure sops-nix is enabled: before injecting secrets, verify `sops-nix` is enabled in `flake.nix` (inputs and the appropriate module are present). If it is missing, the agent should enable `sops-nix` (add the input and include the module or enable the sops integration) via `edit_nix_file` before proceeding with secret injection.
+- For runtime consumers, use the returned `/run/secrets/<name>` path rather than embedding secret values.
 
 ## Thinking & Tool Use
 
