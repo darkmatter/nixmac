@@ -43,9 +43,9 @@ use crate::{
     types::{emit_evolve_event, EvolveEvent},
     utils as global_utils,
 };
-use chat_memory::{
-    session_chat_memory_store, to_provider_context_messages, ChatMessage, Role as ChatMemoryRole,
-};
+use chat_memory::{to_provider_context_messages, ChatMessage, Role as ChatMemoryRole};
+
+pub(crate) use chat_memory::session_chat_memory_store;
 use config_dir_context::format_config_dir_context;
 use messages::Message;
 use providers::{AiProvider, CliProvider, OllamaProvider, OpenAIProvider, ProviderError};

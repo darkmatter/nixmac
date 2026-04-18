@@ -51,7 +51,12 @@ pub trait ChatMemoryStore: Send + Sync {
     /// Memory is intentionally append-only to preserve strict chronology and
     /// avoid retroactive mutation of prior context.
     fn append(&self, message: ChatMessage);
+
     fn snapshot(&self) -> Vec<ChatMessage>;
+
+    /// Clears all messages from the store.
+    #[allow(unused)]
+    fn clear(&self);
 }
 
 /// In-memory implementation of the ChatMemoryStore trait, using a VecDeque for efficient eviction of oldest messages.
@@ -104,6 +109,16 @@ impl ChatMemoryStore for InMemoryChatMemoryStore {
         let messages = self.messages.lock().unwrap_or_else(|e| e.into_inner());
         debug!("[chat_memory] snapshot count={}", messages.len());
         messages.iter().cloned().collect()
+    }
+
+    fn clear(&self) {
+        let mut guard = self.messages.lock().unwrap_or_else(|e| e.into_inner());
+        let before = guard.len();
+        guard.clear();
+        debug!(
+            "[chat_memory] cleared messages count_before={} count_after=0",
+            before
+        );
     }
 }
 
@@ -333,5 +348,24 @@ mod tests {
         assert_eq!(context.len(), 2);
         assert!(matches!(context[0], Message::User { .. }));
         assert!(matches!(context[1], Message::Assistant { .. }));
+    }
+
+    #[test]
+    fn clears_all_messages() {
+        let store = InMemoryChatMemoryStore::new(ThreadLimits {
+            max_messages: 10,
+            max_tokens: 10_000,
+        });
+
+        store.append(msg(Role::User, "one", 1));
+        store.append(msg(Role::Assistant, "two", 2));
+
+        let snapshot = store.snapshot();
+        assert_eq!(snapshot.len(), 2);
+
+        store.clear();
+
+        let snapshot = store.snapshot();
+        assert_eq!(snapshot.len(), 0);
     }
 }
