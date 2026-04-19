@@ -9,10 +9,35 @@ pub fn truncate_error(s: &str, max_len: usize) -> String {
         return s.to_string();
     }
 
+    if max_len == 0 {
+        return format!(
+            "\n\n... [truncated {} bytes] ...\n\n",
+            s.len()
+        );
+    }
+
+    fn floor_char_boundary(s: &str, idx: usize) -> usize {
+        let mut i = idx.min(s.len());
+        while i > 0 && !s.is_char_boundary(i) {
+            i -= 1;
+        }
+        i
+    }
+
+    fn ceil_char_boundary(s: &str, idx: usize) -> usize {
+        let mut i = idx.min(s.len());
+        while i < s.len() && !s.is_char_boundary(i) {
+            i += 1;
+        }
+        i
+    }
+
     // Keep the beginning and end, which usually have the most relevant info
     let half = max_len / 2;
-    let start = &s[..half];
-    let end = &s[s.len() - half..];
+    let start_idx = floor_char_boundary(s, half);
+    let end_idx = ceil_char_boundary(s, s.len().saturating_sub(half));
+    let start = &s[..start_idx];
+    let end = &s[end_idx..];
 
     format!(
         "{}\n\n... [truncated {} bytes] ...\n\n{}",
@@ -53,7 +78,7 @@ pub(crate) fn normalize_relative_path(path: &Path) -> Result<PathBuf> {
 
 #[cfg(test)]
 mod tests {
-    use super::normalize_relative_path;
+    use super::{normalize_relative_path, truncate_error};
     use std::path::{Path, PathBuf};
 
     #[test]
@@ -88,5 +113,19 @@ mod tests {
             err.to_string().contains("Absolute paths are not allowed"),
             "unexpected error: {err:#}"
         );
+    }
+
+    #[test]
+    fn truncate_error_handles_utf8_without_panicking() {
+        let input = "é".repeat(200) + "日本語🚀";
+        let truncated = truncate_error(&input, 3);
+        assert!(truncated.contains("... [truncated"));
+        assert!(std::str::from_utf8(truncated.as_bytes()).is_ok());
+    }
+
+    #[test]
+    fn truncate_error_handles_zero_max_len() {
+        let truncated = truncate_error("abcdef", 0);
+        assert!(truncated.contains("... [truncated 6 bytes] ..."));
     }
 }
