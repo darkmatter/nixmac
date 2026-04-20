@@ -357,6 +357,20 @@ export const darwinAPI = {
     generateFrom: (commitHash: string, number: number) =>
       invoke<void>("generate_history_from", { commitHash, number }),
   },
+
+  editor: {
+    readFile: (relPath: string) => invoke<string>("editor_read_file", { relPath }),
+    writeFile: (relPath: string, content: string) =>
+      invoke<void>("editor_write_file", { relPath, content }),
+    listFiles: () =>
+      invoke<{ path: string; name: string; isDir: boolean }[]>("editor_list_files"),
+  },
+
+  lsp: {
+    start: () => invoke<void>("lsp_start"),
+    send: (message: string) => invoke<void>("lsp_send", { message }),
+    stop: () => invoke<void>("lsp_stop"),
+  },
 };
 
 export const ipcRenderer = {

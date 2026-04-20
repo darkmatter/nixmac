@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, FileCode } from "lucide-react";
+import { ChevronRight, FileCode, Pencil } from "lucide-react";
 import type { BundledLanguage } from "shiki";
 import {
   CodeBlock,
@@ -14,6 +14,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useWidgetStore } from "@/stores/widget-store";
 import type { Change } from "@/types/shared";
 import { getDirectory, getShortFilename } from "@/components/widget/utils";
 
@@ -64,6 +65,17 @@ export function Diff({ changes }: DiffProps) {
                     </span>
                   )}
                 </div>
+                <button
+                  type="button"
+                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    useWidgetStore.setState({ editingFile: change.filename });
+                  }}
+                  title="Edit file"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
               </div>
 
               {/* Code diff */}

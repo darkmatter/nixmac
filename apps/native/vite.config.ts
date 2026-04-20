@@ -1,6 +1,15 @@
 import path from "node:path";
 import react from "@vitejs/plugin-react";
+import monacoEditorPlugin from "vite-plugin-monaco-editor";
 import { defineConfig } from "vite";
+
+// Repo root (two levels up from apps/native). Needed so Vite's dev server
+// is allowed to serve files from the real paths of symlinked deps under
+// `<repo>/node_modules/.bun/...` (bun's hoisted store). Without this,
+// monaco-editor's CSS files — which are imported from the real
+// `node_modules/.bun/monaco-editor@X/...` path once `preserveSymlinks`
+// is false — return 403 from Vite's fs guard.
+const repoRoot = path.resolve(__dirname, "../..");
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -18,6 +27,8 @@ export default defineConfig({
         // plugins: [['babel-plugin-react-compiler']],
       },
     }),
+    (monacoEditorPlugin as unknown as { default: typeof monacoEditorPlugin })
+      .default({}),
   ],
   server: {
     watch: {
@@ -34,8 +45,9 @@ export default defineConfig({
       // interval: 1000,
     },
     fs: {
-      // Allow serving files from Nix store
-      allow: ["..", `${process.env.HOME}/.nix-profile`, "/nix/store"],
+      // Allow serving files from the repo root (so bun's hoisted
+      // `.bun/<pkg>@<ver>/...` real paths resolve), plus Nix profile & store.
+      allow: [repoRoot, `${process.env.HOME}/.nix-profile`, "/nix/store"],
     },
   },
   optimizeDeps: {

@@ -349,7 +349,7 @@ fn validate_yaml_syntax(content: &str, file_path: &str) -> anyhow::Result<()> {
 }
 
 /// Validate file content based on extension before writing.
-fn validate_file_content(file_path: &str, content: &str) -> anyhow::Result<()> {
+pub(crate) fn validate_file_content(file_path: &str, content: &str) -> anyhow::Result<()> {
     if file_path.ends_with(".nix") {
         if let Err(e) = validate_nix_syntax(content, file_path) {
             debug!("Nix syntax validation failed for {}: {}", file_path, e);
