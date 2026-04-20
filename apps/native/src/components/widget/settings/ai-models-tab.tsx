@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/select";
 import { ModelCombobox } from "@/components/widget/model-combobox";
 import { darwinAPI, DEFAULT_MAX_ITERATIONS } from "@/tauri-api";
-import type { AnyFieldApi } from "@tanstack/react-form";
+import type { AnyFieldApi, ReactFormExtendedApi } from "@tanstack/react-form";
 import { Info } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -27,7 +27,7 @@ interface AiModelsTabProps {
   // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
   maxBuildAttemptsField: AnyFieldApi;
   // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
-  form: any;
+  form: ReactFormExtendedApi<any, any, any, any, any, any, any, any, any, any, any, any>;
 }
 
 const CLI_PROVIDERS = [
@@ -73,7 +73,7 @@ function useCliToolStatus() {
 function useProviderConfigured(form: AiModelsTabProps["form"]) {
   const [configured, setConfigured] = useState<Record<string, boolean>>({});
   useEffect(() => {
-    const unsub = form.store.subscribe(() => {
+    const subscription = form.store.subscribe(() => {
       const v = form.store.state.values;
       setConfigured({
         openai: !!(v.openrouterApiKey || v.openaiApiKey),
@@ -88,7 +88,8 @@ function useProviderConfigured(form: AiModelsTabProps["form"]) {
       ollama: true,
       vllm: !!v.vllmApiBaseUrl,
     });
-    return unsub;
+
+    return () => subscription.unsubscribe();
   }, [form]);
   return configured;
 }
@@ -192,7 +193,7 @@ export function AiModelsTab({
                     state.values.openaiApiKey,
                   ]}
                 >
-                  {([evolveProvider]: [string, string]) => (
+                  {([evolveProvider]: any[]) => (
                     <>
                       <label className="text-xs font-medium text-muted-foreground" htmlFor="evolveModel">
                         Model Name{isCliProvider(evolveProvider) ? " (optional)" : ""}
@@ -277,7 +278,7 @@ export function AiModelsTab({
                     state.values.openaiApiKey,
                   ]}
                 >
-                  {([summaryProvider]: [string, string]) => (
+                  {([summaryProvider]: any[]) => (
                     <>
                       <label className="text-xs font-medium text-muted-foreground" htmlFor="summaryModel">
                         Model Name{isCliProvider(summaryProvider) ? " (optional)" : ""}
