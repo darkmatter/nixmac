@@ -40,9 +40,9 @@
       ...
     }@inputs:
     # Use stackpanel.lib.mkFlake for full stackpanel integration
-    stackpanel.lib.mkFlake { inherit inputs self; }
+    # stackpanel.lib.mkFlake { inherit inputs self; }
     # Merge with additional custom outputs
-    // flake-utils.lib.eachDefaultSystem (
+    flake-utils.lib.eachDefaultSystem (
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
