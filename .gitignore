@@ -136,3 +136,9 @@ process-compose.yaml
 
 # bv (beads viewer) local config and caches
 .bv/
+
+# Playwright
+playwright-report/
+test-results/
+.playwright/
+blob-report/

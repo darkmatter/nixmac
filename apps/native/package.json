@@ -21,7 +21,14 @@
     "test:update": "vitest run --update",
     "test:update-snapshots": "vitest run --project=storybook --update",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui-host=127.0.0.1 --ui-port=7777",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "playwright show-report",
+    "test:e2e:install": "playwright install --with-deps chromium",
+    "test:e2e:ui:app": "playwright test --ui"
   },
   "dependencies": {
     "@distilled.cloud/neon": "^0.7.12",
@@ -142,6 +149,7 @@
     "typescript": "^5.2.2",
     "vite": "^7.2.4",
     "vite-plugin-monaco-editor": "^1.1.0",
-    "vitest": "^3.0.0"
+    "vitest": "^3.0.0",
+    "@playwright/test": "^1.57.0"
   }
 }
