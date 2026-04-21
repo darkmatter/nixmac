@@ -1,5 +1,6 @@
 "use client";
 
+import { EditorPanel } from "@/components/editor-panel";
 import { EvolveOverlayPanel } from "@/components/evolve-overlay-panel";
 import { RebuildOverlayPanel } from "@/components/rebuild-overlay-panel";
 import { Console } from "@/components/widget/console";
@@ -158,6 +159,7 @@ export function DarwinWidget() {
 
       <EvolveOverlayPanel />
       <RebuildOverlayPanel />
+      <EditorPanel />
 
       <SettingsDialog />
       <FeedbackDialog />

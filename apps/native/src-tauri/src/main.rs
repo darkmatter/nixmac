@@ -15,7 +15,9 @@ mod commands;
 mod darwin;
 mod db;
 mod default_config;
+mod editor;
 mod evolution;
+mod lsp;
 mod evolve;
 mod evolve_state;
 mod feedback;
@@ -381,6 +383,14 @@ fn run_gui_mode(
             commands::list_cli_models,
             // Updater
             commands::relaunch_after_update,
+            // Editor
+            commands::editor_read_file,
+            commands::editor_write_file,
+            commands::editor_list_files,
+            // LSP
+            commands::lsp_start,
+            commands::lsp_send,
+            commands::lsp_stop,
         ])
         .setup(move |app| {
             let handle = app.handle();

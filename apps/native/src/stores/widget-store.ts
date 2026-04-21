@@ -10,6 +10,7 @@ import type {
 import { FeedbackType } from "@/types/feedback";
 import type { SemanticChangeMap } from "@/types/shared";
 import { create } from "zustand";
+import { devtools } from "zustand/middleware";
 export type {
   EvolveEvent,
   EvolveEventType, EvolveState, GitFileStatus,
@@ -134,6 +135,9 @@ export interface WidgetState {
   confirmBuild: boolean;
   confirmClear: boolean;
   confirmRollback: boolean;
+
+  // Editor
+  editingFile: string | null;
 }
 
 export interface WidgetActions {
@@ -295,6 +299,9 @@ export const initialWidgetState: WidgetState = {
   confirmBuild: true,
   confirmClear: true,
   confirmRollback: true,
+
+  // Editor
+  editingFile: null,
 };
 
 // =============================================================================
@@ -306,7 +313,9 @@ export const initialWidgetState: WidgetState = {
  * This factory pattern allows creating isolated stores for testing/Storybook.
  */
 export function createWidgetStore(initialState?: Partial<WidgetState>) {
-  return create<WidgetStore>((set, _get) => ({
+  return create<WidgetStore>()(
+    devtools(
+      (set, _get) => ({
     ...initialWidgetState,
     ...initialState,
 
@@ -439,7 +448,13 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
         },
       })),
     clearRebuild: () => set({ rebuild: initialRebuildState }),
-  }));
+      }),
+      {
+        name: "widget-store",
+        enabled: import.meta.env.DEV,
+      },
+    ),
+  );
 }
 
 // =============================================================================

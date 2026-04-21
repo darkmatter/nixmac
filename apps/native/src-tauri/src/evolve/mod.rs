@@ -5,7 +5,7 @@ mod chat_memory;
 mod config_dir_context;
 mod edit_nix_file;
 mod ensure_secret;
-mod file_ops;
+pub(crate) mod file_ops;
 mod gitignore;
 pub mod messages;
 pub mod providers;

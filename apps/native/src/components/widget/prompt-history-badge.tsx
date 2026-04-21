@@ -26,7 +26,7 @@ export function PromptHistoryBadge() {
   const [open, setOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
 
-  if (history.length === 0) {
+  if (!(history?.length)) {
     return null;
   }
 

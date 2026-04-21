@@ -1,11 +1,11 @@
 name: Build macOS App
 on:
   push:
-    branches: [main]
+    branches: [ main ]
     tags:
       - "v*"
   pull_request:
-    branches: [main]
+    branches: [ main ]
   workflow_dispatch:
 env:
   CARGO_TERM_COLOR: always
@@ -17,7 +17,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: true
@@ -30,11 +30,11 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
       - name: Setup sops
-        uses: nhedger/setup-sops@v2
+        uses: nhedger/setup-sops@v2.1.1
       - name: Setup age
-        uses: alessiodionisi/setup-age-action@v1.3.0
+        uses: alessiodionisi/setup-age-action@v1.4.0
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 20
       - name: Install frontend dependencies
@@ -127,7 +127,7 @@ jobs:
           echo "build_version=$BUILD_VERSION" >> "$GITHUB_OUTPUT"
       - name: Check for code signing secrets
         id: check-secrets
-        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
+        shell: "sops exec-env ops/secrets/secrets.yaml \"bash -e {0}\""
         run: |
           if [ -n "$APPLE_CERTIFICATE" ]; then
             echo "has_certificate=true" >> $GITHUB_OUTPUT
@@ -145,7 +145,7 @@ jobs:
       # replaces the keychain search list and breaks DMG bundling on tag runs.
       - name: Build Tauri app
         run: bun run desktop:build
-        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
+        shell: "sops exec-env ops/secrets/secrets.yaml \"bash -e {0}\""
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Pass DSNs and build metadata into the tauri action step so build.rs can read them
@@ -159,8 +159,10 @@ jobs:
       # Placed AFTER the Tauri build to avoid replacing the keychain search list
       # before `bun run desktop:build`, which caused DMG bundling failures on tags.
       - name: Import Apple Developer certificate
-        if: (steps.release-version.outputs.mode == 'tag' || steps.release-version.outputs.mode == 'release') && steps.check-secrets.outputs.has_certificate == 'true'
-        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
+        if: (steps.release-version.outputs.mode == 'tag' ||
+          steps.release-version.outputs.mode == 'release') &&
+          steps.check-secrets.outputs.has_certificate == 'true'
+        shell: "sops exec-env ops/secrets/secrets.yaml \"bash -e {0}\""
         run: |
           # Create a temporary keychain
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
@@ -182,7 +184,9 @@ jobs:
           echo "=== End identities ==="
       # Sign the app bundle (required for notarization)
       - name: Sign app bundle
-        if: (steps.release-version.outputs.mode == 'tag' || steps.release-version.outputs.mode == 'release') && steps.check-secrets.outputs.has_certificate == 'true'
+        if: (steps.release-version.outputs.mode == 'tag' ||
+          steps.release-version.outputs.mode == 'release') &&
+          steps.check-secrets.outputs.has_certificate == 'true'
         run: |
           APP_PATH=$(find target/release/bundle/macos -name "*.app" -type d | head -1)
           if [ -n "$APP_PATH" ]; then
@@ -219,7 +223,9 @@ jobs:
       # Previously this step deleted the DMG and called `hdiutil create`, which
       # shipped a bare DMG without the drag-to-Applications affordance.
       - name: Swap signed app into Tauri DMG
-        if: (steps.release-version.outputs.mode == 'tag' || steps.release-version.outputs.mode == 'release') && steps.check-secrets.outputs.has_certificate == 'true'
+        if: (steps.release-version.outputs.mode == 'tag' ||
+          steps.release-version.outputs.mode == 'release') &&
+          steps.check-secrets.outputs.has_certificate == 'true'
         run: |
           APP_PATH=$(find target/release/bundle/macos -name "*.app" -type d | head -1)
           DMG_PATH=$(find target/release/bundle/dmg -name "*.dmg" -type f | head -1)
@@ -305,8 +311,10 @@ jobs:
           echo "Done: $DMG_PATH now contains the signed app with the preserved Finder layout."
       # Notarize the app (requires Apple Developer account)
       - name: Notarize app
-        if: (steps.release-version.outputs.mode == 'tag' || steps.release-version.outputs.mode == 'release') && steps.check-secrets.outputs.has_notarization == 'true'
-        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
+        if: (steps.release-version.outputs.mode == 'tag' ||
+          steps.release-version.outputs.mode == 'release') &&
+          steps.check-secrets.outputs.has_notarization == 'true'
+        shell: "sops exec-env ops/secrets/secrets.yaml \"bash -e {0}\""
         run: |
           # Write the API key to a file
           echo "$APPLE_API_KEY_CONTENT" > $RUNNER_TEMP/AuthKey.p8
@@ -340,13 +348,13 @@ jobs:
             echo "dmg_name=$(basename "$DMG_PATH")" >> $GITHUB_OUTPUT
           fi
       - name: Upload DMG artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nixmac-macos-dmg
           path: target/release/bundle/dmg/*.dmg
           if-no-files-found: warn
       - name: Upload app bundle artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nixmac-macos-app
           path: target/release/bundle/macos/*.app
@@ -370,7 +378,9 @@ jobs:
       # signing/notarization + DMG swap path on a disposable tag without
       # publishing a public release.
       - name: Create Release
-        if: (steps.release-version.outputs.mode == 'tag' || steps.release-version.outputs.mode == 'release') && !contains(steps.release-version.outputs.tag, '-test.')
+        if: (steps.release-version.outputs.mode == 'tag' ||
+          steps.release-version.outputs.mode == 'release') &&
+          !contains(steps.release-version.outputs.tag, '-test.')
         uses: softprops/action-gh-release@v2
         with:
           draft: false
@@ -385,8 +395,10 @@ jobs:
       # signing/notarization + DMG swap path on a disposable tag without
       # overwriting latest.json on the updater CDN.
       - name: Upload to R2
-        if: (steps.release-version.outputs.mode == 'tag' || steps.release-version.outputs.mode == 'release') && !contains(steps.release-version.outputs.tag, '-test.')
-        shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
+        if: (steps.release-version.outputs.mode == 'tag' ||
+          steps.release-version.outputs.mode == 'release') &&
+          !contains(steps.release-version.outputs.tag, '-test.')
+        shell: "sops exec-env ops/secrets/secrets.yaml \"bash -e {0}\""
         env:
           AWS_DEFAULT_REGION: auto
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
