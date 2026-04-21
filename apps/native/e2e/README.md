@@ -60,14 +60,4 @@ E2E_BASE_URL=http://localhost:4173 bun run test:e2e
 
 ## Tauri-specific flows
 
-Playwright only sees the browser-side React app. The `window.__TAURI__`
-APIs aren't available when served from plain Vite, so specs that need
-them should either:
-
-1. Mock `window.__TAURI__` via `page.addInitScript` before navigation, or
-1. Drive the real Tauri binary with [`tauri-driver`][td] + WebdriverIO.
-
-We may add a separate `tauri-driver`-based suite later; for now the
-Playwright suite is scoped to the pure web UI.
-
-[td]: https://v2.tauri.app/develop/tests/webdriver/
+You can test those with `wdio` with the resources in the [e2e-tauri](../e2e-tauri/) directory.

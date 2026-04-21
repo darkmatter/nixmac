@@ -6,9 +6,11 @@ Please use these scripts while following the tests:
 - **`echo $TEST1; echo $TEST2; echo $TEST3`** — run in a **new** terminal **outside** the devenv shell
 
 Outside the repo, check state with:
-```bash
+
+````bash
 { echo '```javascript'; echo "// evolve-state.json"; cat ~/Library/Application\ Support/com.darkmatter.nixmac/evolve-state.json; echo; echo '```'; echo; echo '```javascript'; echo "// build-state.json"; cat ~/Library/Application\ Support/com.darkmatter.nixmac/build-state.json; echo; echo '```'; } | tee >(pbcopy)
-```
+````
+
 ______________________________________________________________________
 
 ## 1. Manual changes
@@ -521,7 +523,9 @@ success
 
 ➜  ~
 ```
+
 - this means everything done since the first AI prompt got rolled back
+
 - this is what the AI evolution UI allows for now, but the plumbing for smaller steps is in place
 
 - State after undo all:
