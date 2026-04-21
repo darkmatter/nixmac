@@ -31,13 +31,8 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
     return "history";
   }
 
-  // Backend is the source of truth for evolve/merge routing.
-  const routingStep = state.evolveState?.step;
-  if (routingStep === "merge") return "merge";
-  if (routingStep === "evolve") return "evolving";
-  if (routingStep === "begin") return "begin";
-
-  return "evolving";
+  // Backend is the source of truth for evolve routing
+  return state.evolveState?.step ?? "begin";
 }
 
 export function getShortFilename(path: string): string {

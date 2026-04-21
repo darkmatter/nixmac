@@ -11,7 +11,12 @@ pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::sh
 
     let git_commits = crate::git::log(&config_dir, "HEAD", None)?;
 
-    let last_built_sha = crate::git::get_last_built_commit_sha(&config_dir);
+    let build_state = crate::build_state::get(app).unwrap_or_default();
+    let last_built_sha = if build_state.unknown_build() {
+        None
+    } else {
+        build_state.head_commit_hash
+    };
 
     let mut entries = Vec::with_capacity(git_commits.len());
     let mut origin_hashes: Vec<Option<String>> = Vec::with_capacity(git_commits.len());

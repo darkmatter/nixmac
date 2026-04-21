@@ -46,11 +46,10 @@ pub async fn new_changeset<R: Runtime>(
         .await;
     }
 
-    let Some(base_commit_id) =
-        crate::db::commits::store_head_commit(&db_path, &config_dir, None)?
-    else {
-        return Ok(None);
-    };
+    // Extract before `from_change_sets` moves `existing`.
+    let existing_id = existing.iter()
+        .filter_map(|e| e.change_set.as_ref().map(|cs| cs.id))
+        .next();
 
     let semantic_map = group_existing::from_change_sets(existing);
     let (missed_changes, unfound) =
@@ -62,6 +61,18 @@ pub async fn new_changeset<R: Runtime>(
             unfound_hashes
         );
     }
+
+    // All current changes are already summarized (e.g. same changes re-made after a discard).
+    // Return the existing changeset ID so callers can track it — no new model calls needed.
+    if missed_changes.is_empty() {
+        return Ok(existing_id);
+    }
+
+    let Some(base_commit_id) =
+        crate::db::commits::store_head_commit(&db_path, &config_dir, None)?
+    else {
+        return Ok(None);
+    };
 
     pipelines::evolved_changeset::analyze(
         semantic_map,

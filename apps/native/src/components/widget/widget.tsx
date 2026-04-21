@@ -12,9 +12,12 @@ import { SettingsDialog } from "@/components/widget/settings-dialog";
 import { StepContentWrapper } from "@/components/widget/step-content-wrapper";
 import { Stepper } from "@/components/widget/stepper";
 import {
+    BeginStep,
+    CommitStep,
     EvolveStep,
     HistoryStep,
-    MergeStep,
+    ManualCommitStep,
+    ManualEvolveStep,
     NixSetupStep,
     PermissionsStep,
     SetupStep,
@@ -123,11 +126,19 @@ export function DarwinWidget() {
         return <SetupStep />;
 
       case "begin":
-      case "evolving":
+        return <BeginStep />;
+
+      case "evolve":
         return <EvolveStep />;
 
-      case "merge":
-        return <MergeStep />;
+      case "commit":
+        return <CommitStep />;
+
+      case "manualEvolve":
+        return <ManualEvolveStep />;
+
+      case "manualCommit":
+        return <ManualCommitStep />;
 
       case "history":
         return <HistoryStep />;

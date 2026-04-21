@@ -45,12 +45,11 @@ pub fn upsert_change(
     Ok(())
 }
 
-#[allow(dead_code)]
 pub fn insert_change_or_ignore(
     tx: &Transaction,
     change: &Change,
     own_summary_id: Option<i64>,
-) -> Result<()> {
+) -> Result<i64> {
     tx.execute(
         "INSERT OR IGNORE INTO changes \
          (hash, filename, diff, line_count, created_at, own_summary_id) \
@@ -60,7 +59,11 @@ pub fn insert_change_or_ignore(
             own_summary_id,
         ],
     )?;
-    Ok(())
+    Ok(tx.query_row(
+        "SELECT id FROM changes WHERE hash = ?1",
+        [&change.hash],
+        |row| row.get(0),
+    )?)
 }
 
 pub fn link_change_to_group_summary(
@@ -420,6 +423,19 @@ pub fn mark_change_summary_failed(tx: &Transaction, summary_id: i64) -> Result<(
         [summary_id],
     )?;
     Ok(())
+}
+
+/// Fetch the change hashes stored in a changeset.
+pub fn fetch_hashes_for_changeset(conn: &Connection, changeset_id: i64) -> Result<Vec<String>> {
+    let mut stmt = conn.prepare(
+        "SELECT c.hash FROM changes c \
+         JOIN set_changes sc ON sc.change_id = c.id \
+         WHERE sc.change_set_id = ?1",
+    )?;
+    let hashes = stmt
+        .query_map([changeset_id], |row| row.get(0))?
+        .collect::<rusqlite::Result<Vec<String>>>()?;
+    Ok(hashes)
 }
 
 /// Builds a JSON array of hash-summary_id pairs for the queue summarizer.

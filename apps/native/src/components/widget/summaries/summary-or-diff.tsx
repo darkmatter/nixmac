@@ -35,8 +35,8 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-border/50 border-b py-2">
         <div className="flex items-center gap-2">
-          {evolveState.committable ? <Wrench className="h-4 w-4 text-primary" /> : <Dna className="h-4 w-4 text-primary" />}
-          <h2 className="font-medium text-sm">{evolveState.committable ? "Active Changes" : "What's changed"}</h2>
+          {evolveState.step === "commit" ? <Wrench className="h-4 w-4 text-primary" /> : <Dna className="h-4 w-4 text-primary" />}
+          <h2 className="font-medium text-sm">{evolveState.step === "commit" ? "Active Changes" : "What's changed"}</h2>
         </div>
         <AnimatedTabsList defaultValue="summary">
           <AnimatedTabsTrigger value="summary">Summary</AnimatedTabsTrigger>

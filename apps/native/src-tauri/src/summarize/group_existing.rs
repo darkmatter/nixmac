@@ -21,9 +21,9 @@ pub fn from_change_sets(change_sets: Vec<FoundSetForCurrent>) -> SemanticChangeM
         for sc in cs.changes {
             let change_id = sc.change.id;
             if sc.own_summary.is_none() {
-                if !seen.contains_key(&change_id) {
+                if let std::collections::hash_map::Entry::Vacant(e) = seen.entry(change_id) {
                     unsummarized_hashes.push(sc.change.hash.clone());
-                    seen.insert(change_id, false);
+                    e.insert(false);
                 }
                 continue;
             }

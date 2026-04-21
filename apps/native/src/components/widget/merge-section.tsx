@@ -12,18 +12,19 @@ export function MergeSection() {
   const isProcessing = useWidgetStore((s) => s.isProcessing);
   const processingAction = useWidgetStore((s) => s.processingAction);
   const commitMessageSuggestion = useWidgetStore((s) => s.commitMessageSuggestion);
+  const changeMap = useWidgetStore((s) => s.changeMap);
 
   const { handleCommit } = useGitOperations();
   const { generateCommitMessage } = useSummary();
 
   useEffect(() => {
     generateCommitMessage();
-  }, [generateCommitMessage]);
+  }, [generateCommitMessage, changeMap]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const msg = new FormData(e.currentTarget).get("commitMsg")?.toString() ?? "";
-    await handleCommit({ message: msg, tagAsBuilt: true });
+    await handleCommit({ message: msg });
     useWidgetStore.getState().setEvolvePrompt("");
   }
 

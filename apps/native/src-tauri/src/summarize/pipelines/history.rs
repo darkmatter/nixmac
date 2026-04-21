@@ -54,20 +54,22 @@ pub async fn from_commit_times_number<R: Runtime>(
             &diff_hashes,
         )?;
 
-        if found.change_set.is_some() && found.missed_hashes.is_empty() {
-            // fully covered — nothing to do
+        let has_changeset = found.change_set.is_some();
+        let semantic_map = crate::summarize::group_existing::from_change_sets(vec![found]);
+
+        if has_changeset && semantic_map.unsummarized_hashes.is_empty() {
+            // fully covered — all changes have summaries
             continue;
         }
 
-        if found.change_set.is_some() {
-            // partially covered — evolve with missed changes
-            let missed_set: std::collections::HashSet<&str> =
-                found.missed_hashes.iter().map(String::as_str).collect();
+        if has_changeset {
+            // partially covered — evolve with unsummarized changes
+            let unsummarized_set: std::collections::HashSet<&str> =
+                semantic_map.unsummarized_hashes.iter().map(String::as_str).collect();
             let missed_changes: Vec<_> = changes
                 .into_iter()
-                .filter(|c| missed_set.contains(c.hash.as_str()))
+                .filter(|c| unsummarized_set.contains(c.hash.as_str()))
                 .collect();
-            let semantic_map = crate::summarize::group_existing::from_change_sets(vec![found]);
             if let Err(e) = super::evolved_changeset::analyze(
                 semantic_map,
                 missed_changes,

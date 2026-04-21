@@ -9,6 +9,7 @@ import type {
   EvolveState,
   GitStatus,
   HistoryItem,
+  RollbackResult,
   SemanticChangeMap,
 } from "./types/shared";
 
@@ -68,10 +69,6 @@ export interface CommitResult {
   evolveState: EvolveState;
 }
 
-export interface RollbackResult {
-  gitStatus: GitStatus;
-  evolveState: EvolveState;
-}
 
 export interface PreviewIndicatorState {
   visible: boolean;
@@ -250,7 +247,6 @@ export const darwinAPI = {
     cached: () => invoke<GitStatus | null>("git_cached"),
     commit: (message: string) => invoke<CommitResult>("git_commit", { message }),
     stash: (message: string) => invoke("git_stash", { message }),
-    tagAsBuilt: () => invoke("git_tag_as_built"),
   },
   darwin: {
     evolve: (description: string) => invoke<EvolutionResult>("darwin_evolve", { description }),
@@ -259,10 +255,14 @@ export const darwinAPI = {
     evolveFromManual: () => invoke<number>("darwin_adopt_manual_changes"),
     evolveCancel: () => invoke("darwin_evolve_cancel"),
     apply: (hostOverride?: string) => invoke("darwin_apply", { hostOverride }),
-    applyStreamStart: (hostOverride?: string, deferBuiltTag?: boolean) =>
-      invoke("darwin_apply_stream_start", { hostOverride, deferBuiltTag }),
+    applyStreamStart: (hostOverride?: string) =>
+      invoke("darwin_apply_stream_start", { hostOverride }),
+    activateStorePath: (storePath: string) =>
+      invoke("darwin_activate_store_path", { storePath }),
     applyStreamCancel: () => invoke("darwin_apply_stream_cancel"),
     finalizeApply: () => invoke<ApplyResult>("finalize_apply"),
+    finalizeRollback: (storePath: string | null, changesetId: number | null) =>
+      invoke<ApplyResult>("finalize_rollback", { storePath, changesetId }),
     rollbackErase: () => invoke<RollbackResult>("rollback_erase"),
     prepareRestore: (targetHash: string) => invoke<void>("prepare_restore", { targetHash }),
     abortRestore: () => invoke<void>("abort_restore"),
