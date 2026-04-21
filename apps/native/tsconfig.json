@@ -20,7 +20,7 @@
     "noFallthroughCasesInSwitch": true,
     "strictNullChecks": true
   },
-  "include": ["src", "electron"],
+  "include": ["src", "electron", "vitest.setup.ts"],
   "exclude": [
     "node_modules",
     "src/components/ui/accordion.tsx",
