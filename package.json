@@ -12,9 +12,9 @@
     "desktop:build": "bun -F native desktop:build",
     "postinstall": "bun2nix -o bun.nix",
     "release": "release-it",
-    "test:e2e": "bun -F native test:e2e",
-    "test:e2e:ui": "bun -F native test:e2e:ui",
-    "test:e2e:install": "bun -F native test:e2e:install"
+    "test:browser": "bun -F native test:browser",
+    "test:browser:ui": "bun -F native test:browser:ui",
+    "test:browser:install": "bun -F native test:browser:install"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.13",
