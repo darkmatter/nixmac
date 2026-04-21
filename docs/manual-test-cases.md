@@ -1,14 +1,44 @@
 # Manual Test Cases
 
+## Quick Start -- Manual Test Helper Scripts
+
+- **Purpose:** convenience targets and scripts to run the manual test flow described in here.
+- **Make targets:** run from repo root with `make -C docs/testscripts` or run from `docs/testscripts/` directly:
+  - `make manual-show` : print `evolve-state.json` and `build-state.json` and write combined output to `/tmp/nixmac_state.md`.
+  - `make manual-env` : run a login shell and print `TEST1`, `TEST2`, `TEST3` (approximate external terminal check).
+  - `make manual-summarize` : show `git status` summary and changed files.
+  - `make manual-diff` : show full `git diff` of working tree.
+  - `make manual-commit` : stage & commit (dry-run unless you run the underlying script with `--yes`).
+- **Direct scripts:** helpers live in `docs/testscripts/`:
+  - `docs/testscripts/check-state.sh` supports `--out FILE` and `--copy` to write output and copy to clipboard.
+  - `docs/testscripts/manual-test.sh` orchestrates the frequently used steps (`show-state`, `env-check`, `summarize`, `diff`, `commit`).
+  - `docs/testscripts/assert-state.sh` runs `jq` expressions against `evolve-state.json` and `build-state.json` to automate "Expected:" checks. Example:
+    - `docs/testscripts/assert-state.sh --evolve '.evolveState.step == "commit"'`
+    - `docs/testscripts/assert-state.sh --build '.buildState.changesetId != null'`
+
+Example quick run:
+
+```bash
+# From testscripts directory:
+make manual-show        # write state snapshot to /tmp/nixmac_state.md
+make manual-env         # check TEST1/TEST2/TEST3 in a login shell
+make manual-summarize   # see git summary and staged/unstaged files
+```
+
+## Scripts
+
 Please use these scripts while following the tests:
 
-- **`./docs/testscripts/check-state.sh`** — show both state files in the terminal and copy them to clipboard
-- **`echo $TEST1; echo $TEST2; echo $TEST3`** — run in a **new** terminal **outside** the devenv shell
+- **`./docs/testscripts/check-state.sh`** — show both state files in the terminal. Use `--out FILE` to save combined output and `--copy` to copy to the clipboard.
+- **`docs/testscripts/manual-test.sh show-state`** — higher-level wrapper that calls `check-state.sh --out` and writes a snapshot file.
+- **`echo $TEST1; echo $TEST2; echo $TEST3`** — run in a **new** terminal **outside** the devenv shell (or use `docs/testscripts/manual-test.sh env-check VARS...`).
 
 Outside the repo, check state with:
-```bash
+
+````bash
 { echo '```javascript'; echo "// evolve-state.json"; cat ~/Library/Application\ Support/com.darkmatter.nixmac/evolve-state.json; echo; echo '```'; echo; echo '```javascript'; echo "// build-state.json"; cat ~/Library/Application\ Support/com.darkmatter.nixmac/build-state.json; echo; echo '```'; } | tee >(pbcopy)
-```
+````
+
 ______________________________________________________________________
 
 ## 1. Manual changes
@@ -159,10 +189,10 @@ ______________________________________________________________________
 **Steps:**
 
 1. In your config dir run `git reset HEAD~1`
-1. Run `./docs/testscripts/check-state.sh` to verify initial state
+1. Run `./docs/testscripts/check-state.sh --out /tmp/nixmac_state.md --copy` (or `docs/testscripts/manual-test.sh show-state`) to verify initial state
 1. Write a prompt like: add an environment variable called TEST2 with a value of "success"
 1. Run the prompt
-1. Run `./docs/testscripts/check-state.sh` to check state after evolve
+1. Run `./docs/testscripts/check-state.sh --out /tmp/nixmac_state.md --copy` (or `docs/testscripts/manual-test.sh show-state`) to check state after evolve
 
 **Expected:**
 
@@ -240,7 +270,7 @@ ______________________________________________________________________
 **Steps:**
 
 1. Click **Discard** in the widget
-1. Run `./docs/testscripts/check-state.sh` to verify state after discard
+1. Run `./docs/testscripts/check-state.sh --out /tmp/nixmac_state.md --copy` (or `docs/testscripts/manual-test.sh show-state`) to verify state after discard
 
 **Expected:**
 
@@ -285,9 +315,9 @@ ______________________________________________________________________
 
 1. From **My History** under the input, select: add an environment variable called TEST2 with a value of "success"
 1. Run the prompt
-1. Run `./docs/testscripts/check-state.sh` to check state after evolve
+1. Run `./docs/testscripts/check-state.sh --out /tmp/nixmac_state.md --copy` (or `docs/testscripts/manual-test.sh show-state`) to check state after evolve
 1. Press **Build and Test**
-1. Run `./docs/testscripts/check-state.sh` to check state after build
+1. Run `./docs/testscripts/check-state.sh --out /tmp/nixmac_state.md --copy` (or `docs/testscripts/manual-test.sh show-state`) to check state after build
 1. After build completes, open a terminal **outside the nixmac dir** and run `echo $TEST1; echo $TEST2; echo $TEST3`
 
 **Expected:**
@@ -374,9 +404,9 @@ ______________________________________________________________________
 1. Press continue editing
 1. Write an unrelated simple prompt like: add a cool font
 1. Run the prompt
-1. Run `./docs/testscripts/check-state.sh` to check state after evolve
+1. Run `./docs/testscripts/check-state.sh --out /tmp/nixmac_state.md --copy` (or `docs/testscripts/manual-test.sh show-state`) to check state after evolve
 1. Press **Build and Test**
-1. Run `./docs/testscripts/check-state.sh` to check state after build
+1. Run `./docs/testscripts/check-state.sh --out /tmp/nixmac_state.md --copy` (or `docs/testscripts/manual-test.sh show-state`) to check state after build
 
 **Expected:**
 
@@ -521,7 +551,9 @@ success
 
 ➜  ~
 ```
+
 - this means everything done since the first AI prompt got rolled back
+
 - this is what the AI evolution UI allows for now, but the plumbing for smaller steps is in place
 
 - State after undo all:
