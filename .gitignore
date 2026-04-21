@@ -1,4 +1,6 @@
 # Dependencies
+playwright-report
+test-results
 apps/server/server
 node_modules
 
