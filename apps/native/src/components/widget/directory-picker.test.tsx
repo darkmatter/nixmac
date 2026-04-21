@@ -99,8 +99,8 @@ describe("<DirectoryPicker>", () => {
     useWidgetStore.getState().setConfigDir("/Users/me/.darwin");
     render(<DirectoryPicker label="Config directory" subLabel="flake root" />);
 
-    expect(screen.getByText("Config directory")).toBeInTheDocument();
-    expect(screen.getByText("(flake root)")).toBeInTheDocument();
+    expect(screen.getByText("Config directory")).toBeTruthy();
+    expect(screen.getByText("(flake root)")).toBeTruthy();
     const input = screen.getByLabelText("Config directory") as HTMLInputElement;
     expect(input.value).toBe("/Users/me/.darwin");
   });
@@ -110,7 +110,7 @@ describe("<DirectoryPicker>", () => {
     const input = screen.getByLabelText("Config directory");
     fireEvent.blur(input);
 
-    expect(await screen.findByText("Directory path is required")).toBeInTheDocument();
+    expect(await screen.findByText("Directory path is required")).toBeTruthy();
     expect(mockNormalize).not.toHaveBeenCalled();
     expect(mockSetDir).not.toHaveBeenCalled();
   });
@@ -124,7 +124,7 @@ describe("<DirectoryPicker>", () => {
 
     expect(
       await screen.findByText(/directory does not exist: \/does\/not\/exist/i),
-    ).toBeInTheDocument();
+    ).toBeTruthy();
 
     expect(mockSetDir).not.toHaveBeenCalled();
     expect(useWidgetStore.getState().configDir).toBe("");
@@ -189,7 +189,7 @@ describe("<DirectoryPicker>", () => {
     render(<DirectoryPicker label="Config directory" />);
     typeAndBlur(screen.getByLabelText("Config directory"), "/Users/me/.darwin");
 
-    expect(await screen.findByText("permission denied")).toBeInTheDocument();
+    expect(await screen.findByText("permission denied")).toBeTruthy();
     // Store should not be updated if setDir threw.
     expect(useWidgetStore.getState().configDir).toBe("");
   });
@@ -213,10 +213,10 @@ describe("<DirectoryPicker>", () => {
     // Wait for the effect's async chain to resolve. If a validation message appeared,
     // it should NOT be present for a valid flake dir.
     const input = await screen.findByDisplayValue("/Users/me/.darwin");
-    expect(input).toBeInTheDocument();
+    expect(input).toBeTruthy();
     expect(mockExists).toHaveBeenCalledWith("/Users/me/.darwin");
     expect(mockFlakeExistsAt).toHaveBeenCalledWith("/Users/me/.darwin");
-    expect(screen.queryByText(/flake\.nix not found/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/flake\.nix not found/i)).toBeNull();
   });
 
   it("flags 'flake.nix not found' when an externally-set dir exists but has no flake", async () => {
@@ -231,6 +231,6 @@ describe("<DirectoryPicker>", () => {
 
     expect(
       await screen.findByText(/flake\.nix not found in this directory/i),
-    ).toBeInTheDocument();
+    ).toBeTruthy();
   });
 });
