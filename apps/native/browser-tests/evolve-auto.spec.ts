@@ -38,7 +38,6 @@ test("submitting a prompt advances to the evolve review step", async ({ page }) 
   await promptInput.fill("install neovim");
   await page.getByRole("button", { name: "Send" }).click();
 
-  // Once the mock evolve result arrives, the app moves to the "evolve" step
   await expect(
     page.getByText("Ready to test-drive your changes?"),
   ).toBeVisible({ timeout: 15_000 });

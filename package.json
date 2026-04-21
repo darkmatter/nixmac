@@ -12,9 +12,9 @@
     "desktop:build": "bun -F native desktop:build",
     "postinstall": "bun2nix -o bun.nix",
     "release": "release-it",
-    "test:browser": "bun -F native test:browser",
-    "test:browser:ui": "bun -F native test:browser:ui",
-    "test:browser:install": "bun -F native test:browser:install"
+    "test:browser": "apps/native/node_modules/.bin/playwright test --config=apps/native/playwright.config.ts",
+    "test:browser:ui": "apps/native/node_modules/.bin/playwright test --config=apps/native/playwright.config.ts --ui-host=127.0.0.1 --ui-port=7777",
+    "test:browser:install": "apps/native/node_modules/.bin/playwright install --with-deps chromium"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.13",

@@ -1,11 +1,17 @@
 import type { Page } from "@playwright/test";
 
 export interface TauriMockConfig {
-  configDir?: string;
-  hostAttr?: string;
+  configDir?: string | null;
+  hostAttr?: string | null;
   hosts?: string[];
   evolveResult?: unknown;
   historyItems?: unknown[];
+  /** Path returned by config_pick_dir (Browse button). Defaults to configDir. */
+  pickedConfigDir?: string;
+  /** Overrides what routing_state_get returns. Defaults to { step: "begin" }. */
+  routingState?: object;
+  /** Step returned inside finalize_apply's evolveState. Defaults to "begin". */
+  finalizeApplyEvolveStep?: string;
 }
 
 /**
@@ -71,11 +77,13 @@ export const DEFAULT_EVOLVE_RESULT = {
  */
 export function injectTauriMocks(page: Page, overrides: TauriMockConfig = {}) {
   const config = {
-    configDir: "/mock/nixconfig",
-    hostAttr: "Test-MacBook",
+    configDir: "/mock/nixconfig" as string | null,
+    hostAttr: "Test-MacBook" as string | null,
     hosts: ["Test-MacBook"],
     evolveResult: DEFAULT_EVOLVE_RESULT,
     historyItems: [] as unknown[],
+    pickedConfigDir: undefined as string | undefined,
+    routingState: undefined as object | undefined,
     ...overrides,
   };
 
@@ -136,8 +144,9 @@ export function injectTauriMocks(page: Page, overrides: TauriMockConfig = {}) {
             return { configDir: cfg.configDir, hostAttr: cfg.hostAttr };
           case "config_set_dir":
           case "config_set_host_attr":
+            return null;
           case "config_pick_dir":
-            return cfg.configDir;
+            return cfg.pickedConfigDir ?? cfg.configDir;
 
           // ── Nix ───────────────────────────────────────────────────────────
           case "nix_check":
@@ -166,6 +175,7 @@ export function injectTauriMocks(page: Page, overrides: TauriMockConfig = {}) {
 
           // ── Evolve state ──────────────────────────────────────────────────
           case "routing_state_get":
+            return cfg.routingState ?? { evolutionId: null, currentChangesetId: null, changesetAtBuild: null, committable: false, backupBranch: null, step: "begin" };
           case "routing_state_clear":
             return { evolutionId: null, currentChangesetId: null, changesetAtBuild: null, committable: false, backupBranch: null, step: "begin" };
 
@@ -227,7 +237,7 @@ export function injectTauriMocks(page: Page, overrides: TauriMockConfig = {}) {
           case "finalize_apply":
             return {
               gitStatus: { files: [], branch: "main", branchCommitMessages: [], isMainBranch: true, branchHasBuiltCommit: true, diff: "", additions: 0, deletions: 0, headCommitHash: "built123", cleanHead: true, changes: [] },
-              evolveState: { evolutionId: null, currentChangesetId: null, changesetAtBuild: null, committable: false, backupBranch: null, step: "begin" },
+              evolveState: { evolutionId: null, currentChangesetId: null, changesetAtBuild: null, committable: false, backupBranch: null, step: cfg.finalizeApplyEvolveStep ?? "begin" },
             };
           case "rollback_erase":
           case "finalize_rollback":

@@ -210,6 +210,7 @@ export function useHistoryRestore(
     return [makePreviewItem(target), ...history];
   }, [history, previewTargetHash]);
 
+
   // Segmentation — derived from displayHistory so preview zones are included.
   const undoneSet = buildUndoneSet(displayHistory, PREVIEW_ITEM_HASH);
   const flatList = buildFlatList(displayHistory);

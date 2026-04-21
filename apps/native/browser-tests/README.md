@@ -10,6 +10,8 @@ dialogs) are handled by a separate peekaboo-based suite.
 
 ## Running
 
+All commands work from the repo root without cd side effects.
+
 ```sh
 # one-time: install browser binaries (downloads Chromium ~120MB)
 bun run test:browser:install
@@ -21,11 +23,11 @@ bun run test:browser
 bun run test:browser:ui
 # then open the URL it prints (http://127.0.0.1:7777) in any browser
 
-# run in a visible browser window
-bun -F native test:browser:headed
+# run in a visible browser window (from apps/native)
+bun run test:browser:headed
 
-# open the last HTML report
-bun -F native test:browser:report
+# open the last HTML report (from apps/native)
+bun run test:browser:report
 ```
 
 ### About UI Mode on macOS
@@ -40,9 +42,6 @@ launching a chromeless `Google Chrome for Testing` window via
 
 so it's easy to mistake it for "nothing launched". Opening UI Mode in your
 own browser (Chrome, Safari, Arc, etc.) sidesteps all of that.
-
-If you prefer the old in-app window behaviour, it's still there as
-`bun -F native test:browser:ui:app`.
 
 ### Against a server you already started
 
