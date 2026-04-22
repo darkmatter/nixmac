@@ -45,6 +45,7 @@ function isPlainInputCliProvider(provider: string): boolean {
 }
 
 const DEFAULT_EVOLVE_MODEL: Record<string, string> = {
+  openrouter: "anthropic/claude-sonnet-4",
   openai: "anthropic/claude-sonnet-4",
   ollama: "",
   vllm: "gpt-oss-120b",
@@ -54,6 +55,7 @@ const DEFAULT_EVOLVE_MODEL: Record<string, string> = {
 };
 
 const DEFAULT_SUMMARY_MODEL: Record<string, string> = {
+  openrouter: "openai/gpt-4o-mini",
   openai: "openai/gpt-4o-mini",
   ollama: "llama3.1",
   vllm: "gpt-oss-120b",
@@ -76,6 +78,7 @@ function useProviderConfigured(form: AiModelsTabProps["form"]) {
     const subscription = form.store.subscribe(() => {
       const v = form.store.state.values;
       setConfigured({
+        openrouter: !!(v.openrouterApiKey || v.openaiApiKey),
         openai: !!(v.openrouterApiKey || v.openaiApiKey),
         ollama: true,
         vllm: !!v.vllmApiBaseUrl,
@@ -84,6 +87,7 @@ function useProviderConfigured(form: AiModelsTabProps["form"]) {
     // trigger initial
     const v = form.store.state.values;
     setConfigured({
+      openrouter: !!(v.openrouterApiKey || v.openaiApiKey),
       openai: !!(v.openrouterApiKey || v.openaiApiKey),
       ollama: true,
       vllm: !!v.vllmApiBaseUrl,
@@ -103,7 +107,7 @@ function providerDisabledReason(
     return cliStatus[provider] === false ? "not found in PATH" : null;
   }
   if (configured[provider] === false) {
-    if (provider === "openai") return "no API key set";
+    if (provider === "openrouter" || provider === "openai") return "no API key set";
     if (provider === "vllm") return "no base URL set";
   }
   return null;
@@ -124,7 +128,7 @@ export function AiModelsTab({
   const renderProviderItems = () => (
     <>
       {([
-        { value: "openai", label: "OpenAI / OpenRouter" },
+        { value: "openrouter", label: "OpenRouter" },
         { value: "ollama", label: "Ollama" },
         { value: "vllm", label: "vLLM / LiteLLM" },
       ] as const).map(({ value, label }) => {
@@ -211,7 +215,7 @@ export function AiModelsTab({
                         />
                       ) : (
                         <ModelCombobox
-                          provider={evolveProvider as "openai" | "ollama" | "vllm" | "opencode"}
+                          provider={evolveProvider as "openrouter" | "openai" | "ollama" | "vllm" | "opencode"}
                           value={evolveModelField.state.value}
                           onChange={async (value) => {
                             evolveModelField.handleChange(value);
@@ -296,7 +300,7 @@ export function AiModelsTab({
                         />
                       ) : (
                         <ModelCombobox
-                          provider={summaryProvider as "openai" | "ollama" | "vllm" | "opencode"}
+                          provider={summaryProvider as "openrouter" | "openai" | "ollama" | "vllm" | "opencode"}
                           value={summaryModelField.state.value}
                           onChange={async (value) => {
                             summaryModelField.handleChange(value);

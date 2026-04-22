@@ -27,7 +27,7 @@ The agent reads your config, plans the changes, edits the Nix files, builds the 
 ### Key Features
 
 - **Natural-language config evolution** — an agentic loop with tool use (read, edit, search) that iterates until your system matches the prompt
-- **Multi-provider AI** — OpenAI/OpenRouter (default), Ollama for fully local operation
+- **Multi-provider AI** — OpenRouter (default), OpenAI-compatible endpoints, Ollama for fully local operation
 - **Tool-augmented agent** — `read_file`, `write_file`, `search_packages`, `search_docs`, `search_code` tools give the model deep context about nix-darwin options and nixpkgs
 - **Chat memory** — session context persists across turns for multi-step conversations
 - **Smart summarization** — every changeset and commit gets an AI-generated summary with token-budgeted batching
@@ -139,9 +139,9 @@ nixmac uses separate models for **evolution** (config changes via tool use) and 
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `EVOLVE_PROVIDER` | `openai` | `openai`, `openrouter`, or `ollama` |
+| `EVOLVE_PROVIDER` | `openrouter` | `openrouter`, `openai`, or `ollama` |
 | `EVOLVE_MODEL` | `anthropic/claude-sonnet-4` | Model for config evolution |
-| `SUMMARY_AI_PROVIDER` | `openai` | Provider for summarization |
+| `SUMMARY_AI_PROVIDER` | `openrouter` | Provider for summarization |
 | `SUMMARY_MODEL` | `openai/gpt-4o-mini` | Model for summaries |
 | `OLLAMA_API_BASE` | `http://localhost:11434` | Ollama endpoint |
 
