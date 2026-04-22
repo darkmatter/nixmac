@@ -47,7 +47,10 @@ export function ErrorMessage() {
   const showSettingsCta = error.includes("API key");
 
   return (
-    <div className="mx-auto max-w-2xl rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
+    <div
+      data-testid="widget-error-message"
+      className="mx-auto max-w-2xl rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400"
+    >
       <div className="whitespace-pre-wrap break-words">{error}</div>
       <div className="mt-2 flex items-center gap-3">
         {showSettingsCta && (
