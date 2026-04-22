@@ -28,9 +28,6 @@ DEFAULT_MAX_ITERATIONS = 25
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 
-# Testcase data
-SPREADSHEET: Path = SCRIPT_DIR / "data/dimensions-of-variation.xlsx"
-
 # Location where we store JSON evaluation results during test runs
 RESULTS_DIR: Path = SCRIPT_DIR / "data/results"
 
@@ -137,9 +134,7 @@ def _get_eval_hostname() -> str:
     generate_nixmac_settings so template and build target agree.
     """
     try:
-        return subprocess.check_output(
-            ["scutil", "--get", "LocalHostName"], text=True
-        ).strip()
+        return subprocess.check_output(["scutil", "--get", "LocalHostName"], text=True).strip()
     except subprocess.CalledProcessError:
         return "localhost"
 
@@ -257,13 +252,7 @@ def run_test_case(
         # the parent while the child runs, so Ctrl-C would not reach
         # the stop_requested handler until after the child exits.
         # This way we don't have to Ctrl-C O(n) times stop a long-running test suite.
-        cmd = [
-            str(nixmac),
-            "evolve",
-            case.request,
-            "--out",
-            str(out_path),
-        ]
+        cmd = [str(nixmac), "evolve", case.request, "--out", str(out_path)]
         subprocess.run(cmd, check=False)
 
         # Read and return the evolution result if present
@@ -300,11 +289,7 @@ def run_test_case(
 
 
 def update_test_case_status(case_num: Any, result: Any) -> None:
-    """Persist test result back to the spreadsheet or other storage.
-
-    Uses the test case's `num` (from the spreadsheet/csv) for filenames so
-    output files map to case numbers rather than Excel row indices.
-    """
+    """Persist test result to file system."""
     print(f"Writing results JSON to results directory for case {case_num}...")
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     result_path = RESULTS_DIR / f"case_{case_num}_result.json"
@@ -366,7 +351,7 @@ def generate_nixmac_settings(
     # Merge any auth_props (e.g., ollamaApiBaseUrl OR vllmApiBaseUrl/vllmApiKey)
     # Also set provider per auth type.
     if auth_props is not None:
-        for (k, v) in auth_props.items():
+        for k, v in auth_props.items():
             settings[k] = v
 
         # Derive provider kind from auth_props after merging: prefer ollama, else vllm
@@ -378,7 +363,7 @@ def generate_nixmac_settings(
 
         settings["evolveProvider"] = provider
         settings["summaryProvider"] = provider
-    
+
     NIXMAC_SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(NIXMAC_SETTINGS_PATH, "w") as f:
         json.dump(settings, f, indent=4)
@@ -415,8 +400,10 @@ def main(parsed_args: argparse.Namespace) -> None:
                 csv_path, rows=rows, priority=parsed_args.priority, persona=parsed_args.persona
             )
         else:
-            raise ValueError("Currently only CSV input is supported; please provide --csv argument pointing to test cases CSV file.")
-        
+            raise ValueError(
+                "Currently only CSV input is supported; please provide --csv argument pointing to test cases CSV file."
+            )
+
         # Apply --limit if provided to cap number of cases run
         if parsed_args.limit is not None:
             total_cases = len(cases)
@@ -445,10 +432,12 @@ def main(parsed_args: argparse.Namespace) -> None:
                 auth_props: dict | None = None
                 ollama_url = getattr(parsed_args, "ollama_url", "").strip()
                 vllm_url = getattr(parsed_args, "vllm_url", "").strip()
-                
+
                 if ollama_url and vllm_url:
-                    raise ValueError("Cannot specify both --ollama-url and --vllm-url; please provide only one backend")
-                
+                    raise ValueError(
+                        "Cannot specify both --ollama-url and --vllm-url; please provide only one backend"
+                    )
+
                 if ollama_url:
                     auth_props = {"ollamaApiBaseUrl": ollama_url}
                 elif vllm_url:
@@ -475,11 +464,7 @@ def main(parsed_args: argparse.Namespace) -> None:
                 # the overall cleanup in the outer finally runs.
                 stop_requested = True
                 print(f"Interrupted during case {case.num}; finishing cleanup and exiting...")
-                result = {
-                    "success": False,
-                    "error": "Interrupted by user",
-                    "case": case.num,
-                }
+                result = {"success": False, "error": "Interrupted by user", "case": case.num}
             update_test_case_status(case.num, result)
             if stop_requested:
                 print("Stop requested; exiting after current test.")
@@ -505,7 +490,10 @@ if __name__ == "__main__":
         "--evolve-model", type=str, default=DEFAULT_EVOLVE_MODEL, help="Evolve model (e.g. gpt-4)"
     )
     parser.add_argument(
-        "--summary-model", type=str, default=DEFAULT_SUMMARY_MODEL, help="Summary model (e.g. gpt-4)"
+        "--summary-model",
+        type=str,
+        default=DEFAULT_SUMMARY_MODEL,
+        help="Summary model (e.g. gpt-4)",
     )
     parser.add_argument(
         "--openai-key", dest="openai_key", type=str, default=None, help="OpenAI API key"
@@ -513,7 +501,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--openrouter-key", dest="openrouter_key", type=str, default=None, help="OpenRouter API key"
     )
-    
+
     # One of (ollama or vllm) must be provided to specify the engine backend for testing.
     # The summary and evolve providers will be derived from these arguments.
     parser.add_argument(
@@ -548,10 +536,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--csv",
-        type=str,
-        default=None,
-        help="Path to CSV file containing test prompts (alternative to Excel spreadsheet)",
+        "--csv", type=str, default=None, help="Path to CSV file containing test prompts"
     )
     parser.add_argument(
         "--rows",
@@ -566,7 +551,9 @@ if __name__ == "__main__":
         help="Maximum number of test cases to run (default: all matching cases)",
     )
     parser.add_argument(
-        "--priority", type=str, help="Filter test cases by priority (e.g., --priority {Critical,High,Medium,Low})"
+        "--priority",
+        type=str,
+        help="Filter test cases by priority (e.g., --priority {Critical,High,Medium,Low})",
     )
     parser.add_argument(
         "--persona", type=str, help="Filter test cases by persona (e.g., --persona Developer)"
@@ -578,7 +565,9 @@ if __name__ == "__main__":
     ollama_set = bool(getattr(args, "ollama_url", None)) and args.ollama_url.strip() != ""
     vllm_set = bool(getattr(args, "vllm_url", None)) and args.vllm_url.strip() != ""
     if not (ollama_set or vllm_set):
-        print("Error: you must provide either --ollama-url or --vllm-url (and optionally --vllm-api-key)")
+        print(
+            "Error: you must provide either --ollama-url or --vllm-url (and optionally --vllm-api-key)"
+        )
         raise SystemExit(2)
 
     main(args)
