@@ -73,7 +73,7 @@ pub fn create_provider<R: Runtime>(
 
     let provider = store_provider
         .or_else(|| std::env::var("SUMMARY_AI_PROVIDER").ok())
-        .unwrap_or_else(|| "openai".to_string());
+        .unwrap_or_else(|| "openrouter".to_string());
 
     let store_model = app_handle
         .and_then(|app| crate::store::get_summary_model(app).ok())

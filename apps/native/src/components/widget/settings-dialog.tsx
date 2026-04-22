@@ -12,6 +12,10 @@ import { GeneralTab } from "./settings/general-tab";
 import { PreferencesTab } from "./settings/preferences-tab";
 type ApiKeyStatus = "idle" | "verifying" | "valid" | "invalid";
 
+function normalizeProvider(provider?: string | null) {
+  return provider === "openai" ? "openrouter" : (provider ?? "openrouter");
+}
+
 interface NavItemProps {
   icon: React.ReactNode;
   label: string;
@@ -139,9 +143,9 @@ export function SettingsDialog() {
       ollamaApiBaseUrl: "",
       vllmApiBaseUrl: "",
       vllmApiKey: "",
-      summaryProvider: "openai",
+      summaryProvider: "openrouter",
       summaryModel: "openai/gpt-4o-mini",
-      evolveProvider: "openai",
+      evolveProvider: "openrouter",
       evolveModel: "anthropic/claude-sonnet-4",
       maxIterations: DEFAULT_MAX_ITERATIONS,
       maxBuildAttempts: 5,
@@ -161,9 +165,9 @@ export function SettingsDialog() {
           form.setFieldValue("ollamaApiBaseUrl", prefs.ollamaApiBaseUrl ?? "");
           form.setFieldValue("vllmApiBaseUrl", prefs.vllmApiBaseUrl ?? "");
           form.setFieldValue("vllmApiKey", prefs.vllmApiKey ?? "");
-          form.setFieldValue("summaryProvider", prefs.summaryProvider ?? "openai");
+          form.setFieldValue("summaryProvider", normalizeProvider(prefs.summaryProvider));
           form.setFieldValue("summaryModel", prefs.summaryModel ?? "openai/gpt-4o-mini");
-          form.setFieldValue("evolveProvider", prefs.evolveProvider ?? "openai");
+          form.setFieldValue("evolveProvider", normalizeProvider(prefs.evolveProvider));
           form.setFieldValue("evolveModel", prefs.evolveModel ?? "anthropic/claude-sonnet-4");
           form.setFieldValue("maxIterations", prefs.maxIterations ?? DEFAULT_MAX_ITERATIONS);
           form.setFieldValue("maxBuildAttempts", prefs.maxBuildAttempts ?? 5);

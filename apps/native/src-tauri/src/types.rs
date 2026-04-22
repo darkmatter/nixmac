@@ -46,7 +46,7 @@ pub struct UiPrefs {
     #[serde(rename = "vllmApiKey")]
     pub vllm_api_key: Option<String>,
 
-    /// Provider for summarization (openai/ollama/vllm).
+    /// Provider for summarization (openrouter/openai/ollama/vllm).
     #[serde(rename = "summaryProvider")]
     pub summary_provider: Option<String>,
 
@@ -54,7 +54,7 @@ pub struct UiPrefs {
     #[serde(rename = "summaryModel")]
     pub summary_model: Option<String>,
 
-    /// Provider for evolution (openai/ollama).
+    /// Provider for evolution (openrouter/openai/ollama).
     #[serde(rename = "evolveProvider")]
     pub evolve_provider: Option<String>,
 

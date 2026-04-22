@@ -383,7 +383,7 @@ pub async fn generate_evolution<R: Runtime>(
     let store_provider = store::get_evolve_provider(app).ok().flatten();
     let provider_type = store_provider
         .or_else(|| std::env::var("EVOLVE_PROVIDER").ok())
-        .unwrap_or_else(|| "openai".to_string());
+        .unwrap_or_else(|| "openrouter".to_string());
 
     info!("");
     info!("════════════════════════════════════════════════════════════════");
