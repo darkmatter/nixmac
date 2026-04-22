@@ -17,7 +17,6 @@ mod db;
 mod default_config;
 mod editor;
 mod evolution;
-mod lsp;
 mod evolve;
 mod evolve_state;
 mod feedback;
@@ -27,6 +26,7 @@ mod get_history;
 mod git;
 mod historelog;
 mod log_summarizer;
+mod lsp;
 mod nix;
 mod panic_handler;
 mod peek;
@@ -278,6 +278,11 @@ fn run_gui_mode(
         } else {
             log::info!("Updater plugin disabled via NIXMAC_DISABLE_UPDATER=1");
         }
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        builder = builder.plugin(tauri_plugin_webdriver_automation::init());
     }
 
     builder
