@@ -37,10 +37,11 @@ CONFIG_TEMPLATE_DIR: Path = SCRIPT_DIR.parent / "native/templates/nix-darwin-det
 # Default place we find nixmac to run evolution during test cases
 DEFAULT_NIXMAC = SCRIPT_DIR.parent.parent / "target" / "debug" / "nixmac"
 
-# System nixmac settings.json (~/Library/Application\ Support/com.darkmatter.nixmac/settings.json)
-NIXMAC_SETTINGS_PATH = (
-    Path.home() / "Library" / "Application Support" / "com.darkmatter.nixmac" / "settings.json"
-)
+# Directory containing nixmac config/state files (settings.json, evolve-state.json, etc.)
+NIXMAC_CONFIG_DIR: Path = Path.home() / "Library" / "Application Support" / "com.darkmatter.nixmac"
+
+# System nixmac settings.json (~/Library/Application Support/com.darkmatter.nixmac/settings.json)
+NIXMAC_SETTINGS_PATH: Path = NIXMAC_CONFIG_DIR / "settings.json"
 
 # Populated in __main__ when running as a script
 args: argparse.Namespace | None = None
@@ -298,26 +299,58 @@ def update_test_case_status(case_num: Any, result: Any) -> None:
     print(f"Saved results for case {case_num} to: {result_path}")
 
 
-def backup_nixmac_settings() -> Path | None:
-    """Back up the nixmac settings.json file if it exists, and return the backup path."""
-    if NIXMAC_SETTINGS_PATH.exists():
-        backup_path = NIXMAC_SETTINGS_PATH.with_suffix(".bak")
-        shutil.copy2(NIXMAC_SETTINGS_PATH, backup_path)
-        print(f"Backed up nixmac settings to: {backup_path}")
-        return backup_path
-    else:
-        print("No existing nixmac settings found to back up.")
-        return None
+def backup_nixmac_settings() -> dict:
+    """Back up nixmac files (settings.json, evolve-state.json, build-state.json).
+
+    Copies any existing files to a .bak sibling and deletes the originals.
+    Returns a dict mapping original Path -> backup Path for later restoration.
+    """
+    backups: dict[Path, Path] = {}
+
+    candidates = [
+        NIXMAC_SETTINGS_PATH,
+        NIXMAC_CONFIG_DIR / "evolve-state.json",
+        NIXMAC_CONFIG_DIR / "build-state.json",
+    ]
+
+    for p in candidates:
+        try:
+            if p.exists():
+                backup_path = p.with_suffix(".bak")
+                shutil.copy2(p, backup_path)
+                print(f"Backed up {p.name} to: {backup_path}")
+                # remove the original so tests start from a clean slate
+                p.unlink()
+                print(f"Removed original {p}")
+                backups[p] = backup_path
+        except Exception as exc:
+            print(f"Warning: failed to back up {p}: {exc}")
+
+    if not backups:
+        print("No nixmac files found to back up.")
+
+    return backups
 
 
-def restore_nixmac_settings(backup_path: Path | None) -> None:
-    """Restore the nixmac settings.json file from the backup path."""
-    if backup_path is not None and backup_path.exists():
-        shutil.copy2(backup_path, NIXMAC_SETTINGS_PATH)
-        backup_path.unlink()
-        print(f"Restored nixmac settings from backup: {backup_path}")
-    else:
-        print("No backup settings found to restore.")
+def restore_nixmac_settings(backups: dict) -> None:
+    """Restore previously backed up nixmac files from the provided mapping.
+
+    `backups` should be the dict returned from `backup_nixmac_settings`.
+    """
+    if not backups:
+        print("No nixmac backups to restore.")
+        return
+
+    for original_path, backup_path in backups.items():
+        try:
+            if backup_path.exists():
+                shutil.copy2(backup_path, original_path)
+                backup_path.unlink()
+                print(f"Restored {original_path.name} from backup: {backup_path}")
+            else:
+                print(f"Backup not found for {original_path}: {backup_path}")
+        except Exception as exc:
+            print(f"Warning: failed to restore {original_path} from {backup_path}: {exc}")
 
 
 def generate_nixmac_settings(
@@ -364,15 +397,16 @@ def generate_nixmac_settings(
         settings["evolveProvider"] = provider
         settings["summaryProvider"] = provider
 
-    NIXMAC_SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    NIXMAC_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     with open(NIXMAC_SETTINGS_PATH, "w") as f:
         json.dump(settings, f, indent=4)
     print(f"Generated nixmac settings at: {NIXMAC_SETTINGS_PATH}")
 
 
 def main(parsed_args: argparse.Namespace) -> None:
-    # Back up nixmac settings.json before running any test cases, and restore it at the end
-    settings_backup_path = backup_nixmac_settings()
+    # Back up nixmac files (settings.json, evolve-state.json, build-state.json)
+    # before running any test cases, and restore them at the end
+    backups = backup_nixmac_settings()
     stop_requested = False
 
     def _sigint_handler(signum, frame):
@@ -476,7 +510,7 @@ def main(parsed_args: argparse.Namespace) -> None:
         except Exception:
             pass
 
-        restore_nixmac_settings(settings_backup_path)
+        restore_nixmac_settings(backups)
 
 
 if __name__ == "__main__":
