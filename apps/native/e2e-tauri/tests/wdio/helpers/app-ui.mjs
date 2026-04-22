@@ -1,4 +1,4 @@
-import { $, browser } from '@wdio/globals';
+import { $, $$, browser } from '@wdio/globals';
 import { expect } from 'chai';
 
 const ERROR_MESSAGE_SELECTOR = '[data-testid="widget-error-message"]';

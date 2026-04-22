@@ -32,9 +32,7 @@ Current test files live in `e2e-tauri/tests`.
      });
      ```
 
-  ```
-  3. Add an npm script in `apps/native/package.json` (optional convenience):
-  ```
+  1. Add an npm script in `apps/native/package.json` (optional convenience):
 
 ```json
       "test:wdio:my-feature": "wdio run e2e-tauri/wdio.my-feature.conf.mjs"
@@ -44,7 +42,7 @@ Current test files live in `e2e-tauri/tests`.
   - If your tests use the vLLM backend, set `VLLM_API_BASE_URL` and `VLLM_API_KEY` in the environment before running the WDIO task (the `setupNixmacTestEnvironment` helper reads those to generate `settings.json`). Example:
 
 ```bash
-      export VLLM_API_BASE_URL="http://100.111.97.14:8002/v1"
+      export VLLM_API_BASE_URL="http://example.com/v1"
       export VLLM_API_KEY="$VLLM_API_KEY"
       bun run test:wdio:my-feature
 ```

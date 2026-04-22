@@ -63,6 +63,16 @@ function getCurrentUsername() {
   }
 }
 
+/**
+ * Return a platform triple for templates, e.g. "aarch64-darwin".
+ */
+function getPlatformTriple() {
+  const archMap = { arm64: 'aarch64', x64: 'x86_64' };
+  const arch = archMap[process.arch] ?? process.arch;
+  const platform = process.platform; // 'darwin' etc.
+  return `${arch}-${platform}`;
+}
+
 async function listNixFiles(dirPath) {
   const entries = await readdir(dirPath, { withFileTypes: true });
   const files = [];
@@ -236,12 +246,13 @@ async function createNixConfigGitRepo(hostname) {
 
   const username = getCurrentUsername();
   const nixFiles = await listNixFiles(tmpDir);
+  const platformTriple = getPlatformTriple();
   for (const nixFile of nixFiles) {
     const content = await readFile(nixFile, 'utf-8');
     const updated = content
       .replaceAll('HOSTNAME_PLACEHOLDER', hostname)
       .replaceAll('USERNAME_PLACEHOLDER', username)
-      .replaceAll('PLATFORM_PLACEHOLDER', 'aarch64-darwin');
+      .replaceAll('PLATFORM_PLACEHOLDER', platformTriple);
 
     if (updated !== content) {
       await writeFile(nixFile, updated, 'utf-8');
