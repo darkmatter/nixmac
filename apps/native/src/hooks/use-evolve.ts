@@ -42,6 +42,7 @@ export function useEvolve() {
     store.setProcessing(true, "evolve");
     store.setGenerating(true);
     store.setError(null);
+    store.setExternalBuildDetected(false);
     store.clearEvolveEvents();
     store.clearLogs();
     store.clearPreview();
@@ -62,10 +63,11 @@ export function useEvolve() {
       // Run the unified evolution workflow
       // Backend handles: AI + summary + branch + commit + DB
       const result = await darwinAPI.darwin.evolve(store.evolvePrompt);
+      const isConversational = result?.telemetry?.state === "conversational";
 
       useWidgetStore.getState().appendLog("✓ Evolution complete\n");
 
-      if (result?.telemetry?.state === "conversational") {
+      if (isConversational) {
         useWidgetStore.getState().setConversationalResponse(result.conversationalResponse ?? null);
       } else {
         store.setSummaryAvailable(true);
@@ -76,7 +78,7 @@ export function useEvolve() {
       if (result?.evolveState) {
         useWidgetStore.getState().setEvolveState(result.evolveState);
       }
-      if (result?.changeMap) {
+      if (!isConversational && result?.changeMap) {
         useWidgetStore.getState().setChangeMap(result.changeMap);
       }
 

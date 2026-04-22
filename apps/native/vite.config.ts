@@ -67,7 +67,10 @@ export default defineConfig({
   },
   envPrefix: ["VITE_", "TAURI_"],
   build: {
-    target: ["es2021", "chrome100", "safari13"],
+    // Use `esnext` to avoid esbuild attempting unsupported destructuring transforms
+    // for the configured targets. Vite/esbuild will then preserve modern syntax
+    // that Tauri supports.
+    target: "esnext",
     minify: process.env.TAURI_DEBUG ? false : "esbuild",
     sourcemap: !!process.env.TAURI_DEBUG,
     // Avoid issues with Nix symlinks in build
@@ -78,7 +81,6 @@ export default defineConfig({
       input: {
         main: path.resolve(__dirname, "index.html"),
         "preview-indicator": path.resolve(__dirname, "preview-indicator.html"),
-        "rebuild-overlay": path.resolve(__dirname, "rebuild-overlay.html"),
         "peek-icon": path.resolve(__dirname, "src/peek-icon.html"),
       },
     },

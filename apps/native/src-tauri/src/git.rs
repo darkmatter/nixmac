@@ -270,17 +270,6 @@ pub fn parse_files_from_diff(diff: &str) -> Vec<GitFileStatus> {
     files
 }
 
-/// Returns the SHA of the commit with the nixmac-last-build tag or None
-pub fn get_last_built_commit_sha(dir: &str) -> Option<String> {
-    let output = git_command()
-        .args(["rev-parse", "--verify", "refs/tags/nixmac-last-build"])
-        .current_dir(dir)
-        .output()
-        .ok()?;
-
-    Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
-}
-
 /// Gets the SHA of any ref (branch name, tag, or symbolic ref like HEAD).
 pub fn get_ref_sha(dir: &str, ref_name: &str) -> Option<String> {
     let output = git_command()
@@ -295,17 +284,6 @@ pub fn get_ref_sha(dir: &str, ref_name: &str) -> Option<String> {
 /// Gets the SHA of the current HEAD commit.
 fn get_head_sha(dir: &str) -> Option<String> {
     get_ref_sha(dir, "HEAD")
-}
-
-/// True if HEAD has the nixmac-last-build tag
-pub fn head_is_built(dir: &str) -> bool {
-    let Some(built_sha) = get_last_built_commit_sha(dir) else {
-        return false;
-    };
-    let Some(head_sha) = get_head_sha(dir) else {
-        return false;
-    };
-    built_sha == head_sha
 }
 
 /// Returns the current branch name (None if detached HEAD)
@@ -334,8 +312,6 @@ pub fn status(dir: &str) -> Result<GitStatus> {
 
     let files = parse_files_from_diff(&diff);
 
-    let head_is_built = head_is_built(dir);
-
     let head_commit_hash = get_head_sha(dir);
 
     let clean_head = diff.is_empty();
@@ -345,7 +321,6 @@ pub fn status(dir: &str) -> Result<GitStatus> {
     Ok(GitStatus {
         files,
         branch,
-        head_is_built,
         diff,
         additions,
         deletions,
@@ -572,29 +547,15 @@ pub fn tag_commit(dir: &str, tag: &str, target: &str, force: bool) -> Result<()>
     Ok(())
 }
 
-/// Git tags `nixmac-last-build` & `nixmac-built-<timestamp>`
-pub fn tag_as_built(dir: &str) -> Result<()> {
-    let timestamped_tag = format!("nixmac-built-{}", crate::utils::unix_now());
-    tag_commit(dir, &timestamped_tag, "HEAD", false)?;
-    tag_commit(dir, "nixmac-last-build", "HEAD", true)?;
-    Ok(())
-}
-
 /// Stage everything and create a backup branch without moving HEAD.
-/// Returns the branch name, or None if skipped (clean tree + changeset_id == 0).
 pub fn create_evolution_backup(
     repo_path: &str,
     evolution_id: Option<i64>,
     changeset_id: i64,
 ) -> Result<Option<String>> {
-    let head_diff = get_full_diff(repo_path)?;
-    if head_diff.is_empty() && changeset_id == 0 {
-        return Ok(None);
-    }
-
     let branch_name = format!(
         "nixmac-evolve/evolution{}-changeset{}",
-        evolution_id.map_or_else(|| "unknown".to_string(), |id| id.to_string()),
+        evolution_id.unwrap_or(0),
         changeset_id
     );
 
@@ -639,9 +600,16 @@ pub fn create_evolution_backup(
     Ok(Some(branch_name))
 }
 
-/// Restore working tree from backup index state without moving HEAD.
-/// Assumes the real index is still in the backup state (AI does not run git commands).
-pub fn restore_from_backup(repo_path: &str) -> Result<()> {
+
+/// Restore working tree to the content of a specific branch ref.
+/// Replaces the current index with the branch's tree, then checks out the working tree.
+pub fn restore_from_branch_ref(repo_path: &str, ref_name: &str) -> Result<()> {
+    git_command()
+        .args(["read-tree", ref_name])
+        .current_dir(repo_path)
+        .output()
+        .context("git read-tree")?;
+
     git_command()
         .args(["checkout-index", "-f", "-a"])
         .current_dir(repo_path)
@@ -820,7 +788,7 @@ deleted file mode 100644
     }
 
     #[test]
-    fn test_create_evolution_backup_skips_when_clean_and_no_changeset() {
+    fn test_create_evolution_backup_creates_branch_even_when_clean() {
         let temp_dir = TempDir::new().unwrap();
         let repo_dir = temp_dir.path().join("repo");
         let repo_dir_str = repo_dir.to_string_lossy().to_string();
@@ -830,35 +798,8 @@ deleted file mode 100644
         run_git_ok(&repo_dir, &["add", "-A"]);
         run_git_ok(&repo_dir, &["commit", "-m", "initial commit"]);
 
-        // Clean working tree + changeset_id == 0 → should skip.
         let result = create_evolution_backup(&repo_dir_str, Some(1), 0).unwrap();
-        assert!(result.is_none());
+        assert!(result.is_some());
     }
 
-    #[test]
-    fn test_restore_from_backup_reverts_working_tree_changes() {
-        let temp_dir = TempDir::new().unwrap();
-        let repo_dir = temp_dir.path().join("repo");
-        let repo_dir_str = repo_dir.to_string_lossy().to_string();
-        init_repo(&repo_dir_str).unwrap();
-
-        fs::write(repo_dir.join("file.txt"), "original\n").unwrap();
-        run_git_ok(&repo_dir, &["add", "-A"]);
-        run_git_ok(&repo_dir, &["commit", "-m", "initial commit"]);
-
-        // Stage a file to represent the backup index state.
-        fs::write(repo_dir.join("file.txt"), "backup state\n").unwrap();
-        run_git_ok(&repo_dir, &["add", "-A"]);
-
-        // Simulate AI making further changes to the working tree without staging.
-        fs::write(repo_dir.join("file.txt"), "ai mess\n").unwrap();
-        fs::write(repo_dir.join("new-file.txt"), "ai added\n").unwrap();
-
-        restore_from_backup(&repo_dir_str).unwrap();
-
-        // Working tree should reflect the staged (backup) state, not the AI changes.
-        let content = fs::read_to_string(repo_dir.join("file.txt")).unwrap();
-        assert_eq!(content, "backup state\n");
-        assert!(!repo_dir.join("new-file.txt").exists());
-    }
 }

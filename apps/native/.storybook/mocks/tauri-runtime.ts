@@ -71,7 +71,6 @@ const baseGitStatus = () => ({
   files: [],
   branch: "main",
   branchCommitMessages: [],
-  headIsBuilt: false,
   isMainBranch: true,
   branchHasBuiltCommit: false,
   diff: "",
@@ -261,7 +260,6 @@ export const storybookDarwinAPI = {
     checkoutNewBranch: async (branchName: string) => ({ ok: true, branch: branchName }),
     checkoutBranch: async () => undefined,
     checkoutMainBranch: async () => undefined,
-    tagAsBuilt: async () => undefined,
     mergeBranch: async () => undefined,
   },
   darwin: {

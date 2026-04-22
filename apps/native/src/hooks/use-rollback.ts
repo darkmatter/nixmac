@@ -2,14 +2,14 @@ import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
 import { useCallback } from "react";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
+import { useSummary } from "@/hooks/use-summary";
 
 /**
- * Hook for discarding changes and restoring the working tree to HEAD.
- * If the AI's changes were applied (committable === true), rebuilds after
- * discarding to sync the running system with the restored HEAD files.
+ * Hook for discarding changes and restoring the working tree to its pre-evolution state.
  */
 export function useRollback() {
   const { triggerRebuild } = useRebuildStream();
+  const { findChangeMap } = useSummary();
 
   const handleRollback = useCallback(async () => {
     const store = useWidgetStore.getState();
@@ -26,18 +26,33 @@ export function useRollback() {
       store.clearPreview();
       store.appendLog("✓ Changes discarded\n");
 
-      if (wasCommittable) {
-        await triggerRebuild({ context: "rollback" });
-      } else {
-        useWidgetStore.getState().setProcessing(false);
+      if (result.rollbackStorePath && wasCommittable) {
+        await triggerRebuild({
+          context: "rollback",
+          storePath: result.rollbackStorePath,
+          onSuccess: async () => {
+            const finalResult = await darwinAPI.darwin.finalizeRollback(
+              result.rollbackStorePath,
+              result.rollbackChangesetId,
+            );
+            if (finalResult?.gitStatus) {
+              useWidgetStore.getState().setGitStatus(finalResult.gitStatus);
+            }
+            if (finalResult?.evolveState) {
+              useWidgetStore.getState().setEvolveState(finalResult.evolveState);
+            }
+          },
+        });
       }
+      await findChangeMap();
+      useWidgetStore.getState().setProcessing(false);
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
       useWidgetStore.getState().setError(msg);
       useWidgetStore.getState().appendLog(`✗ Error: ${msg}\n`);
       useWidgetStore.getState().setProcessing(false);
     }
-  }, [triggerRebuild]);
+  }, [triggerRebuild, findChangeMap]);
 
   return { handleRollback };
 }

@@ -26,7 +26,7 @@ export type {
  * Widget step state - updated by useEffect based on app state.
  */
 export type SettingsTab = "general" | "api-keys" | "ai-models" | "preferences";
-export type WidgetStep = "permissions" | "nix-setup" | "setup" | "begin" | "evolving" | "merge" | "history";
+export type WidgetStep = "permissions" | "nix-setup" | "setup" | "begin" | "evolve" | "commit" | "manualEvolve" | "manualCommit" | "history";
 export type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
 export type ConfirmPrefKey = "confirmBuild" | "confirmClear" | "confirmRollback";
 
@@ -84,6 +84,7 @@ export interface WidgetState {
 
   // Evolve state derived from backend source of truth
   evolveState: EvolveState | null;
+  externalBuildDetected: boolean;
 
   // Git (from backend)
   gitStatus: GitStatus | null;
@@ -158,6 +159,7 @@ export interface WidgetActions {
   setDarwinRebuildAvailable: (available: boolean | null) => void;
   setDarwinRebuildPrefetching: (prefetching: boolean) => void;
   setEvolveState: (state: EvolveState | null) => void;
+  setExternalBuildDetected: (detected: boolean) => void;
   setGitStatus: (status: GitStatus | null) => void;
   setEvolvePrompt: (prompt: string) => void;
   setProcessing: (isProcessing: boolean, action?: ProcessingAction) => void;
@@ -250,6 +252,7 @@ export const initialWidgetState: WidgetState = {
 
   // Routing state
   evolveState: null,
+  externalBuildDetected: false,
 
   // Git
   gitStatus: null,
@@ -325,6 +328,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setHosts: (hosts) => set({ hosts }),
     setHost: (host) => set({ host }),
     setEvolveState: (evolveState) => set({ evolveState: evolveState }),
+    setExternalBuildDetected: (externalBuildDetected) => set({ externalBuildDetected }),
     setGitStatus: (gitStatus) => set({ gitStatus }),
     setEvolvePrompt: (evolvePrompt) => set({ evolvePrompt }),
     setProcessing: (isProcessing, action = null) =>
@@ -380,7 +384,6 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setGenerating: (isGenerating) => set({ isGenerating }),
     clearPreview: () =>
       set({
-        changeMap: null,
         summaryAvailable: false,
       }),
 

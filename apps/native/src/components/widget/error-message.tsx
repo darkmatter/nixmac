@@ -32,7 +32,7 @@ export function ErrorMessage() {
     isDismissed ||
     (step === "setup" && error?.includes("Failed to list hosts: path")) ||
     (isExpectedSetupError && error?.includes("is not a git repository")) ||
-    ((step === "evolving" || step === "begin") && error?.includes("cancelled by user"));
+    ((step === "evolve" || step === "begin") && error?.includes("cancelled by user"));
 
   if (!error || isSuppressedError) {
     return null;

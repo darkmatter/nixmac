@@ -8,6 +8,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod apply_system_defaults;
+mod build_state;
 mod changes_from_diff;
 mod cli;
 mod commands;
@@ -16,15 +17,16 @@ mod db;
 mod default_config;
 mod editor;
 mod evolution;
-mod lsp;
 mod evolve;
 mod evolve_state;
 mod feedback;
 mod finalize_apply;
+mod finalize_restore;
 mod get_history;
 mod git;
 mod historelog;
 mod log_summarizer;
+mod lsp;
 mod nix;
 mod panic_handler;
 mod peek;
@@ -278,6 +280,11 @@ fn run_gui_mode(
         }
     }
 
+    #[cfg(debug_assertions)]
+    {
+        builder = builder.plugin(tauri_plugin_webdriver_automation::init());
+    }
+
     builder
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
@@ -317,15 +324,16 @@ fn run_gui_mode(
             commands::git_cached,
             commands::git_commit,
             commands::git_stash,
-            commands::git_tag_as_built,
             // Darwin/Nix
             commands::darwin_evolve,
             commands::darwin_evolve_cancel,
             commands::darwin_evolve_answer,
             commands::darwin_apply,
             commands::darwin_apply_stream_start,
+            commands::darwin_activate_store_path,
             commands::darwin_apply_stream_cancel,
             commands::finalize_apply,
+            commands::finalize_rollback,
             commands::rollback_erase,
             commands::darwin_build_check,
             commands::darwin_adopt_manual_changes,

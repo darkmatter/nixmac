@@ -10,7 +10,7 @@ use log::info;
 use tauri::AppHandle;
 
 use crate::{
-    db,
+    build_state, db,
     evolve::{self, EvolutionState},
     evolve_state, git,
     shared_types::{
@@ -143,8 +143,6 @@ pub async fn backup_evolve_and_record_changeset(
     );
 
     // Step 1: Snapshot the working tree onto a backup branch before AI touches anything.
-    // If evolution_id is None the tree is clean (begin-evolve-warning guarantees this),
-    // so create_evolution_backup will skip (clean + changeset_id==0 → None).
     let pre_evolve_state = evolve_state::get(app).unwrap_or_default();
     let changeset_id = pre_evolve_state.current_changeset_id.unwrap_or(0);
     let backup_branch = match git::create_evolution_backup(
@@ -164,11 +162,27 @@ pub async fn backup_evolve_and_record_changeset(
 
     if let Some(ref branch) = backup_branch {
         info!("[evolution] backup branch created | branch={}", branch);
+        // Rollback branch saves the first evolution, so restore repo to pre-evolution state
+        let rollback_branch = pre_evolve_state.rollback_branch.clone()
+            .or_else(|| Some(branch.clone()));
+        let (rollback_store_path, rollback_changeset_id) =
+            if pre_evolve_state.rollback_store_path.is_some() {
+                (pre_evolve_state.rollback_store_path.clone(), pre_evolve_state.rollback_changeset_id)
+            } else {
+                let bs = build_state::get(app).ok();
+                (
+                    bs.as_ref().and_then(|b| b.nixmac_built_store_path.clone()),
+                    bs.as_ref().and_then(|b| b.changeset_id),
+                )
+            };
         let updated = evolve_state::EvolveState {
             backup_branch: Some(branch.clone()),
+            rollback_branch,
+            rollback_store_path,
+            rollback_changeset_id,
             ..pre_evolve_state.clone()
         };
-        let _ = evolve_state::set(app, updated);
+        let _ = evolve_state::set(app, updated, &initial_status.changes);
     }
 
     // Step 2: Run AI evolution
@@ -232,14 +246,16 @@ pub async fn backup_evolve_and_record_changeset(
     // Insert a DB evolution record and run the appropriate summarization pipeline.
     let (db_evolution_id, new_changeset_id) = store_metadata(app, &final_status).await;
 
+    let current_state = evolve_state::get(app).unwrap_or_default();
     let evolve_state = evolve_state::set(
         app,
         evolve_state::EvolveState {
             evolution_id: db_evolution_id,
             current_changeset_id: new_changeset_id,
             backup_branch,
-            ..Default::default()
+            ..current_state
         },
+        &final_status.changes,
     )
     .unwrap_or_default();
 
@@ -268,30 +284,25 @@ fn restore_after_failure(app: &AppHandle, config_dir: &str, backup_branch: &Opti
         Err(_) => false,
     };
 
-    match backup_branch {
-        Some(_) => {
-            if skip_restore {
-                log::warn!("[evolution] DEBUG_SKIP_RESTORE_ALL set — skipping restore_from_backup");
-            } else if let Err(e) = git::restore_from_backup(config_dir) {
-                log::error!("[evolution] restore_from_backup failed: {}", e);
-            }
-
-            let _ = evolve_state::set(
-                app,
-                evolve_state::EvolveState {
-                    backup_branch: None,
-                    ..evolve_state::get(app).unwrap_or_default()
-                },
-            );
+    if skip_restore {
+        log::warn!("[evolution] DEBUG_SKIP_RESTORE_ALL set — skipping restore_from_branch_ref");
+    } else if let Some(branch) = backup_branch {
+        let ref_name = format!("refs/heads/{}", branch);
+        if let Err(e) = git::restore_from_branch_ref(config_dir, &ref_name) {
+            log::error!("[evolution] restore_from_branch_ref failed: {}", e);
         }
-        None => {
-            if skip_restore {
-                log::warn!("[evolution] DEBUG_SKIP_RESTORE_ALL set — skipping restore_all");
-            } else if let Err(e) = git::restore_all(config_dir) {
-                log::error!("[evolution] restore_all failed: {}", e);
-            }
-        }
+    } else {
+        log::error!("[evolution] restore_after_failure called without backup_branch — skipping restore");
     }
+
+    let _ = evolve_state::set(
+        app,
+        evolve_state::EvolveState {
+            backup_branch: None,
+            ..evolve_state::get(app).unwrap_or_default()
+        },
+        &[],
+    );
 }
 
 /// Insert a DB evolution (or reuse the active one), and summarize a changeset to link to it.

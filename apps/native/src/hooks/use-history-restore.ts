@@ -245,7 +245,6 @@ export function useHistoryRestore(
         await darwinAPI.darwin.prepareRestore(hash);
         await triggerRebuild({
           context: "rollback",
-          deferBuiltTag: true,
           onSuccess: async () => {
             const result = await darwinAPI.darwin.finalizeRestore(hash);
             setGitStatus(result);
