@@ -1129,12 +1129,29 @@ pub async fn darwin_adopt_manual_changes(app: AppHandle) -> Result<i64, String> 
     let evolution_id = db::evolutions::upsert(&db_path, existing_id, branch)
         .map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
 
+    // Record a bare changeset as an anchor, helps restore mechanic,
+    // telling it this was the last manual state before generating an evolution_id
+    let adopt_changeset_id = if !git_status.changes.is_empty() {
+        db::commits::store_head_commit(&db_path, &config_dir, None)
+            .map_err(|e| capture_err("darwin_adopt_manual_changes", e))?
+            .and_then(|base_id| db::store_bare_changeset::store(&db_path, base_id, &git_status.changes).ok())
+    } else {
+        None
+    };
+
+    // Rollback should restore to the state that existed when adoption started.
+    // Use the live nix path (handles user-triggered darwin-rebuild too) and the
+    // adopt changeset so finalize_rollback can restore build_state to this exact
+    // snapshot and let current_state_built verify the step correctly.
     evolve_state::set(
         &app,
         evolve_state::EvolveState {
             evolution_id: Some(evolution_id),
-            current_changeset_id: None,
-            ..Default::default()
+            current_changeset_id: adopt_changeset_id,
+            backup_branch: None,
+            rollback_store_path: crate::build_state::read_current_store_path(),
+            rollback_changeset_id: adopt_changeset_id,
+            ..evolve_state::get(&app).unwrap_or_default()
         },
         &git_status.changes,
     )

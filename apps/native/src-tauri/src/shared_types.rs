@@ -142,7 +142,8 @@ pub enum EvolveStep {
 /// Persisted evolve state stored in `evolve-state.json`.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
-pub struct EvolveState {
+pub struct
+EvolveState {
     pub evolution_id: Option<i64>,
     pub current_changeset_id: Option<i64>,
     /// Maintained for compatibility
@@ -157,6 +158,8 @@ pub struct EvolveState {
     pub rollback_branch: Option<String>,
     pub rollback_store_path: Option<String>,
     pub rollback_changeset_id: Option<i64>,
+    /// Pre-AI-evolution build path: if restorable before AI evolution, stays restorable after AI rollback.
+    pub manual_rollback_store_path: Option<String>,
     pub step: EvolveStep,
 }
 
@@ -171,6 +174,7 @@ impl Default for EvolveState {
             rollback_branch: None,
             rollback_store_path: None,
             rollback_changeset_id: None,
+            manual_rollback_store_path: None,
             step: EvolveStep::Begin,
         }
     }
@@ -203,6 +207,7 @@ pub struct RollbackResult {
     pub evolve_state: EvolveState,
     pub rollback_store_path: Option<String>,
     pub rollback_changeset_id: Option<i64>,
+    pub manual_rollback_store_path: Option<String>,
 }
 
 // =============================================================================

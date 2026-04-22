@@ -100,6 +100,7 @@ pub async fn apply_system_defaults(
         rollback_branch: None,
         rollback_store_path: None,
         rollback_changeset_id: None,
+        manual_rollback_store_path: None,
         step: shared_types::EvolveStep::Evolve,
     };
     let working_tree_status =

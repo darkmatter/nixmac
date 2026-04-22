@@ -17,6 +17,7 @@ pub fn rollback_erase<R: Runtime>(app: &AppHandle<R>) -> Result<RollbackResult> 
     let current_evolve = evolve_state::get(app).unwrap_or_default();
     let rollback_store_path = current_evolve.rollback_store_path.clone();
     let rollback_changeset_id = current_evolve.rollback_changeset_id;
+    let manual_rollback_store_path = current_evolve.manual_rollback_store_path.clone();
 
     if let Some(ref branch) = current_evolve.rollback_branch {
         let ref_name = format!("refs/heads/{}", branch);
@@ -33,13 +34,22 @@ pub fn rollback_erase<R: Runtime>(app: &AppHandle<R>) -> Result<RollbackResult> 
 
     let final_status = git::status(&config_dir).context("Failed to get final git status")?;
     let _ = store::set_cached_git_status(app, &final_status);
-    let evolve_state = evolve_state::set(app, evolve_state::EvolveState::default(), &final_status.changes)
-        .context("Failed to clear evolve state")?;
+    let evolve_state = evolve_state::set(
+        app,
+        evolve_state::EvolveState {
+            rollback_changeset_id,
+            manual_rollback_store_path: manual_rollback_store_path.clone(),
+            ..evolve_state::EvolveState::default()
+        },
+        &final_status.changes,
+    )
+    .context("Failed to clear evolve state")?;
 
     Ok(RollbackResult {
         git_status: final_status,
         evolve_state,
         rollback_store_path,
         rollback_changeset_id,
+        manual_rollback_store_path,
     })
 }

@@ -26,14 +26,15 @@ export function useRollback() {
       store.clearPreview();
       store.appendLog("✓ Changes discarded\n");
 
-      if (result.rollbackStorePath && wasCommittable) {
+      const storePathForRebuild = result.rollbackStorePath ?? result.manualRollbackStorePath;
+      if (storePathForRebuild && wasCommittable) {
         await triggerRebuild({
           context: "rollback",
-          storePath: result.rollbackStorePath,
+          storePath: storePathForRebuild,
           onSuccess: async () => {
             const finalResult = await darwinAPI.darwin.finalizeRollback(
-              result.rollbackStorePath,
-              result.rollbackChangesetId,
+              storePathForRebuild,
+              result.rollbackStorePath ? result.rollbackChangesetId : null,
             );
             if (finalResult?.gitStatus) {
               useWidgetStore.getState().setGitStatus(finalResult.gitStatus);

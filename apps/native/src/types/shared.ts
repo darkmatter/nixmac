@@ -86,7 +86,11 @@ backupBranch: string | null;
 /**
  * rollback values recover repo state and reapply nix store path
  */
-rollbackBranch: string | null; rollbackStorePath: string | null; rollbackChangesetId: number | null; step: EvolveStep }
+rollbackBranch: string | null; rollbackStorePath: string | null; rollbackChangesetId: number | null; 
+/**
+ * Pre-AI-evolution build path: if restorable before AI evolution, stays restorable after AI rollback.
+ */
+manualRollbackStorePath: string | null; step: EvolveStep }
 
 /**
  * Widget step derived from `EvolveState` fields.
@@ -111,7 +115,7 @@ export type HistoryItem = { hash: string; message: string | null; createdAt: num
 /**
  * Result returned from a rollback erase operation.
  */
-export type RollbackResult = { gitStatus: GitStatus; evolveState: EvolveState; rollbackStorePath: string | null; rollbackChangesetId: number | null }
+export type RollbackResult = { gitStatus: GitStatus; evolveState: EvolveState; rollbackStorePath: string | null; rollbackChangesetId: number | null; manualRollbackStorePath: string | null }
 
 export type SemanticChangeGroup = { summary: ChangeSummary; changes: ChangeWithSummary[] }
 

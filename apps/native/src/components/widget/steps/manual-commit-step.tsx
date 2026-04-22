@@ -7,6 +7,7 @@ import { PromptInputSection } from "@/components/widget/prompt-input-section";
 import { StepActionsHeader } from "@/components/widget/step-actions-header";
 import { SummaryOrDiff } from "@/components/widget/summaries/summary-or-diff";
 import { useRollback } from "@/hooks/use-rollback";
+import { useWidgetStore } from "@/stores/widget-store";
 import { RefreshCw, Undo2 } from "lucide-react";
 import { useState } from "react";
 
@@ -15,23 +16,26 @@ import { useState } from "react";
  */
 export function ManualCommitStep() {
   const { handleRollback } = useRollback();
+  const manualRollbackStorePath = useWidgetStore((s) => s.evolveState?.manualRollbackStorePath);
   const [action, setAction] = useState<"commit" | "amend">("commit");
 
   return (
     <>
       <StepActionsHeader label="All changes active!">
-        <ConfirmButton
-          variant="ghost"
-          size="sm"
-          className="text-rose-400 hover:text-rose-300 hover:bg-rose-400/10"
-          confirmPrefKey="confirmRollback"
-          onConfirm={handleRollback}
-          message="Discard changes and rebuild to previous commit?"
-          color="amber"
-        >
-          <Undo2 className="h-3.5 w-3.5" />
-          Undo last build
-        </ConfirmButton>
+        {manualRollbackStorePath && (
+          <ConfirmButton
+            variant="ghost"
+            size="sm"
+            className="text-rose-400 hover:text-rose-300 hover:bg-rose-400/10"
+            confirmPrefKey="confirmRollback"
+            onConfirm={handleRollback}
+            message="Discard changes and rebuild to previous commit?"
+            color="amber"
+          >
+            <Undo2 className="h-3.5 w-3.5" />
+            Undo last build
+          </ConfirmButton>
+        )}
         <Button
           variant="ghost"
           size="sm"
