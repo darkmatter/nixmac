@@ -58,6 +58,8 @@ export function PromptInput() {
       <BeginEvolveWarning open={warningOpen} onOpenChange={setWarningOpen} handleEvolve={handleEvolve} />
       <InputGroup>
         <InputGroupTextarea
+          id="evolve-prompt-input"
+          data-testid="evolve-prompt-input"
           disabled={isLoading}
           onChange={(e) => setEvolvePrompt(e.target.value)}
           onKeyDown={(e) => {
@@ -98,6 +100,8 @@ export function PromptInput() {
           <InputGroupText className="ml-auto">{contextUsage}</InputGroupText>
           {/* <Separator className="!h-4" orientation="vertical" /> */}
           <InputGroupButton
+            id="evolve-prompt-send"
+            data-testid="evolve-prompt-send"
             className="rounded-full"
             disabled={isLoading || !evolvePrompt.trim()}
             onClick={handleSubmit}

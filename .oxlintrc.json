@@ -13,5 +13,17 @@
     "perf": "error",
     "style": "warn",
     "suspicious": "error"
-  }
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/*.spec.{js,mjs,ts,tsx}",
+        "apps/**/e2e-tauri/**/*.mjs",
+        "apps/**/tests/**/*.mjs"
+      ],
+      "rules": {
+        "no-unused-expressions": "off"
+      }
+    }
+  ]
 }

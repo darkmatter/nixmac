@@ -74,12 +74,14 @@ export function ConfirmationDialog({
             variant="outline"
             onClick={() => onOpenChange(false)}
             className="border-border/50 hover:border-border"
+            data-testid="confirm-dialog-cancel"
           >
             Cancel
           </Button>
           <Button
             onClick={handleConfirm}
             className={cn("border-2", colors.buttonBg, colors.buttonBorder)}
+            data-testid="confirm-dialog-confirm"
           >
             Confirm
           </Button>

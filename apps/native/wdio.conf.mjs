@@ -1,23 +1,9 @@
-export const config = {
-  runner: 'local',
-  port: 4444,
-  connectionRetryCount: 10,
-  connectionRetryTimeout: 120000,
-  waitforTimeout: 45000,
-  specs: ['./e2e-tauri/tests/wdio/**/*.spec.mjs'],
-  maxInstances: 1,
-  capabilities: [
-    {
-      'tauri:options': {
-        binary: '../../target/debug/nixmac',
-      },
-    },
-  ],
-  logLevel: 'info',
-  framework: 'mocha',
-  reporters: ['spec'],
-  mochaOpts: {
-    ui: 'bdd',
-    timeout: 120000,
-  },
-};
+import { createWdioConfig } from './e2e-tauri/wdio.conf.base.mjs';
+
+// Runs all suites. Uses initializeConfigRepo: true as the superset of
+// requirements across all specs.
+export const config = createWdioConfig({
+  specs: ['./tests/wdio/**/*.spec.mjs'],
+  setupOptions: { initializeConfigRepo: true },
+});
+

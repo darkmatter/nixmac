@@ -21,6 +21,7 @@
     "@types/bun": "latest",
     "bun2nix": "^2.0.6",
     "danger": "^12.3.3",
+    "eslint-plugin-chai-friendly": "^1.2.0",
     "oxlint": "^1.0.0",
     "release-it": "^19.0.3",
     "typescript": "^5",

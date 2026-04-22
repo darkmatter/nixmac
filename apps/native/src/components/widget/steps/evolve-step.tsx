@@ -29,6 +29,7 @@ export function EvolveStep() {
           onConfirm={handleRollback}
           message="Discard all current changes?"
           color="amber"
+          data-testid="evolve-discard-button"
         >
           <Eraser className="h-3.5 w-3.5" />
           Discard
