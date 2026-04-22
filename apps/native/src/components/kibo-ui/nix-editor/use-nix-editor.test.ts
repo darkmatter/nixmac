@@ -25,6 +25,11 @@ type FakeEditor = {
   _triggerSaveCommand: () => void | Promise<void>;
 };
 
+type MonacoCreateOptions = {
+  value: string;
+  language?: string;
+};
+
 const h = vi.hoisted(() => {
   const state: {
     lastEditor: FakeEditor | null;
@@ -38,7 +43,7 @@ const h = vi.hoisted(() => {
     editorValue: "",
   };
 
-  const monacoCreate = vi.fn((_container: HTMLElement, options: { value: string, language?: string }) => {
+  const monacoCreate = vi.fn((_container: HTMLElement, options: MonacoCreateOptions) => {
     state.editorValue = options.value;
     state.changeHandler = null;
     state.saveCommandHandler = null;
@@ -91,7 +96,7 @@ const h = vi.hoisted(() => {
 
 vi.mock("monaco-editor", () => ({
   editor: {
-    create: (container: HTMLElement, options: { value: string }) =>
+    create: (container: HTMLElement, options: MonacoCreateOptions) =>
       h.monacoCreate(container, options),
     setModelMarkers: vi.fn(),
   },
@@ -106,7 +111,7 @@ vi.mock("monaco-editor", () => ({
 }));
 
 vi.mock("@/lib/nix-grammar", () => ({
-  initNixGrammar: (...args: unknown[]) => h.initNixGrammar.apply(null, args as Parameters<typeof h.initNixGrammar>),
+  initNixGrammar: h.initNixGrammar,
 }));
 
 vi.mock("@/lib/lsp-client", () => ({
@@ -114,7 +119,7 @@ vi.mock("@/lib/lsp-client", () => ({
 }));
 
 vi.mock("@/lib/lsp-monaco-bridge", () => ({
-  bridgeMonacoToLsp: (...args: unknown[]) => h.bridgeMonacoToLsp(...(args as Parameters<typeof h.bridgeMonacoToLsp>)),
+  bridgeMonacoToLsp: h.bridgeMonacoToLsp,
 }));
 
 vi.mock("@/tauri-api", () => ({
