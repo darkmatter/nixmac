@@ -33,7 +33,6 @@ pub struct GitFileStatus {
 pub struct GitStatus {
     pub files: Vec<GitFileStatus>,
     pub branch: Option<String>,
-    pub head_is_built: bool,
     pub diff: String,
     pub additions: usize,
     pub deletions: usize,
@@ -50,6 +49,7 @@ pub struct WatcherEvent {
     pub change_map: Option<SemanticChangeMap>,
     pub evolve_state: Option<EvolveState>,
     pub error: Option<String>,
+    pub external_build_detected: bool,
 }
 
 // =============================================================================
@@ -133,7 +133,10 @@ pub enum EvolveStep {
     #[default]
     Begin,
     Evolve,
-    Merge,
+    #[serde(alias = "merge")]
+    Commit,
+    ManualEvolve,
+    ManualCommit,
 }
 
 /// Persisted evolve state stored in `evolve-state.json`.
@@ -142,10 +145,18 @@ pub enum EvolveStep {
 pub struct EvolveState {
     pub evolution_id: Option<i64>,
     pub current_changeset_id: Option<i64>,
+    /// Maintained for compatibility
+    #[serde(skip_serializing)]
+    #[allow(dead_code)]
     pub changeset_at_build: Option<i64>,
+    /// current state verifyably built
     pub committable: bool,
+    /// branch used to reset repo state on evolve failure
     pub backup_branch: Option<String>,
-    /// Computed from the other fields — always kept in sync by `set`.
+    /// rollback values recover repo state and reapply nix store path
+    pub rollback_branch: Option<String>,
+    pub rollback_store_path: Option<String>,
+    pub rollback_changeset_id: Option<i64>,
     pub step: EvolveStep,
 }
 
@@ -157,20 +168,27 @@ impl Default for EvolveState {
             changeset_at_build: None,
             committable: false,
             backup_branch: None,
+            rollback_branch: None,
+            rollback_store_path: None,
+            rollback_changeset_id: None,
             step: EvolveStep::Begin,
         }
     }
 }
 
-impl EvolveState {
-    #[allow(dead_code)]
-    pub fn recompute_step(&mut self) {
-        self.step = match (self.evolution_id, self.committable) {
-            (None, _) => EvolveStep::Begin,
-            (Some(_), false) => EvolveStep::Evolve,
-            (Some(_), true) => EvolveStep::Merge,
-        };
-    }
+
+// =============================================================================
+// Rollback result types
+// =============================================================================
+
+/// Result returned from a rollback erase operation.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RollbackResult {
+    pub git_status: GitStatus,
+    pub evolve_state: EvolveState,
+    pub rollback_store_path: Option<String>,
+    pub rollback_changeset_id: Option<i64>,
 }
 
 // =============================================================================

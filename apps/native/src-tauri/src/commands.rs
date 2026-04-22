@@ -8,8 +8,8 @@
 //! preview mode, etc.) is computed and managed entirely by the client.
 
 use crate::{
-    darwin, db, default_config, editor, evolution, evolve_state, feedback, git, lsp, nix, peek,
-    permissions, rollback, scanner, store, types, utils,
+    darwin, db, default_config, editor, evolution, evolve_state, feedback, finalize_restore, git,
+    lsp, nix, peek, permissions, rollback, scanner, shared_types, store, types, utils,
 };
 use std::path::Path;
 use std::process::Command;
@@ -266,6 +266,18 @@ pub async fn git_commit(app: AppHandle, message: String) -> Result<CommitResult,
         }
     }
 
+    // Update build state: new HEAD hash, no changeset (working tree is now clean).
+    if let Ok(current_build_state) = crate::build_state::get(&app) {
+        let updated = crate::build_state::BuildState {
+            head_commit_hash: Some(commit_info.hash.clone()),
+            changeset_id: None,
+            ..current_build_state
+        };
+        if let Err(e) = crate::build_state::set(&app, updated) {
+            log::warn!("[git_commit] Failed to update build state: {}", e);
+        }
+    }
+
     // Evolution complete — reset state back to idle.
     let evolve_state = evolve_state::clear(&app).unwrap_or_else(|e| {
         log::error!("[git_commit] Failed to clear evolve state: {}", e);
@@ -290,15 +302,6 @@ pub struct CommitResult {
 pub async fn git_stash(app: AppHandle, message: String) -> Result<serde_json::Value, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_stash", e))?;
     git::stash(&dir, &message).map_err(|e| capture_err("git_stash", e))?;
-    Ok(serde_json::json!({"ok": true}))
-}
-
-/// Adds the nixmac-built tag to HEAD
-#[tauri::command]
-pub async fn git_tag_as_built(app: AppHandle) -> Result<serde_json::Value, String> {
-    let dir =
-        store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_tag_as_built", e))?;
-    git::tag_as_built(&dir).map_err(|e| capture_err("git_tag_as_built", e))?;
     Ok(serde_json::json!({"ok": true}))
 }
 
@@ -438,7 +441,6 @@ pub async fn darwin_apply(
 pub async fn darwin_apply_stream_start(
     app: AppHandle,
     host_override: Option<String>,
-    defer_built_tag: Option<bool>,
 ) -> Result<serde_json::Value, String> {
     let dir = store::ensure_config_dir_exists(&app)
         .map_err(|e| capture_err("darwin_apply_stream_start", e))?;
@@ -464,9 +466,20 @@ pub async fn darwin_apply_stream_start(
             "Host attribute not found. Set a host in Settings or ensure your flake defines exactly one darwinConfiguration.".to_string()
         })?;
 
-    darwin::apply_stream(&app, &dir, &host, !defer_built_tag.unwrap_or(false))
+    darwin::apply_stream(&app, &dir, &host)
         .map_err(|e| capture_err("darwin_apply_stream_start", e))?;
     Ok(serde_json::json!({"ok": true}))
+}
+
+/// Used by rollback to restore a previous nix store without a full rebuild.
+#[tauri::command]
+pub async fn darwin_activate_store_path(
+    app: AppHandle,
+    store_path: String,
+) -> Result<serde_json::Value, String> {
+    darwin::activate_store_path_stream(&app, store_path)
+        .map(|_| serde_json::json!({"ok": true}))
+        .map_err(|e| capture_err("darwin_activate_store_path", e))
 }
 
 /// Placeholder for canceling an in-progress apply operation.
@@ -534,12 +547,24 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<serde_json::Va
     Ok(serde_json::json!({"ok": true}))
 }
 
-/// Finalize a successful darwin-rebuild, tags HEAD as built, and marks changes as committable.
+/// Finalize a successful build
 #[tauri::command]
 pub async fn finalize_apply(app: AppHandle) -> Result<crate::finalize_apply::ApplyResult, String> {
     crate::finalize_apply::finalize_apply(&app)
         .await
         .map_err(|e| capture_err("finalize_apply", e))
+}
+
+/// Finalize a rollback store-path activation — restores the pre-evolution build record.
+#[tauri::command]
+pub async fn finalize_rollback(
+    app: AppHandle,
+    store_path: Option<String>,
+    changeset_id: Option<i64>,
+) -> Result<crate::finalize_apply::ApplyResult, String> {
+    crate::finalize_apply::finalize_rollback(&app, store_path, changeset_id)
+        .await
+        .map_err(|e| capture_err("finalize_rollback", e))
 }
 
 #[tauri::command]
@@ -679,47 +704,15 @@ pub async fn abort_restore(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// Commits, tags and stored on succesful history restore
+/// Commits, tags and stores on successful history restore, then records build state.
 #[tauri::command]
 pub async fn finalize_restore(
     app: AppHandle,
     target_hash: String,
 ) -> Result<crate::types::GitStatus, String> {
-    let config_dir =
-        store::get_config_dir(&app).map_err(|e| capture_err("finalize_restore", e))?;
-    let label = &target_hash[..target_hash.len().min(8)];
-    let info = git::commit_all(&config_dir, &format!("Restore commit {label}"))
-        .map_err(|e| capture_err("finalize_restore", e))?;
-    crate::historelog::log_finalize(&info.hash);
-    if let Err(e) = git::tag_commit(
-        &config_dir,
-        &format!("nixmac-commit-{}", &info.hash[..8]),
-        &info.hash,
-        false,
-    ) {
-        log::warn!("[finalize_restore] Failed to tag commit: {}", e);
-    }
-    if let Err(e) = git::tag_as_built(&config_dir) {
-        log::warn!("[finalize_restore] Failed to tag as built: {}", e);
-    }
-    // Link the commit to its origin for metadata
-    if let Ok(db_path) = db::get_db_path(&app) {
-        let commit_hash = info.hash.clone();
-        let origin = target_hash.clone();
-        match tokio::task::spawn_blocking(move || {
-            db::restore_commits::insert(&db_path, &commit_hash, &origin)
-        })
+    finalize_restore::finalize_restore(&app, target_hash)
         .await
-        {
-            Ok(Ok(())) => {}
-            Ok(Err(e)) => log::warn!("[finalize_restore] Failed to record restore origin: {}", e),
-            Err(e) => log::warn!("[finalize_restore] Failed to record restore origin (panic): {}", e),
-        }
-    }
-    let git_status =
-        git::status(&config_dir).map_err(|e| capture_err("finalize_restore", e))?;
-    let _ = store::set_cached_git_status(&app, &git_status);
-    Ok(git_status)
+        .map_err(|e| capture_err("finalize_restore", e))
 }
 
 /// Generates a commit message from the current semantic change map via the pipeline.
@@ -1051,7 +1044,7 @@ pub async fn apply_system_defaults(
 
 /// Restore uncommitted changes.
 #[tauri::command]
-pub async fn rollback_erase(app: AppHandle) -> Result<rollback::RollbackResult, String> {
+pub async fn rollback_erase(app: AppHandle) -> Result<shared_types::RollbackResult, String> {
     rollback::rollback_erase(&app).map_err(|e| capture_err("rollback_erase", e))
 }
 
@@ -1095,6 +1088,7 @@ pub async fn darwin_adopt_manual_changes(app: AppHandle) -> Result<i64, String> 
             current_changeset_id: None,
             ..Default::default()
         },
+        &git_status.changes,
     )
     .map_err(|e| capture_err("darwin_adopt_manual_changes", e))?;
 
@@ -1216,10 +1210,15 @@ pub async fn list_cli_models(tool: String) -> Result<Vec<String>, String> {
 // Evolve State Commands
 // =============================================================================
 
-/// Load persisted evolve state (called on startup).
 #[tauri::command]
 pub async fn routing_state_get(app: AppHandle) -> Result<evolve_state::EvolveState, String> {
-    evolve_state::get(&app).map_err(|e| capture_err("routing_state_get", e))
+    let state = evolve_state::get(&app).map_err(|e| capture_err("routing_state_get", e))?;
+    // Recompute step from live git status to surface manual changes
+    let dir = store::get_config_dir(&app).map_err(|e| capture_err("routing_state_get", e))?;
+    let changes = git::status(&dir)
+        .map(|s| s.changes)
+        .unwrap_or_default();
+    evolve_state::set(&app, state, &changes).map_err(|e| capture_err("routing_state_get", e))
 }
 
 /// Clear evolve state back to idle (called after a successful git commit).

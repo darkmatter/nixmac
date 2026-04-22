@@ -74,16 +74,24 @@ export type EvolutionTelemetry = { state: EvolutionState; iterations: number; bu
 /**
  * Persisted evolve state stored in `evolve-state.json`.
  */
-export type EvolveState = { evolutionId: number | null; currentChangesetId: number | null; changesetAtBuild: number | null; committable: boolean; backupBranch: string | null; 
+export type EvolveState = { evolutionId: number | null; currentChangesetId: number | null; 
 /**
- * Computed from the other fields — always kept in sync by `set`.
+ * current state verifyably built
  */
-step: EvolveStep }
+committable: boolean; 
+/**
+ * branch used to reset repo state on evolve failure
+ */
+backupBranch: string | null; 
+/**
+ * rollback values recover repo state and reapply nix store path
+ */
+rollbackBranch: string | null; rollbackStorePath: string | null; rollbackChangesetId: number | null; step: EvolveStep }
 
 /**
  * Widget step derived from `EvolveState` fields.
  */
-export type EvolveStep = "begin" | "evolve" | "merge"
+export type EvolveStep = "begin" | "evolve" | "commit" | "manualEvolve" | "manualCommit"
 
 /**
  * Individual file status parsed from diff headers.
@@ -93,12 +101,17 @@ export type GitFileStatus = { path: string; changeType: ChangeType }
 /**
  * Comprehensive git repository status.
  */
-export type GitStatus = { files: GitFileStatus[]; branch: string | null; headIsBuilt: boolean; diff: string; additions: number; deletions: number; headCommitHash: string | null; cleanHead: boolean; changes: Change[] }
+export type GitStatus = { files: GitFileStatus[]; branch: string | null; diff: string; additions: number; deletions: number; headCommitHash: string | null; cleanHead: boolean; changes: Change[] }
 
 /**
  * A commit entry combining git log data, tag-derived flags, optional DB metadata, and raw diff changes.
  */
 export type HistoryItem = { hash: string; message: string | null; createdAt: number; isBuilt: boolean; isBase: boolean; isExternal: boolean; fileCount: number; commit: Commit | null; changeMap: SemanticChangeMap | null; unsummarizedHashes: string[]; rawChanges: Change[]; originMessage: string | null; originHash: string | null; isOrphanedRestore: boolean; isUndone: boolean }
+
+/**
+ * Result returned from a rollback erase operation.
+ */
+export type RollbackResult = { gitStatus: GitStatus; evolveState: EvolveState; rollbackStorePath: string | null; rollbackChangesetId: number | null }
 
 export type SemanticChangeGroup = { summary: ChangeSummary; changes: ChangeWithSummary[] }
 
@@ -111,5 +124,5 @@ export type SummarizedChangeSet = { changeSet: ChangeSet; changes: SummarizedCha
 /**
  * Event payload emitted by the git status watcher.
  */
-export type WatcherEvent = { gitStatus: GitStatus | null; changeMap: SemanticChangeMap | null; evolveState: EvolveState | null; error: string | null }
+export type WatcherEvent = { gitStatus: GitStatus | null; changeMap: SemanticChangeMap | null; evolveState: EvolveState | null; error: string | null; externalBuildDetected: boolean }
 

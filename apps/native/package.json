@@ -21,7 +21,15 @@
     "test:update": "vitest run --update",
     "test:update-snapshots": "vitest run --project=storybook --update",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui-host=127.0.0.1 --ui-port=7777",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "playwright show-report",
+    "test:e2e:install": "playwright install --with-deps chromium",
+    "test:e2e:ui:app": "playwright test --ui",
+    "test:wdio": "wdio run wdio.conf.mjs"
   },
   "dependencies": {
     "@distilled.cloud/neon": "^0.7.12",
@@ -115,6 +123,7 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@storybook/addon-a11y": "^10.1.8",
     "@storybook/addon-onboarding": "^10.1.8",
     "@storybook/addon-vitest": "^10.1.8",
@@ -124,12 +133,18 @@
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
+    "@types/node": "^25.6.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@typescript/native-preview": "^7.0.0-dev.20260412.1",
     "@vitejs/plugin-react": "^4.2.1",
     "@vitest/browser": "^3.0.0",
     "@vitest/coverage-v8": "^3.0.0",
+    "@wdio/cli": "^9.27.0",
+    "@wdio/globals": "^9.27.0",
+    "@wdio/local-runner": "^9.27.0",
+    "@wdio/mocha-framework": "^9.27.0",
+    "@wdio/spec-reporter": "^9.27.0",
     "autoprefixer": "^10.4.22",
     "clsx": "^2.1.1",
     "eslint-plugin-storybook": "^0.11.6",

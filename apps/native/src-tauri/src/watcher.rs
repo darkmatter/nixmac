@@ -5,7 +5,7 @@
 //! which is kept in sync by both this watcher and the evolution/summarize handlers.
 
 use crate::shared_types::WatcherEvent;
-use crate::{db, evolve_state, git, store, summarize};
+use crate::{build_state, db, evolve_state, git, store, summarize};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
@@ -49,6 +49,12 @@ where
     // Step 3: Signal that a watcher is now active and spawn the new thread.
     WATCHER_ACTIVE.store(true, Ordering::SeqCst);
     let new_thread = std::thread::spawn(move || {
+        // Seed the in-memory store path or read the live value.
+        let mut last_known_store_path: Option<String> = build_state::get(&app_handle)
+            .ok()
+            .and_then(|bs| bs.current_nix_store_path)
+            .or_else(build_state::read_current_store_path);
+
         loop {
             // Check if we should stop (set by a new call to start_watching)
             if !WATCHER_ACTIVE.load(Ordering::SeqCst) {
@@ -61,6 +67,25 @@ where
                 watch_dir.clone()
             };
 
+            // Detect external builds
+            let mut external_build_detected = false;
+            let live_store_path = build_state::read_current_store_path();
+            if live_store_path != last_known_store_path {
+                last_known_store_path = live_store_path.clone();
+                // Persist so the next app start initialises correctly.
+                if let Ok(mut bs) = build_state::get(&app_handle) {
+                    bs.current_nix_store_path = live_store_path.clone();
+                    let _ = build_state::set(&app_handle, bs);
+                }
+                // If the new path differs from what nixmac built, it's an external build.
+                let nixmac_built = build_state::get(&app_handle)
+                    .ok()
+                    .and_then(|bs| bs.nixmac_built_store_path);
+                if live_store_path.is_some() && live_store_path != nixmac_built {
+                    external_build_detected = true;
+                }
+            }
+
             if let Some(ref dir) = current_dir {
                 match git::status(dir) {
                     Ok(status) => {
@@ -72,7 +97,7 @@ where
                             .and_then(|s| serde_json::to_string(&s).ok());
                         let current_json = serde_json::to_string(&status).ok();
 
-                        if current_json != cached_json {
+                        if current_json != cached_json || external_build_detected {
                             let change_map = db::get_db_path(&app_handle)
                                 .ok()
                                 .and_then(|db_path| {
@@ -80,20 +105,19 @@ where
                                 })
                                 .map(summarize::group_existing::from_change_sets)
                                 .unwrap_or_default();
-                            let evolve_state_non_committable = evolve_state::get(&app_handle)
+                            let evolve_state_updated = evolve_state::get(&app_handle)
                                 .ok()
-                                .filter(|es| es.committable)
-                                .and_then(|mut es| {
-                                    es.committable = false;
-                                    evolve_state::set(&app_handle, es).ok()
+                                .and_then(|es| {
+                                    evolve_state::set(&app_handle, es, &status.changes).ok()
                                 });
                             let _ = app_handle.emit(
                                 "git:status-changed",
                                 WatcherEvent {
                                     git_status: Some(status.clone()),
                                     change_map: Some(change_map),
-                                    evolve_state: evolve_state_non_committable,
+                                    evolve_state: evolve_state_updated,
                                     error: None,
+                                    external_build_detected,
                                 },
                             );
                             let _ = store::set_cached_git_status(&app_handle, &status);
@@ -107,6 +131,7 @@ where
                                 change_map: None,
                                 evolve_state: None,
                                 error: Some(e.to_string()),
+                                external_build_detected: false,
                             },
                         );
                     }

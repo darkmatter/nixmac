@@ -77,7 +77,6 @@ const mockGitStatusAllStaged: GitStatus = {
   diff: "diff --git a/modules/darwin/default.nix b/modules/darwin/default.nix\n...",
   additions: 25,
   deletions: 3,
-  headIsBuilt: true,
 };
 
 const mockEvolveEvents: EvolveEvent[] = [
