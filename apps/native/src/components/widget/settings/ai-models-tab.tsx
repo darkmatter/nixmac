@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ModelCombobox } from "@/components/widget/model-combobox";
+import { getProviderConfigInvalidReason, isCliProvider } from "@/lib/ai-provider-validation";
 import { darwinAPI, DEFAULT_MAX_ITERATIONS } from "@/tauri-api";
 import type { AnyFieldApi, ReactFormExtendedApi } from "@tanstack/react-form";
 import { Info } from "lucide-react";
@@ -35,10 +36,6 @@ const CLI_PROVIDERS = [
   { value: "codex", label: "Codex CLI" },
   { value: "opencode", label: "OpenCode CLI" },
 ] as const;
-
-function isCliProvider(provider: string): boolean {
-  return CLI_PROVIDERS.some((p) => p.value === provider);
-}
 
 function isPlainInputCliProvider(provider: string): boolean {
   return provider === "claude" || provider === "codex";
@@ -70,43 +67,34 @@ function useCliToolStatus() {
   return status;
 }
 
-function useProviderConfigured(form: AiModelsTabProps["form"]) {
-  const [configured, setConfigured] = useState<Record<string, boolean>>({});
+function useProviderPrefs(form: AiModelsTabProps["form"]) {
+  const [prefs, setPrefs] = useState({
+    openrouterApiKey: "",
+    openaiApiKey: "",
+    vllmApiBaseUrl: "",
+  });
+
   useEffect(() => {
     const subscription = form.store.subscribe(() => {
       const v = form.store.state.values;
-      setConfigured({
-        openai: !!(v.openrouterApiKey || v.openaiApiKey),
-        ollama: true,
-        vllm: !!v.vllmApiBaseUrl,
+      setPrefs({
+        openrouterApiKey: v.openrouterApiKey ?? "",
+        openaiApiKey: v.openaiApiKey ?? "",
+        vllmApiBaseUrl: v.vllmApiBaseUrl ?? "",
       });
     });
+
     // trigger initial
     const v = form.store.state.values;
-    setConfigured({
-      openai: !!(v.openrouterApiKey || v.openaiApiKey),
-      ollama: true,
-      vllm: !!v.vllmApiBaseUrl,
+    setPrefs({
+      openrouterApiKey: v.openrouterApiKey ?? "",
+      openaiApiKey: v.openaiApiKey ?? "",
+      vllmApiBaseUrl: v.vllmApiBaseUrl ?? "",
     });
 
     return () => subscription.unsubscribe();
   }, [form]);
-  return configured;
-}
-
-function providerDisabledReason(
-  provider: string,
-  configured: Record<string, boolean>,
-  cliStatus: Record<string, boolean>,
-): string | null {
-  if (isCliProvider(provider)) {
-    return cliStatus[provider] === false ? "not found in PATH" : null;
-  }
-  if (configured[provider] === false) {
-    if (provider === "openai") return "no API key set";
-    if (provider === "vllm") return "no base URL set";
-  }
-  return null;
+  return prefs;
 }
 
 export function AiModelsTab({
@@ -119,7 +107,7 @@ export function AiModelsTab({
   form,
 }: AiModelsTabProps) {
   const cliStatus = useCliToolStatus();
-  const providerConfigured = useProviderConfigured(form);
+  const providerPrefs = useProviderPrefs(form);
 
   const renderProviderItems = () => (
     <>
@@ -128,22 +116,31 @@ export function AiModelsTab({
         { value: "ollama", label: "Ollama" },
         { value: "vllm", label: "vLLM / LiteLLM" },
       ] as const).map(({ value, label }) => {
-        const reason = providerDisabledReason(value, providerConfigured, cliStatus);
         return (
-          <SelectItem key={value} value={value} disabled={!!reason}>
-            {label}{reason ? ` (${reason})` : ""}
+          <SelectItem key={value} value={value}>
+            {label}
           </SelectItem>
         );
       })}
       {CLI_PROVIDERS.map(({ value, label }) => {
-        const reason = providerDisabledReason(value, providerConfigured, cliStatus);
         return (
-          <SelectItem key={value} value={value} disabled={!!reason}>
-            {label}{reason ? ` (${reason})` : ""}
+          <SelectItem key={value} value={value}>
+            {label}
           </SelectItem>
         );
       })}
     </>
+  );
+
+  const evolveProviderError = getProviderConfigInvalidReason(
+    evolveProviderField.state.value,
+    providerPrefs,
+    cliStatus,
+  );
+  const summaryProviderError = getProviderConfigInvalidReason(
+    summaryProviderField.state.value,
+    providerPrefs,
+    cliStatus,
   );
 
   return (
@@ -185,6 +182,9 @@ export function AiModelsTab({
                     {renderProviderItems()}
                   </SelectContent>
                 </Select>
+                {evolveProviderError && (
+                  <p className="text-destructive text-xs">{evolveProviderError}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <form.Subscribe
@@ -270,6 +270,9 @@ export function AiModelsTab({
                     {renderProviderItems()}
                   </SelectContent>
                 </Select>
+                {summaryProviderError && (
+                  <p className="text-destructive text-xs">{summaryProviderError}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <form.Subscribe
