@@ -28,9 +28,6 @@ DEFAULT_MAX_ITERATIONS = 25
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 
-# Testcase data
-SPREADSHEET: Path = SCRIPT_DIR / "data/dimensions-of-variation.xlsx"
-
 # Location where we store JSON evaluation results during test runs
 RESULTS_DIR: Path = SCRIPT_DIR / "data/results"
 
@@ -40,10 +37,11 @@ CONFIG_TEMPLATE_DIR: Path = SCRIPT_DIR.parent / "native/templates/nix-darwin-det
 # Default place we find nixmac to run evolution during test cases
 DEFAULT_NIXMAC = SCRIPT_DIR.parent.parent / "target" / "debug" / "nixmac"
 
-# System nixmac settings.json (~/Library/Application\ Support/com.darkmatter.nixmac/settings.json)
-NIXMAC_SETTINGS_PATH = (
-    Path.home() / "Library" / "Application Support" / "com.darkmatter.nixmac" / "settings.json"
-)
+# Directory containing nixmac config/state files (settings.json, evolve-state.json, etc.)
+NIXMAC_CONFIG_DIR: Path = Path.home() / "Library" / "Application Support" / "com.darkmatter.nixmac"
+
+# System nixmac settings.json (~/Library/Application Support/com.darkmatter.nixmac/settings.json)
+NIXMAC_SETTINGS_PATH: Path = NIXMAC_CONFIG_DIR / "settings.json"
 
 # Populated in __main__ when running as a script
 args: argparse.Namespace | None = None
@@ -137,9 +135,7 @@ def _get_eval_hostname() -> str:
     generate_nixmac_settings so template and build target agree.
     """
     try:
-        return subprocess.check_output(
-            ["scutil", "--get", "LocalHostName"], text=True
-        ).strip()
+        return subprocess.check_output(["scutil", "--get", "LocalHostName"], text=True).strip()
     except subprocess.CalledProcessError:
         return "localhost"
 
@@ -257,13 +253,7 @@ def run_test_case(
         # the parent while the child runs, so Ctrl-C would not reach
         # the stop_requested handler until after the child exits.
         # This way we don't have to Ctrl-C O(n) times stop a long-running test suite.
-        cmd = [
-            str(nixmac),
-            "evolve",
-            case.request,
-            "--out",
-            str(out_path),
-        ]
+        cmd = [str(nixmac), "evolve", case.request, "--out", str(out_path)]
         subprocess.run(cmd, check=False)
 
         # Read and return the evolution result if present
@@ -300,11 +290,7 @@ def run_test_case(
 
 
 def update_test_case_status(case_num: Any, result: Any) -> None:
-    """Persist test result back to the spreadsheet or other storage.
-
-    Uses the test case's `num` (from the spreadsheet/csv) for filenames so
-    output files map to case numbers rather than Excel row indices.
-    """
+    """Persist test result to file system."""
     print(f"Writing results JSON to results directory for case {case_num}...")
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     result_path = RESULTS_DIR / f"case_{case_num}_result.json"
@@ -313,26 +299,58 @@ def update_test_case_status(case_num: Any, result: Any) -> None:
     print(f"Saved results for case {case_num} to: {result_path}")
 
 
-def backup_nixmac_settings() -> Path | None:
-    """Back up the nixmac settings.json file if it exists, and return the backup path."""
-    if NIXMAC_SETTINGS_PATH.exists():
-        backup_path = NIXMAC_SETTINGS_PATH.with_suffix(".bak")
-        shutil.copy2(NIXMAC_SETTINGS_PATH, backup_path)
-        print(f"Backed up nixmac settings to: {backup_path}")
-        return backup_path
-    else:
-        print("No existing nixmac settings found to back up.")
-        return None
+def backup_nixmac_settings() -> dict:
+    """Back up nixmac files (settings.json, evolve-state.json, build-state.json).
+
+    Copies any existing files to a .bak sibling and deletes the originals.
+    Returns a dict mapping original Path -> backup Path for later restoration.
+    """
+    backups: dict[Path, Path] = {}
+
+    candidates = [
+        NIXMAC_SETTINGS_PATH,
+        NIXMAC_CONFIG_DIR / "evolve-state.json",
+        NIXMAC_CONFIG_DIR / "build-state.json",
+    ]
+
+    for p in candidates:
+        try:
+            if p.exists():
+                backup_path = p.with_suffix(".bak")
+                shutil.copy2(p, backup_path)
+                print(f"Backed up {p.name} to: {backup_path}")
+                # remove the original so tests start from a clean slate
+                p.unlink()
+                print(f"Removed original {p}")
+                backups[p] = backup_path
+        except Exception as exc:
+            print(f"Warning: failed to back up {p}: {exc}")
+
+    if not backups:
+        print("No nixmac files found to back up.")
+
+    return backups
 
 
-def restore_nixmac_settings(backup_path: Path | None) -> None:
-    """Restore the nixmac settings.json file from the backup path."""
-    if backup_path is not None and backup_path.exists():
-        shutil.copy2(backup_path, NIXMAC_SETTINGS_PATH)
-        backup_path.unlink()
-        print(f"Restored nixmac settings from backup: {backup_path}")
-    else:
-        print("No backup settings found to restore.")
+def restore_nixmac_settings(backups: dict) -> None:
+    """Restore previously backed up nixmac files from the provided mapping.
+
+    `backups` should be the dict returned from `backup_nixmac_settings`.
+    """
+    if not backups:
+        print("No nixmac backups to restore.")
+        return
+
+    for original_path, backup_path in backups.items():
+        try:
+            if backup_path.exists():
+                shutil.copy2(backup_path, original_path)
+                backup_path.unlink()
+                print(f"Restored {original_path.name} from backup: {backup_path}")
+            else:
+                print(f"Backup not found for {original_path}: {backup_path}")
+        except Exception as exc:
+            print(f"Warning: failed to restore {original_path} from {backup_path}: {exc}")
 
 
 def generate_nixmac_settings(
@@ -366,7 +384,7 @@ def generate_nixmac_settings(
     # Merge any auth_props (e.g., ollamaApiBaseUrl OR vllmApiBaseUrl/vllmApiKey)
     # Also set provider per auth type.
     if auth_props is not None:
-        for (k, v) in auth_props.items():
+        for k, v in auth_props.items():
             settings[k] = v
 
         # Derive provider kind from auth_props after merging: prefer ollama, else vllm
@@ -378,16 +396,17 @@ def generate_nixmac_settings(
 
         settings["evolveProvider"] = provider
         settings["summaryProvider"] = provider
-    
-    NIXMAC_SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    NIXMAC_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     with open(NIXMAC_SETTINGS_PATH, "w") as f:
         json.dump(settings, f, indent=4)
     print(f"Generated nixmac settings at: {NIXMAC_SETTINGS_PATH}")
 
 
 def main(parsed_args: argparse.Namespace) -> None:
-    # Back up nixmac settings.json before running any test cases, and restore it at the end
-    settings_backup_path = backup_nixmac_settings()
+    # Back up nixmac files (settings.json, evolve-state.json, build-state.json)
+    # before running any test cases, and restore them at the end
+    backups = backup_nixmac_settings()
     stop_requested = False
 
     def _sigint_handler(signum, frame):
@@ -415,8 +434,10 @@ def main(parsed_args: argparse.Namespace) -> None:
                 csv_path, rows=rows, priority=parsed_args.priority, persona=parsed_args.persona
             )
         else:
-            raise ValueError("Currently only CSV input is supported; please provide --csv argument pointing to test cases CSV file.")
-        
+            raise ValueError(
+                "Currently only CSV input is supported; please provide --csv argument pointing to test cases CSV file."
+            )
+
         # Apply --limit if provided to cap number of cases run
         if parsed_args.limit is not None:
             total_cases = len(cases)
@@ -445,10 +466,12 @@ def main(parsed_args: argparse.Namespace) -> None:
                 auth_props: dict | None = None
                 ollama_url = getattr(parsed_args, "ollama_url", "").strip()
                 vllm_url = getattr(parsed_args, "vllm_url", "").strip()
-                
+
                 if ollama_url and vllm_url:
-                    raise ValueError("Cannot specify both --ollama-url and --vllm-url; please provide only one backend")
-                
+                    raise ValueError(
+                        "Cannot specify both --ollama-url and --vllm-url; please provide only one backend"
+                    )
+
                 if ollama_url:
                     auth_props = {"ollamaApiBaseUrl": ollama_url}
                 elif vllm_url:
@@ -475,11 +498,7 @@ def main(parsed_args: argparse.Namespace) -> None:
                 # the overall cleanup in the outer finally runs.
                 stop_requested = True
                 print(f"Interrupted during case {case.num}; finishing cleanup and exiting...")
-                result = {
-                    "success": False,
-                    "error": "Interrupted by user",
-                    "case": case.num,
-                }
+                result = {"success": False, "error": "Interrupted by user", "case": case.num}
             update_test_case_status(case.num, result)
             if stop_requested:
                 print("Stop requested; exiting after current test.")
@@ -491,7 +510,7 @@ def main(parsed_args: argparse.Namespace) -> None:
         except Exception:
             pass
 
-        restore_nixmac_settings(settings_backup_path)
+        restore_nixmac_settings(backups)
 
 
 if __name__ == "__main__":
@@ -505,7 +524,10 @@ if __name__ == "__main__":
         "--evolve-model", type=str, default=DEFAULT_EVOLVE_MODEL, help="Evolve model (e.g. gpt-4)"
     )
     parser.add_argument(
-        "--summary-model", type=str, default=DEFAULT_SUMMARY_MODEL, help="Summary model (e.g. gpt-4)"
+        "--summary-model",
+        type=str,
+        default=DEFAULT_SUMMARY_MODEL,
+        help="Summary model (e.g. gpt-4)",
     )
     parser.add_argument(
         "--openai-key", dest="openai_key", type=str, default=None, help="OpenAI API key"
@@ -513,7 +535,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--openrouter-key", dest="openrouter_key", type=str, default=None, help="OpenRouter API key"
     )
-    
+
     # One of (ollama or vllm) must be provided to specify the engine backend for testing.
     # The summary and evolve providers will be derived from these arguments.
     parser.add_argument(
@@ -548,10 +570,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--csv",
-        type=str,
-        default=None,
-        help="Path to CSV file containing test prompts (alternative to Excel spreadsheet)",
+        "--csv", type=str, default=None, help="Path to CSV file containing test prompts"
     )
     parser.add_argument(
         "--rows",
@@ -566,7 +585,9 @@ if __name__ == "__main__":
         help="Maximum number of test cases to run (default: all matching cases)",
     )
     parser.add_argument(
-        "--priority", type=str, help="Filter test cases by priority (e.g., --priority {Critical,High,Medium,Low})"
+        "--priority",
+        type=str,
+        help="Filter test cases by priority (e.g., --priority {Critical,High,Medium,Low})",
     )
     parser.add_argument(
         "--persona", type=str, help="Filter test cases by persona (e.g., --persona Developer)"
@@ -578,7 +599,9 @@ if __name__ == "__main__":
     ollama_set = bool(getattr(args, "ollama_url", None)) and args.ollama_url.strip() != ""
     vllm_set = bool(getattr(args, "vllm_url", None)) and args.vllm_url.strip() != ""
     if not (ollama_set or vllm_set):
-        print("Error: you must provide either --ollama-url or --vllm-url (and optionally --vllm-api-key)")
+        print(
+            "Error: you must provide either --ollama-url or --vllm-url (and optionally --vllm-api-key)"
+        )
         raise SystemExit(2)
 
     main(args)
