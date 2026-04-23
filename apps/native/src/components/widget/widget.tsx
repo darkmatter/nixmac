@@ -64,9 +64,12 @@ export function DarwinWidget() {
   // Set up error handler to catch unhandled JavaScript errors and promise rejections
   useErrorHandler();
 
-  // Set up test helpers for error handlers and widget store (development only)
+  // Set up test helpers for error handlers and widget store (development/E2E only)
   useEffect(() => {
-    if (import.meta.env.DEV) {
+    const isLocalE2eWebview =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1";
+    if (import.meta.env.DEV || import.meta.env.VITE_NIXMAC_E2E === "true" || isLocalE2eWebview) {
       setupErrorTestHelpers();
       setupWidgetTestHelpers();
     }

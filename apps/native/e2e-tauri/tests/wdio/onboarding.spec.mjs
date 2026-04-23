@@ -13,7 +13,7 @@ describe('onboarding existing repo', () => {
 
     await waitForFirstWindow();
     await waitForSetupScreen();
-    await setConfigurationDirectory(metadata.configDir);
+    await setConfigurationDirectory(metadata.configDir, metadata.hostAttr);
     await chooseHostConfiguration(metadata.hostAttr);
     await assertReturnedToInitialPromptScreen();
   });

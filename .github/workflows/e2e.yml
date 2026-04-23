@@ -159,8 +159,10 @@ jobs:
     name: E2E / tauri-wdio / ${{ matrix.scenario }}
     needs: resolve
     if: needs.resolve.outputs.tauri_required == 'true'
-    runs-on: [self-hosted, macOS, nixmac-e2e]
-    timeout-minutes: 30
+    runs-on: macos-latest
+    timeout-minutes: 45
+    env:
+      NIXMAC_E2E_MOCK_SYSTEM: "1"
     strategy:
       fail-fast: false
       matrix:
@@ -189,8 +191,6 @@ jobs:
 
       - name: Verify runner prerequisites
         run: |
-          command -v nix
-          command -v darwin-rebuild
           command -v tauri-wd
           command -v jq
 
@@ -396,6 +396,75 @@ jobs:
 
       - name: Setup age
         uses: alessiodionisi/setup-age-action@v1.3.0
+
+      - name: Check full-Mac secrets
+        env:
+          ADMIN_PASSWORD: ${{ secrets.MAC_E2E_ADMIN_PASSWORD }}
+          GITHUB_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+          MAC_E2E_HOST: ${{ secrets.MAC_E2E_HOST }}
+          MAC_E2E_SSH_KEY: ${{ secrets.MAC_E2E_SSH_KEY }}
+          MAC_E2E_USER: ${{ secrets.MAC_E2E_USER }}
+          SCENARIO: ${{ matrix.scenario }}
+        run: |
+          missing=()
+          [ -n "$MAC_E2E_HOST" ] || missing+=("MAC_E2E_HOST")
+          [ -n "$MAC_E2E_USER" ] || missing+=("MAC_E2E_USER")
+          [ -n "$MAC_E2E_SSH_KEY" ] || missing+=("MAC_E2E_SSH_KEY")
+          [ -n "$ADMIN_PASSWORD" ] || missing+=("MAC_E2E_ADMIN_PASSWORD")
+          if [ "${#missing[@]}" -eq 0 ]; then
+            exit 0
+          fi
+
+          mkdir -p "apps/native/e2e-tauri/artifacts/${SCENARIO}"
+          MISSING=$(IFS=', '; echo "${missing[*]}")
+          MISSING="$MISSING" node <<'NODE'
+          const fs = require("node:fs");
+          const scenario = process.env.SCENARIO;
+          const now = new Date().toISOString();
+          const error = `Missing full-Mac E2E GitHub secrets: ${process.env.MISSING}`;
+          const report = {
+            schemaVersion: 1,
+            repo: process.env.GITHUB_REPOSITORY || "darkmatter/nixmac",
+            prNumber: process.env.GITHUB_PR_NUMBER ? Number(process.env.GITHUB_PR_NUMBER) : null,
+            headSha: process.env.GITHUB_SHA || "unknown",
+            baseSha: null,
+            workflowRunId: process.env.GITHUB_RUN_ID || null,
+            attempt: process.env.GITHUB_RUN_ATTEMPT ? Number(process.env.GITHUB_RUN_ATTEMPT) : null,
+            lane: "full-mac",
+            scenario,
+            runnerId: process.env.RUNNER_NAME || "github-hosted",
+            runnerKind: "full-mac",
+            startedAt: now,
+            finishedAt: now,
+            durationMs: 0,
+            status: "infra_failed",
+            htmlReportUrl: null,
+            primaryProofUrl: null,
+            failureProofUrl: null,
+            failureScreenshotUrl: null,
+            failureVideoUrl: null,
+            failureTimestampMs: null,
+            replayCommand: `tests/e2e/run.sh ${scenario}`,
+            localReproCommand: `tests/e2e/run.sh ${scenario}`,
+            phases: [{
+              name: "Full-Mac runner secret preflight",
+              status: "infra_failed",
+              startedAt: now,
+              finishedAt: now,
+              durationMs: 0,
+              assertions: ["Required MAC_E2E_* secrets are configured"],
+              proof: [],
+              error,
+            }],
+            proof: [],
+          };
+          fs.writeFileSync(
+            `apps/native/e2e-tauri/artifacts/${scenario}/e2e-report.json`,
+            `${JSON.stringify(report, null, 2)}\n`,
+          );
+          NODE
+          echo "$MISSING" >&2
+          exit 1
 
       - name: Setup SSH key
         run: |

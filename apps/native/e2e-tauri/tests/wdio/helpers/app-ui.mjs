@@ -120,13 +120,39 @@ export async function waitForSetupScreen() {
   });
 }
 
-export async function setConfigurationDirectory(configDir) {
+export async function setConfigurationDirectory(configDir, hostAttr) {
   const inputSelector = 'input[aria-label="1. Configuration Directory"]';
   await waitForSelector(inputSelector, { timeout: 60000, interval: 250 });
 
-  const input = await $(inputSelector);
-  await input.clearValue();
-  await input.setValue(configDir);
+  const injectedValue = await browser.execute((selector, value) => {
+    const el = document.querySelector(selector);
+    if (!(el instanceof HTMLInputElement)) {
+      return null;
+    }
+
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    setter?.call(el, value);
+    el.dispatchEvent(new InputEvent('input', { bubbles: true, data: value, inputType: 'insertText' }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    el.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+    return el.value;
+  }, inputSelector, configDir);
+
+  if (injectedValue !== configDir) {
+    const input = await $(inputSelector);
+    await input.clearValue();
+    await input.setValue(configDir);
+  }
+
+  const setupSeeded = await browser.execute((dir, host) => {
+    if (!window.__testWidget?.setSetupHosts) {
+      return false;
+    }
+    window.__testWidget.setSetupHosts(dir, host);
+    return true;
+  }, configDir, hostAttr);
+  expect(setupSeeded, 'Expected E2E widget test helper to seed setup hosts').to.equal(true);
+
   await browser.keys(['Tab']);
 
   await waitForSelector('#host-select', {

@@ -29,7 +29,7 @@
     "test:e2e:report": "playwright show-report",
     "test:e2e:install": "playwright install --with-deps chromium",
     "test:e2e:ui:app": "playwright test --ui",
-    "test:wdio:build": "bun run build && TAURI_CONFIG='{\"build\":{\"devUrl\":\"http://localhost:5174\"}}' cargo build --manifest-path src-tauri/Cargo.toml --bin nixmac",
+    "test:wdio:build": "VITE_NIXMAC_E2E=true bun run build && TAURI_CONFIG='{\"build\":{\"devUrl\":\"http://localhost:5174\"}}' cargo build --manifest-path src-tauri/Cargo.toml --bin nixmac",
     "test:wdio:services": "node e2e-tauri/scripts/run-services.mjs",
     "test:wdio": "wdio run wdio.conf.mjs",
     "test:wdio:smoke": "wdio run e2e-tauri/wdio.smoke.conf.mjs",

@@ -20,6 +20,10 @@ export interface WidgetTestHelpers {
    * Current prompt history from the store.
    */
   getPromptHistory: () => string[];
+  /**
+   * Seed the setup step with an existing nix-darwin repository and discovered hosts.
+   */
+  setSetupHosts: (configDir: string, hostAttr: string) => void;
 }
 
 export function setupWidgetTestHelpers() {
@@ -35,6 +39,12 @@ export function setupWidgetTestHelpers() {
     },
     getPromptHistory: () => {
       return [...(useWidgetStore.getState().promptHistory ?? [])];
+    },
+    setSetupHosts: (configDir: string, hostAttr: string) => {
+      const store = useWidgetStore.getState();
+      store.setConfigDir(configDir);
+      store.setHost("");
+      store.setHosts(hostAttr ? [hostAttr] : []);
     },
   };
 

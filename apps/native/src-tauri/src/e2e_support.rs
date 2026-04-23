@@ -10,6 +10,7 @@ use tauri::{AppHandle, Manager, Runtime};
 
 pub const E2E_APP_DATA_DIR_ENV: &str = "NIXMAC_E2E_APP_DATA_DIR";
 pub const E2E_BYPASS_SINGLE_INSTANCE_ENV: &str = "NIXMAC_E2E_BYPASS_SINGLE_INSTANCE";
+pub const E2E_MOCK_SYSTEM_ENV: &str = "NIXMAC_E2E_MOCK_SYSTEM";
 
 fn e2e_app_data_dir() -> Option<PathBuf> {
     if !cfg!(debug_assertions) {
@@ -48,6 +49,14 @@ pub fn should_bypass_single_instance() -> bool {
     }
 
     std::env::var(E2E_BYPASS_SINGLE_INSTANCE_ENV).unwrap_or_default() == "1"
+}
+
+pub fn should_mock_system() -> bool {
+    if !cfg!(debug_assertions) {
+        return false;
+    }
+
+    std::env::var(E2E_MOCK_SYSTEM_ENV).unwrap_or_default() == "1" || is_e2e_mode()
 }
 
 pub fn is_e2e_mode() -> bool {

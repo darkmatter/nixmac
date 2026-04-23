@@ -27,6 +27,7 @@
 use anyhow::Result;
 use log::{error, info};
 use serde_json::Value;
+use std::fs;
 use std::io::{Read as _, Write as _};
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
@@ -123,6 +124,10 @@ pub fn evaluate_installed_apps(config_dir: &str, host_attr: &str) -> Result<Vec<
 }
 
 pub fn list_darwin_hosts(config_dir: &str) -> Result<Vec<String>> {
+    if crate::e2e_support::should_mock_system() {
+        return list_darwin_hosts_from_flake(config_dir);
+    }
+
     let output = Command::new("nix")
         .args([
             "eval",
@@ -148,8 +153,46 @@ pub fn list_darwin_hosts(config_dir: &str) -> Result<Vec<String>> {
     Ok(hosts)
 }
 
+fn list_darwin_hosts_from_flake(config_dir: &str) -> Result<Vec<String>> {
+    let flake = fs::read_to_string(std::path::Path::new(config_dir).join("flake.nix"))?;
+    let mut hosts = Vec::new();
+
+    for line in flake.lines() {
+        let trimmed = line.trim();
+        if let Some(rest) = trimmed.strip_prefix("darwinConfigurations.\"") {
+            if let Some((host, _)) = rest.split_once('"') {
+                if !host.is_empty() {
+                    hosts.push(host.to_string());
+                }
+            }
+            continue;
+        }
+
+        if let Some(rest) = trimmed.strip_prefix("darwinConfigurations.") {
+            let host: String = rest
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+                .collect();
+            if !host.is_empty() {
+                hosts.push(host);
+            }
+        }
+    }
+
+    hosts.sort();
+    hosts.dedup();
+    if hosts.is_empty() {
+        anyhow::bail!("No darwinConfigurations found in flake.nix");
+    }
+    Ok(hosts)
+}
+
 /// Checks if Nix is installed by attempting to run `nix --version`.
 pub fn is_nix_installed() -> bool {
+    if crate::e2e_support::should_mock_system() {
+        return true;
+    }
+
     Command::new("/bin/bash")
         .args(["-l", "-c", "nix --version"])
         .stdout(Stdio::null())
@@ -161,6 +204,10 @@ pub fn is_nix_installed() -> bool {
 
 /// Checks if `darwin-rebuild` is available in the Nix PATH.
 pub fn is_darwin_rebuild_available() -> bool {
+    if crate::e2e_support::should_mock_system() {
+        return true;
+    }
+
     for dir in get_nix_path().split(':') {
         if std::path::Path::new(dir).join("darwin-rebuild").exists() {
             return true;
