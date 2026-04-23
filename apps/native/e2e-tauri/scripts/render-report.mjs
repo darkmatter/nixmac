@@ -14,10 +14,19 @@ function escapeHtml(value) {
     .replaceAll('"', '&quot;');
 }
 
-function relativeArtifactPath(filePath) {
+function relativeArtifactPath(filePath, fromDir = ARTIFACT_ROOT) {
   if (!filePath) return null;
-  if (!path.isAbsolute(filePath)) return filePath.split(path.sep).join('/');
-  return path.relative(ARTIFACT_ROOT, filePath).split(path.sep).join('/');
+  const absolutePath = path.isAbsolute(filePath)
+    ? filePath
+    : path.join(ARTIFACT_ROOT, filePath);
+  return path.relative(fromDir, absolutePath).split(path.sep).join('/');
+}
+
+function encodeUriPath(value) {
+  return String(value)
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
 }
 
 async function readReports() {
@@ -35,7 +44,7 @@ async function readReports() {
     const reportPath = path.join(ARTIFACT_ROOT, entry.name, 'e2e-report.json');
     try {
       const report = JSON.parse(await readFile(reportPath, 'utf-8'));
-      reports.push({ ...report, reportPath });
+      reports.push({ ...report, reportPath, artifactDir: path.dirname(reportPath) });
     } catch {
       // Ignore partial scenario dirs; the aggregate gate will validate required reports later.
     }
@@ -44,31 +53,32 @@ async function readReports() {
   return reports.sort((a, b) => a.scenario.localeCompare(b.scenario));
 }
 
-function renderProof(proof) {
+function renderProof(proof, { fromDir = ARTIFACT_ROOT } = {}) {
   if (!proof) return '<span class="muted">none</span>';
 
-  const relativePath = relativeArtifactPath(proof.path);
+  const relativePath = relativeArtifactPath(proof.path, fromDir);
+  const encodedPath = relativePath ? encodeUriPath(relativePath) : null;
   if (proof.kind === 'screenshot' && relativePath) {
     return `
-      <a href="${escapeHtml(relativePath)}">
-        <img class="thumb" src="${escapeHtml(relativePath)}" alt="${escapeHtml(proof.caption)}">
+      <a href="${escapeHtml(encodedPath)}">
+        <img class="thumb" src="${escapeHtml(encodedPath)}" alt="${escapeHtml(proof.caption)}">
       </a>
     `;
   }
 
   if (proof.kind === 'video' && relativePath) {
     return `
-      <video class="video-proof" controls preload="metadata" src="${escapeHtml(relativePath)}"></video>
-      <p><a href="${escapeHtml(relativePath)}">${escapeHtml(proof.caption || 'Flow recording')}</a></p>
+      <video class="video-proof" controls preload="metadata" src="${escapeHtml(encodedPath)}"></video>
+      <p><a href="${escapeHtml(encodedPath)}">${escapeHtml(proof.caption || 'Flow recording')}</a></p>
     `;
   }
 
   return relativePath
-    ? `<a href="${escapeHtml(relativePath)}">${escapeHtml(proof.caption || proof.kind)}</a>`
+    ? `<a href="${escapeHtml(encodedPath)}">${escapeHtml(proof.caption || proof.kind)}</a>`
     : `<span>${escapeHtml(proof.caption || proof.kind)}</span>`;
 }
 
-function renderReport(report) {
+function renderReport(report, { fromDir = ARTIFACT_ROOT } = {}) {
   const firstFailure = report.phases.find((phase) => phase.status !== 'passed');
   const failureProof = report.proof.find((entry) => entry.isFailureProof);
   const primaryProof = report.proof.find((entry) => entry.isPrimary) ?? report.proof[0] ?? null;
@@ -92,9 +102,9 @@ function renderReport(report) {
           ? `<div class="failure">
               <h3>Failure: ${escapeHtml(firstFailure.name)}</h3>
               <p>${escapeHtml(firstFailure.error ?? 'No error message captured')}</p>
-              ${renderProof(failureProof)}
+              ${renderProof(failureProof, { fromDir })}
             </div>`
-          : `<div class="proof">${renderProof(primaryProof)}</div>`
+          : `<div class="proof">${renderProof(primaryProof, { fromDir })}</div>`
       }
       <table>
         <thead><tr><th>Phase</th><th>Status</th><th>Duration</th><th>Error</th></tr></thead>
@@ -117,25 +127,29 @@ function renderReport(report) {
   `;
 }
 
-async function main() {
-  const reports = await readReports();
+function renderPage(reports, { fromDir = ARTIFACT_ROOT } = {}) {
   const failed = reports.filter((report) => report.status !== 'passed').length;
   const passed = reports.length - failed;
+  const scenarioPage = reports.length === 1 && reports[0]?.artifactDir !== undefined && fromDir !== ARTIFACT_ROOT;
+  const pageTitle = scenarioPage
+    ? `nixmac E2E Report - ${reports[0].scenario}`
+    : 'nixmac E2E Report';
+  const backLink = scenarioPage
+    ? '<p class="muted"><a href="../index.html">View all scenarios</a></p>'
+    : '';
 
-  await mkdir(ARTIFACT_ROOT, { recursive: true });
-  await writeFile(
-    path.join(ARTIFACT_ROOT, 'index.html'),
-    `<!doctype html>
+  return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>nixmac E2E Report</title>
+  <title>${escapeHtml(pageTitle)}</title>
   <style>
     body { font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 32px; color: #1f2933; background: #f7f8fa; }
     main { max-width: 1120px; margin: 0 auto; }
     h1 { margin-bottom: 4px; }
     .muted { color: #687483; }
+    .muted a { color: inherit; }
     .scenario { background: #fff; border: 1px solid #d8dee8; border-radius: 8px; margin: 20px 0; padding: 20px; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
     .scenario > header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; border-bottom: 1px solid #edf0f5; padding-bottom: 12px; }
     .scenario h2 { margin: 0; font-size: 18px; }
@@ -156,14 +170,34 @@ async function main() {
 </head>
 <body>
   <main>
-    <h1>nixmac E2E Report</h1>
+    <h1>${escapeHtml(pageTitle)}</h1>
+    ${backLink}
     <p class="muted">${passed} passed, ${failed} failed, ${reports.length} total</p>
-    ${reports.length ? reports.map(renderReport).join('') : '<p>No scenario reports found.</p>'}
+    ${reports.length ? reports.map((report) => renderReport(report, { fromDir })).join('') : '<p>No scenario reports found.</p>'}
   </main>
 </body>
 </html>
-`,
+`;
+}
+
+async function main() {
+  const reports = await readReports();
+
+  await mkdir(ARTIFACT_ROOT, { recursive: true });
+  await writeFile(
+    path.join(ARTIFACT_ROOT, 'index.html'),
+    renderPage(reports, { fromDir: ARTIFACT_ROOT }),
     'utf-8',
+  );
+
+  await Promise.all(
+    reports.map((report) =>
+      writeFile(
+        path.join(report.artifactDir, 'index.html'),
+        renderPage([report], { fromDir: report.artifactDir }),
+        'utf-8',
+      ),
+    ),
   );
 
   console.log(`Wrote ${path.join(ARTIFACT_ROOT, 'index.html')}`);
