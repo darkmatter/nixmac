@@ -273,10 +273,6 @@ jobs:
             exit 1
           fi
 
-          if [ -d "apps/native/e2e-tauri/artifacts/${SCENARIO}" ]; then
-            cp apps/native/e2e-tauri/artifacts/index.html "apps/native/e2e-tauri/artifacts/${SCENARIO}/index.html"
-          fi
-
           REPORT_URL="https://releases.nixmac.com/${REPORT_PREFIX}/${SCENARIO}/index.html"
           PUBLIC_PREFIX="https://releases.nixmac.com/${REPORT_PREFIX}"
           export REPORT_URL PUBLIC_PREFIX
@@ -567,10 +563,6 @@ jobs:
           if [ ! -d apps/native/e2e-tauri/artifacts ]; then
             echo "No full-Mac E2E artifacts to publish" >&2
             exit 1
-          fi
-
-          if [ -d "apps/native/e2e-tauri/artifacts/${SCENARIO}" ]; then
-            cp apps/native/e2e-tauri/artifacts/index.html "apps/native/e2e-tauri/artifacts/${SCENARIO}/index.html"
           fi
 
           REPORT_URL="https://releases.nixmac.com/${REPORT_PREFIX}/${SCENARIO}/index.html"
