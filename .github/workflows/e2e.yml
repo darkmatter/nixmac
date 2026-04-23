@@ -140,7 +140,9 @@ jobs:
                   required = true;
                   reason = requestedMac
                     ? "required: full-Mac E2E label present"
-                    : "required: release/native packaging paths changed";
+                    : requestedAll
+                      ? "required: e2e:all label present"
+                      : "required: release/native packaging paths changed";
                   macScenarios = requestedMac || labels.includes("e2e:all")
                     ? fullMacScenarioNames
                     : ["release_dmg_app_translocation_smoke"];
@@ -314,15 +316,16 @@ jobs:
                 ...phase,
                 proof: (phase.proof || []).map(addUrl),
               }));
-              const primary = report.proof.find((proof) => proof.kind === "video" && proof.isPrimary)
-                || report.proof.find((proof) => proof.isPrimary)
-                || report.proof[0];
               const failure = report.proof.find((proof) => proof.isFailureProof);
               const firstFailure = (report.phases || []).find((phase) => phase.status !== "passed");
               const failureVideo = firstFailure
                 ? report.proof.find((proof) => proof.kind === "video" && proof.phase === firstFailure.name)
                   || report.proof.find((proof) => proof.kind === "video")
                 : null;
+              const primary = failureVideo
+                || report.proof.find((proof) => proof.kind === "video" && proof.isPrimary)
+                || report.proof.find((proof) => proof.isPrimary)
+                || report.proof[0];
               report.primaryProofUrl = primary?.url || null;
               report.failureProofUrl = failure?.url || null;
               report.failureScreenshotUrl = failure?.kind === "screenshot" ? failure.url : null;
@@ -609,15 +612,16 @@ jobs:
                 ...phase,
                 proof: (phase.proof || []).map(addUrl),
               }));
-              const primary = report.proof.find((proof) => proof.kind === "video" && proof.isPrimary)
-                || report.proof.find((proof) => proof.isPrimary)
-                || report.proof[0];
               const failure = report.proof.find((proof) => proof.isFailureProof);
               const firstFailure = (report.phases || []).find((phase) => phase.status !== "passed");
               const failureVideo = firstFailure
                 ? report.proof.find((proof) => proof.kind === "video" && proof.phase === firstFailure.name)
                   || report.proof.find((proof) => proof.kind === "video")
                 : null;
+              const primary = failureVideo
+                || report.proof.find((proof) => proof.kind === "video" && proof.isPrimary)
+                || report.proof.find((proof) => proof.isPrimary)
+                || report.proof[0];
               report.primaryProofUrl = primary?.url || null;
               report.failureProofUrl = failure?.url || null;
               report.failureScreenshotUrl = failure?.kind === "screenshot" ? failure.url : null;
