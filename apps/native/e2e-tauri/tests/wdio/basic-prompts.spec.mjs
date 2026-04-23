@@ -4,7 +4,13 @@ import {
   submitPromptMessage,
   waitForFirstWindow,
 } from './helpers/app-ui.mjs';
-import { loadBuildState, loadEvolveState, getConfigRepoGitDiff } from './helpers/test-env.mjs';
+import {
+  loadBuildState,
+  loadEvolveState,
+  getConfigRepoGitDiff,
+  setMockVllmResponses,
+} from './helpers/test-env.mjs';
+import { getMockVllmFixturePreset } from './helpers/mock-vllm-presets.mjs';
 import { expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 
@@ -12,6 +18,10 @@ use(chaiAsPromised);
 
 describe('basic prompts', () => {
   it('submits a basic prompt and reaches evolve review with diff', async () => {
+    await setMockVllmResponses({
+      responseFiles: getMockVllmFixturePreset('basicPromptsAddFont'),
+    });
+
     await waitForFirstWindow();
 
     await submitPromptMessage('add a new programming font to my system');

@@ -16,6 +16,7 @@ import {
 } from 'node:fs/promises';
 import { constants as fsConstants } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { startMockVllmServer, stopMockVllmServer } from './mock-vllm-server.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -235,6 +236,43 @@ export async function getConfigRepoGitDiff({ format = 'structured' } = {}) {
   };
 }
 
+export async function setMockVllmResponses({ responseFiles = [], responses = null } = {}) {
+  const settings = await readJsonFileOrThrow(NIXMAC_SETTINGS_PATH, 'settings');
+  const vllmApiBaseUrl = settings?.vllmApiBaseUrl;
+
+  if (!vllmApiBaseUrl) {
+    throw new Error('[wdio:test-env] settings.vllmApiBaseUrl is missing; mock server may not be enabled');
+  }
+
+  let adminUrl;
+  try {
+    adminUrl = new URL('/__admin/mock-responses', vllmApiBaseUrl).toString();
+  } catch (error) {
+    throw new Error(
+      `[wdio:test-env] Invalid vLLM base URL in settings (${String(vllmApiBaseUrl)}): ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
+  const payload = responses
+    ? { responses }
+    : { responseFiles };
+
+  const response = await fetch(adminUrl, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const raw = await response.text();
+    throw new Error(
+      `[wdio:test-env] Failed to set mock responses at ${adminUrl} (${response.status}): ${raw}`,
+    );
+  }
+
+  return response.json();
+}
+
 async function runGit(args, cwd) {
   await execFileAsync('git', args, { cwd });
 }
@@ -277,6 +315,7 @@ export async function setupNixmacTestEnvironment(options = {}) {
   const {
     initializeConfigRepo = false,
     host,
+    mockVllm,
     vllmApiBaseUrl = process.env.VLLM_API_BASE_URL ?? null,
     vllmApiKey = process.env.VLLM_API_KEY ?? null,
   } = options;
@@ -286,6 +325,13 @@ export async function setupNixmacTestEnvironment(options = {}) {
   const buildBackupPath = await backupJsonState(NIXMAC_BUILD_STATE_PATH, 'build-state');
   const evalHostname = host || (await getEvalHostname());
   let configDir = null;
+  let mockVllmServer = null;
+  let resolvedVllmApiBaseUrl = vllmApiBaseUrl;
+
+  if (mockVllm) {
+    mockVllmServer = await startMockVllmServer(mockVllm);
+    resolvedVllmApiBaseUrl = mockVllmServer.baseUrl;
+  }
 
   if (initializeConfigRepo) {
     configDir = await createNixConfigGitRepo(evalHostname);
@@ -293,7 +339,12 @@ export async function setupNixmacTestEnvironment(options = {}) {
     console.log('[wdio:test-env] Skipping temp git repo initialization (initializeConfigRepo=false)');
   }
 
-  await generateNixmacSettings({ host: evalHostname, configDir, vllmApiBaseUrl, vllmApiKey });
+  await generateNixmacSettings({
+    host: evalHostname,
+    configDir,
+    vllmApiBaseUrl: resolvedVllmApiBaseUrl,
+    vllmApiKey,
+  });
 
   // Clear any existing evolve/build state so tests start from a clean slate
   if (await pathExists(NIXMAC_EVOLVE_STATE_PATH)) {
@@ -311,6 +362,7 @@ export async function setupNixmacTestEnvironment(options = {}) {
     evolveBackupPath,
     buildBackupPath,
     configDir,
+    mockVllmServer,
     hostAttr: evalHostname,
   };
 }
@@ -324,4 +376,8 @@ export async function teardownNixmacTestEnvironment(context) {
   await restoreNixmacSettings(context?.backupPath ?? null);
   await restoreJsonState(context?.evolveBackupPath ?? null, NIXMAC_EVOLVE_STATE_PATH, 'evolve-state');
   await restoreJsonState(context?.buildBackupPath ?? null, NIXMAC_BUILD_STATE_PATH, 'build-state');
+
+  if (context?.mockVllmServer) {
+    await stopMockVllmServer(context.mockVllmServer);
+  }
 }
