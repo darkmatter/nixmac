@@ -36,6 +36,16 @@ async function gitOutput(args, fallback = null) {
   }
 }
 
+function firstEnvValue(...names) {
+  for (const name of names) {
+    const value = process.env[name];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value;
+    }
+  }
+  return null;
+}
+
 export async function createE2eReportContext({ scenario, lane = 'tauri-wdio' }) {
   const artifactDir = path.join(ARTIFACT_ROOT, sanitizeSegment(scenario));
   await mkdir(artifactDir, { recursive: true });
@@ -151,8 +161,10 @@ export async function writeE2eReport(context, { exitCode = 0 } = {}) {
     schemaVersion: 1,
     repo: process.env.GITHUB_REPOSITORY ?? 'darkmatter/nixmac',
     prNumber: process.env.GITHUB_PR_NUMBER ? Number(process.env.GITHUB_PR_NUMBER) : null,
-    headSha: process.env.GITHUB_SHA ?? (await gitOutput(['rev-parse', 'HEAD'], 'unknown')),
-    baseSha: process.env.GITHUB_BASE_SHA ?? null,
+    headSha:
+      firstEnvValue('E2E_HEAD_SHA', 'COMMIT_SHA', 'GITHUB_SHA') ??
+      (await gitOutput(['rev-parse', 'HEAD'], 'unknown')),
+    baseSha: firstEnvValue('E2E_BASE_SHA', 'GITHUB_BASE_SHA'),
     workflowRunId: process.env.GITHUB_RUN_ID ?? null,
     attempt: process.env.GITHUB_RUN_ATTEMPT ? Number(process.env.GITHUB_RUN_ATTEMPT) : null,
     lane: context.lane,

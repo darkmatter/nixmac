@@ -134,8 +134,8 @@ e2e_report_write() {
     jq -n \
         --arg repo "${GITHUB_REPOSITORY:-darkmatter/nixmac}" \
         --argjson prNumber "${GITHUB_PR_NUMBER:-null}" \
-        --arg headSha "${GITHUB_SHA:-${COMMIT_SHA:-unknown}}" \
-        --argjson baseSha null \
+        --arg headSha "${E2E_HEAD_SHA:-${COMMIT_SHA:-${GITHUB_SHA:-unknown}}}" \
+        --arg baseSha "${E2E_BASE_SHA:-}" \
         --arg workflowRunId "${GITHUB_RUN_ID:-}" \
         --argjson attempt "${GITHUB_RUN_ATTEMPT:-null}" \
         --arg scenario "$scenario" \
@@ -155,7 +155,7 @@ e2e_report_write() {
             repo: $repo,
             prNumber: $prNumber,
             headSha: $headSha,
-            baseSha: $baseSha,
+            baseSha: (($baseSha | select(length > 0)) // null),
             workflowRunId: (($workflowRunId | select(length > 0)) // null),
             attempt: $attempt,
             lane: "full-mac",

@@ -16,6 +16,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  E2E_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+  E2E_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
   SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 
 permissions:
@@ -453,8 +455,8 @@ jobs:
             schemaVersion: 1,
             repo: process.env.GITHUB_REPOSITORY || "darkmatter/nixmac",
             prNumber: process.env.GITHUB_PR_NUMBER ? Number(process.env.GITHUB_PR_NUMBER) : null,
-            headSha: process.env.GITHUB_SHA || "unknown",
-            baseSha: null,
+            headSha: process.env.E2E_HEAD_SHA || process.env.GITHUB_SHA || "unknown",
+            baseSha: process.env.E2E_BASE_SHA || null,
             workflowRunId: process.env.GITHUB_RUN_ID || null,
             attempt: process.env.GITHUB_RUN_ATTEMPT ? Number(process.env.GITHUB_RUN_ATTEMPT) : null,
             lane: "full-mac",
@@ -520,6 +522,8 @@ jobs:
             echo "export GH_TOKEN=$(printf '%q' "$GH_TOKEN")"
             echo "export BRANCH=$(printf '%q' "$BRANCH_NAME")"
             echo "export COMMIT_SHA=$(printf '%q' "$COMMIT_SHA")"
+            echo "export E2E_HEAD_SHA=$(printf '%q' "$E2E_HEAD_SHA")"
+            echo "export E2E_BASE_SHA=$(printf '%q' "$E2E_BASE_SHA")"
             echo "export SCENARIO=$(printf '%q' "$SCENARIO")"
             echo "export GITHUB_REPOSITORY=$(printf '%q' "${{ github.repository }}")"
             echo "export GITHUB_PR_NUMBER=$(printf '%q' "${{ github.event.pull_request.number || 'null' }}")"
@@ -584,6 +588,7 @@ jobs:
           const sanitize = (value) => String(value || "")
             .replace(/x-access-token:[^@\s]+@/g, "x-access-token:[redacted]@")
             .replace(/gh[pousr]_[A-Za-z0-9_]+/g, "[redacted-github-token]")
+            .replace(/github_pat_[A-Za-z0-9_]+/g, "[redacted-github-token]")
             .replace(/[\r\n|]+/g, " ")
             .replace(/\s+/g, " ")
             .trim()
@@ -594,8 +599,8 @@ jobs:
             schemaVersion: 1,
             repo: process.env.GITHUB_REPOSITORY || "darkmatter/nixmac",
             prNumber: process.env.GITHUB_PR_NUMBER ? Number(process.env.GITHUB_PR_NUMBER) : null,
-            headSha: process.env.COMMIT_SHA || process.env.GITHUB_SHA || "unknown",
-            baseSha: null,
+            headSha: process.env.E2E_HEAD_SHA || process.env.COMMIT_SHA || process.env.GITHUB_SHA || "unknown",
+            baseSha: process.env.E2E_BASE_SHA || null,
             workflowRunId: process.env.GITHUB_RUN_ID || null,
             attempt: process.env.GITHUB_RUN_ATTEMPT ? Number(process.env.GITHUB_RUN_ATTEMPT) : null,
             lane: "full-mac",
