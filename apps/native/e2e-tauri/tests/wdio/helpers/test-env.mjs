@@ -139,6 +139,45 @@ export async function loadBuildState() {
   return parsed.buildState ?? parsed;
 }
 
+async function waitForValue(predicate, { timeout = 60000, interval = 500, timeoutMessage }) {
+  const started = Date.now();
+  let lastError = null;
+
+  while (Date.now() - started < timeout) {
+    try {
+      const value = await predicate();
+      if (value) {
+        return value;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+
+  const suffix = lastError instanceof Error ? ` Last error: ${lastError.message}` : '';
+  throw new Error(`${timeoutMessage}${suffix}`);
+}
+
+export async function waitForEvolveStateWithChangeset(options = {}) {
+  let lastState = null;
+
+  return waitForValue(
+    async () => {
+      lastState = await loadEvolveState();
+      return Number(lastState?.currentChangesetId) > 0 ? lastState : null;
+    },
+    {
+      timeout: options.timeout ?? 60000,
+      interval: options.interval ?? 500,
+      timeoutMessage:
+        options.timeoutMessage ??
+        `Timed out waiting for evolve-state.currentChangesetId > 0. Last state: ${JSON.stringify(lastState)}`,
+    },
+  );
+}
+
 export async function loadE2eEnvironmentMetadata() {
   return readJsonFileOrThrow(NIXMAC_E2E_METADATA_PATH, 'e2e-env');
 }
@@ -177,6 +216,25 @@ export async function getConfigRepoGitDiff({ format = 'structured' } = {}) {
     raw: rawDiff,
     files,
   };
+}
+
+export async function waitForConfigRepoGitDiffContaining(expectedSubstrings, options = {}) {
+  const expected = Array.isArray(expectedSubstrings) ? expectedSubstrings : [expectedSubstrings];
+  let lastDiff = null;
+
+  return waitForValue(
+    async () => {
+      lastDiff = await getConfigRepoGitDiff();
+      return expected.every((substring) => lastDiff.raw.includes(substring)) ? lastDiff : null;
+    },
+    {
+      timeout: options.timeout ?? 60000,
+      interval: options.interval ?? 500,
+      timeoutMessage:
+        options.timeoutMessage ??
+        `Timed out waiting for git diff to include ${expected.join(', ')}. Last diff:\n${lastDiff?.raw ?? ''}`,
+    },
+  );
 }
 
 export async function setMockVllmResponses({ responseFiles = [], responses = null } = {}) {

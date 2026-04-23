@@ -6,9 +6,9 @@ import {
 } from './helpers/app-ui.mjs';
 import {
   loadBuildState,
-  loadEvolveState,
-  getConfigRepoGitDiff,
   setMockVllmResponses,
+  waitForConfigRepoGitDiffContaining,
+  waitForEvolveStateWithChangeset,
 } from './helpers/test-env.mjs';
 import { getMockVllmFixturePreset } from './helpers/mock-vllm-presets.mjs';
 import { expect, use } from 'chai';
@@ -28,9 +28,9 @@ describe('basic prompts', () => {
 
     await assertPromptFlowReachedEvolveReview();
 
-    const evolveState = await loadEvolveState();
+    const evolveState = await waitForEvolveStateWithChangeset();
     const buildState = await loadBuildState();
-    const gitDiff = await getConfigRepoGitDiff();
+    const gitDiff = await waitForConfigRepoGitDiffContaining('jetbrains-mono');
 
     console.log('[wdio:basic-prompts] evolve_state');
     console.log(JSON.stringify(evolveState, null, 2));

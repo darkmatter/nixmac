@@ -3,7 +3,10 @@ import {
   submitPromptMessage,
   waitForFirstWindow,
 } from './helpers/app-ui.mjs';
-import { getConfigRepoGitDiff, setMockVllmResponses } from './helpers/test-env.mjs';
+import {
+  setMockVllmResponses,
+  waitForConfigRepoGitDiffContaining,
+} from './helpers/test-env.mjs';
 import { getMockVllmFixturePreset } from './helpers/mock-vllm-presets.mjs';
 import { expect } from 'chai';
 
@@ -20,7 +23,7 @@ describe('modify', () => {
     await submitPromptMessage(firstPrompt);
     await assertPromptFlowReachedEvolveReview();
 
-    const firstDiff = await getConfigRepoGitDiff();
+    const firstDiff = await waitForConfigRepoGitDiffContaining('jetbrains-mono');
     expect(
       firstDiff.raw,
       'Expected the first evolve run to leave an uncommitted JetBrains Mono change',
@@ -32,7 +35,7 @@ describe('modify', () => {
     await submitPromptMessage(secondPrompt);
     await assertPromptFlowReachedEvolveReview();
 
-    const secondDiff = await getConfigRepoGitDiff();
+    const secondDiff = await waitForConfigRepoGitDiffContaining(['jetbrains-mono', 'fira-code']);
     expect(
       secondDiff.raw,
       'Expected the second evolve run to preserve the first change',
