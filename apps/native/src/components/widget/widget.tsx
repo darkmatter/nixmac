@@ -36,9 +36,7 @@ import { loadConfig, loadHosts, loadEvolveState } from "@/hooks/use-widget-initi
 import { useSummary } from "@/hooks/use-summary";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { UpdateBanner } from "@/components/update-banner";
-import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
 import { isE2eProofMode } from "@/utils/e2e-proof-mode";
-import { setupWidgetTestHelpers } from "@/utils/widget-test-helpers";
 import { useEffect } from "react";
 
 /**
@@ -67,12 +65,14 @@ export function DarwinWidget() {
 
   // Set up test helpers for error handlers and widget store (development/E2E only)
   useEffect(() => {
-    const isLocalE2eWebview =
-      window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1";
-    if (import.meta.env.DEV || import.meta.env.VITE_NIXMAC_E2E === "true" || isLocalE2eWebview) {
-      setupErrorTestHelpers();
-      setupWidgetTestHelpers();
+    if (import.meta.env.DEV || import.meta.env.VITE_NIXMAC_E2E === "true") {
+      void Promise.all([
+        import("@/utils/error-test-helpers"),
+        import("@/utils/widget-test-helpers"),
+      ]).then(([errorHelpers, widgetHelpers]) => {
+        errorHelpers.setupErrorTestHelpers();
+        widgetHelpers.setupWidgetTestHelpers();
+      });
     }
   }, []);
 
