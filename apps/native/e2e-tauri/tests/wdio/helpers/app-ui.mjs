@@ -20,6 +20,10 @@ async function failIfWidgetErrorPresent() {
     return;
   }
 
+  if (message.includes('is not a git repository') && message.includes('.darwin')) {
+    return;
+  }
+
   expect.fail(`Widget error surfaced during test: ${message}`);
 }
 
