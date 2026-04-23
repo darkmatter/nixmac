@@ -97,7 +97,14 @@ export async function startMockVllmServer(mockVllmOptions = {}) {
 
         let parsedBody = {};
         if (rawBody.trim()) {
-          parsedBody = JSON.parse(rawBody);
+          try {
+            parsedBody = JSON.parse(rawBody);
+          } catch (err) {
+            writeJsonResponse(response, 400, {
+              error: `Invalid JSON in request body: ${err.message}`,
+            });
+            return;
+          }
         }
 
         if (Array.isArray(parsedBody.responses)) {
