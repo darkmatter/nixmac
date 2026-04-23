@@ -56,6 +56,13 @@ function renderProof(proof) {
     `;
   }
 
+  if (proof.kind === 'video' && relativePath) {
+    return `
+      <video class="video-proof" controls preload="metadata" src="${escapeHtml(relativePath)}"></video>
+      <p><a href="${escapeHtml(relativePath)}">${escapeHtml(proof.caption || 'Flow recording')}</a></p>
+    `;
+  }
+
   return relativePath
     ? `<a href="${escapeHtml(relativePath)}">${escapeHtml(proof.caption || proof.kind)}</a>`
     : `<span>${escapeHtml(proof.caption || proof.kind)}</span>`;
@@ -144,6 +151,7 @@ async function main() {
     th { color: #52606d; font-weight: 600; }
     .failure { border: 1px solid #f2b8b5; background: #fff5f5; border-radius: 8px; padding: 12px; }
     .thumb { display: block; max-width: 520px; max-height: 320px; border: 1px solid #d8dee8; border-radius: 6px; background: #fff; }
+    .video-proof { display: block; width: min(720px, 100%); max-height: 480px; border: 1px solid #d8dee8; border-radius: 6px; background: #000; }
   </style>
 </head>
 <body>

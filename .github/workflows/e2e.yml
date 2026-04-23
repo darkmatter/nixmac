@@ -189,9 +189,16 @@ jobs:
       - name: Install tauri-wd
         run: cargo install tauri-webdriver-automation
 
+      - name: Install video encoder
+        run: |
+          if ! command -v ffmpeg; then
+            HOMEBREW_NO_AUTO_UPDATE=1 brew install ffmpeg
+          fi
+
       - name: Verify runner prerequisites
         run: |
           command -v tauri-wd
+          command -v ffmpeg
           command -v jq
 
       - name: Build WDIO app
@@ -206,9 +213,13 @@ jobs:
           for port in 4444 5174; do
             pids=$(lsof -ti "tcp:${port}" 2>/dev/null || true)
             if [ -n "$pids" ]; then
-              kill $pids 2>/dev/null || true
+              while IFS= read -r pid; do
+                [ -n "$pid" ] && kill "$pid" 2>/dev/null || true
+              done <<< "$pids"
               sleep 1
-              kill -9 $pids 2>/dev/null || true
+              while IFS= read -r pid; do
+                [ -n "$pid" ] && kill -9 "$pid" 2>/dev/null || true
+              done <<< "$pids"
             fi
           done
 
@@ -217,10 +228,11 @@ jobs:
         run: |
           bun run test:wdio:services > /tmp/nixmac-wdio-services.log 2>&1 &
           echo $! > /tmp/nixmac-wdio-services.pid
-          for i in {1..30}; do
+          for attempt in {1..30}; do
             if nc -z 127.0.0.1 4444 && nc -z 127.0.0.1 5174; then
               exit 0
             fi
+            echo "Waiting for WDIO services (${attempt}/30)..."
             sleep 1
           done
           cat /tmp/nixmac-wdio-services.log || true
@@ -302,12 +314,20 @@ jobs:
                 ...phase,
                 proof: (phase.proof || []).map(addUrl),
               }));
-              const primary = report.proof.find((proof) => proof.isPrimary) || report.proof[0];
+              const primary = report.proof.find((proof) => proof.kind === "video" && proof.isPrimary)
+                || report.proof.find((proof) => proof.isPrimary)
+                || report.proof[0];
               const failure = report.proof.find((proof) => proof.isFailureProof);
+              const firstFailure = (report.phases || []).find((phase) => phase.status !== "passed");
+              const failureVideo = firstFailure
+                ? report.proof.find((proof) => proof.kind === "video" && proof.phase === firstFailure.name)
+                  || report.proof.find((proof) => proof.kind === "video")
+                : null;
               report.primaryProofUrl = primary?.url || null;
               report.failureProofUrl = failure?.url || null;
               report.failureScreenshotUrl = failure?.kind === "screenshot" ? failure.url : null;
               report.failureVideoUrl = publicUrlFor(report.failureVideoUrl)
+                || failureVideo?.url
                 || (failure?.kind === "video" ? failure.url : null);
               fs.writeFileSync(full, `${JSON.stringify(report, null, 2)}\n`);
             }
@@ -338,9 +358,13 @@ jobs:
           for port in 4444 5174; do
             pids=$(lsof -ti "tcp:${port}" 2>/dev/null || true)
             if [ -n "$pids" ]; then
-              kill $pids 2>/dev/null || true
+              while IFS= read -r pid; do
+                [ -n "$pid" ] && kill "$pid" 2>/dev/null || true
+              done <<< "$pids"
               sleep 1
-              kill -9 $pids 2>/dev/null || true
+              while IFS= read -r pid; do
+                [ -n "$pid" ] && kill -9 "$pid" 2>/dev/null || true
+              done <<< "$pids"
             fi
           done
 
@@ -585,12 +609,20 @@ jobs:
                 ...phase,
                 proof: (phase.proof || []).map(addUrl),
               }));
-              const primary = report.proof.find((proof) => proof.isPrimary) || report.proof[0];
+              const primary = report.proof.find((proof) => proof.kind === "video" && proof.isPrimary)
+                || report.proof.find((proof) => proof.isPrimary)
+                || report.proof[0];
               const failure = report.proof.find((proof) => proof.isFailureProof);
+              const firstFailure = (report.phases || []).find((phase) => phase.status !== "passed");
+              const failureVideo = firstFailure
+                ? report.proof.find((proof) => proof.kind === "video" && proof.phase === firstFailure.name)
+                  || report.proof.find((proof) => proof.kind === "video")
+                : null;
               report.primaryProofUrl = primary?.url || null;
               report.failureProofUrl = failure?.url || null;
               report.failureScreenshotUrl = failure?.kind === "screenshot" ? failure.url : null;
               report.failureVideoUrl = publicUrlFor(report.failureVideoUrl)
+                || failureVideo?.url
                 || (failure?.kind === "video" ? failure.url : null);
               fs.writeFileSync(full, `${JSON.stringify(report, null, 2)}\n`);
             }
@@ -735,13 +767,37 @@ jobs:
               return isPublicUrl(value) ? value : "workflow artifact";
             }
 
+            function linkOrArtifact(value, label) {
+              return isPublicUrl(value) ? `[${label}](${value})` : "workflow artifact";
+            }
+
+            function primaryProofLabel(report) {
+              const proofs = report.proof || [];
+              const primary = proofs.find((proof) => proof.kind === "video" && proof.isPrimary)
+                || proofs.find((proof) => proof.isPrimary)
+                || proofs[0];
+              if (primary?.kind === "video" && report.lane === "tauri-wdio") {
+                return "Flow recording (webview)";
+              }
+              if (primary?.kind === "video") {
+                return "Screen recording";
+              }
+              if (primary?.kind === "screenshot") {
+                return "Screenshot";
+              }
+              return "Proof";
+            }
+
             const reports = findReports(artifactRoot);
             const table = reports.length
               ? [
                   "| Scenario | Lane | Result | Report | Proof | Replay |",
                   "| --- | --- | --- | --- | --- | --- |",
                   ...reports.map((report) => {
-                    const proof = publicOrArtifact(report.primaryProofUrl || report.failureProofUrl);
+                    const proofUrl = report.primaryProofUrl || report.failureProofUrl;
+                    const proof = isPublicUrl(proofUrl)
+                      ? linkOrArtifact(proofUrl, primaryProofLabel(report))
+                      : publicOrArtifact(proofUrl);
                     const reportUrl = publicOrArtifact(report.htmlReportUrl);
                     const replay = report.replayCommand ? "`" + report.replayCommand + "`" : "";
                     return "| `" + report.scenario + "` | " + report.lane + " | **" + report.status + "** | " + reportUrl + " | " + proof + " | " + replay + " |";
@@ -762,7 +818,7 @@ jobs:
                   ? `\n\n![Failure proof](${report.failureScreenshotUrl})`
                   : "";
                 const videoLink = isPublicUrl(report.failureVideoUrl)
-                  ? `\n\n[Failure video](${report.failureVideoUrl})`
+                  ? `\n\n[${report.lane === "tauri-wdio" ? "Failure video (webview flow recording)" : "Failure screen recording"}](${report.failureVideoUrl})`
                   : "";
                 const reportLink = isPublicUrl(report.htmlReportUrl)
                   ? `\n\n[Full HTML report](${report.htmlReportUrl})`

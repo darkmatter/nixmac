@@ -127,7 +127,16 @@ export async function writeE2eReport(context, { exitCode = 0 } = {}) {
   const proof = phases.flatMap((phase) => phase.proof ?? []);
   const firstFailure = phases.find((phase) => phase.status !== 'passed');
   const failureProof = proof.find((entry) => entry.isFailureProof);
-  const primaryProof = proof.find((entry) => entry.isPrimary) ?? proof[0] ?? null;
+  const primaryProof =
+    proof.find((entry) => entry.kind === 'video' && entry.isPrimary) ??
+    proof.find((entry) => entry.isPrimary) ??
+    proof[0] ??
+    null;
+  const failureVideo = firstFailure
+    ? proof.find((entry) => entry.kind === 'video' && entry.phase === firstFailure.name) ??
+      proof.find((entry) => entry.kind === 'video') ??
+      null
+    : null;
   const startedMs = Date.parse(context.startedAt);
   const finishedMs = Date.parse(finishedAt);
   const status =
@@ -158,8 +167,8 @@ export async function writeE2eReport(context, { exitCode = 0 } = {}) {
     failureProofUrl: failureProof?.path ?? null,
     failureScreenshotUrl:
       failureProof?.kind === 'screenshot' ? failureProof.path : null,
-    failureVideoUrl: null,
-    failureTimestampMs: failureProof?.timestampMs ?? null,
+    failureVideoUrl: failureVideo?.path ?? null,
+    failureTimestampMs: failureProof?.timestampMs ?? failureVideo?.timestampMs ?? null,
     replayCommand: REPLAY_COMMANDS[context.scenario] ?? `bun run test:wdio -- ${context.scenario}`,
     localReproCommand:
       REPLAY_COMMANDS[context.scenario] ?? `bun run test:wdio -- ${context.scenario}`,

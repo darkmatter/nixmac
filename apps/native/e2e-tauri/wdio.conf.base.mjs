@@ -1,5 +1,8 @@
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { mkdir, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import {
   setupNixmacTestEnvironment,
   teardownNixmacTestEnvironment,
@@ -13,6 +16,131 @@ import {
 
 const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APPS_NATIVE_DIR = path.resolve(THIS_DIR, '..');
+const execFileAsync = promisify(execFile);
+const VIDEO_FRAME_INTERVAL_MS = Number(process.env.NIXMAC_E2E_VIDEO_FRAME_INTERVAL_MS ?? 1500);
+const VIDEO_CAPTURE_TIMEOUT_MS = Number(process.env.NIXMAC_E2E_VIDEO_CAPTURE_TIMEOUT_MS ?? 5000);
+const VIDEO_MAX_FRAMES = Number(process.env.NIXMAC_E2E_VIDEO_MAX_FRAMES ?? 120);
+
+function sanitizeSegment(value) {
+  return String(value).replace(/[^a-zA-Z0-9._-]+/g, '-');
+}
+
+async function withTimeout(promise, timeoutMs, message) {
+  let timeout;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timeout = setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function createVideoRecorder({ context, testTitle }) {
+  const slug = sanitizeSegment(testTitle || 'test');
+  const startedAt = Date.now();
+  const frameDir = path.join(context.artifactDir, `video-frames-${slug}`);
+  const videoPath = path.join(context.artifactDir, `recording-${slug}-${startedAt}.mp4`);
+
+  return {
+    disabled: process.env.NIXMAC_E2E_VIDEO === '0',
+    error: null,
+    frameCount: 0,
+    frameDir,
+    lastFrameAt: 0,
+    phase: testTitle,
+    saving: false,
+    startedAt,
+    videoPath,
+  };
+}
+
+async function captureVideoFrame(recorder, label = 'frame') {
+  if (
+    !recorder ||
+    recorder.disabled ||
+    recorder.saving ||
+    recorder.frameCount >= VIDEO_MAX_FRAMES ||
+    !globalThis.browser?.saveScreenshot
+  ) {
+    return;
+  }
+
+  recorder.saving = true;
+  try {
+    await mkdir(recorder.frameDir, { recursive: true });
+    const framePath = path.join(
+      recorder.frameDir,
+      `frame-${String(recorder.frameCount).padStart(5, '0')}-${sanitizeSegment(label)}.png`,
+    );
+    await withTimeout(
+      globalThis.browser.saveScreenshot(framePath),
+      VIDEO_CAPTURE_TIMEOUT_MS,
+      `Timed out capturing E2E video frame after ${VIDEO_CAPTURE_TIMEOUT_MS}ms`,
+    );
+    recorder.frameCount += 1;
+    recorder.lastFrameAt = Date.now();
+  } catch (error) {
+    recorder.error = error instanceof Error ? error.message : String(error);
+    // Video capture is proof infrastructure, not the scenario assertion itself.
+    // Keep screenshots and functional assertions authoritative if capture degrades.
+    recorder.disabled = true;
+    console.warn(`[wdio:e2e-video] Disabled video capture: ${recorder.error}`);
+  } finally {
+    recorder.saving = false;
+  }
+}
+
+async function encodeVideo(recorder, { passed }) {
+  if (!recorder || recorder.frameCount === 0) {
+    return null;
+  }
+
+  try {
+    await execFileAsync('ffmpeg', [
+      '-y',
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-framerate',
+      '1',
+      '-pattern_type',
+      'glob',
+      '-i',
+      path.join(recorder.frameDir, 'frame-*.png'),
+      '-vf',
+      'pad=ceil(iw/2)*2:ceil(ih/2)*2:color=black',
+      '-pix_fmt',
+      'yuv420p',
+      '-movflags',
+      '+faststart',
+      recorder.videoPath,
+    ], {
+      timeout: 120000,
+    });
+
+    return {
+      kind: 'video',
+      path: recorder.videoPath,
+      url: null,
+      thumbnailUrl: null,
+      timestampMs: passed ? null : Math.max(0, Date.now() - recorder.startedAt),
+      phase: recorder.phase,
+      caption: 'Flow recording (webview)',
+      isPrimary: true,
+      isFailureProof: false,
+    };
+  } catch (error) {
+    recorder.error = error instanceof Error ? error.message : String(error);
+    console.warn(`[wdio:e2e-video] Failed to encode video: ${recorder.error}`);
+    return null;
+  } finally {
+    await rm(recorder.frameDir, { recursive: true, force: true });
+  }
+}
 
 /**
  * Create a WDIO config for a specific test suite.
@@ -27,6 +155,7 @@ export function createWdioConfig({ specs, setupOptions = {}, scenario, lane = 't
   let testEnvironment;
   let reportContext;
   let primaryProofCaptured = false;
+  let activeVideoRecorder = null;
 
   const resolvedSpecs = (Array.isArray(specs) ? specs : [specs]).map((s) =>
     path.resolve(THIS_DIR, s),
@@ -71,9 +200,33 @@ export function createWdioConfig({ specs, setupOptions = {}, scenario, lane = 't
     async before() {
       await ensureReportContext();
     },
+    async beforeTest(test) {
+      const context = await ensureReportContext();
+      activeVideoRecorder = createVideoRecorder({ context, testTitle: test.title });
+      await captureVideoFrame(activeVideoRecorder, 'start');
+    },
+    async afterCommand() {
+      if (!activeVideoRecorder || activeVideoRecorder.disabled) {
+        return;
+      }
+
+      const elapsed = Date.now() - activeVideoRecorder.lastFrameAt;
+      if (elapsed >= VIDEO_FRAME_INTERVAL_MS) {
+        await captureVideoFrame(activeVideoRecorder, 'step');
+      }
+    },
     async afterTest(test, _context, { error, duration, passed }) {
       const context = await ensureReportContext();
       const proof = [];
+
+      await captureVideoFrame(activeVideoRecorder, passed ? 'final-proof' : 'final-failure');
+      const videoProof = await encodeVideo(activeVideoRecorder, { passed });
+      activeVideoRecorder = null;
+      if (videoProof) {
+        proof.push(videoProof);
+        primaryProofCaptured = true;
+      }
+
       if (globalThis.browser?.saveScreenshot) {
         const screenshotPath = path.join(
           context.artifactDir,
