@@ -56,6 +56,74 @@ Current test files live in `e2e-tauri/tests`.
 
   - When adding new interactive elements you plan to target from E2E tests, add a `data-testid` attribute (or an `id`) to the element in the component source so selectors are stable and readable.
 
+## Mocking AI Completion Responses
+
+Instead of pointing tests at a real vLLM endpoint, you can start a lightweight local HTTP server that replays canned OpenAI-compatible responses from JSONL fixture files. The server is started in `onPrepare` (before the app binary launches) and its URL is written into `settings.json` as `vllmApiBaseUrl`, so the app talks to it transparently.
+
+### How it works
+
+- `mockVllm: {}` in `setupOptions` tells `setupNixmacTestEnvironment` to start a mock server on a random free port.
+- The server queues responses in order and returns one per `POST /v1/chat/completions` request.
+- If the queue runs dry, it returns a `500` with `code: MOCK_RESPONSE_QUEUE_EXHAUSTED` plus a preview of the request body that over-ran it.
+- Within a test, call `setMockVllmResponses(...)` to load responses at the start of each `it` block. The server resets its queue and index on every call, so tests are independent.
+
+### Fixture files
+
+Fixtures live under `tests/data/`. Each file is a JSONL file where every line is a valid `CreateChatCompletionResponse` JSON object — exactly what the real vLLM/OpenAI API would return. You can capture real responses (potentially by running nixmac against a real LLM endpoint with `NIXMAC_RECORD_COMPLETIONS` turned on) and drop them in here.
+
+Named presets live in `tests/wdio/helpers/mock-vllm-presets.mjs`:
+
+```js
+const MOCK_VLLM_FIXTURE_PRESETS = Object.freeze({
+  basicPromptsAddFont: ['add-font.jsonl'],
+});
+```
+
+Add new presets there as you add new fixture files.
+
+### Suite config
+
+Enable the mock server for a suite by passing `mockVllm: {}` in `setupOptions`. No fixture files need to be specified here — individual tests pick their own responses at runtime:
+
+```js
+import { createWdioConfig } from './wdio.conf.base.mjs';
+
+export const config = createWdioConfig({
+  specs: ['./tests/wdio/my-feature.spec.mjs'],
+  setupOptions: {
+    initializeConfigRepo: true,
+    mockVllm: {},
+  },
+});
+```
+
+### Inside a test
+
+Load responses at the top of each `it` block before triggering any UI action that will cause the app to call the LLM:
+
+```js
+import { setMockVllmResponses } from './helpers/test-env.mjs';
+import { getMockVllmFixturePreset } from './helpers/mock-vllm-presets.mjs';
+
+it('does something with the LLM', async () => {
+  await setMockVllmResponses({
+    responseFiles: getMockVllmFixturePreset('basicPromptsAddFont'),
+  });
+
+  // now drive the app...
+});
+```
+
+You can also pass raw response objects instead of files (but this isn't recommended):
+
+```js
+await setMockVllmResponses({ responses: [/* ...objects... */] });
+```
+
+### Caveats
+
+Currently, the mocked completion responses are strictly linear and we have no differentiation between "evolve" and "summarize" provider responses. If/when the app does some of these things in parallel, we might have to get smarter in here.
+
 ## Current WDIO config
 
 `apps/native/wdio.conf.mjs` uses:
