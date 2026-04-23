@@ -101,7 +101,6 @@ impl ChatCompletionProvider for OpenAIClient {
             input: response.usage.as_ref().map(|u| u.prompt_tokens),
             output: response.usage.as_ref().map(|u| u.completion_tokens),
         };
-
         Ok((
             response
                 .choices
