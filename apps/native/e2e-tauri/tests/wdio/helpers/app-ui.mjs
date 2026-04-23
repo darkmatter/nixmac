@@ -148,6 +148,9 @@ export async function setConfigurationDirectory(configDir, hostAttr) {
     await input.setValue(configDir);
   }
 
+  await browser.keys(['Tab']);
+  await browser.pause(250);
+
   const setupSeeded = await browser.execute((dir, host) => {
     if (!window.__testWidget?.setSetupHosts) {
       return false;
@@ -156,8 +159,6 @@ export async function setConfigurationDirectory(configDir, hostAttr) {
     return true;
   }, configDir, hostAttr);
   expect(setupSeeded, 'Expected E2E widget test helper to seed setup hosts').to.equal(true);
-
-  await browser.keys(['Tab']);
 
   await waitForSelector('#host-select', {
     timeout: 60000,
