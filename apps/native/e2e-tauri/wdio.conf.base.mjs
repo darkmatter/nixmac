@@ -304,7 +304,11 @@ export function createWdioConfig({ specs, setupOptions = {}, scenario, lane = 't
           `${passed ? 'proof' : 'failure'}-${Date.now()}.png`,
         );
         try {
-          await saveProofScreenshot(screenshotPath);
+          await withTimeout(
+            saveProofScreenshot(screenshotPath),
+            VIDEO_CAPTURE_TIMEOUT_MS,
+            `Timed out capturing E2E proof screenshot after ${VIDEO_CAPTURE_TIMEOUT_MS}ms`,
+          );
           proof.push({
             kind: 'screenshot',
             path: screenshotPath,
