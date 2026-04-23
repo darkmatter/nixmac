@@ -11,6 +11,7 @@ import type {
   HistoryItem,
   RollbackResult,
   SemanticChangeMap,
+  SetDirResult,
 } from "./types/shared";
 
 export type {
@@ -25,6 +26,7 @@ export type {
   GitStatus,
   HistoryItem,
   SemanticChangeMap,
+  SetDirResult,
   SummarizedChangeSet,
   WatcherEvent,
 } from "./types/shared";
@@ -236,8 +238,8 @@ export interface ConfigChangedEvent {
 export const darwinAPI = {
   config: {
     get: () => invoke<DarwinConfig | null>("config_get"),
-    setDir: (dir: string) => invoke("config_set_dir", { dir }),
-    pickDir: () => invoke("config_pick_dir"),
+    setDir: (dir: string) => invoke<SetDirResult>("config_set_dir", { dir }),
+    pickDir: () => invoke<SetDirResult | null>("config_pick_dir"),
     setHostAttr: (host: string) => invoke("config_set_host_attr", { host }),
   },
   git: {

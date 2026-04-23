@@ -7,30 +7,21 @@ export function useDarwinConfig() {
   const storeRef = useRef(useWidgetStore.getState());
 
   const pickDir = useCallback(async () => {
-    const dir = (await darwinAPI.config.pickDir()) as string | null;
-    if (!dir) {
+    const result = await darwinAPI.config.pickDir();
+    if (!result) {
       return;
     }
 
     const store = storeRef.current;
-    store.setConfigDir(dir);
-    store.setHost("");
-    try {
-      await darwinAPI.config.setHostAttr("");
-    } catch {
-    }
-
-    // Check if flake exists and load hosts
-    try {
-      const hosts = await darwinAPI.flake.listHosts();
-      if (Array.isArray(hosts)) {
-        store.setHosts(hosts);
-      } else {
-        store.setHosts([]);
+    store.setConfigDir(result.dir);
+    if (result.evolveState) {
+      store.setEvolveState(result.evolveState);
+      store.setHost("");
+      try {
+        await darwinAPI.config.setHostAttr("");
+      } catch {
       }
-    } catch {
-      // No flake.nix found - shows bootstrap interface
-      store.setHosts([]);
+      store.setHosts(result.hosts ?? []);
     }
   }, []);
 

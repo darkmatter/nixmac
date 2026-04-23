@@ -54,23 +54,19 @@ export function DirectoryPicker({ label, subLabel }: DirectoryPickerProps) {
     }
 
     try {
-      await darwinAPI.config.setDir(normalizedPath);
-      setConfigDir(normalizedPath);
-      setValue(normalizedPath);
+      const result = await darwinAPI.config.setDir(normalizedPath);
+      setConfigDir(result.dir);
+      setValue(result.dir);
+      if (result.evolveState) {
+        useWidgetStore.getState().setEvolveState(result.evolveState);
 
-      // If we made it this far, we should clear the hosts and make
-      // the user re-select from the one(s) available in the new directory.
-      setHost("");
-      try {
-        await darwinAPI.config.setHostAttr("");
-      } catch {}
+        // Dir changed — clear host and reload the host list for the new directory.
+        setHost("");
+        try {
+          await darwinAPI.config.setHostAttr("");
+        } catch {}
 
-      try {
-        const hosts = await darwinAPI.flake.listHosts();
-        setHosts(Array.isArray(hosts) ? hosts : []);
-      } catch {
-        // No flake.nix found - shows bootstrap interface
-        setHosts([]);
+        setHosts(result.hosts ?? []);
       }
 
       // Don't validate flake here — missing flake.nix is handled above by

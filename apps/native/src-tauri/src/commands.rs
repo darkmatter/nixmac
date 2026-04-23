@@ -9,7 +9,7 @@
 
 use crate::{
     darwin, db, default_config, editor, evolution, evolve_state, feedback, finalize_restore, git,
-    lsp, nix, peek, permissions, rollback, scanner, shared_types, store, types, utils,
+    lsp, nix, peek, permissions, rollback, scanner, shared_types, store, types, utils, watcher,
 };
 use std::path::Path;
 use std::process::Command;
@@ -55,7 +55,10 @@ pub async fn config_set_host_attr(
 
 /// Sets the flake configuration directory path.
 #[tauri::command]
-pub async fn config_set_dir(app: AppHandle, dir: String) -> Result<serde_json::Value, String> {
+pub async fn config_set_dir(
+    app: AppHandle,
+    dir: String,
+) -> Result<shared_types::SetDirResult, String> {
     let normalized_dir =
         utils::normalize_dir_input(&dir).map_err(|e| capture_err("config_set_dir", e))?;
 
@@ -71,30 +74,67 @@ pub async fn config_set_dir(app: AppHandle, dir: String) -> Result<serde_json::V
         ));
     }
 
-    store::set_config_dir(&app, &normalized_dir.to_string_lossy())
+    let prev_dir = store::get_config_dir(&app).ok();
+    let new_dir = normalized_dir.to_string_lossy().to_string();
+    store::set_config_dir(&app, &new_dir)
         .map_err(|e| capture_err("config_set_dir", e))?;
-    Ok(serde_json::json!({"ok": true}))
+
+    let (evolve_state, hosts) = if prev_dir.as_deref() != Some(&new_dir) {
+        let git_status = git::status(&new_dir).ok();
+        let changes = git_status.as_ref().map(|s| s.changes.clone()).unwrap_or_default();
+        if let Some(ref s) = git_status {
+            let _ = store::set_cached_git_status(&app, s);
+        }
+        watcher::start_watching(app.clone(), new_dir.clone(), 2500);
+        let evolve_state = evolve_state::set(&app, shared_types::EvolveState::default(), &changes)
+            .map_err(|e| capture_err("config_set_dir", e))?;
+        let hosts = nix::list_darwin_hosts(&new_dir).ok();
+        (Some(evolve_state), hosts)
+    } else {
+        (None, None)
+    };
+
+    Ok(shared_types::SetDirResult { dir: new_dir, evolve_state, hosts })
 }
 
 /// Opens a native folder picker dialog to select the flake directory.
 #[tauri::command]
-pub async fn config_pick_dir(app: AppHandle) -> Result<Option<String>, String> {
+pub async fn config_pick_dir(
+    app: AppHandle,
+) -> Result<Option<shared_types::SetDirResult>, String> {
     let dialog = app.dialog();
     // Try to open the picker at the currently configured directory
-    let default_dir = store::get_config_dir(&app).map_err(|e| capture_err("config_pick_dir", e))?;
+    let prev_dir = store::get_config_dir(&app).map_err(|e| capture_err("config_pick_dir", e))?;
     let result = dialog
         .file()
         .set_title(
             "Select Configuration Directory - TIP: press '⌘'+'⇧'+'.' to show hidden directories",
         )
-        .set_directory(std::path::PathBuf::from(default_dir))
+        .set_directory({
+            let p = std::path::PathBuf::from(&prev_dir);
+            p.parent().map(std::path::PathBuf::from).unwrap_or(p)
+        })
         .blocking_pick_folder();
 
     if let Some(path) = result {
         let dir = path.to_string();
         store::set_config_dir(&app, &dir).map_err(|e| capture_err("config_pick_dir", e))?;
         store::ensure_config_dir_exists(&app).map_err(|e| capture_err("config_pick_dir", e))?;
-        return Ok(Some(dir));
+        let (evolve_state, hosts) = if dir != prev_dir {
+            let git_status = git::status(&dir).ok();
+            let changes = git_status.as_ref().map(|s| s.changes.clone()).unwrap_or_default();
+            if let Some(ref s) = git_status {
+                let _ = store::set_cached_git_status(&app, s);
+            }
+            watcher::start_watching(app.clone(), dir.clone(), 2500);
+            let evolve_state = evolve_state::set(&app, shared_types::EvolveState::default(), &changes)
+                .map_err(|e| capture_err("config_pick_dir", e))?;
+            let hosts = nix::list_darwin_hosts(&dir).ok();
+            (Some(evolve_state), hosts)
+        } else {
+            (None, None)
+        };
+        return Ok(Some(shared_types::SetDirResult { dir, evolve_state, hosts }));
     }
 
     Ok(None)
