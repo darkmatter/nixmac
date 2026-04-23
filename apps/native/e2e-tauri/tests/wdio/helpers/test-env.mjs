@@ -36,6 +36,7 @@ const NIXMAC_SETTINGS_PATH = path.join(
 );
 const NIXMAC_EVOLVE_STATE_PATH = path.join(NIXMAC_APP_SUPPORT_DIR, 'evolve-state.json');
 const NIXMAC_BUILD_STATE_PATH = path.join(NIXMAC_APP_SUPPORT_DIR, 'build-state.json');
+const NIXMAC_DB_PATH = path.join(NIXMAC_APP_SUPPORT_DIR, 'nixmac.db');
 
 async function pathExists(filePath) {
   try {
@@ -323,6 +324,7 @@ export async function setupNixmacTestEnvironment(options = {}) {
   const backupPath = await backupNixmacSettings();
   const evolveBackupPath = await backupJsonState(NIXMAC_EVOLVE_STATE_PATH, 'evolve-state');
   const buildBackupPath = await backupJsonState(NIXMAC_BUILD_STATE_PATH, 'build-state');
+  const dbBackupPath = await backupJsonState(NIXMAC_DB_PATH, 'nixmac.db');
   const evalHostname = host || (await getEvalHostname());
   let configDir = null;
   let mockVllmServer = null;
@@ -346,7 +348,7 @@ export async function setupNixmacTestEnvironment(options = {}) {
     vllmApiKey,
   });
 
-  // Clear any existing evolve/build state so tests start from a clean slate
+  // Clear any existing evolve/build/db state so tests start from a clean slate
   if (await pathExists(NIXMAC_EVOLVE_STATE_PATH)) {
     await unlink(NIXMAC_EVOLVE_STATE_PATH);
     console.log(`[wdio:test-env] Cleared existing evolve-state at ${NIXMAC_EVOLVE_STATE_PATH}`);
@@ -357,10 +359,16 @@ export async function setupNixmacTestEnvironment(options = {}) {
     console.log(`[wdio:test-env] Cleared existing build-state at ${NIXMAC_BUILD_STATE_PATH}`);
   }
 
+  if (await pathExists(NIXMAC_DB_PATH)) {
+    await unlink(NIXMAC_DB_PATH);
+    console.log(`[wdio:test-env] Cleared existing DB state at ${NIXMAC_DB_PATH}`);
+  }
+
   return {
     backupPath,
     evolveBackupPath,
     buildBackupPath,
+    dbBackupPath,
     configDir,
     mockVllmServer,
     hostAttr: evalHostname,
@@ -376,6 +384,7 @@ export async function teardownNixmacTestEnvironment(context) {
   await restoreNixmacSettings(context?.backupPath ?? null);
   await restoreJsonState(context?.evolveBackupPath ?? null, NIXMAC_EVOLVE_STATE_PATH, 'evolve-state');
   await restoreJsonState(context?.buildBackupPath ?? null, NIXMAC_BUILD_STATE_PATH, 'build-state');
+  await restoreJsonState(context?.dbBackupPath ?? null, NIXMAC_DB_PATH, 'nixmac.db');
 
   if (context?.mockVllmServer) {
     await stopMockVllmServer(context.mockVllmServer);
