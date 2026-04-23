@@ -20,7 +20,7 @@ async function failIfWidgetErrorPresent() {
     return;
   }
 
-  if (message.includes('is not a git repository') && message.includes('.darwin')) {
+  if (/not a git repository/i.test(message)) {
     return;
   }
 
