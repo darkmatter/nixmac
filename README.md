@@ -208,6 +208,7 @@ bun run db:generate  # generate migrations
 
 - **darwin-rebuild logs:** `~/Library/Logs/nixmac/`
 - **App logs:** stdout/stderr (or set `NIXMAC_LOGFILE` for file output)
+- **Provider completion logs:** set `NIXMAC_RECORD_COMPLETIONS=1` for JSONL provider responses
 
 ```bash
 # Merged tail of everything

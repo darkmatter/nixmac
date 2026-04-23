@@ -21,7 +21,7 @@ pub const DEFAULT_MAX_ITERATIONS: usize = 25;
 
 /// Gets a handle to the settings store.
 pub fn get_store<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<Store<R>>> {
-    let store = app.store(STORE_PATH)?;
+    let store = app.store(crate::e2e_support::store_path(STORE_PATH))?;
     Ok(store)
 }
 

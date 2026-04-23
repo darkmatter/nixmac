@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/darkmatter/nixmac/apps/native/e2e-tauri/scenarios/manifest.schema.json",
+  "title": "nixmac E2E Scenario Manifest",
+  "type": "object",
+  "required": ["scenarios"],
+  "properties": {
+    "scenarios": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "lane",
+          "currentSpec",
+          "currentScript",
+          "status",
+          "requiredForDefaultPrPack"
+        ],
+        "properties": {
+          "name": { "type": "string" },
+          "lane": { "type": "string", "enum": ["browser", "tauri-wdio", "full-mac"] },
+          "currentSpec": { "type": ["string", "null"] },
+          "currentScript": { "type": ["string", "null"] },
+          "status": { "type": "string" },
+          "requiredForDefaultPrPack": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

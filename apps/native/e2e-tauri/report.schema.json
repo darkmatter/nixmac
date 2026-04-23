@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/darkmatter/nixmac/apps/native/e2e-tauri/report.schema.json",
+  "title": "nixmac E2E Report",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "repo",
+    "headSha",
+    "lane",
+    "scenario",
+    "runnerId",
+    "runnerKind",
+    "startedAt",
+    "finishedAt",
+    "durationMs",
+    "status",
+    "phases",
+    "proof"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "repo": { "type": "string" },
+    "prNumber": { "type": ["integer", "null"] },
+    "headSha": { "type": "string" },
+    "baseSha": { "type": ["string", "null"] },
+    "workflowRunId": { "type": ["string", "null"] },
+    "attempt": { "type": ["integer", "null"] },
+    "lane": { "type": "string" },
+    "scenario": { "type": "string" },
+    "runnerId": { "type": "string" },
+    "runnerKind": { "type": "string" },
+    "startedAt": { "type": "string" },
+    "finishedAt": { "type": "string" },
+    "durationMs": { "type": "integer", "minimum": 0 },
+    "status": { "type": "string", "enum": ["passed", "failed", "infra_failed"] },
+    "htmlReportUrl": { "type": ["string", "null"] },
+    "primaryProofUrl": { "type": ["string", "null"] },
+    "failureProofUrl": { "type": ["string", "null"] },
+    "failureScreenshotUrl": { "type": ["string", "null"] },
+    "failureVideoUrl": { "type": ["string", "null"] },
+    "failureTimestampMs": { "type": ["integer", "null"], "minimum": 0 },
+    "replayCommand": { "type": ["string", "null"] },
+    "localReproCommand": { "type": ["string", "null"] },
+    "phases": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/phase" }
+    },
+    "proof": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/proof" }
+    }
+  },
+  "$defs": {
+    "phase": {
+      "type": "object",
+      "required": ["name", "status", "durationMs", "assertions", "proof"],
+      "properties": {
+        "name": { "type": "string" },
+        "status": { "type": "string", "enum": ["passed", "failed", "infra_failed"] },
+        "startedAt": { "type": ["string", "null"] },
+        "finishedAt": { "type": ["string", "null"] },
+        "durationMs": { "type": "integer", "minimum": 0 },
+        "assertions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "proof": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/proof" }
+        },
+        "error": { "type": ["string", "null"] }
+      }
+    },
+    "proof": {
+      "type": "object",
+      "required": ["kind", "path", "phase", "caption", "isPrimary", "isFailureProof"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["screenshot", "video", "trace", "log", "htmlReport"]
+        },
+        "path": { "type": "string" },
+        "url": { "type": ["string", "null"] },
+        "thumbnailUrl": { "type": ["string", "null"] },
+        "timestampMs": { "type": ["integer", "null"], "minimum": 0 },
+        "phase": { "type": "string" },
+        "caption": { "type": "string" },
+        "isPrimary": { "type": "boolean" },
+        "isFailureProof": { "type": "boolean" }
+      }
+    }
+  }
+}

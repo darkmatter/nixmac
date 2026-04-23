@@ -11,10 +11,12 @@ mod apply_system_defaults;
 mod build_state;
 mod changes_from_diff;
 mod cli;
+mod completion_log;
 mod commands;
 mod darwin;
 mod db;
 mod default_config;
+mod e2e_support;
 mod editor;
 mod evolution;
 mod evolve;
@@ -285,22 +287,37 @@ fn run_gui_mode(
         builder = builder.plugin(tauri_plugin_webdriver_automation::init());
     }
 
-    builder
+    builder = builder
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
         .plugin(tauri_plugin_websocket::init())
-        .plugin(
+        .plugin(tauri_plugin_sql::Builder::new().build())
+        .plugin(tauri_plugin_upload::init())
+        .plugin(tauri_plugin_macos_permissions::init());
+
+    if e2e_support::is_e2e_mode() {
+        log::info!("E2E mode: skipping window-state plugin to avoid app-data leakage");
+    } else {
+        builder = builder.plugin(
             tauri_plugin_window_state::Builder::new()
                 .with_state_flags(tauri_plugin_window_state::StateFlags::POSITION)
                 .build(),
-        )
-        .plugin(tauri_plugin_sql::Builder::new().build())
-        .plugin(tauri_plugin_upload::init())
-        .plugin(tauri_plugin_macos_permissions::init())
+        );
+    }
+
+    if e2e_support::should_bypass_single_instance() {
+        log::info!(
+            "{}=1: skipping single-instance plugin for E2E isolation",
+            e2e_support::E2E_BYPASS_SINGLE_INSTANCE_ENV
+        );
+    } else {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|_, _, _| {}));
+    }
+
+    builder
         .invoke_handler(tauri::generate_handler![
             // Configuration
             commands::config_get,

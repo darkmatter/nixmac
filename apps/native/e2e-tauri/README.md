@@ -47,6 +47,35 @@ Current test files live in `e2e-tauri/tests`.
       bun run test:wdio:my-feature
 ```
 
+- E2E app-state isolation
+  - WDIO tests use an isolated app data directory instead of the user's real `~/Library/Application Support/com.darkmatter.nixmac`.
+  - `bun run test:wdio:services` serves the built frontend on `5174` and launches `tauri-wd` with:
+    - `NIXMAC_E2E_APP_DATA_DIR=/tmp/nixmac-wdio-app-data` unless overridden
+    - `NIXMAC_E2E_BYPASS_SINGLE_INSTANCE=1`
+    - `NIXMAC_SKIP_PERMISSIONS=1`
+    - `NIXMAC_DISABLE_UPDATER=1`
+  - Build the debug binary for E2E before running WDIO:
+
+```bash
+      bun run test:wdio:build
+```
+
+  - That script builds the frontend and embeds `http://localhost:5174` as the
+    Tauri dev URL so WDIO does not collide with other local apps using the
+    default Vite port `5173`.
+  - If you start services manually, serve `dist/` on the same port and export the
+    same environment before launching `tauri-wd`:
+
+```bash
+      python3 -m http.server 5174 --bind 127.0.0.1 --directory dist
+
+      export NIXMAC_E2E_APP_DATA_DIR=/tmp/nixmac-wdio-app-data
+      export NIXMAC_E2E_BYPASS_SINGLE_INSTANCE=1
+      export NIXMAC_SKIP_PERMISSIONS=1
+      export NIXMAC_DISABLE_UPDATER=1
+      tauri-wd
+```
+
 - Test helpers and hooks
 
   - Use the existing dev-only test hook pattern when you need to drive or observe app state from WDIO: the app exposes `window.__testWidget` in DEV builds (see `src/utils/widget-test-helpers.ts`). Helpers include `setEvolvePrompt()`, `isEvolveProcessing()`, and `getPromptHistory()` — call them via `browser.execute(...)` from your WDIO helpers.
@@ -124,12 +153,29 @@ await setMockVllmResponses({ responses: [/* ...objects... */] });
 
 Currently, the mocked completion responses are strictly linear and we have no differentiation between "evolve" and "summarize" provider responses. If/when the app does some of these things in parallel, we might have to get smarter in here.
 
+## Scenario Manifest and Reports
+
+Canonical scenario names live in `scenarios/manifest.json`. The current mappings are:
+
+| Scenario | Current WDIO suite | Status |
+| --- | --- | --- |
+| `auto_evolve_basic_package` | `tests/wdio/basic-prompts.spec.mjs` | rename of existing |
+| `settings_provider_change` | `tests/wdio/smoke.spec.mjs` | validated existing |
+| `discard_and_restore_state` | `tests/wdio/discard.spec.mjs` | validated existing |
+| `manual_evolve_existing_changes` | `tests/wdio/modify.spec.mjs` | validated existing |
+| `onboarding_existing_repo` | `tests/wdio/onboarding.spec.mjs` | validated existing |
+
+Each WDIO suite writes an `e2e-report.json` under `e2e-tauri/artifacts/<scenario>/`.
+The report follows `report.schema.json` and is the local precursor to the PR-gate
+comment/report contract: scenario status, runner metadata, phases, failure proof,
+and replay commands.
+
 ## Current WDIO config
 
 `apps/native/wdio.conf.mjs` uses:
 
 - WebDriver server port: `4444`
-- Specs: `./e2e-tauri/tests/wdio/**/*.spec.mjs`
+- Specs: configured core app suites in `apps/native/wdio.conf.mjs`; onboarding uses `wdio.onboarding.conf.mjs` because it must start without saved settings.
 - Tauri binary: `../../target/debug/nixmac`
 
 Important: relative `binary` paths are resolved by `tauri-wd` using the directory where `tauri-wd` was launched.
@@ -139,7 +185,7 @@ Start `tauri-wd` from `apps/native` for this relative path to work as-is.
 
 Use two terminals.
 
-### Terminal A: Start frontend dev server (Vite) and tauri-wd
+### Terminal A: Start static frontend server and tauri-wd
 
 From `apps/native`:
 
@@ -147,15 +193,13 @@ From `apps/native`:
 bun run test:wdio:services
 ```
 
-Starts on port 5173 and port 4444 (respectively) by default.
+Starts on port 5174 and port 4444 (respectively) by default.
 
 ### Terminal B: Run WDIO tests
 
 From `apps/native`:
 
 ```bash
-export VLLM_API_BASE_URL=http://example.com/v1
-export VLLM_API_KEY=sk_blahblahblah
 bun run test:wdio
 ```
 
@@ -167,16 +211,16 @@ npx wdio run wdio.conf.mjs
 
 ## Stop services
 
-Graceful stop (ports 5173 + 4444):
+Graceful stop (ports 5174 + 4444):
 
 ```bash
-for p in 5173 4444; do pid=$(lsof -ti tcp:$p); [ -n "$pid" ] && kill $pid; done
+for p in 5174 4444; do pid=$(lsof -ti tcp:$p); [ -n "$pid" ] && kill $pid; done
 ```
 
 Impolite stop:
 
 ```bash
-for p in 5173 4444; do pid=$(lsof -ti tcp:$p); [ -n "$pid" ] && kill -9 $pid; done
+for p in 5174 4444; do pid=$(lsof -ti tcp:$p); [ -n "$pid" ] && kill -9 $pid; done
 ```
 
 ## Troubleshooting

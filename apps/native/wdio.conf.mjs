@@ -1,9 +1,17 @@
 import { createWdioConfig } from './e2e-tauri/wdio.conf.base.mjs';
 
-// Runs all suites. Uses initializeConfigRepo: true as the superset of
-// requirements across all specs.
+// Runs all suites that start from an already configured app state. Onboarding
+// intentionally uses a separate config because it must start without settings.
 export const config = createWdioConfig({
-  specs: ['./tests/wdio/**/*.spec.mjs'],
-  setupOptions: { initializeConfigRepo: true },
+  scenario: 'tauri_wdio_all',
+  specs: [
+    './tests/wdio/basic-prompts.spec.mjs',
+    './tests/wdio/discard.spec.mjs',
+    './tests/wdio/modify.spec.mjs',
+    './tests/wdio/smoke.spec.mjs',
+  ],
+  setupOptions: {
+    initializeConfigRepo: true,
+    mockVllm: {},
+  },
 });
-

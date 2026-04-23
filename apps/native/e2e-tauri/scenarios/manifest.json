@@ -1,0 +1,61 @@
+{
+  "$schema": "./manifest.schema.json",
+  "scenarios": [
+    {
+      "name": "auto_evolve_basic_package",
+      "lane": "tauri-wdio",
+      "currentSpec": "tests/wdio/basic-prompts.spec.mjs",
+      "currentScript": "test:wdio:basic-prompts",
+      "status": "rename-of-existing",
+      "requiredForDefaultPrPack": true
+    },
+    {
+      "name": "discard_and_restore_state",
+      "lane": "tauri-wdio",
+      "currentSpec": "tests/wdio/discard.spec.mjs",
+      "currentScript": "test:wdio:discard",
+      "status": "validated-existing",
+      "requiredForDefaultPrPack": true
+    },
+    {
+      "name": "manual_evolve_existing_changes",
+      "lane": "tauri-wdio",
+      "currentSpec": "tests/wdio/modify.spec.mjs",
+      "currentScript": "test:wdio:modify",
+      "status": "validated-existing",
+      "requiredForDefaultPrPack": true
+    },
+    {
+      "name": "settings_provider_change",
+      "lane": "tauri-wdio",
+      "currentSpec": "tests/wdio/smoke.spec.mjs",
+      "currentScript": "test:wdio:smoke",
+      "status": "validated-existing",
+      "requiredForDefaultPrPack": true
+    },
+    {
+      "name": "onboarding_existing_repo",
+      "lane": "tauri-wdio",
+      "currentSpec": "tests/wdio/onboarding.spec.mjs",
+      "currentScript": "test:wdio:onboarding",
+      "status": "validated-existing",
+      "requiredForDefaultPrPack": true
+    },
+    {
+      "name": "release_dmg_app_translocation_smoke",
+      "lane": "full-mac",
+      "currentSpec": "tests/e2e/scenarios/release_dmg_app_translocation_smoke.sh",
+      "currentScript": "tests/e2e/run.sh release_dmg_app_translocation_smoke",
+      "status": "ported-full-mac",
+      "requiredForDefaultPrPack": false
+    },
+    {
+      "name": "install_nix_clean_machine",
+      "lane": "full-mac",
+      "currentSpec": "tests/e2e/scenarios/install_nix_clean_machine.sh",
+      "currentScript": "tests/e2e/run.sh install_nix_clean_machine",
+      "status": "ported-full-mac",
+      "requiredForDefaultPrPack": false
+    }
+  ]
+}

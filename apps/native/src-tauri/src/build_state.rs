@@ -42,7 +42,7 @@ pub fn read_current_store_path() -> Option<String> {
 
 /// Load the persisted build state. Returns `BuildState::default()` if absent or corrupt.
 pub fn get<R: Runtime>(app: &AppHandle<R>) -> Result<BuildState> {
-    let store = app.store(BUILD_STATE_PATH)?;
+    let store = app.store(crate::e2e_support::store_path(BUILD_STATE_PATH))?;
     if let Some(val) = store.get(BUILD_STATE_KEY) {
         if let Ok(state) = serde_json::from_value::<BuildState>(val.clone()) {
             return Ok(state);
@@ -53,7 +53,7 @@ pub fn get<R: Runtime>(app: &AppHandle<R>) -> Result<BuildState> {
 
 /// Persist build state to `build-state.json`.
 pub fn set<R: Runtime>(app: &AppHandle<R>, state: BuildState) -> Result<BuildState> {
-    let store = app.store(BUILD_STATE_PATH)?;
+    let store = app.store(crate::e2e_support::store_path(BUILD_STATE_PATH))?;
     store.set(BUILD_STATE_KEY, serde_json::to_value(&state)?);
     store.save()?;
     Ok(state)
