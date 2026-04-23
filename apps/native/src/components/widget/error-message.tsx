@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { FeedbackType } from "@/types/feedback";
 import { Settings } from "lucide-react";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
 /**
  * Error message component - displays errors from store.
@@ -17,6 +17,10 @@ export function ErrorMessage() {
   const setSettingsOpen = useWidgetStore((s) => s.setSettingsOpen);
   const step = useCurrentStep();
   const dismissedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (error && step === "setup") setError(null);
+  }, [error, step]);
 
   // more persistent dismissal for certain looping (watcher) errors
   const loopingErrorPatterns = ["is not a git repository"];
