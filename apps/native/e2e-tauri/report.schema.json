@@ -42,6 +42,10 @@
     "failureTimestampMs": { "type": ["integer", "null"], "minimum": 0 },
     "replayCommand": { "type": ["string", "null"] },
     "localReproCommand": { "type": ["string", "null"] },
+    "captureLimitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
     "phases": {
       "type": "array",
       "items": { "$ref": "#/$defs/phase" }

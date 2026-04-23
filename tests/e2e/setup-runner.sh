@@ -21,7 +21,51 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 log() { echo -e "${BLUE}[setup]${NC} $*"; }
 pass() { echo -e "${GREEN}[✓]${NC} $*"; }
+warn() { echo -e "${BLUE}[setup][warn]${NC} $*"; }
 die() { echo -e "${RED}[✗]${NC} $*"; exit 1; }
+
+run_with_timeout() {
+    local seconds="$1"
+    shift
+
+    local output_file status command_pid watchdog_pid
+    output_file=$(mktemp "${TMPDIR:-/tmp}/e2e-timeout-output.XXXXXX") || return 1
+
+    "$@" >"$output_file" 2>&1 &
+    command_pid=$!
+
+    (
+        sleep "$seconds"
+        if kill -0 "$command_pid" 2>/dev/null; then
+            kill "$command_pid" 2>/dev/null || true
+            sleep 2
+            kill -9 "$command_pid" 2>/dev/null || true
+        fi
+    ) &
+    watchdog_pid=$!
+
+    if wait "$command_pid"; then
+        status=0
+    else
+        status=$?
+    fi
+
+    kill "$watchdog_pid" 2>/dev/null || true
+    wait "$watchdog_pid" 2>/dev/null || true
+
+    cat "$output_file"
+    rm -f "$output_file"
+
+    if [ "$status" -eq 137 ] || [ "$status" -eq 143 ]; then
+        return 124
+    fi
+
+    return "$status"
+}
+
+peekaboo_with_timeout() {
+    run_with_timeout "${PEEKABOO_COMMAND_TIMEOUT:-15}" peekaboo "$@"
+}
 
 # Parse args
 LOCAL_BUILD=""
@@ -36,7 +80,7 @@ done
 # --- Step 1: Verify prerequisites ---
 log "Checking prerequisites..."
 command -v peekaboo &>/dev/null || die "peekaboo not found. Install: brew install steipete/tap/peekaboo"
-peekaboo bridge status 2>&1 | grep -q "remote gui" || die "Peekaboo Bridge not connected. Open Peekaboo.app"
+peekaboo_with_timeout bridge status 2>&1 | grep -qE "remote (gui|onDemand)" || die "Peekaboo Bridge not connected. Open Peekaboo.app"
 sudo -n true 2>/dev/null || die "sudo requires password. Set up NOPASSWD."
 pass "Prerequisites OK"
 
@@ -123,7 +167,7 @@ pass "Runner setup complete!"
 echo ""
 log "App:          $APP_PATH"
 log "Nix:          $(command -v nix &>/dev/null && echo 'installed (⚠️ uninstall before test)' || echo 'not installed ✓')"
-log "Peekaboo:     $(peekaboo bridge status 2>&1 | grep Selected)"
+log "Peekaboo:     $(peekaboo_with_timeout bridge status 2>&1 | grep Selected || echo 'status unavailable')"
 log ""
 log "Run the test:  ADMIN_PASSWORD=<password> ./run-e2e.sh"
 echo ""

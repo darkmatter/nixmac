@@ -8,15 +8,21 @@
 
 # Resolve peekaboo binary
 PEEKABOO="${PEEKABOO:-$(command -v peekaboo 2>/dev/null || echo "peekaboo")}"
+PEEKABOO_COMMAND_TIMEOUT="${PEEKABOO_COMMAND_TIMEOUT:-15}"
 
 # --- Low-level helpers ---
+
+peekaboo_run() {
+    run_with_timeout "$PEEKABOO_COMMAND_TIMEOUT" "$PEEKABOO" "$@"
+}
 
 # Get all UI elements as JSON. Returns fallback JSON on failure.
 peek_elements() {
     local app="${1:-}"
     local args=""
     [ -n "$app" ] && args="--app $app"
-    $PEEKABOO see $args --json 2>/dev/null \
+    # shellcheck disable=SC2086
+    peekaboo_run see $args --json 2>/dev/null \
         || echo '{"data":{"ui_elements":[],"snapshot_id":""}}'
 }
 
@@ -62,7 +68,7 @@ peek_click() {
         return 1
     fi
     debug "Clicking $element_id (snapshot: $snap_id)"
-    $PEEKABOO click --on "$element_id" --snapshot "$snap_id" 2>&1
+    peekaboo_run click --on "$element_id" --snapshot "$snap_id" 2>&1
 }
 
 
@@ -87,7 +93,10 @@ screenshot() {
     local path="${E2E_SCREENSHOT_DIR}/${name}-$(date +%s).png"
     local args=""
     [ -n "$app" ] && args="--app $app"
-    $PEEKABOO see $args --annotate --path "$path" 2>/dev/null || true
+    # shellcheck disable=SC2086
+    peekaboo_run see $args --annotate --path "$path" 2>/dev/null \
+        || peekaboo_run image --mode screen --path "$path" 2>/dev/null \
+        || true
     log "Screenshot saved: $path"
     echo "$path"
 }
@@ -239,17 +248,17 @@ dismiss_dialogs() {
 
 peek_type() {
     local text="$1"
-    $PEEKABOO type "$text" 2>&1
+    peekaboo_run type --text "$text" 2>&1 || peekaboo_run type "$text" 2>&1
 }
 
 peek_press() {
     local key="$1"
-    $PEEKABOO press "$key" 2>&1
+    peekaboo_run press "$key" 2>&1
 }
 
 peek_hotkey() {
     local combo="$1"
-    $PEEKABOO hotkey "$combo" 2>&1
+    peekaboo_run hotkey "$combo" 2>&1
 }
 
 # --- Screen unlock ---
@@ -282,7 +291,7 @@ screen_unlock() {
         if [ -n "$has_user_elem" ] && [ -n "$snap_id" ]; then
             # Full login screen — click user first
             log "Login screen detected. Clicking user '$has_user_elem'..."
-            $PEEKABOO click --on "$has_user_elem" --snapshot "$snap_id" 2>/dev/null || true
+            peekaboo_run click --on "$has_user_elem" --snapshot "$snap_id" 2>/dev/null || true
             sleep 2
         else
             # Lock screen — just wake + type
@@ -323,14 +332,16 @@ screen_prevent_lock() {
 # --- Peekaboo preflight ---
 
 peekaboo_check() {
-    if ! $PEEKABOO bridge status 2>&1 | grep -qE "remote (gui|onDemand)"; then
+    if ! peekaboo_run bridge status 2>&1 | grep -qE "remote (gui|onDemand)"; then
         warn "Peekaboo bridge status:"
-        $PEEKABOO bridge status 2>&1 || true
+        peekaboo_run bridge status 2>&1 || true
         die "Peekaboo Bridge not connected. Ensure Peekaboo.app is running."
     fi
     pass "Peekaboo Bridge connected"
     
-    if ! $PEEKABOO permissions 2>&1 | grep -q "Screen Recording.*Granted"; then
+    if ! peekaboo_run permissions 2>&1 | grep -qi "Screen Recording.*Granted" \
+        && ! peekaboo_run permissions status 2>&1 | grep -qi "Screen Recording.*Granted" \
+        && ! peekaboo_run list permissions 2>&1 | grep -qi "Screen Recording.*Granted"; then
         die "Screen Recording permission not granted to Peekaboo"
     fi
     pass "Peekaboo permissions OK"

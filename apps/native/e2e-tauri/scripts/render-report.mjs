@@ -98,6 +98,11 @@ function renderReport(report, { fromDir = ARTIFACT_ROOT } = {}) {
         <dt>Replay</dt><dd><code>${escapeHtml(report.replayCommand)}</code></dd>
       </dl>
       ${
+        report.captureLimitations?.length
+          ? `<p class="capture-limitations">Capture limitations: ${escapeHtml(report.captureLimitations.join(', '))}</p>`
+          : ''
+      }
+      ${
         firstFailure
           ? `<div class="failure">
               <h3>Failure: ${escapeHtml(firstFailure.name)}</h3>
@@ -164,6 +169,7 @@ function renderPage(reports, { fromDir = ARTIFACT_ROOT } = {}) {
     th, td { text-align: left; border-top: 1px solid #edf0f5; padding: 8px; vertical-align: top; }
     th { color: #52606d; font-weight: 600; }
     .failure { border: 1px solid #f2b8b5; background: #fff5f5; border-radius: 8px; padding: 12px; }
+    .capture-limitations { color: #92400e; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 6px; padding: 8px 10px; }
     .thumb { display: block; max-width: 520px; max-height: 320px; border: 1px solid #d8dee8; border-radius: 6px; background: #fff; }
     .video-proof { display: block; width: min(720px, 100%); max-height: 480px; border: 1px solid #d8dee8; border-radius: 6px; background: #000; }
   </style>

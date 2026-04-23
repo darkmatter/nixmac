@@ -387,6 +387,10 @@ jobs:
             PROOF=$(jq -r '.primaryProofUrl // "none"' "$REPORT")
             echo "- Status: $STATUS" >> "$GITHUB_STEP_SUMMARY"
             echo "- Proof: $PROOF" >> "$GITHUB_STEP_SUMMARY"
+            LIMITATIONS=$(jq -r '(.captureLimitations // []) | join(", ")' "$REPORT")
+            if [ -n "$LIMITATIONS" ]; then
+              echo "- Capture limitations: $LIMITATIONS" >> "$GITHUB_STEP_SUMMARY"
+            fi
             if [ -n "$REPORT_URL" ]; then
               echo "- HTML report: $REPORT_URL" >> "$GITHUB_STEP_SUMMARY"
             fi
@@ -501,6 +505,8 @@ jobs:
           ssh-keyscan -H "${{ secrets.MAC_E2E_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
       - name: Run full-Mac scenario over SSH
+        id: ssh-run
+        continue-on-error: true
         env:
           ADMIN_PASSWORD: ${{ secrets.MAC_E2E_ADMIN_PASSWORD }}
           BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
@@ -508,6 +514,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SCENARIO: ${{ matrix.scenario }}
         run: |
+          set +e
           {
             echo "export ADMIN_PASSWORD=$(printf '%q' "$ADMIN_PASSWORD")"
             echo "export GH_TOKEN=$(printf '%q' "$GH_TOKEN")"
@@ -520,29 +527,111 @@ jobs:
             echo "export GITHUB_RUN_ATTEMPT=$(printf '%q' "${{ github.run_attempt }}")"
             echo "export PATH=/opt/homebrew/bin:\$PATH"
             cat tests/e2e/ci-runner.sh
-          } | ssh -o StrictHostKeyChecking=no \
-                  -o ConnectTimeout=30 \
-                  -o ServerAliveInterval=15 \
-                  -o ServerAliveCountMax=4 \
-                  -i ~/.ssh/nixmac_e2e \
-                  "${{ secrets.MAC_E2E_USER }}@${{ secrets.MAC_E2E_HOST }}" \
-                  "bash -s"
+          } | timeout 40m ssh -o StrictHostKeyChecking=no \
+            -o ConnectTimeout=30 \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=4 \
+            -i ~/.ssh/nixmac_e2e \
+            "${{ secrets.MAC_E2E_USER }}@${{ secrets.MAC_E2E_HOST }}" \
+            "bash -s" \
+            > /tmp/e2e-full-mac-ssh.log 2>&1
+          status=${PIPESTATUS[1]}
+          set -e
+
+          cat /tmp/e2e-full-mac-ssh.log
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit "$status"
 
       - name: Fetch full-Mac artifacts
         if: always()
         run: |
           ARTIFACT_DIR="apps/native/e2e-tauri/artifacts"
           mkdir -p "$ARTIFACT_DIR"
-          SCP="scp -o StrictHostKeyChecking=no -i ~/.ssh/nixmac_e2e"
+          SCP="scp -o StrictHostKeyChecking=no -o ConnectTimeout=20 -i ~/.ssh/nixmac_e2e"
           HOST="${{ secrets.MAC_E2E_USER }}@${{ secrets.MAC_E2E_HOST }}"
           $SCP -r "$HOST:/tmp/e2e-artifacts/." "$ARTIFACT_DIR/" 2>/dev/null || true
           $SCP "$HOST:/tmp/e2e-recording.mp4" "$ARTIFACT_DIR/" 2>/dev/null || true
+          $SCP "$HOST:/tmp/e2e-ffmpeg.log" "$ARTIFACT_DIR/" 2>/dev/null || true
           $SCP "$HOST:/tmp/e2e-test.log" "$ARTIFACT_DIR/" 2>/dev/null || true
           $SCP "$HOST:/tmp/e2e-test-results.json" "$ARTIFACT_DIR/" 2>/dev/null || true
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/nixmac_e2e "$HOST" \
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=20 -i ~/.ssh/nixmac_e2e "$HOST" \
             'ls /tmp/e2e-screenshots/*.png 2>/dev/null' | while read -r file; do
               $SCP "$HOST:$file" "$ARTIFACT_DIR/" 2>/dev/null || true
             done
+
+      - name: Write full-Mac infra report if missing
+        if: always()
+        env:
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          GITHUB_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+          SCENARIO: ${{ matrix.scenario }}
+          SSH_STATUS: ${{ steps.ssh-run.outputs.status || 'not-run' }}
+        run: |
+          REPORT="apps/native/e2e-tauri/artifacts/${SCENARIO}/e2e-report.json"
+          if [ -s "$REPORT" ]; then
+            echo "Full-Mac report already exists: $REPORT"
+            exit 0
+          fi
+
+          mkdir -p "apps/native/e2e-tauri/artifacts/${SCENARIO}"
+          node <<'NODE'
+          const fs = require("node:fs");
+          const path = require("node:path");
+          const scenario = process.env.SCENARIO;
+          const now = new Date().toISOString();
+          const logPath = "/tmp/e2e-full-mac-ssh.log";
+          const rawLog = fs.existsSync(logPath) ? fs.readFileSync(logPath, "utf8") : "";
+          const sanitize = (value) => String(value || "")
+            .replace(/x-access-token:[^@\s]+@/g, "x-access-token:[redacted]@")
+            .replace(/gh[pousr]_[A-Za-z0-9_]+/g, "[redacted-github-token]")
+            .replace(/[\r\n|]+/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 1600);
+          const status = process.env.SSH_STATUS || "not-run";
+          const error = sanitize(rawLog) || `Full-Mac runner did not produce e2e-report.json (SSH status: ${status})`;
+          const report = {
+            schemaVersion: 1,
+            repo: process.env.GITHUB_REPOSITORY || "darkmatter/nixmac",
+            prNumber: process.env.GITHUB_PR_NUMBER ? Number(process.env.GITHUB_PR_NUMBER) : null,
+            headSha: process.env.COMMIT_SHA || process.env.GITHUB_SHA || "unknown",
+            baseSha: null,
+            workflowRunId: process.env.GITHUB_RUN_ID || null,
+            attempt: process.env.GITHUB_RUN_ATTEMPT ? Number(process.env.GITHUB_RUN_ATTEMPT) : null,
+            lane: "full-mac",
+            scenario,
+            runnerId: process.env.RUNNER_NAME || "github-hosted",
+            runnerKind: "full-mac",
+            startedAt: now,
+            finishedAt: now,
+            durationMs: 0,
+            status: "infra_failed",
+            htmlReportUrl: null,
+            primaryProofUrl: null,
+            failureProofUrl: null,
+            failureScreenshotUrl: null,
+            failureVideoUrl: null,
+            failureTimestampMs: null,
+            replayCommand: `tests/e2e/run.sh ${scenario}`,
+            localReproCommand: `tests/e2e/run.sh ${scenario}`,
+            captureLimitations: ["full_mac_runner_unavailable"],
+            phases: [{
+              name: "Full-Mac SSH runner",
+              status: "infra_failed",
+              startedAt: now,
+              finishedAt: now,
+              durationMs: 0,
+              assertions: ["Reach the configured Mac runner over SSH and collect scenario artifacts"],
+              proof: [],
+              error,
+            }],
+            proof: [],
+          };
+          fs.writeFileSync(
+            path.join("apps/native/e2e-tauri/artifacts", scenario, "e2e-report.json"),
+            `${JSON.stringify(report, null, 2)}\n`,
+          );
+          NODE
 
       - name: Render full-Mac report
         if: always()
@@ -644,6 +733,10 @@ jobs:
             PROOF=$(jq -r '.primaryProofUrl // "none"' "$REPORT")
             echo "- Status: $STATUS" >> "$GITHUB_STEP_SUMMARY"
             echo "- Proof: $PROOF" >> "$GITHUB_STEP_SUMMARY"
+            LIMITATIONS=$(jq -r '(.captureLimitations // []) | join(", ")' "$REPORT")
+            if [ -n "$LIMITATIONS" ]; then
+              echo "- Capture limitations: $LIMITATIONS" >> "$GITHUB_STEP_SUMMARY"
+            fi
             if [ -n "$REPORT_URL" ]; then
               echo "- HTML report: $REPORT_URL" >> "$GITHUB_STEP_SUMMARY"
             fi
@@ -767,6 +860,21 @@ jobs:
               return isPublicUrl(value) ? `[${label}](${value})` : "workflow artifact";
             }
 
+            function markdownText(value) {
+              return String(value ?? "")
+                .replace(/[\r\n]+/g, " ")
+                .replace(/\|/g, "\\|")
+                .trim();
+            }
+
+            function markdownCode(value) {
+              return markdownText(value).replace(/`/g, "\\`");
+            }
+
+            function tableCell(value) {
+              return markdownText(value) || "";
+            }
+
             function primaryProofLabel(report) {
               const proofs = report.proof || [];
               const primary = proofs.find((proof) => proof.kind === "video" && proof.isPrimary)
@@ -795,8 +903,8 @@ jobs:
                       ? linkOrArtifact(proofUrl, primaryProofLabel(report))
                       : publicOrArtifact(proofUrl);
                     const reportUrl = publicOrArtifact(report.htmlReportUrl);
-                    const replay = report.replayCommand ? "`" + report.replayCommand + "`" : "";
-                    return "| `" + report.scenario + "` | " + report.lane + " | **" + report.status + "** | " + reportUrl + " | " + proof + " | " + replay + " |";
+                    const replay = report.replayCommand ? "`" + markdownCode(report.replayCommand) + "`" : "";
+                    return "| `" + markdownCode(report.scenario) + "` | " + tableCell(report.lane) + " | **" + tableCell(report.status) + "** | " + tableCell(reportUrl) + " | " + tableCell(proof) + " | " + tableCell(replay) + " |";
                   }),
                 ].join("\n")
               : required
@@ -806,10 +914,13 @@ jobs:
               .filter((report) => report.status !== "passed")
               .map((report) => {
                 const phase = (report.phases || []).find((item) => item.status !== "passed");
-                const heading = `### Failure: \`${report.scenario}\``;
+                const heading = `### Failure: \`${markdownCode(report.scenario)}\``;
                 const phaseText = phase
-                  ? `**Phase:** ${phase.name}\n\n**Error:** ${phase.error || "No error captured"}`
+                  ? `**Phase:** ${markdownText(phase.name)}\n\n**Error:** ${markdownText(phase.error || "No error captured")}`
                   : "**Error:** No failing phase captured";
+                const limitations = report.captureLimitations?.length
+                  ? `\n\n**Capture limitations:** ${markdownText(report.captureLimitations.join(", "))}`
+                  : "";
                 const image = isPublicUrl(report.failureScreenshotUrl)
                   ? `\n\n![Failure proof](${report.failureScreenshotUrl})`
                   : "";
@@ -819,7 +930,7 @@ jobs:
                 const reportLink = isPublicUrl(report.htmlReportUrl)
                   ? `\n\n[Full HTML report](${report.htmlReportUrl})`
                   : "";
-                return `${heading}\n\n${phaseText}${image}${videoLink}${reportLink}`;
+                return `${heading}\n\n${phaseText}${limitations}${image}${videoLink}${reportLink}`;
               })
               .join("\n\n");
 

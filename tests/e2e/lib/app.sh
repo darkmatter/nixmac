@@ -31,7 +31,7 @@ app_launch() {
 app_quit() {
     local app_name="$1"
     
-    $PEEKABOO app quit --app "$app_name" 2>/dev/null || true
+    peekaboo_run app quit --app "$app_name" 2>/dev/null || true
     sleep 1
     
     if pgrep -f "$app_name" &>/dev/null; then

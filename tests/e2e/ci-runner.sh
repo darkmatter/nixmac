@@ -24,6 +24,50 @@ APP_PATH="/Applications/nixmac.app"
 E2E_DIR="/tmp/nixmac-e2e"
 BUILD_WAIT_SECONDS="${BUILD_WAIT_SECONDS:-1800}"
 BUILD_POLL_SECONDS="${BUILD_POLL_SECONDS:-30}"
+PEEKABOO_COMMAND_TIMEOUT="${PEEKABOO_COMMAND_TIMEOUT:-15}"
+
+run_with_timeout() {
+    local seconds="$1"
+    shift
+
+    local output_file status command_pid watchdog_pid
+    output_file=$(mktemp "${TMPDIR:-/tmp}/e2e-timeout-output.XXXXXX") || return 1
+
+    "$@" >"$output_file" 2>&1 &
+    command_pid=$!
+
+    (
+        sleep "$seconds"
+        if kill -0 "$command_pid" 2>/dev/null; then
+            kill "$command_pid" 2>/dev/null || true
+            sleep 2
+            kill -9 "$command_pid" 2>/dev/null || true
+        fi
+    ) &
+    watchdog_pid=$!
+
+    if wait "$command_pid"; then
+        status=0
+    else
+        status=$?
+    fi
+
+    kill "$watchdog_pid" 2>/dev/null || true
+    wait "$watchdog_pid" 2>/dev/null || true
+
+    cat "$output_file"
+    rm -f "$output_file"
+
+    if [ "$status" -eq 137 ] || [ "$status" -eq 143 ]; then
+        return 124
+    fi
+
+    return "$status"
+}
+
+peekaboo_with_timeout() {
+    run_with_timeout "$PEEKABOO_COMMAND_TIMEOUT" peekaboo "$@"
+}
 
 echo "=========================================="
 echo " macos-e2e CI Runner"
@@ -38,10 +82,10 @@ echo ""
 
 # --- Preflight ---
 echo "[ci] Checking Peekaboo Bridge..."
-if ! peekaboo bridge status 2>&1 | grep -qE "remote (gui|onDemand)"; then
+if ! peekaboo_with_timeout bridge status 2>&1 | grep -qE "remote (gui|onDemand)"; then
     echo "[ci] ERROR: Peekaboo Bridge not running. Ensure Peekaboo.app is launched."
     echo "[ci] Bridge status output:"
-    peekaboo bridge status 2>&1 || true
+    peekaboo_with_timeout bridge status 2>&1 || true
     exit 1
 fi
 

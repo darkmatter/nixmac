@@ -24,6 +24,14 @@ e2e_report_write() {
     local failure_proof=""
     local failure_screenshot=""
     local failure_video=""
+    local capture_limitations_json="[]"
+
+    if [ -n "${E2E_CAPTURE_LIMITATIONS:-}" ]; then
+        capture_limitations_json=$(printf '%s' "$E2E_CAPTURE_LIMITATIONS" \
+            | tr ',' '\n' \
+            | jq -R 'select(length > 0)' \
+            | jq -s 'unique')
+    fi
 
     for result in "${_E2E_PHASE_RESULTS[@]}"; do
         local phase_status phase_num phase_msg normalized_status error_msg
@@ -137,6 +145,7 @@ e2e_report_write() {
         --arg status "$status" \
         --argjson phases "$phases_json" \
         --argjson proof "$proof_json" \
+        --argjson captureLimitations "$capture_limitations_json" \
         --arg primaryProofUrl "$primary_proof" \
         --arg failureProofUrl "$failure_proof" \
         --arg failureScreenshotUrl "$failure_screenshot" \
@@ -166,6 +175,7 @@ e2e_report_write() {
             replayCommand: ("tests/e2e/run.sh " + $scenario),
             localReproCommand: ("tests/e2e/run.sh " + $scenario),
             phases: $phases,
+            captureLimitations: $captureLimitations,
             proof: $proof
         }' > "$report_path"
 
