@@ -24,7 +24,7 @@ export function SetupStep() {
   const hasFlake = hasConfigDir && hosts.length > 0;
 
   return (
-    <div className="flex flex-col items-center justify-center space-y-6 py-8">
+    <div data-testid="setup-step" className="flex flex-col items-center justify-center space-y-6 py-8">
       <img src="/outline-white.png" alt="" className="h-16 w-16 object-contain" />
       <div className="text-center">
         <h2 className="font-semibold text-foreground text-lg">

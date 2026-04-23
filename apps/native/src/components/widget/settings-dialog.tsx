@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { isE2eProofMode } from "@/utils/e2e-proof-mode";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { cn } from "@/lib/utils";
 import { type SettingsTab, useWidgetStore } from "@/stores/widget-store";
@@ -203,9 +204,22 @@ export function SettingsDialog() {
           onClick={() => setSettingsOpen(false)}
           type="button"
         />
-        <div className="relative z-10 flex h-[460px] w-[620px] max-w-[90vw] overflow-hidden rounded-xl border border-border bg-card/95 shadow-2xl backdrop-blur-xl">
+        <div
+          data-testid="settings-dialog"
+          className={
+            isE2eProofMode
+              ? "relative z-10 flex h-[460px] w-[620px] max-w-[90vw] overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
+              : "relative z-10 flex h-[460px] w-[620px] max-w-[90vw] overflow-hidden rounded-xl border border-border bg-card/95 shadow-2xl backdrop-blur-xl"
+          }
+        >
           {/* Sidebar */}
-          <div className="flex w-[180px] flex-col border-border border-r bg-muted/30 p-3">
+          <div
+            className={
+              isE2eProofMode
+                ? "flex w-[180px] flex-col border-border border-r bg-muted p-3"
+                : "flex w-[180px] flex-col border-border border-r bg-muted/30 p-3"
+            }
+          >
             <div className="mb-4 flex items-center gap-2 px-2">
               <Settings2 className="h-4 w-4" />
               <span className="font-semibold text-sm">Settings</span>

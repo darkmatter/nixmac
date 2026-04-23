@@ -1,6 +1,7 @@
 import { X } from "lucide-react";
 import { NixEditor } from "@/components/kibo-ui/nix-editor";
 import { Button } from "@/components/ui/button";
+import { isE2eProofMode } from "@/utils/e2e-proof-mode";
 import { useWidgetStore } from "@/stores/widget-store";
 
 export function EditorPanel() {
@@ -13,7 +14,13 @@ export function EditorPanel() {
   const filename = editingFile.split("/").pop() ?? editingFile;
 
   return (
-    <div className="fixed inset-y-8 w-full max-w-[100vw] z-20 flex flex-col bg-background/95 backdrop-blur-sm">
+    <div
+      className={
+        isE2eProofMode
+          ? "fixed inset-y-8 w-full max-w-[100vw] z-20 flex flex-col bg-background"
+          : "fixed inset-y-8 w-full max-w-[100vw] z-20 flex flex-col bg-background/95 backdrop-blur-sm"
+      }
+    >
       <div className="flex items-center justify-between border-b border-border px-4 py-2">
         <div className="flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">Editing</span>

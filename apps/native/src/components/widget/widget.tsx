@@ -37,6 +37,7 @@ import { useSummary } from "@/hooks/use-summary";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { UpdateBanner } from "@/components/update-banner";
 import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
+import { isE2eProofMode } from "@/utils/e2e-proof-mode";
 import { setupWidgetTestHelpers } from "@/utils/widget-test-helpers";
 import { useEffect } from "react";
 
@@ -73,6 +74,13 @@ export function DarwinWidget() {
       setupErrorTestHelpers();
       setupWidgetTestHelpers();
     }
+  }, []);
+
+  useEffect(() => {
+    document.body.classList.toggle("e2e-proof-mode", isE2eProofMode);
+    return () => {
+      document.body.classList.remove("e2e-proof-mode");
+    };
   }, []);
 
   // Esc closes the settings modal or history panel (settings takes priority since it overlays history).
@@ -151,7 +159,13 @@ export function DarwinWidget() {
   };
 
   return (
-    <div className="flex h-full w-full flex-col bg-background/90 backdrop-blur-xl">
+    <div
+      className={
+        isE2eProofMode
+          ? "flex h-full w-full flex-col bg-background"
+          : "flex h-full w-full flex-col bg-background/90 backdrop-blur-xl"
+      }
+    >
       <Header />
       <Stepper />
       <UpdateBanner />
