@@ -31,6 +31,10 @@ fn completion_log_dir() -> PathBuf {
 }
 
 /// Returns the daily-rotated JSONL path for the given prefix.
+///
+/// Files land in `~/Library/Application Support/nixmac/logs/{prefix}_YYYY-MM-DD.jsonl`
+/// by default. `NIXMAC_COMPLETION_LOG_DIR` overrides the base directory, and debug/E2E
+/// runs use the isolated E2E app-data directory when available.
 pub fn log_path_for_today(prefix: &str) -> PathBuf {
     let date = Local::now().format("%Y-%m-%d");
     completion_log_dir().join(format!("{prefix}_{date}.jsonl"))
@@ -71,6 +75,12 @@ pub fn init_recording(prefix: &str, label: &str) -> bool {
 
 /// Appends a single serialized `CreateChatCompletionResponse` line to the
 /// daily JSONL file for `prefix`. No-ops when `record_completions` is false.
+///
+/// The write is dispatched to a blocking thread via `spawn_blocking` so the
+/// Tokio runtime is not stalled. Each append serializes to a single
+/// newline-terminated buffer and writes it with `write_all`, which issues one
+/// `write(2)` syscall. Combined with `O_APPEND`, this makes each line
+/// effectively atomic for the typical response sizes seen here.
 pub async fn append_jsonl(
     record_completions: bool,
     prefix: &str,
@@ -92,6 +102,7 @@ pub async fn append_jsonl(
     };
 
     let path = log_path_for_today(prefix);
+    // Build the complete line buffer before entering spawn_blocking.
     let buf = format!("{line}\n").into_bytes();
 
     if let Err(e) = spawn_blocking(move || -> std::io::Result<()> {
