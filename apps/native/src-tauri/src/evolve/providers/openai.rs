@@ -81,7 +81,8 @@ impl AiProvider for OpenAIProvider {
             self.record_completions,
             "evolve_provider_completions",
             &response,
-        );
+        )
+        .await;
 
         let choice = response
             .choices

@@ -95,7 +95,8 @@ impl ChatCompletionProvider for OpenAIClient {
             self.record_completions,
             "summary_provider_completions",
             &response,
-        );
+        )
+        .await;
         let usage = TokenUsage {
             input: response.usage.as_ref().map(|u| u.prompt_tokens),
             output: response.usage.as_ref().map(|u| u.completion_tokens),
@@ -155,7 +156,8 @@ impl ChatCompletionProvider for OpenAIClient {
             self.record_completions,
             "summary_provider_completions",
             &response,
-        );
+        )
+        .await;
         let usage = TokenUsage {
             input: response.usage.as_ref().map(|u| u.prompt_tokens),
             output: response.usage.as_ref().map(|u| u.completion_tokens),
