@@ -20,6 +20,7 @@ use reqwest::StatusCode;
 pub struct OpenAIProvider {
     client: Client<OpenAIConfig>,
     model: String,
+    record_completions: bool,
 }
 
 impl OpenAIProvider {
@@ -28,7 +29,13 @@ impl OpenAIProvider {
             .with_api_key(api_key)
             .with_api_base(api_base);
         let client = Client::with_config(config);
-        Self { client, model }
+        let record_completions =
+            crate::completion_log::init_recording("evolve_provider_completions", "evolve provider");
+        Self {
+            client,
+            model,
+            record_completions,
+        }
     }
 }
 
@@ -69,6 +76,12 @@ impl AiProvider for OpenAIProvider {
             .create(request)
             .await
             .map_err(normalize_openai_error)?;
+
+        crate::completion_log::append_jsonl(
+            self.record_completions,
+            "evolve_provider_completions",
+            &response,
+        );
 
         let choice = response
             .choices
