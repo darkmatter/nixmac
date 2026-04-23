@@ -18,7 +18,7 @@ export function EvolveStep() {
   const { handleRollback } = useRollback();
 
   return (
-    <>
+    <div data-testid="evolve-proof-region" className="flex flex-col gap-4">
       <ExternalBuildDetected />
       <StepActionsHeader label="Ready to test-drive your changes?">
         <ConfirmButton
@@ -48,6 +48,6 @@ export function EvolveStep() {
       </StepActionsHeader>
       <SummaryOrDiff />
       <PromptInputSection />
-    </>
+    </div>
   );
 }

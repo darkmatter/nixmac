@@ -1,6 +1,7 @@
 "use client";
 
 import { EvolveProgress } from "@/components/evolve-progress";
+import { isE2eProofMode } from "@/utils/e2e-proof-mode";
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
 
@@ -27,7 +28,13 @@ export function EvolveOverlayPanel() {
   }
 
   return (
-    <div className="fixed inset-y-8 w-full max-w-[100vw] z-10 flex items-center justify-center bg-background/95 backdrop-blur-sm">
+    <div
+      className={
+        isE2eProofMode
+          ? "fixed inset-y-8 w-full max-w-[100vw] z-10 flex items-center justify-center bg-background"
+          : "fixed inset-y-8 w-full max-w-[100vw] z-10 flex items-center justify-center bg-background/95 backdrop-blur-sm"
+      }
+    >
       <div className="h-full w-full max-h-[600px] max-w-[800px]">
         <div
           className="flex h-full w-full flex-col overflow-hidden rounded-2xl p-6"

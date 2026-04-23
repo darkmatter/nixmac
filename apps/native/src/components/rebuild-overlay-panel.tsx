@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { isE2eProofMode } from "@/utils/e2e-proof-mode";
 import { Activity, useCallback, useEffect, useRef, useState } from "react";
 
 /** Get a user-friendly title for the error type */
@@ -397,7 +398,13 @@ export function RebuildOverlayPanel() {
   }
 
   return (
-    <div className="fixed inset-y-8 z-10 w-full max-w-[100vw] flex items-center justify-center bg-background/95 backdrop-blur-sm">
+    <div
+      className={
+        isE2eProofMode
+          ? "fixed inset-y-8 z-10 w-full max-w-[100vw] flex items-center justify-center bg-background"
+          : "fixed inset-y-8 z-10 w-full max-w-[100vw] flex items-center justify-center bg-background/95 backdrop-blur-sm"
+      }
+    >
       <div className="h-full w-full max-h-[600px] max-w-[800px] p-5">
         <div
           className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-white/10 p-6"

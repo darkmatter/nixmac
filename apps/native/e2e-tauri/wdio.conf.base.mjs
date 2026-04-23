@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { execFile } from 'node:child_process';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import {
@@ -20,6 +20,11 @@ const execFileAsync = promisify(execFile);
 const VIDEO_FRAME_INTERVAL_MS = Number(process.env.NIXMAC_E2E_VIDEO_FRAME_INTERVAL_MS ?? 1500);
 const VIDEO_CAPTURE_TIMEOUT_MS = Number(process.env.NIXMAC_E2E_VIDEO_CAPTURE_TIMEOUT_MS ?? 5000);
 const VIDEO_MAX_FRAMES = Number(process.env.NIXMAC_E2E_VIDEO_MAX_FRAMES ?? 120);
+const PROOF_TARGET_SELECTORS = [
+  '[data-testid="settings-dialog"]',
+  '[data-testid="evolve-proof-region"]',
+  '[data-testid="setup-step"]',
+];
 
 function sanitizeSegment(value) {
   return String(value).replace(/[^a-zA-Z0-9._-]+/g, '-');
@@ -77,7 +82,7 @@ async function captureVideoFrame(recorder, label = 'frame') {
       `frame-${String(recorder.frameCount).padStart(5, '0')}-${sanitizeSegment(label)}.png`,
     );
     await withTimeout(
-      globalThis.browser.saveScreenshot(framePath),
+      saveProofScreenshot(framePath),
       VIDEO_CAPTURE_TIMEOUT_MS,
       `Timed out capturing E2E video frame after ${VIDEO_CAPTURE_TIMEOUT_MS}ms`,
     );
@@ -92,6 +97,72 @@ async function captureVideoFrame(recorder, label = 'frame') {
   } finally {
     recorder.saving = false;
   }
+}
+
+async function saveProofScreenshot(outputPath) {
+  const dataUrl = await captureProofDataUrl();
+  if (dataUrl) {
+    const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
+    await writeFile(outputPath, Buffer.from(base64, 'base64'));
+    return;
+  }
+
+  for (const selector of PROOF_TARGET_SELECTORS) {
+    const matches = await globalThis.browser.$$(selector);
+    if (matches.length === 0) {
+      continue;
+    }
+
+    const target = matches[0];
+    if (!(await target.isExisting())) {
+      continue;
+    }
+
+    try {
+      await target.saveScreenshot(outputPath);
+      return;
+    } catch (error) {
+      console.warn(
+        `[wdio:e2e-proof] Failed element screenshot for ${selector}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
+
+  await globalThis.browser.saveScreenshot(outputPath);
+}
+
+async function captureProofDataUrl() {
+  if (!globalThis.browser?.executeAsync) {
+    return null;
+  }
+
+  const result = await globalThis.browser.executeAsync((done) => {
+    const capture = window.__testWidget?.captureProofPng;
+    if (!capture) {
+      done(null);
+      return;
+    }
+
+    capture()
+      .then((dataUrl) => done(dataUrl ?? null))
+      .catch((error) => {
+        done({
+          __codexProofError:
+            error instanceof Error ? error.message : String(error),
+        });
+      });
+  });
+
+  if (result && typeof result === 'object' && '__codexProofError' in result) {
+    console.warn(`[wdio:e2e-proof] DOM proof capture failed: ${result.__codexProofError}`);
+    return null;
+  }
+
+  return typeof result === 'string' && result.startsWith('data:image/png;base64,')
+    ? result
+    : null;
 }
 
 async function encodeVideo(recorder, { passed }) {
@@ -233,7 +304,7 @@ export function createWdioConfig({ specs, setupOptions = {}, scenario, lane = 't
           `${passed ? 'proof' : 'failure'}-${Date.now()}.png`,
         );
         try {
-          await globalThis.browser.saveScreenshot(screenshotPath);
+          await saveProofScreenshot(screenshotPath);
           proof.push({
             kind: 'screenshot',
             path: screenshotPath,

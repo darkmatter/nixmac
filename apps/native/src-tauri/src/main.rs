@@ -524,12 +524,13 @@ fn run_gui_mode(
                 .build(app)?;
 
             // Create the main window
-            let initial_width = 800.0;
-            let initial_height = 800.0;
+            let proof_mode = e2e_support::is_e2e_mode();
+            let initial_width = if proof_mode { 1200.0 } else { 800.0 };
+            let initial_height = if proof_mode { 900.0 } else { 800.0 };
             let min_width = 400.0;
-            let max_width = 1000.0;
+            let max_width = if proof_mode { 1400.0 } else { 1000.0 };
             let min_height = 400.0;
-            let max_height = 900.0;
+            let max_height = if proof_mode { 1100.0 } else { 900.0 };
 
             let main_window =
                 WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
@@ -542,7 +543,7 @@ fn run_gui_mode(
                     .minimizable(true)
                     .closable(true)
                     .decorations(true)
-                    .transparent(true)
+                    .transparent(!proof_mode)
                     .visible(true)
                     .always_on_top(false)
                     .visible_on_all_workspaces(true)

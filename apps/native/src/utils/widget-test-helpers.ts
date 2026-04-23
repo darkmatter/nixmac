@@ -24,6 +24,27 @@ export interface WidgetTestHelpers {
    * Seed the setup step with an existing nix-darwin repository and discovered hosts.
    */
   setSetupHosts: (configDir: string, hostAttr: string) => void;
+  /**
+   * Capture the most relevant proof surface as a PNG data URL.
+   */
+  captureProofPng: () => Promise<string | null>;
+}
+
+function getProofTarget(): HTMLElement | null {
+  const selectors = [
+    '[data-testid="settings-dialog"]',
+    '[data-testid="evolve-proof-region"]',
+    '[data-testid="setup-step"]',
+  ];
+
+  for (const selector of selectors) {
+    const node = document.querySelector<HTMLElement>(selector);
+    if (node) {
+      return node;
+    }
+  }
+
+  return document.querySelector<HTMLElement>("#root");
 }
 
 export function setupWidgetTestHelpers() {
@@ -45,6 +66,23 @@ export function setupWidgetTestHelpers() {
       store.setConfigDir(configDir);
       store.setHost("");
       store.setHosts(hostAttr ? [hostAttr] : []);
+    },
+    captureProofPng: async () => {
+      const target = getProofTarget();
+      if (!target) {
+        return null;
+      }
+
+      const { toPng } = await import("html-to-image");
+      const bodyBackground = getComputedStyle(document.body).backgroundColor;
+      return toPng(target, {
+        backgroundColor:
+          bodyBackground && bodyBackground !== "rgba(0, 0, 0, 0)"
+            ? bodyBackground
+            : "rgb(10, 10, 10)",
+        cacheBust: true,
+        pixelRatio: 2,
+      });
     },
   };
 
