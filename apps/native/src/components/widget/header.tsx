@@ -68,7 +68,7 @@ export function Header() {
           size="sm"
           variant="ghost"
           onClick={() => setSettingsOpen(true)}
-          aria-label="Settings"
+          aria-label="Settings intentionally broken for E2E validation"
           title="Settings"
         >
           <Settings className="h-4 w-4" />
