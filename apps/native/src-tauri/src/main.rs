@@ -9,6 +9,7 @@
 
 mod apply_system_defaults;
 mod build_state;
+mod completion_log;
 mod changes_from_diff;
 mod cli;
 mod commands;
