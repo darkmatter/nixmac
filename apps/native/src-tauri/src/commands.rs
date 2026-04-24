@@ -340,7 +340,7 @@ pub async fn send_question_response(answer: String) -> anyhow::Result<()> {
     let mut guard = slot.lock().await;
     if let Some(tx) = guard.take() {
         tx.send(answer)
-            .map_err(|e| anyhow::anyhow!("Failed to send question response: {}", e))
+            .map_err(|e| anyhow::anyhow!("Failed to send question response"))
     } else {
         Err(anyhow::anyhow!("No pending question to answer"))
     }
