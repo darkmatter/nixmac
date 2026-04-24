@@ -84,22 +84,6 @@ The helper lives in `tests/wdio/helpers/vllm-test-mode.mjs` and is wired into `w
   bun run test:wdio:modify
 ```
 
-## Onboarding Clean-Start Test
-
-The onboarding suite starts with an empty temporary config directory and verifies:
-
-- `Welcome to nixmac` is shown
-- `Create Default Configuration` is shown
-- Clicking bootstrap initializes a git repository
-- `flake.nix` is created
-- The new repo is clean (no outstanding changes)
-
-Run it with:
-
-```bash
-  bun run test:wdio:onboarding
-```
-
 1. Real mode (no mock, no recording):
 
 ```bash
