@@ -24,7 +24,7 @@ _E2E_PHASE_RESULTS=()
 # --- Portable command timeout ---
 #
 # macOS does not ship GNU timeout. Keep this dependency-free so the runner
-# behaves the same on a freshly provisioned MacInCloud host.
+# behaves the same on a freshly provisioned remote macOS host.
 run_with_timeout() {
     local seconds="$1"
     shift

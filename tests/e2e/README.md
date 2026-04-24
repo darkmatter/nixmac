@@ -154,7 +154,7 @@ sudo -n whoami                 # "root"
 
 ## CI
 
-The workflow (`.github/workflows/e2e-nix-install.yml`) triggers on PRs modifying `apps/native/src-tauri/**` or `tests/e2e/**`.
+The workflow (`.github/workflows/e2e.yml`) resolves required scenarios from PR labels and changed paths.
 
 ### Secrets (via SOPS)
 

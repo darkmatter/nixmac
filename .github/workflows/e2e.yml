@@ -414,6 +414,7 @@ jobs:
     timeout-minutes: 45
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         scenario: ${{ fromJSON(needs.resolve.outputs.scenarios_mac) }}
     steps:

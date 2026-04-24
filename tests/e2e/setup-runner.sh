@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# Setup the MacInCloud runner for E2E testing.
+# Setup a remote macOS runner for E2E testing.
 # Run this once (or when you need to update the app build).
 #
 # Usage:
