@@ -12,6 +12,12 @@
         "required": [
           "name",
           "lane",
+          "title",
+          "summary",
+          "coverage",
+          "riskAreas",
+          "changePatterns",
+          "knownGaps",
           "currentSpec",
           "currentScript",
           "status",
@@ -20,6 +26,27 @@
         "properties": {
           "name": { "type": "string" },
           "lane": { "type": "string", "enum": ["browser", "tauri-wdio", "full-mac"] },
+          "title": { "type": "string" },
+          "summary": { "type": "string" },
+          "coverage": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          },
+          "riskAreas": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          },
+          "changePatterns": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "knownGaps": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          },
           "currentSpec": { "type": ["string", "null"] },
           "currentScript": { "type": ["string", "null"] },
           "status": { "type": "string" },

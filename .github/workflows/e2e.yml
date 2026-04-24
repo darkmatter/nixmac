@@ -48,24 +48,38 @@ jobs:
         with:
           script: |
             const fs = require("node:fs");
+            const path = require("node:path");
             const eventName = context.eventName;
             const payload = context.payload;
             const manifest = JSON.parse(
               fs.readFileSync("apps/native/e2e-tauri/scenarios/manifest.json", "utf8")
             );
+            for (const scenario of manifest.scenarios || []) {
+              for (const field of ["title", "summary"]) {
+                if (typeof scenario[field] !== "string" || scenario[field].trim().length === 0) {
+                  throw new Error(`E2E scenario ${scenario.name || "(unnamed)"} is missing ${field}`);
+                }
+              }
+              for (const field of ["coverage", "riskAreas", "knownGaps"]) {
+                if (!Array.isArray(scenario[field]) || scenario[field].length === 0) {
+                  throw new Error(`E2E scenario ${scenario.name || "(unnamed)"} is missing ${field}`);
+                }
+              }
+              for (const pattern of scenario.changePatterns || []) {
+                new RegExp(pattern);
+              }
+            }
             const tauriScenarios = manifest.scenarios.filter((scenario) => scenario.lane === "tauri-wdio");
             const fullMacScenarios = manifest.scenarios.filter((scenario) => scenario.lane === "full-mac");
             const defaultTauriScenarios = tauriScenarios
               .filter((scenario) => scenario.requiredForDefaultPrPack)
               .map((scenario) => scenario.name);
-            const scenarioLabelMap = Object.fromEntries(
-              tauriScenarios.map((scenario) => [`e2e:scenario:${scenario.name}`, scenario.name])
-            );
-            const fullMacScenarioNames = fullMacScenarios.map((scenario) => scenario.name);
+            const scenarioByName = new Map(manifest.scenarios.map((scenario) => [scenario.name, scenario]));
             const nativePatterns = [
               /^apps\/native\/src\//,
               /^apps\/native\/src-tauri\//,
               /^apps\/native\/e2e/,
+              /^tests\/e2e\//,
               /^apps\/native\/templates\//,
               /^apps\/native\/package\.json$/,
               /^apps\/native\/vite\.config\.ts$/,
@@ -77,23 +91,87 @@ jobs:
 
             let required = false;
             let macRequired = false;
+            let tauriRequired = false;
             let reason = "not required: no runtime/native paths changed";
             let scenarios = [];
             let macScenarios = [];
+            let changed = [];
+            let labels = [];
+            const selectionReasons = new Map();
+            const matchedFilesByScenario = new Map();
+
+            function addSelection(name, why, files = []) {
+              const scenario = scenarioByName.get(name);
+              if (!scenario) return;
+              if (!selectionReasons.has(name)) selectionReasons.set(name, new Set());
+              selectionReasons.get(name).add(why);
+              if (!matchedFilesByScenario.has(name)) matchedFilesByScenario.set(name, new Set());
+              for (const file of files) matchedFilesByScenario.get(name).add(file);
+            }
+
+            function matchingFilesFor(scenario, files) {
+              const patterns = (scenario.changePatterns || [])
+                .map((pattern) => {
+                  try {
+                    return new RegExp(pattern);
+                  } catch (error) {
+                    core.warning(`Invalid E2E change pattern for ${scenario.name}: ${pattern}`);
+                    return null;
+                  }
+                })
+                .filter(Boolean);
+              if (!patterns.length) return [];
+              return files.filter((file) => patterns.some((pattern) => pattern.test(file)));
+            }
+
+            function scenarioDigest(scenario) {
+              return {
+                name: scenario.name,
+                lane: scenario.lane,
+                title: scenario.title || scenario.name,
+                summary: scenario.summary || "",
+                coverage: scenario.coverage || [],
+                knownGaps: scenario.knownGaps || [],
+                riskAreas: scenario.riskAreas || [],
+                currentScript: scenario.currentScript || null,
+                requiredForDefaultPrPack: Boolean(scenario.requiredForDefaultPrPack),
+                selectionReasons: [...(selectionReasons.get(scenario.name) || [])],
+                matchedFiles: [...(matchedFilesByScenario.get(scenario.name) || [])].slice(0, 12),
+                matchedFileCount: matchedFilesByScenario.get(scenario.name)?.size || 0,
+              };
+            }
+
+            function selectedNamesFor(lane) {
+              return manifest.scenarios
+                .filter((scenario) => scenario.lane === lane && selectionReasons.has(scenario.name))
+                .map((scenario) => scenario.name);
+            }
+
+            function e2eLabelsOnly(allLabels) {
+              return allLabels.filter((label) => label === "e2e:all" || label === "e2e:skip" || label === "e2e:mac" || label === "e2e:release-smoke" || label.startsWith("e2e:scenario:"));
+            }
+
+            function writeSelection(selection) {
+              fs.mkdirSync("e2e-selection", { recursive: true });
+              fs.writeFileSync(
+                path.join("e2e-selection", "e2e-selection.json"),
+                `${JSON.stringify(selection, null, 2)}\n`
+              );
+            }
 
             if (eventName === "workflow_dispatch") {
               required = true;
               reason = "manual dispatch";
               const scenario = payload.inputs?.scenario || "auto_evolve_basic_package";
-              if (scenario === "install_nix_clean_machine" || scenario === "release_dmg_app_translocation_smoke") {
-                macRequired = true;
-                macScenarios = [scenario];
+              const selected = scenarioByName.get(scenario);
+              if (selected?.lane === "full-mac") {
+                addSelection(scenario, "manual dispatch");
               } else {
-                scenarios = [scenario];
+                addSelection(scenario, "manual dispatch");
               }
             } else {
               const pr = payload.pull_request;
-              const labels = (pr.labels || []).map((label) => label.name);
+              labels = (pr.labels || []).map((label) => label.name);
               const headRepo = pr.head?.repo?.full_name;
               const baseRepo = pr.base?.repo?.full_name;
 
@@ -110,54 +188,134 @@ jobs:
                   pull_number: pr.number,
                   per_page: 100,
                 });
-                const changed = files.map((file) => file.filename);
+                changed = files.map((file) => file.filename);
                 const touchedNative = changed.some((file) =>
                   nativePatterns.some((pattern) => pattern.test(file))
                 );
-                const requestedScenarios = Object.entries(scenarioLabelMap)
-                  .filter(([label]) => labels.includes(label))
-                  .map(([, scenario]) => scenario);
                 const requestedAll = labels.includes("e2e:all");
-                const requestedScenario = requestedScenarios.length > 0;
-                const requestedMac = labels.includes("e2e:mac") || labels.includes("e2e:release-smoke");
-                const touchesRelease = changed.some((file) =>
-                  /^apps\/native\/src-tauri\/tauri\.conf\.json$/.test(file) ||
-                  /^apps\/native\/src-tauri\/Info\.plist$/.test(file) ||
-                  /^apps\/native\/src-tauri\/entitlements\.plist$/.test(file) ||
-                  /^\.github\/workflows\/build\.yaml$/.test(file) ||
-                  /^ops\/scripts\//.test(file)
-                );
+                const requestedMac = labels.includes("e2e:mac");
+                const requestedReleaseSmoke = labels.includes("e2e:release-smoke");
+                const requestedScenarioLabels = manifest.scenarios
+                  .map((scenario) => [`e2e:scenario:${scenario.name}`, scenario])
+                  .filter(([label]) => labels.includes(label));
+                const impactedScenarios = manifest.scenarios
+                  .map((scenario) => ({ scenario, files: matchingFilesFor(scenario, changed) }))
+                  .filter((entry) => entry.files.length > 0);
 
-                required = touchedNative || requestedAll || requestedScenario;
-                macRequired = requestedMac || requestedAll || touchesRelease;
-                if (required) {
-                  reason = requestedAll
-                    ? "required: e2e:all label present"
-                    : requestedScenario
-                      ? "required: scenario label present"
-                      : "required: runtime/native paths changed";
-                  scenarios = requestedScenario && !requestedAll ? requestedScenarios : defaultTauriScenarios;
-                }
-                if (macRequired) {
-                  required = true;
-                  reason = requestedMac
-                    ? "required: full-Mac E2E label present"
-                    : requestedAll
-                      ? "required: e2e:all label present"
-                      : "required: release/native packaging paths changed";
-                  macScenarios = requestedMac || labels.includes("e2e:all")
-                    ? fullMacScenarioNames
-                    : ["release_dmg_app_translocation_smoke"];
+                if (requestedAll) {
+                  for (const scenario of manifest.scenarios) {
+                    addSelection(scenario.name, "e2e:all label");
+                  }
+                  for (const { scenario, files } of impactedScenarios) {
+                    addSelection(scenario.name, scenario.lane === "full-mac" ? "matched full-Mac change pattern" : "matched PR change pattern", files);
+                  }
+                  reason = "required: e2e:all label present";
+                } else {
+                  for (const [, scenario] of requestedScenarioLabels) {
+                    addSelection(scenario.name, `scenario label e2e:scenario:${scenario.name}`);
+                  }
+                  if (requestedMac) {
+                    for (const scenario of fullMacScenarios) {
+                      addSelection(scenario.name, "e2e:mac label");
+                    }
+                  }
+                  if (requestedReleaseSmoke) {
+                    addSelection("release_dmg_app_translocation_smoke", "e2e:release-smoke label");
+                  }
+                  if (touchedNative && requestedScenarioLabels.length === 0) {
+                    for (const name of defaultTauriScenarios) {
+                      addSelection(name, "runtime/native paths changed");
+                    }
+                  }
+                  for (const { scenario, files } of impactedScenarios) {
+                    if (scenario.lane === "full-mac") {
+                      addSelection(scenario.name, "matched full-Mac change pattern", files);
+                    } else if (selectionReasons.has(scenario.name)) {
+                      addSelection(scenario.name, "matched PR change pattern", files);
+                    }
+                  }
+
+                  const requestedLabelNames = requestedScenarioLabels.map(([label]) => label);
+                  if (requestedScenarioLabels.length > 0) {
+                    reason = `required: scenario label present (${requestedLabelNames.join(", ")})`;
+                  } else if (requestedMac) {
+                    reason = "required: full-Mac E2E label present (e2e:mac)";
+                  } else if (requestedReleaseSmoke) {
+                    reason = "required: full-Mac E2E label present (e2e:release-smoke)";
+                  } else if ([...selectionReasons.keys()].some((name) => scenarioByName.get(name)?.lane === "full-mac")) {
+                    reason = touchedNative
+                      ? "required: runtime/native paths changed; full-Mac scenario matched PR files"
+                      : "required: full-Mac scenario matched PR files";
+                  } else if (touchedNative) {
+                    reason = "required: runtime/native paths changed";
+                  }
                 }
               }
             }
+
+            scenarios = selectedNamesFor("tauri-wdio");
+            macScenarios = selectedNamesFor("full-mac");
+            tauriRequired = scenarios.length > 0;
+            macRequired = macScenarios.length > 0;
+            required = required || tauriRequired || macRequired;
+
+            const selectedScenarioDigests = manifest.scenarios
+              .filter((scenario) => selectionReasons.has(scenario.name))
+              .map(scenarioDigest);
+            const attention = manifest.scenarios
+              .filter((scenario) => (matchedFilesByScenario.get(scenario.name)?.size || 0) > 0)
+              .map(scenarioDigest);
+            const selectionMode = !required
+              ? "not-required"
+              : labels.includes("e2e:all")
+                ? "all-label"
+                : e2eLabelsOnly(labels).some((label) => label.startsWith("e2e:scenario:"))
+                  ? "scenario-label"
+                  : labels.includes("e2e:mac") || labels.includes("e2e:release-smoke")
+                    ? "full-mac-label"
+                    : eventName === "workflow_dispatch"
+                      ? "manual"
+                      : "pr-default";
+            writeSelection({
+              schemaVersion: 1,
+              repo: context.repo.owner + "/" + context.repo.repo,
+              prNumber: payload.pull_request?.number ?? null,
+              headSha: payload.pull_request?.head?.sha ?? context.sha,
+              baseSha: payload.pull_request?.base?.sha ?? null,
+              eventName,
+              required,
+              tauriRequired,
+              macRequired,
+              reason,
+              selectionMode,
+              triggerLabels: e2eLabelsOnly(labels),
+              configured: {
+                total: manifest.scenarios.length,
+                tauri: tauriScenarios.length,
+                fullMac: fullMacScenarios.length,
+                defaultTauri: defaultTauriScenarios.length,
+              },
+              selected: selectedScenarioDigests,
+              attention,
+              changedFileCount: changed.length,
+              changedFileSample: changed.slice(0, 12),
+              note: "This is a targeted smoke/regression gate, not an exhaustive UI crawler.",
+            });
 
             core.setOutput("required", required ? "true" : "false");
             core.setOutput("mac_required", macRequired ? "true" : "false");
             core.setOutput("reason", reason);
             core.setOutput("scenarios", JSON.stringify(scenarios));
             core.setOutput("scenarios_mac", JSON.stringify(macScenarios));
-            core.setOutput("tauri_required", scenarios.length > 0 ? "true" : "false");
+            core.setOutput("tauri_required", tauriRequired ? "true" : "false");
+
+      - name: Upload E2E selection
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-selection
+          path: e2e-selection/e2e-selection.json
+          retention-days: 14
 
   e2e:
     name: E2E / tauri-wdio / ${{ matrix.scenario }}
@@ -812,7 +970,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download E2E artifacts
-        if: needs.resolve.outputs.required == 'true'
+        if: always()
         uses: actions/download-artifact@v7
         with:
           pattern: e2e-*
@@ -895,6 +1053,33 @@ jobs:
               return reports.sort((a, b) => String(a.scenario).localeCompare(String(b.scenario)));
             }
 
+            function findFirstFile(root, fileName) {
+              if (!fs.existsSync(root)) return null;
+              const stack = [root];
+              while (stack.length > 0) {
+                const current = stack.pop();
+                for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+                  const fullPath = path.join(current, entry.name);
+                  if (entry.isDirectory()) {
+                    stack.push(fullPath);
+                  } else if (entry.name === fileName) {
+                    return fullPath;
+                  }
+                }
+              }
+              return null;
+            }
+
+            function readSelection(root) {
+              const selectionPath = findFirstFile(root, "e2e-selection.json");
+              if (!selectionPath) return null;
+              try {
+                return JSON.parse(fs.readFileSync(selectionPath, "utf8"));
+              } catch {
+                return null;
+              }
+            }
+
             function isPublicUrl(value) {
               return /^https?:\/\//.test(String(value || ""));
             }
@@ -953,6 +1138,75 @@ jobs:
             function truncate(value, maxLength) {
               const text = String(value || "");
               return text.length > maxLength ? `${text.slice(0, maxLength - 3)}...` : text;
+            }
+
+            function scenarioMeta(selection, scenarioName) {
+              const selected = selection?.selected || [];
+              const attention = selection?.attention || [];
+              return selected.find((scenario) => scenario.name === scenarioName)
+                || attention.find((scenario) => scenario.name === scenarioName)
+                || {};
+            }
+
+            function formatCount(value) {
+              return Number.isFinite(Number(value)) ? Number(value) : 0;
+            }
+
+            function formatScope(selection, reports, isRequired) {
+              if (!isRequired) {
+                return selection?.reason || "No E2E scenarios selected for this PR.";
+              }
+              const selected = selection?.selected || [];
+              const configured = selection?.configured || {};
+              const total = formatCount(configured.total) || selected.length || reports.length;
+              const tauriTotal = formatCount(configured.tauri);
+              const macTotal = formatCount(configured.fullMac);
+              const tauriSelected = selected.filter((scenario) => scenario.lane === "tauri-wdio").length;
+              const macSelected = selected.filter((scenario) => scenario.lane === "full-mac").length;
+              const mode = selection?.selectionMode || "unknown";
+              const detail = `${selected.length || reports.length}/${total} configured scenarios (${tauriSelected}/${tauriTotal} hosted, ${macSelected}/${macTotal} full-Mac)`;
+              if (mode === "all-label") {
+                return `Ran all configured scenarios: ${detail}.`;
+              }
+              if (mode === "scenario-label" || mode === "full-mac-label") {
+                return `Ran requested E2E label scope: ${detail}.`;
+              }
+              if (mode === "manual") {
+                return `Ran manually dispatched scenario scope: ${detail}.`;
+              }
+              return `Ran PR-default hosted pack plus any matched full-Mac scenarios: ${detail}.`;
+            }
+
+            function markdownList(items) {
+              return (items || [])
+                .map((item) => `- ${markdownText(item)}`)
+                .join("\n");
+            }
+
+            function renderPrAttention(selection) {
+              if (!selection) return "";
+              const changedCount = formatCount(selection.changedFileCount);
+              const attention = selection.attention || [];
+              const sample = selection.changedFileSample || [];
+              const sampleItems = sample.map((file) => "`" + markdownCode(file) + "`");
+              const sampleText = sample.length
+                ? `\n\n<details><summary>Changed files sampled (${sample.length}${changedCount > sample.length ? ` of ${changedCount}` : ""})</summary>\n\n${markdownList(sampleItems)}\n\n</details>`
+                : "";
+              if (!attention.length) {
+                return `### PR Attention\n\nChanged files considered: **${changedCount}**. No scenario-specific path match beyond the selected default/label scope.${sampleText}`;
+              }
+              const lines = attention.map((scenario) => {
+                const matched = (scenario.matchedFiles || []).slice(0, 4);
+                const matchedList = matched.map((file) => "`" + markdownCode(file) + "`").join(", ");
+                const files = matched.length
+                  ? ` Matched: ${matchedList}${scenario.matchedFileCount > matched.length ? ", ..." : ""}.`
+                  : "";
+                const gaps = (scenario.knownGaps || []).length
+                  ? ` Known gap: ${markdownText((scenario.knownGaps || []).join(" "))}`
+                  : "";
+                return `- **${markdownText(scenario.title || scenario.name)}**: ${markdownText(scenario.summary)}${files}${gaps}`;
+              });
+              return `### PR Attention\n\nChanged files considered: **${changedCount}**. Scenario-specific matches:\n\n${lines.join("\n")}${sampleText}`;
             }
 
             function summarizeError(error) {
@@ -1014,18 +1268,20 @@ jobs:
             }
 
             const reports = findReports(artifactRoot);
+            const selection = readSelection(artifactRoot);
             const table = reports.length
               ? [
-                  "| Scenario | Lane | Result | Report | Proof | Replay |",
+                  "| Scenario | Lane | Result | What it checks | Report | Proof |",
                   "| --- | --- | --- | --- | --- | --- |",
                   ...reports.map((report) => {
+                    const meta = scenarioMeta(selection, report.scenario);
                     const proofUrl = report.primaryProofUrl || report.failureProofUrl;
                     const proof = isPublicUrl(proofUrl)
                       ? linkOrArtifact(proofUrl, primaryProofLabel(report))
                       : publicOrArtifact(proofUrl);
                     const reportUrl = linkOrArtifact(report.htmlReportUrl, "Report");
-                    const replay = report.replayCommand ? "`" + markdownCode(report.replayCommand) + "`" : "";
-                    return "| `" + markdownCode(report.scenario) + "` | " + tableCell(report.lane) + " | **" + tableCell(report.status) + "** | " + tableCell(reportUrl) + " | " + tableCell(proof) + " | " + tableCell(replay) + " |";
+                    const checks = meta.summary || "Scenario coverage metadata unavailable.";
+                    return "| `" + markdownCode(report.scenario) + "` | " + tableCell(report.lane) + " | **" + tableCell(report.status) + "** | " + tableCell(checks) + " | " + tableCell(reportUrl) + " | " + tableCell(proof) + " |";
                   }),
                 ].join("\n")
               : required
@@ -1034,9 +1290,20 @@ jobs:
             const failureSections = reports
               .filter((report) => report.status !== "passed")
               .map((report) => {
+                const meta = scenarioMeta(selection, report.scenario);
                 const phase = (report.phases || []).find((item) => item.status !== "passed");
                 const heading = `### Failure: \`${markdownCode(report.scenario)}\``;
                 const analysis = summarizeError(phase?.error);
+                const coverage = (meta.coverage || []).length
+                  ? `\n\n**Expected coverage:** ${markdownText(meta.coverage.join("; "))}`
+                  : "";
+                const gaps = (meta.knownGaps || []).length
+                  ? `\n\n**Known gap:** ${markdownText(meta.knownGaps.join(" "))}`
+                  : "";
+                const matchedFileList = (meta.matchedFiles || []).map((file) => "`" + markdownCode(file) + "`").join(", ");
+                const matchedFiles = (meta.matchedFiles || []).length
+                  ? `\n\n**Relevant PR files:** ${markdownText(matchedFileList)}`
+                  : "";
                 const phaseText = phase
                   ? `**Phase:** ${markdownText(phase.name)}\n\n**What happened:** ${markdownText(analysis.summary)}\n\n**Next action:** ${markdownText(nextActionForError(phase.error, report))}`
                   : "**Error:** No failing phase captured";
@@ -1059,18 +1326,30 @@ jobs:
                 const reportLink = isPublicUrl(report.htmlReportUrl)
                   ? `\n\n[Full HTML report](${report.htmlReportUrl})`
                   : "";
-                return `${heading}\n\n${phaseText}${limitations}${signals}${image}${videoLink}${logLink}${reportLink}`;
+                const replay = report.replayCommand
+                  ? `\n\n**Replay:** \`${markdownCode(report.replayCommand)}\``
+                  : "";
+                return `${heading}\n\n${phaseText}${coverage}${gaps}${matchedFiles}${limitations}${signals}${image}${videoLink}${logLink}${reportLink}${replay}`;
               })
               .join("\n\n");
+            const scope = formatScope(selection, reports, required);
+            const attentionSection = renderPrAttention(selection);
+            const coverageNote = selection?.note || "This is a targeted smoke/regression gate, not an exhaustive UI crawler.";
 
             const body = `${marker}
             ## nixmac E2E
 
             **Status:** ${status}
 
-            **Reason:** ${reason}
+            **Why this ran:** ${reason}
+
+            **Scope:** ${scope}
+
+            **Coverage note:** ${coverageNote}
 
             **Tested commit:** \`${context.payload.pull_request.head.sha}\`
+
+            ${attentionSection}
 
             ${required ? table : ""}
 

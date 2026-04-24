@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const E2E_TAURI_DIR = path.resolve(THIS_DIR, '..');
 const ARTIFACT_ROOT = path.join(E2E_TAURI_DIR, 'artifacts');
+const MANIFEST_PATH = path.join(E2E_TAURI_DIR, 'scenarios', 'manifest.json');
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -154,6 +155,45 @@ async function readReports() {
   return reports.sort((a, b) => a.scenario.localeCompare(b.scenario));
 }
 
+async function readScenarioManifest() {
+  try {
+    const manifest = JSON.parse(await readFile(MANIFEST_PATH, 'utf-8'));
+    return new Map((manifest.scenarios ?? []).map((scenario) => [scenario.name, scenario]));
+  } catch {
+    return new Map();
+  }
+}
+
+function renderBullets(items, className = '') {
+  const values = (items ?? []).map((item) => String(item).trim()).filter(Boolean);
+  if (!values.length) return '';
+  return `
+    <ul${className ? ` class="${escapeHtml(className)}"` : ''}>
+      ${values.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}
+    </ul>
+  `;
+}
+
+function renderScenarioScope(metadata) {
+  if (!metadata) return '';
+  return `
+    <div class="scenario-scope">
+      <h3>What this checks</h3>
+      <p>${escapeHtml(metadata.summary ?? 'Scenario coverage metadata unavailable.')}</p>
+      <div class="scope-grid">
+        <div>
+          <strong>Coverage</strong>
+          ${renderBullets(metadata.coverage)}
+        </div>
+        <div>
+          <strong>Known gaps</strong>
+          ${renderBullets(metadata.knownGaps)}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderProof(proof, { fromDir = ARTIFACT_ROOT } = {}) {
   if (!proof) return '<span class="muted">none</span>';
 
@@ -239,17 +279,21 @@ function renderPhaseError(error) {
   return escapeHtml(summarizeError(error).summary);
 }
 
-function renderReport(report, { fromDir = ARTIFACT_ROOT } = {}) {
-  const firstFailure = report.phases.find((phase) => phase.status !== 'passed');
-  const failureProof = report.proof.find((entry) => entry.isFailureProof);
-  const diagnosticLog = report.proof.find((entry) => entry.kind === 'log');
-  const primaryProof = report.proof.find((entry) => entry.isPrimary) ?? report.proof[0] ?? null;
+function renderReport(report, { fromDir = ARTIFACT_ROOT, manifest = new Map() } = {}) {
+  const phases = report.phases ?? [];
+  const proof = report.proof ?? [];
+  const firstFailure = phases.find((phase) => phase.status !== 'passed');
+  const failureProof = proof.find((entry) => entry.isFailureProof);
+  const diagnosticLog = proof.find((entry) => entry.kind === 'log');
+  const primaryProof = proof.find((entry) => entry.isPrimary) ?? proof[0] ?? null;
+  const metadata = manifest.get(report.scenario);
 
   return `
     <section class="scenario ${escapeHtml(report.status)}">
       <header>
         <div>
-          <h2>${escapeHtml(report.scenario)}</h2>
+          <h2>${escapeHtml(metadata?.title ?? report.scenario)}</h2>
+          <p><code>${escapeHtml(report.scenario)}</code></p>
           <p>${escapeHtml(report.lane)} on ${escapeHtml(report.runnerId)} (${escapeHtml(report.runnerKind)})</p>
         </div>
         <strong>${escapeHtml(report.status)}</strong>
@@ -259,6 +303,7 @@ function renderReport(report, { fromDir = ARTIFACT_ROOT } = {}) {
         <dt>Duration</dt><dd>${Math.round((report.durationMs ?? 0) / 1000)}s</dd>
         <dt>Replay</dt><dd><code>${escapeHtml(report.replayCommand)}</code></dd>
       </dl>
+      ${renderScenarioScope(metadata)}
       ${renderCaptureLimitations(report.captureLimitations)}
       ${
         firstFailure
@@ -268,7 +313,7 @@ function renderReport(report, { fromDir = ARTIFACT_ROOT } = {}) {
       <table>
         <thead><tr><th>Phase</th><th>Status</th><th>Duration</th><th>Summary</th></tr></thead>
         <tbody>
-          ${report.phases
+          ${phases
             .map(
               (phase) => `
                 <tr>
@@ -286,7 +331,7 @@ function renderReport(report, { fromDir = ARTIFACT_ROOT } = {}) {
   `;
 }
 
-function renderPage(reports, { fromDir = ARTIFACT_ROOT } = {}) {
+function renderPage(reports, { fromDir = ARTIFACT_ROOT, manifest = new Map() } = {}) {
   const failed = reports.filter((report) => report.status !== 'passed').length;
   const passed = reports.length - failed;
   const scenarioPage = reports.length === 1 && reports[0]?.artifactDir !== undefined && fromDir !== ARTIFACT_ROOT;
@@ -326,6 +371,12 @@ function renderPage(reports, { fromDir = ARTIFACT_ROOT } = {}) {
     .failure { border: 1px solid #f2b8b5; background: #fff5f5; border-radius: 8px; padding: 12px; }
     .failure h3 { margin: 0 0 10px; }
     .failure-summary { grid-template-columns: 120px 1fr; margin: 0 0 10px; }
+    .scenario-scope { margin: 14px 0; border: 1px solid #d8dee8; border-radius: 8px; padding: 12px; background: #fbfcfe; }
+    .scenario-scope h3 { margin: 0 0 6px; font-size: 14px; }
+    .scenario-scope p { margin: 0 0 10px; color: #52606d; }
+    .scope-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .scope-grid strong { display: block; margin-bottom: 4px; color: #384250; }
+    .scope-grid ul { margin: 0; padding-left: 18px; color: #52606d; }
     .diagnostic-signals { margin: 10px 0; color: #5f6b7a; padding-left: 20px; }
     .diagnostic-details { margin-top: 10px; color: #52606d; }
     .diagnostic-details summary { cursor: pointer; font-weight: 600; }
@@ -339,6 +390,9 @@ function renderPage(reports, { fromDir = ARTIFACT_ROOT } = {}) {
     .thumb { display: block; max-width: 520px; max-height: 320px; border: 1px solid #d8dee8; border-radius: 6px; background: #fff; }
     .video-proof { display: block; width: min(720px, 100%); max-height: 480px; border: 1px solid #d8dee8; border-radius: 6px; background: #000; }
     .log-link { margin-top: 8px; }
+    @media (max-width: 720px) {
+      .scope-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -346,7 +400,7 @@ function renderPage(reports, { fromDir = ARTIFACT_ROOT } = {}) {
     <h1>${escapeHtml(pageTitle)}</h1>
     ${backLink}
     <p class="muted">${passed} passed, ${failed} failed, ${reports.length} total</p>
-    ${reports.length ? reports.map((report) => renderReport(report, { fromDir })).join('') : '<p>No scenario reports found.</p>'}
+    ${reports.length ? reports.map((report) => renderReport(report, { fromDir, manifest })).join('') : '<p>No scenario reports found.</p>'}
   </main>
 </body>
 </html>
@@ -355,11 +409,12 @@ function renderPage(reports, { fromDir = ARTIFACT_ROOT } = {}) {
 
 async function main() {
   const reports = await readReports();
+  const manifest = await readScenarioManifest();
 
   await mkdir(ARTIFACT_ROOT, { recursive: true });
   await writeFile(
     path.join(ARTIFACT_ROOT, 'index.html'),
-    renderPage(reports, { fromDir: ARTIFACT_ROOT }),
+    renderPage(reports, { fromDir: ARTIFACT_ROOT, manifest }),
     'utf-8',
   );
 
@@ -367,7 +422,7 @@ async function main() {
     reports.map((report) =>
       writeFile(
         path.join(report.artifactDir, 'index.html'),
-        renderPage([report], { fromDir: report.artifactDir }),
+        renderPage([report], { fromDir: report.artifactDir, manifest }),
         'utf-8',
       ),
     ),
