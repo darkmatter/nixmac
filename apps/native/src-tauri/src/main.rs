@@ -9,10 +9,11 @@
 
 mod apply_system_defaults;
 mod build_state;
-mod completion_log;
 mod changes_from_diff;
 mod cli;
 mod commands;
+mod completion_log;
+mod credential_store;
 mod darwin;
 mod db;
 mod default_config;
