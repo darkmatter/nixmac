@@ -1,0 +1,1388 @@
+name: nixmac E2E Gate
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize, labeled, unlabeled]
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: "Scenario to run"
+        required: false
+        default: "auto_evolve_basic_package"
+        type: string
+
+concurrency:
+  group: nixmac-e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  E2E_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+  E2E_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+
+permissions:
+  actions: read
+  checks: write
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  resolve:
+    name: Resolve E2E Scenarios
+    runs-on: ubuntu-latest
+    outputs:
+      mac_required: ${{ steps.resolve.outputs.mac_required }}
+      reason: ${{ steps.resolve.outputs.reason }}
+      required: ${{ steps.resolve.outputs.required }}
+      scenarios_mac: ${{ steps.resolve.outputs.scenarios_mac }}
+      scenarios: ${{ steps.resolve.outputs.scenarios }}
+      tauri_required: ${{ steps.resolve.outputs.tauri_required }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve scenarios
+        id: resolve
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require("node:fs");
+            const path = require("node:path");
+            const eventName = context.eventName;
+            const payload = context.payload;
+            const manifest = JSON.parse(
+              fs.readFileSync("apps/native/e2e-tauri/scenarios/manifest.json", "utf8")
+            );
+            for (const scenario of manifest.scenarios || []) {
+              for (const field of ["title", "summary"]) {
+                if (typeof scenario[field] !== "string" || scenario[field].trim().length === 0) {
+                  throw new Error(`E2E scenario ${scenario.name || "(unnamed)"} is missing ${field}`);
+                }
+              }
+              for (const field of ["coverage", "riskAreas", "knownGaps"]) {
+                if (!Array.isArray(scenario[field]) || scenario[field].length === 0) {
+                  throw new Error(`E2E scenario ${scenario.name || "(unnamed)"} is missing ${field}`);
+                }
+              }
+              for (const pattern of scenario.changePatterns || []) {
+                new RegExp(pattern);
+              }
+            }
+            const tauriScenarios = manifest.scenarios.filter((scenario) => scenario.lane === "tauri-wdio");
+            const fullMacScenarios = manifest.scenarios.filter((scenario) => scenario.lane === "full-mac");
+            const defaultTauriScenarios = tauriScenarios
+              .filter((scenario) => scenario.requiredForDefaultPrPack)
+              .map((scenario) => scenario.name);
+            const scenarioByName = new Map(manifest.scenarios.map((scenario) => [scenario.name, scenario]));
+            const nativePatterns = [
+              /^apps\/native\/src\//,
+              /^apps\/native\/src-tauri\//,
+              /^apps\/native\/e2e/,
+              /^tests\/e2e\//,
+              /^apps\/native\/templates\//,
+              /^apps\/native\/package\.json$/,
+              /^apps\/native\/vite\.config\.ts$/,
+              /^\.github\/workflows\//,
+              /^bun\.lock$/,
+              /^Cargo\.lock$/,
+              /^package\.json$/,
+            ];
+
+            let required = false;
+            let macRequired = false;
+            let tauriRequired = false;
+            let reason = "not required: no runtime/native paths changed";
+            let scenarios = [];
+            let macScenarios = [];
+            let changed = [];
+            let labels = [];
+            const selectionReasons = new Map();
+            const matchedFilesByScenario = new Map();
+
+            function addSelection(name, why, files = []) {
+              const scenario = scenarioByName.get(name);
+              if (!scenario) return;
+              if (!selectionReasons.has(name)) selectionReasons.set(name, new Set());
+              selectionReasons.get(name).add(why);
+              if (!matchedFilesByScenario.has(name)) matchedFilesByScenario.set(name, new Set());
+              for (const file of files) matchedFilesByScenario.get(name).add(file);
+            }
+
+            function matchingFilesFor(scenario, files) {
+              const patterns = (scenario.changePatterns || [])
+                .map((pattern) => {
+                  try {
+                    return new RegExp(pattern);
+                  } catch (error) {
+                    core.warning(`Invalid E2E change pattern for ${scenario.name}: ${pattern}`);
+                    return null;
+                  }
+                })
+                .filter(Boolean);
+              if (!patterns.length) return [];
+              return files.filter((file) => patterns.some((pattern) => pattern.test(file)));
+            }
+
+            function scenarioDigest(scenario) {
+              return {
+                name: scenario.name,
+                lane: scenario.lane,
+                title: scenario.title || scenario.name,
+                summary: scenario.summary || "",
+                coverage: scenario.coverage || [],
+                knownGaps: scenario.knownGaps || [],
+                riskAreas: scenario.riskAreas || [],
+                currentScript: scenario.currentScript || null,
+                requiredForDefaultPrPack: Boolean(scenario.requiredForDefaultPrPack),
+                selectionReasons: [...(selectionReasons.get(scenario.name) || [])],
+                matchedFiles: [...(matchedFilesByScenario.get(scenario.name) || [])].slice(0, 12),
+                matchedFileCount: matchedFilesByScenario.get(scenario.name)?.size || 0,
+              };
+            }
+
+            function selectedNamesFor(lane) {
+              return manifest.scenarios
+                .filter((scenario) => scenario.lane === lane && selectionReasons.has(scenario.name))
+                .map((scenario) => scenario.name);
+            }
+
+            function e2eLabelsOnly(allLabels) {
+              return allLabels.filter((label) => label === "e2e:all" || label === "e2e:skip" || label === "e2e:mac" || label === "e2e:release-smoke" || label.startsWith("e2e:scenario:"));
+            }
+
+            function writeSelection(selection) {
+              fs.mkdirSync("e2e-selection", { recursive: true });
+              fs.writeFileSync(
+                path.join("e2e-selection", "e2e-selection.json"),
+                `${JSON.stringify(selection, null, 2)}\n`
+              );
+            }
+
+            if (eventName === "workflow_dispatch") {
+              required = true;
+              reason = "manual dispatch";
+              const scenario = payload.inputs?.scenario || "auto_evolve_basic_package";
+              const selected = scenarioByName.get(scenario);
+              if (selected?.lane === "full-mac") {
+                addSelection(scenario, "manual dispatch");
+              } else {
+                addSelection(scenario, "manual dispatch");
+              }
+            } else {
+              const pr = payload.pull_request;
+              labels = (pr.labels || []).map((label) => label.name);
+              const headRepo = pr.head?.repo?.full_name;
+              const baseRepo = pr.base?.repo?.full_name;
+
+              if (headRepo && baseRepo && headRepo !== baseRepo) {
+                required = false;
+                reason = "not required: fork PRs cannot use trusted self-hosted E2E in this workflow";
+              } else if (labels.includes("e2e:skip")) {
+                required = false;
+                reason = "not required: e2e:skip label present";
+              } else {
+                const files = await github.paginate(github.rest.pulls.listFiles, {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number,
+                  per_page: 100,
+                });
+                changed = files.map((file) => file.filename);
+                const touchedNative = changed.some((file) =>
+                  nativePatterns.some((pattern) => pattern.test(file))
+                );
+                const requestedAll = labels.includes("e2e:all");
+                const requestedMac = labels.includes("e2e:mac");
+                const requestedReleaseSmoke = labels.includes("e2e:release-smoke");
+                const requestedScenarioLabels = manifest.scenarios
+                  .map((scenario) => [`e2e:scenario:${scenario.name}`, scenario])
+                  .filter(([label]) => labels.includes(label));
+                const impactedScenarios = manifest.scenarios
+                  .map((scenario) => ({ scenario, files: matchingFilesFor(scenario, changed) }))
+                  .filter((entry) => entry.files.length > 0);
+
+                if (requestedAll) {
+                  for (const scenario of manifest.scenarios) {
+                    addSelection(scenario.name, "e2e:all label");
+                  }
+                  for (const { scenario, files } of impactedScenarios) {
+                    addSelection(scenario.name, scenario.lane === "full-mac" ? "matched full-Mac change pattern" : "matched PR change pattern", files);
+                  }
+                  reason = "required: e2e:all label present";
+                } else {
+                  for (const [, scenario] of requestedScenarioLabels) {
+                    addSelection(scenario.name, `scenario label e2e:scenario:${scenario.name}`);
+                  }
+                  if (requestedMac) {
+                    for (const scenario of fullMacScenarios) {
+                      addSelection(scenario.name, "e2e:mac label");
+                    }
+                  }
+                  if (requestedReleaseSmoke) {
+                    addSelection("release_dmg_app_translocation_smoke", "e2e:release-smoke label");
+                  }
+                  if (touchedNative && requestedScenarioLabels.length === 0) {
+                    for (const name of defaultTauriScenarios) {
+                      addSelection(name, "runtime/native paths changed");
+                    }
+                  }
+                  for (const { scenario, files } of impactedScenarios) {
+                    if (scenario.lane === "full-mac") {
+                      addSelection(scenario.name, "matched full-Mac change pattern", files);
+                    } else if (selectionReasons.has(scenario.name)) {
+                      addSelection(scenario.name, "matched PR change pattern", files);
+                    }
+                  }
+
+                  const requestedLabelNames = requestedScenarioLabels.map(([label]) => label);
+                  if (requestedScenarioLabels.length > 0) {
+                    reason = `required: scenario label present (${requestedLabelNames.join(", ")})`;
+                  } else if (requestedMac) {
+                    reason = "required: full-Mac E2E label present (e2e:mac)";
+                  } else if (requestedReleaseSmoke) {
+                    reason = "required: full-Mac E2E label present (e2e:release-smoke)";
+                  } else if ([...selectionReasons.keys()].some((name) => scenarioByName.get(name)?.lane === "full-mac")) {
+                    reason = touchedNative
+                      ? "required: runtime/native paths changed; full-Mac scenario matched PR files"
+                      : "required: full-Mac scenario matched PR files";
+                  } else if (touchedNative) {
+                    reason = "required: runtime/native paths changed";
+                  }
+                }
+              }
+            }
+
+            scenarios = selectedNamesFor("tauri-wdio");
+            macScenarios = selectedNamesFor("full-mac");
+            tauriRequired = scenarios.length > 0;
+            macRequired = macScenarios.length > 0;
+            required = required || tauriRequired || macRequired;
+
+            const selectedScenarioDigests = manifest.scenarios
+              .filter((scenario) => selectionReasons.has(scenario.name))
+              .map(scenarioDigest);
+            const attention = manifest.scenarios
+              .filter((scenario) => (matchedFilesByScenario.get(scenario.name)?.size || 0) > 0)
+              .map(scenarioDigest);
+            const selectionMode = !required
+              ? "not-required"
+              : labels.includes("e2e:all")
+                ? "all-label"
+                : e2eLabelsOnly(labels).some((label) => label.startsWith("e2e:scenario:"))
+                  ? "scenario-label"
+                  : labels.includes("e2e:mac") || labels.includes("e2e:release-smoke")
+                    ? "full-mac-label"
+                    : eventName === "workflow_dispatch"
+                      ? "manual"
+                      : "pr-default";
+            writeSelection({
+              schemaVersion: 1,
+              repo: context.repo.owner + "/" + context.repo.repo,
+              prNumber: payload.pull_request?.number ?? null,
+              headSha: payload.pull_request?.head?.sha ?? context.sha,
+              baseSha: payload.pull_request?.base?.sha ?? null,
+              eventName,
+              required,
+              tauriRequired,
+              macRequired,
+              reason,
+              selectionMode,
+              triggerLabels: e2eLabelsOnly(labels),
+              configured: {
+                total: manifest.scenarios.length,
+                tauri: tauriScenarios.length,
+                fullMac: fullMacScenarios.length,
+                defaultTauri: defaultTauriScenarios.length,
+              },
+              selected: selectedScenarioDigests,
+              attention,
+              changedFileCount: changed.length,
+              changedFileSample: changed.slice(0, 12),
+              note: "This is a targeted smoke/regression gate, not an exhaustive UI crawler.",
+            });
+
+            core.setOutput("required", required ? "true" : "false");
+            core.setOutput("mac_required", macRequired ? "true" : "false");
+            core.setOutput("reason", reason);
+            core.setOutput("scenarios", JSON.stringify(scenarios));
+            core.setOutput("scenarios_mac", JSON.stringify(macScenarios));
+            core.setOutput("tauri_required", tauriRequired ? "true" : "false");
+
+      - name: Upload E2E selection
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-selection
+          path: e2e-selection/e2e-selection.json
+          retention-days: 14
+
+  e2e:
+    name: E2E / tauri-wdio / ${{ matrix.scenario }}
+    needs: resolve
+    if: needs.resolve.outputs.tauri_required == 'true'
+    runs-on: macos-latest
+    timeout-minutes: 45
+    env:
+      NIXMAC_E2E_MOCK_SYSTEM: "1"
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: ${{ fromJSON(needs.resolve.outputs.scenarios) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Setup sops
+        uses: nhedger/setup-sops@v2
+
+      - name: Setup age
+        uses: alessiodionisi/setup-age-action@v1.3.0
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install tauri-wd
+        run: cargo install tauri-webdriver-automation
+
+      - name: Install video encoder
+        run: |
+          if ! command -v ffmpeg; then
+            HOMEBREW_NO_AUTO_UPDATE=1 brew install ffmpeg
+          fi
+
+      - name: Verify runner prerequisites
+        run: |
+          command -v tauri-wd
+          command -v ffmpeg
+          command -v jq
+
+      - name: Build WDIO app
+        working-directory: apps/native
+        run: bun run test:wdio:build
+
+      - name: Clean stale WDIO services
+        run: |
+          rm -rf apps/native/e2e-tauri/artifacts
+          pkill -f '[t]auri-wd' 2>/dev/null || true
+          pkill -f '[t]arget/debug/nixmac' 2>/dev/null || true
+          for port in 4444 5174; do
+            pids=$(lsof -ti "tcp:${port}" 2>/dev/null || true)
+            if [ -n "$pids" ]; then
+              while IFS= read -r pid; do
+                [ -n "$pid" ] && kill "$pid" 2>/dev/null || true
+              done <<< "$pids"
+              sleep 1
+              while IFS= read -r pid; do
+                [ -n "$pid" ] && kill -9 "$pid" 2>/dev/null || true
+              done <<< "$pids"
+            fi
+          done
+
+      - name: Start WDIO services
+        working-directory: apps/native
+        run: |
+          bun run test:wdio:services > /tmp/nixmac-wdio-services.log 2>&1 &
+          echo $! > /tmp/nixmac-wdio-services.pid
+          for attempt in {1..30}; do
+            if nc -z 127.0.0.1 4444 && nc -z 127.0.0.1 5174; then
+              exit 0
+            fi
+            echo "Waiting for WDIO services (${attempt}/30)..."
+            sleep 1
+          done
+          cat /tmp/nixmac-wdio-services.log || true
+          exit 1
+
+      - name: Run scenario
+        id: run-scenario
+        working-directory: apps/native
+        run: |
+          SCRIPT=$(jq -r --arg scenario "${{ matrix.scenario }}" '.scenarios[] | select(.name == $scenario and .lane == "tauri-wdio") | .currentScript // empty' e2e-tauri/scenarios/manifest.json)
+          if [ -z "$SCRIPT" ]; then
+            echo "Unknown or unrunnable Tauri WDIO scenario: ${{ matrix.scenario }}" >&2
+            exit 1
+          fi
+          bun run "$SCRIPT"
+
+      - name: Render report
+        if: always()
+        working-directory: apps/native
+        run: bun run test:wdio:report
+
+      - name: Publish E2E report to R2
+        id: publish
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        shell: "sops exec-env ops/secrets/secrets.yaml \"bash -e {0}\""
+        env:
+          AWS_DEFAULT_REGION: auto
+          REPORT_PREFIX: e2e/pr-${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}
+          SCENARIO: ${{ matrix.scenario }}
+        run: |
+          export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
+          export AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
+
+          if [ ! -d apps/native/e2e-tauri/artifacts ]; then
+            echo "No E2E artifacts to publish" >&2
+            exit 1
+          fi
+
+          REPORT_URL="https://releases.nixmac.com/${REPORT_PREFIX}/${SCENARIO}/index.html"
+          PUBLIC_PREFIX="https://releases.nixmac.com/${REPORT_PREFIX}"
+          export REPORT_URL PUBLIC_PREFIX
+
+          node <<'NODE'
+          const fs = require("node:fs");
+          const path = require("node:path");
+          const root = "apps/native/e2e-tauri/artifacts";
+          const reportUrl = process.env.REPORT_URL;
+          const publicPrefix = process.env.PUBLIC_PREFIX;
+          const isPublicUrl = (value) => /^https?:\/\//.test(String(value || ""));
+          const publicUrlFor = (value) => {
+            if (!value) return null;
+            return isPublicUrl(value) ? value : `${publicPrefix}/${value}`;
+          };
+
+          const stack = [root];
+          while (stack.length) {
+            const current = stack.pop();
+            for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+              const full = path.join(current, entry.name);
+              if (entry.isDirectory()) {
+                stack.push(full);
+                continue;
+              }
+              if (entry.name !== "e2e-report.json") continue;
+
+              const report = JSON.parse(fs.readFileSync(full, "utf8"));
+              const addUrl = (proof) => ({
+                ...proof,
+                url: proof.path ? publicUrlFor(proof.path) : proof.url,
+                thumbnailUrl: proof.path ? publicUrlFor(proof.path) : proof.thumbnailUrl,
+              });
+              report.htmlReportUrl = reportUrl;
+              report.proof = (report.proof || []).map(addUrl);
+              report.phases = (report.phases || []).map((phase) => ({
+                ...phase,
+                proof: (phase.proof || []).map(addUrl),
+              }));
+              const failure = report.proof.find((proof) => proof.isFailureProof);
+              const firstFailure = (report.phases || []).find((phase) => phase.status !== "passed");
+              const failureVideo = firstFailure
+                ? report.proof.find((proof) => proof.kind === "video" && proof.phase === firstFailure.name)
+                  || report.proof.find((proof) => proof.kind === "video")
+                : null;
+              const primary = failureVideo
+                || report.proof.find((proof) => proof.kind === "video" && proof.isPrimary)
+                || report.proof.find((proof) => proof.isPrimary)
+                || report.proof[0];
+              report.primaryProofUrl = primary?.url || null;
+              report.failureProofUrl = failure?.url || null;
+              report.failureScreenshotUrl = failure?.kind === "screenshot" ? failure.url : null;
+              report.failureVideoUrl = publicUrlFor(report.failureVideoUrl)
+                || failureVideo?.url
+                || (failure?.kind === "video" ? failure.url : null);
+              fs.writeFileSync(full, `${JSON.stringify(report, null, 2)}\n`);
+            }
+          }
+          NODE
+
+          aws s3 cp apps/native/e2e-tauri/artifacts "s3://nixmac-releases/${REPORT_PREFIX}" \
+            --recursive \
+            --endpoint-url "$R2_ENDPOINT" \
+            --cache-control "max-age=2592000"
+
+          echo "report-url=$REPORT_URL" >> "$GITHUB_OUTPUT"
+          echo "Published report: $REPORT_URL"
+
+      - name: Stop WDIO services
+        if: always()
+        run: |
+          if [ -f /tmp/nixmac-wdio-services.pid ]; then
+            service_pid="$(cat /tmp/nixmac-wdio-services.pid)"
+            pkill -TERM -P "$service_pid" 2>/dev/null || true
+            kill "$service_pid" 2>/dev/null || true
+            sleep 2
+            pkill -KILL -P "$service_pid" 2>/dev/null || true
+            kill -9 "$service_pid" 2>/dev/null || true
+          fi
+          pkill -f '[t]auri-wd' 2>/dev/null || true
+          pkill -f '[t]arget/debug/nixmac' 2>/dev/null || true
+          for port in 4444 5174; do
+            pids=$(lsof -ti "tcp:${port}" 2>/dev/null || true)
+            if [ -n "$pids" ]; then
+              while IFS= read -r pid; do
+                [ -n "$pid" ] && kill "$pid" 2>/dev/null || true
+              done <<< "$pids"
+              sleep 1
+              while IFS= read -r pid; do
+                [ -n "$pid" ] && kill -9 "$pid" 2>/dev/null || true
+              done <<< "$pids"
+            fi
+          done
+
+      - name: Upload E2E artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-${{ matrix.scenario }}
+          path: apps/native/e2e-tauri/artifacts/
+          retention-days: 14
+
+      - name: Scenario summary
+        if: always()
+        working-directory: apps/native
+        run: |
+          REPORT="e2e-tauri/artifacts/${{ matrix.scenario }}/e2e-report.json"
+          echo "### E2E / tauri-wdio / ${{ matrix.scenario }}" >> "$GITHUB_STEP_SUMMARY"
+          REPORT_URL="${{ steps.publish.outputs.report-url }}"
+          if [ -f "$REPORT" ]; then
+            STATUS=$(jq -r '.status' "$REPORT")
+            PROOF=$(jq -r '.primaryProofUrl // "none"' "$REPORT")
+            echo "- Status: $STATUS" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Proof: $PROOF" >> "$GITHUB_STEP_SUMMARY"
+            LIMITATIONS=$(jq -r '(.captureLimitations // []) | join(", ")' "$REPORT")
+            if [ -n "$LIMITATIONS" ]; then
+              echo "- Capture limitations: $LIMITATIONS" >> "$GITHUB_STEP_SUMMARY"
+            fi
+            if [ -n "$REPORT_URL" ]; then
+              echo "- HTML report: $REPORT_URL" >> "$GITHUB_STEP_SUMMARY"
+            fi
+            jq -r '.phases[] | "- " + .status + ": " + .name' "$REPORT" >> "$GITHUB_STEP_SUMMARY"
+            if [ "$STATUS" != "passed" ]; then
+              exit 1
+            fi
+          else
+            echo "- Status: infra_failed" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Missing e2e-report.json" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+  e2e-mac:
+    name: E2E / full-mac / ${{ matrix.scenario }}
+    needs: resolve
+    if: needs.resolve.outputs.mac_required == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        scenario: ${{ fromJSON(needs.resolve.outputs.scenarios_mac) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup sops
+        uses: nhedger/setup-sops@v2
+
+      - name: Setup age
+        uses: alessiodionisi/setup-age-action@v1.3.0
+
+      - name: Check full-Mac secrets
+        env:
+          ADMIN_PASSWORD: ${{ secrets.MAC_E2E_ADMIN_PASSWORD }}
+          GITHUB_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+          MAC_E2E_HOST: ${{ secrets.MAC_E2E_HOST }}
+          MAC_E2E_SSH_KEY: ${{ secrets.MAC_E2E_SSH_KEY }}
+          MAC_E2E_USER: ${{ secrets.MAC_E2E_USER }}
+          SCENARIO: ${{ matrix.scenario }}
+        run: |
+          missing=()
+          [ -n "$MAC_E2E_HOST" ] || missing+=("MAC_E2E_HOST")
+          [ -n "$MAC_E2E_USER" ] || missing+=("MAC_E2E_USER")
+          [ -n "$MAC_E2E_SSH_KEY" ] || missing+=("MAC_E2E_SSH_KEY")
+          [ -n "$ADMIN_PASSWORD" ] || missing+=("MAC_E2E_ADMIN_PASSWORD")
+          if [ "${#missing[@]}" -eq 0 ]; then
+            exit 0
+          fi
+
+          mkdir -p "apps/native/e2e-tauri/artifacts/${SCENARIO}"
+          MISSING=$(IFS=', '; echo "${missing[*]}")
+          MISSING="$MISSING" node <<'NODE'
+          const fs = require("node:fs");
+          const scenario = process.env.SCENARIO;
+          const now = new Date().toISOString();
+          const error = `Missing full-Mac E2E GitHub secrets: ${process.env.MISSING}`;
+          const report = {
+            schemaVersion: 1,
+            repo: process.env.GITHUB_REPOSITORY || "darkmatter/nixmac",
+            prNumber: process.env.GITHUB_PR_NUMBER ? Number(process.env.GITHUB_PR_NUMBER) : null,
+            headSha: process.env.E2E_HEAD_SHA || process.env.GITHUB_SHA || "unknown",
+            baseSha: process.env.E2E_BASE_SHA || null,
+            workflowRunId: process.env.GITHUB_RUN_ID || null,
+            attempt: process.env.GITHUB_RUN_ATTEMPT ? Number(process.env.GITHUB_RUN_ATTEMPT) : null,
+            lane: "full-mac",
+            scenario,
+            runnerId: process.env.RUNNER_NAME || "github-hosted",
+            runnerKind: "full-mac",
+            startedAt: now,
+            finishedAt: now,
+            durationMs: 0,
+            status: "infra_failed",
+            htmlReportUrl: null,
+            primaryProofUrl: null,
+            failureProofUrl: null,
+            failureScreenshotUrl: null,
+            failureVideoUrl: null,
+            failureTimestampMs: null,
+            replayCommand: `tests/e2e/run.sh ${scenario}`,
+            localReproCommand: `tests/e2e/run.sh ${scenario}`,
+            phases: [{
+              name: "Full-Mac runner secret preflight",
+              status: "infra_failed",
+              startedAt: now,
+              finishedAt: now,
+              durationMs: 0,
+              assertions: ["Required MAC_E2E_* secrets are configured"],
+              proof: [],
+              error,
+            }],
+            proof: [],
+          };
+          fs.writeFileSync(
+            `apps/native/e2e-tauri/artifacts/${scenario}/e2e-report.json`,
+            `${JSON.stringify(report, null, 2)}\n`,
+          );
+          NODE
+          echo "$MISSING" >&2
+          exit 1
+
+      - name: Setup SSH key
+        run: |
+          if [ -z "${{ secrets.MAC_E2E_HOST }}" ] || [ -z "${{ secrets.MAC_E2E_USER }}" ] || [ -z "${{ secrets.MAC_E2E_SSH_KEY }}" ]; then
+            echo "Missing MAC_E2E_HOST, MAC_E2E_USER, or MAC_E2E_SSH_KEY" >&2
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.MAC_E2E_SSH_KEY }}" > ~/.ssh/nixmac_e2e
+          chmod 600 ~/.ssh/nixmac_e2e
+          ssh-keyscan -H "${{ secrets.MAC_E2E_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Run full-Mac scenario over SSH
+        id: ssh-run
+        continue-on-error: true
+        env:
+          ADMIN_PASSWORD: ${{ secrets.MAC_E2E_ADMIN_PASSWORD }}
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SCENARIO: ${{ matrix.scenario }}
+        run: |
+          set +e
+          {
+            echo "export ADMIN_PASSWORD=$(printf '%q' "$ADMIN_PASSWORD")"
+            echo "export GH_TOKEN=$(printf '%q' "$GH_TOKEN")"
+            echo "export BRANCH=$(printf '%q' "$BRANCH_NAME")"
+            echo "export COMMIT_SHA=$(printf '%q' "$COMMIT_SHA")"
+            echo "export E2E_HEAD_SHA=$(printf '%q' "$E2E_HEAD_SHA")"
+            echo "export E2E_BASE_SHA=$(printf '%q' "$E2E_BASE_SHA")"
+            echo "export SCENARIO=$(printf '%q' "$SCENARIO")"
+            echo "export GITHUB_REPOSITORY=$(printf '%q' "${{ github.repository }}")"
+            echo "export GITHUB_PR_NUMBER=$(printf '%q' "${{ github.event.pull_request.number || 'null' }}")"
+            echo "export GITHUB_RUN_ID=$(printf '%q' "${{ github.run_id }}")"
+            echo "export GITHUB_RUN_ATTEMPT=$(printf '%q' "${{ github.run_attempt }}")"
+            echo "export PATH=/opt/homebrew/bin:\$PATH"
+            cat tests/e2e/ci-runner.sh
+          } | timeout 40m ssh -o StrictHostKeyChecking=no \
+            -o ConnectTimeout=30 \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=4 \
+            -i ~/.ssh/nixmac_e2e \
+            "${{ secrets.MAC_E2E_USER }}@${{ secrets.MAC_E2E_HOST }}" \
+            "bash -s" \
+            > /tmp/e2e-full-mac-ssh.log 2>&1
+          status=${PIPESTATUS[1]}
+          set -e
+
+          cat /tmp/e2e-full-mac-ssh.log
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit "$status"
+
+      - name: Fetch full-Mac artifacts
+        if: always()
+        run: |
+          ARTIFACT_DIR="apps/native/e2e-tauri/artifacts"
+          mkdir -p "$ARTIFACT_DIR"
+          SCP="scp -o StrictHostKeyChecking=no -o ConnectTimeout=20 -i ~/.ssh/nixmac_e2e"
+          HOST="${{ secrets.MAC_E2E_USER }}@${{ secrets.MAC_E2E_HOST }}"
+          $SCP -r "$HOST:/tmp/e2e-artifacts/." "$ARTIFACT_DIR/" 2>/dev/null || true
+          $SCP "$HOST:/tmp/e2e-recording.mp4" "$ARTIFACT_DIR/" 2>/dev/null || true
+          $SCP "$HOST:/tmp/e2e-ffmpeg.log" "$ARTIFACT_DIR/" 2>/dev/null || true
+          $SCP "$HOST:/tmp/e2e-test.log" "$ARTIFACT_DIR/" 2>/dev/null || true
+          $SCP "$HOST:/tmp/e2e-test-results.json" "$ARTIFACT_DIR/" 2>/dev/null || true
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=20 -i ~/.ssh/nixmac_e2e "$HOST" \
+            'ls /tmp/e2e-screenshots/*.png 2>/dev/null' | while read -r file; do
+              $SCP "$HOST:$file" "$ARTIFACT_DIR/" 2>/dev/null || true
+            done
+
+      - name: Write full-Mac infra report if missing
+        if: always()
+        env:
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          GITHUB_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+          SCENARIO: ${{ matrix.scenario }}
+          SSH_STATUS: ${{ steps.ssh-run.outputs.status || 'not-run' }}
+        run: |
+          REPORT="apps/native/e2e-tauri/artifacts/${SCENARIO}/e2e-report.json"
+          if [ -s "$REPORT" ]; then
+            echo "Full-Mac report already exists: $REPORT"
+            exit 0
+          fi
+
+          mkdir -p "apps/native/e2e-tauri/artifacts/${SCENARIO}"
+          node <<'NODE'
+          const fs = require("node:fs");
+          const path = require("node:path");
+          const scenario = process.env.SCENARIO;
+          const now = new Date().toISOString();
+          const logPath = "/tmp/e2e-full-mac-ssh.log";
+          const rawLog = fs.existsSync(logPath) ? fs.readFileSync(logPath, "utf8") : "";
+          const redactSecrets = (value) => String(value || "")
+            .replace(/x-access-token:[^@\s]+@/g, "x-access-token:[redacted]@")
+            .replace(/gh[pousr]_[A-Za-z0-9_]+/g, "[redacted-github-token]")
+            .replace(/github_pat_[A-Za-z0-9_]+/g, "[redacted-github-token]")
+            .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [redacted]")
+            .replace(/(ADMIN_PASSWORD=)[^\s]+/g, "$1[redacted]");
+          const flattenForInline = (value) => redactSecrets(value)
+            .replace(/[\r\n|]+/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 1600);
+          const diagnosticLines = (value) => redactSecrets(value)
+            .replace(/\r\n?/g, "\n")
+            .replace(/\s+(\[[a-z]+\]\s+)/gi, "\n$1")
+            .replace(/\s+(?=(?:ERROR|Error|error|fatal|Failed|failed|End-of-central-directory|unzip:|find:|bash:)\b)/g, "\n")
+            .split("\n")
+            .map((line) => line.replace(/\s+/g, " ").trim())
+            .filter(Boolean);
+          const isSignalLine = (line) => /(\bERROR\b|\berror\b|\bfatal\b|\bfailed\b|No \.app bundle|End-of-central-directory|cannot find zipfile|Terminated:|timed out|Missing full-Mac E2E GitHub secrets)/i.test(line);
+          const summarizeError = (value) => {
+            const lines = diagnosticLines(value);
+            const signals = lines.filter(isSignalLine);
+            const summaryLine = signals.at(-1) || lines.at(-1) || "";
+            const summary = summaryLine
+              .replace(/^\[[a-z]+\]\s+/i, "")
+              .replace(/^(?:ERROR|Error|error):\s*/, "")
+              .trim();
+            return summary.length > 220 ? `${summary.slice(0, 217)}...` : summary;
+          };
+          const status = process.env.SSH_STATUS || "not-run";
+          const redactedLog = redactSecrets(rawLog).trim();
+          const scenarioDir = path.join("apps/native/e2e-tauri/artifacts", scenario);
+          fs.mkdirSync(scenarioDir, { recursive: true });
+          const logRelPath = redactedLog ? `${scenario}/full-mac-ssh.log` : null;
+          if (redactedLog) {
+            fs.writeFileSync(path.join(scenarioDir, "full-mac-ssh.log"), `${redactedLog}\n`);
+          }
+          const error = summarizeError(rawLog)
+            || flattenForInline(rawLog)
+            || `Full-Mac runner did not produce e2e-report.json (SSH status: ${status})`;
+          const logProof = logRelPath ? [{
+            kind: "log",
+            path: logRelPath,
+            url: null,
+            thumbnailUrl: null,
+            timestampMs: null,
+            phase: "Full-Mac SSH runner",
+            caption: "Full-Mac SSH diagnostic log",
+            isPrimary: true,
+            isFailureProof: true,
+          }] : [];
+          const report = {
+            schemaVersion: 1,
+            repo: process.env.GITHUB_REPOSITORY || "darkmatter/nixmac",
+            prNumber: process.env.GITHUB_PR_NUMBER ? Number(process.env.GITHUB_PR_NUMBER) : null,
+            headSha: process.env.E2E_HEAD_SHA || process.env.COMMIT_SHA || process.env.GITHUB_SHA || "unknown",
+            baseSha: process.env.E2E_BASE_SHA || null,
+            workflowRunId: process.env.GITHUB_RUN_ID || null,
+            attempt: process.env.GITHUB_RUN_ATTEMPT ? Number(process.env.GITHUB_RUN_ATTEMPT) : null,
+            lane: "full-mac",
+            scenario,
+            runnerId: process.env.RUNNER_NAME || "github-hosted",
+            runnerKind: "full-mac",
+            startedAt: now,
+            finishedAt: now,
+            durationMs: 0,
+            status: "infra_failed",
+            htmlReportUrl: null,
+            primaryProofUrl: null,
+            failureProofUrl: null,
+            failureScreenshotUrl: null,
+            failureVideoUrl: null,
+            failureTimestampMs: null,
+            replayCommand: `tests/e2e/run.sh ${scenario}`,
+            localReproCommand: `tests/e2e/run.sh ${scenario}`,
+            captureLimitations: ["full_mac_runner_unavailable"],
+            phases: [{
+              name: "Full-Mac SSH runner",
+              status: "infra_failed",
+              startedAt: now,
+              finishedAt: now,
+              durationMs: 0,
+              assertions: ["Reach the configured Mac runner over SSH and collect scenario artifacts"],
+              proof: logProof,
+              error,
+            }],
+            proof: logProof,
+          };
+          fs.writeFileSync(
+            path.join(scenarioDir, "e2e-report.json"),
+            `${JSON.stringify(report, null, 2)}\n`,
+          );
+          NODE
+
+      - name: Render full-Mac report
+        if: always()
+        run: node apps/native/e2e-tauri/scripts/render-report.mjs
+
+      - name: Publish full-Mac report to R2
+        id: publish
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        shell: "sops exec-env ops/secrets/secrets.yaml \"bash -e {0}\""
+        env:
+          AWS_DEFAULT_REGION: auto
+          REPORT_PREFIX: e2e/pr-${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}
+          SCENARIO: ${{ matrix.scenario }}
+        run: |
+          export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
+          export AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
+
+          if [ ! -d apps/native/e2e-tauri/artifacts ]; then
+            echo "No full-Mac E2E artifacts to publish" >&2
+            exit 1
+          fi
+
+          REPORT_URL="https://releases.nixmac.com/${REPORT_PREFIX}/${SCENARIO}/index.html"
+          PUBLIC_PREFIX="https://releases.nixmac.com/${REPORT_PREFIX}"
+          export REPORT_URL PUBLIC_PREFIX
+
+          node <<'NODE'
+          const fs = require("node:fs");
+          const path = require("node:path");
+          const root = "apps/native/e2e-tauri/artifacts";
+          const reportUrl = process.env.REPORT_URL;
+          const publicPrefix = process.env.PUBLIC_PREFIX;
+          const isPublicUrl = (value) => /^https?:\/\//.test(String(value || ""));
+          const publicUrlFor = (value) => {
+            if (!value) return null;
+            return isPublicUrl(value) ? value : `${publicPrefix}/${value}`;
+          };
+
+          const stack = [root];
+          while (stack.length) {
+            const current = stack.pop();
+            for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+              const full = path.join(current, entry.name);
+              if (entry.isDirectory()) {
+                stack.push(full);
+                continue;
+              }
+              if (entry.name !== "e2e-report.json") continue;
+
+              const report = JSON.parse(fs.readFileSync(full, "utf8"));
+              const addUrl = (proof) => ({
+                ...proof,
+                url: proof.path ? publicUrlFor(proof.path) : proof.url,
+                thumbnailUrl: proof.path ? publicUrlFor(proof.path) : proof.thumbnailUrl,
+              });
+              report.htmlReportUrl = reportUrl;
+              report.proof = (report.proof || []).map(addUrl);
+              report.phases = (report.phases || []).map((phase) => ({
+                ...phase,
+                proof: (phase.proof || []).map(addUrl),
+              }));
+              const failure = report.proof.find((proof) => proof.isFailureProof);
+              const firstFailure = (report.phases || []).find((phase) => phase.status !== "passed");
+              const failureVideo = firstFailure
+                ? report.proof.find((proof) => proof.kind === "video" && proof.phase === firstFailure.name)
+                  || report.proof.find((proof) => proof.kind === "video")
+                : null;
+              const primary = failureVideo
+                || report.proof.find((proof) => proof.kind === "video" && proof.isPrimary)
+                || report.proof.find((proof) => proof.isPrimary)
+                || report.proof[0];
+              report.primaryProofUrl = primary?.url || null;
+              report.failureProofUrl = failure?.url || null;
+              report.failureScreenshotUrl = failure?.kind === "screenshot" ? failure.url : null;
+              report.failureVideoUrl = publicUrlFor(report.failureVideoUrl)
+                || failureVideo?.url
+                || (failure?.kind === "video" ? failure.url : null);
+              fs.writeFileSync(full, `${JSON.stringify(report, null, 2)}\n`);
+            }
+          }
+          NODE
+
+          aws s3 cp apps/native/e2e-tauri/artifacts "s3://nixmac-releases/${REPORT_PREFIX}" \
+            --recursive \
+            --endpoint-url "$R2_ENDPOINT" \
+            --cache-control "max-age=2592000"
+
+          echo "report-url=$REPORT_URL" >> "$GITHUB_OUTPUT"
+          echo "Published full-Mac report: $REPORT_URL"
+
+      - name: Full-Mac scenario summary
+        if: always()
+        run: |
+          REPORT="apps/native/e2e-tauri/artifacts/${{ matrix.scenario }}/e2e-report.json"
+          echo "### E2E / full-Mac / ${{ matrix.scenario }}" >> "$GITHUB_STEP_SUMMARY"
+          REPORT_URL="${{ steps.publish.outputs.report-url }}"
+          if [ -f "$REPORT" ]; then
+            STATUS=$(jq -r '.status' "$REPORT")
+            PROOF=$(jq -r '.primaryProofUrl // "none"' "$REPORT")
+            echo "- Status: $STATUS" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Proof: $PROOF" >> "$GITHUB_STEP_SUMMARY"
+            LIMITATIONS=$(jq -r '(.captureLimitations // []) | join(", ")' "$REPORT")
+            if [ -n "$LIMITATIONS" ]; then
+              echo "- Capture limitations: $LIMITATIONS" >> "$GITHUB_STEP_SUMMARY"
+            fi
+            if [ -n "$REPORT_URL" ]; then
+              echo "- HTML report: $REPORT_URL" >> "$GITHUB_STEP_SUMMARY"
+            fi
+            jq -r '.phases[] | "- " + .status + ": " + .name' "$REPORT" >> "$GITHUB_STEP_SUMMARY"
+            if [ "$STATUS" != "passed" ]; then
+              exit 1
+            fi
+          else
+            echo "- Status: infra_failed" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Missing e2e-report.json" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - name: Upload full-Mac artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-mac-${{ matrix.scenario }}
+          path: apps/native/e2e-tauri/artifacts/
+          retention-days: 14
+
+  gate:
+    name: nixmac E2E Gate
+    needs: [resolve, e2e, e2e-mac]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download E2E artifacts
+        if: always()
+        uses: actions/download-artifact@v7
+        with:
+          pattern: e2e-*
+          path: e2e-artifacts
+
+      - name: Resolve gate result
+        id: result
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const required = "${{ needs.resolve.outputs.required }}" === "true";
+            const tauriRequired = "${{ needs.resolve.outputs.tauri_required }}" === "true";
+            const macRequired = "${{ needs.resolve.outputs.mac_required }}" === "true";
+            const reason = `${{ needs.resolve.outputs.reason }}`;
+            const e2eResult = "${{ needs.e2e.result }}";
+            const macResult = "${{ needs.e2e-mac.result }}";
+            let status = "not required";
+            let conclusion = "success";
+
+            if (required) {
+              const tauriOk = tauriRequired ? e2eResult === "success" : e2eResult === "skipped";
+              const macOk = macRequired ? macResult === "success" : macResult === "skipped";
+              if (!tauriRequired && !macRequired) {
+                status = "infra failed";
+                conclusion = "failure";
+              } else if (tauriOk && macOk) {
+                status = "passed";
+              } else if (e2eResult === "cancelled" || macResult === "cancelled") {
+                status = "cancelled";
+                conclusion = "failure";
+              } else {
+                status = "failed";
+                conclusion = "failure";
+              }
+            }
+
+            core.setOutput("status", status);
+            core.setOutput("conclusion", conclusion);
+            core.setOutput("reason", reason);
+
+      - name: Sticky PR comment
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require("node:fs");
+            const path = require("node:path");
+            const marker = "<!-- nixmac-e2e-gate -->";
+            const status = `${{ steps.result.outputs.status }}`;
+            const reason = `${{ steps.result.outputs.reason }}`;
+            const required = "${{ needs.resolve.outputs.required }}" === "true";
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const artifactRoot = "e2e-artifacts";
+
+            function findReports(root) {
+              const reports = [];
+              if (!fs.existsSync(root)) return reports;
+              const stack = [root];
+              while (stack.length > 0) {
+                const current = stack.pop();
+                for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+                  const fullPath = path.join(current, entry.name);
+                  if (entry.isDirectory()) {
+                    stack.push(fullPath);
+                  } else if (entry.name === "e2e-report.json") {
+                    try {
+                      reports.push(JSON.parse(fs.readFileSync(fullPath, "utf8")));
+                    } catch (error) {
+                      reports.push({
+                        scenario: path.basename(path.dirname(fullPath)),
+                        lane: "unknown",
+                        status: "infra_failed",
+                        primaryProofUrl: null,
+                        replayCommand: null,
+                      });
+                    }
+                  }
+                }
+              }
+              return reports.sort((a, b) => String(a.scenario).localeCompare(String(b.scenario)));
+            }
+
+            function findFirstFile(root, fileName) {
+              if (!fs.existsSync(root)) return null;
+              const stack = [root];
+              while (stack.length > 0) {
+                const current = stack.pop();
+                for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+                  const fullPath = path.join(current, entry.name);
+                  if (entry.isDirectory()) {
+                    stack.push(fullPath);
+                  } else if (entry.name === fileName) {
+                    return fullPath;
+                  }
+                }
+              }
+              return null;
+            }
+
+            function readSelection(root) {
+              const selectionPath = findFirstFile(root, "e2e-selection.json");
+              if (!selectionPath) return null;
+              try {
+                return JSON.parse(fs.readFileSync(selectionPath, "utf8"));
+              } catch {
+                return null;
+              }
+            }
+
+            function isPublicUrl(value) {
+              return /^https?:\/\//.test(String(value || ""));
+            }
+
+            function publicOrArtifact(value) {
+              return isPublicUrl(value) ? value : "workflow artifact";
+            }
+
+            function linkOrArtifact(value, label) {
+              return isPublicUrl(value) ? `[${label}](${value})` : "workflow artifact";
+            }
+
+            function markdownText(value) {
+              return String(value ?? "")
+                .replace(/[\r\n]+/g, " ")
+                .replace(/\|/g, "\\|")
+                .trim();
+            }
+
+            function markdownCode(value) {
+              return markdownText(value).replace(/`/g, "\\`");
+            }
+
+            function tableCell(value) {
+              return markdownText(value) || "";
+            }
+
+            const captureLimitationLabels = new Map([
+              ["full_mac_runner_unavailable", "Full-Mac runner was unreachable or did not produce a scenario report"],
+              ["screen_recording_invalid", "Screen recording was produced but failed validation"],
+              ["screen_recording_missing", "No screen recording was captured for this run"],
+            ]);
+
+            function humanizeCaptureLimitation(value) {
+              const raw = String(value || "").trim();
+              return captureLimitationLabels.get(raw) || raw.replaceAll("_", " ");
+            }
+
+            function normalizeDiagnosticText(value) {
+              return String(value || "").replace(/\r\n?/g, "\n").trim();
+            }
+
+            function diagnosticLines(value) {
+              return normalizeDiagnosticText(value)
+                .replace(/\s+(\[[a-z]+\]\s+)/gi, "\n$1")
+                .replace(/\s+(?=(?:ERROR|Error|error|fatal|Failed|failed|End-of-central-directory|unzip:|find:|bash:)\b)/g, "\n")
+                .split("\n")
+                .map((line) => line.replace(/\s+/g, " ").trim())
+                .filter(Boolean);
+            }
+
+            function isSignalLine(line) {
+              return /(\bERROR\b|\berror\b|\bfatal\b|\bfailed\b|No \.app bundle|End-of-central-directory|cannot find zipfile|Terminated:|timed out|Missing full-Mac E2E GitHub secrets)/i.test(line);
+            }
+
+            function truncate(value, maxLength) {
+              const text = String(value || "");
+              return text.length > maxLength ? `${text.slice(0, maxLength - 3)}...` : text;
+            }
+
+            function scenarioMeta(selection, scenarioName) {
+              const selected = selection?.selected || [];
+              const attention = selection?.attention || [];
+              return selected.find((scenario) => scenario.name === scenarioName)
+                || attention.find((scenario) => scenario.name === scenarioName)
+                || {};
+            }
+
+            function formatCount(value) {
+              return Number.isFinite(Number(value)) ? Number(value) : 0;
+            }
+
+            function formatScope(selection, reports, isRequired) {
+              if (!isRequired) {
+                return selection?.reason || "No E2E scenarios selected for this PR.";
+              }
+              const selected = selection?.selected || [];
+              const configured = selection?.configured || {};
+              const total = formatCount(configured.total) || selected.length || reports.length;
+              const tauriTotal = formatCount(configured.tauri);
+              const macTotal = formatCount(configured.fullMac);
+              const tauriSelected = selected.filter((scenario) => scenario.lane === "tauri-wdio").length;
+              const macSelected = selected.filter((scenario) => scenario.lane === "full-mac").length;
+              const mode = selection?.selectionMode || "unknown";
+              const detail = `${selected.length || reports.length}/${total} configured scenarios (${tauriSelected}/${tauriTotal} hosted, ${macSelected}/${macTotal} full-Mac)`;
+              if (mode === "all-label") {
+                return `Ran all configured scenarios: ${detail}.`;
+              }
+              if (mode === "scenario-label" || mode === "full-mac-label") {
+                return `Ran requested E2E label scope: ${detail}.`;
+              }
+              if (mode === "manual") {
+                return `Ran manually dispatched scenario scope: ${detail}.`;
+              }
+              return `Ran PR-default hosted pack plus any matched full-Mac scenarios: ${detail}.`;
+            }
+
+            function markdownList(items) {
+              return (items || [])
+                .map((item) => `- ${markdownText(item)}`)
+                .join("\n");
+            }
+
+            function renderPrAttention(selection) {
+              if (!selection) return "";
+              const changedCount = formatCount(selection.changedFileCount);
+              const attention = selection.attention || [];
+              const sample = selection.changedFileSample || [];
+              const sampleItems = sample.map((file) => "`" + markdownCode(file) + "`");
+              const sampleText = sample.length
+                ? `\n\n<details><summary>Changed files sampled (${sample.length}${changedCount > sample.length ? ` of ${changedCount}` : ""})</summary>\n\n${markdownList(sampleItems)}\n\n</details>`
+                : "";
+              if (!attention.length) {
+                return `### PR Attention\n\nChanged files considered: **${changedCount}**. No scenario-specific path match beyond the selected default/label scope.${sampleText}`;
+              }
+              const lines = attention.map((scenario) => {
+                const matched = (scenario.matchedFiles || []).slice(0, 4);
+                const matchedList = matched.map((file) => "`" + markdownCode(file) + "`").join(", ");
+                const files = matched.length
+                  ? ` Matched: ${matchedList}${scenario.matchedFileCount > matched.length ? ", ..." : ""}.`
+                  : "";
+                const gaps = (scenario.knownGaps || []).length
+                  ? ` Known gap: ${markdownText((scenario.knownGaps || []).join(" "))}`
+                  : "";
+                return `- **${markdownText(scenario.title || scenario.name)}**: ${markdownText(scenario.summary)}${files}${gaps}`;
+              });
+              return `### PR Attention\n\nChanged files considered: **${changedCount}**. Scenario-specific matches:\n\n${lines.join("\n")}${sampleText}`;
+            }
+
+            function summarizeError(error) {
+              const raw = normalizeDiagnosticText(error);
+              if (!raw) {
+                return { summary: "No error message captured.", signals: [] };
+              }
+              const lines = diagnosticLines(raw);
+              const signals = lines.filter(isSignalLine);
+              const summaryLine = signals.at(-1) || lines.at(-1) || raw;
+              const summary = summaryLine
+                .replace(/^\[[a-z]+\]\s+/i, "")
+                .replace(/^(?:ERROR|Error|error):\s*/, "")
+                .trim();
+              return {
+                summary: summary.length > 220 ? `${summary.slice(0, 217)}...` : summary,
+                signals: signals.slice(-3).map((line) => truncate(line, 180)),
+              };
+            }
+
+            function nextActionForError(error, report) {
+              const text = String(error || "");
+              if (/Missing full-Mac E2E GitHub secrets/i.test(text)) {
+                return "Add the missing MAC_E2E_* GitHub secrets, then rerun the E2E gate.";
+              }
+              if (/No \.app bundle in artifact|End-of-central-directory|cannot find zipfile/i.test(text)) {
+                return "Verify the Build macOS App artifact for this commit, then rerun once artifact download and extraction succeed.";
+              }
+              if (/Full-Mac runner did not produce|full_mac_runner_unavailable|SSH status/i.test(text)) {
+                return "Check the configured Mac runner reachability and scenario log, then rerun the full-Mac lane.";
+              }
+              if (/screen_recording_(invalid|missing)|recording/i.test(text)) {
+                return "Inspect screenshots and confirm Screen Recording permission on the Mac runner.";
+              }
+              if (report.htmlReportUrl) {
+                return "Open the full report and workflow logs for the failing phase, then rerun the replay command after fixing the cause.";
+              }
+              return "Inspect the workflow logs for the failing phase, then rerun the replay command after fixing the cause.";
+            }
+
+            function primaryProofLabel(report) {
+              const proofs = report.proof || [];
+              const primary = proofs.find((proof) => proof.kind === "video" && proof.isPrimary)
+                || proofs.find((proof) => proof.isPrimary)
+                || proofs[0];
+              if (primary?.kind === "video" && report.lane === "tauri-wdio") {
+                return "Flow recording (webview)";
+              }
+              if (primary?.kind === "video") {
+                return "Screen recording";
+              }
+              if (primary?.kind === "screenshot") {
+                return "Screenshot";
+              }
+              if (primary?.kind === "log") {
+                return "Diagnostic log";
+              }
+              return "Proof";
+            }
+
+            const reports = findReports(artifactRoot);
+            const selection = readSelection(artifactRoot);
+            const table = reports.length
+              ? [
+                  "| Scenario | Lane | Result | What it checks | Report | Proof |",
+                  "| --- | --- | --- | --- | --- | --- |",
+                  ...reports.map((report) => {
+                    const meta = scenarioMeta(selection, report.scenario);
+                    const proofUrl = report.primaryProofUrl || report.failureProofUrl;
+                    const proof = isPublicUrl(proofUrl)
+                      ? linkOrArtifact(proofUrl, primaryProofLabel(report))
+                      : publicOrArtifact(proofUrl);
+                    const reportUrl = linkOrArtifact(report.htmlReportUrl, "Report");
+                    const checks = meta.summary || "Scenario coverage metadata unavailable.";
+                    return "| `" + markdownCode(report.scenario) + "` | " + tableCell(report.lane) + " | **" + tableCell(report.status) + "** | " + tableCell(checks) + " | " + tableCell(reportUrl) + " | " + tableCell(proof) + " |";
+                  }),
+                ].join("\n")
+              : required
+                ? "_No report JSON found. Check workflow artifacts/logs._"
+                : "";
+            const failureSections = reports
+              .filter((report) => report.status !== "passed")
+              .map((report) => {
+                const meta = scenarioMeta(selection, report.scenario);
+                const phase = (report.phases || []).find((item) => item.status !== "passed");
+                const heading = `### Failure: \`${markdownCode(report.scenario)}\``;
+                const analysis = summarizeError(phase?.error);
+                const coverage = (meta.coverage || []).length
+                  ? `\n\n**Expected coverage:** ${markdownText(meta.coverage.join("; "))}`
+                  : "";
+                const gaps = (meta.knownGaps || []).length
+                  ? `\n\n**Known gap:** ${markdownText(meta.knownGaps.join(" "))}`
+                  : "";
+                const matchedFileList = (meta.matchedFiles || []).map((file) => "`" + markdownCode(file) + "`").join(", ");
+                const matchedFiles = (meta.matchedFiles || []).length
+                  ? `\n\n**Relevant PR files:** ${markdownText(matchedFileList)}`
+                  : "";
+                const phaseText = phase
+                  ? `**Phase:** ${markdownText(phase.name)}\n\n**What happened:** ${markdownText(analysis.summary)}\n\n**Next action:** ${markdownText(nextActionForError(phase.error, report))}`
+                  : "**Error:** No failing phase captured";
+                const limitations = report.captureLimitations?.length
+                  ? `\n\n**Capture limitations:** ${markdownText(report.captureLimitations.map(humanizeCaptureLimitation).join(", "))}`
+                  : "";
+                const signals = analysis.signals.length > 1
+                  ? `\n\n**Diagnostic signal:** ${markdownText(analysis.signals.join(" | "))}`
+                  : "";
+                const image = isPublicUrl(report.failureScreenshotUrl)
+                  ? `\n\n![Failure proof](${report.failureScreenshotUrl})`
+                  : "";
+                const videoLink = isPublicUrl(report.failureVideoUrl)
+                  ? `\n\n[${report.lane === "tauri-wdio" ? "Failure video (webview flow recording)" : "Failure screen recording"}](${report.failureVideoUrl})`
+                  : "";
+                const logProof = (report.proof || []).find((proof) => proof.kind === "log" && isPublicUrl(proof.url));
+                const logLink = logProof
+                  ? `\n\n[Diagnostic log](${logProof.url})`
+                  : "";
+                const reportLink = isPublicUrl(report.htmlReportUrl)
+                  ? `\n\n[Full HTML report](${report.htmlReportUrl})`
+                  : "";
+                const replay = report.replayCommand
+                  ? `\n\n**Replay:** \`${markdownCode(report.replayCommand)}\``
+                  : "";
+                return `${heading}\n\n${phaseText}${coverage}${gaps}${matchedFiles}${limitations}${signals}${image}${videoLink}${logLink}${reportLink}${replay}`;
+              })
+              .join("\n\n");
+            const scope = formatScope(selection, reports, required);
+            const attentionSection = renderPrAttention(selection);
+            const coverageNote = selection?.note || "This is a targeted smoke/regression gate, not an exhaustive UI crawler.";
+
+            const body = `${marker}
+            ## nixmac E2E
+
+            **Status:** ${status}
+
+            **Why this ran:** ${reason}
+
+            **Scope:** ${scope}
+
+            **Coverage note:** ${coverageNote}
+
+            **Tested commit:** \`${context.payload.pull_request.head.sha}\`
+
+            ${attentionSection}
+
+            ${required ? table : ""}
+
+            ${failureSections}
+
+            [Workflow run](${runUrl})
+            `;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              per_page: 100,
+            });
+            const existing = comments.find((comment) => comment.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body,
+              });
+            }
+
+      - name: Fail gate if needed
+        if: steps.result.outputs.conclusion != 'success'
+        run: |
+          echo "nixmac E2E Gate ${{ steps.result.outputs.status }}: ${{ steps.result.outputs.reason }}" >&2
+          exit 1

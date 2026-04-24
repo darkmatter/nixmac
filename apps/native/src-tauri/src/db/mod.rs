@@ -12,7 +12,7 @@ pub mod store_new_changeset;
 use anyhow::Result;
 use std::path::PathBuf;
 use std::sync::OnceLock;
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Runtime};
 
 static DB_PATH: OnceLock<PathBuf> = OnceLock::new();
 
@@ -22,8 +22,7 @@ pub fn get_db_path<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf> {
         return Ok(path.clone());
     }
 
-    let app_data = app.path().app_data_dir()?;
-    std::fs::create_dir_all(&app_data)?;
+    let app_data = crate::e2e_support::app_data_dir(app)?;
     let path = app_data.join("nixmac.db");
     let _ = DB_PATH.set(path.clone());
     Ok(path)

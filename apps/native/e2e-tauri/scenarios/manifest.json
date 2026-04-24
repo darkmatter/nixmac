@@ -1,0 +1,209 @@
+{
+  "$schema": "./manifest.schema.json",
+  "scenarios": [
+    {
+      "name": "auto_evolve_basic_package",
+      "lane": "tauri-wdio",
+      "title": "Auto-evolve basic package",
+      "summary": "Submits a mocked AI prompt and verifies nixmac reaches review with a generated Nix diff.",
+      "coverage": [
+        "Main prompt input and send path",
+        "Mock provider response plumbing",
+        "Evolve review screen with non-empty diff",
+        "Generated diff includes the Darwin fonts module"
+      ],
+      "riskAreas": ["evolve", "prompt", "diff", "nix-template"],
+      "changePatterns": [
+        "^apps/native/src/components/widget/(prompt-input|prompt-input-section|steps/(begin-step|evolve-step)|widget|utils)\\.tsx$",
+        "^apps/native/src/hooks/use-evolve\\.ts$",
+        "^apps/native/src-tauri/src/evolve/",
+        "^apps/native/src-tauri/src/(evolution|evolve_state|changes_from_diff|store|commands)\\.rs$",
+        "^apps/native/e2e-tauri/tests/(data|wdio)/",
+        "^apps/native/templates/.*/modules/darwin/fonts\\.nix$"
+      ],
+      "knownGaps": [
+        "Uses mocked model responses; it does not call live AI providers or apply/rebuild the generated config."
+      ],
+      "currentSpec": "tests/wdio/basic-prompts.spec.mjs",
+      "currentScript": "test:wdio:basic-prompts",
+      "status": "rename-of-existing",
+      "requiredForDefaultPrPack": true
+    },
+    {
+      "name": "discard_and_restore_state",
+      "lane": "tauri-wdio",
+      "title": "Discard and restore state",
+      "summary": "Exercises discard confirm/cancel behavior from the evolve review screen.",
+      "coverage": [
+        "Prompt submission reaches evolve review",
+        "Discard confirmation returns to the initial prompt screen",
+        "Discard cancellation leaves the review state intact"
+      ],
+      "riskAreas": ["evolve", "discard", "confirmation-dialog", "state-reset"],
+      "changePatterns": [
+        "^apps/native/src/components/widget/(confirmation-dialog|discard-uncommitted-dialog|check-confirmation-off|steps/evolve-step|widget)\\.tsx$",
+        "^apps/native/src/components/widget/(prompt-input|prompt-input-section)\\.tsx$",
+        "^apps/native/src/stores/widget-store\\.ts$",
+        "^apps/native/src-tauri/src/(finalize_restore|rollback|store|commands)\\.rs$",
+        "^apps/native/e2e-tauri/tests/wdio/(discard\\.spec|helpers/app-ui)\\.mjs$"
+      ],
+      "knownGaps": [
+        "Does not verify every rollback/history path or rebuild behavior after discard."
+      ],
+      "currentSpec": "tests/wdio/discard.spec.mjs",
+      "currentScript": "test:wdio:discard",
+      "status": "validated-existing",
+      "requiredForDefaultPrPack": true
+    },
+    {
+      "name": "manual_evolve_existing_changes",
+      "lane": "tauri-wdio",
+      "title": "Manual evolve existing changes",
+      "summary": "Runs sequential prompts and verifies the second change preserves the first generated diff.",
+      "coverage": [
+        "Follow-up prompt from evolve review",
+        "Existing uncommitted change preservation",
+        "Generated diff contains both first and second package edits"
+      ],
+      "riskAreas": ["evolve", "manual-follow-up", "diff-preservation"],
+      "changePatterns": [
+        "^apps/native/src/components/widget/steps/(evolve-step|manual-evolve-step)\\.tsx$",
+        "^apps/native/src/components/widget/summaries/",
+        "^apps/native/src/components/widget/widget\\.tsx$",
+        "^apps/native/src/hooks/use-evolve\\.ts$",
+        "^apps/native/src-tauri/src/evolve/",
+        "^apps/native/src-tauri/src/(changes_from_diff|store|commands)\\.rs$",
+        "^apps/native/e2e-tauri/tests/data/",
+        "^apps/native/e2e-tauri/tests/wdio/modify\\.spec\\.mjs$",
+        "^apps/native/e2e-tauri/tests/wdio/helpers/"
+      ],
+      "knownGaps": [
+        "Uses mocked model responses and does not run the final apply/rebuild step."
+      ],
+      "currentSpec": "tests/wdio/modify.spec.mjs",
+      "currentScript": "test:wdio:modify",
+      "status": "validated-existing",
+      "requiredForDefaultPrPack": true
+    },
+    {
+      "name": "settings_provider_change",
+      "lane": "tauri-wdio",
+      "title": "Settings and provider tabs",
+      "summary": "Opens Settings and verifies the General, AI Models, API Keys, and Preferences tabs plus key controls render.",
+      "coverage": [
+        "Settings button opens the dialog",
+        "All four settings tabs are navigable",
+        "Each tab renders its expected heading",
+        "Critical provider, API key, diagnostics, and confirmation controls are visible"
+      ],
+      "riskAreas": ["settings", "providers", "preferences", "api-keys"],
+      "changePatterns": [
+        "^apps/native/src/components/widget/settings-dialog\\.tsx$",
+        "^apps/native/src/components/widget/settings/",
+        "^apps/native/src/components/widget/model-combobox\\.tsx$",
+        "^apps/native/src/lib/ai-provider-validation\\.ts$",
+        "^apps/native/src/hooks/use-prefs\\.ts$",
+        "^apps/native/src/stores/widget-store\\.ts$",
+        "^apps/native/src-tauri/src/providers/",
+        "^apps/native/src-tauri/src/evolve/providers/",
+        "^apps/native/src-tauri/src/provider_errors\\.rs$",
+        "^apps/native/e2e-tauri/tests/wdio/(smoke\\.spec|helpers/app-ui)\\.mjs$"
+      ],
+      "knownGaps": [
+        "Checks visibility of key settings controls; it does not mutate every field, verify real API keys, or call live providers."
+      ],
+      "currentSpec": "tests/wdio/smoke.spec.mjs",
+      "currentScript": "test:wdio:smoke",
+      "status": "validated-existing",
+      "requiredForDefaultPrPack": true
+    },
+    {
+      "name": "onboarding_existing_repo",
+      "lane": "tauri-wdio",
+      "title": "Onboarding existing repo",
+      "summary": "Connects an existing nix-darwin repo and verifies the app reaches the prompt screen.",
+      "coverage": [
+        "Setup screen renders",
+        "Configuration directory can be selected",
+        "Host selection is populated and accepted",
+        "Onboarding completes to the main prompt screen"
+      ],
+      "riskAreas": ["onboarding", "configuration-directory", "host-selection"],
+      "changePatterns": [
+        "^apps/native/src/components/widget/(bootstrap-config|directory-picker|steps/setup-step|widget)\\.tsx$",
+        "^apps/native/src/hooks/(use-darwin-config|use-widget-initialization)\\.ts$",
+        "^apps/native/src-tauri/src/(default_config|scanner|template|darwin|commands)\\.rs$",
+        "^apps/native/templates/",
+        "^apps/native/e2e-tauri/tests/wdio/onboarding\\.spec\\.mjs$",
+        "^apps/native/e2e-tauri/tests/wdio/helpers/"
+      ],
+      "knownGaps": [
+        "Uses a prepared fixture repo; it does not cover every arbitrary user flake shape."
+      ],
+      "currentSpec": "tests/wdio/onboarding.spec.mjs",
+      "currentScript": "test:wdio:onboarding",
+      "status": "validated-existing",
+      "requiredForDefaultPrPack": true
+    },
+    {
+      "name": "release_dmg_app_translocation_smoke",
+      "lane": "full-mac",
+      "title": "Release DMG launch smoke",
+      "summary": "Launches the installed /Applications app on a real Mac and verifies a usable first screen.",
+      "coverage": [
+        "Build artifact can be installed on the Mac runner",
+        "App launches from /Applications",
+        "First screen renders enough nixmac text to rule out startup/App Translocation crashes",
+        "Publishes a full-screen recording as proof"
+      ],
+      "riskAreas": ["release", "dmg", "app-translocation", "startup"],
+      "changePatterns": [
+        "^apps/native/src-tauri/tauri\\.conf(\\.dev)?\\.json$",
+        "^apps/native/src-tauri/(Info|entitlements)\\.plist$",
+        "^apps/native/src-tauri/icons/",
+        "^\\.github/workflows/build\\.yaml$",
+        "^ops/scripts/",
+        "^tests/e2e/scenarios/release_dmg_app_translocation_smoke\\.sh$",
+        "^tests/e2e/(adapters|fixtures|lib)/"
+      ],
+      "knownGaps": [
+        "Launch smoke only; it does not exercise Nix installation, settings, or evolve/apply flows."
+      ],
+      "currentSpec": "tests/e2e/scenarios/release_dmg_app_translocation_smoke.sh",
+      "currentScript": "tests/e2e/run.sh release_dmg_app_translocation_smoke",
+      "status": "ported-full-mac",
+      "requiredForDefaultPrPack": false
+    },
+    {
+      "name": "install_nix_clean_machine",
+      "lane": "full-mac",
+      "title": "Install Nix on clean machine",
+      "summary": "Runs the real Install Nix flow on a clean Mac and verifies Nix works afterward.",
+      "coverage": [
+        "App launches into the Nix install flow",
+        "Install Nix button can be clicked",
+        "Determinate Nix package downloads and installs",
+        "App detects Nix and prefetches darwin-rebuild",
+        "Final Nix binary verification passes",
+        "Publishes a full-screen recording as proof"
+      ],
+      "riskAreas": ["install", "nix", "clean-machine", "full-mac"],
+      "changePatterns": [
+        "^apps/native/src/hooks/use-nix-install\\.ts$",
+        "^apps/native/src/components/widget/steps/nix-setup-step\\.tsx$",
+        "^apps/native/src-tauri/src/nix\\.rs$",
+        "^tests/e2e/scenarios/(install_nix_clean_machine|nix-install)\\.sh$",
+        "^tests/e2e/fixtures/(clean-machine|nix-installed)\\.sh$",
+        "^tests/e2e/adapters/nixmac\\.sh$",
+        "^tests/e2e/lib/(app|core|peekaboo|recording|report|runner)\\.sh$"
+      ],
+      "knownGaps": [
+        "Runs on one configured Mac runner and macOS version; it does not cover every hardware or OS variant."
+      ],
+      "currentSpec": "tests/e2e/scenarios/install_nix_clean_machine.sh",
+      "currentScript": "tests/e2e/run.sh install_nix_clean_machine",
+      "status": "ported-full-mac",
+      "requiredForDefaultPrPack": false
+    }
+  ]
+}

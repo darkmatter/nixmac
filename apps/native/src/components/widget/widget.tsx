@@ -36,8 +36,7 @@ import { loadConfig, loadHosts, loadEvolveState } from "@/hooks/use-widget-initi
 import { useSummary } from "@/hooks/use-summary";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { UpdateBanner } from "@/components/update-banner";
-import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
-import { setupWidgetTestHelpers } from "@/utils/widget-test-helpers";
+import { isE2eProofMode } from "@/utils/e2e-proof-mode";
 import { useEffect } from "react";
 
 /**
@@ -64,12 +63,24 @@ export function DarwinWidget() {
   // Set up error handler to catch unhandled JavaScript errors and promise rejections
   useErrorHandler();
 
-  // Set up test helpers for error handlers and widget store (development only)
+  // Set up test helpers for error handlers and widget store (development/E2E only)
   useEffect(() => {
-    if (import.meta.env.DEV) {
-      setupErrorTestHelpers();
-      setupWidgetTestHelpers();
+    if (import.meta.env.DEV || import.meta.env.VITE_NIXMAC_E2E === "true") {
+      void Promise.all([
+        import("@/utils/error-test-helpers"),
+        import("@/utils/widget-test-helpers"),
+      ]).then(([errorHelpers, widgetHelpers]) => {
+        errorHelpers.setupErrorTestHelpers();
+        widgetHelpers.setupWidgetTestHelpers();
+      });
     }
+  }, []);
+
+  useEffect(() => {
+    document.body.classList.toggle("e2e-proof-mode", isE2eProofMode);
+    return () => {
+      document.body.classList.remove("e2e-proof-mode");
+    };
   }, []);
 
   // Esc closes the settings modal or history panel (settings takes priority since it overlays history).
@@ -148,7 +159,13 @@ export function DarwinWidget() {
   };
 
   return (
-    <div className="flex h-full w-full flex-col bg-background/90 backdrop-blur-xl">
+    <div
+      className={
+        isE2eProofMode
+          ? "flex h-full w-full flex-col bg-background"
+          : "flex h-full w-full flex-col bg-background/90 backdrop-blur-xl"
+      }
+    >
       <Header />
       <Stepper />
       <UpdateBanner />

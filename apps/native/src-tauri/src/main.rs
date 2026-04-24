@@ -16,6 +16,7 @@ mod commands;
 mod darwin;
 mod db;
 mod default_config;
+mod e2e_support;
 mod editor;
 mod evolution;
 mod evolve;
@@ -286,22 +287,37 @@ fn run_gui_mode(
         builder = builder.plugin(tauri_plugin_webdriver_automation::init());
     }
 
-    builder
+    builder = builder
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
         .plugin(tauri_plugin_websocket::init())
-        .plugin(
+        .plugin(tauri_plugin_sql::Builder::new().build())
+        .plugin(tauri_plugin_upload::init())
+        .plugin(tauri_plugin_macos_permissions::init());
+
+    if e2e_support::is_e2e_mode() {
+        log::info!("E2E mode: skipping window-state plugin to avoid app-data leakage");
+    } else {
+        builder = builder.plugin(
             tauri_plugin_window_state::Builder::new()
                 .with_state_flags(tauri_plugin_window_state::StateFlags::POSITION)
                 .build(),
-        )
-        .plugin(tauri_plugin_sql::Builder::new().build())
-        .plugin(tauri_plugin_upload::init())
-        .plugin(tauri_plugin_macos_permissions::init())
+        );
+    }
+
+    if e2e_support::should_bypass_single_instance() {
+        log::info!(
+            "{}=1: skipping single-instance plugin for E2E isolation",
+            e2e_support::E2E_BYPASS_SINGLE_INSTANCE_ENV
+        );
+    } else {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|_, _, _| {}));
+    }
+
+    builder
         .invoke_handler(tauri::generate_handler![
             // Configuration
             commands::config_get,
@@ -508,12 +524,13 @@ fn run_gui_mode(
                 .build(app)?;
 
             // Create the main window
-            let initial_width = 800.0;
-            let initial_height = 800.0;
+            let proof_mode = e2e_support::is_e2e_mode();
+            let initial_width = if proof_mode { 1200.0 } else { 800.0 };
+            let initial_height = if proof_mode { 900.0 } else { 800.0 };
             let min_width = 400.0;
-            let max_width = 1000.0;
+            let max_width = if proof_mode { 1400.0 } else { 1000.0 };
             let min_height = 400.0;
-            let max_height = 900.0;
+            let max_height = if proof_mode { 1100.0 } else { 900.0 };
 
             let main_window =
                 WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
@@ -526,7 +543,7 @@ fn run_gui_mode(
                     .minimizable(true)
                     .closable(true)
                     .decorations(true)
-                    .transparent(true)
+                    .transparent(!proof_mode)
                     .visible(true)
                     .always_on_top(false)
                     .visible_on_all_workspaces(true)

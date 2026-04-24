@@ -33,7 +33,7 @@ fn clear_chat_memory_if_begin(step: &EvolveStep, clear_fn: impl FnOnce()) {
 
 /// Load the persisted evolve state, returning `EvolveState::default()` if absent or corrupt.
 pub fn get<R: Runtime>(app: &AppHandle<R>) -> Result<EvolveState> {
-    let store = app.store(EVOLVE_STATE_PATH)?;
+    let store = app.store(crate::e2e_support::store_path(EVOLVE_STATE_PATH))?;
     if let Some(val) = store.get(EVOLVE_STATE_KEY) {
         if let Ok(state) = serde_json::from_value::<EvolveState>(val.clone()) {
             return Ok(state);
@@ -53,7 +53,7 @@ pub fn set<R: Runtime>(
     let is_built = crate::build_state::current_state_built(app, current_changes);
     let has_changes = !current_changes.is_empty();
     state.recompute_step(is_built, has_changes);
-    let store = app.store(EVOLVE_STATE_PATH)?;
+    let store = app.store(crate::e2e_support::store_path(EVOLVE_STATE_PATH))?;
     store.set(EVOLVE_STATE_KEY, serde_json::to_value(&state)?);
     store.save()?;
 

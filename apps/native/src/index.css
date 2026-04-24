@@ -74,6 +74,10 @@
     @apply text-foreground;
   }
 
+  body.e2e-proof-mode {
+    background: hsl(var(--background)) !important;
+  }
+
   /* Scrollbar styling */
   ::-webkit-scrollbar {
     width: 8px;

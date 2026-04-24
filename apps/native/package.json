@@ -29,12 +29,15 @@
     "test:e2e:report": "playwright show-report",
     "test:e2e:install": "playwright install --with-deps chromium",
     "test:e2e:ui:app": "playwright test --ui",
-    "test:wdio:services": "process-compose -f e2e-tauri/process-compose.yaml up",
+    "test:wdio:build": "VITE_NIXMAC_E2E=true bun run build && TAURI_CONFIG='{\"build\":{\"devUrl\":\"http://localhost:5174\"}}' cargo build --manifest-path src-tauri/Cargo.toml --bin nixmac",
+    "test:wdio:services": "node e2e-tauri/scripts/run-services.mjs",
     "test:wdio": "wdio run wdio.conf.mjs",
     "test:wdio:smoke": "wdio run e2e-tauri/wdio.smoke.conf.mjs",
     "test:wdio:basic-prompts": "wdio run e2e-tauri/wdio.basic-prompts.conf.mjs",
     "test:wdio:discard": "wdio run e2e-tauri/wdio.discard.conf.mjs",
-    "test:wdio:modify": "wdio run e2e-tauri/wdio.modify.conf.mjs"
+    "test:wdio:modify": "wdio run e2e-tauri/wdio.modify.conf.mjs",
+    "test:wdio:onboarding": "wdio run e2e-tauri/wdio.onboarding.conf.mjs",
+    "test:wdio:report": "node e2e-tauri/scripts/render-report.mjs"
   },
   "dependencies": {
     "@distilled.cloud/neon": "^0.7.12",
@@ -102,6 +105,7 @@
     "detect-node-es": "^1.1.0",
     "effect": "^3.21.0",
     "execa": "^9.6.0",
+    "html-to-image": "^1.11.13",
     "lucide-react": "^0.562.0",
     "monaco-editor": "^0.55.1",
     "monaco-editor-textmate": "^4.0.0",

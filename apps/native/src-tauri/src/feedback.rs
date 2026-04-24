@@ -12,7 +12,7 @@ use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
 // Number of lines to include when attaching app logs
 const APP_LOG_LAST_LINES: usize = 200;
@@ -483,9 +483,7 @@ fn redact_metadata_with_scanner(
 
 /// Get the path to the pending feedback report file
 fn get_report_path(app: &AppHandle) -> Result<PathBuf> {
-    let app_data = app
-        .path()
-        .app_data_dir()
+    let app_data = crate::e2e_support::app_data_dir(app)
         .context("Failed to get app data directory")?;
     fs::create_dir_all(&app_data)?;
     Ok(app_data.join("report.json"))

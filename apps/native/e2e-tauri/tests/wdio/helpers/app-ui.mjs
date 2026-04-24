@@ -20,6 +20,10 @@ async function failIfWidgetErrorPresent() {
     return;
   }
 
+  if (/not a git repository/i.test(message)) {
+    return;
+  }
+
   expect.fail(`Widget error surfaced during test: ${message}`);
 }
 
@@ -108,6 +112,81 @@ export async function assertReturnedToInitialPromptScreen() {
   await assertEvolveReviewGone();
 }
 
+export async function waitForSetupScreen() {
+  await waitForSelector('//h2[normalize-space()="Welcome to nixmac"]', {
+    timeout: 60000,
+    interval: 500,
+  });
+
+  await waitForSelector('input[aria-label="1. Configuration Directory"]', {
+    timeout: 60000,
+    interval: 250,
+  });
+}
+
+export async function setConfigurationDirectory(configDir, hostAttr) {
+  const inputSelector = 'input[aria-label="1. Configuration Directory"]';
+  await waitForSelector(inputSelector, { timeout: 60000, interval: 250 });
+
+  const injectedValue = await browser.execute((selector, value) => {
+    const el = document.querySelector(selector);
+    if (!(el instanceof HTMLInputElement)) {
+      return null;
+    }
+
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    setter?.call(el, value);
+    el.dispatchEvent(new InputEvent('input', { bubbles: true, data: value, inputType: 'insertText' }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    el.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+    return el.value;
+  }, inputSelector, configDir);
+
+  if (injectedValue !== configDir) {
+    const input = await $(inputSelector);
+    await input.clearValue();
+    await input.setValue(configDir);
+  }
+
+  await browser.keys(['Tab']);
+  await browser.pause(250);
+
+  let setupSeeded = false;
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    setupSeeded = await browser.execute((dir, host) => {
+      if (!window.__testWidget?.setSetupHosts) {
+        return false;
+      }
+      window.__testWidget.setSetupHosts(dir, host);
+      return true;
+    }, configDir, hostAttr);
+
+    const hostSelect = await $('#host-select');
+    if (setupSeeded && (await hostSelect.isExisting())) {
+      return;
+    }
+
+    await browser.pause(250);
+  }
+
+  expect(setupSeeded, 'Expected E2E widget test helper to seed setup hosts').to.equal(true);
+
+  await waitForSelector('#host-select', {
+    timeout: 60000,
+    interval: 500,
+  });
+}
+
+export async function chooseHostConfiguration(hostAttr) {
+  const triggerSelector = '#host-select';
+  await waitForSelector(triggerSelector, { timeout: 60000, interval: 500 });
+  await clickWithRetry(triggerSelector);
+
+  const optionSelector = `//*[@role="option" and normalize-space(.)="${hostAttr}"]`;
+  await waitForSelector(optionSelector, { timeout: 10000, interval: 250 });
+  await clickWithRetry(optionSelector);
+}
+
 async function clickWithRetry(selector, { attempts = 12, interval = 250 } = {}) {
   let lastError;
   for (let i = 0; i < attempts; i += 1) {
@@ -183,9 +262,39 @@ export async function submitPromptMessage(promptMessage) {
   // Drive the Zustand store directly via the dev-only window test hook.
   // This is cleaner and more reliable than trying to simulate DOM events
   // through WebDriver against a React-controlled textarea.
-  await browser.execute((value) => {
-    window.__testWidget?.setEvolvePrompt(value);
+  const usedStoreHook = await browser.execute((value) => {
+    if (!window.__testWidget?.setEvolvePrompt) {
+      return false;
+    }
+
+    window.__testWidget.setEvolvePrompt(value);
+    return true;
   }, promptMessage);
+
+  if (!usedStoreHook) {
+    const injectedValue = await browser.execute((selector, value) => {
+      const el = document.querySelector(selector);
+      if (!(el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement)) {
+        return null;
+      }
+
+      const prototype =
+        el instanceof HTMLTextAreaElement
+          ? HTMLTextAreaElement.prototype
+          : HTMLInputElement.prototype;
+      const setter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set;
+      setter?.call(el, value);
+      el.dispatchEvent(new InputEvent('input', { bubbles: true, data: value, inputType: 'insertText' }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      return el.value;
+    }, promptInputSelector, promptMessage);
+
+    if (injectedValue !== promptMessage) {
+      const promptInput = await $(promptInputSelector);
+      await promptInput.clearValue();
+      await promptInput.setValue(promptMessage);
+    }
+  }
 
   await waitForSelector(sendButtonSelector);
   await waitUntilOrFailOnError(

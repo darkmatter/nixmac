@@ -42,6 +42,22 @@ pub fn dry_run_build_check(
     host_attr: &str,
     show_trace: bool,
 ) -> Result<(bool, String, String), anyhow::Error> {
+    if crate::e2e_support::should_mock_system() {
+        return Ok((
+            true,
+            format!(
+                "E2E mock build check passed for '{}' in {}",
+                host_attr, config_dir
+            ),
+            if show_trace {
+                "E2E mock system enabled; skipped nix build --dry-run with --show-trace"
+                    .to_string()
+            } else {
+                "E2E mock system enabled; skipped nix build --dry-run".to_string()
+            },
+        ));
+    }
+
     // Ensure untracked files are visible to flake evaluation.
     // Hard-fail: if this fails, untracked .nix files won't be seen and the
     // build result would be misleading.
