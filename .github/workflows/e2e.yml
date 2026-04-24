@@ -1311,10 +1311,10 @@ jobs:
                 || proofs.find((proof) => proof.isPrimary)
                 || proofs[0];
               if (primary?.kind === "video" && report.lane === "tauri-wdio") {
-                return "Flow recording (webview)";
+                return "Webview frame recording";
               }
               if (primary?.kind === "video") {
-                return "Screen recording";
+                return "Full-screen recording";
               }
               if (primary?.kind === "screenshot") {
                 return "Screenshot";
@@ -1376,7 +1376,7 @@ jobs:
                   ? `\n\n![Failure proof](${report.failureScreenshotUrl})`
                   : "";
                 const videoLink = isPublicUrl(report.failureVideoUrl)
-                  ? `\n\n[${report.lane === "tauri-wdio" ? "Failure video (webview flow recording)" : "Failure screen recording"}](${report.failureVideoUrl})`
+                  ? `\n\n[${report.lane === "tauri-wdio" ? "Failure webview frame recording" : "Failure full-screen recording"}](${report.failureVideoUrl})`
                   : "";
                 const logProof = (report.proof || []).find((proof) => proof.kind === "log" && isPublicUrl(proof.url));
                 const logLink = logProof
