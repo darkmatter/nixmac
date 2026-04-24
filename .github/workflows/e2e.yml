@@ -31,6 +31,7 @@ permissions:
   contents: read
   issues: write
   pull-requests: write
+  statuses: write
 
 jobs:
   resolve:
@@ -1489,6 +1490,16 @@ jobs:
                 head_sha: testedCommit,
               });
             }
+            const statusState = checkConclusion === "success" ? "success" : checkConclusion === "cancelled" ? "error" : "failure";
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: testedCommit,
+              state: statusState,
+              target_url: runUrl,
+              description: truncate(`E2E ${status}: ${reason}`, 140),
+              context: "nixmac/e2e",
+            });
 
       - name: Fail gate if needed
         if: steps.result.outputs.conclusion != 'success'
