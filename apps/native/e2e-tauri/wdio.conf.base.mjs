@@ -17,6 +17,59 @@ const APPS_NATIVE_DIR = path.resolve(THIS_DIR, '..');
  */
 export function createWdioConfig({ specs, setupOptions = {} }) {
   let testEnvironment;
+  let teardownPromise = null;
+  let signalHandlersRegistered = false;
+
+  const performTeardownOnce = async () => {
+    if (teardownPromise) {
+      return teardownPromise;
+    }
+
+    teardownPromise = teardownNixmacTestEnvironment(testEnvironment).catch((error) => {
+      console.error('[wdio:test-env] Teardown failed', error);
+      throw error;
+    });
+
+    return teardownPromise;
+  };
+
+  const handleSigint = async () => {
+    console.log('[wdio:test-env] Caught SIGINT, running teardown before exit');
+    try {
+      await performTeardownOnce();
+    } finally {
+      process.exit(130);
+    }
+  };
+
+  const handleSigterm = async () => {
+    console.log('[wdio:test-env] Caught SIGTERM, running teardown before exit');
+    try {
+      await performTeardownOnce();
+    } finally {
+      process.exit(143);
+    }
+  };
+
+  const registerSignalHandlers = () => {
+    if (signalHandlersRegistered) {
+      return;
+    }
+
+    process.once('SIGINT', handleSigint);
+    process.once('SIGTERM', handleSigterm);
+    signalHandlersRegistered = true;
+  };
+
+  const unregisterSignalHandlers = () => {
+    if (!signalHandlersRegistered) {
+      return;
+    }
+
+    process.off('SIGINT', handleSigint);
+    process.off('SIGTERM', handleSigterm);
+    signalHandlersRegistered = false;
+  };
 
   const resolvedSpecs = (Array.isArray(specs) ? specs : [specs]).map((s) =>
     path.resolve(THIS_DIR, s),
@@ -46,9 +99,11 @@ export function createWdioConfig({ specs, setupOptions = {} }) {
     },
     async onPrepare() {
       testEnvironment = await setupNixmacTestEnvironment(setupOptions);
+      registerSignalHandlers();
     },
     async onComplete() {
-      await teardownNixmacTestEnvironment(testEnvironment);
+      unregisterSignalHandlers();
+      await performTeardownOnce();
     },
   };
 }

@@ -17,6 +17,7 @@ import {
 import { constants as fsConstants } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { startMockVllmServer, stopMockVllmServer } from './mock-vllm-server.mjs';
+import { isPlaybackMode } from './vllm-test-mode.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -238,6 +239,11 @@ export async function getConfigRepoGitDiff({ format = 'structured' } = {}) {
 }
 
 export async function setMockVllmResponses({ responseFiles = [], responses = null } = {}) {
+  if (!isPlaybackMode()) {
+    console.log('[wdio:test-env] Skipping setMockVllmResponses because playback mode is disabled');
+    return { skipped: true, reason: 'playback-mode-disabled' };
+  }
+
   const settings = await readJsonFileOrThrow(NIXMAC_SETTINGS_PATH, 'settings');
   const vllmApiBaseUrl = settings?.vllmApiBaseUrl;
 

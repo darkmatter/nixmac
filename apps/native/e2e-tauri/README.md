@@ -39,12 +39,18 @@ Current test files live in `e2e-tauri/tests`.
 ```
 
 - Environment and secrets
-  - If your tests use the vLLM backend, set `VLLM_API_BASE_URL` and `VLLM_API_KEY` in the environment before running the WDIO task (the `setupNixmacTestEnvironment` helper reads those to generate `settings.json`). Example:
+  - WDIO vLLM mode is controlled by `NIXMAC_WDIO_VLLM_MODE`:
+    - `playback` (default): run against fixture-backed mock server.
+    - `real`: bypass mock server and call real vLLM directly.
+  - For `real`, set `VLLM_API_BASE_URL` (and `VLLM_API_KEY` if your backend requires auth) before running tests.
+  - For `playback`, no real vLLM credentials are required.
+  - Example (real mode):
 
 ```bash
+      export NIXMAC_WDIO_VLLM_MODE="real"
       export VLLM_API_BASE_URL="http://example.com/v1"
-      export VLLM_API_KEY="$VLLM_API_KEY"
-      bun run test:wdio:my-feature
+      export VLLM_API_KEY="${VLLM_API_KEY}"
+      bun run test:wdio:modify
 ```
 
 - Test helpers and hooks
@@ -55,6 +61,33 @@ Current test files live in `e2e-tauri/tests`.
 - data-testid's
 
   - When adding new interactive elements you plan to target from E2E tests, add a `data-testid` attribute (or an `id`) to the element in the component source so selectors are stable and readable.
+
+## vLLM Test Modes (Playback / Real)
+
+The suite config for `modify` now supports a mode switch via `NIXMAC_WDIO_VLLM_MODE`:
+
+- `playback`: use fixture responses only.
+- `real`: call real vLLM directly (no recording).
+
+The helper lives in `tests/wdio/helpers/vllm-test-mode.mjs` and is wired into `wdio.modify.conf.mjs`.
+
+### Quick start for `modify.spec`
+
+1. Playback mode (default; no real backend required):
+
+```bash
+  unset NIXMAC_WDIO_VLLM_MODE
+  bun run test:wdio:modify
+```
+
+1. Real mode (no mock, no recording):
+
+```bash
+  export NIXMAC_WDIO_VLLM_MODE="real"
+  export VLLM_API_BASE_URL="http://your-real-vllm.example/v1"
+  export VLLM_API_KEY="${VLLM_API_KEY}"
+  bun run test:wdio:modify
+```
 
 ## Mocking AI Completion Responses
 
@@ -76,10 +109,14 @@ Named presets live in `tests/wdio/helpers/mock-vllm-presets.mjs`:
 ```js
 const MOCK_VLLM_FIXTURE_PRESETS = Object.freeze({
   basicPromptsAddFont: ['add-font.jsonl'],
+  modifySequentialPrompts: ['add-font-add-another.jsonl'],
 });
 ```
 
-Add new presets there as you add new fixture files.
+Add new presets there as you add new fixture files. Current presets include:
+
+- `basicPromptsAddFont`
+- `modifySequentialPrompts`
 
 ### Suite config
 

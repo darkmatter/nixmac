@@ -1,5 +1,6 @@
 import { $, $$, browser } from '@wdio/globals';
 import { expect } from 'chai';
+import { assertDiffContains, assertDiffDoesNotContain } from './git-helpers.mjs';
 
 const ERROR_MESSAGE_SELECTOR = '[data-testid="widget-error-message"]';
 
@@ -25,17 +26,28 @@ async function failIfWidgetErrorPresent() {
 
 async function waitUntilOrFailOnError(condition, options) {
   const { timeout, interval, timeoutMsg } = options;
-  await browser.waitUntil(
-    async () => {
-      await failIfWidgetErrorPresent();
-      return await condition();
-    },
-    {
-      timeout,
-      interval,
-      timeoutMsg,
-    },
-  );
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeout) {
+    // Surface widget errors immediately instead of waiting for timeout.
+    await failIfWidgetErrorPresent();
+
+    let matched = false;
+    try {
+      matched = await condition();
+    } catch {
+      matched = false;
+    }
+
+    if (matched) {
+      return;
+    }
+
+    await browser.pause(interval);
+  }
+
+  await failIfWidgetErrorPresent();
+  expect.fail(timeoutMsg);
 }
 
 async function waitForSelector(selector, { timeout = 15000, interval = 250 } = {}) {
@@ -121,6 +133,13 @@ async function clickWithRetry(selector, { attempts = 12, interval = 250 } = {}) 
       await el.click();
       return;
     } catch (error) {
+      if (
+        error instanceof Error
+        && error.message.includes('Widget error surfaced during test:')
+      ) {
+        throw error;
+      }
+
       lastError = error;
       await browser.pause(interval);
     }
@@ -286,3 +305,6 @@ export async function assertPromptFlowReachedEvolveReview() {
 export async function assertNoWidgetError() {
   await failIfWidgetErrorPresent();
 }
+
+// Re-export git helpers for convenience
+export { assertDiffContains, assertDiffDoesNotContain } from './git-helpers.mjs';
