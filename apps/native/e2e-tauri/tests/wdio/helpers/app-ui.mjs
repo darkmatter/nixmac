@@ -250,6 +250,15 @@ export async function openFeedbackDialog() {
   await waitForSelector('button[aria-label="Send feedback"]');
 }
 
+export async function openHistory() {
+  const historyButtonSelector = 'button[aria-label="History"]';
+  await waitForSelector(historyButtonSelector);
+  await clickWithRetry(historyButtonSelector);
+
+  // Wait for history view to appear
+  await waitForSelector('[data-testid="history-header"]');
+}
+
 export async function assertOnboardingVisible() {
   await waitForSelector('[data-testid="onboarding-welcome-title"]', {
     timeout: 60000,
