@@ -6,9 +6,14 @@ on:
   workflow_dispatch:
     inputs:
       scenario:
-        description: "Scenario to run"
+        description: "Scenario to run, or all"
         required: false
         default: "auto_evolve_basic_package"
+        type: string
+      pr_number:
+        description: "Optional PR number to update with the E2E sticky comment"
+        required: false
+        default: ""
         type: string
 
 concurrency:
@@ -161,13 +166,20 @@ jobs:
 
             if (eventName === "workflow_dispatch") {
               required = true;
-              reason = "manual dispatch";
               const scenario = payload.inputs?.scenario || "auto_evolve_basic_package";
-              const selected = scenarioByName.get(scenario);
-              if (selected?.lane === "full-mac") {
-                addSelection(scenario, "manual dispatch");
+              const normalizedScenario = String(scenario).trim();
+              if (["all", "e2e:all", "*"].includes(normalizedScenario)) {
+                reason = "manual dispatch: all scenarios";
+                for (const scenario of manifest.scenarios) {
+                  addSelection(scenario.name, "manual dispatch: all scenarios");
+                }
               } else {
-                addSelection(scenario, "manual dispatch");
+                reason = `manual dispatch: ${normalizedScenario}`;
+                const selected = scenarioByName.get(normalizedScenario);
+                if (!selected) {
+                  throw new Error(`Unknown E2E scenario for manual dispatch: ${normalizedScenario}`);
+                }
+                addSelection(normalizedScenario, "manual dispatch");
               }
             } else {
               const pr = payload.pull_request;
@@ -293,7 +305,7 @@ jobs:
             writeSelection({
               schemaVersion: 1,
               repo: context.repo.owner + "/" + context.repo.repo,
-              prNumber: payload.pull_request?.number ?? null,
+              prNumber: payload.pull_request?.number ?? (payload.inputs?.pr_number ? Number(payload.inputs.pr_number) : null),
               headSha: payload.pull_request?.head?.sha ?? context.sha,
               baseSha: payload.pull_request?.base?.sha ?? null,
               eventName,
@@ -434,11 +446,11 @@ jobs:
 
       - name: Publish E2E report to R2
         id: publish
-        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: always() && ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'workflow_dispatch' && github.event.inputs.pr_number != ''))
         shell: "sops exec-env ops/secrets/secrets.yaml \"bash -e {0}\""
         env:
           AWS_DEFAULT_REGION: auto
-          REPORT_PREFIX: e2e/pr-${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}
+          REPORT_PREFIX: e2e/pr-${{ github.event.pull_request.number || github.event.inputs.pr_number }}/${{ github.event.pull_request.head.sha || github.sha }}
           SCENARIO: ${{ matrix.scenario }}
         run: |
           export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
@@ -604,7 +616,7 @@ jobs:
       - name: Check full-Mac secrets
         env:
           ADMIN_PASSWORD: ${{ secrets.MAC_E2E_ADMIN_PASSWORD }}
-          GITHUB_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+          GITHUB_PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number || '' }}
           MAC_E2E_HOST: ${{ secrets.MAC_E2E_HOST }}
           MAC_E2E_SSH_KEY: ${{ secrets.MAC_E2E_SSH_KEY }}
           MAC_E2E_USER: ${{ secrets.MAC_E2E_USER }}
@@ -701,7 +713,7 @@ jobs:
             echo "export E2E_BASE_SHA=$(printf '%q' "$E2E_BASE_SHA")"
             echo "export SCENARIO=$(printf '%q' "$SCENARIO")"
             echo "export GITHUB_REPOSITORY=$(printf '%q' "${{ github.repository }}")"
-            echo "export GITHUB_PR_NUMBER=$(printf '%q' "${{ github.event.pull_request.number || 'null' }}")"
+            echo "export GITHUB_PR_NUMBER=$(printf '%q' "${{ github.event.pull_request.number || github.event.inputs.pr_number || 'null' }}")"
             echo "export GITHUB_RUN_ID=$(printf '%q' "${{ github.run_id }}")"
             echo "export GITHUB_RUN_ATTEMPT=$(printf '%q' "${{ github.run_attempt }}")"
             echo "export PATH=/opt/homebrew/bin:\$PATH"
@@ -742,7 +754,7 @@ jobs:
         if: always()
         env:
           COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          GITHUB_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+          GITHUB_PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number || '' }}
           SCENARIO: ${{ matrix.scenario }}
           SSH_STATUS: ${{ steps.ssh-run.outputs.status || 'not-run' }}
         run: |
@@ -860,11 +872,11 @@ jobs:
 
       - name: Publish full-Mac report to R2
         id: publish
-        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: always() && ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'workflow_dispatch' && github.event.inputs.pr_number != ''))
         shell: "sops exec-env ops/secrets/secrets.yaml \"bash -e {0}\""
         env:
           AWS_DEFAULT_REGION: auto
-          REPORT_PREFIX: e2e/pr-${{ github.event.pull_request.number }}/${{ github.event.pull_request.head.sha }}
+          REPORT_PREFIX: e2e/pr-${{ github.event.pull_request.number || github.event.inputs.pr_number }}/${{ github.event.pull_request.head.sha || github.sha }}
           SCENARIO: ${{ matrix.scenario }}
         run: |
           export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
@@ -1028,7 +1040,7 @@ jobs:
             core.setOutput("reason", reason);
 
       - name: Sticky PR comment
-        if: always() && github.event_name == 'pull_request'
+        if: always() && (github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.pr_number != ''))
         uses: actions/github-script@v8
         with:
           script: |
@@ -1040,6 +1052,11 @@ jobs:
             const required = "${{ needs.resolve.outputs.required }}" === "true";
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const artifactRoot = "e2e-artifacts";
+            const prNumber = context.payload.pull_request?.number || Number(context.payload.inputs?.pr_number || 0);
+            const testedCommit = context.payload.pull_request?.head?.sha || context.sha;
+            if (!prNumber) {
+              throw new Error("Sticky PR comment requested without a PR number.");
+            }
 
             function findReports(root) {
               const reports = [];
@@ -1371,7 +1388,7 @@ jobs:
 
             **Coverage note:** ${coverageNote}
 
-            **Tested commit:** \`${context.payload.pull_request.head.sha}\`
+            **Tested commit:** \`${testedCommit}\`
 
             ${attentionSection}
 
@@ -1385,7 +1402,7 @@ jobs:
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
+              issue_number: prNumber,
               per_page: 100,
             });
             const existing = comments.find((comment) => comment.body?.includes(marker));
@@ -1400,7 +1417,7 @@ jobs:
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: context.payload.pull_request.number,
+                issue_number: prNumber,
                 body,
               });
             }
