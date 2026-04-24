@@ -586,16 +586,57 @@ jobs:
           const now = new Date().toISOString();
           const logPath = "/tmp/e2e-full-mac-ssh.log";
           const rawLog = fs.existsSync(logPath) ? fs.readFileSync(logPath, "utf8") : "";
-          const sanitize = (value) => String(value || "")
+          const redactSecrets = (value) => String(value || "")
             .replace(/x-access-token:[^@\s]+@/g, "x-access-token:[redacted]@")
             .replace(/gh[pousr]_[A-Za-z0-9_]+/g, "[redacted-github-token]")
             .replace(/github_pat_[A-Za-z0-9_]+/g, "[redacted-github-token]")
+            .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [redacted]")
+            .replace(/(ADMIN_PASSWORD=)[^\s]+/g, "$1[redacted]");
+          const flattenForInline = (value) => redactSecrets(value)
             .replace(/[\r\n|]+/g, " ")
             .replace(/\s+/g, " ")
             .trim()
             .slice(0, 1600);
+          const diagnosticLines = (value) => redactSecrets(value)
+            .replace(/\r\n?/g, "\n")
+            .replace(/\s+(\[[a-z]+\]\s+)/gi, "\n$1")
+            .replace(/\s+(?=(?:ERROR|Error|error|fatal|Failed|failed|End-of-central-directory|unzip:|find:|bash:)\b)/g, "\n")
+            .split("\n")
+            .map((line) => line.replace(/\s+/g, " ").trim())
+            .filter(Boolean);
+          const isSignalLine = (line) => /(\bERROR\b|\berror\b|\bfatal\b|\bfailed\b|No \.app bundle|End-of-central-directory|cannot find zipfile|Terminated:|timed out|Missing full-Mac E2E GitHub secrets)/i.test(line);
+          const summarizeError = (value) => {
+            const lines = diagnosticLines(value);
+            const signals = lines.filter(isSignalLine);
+            const summaryLine = signals.at(-1) || lines.at(-1) || "";
+            const summary = summaryLine
+              .replace(/^\[[a-z]+\]\s+/i, "")
+              .replace(/^(?:ERROR|Error|error):\s*/, "")
+              .trim();
+            return summary.length > 220 ? `${summary.slice(0, 217)}...` : summary;
+          };
           const status = process.env.SSH_STATUS || "not-run";
-          const error = sanitize(rawLog) || `Full-Mac runner did not produce e2e-report.json (SSH status: ${status})`;
+          const redactedLog = redactSecrets(rawLog).trim();
+          const scenarioDir = path.join("apps/native/e2e-tauri/artifacts", scenario);
+          fs.mkdirSync(scenarioDir, { recursive: true });
+          const logRelPath = redactedLog ? `${scenario}/full-mac-ssh.log` : null;
+          if (redactedLog) {
+            fs.writeFileSync(path.join(scenarioDir, "full-mac-ssh.log"), `${redactedLog}\n`);
+          }
+          const error = summarizeError(rawLog)
+            || flattenForInline(rawLog)
+            || `Full-Mac runner did not produce e2e-report.json (SSH status: ${status})`;
+          const logProof = logRelPath ? [{
+            kind: "log",
+            path: logRelPath,
+            url: null,
+            thumbnailUrl: null,
+            timestampMs: null,
+            phase: "Full-Mac SSH runner",
+            caption: "Full-Mac SSH diagnostic log",
+            isPrimary: true,
+            isFailureProof: true,
+          }] : [];
           const report = {
             schemaVersion: 1,
             repo: process.env.GITHUB_REPOSITORY || "darkmatter/nixmac",
@@ -628,13 +669,13 @@ jobs:
               finishedAt: now,
               durationMs: 0,
               assertions: ["Reach the configured Mac runner over SSH and collect scenario artifacts"],
-              proof: [],
+              proof: logProof,
               error,
             }],
-            proof: [],
+            proof: logProof,
           };
           fs.writeFileSync(
-            path.join("apps/native/e2e-tauri/artifacts", scenario, "e2e-report.json"),
+            path.join(scenarioDir, "e2e-report.json"),
             `${JSON.stringify(report, null, 2)}\n`,
           );
           NODE
@@ -881,6 +922,77 @@ jobs:
               return markdownText(value) || "";
             }
 
+            const captureLimitationLabels = new Map([
+              ["full_mac_runner_unavailable", "Full-Mac runner was unreachable or did not produce a scenario report"],
+              ["screen_recording_invalid", "Screen recording was produced but failed validation"],
+              ["screen_recording_missing", "No screen recording was captured for this run"],
+            ]);
+
+            function humanizeCaptureLimitation(value) {
+              const raw = String(value || "").trim();
+              return captureLimitationLabels.get(raw) || raw.replaceAll("_", " ");
+            }
+
+            function normalizeDiagnosticText(value) {
+              return String(value || "").replace(/\r\n?/g, "\n").trim();
+            }
+
+            function diagnosticLines(value) {
+              return normalizeDiagnosticText(value)
+                .replace(/\s+(\[[a-z]+\]\s+)/gi, "\n$1")
+                .replace(/\s+(?=(?:ERROR|Error|error|fatal|Failed|failed|End-of-central-directory|unzip:|find:|bash:)\b)/g, "\n")
+                .split("\n")
+                .map((line) => line.replace(/\s+/g, " ").trim())
+                .filter(Boolean);
+            }
+
+            function isSignalLine(line) {
+              return /(\bERROR\b|\berror\b|\bfatal\b|\bfailed\b|No \.app bundle|End-of-central-directory|cannot find zipfile|Terminated:|timed out|Missing full-Mac E2E GitHub secrets)/i.test(line);
+            }
+
+            function truncate(value, maxLength) {
+              const text = String(value || "");
+              return text.length > maxLength ? `${text.slice(0, maxLength - 3)}...` : text;
+            }
+
+            function summarizeError(error) {
+              const raw = normalizeDiagnosticText(error);
+              if (!raw) {
+                return { summary: "No error message captured.", signals: [] };
+              }
+              const lines = diagnosticLines(raw);
+              const signals = lines.filter(isSignalLine);
+              const summaryLine = signals.at(-1) || lines.at(-1) || raw;
+              const summary = summaryLine
+                .replace(/^\[[a-z]+\]\s+/i, "")
+                .replace(/^(?:ERROR|Error|error):\s*/, "")
+                .trim();
+              return {
+                summary: summary.length > 220 ? `${summary.slice(0, 217)}...` : summary,
+                signals: signals.slice(-3).map((line) => truncate(line, 180)),
+              };
+            }
+
+            function nextActionForError(error, report) {
+              const text = String(error || "");
+              if (/Missing full-Mac E2E GitHub secrets/i.test(text)) {
+                return "Add the missing MAC_E2E_* GitHub secrets, then rerun the E2E gate.";
+              }
+              if (/No \.app bundle in artifact|End-of-central-directory|cannot find zipfile/i.test(text)) {
+                return "Verify the Build macOS App artifact for this commit, then rerun once artifact download and extraction succeed.";
+              }
+              if (/Full-Mac runner did not produce|full_mac_runner_unavailable|SSH status/i.test(text)) {
+                return "Check the configured Mac runner reachability and scenario log, then rerun the full-Mac lane.";
+              }
+              if (/screen_recording_(invalid|missing)|recording/i.test(text)) {
+                return "Inspect screenshots and confirm Screen Recording permission on the Mac runner.";
+              }
+              if (report.htmlReportUrl) {
+                return "Open the full report and workflow logs for the failing phase, then rerun the replay command after fixing the cause.";
+              }
+              return "Inspect the workflow logs for the failing phase, then rerun the replay command after fixing the cause.";
+            }
+
             function primaryProofLabel(report) {
               const proofs = report.proof || [];
               const primary = proofs.find((proof) => proof.kind === "video" && proof.isPrimary)
@@ -895,6 +1007,9 @@ jobs:
               if (primary?.kind === "screenshot") {
                 return "Screenshot";
               }
+              if (primary?.kind === "log") {
+                return "Diagnostic log";
+              }
               return "Proof";
             }
 
@@ -908,7 +1023,7 @@ jobs:
                     const proof = isPublicUrl(proofUrl)
                       ? linkOrArtifact(proofUrl, primaryProofLabel(report))
                       : publicOrArtifact(proofUrl);
-                    const reportUrl = publicOrArtifact(report.htmlReportUrl);
+                    const reportUrl = linkOrArtifact(report.htmlReportUrl, "Report");
                     const replay = report.replayCommand ? "`" + markdownCode(report.replayCommand) + "`" : "";
                     return "| `" + markdownCode(report.scenario) + "` | " + tableCell(report.lane) + " | **" + tableCell(report.status) + "** | " + tableCell(reportUrl) + " | " + tableCell(proof) + " | " + tableCell(replay) + " |";
                   }),
@@ -921,11 +1036,15 @@ jobs:
               .map((report) => {
                 const phase = (report.phases || []).find((item) => item.status !== "passed");
                 const heading = `### Failure: \`${markdownCode(report.scenario)}\``;
+                const analysis = summarizeError(phase?.error);
                 const phaseText = phase
-                  ? `**Phase:** ${markdownText(phase.name)}\n\n**Error:** ${markdownText(phase.error || "No error captured")}`
+                  ? `**Phase:** ${markdownText(phase.name)}\n\n**What happened:** ${markdownText(analysis.summary)}\n\n**Next action:** ${markdownText(nextActionForError(phase.error, report))}`
                   : "**Error:** No failing phase captured";
                 const limitations = report.captureLimitations?.length
-                  ? `\n\n**Capture limitations:** ${markdownText(report.captureLimitations.join(", "))}`
+                  ? `\n\n**Capture limitations:** ${markdownText(report.captureLimitations.map(humanizeCaptureLimitation).join(", "))}`
+                  : "";
+                const signals = analysis.signals.length > 1
+                  ? `\n\n**Diagnostic signal:** ${markdownText(analysis.signals.join(" | "))}`
                   : "";
                 const image = isPublicUrl(report.failureScreenshotUrl)
                   ? `\n\n![Failure proof](${report.failureScreenshotUrl})`
@@ -933,10 +1052,14 @@ jobs:
                 const videoLink = isPublicUrl(report.failureVideoUrl)
                   ? `\n\n[${report.lane === "tauri-wdio" ? "Failure video (webview flow recording)" : "Failure screen recording"}](${report.failureVideoUrl})`
                   : "";
+                const logProof = (report.proof || []).find((proof) => proof.kind === "log" && isPublicUrl(proof.url));
+                const logLink = logProof
+                  ? `\n\n[Diagnostic log](${logProof.url})`
+                  : "";
                 const reportLink = isPublicUrl(report.htmlReportUrl)
                   ? `\n\n[Full HTML report](${report.htmlReportUrl})`
                   : "";
-                return `${heading}\n\n${phaseText}${limitations}${image}${videoLink}${reportLink}`;
+                return `${heading}\n\n${phaseText}${limitations}${signals}${image}${videoLink}${logLink}${reportLink}`;
               })
               .join("\n\n");
 
