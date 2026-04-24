@@ -1,1 +1,3 @@
 artifacts/
+# process-compose in this directory is helpful for end-to-end testing
+!/process-compose.yaml

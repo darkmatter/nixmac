@@ -133,6 +133,7 @@ brew install steipete/tap/peekaboo gh ffmpeg
 # Install Peekaboo.app and grant permissions:
 #   System Settings → Privacy & Security → Screen Recording → Peekaboo ✓
 #   System Settings → Privacy & Security → Accessibility → Peekaboo ✓
+#   System Settings → Privacy & Security → Screen Recording → Terminal ✓
 curl -L -o /tmp/Peekaboo.app.zip \
   "https://github.com/steipete/Peekaboo/releases/latest/download/Peekaboo.app.zip"
 sudo unzip -o /tmp/Peekaboo.app.zip -d /Applications/
@@ -156,22 +157,27 @@ sudo -n whoami                 # "root"
 
 The workflow (`.github/workflows/e2e.yml`) resolves required scenarios from PR labels and changed paths.
 
-### Secrets (via SOPS)
+### Secrets
 
-Only one GitHub Secret needed:
+Full-Mac CI uses direct GitHub Secrets for the remote runner. `SOPS_AGE_KEY` is still required by shared workflow setup.
 
-| Secret | Description |
-|--------|-------------|
-| `SOPS_AGE_KEY` | age private key to decrypt `ops/secrets/e2e.enc.yaml` |
+| Secret                   | Description                                                |
+| ------------------------ | ---------------------------------------------------------- |
+| `MAC_E2E_HOST`           | Remote macOS runner host or IP address                     |
+| `MAC_E2E_USER`           | SSH user for the remote macOS runner                       |
+| `MAC_E2E_SSH_KEY`        | Private SSH key with access to the remote macOS runner     |
+| `MAC_E2E_ADMIN_PASSWORD` | Admin password used by install/uninstall flows when needed |
+| `SOPS_AGE_KEY`           | age private key to decrypt `ops/secrets/e2e.enc.yaml`      |
 
 ### Outputs
 
-| Artifact | Path |
-|----------|------|
-| Screen recording | `/tmp/e2e-recording.mp4` |
-| Screenshots | `/tmp/e2e-screenshots/` |
-| Test log | `/tmp/e2e-test.log` |
-| JSON results | `/tmp/e2e-test-results.json` |
+| Artifact         | Path                         |
+| ---------------- | ---------------------------- |
+| Screen recording | `/tmp/e2e-recording.mp4`     |
+| Screenshots      | `/tmp/e2e-screenshots/`      |
+| Test log         | `/tmp/e2e-test.log`          |
+| JSON results     | `/tmp/e2e-test-results.json` |
+
 
 ## Limitations
 
