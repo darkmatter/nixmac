@@ -12,6 +12,9 @@ type DirectoryPickerProps = {
   subLabel?: string;
 };
 
+const INITIAL_HINT =
+  "Select your own, or proceed below for defaults";
+
 export function DirectoryPicker({ label, subLabel }: DirectoryPickerProps) {
   const configDir = useWidgetStore((state) => state.configDir);
   const { pickDir, setDir } = useDarwinConfig();
@@ -83,11 +86,15 @@ export function DirectoryPicker({ label, subLabel }: DirectoryPickerProps) {
     }
   }
 
+  function validateOrInitial(path: string | undefined, fallback: string): void {
+    setValidationMessage(path?.endsWith("/.darwin") ? INITIAL_HINT : fallback);
+  }
+
   async function validateDirectoryExists(path: string): Promise<boolean> {
     try {
       const exists = await darwinAPI.path.exists(path);
       if (!exists) {
-        setValidationMessage(`Directory does not exist: ${path}`);
+        validateOrInitial(path, `Directory does not exist: ${path}`);
         return false;
       }
 
@@ -107,7 +114,7 @@ export function DirectoryPicker({ label, subLabel }: DirectoryPickerProps) {
         return true;
       }
 
-      setValidationMessage("flake.nix not found in this directory");
+      validateOrInitial(path, "flake.nix not found in this directory");
       return false;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
@@ -140,7 +147,11 @@ export function DirectoryPicker({ label, subLabel }: DirectoryPickerProps) {
             Browse
           </Button>
         </div>
-        {validationMessage && <p className="text-rose-300 text-xs">{validationMessage}</p>}
+        {validationMessage && (
+          <p className={`text-xs ${validationMessage === INITIAL_HINT ? "text-teal-300" : "text-rose-300"}`}>
+            {validationMessage}
+          </p>
+        )}
         <p className="text-muted-foreground text-xs">
           Press ⌘+⇧+. when browsing to show hidden folders like{" "}
           <code className="rounded bg-muted px-1">.darwin</code>

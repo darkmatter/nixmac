@@ -25,6 +25,24 @@ fn capture_err<E: std::fmt::Display>(cmd: &str, e: E) -> String {
     e.to_string()
 }
 
+/// Initializes app state after switching to a new config directory:
+/// caches git status, starts the file watcher, resets evolve state, and lists hosts.
+fn handle_new_config_dir(
+    app: &AppHandle,
+    dir: &str,
+) -> Result<(shared_types::EvolveState, Option<Vec<String>>), String> {
+    let git_status = git::status(dir).ok();
+    let changes = git_status.as_ref().map(|s| s.changes.clone()).unwrap_or_default();
+    if let Some(ref s) = git_status {
+        let _ = store::set_cached_git_status(app, s);
+    }
+    watcher::start_watching(app.clone(), dir.to_string(), 2500);
+    let evolve_state = evolve_state::set(app, shared_types::EvolveState::default(), &changes)
+        .map_err(|e| e.to_string())?;
+    let hosts = nix::list_darwin_hosts(dir).ok();
+    Ok((evolve_state, hosts))
+}
+
 // =============================================================================
 // Configuration Commands
 // =============================================================================
@@ -80,16 +98,9 @@ pub async fn config_set_dir(
         .map_err(|e| capture_err("config_set_dir", e))?;
 
     let (evolve_state, hosts) = if prev_dir.as_deref() != Some(&new_dir) {
-        let git_status = git::status(&new_dir).ok();
-        let changes = git_status.as_ref().map(|s| s.changes.clone()).unwrap_or_default();
-        if let Some(ref s) = git_status {
-            let _ = store::set_cached_git_status(&app, s);
-        }
-        watcher::start_watching(app.clone(), new_dir.clone(), 2500);
-        let evolve_state = evolve_state::set(&app, shared_types::EvolveState::default(), &changes)
+        let (es, hosts) = handle_new_config_dir(&app, &new_dir)
             .map_err(|e| capture_err("config_set_dir", e))?;
-        let hosts = nix::list_darwin_hosts(&new_dir).ok();
-        (Some(evolve_state), hosts)
+        (Some(es), hosts)
     } else {
         (None, None)
     };
@@ -121,16 +132,9 @@ pub async fn config_pick_dir(
         store::set_config_dir(&app, &dir).map_err(|e| capture_err("config_pick_dir", e))?;
         store::ensure_config_dir_exists(&app).map_err(|e| capture_err("config_pick_dir", e))?;
         let (evolve_state, hosts) = if dir != prev_dir {
-            let git_status = git::status(&dir).ok();
-            let changes = git_status.as_ref().map(|s| s.changes.clone()).unwrap_or_default();
-            if let Some(ref s) = git_status {
-                let _ = store::set_cached_git_status(&app, s);
-            }
-            watcher::start_watching(app.clone(), dir.clone(), 2500);
-            let evolve_state = evolve_state::set(&app, shared_types::EvolveState::default(), &changes)
+            let (es, hosts) = handle_new_config_dir(&app, &dir)
                 .map_err(|e| capture_err("config_pick_dir", e))?;
-            let hosts = nix::list_darwin_hosts(&dir).ok();
-            (Some(evolve_state), hosts)
+            (Some(es), hosts)
         } else {
             (None, None)
         };
