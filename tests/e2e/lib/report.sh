@@ -77,7 +77,6 @@ e2e_report_write() {
             if echo "$caption" | grep -qi "failure\\|error\\|failed"; then
                 is_failure=true
             fi
-            [ -z "$primary_proof" ] && primary_proof="$rel"
             if [ "$is_failure" = true ] && [ -z "$failure_proof" ]; then
                 failure_proof="$rel"
                 failure_screenshot="$rel"
@@ -94,7 +93,7 @@ e2e_report_write() {
                     timestampMs: null,
                     phase: "macos-e2e",
                     caption: $caption,
-                    isPrimary: (length == 0),
+                    isPrimary: false,
                     isFailureProof: $isFailure
                 }]')
         done < <(find "$E2E_SCREENSHOT_DIR" -type f -name "*.png" | sort)
@@ -105,7 +104,7 @@ e2e_report_write() {
         video_dest="$scenario_dir/$(basename "$E2E_VIDEO_FILE")"
         cp "$E2E_VIDEO_FILE" "$video_dest"
         video_rel="$scenario/$(basename "$E2E_VIDEO_FILE")"
-        [ -z "$primary_proof" ] && primary_proof="$video_rel"
+        primary_proof="$video_rel"
         if [ "$status" != "passed" ]; then
             failure_video="$video_rel"
             [ -z "$failure_proof" ] && failure_proof="$video_rel"
@@ -121,9 +120,16 @@ e2e_report_write() {
                 timestampMs: null,
                 phase: "macos-e2e",
                 caption: "Full screen recording",
-                isPrimary: (length == 0),
+                isPrimary: true,
                 isFailureProof: $isFailure
             }]')
+    fi
+
+    if [ -z "$primary_proof" ]; then
+        primary_proof=$(echo "$proof_json" | jq -r '.[0].path // empty')
+        if [ -n "$primary_proof" ]; then
+            proof_json=$(echo "$proof_json" | jq 'if length > 0 then .[0].isPrimary = true else . end')
+        fi
     fi
 
     local started_at finished_at duration_ms

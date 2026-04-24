@@ -167,7 +167,7 @@ Full-Mac CI uses direct GitHub Secrets for the remote runner. `SOPS_AGE_KEY` is 
 | `MAC_E2E_USER`           | SSH user for the remote macOS runner                       |
 | `MAC_E2E_SSH_KEY`        | Private SSH key with access to the remote macOS runner     |
 | `MAC_E2E_ADMIN_PASSWORD` | Admin password used by install/uninstall flows when needed |
-| `SOPS_AGE_KEY`           | age private key to decrypt `ops/secrets/e2e.enc.yaml`      |
+| `SOPS_AGE_KEY`           | age private key to decrypt `ops/secrets/secrets.yaml`      |
 
 ### Outputs
 
