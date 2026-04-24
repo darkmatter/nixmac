@@ -222,30 +222,37 @@ jobs:
                   if (requestedReleaseSmoke) {
                     addSelection("release_dmg_app_translocation_smoke", "e2e:release-smoke label");
                   }
-                  if (touchedNative && requestedScenarioLabels.length === 0) {
+                  if (touchedNative) {
                     for (const name of defaultTauriScenarios) {
-                      addSelection(name, "runtime/native paths changed");
+                      addSelection(name, "standard hosted PR pack for native/runtime changes");
                     }
                   }
                   for (const { scenario, files } of impactedScenarios) {
                     if (scenario.lane === "full-mac") {
-                      addSelection(scenario.name, "matched full-Mac change pattern", files);
-                    } else if (selectionReasons.has(scenario.name)) {
-                      addSelection(scenario.name, "matched PR change pattern", files);
+                      addSelection(scenario.name, "adversarial full-Mac focus: matched PR files", files);
+                    } else {
+                      addSelection(scenario.name, "adversarial focus: matched PR files", files);
                     }
                   }
 
                   const requestedLabelNames = requestedScenarioLabels.map(([label]) => label);
-                  if (requestedScenarioLabels.length > 0) {
+                  const hasFullMacSelection = [...selectionReasons.keys()].some((name) => scenarioByName.get(name)?.lane === "full-mac");
+                  if (touchedNative && requestedScenarioLabels.length > 0) {
+                    reason = `required: runtime/native paths changed; scenario label present (${requestedLabelNames.join(", ")})`;
+                  } else if (requestedScenarioLabels.length > 0) {
                     reason = `required: scenario label present (${requestedLabelNames.join(", ")})`;
+                  } else if (touchedNative && requestedMac) {
+                    reason = "required: runtime/native paths changed; full-Mac E2E label present (e2e:mac)";
                   } else if (requestedMac) {
                     reason = "required: full-Mac E2E label present (e2e:mac)";
+                  } else if (touchedNative && requestedReleaseSmoke) {
+                    reason = "required: runtime/native paths changed; full-Mac E2E label present (e2e:release-smoke)";
                   } else if (requestedReleaseSmoke) {
                     reason = "required: full-Mac E2E label present (e2e:release-smoke)";
-                  } else if ([...selectionReasons.keys()].some((name) => scenarioByName.get(name)?.lane === "full-mac")) {
+                  } else if (hasFullMacSelection) {
                     reason = touchedNative
-                      ? "required: runtime/native paths changed; full-Mac scenario matched PR files"
-                      : "required: full-Mac scenario matched PR files";
+                      ? "required: runtime/native paths changed; adversarial full-Mac focus matched PR files"
+                      : "required: adversarial full-Mac focus matched PR files";
                   } else if (touchedNative) {
                     reason = "required: runtime/native paths changed";
                   }
@@ -265,17 +272,24 @@ jobs:
             const attention = manifest.scenarios
               .filter((scenario) => (matchedFilesByScenario.get(scenario.name)?.size || 0) > 0)
               .map(scenarioDigest);
+            const standardPackRan = defaultTauriScenarios.length > 0
+              && defaultTauriScenarios.every((name) =>
+                selectionReasons.get(name)?.has("standard hosted PR pack for native/runtime changes")
+              );
+            const hasE2eLabels = e2eLabelsOnly(labels).length > 0;
             const selectionMode = !required
               ? "not-required"
               : labels.includes("e2e:all")
                 ? "all-label"
-                : e2eLabelsOnly(labels).some((label) => label.startsWith("e2e:scenario:"))
-                  ? "scenario-label"
-                  : labels.includes("e2e:mac") || labels.includes("e2e:release-smoke")
-                    ? "full-mac-label"
-                    : eventName === "workflow_dispatch"
-                      ? "manual"
-                      : "pr-default";
+                : standardPackRan && hasE2eLabels
+                  ? "pr-default-plus-label"
+                  : e2eLabelsOnly(labels).some((label) => label.startsWith("e2e:scenario:"))
+                    ? "scenario-label"
+                    : labels.includes("e2e:mac") || labels.includes("e2e:release-smoke")
+                      ? "full-mac-label"
+                      : eventName === "workflow_dispatch"
+                        ? "manual"
+                        : "pr-default";
             writeSelection({
               schemaVersion: 1,
               repo: context.repo.owner + "/" + context.repo.repo,
@@ -297,9 +311,11 @@ jobs:
               },
               selected: selectedScenarioDigests,
               attention,
+              standardPackRan,
+              adversarialFocusCount: attention.length,
               changedFileCount: changed.length,
               changedFileSample: changed.slice(0, 12),
-              note: "This is a targeted smoke/regression gate, not an exhaustive UI crawler.",
+              note: "Standard E2E runs first; PR-matched risk areas are called out as adversarial focus. This is not an exhaustive UI crawler.",
             });
 
             core.setOutput("required", required ? "true" : "false");
@@ -1166,7 +1182,10 @@ jobs:
               const mode = selection?.selectionMode || "unknown";
               const detail = `${selected.length || reports.length}/${total} configured scenarios (${tauriSelected}/${tauriTotal} hosted, ${macSelected}/${macTotal} full-Mac)`;
               if (mode === "all-label") {
-                return `Ran all configured scenarios: ${detail}.`;
+                return `Ran all configured scenarios: ${detail}. PR-matched files are called out below as adversarial focus.`;
+              }
+              if (mode === "pr-default-plus-label") {
+                return `Ran the standard hosted PR pack, requested label scope, and any matched full-Mac/adversarial scenarios: ${detail}.`;
               }
               if (mode === "scenario-label" || mode === "full-mac-label") {
                 return `Ran requested E2E label scope: ${detail}.`;
@@ -1174,7 +1193,7 @@ jobs:
               if (mode === "manual") {
                 return `Ran manually dispatched scenario scope: ${detail}.`;
               }
-              return `Ran PR-default hosted pack plus any matched full-Mac scenarios: ${detail}.`;
+              return `Ran the standard hosted PR pack plus any matched full-Mac/adversarial scenarios: ${detail}.`;
             }
 
             function markdownList(items) {
@@ -1183,7 +1202,7 @@ jobs:
                 .join("\n");
             }
 
-            function renderPrAttention(selection) {
+            function renderAdversarialFocus(selection) {
               if (!selection) return "";
               const changedCount = formatCount(selection.changedFileCount);
               const attention = selection.attention || [];
@@ -1192,8 +1211,11 @@ jobs:
               const sampleText = sample.length
                 ? `\n\n<details><summary>Changed files sampled (${sample.length}${changedCount > sample.length ? ` of ${changedCount}` : ""})</summary>\n\n${markdownList(sampleItems)}\n\n</details>`
                 : "";
+              const runModel = selection.standardPackRan
+                ? "The standard hosted PR pack still ran; labels and path matches are additive focus, not a replacement."
+                : "The selected E2E scope ran; labels and path matches define the focus for this run.";
               if (!attention.length) {
-                return `### PR Attention\n\nChanged files considered: **${changedCount}**. No scenario-specific path match beyond the selected default/label scope.${sampleText}`;
+                return `### Adversarial PR Focus\n\n${runModel}\n\nChanged files considered: **${changedCount}**. No scenario-specific path match beyond the selected scope.${sampleText}`;
               }
               const lines = attention.map((scenario) => {
                 const matched = (scenario.matchedFiles || []).slice(0, 4);
@@ -1206,7 +1228,7 @@ jobs:
                   : "";
                 return `- **${markdownText(scenario.title || scenario.name)}**: ${markdownText(scenario.summary)}${files}${gaps}`;
               });
-              return `### PR Attention\n\nChanged files considered: **${changedCount}**. Scenario-specific matches:\n\n${lines.join("\n")}${sampleText}`;
+              return `### Adversarial PR Focus\n\n${runModel}\n\nChanged files considered: **${changedCount}**. Scenario-specific risk matches:\n\n${lines.join("\n")}${sampleText}`;
             }
 
             function summarizeError(error) {
@@ -1302,7 +1324,7 @@ jobs:
                   : "";
                 const matchedFileList = (meta.matchedFiles || []).map((file) => "`" + markdownCode(file) + "`").join(", ");
                 const matchedFiles = (meta.matchedFiles || []).length
-                  ? `\n\n**Relevant PR files:** ${markdownText(matchedFileList)}`
+                  ? `\n\n**Adversarial focus files:** ${markdownText(matchedFileList)}`
                   : "";
                 const phaseText = phase
                   ? `**Phase:** ${markdownText(phase.name)}\n\n**What happened:** ${markdownText(analysis.summary)}\n\n**Next action:** ${markdownText(nextActionForError(phase.error, report))}`
@@ -1333,8 +1355,8 @@ jobs:
               })
               .join("\n\n");
             const scope = formatScope(selection, reports, required);
-            const attentionSection = renderPrAttention(selection);
-            const coverageNote = selection?.note || "This is a targeted smoke/regression gate, not an exhaustive UI crawler.";
+            const attentionSection = renderAdversarialFocus(selection);
+            const coverageNote = selection?.note || "Standard E2E runs first; PR-matched risk areas are called out as adversarial focus. This is not an exhaustive UI crawler.";
 
             const body = `${marker}
             ## nixmac E2E

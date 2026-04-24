@@ -186,7 +186,7 @@ function renderScenarioScope(metadata) {
           ${renderBullets(metadata.coverage)}
         </div>
         <div>
-          <strong>Known gaps</strong>
+          <strong>Known gaps / not covered</strong>
           ${renderBullets(metadata.knownGaps)}
         </div>
       </div>
