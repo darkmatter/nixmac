@@ -58,6 +58,9 @@ Current test files live in `e2e-tauri/tests`.
 
   - Use the existing dev-only test hook pattern when you need to drive or observe app state from WDIO: the app exposes `window.__testWidget` in DEV builds (see `src/utils/widget-test-helpers.ts`). Helpers include `setEvolvePrompt()`, `isEvolveProcessing()`, and `getPromptHistory()` — call them via `browser.execute(...)` from your WDIO helpers.
   - Prefer using store-driven helpers (above) over DOM event hacks — they are faster and more reliable for React+Zustand apps running in Tauri webviews (noting that we cannot use React Testing Library in a Tauri app unfortunately).
+  - New prompt-suite helpers in `tests/wdio/helpers/app-ui.mjs`:
+    - `preparePromptTestCase(...)`: reset UI state + load mock responses for one test case.
+    - `registerPromptSuiteBeforeEach(...)`: suite-level per-test-case fixture mapping.
 
 - data-testid's
 
@@ -130,10 +133,7 @@ const MOCK_VLLM_FIXTURE_PRESETS = Object.freeze({
 });
 ```
 
-Add new presets there as you add new fixture files. Current presets include:
-
-- `basicPromptsAddFont`
-- `modifySequentialPrompts`
+Add new presets there as you add new fixture files.
 
 ### Suite config
 
@@ -153,7 +153,7 @@ export const config = createWdioConfig({
 
 ### Inside a test
 
-Load responses at the top of each `it` block before triggering any UI action that will cause the app to call the LLM:
+For single-test suites, load responses at the top of each `it` block before triggering any UI action that will cause the app to call the LLM:
 
 ```js
 import { setMockVllmResponses } from './helpers/test-env.mjs';
@@ -172,6 +172,35 @@ You can also pass raw response objects instead of files (but this isn't recommen
 
 ```js
 await setMockVllmResponses({ responses: [/* ...objects... */] });
+```
+
+### Multi-test case suite pattern (recommended)
+
+Use one `describe` with a fixture map so each test gets clean state and its own mock queue:
+
+```js
+import {
+  registerPromptSuiteBeforeEach,
+  submitPromptMessage,
+} from './helpers/app-ui.mjs';
+import { getMockVllmFixturePreset } from './helpers/mock-vllm-presets.mjs';
+
+describe('my prompt suite', () => {
+  registerPromptSuiteBeforeEach({
+    fixtureByTestTitle: {
+      'test A': getMockVllmFixturePreset('basicPromptsAddFont'),
+      'test B': getMockVllmFixturePreset('basicPromptsConfigureScreenshots'),
+    },
+  });
+
+  it('test A', async () => {
+    await submitPromptMessage('...');
+  });
+
+  it('test B', async () => {
+    await submitPromptMessage('...');
+  });
+});
 ```
 
 ### Caveats

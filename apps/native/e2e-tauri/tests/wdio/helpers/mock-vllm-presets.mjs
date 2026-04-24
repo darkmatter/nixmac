@@ -1,5 +1,6 @@
 const MOCK_VLLM_FIXTURE_PRESETS = Object.freeze({
   basicPromptsAddFont: ['add-font.jsonl'],
+  basicPromptsConfigureScreenshots: ['configure-screenshots.jsonl'],
   modifySequentialPrompts: ['add-font-add-another.jsonl'],
 });
 

@@ -4,12 +4,11 @@ import {
   assertReturnedToInitialPromptScreen,
   clickDiscardAndCancel,
   clickDiscardAndConfirm,
+  registerPromptSuiteBeforeEach,
   submitPromptMessage,
-  waitForFirstWindow,
 } from './helpers/app-ui.mjs';
 import {
   getConfigRepoGitDiff,
-  setMockVllmResponses,
 } from './helpers/test-env.mjs';
 import { getMockVllmFixturePreset } from './helpers/mock-vllm-presets.mjs';
 import { expect, use } from 'chai';
@@ -18,13 +17,16 @@ import chaiAsPromised from 'chai-as-promised';
 use(chaiAsPromised);
 
 describe('discard', () => {
+  registerPromptSuiteBeforeEach({
+    fixtureByTestTitle: {
+      'submits a prompt, reaches evolve review, then discards and returns to initial state':
+        getMockVllmFixturePreset('basicPromptsAddFont'),
+      'submits a prompt, reaches evolve review, then cancels discard and stays on review':
+        getMockVllmFixturePreset('basicPromptsAddFont'),
+    },
+  });
+
   it('submits a prompt, reaches evolve review, then discards and returns to initial state', async () => {
-    await setMockVllmResponses({
-      responseFiles: getMockVllmFixturePreset('basicPromptsAddFont'),
-    });
-
-    await waitForFirstWindow();
-
     await submitPromptMessage('add a new programming font to my system');
 
     await assertPromptFlowReachedEvolveReview();
@@ -39,12 +41,6 @@ describe('discard', () => {
   });
 
   it('submits a prompt, reaches evolve review, then cancels discard and stays on review', async () => {
-    await setMockVllmResponses({
-      responseFiles: getMockVllmFixturePreset('basicPromptsAddFont'),
-    });
-
-    await waitForFirstWindow();
-
     await submitPromptMessage('add a new programming font to my system');
 
     await assertPromptFlowReachedEvolveReview();

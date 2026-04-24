@@ -1,6 +1,7 @@
 import { $, $$, browser } from '@wdio/globals';
 import { expect } from 'chai';
 import { assertDiffContains, assertDiffDoesNotContain } from './git-helpers.mjs';
+import { setMockVllmResponses } from './test-env.mjs';
 
 const ERROR_MESSAGE_SELECTOR = '[data-testid="widget-error-message"]';
 
@@ -66,6 +67,15 @@ async function waitForSelector(selector, { timeout = 15000, interval = 250 } = {
       timeoutMsg: `Timed out waiting for selector: ${selector}`,
     },
   );
+}
+
+async function elementExists(selector) {
+  try {
+    const element = await $(selector);
+    return await element.isExisting();
+  } catch {
+    return false;
+  }
 }
 
 export async function clickDiscardAndConfirm() {
@@ -175,6 +185,52 @@ export async function waitForFirstWindow(options = {}) {
   const handles = await browser.getWindowHandles();
   await browser.switchToWindow(handles[0]);
   return handles;
+}
+
+export async function resetPromptWorkflowState() {
+  await waitForFirstWindow();
+
+  if (await elementExists('[data-testid="evolve-discard-button"]')) {
+    await clickDiscardAndConfirm();
+    await assertReturnedToInitialPromptScreen();
+  } else {
+    await waitForSelector('#evolve-prompt-input, [data-testid="evolve-prompt-input"]', {
+      timeout: 60000,
+      interval: 250,
+    });
+  }
+
+  await browser.execute(() => {
+    window.__testWidget?.resetForTest?.();
+  });
+
+  await assertNoWidgetError();
+}
+
+export async function preparePromptTestCase({ responseFiles = [], responses = null } = {}) {
+  await resetPromptWorkflowState();
+  await setMockVllmResponses({ responseFiles, responses });
+}
+
+export function registerPromptSuiteBeforeEach({
+  fixtureByTestTitle,
+} = {}) {
+  beforeEach(async function () {
+    const testTitle = this?.currentTest?.title;
+    if (!testTitle) {
+      throw new Error('[wdio:test-env] registerPromptSuiteBeforeEach could not determine current test title');
+    }
+
+    const fixture = fixtureByTestTitle?.[testTitle];
+    if (!fixture) {
+      const knownTitles = Object.keys(fixtureByTestTitle ?? {}).join(', ');
+      throw new Error(
+        `[wdio:test-env] No prompt fixture configured for test title: "${testTitle}". Known titles: ${knownTitles}`,
+      );
+    }
+
+    await preparePromptTestCase({ responseFiles: fixture });
+  });
 }
 
 export async function openSettingsDialog() {

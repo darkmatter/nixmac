@@ -1,15 +1,15 @@
 // oxlint-disable no-unused-expressions
 import {
   assertPromptFlowReachedEvolveReview,
+  registerPromptSuiteBeforeEach,
   submitPromptMessage,
-  waitForFirstWindow,
 } from './helpers/app-ui.mjs';
 import {
   loadBuildState,
   loadEvolveState,
   getConfigRepoGitDiff,
-  setMockVllmResponses,
 } from './helpers/test-env.mjs';
+import { assertDiffContains } from './helpers/git-helpers.mjs';
 import { getMockVllmFixturePreset } from './helpers/mock-vllm-presets.mjs';
 import { expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
@@ -17,13 +17,16 @@ import chaiAsPromised from 'chai-as-promised';
 use(chaiAsPromised);
 
 describe('basic prompts', () => {
+  registerPromptSuiteBeforeEach({
+    fixtureByTestTitle: {
+      'submits a basic prompt and reaches evolve review with diff':
+        getMockVllmFixturePreset('basicPromptsAddFont'),
+      'handles a prompt that triggers a docs search':
+        getMockVllmFixturePreset('basicPromptsConfigureScreenshots'),
+    },
+  });
+
   it('submits a basic prompt and reaches evolve review with diff', async () => {
-    await setMockVllmResponses({
-      responseFiles: getMockVllmFixturePreset('basicPromptsAddFont'),
-    });
-
-    await waitForFirstWindow();
-
     await submitPromptMessage('add a new programming font to my system');
 
     await assertPromptFlowReachedEvolveReview();
@@ -55,5 +58,21 @@ describe('basic prompts', () => {
       changedPaths.some((filePath) => filePath.endsWith('fonts.nix')),
       `Expected generated changes to include fonts.nix in git diff. Changed paths: ${changedPaths.join(', ')}`,
     ).to.be.true;
+  });
+
+  it('handles a prompt that triggers a docs search', async () => {
+    await submitPromptMessage('Configure screenshots to save as PNG to ~/Screenshots');
+
+    await assertPromptFlowReachedEvolveReview();
+
+    // Verify that the diff modifies defaults.nix and includes a "~/Screenshots" path.
+    const gitDiff = await getConfigRepoGitDiff();
+    const changedPaths = gitDiff.files.map((file) => file.path);
+    expect(
+      changedPaths.some((filePath) => filePath.endsWith('defaults.nix')),
+      `Expected generated changes to include defaults.nix in git diff. Changed paths: ${changedPaths.join(', ')}`,
+    ).to.be.true;
+    await assertDiffContains(gitDiff, 'defaults.nix', '~/Screenshots');
+    await assertDiffContains(gitDiff, 'defaults.nix', 'png');
   });
 });

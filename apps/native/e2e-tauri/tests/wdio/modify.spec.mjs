@@ -2,12 +2,12 @@
 import {
   assertPromptHistoryContains,
   assertPromptFlowReachedEvolveReview,
+  preparePromptTestCase,
   submitPromptMessage,
   waitForEvolveProcessingCycle,
-  waitForFirstWindow,
 } from './helpers/app-ui.mjs';
 import { assertDiffContains, assertDiffDoesNotContain } from './helpers/git-helpers.mjs';
-import { setMockVllmResponses, getConfigRepoGitDiff } from './helpers/test-env.mjs';
+import { getConfigRepoGitDiff } from './helpers/test-env.mjs';
 import { getMockVllmFixturePreset } from './helpers/mock-vllm-presets.mjs';
 import { expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
@@ -19,11 +19,9 @@ describe('modify', () => {
     const firstPrompt = 'add a new programming font to my system. just choose a popular one and add it, no need to ask me any questions.';
     const secondPrompt = 'also add a second popular programming font';
 
-    await setMockVllmResponses({
+    await preparePromptTestCase({
       responseFiles: getMockVllmFixturePreset('modifySequentialPrompts'),
     });
-
-    await waitForFirstWindow();
 
     await submitPromptMessage(firstPrompt);
     await waitForEvolveProcessingCycle();
