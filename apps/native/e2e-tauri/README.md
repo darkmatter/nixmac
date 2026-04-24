@@ -16,6 +16,7 @@ Current test files live in `e2e-tauri/tests`.
 
   - Why: WDIO launches the app binary as part of starting a test run; any environment or on-disk setup that the app relies on (for example: writing `settings.json` or creating a temporary `configDir` git repo) must happen before the app binary is launched. The easiest and most reliable way to guarantee that setup runs before the app is started is to perform it in `onPrepare` of a WDIO config.
   - Our pattern: `wdio.conf.base.mjs` exports `createWdioConfig({ specs, setupOptions })`. Per-suite configs call that factory and pass `setupOptions` (e.g. `{ initializeConfigRepo: true }`). This ensures `setupNixmacTestEnvironment` runs in `onPrepare` before the Tauri binary starts.
+  - Clean-start variant: pass `{ initializeEmptyConfigDir: true }` for onboarding/bootstrap flows where the app should start with an empty (modulo an empty git repo) temporary config directory.
 
 - How to add a new test suite
 
@@ -39,22 +40,58 @@ Current test files live in `e2e-tauri/tests`.
 ```
 
 - Environment and secrets
-  - If your tests use the vLLM backend, set `VLLM_API_BASE_URL` and `VLLM_API_KEY` in the environment before running the WDIO task (the `setupNixmacTestEnvironment` helper reads those to generate `settings.json`). Example:
+  - WDIO vLLM mode is controlled by `NIXMAC_WDIO_VLLM_MODE`:
+    - `playback` (default): run against fixture-backed mock server.
+    - `real`: bypass mock server and call real vLLM directly.
+  - For `real`, set `VLLM_API_BASE_URL` (and `VLLM_API_KEY` if your backend requires auth) before running tests.
+  - For `playback`, no real vLLM credentials are required.
+  - Example (real mode):
 
 ```bash
+      export NIXMAC_WDIO_VLLM_MODE="real"
       export VLLM_API_BASE_URL="http://example.com/v1"
-      export VLLM_API_KEY="$VLLM_API_KEY"
-      bun run test:wdio:my-feature
+      export VLLM_API_KEY="${VLLM_API_KEY}"
+      bun run test:wdio:modify
 ```
 
 - Test helpers and hooks
 
   - Use the existing dev-only test hook pattern when you need to drive or observe app state from WDIO: the app exposes `window.__testWidget` in DEV builds (see `src/utils/widget-test-helpers.ts`). Helpers include `setEvolvePrompt()`, `isEvolveProcessing()`, and `getPromptHistory()` — call them via `browser.execute(...)` from your WDIO helpers.
   - Prefer using store-driven helpers (above) over DOM event hacks — they are faster and more reliable for React+Zustand apps running in Tauri webviews (noting that we cannot use React Testing Library in a Tauri app unfortunately).
+  - New prompt-suite helpers in `tests/wdio/helpers/app-ui.mjs`:
+    - `preparePromptTestCase(...)`: reset UI state + load mock responses for one test case.
+    - `registerPromptSuiteBeforeEach(...)`: suite-level per-test-case fixture mapping.
 
 - data-testid's
 
   - When adding new interactive elements you plan to target from E2E tests, add a `data-testid` attribute (or an `id`) to the element in the component source so selectors are stable and readable.
+
+## vLLM Test Modes (Playback / Real)
+
+The suite config for `modify` now supports a mode switch via `NIXMAC_WDIO_VLLM_MODE`:
+
+- `playback`: use fixture responses only.
+- `real`: call real vLLM directly (no recording).
+
+The helper lives in `tests/wdio/helpers/vllm-test-mode.mjs` and is wired into `wdio.modify.conf.mjs`.
+
+### Quick start for `modify.spec`
+
+1. Playback mode (default; no real backend required):
+
+```bash
+  unset NIXMAC_WDIO_VLLM_MODE
+  bun run test:wdio:modify
+```
+
+1. Real mode (no mock, no recording):
+
+```bash
+  export NIXMAC_WDIO_VLLM_MODE="real"
+  export VLLM_API_BASE_URL="http://your-real-vllm.example/v1"
+  export VLLM_API_KEY="${VLLM_API_KEY}"
+  bun run test:wdio:modify
+```
 
 ## Mocking AI Completion Responses
 
@@ -76,6 +113,7 @@ Named presets live in `tests/wdio/helpers/mock-vllm-presets.mjs`:
 ```js
 const MOCK_VLLM_FIXTURE_PRESETS = Object.freeze({
   basicPromptsAddFont: ['add-font.jsonl'],
+  modifySequentialPrompts: ['add-font-add-another.jsonl'],
 });
 ```
 
@@ -99,7 +137,7 @@ export const config = createWdioConfig({
 
 ### Inside a test
 
-Load responses at the top of each `it` block before triggering any UI action that will cause the app to call the LLM:
+For single-test suites, load responses at the top of each `it` block before triggering any UI action that will cause the app to call the LLM:
 
 ```js
 import { setMockVllmResponses } from './helpers/test-env.mjs';
@@ -118,6 +156,35 @@ You can also pass raw response objects instead of files (but this isn't recommen
 
 ```js
 await setMockVllmResponses({ responses: [/* ...objects... */] });
+```
+
+### Multi-test case suite pattern (recommended)
+
+Use one `describe` with a fixture map so each test gets clean state and its own mock queue:
+
+```js
+import {
+  registerPromptSuiteBeforeEach,
+  submitPromptMessage,
+} from './helpers/app-ui.mjs';
+import { getMockVllmFixturePreset } from './helpers/mock-vllm-presets.mjs';
+
+describe('my prompt suite', () => {
+  registerPromptSuiteBeforeEach({
+    fixtureByTestTitle: {
+      'test A': getMockVllmFixturePreset('basicPromptsAddFont'),
+      'test B': getMockVllmFixturePreset('basicPromptsConfigureScreenshots'),
+    },
+  });
+
+  it('test A', async () => {
+    await submitPromptMessage('...');
+  });
+
+  it('test B', async () => {
+    await submitPromptMessage('...');
+  });
+});
 ```
 
 ### Caveats

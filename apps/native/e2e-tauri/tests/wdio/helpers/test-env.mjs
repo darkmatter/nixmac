@@ -5,25 +5,30 @@ import { promisify } from 'node:util';
 import {
   access,
   copyFile,
-  cp,
-  mkdtemp,
   mkdir,
   readFile,
-  readdir,
   rm,
   unlink,
   writeFile,
 } from 'node:fs/promises';
 import { constants as fsConstants } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { startMockVllmServer, stopMockVllmServer } from './mock-vllm-server.mjs';
+import { isPlaybackMode } from './vllm-test-mode.mjs';
+import {
+  assertConfigRepoClean,
+  assertConfigRepoFileExists,
+  assertConfigRepoInitialized,
+  createEmptyConfigDir,
+  createNixConfigGitRepo,
+  getConfigRepoDir,
+  getConfigRepoGitDiff,
+  waitForConfigRepoClean,
+  waitForConfigRepoFileExists,
+  waitForConfigRepoInitialized,
+} from './config-repo.mjs';
 
 const execFileAsync = promisify(execFile);
 
-const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
-const APPS_NATIVE_DIR = path.resolve(THIS_DIR, '../../../../');
-
-const CONFIG_TEMPLATE_DIR = path.join(APPS_NATIVE_DIR, 'templates', 'nix-darwin-determinate');
 const NIXMAC_APP_SUPPORT_DIR = path.join(
   os.homedir(),
   'Library',
@@ -55,40 +60,6 @@ async function getEvalHostname() {
   } catch {
     return 'localhost';
   }
-}
-
-function getCurrentUsername() {
-  try {
-    return os.userInfo().username;
-  } catch {
-    return process.env.USER || 'nobody';
-  }
-}
-
-/**
- * Return a platform triple for templates, e.g. "aarch64-darwin".
- */
-function getPlatformTriple() {
-  const archMap = { arm64: 'aarch64', x64: 'x86_64' };
-  const arch = archMap[process.arch] ?? process.arch;
-  const platform = process.platform; // 'darwin' etc.
-  return `${arch}-${platform}`;
-}
-
-async function listNixFiles(dirPath) {
-  const entries = await readdir(dirPath, { withFileTypes: true });
-  const files = [];
-
-  for (const entry of entries) {
-    const fullPath = path.join(dirPath, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...(await listNixFiles(fullPath)));
-    } else if (entry.isFile() && entry.name.endsWith('.nix')) {
-      files.push(fullPath);
-    }
-  }
-
-  return files;
 }
 
 async function backupNixmacSettings() {
@@ -201,43 +172,12 @@ export async function loadBuildState() {
   return parsed.buildState ?? parsed;
 }
 
-export async function getConfigRepoGitDiff({ format = 'structured' } = {}) {
-  const settings = await readJsonFileOrThrow(NIXMAC_SETTINGS_PATH, 'settings');
-  const repoDir = settings?.configDir;
-
-  if (!repoDir) {
-    throw new Error('[wdio:test-env] settings.configDir is missing; initializeConfigRepo may be disabled');
-  }
-
-  const [{ stdout: rawDiff }, { stdout: nameStatus }] = await Promise.all([
-    execFileAsync('git', ['diff', '--'], { cwd: repoDir }),
-    execFileAsync('git', ['diff', '--name-status', '--'], { cwd: repoDir }),
-  ]);
-
-  if (format === 'raw') {
-    return rawDiff;
-  }
-
-  const files = nameStatus
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [status, ...pathParts] = line.split(/\s+/);
-      return {
-        status,
-        path: pathParts.join(' '),
-      };
-    });
-
-  return {
-    repoDir,
-    raw: rawDiff,
-    files,
-  };
-}
-
 export async function setMockVllmResponses({ responseFiles = [], responses = null } = {}) {
+  if (!isPlaybackMode()) {
+    console.log('[wdio:test-env] Skipping setMockVllmResponses because playback mode is disabled');
+    return { skipped: true, reason: 'playback-mode-disabled' };
+  }
+
   const settings = await readJsonFileOrThrow(NIXMAC_SETTINGS_PATH, 'settings');
   const vllmApiBaseUrl = settings?.vllmApiBaseUrl;
 
@@ -274,52 +214,32 @@ export async function setMockVllmResponses({ responseFiles = [], responses = nul
   return response.json();
 }
 
-async function runGit(args, cwd) {
-  await execFileAsync('git', args, { cwd });
-}
-
-async function createNixConfigGitRepo(hostname) {
-  const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'nix-config-'));
-  console.log(`[wdio:test-env] Creating temporary config repo at ${tmpDir}`);
-  await cp(CONFIG_TEMPLATE_DIR, tmpDir, { recursive: true });
-
-  const username = getCurrentUsername();
-  const nixFiles = await listNixFiles(tmpDir);
-  const platformTriple = getPlatformTriple();
-  for (const nixFile of nixFiles) {
-    const content = await readFile(nixFile, 'utf-8');
-    const updated = content
-      .replaceAll('HOSTNAME_PLACEHOLDER', hostname)
-      .replaceAll('USERNAME_PLACEHOLDER', username)
-      .replaceAll('PLATFORM_PLACEHOLDER', platformTriple);
-
-    if (updated !== content) {
-      await writeFile(nixFile, updated, 'utf-8');
-    }
-  }
-
-  await writeFile(path.join(tmpDir, '.gitignore'), 'flake.lock\n', 'utf-8');
-
-  await runGit(['init'], tmpDir);
-  await runGit(['config', 'user.name', 'eval'], tmpDir);
-  await runGit(['config', 'user.email', 'eval@test'], tmpDir);
-  await runGit(['add', '-A'], tmpDir);
-  await runGit(['commit', '-m', 'initial nix config state', '--author', 'eval <eval@test>'], tmpDir);
-  await runGit(['update-index', '--refresh'], tmpDir);
-
-  console.log(`[wdio:test-env] Initialized git repo for test config at ${tmpDir}`);
-
-  return tmpDir;
-}
+export {
+  assertConfigRepoClean,
+  assertConfigRepoFileExists,
+  assertConfigRepoInitialized,
+  getConfigRepoDir,
+  getConfigRepoGitDiff,
+  waitForConfigRepoClean,
+  waitForConfigRepoFileExists,
+  waitForConfigRepoInitialized,
+};
 
 export async function setupNixmacTestEnvironment(options = {}) {
   const {
     initializeConfigRepo = false,
+    initializeEmptyConfigDir = false,
     host,
     mockVllm,
     vllmApiBaseUrl = process.env.VLLM_API_BASE_URL ?? null,
     vllmApiKey = process.env.VLLM_API_KEY ?? null,
   } = options;
+
+  if (initializeConfigRepo && initializeEmptyConfigDir) {
+    throw new Error(
+      '[wdio:test-env] initializeConfigRepo and initializeEmptyConfigDir are mutually exclusive',
+    );
+  }
 
   const backupPath = await backupNixmacSettings();
   const evolveBackupPath = await backupStatefulFile(NIXMAC_EVOLVE_STATE_PATH, 'evolve-state');
@@ -337,8 +257,10 @@ export async function setupNixmacTestEnvironment(options = {}) {
 
   if (initializeConfigRepo) {
     configDir = await createNixConfigGitRepo(evalHostname);
+  } else if (initializeEmptyConfigDir) {
+    configDir = await createEmptyConfigDir();
   } else {
-    console.log('[wdio:test-env] Skipping temp git repo initialization (initializeConfigRepo=false)');
+    console.log('[wdio:test-env] Skipping temp config dir initialization (initializeConfigRepo=false, initializeEmptyConfigDir=false)');
   }
 
   await generateNixmacSettings({

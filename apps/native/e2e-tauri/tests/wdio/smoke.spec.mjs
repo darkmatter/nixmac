@@ -1,6 +1,8 @@
 import { expect } from '@wdio/globals';
 import {
   clickSettingsTabAndAssert,
+  openFeedbackDialog,
+  openHistory,
   openSettingsDialog,
   waitForFirstWindow,
 } from './helpers/app-ui.mjs';
@@ -12,7 +14,7 @@ describe('tauri app smoke', () => {
   });
 });
 
-describe('settings dialog', () => {
+describe('top-level views', () => {
   it('opens and navigates all tabs', async () => {
     await waitForFirstWindow();
     await openSettingsDialog();
@@ -21,5 +23,15 @@ describe('settings dialog', () => {
     for (const tab of tabs) {
       await clickSettingsTabAndAssert(tab);
     }
+  });
+
+  it('opens the feedback dialog from header', async () => {
+    await waitForFirstWindow();
+    await openFeedbackDialog();
+  });
+
+  it('opens history from header', async () => {
+    await waitForFirstWindow();
+    await openHistory();
   });
 });

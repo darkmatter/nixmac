@@ -20,6 +20,10 @@ export interface WidgetTestHelpers {
    * Current prompt history from the store.
    */
   getPromptHistory: () => string[];
+  /**
+   * Reset transient client-side widget state between e2e tests.
+   */
+  resetForTest: () => void;
 }
 
 export function setupWidgetTestHelpers() {
@@ -35,6 +39,19 @@ export function setupWidgetTestHelpers() {
     },
     getPromptHistory: () => {
       return [...(useWidgetStore.getState().promptHistory ?? [])];
+    },
+    resetForTest: () => {
+      const state = useWidgetStore.getState();
+      state.setEvolvePrompt("");
+      state.setPromptHistory([]);
+      state.clearPreview();
+      state.clearLogs();
+      state.clearEvolveEvents();
+      state.setConversationalResponse(null);
+      state.setCommitMessageSuggestion(null);
+      state.setChangeMap(null);
+      state.setError(null);
+      state.clearRebuild();
     },
   };
 

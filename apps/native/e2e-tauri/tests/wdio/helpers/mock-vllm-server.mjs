@@ -15,20 +15,29 @@ function resolveMockResponseFilePath(filePath, dataDir) {
 }
 
 function parseMockResponseJsonl(content, filePath) {
-  const lines = content
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean);
+  const rawLines = content.split('\n');
+  const responses = [];
 
-  return lines.map((line, index) => {
+  for (let i = 0; i < rawLines.length; i += 1) {
+    const raw = rawLines[i];
+    const line = raw.trim();
+
+    // Skip blank lines and single-line comments starting with //
+    if (!line || line.startsWith('//')) {
+      continue;
+    }
+
     try {
-      return JSON.parse(line);
+      responses.push(JSON.parse(line));
     } catch (error) {
+      // Use the original file line number for helpful diagnostics
       throw new Error(
-        `[wdio:test-env] Failed parsing JSONL response at ${filePath}:${index + 1}: ${error instanceof Error ? error.message : String(error)}`,
+        `[wdio:test-env] Failed parsing JSONL response at ${filePath}:${i + 1}: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
-  });
+  }
+
+  return responses;
 }
 
 async function loadMockResponses(responseFiles, dataDir) {
@@ -57,17 +66,17 @@ function writeJsonResponse(response, statusCode, body) {
   response.end(`${JSON.stringify(body)}\n`);
 }
 
-async function readRequestBody(request, { maxPreviewChars = 4000 } = {}) {
+async function readRequestBody(request) {
   let rawBody = '';
   for await (const chunk of request) {
     rawBody += chunk;
   }
 
-  if (rawBody.length <= maxPreviewChars) {
+  if (rawBody.length <= 4000) {
     return rawBody;
   }
 
-  return `${rawBody.slice(0, maxPreviewChars)}…[truncated ${rawBody.length - maxPreviewChars} chars]`;
+  return `${rawBody.slice(0, 4000)}…[truncated ${rawBody.length - 4000} chars]`;
 }
 
 export async function startMockVllmServer(mockVllmOptions = {}) {
@@ -158,6 +167,7 @@ export async function startMockVllmServer(mockVllmOptions = {}) {
 
       const payload = responses[requestIndex];
       requestIndex += 1;
+
       writeJsonResponse(response, 200, payload);
     } catch (error) {
       writeJsonResponse(response, 500, {
