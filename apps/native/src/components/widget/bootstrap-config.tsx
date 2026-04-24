@@ -54,6 +54,7 @@ export function BootstrapConfig({ label, onSuccess }: BootstrapConfigProps) {
           <Button
             onClick={handleBootstrap}
             className="w-full"
+            data-testid="create-default-config-button"
             disabled={!hostname.trim() || isBootstrapping}
           >
             {isBootstrapping ? (

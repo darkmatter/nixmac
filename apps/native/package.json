@@ -34,7 +34,8 @@
     "test:wdio:smoke": "wdio run e2e-tauri/wdio.smoke.conf.mjs",
     "test:wdio:basic-prompts": "wdio run e2e-tauri/wdio.basic-prompts.conf.mjs",
     "test:wdio:discard": "wdio run e2e-tauri/wdio.discard.conf.mjs",
-    "test:wdio:modify": "wdio run e2e-tauri/wdio.modify.conf.mjs"
+    "test:wdio:modify": "wdio run e2e-tauri/wdio.modify.conf.mjs",
+    "test:wdio:onboarding": "wdio run e2e-tauri/wdio.onboarding.conf.mjs"
   },
   "dependencies": {
     "@distilled.cloud/neon": "^0.7.12",

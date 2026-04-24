@@ -194,6 +194,33 @@ export async function openFeedbackDialog() {
   await waitForSelector('button[aria-label="Send feedback"]');
 }
 
+export async function assertOnboardingVisible() {
+  await waitForSelector('[data-testid="onboarding-welcome-title"]', {
+    timeout: 60000,
+    interval: 500,
+  });
+
+  const title = await $('[data-testid="onboarding-welcome-title"]');
+  expect((await title.getText()).trim()).to.equal('Welcome to nixmac');
+
+  await waitForSelector('[data-testid="create-default-config-button"]', {
+    timeout: 60000,
+    interval: 500,
+  });
+}
+
+export async function clickCreateDefaultConfiguration() {
+  await waitForSelector('[data-testid="create-default-config-button"]', {
+    timeout: 60000,
+    interval: 500,
+  });
+
+  await clickWithRetry('[data-testid="create-default-config-button"]', {
+    attempts: 20,
+    interval: 300,
+  });
+}
+
 export async function clickSettingsTabAndAssert(tabName) {
   const tabButtonSelector = `//button[.//span[normalize-space()="${tabName}"]]`;
   await waitForSelector(tabButtonSelector);

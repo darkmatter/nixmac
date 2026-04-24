@@ -16,6 +16,7 @@ Current test files live in `e2e-tauri/tests`.
 
   - Why: WDIO launches the app binary as part of starting a test run; any environment or on-disk setup that the app relies on (for example: writing `settings.json` or creating a temporary `configDir` git repo) must happen before the app binary is launched. The easiest and most reliable way to guarantee that setup runs before the app is started is to perform it in `onPrepare` of a WDIO config.
   - Our pattern: `wdio.conf.base.mjs` exports `createWdioConfig({ specs, setupOptions })`. Per-suite configs call that factory and pass `setupOptions` (e.g. `{ initializeConfigRepo: true }`). This ensures `setupNixmacTestEnvironment` runs in `onPrepare` before the Tauri binary starts.
+  - Clean-start variant: pass `{ initializeEmptyConfigDir: true }` for onboarding/bootstrap flows where the app should start with an empty (modulo an empty git repo) temporary config directory.
 
 - How to add a new test suite
 
@@ -78,6 +79,22 @@ The helper lives in `tests/wdio/helpers/vllm-test-mode.mjs` and is wired into `w
 ```bash
   unset NIXMAC_WDIO_VLLM_MODE
   bun run test:wdio:modify
+```
+
+## Onboarding Clean-Start Test
+
+The onboarding suite starts with an empty temporary config directory and verifies:
+
+- `Welcome to nixmac` is shown
+- `Create Default Configuration` is shown
+- Clicking bootstrap initializes a git repository
+- `flake.nix` is created
+- The new repo is clean (no outstanding changes)
+
+Run it with:
+
+```bash
+  bun run test:wdio:onboarding
 ```
 
 1. Real mode (no mock, no recording):

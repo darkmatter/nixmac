@@ -27,7 +27,7 @@ export function SetupStep() {
     <div className="flex flex-col items-center justify-center space-y-6 py-8">
       <img src="/outline-white.png" alt="" className="h-16 w-16 object-contain" />
       <div className="text-center">
-        <h2 className="font-semibold text-foreground text-lg">
+        <h2 data-testid="onboarding-welcome-title" className="font-semibold text-foreground text-lg">
           Welcome to nixmac
         </h2>
         <p className="mt-1 text-muted-foreground text-sm">
