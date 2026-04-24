@@ -1211,9 +1211,11 @@ jobs:
               const sampleText = sample.length
                 ? `\n\n<details><summary>Changed files sampled (${sample.length}${changedCount > sample.length ? ` of ${changedCount}` : ""})</summary>\n\n${markdownList(sampleItems)}\n\n</details>`
                 : "";
-              const runModel = selection.standardPackRan
-                ? "The standard hosted PR pack still ran; labels and path matches are additive focus, not a replacement."
-                : "The selected E2E scope ran; labels and path matches define the focus for this run.";
+              const runModel = selection.selectionMode === "all-label"
+                ? "All configured scenarios ran; PR path matches are called out as adversarial focus."
+                : selection.standardPackRan
+                  ? "The standard hosted PR pack still ran; labels and path matches are additive focus, not a replacement."
+                  : "The selected E2E scope ran; labels and path matches define the focus for this run.";
               if (!attention.length) {
                 return `### Adversarial PR Focus\n\n${runModel}\n\nChanged files considered: **${changedCount}**. No scenario-specific path match beyond the selected scope.${sampleText}`;
               }
