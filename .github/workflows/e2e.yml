@@ -15,14 +15,20 @@ on:
         required: false
         default: ""
         type: string
+      pr_side_effects:
+        description: "For manual dispatch: auto updates PR comment/check/status when pr_number is set; skip only writes summaries/artifacts"
+        required: false
+        default: "auto"
+        type: choice
+        options:
+          - auto
+          - skip
 
 concurrency:
   group: nixmac-e2e-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
-  E2E_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
-  E2E_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
   SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 
 permissions:
@@ -39,7 +45,13 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       mac_required: ${{ steps.resolve.outputs.mac_required }}
+      base_sha: ${{ steps.resolve.outputs.base_sha }}
+      head_ref: ${{ steps.resolve.outputs.head_ref }}
+      head_sha: ${{ steps.resolve.outputs.head_sha }}
+      pr_number: ${{ steps.resolve.outputs.pr_number }}
+      pr_side_effects_enabled: ${{ steps.resolve.outputs.pr_side_effects_enabled }}
       reason: ${{ steps.resolve.outputs.reason }}
+      report_prefix: ${{ steps.resolve.outputs.report_prefix }}
       required: ${{ steps.resolve.outputs.required }}
       scenarios_mac: ${{ steps.resolve.outputs.scenarios_mac }}
       scenarios: ${{ steps.resolve.outputs.scenarios }}
@@ -55,8 +67,37 @@ jobs:
           script: |
             const fs = require("node:fs");
             const path = require("node:path");
+            const { execFileSync } = require("node:child_process");
             const eventName = context.eventName;
             const payload = context.payload;
+            let prForSelection = payload.pull_request || null;
+            const dispatchScenario = String(payload.inputs?.scenario || "auto_evolve_basic_package").trim();
+            const dispatchPrNumber = Number(payload.inputs?.pr_number || 0);
+            const wantsPrResolution = eventName === "workflow_dispatch"
+              && dispatchPrNumber > 0
+              && ["pr", "auto", "pull_request", "pull-request"].includes(dispatchScenario);
+            if (wantsPrResolution) {
+              const { data: pr } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: dispatchPrNumber,
+              });
+              prForSelection = pr;
+            }
+
+            const resolvedPrNumber = prForSelection?.number ?? (dispatchPrNumber > 0 ? dispatchPrNumber : null);
+            const resolvedHeadSha = prForSelection?.head?.sha ?? context.sha;
+            const resolvedBaseSha = prForSelection?.base?.sha ?? "";
+            const resolvedHeadRef = prForSelection?.head?.ref ?? context.ref.replace(/^refs\/heads\//, "");
+            const sameRepoPr = prForSelection
+              && prForSelection.head?.repo?.full_name === prForSelection.base?.repo?.full_name
+              && prForSelection.head?.repo?.full_name === `${context.repo.owner}/${context.repo.repo}`;
+            if (sameRepoPr && resolvedHeadSha && resolvedHeadSha !== context.sha) {
+              core.info(`Checking out PR head ${resolvedHeadSha} before resolving E2E scenarios`);
+              execFileSync("git", ["fetch", "--no-tags", "--depth=1", "origin", resolvedHeadSha], { stdio: "inherit" });
+              execFileSync("git", ["checkout", "--detach", resolvedHeadSha], { stdio: "inherit" });
+            }
+
             const manifest = JSON.parse(
               fs.readFileSync("apps/native/e2e-tauri/scenarios/manifest.json", "utf8")
             );
@@ -103,7 +144,6 @@ jobs:
             let macScenarios = [];
             let changed = [];
             let labels = [];
-            let prForSelection = payload.pull_request || null;
             const selectionReasons = new Map();
             const matchedFilesByScenario = new Map();
 
@@ -258,31 +298,20 @@ jobs:
 
             if (eventName === "workflow_dispatch") {
               required = true;
-              const scenario = payload.inputs?.scenario || "auto_evolve_basic_package";
-              const normalizedScenario = String(scenario).trim();
-              const dispatchPrNumber = Number(payload.inputs?.pr_number || 0);
-              const wantsPrResolution = dispatchPrNumber > 0
-                && ["pr", "auto", "pull_request", "pull-request"].includes(normalizedScenario);
               if (wantsPrResolution) {
-                const { data: pr } = await github.rest.pulls.get({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  pull_number: dispatchPrNumber,
-                });
-                prForSelection = pr;
-                await resolvePullRequest(pr);
-              } else if (["all", "e2e:all", "*"].includes(normalizedScenario)) {
+                await resolvePullRequest(prForSelection);
+              } else if (["all", "e2e:all", "*"].includes(dispatchScenario)) {
                 reason = "manual dispatch: all scenarios";
                 for (const scenario of manifest.scenarios) {
                   addSelection(scenario.name, "manual dispatch: all scenarios");
                 }
               } else {
-                reason = `manual dispatch: ${normalizedScenario}`;
-                const selected = scenarioByName.get(normalizedScenario);
+                reason = `manual dispatch: ${dispatchScenario}`;
+                const selected = scenarioByName.get(dispatchScenario);
                 if (!selected) {
-                  throw new Error(`Unknown E2E scenario for manual dispatch: ${normalizedScenario}`);
+                  throw new Error(`Unknown E2E scenario for manual dispatch: ${dispatchScenario}`);
                 }
-                addSelection(normalizedScenario, "manual dispatch");
+                addSelection(dispatchScenario, "manual dispatch");
               }
             } else {
               await resolvePullRequest(prForSelection);
@@ -318,13 +347,33 @@ jobs:
                       : eventName === "workflow_dispatch" && !prForSelection
                         ? "manual"
                         : "pr-default";
+            const prSideEffectsInput = String(payload.inputs?.pr_side_effects || "auto").trim().toLowerCase();
+            const canMutatePr = !prForSelection || sameRepoPr;
+            const prSideEffectsEnabled = (eventName === "pull_request" && canMutatePr)
+              || (eventName === "workflow_dispatch" && Boolean(resolvedPrNumber) && prSideEffectsInput !== "skip" && canMutatePr);
+            const validationMode = eventName === "workflow_dispatch"
+              ? resolvedPrNumber
+                ? prSideEffectsEnabled
+                  ? "workflow_dispatch_pr"
+                  : "workflow_dispatch_pr_preview"
+                : "workflow_dispatch_manual"
+              : "pull_request";
+            const reportPrefix = resolvedPrNumber && prSideEffectsEnabled
+              ? `e2e/pr-${resolvedPrNumber}/${resolvedHeadSha}`
+              : resolvedPrNumber
+                ? `e2e/pr-preview/pr-${resolvedPrNumber}/${context.runId}/${resolvedHeadSha}`
+                : `e2e/manual/${context.runId}/${resolvedHeadSha}`;
             writeSelection({
               schemaVersion: 1,
               repo: context.repo.owner + "/" + context.repo.repo,
-              prNumber: prForSelection?.number ?? (payload.inputs?.pr_number ? Number(payload.inputs.pr_number) : null),
-              headSha: prForSelection?.head?.sha ?? context.sha,
-              baseSha: prForSelection?.base?.sha ?? null,
+              prNumber: resolvedPrNumber,
+              headSha: resolvedHeadSha,
+              baseSha: resolvedBaseSha || null,
+              headRef: resolvedHeadRef,
               eventName,
+              validationMode,
+              prSideEffects: prSideEffectsEnabled ? "enabled" : "skipped",
+              reportPrefix,
               required,
               tauriRequired,
               macRequired,
@@ -348,7 +397,13 @@ jobs:
 
             core.setOutput("required", required ? "true" : "false");
             core.setOutput("mac_required", macRequired ? "true" : "false");
+            core.setOutput("base_sha", resolvedBaseSha || "");
+            core.setOutput("head_ref", resolvedHeadRef || "");
+            core.setOutput("head_sha", resolvedHeadSha);
+            core.setOutput("pr_number", resolvedPrNumber ? String(resolvedPrNumber) : "");
+            core.setOutput("pr_side_effects_enabled", prSideEffectsEnabled ? "true" : "false");
             core.setOutput("reason", reason);
+            core.setOutput("report_prefix", reportPrefix);
             core.setOutput("scenarios", JSON.stringify(scenarios));
             core.setOutput("scenarios_mac", JSON.stringify(macScenarios));
             core.setOutput("tauri_required", tauriRequired ? "true" : "false");
@@ -368,6 +423,9 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 45
     env:
+      E2E_BASE_SHA: ${{ needs.resolve.outputs.base_sha }}
+      E2E_HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+      GITHUB_PR_NUMBER: ${{ needs.resolve.outputs.pr_number }}
       NIXMAC_E2E_MOCK_SYSTEM: "1"
     strategy:
       fail-fast: false
@@ -376,6 +434,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.resolve.outputs.head_sha }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -462,11 +522,11 @@ jobs:
 
       - name: Publish E2E report to R2
         id: publish
-        if: always() && ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'workflow_dispatch' && github.event.inputs.pr_number != ''))
+        if: always() && ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || github.event_name == 'workflow_dispatch')
         shell: "sops exec-env ops/secrets/secrets.yaml \"bash -e {0}\""
         env:
           AWS_DEFAULT_REGION: auto
-          REPORT_PREFIX: e2e/pr-${{ github.event.pull_request.number || github.event.inputs.pr_number }}/${{ github.event.pull_request.head.sha || github.sha }}
+          REPORT_PREFIX: ${{ needs.resolve.outputs.report_prefix }}
           SCENARIO: ${{ matrix.scenario }}
         run: |
           export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
@@ -614,6 +674,10 @@ jobs:
     if: needs.resolve.outputs.mac_required == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      E2E_BASE_SHA: ${{ needs.resolve.outputs.base_sha }}
+      E2E_HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+      GITHUB_PR_NUMBER: ${{ needs.resolve.outputs.pr_number }}
     strategy:
       fail-fast: false
       max-parallel: 1
@@ -622,6 +686,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.resolve.outputs.head_sha }}
 
       - name: Setup sops
         uses: nhedger/setup-sops@v2
@@ -632,7 +698,6 @@ jobs:
       - name: Check full-Mac secrets
         env:
           ADMIN_PASSWORD: ${{ secrets.MAC_E2E_ADMIN_PASSWORD }}
-          GITHUB_PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number || '' }}
           MAC_E2E_HOST: ${{ secrets.MAC_E2E_HOST }}
           MAC_E2E_SSH_KEY: ${{ secrets.MAC_E2E_SSH_KEY }}
           MAC_E2E_USER: ${{ secrets.MAC_E2E_USER }}
@@ -714,8 +779,8 @@ jobs:
         continue-on-error: true
         env:
           ADMIN_PASSWORD: ${{ secrets.MAC_E2E_ADMIN_PASSWORD }}
-          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BRANCH_NAME: ${{ needs.resolve.outputs.head_ref || github.head_ref || github.ref_name }}
+          COMMIT_SHA: ${{ needs.resolve.outputs.head_sha }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SCENARIO: ${{ matrix.scenario }}
         run: |
@@ -729,7 +794,7 @@ jobs:
             echo "export E2E_BASE_SHA=$(printf '%q' "$E2E_BASE_SHA")"
             echo "export SCENARIO=$(printf '%q' "$SCENARIO")"
             echo "export GITHUB_REPOSITORY=$(printf '%q' "${{ github.repository }}")"
-            echo "export GITHUB_PR_NUMBER=$(printf '%q' "${{ github.event.pull_request.number || github.event.inputs.pr_number || 'null' }}")"
+            echo "export GITHUB_PR_NUMBER=$(printf '%q' "${GITHUB_PR_NUMBER:-null}")"
             echo "export GITHUB_RUN_ID=$(printf '%q' "${{ github.run_id }}")"
             echo "export GITHUB_RUN_ATTEMPT=$(printf '%q' "${{ github.run_attempt }}")"
             echo "export PATH=/opt/homebrew/bin:\$PATH"
@@ -769,8 +834,7 @@ jobs:
       - name: Write full-Mac infra report if missing
         if: always()
         env:
-          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          GITHUB_PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number || '' }}
+          COMMIT_SHA: ${{ needs.resolve.outputs.head_sha }}
           SCENARIO: ${{ matrix.scenario }}
           SSH_STATUS: ${{ steps.ssh-run.outputs.status || 'not-run' }}
         run: |
@@ -888,11 +952,11 @@ jobs:
 
       - name: Publish full-Mac report to R2
         id: publish
-        if: always() && ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'workflow_dispatch' && github.event.inputs.pr_number != ''))
+        if: always() && ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || github.event_name == 'workflow_dispatch')
         shell: "sops exec-env ops/secrets/secrets.yaml \"bash -e {0}\""
         env:
           AWS_DEFAULT_REGION: auto
-          REPORT_PREFIX: e2e/pr-${{ github.event.pull_request.number || github.event.inputs.pr_number }}/${{ github.event.pull_request.head.sha || github.sha }}
+          REPORT_PREFIX: ${{ needs.resolve.outputs.report_prefix }}
           SCENARIO: ${{ matrix.scenario }}
         run: |
           export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
@@ -1055,8 +1119,8 @@ jobs:
             core.setOutput("conclusion", conclusion);
             core.setOutput("reason", reason);
 
-      - name: Sticky PR comment
-        if: always() && (github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.pr_number != ''))
+      - name: E2E gate summary and PR publication
+        if: always()
         uses: actions/github-script@v8
         with:
           script: |
@@ -1068,12 +1132,10 @@ jobs:
             const required = "${{ needs.resolve.outputs.required }}" === "true";
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const artifactRoot = "e2e-artifacts";
-            const prNumber = context.payload.pull_request?.number || Number(context.payload.inputs?.pr_number || 0);
-            let testedCommit = context.payload.pull_request?.head?.sha || context.sha;
+            const prNumber = Number("${{ needs.resolve.outputs.pr_number }}" || 0);
+            const prSideEffectsEnabled = "${{ needs.resolve.outputs.pr_side_effects_enabled }}" === "true";
+            let testedCommit = `${{ needs.resolve.outputs.head_sha }}` || context.sha;
             const conclusion = `${{ steps.result.outputs.conclusion }}`;
-            if (!prNumber) {
-              throw new Error("Sticky PR comment requested without a PR number.");
-            }
 
             function findReports(root) {
               const reports = [];
@@ -1245,15 +1307,21 @@ jobs:
               const sampleText = sample.length
                 ? `\n\n<details><summary>Changed files sampled (${sample.length}${changedCount > sample.length ? ` of ${changedCount}` : ""})</summary>\n\n${markdownList(sampleItems)}\n\n</details>`
                 : "";
+              const heading = selection.validationMode === "workflow_dispatch_manual"
+                ? "Dispatch Focus"
+                : "PR-specific Focus";
               const runModel = selection.selectionMode === "all-label"
-                ? "All configured scenarios ran; PR path matches are called out as adversarial focus."
+                ? "All configured scenarios ran; PR path matches are called out as extra focus."
                 : selection.standardPackRan
                   ? "The standard hosted PR pack still ran; labels and path matches are additive focus, not a replacement."
                   : "The selected E2E scope ran; labels and path matches define the focus for this run.";
               if (!attention.length) {
-                return `### Adversarial PR Focus\n\n${runModel}\n\nChanged files considered: **${changedCount}**. No scenario-specific path match beyond the selected scope.${sampleText}`;
+                return `### ${heading}\n\n${runModel}\n\nChanged files considered: **${changedCount}**. No scenario-specific path match beyond the selected scope.${sampleText}`;
               }
               const lines = attention.map((scenario) => {
+                return `- **${markdownText(scenario.title || scenario.name)}**: ${markdownText(scenario.summary)}`;
+              });
+              const detailLines = attention.map((scenario) => {
                 const matched = (scenario.matchedFiles || []).slice(0, 4);
                 const matchedList = matched.map((file) => "`" + markdownCode(file) + "`").join(", ");
                 const files = matched.length
@@ -1262,9 +1330,10 @@ jobs:
                 const gaps = (scenario.knownGaps || []).length
                   ? ` Known gap: ${markdownText((scenario.knownGaps || []).join(" "))}`
                   : "";
-                return `- **${markdownText(scenario.title || scenario.name)}**: ${markdownText(scenario.summary)}${files}${gaps}`;
+                return `- **${markdownText(scenario.title || scenario.name)}**:${files}${gaps}`;
               });
-              return `### Adversarial PR Focus\n\n${runModel}\n\nChanged files considered: **${changedCount}**. Scenario-specific risk matches:\n\n${lines.join("\n")}${sampleText}`;
+              const details = `<details><summary>Matched files and known gaps</summary>\n\n${detailLines.join("\n")}\n\n</details>`;
+              return `### ${heading}\n\n${runModel}\n\nChanged files considered: **${changedCount}**. Scenario-specific risk matches:\n\n${lines.join("\n")}\n\n${details}${sampleText}`;
             }
 
             function summarizeError(error) {
@@ -1361,7 +1430,7 @@ jobs:
                   : "";
                 const matchedFileList = (meta.matchedFiles || []).map((file) => "`" + markdownCode(file) + "`").join(", ");
                 const matchedFiles = (meta.matchedFiles || []).length
-                  ? `\n\n**Adversarial focus files:** ${markdownText(matchedFileList)}`
+                  ? `\n\n**PR focus files:** ${markdownText(matchedFileList)}`
                   : "";
                 const phaseText = phase
                   ? `**Phase:** ${markdownText(phase.name)}\n\n**What happened:** ${markdownText(analysis.summary)}\n\n**Next action:** ${markdownText(nextActionForError(phase.error, report))}`
@@ -1394,9 +1463,13 @@ jobs:
             const scope = formatScope(selection, reports, required);
             const attentionSection = renderAdversarialFocus(selection);
             const coverageNote = selection?.note || "Standard E2E runs first; PR-matched risk areas are called out as adversarial focus. This is not an exhaustive UI crawler.";
+            const previewNotice = prSideEffectsEnabled
+              ? ""
+              : "\n\n> Preview only: no PR comment, check run, or commit status was updated.";
 
             const body = `${marker}
             ## nixmac E2E
+            ${previewNotice}
 
             **Status:** ${status}
 
@@ -1416,6 +1489,21 @@ jobs:
 
             [Workflow run](${runUrl})
             `;
+
+            if (process.env.GITHUB_STEP_SUMMARY) {
+              const summaryBody = body.replace(marker, "").trim();
+              fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summaryBody}\n`);
+            }
+
+            if (!prSideEffectsEnabled) {
+              core.info("PR side effects disabled for this run; wrote workflow summary preview only.");
+              return;
+            }
+
+            if (!prNumber) {
+              core.info("No PR number resolved; skipping PR comment, check run, and commit status.");
+              return;
+            }
 
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,

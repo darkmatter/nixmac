@@ -157,6 +157,39 @@ sudo -n whoami                 # "root"
 
 The workflow (`.github/workflows/e2e.yml`) resolves required scenarios from PR labels and changed paths.
 
+### Manual workflow validation
+
+Use `workflow_dispatch` on the feature branch to validate the gate without opening
+or editing a validation PR:
+
+```bash
+gh workflow run "nixmac E2E Gate" \
+  --ref <feature-branch> \
+  -f scenario=all \
+  -f pr_side_effects=skip
+```
+
+That run publishes a workflow summary preview plus run-scoped report/video links
+under `e2e/manual/<run-id>/<head-sha>`.
+
+To test PR-aware scenario selection without changing the PR comment/check/status,
+pass a PR number and keep side effects skipped:
+
+```bash
+gh workflow run "nixmac E2E Gate" \
+  --ref <feature-branch> \
+  -f scenario=pr \
+  -f pr_number=<pr-number> \
+  -f pr_side_effects=skip
+```
+
+That publishes preview links under
+`e2e/pr-preview/pr-<pr-number>/<run-id>/<head-sha>` so it does not overwrite the
+links shown in the live PR comment.
+
+Use `pr_side_effects=auto` only when the run should update the sticky PR comment,
+the `nixmac E2E Report` check, and the `nixmac/e2e` commit status.
+
 ### Secrets
 
 Full-Mac CI uses direct GitHub Secrets for the remote runner. `SOPS_AGE_KEY` is still required by shared workflow setup.
