@@ -151,13 +151,24 @@ export async function setConfigurationDirectory(configDir, hostAttr) {
   await browser.keys(['Tab']);
   await browser.pause(250);
 
-  const setupSeeded = await browser.execute((dir, host) => {
-    if (!window.__testWidget?.setSetupHosts) {
-      return false;
+  let setupSeeded = false;
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    setupSeeded = await browser.execute((dir, host) => {
+      if (!window.__testWidget?.setSetupHosts) {
+        return false;
+      }
+      window.__testWidget.setSetupHosts(dir, host);
+      return true;
+    }, configDir, hostAttr);
+
+    const hostSelect = await $('#host-select');
+    if (setupSeeded && (await hostSelect.isExisting())) {
+      return;
     }
-    window.__testWidget.setSetupHosts(dir, host);
-    return true;
-  }, configDir, hostAttr);
+
+    await browser.pause(250);
+  }
+
   expect(setupSeeded, 'Expected E2E widget test helper to seed setup hosts').to.equal(true);
 
   await waitForSelector('#host-select', {
