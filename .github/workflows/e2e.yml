@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       scenario:
-        description: "Scenario to run, or all"
+        description: "Scenario to run, all, or pr when pr_number is set"
         required: false
         default: "auto_evolve_basic_package"
         type: string
@@ -102,6 +102,7 @@ jobs:
             let macScenarios = [];
             let changed = [];
             let labels = [];
+            let prForSelection = payload.pull_request || null;
             const selectionReasons = new Map();
             const matchedFilesByScenario = new Map();
 
@@ -164,25 +165,7 @@ jobs:
               );
             }
 
-            if (eventName === "workflow_dispatch") {
-              required = true;
-              const scenario = payload.inputs?.scenario || "auto_evolve_basic_package";
-              const normalizedScenario = String(scenario).trim();
-              if (["all", "e2e:all", "*"].includes(normalizedScenario)) {
-                reason = "manual dispatch: all scenarios";
-                for (const scenario of manifest.scenarios) {
-                  addSelection(scenario.name, "manual dispatch: all scenarios");
-                }
-              } else {
-                reason = `manual dispatch: ${normalizedScenario}`;
-                const selected = scenarioByName.get(normalizedScenario);
-                if (!selected) {
-                  throw new Error(`Unknown E2E scenario for manual dispatch: ${normalizedScenario}`);
-                }
-                addSelection(normalizedScenario, "manual dispatch");
-              }
-            } else {
-              const pr = payload.pull_request;
+            async function resolvePullRequest(pr) {
               labels = (pr.labels || []).map((label) => label.name);
               const headRepo = pr.head?.repo?.full_name;
               const baseRepo = pr.base?.repo?.full_name;
@@ -272,6 +255,38 @@ jobs:
               }
             }
 
+            if (eventName === "workflow_dispatch") {
+              required = true;
+              const scenario = payload.inputs?.scenario || "auto_evolve_basic_package";
+              const normalizedScenario = String(scenario).trim();
+              const dispatchPrNumber = Number(payload.inputs?.pr_number || 0);
+              const wantsPrResolution = dispatchPrNumber > 0
+                && ["pr", "auto", "pull_request", "pull-request"].includes(normalizedScenario);
+              if (wantsPrResolution) {
+                const { data: pr } = await github.rest.pulls.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: dispatchPrNumber,
+                });
+                prForSelection = pr;
+                await resolvePullRequest(pr);
+              } else if (["all", "e2e:all", "*"].includes(normalizedScenario)) {
+                reason = "manual dispatch: all scenarios";
+                for (const scenario of manifest.scenarios) {
+                  addSelection(scenario.name, "manual dispatch: all scenarios");
+                }
+              } else {
+                reason = `manual dispatch: ${normalizedScenario}`;
+                const selected = scenarioByName.get(normalizedScenario);
+                if (!selected) {
+                  throw new Error(`Unknown E2E scenario for manual dispatch: ${normalizedScenario}`);
+                }
+                addSelection(normalizedScenario, "manual dispatch");
+              }
+            } else {
+              await resolvePullRequest(prForSelection);
+            }
+
             scenarios = selectedNamesFor("tauri-wdio");
             macScenarios = selectedNamesFor("full-mac");
             tauriRequired = scenarios.length > 0;
@@ -299,15 +314,15 @@ jobs:
                     ? "scenario-label"
                     : labels.includes("e2e:mac") || labels.includes("e2e:release-smoke")
                       ? "full-mac-label"
-                      : eventName === "workflow_dispatch"
+                      : eventName === "workflow_dispatch" && !prForSelection
                         ? "manual"
                         : "pr-default";
             writeSelection({
               schemaVersion: 1,
               repo: context.repo.owner + "/" + context.repo.repo,
-              prNumber: payload.pull_request?.number ?? (payload.inputs?.pr_number ? Number(payload.inputs.pr_number) : null),
-              headSha: payload.pull_request?.head?.sha ?? context.sha,
-              baseSha: payload.pull_request?.base?.sha ?? null,
+              prNumber: prForSelection?.number ?? (payload.inputs?.pr_number ? Number(payload.inputs.pr_number) : null),
+              headSha: prForSelection?.head?.sha ?? context.sha,
+              baseSha: prForSelection?.base?.sha ?? null,
               eventName,
               required,
               tauriRequired,
@@ -1053,7 +1068,8 @@ jobs:
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const artifactRoot = "e2e-artifacts";
             const prNumber = context.payload.pull_request?.number || Number(context.payload.inputs?.pr_number || 0);
-            const testedCommit = context.payload.pull_request?.head?.sha || context.sha;
+            let testedCommit = context.payload.pull_request?.head?.sha || context.sha;
+            const conclusion = `${{ steps.result.outputs.conclusion }}`;
             if (!prNumber) {
               throw new Error("Sticky PR comment requested without a PR number.");
             }
@@ -1310,6 +1326,7 @@ jobs:
 
             const reports = findReports(artifactRoot);
             const selection = readSelection(artifactRoot);
+            testedCommit = selection?.headSha || testedCommit;
             const table = reports.length
               ? [
                   "| Scenario | Lane | Result | What it checks | Report | Proof |",
@@ -1419,6 +1436,57 @@ jobs:
                 repo: context.repo.repo,
                 issue_number: prNumber,
                 body,
+              });
+            }
+
+            const checkName = "nixmac E2E Report";
+            const checkConclusion = ["success", "failure", "neutral", "cancelled", "skipped", "timed_out", "action_required"].includes(conclusion)
+              ? conclusion
+              : "failure";
+            const checkSummary = [
+              `**Status:** ${status}`,
+              `**Why this ran:** ${reason}`,
+              `**Scope:** ${scope}`,
+              `**Coverage note:** ${coverageNote}`,
+              `**Tested commit:** \`${testedCommit}\``,
+            ].join("\n\n");
+            const checkText = [
+              attentionSection,
+              required ? table : "",
+              failureSections,
+              `[Workflow run](${runUrl})`,
+            ].filter(Boolean).join("\n\n");
+            const checkRunPayload = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: checkName,
+              status: "completed",
+              conclusion: checkConclusion,
+              details_url: runUrl,
+              output: {
+                title: `nixmac E2E ${status}`,
+                summary: checkSummary,
+                text: checkText,
+              },
+              completed_at: new Date().toISOString(),
+            };
+            const checkRuns = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: testedCommit,
+              check_name: checkName,
+              per_page: 100,
+            });
+            const existingCheck = checkRuns.data.check_runs.find((check) => check.name === checkName);
+            if (existingCheck) {
+              await github.rest.checks.update({
+                ...checkRunPayload,
+                check_run_id: existingCheck.id,
+              });
+            } else {
+              await github.rest.checks.create({
+                ...checkRunPayload,
+                head_sha: testedCommit,
               });
             }
 
