@@ -1,6 +1,7 @@
 import { expect } from '@wdio/globals';
 import {
   clickSettingsTabAndAssert,
+  openFeedbackDialog,
   openSettingsDialog,
   waitForFirstWindow,
 } from './helpers/app-ui.mjs';
@@ -21,5 +22,12 @@ describe('settings dialog', () => {
     for (const tab of tabs) {
       await clickSettingsTabAndAssert(tab);
     }
+  });
+});
+
+describe('feedback dialog', () => {
+  it('opens the feedback dialog from header', async () => {
+    await waitForFirstWindow();
+    await openFeedbackDialog();
   });
 });

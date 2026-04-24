@@ -166,6 +166,15 @@ export async function openSettingsDialog() {
   await waitForSelector('button[aria-label="Close settings"]');
 }
 
+export async function openFeedbackDialog() {
+  const feedbackButtonSelector = 'button[aria-label="Give feedback"]';
+  await waitForSelector(feedbackButtonSelector);
+  await clickWithRetry(feedbackButtonSelector);
+
+  // Wait for feedback dialog to appear
+  await waitForSelector('button[aria-label="Send feedback"]');
+}
+
 export async function clickSettingsTabAndAssert(tabName) {
   const tabButtonSelector = `//button[.//span[normalize-space()="${tabName}"]]`;
   await waitForSelector(tabButtonSelector);
