@@ -27,7 +27,12 @@ export interface WidgetTestHelpers {
   /**
    * Capture the most relevant proof surface as a PNG data URL.
    */
-  captureProofPng: () => Promise<string | null>;
+  captureProofPng: (options?: ProofCaptureOptions) => Promise<string | null>;
+}
+
+export interface ProofCaptureOptions {
+  includeAnnotations?: boolean;
+  pixelRatio?: number;
 }
 
 function getProofTarget(): HTMLElement | null {
@@ -45,6 +50,14 @@ function getProofTarget(): HTMLElement | null {
   }
 
   return document.querySelector<HTMLElement>("#root");
+}
+
+function getProofCaptureTarget(options?: ProofCaptureOptions): HTMLElement | null {
+  if (options?.includeAnnotations) {
+    return document.body ?? getProofTarget();
+  }
+
+  return getProofTarget();
 }
 
 export function setupWidgetTestHelpers() {
@@ -67,21 +80,24 @@ export function setupWidgetTestHelpers() {
       store.setHost("");
       store.setHosts(hostAttr ? [hostAttr] : []);
     },
-    captureProofPng: async () => {
-      const target = getProofTarget();
+    captureProofPng: async (options) => {
+      const target = getProofCaptureTarget(options);
       if (!target) {
         return null;
       }
 
       const { toPng } = await import("html-to-image");
       const bodyBackground = getComputedStyle(document.body).backgroundColor;
+      const rect = target.getBoundingClientRect();
       return toPng(target, {
         backgroundColor:
           bodyBackground && bodyBackground !== "rgba(0, 0, 0, 0)"
             ? bodyBackground
             : "rgb(10, 10, 10)",
-        cacheBust: true,
-        pixelRatio: 2,
+        cacheBust: !options?.includeAnnotations,
+        width: Math.ceil(rect.width || target.scrollWidth || window.innerWidth),
+        height: Math.ceil(rect.height || target.scrollHeight || window.innerHeight),
+        pixelRatio: options?.pixelRatio ?? (options?.includeAnnotations ? 1 : 2),
       });
     },
   };

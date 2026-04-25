@@ -1250,6 +1250,8 @@ jobs:
               ["full_mac_runner_unavailable", "Full-Mac runner was unreachable or did not produce a scenario report"],
               ["screen_recording_invalid", "Screen recording was produced but failed validation"],
               ["screen_recording_missing", "No screen recording was captured for this run"],
+              ["webview_recording_invalid", "Webview proof video was produced but failed validation"],
+              ["webview_recording_missing", "No webview proof video was captured for this run"],
             ]);
 
             function humanizeCaptureLimitation(value) {
@@ -1395,6 +1397,9 @@ jobs:
               if (/WDIO scenario command failed|Failed to create a session|plugin request failed|no window/i.test(text)) {
                 return "Inspect the WDIO diagnostic log and confirm the hosted runner built and launched the Tauri debug app before rerunning.";
               }
+              if (/webview_recording_(invalid|missing)/i.test(text)) {
+                return "Inspect the screenshot proof and hosted WDIO video-capture diagnostics, then rerun the scenario.";
+              }
               if (/screen_recording_(invalid|missing)|recording/i.test(text)) {
                 return "Inspect screenshots and confirm Screen Recording permission on the Mac runner.";
               }
@@ -1410,7 +1415,7 @@ jobs:
                 || proofs.find((proof) => proof.isPrimary)
                 || proofs[0];
               if (primary?.kind === "video" && report.lane === "tauri-wdio") {
-                return "Webview recording with action annotations";
+                return "Action-proof webview video";
               }
               if (primary?.kind === "video") {
                 return "Full-screen recording";
@@ -1475,7 +1480,7 @@ jobs:
                   ? `\n\n![Failure proof](${report.failureScreenshotUrl})`
                   : "";
                 const videoLink = isPublicUrl(report.failureVideoUrl)
-                  ? `\n\n[${report.lane === "tauri-wdio" ? "Failure webview recording with action annotations" : "Failure full-screen recording"}](${report.failureVideoUrl})`
+                  ? `\n\n[${report.lane === "tauri-wdio" ? "Failure action-proof webview video" : "Failure full-screen recording"}](${report.failureVideoUrl})`
                   : "";
                 const logProof = (report.proof || []).find((proof) => proof.kind === "log" && isPublicUrl(proof.url));
                 const logLink = logProof

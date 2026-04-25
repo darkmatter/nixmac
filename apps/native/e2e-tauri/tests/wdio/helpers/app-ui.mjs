@@ -19,6 +19,23 @@ function isXpathSelector(selector) {
   return String(selector).startsWith('/') || String(selector).startsWith('(');
 }
 
+async function captureProofFrame(label) {
+  const capture = globalThis.__nixmacCaptureE2eVideoFrame;
+  if (typeof capture !== 'function') {
+    return;
+  }
+
+  try {
+    await capture(label);
+  } catch (error) {
+    console.warn(
+      `[wdio:e2e-video] Failed to capture annotated proof frame: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+}
+
 export async function markProofAction({ kind, label, selector = null, value = null } = {}) {
   if (!browser?.execute) {
     return;
@@ -325,6 +342,7 @@ export async function clickWithRetry(
   { attempts = 12, interval = 250, label = null, forceDomClick = false } = {},
 ) {
   let lastError;
+  const actionLabel = label ?? actionLabelFromSelector(selector);
   for (let i = 0; i < attempts; i += 1) {
     try {
       await failIfWidgetErrorPresent();
@@ -335,9 +353,10 @@ export async function clickWithRetry(
       }
       await markProofAction({
         kind: 'click',
-        label: label ?? actionLabelFromSelector(selector),
+        label: actionLabel,
         selector,
       });
+      await captureProofFrame(`before-click-${actionLabel}`);
       if (forceDomClick) {
         const clicked = await browser.execute((targetSelector) => {
           const isVisible = (node) => {
@@ -413,6 +432,8 @@ export async function clickWithRetry(
           }
         }
       }
+      await browser.pause(200);
+      await captureProofFrame(`after-click-${actionLabel}`);
       return;
     } catch (error) {
       lastError = error;
@@ -480,6 +501,7 @@ export async function submitPromptMessage(promptMessage) {
     selector: PROMPT_INPUT_SELECTOR,
     value: promptMessage,
   });
+  await captureProofFrame('before-type-Prompt text');
   const usedStoreHook = await browser.execute((value) => {
     if (!window.__testWidget?.setEvolvePrompt) {
       return false;
@@ -513,6 +535,7 @@ export async function submitPromptMessage(promptMessage) {
       await promptInput.setValue(promptMessage);
     }
   }
+  await captureProofFrame('after-type-Prompt text');
 
   await waitForSelector(SEND_BUTTON_SELECTOR);
   await waitUntilOrFailOnError(
@@ -531,13 +554,17 @@ export async function submitPromptMessage(promptMessage) {
 }
 
 export async function pressKey(key, label = null) {
+  const actionLabel = label ?? key;
   await markProofAction({
     kind: 'key',
-    label: label ?? key,
+    label: actionLabel,
     selector: null,
     value: key,
   });
+  await captureProofFrame(`before-key-${actionLabel}`);
   await browser.keys([key]);
+  await browser.pause(200);
+  await captureProofFrame(`after-key-${actionLabel}`);
 }
 
 export async function focusPromptInput() {
@@ -650,14 +677,16 @@ export async function assertSelectorGone(selector, { timeout = 10000, interval =
 }
 
 export async function setFieldValue(selector, value, { label = null, blur = true } = {}) {
+  const actionLabel = label ?? actionLabelFromSelector(selector);
   await waitForSelector(selector);
-  await clickWithRetry(selector, { label: label ?? actionLabelFromSelector(selector) });
+  await clickWithRetry(selector, { label: actionLabel });
   await markProofAction({
     kind: 'type',
-    label: label ?? actionLabelFromSelector(selector),
+    label: actionLabel,
     selector,
     value,
   });
+  await captureProofFrame(`before-type-${actionLabel}`);
 
   const injectedValue = await browser.execute((fieldSelector, nextValue) => {
     const el = document.querySelector(fieldSelector);
@@ -686,6 +715,7 @@ export async function setFieldValue(selector, value, { label = null, blur = true
     await browser.keys(['Tab']);
     await browser.pause(250);
   }
+  await captureProofFrame(`after-type-${actionLabel}`);
 }
 
 export async function getInputType(selector) {

@@ -25,6 +25,11 @@ const CAPTURE_LIMITATION_LABELS = new Map([
     'Screen recording was produced but failed validation',
   ],
   ['screen_recording_missing', 'No screen recording was captured for this run'],
+  [
+    'webview_recording_invalid',
+    'Webview proof video was produced but failed validation',
+  ],
+  ['webview_recording_missing', 'No webview proof video was captured for this run'],
 ]);
 
 function humanizeCaptureLimitation(value) {
@@ -109,6 +114,9 @@ function nextActionForError(error, report) {
   }
   if (/WDIO scenario command failed|Failed to create a session|plugin request failed|no window/i.test(text)) {
     return 'Inspect the WDIO diagnostic log and confirm the hosted runner built and launched the Tauri debug app before rerunning.';
+  }
+  if (/webview_recording_(invalid|missing)/i.test(text)) {
+    return 'Inspect the screenshot proof and hosted WDIO video-capture diagnostics, then rerun the scenario.';
   }
   if (/screen_recording_(invalid|missing)|recording/i.test(text)) {
     return 'Inspect screenshots and confirm Screen Recording permission on the Mac runner.';

@@ -73,6 +73,7 @@ export async function createE2eReportContext({ scenario, lane = 'tauri-wdio' }) 
     lane,
     artifactDir,
     phaseLogPath: path.join(artifactDir, 'phases.jsonl'),
+    limitationsPath: path.join(artifactDir, 'capture-limitations.jsonl'),
     startedAt,
   };
 }
@@ -93,6 +94,15 @@ export async function recordE2ePhase(context, phase) {
   await appendFile(context.phaseLogPath, `${JSON.stringify(phase)}\n`, 'utf-8');
 }
 
+export async function recordE2eCaptureLimitation(context, limitation) {
+  const value = String(limitation ?? '').trim();
+  if (!value) {
+    return;
+  }
+
+  await appendFile(context.limitationsPath, `${JSON.stringify(value)}\n`, 'utf-8');
+}
+
 export async function readE2ePhases(context) {
   try {
     const raw = await readFile(context.phaseLogPath, 'utf-8');
@@ -101,6 +111,25 @@ export async function readE2ePhases(context) {
       .map((line) => line.trim())
       .filter(Boolean)
       .map((line) => JSON.parse(line));
+  } catch {
+    return [];
+  }
+}
+
+export async function readE2eCaptureLimitations(context) {
+  try {
+    const raw = await readFile(context.limitationsPath, 'utf-8');
+    return [
+      ...new Set(
+        raw
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .map((line) => JSON.parse(line))
+          .map((value) => String(value).trim())
+          .filter(Boolean),
+      ),
+    ];
   } catch {
     return [];
   }
@@ -138,6 +167,7 @@ function normalizePhase(phase) {
 export async function writeE2eReport(context, { exitCode = 0 } = {}) {
   const finishedAt = nowIso();
   const phases = (await readE2ePhases(context)).map(normalizePhase);
+  const captureLimitations = await readE2eCaptureLimitations(context);
   const proof = phases.flatMap((phase) => phase.proof ?? []);
   const firstFailure = phases.find((phase) => phase.status !== 'passed');
   const failureProof = proof.find((entry) => entry.isFailureProof);
@@ -192,6 +222,7 @@ export async function writeE2eReport(context, { exitCode = 0 } = {}) {
     replayCommand: REPLAY_COMMANDS[context.scenario] ?? `bun run test:wdio -- ${context.scenario}`,
     localReproCommand:
       REPLAY_COMMANDS[context.scenario] ?? `bun run test:wdio -- ${context.scenario}`,
+    captureLimitations,
     phases,
     proof,
   };
