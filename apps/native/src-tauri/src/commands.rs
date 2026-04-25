@@ -322,40 +322,46 @@ fn reset_evolve_cancelled() {
     EVOLVE_CANCELLED.store(false, std::sync::atomic::Ordering::SeqCst);
 }
 
-/// Global channel for user responses to agent questions.
-/// The sender is held here; the receiver is consumed by the evolve loop.
-static QUESTION_RESPONSE: std::sync::OnceLock<
-    tokio::sync::Mutex<(
-        tokio::sync::mpsc::Sender<String>,
-        tokio::sync::mpsc::Receiver<String>,
-    )>,
+/// Global holder for an in-flight question sender.
+/// We use a oneshot per-question so the evolve loop can await a response
+/// without holding a mutex across an await (which would cause a deadlock).
+static ONGOING_QUESTION: std::sync::OnceLock<
+    tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<String>>>,
 > = std::sync::OnceLock::new();
 
-fn get_question_channel() -> &'static tokio::sync::Mutex<(
-    tokio::sync::mpsc::Sender<String>,
-    tokio::sync::mpsc::Receiver<String>,
-)> {
-    QUESTION_RESPONSE.get_or_init(|| {
-        let (tx, rx) = tokio::sync::mpsc::channel(1);
-        tokio::sync::Mutex::new((tx, rx))
-    })
+fn ongoing_question_slot(
+) -> &'static tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<String>>> {
+    ONGOING_QUESTION.get_or_init(|| tokio::sync::Mutex::new(None))
 }
 
 /// Send a user's answer to the evolve loop's pending question.
 pub async fn send_question_response(answer: String) -> anyhow::Result<()> {
-    let channel = get_question_channel();
-    let lock = channel.lock().await;
-    lock.0
-        .send(answer)
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to send question response: {}", e))
+    let slot = ongoing_question_slot();
+    let mut guard = slot.lock().await;
+    if let Some(tx) = guard.take() {
+        tx.send(answer)
+            .map_err(|_e| anyhow::anyhow!("Failed to send question response"))
+    } else {
+        Err(anyhow::anyhow!("No pending question to answer"))
+    }
 }
 
 /// Wait for a user response to a question (called from the evolve loop).
 pub async fn wait_for_question_response() -> Option<String> {
-    let channel = get_question_channel();
-    let mut lock = channel.lock().await;
-    lock.1.recv().await
+    let slot = ongoing_question_slot();
+
+    // Create a oneshot for this question and register its sender globally.
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    {
+        let mut guard = slot.lock().await;
+        // If there's already a pending question, replace it (dropping old sender).
+        *guard = Some(tx);
+    }
+
+    match rx.await {
+        Ok(ans) => Some(ans),
+        Err(_) => None,
+    }
 }
 
 /// Handles the complete evolution cycle returning the git status and summary to react
@@ -687,8 +693,7 @@ pub async fn get_history(app: AppHandle) -> Result<Vec<crate::shared_types::Hist
 /// Checks out `target_hash` for history restore rebuild
 #[tauri::command]
 pub async fn prepare_restore(app: AppHandle, target_hash: String) -> Result<(), String> {
-    let config_dir =
-        store::get_config_dir(&app).map_err(|e| capture_err("prepare_restore", e))?;
+    let config_dir = store::get_config_dir(&app).map_err(|e| capture_err("prepare_restore", e))?;
     git::checkout_files_at_commit(&config_dir, &target_hash)
         .map_err(|e| capture_err("prepare_restore", e))?;
     crate::historelog::log_prepare(&config_dir);
@@ -697,8 +702,7 @@ pub async fn prepare_restore(app: AppHandle, target_hash: String) -> Result<(), 
 
 #[tauri::command]
 pub async fn abort_restore(app: AppHandle) -> Result<(), String> {
-    let config_dir =
-        store::get_config_dir(&app).map_err(|e| capture_err("abort_restore", e))?;
+    let config_dir = store::get_config_dir(&app).map_err(|e| capture_err("abort_restore", e))?;
     git::restore_all(&config_dir).map_err(|e| capture_err("abort_restore", e))?;
     crate::historelog::log_abort(&config_dir);
     Ok(())
@@ -1215,9 +1219,7 @@ pub async fn routing_state_get(app: AppHandle) -> Result<evolve_state::EvolveSta
     let state = evolve_state::get(&app).map_err(|e| capture_err("routing_state_get", e))?;
     // Recompute step from live git status to surface manual changes
     let dir = store::get_config_dir(&app).map_err(|e| capture_err("routing_state_get", e))?;
-    let changes = git::status(&dir)
-        .map(|s| s.changes)
-        .unwrap_or_default();
+    let changes = git::status(&dir).map(|s| s.changes).unwrap_or_default();
     evolve_state::set(&app, state, &changes).map_err(|e| capture_err("routing_state_get", e))
 }
 
