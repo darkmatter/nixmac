@@ -84,6 +84,9 @@ async function elementExists(selector) {
   }
 }
 
+// Answers an inline question posed during the evolve flow.
+// Addresses React components defined in evolve-progress.tsx
+// that are not easily interacted with via standard WebDriver methods.
 export async function answerQuestion(answerText) {
   const inputSelector = '[data-testid="question-prompt-input"]';
   const submitButtonSelector = '[data-testid="question-prompt-submit"]';
