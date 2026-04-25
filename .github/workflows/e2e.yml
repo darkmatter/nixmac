@@ -416,58 +416,9 @@ jobs:
           path: e2e-selection/e2e-selection.json
           retention-days: 14
 
-  e2e-build:
-    name: E2E / build WDIO app
-    needs: resolve
-    if: needs.resolve.outputs.tauri_required == 'true'
-    runs-on: macos-latest
-    timeout-minutes: 30
-    # Build once so hosted scenarios fan out against the same app binary instead of rebuilding per matrix row.
-    env:
-      NIXMAC_E2E_MOCK_SYSTEM: "1"
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.resolve.outputs.head_sha }}
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Setup sops
-        uses: nhedger/setup-sops@v2
-
-      - name: Setup age
-        uses: alessiodionisi/setup-age-action@v1.3.0
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build WDIO app
-        working-directory: apps/native
-        run: bun run test:wdio:build
-
-      - name: Verify WDIO app artifact
-        run: |
-          chmod +x target/debug/nixmac
-          test -f apps/native/dist/index.html
-          test -x target/debug/nixmac
-
-      - name: Upload WDIO app build
-        uses: actions/upload-artifact@v7
-        with:
-          name: wdio-app-${{ needs.resolve.outputs.head_sha }}
-          path: |
-            apps/native/dist/
-            target/debug/nixmac
-          retention-days: 3
-
   e2e:
     name: E2E / tauri-wdio / ${{ matrix.scenario }}
-    needs: [resolve, e2e-build]
+    needs: resolve
     if: needs.resolve.outputs.tauri_required == 'true'
     runs-on: macos-latest
     timeout-minutes: 45
@@ -498,8 +449,20 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/native/src-tauri
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      # Build inside the scenario job. The debug Tauri binary is not reliably
+      # portable between GitHub macOS runners, and a downloaded binary can
+      # produce "no window" session failures before any product assertions run.
+      - name: Build WDIO app
+        working-directory: apps/native
+        run: bun run test:wdio:build
 
       - name: Install tauri-wd
         run: cargo install tauri-webdriver-automation
@@ -515,12 +478,6 @@ jobs:
           command -v tauri-wd
           command -v ffmpeg
           command -v jq
-
-      - name: Download WDIO app build
-        uses: actions/download-artifact@v7
-        with:
-          name: wdio-app-${{ needs.resolve.outputs.head_sha }}
-          path: .
 
       - name: Verify WDIO app build
         run: |
@@ -570,7 +527,20 @@ jobs:
             echo "Unknown or unrunnable Tauri WDIO scenario: ${{ matrix.scenario }}" >&2
             exit 1
           fi
-          bun run "$SCRIPT"
+          LOG_TMP="$(mktemp -t nixmac-wdio-${{ matrix.scenario }}.XXXXXX.log)"
+          LOG_PATH="e2e-tauri/artifacts/${{ matrix.scenario }}/wdio.log"
+          mkdir -p "e2e-tauri/artifacts/${{ matrix.scenario }}"
+          set +e
+          bun run "$SCRIPT" 2>&1 | tee "$LOG_TMP"
+          status=${PIPESTATUS[0]}
+          set -e
+          mkdir -p "e2e-tauri/artifacts/${{ matrix.scenario }}"
+          cp "$LOG_TMP" "$LOG_PATH" || true
+          if [ "$status" -ne 0 ]; then
+            node e2e-tauri/scripts/write-infra-failure.mjs "${{ matrix.scenario }}" "WDIO scenario command failed before a passing report was produced" "$LOG_PATH"
+          fi
+          rm -f "$LOG_TMP"
+          exit "$status"
 
       - name: Render report
         if: always()
@@ -1421,6 +1391,9 @@ jobs:
               }
               if (/Full-Mac runner did not produce|full_mac_runner_unavailable|SSH status/i.test(text)) {
                 return "Check the configured Mac runner reachability and scenario log, then rerun the full-Mac lane.";
+              }
+              if (/WDIO scenario command failed|Failed to create a session|plugin request failed|no window/i.test(text)) {
+                return "Inspect the WDIO diagnostic log and confirm the hosted runner built and launched the Tauri debug app before rerunning.";
               }
               if (/screen_recording_(invalid|missing)|recording/i.test(text)) {
                 return "Inspect screenshots and confirm Screen Recording permission on the Mac runner.";

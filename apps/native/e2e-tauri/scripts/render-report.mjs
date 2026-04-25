@@ -107,6 +107,9 @@ function nextActionForError(error, report) {
   if (/Full-Mac runner did not produce|full_mac_runner_unavailable|SSH status/i.test(text)) {
     return 'Check the configured Mac runner reachability and scenario log, then rerun the full-Mac lane.';
   }
+  if (/WDIO scenario command failed|Failed to create a session|plugin request failed|no window/i.test(text)) {
+    return 'Inspect the WDIO diagnostic log and confirm the hosted runner built and launched the Tauri debug app before rerunning.';
+  }
   if (/screen_recording_(invalid|missing)|recording/i.test(text)) {
     return 'Inspect screenshots and confirm Screen Recording permission on the Mac runner.';
   }

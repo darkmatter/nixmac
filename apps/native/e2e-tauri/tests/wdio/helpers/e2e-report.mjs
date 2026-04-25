@@ -147,6 +147,7 @@ export async function writeE2eReport(context, { exitCode = 0 } = {}) {
       null
     : null;
   const primaryProof =
+    failureProof ??
     failureVideo ??
     proof.find((entry) => entry.kind === 'video' && entry.isPrimary) ??
     proof.find((entry) => entry.isPrimary) ??
@@ -157,9 +158,11 @@ export async function writeE2eReport(context, { exitCode = 0 } = {}) {
   const status =
     phases.length === 0
       ? 'infra_failed'
-      : exitCode === 0 && !firstFailure
-        ? 'passed'
-        : 'failed';
+      : firstFailure?.status === 'infra_failed'
+        ? 'infra_failed'
+        : exitCode === 0 && !firstFailure
+          ? 'passed'
+          : 'failed';
 
   const report = {
     schemaVersion: 1,
