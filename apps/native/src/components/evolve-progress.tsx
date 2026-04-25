@@ -320,11 +320,13 @@ function QuestionPrompt({
                 ref={inputRef}
                 type="text"
                 value={input}
+                data-testid="question-prompt-input"
               />
               <button
                 className="rounded-md bg-violet-500/20 px-3 py-1.5 text-sm text-violet-300 transition-colors hover:bg-violet-500/30 disabled:opacity-50"
                 disabled={!input.trim()}
                 type="submit"
+                data-testid="question-prompt-submit"
               >
                 Send
               </button>
