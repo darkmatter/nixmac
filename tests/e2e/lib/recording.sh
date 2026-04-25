@@ -22,33 +22,18 @@ recording_clear_terminal_saved_state() {
 
 recording_dismiss_terminal_automation_prompt() {
     [ "${E2E_TERMINAL_CLEANUP_MODE:-}" = "kill" ] || return 0
-    command -v jq &>/dev/null || return 0
-    declare -f peek_elements >/dev/null || return 0
-    declare -f peek_click >/dev/null || return 0
+    declare -f peekaboo_run >/dev/null || return 0
 
-    local attempts=0 json button
-    while [ "$attempts" -lt 5 ]; do
-        attempts=$((attempts + 1))
-        json=$(peek_elements)
-        if echo "$json" | jq -e '
-            [.data.ui_elements[]? | (.label? // .title? // .value? // "")] |
-            join(" ") |
-            test("sshd-keygen-wrapper.*Terminal"; "i")
-        ' >/dev/null 2>&1; then
-            button=$(echo "$json" | jq -r '
-                .data.ui_elements[]? |
-                select(.role == "button") |
-                select((.label? // .title? // .value? // "") | test("^Don.?t Allow$"; "i")) |
-                .id
-            ' 2>/dev/null | head -1)
-            if [ -n "$button" ]; then
-                peek_click "$button" "$json" >/dev/null 2>&1 || true
-                log "Dismissed Terminal Automation permission prompt"
-                return 0
-            fi
-        fi
-        sleep 1
+    local coords
+    sleep 1
+    # The prompt is a system Automation dialog and is not reliably exposed in
+    # the AX tree over SSH. Click the stable button locations at common 1x/2x
+    # runner resolutions; harmless if the prompt is absent.
+    for coords in "590,306" "690,306" "1180,612" "1375,612"; do
+        peekaboo_run click --coords "$coords" >/dev/null 2>&1 || true
+        sleep 0.3
     done
+    log "Attempted to dismiss Terminal Automation permission prompt"
 }
 
 recording_add_limitation() {
