@@ -31,6 +31,18 @@ function lastSignalLines(logText) {
     .slice(-8);
 }
 
+function inferFallbackStatus(logText) {
+  if (
+    /Error in "|Timeout of \d+ms exceeded|AssertionError|\b\d+\) .+|Spec Files:\s+\d+ passed,\s+\d+ failed/i.test(
+      logText,
+    )
+  ) {
+    return 'failed';
+  }
+
+  return 'infra_failed';
+}
+
 async function existingReportHasPhases(context) {
   try {
     const report = JSON.parse(
@@ -67,13 +79,18 @@ if (logPath) {
 
 const signals = lastSignalLines(logText);
 const error = [message, ...signals].filter(Boolean).join('\n');
+const status = inferFallbackStatus(logText);
+const phaseName = status === 'failed' ? 'WDIO scenario/test' : 'WDIO session/bootstrap';
 await recordE2ePhase(context, {
-  name: 'WDIO session/bootstrap',
-  status: 'infra_failed',
+  name: phaseName,
+  status,
   startedAt: context.startedAt,
   finishedAt: new Date().toISOString(),
   durationMs: 0,
-  assertions: ['Create a WDIO session and attach to the Tauri webview'],
+  assertions:
+    status === 'failed'
+      ? ['Run the WDIO scenario command to completion']
+      : ['Create a WDIO session and attach to the Tauri webview'],
   proof: logPath && hasLog
     ? [
         {
@@ -82,8 +99,11 @@ await recordE2ePhase(context, {
           url: null,
           thumbnailUrl: null,
           timestampMs: null,
-          phase: 'WDIO session/bootstrap',
-          caption: 'WDIO session/bootstrap diagnostic log',
+          phase: phaseName,
+          caption:
+            status === 'failed'
+              ? 'WDIO scenario failure diagnostic log'
+              : 'WDIO session/bootstrap diagnostic log',
           isPrimary: true,
           isFailureProof: true,
         },

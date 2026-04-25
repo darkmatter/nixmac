@@ -63,9 +63,7 @@ describe('feedback and issue reporting', () => {
       label: 'Cancel feedback',
       forceDomClick: true,
     });
-
-    await browser.execute(() => window.location.reload());
-    await waitForFirstWindow();
+    await assertSelectorGone('#feedback-text', { timeout: 5000 });
 
     await clickWithRetry('//button[normalize-space()="Report Issue"]', {
       label: 'Report Issue',
