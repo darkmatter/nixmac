@@ -329,6 +329,8 @@ static ONGOING_QUESTION: std::sync::OnceLock<
     tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<String>>>,
 > = std::sync::OnceLock::new();
 
+pub type QuestionResponseReceiver = tokio::sync::oneshot::Receiver<String>;
+
 fn ongoing_question_slot(
 ) -> &'static tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<String>>> {
     ONGOING_QUESTION.get_or_init(|| tokio::sync::Mutex::new(None))
@@ -346,8 +348,9 @@ pub async fn send_question_response(answer: String) -> anyhow::Result<()> {
     }
 }
 
-/// Wait for a user response to a question (called from the evolve loop).
-pub async fn wait_for_question_response() -> Option<String> {
+/// Register a pending question before notifying the UI, so fast answers cannot
+/// arrive before the backend is ready to receive them.
+pub async fn prepare_question_response() -> QuestionResponseReceiver {
     let slot = ongoing_question_slot();
 
     // Create a oneshot for this question and register its sender globally.
@@ -358,9 +361,39 @@ pub async fn wait_for_question_response() -> Option<String> {
         *guard = Some(tx);
     }
 
+    rx
+}
+
+/// Wait for a prepared user response receiver.
+pub async fn wait_for_prepared_question_response(rx: QuestionResponseReceiver) -> Option<String> {
     match rx.await {
         Ok(ans) => Some(ans),
         Err(_) => None,
+    }
+}
+
+/// Wait for a user response to a question (called from the evolve loop).
+pub async fn wait_for_question_response() -> Option<String> {
+    let rx = prepare_question_response().await;
+    wait_for_prepared_question_response(rx).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn prepared_question_response_accepts_immediate_answer() {
+        let rx = prepare_question_response().await;
+
+        send_question_response("yes".to_string())
+            .await
+            .expect("prepared question should accept an answer");
+
+        assert_eq!(
+            wait_for_prepared_question_response(rx).await,
+            Some("yes".to_string())
+        );
     }
 }
 
