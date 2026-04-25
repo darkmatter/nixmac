@@ -31,7 +31,7 @@ export function Header() {
     >
       <div className="absolute top-2 left-0 h-4 w-16 z-[9999] cursor-default" />
 
-      <h3 className="font-medium text-muted-foreground text-xs" data-tauri-drag-region>
+      <h3 className="font-medium text-muted-foreground text-xs opacity-0" data-tauri-drag-region>
         {APP_NAME}
       </h3>
       <div className="absolute right-3 flex items-center gap-1">
