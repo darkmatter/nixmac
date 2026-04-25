@@ -29,7 +29,7 @@ recording_dismiss_terminal_automation_prompt() {
     # The prompt is a system Automation dialog and is not reliably exposed in
     # the AX tree over SSH. Click the stable button locations at common 1x/2x
     # runner resolutions; harmless if the prompt is absent.
-    for coords in "590,306" "690,306" "1180,612" "1375,612"; do
+    for coords in "740,383" "860,383" "590,306" "690,306" "1180,612" "1375,612"; do
         peekaboo_run click --coords "$coords" >/dev/null 2>&1 || true
         sleep 0.3
     done
