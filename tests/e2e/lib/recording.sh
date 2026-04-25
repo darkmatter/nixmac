@@ -103,6 +103,14 @@ recording_close_terminal_windows() {
     script_name="$(basename "${_RECORDER_SCRIPT:-e2e-record}")"
 
     [ "${E2E_CLOSE_RECORDING_TERMINAL:-1}" = "1" ] || return 0
+
+    if [ "${E2E_TERMINAL_CLEANUP_MODE:-}" = "kill" ]; then
+        pkill -x Terminal 2>/dev/null || true
+        sleep 1
+        pkill -9 -x Terminal 2>/dev/null || true
+        return 0
+    fi
+
     command -v osascript &>/dev/null || return 0
     pgrep -x Terminal &>/dev/null || return 0
 

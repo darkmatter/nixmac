@@ -77,7 +77,14 @@ cleanup_e2e_gui_leftovers() {
     # and Terminal.app keeps GUI recorder shells open unless explicitly closed.
     cleanup_e2e_recording_processes
 
-    if command -v osascript &>/dev/null && pgrep -x Terminal &>/dev/null; then
+    if [ "${E2E_TERMINAL_CLEANUP_MODE:-kill}" = "kill" ]; then
+        if pgrep -x Terminal &>/dev/null; then
+            pkill -x Terminal 2>/dev/null || true
+            sleep 1
+            pkill -9 -x Terminal 2>/dev/null || true
+            echo "[ci] Terminated stale E2E Terminal.app windows"
+        fi
+    elif command -v osascript &>/dev/null && pgrep -x Terminal &>/dev/null; then
         osascript >/dev/null 2>&1 <<'OSA' || true
 set closeTargets to {}
 
@@ -298,6 +305,7 @@ echo ""
 export ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
 export E2E_CLEANUP_NIX=1
 export E2E_JSON=1
+export E2E_TERMINAL_CLEANUP_MODE=kill
 export NIXMAC_DISABLE_UPDATER=1   # Updater can crash in CI (unsigned builds, empty platforms)
 export NIXMAC_SKIP_PERMISSIONS=1  # CI Mac may not have FDA granted; skip permissions screen
 
