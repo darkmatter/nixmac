@@ -66,7 +66,7 @@ tests/e2e/
 ```
 
 - **Peekaboo Bridge**: Desktop app holds Screen Recording + Accessibility TCC grants. CLI connects via Unix socket, allowing SSH sessions to drive the GUI.
-- **ffmpeg**: Records via `open -a Terminal` (inherits Terminal.app's Screen Recording permission).
+- **ffmpeg**: Records the real screen/cursor via `open -a Terminal` (inherits Terminal.app's Screen Recording permission). Defaults to 20 fps; override with `E2E_RECORD_FPS`.
 - **Adapters**: App-specific logic lives in `adapters/`. The core framework is app-agnostic.
 - **Fixtures**: Reusable precondition states. Scenarios declare which fixture they need.
 

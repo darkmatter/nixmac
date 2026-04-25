@@ -43,7 +43,7 @@ recording_is_valid() {
 
 start_recording() {
     local output="${1:-$E2E_VIDEO_FILE}"
-    local framerate="${2:-5}"
+    local framerate="${2:-${E2E_RECORD_FPS:-20}}"
     local max_duration="${3:-600}"
     
     if ! command -v ffmpeg &>/dev/null; then

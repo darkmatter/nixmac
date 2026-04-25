@@ -8,8 +8,12 @@ const ARTIFACT_ROOT = path.join(E2E_TAURI_DIR, 'artifacts');
 const REPLAY_COMMANDS = Object.freeze({
   auto_evolve_basic_package: 'bun run test:wdio:basic-prompts',
   discard_and_restore_state: 'bun run test:wdio:discard',
+  feedback_report_issue: 'bun run test:wdio:feedback-report',
+  history_navigation: 'bun run test:wdio:history-navigation',
   manual_evolve_existing_changes: 'bun run test:wdio:modify',
   onboarding_existing_repo: 'bun run test:wdio:onboarding',
+  prompt_keyboard_and_suggestions: 'bun run test:wdio:prompt-keyboard',
+  settings_controls_persistence: 'bun run test:wdio:settings-controls',
   settings_provider_change: 'bun run test:wdio:smoke',
   tauri_wdio_all: 'bun run test:wdio',
 });

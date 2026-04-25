@@ -107,7 +107,7 @@ scenario_cleanup() {
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `start_recording` | `[output] [fps] [max_duration]` | Start ffmpeg screen recording |
+| `start_recording` | `[output] [fps] [max_duration]` | Start ffmpeg screen recording; defaults to `E2E_RECORD_FPS` or 20 fps |
 | `stop_recording` | `[output]` | Stop recording, log file size |
 
 ## nixmac Adapter (`adapters/nixmac.sh`)
@@ -158,6 +158,7 @@ scenario_cleanup() {
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `E2E_RECORD` | `1` | Enable screen recording |
+| `E2E_RECORD_FPS` | `20` | Full-Mac ffmpeg recording frame rate |
 | `E2E_CLEANUP_NIX` | `1` | Uninstall Nix after test |
 | `E2E_VERBOSE` | `0` | Debug logging |
 | `E2E_JSON` | `0` | Write JSON results file |

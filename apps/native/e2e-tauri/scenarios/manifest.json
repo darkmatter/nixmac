@@ -118,6 +118,121 @@
       "requiredForDefaultPrPack": true
     },
     {
+      "name": "settings_controls_persistence",
+      "lane": "tauri-wdio",
+      "title": "Settings controls persistence",
+      "summary": "Mutates representative settings controls and verifies the persisted settings file reflects the UI changes.",
+      "coverage": [
+        "Preferences confirmation switches can be toggled",
+        "API URL and vLLM key fields accept changes",
+        "vLLM key visibility toggle works",
+        "AI model iteration/build-attempt limits persist to settings.json"
+      ],
+      "riskAreas": ["settings", "preferences", "api-keys", "persistence"],
+      "changePatterns": [
+        "^apps/native/src/components/widget/settings/(preferences-tab|api-keys-tab|ai-models-tab)\\.tsx$",
+        "^apps/native/src/components/widget/settings-dialog\\.tsx$",
+        "^apps/native/src/components/widget/model-combobox\\.tsx$",
+        "^apps/native/src/hooks/use-prefs\\.ts$",
+        "^apps/native/src/stores/widget-store\\.ts$",
+        "^apps/native/src-tauri/src/(prefs|commands|settings|store)\\.rs$",
+        "^apps/native/e2e-tauri/tests/wdio/(settings-controls\\.spec|helpers/(app-ui|test-env))\\.mjs$"
+      ],
+      "knownGaps": [
+        "Uses local persisted settings; it does not validate live provider credentials or call external AI services."
+      ],
+      "currentSpec": "tests/wdio/settings-controls.spec.mjs",
+      "currentScript": "test:wdio:settings-controls",
+      "status": "new-pr-surface-coverage",
+      "requiredForDefaultPrPack": true
+    },
+    {
+      "name": "prompt_keyboard_and_suggestions",
+      "lane": "tauri-wdio",
+      "title": "Prompt keyboard and suggestions",
+      "summary": "Exercises visible prompt suggestions, send-button state, keyboard action proof, prompt history, and evolve review.",
+      "coverage": [
+        "Prompt send is disabled before text exists",
+        "Static prompt suggestion fills the prompt input",
+        "Proof recording includes a keyboard action annotation before submit",
+        "Prompt history records the submitted prompt",
+        "Mocked evolve response reaches review with a generated diff"
+      ],
+      "riskAreas": ["prompt", "keyboard", "suggestions", "evolve"],
+      "changePatterns": [
+        "^apps/native/src/components/widget/(prompt-input|prompt-input-section|action-tiles|mac-recommendation-chip|system-defaults-cta|prompt-history-badge)\\.tsx$",
+        "^apps/native/src/components/widget/steps/(begin-step|evolve-step)\\.tsx$",
+        "^apps/native/src/hooks/(use-evolve|use-prompt-history)\\.ts$",
+        "^apps/native/src-tauri/src/(evolution|evolve_state|commands|store)\\.rs$",
+        "^apps/native/e2e-tauri/tests/(data|wdio)/"
+      ],
+      "knownGaps": [
+        "Keeps model responses mocked and uses the existing reliable submit path after proving keyboard navigation in the prompt surface."
+      ],
+      "currentSpec": "tests/wdio/prompt-keyboard.spec.mjs",
+      "currentScript": "test:wdio:prompt-keyboard",
+      "status": "new-pr-surface-coverage",
+      "requiredForDefaultPrPack": true
+    },
+    {
+      "name": "feedback_report_issue",
+      "lane": "tauri-wdio",
+      "title": "Feedback and issue reporting",
+      "summary": "Exercises header feedback mode and footer issue-report mode without sending external feedback.",
+      "coverage": [
+        "Header feedback opens the general feedback dialog",
+        "Suggestion, Bug, and General type choices render in feedback mode",
+        "Bug feedback reveals expected-behavior fields and share options",
+        "Footer Report Issue opens issue mode with report-specific copy",
+        "Cancel controls render in both feedback and issue-report modes"
+      ],
+      "riskAreas": ["feedback", "issue-reporting", "diagnostics", "forms"],
+      "changePatterns": [
+        "^apps/native/src/components/widget/(feedback-dialog|report-issue-button|header|error-message)\\.tsx$",
+        "^apps/native/src/hooks/(use-error-handler|use-panic-handler|use-tray-events)\\.ts$",
+        "^apps/native/src/types/feedback\\.ts$",
+        "^apps/native/src-tauri/src/(feedback|diagnostics|commands)\\.rs$",
+        "^apps/native/e2e-tauri/tests/wdio/(feedback-report\\.spec|helpers/app-ui)\\.mjs$"
+      ],
+      "knownGaps": [
+        "Does not submit feedback to the backend or external services; it validates the user-facing collection flows.",
+        "Uses DOM-click fallback for close/cancel controls because native Tauri WebDriver clicks are flaky on these dialog buttons."
+      ],
+      "currentSpec": "tests/wdio/feedback-report.spec.mjs",
+      "currentScript": "test:wdio:feedback-report",
+      "status": "new-pr-surface-coverage",
+      "requiredForDefaultPrPack": true
+    },
+    {
+      "name": "history_navigation",
+      "lane": "tauri-wdio",
+      "title": "History and settings navigation",
+      "summary": "Opens the history and settings surfaces and verifies the visible navigation controls return to the main prompt.",
+      "coverage": [
+        "History toolbar button opens the History view",
+        "History header renders with a count badge",
+        "History toolbar button closes History back to the main prompt",
+        "Settings opens from the header and closes without disturbing the main prompt"
+      ],
+      "riskAreas": ["history", "navigation", "settings"],
+      "changePatterns": [
+        "^apps/native/src/components/widget/(header|widget)\\.tsx$",
+        "^apps/native/src/components/widget/steps/history-step\\.tsx$",
+        "^apps/native/src/components/widget/history/",
+        "^apps/native/src/hooks/(use-history|use-history-restore)\\.ts$",
+        "^apps/native/src/stores/widget-store\\.ts$",
+        "^apps/native/e2e-tauri/tests/wdio/(history-navigation\\.spec|helpers/app-ui)\\.mjs$"
+      ],
+      "knownGaps": [
+        "Navigation coverage only; it does not restore historical commits or exercise every history item state.",
+        "Uses DOM-click fallback for close/toggle controls because native Tauri WebDriver clicks are flaky on these small header buttons."
+      ],
+      "currentSpec": "tests/wdio/history-navigation.spec.mjs",
+      "currentScript": "test:wdio:history-navigation",
+      "status": "new-pr-surface-coverage",
+      "requiredForDefaultPrPack": true
+    },
+    {
       "name": "onboarding_existing_repo",
       "lane": "tauri-wdio",
       "title": "Onboarding existing repo",

@@ -7,7 +7,11 @@ export const config = createWdioConfig({
   specs: [
     './tests/wdio/basic-prompts.spec.mjs',
     './tests/wdio/discard.spec.mjs',
+    './tests/wdio/feedback-report.spec.mjs',
+    './tests/wdio/history-navigation.spec.mjs',
     './tests/wdio/modify.spec.mjs',
+    './tests/wdio/prompt-keyboard.spec.mjs',
+    './tests/wdio/settings-controls.spec.mjs',
     './tests/wdio/smoke.spec.mjs',
   ],
   setupOptions: {

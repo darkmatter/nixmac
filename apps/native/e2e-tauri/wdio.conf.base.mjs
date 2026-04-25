@@ -17,9 +17,13 @@ import {
 const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APPS_NATIVE_DIR = path.resolve(THIS_DIR, '..');
 const execFileAsync = promisify(execFile);
-const VIDEO_FRAME_INTERVAL_MS = Number(process.env.NIXMAC_E2E_VIDEO_FRAME_INTERVAL_MS ?? 1500);
-const VIDEO_CAPTURE_TIMEOUT_MS = Number(process.env.NIXMAC_E2E_VIDEO_CAPTURE_TIMEOUT_MS ?? 5000);
-const VIDEO_MAX_FRAMES = Number(process.env.NIXMAC_E2E_VIDEO_MAX_FRAMES ?? 120);
+const VIDEO_FRAME_INTERVAL_MS = Number(process.env.NIXMAC_E2E_VIDEO_FRAME_INTERVAL_MS ?? 250);
+const VIDEO_CAPTURE_TIMEOUT_MS = Number(process.env.NIXMAC_E2E_VIDEO_CAPTURE_TIMEOUT_MS ?? 8000);
+const VIDEO_MAX_FRAMES = Number(process.env.NIXMAC_E2E_VIDEO_MAX_FRAMES ?? 600);
+const VIDEO_OUTPUT_FPS = Number(process.env.NIXMAC_E2E_VIDEO_OUTPUT_FPS ?? 20);
+const VIDEO_MAX_CONSECUTIVE_FRAME_ERRORS = Number(
+  process.env.NIXMAC_E2E_VIDEO_MAX_CONSECUTIVE_FRAME_ERRORS ?? 3,
+);
 const PROOF_TARGET_SELECTORS = [
   '[data-testid="settings-dialog"]',
   '[data-testid="evolve-proof-region"]',
@@ -53,6 +57,7 @@ function createVideoRecorder({ context, testTitle }) {
   return {
     disabled: process.env.NIXMAC_E2E_VIDEO === '0',
     error: null,
+    consecutiveFrameErrors: 0,
     frameCount: 0,
     frameDir,
     lastFrameAt: 0,
@@ -82,21 +87,32 @@ async function captureVideoFrame(recorder, label = 'frame') {
       `frame-${String(recorder.frameCount).padStart(5, '0')}-${sanitizeSegment(label)}.png`,
     );
     await withTimeout(
-      saveProofScreenshot(framePath),
+      saveVideoFrameScreenshot(framePath),
       VIDEO_CAPTURE_TIMEOUT_MS,
       `Timed out capturing E2E video frame after ${VIDEO_CAPTURE_TIMEOUT_MS}ms`,
     );
     recorder.frameCount += 1;
+    recorder.consecutiveFrameErrors = 0;
     recorder.lastFrameAt = Date.now();
   } catch (error) {
     recorder.error = error instanceof Error ? error.message : String(error);
-    // Video capture is proof infrastructure, not the scenario assertion itself.
-    // Keep screenshots and functional assertions authoritative if capture degrades.
-    recorder.disabled = true;
-    console.warn(`[wdio:e2e-video] Disabled video capture: ${recorder.error}`);
+    recorder.consecutiveFrameErrors += 1;
+    console.warn(`[wdio:e2e-video] Skipped video frame: ${recorder.error}`);
+    if (recorder.consecutiveFrameErrors >= VIDEO_MAX_CONSECUTIVE_FRAME_ERRORS) {
+      // Video capture is proof infrastructure, not the scenario assertion itself.
+      // Keep screenshots and functional assertions authoritative if capture degrades.
+      recorder.disabled = true;
+      console.warn(
+        `[wdio:e2e-video] Disabled video capture after ${recorder.consecutiveFrameErrors} consecutive frame errors`,
+      );
+    }
   } finally {
     recorder.saving = false;
   }
+}
+
+async function saveVideoFrameScreenshot(outputPath) {
+  await globalThis.browser.saveScreenshot(outputPath);
 }
 
 async function saveProofScreenshot(outputPath) {
@@ -177,7 +193,7 @@ async function encodeVideo(recorder, { passed }) {
       '-loglevel',
       'error',
       '-framerate',
-      '1',
+      String(VIDEO_OUTPUT_FPS),
       '-pattern_type',
       'glob',
       '-i',
@@ -200,7 +216,7 @@ async function encodeVideo(recorder, { passed }) {
       thumbnailUrl: null,
       timestampMs: passed ? null : Math.max(0, Date.now() - recorder.startedAt),
       phase: recorder.phase,
-      caption: 'Flow recording (webview)',
+      caption: videoCaption(),
       isPrimary: true,
       isFailureProof: false,
     };
@@ -211,6 +227,10 @@ async function encodeVideo(recorder, { passed }) {
   } finally {
     await rm(recorder.frameDir, { recursive: true, force: true });
   }
+}
+
+function videoCaption() {
+  return `Webview recording with action annotations (capture throttle: ${VIDEO_FRAME_INTERVAL_MS}ms, output: ${VIDEO_OUTPUT_FPS} fps)`;
 }
 
 /**
@@ -257,7 +277,7 @@ export function createWdioConfig({ specs, setupOptions = {}, scenario, lane = 't
         },
       },
     ],
-    logLevel: 'info',
+    logLevel: process.env.NIXMAC_E2E_WDIO_LOG_LEVEL ?? 'warn',
     framework: 'mocha',
     reporters: ['spec'],
     mochaOpts: {

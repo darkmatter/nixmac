@@ -1,37 +1,15 @@
-import { browser, expect } from '@wdio/globals';
+import { expect } from '@wdio/globals';
 import {
+  assertVisibleText,
   clickSettingsTabAndAssert,
   openSettingsDialog,
   waitForFirstWindow,
 } from './helpers/app-ui.mjs';
 
-async function expectVisibleText(text) {
-  await browser.waitUntil(
-    async () =>
-      browser.execute((expectedText) => {
-        const elements = Array.from(document.querySelectorAll('body *'));
-        return elements.some((element) => {
-          const style = window.getComputedStyle(element);
-          const visible =
-            style.display !== 'none' &&
-            style.visibility !== 'hidden' &&
-            Number(style.opacity) !== 0 &&
-            element.getClientRects().length > 0;
-          return visible && element.textContent?.includes(expectedText);
-        });
-      }, text),
-    {
-      timeout: 10000,
-      interval: 250,
-      timeoutMsg: `Timed out waiting for visible text: ${text}`,
-    },
-  );
-}
-
 async function expectTabContent(tab, expectedTexts) {
   await clickSettingsTabAndAssert(tab);
   for (const text of expectedTexts) {
-    await expectVisibleText(text);
+    await assertVisibleText(text);
   }
 }
 

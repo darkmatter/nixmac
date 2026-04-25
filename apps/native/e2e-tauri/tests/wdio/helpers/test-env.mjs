@@ -139,6 +139,10 @@ export async function loadBuildState() {
   return parsed.buildState ?? parsed;
 }
 
+export async function loadSettings() {
+  return readJsonFileOrThrow(NIXMAC_SETTINGS_PATH, 'settings');
+}
+
 async function waitForValue(predicate, { timeout = 60000, interval = 500, timeoutMessage }) {
   const started = Date.now();
   let lastError = null;
@@ -174,6 +178,24 @@ export async function waitForEvolveStateWithChangeset(options = {}) {
       timeoutMessage:
         options.timeoutMessage ??
         `Timed out waiting for evolve-state.currentChangesetId > 0. Last state: ${JSON.stringify(lastState)}`,
+    },
+  );
+}
+
+export async function waitForSettingsMatching(predicate, options = {}) {
+  let lastSettings = null;
+
+  return waitForValue(
+    async () => {
+      lastSettings = await loadSettings();
+      return (await predicate(lastSettings)) ? lastSettings : null;
+    },
+    {
+      timeout: options.timeout ?? 10000,
+      interval: options.interval ?? 250,
+      timeoutMessage:
+        options.timeoutMessage ??
+        `Timed out waiting for settings predicate. Last settings: ${JSON.stringify(lastSettings)}`,
     },
   );
 }
@@ -304,6 +326,7 @@ async function createNixConfigGitRepo(hostname) {
   await runGit(['config', 'user.name', 'eval'], tmpDir);
   await runGit(['config', 'user.email', 'eval@test'], tmpDir);
   await runGit(['add', '-A'], tmpDir);
+  // history-navigation.spec.mjs asserts this seed commit appears in the History view.
   await runGit(['commit', '-m', 'initial nix config state', '--author', 'eval <eval@test>'], tmpDir);
   await runGit(['update-index', '--refresh'], tmpDir);
 

@@ -1,4 +1,5 @@
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import monacoEditorPlugin from "vite-plugin-monaco-editor";
 import { defineConfig } from "vite";
@@ -9,6 +10,7 @@ import { defineConfig } from "vite";
 // monaco-editor's CSS files — which are imported from the real
 // `node_modules/.bun/monaco-editor@X/...` path once `preserveSymlinks`
 // is false — return 403 from Vite's fs guard.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../..");
 
 // https://vite.dev/config/
