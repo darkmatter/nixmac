@@ -20,6 +20,37 @@ recording_clear_terminal_saved_state() {
     defaults write com.apple.Terminal ApplePersistenceIgnoreState -bool true 2>/dev/null || true
 }
 
+recording_dismiss_terminal_automation_prompt() {
+    [ "${E2E_TERMINAL_CLEANUP_MODE:-}" = "kill" ] || return 0
+    command -v jq &>/dev/null || return 0
+    declare -f peek_elements >/dev/null || return 0
+    declare -f peek_click >/dev/null || return 0
+
+    local attempts=0 json button
+    while [ "$attempts" -lt 5 ]; do
+        attempts=$((attempts + 1))
+        json=$(peek_elements)
+        if echo "$json" | jq -e '
+            [.data.ui_elements[]? | (.label? // .title? // .value? // "")] |
+            join(" ") |
+            test("sshd-keygen-wrapper.*Terminal"; "i")
+        ' >/dev/null 2>&1; then
+            button=$(echo "$json" | jq -r '
+                .data.ui_elements[]? |
+                select(.role == "button") |
+                select((.label? // .title? // .value? // "") | test("^Don.?t Allow$"; "i")) |
+                .id
+            ' 2>/dev/null | head -1)
+            if [ -n "$button" ]; then
+                peek_click "$button" "$json" >/dev/null 2>&1 || true
+                log "Dismissed Terminal Automation permission prompt"
+                return 0
+            fi
+        fi
+        sleep 1
+    done
+}
+
 recording_add_limitation() {
     local limitation="$1"
     if [ -n "${E2E_CAPTURE_LIMITATIONS:-}" ]; then
@@ -90,6 +121,7 @@ RECEOF
     if [ "${E2E_TERMINAL_CLEANUP_MODE:-}" = "kill" ]; then
         recording_clear_terminal_saved_state
         open -F -a Terminal "$script"
+        recording_dismiss_terminal_automation_prompt
     elif command -v osascript &>/dev/null; then
         osascript >/dev/null 2>&1 <<OSA || open -a Terminal "$script"
 tell application "Terminal"
