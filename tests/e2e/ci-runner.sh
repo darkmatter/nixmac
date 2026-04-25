@@ -80,6 +80,38 @@ cleanup_terminal_saved_state() {
     defaults write com.apple.Terminal ApplePersistenceIgnoreState -bool true 2>/dev/null || true
 }
 
+cleanup_automation_permission_prompt() {
+    command -v peekaboo &>/dev/null || return 0
+    command -v jq &>/dev/null || return 0
+
+    local capture_dir="/tmp/e2e-peekaboo-captures"
+    local json snapshot button
+    mkdir -p "$capture_dir"
+    json=$(run_with_timeout "$PEEKABOO_COMMAND_TIMEOUT" peekaboo see --json --path "$capture_dir/cleanup-ui.png" 2>/dev/null || true)
+    [ -n "$json" ] || return 0
+
+    if ! echo "$json" | jq -e '
+        [.data.ui_elements[]? | (.label? // .title? // .value? // "")] |
+        join(" ") |
+        test("sshd-keygen-wrapper.*Terminal"; "i")
+    ' >/dev/null 2>&1; then
+        return 0
+    fi
+
+    snapshot=$(echo "$json" | jq -r '.data.snapshot_id // .snapshot_id // ""' 2>/dev/null)
+    button=$(echo "$json" | jq -r '
+        .data.ui_elements[]? |
+        select(.role == "button") |
+        select((.label? // .title? // .value? // "") | test("^Don.?t Allow$"; "i")) |
+        .id
+    ' 2>/dev/null | head -1)
+
+    if [ -n "$snapshot" ] && [ -n "$button" ]; then
+        run_with_timeout "$PEEKABOO_COMMAND_TIMEOUT" peekaboo click --on "$button" --snapshot "$snapshot" >/dev/null 2>&1 || true
+        echo "[ci] Dismissed stale Terminal Automation permission prompt"
+    fi
+}
+
 cleanup_e2e_gui_leftovers() {
     # Keep the shared visual runner tidy between proof runs. Peekaboo v3 writes
     # implicit `peekaboo_*.png` captures to Desktop when no path is supplied,
@@ -133,6 +165,7 @@ end tell
 OSA
         echo "[ci] Closed stale E2E Terminal recorder windows if present"
     fi
+    cleanup_automation_permission_prompt
 
     local desktop="${E2E_DESKTOP_DIR:-$HOME/Desktop}"
     if [ -d "$desktop" ]; then
