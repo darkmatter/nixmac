@@ -11,6 +11,15 @@ _RECORDING_STOPPED=0
 _RECORDER_SCRIPT=""
 _RECORDER_WINDOW_TITLE=""
 
+recording_clear_terminal_saved_state() {
+    rm -rf \
+        "$HOME/Library/Saved Application State/com.apple.Terminal.savedState" \
+        "$HOME/Library/Containers/com.apple.Terminal/Data/Library/Saved Application State/com.apple.Terminal.savedState" \
+        2>/dev/null || true
+    defaults write com.apple.Terminal NSQuitAlwaysKeepsWindows -bool false 2>/dev/null || true
+    defaults write com.apple.Terminal ApplePersistenceIgnoreState -bool true 2>/dev/null || true
+}
+
 recording_add_limitation() {
     local limitation="$1"
     if [ -n "${E2E_CAPTURE_LIMITATIONS:-}" ]; then
@@ -76,8 +85,12 @@ ffmpeg -y -f avfoundation -capture_cursor 1 -framerate $framerate -pixel_format 
 RECEOF
     chmod +x "$script"
     
-    # Launch in GUI context (Terminal.app has Screen Recording TCC permission)
-    if command -v osascript &>/dev/null; then
+    # Launch in GUI context (Terminal.app has Screen Recording TCC permission).
+    # CI uses `open -F` to avoid restoring stale Terminal windows from previous runs.
+    if [ "${E2E_TERMINAL_CLEANUP_MODE:-}" = "kill" ]; then
+        recording_clear_terminal_saved_state
+        open -F -a Terminal "$script"
+    elif command -v osascript &>/dev/null; then
         osascript >/dev/null 2>&1 <<OSA || open -a Terminal "$script"
 tell application "Terminal"
     set recorderTab to do script "/bin/bash '$script'"
@@ -108,6 +121,7 @@ recording_close_terminal_windows() {
         pkill -x Terminal 2>/dev/null || true
         sleep 1
         pkill -9 -x Terminal 2>/dev/null || true
+        recording_clear_terminal_saved_state
         return 0
     fi
 

@@ -71,6 +71,15 @@ cleanup_e2e_recording_processes() {
     pkill -f "/tmp/e2e-record.sh" 2>/dev/null || true
 }
 
+cleanup_terminal_saved_state() {
+    rm -rf \
+        "$HOME/Library/Saved Application State/com.apple.Terminal.savedState" \
+        "$HOME/Library/Containers/com.apple.Terminal/Data/Library/Saved Application State/com.apple.Terminal.savedState" \
+        2>/dev/null || true
+    defaults write com.apple.Terminal NSQuitAlwaysKeepsWindows -bool false 2>/dev/null || true
+    defaults write com.apple.Terminal ApplePersistenceIgnoreState -bool true 2>/dev/null || true
+}
+
 cleanup_e2e_gui_leftovers() {
     # Keep the shared visual runner tidy between proof runs. Peekaboo v3 writes
     # implicit `peekaboo_*.png` captures to Desktop when no path is supplied,
@@ -84,6 +93,7 @@ cleanup_e2e_gui_leftovers() {
             pkill -9 -x Terminal 2>/dev/null || true
             echo "[ci] Terminated stale E2E Terminal.app windows"
         fi
+        cleanup_terminal_saved_state
     elif command -v osascript &>/dev/null && pgrep -x Terminal &>/dev/null; then
         osascript >/dev/null 2>&1 <<'OSA' || true
 set closeTargets to {}
