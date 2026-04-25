@@ -75,11 +75,11 @@ export function NixSetupStep() {
       <div className="w-full max-w-lg">
         <div className="mb-6 text-center">
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-            <Package className="h-6 w-6 text-primary" />
+            <Package className="h-6 w-6 text-primary opacity-0" />
           </div>
           <h2 className="font-semibold text-foreground text-lg">System Setup</h2>
           <p className="mt-1 text-muted-foreground text-sm">
-            nixmac needs to install a few things to get started. While you wait, feel free to set up your AI provider and preferences using the gear icon above.
+            This app needs to install a few things to get started. While you wait, feel free to set up your AI provider and preferences using the gear icon above.
           </p>
         </div>
 
