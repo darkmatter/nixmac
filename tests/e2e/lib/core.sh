@@ -10,6 +10,7 @@
 export E2E_ROOT="${E2E_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 export E2E_LIB="$E2E_ROOT/lib"
 export E2E_SCREENSHOT_DIR="${E2E_SCREENSHOT_DIR:-/tmp/e2e-screenshots}"
+export E2E_PEEKABOO_CAPTURE_DIR="${E2E_PEEKABOO_CAPTURE_DIR:-/tmp/e2e-peekaboo-captures}"
 export E2E_LOG_FILE="${E2E_LOG_FILE:-/tmp/e2e-test.log}"
 export E2E_VIDEO_FILE="${E2E_VIDEO_FILE:-/tmp/e2e-recording.mp4}"
 
@@ -276,7 +277,9 @@ results_json() {
 
 _e2e_init() {
     _E2E_START_TIME=$(date +%s)
+    rm -rf "$E2E_PEEKABOO_CAPTURE_DIR"
     mkdir -p "$E2E_SCREENSHOT_DIR"
+    mkdir -p "$E2E_PEEKABOO_CAPTURE_DIR"
     echo "" > "$E2E_LOG_FILE"
     log "=== macos-e2e test runner ==="
     log "Started at $(date)"

@@ -65,6 +65,94 @@ run_with_timeout() {
     return "$status"
 }
 
+cleanup_e2e_recording_processes() {
+    pkill -f "ffmpeg.*e2e-recording.mp4" 2>/dev/null || true
+    pkill -f "/tmp/nixmac-e2e-recorder-.*\\.sh" 2>/dev/null || true
+    pkill -f "/tmp/e2e-record.sh" 2>/dev/null || true
+}
+
+cleanup_e2e_gui_leftovers() {
+    # Keep the shared visual runner tidy between proof runs. Peekaboo v3 writes
+    # implicit `peekaboo_*.png` captures to Desktop when no path is supplied,
+    # and Terminal.app keeps GUI recorder shells open unless explicitly closed.
+    cleanup_e2e_recording_processes
+
+    if command -v osascript &>/dev/null && pgrep -x Terminal &>/dev/null; then
+        osascript >/dev/null 2>&1 <<'OSA' || true
+set closeTargets to {}
+
+on shouldCloseTab(tabName, tabTitle)
+    if tabTitle starts with "nixmac-e2e-recorder-" then return true
+    if tabName contains "nixmac-e2e-recorder-" then return true
+    if tabName contains "nixmac-e2e-recording" then return true
+    if tabName contains "e2e-record.sh" then return true
+    if tabName contains "e2e-record-" then return true
+    return false
+end shouldCloseTab
+
+tell application "Terminal"
+    repeat with terminalWindow in windows
+        repeat with terminalTab in tabs of terminalWindow
+            set tabName to ""
+            set tabTitle to ""
+            try
+                set tabName to name of terminalTab as text
+            end try
+            try
+                set tabTitle to custom title of terminalTab as text
+            end try
+            if my shouldCloseTab(tabName, tabTitle) then
+                set end of closeTargets to terminalTab
+            end if
+        end repeat
+    end repeat
+
+    repeat with terminalTab in closeTargets
+        try
+            close terminalTab
+        end try
+    end repeat
+end tell
+OSA
+        echo "[ci] Closed stale E2E Terminal recorder windows if present"
+    fi
+
+    local desktop="${E2E_DESKTOP_DIR:-$HOME/Desktop}"
+    if [ -d "$desktop" ]; then
+        local removed=0
+        local artifact
+        while IFS= read -r artifact; do
+            [ -n "$artifact" ] || continue
+            rm -f "$artifact" 2>/dev/null || true
+            removed=$((removed + 1))
+        done < <(find "$desktop" -maxdepth 1 -type f \( \
+            -name 'peekaboo_*.png' -o \
+            -name 'peekaboo-*.png' -o \
+            -name 'peekaboo_*.jpg' -o \
+            -name 'peekaboo-*.jpg' \
+        \) -print 2>/dev/null)
+        if [ "$removed" -gt 0 ]; then
+            echo "[ci] Removed $removed stale Peekaboo Desktop artifact(s)"
+        fi
+    fi
+
+    rm -rf /tmp/e2e-peekaboo-captures
+    if command -v peekaboo &>/dev/null; then
+        run_with_timeout "$PEEKABOO_COMMAND_TIMEOUT" peekaboo clean >/dev/null 2>&1 || true
+    fi
+}
+
+# shellcheck disable=SC2329 # Invoked by signal/EXIT traps.
+cleanup_ci_runner() {
+    launchctl unsetenv NIXMAC_DISABLE_UPDATER 2>/dev/null || true
+    launchctl unsetenv NIXMAC_SKIP_PERMISSIONS 2>/dev/null || true
+    cleanup_e2e_gui_leftovers
+}
+
+trap cleanup_ci_runner EXIT
+trap 'cleanup_ci_runner; exit 130' INT
+trap 'cleanup_ci_runner; exit 143' TERM HUP
+
 peekaboo_with_timeout() {
     run_with_timeout "$PEEKABOO_COMMAND_TIMEOUT" peekaboo "$@"
 }
@@ -96,13 +184,14 @@ fi
 
 # --- Clean state ---
 echo "[ci] Cleaning previous state..."
+cleanup_e2e_gui_leftovers
 pkill -f nixmac 2>/dev/null || true
 pkill -f Installer 2>/dev/null || true
 if [ -f "/nix/nix-installer" ]; then
     echo "[ci] Uninstalling existing Nix..."
     sudo /nix/nix-installer uninstall --no-confirm 2>&1
 fi
-rm -rf /tmp/e2e-screenshots /tmp/e2e-recording.mp4 /tmp/e2e-test.log /tmp/e2e-runner.lock
+rm -rf /tmp/e2e-screenshots /tmp/e2e-peekaboo-captures /tmp/e2e-recording.mp4 /tmp/e2e-test.log /tmp/e2e-runner.lock
 rm -rf /tmp/e2e-artifacts
 
 # --- Download app artifact pinned to the exact commit SHA ---
@@ -176,7 +265,7 @@ rm -rf "$E2E_DIR"
 mkdir -p "$E2E_DIR"
 
 # Clone just the tests/e2e directory at the exact commit under test.
-cd /tmp
+cd /tmp || exit 1
 rm -rf nixmac-e2e-checkout
 CLONE_URL="https://github.com/${REPO}.git"
 if [ -n "${GH_TOKEN:-}" ]; then
@@ -186,7 +275,7 @@ git clone --filter=blob:none --sparse "$CLONE_URL" nixmac-e2e-checkout 2>&1 || {
     echo "[ci] ERROR: Failed to clone repo"
     exit 1
 }
-cd nixmac-e2e-checkout
+cd nixmac-e2e-checkout || exit 1
 git fetch --depth 1 origin "$COMMIT_SHA" 2>&1 || {
     echo "[ci] ERROR: Failed to fetch exact commit $COMMIT_SHA"
     exit 1
@@ -226,12 +315,8 @@ echo "[ci] Test completed (exit: $EXIT_CODE)"
 echo "[ci] Artifacts:"
 [ -f "/tmp/e2e-recording.mp4" ] && echo "  Video:       /tmp/e2e-recording.mp4 ($(du -h /tmp/e2e-recording.mp4 | cut -f1))"
 [ -f "/tmp/e2e-test.log" ]      && echo "  Log:         /tmp/e2e-test.log"
-[ -d "/tmp/e2e-screenshots" ]   && echo "  Screenshots: /tmp/e2e-screenshots/ ($(ls /tmp/e2e-screenshots/*.png 2>/dev/null | wc -l | tr -d ' ') files)"
+[ -d "/tmp/e2e-screenshots" ]   && echo "  Screenshots: /tmp/e2e-screenshots/ ($(find /tmp/e2e-screenshots -maxdepth 1 -name '*.png' -type f 2>/dev/null | wc -l | tr -d ' ') files)"
 [ -f "/tmp/e2e-test-results.json" ] && echo "  Results:     /tmp/e2e-test-results.json"
 [ -d "/tmp/e2e-artifacts" ] && echo "  Report:      /tmp/e2e-artifacts"
-
-# Clean up launchctl env vars so they don't persist on the CI Mac
-launchctl unsetenv NIXMAC_DISABLE_UPDATER 2>/dev/null || true
-launchctl unsetenv NIXMAC_SKIP_PERMISSIONS 2>/dev/null || true
 
 exit $EXIT_CODE

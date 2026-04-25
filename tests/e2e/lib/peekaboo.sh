@@ -16,11 +16,71 @@ peekaboo_run() {
     run_with_timeout "$PEEKABOO_COMMAND_TIMEOUT" "$PEEKABOO" "$@"
 }
 
+peekaboo_desktop_dir() {
+    echo "${E2E_DESKTOP_DIR:-$HOME/Desktop}"
+}
+
+peekaboo_generated_desktop_files() {
+    local marker="${1:-}"
+    local desktop
+    desktop="$(peekaboo_desktop_dir)"
+    [ -d "$desktop" ] || return 0
+
+    if [ -n "$marker" ] && [ -f "$marker" ]; then
+        find "$desktop" -maxdepth 1 -type f \( \
+            -name "peekaboo_*.png" -o \
+            -name "peekaboo-*.png" -o \
+            -name "peekaboo_*.jpg" -o \
+            -name "peekaboo-*.jpg" \
+        \) -newer "$marker" -print 2>/dev/null
+    else
+        find "$desktop" -maxdepth 1 -type f \( \
+            -name "peekaboo_*.png" -o \
+            -name "peekaboo-*.png" -o \
+            -name "peekaboo_*.jpg" -o \
+            -name "peekaboo-*.jpg" \
+        \) -print 2>/dev/null
+    fi
+}
+
+peekaboo_cleanup_desktop_artifacts() {
+    [ "${E2E_CLEAN_DESKTOP_ARTIFACTS:-1}" = "1" ] || return 0
+
+    local marker="${1:-}"
+    local removed=0
+    local artifact
+    while IFS= read -r artifact; do
+        [ -n "$artifact" ] || continue
+        rm -f "$artifact" 2>/dev/null || true
+        removed=$((removed + 1))
+    done < <(peekaboo_generated_desktop_files "$marker")
+
+    if [ "$removed" -gt 0 ]; then
+        debug "Removed $removed Peekaboo Desktop artifact(s)"
+    fi
+}
+
+peekaboo_latest_desktop_artifact_since() {
+    local marker="$1"
+    peekaboo_generated_desktop_files "$marker" \
+        | while IFS= read -r artifact; do
+            [ -f "$artifact" ] || continue
+            stat -f "%m %N" "$artifact" 2>/dev/null || true
+        done \
+        | sort -nr \
+        | head -1 \
+        | cut -d' ' -f2-
+}
+
 # Get all UI elements as JSON. Returns fallback JSON on failure.
 peek_elements() {
     local app="${1:-}"
     local args=""
     [ -n "$app" ] && args="--app $app"
+    if [ -n "${E2E_PEEKABOO_CAPTURE_DIR:-}" ]; then
+        mkdir -p "$E2E_PEEKABOO_CAPTURE_DIR"
+        args="$args --path $E2E_PEEKABOO_CAPTURE_DIR/see-$(date +%s)-$$-$RANDOM.png"
+    fi
     # shellcheck disable=SC2086
     peekaboo_run see $args --json 2>/dev/null \
         || echo '{"data":{"ui_elements":[],"snapshot_id":""}}'
@@ -90,14 +150,37 @@ peek_text() {
 screenshot() {
     local name="${1:-screenshot}"
     local app="${2:-}"
-    local path="${E2E_SCREENSHOT_DIR}/${name}-$(date +%s).png"
+    local path
     local args=""
+    local marker=""
+    local generated=""
+    path="${E2E_SCREENSHOT_DIR}/${name}-$(date +%s).png"
     [ -n "$app" ] && args="--app $app"
+
+    mkdir -p "$E2E_SCREENSHOT_DIR"
+    marker=$(mktemp "${TMPDIR:-/tmp}/e2e-peekaboo-marker.XXXXXX" 2>/dev/null || true)
+    [ -n "$marker" ] && touch "$marker"
+
     # shellcheck disable=SC2086
     peekaboo_run see $args --annotate --path "$path" 2>/dev/null \
         || peekaboo_run image --mode screen --path "$path" 2>/dev/null \
         || true
-    log "Screenshot saved: $path"
+
+    if [ ! -s "$path" ] && [ -n "$marker" ]; then
+        generated=$(peekaboo_latest_desktop_artifact_since "$marker")
+        if [ -n "$generated" ] && [ -f "$generated" ]; then
+            mv "$generated" "$path" 2>/dev/null || true
+        fi
+    fi
+
+    [ -n "$marker" ] && peekaboo_cleanup_desktop_artifacts "$marker"
+    [ -n "$marker" ] && rm -f "$marker"
+
+    if [ -s "$path" ]; then
+        log "Screenshot saved: $path"
+    else
+        warn "Screenshot capture did not produce a file at $path"
+    fi
     echo "$path"
 }
 
@@ -117,7 +200,7 @@ wait_for_text() {
     done
     
     local elapsed=0
-    while [ $elapsed -lt $timeout ]; do
+    while [ "$elapsed" -lt "$timeout" ]; do
         local text
         text=$(peek_text "$app")
         if echo "$text" | grep -qiE "$pattern"; then
@@ -149,7 +232,7 @@ wait_for_button() {
     done
     
     local elapsed=0
-    while [ $elapsed -lt $timeout ]; do
+    while [ "$elapsed" -lt "$timeout" ]; do
         local json
         json=$(peek_elements "$app")
         local btn
@@ -190,7 +273,7 @@ click_button() {
         # Retry with wait
         log "Button '$pattern' not found, waiting up to ${timeout}s..."
         local elapsed=0
-        while [ $elapsed -lt $timeout ]; do
+        while [ "$elapsed" -lt "$timeout" ]; do
             sleep 3
             elapsed=$((elapsed + 3))
             json=$(peek_elements "$app")
@@ -218,7 +301,7 @@ click_button() {
 dismiss_dialogs() {
     local max_attempts="${1:-5}"
     local i=0
-    while [ $i -lt $max_attempts ]; do
+    while [ "$i" -lt "$max_attempts" ]; do
         local json
         # No --app flag: scan the entire screen so we catch system dialogs
         json=$(peek_elements)
