@@ -37,7 +37,7 @@ serde_json = "1"
 tokio = { version = "1", features = ["full"] }
 anyhow = "1"
 thiserror = "2"
-keyring = "2"
+tauri-plugin-keyring = "0.1.0"
 log = "0.4"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }

@@ -250,30 +250,25 @@ pub fn set_vllm_api_key<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<()>
 ///
 /// Priority: `OPENROUTER_API_KEY` environment variable, then keychain-backed settings.
 pub fn get_effective_openrouter_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
-    if let Ok(key) = std::env::var("OPENROUTER_API_KEY") {
-        return Ok(Some(key));
-    }
-    get_openrouter_api_key(app)
+    resolve_secret_with_env_override(std::env::var("OPENROUTER_API_KEY").ok(), || {
+        get_openrouter_api_key(app)
+    })
 }
 
 /// Gets the effective OpenAI API key with env-first precedence.
 ///
 /// Priority: `OPENAI_API_KEY` environment variable, then keychain-backed settings.
 pub fn get_effective_openai_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
-    if let Ok(key) = std::env::var("OPENAI_API_KEY") {
-        return Ok(Some(key));
-    }
-    get_openai_api_key(app)
+    resolve_secret_with_env_override(std::env::var("OPENAI_API_KEY").ok(), || {
+        get_openai_api_key(app)
+    })
 }
 
 /// Gets the effective vLLM API key with env-first precedence.
 ///
 /// Priority: `VLLM_API_KEY` environment variable, then keychain-backed settings.
 pub fn get_effective_vllm_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
-    if let Ok(key) = std::env::var("VLLM_API_KEY") {
-        return Ok(Some(key));
-    }
-    get_vllm_api_key(app)
+    resolve_secret_with_env_override(std::env::var("VLLM_API_KEY").ok(), || get_vllm_api_key(app))
 }
 
 /// Gets the effective OpenAI/OpenRouter credential and base URL with env-first precedence.
@@ -333,8 +328,25 @@ fn delete_pref_raw<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<()> {
     Ok(())
 }
 
-fn keychain_store_for(key: &str) -> KeychainStore {
-    KeychainStore::new(KEYCHAIN_SERVICE, key)
+fn resolve_secret_with_env_override<G>(
+    env_value: Option<String>,
+    fallback: G,
+) -> Result<Option<String>>
+where
+    G: FnOnce() -> Result<Option<String>>,
+{
+    // If the env var is set, return it immediately without touching the keychain.
+    // This avoids OS keychain prompts in dev/CI workflows where credentials are
+    // injected via environment. Migration from settings.json → keychain will
+    // happen the first time the app runs without the env var set.
+    if let Some(value) = env_value {
+        return Ok(Some(value));
+    }
+    fallback()
+}
+
+fn keychain_store_for<R: Runtime>(app: &AppHandle<R>, key: &str) -> KeychainStore<R> {
+    KeychainStore::new(app.clone(), KEYCHAIN_SERVICE, key)
 }
 
 fn legacy_settings_store<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> SettingsFileStore {
@@ -355,13 +367,13 @@ fn legacy_settings_store<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> S
 }
 
 fn get_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> Result<Option<String>> {
-    let keychain = keychain_store_for(key);
+    let keychain = keychain_store_for(app, key);
     let legacy = legacy_settings_store(app, key);
     get_with_lazy_migration(&keychain, &legacy).map_err(anyhow::Error::from)
 }
 
 fn set_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str, value: &str) -> Result<()> {
-    let keychain = keychain_store_for(key);
+    let keychain = keychain_store_for(app, key);
     let legacy = legacy_settings_store(app, key);
     set_with_cleanup(&keychain, &legacy, value).map_err(anyhow::Error::from)
 }
@@ -535,4 +547,39 @@ pub fn add_to_prompt_history<R: Runtime>(app: &AppHandle<R>, prompt: &str) -> Re
     store.set("promptHistory", serde_json::json!(history));
     store.save()?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    #[test]
+    fn env_override_skips_keychain_and_returns_env_value() {
+        let fallback_called = AtomicBool::new(false);
+
+        let result = resolve_secret_with_env_override(Some("env-secret".to_string()), || {
+            fallback_called.store(true, Ordering::SeqCst);
+            Ok(Some("store-secret".to_string()))
+        })
+        .unwrap();
+
+        // Env var wins and keychain is never touched.
+        assert_eq!(result.as_deref(), Some("env-secret"));
+        assert!(!fallback_called.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn no_env_uses_fallback_result() {
+        let fallback_called = AtomicBool::new(false);
+
+        let result = resolve_secret_with_env_override(None, || {
+            fallback_called.store(true, Ordering::SeqCst);
+            Ok(Some("store-secret".to_string()))
+        })
+        .unwrap();
+
+        assert_eq!(result.as_deref(), Some("store-secret"));
+        assert!(fallback_called.load(Ordering::SeqCst));
+    }
 }

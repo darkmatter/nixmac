@@ -1,4 +1,6 @@
 use std::sync::Arc;
+use tauri::{AppHandle, Runtime};
+use tauri_plugin_keyring::KeyringExt;
 
 #[cfg(test)]
 use std::sync::Mutex;
@@ -21,51 +23,56 @@ pub trait CredentialStore {
     fn delete(&self) -> Result<(), CredentialStoreError>;
 }
 
-pub struct KeychainStore {
+pub struct KeychainStore<R: Runtime> {
+    app: AppHandle<R>,
     service: String,
     account: String,
 }
 
-impl KeychainStore {
-    pub fn new(service: impl Into<String>, account: impl Into<String>) -> Self {
+impl<R: Runtime> KeychainStore<R> {
+    pub fn new(app: AppHandle<R>, service: impl Into<String>, account: impl Into<String>) -> Self {
         Self {
+            app,
             service: service.into(),
             account: account.into(),
         }
     }
-
-    fn entry(&self) -> Result<keyring::Entry, CredentialStoreError> {
-        keyring::Entry::new(&self.service, &self.account)
-            .map_err(|e| CredentialStoreError::Keychain(e.to_string()))
-    }
 }
 
-impl CredentialStore for KeychainStore {
+impl<R: Runtime> CredentialStore for KeychainStore<R> {
     fn get(&self) -> Result<Option<String>, CredentialStoreError> {
-        let entry = self.entry()?;
-        match entry.get_password() {
-            Ok(value) => {
-                log::info!("credential accessed from keychain: {}", self.account);
-                Ok(Some(value))
-            }
-            Err(keyring::Error::NoEntry) => Ok(None),
-            Err(err) => Err(CredentialStoreError::Keychain(err.to_string())),
+        let value = self
+            .app
+            .keyring()
+            .get_password(&self.service, &self.account)
+            .map_err(|e| CredentialStoreError::Keychain(e.to_string()))?;
+        if value.is_some() {
+            log::debug!("credential accessed from keychain: {}", self.account);
         }
+        Ok(value)
     }
 
     fn set(&self, value: &str) -> Result<(), CredentialStoreError> {
-        let entry = self.entry()?;
-        entry
-            .set_password(value)
+        self.app
+            .keyring()
+            .set_password(&self.service, &self.account, value)
             .map_err(|e| CredentialStoreError::Keychain(e.to_string()))
     }
 
     fn delete(&self) -> Result<(), CredentialStoreError> {
-        let entry = self.entry()?;
-        match entry.delete_password() {
-            Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-            Err(err) => Err(CredentialStoreError::Keychain(err.to_string())),
+        let existing = self
+            .app
+            .keyring()
+            .get_password(&self.service, &self.account)
+            .map_err(|e| CredentialStoreError::Keychain(e.to_string()))?;
+        if existing.is_none() {
+            return Ok(());
         }
+
+        self.app
+            .keyring()
+            .delete_password(&self.service, &self.account)
+            .map_err(|e| CredentialStoreError::Keychain(e.to_string()))
     }
 }
 
@@ -93,7 +100,7 @@ impl CredentialStore for SettingsFileStore {
     fn get(&self) -> Result<Option<String>, CredentialStoreError> {
         let res = (self.getter)();
         if let Ok(Some(_)) = &res {
-            log::info!("credential accessed from legacy settings: {}", self.name);
+            log::debug!("credential accessed from legacy settings: {}", self.name);
         }
         res
     }
@@ -103,7 +110,7 @@ impl CredentialStore for SettingsFileStore {
     }
 
     fn delete(&self) -> Result<(), CredentialStoreError> {
-        log::info!("deleting legacy credential from settings: {}", self.name);
+        log::debug!("deleting legacy credential from settings: {}", self.name);
         (self.deleter)()
     }
 }
@@ -160,7 +167,28 @@ where
     L: CredentialStore,
 {
     let keychain_get_err = match keychain.get() {
-        Ok(Some(value)) => return Ok(Some(value)),
+        Ok(Some(value)) => {
+            // Keychain already has the credential. Clean up any stale plaintext
+            // copy in legacy storage (e.g. from a previous run that wrote to
+            // keychain but failed to delete the settings.json entry).
+            match legacy.get() {
+                Ok(Some(_)) => {
+                    if let Err(err) = legacy.delete() {
+                        log::warn!(
+                            "Failed to clean up stale plaintext credential from settings: {}",
+                            err
+                        );
+                    } else {
+                        log::info!("Cleaned up stale plaintext credential from settings (already in keychain)");
+                    }
+                }
+                Ok(None) => {}
+                Err(err) => {
+                    log::warn!("Could not check legacy store during cleanup: {}", err);
+                }
+            }
+            return Ok(Some(value));
+        }
         Ok(None) => None,
         Err(err) => Some(err),
     };
