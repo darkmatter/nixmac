@@ -840,8 +840,12 @@ jobs:
 
           find_build_run() {
             gh api "repos/${REPO}/actions/runs?head_sha=${HEAD_SHA}&per_page=50" \
-              --jq '([.workflow_runs[] | select(.name == "Build macOS App")] | sort_by(.created_at) | reverse | .[0]) // empty | [.id, .status, (.conclusion // ""), .html_url] | @tsv' \
+              --jq '([.workflow_runs[] | select(.name == "Build macOS App")] | sort_by(.created_at) | reverse | .[0]) // empty | {id, status, conclusion: (.conclusion // ""), html_url}' \
               2>/dev/null || true
+          }
+
+          read_build_field() {
+            printf '%s\n' "$run_info" | jq -r "$1"
           }
 
           log "Build macOS App preflight for exact commit ${HEAD_SHA}"
@@ -851,7 +855,10 @@ jobs:
 
           run_info="$(find_build_run)"
           if [ -n "$run_info" ]; then
-            IFS=$'\t' read -r run_id run_status run_conclusion run_url <<< "$run_info"
+            run_id="$(read_build_field '.id')"
+            run_status="$(read_build_field '.status')"
+            run_conclusion="$(read_build_field '.conclusion')"
+            run_url="$(read_build_field '.html_url')"
             if [ "$run_status" = "completed" ] && [ "$run_conclusion" = "success" ]; then
               log "Found successful Build macOS App run for ${HEAD_SHA}: ${run_url}"
               echo "build_run_id=$run_id" >> "$GITHUB_OUTPUT"
@@ -889,8 +896,11 @@ jobs:
           while true; do
             run_info="$(find_build_run)"
             if [ -n "$run_info" ]; then
-              IFS=$'\t' read -r run_id run_status run_conclusion run_url <<< "$run_info"
-              log "Build macOS App run for ${HEAD_SHA}: id=${run_id} status=${run_status} conclusion=${run_conclusion:-pending}"
+              run_id="$(read_build_field '.id')"
+              run_status="$(read_build_field '.status')"
+              run_conclusion="$(read_build_field '.conclusion')"
+              run_url="$(read_build_field '.html_url')"
+              log "Build macOS App run for ${HEAD_SHA}: id=${run_id} status=${run_status} conclusion=${run_conclusion:-pending} url=${run_url}"
               if [ "$run_status" = "completed" ] && [ "$run_conclusion" = "success" ]; then
                 echo "build_run_id=$run_id" >> "$GITHUB_OUTPUT"
                 echo "build_run_url=$run_url" >> "$GITHUB_OUTPUT"
