@@ -61,6 +61,10 @@ export interface WidgetTestHelpers {
    */
   saveSetupHost: (hostAttr: string) => Promise<void>;
   /**
+   * Restore setup host options without selecting or persisting a host.
+   */
+  restoreSetupHostOptions: (hostAttr: string) => Promise<void>;
+  /**
    * Capture the most relevant proof surface as a PNG data URL.
    */
   captureProofPng: (options?: ProofCaptureOptions) => Promise<string | null>;
@@ -94,6 +98,76 @@ function getProofCaptureTarget(options?: ProofCaptureOptions): HTMLElement | nul
   }
 
   return getProofTarget();
+}
+
+type SetupHostSeed = {
+  configDir: string;
+  hostAttr: string;
+  hosts: string[];
+};
+
+let setupHostSeed: SetupHostSeed | null = null;
+let setupHostGuardUnsubscribe: (() => void) | null = null;
+let setupHostGuardRestoring = false;
+
+function restoreSeededSetupHostOptions() {
+  const seed = setupHostSeed;
+  if (!seed?.configDir || !seed.hostAttr) {
+    return;
+  }
+
+  const store = useWidgetStore.getState();
+  if (store.configDir !== seed.configDir) {
+    return;
+  }
+
+  if (store.host && store.host !== seed.hostAttr) {
+    return;
+  }
+
+  if (store.hosts.includes(seed.hostAttr)) {
+    return;
+  }
+
+  store.setHosts(seed.hosts);
+}
+
+function preserveSetupHostOptions(seed: SetupHostSeed) {
+  setupHostSeed = seed;
+  restoreSeededSetupHostOptions();
+
+  if (setupHostGuardUnsubscribe) {
+    return;
+  }
+
+  setupHostGuardUnsubscribe = useWidgetStore.subscribe(() => {
+    if (setupHostGuardRestoring) {
+      return;
+    }
+
+    const seed = setupHostSeed;
+    if (!seed) {
+      return;
+    }
+
+    const state = useWidgetStore.getState();
+    if (
+      state.configDir !== seed.configDir ||
+      (state.host && state.host !== seed.hostAttr) ||
+      state.hosts.includes(seed.hostAttr)
+    ) {
+      return;
+    }
+
+    setupHostGuardRestoring = true;
+    queueMicrotask(() => {
+      try {
+        restoreSeededSetupHostOptions();
+      } finally {
+        setupHostGuardRestoring = false;
+      }
+    });
+  });
 }
 
 export function setupWidgetTestHelpers() {
@@ -207,10 +281,23 @@ export function setupWidgetTestHelpers() {
       const normalizedDir = await darwinAPI.path.normalize(configDir);
       await darwinAPI.config.setDir(normalizedDir);
       await darwinAPI.config.setHostAttr("");
+      const discoveredHosts = await darwinAPI.flake.listHosts();
+      if (!discoveredHosts.includes(hostAttr)) {
+        throw new Error(
+          `E2E config host ${hostAttr} was not discovered; found: ${discoveredHosts.join(", ")}`,
+        );
+      }
+
       const store = useWidgetStore.getState();
       store.setConfigDir(normalizedDir);
       store.setHost("");
-      store.setHosts(hostAttr ? [hostAttr] : []);
+      store.setHosts(discoveredHosts);
+      if (hostAttr) {
+        // The real scanner already found this host. The guard only keeps the
+        // visible select stable if startup refreshes clear hosts before WDIO
+        // can click the option in an isolated scenario session.
+        preserveSetupHostOptions({ configDir: normalizedDir, hostAttr, hosts: discoveredHosts });
+      }
     },
     saveSetupHost: async (hostAttr: string) => {
       const store = useWidgetStore.getState();
@@ -219,6 +306,18 @@ export function setupWidgetTestHelpers() {
         : [...store.hosts, hostAttr];
       store.setHosts(hosts);
       store.setHost(hostAttr);
+    },
+    restoreSetupHostOptions: async (hostAttr: string) => {
+      const store = useWidgetStore.getState();
+      if (!setupHostSeed || setupHostSeed.hostAttr !== hostAttr) {
+        throw new Error(
+          `E2E setup host ${hostAttr} has not been verified by the flake host scanner`,
+        );
+      }
+      if (store.configDir && hostAttr) {
+        preserveSetupHostOptions(setupHostSeed);
+      }
+      restoreSeededSetupHostOptions();
     },
     captureProofPng: async (options) => {
       const target = getProofCaptureTarget(options);

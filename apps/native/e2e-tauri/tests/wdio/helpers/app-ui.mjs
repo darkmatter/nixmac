@@ -698,12 +698,46 @@ export async function setConfigurationDirectory(configDir, hostAttr) {
 
 export async function chooseHostConfiguration(hostAttr) {
   const triggerSelector = '#host-select';
-  await waitForSelector(triggerSelector, { timeout: 60000, interval: 500 });
-  await clickWithRetry(triggerSelector);
-
   const optionSelector = `//*[@role="option" and normalize-space(.)="${hostAttr}"]`;
-  await waitForSelector(optionSelector, { timeout: 10000, interval: 250 });
-  await clickWithRetry(optionSelector);
+
+  let lastOptionError = null;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const restoreResult = await browser.executeAsync((host, done) => {
+      if (!window.__testWidget?.restoreSetupHostOptions) {
+        done({ ok: false, error: 'window.__testWidget.restoreSetupHostOptions is unavailable' });
+        return;
+      }
+      Promise.resolve(window.__testWidget.restoreSetupHostOptions(host))
+        .then(() => done({ ok: true, error: null }))
+        .catch((error) => done({
+          ok: false,
+          error: error instanceof Error ? error.message : String(error),
+        }));
+    }, hostAttr);
+
+    expect(
+      restoreResult?.ok,
+      `Expected E2E widget test helper to restore setup host options${restoreResult?.error ? `: ${restoreResult.error}` : ''}`,
+    ).to.equal(true);
+
+    await waitForSelector(triggerSelector, { timeout: 60000, interval: 500 });
+    await clickWithRetry(triggerSelector);
+
+    try {
+      await waitForSelector(optionSelector, { timeout: 4000, interval: 250 });
+      await clickWithRetry(optionSelector);
+      lastOptionError = null;
+      break;
+    } catch (error) {
+      lastOptionError = error;
+      await browser.keys('Escape').catch(() => {});
+      await browser.pause(250);
+    }
+  }
+
+  if (lastOptionError) {
+    throw lastOptionError;
+  }
 
   const saveResult = await browser.executeAsync((host, done) => {
     if (!window.__testWidget?.saveSetupHost) {
