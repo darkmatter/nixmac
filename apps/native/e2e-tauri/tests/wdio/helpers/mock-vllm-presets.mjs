@@ -1,6 +1,7 @@
 const MOCK_VLLM_FIXTURE_PRESETS = Object.freeze({
   basicPromptsAddFont: ['add-font.jsonl'],
   manualEvolveAddFiraCode: ['add-fira-code.jsonl'],
+  questionAnswerFollowup: ['ask-question.jsonl', 'add-font.jsonl'],
 });
 
 export function listMockVllmFixturePresetNames() {

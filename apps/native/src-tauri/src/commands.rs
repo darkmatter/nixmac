@@ -322,40 +322,85 @@ fn reset_evolve_cancelled() {
     EVOLVE_CANCELLED.store(false, std::sync::atomic::Ordering::SeqCst);
 }
 
-/// Global channel for user responses to agent questions.
-/// The sender is held here; the receiver is consumed by the evolve loop.
-static QUESTION_RESPONSE: std::sync::OnceLock<
-    tokio::sync::Mutex<(
-        tokio::sync::mpsc::Sender<String>,
-        tokio::sync::mpsc::Receiver<String>,
-    )>,
+/// Global sender for the currently pending agent question.
+static ONGOING_QUESTION: std::sync::OnceLock<
+    tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<String>>>,
 > = std::sync::OnceLock::new();
 
-fn get_question_channel() -> &'static tokio::sync::Mutex<(
-    tokio::sync::mpsc::Sender<String>,
-    tokio::sync::mpsc::Receiver<String>,
-)> {
-    QUESTION_RESPONSE.get_or_init(|| {
-        let (tx, rx) = tokio::sync::mpsc::channel(1);
-        tokio::sync::Mutex::new((tx, rx))
-    })
+pub type QuestionResponseReceiver = tokio::sync::oneshot::Receiver<String>;
+
+fn ongoing_question_slot(
+) -> &'static tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<String>>> {
+    ONGOING_QUESTION.get_or_init(|| tokio::sync::Mutex::new(None))
 }
 
 /// Send a user's answer to the evolve loop's pending question.
 pub async fn send_question_response(answer: String) -> anyhow::Result<()> {
-    let channel = get_question_channel();
-    let lock = channel.lock().await;
-    lock.0
-        .send(answer)
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to send question response: {}", e))
+    let tx = {
+        let slot = ongoing_question_slot();
+        let mut guard = slot.lock().await;
+        guard.take()
+    };
+
+    match tx {
+        Some(tx) => tx
+            .send(answer)
+            .map_err(|_| anyhow::anyhow!("Question response receiver dropped")),
+        None => Err(anyhow::anyhow!("No pending question to answer")),
+    }
 }
 
-/// Wait for a user response to a question (called from the evolve loop).
-pub async fn wait_for_question_response() -> Option<String> {
-    let channel = get_question_channel();
-    let mut lock = channel.lock().await;
-    lock.1.recv().await
+/// Register a pending question before notifying the UI, so fast answers cannot
+/// arrive before the backend is ready to receive them.
+pub async fn prepare_question_response() -> QuestionResponseReceiver {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let slot = ongoing_question_slot();
+    let mut guard = slot.lock().await;
+    *guard = Some(tx);
+    rx
+}
+
+/// Clear the pending question response sender when the evolve loop stops waiting.
+pub async fn clear_pending_question_response() {
+    let slot = ongoing_question_slot();
+    let mut guard = slot.lock().await;
+    guard.take();
+}
+
+/// Wait for a prepared user response receiver.
+pub async fn wait_for_prepared_question_response(rx: QuestionResponseReceiver) -> Option<String> {
+    rx.await.ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn question_response_slot_accepts_answer_and_rejects_after_clear() {
+        clear_pending_question_response().await;
+
+        let rx = prepare_question_response().await;
+
+        send_question_response("yes".to_string())
+            .await
+            .expect("prepared question should accept an answer");
+
+        assert_eq!(
+            wait_for_prepared_question_response(rx).await,
+            Some("yes".to_string())
+        );
+
+        let _rx = prepare_question_response().await;
+
+        clear_pending_question_response().await;
+
+        let err = send_question_response("too late".to_string())
+            .await
+            .expect_err("cleared question should reject a late answer");
+
+        assert!(err.to_string().contains("No pending question to answer"));
+    }
 }
 
 /// Handles the complete evolution cycle returning the git status and summary to react

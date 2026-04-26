@@ -318,12 +318,14 @@ function QuestionPrompt({
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Type your answer..."
                 ref={inputRef}
+                data-testid="question-prompt-input"
                 type="text"
                 value={input}
               />
               <button
                 className="rounded-md bg-violet-500/20 px-3 py-1.5 text-sm text-violet-300 transition-colors hover:bg-violet-500/30 disabled:opacity-50"
                 disabled={!input.trim()}
+                data-testid="question-prompt-submit"
                 type="submit"
               >
                 Send

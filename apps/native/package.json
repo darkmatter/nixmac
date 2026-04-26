@@ -42,6 +42,7 @@
     "test:wdio:provider-failure": "wdio run e2e-tauri/wdio.provider-failure.conf.mjs",
     "test:wdio:provider-validation": "wdio run e2e-tauri/wdio.provider-validation.conf.mjs",
     "test:wdio:prompt-keyboard": "wdio run e2e-tauri/wdio.prompt-keyboard.conf.mjs",
+    "test:wdio:question-answer": "wdio run e2e-tauri/wdio.question-answer.conf.mjs",
     "test:wdio:settings-controls": "wdio run e2e-tauri/wdio.settings-controls.conf.mjs",
     "test:wdio:report": "node e2e-tauri/scripts/render-report.mjs",
     "test:wdio:visual-analysis": "node e2e-tauri/scripts/visual-analysis-self-test.mjs"

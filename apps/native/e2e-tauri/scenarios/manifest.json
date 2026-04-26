@@ -86,6 +86,34 @@
       "requiredForDefaultPrPack": true
     },
     {
+      "name": "question_answer_followup",
+      "lane": "tauri-wdio",
+      "title": "Question answer follow-up",
+      "summary": "Submits a prompt that asks the user a question, answers inline, and verifies the evolve flow continues to a generated Nix diff.",
+      "coverage": [
+        "Agent ask_user tool renders an inline question prompt",
+        "User answer is accepted from the UI and sent to the backend",
+        "The follow-up model response continues the same evolve flow",
+        "Generated diff includes the requested Darwin fonts module change"
+      ],
+      "riskAreas": ["evolve", "question-answer", "prompt", "state-machine"],
+      "changePatterns": [
+        "^apps/native/src/components/evolve-progress\\.tsx$",
+        "^apps/native/src/components/widget/(prompt-input|prompt-input-section|steps/evolve-step|widget)\\.tsx$",
+        "^apps/native/src/hooks/use-evolve\\.ts$",
+        "^apps/native/src-tauri/src/evolve/",
+        "^apps/native/src-tauri/src/(commands|evolution|evolve_state|store)\\.rs$",
+        "^apps/native/e2e-tauri/tests/(data|wdio)/"
+      ],
+      "knownGaps": [
+        "Uses mocked model responses; it does not exercise arbitrary question wording, choices, or live provider timing."
+      ],
+      "currentSpec": "tests/wdio/question-answer.spec.mjs",
+      "currentScript": "test:wdio:question-answer",
+      "status": "new-historical-regression-coverage",
+      "requiredForDefaultPrPack": true
+    },
+    {
       "name": "settings_provider_change",
       "lane": "tauri-wdio",
       "title": "Settings and provider tabs",

@@ -813,6 +813,7 @@ pub async fn generate_evolution<R: Runtime>(
                             }
 
                             // Emit specific events based on tool result type
+                            let mut question_response_rx = None;
                             match res {
                                 ToolResult::Think { category, thought } => {
                                     emit_evolve_event(
@@ -894,6 +895,8 @@ pub async fn generate_evolution<R: Runtime>(
                                     );
                                 }
                                 ToolResult::Question { question, choices } => {
+                                    question_response_rx =
+                                        Some(commands::prepare_question_response().await);
                                     emit_evolve_event(
                                         app,
                                         EvolveEvent::question(
@@ -910,8 +913,10 @@ pub async fn generate_evolution<R: Runtime>(
                             } = res
                             {
                                 info!("⏳ Waiting for user response to: {}", question);
+                                let response_rx = question_response_rx
+                                    .expect("question response receiver should be registered");
                                 let user_answer = tokio::select! {
-                                    answer = commands::wait_for_question_response() => {
+                                    answer = commands::wait_for_prepared_question_response(response_rx) => {
                                         match answer {
                                             Some(a) => a,
                                             None => {
@@ -929,6 +934,7 @@ pub async fn generate_evolution<R: Runtime>(
                                         }
                                     } => {
                                         warn!("Evolution cancelled while waiting for question response");
+                                        commands::clear_pending_question_response().await;
                                         evolution.state = EvolutionState::Failed;
                                         return Err(EvolutionRunError::from_state(
                                             "Evolution cancelled by user",

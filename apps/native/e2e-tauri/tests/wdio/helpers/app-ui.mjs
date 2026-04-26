@@ -19,6 +19,58 @@ function isXpathSelector(selector) {
   return String(selector).startsWith('/') || String(selector).startsWith('(');
 }
 
+export async function answerQuestion(answerText) {
+  const inputSelector = '[data-testid="question-prompt-input"]';
+  const submitButtonSelector = '[data-testid="question-prompt-submit"]';
+
+  await waitForSelector(inputSelector, { timeout: 60000, interval: 500 });
+  await waitForSelector(submitButtonSelector);
+
+  await markProofAction({
+    kind: 'type',
+    label: 'Question answer',
+    selector: inputSelector,
+    value: answerText,
+  });
+  await captureProofFrame('before-answer-Question answer');
+
+  await browser.execute((value) => {
+    const input = document.querySelector('[data-testid="question-prompt-input"]');
+    if (!(input instanceof HTMLInputElement)) {
+      return;
+    }
+
+    const nativeSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      'value',
+    )?.set;
+
+    if (nativeSetter) {
+      nativeSetter.call(input, value);
+    } else {
+      input.value = value;
+    }
+
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }, answerText);
+
+  await captureProofFrame('after-answer-Question answer');
+  await waitUntilOrFailOnError(
+    async () => {
+      const submitButton = await $(submitButtonSelector);
+      return (await submitButton.isExisting()) && (await submitButton.isEnabled());
+    },
+    {
+      timeout: 5000,
+      interval: 200,
+      timeoutMsg: 'Submit button did not enable after setting question prompt text',
+    },
+  );
+
+  await clickWithRetry(submitButtonSelector, { attempts: 20, interval: 300 });
+}
+
 async function ensureVisualHelpers() {
   await browser.execute(() => {
     if (window.__nixmacE2eVisual) {

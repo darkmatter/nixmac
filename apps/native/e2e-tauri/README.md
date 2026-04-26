@@ -163,6 +163,7 @@ Canonical scenario names live in `scenarios/manifest.json`. The current mappings
 | `settings_provider_change` | `tests/wdio/smoke.spec.mjs` | validated existing |
 | `discard_and_restore_state` | `tests/wdio/discard.spec.mjs` | validated existing |
 | `manual_evolve_existing_changes` | `tests/wdio/modify.spec.mjs` | validated existing |
+| `question_answer_followup` | `tests/wdio/question-answer.spec.mjs` | historical regression coverage |
 | `onboarding_existing_repo` | `tests/wdio/onboarding.spec.mjs` | validated existing |
 
 Each WDIO suite writes an `e2e-report.json` under `e2e-tauri/artifacts/<scenario>/`.
