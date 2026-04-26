@@ -1455,47 +1455,6 @@ jobs:
               return "Proof";
             }
 
-            function compactFailureLine(report) {
-              const proofUrl = report.failureProofUrl || report.failureVideoUrl || report.primaryProofUrl;
-              const segments = [
-                "- `" + markdownCode(report.scenario) + "` (" + markdownText(report.lane || "unknown") + ") - **" + markdownText(report.status || "failed") + "**",
-                linkIfPublic(report.htmlReportUrl, "Report"),
-                linkIfPublic(proofUrl, "Proof"),
-              ].filter(Boolean);
-              return segments.join(" | ");
-            }
-
-            function renderCompactStatus(reports, runStatus, runReason, isRequired) {
-              if (runStatus === "passed") {
-                return "passed";
-              }
-
-              const failedReports = reports.filter((report) => report.status !== "passed");
-              if (failedReports.length) {
-                return [
-                  runStatus,
-                  "",
-                  "Failed scenarios:",
-                  ...failedReports.map(compactFailureLine),
-                ].join("\n");
-              }
-
-              if (runStatus === "not required") {
-                return ["not required", "", `Reason: ${markdownText(runReason)}`].join("\n");
-              }
-
-              const missingReport = isRequired
-                ? "No failed scenario report was found. See details for workflow logs and artifacts."
-                : "No E2E scenario report was expected for this run.";
-              return [
-                runStatus,
-                "",
-                missingReport,
-                "",
-                `Reason: ${markdownText(runReason)}`,
-              ].join("\n");
-            }
-
             const reports = findReports(artifactRoot);
             const selection = readSelection(artifactRoot);
             testedCommit = selection?.headSha || testedCommit;
@@ -1569,31 +1528,22 @@ jobs:
               ? ""
               : "\n\n> Preview only: no PR comment, check run, or commit status was updated.";
 
-            const detailsBody = `
-            ## nixmac E2E
-            ${previewNotice}
-
-            **Status:** ${status}
-
-            **Why this ran:** ${reason}
-
-            **Scope:** ${scope}
-
-            **Coverage note:** ${coverageNote}
-
-            **Tested commit:** \`${testedCommit}\`
-
-            ${attentionSection}
-
-            ${required ? table : ""}
-
-            ${failureSections}
-
-            [Workflow run](${runUrl})
-            `;
+            const detailsBody = [
+              "## nixmac E2E",
+              previewNotice.trim(),
+              `**Status:** ${status}`,
+              `**Why this ran:** ${reason}`,
+              `**Scope:** ${scope}`,
+              `**Coverage note:** ${coverageNote}`,
+              `**Tested commit:** \`${testedCommit}\``,
+              attentionSection,
+              required ? table : "",
+              failureSections,
+              `[Workflow run](${runUrl})`,
+            ].filter((section) => String(section || "").trim()).join("\n\n");
 
             if (process.env.GITHUB_STEP_SUMMARY) {
-              fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${detailsBody.trim()}\n`);
+              fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${detailsBody}\n`);
             }
 
             if (!prSideEffectsEnabled) {
@@ -1666,14 +1616,11 @@ jobs:
               );
             }
 
-            const body = `${marker}
-            ## nixmac E2E
-
-            ${renderCompactStatus(reports, status, reason, required)}
-
-            Details: [Full E2E details](${checkHtmlUrl}) | [Workflow run](${runUrl})
-            Tested commit: \`${testedCommit}\`
-            `;
+            const body = [
+              marker,
+              detailsBody,
+              `\n[Full E2E details](${checkHtmlUrl})`,
+            ].join("\n");
 
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
