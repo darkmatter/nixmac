@@ -372,12 +372,6 @@ pub async fn wait_for_prepared_question_response(rx: QuestionResponseReceiver) -
     }
 }
 
-/// Wait for a user response to a question (called from the evolve loop).
-pub async fn wait_for_question_response() -> Option<String> {
-    let rx = prepare_question_response().await;
-    wait_for_prepared_question_response(rx).await
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
