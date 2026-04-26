@@ -250,25 +250,30 @@ pub fn set_vllm_api_key<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<()>
 ///
 /// Priority: `OPENROUTER_API_KEY` environment variable, then keychain-backed settings.
 pub fn get_effective_openrouter_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
-    resolve_secret_with_env_override(std::env::var("OPENROUTER_API_KEY").ok(), || {
-        get_openrouter_api_key(app)
-    })
+    resolve_secret_with_env_override(
+        normalize_env_secret(std::env::var("OPENROUTER_API_KEY").ok()),
+        || get_openrouter_api_key(app),
+    )
 }
 
 /// Gets the effective OpenAI API key with env-first precedence.
 ///
 /// Priority: `OPENAI_API_KEY` environment variable, then keychain-backed settings.
 pub fn get_effective_openai_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
-    resolve_secret_with_env_override(std::env::var("OPENAI_API_KEY").ok(), || {
-        get_openai_api_key(app)
-    })
+    resolve_secret_with_env_override(
+        normalize_env_secret(std::env::var("OPENAI_API_KEY").ok()),
+        || get_openai_api_key(app),
+    )
 }
 
 /// Gets the effective vLLM API key with env-first precedence.
 ///
 /// Priority: `VLLM_API_KEY` environment variable, then keychain-backed settings.
 pub fn get_effective_vllm_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
-    resolve_secret_with_env_override(std::env::var("VLLM_API_KEY").ok(), || get_vllm_api_key(app))
+    resolve_secret_with_env_override(
+        normalize_env_secret(std::env::var("VLLM_API_KEY").ok()),
+        || get_vllm_api_key(app),
+    )
 }
 
 /// Gets the effective OpenAI/OpenRouter credential and base URL with env-first precedence.
@@ -296,13 +301,23 @@ pub fn get_effective_openai_compatible_credential<R: Runtime>(
 /// 1. `OPENROUTER_API_KEY`
 /// 2. `OPENAI_API_KEY`
 pub fn get_env_openai_compatible_credential() -> Option<(String, &'static str)> {
-    if let Ok(key) = std::env::var("OPENROUTER_API_KEY") {
+    if let Some(key) = read_non_empty_env("OPENROUTER_API_KEY") {
         return Some((key, OPENROUTER_BASE_URL));
     }
-    if let Ok(key) = std::env::var("OPENAI_API_KEY") {
+    if let Some(key) = read_non_empty_env("OPENAI_API_KEY") {
         return Some((key, OPENAI_BASE_URL));
     }
     None
+}
+
+fn read_non_empty_env(name: &str) -> Option<String> {
+    normalize_env_secret(std::env::var(name).ok())
+}
+
+fn normalize_env_secret(value: Option<String>) -> Option<String> {
+    value
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
 }
 
 fn get_string_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<String>> {
@@ -577,6 +592,38 @@ mod tests {
             fallback_called.store(true, Ordering::SeqCst);
             Ok(Some("store-secret".to_string()))
         })
+        .unwrap();
+
+        assert_eq!(result.as_deref(), Some("store-secret"));
+        assert!(fallback_called.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn normalize_env_secret_rejects_empty_and_whitespace_values() {
+        assert_eq!(normalize_env_secret(None), None);
+        assert_eq!(normalize_env_secret(Some("".to_string())), None);
+        assert_eq!(normalize_env_secret(Some("   \n\t ".to_string())), None);
+    }
+
+    #[test]
+    fn normalize_env_secret_trims_and_keeps_non_empty_value() {
+        assert_eq!(
+            normalize_env_secret(Some("  sk-abc123  ".to_string())),
+            Some("sk-abc123".to_string())
+        );
+    }
+
+    #[test]
+    fn empty_env_after_normalization_uses_fallback() {
+        let fallback_called = AtomicBool::new(false);
+
+        let result = resolve_secret_with_env_override(
+            normalize_env_secret(Some("   \t\n  ".to_string())),
+            || {
+                fallback_called.store(true, Ordering::SeqCst);
+                Ok(Some("store-secret".to_string()))
+            },
+        )
         .unwrap();
 
         assert_eq!(result.as_deref(), Some("store-secret"));

@@ -60,20 +60,25 @@ impl<R: Runtime> CredentialStore for KeychainStore<R> {
     }
 
     fn delete(&self) -> Result<(), CredentialStoreError> {
-        let existing = self
+        match self
             .app
             .keyring()
-            .get_password(&self.service, &self.account)
-            .map_err(|e| CredentialStoreError::Keychain(e.to_string()))?;
-        if existing.is_none() {
-            return Ok(());
-        }
-
-        self.app
-            .keyring()
             .delete_password(&self.service, &self.account)
-            .map_err(|e| CredentialStoreError::Keychain(e.to_string()))
+        {
+            Ok(()) => Ok(()),
+            Err(e) if is_not_found_keyring_error(&e) => Ok(()),
+            Err(e) => Err(CredentialStoreError::Keychain(e.to_string())),
+        }
     }
+}
+
+fn is_not_found_keyring_error<E: std::fmt::Display + std::fmt::Debug>(err: &E) -> bool {
+    let msg = err.to_string().to_ascii_lowercase();
+    if msg.contains("no matching entry") || msg.contains("not found") {
+        return true;
+    }
+
+    format!("{err:?}").to_ascii_lowercase().contains("noentry")
 }
 
 pub struct SettingsFileStore {

@@ -110,13 +110,14 @@ pub fn create_provider<R: Runtime>(
                 .and_then(|app| crate::store::get_vllm_api_base_url(app).ok())
                 .flatten()
                 .or_else(|| std::env::var("VLLM_API_BASE").ok())
-                .ok_or_else(|| anyhow::anyhow!("No vLLM base URL configured. Please set it in Settings."))?;
+                .ok_or_else(|| {
+                    anyhow::anyhow!("No vLLM base URL configured. Please set it in Settings.")
+                })?;
 
             let api_key = app_handle
                 .map(crate::store::get_effective_vllm_api_key)
                 .transpose()?
                 .flatten()
-                .or_else(|| std::env::var("VLLM_API_KEY").ok())
                 .unwrap_or_else(|| "none".to_string());
 
             Ok(Box::new(OpenAIClient::new(&api_key, &base_url, &model)))
@@ -131,7 +132,11 @@ pub fn create_provider<R: Runtime>(
             } else {
                 crate::store::get_env_openai_compatible_credential()
             }
-            .ok_or_else(|| anyhow::anyhow!("No API key found. Please add your API key in Settings to get started."))?;
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "No API key found. Please add your API key in Settings to get started."
+                )
+            })?;
 
             // Strip OpenRouter-style "openai/" prefix for direct OpenAI usage
             let model = if base_url == crate::store::OPENAI_BASE_URL {
