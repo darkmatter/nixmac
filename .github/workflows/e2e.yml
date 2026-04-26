@@ -711,7 +711,10 @@ jobs:
     needs: resolve
     if: needs.resolve.outputs.mac_required == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
+    permissions:
+      actions: write
+      contents: read
     env:
       E2E_BASE_SHA: ${{ needs.resolve.outputs.base_sha }}
       E2E_HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
@@ -812,8 +815,104 @@ jobs:
           chmod 600 ~/.ssh/nixmac_e2e
           ssh-keyscan -H "${{ secrets.MAC_E2E_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
+      - name: Ensure Build macOS App artifact
+        id: ensure-build
+        continue-on-error: true
+        env:
+          BUILD_POLL_SECONDS: "30"
+          BUILD_WAIT_SECONDS: "2700"
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ needs.resolve.outputs.head_ref || github.head_ref || github.ref_name }}
+          HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          : > /tmp/e2e-full-mac-preflight.log
+
+          log() {
+            echo "[ci] $*" | tee -a /tmp/e2e-full-mac-preflight.log
+          }
+
+          fail() {
+            log "ERROR: $*"
+            exit 1
+          }
+
+          find_build_run() {
+            gh api "repos/${REPO}/actions/runs?head_sha=${HEAD_SHA}&per_page=50" \
+              --jq '([.workflow_runs[] | select(.name == "Build macOS App")] | sort_by(.created_at) | reverse | .[0]) // empty | [.id, .status, (.conclusion // ""), .html_url] | @tsv' \
+              2>/dev/null || true
+          }
+
+          log "Build macOS App preflight for exact commit ${HEAD_SHA}"
+          if [ -z "$HEAD_SHA" ]; then
+            fail "HEAD_SHA is empty; refusing to look up or dispatch an unpinned Build macOS App run"
+          fi
+
+          run_info="$(find_build_run)"
+          if [ -n "$run_info" ]; then
+            IFS=$'\t' read -r run_id run_status run_conclusion run_url <<< "$run_info"
+            if [ "$run_status" = "completed" ] && [ "$run_conclusion" = "success" ]; then
+              log "Found successful Build macOS App run for ${HEAD_SHA}: ${run_url}"
+              echo "build_run_id=$run_id" >> "$GITHUB_OUTPUT"
+              echo "build_run_url=$run_url" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            if [ "$run_status" = "completed" ]; then
+              fail "Build macOS App completed without success for ${HEAD_SHA}: ${run_url}"
+            fi
+            log "Found pending Build macOS App run for ${HEAD_SHA}: id=${run_id} status=${run_status}"
+          else
+            if [ -z "$HEAD_REF" ]; then
+              fail "Cannot dispatch Build macOS App because no PR head ref was resolved for ${HEAD_SHA}"
+            fi
+
+            branch_sha="$(gh api "repos/${REPO}/git/ref/heads/${HEAD_REF}" --jq '.object.sha' 2>/dev/null || true)"
+            if [ -z "$branch_sha" ]; then
+              fail "Cannot verify branch head for ${HEAD_REF}; refusing to dispatch an unpinned Build macOS App run"
+            fi
+            if [ "$branch_sha" != "$HEAD_SHA" ]; then
+              fail "PR head moved before full-Mac build preflight; resolved ${HEAD_SHA}, branch ${HEAD_REF} is now ${branch_sha}"
+            fi
+
+            log "No Build macOS App run found for ${HEAD_SHA}; dispatching build.yaml on ${HEAD_REF}"
+            if ! gh workflow run build.yaml --repo "$REPO" --ref "$HEAD_REF" >> /tmp/e2e-full-mac-preflight.log 2>&1; then
+              fail "Failed to dispatch Build macOS App for ${HEAD_SHA}"
+            fi
+            post_dispatch_sha="$(gh api "repos/${REPO}/git/ref/heads/${HEAD_REF}" --jq '.object.sha' 2>/dev/null || true)"
+            if [ "$post_dispatch_sha" != "$HEAD_SHA" ]; then
+              fail "PR head moved after dispatching Build macOS App; resolved ${HEAD_SHA}, branch ${HEAD_REF} is now ${post_dispatch_sha:-unknown}"
+            fi
+          fi
+
+          started="$(date +%s)"
+          while true; do
+            run_info="$(find_build_run)"
+            if [ -n "$run_info" ]; then
+              IFS=$'\t' read -r run_id run_status run_conclusion run_url <<< "$run_info"
+              log "Build macOS App run for ${HEAD_SHA}: id=${run_id} status=${run_status} conclusion=${run_conclusion:-pending}"
+              if [ "$run_status" = "completed" ] && [ "$run_conclusion" = "success" ]; then
+                echo "build_run_id=$run_id" >> "$GITHUB_OUTPUT"
+                echo "build_run_url=$run_url" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              if [ "$run_status" = "completed" ]; then
+                fail "Build macOS App completed without success for ${HEAD_SHA}: ${run_url}"
+              fi
+            else
+              log "Waiting for dispatched Build macOS App run to appear for ${HEAD_SHA}"
+            fi
+
+            elapsed=$(( $(date +%s) - started ))
+            if [ "$elapsed" -ge "$BUILD_WAIT_SECONDS" ]; then
+              fail "Timed out waiting for successful Build macOS App run for exact commit ${HEAD_SHA}"
+            fi
+            sleep "$BUILD_POLL_SECONDS"
+          done
+
       - name: Run full-Mac scenario over SSH
         id: ssh-run
+        if: steps.ensure-build.outcome == 'success'
         continue-on-error: true
         env:
           ADMIN_PASSWORD: ${{ secrets.MAC_E2E_ADMIN_PASSWORD }}
@@ -889,7 +988,12 @@ jobs:
           const scenario = process.env.SCENARIO;
           const now = new Date().toISOString();
           const logPath = "/tmp/e2e-full-mac-ssh.log";
-          const rawLog = fs.existsSync(logPath) ? fs.readFileSync(logPath, "utf8") : "";
+          const preflightLogPath = "/tmp/e2e-full-mac-preflight.log";
+          const rawLog = fs.existsSync(logPath)
+            ? fs.readFileSync(logPath, "utf8")
+            : fs.existsSync(preflightLogPath)
+              ? fs.readFileSync(preflightLogPath, "utf8")
+              : "";
           const redactSecrets = (value) => String(value || "")
             .replace(/x-access-token:[^@\s]+@/g, "x-access-token:[redacted]@")
             .replace(/gh[pousr]_[A-Za-z0-9_]+/g, "[redacted-github-token]")
@@ -921,6 +1025,14 @@ jobs:
           };
           const status = process.env.SSH_STATUS || "not-run";
           const redactedLog = redactSecrets(rawLog).trim();
+          const buildPreflightFailed = /Build macOS App preflight/i.test(rawLog)
+            && !fs.existsSync(logPath);
+          const phaseName = buildPreflightFailed
+            ? "Build macOS App preflight"
+            : "Full-Mac SSH runner";
+          const phaseAssertions = buildPreflightFailed
+            ? ["Find or create a successful Build macOS App run for the exact tested commit"]
+            : ["Reach the configured Mac runner over SSH and collect scenario artifacts"];
           const scenarioDir = path.join("apps/native/e2e-tauri/artifacts", scenario);
           fs.mkdirSync(scenarioDir, { recursive: true });
           const logRelPath = redactedLog ? `${scenario}/full-mac-ssh.log` : null;
@@ -936,8 +1048,8 @@ jobs:
             url: null,
             thumbnailUrl: null,
             timestampMs: null,
-            phase: "Full-Mac SSH runner",
-            caption: "Full-Mac SSH diagnostic log",
+            phase: phaseName,
+            caption: buildPreflightFailed ? "Build macOS App preflight log" : "Full-Mac SSH diagnostic log",
             isPrimary: true,
             isFailureProof: true,
           }] : [];
@@ -967,12 +1079,12 @@ jobs:
             localReproCommand: `tests/e2e/run.sh ${scenario}`,
             captureLimitations: ["full_mac_runner_unavailable"],
             phases: [{
-              name: "Full-Mac SSH runner",
+              name: phaseName,
               status: "infra_failed",
               startedAt: now,
               finishedAt: now,
               durationMs: 0,
-              assertions: ["Reach the configured Mac runner over SSH and collect scenario artifacts"],
+              assertions: phaseAssertions,
               proof: logProof,
               error,
             }],
