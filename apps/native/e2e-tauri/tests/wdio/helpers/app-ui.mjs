@@ -632,8 +632,8 @@ export async function setConfigurationDirectory(configDir, hostAttr) {
     setter?.call(el, value);
     el.dispatchEvent(new InputEvent('input', { bubbles: true, data: value, inputType: 'insertText' }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
-    el.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: document.body }));
-    el.blur();
+    // Do not synthesize blur here. The real onBlur path may asynchronously clear hosts
+    // after the E2E helper has seeded them, which can unmount #host-select on CI.
     return el.value;
   }, inputSelector, configDir);
 
@@ -643,11 +643,8 @@ export async function setConfigurationDirectory(configDir, hostAttr) {
     await input.setValue(configDir);
   }
 
-  await browser.keys(['Tab']);
-  await browser.pause(250);
-
   let setupSeeded = false;
-  for (let attempt = 0; attempt < 20; attempt += 1) {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
     setupSeeded = await browser.execute((dir, host) => {
       if (!window.__testWidget?.setSetupHosts) {
         return false;
@@ -656,9 +653,25 @@ export async function setConfigurationDirectory(configDir, hostAttr) {
       return true;
     }, configDir, hostAttr);
 
-    const hostSelect = await $('#host-select');
-    if (setupSeeded && (await hostSelect.isExisting())) {
-      return;
+    if (setupSeeded) {
+      const hasStableHostSelect = await browser.execute(() => {
+        const select = document.querySelector('#host-select');
+        if (!(select instanceof HTMLElement)) {
+          return false;
+        }
+
+        const style = window.getComputedStyle(select);
+        return (
+          style.display !== 'none' &&
+          style.visibility !== 'hidden' &&
+          Number(style.opacity) !== 0 &&
+          select.getClientRects().length > 0
+        );
+      });
+
+      if (hasStableHostSelect) {
+        return;
+      }
     }
 
     await browser.pause(250);
