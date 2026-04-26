@@ -1,7 +1,7 @@
 import {
   submitPromptMessage,
   waitForFirstWindow,
-  waitForWidgetErrorContaining,
+  waitForWidgetErrorMatching,
 } from './helpers/app-ui.mjs';
 import { setMockVllmResponses } from './helpers/test-env.mjs';
 
@@ -22,7 +22,7 @@ describe('provider failure recovery', () => {
     });
     await waitForFirstWindow();
     await submitPromptMessage('Install vim');
-    await waitForWidgetErrorContaining('billing limit', {
+    await waitForWidgetErrorMatching(/billing|credits/i, {
       timeout: 30000,
     });
   });

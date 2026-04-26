@@ -137,7 +137,7 @@ Post-fix coverage status:
 | ABQ-02 | Covered | Onboarding now asserts persisted `configDir` and `hostAttr`. |
 | ABQ-03 | Covered | Settings now changes provider selects and verifies persisted provider/model values. |
 | ABQ-04 | Covered | New focused invalid-provider scenario blocks unsafe prompt submission before network work. |
-| ABQ-05 | Covered and product hardened | Send is disabled/guarded during evolve processing; the scenario attempts rapid double submit. |
+| ABQ-05 | Product hardened; indirectly covered | Send is disabled/guarded during evolve processing; the scenario attempts rapid double submit. A direct guard assertion would require probing processing transitions, so this remains an indirect regression check. |
 | ABQ-06 | Covered | Prompt scenario repeats the same prompt and asserts one history entry. |
 | ABQ-07 | Still documented gap | Dirty-prompt/manual-resolution entry state still needs a cleaner direct assertion before claiming coverage. |
 | ABQ-08 | Covered | New provider-failure scenario asserts visible app error on deterministic provider billing failure. |

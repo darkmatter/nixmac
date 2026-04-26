@@ -1143,6 +1143,23 @@ export async function waitForWidgetErrorContaining(expectedText, { timeout = 600
   );
 }
 
+export async function waitForWidgetErrorMatching(pattern, { timeout = 60000, interval = 500 } = {}) {
+  const matcher = pattern instanceof RegExp ? pattern : new RegExp(String(pattern));
+  await browser.waitUntil(
+    async () => {
+      const elements = await $$(ERROR_MESSAGE_SELECTOR);
+      if (elements.length === 0) return false;
+      const text = (await elements[0].getText()).trim();
+      return matcher.test(text);
+    },
+    {
+      timeout,
+      interval,
+      timeoutMsg: `Timed out waiting for widget error matching: ${matcher}`,
+    },
+  );
+}
+
 export async function getInputType(selector) {
   await waitForSelector(selector);
   return browser.execute((fieldSelector) => {

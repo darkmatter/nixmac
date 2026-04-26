@@ -1,7 +1,8 @@
 import { createWdioConfig } from './e2e-tauri/wdio.conf.base.mjs';
 
 // Runs all suites that start from an already configured app state. Onboarding
-// intentionally uses a separate config because it must start without settings.
+// and provider validation intentionally use separate configs because they need
+// startup states this aggregate config cannot share.
 export const config = createWdioConfig({
   scenario: 'tauri_wdio_all',
   specs: [

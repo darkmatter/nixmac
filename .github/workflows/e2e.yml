@@ -1373,9 +1373,6 @@ jobs:
               if (!attention.length) {
                 return `### ${heading}\n\n${runModel}\n\nChanged files considered: **${changedCount}**. No scenario-specific path match beyond the selected scope.${sampleText}`;
               }
-              const lines = attention.map((scenario) => {
-                return `- **${markdownText(scenario.title || scenario.name)}**: ${markdownText(scenario.summary)}`;
-              });
               const detailLines = attention.map((scenario) => {
                 const matched = (scenario.matchedFiles || []).slice(0, 4);
                 const matchedList = matched.map((file) => "`" + markdownCode(file) + "`").join(", ");
@@ -1388,6 +1385,13 @@ jobs:
                 return `- **${markdownText(scenario.title || scenario.name)}**:${files}${gaps}`;
               });
               const details = `<details><summary>Matched files and known gaps</summary>\n\n${detailLines.join("\n")}\n\n</details>`;
+              const selectedCount = (selection.selected || []).length;
+              if (selectedCount > 0 && attention.length >= selectedCount) {
+                return `### ${heading}\n\n${runModel}\n\nChanged files considered: **${changedCount}**. All selected scenarios matched PR risk areas; matched files and known gaps are collapsed below.\n\n${details}${sampleText}`;
+              }
+              const lines = attention.map((scenario) => {
+                return `- **${markdownText(scenario.title || scenario.name)}**: ${markdownText(scenario.summary)}`;
+              });
               return `### ${heading}\n\n${runModel}\n\nChanged files considered: **${changedCount}**. Scenario-specific risk matches:\n\n${lines.join("\n")}\n\n${details}${sampleText}`;
             }
 
