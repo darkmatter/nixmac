@@ -644,14 +644,23 @@ export async function setConfigurationDirectory(configDir, hostAttr) {
   }
 
   let setupSeeded = false;
+  let lastSetupSeedError = null;
   for (let attempt = 0; attempt < 40; attempt += 1) {
-    setupSeeded = await browser.execute((dir, host) => {
+    const seedResult = await browser.executeAsync((dir, host, done) => {
       if (!window.__testWidget?.setSetupHosts) {
-        return false;
+        done({ ok: false, error: 'window.__testWidget.setSetupHosts is unavailable' });
+        return;
       }
-      window.__testWidget.setSetupHosts(dir, host);
-      return true;
+      Promise.resolve(window.__testWidget.setSetupHosts(dir, host))
+        .then(() => done({ ok: true, error: null }))
+        .catch((error) => done({
+          ok: false,
+          error: error instanceof Error ? error.message : String(error),
+        }));
     }, configDir, hostAttr);
+
+    setupSeeded = Boolean(seedResult?.ok);
+    lastSetupSeedError = seedResult?.error ?? null;
 
     if (setupSeeded) {
       const hasStableHostSelect = await browser.execute(() => {
@@ -677,7 +686,10 @@ export async function setConfigurationDirectory(configDir, hostAttr) {
     await browser.pause(250);
   }
 
-  expect(setupSeeded, 'Expected E2E widget test helper to seed setup hosts').to.equal(true);
+  expect(
+    setupSeeded,
+    `Expected E2E widget test helper to seed setup hosts${lastSetupSeedError ? `: ${lastSetupSeedError}` : ''}`,
+  ).to.equal(true);
 
   await waitForSelector('#host-select', {
     timeout: 60000,

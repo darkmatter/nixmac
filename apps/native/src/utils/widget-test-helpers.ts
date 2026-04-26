@@ -5,6 +5,7 @@
 
 import { useWidgetStore } from "@/stores/widget-store";
 import { computeCurrentStep } from "@/components/widget/utils";
+import { darwinAPI } from "@/tauri-api";
 
 export interface WidgetTestHelpers {
   /**
@@ -54,7 +55,7 @@ export interface WidgetTestHelpers {
   /**
    * Seed the setup step with an existing nix-darwin repository and discovered hosts.
    */
-  setSetupHosts: (configDir: string, hostAttr: string) => void;
+  setSetupHosts: (configDir: string, hostAttr: string) => Promise<void>;
   /**
    * Capture the most relevant proof surface as a PNG data URL.
    */
@@ -198,9 +199,12 @@ export function setupWidgetTestHelpers() {
     setConfirmPrefs: (prefs) => {
       useWidgetStore.getState().initConfirmPrefs(prefs);
     },
-    setSetupHosts: (configDir: string, hostAttr: string) => {
+    setSetupHosts: async (configDir: string, hostAttr: string) => {
+      const normalizedDir = await darwinAPI.path.normalize(configDir);
+      await darwinAPI.config.setDir(normalizedDir);
+      await darwinAPI.config.setHostAttr("");
       const store = useWidgetStore.getState();
-      store.setConfigDir(configDir);
+      store.setConfigDir(normalizedDir);
       store.setHost("");
       store.setHosts(hostAttr ? [hostAttr] : []);
     },
