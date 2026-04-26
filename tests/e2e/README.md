@@ -211,6 +211,10 @@ Full-Mac CI uses direct GitHub Secrets for the remote runner. `SOPS_AGE_KEY` is 
 | Test log         | `/tmp/e2e-test.log`          |
 | JSON results     | `/tmp/e2e-test-results.json` |
 
+The shared report renderer samples full-Mac screen recordings after artifacts
+are fetched and adds a Visual timeline to the published HTML report. This keeps
+full-Mac scenarios reviewable without manually scrubbing the whole video.
+
 
 ## Limitations
 

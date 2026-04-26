@@ -71,7 +71,7 @@ export function Header() {
           aria-label="Settings"
           title="Settings"
         >
-          <Settings className="h-4 w-4" />
+          <Settings className="h-4 w-4" data-testid="settings-icon" />
         </Button>
       </div>
     </div>

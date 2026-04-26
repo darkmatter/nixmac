@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import { analyzeReportVisualProofs } from './visual-analysis.mjs';
 
 const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const E2E_TAURI_DIR = path.resolve(THIS_DIR, '..');
@@ -234,6 +235,65 @@ function renderProof(proof, { fromDir = ARTIFACT_ROOT } = {}) {
     : `<span>${escapeHtml(proof.caption || proof.kind)}</span>`;
 }
 
+function metricLabel(value) {
+  return Number.isFinite(Number(value)) ? Number(value).toFixed(3) : 'n/a';
+}
+
+function renderVisualAnalysis(proof, { fromDir = ARTIFACT_ROOT } = {}) {
+  const analysis = proof?.visualAnalysis;
+  const frames = analysis?.frames ?? [];
+  if (!analysis || analysis.status !== 'completed' || frames.length === 0) {
+    return '';
+  }
+
+  return `
+    <div class="visual-analysis">
+      <h3>Visual timeline</h3>
+      <p class="muted">
+        ${escapeHtml(frames.length)} meaningful frame${frames.length === 1 ? '' : 's'} from
+        ${escapeHtml(analysis.source.replaceAll('-', ' '))}.
+        Deterministic checks only; scripted assertions remain the gate.
+      </p>
+      <div class="visual-frame-grid">
+        ${frames
+          .map((frame) => {
+            const relativePath = relativeArtifactPath(frame.path, fromDir);
+            const encodedPath = relativePath ? encodeUriPath(relativePath) : null;
+            return `
+              <article class="visual-frame">
+                ${
+                  encodedPath
+                    ? `<a href="${escapeHtml(encodedPath)}"><img src="${escapeHtml(encodedPath)}" alt="${escapeHtml(frame.note)}"></a>`
+                    : ''
+                }
+                <div>
+                  <strong>${(frame.timestampMs / 1000).toFixed(1)}s</strong>
+                  ${frame.label ? `<code>${escapeHtml(frame.label)}</code>` : ''}
+                </div>
+                <dl>
+                  <dt>Change</dt><dd>${escapeHtml(metricLabel(frame.changeScore))}</dd>
+                  <dt>Contrast</dt><dd>${escapeHtml(metricLabel(frame.contrast))}</dd>
+                  <dt>Detail</dt><dd>${escapeHtml(metricLabel(frame.edgeScore))}</dd>
+                </dl>
+                ${renderBullets(frame.observations, 'visual-observations')}
+                <p>${escapeHtml(frame.note)}</p>
+              </article>
+            `;
+          })
+          .join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderVisualTimelines(proof, { fromDir = ARTIFACT_ROOT } = {}) {
+  const timelines = (proof ?? [])
+    .filter((entry) => entry.kind === 'video')
+    .map((entry) => renderVisualAnalysis(entry, { fromDir }))
+    .filter(Boolean);
+  return timelines.join('');
+}
+
 function renderCaptureLimitations(limitations) {
   if (!limitations?.length) return '';
   return `
@@ -321,6 +381,7 @@ function renderReport(report, { fromDir = ARTIFACT_ROOT, manifest = new Map() } 
           ? renderFailure(report, firstFailure, failureProof, diagnosticLog, { fromDir })
           : `<div class="proof">${renderProof(primaryProof, { fromDir })}</div>`
       }
+      ${renderVisualTimelines(proof, { fromDir })}
       <table>
         <thead><tr><th>Phase</th><th>Status</th><th>Duration</th><th>Summary</th></tr></thead>
         <tbody>
@@ -400,6 +461,15 @@ function renderPage(reports, { fromDir = ARTIFACT_ROOT, manifest = new Map() } =
     .status-pill.failed, .status-pill.infra_failed { background: #fdecec; color: #a61b13; }
     .thumb { display: block; max-width: 520px; max-height: 320px; border: 1px solid #d8dee8; border-radius: 6px; background: #fff; }
     .video-proof { display: block; width: min(720px, 100%); max-height: 480px; border: 1px solid #d8dee8; border-radius: 6px; background: #000; }
+    .visual-analysis { margin-top: 16px; border: 1px solid #d8dee8; border-radius: 8px; padding: 12px; background: #fbfcfe; }
+    .visual-analysis h3 { margin: 0 0 4px; font-size: 14px; }
+    .visual-frame-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 12px; }
+    .visual-frame { border: 1px solid #d8dee8; border-radius: 8px; padding: 10px; background: #fff; }
+    .visual-frame img { display: block; width: 100%; max-height: 180px; object-fit: contain; border: 1px solid #edf0f5; border-radius: 6px; background: #0a0a0a; }
+    .visual-frame div { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+    .visual-frame dl { grid-template-columns: 64px 1fr; font-size: 12px; margin: 8px 0; }
+    .visual-frame p { color: #52606d; font-size: 12px; }
+    .visual-observations { margin: 8px 0; padding-left: 18px; color: #52606d; font-size: 12px; }
     .log-link { margin-top: 8px; }
     @media (max-width: 720px) {
       .scope-grid { grid-template-columns: 1fr; }
@@ -418,8 +488,34 @@ function renderPage(reports, { fromDir = ARTIFACT_ROOT, manifest = new Map() } =
 `;
 }
 
+function serializableReport(report) {
+  const serializable = { ...report };
+  delete serializable.reportPath;
+  delete serializable.artifactDir;
+  return serializable;
+}
+
+async function analyzeReports(reports) {
+  const analyzed = [];
+  for (const report of reports) {
+    const result = await analyzeReportVisualProofs(report, {
+      artifactRoot: ARTIFACT_ROOT,
+      artifactDir: report.artifactDir,
+    });
+    if (result.changed) {
+      await writeFile(
+        report.reportPath,
+        `${JSON.stringify(serializableReport(result.report), null, 2)}\n`,
+        'utf-8',
+      );
+    }
+    analyzed.push(result.report);
+  }
+  return analyzed;
+}
+
 async function main() {
-  const reports = await readReports();
+  const reports = await analyzeReports(await readReports());
   const manifest = await readScenarioManifest();
 
   await mkdir(ARTIFACT_ROOT, { recursive: true });

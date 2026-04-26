@@ -170,6 +170,22 @@ The report follows `report.schema.json` and is the local precursor to the PR-gat
 comment/report contract: scenario status, runner metadata, phases, failure proof,
 and replay commands.
 
+### Visual timeline analysis
+
+Report rendering also attaches deterministic screenshot analysis to video proof
+entries. WDIO scenarios analyze their original action-proof PNG frames before
+video encoding deletes the source directory; full-Mac scenarios fall back to
+sampling the encoded screen recording with `ffmpeg`. The analyzer keeps the
+first frame, last frame, and visually distinct frames above a change threshold,
+then writes those key screenshots under
+`e2e-tauri/artifacts/<scenario>/visual-analysis/`.
+
+The generated HTML report shows a Visual timeline for each analyzed video:
+timestamp, thumbnail, change score, contrast/detail metrics, and conservative
+observations such as blank, low-contrast, large visual change, or late-flow
+frame. These observations are bug-finding evidence only; scripted assertions
+still decide pass/fail.
+
 ## Current WDIO config
 
 `apps/native/wdio.conf.mjs` uses:

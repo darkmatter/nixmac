@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { browser } from '@wdio/globals';
 import {
+  assertElementMoreProminentThan,
   assertSelectorGone,
   assertVisibleText,
   clickWithRetry,
@@ -47,6 +48,11 @@ describe('feedback and issue reporting', () => {
     await clickWithRetry('label[for="bug"]', {
       label: 'Feedback type: Bug',
     });
+    await assertElementMoreProminentThan(
+      '[data-testid="feedback-type-bug"]',
+      ['[data-testid="feedback-type-suggestion"]', '[data-testid="feedback-type-general"]'],
+      'Bug feedback type selected state',
+    );
     await waitForSelector('#expected-text');
     await setFieldValue('#feedback-text', 'The settings panel did not behave as expected.', {
       label: 'Feedback details',

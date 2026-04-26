@@ -1,4 +1,5 @@
 import {
+  assertElementTextEquals,
   assertReturnedToInitialPromptScreen,
   assertSelectorGone,
   assertVisibleText,
@@ -16,6 +17,7 @@ describe('history and settings navigation', () => {
     await clickWithRetry('button[aria-label="History"]', { label: 'Open history' });
     await waitForSelector('//h2[normalize-space()="History"]');
     await assertVisibleText('History');
+    await assertElementTextEquals('[data-testid="history-count-badge"]', '1', 'History count badge');
     await assertVisibleText('initial nix config state');
 
     await clickWithRetry('button[aria-label="History"]', {

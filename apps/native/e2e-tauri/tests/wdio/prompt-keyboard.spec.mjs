@@ -3,8 +3,10 @@ import { expect } from 'chai';
 import {
   assertPromptFlowReachedEvolveReview,
   assertPromptHistoryContains,
+  assertPromptInputVisiblyContains,
   assertPromptInputValue,
   assertSendButtonEnabled,
+  assertSendButtonLooksDisabled,
   clickWithRetry,
   submitPromptWithAnnotatedKeyboardProof,
   waitForFirstWindow,
@@ -23,15 +25,17 @@ describe('prompt keyboard and suggestions', () => {
 
     await waitForFirstWindow();
     await assertSendButtonEnabled(false);
+    await assertSendButtonLooksDisabled();
 
     await clickWithRetry('//button[normalize-space()="Install vim"]', {
       label: 'Prompt suggestion: Install vim',
     });
     await assertPromptInputValue('Install vim');
+    await assertPromptInputVisiblyContains('Install vim');
     await assertSendButtonEnabled(true);
 
     await submitPromptWithAnnotatedKeyboardProof();
-    await assertPromptFlowReachedEvolveReview();
+    await assertPromptFlowReachedEvolveReview({ expectedVisibleDiffText: 'jetbrains-mono' });
     await assertPromptHistoryContains('Install vim');
 
     const diff = await waitForConfigRepoGitDiffContaining('jetbrains-mono');

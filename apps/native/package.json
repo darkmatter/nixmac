@@ -41,7 +41,8 @@
     "test:wdio:onboarding": "wdio run e2e-tauri/wdio.onboarding.conf.mjs",
     "test:wdio:prompt-keyboard": "wdio run e2e-tauri/wdio.prompt-keyboard.conf.mjs",
     "test:wdio:settings-controls": "wdio run e2e-tauri/wdio.settings-controls.conf.mjs",
-    "test:wdio:report": "node e2e-tauri/scripts/render-report.mjs"
+    "test:wdio:report": "node e2e-tauri/scripts/render-report.mjs",
+    "test:wdio:visual-analysis": "node e2e-tauri/scripts/visual-analysis-self-test.mjs"
   },
   "dependencies": {
     "@distilled.cloud/neon": "^0.7.12",

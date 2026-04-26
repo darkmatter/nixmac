@@ -14,6 +14,7 @@ import {
   resetE2eReportContext,
   writeE2eReport,
 } from './tests/wdio/helpers/e2e-report.mjs';
+import { analyzeImageFramesForProof } from './scripts/visual-analysis.mjs';
 
 const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APPS_NATIVE_DIR = path.resolve(THIS_DIR, '..');
@@ -33,6 +34,7 @@ const VIDEO_MIN_VALID_FRAMES = Number(process.env.NIXMAC_E2E_VIDEO_MIN_VALID_FRA
 const VIDEO_MAX_CONSECUTIVE_FRAME_ERRORS = Number(
   process.env.NIXMAC_E2E_VIDEO_MAX_CONSECUTIVE_FRAME_ERRORS ?? 3,
 );
+const USE_DOM_PROOF_CAPTURE = process.env.NIXMAC_E2E_DOM_PROOF_CAPTURE === '1';
 const PROOF_TARGET_SELECTORS = [
   '[data-testid="settings-dialog"]',
   '[data-testid="evolve-proof-region"]',
@@ -73,6 +75,7 @@ function createVideoRecorder({ context, testTitle }) {
     lastFrameAt: 0,
     phase: testTitle,
     saving: false,
+    slug,
     startedAt,
     videoPath,
   };
@@ -131,11 +134,32 @@ async function saveVideoFrameScreenshot(outputPath) {
 }
 
 async function saveProofScreenshot(outputPath, options = {}) {
-  const dataUrl = await captureProofDataUrl(options);
-  if (dataUrl) {
-    const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
-    await writeFile(outputPath, Buffer.from(base64, 'base64'));
+  if (USE_DOM_PROOF_CAPTURE) {
+    try {
+      const dataUrl = await captureProofDataUrl(options);
+      if (dataUrl) {
+        const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
+        await writeFile(outputPath, Buffer.from(base64, 'base64'));
+        return;
+      }
+    } catch (error) {
+      console.warn(
+        `[wdio:e2e-proof] DOM proof capture failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
+
+  try {
+    await globalThis.browser.saveScreenshot(outputPath);
     return;
+  } catch (error) {
+    console.warn(
+      `[wdio:e2e-proof] Failed browser screenshot: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
   }
 
   for (const selector of PROOF_TARGET_SELECTORS) {
@@ -336,6 +360,28 @@ async function encodeVideo(recorder, { passed, context }) {
       return null;
     }
 
+    let visualAnalysis = null;
+    try {
+      visualAnalysis = await analyzeImageFramesForProof({
+        frames: recorder.frames.map((frame) => ({
+          path: frame.path,
+          timestampMs: Math.max(0, frame.capturedAtMs - recorder.startedAt),
+          label: frame.label,
+        })),
+        artifactDir: context.artifactDir,
+        artifactRoot: path.resolve(context.artifactDir, '..'),
+        phase: recorder.phase,
+        proofSlug: recorder.slug,
+        durationMs: validation.durationMs,
+      });
+    } catch (error) {
+      console.warn(
+        `[wdio:e2e-visual] Failed to analyze source frames: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+
     return {
       kind: 'video',
       path: recorder.videoPath,
@@ -352,6 +398,7 @@ async function encodeVideo(recorder, { passed, context }) {
         renderedFrameCount: rendered.renderedFrames,
         sourceFrameCount: recorder.frameCount,
       },
+      visualAnalysis,
     };
   } catch (error) {
     recorder.error = error instanceof Error ? error.message : String(error);
@@ -511,7 +558,7 @@ export function createWdioConfig({ specs, setupOptions = {}, scenario, lane = 't
       const context = await ensureReportContext();
       await writeE2eReport(context, { exitCode });
     },
-    async onComplete(exitCode) {
+    async onComplete() {
       await teardownNixmacTestEnvironment(testEnvironment);
     },
   };

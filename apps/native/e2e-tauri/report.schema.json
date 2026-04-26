@@ -91,7 +91,62 @@
         "phase": { "type": "string" },
         "caption": { "type": "string" },
         "isPrimary": { "type": "boolean" },
-        "isFailureProof": { "type": "boolean" }
+        "isFailureProof": { "type": "boolean" },
+        "metadata": { "type": "object" },
+        "visualAnalysis": {
+          "anyOf": [
+            { "$ref": "#/$defs/visualAnalysis" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "visualAnalysis": {
+      "type": "object",
+      "required": ["schemaVersion", "status", "source", "frames"],
+      "properties": {
+        "schemaVersion": { "type": "integer", "const": 1 },
+        "status": { "type": "string", "enum": ["completed", "skipped"] },
+        "source": { "type": "string", "enum": ["wdio-source-frames", "video-sampling"] },
+        "phase": { "type": ["string", "null"] },
+        "reason": { "type": "string" },
+        "durationMs": { "type": ["integer", "null"], "minimum": 0 },
+        "sampleCount": { "type": "integer", "minimum": 0 },
+        "selectedFrameCount": { "type": "integer", "minimum": 0 },
+        "changeThreshold": { "type": "number", "minimum": 0 },
+        "maxSelectedFrames": { "type": "integer", "minimum": 1 },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "frames": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/visualFrame" }
+        }
+      }
+    },
+    "visualFrame": {
+      "type": "object",
+      "required": ["index", "path", "timestampMs", "observations", "note"],
+      "properties": {
+        "index": { "type": "integer", "minimum": 0 },
+        "sampleIndex": { "type": "integer", "minimum": 0 },
+        "path": { "type": "string" },
+        "url": { "type": ["string", "null"] },
+        "thumbnailUrl": { "type": ["string", "null"] },
+        "timestampMs": { "type": "integer", "minimum": 0 },
+        "label": { "type": ["string", "null"] },
+        "changeScore": { "type": ["number", "null"], "minimum": 0 },
+        "brightness": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "contrast": { "type": ["number", "null"], "minimum": 0 },
+        "edgeScore": { "type": ["number", "null"], "minimum": 0 },
+        "width": { "type": "integer", "minimum": 0 },
+        "height": { "type": "integer", "minimum": 0 },
+        "observations": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "note": { "type": "string" }
       }
     }
   }

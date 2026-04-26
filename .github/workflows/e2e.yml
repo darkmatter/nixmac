@@ -592,10 +592,21 @@ jobs:
               if (entry.name !== "e2e-report.json") continue;
 
               const report = JSON.parse(fs.readFileSync(full, "utf8"));
+              const addVisualAnalysisUrls = (visualAnalysis) => visualAnalysis
+                ? {
+                    ...visualAnalysis,
+                    frames: (visualAnalysis.frames || []).map((frame) => ({
+                      ...frame,
+                      url: frame.path ? publicUrlFor(frame.path) : frame.url,
+                      thumbnailUrl: frame.path ? publicUrlFor(frame.path) : frame.thumbnailUrl,
+                    })),
+                  }
+                : visualAnalysis;
               const addUrl = (proof) => ({
                 ...proof,
                 url: proof.path ? publicUrlFor(proof.path) : proof.url,
                 thumbnailUrl: proof.path ? publicUrlFor(proof.path) : proof.thumbnailUrl,
+                visualAnalysis: addVisualAnalysisUrls(proof.visualAnalysis),
               });
               report.htmlReportUrl = reportUrl;
               report.proof = (report.proof || []).map(addUrl);
@@ -1022,10 +1033,21 @@ jobs:
               if (entry.name !== "e2e-report.json") continue;
 
               const report = JSON.parse(fs.readFileSync(full, "utf8"));
+              const addVisualAnalysisUrls = (visualAnalysis) => visualAnalysis
+                ? {
+                    ...visualAnalysis,
+                    frames: (visualAnalysis.frames || []).map((frame) => ({
+                      ...frame,
+                      url: frame.path ? publicUrlFor(frame.path) : frame.url,
+                      thumbnailUrl: frame.path ? publicUrlFor(frame.path) : frame.thumbnailUrl,
+                    })),
+                  }
+                : visualAnalysis;
               const addUrl = (proof) => ({
                 ...proof,
                 url: proof.path ? publicUrlFor(proof.path) : proof.url,
                 thumbnailUrl: proof.path ? publicUrlFor(proof.path) : proof.thumbnailUrl,
+                visualAnalysis: addVisualAnalysisUrls(proof.visualAnalysis),
               });
               report.htmlReportUrl = reportUrl;
               report.proof = (report.proof || []).map(addUrl);
@@ -1231,6 +1253,10 @@ jobs:
               return isPublicUrl(value) ? `[${label}](${value})` : "workflow artifact";
             }
 
+            function linkIfPublic(value, label) {
+              return isPublicUrl(value) ? `[${label}](${value})` : null;
+            }
+
             function markdownText(value) {
               return String(value ?? "")
                 .replace(/[\r\n]+/g, " ")
@@ -1429,6 +1455,47 @@ jobs:
               return "Proof";
             }
 
+            function compactFailureLine(report) {
+              const proofUrl = report.failureProofUrl || report.failureVideoUrl || report.primaryProofUrl;
+              const segments = [
+                "- `" + markdownCode(report.scenario) + "` (" + markdownText(report.lane || "unknown") + ") - **" + markdownText(report.status || "failed") + "**",
+                linkIfPublic(report.htmlReportUrl, "Report"),
+                linkIfPublic(proofUrl, "Proof"),
+              ].filter(Boolean);
+              return segments.join(" | ");
+            }
+
+            function renderCompactStatus(reports, runStatus, runReason, isRequired) {
+              if (runStatus === "passed") {
+                return "passed";
+              }
+
+              const failedReports = reports.filter((report) => report.status !== "passed");
+              if (failedReports.length) {
+                return [
+                  runStatus,
+                  "",
+                  "Failed scenarios:",
+                  ...failedReports.map(compactFailureLine),
+                ].join("\n");
+              }
+
+              if (runStatus === "not required") {
+                return ["not required", "", `Reason: ${markdownText(runReason)}`].join("\n");
+              }
+
+              const missingReport = isRequired
+                ? "No failed scenario report was found. See details for workflow logs and artifacts."
+                : "No E2E scenario report was expected for this run.";
+              return [
+                runStatus,
+                "",
+                missingReport,
+                "",
+                `Reason: ${markdownText(runReason)}`,
+              ].join("\n");
+            }
+
             const reports = findReports(artifactRoot);
             const selection = readSelection(artifactRoot);
             testedCommit = selection?.headSha || testedCommit;
@@ -1502,7 +1569,7 @@ jobs:
               ? ""
               : "\n\n> Preview only: no PR comment, check run, or commit status was updated.";
 
-            const body = `${marker}
+            const detailsBody = `
             ## nixmac E2E
             ${previewNotice}
 
@@ -1526,8 +1593,7 @@ jobs:
             `;
 
             if (process.env.GITHUB_STEP_SUMMARY) {
-              const summaryBody = body.replace(marker, "").trim();
-              fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summaryBody}\n`);
+              fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${detailsBody.trim()}\n`);
             }
 
             if (!prSideEffectsEnabled) {
@@ -1540,29 +1606,7 @@ jobs:
               return;
             }
 
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-              per_page: 100,
-            });
-            const existing = comments.find((comment) => comment.body?.includes(marker));
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: prNumber,
-                body,
-              });
-            }
-
+            let checkHtmlUrl = runUrl;
             const checkName = "nixmac E2E Report";
             const checkConclusion = ["success", "failure", "neutral", "cancelled", "skipped", "timed_out", "action_required"].includes(conclusion)
               ? conclusion
@@ -1594,25 +1638,66 @@ jobs:
               },
               completed_at: new Date().toISOString(),
             };
-            const checkRuns = await github.rest.checks.listForRef({
+            try {
+              const checkRuns = await github.rest.checks.listForRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: testedCommit,
+                check_name: checkName,
+                per_page: 100,
+              });
+              const existingCheck = checkRuns.data.check_runs.find((check) => check.name === checkName);
+              checkHtmlUrl = existingCheck?.html_url || checkHtmlUrl;
+              const checkResponse = existingCheck
+                ? await github.rest.checks.update({
+                    ...checkRunPayload,
+                    check_run_id: existingCheck.id,
+                  })
+                : await github.rest.checks.create({
+                    ...checkRunPayload,
+                    head_sha: testedCommit,
+                  });
+              checkHtmlUrl = checkResponse.data?.html_url || checkHtmlUrl;
+            } catch (error) {
+              core.warning(
+                `Failed to publish nixmac E2E Report check: ${
+                  error instanceof Error ? error.message : String(error)
+                }`,
+              );
+            }
+
+            const body = `${marker}
+            ## nixmac E2E
+
+            ${renderCompactStatus(reports, status, reason, required)}
+
+            Details: [Full E2E details](${checkHtmlUrl}) | [Workflow run](${runUrl})
+            Tested commit: \`${testedCommit}\`
+            `;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
-              ref: testedCommit,
-              check_name: checkName,
+              issue_number: prNumber,
               per_page: 100,
             });
-            const existingCheck = checkRuns.data.check_runs.find((check) => check.name === checkName);
-            if (existingCheck) {
-              await github.rest.checks.update({
-                ...checkRunPayload,
-                check_run_id: existingCheck.id,
+            const existing = comments.find((comment) => comment.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
               });
             } else {
-              await github.rest.checks.create({
-                ...checkRunPayload,
-                head_sha: testedCommit,
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body,
               });
             }
+
             const statusState = checkConclusion === "success" ? "success" : checkConclusion === "cancelled" ? "error" : "failure";
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,

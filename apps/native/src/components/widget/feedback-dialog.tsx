@@ -508,6 +508,7 @@ export function FeedbackDialog() {
                 className="grid grid-cols-3 gap-4"
               >
                 <Label
+                  data-testid="feedback-type-suggestion"
                   className={`flex cursor-pointer flex-row items-center gap-3 rounded-lg border border-input bg-transparent p-3 hover:bg-accent transition-opacity ${
                     feedbackType === FeedbackType.Suggestion ? "opacity-100" : "opacity-40"
                   }`}
@@ -519,6 +520,7 @@ export function FeedbackDialog() {
                 </Label>
 
                 <Label
+                  data-testid="feedback-type-bug"
                   className={`flex cursor-pointer flex-row items-center gap-3 rounded-lg border border-input bg-transparent p-3 hover:bg-accent transition-opacity ${
                     feedbackType === FeedbackType.Bug ? "opacity-100" : "opacity-40"
                   }`}
@@ -530,6 +532,7 @@ export function FeedbackDialog() {
                 </Label>
 
                 <Label
+                  data-testid="feedback-type-general"
                   className={`flex cursor-pointer flex-row items-center gap-3 rounded-lg border border-input bg-transparent p-3 hover:bg-accent transition-opacity ${
                     feedbackType === FeedbackType.General ? "opacity-100" : "opacity-40"
                   }`}

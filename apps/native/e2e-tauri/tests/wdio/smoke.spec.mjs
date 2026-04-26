@@ -1,6 +1,7 @@
 import { expect } from '@wdio/globals';
 import {
   assertVisibleText,
+  assertVisualElementVisible,
   clickSettingsTabAndAssert,
   openSettingsDialog,
   waitForFirstWindow,
@@ -23,6 +24,7 @@ describe('tauri app smoke', () => {
 describe('settings dialog', () => {
   it('opens and navigates all tabs', async () => {
     await waitForFirstWindow();
+    await assertVisualElementVisible('[data-testid="settings-icon"]', 'Settings gear icon');
     await openSettingsDialog();
 
     await expectTabContent('General', [

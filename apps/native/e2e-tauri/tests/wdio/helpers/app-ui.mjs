@@ -19,6 +19,237 @@ function isXpathSelector(selector) {
   return String(selector).startsWith('/') || String(selector).startsWith('(');
 }
 
+async function ensureVisualHelpers() {
+  await browser.execute(() => {
+    if (window.__nixmacE2eVisual) {
+      return;
+    }
+
+    const parseCssColor = (value) => {
+      const match = String(value || '').match(/rgba?\(([^)]+)\)/i);
+      if (!match) return null;
+      const parts = match[1].split(',').map((part) => part.trim());
+      const [r, g, b] = parts.slice(0, 3).map((part) => Number.parseFloat(part));
+      const a = parts[3] === undefined ? 1 : Number.parseFloat(parts[3]);
+      if (![r, g, b, a].every(Number.isFinite)) return null;
+      return { r, g, b, a };
+    };
+
+    const relativeLuminance = ({ r, g, b }) => {
+      const channel = (value) => {
+        const normalized = value / 255;
+        return normalized <= 0.03928
+          ? normalized / 12.92
+          : ((normalized + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+    };
+
+    const contrastRatio = (a, b) => {
+      const lighter = Math.max(relativeLuminance(a), relativeLuminance(b));
+      const darker = Math.min(relativeLuminance(a), relativeLuminance(b));
+      return (lighter + 0.05) / (darker + 0.05);
+    };
+
+    const elementsFor = (selector) => {
+      if (!selector) return [];
+      if (selector.startsWith('/') || selector.startsWith('(')) {
+        const result = document.evaluate(
+          selector,
+          document,
+          null,
+          XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
+          null,
+        );
+        return Array.from({ length: result.snapshotLength }, (_, index) =>
+          result.snapshotItem(index),
+        ).filter((node) => node instanceof Element);
+      }
+      return Array.from(document.querySelectorAll(selector));
+    };
+
+    const effectiveVisibility = (element) => {
+      if (!(element instanceof Element)) {
+        return { visible: false, opacity: 0, reason: 'not_an_element' };
+      }
+
+      const rects = element.getClientRects();
+      const box = element.getBoundingClientRect();
+      if (rects.length === 0 || box.width <= 0 || box.height <= 0) {
+        return { visible: false, opacity: 0, reason: 'zero_size' };
+      }
+
+      let opacity = 1;
+      for (let current = element; current instanceof Element; current = current.parentElement) {
+        const style = window.getComputedStyle(current);
+        if (style.display === 'none') {
+          return { visible: false, opacity: 0, reason: 'display_none' };
+        }
+        if (style.visibility === 'hidden' || style.visibility === 'collapse') {
+          return { visible: false, opacity: 0, reason: 'visibility_hidden' };
+        }
+        const currentOpacity = Number.parseFloat(style.opacity);
+        opacity *= Number.isFinite(currentOpacity) ? currentOpacity : 1;
+        if (opacity <= 0.05) {
+          return { visible: false, opacity, reason: 'effective_opacity_zero' };
+        }
+      }
+
+      return { visible: true, opacity, reason: 'visible' };
+    };
+
+    const backgroundFor = (element) => {
+      for (let current = element; current instanceof Element; current = current.parentElement) {
+        const color = parseCssColor(window.getComputedStyle(current).backgroundColor);
+        if (color && color.a > 0.1) return color;
+      }
+      return { r: 0, g: 0, b: 0, a: 1 };
+    };
+
+    const textColorFor = (element) => {
+      const style = window.getComputedStyle(element);
+      const raw = style.webkitTextFillColor || style.color;
+      return { raw, parsed: parseCssColor(raw) };
+    };
+
+    const visibleTextNode = (node, expectedText) => {
+      if (!node.nodeValue?.includes(expectedText)) return false;
+      const parent = node.parentElement;
+      if (!parent || parent.closest('#nixmac-e2e-proof-action, #nixmac-e2e-proof-cursor')) {
+        return false;
+      }
+      if (!effectiveVisibility(parent).visible) return false;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const visible = range.getClientRects().length > 0;
+      range.detach();
+      return visible;
+    };
+
+    window.__nixmacE2eVisual = {
+      checkElementVisible(selector) {
+        const element = elementsFor(selector)[0];
+        if (!element) return { ok: false, reason: 'missing', selector };
+        const visibility = effectiveVisibility(element);
+        return visibility.visible ? { ok: true } : { ok: false, reason: visibility.reason, selector };
+      },
+      checkTextControlReadable(selector, expectedValue) {
+        const element = elementsFor(selector)[0];
+        if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement)) {
+          return { ok: false, reason: 'missing_text_control', selector };
+        }
+        if (expectedValue !== undefined && element.value !== expectedValue) {
+          return { ok: false, reason: `unexpected_value:${element.value}`, selector };
+        }
+        const visibility = effectiveVisibility(element);
+        if (!visibility.visible) return { ok: false, reason: visibility.reason, selector };
+        const textColor = textColorFor(element);
+        if (String(textColor.raw || '').toLowerCase().includes('transparent')) {
+          return { ok: false, reason: 'transparent_text', selector };
+        }
+        if (textColor.parsed && textColor.parsed.a <= 0.1) {
+          return { ok: false, reason: 'transparent_text', selector };
+        }
+        if (textColor.parsed) {
+          const ratio = contrastRatio(textColor.parsed, backgroundFor(element));
+          if (ratio < 2.5) {
+            return { ok: false, reason: `low_text_contrast:${ratio.toFixed(2)}`, selector };
+          }
+        }
+        return { ok: true };
+      },
+      checkDisabledButtonLooksDisabled(selector) {
+        const element = elementsFor(selector)[0];
+        if (!(element instanceof HTMLButtonElement)) {
+          return { ok: false, reason: 'missing_button', selector };
+        }
+        if (!element.disabled) {
+          return { ok: false, reason: 'button_not_disabled', selector };
+        }
+        const visibility = effectiveVisibility(element);
+        if (!visibility.visible) return { ok: false, reason: visibility.reason, selector };
+        if (visibility.opacity > 0.75) {
+          return { ok: false, reason: `disabled_opacity_too_high:${visibility.opacity.toFixed(2)}`, selector };
+        }
+        return { ok: true };
+      },
+      checkVisibleText(expectedText) {
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        let current = walker.nextNode();
+        while (current) {
+          if (visibleTextNode(current, expectedText)) return { ok: true };
+          current = walker.nextNode();
+        }
+        return { ok: false, reason: 'visible_text_missing', expectedText };
+      },
+      elementText(selector) {
+        const element = elementsFor(selector)[0];
+        if (!element) return { ok: false, reason: 'missing', selector };
+        const visibility = effectiveVisibility(element);
+        if (!visibility.visible) return { ok: false, reason: visibility.reason, selector };
+        return { ok: true, text: element.textContent?.trim().replace(/\s+/g, ' ') || '' };
+      },
+      checkDestructiveButtonColor(selector) {
+        const element = elementsFor(selector)[0];
+        if (!(element instanceof HTMLElement)) {
+          return { ok: false, reason: 'missing_button', selector };
+        }
+        const color = parseCssColor(window.getComputedStyle(element).backgroundColor);
+        if (!color) return { ok: false, reason: 'missing_background_color', selector };
+        const roseLike = color.r > 180 && color.r > color.g + 25 && color.r > color.b + 20 && color.g < 220;
+        return roseLike
+          ? { ok: true, color }
+          : { ok: false, reason: `not_destructive_color:rgb(${Math.round(color.r)},${Math.round(color.g)},${Math.round(color.b)})`, selector };
+      },
+      checkMoreProminentThan(selectedSelector, comparisonSelectors) {
+        const selected = elementsFor(selectedSelector)[0];
+        if (!selected) return { ok: false, reason: 'missing_selected', selectedSelector };
+        const selectedOpacity = effectiveVisibility(selected).opacity;
+        const comparison = comparisonSelectors
+          .flatMap((selector) => elementsFor(selector))
+          .map((element) => effectiveVisibility(element).opacity);
+        const maxComparison = Math.max(0, ...comparison);
+        return selectedOpacity >= maxComparison + 0.15
+          ? { ok: true, selectedOpacity, maxComparison }
+          : { ok: false, reason: `selected_not_prominent:${selectedOpacity.toFixed(2)}<=${maxComparison.toFixed(2)}`, selectedSelector };
+      },
+    };
+  });
+}
+
+async function waitForFontsReady() {
+  await browser.executeAsync((done) => {
+    const ready = document.fonts?.ready;
+    if (!ready) {
+      done();
+      return;
+    }
+    ready.then(() => done()).catch(() => done());
+  });
+}
+
+async function assertVisualCheck(label, check, { timeout = 5000, interval = 200 } = {}) {
+  await ensureVisualHelpers();
+  await waitForFontsReady();
+  let last = null;
+  try {
+    await waitUntilOrFailOnError(
+      async () => {
+        last = await check();
+        return last?.ok === true;
+      },
+      {
+        timeout,
+        interval,
+        timeoutMsg: `${label} visual assertion did not pass`,
+      },
+    );
+  } catch (error) {
+    const reason = last?.reason ? ` (${last.reason})` : '';
+    expect.fail(`${label} should be visibly correct${reason}`);
+  }
+}
+
 async function captureProofFrame(label) {
   const capture = globalThis.__nixmacCaptureE2eVideoFrame;
   if (typeof capture !== 'function') {
@@ -208,27 +439,89 @@ export async function waitForSelector(selector, { timeout = 15000, interval = 25
   );
 }
 
+export async function assertVisualElementVisible(selector, label = selector) {
+  await assertVisualCheck(label, () =>
+    browser.execute((targetSelector) =>
+      window.__nixmacE2eVisual.checkElementVisible(targetSelector), selector),
+  );
+}
+
+export async function assertElementTextEquals(selector, expectedText, label = selector) {
+  await assertVisualCheck(label, () =>
+    browser.execute((targetSelector, expected) => {
+      const result = window.__nixmacE2eVisual.elementText(targetSelector);
+      if (!result.ok) return result;
+      return result.text === expected
+        ? { ok: true }
+        : { ok: false, reason: `unexpected_text:${result.text}` };
+    }, selector, expectedText),
+  );
+}
+
+export async function assertPromptInputVisiblyContains(expectedValue) {
+  await assertVisualCheck('Prompt input text', () =>
+    browser.execute((selector, expected) =>
+      window.__nixmacE2eVisual.checkTextControlReadable(selector, expected), PROMPT_INPUT_SELECTOR, expectedValue),
+  );
+}
+
+export async function assertSendButtonLooksDisabled() {
+  await assertVisualCheck('Disabled send button affordance', () =>
+    browser.execute((selector) =>
+      window.__nixmacE2eVisual.checkDisabledButtonLooksDisabled(selector), SEND_BUTTON_SELECTOR),
+  );
+}
+
+export async function assertDestructiveButtonLooksDestructive(selector, label = selector) {
+  await browser.pause(150);
+  await assertVisualCheck(label, () =>
+    browser.execute((targetSelector) =>
+      window.__nixmacE2eVisual.checkDestructiveButtonColor(targetSelector), selector),
+  );
+}
+
+export async function assertElementMoreProminentThan(selector, comparisonSelectors, label = selector) {
+  await assertVisualCheck(label, () =>
+    browser.execute((selectedSelector, otherSelectors) =>
+      window.__nixmacE2eVisual.checkMoreProminentThan(selectedSelector, otherSelectors), selector, comparisonSelectors),
+  );
+}
+
 export async function clickDiscardAndConfirm() {
   const discardButtonSelector = '[data-testid="evolve-discard-button"]';
   const confirmButtonSelector = '[data-testid="confirm-dialog-confirm"]';
+  const cancelButtonSelector = '[data-testid="confirm-dialog-cancel"]';
 
+  await browser.execute(() => {
+    window.__testWidget?.setConfirmPrefs?.({ confirmClear: true });
+  });
   await waitForSelector(discardButtonSelector);
-  await clickWithRetry(discardButtonSelector);
+  await clickWithRetry(discardButtonSelector, { label: 'Discard change', forceDomClick: true });
 
   // Confirmation dialog appears — click Confirm
   await waitForSelector(confirmButtonSelector, { timeout: 10000 });
+  await assertElementTextEquals(cancelButtonSelector, 'Cancel', 'Discard dialog cancel label');
+  await assertElementTextEquals(confirmButtonSelector, 'Confirm', 'Discard dialog confirm label');
+  await assertDestructiveButtonLooksDestructive(confirmButtonSelector, 'Discard confirmation destructive button');
   await clickWithRetry(confirmButtonSelector);
 }
 
 export async function clickDiscardAndCancel() {
   const discardButtonSelector = '[data-testid="evolve-discard-button"]';
   const cancelButtonSelector = '[data-testid="confirm-dialog-cancel"]';
+  const confirmButtonSelector = '[data-testid="confirm-dialog-confirm"]';
 
+  await browser.execute(() => {
+    window.__testWidget?.setConfirmPrefs?.({ confirmClear: true });
+  });
   await waitForSelector(discardButtonSelector);
-  await clickWithRetry(discardButtonSelector);
+  await clickWithRetry(discardButtonSelector, { label: 'Discard change', forceDomClick: true });
 
   // Confirmation dialog appears — click Cancel
   await waitForSelector(cancelButtonSelector, { timeout: 10000 });
+  await assertElementTextEquals(cancelButtonSelector, 'Cancel', 'Discard dialog cancel label');
+  await assertElementTextEquals(confirmButtonSelector, 'Confirm', 'Discard dialog confirm label');
+  await assertDestructiveButtonLooksDestructive(confirmButtonSelector, 'Discard confirmation destructive button');
   await clickWithRetry(cancelButtonSelector);
 }
 
@@ -609,28 +902,14 @@ export async function assertSendButtonEnabled(enabled) {
 }
 
 export async function assertVisibleText(text, { timeout = 10000 } = {}) {
-  await waitUntilOrFailOnError(
-    async () =>
-      browser.execute((expectedText) => {
-        const elements = Array.from(document.querySelectorAll('body *'));
-        return elements.some((element) => {
-          if (element.closest('#nixmac-e2e-proof-action, #nixmac-e2e-proof-cursor')) {
-            return false;
-          }
-
-          const style = window.getComputedStyle(element);
-          const visible =
-            style.display !== 'none' &&
-            style.visibility !== 'hidden' &&
-            Number(style.opacity) !== 0 &&
-            element.getClientRects().length > 0;
-          return visible && element.textContent?.includes(expectedText);
-        });
-      }, text),
+  await assertVisualCheck(
+    `Visible text: ${text}`,
+    () =>
+      browser.execute((expectedText) =>
+        window.__nixmacE2eVisual.checkVisibleText(expectedText), text),
     {
       timeout,
       interval: 250,
-      timeoutMsg: `Timed out waiting for visible text: ${text}`,
     },
   );
 }
@@ -770,7 +1049,7 @@ export async function assertPromptHistoryContains(promptText) {
   );
 }
 
-export async function assertPromptFlowReachedEvolveReview() {
+export async function assertPromptFlowReachedEvolveReview({ expectedVisibleDiffText = null } = {}) {
   await waitForSelector('//h2[normalize-space()="What else can I change for you?"]', {
     timeout: 120000,
     interval: 500,
@@ -795,6 +1074,10 @@ export async function assertPromptFlowReachedEvolveReview() {
       timeoutMsg: 'Timed out waiting for generated git diff content',
     },
   );
+
+  if (expectedVisibleDiffText) {
+    await assertVisibleText(expectedVisibleDiffText, { timeout: 15000 });
+  }
 }
 
 export async function assertNoWidgetError() {

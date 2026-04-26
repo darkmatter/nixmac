@@ -21,6 +21,10 @@ export interface WidgetTestHelpers {
    */
   getPromptHistory: () => string[];
   /**
+   * Seed confirmation preferences for scenarios that explicitly exercise dialogs.
+   */
+  setConfirmPrefs: (prefs: Partial<Record<"confirmBuild" | "confirmClear" | "confirmRollback", boolean>>) => void;
+  /**
    * Seed the setup step with an existing nix-darwin repository and discovered hosts.
    */
   setSetupHosts: (configDir: string, hostAttr: string) => void;
@@ -73,6 +77,9 @@ export function setupWidgetTestHelpers() {
     },
     getPromptHistory: () => {
       return [...(useWidgetStore.getState().promptHistory ?? [])];
+    },
+    setConfirmPrefs: (prefs) => {
+      useWidgetStore.getState().initConfirmPrefs(prefs);
     },
     setSetupHosts: (configDir: string, hostAttr: string) => {
       const store = useWidgetStore.getState();
