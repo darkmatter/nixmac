@@ -4,6 +4,7 @@
  */
 
 import { useWidgetStore } from "@/stores/widget-store";
+import { computeCurrentStep } from "@/components/widget/utils";
 
 export interface WidgetTestHelpers {
   /**
@@ -20,6 +21,32 @@ export interface WidgetTestHelpers {
    * Current prompt history from the store.
    */
   getPromptHistory: () => string[];
+  /**
+   * Current computed widget step.
+   */
+  getCurrentStep: () => string;
+  /**
+   * Minimal store probe for behavior tests that need to wait on seeded state.
+   */
+  getStateProbe: () => {
+    step: string;
+    showHistory: boolean;
+    gitFileCount: number;
+    gitPaths: string[];
+    historyCount: number;
+  };
+  /**
+   * Seed a dirty git status so behavior tests can enter uncommitted-change states.
+   */
+  setDirtyGitStatus: (filePath?: string) => void;
+  /**
+   * Restore a clean git status after a dirty-state behavior test.
+   */
+  setCleanGitStatus: () => void;
+  /**
+   * Seed a small history list with a restore target while local changes exist.
+   */
+  seedDirtyRestoreHistory: () => void;
   /**
    * Seed confirmation preferences for scenarios that explicitly exercise dialogs.
    */
@@ -77,6 +104,96 @@ export function setupWidgetTestHelpers() {
     },
     getPromptHistory: () => {
       return [...(useWidgetStore.getState().promptHistory ?? [])];
+    },
+    getCurrentStep: () => {
+      return computeCurrentStep(useWidgetStore.getState());
+    },
+    getStateProbe: () => {
+      const state = useWidgetStore.getState();
+      return {
+        step: computeCurrentStep(state),
+        showHistory: state.showHistory,
+        gitFileCount: state.gitStatus?.files?.length ?? 0,
+        gitPaths: state.gitStatus?.files?.map((file) => file.path) ?? [],
+        historyCount: state.history.length,
+      };
+    },
+    setDirtyGitStatus: (filePath = "modules/homebrew.nix") => {
+      useWidgetStore.getState().setGitStatus({
+        files: [{ path: filePath, changeType: "edited" }],
+        branch: "main",
+        diff: `diff --git a/${filePath} b/${filePath}\n`,
+        additions: 1,
+        deletions: 0,
+        headCommitHash: "e2e-dirty-head",
+        cleanHead: false,
+        changes: [],
+      });
+    },
+    setCleanGitStatus: () => {
+      useWidgetStore.getState().setGitStatus({
+        files: [],
+        branch: "main",
+        diff: "",
+        additions: 0,
+        deletions: 0,
+        headCommitHash: "e2e-clean-head",
+        cleanHead: true,
+        changes: [],
+      });
+    },
+    seedDirtyRestoreHistory: () => {
+      const now = Math.floor(Date.now() / 1000);
+      const restoreTarget = "e2e-restore-target";
+      const currentHead = "e2e-current-head";
+      const store = useWidgetStore.getState();
+      store.setShowHistory(true);
+      store.setHistory([
+        {
+          hash: currentHead,
+          message: "current test head",
+          createdAt: now,
+          isBuilt: false,
+          isBase: false,
+          isExternal: false,
+          isUndone: false,
+          isOrphanedRestore: false,
+          fileCount: 1,
+          commit: null,
+          changeMap: null,
+          unsummarizedHashes: [],
+          rawChanges: [],
+          originMessage: null,
+          originHash: null,
+        },
+        {
+          hash: restoreTarget,
+          message: "restore target from yesterday",
+          createdAt: now - 86400,
+          isBuilt: false,
+          isBase: false,
+          isExternal: false,
+          isUndone: false,
+          isOrphanedRestore: false,
+          fileCount: 2,
+          commit: null,
+          changeMap: null,
+          unsummarizedHashes: [],
+          rawChanges: [],
+          originMessage: null,
+          originHash: null,
+        },
+      ]);
+      store.setGitStatus({
+        files: [{ path: "modules/homebrew.nix", changeType: "edited" }],
+        branch: "main",
+        diff: "diff --git a/modules/homebrew.nix b/modules/homebrew.nix\n",
+        additions: 1,
+        deletions: 0,
+        headCommitHash: currentHead,
+        cleanHead: false,
+        changes: [],
+      });
     },
     setConfirmPrefs: (prefs) => {
       useWidgetStore.getState().initConfirmPrefs(prefs);

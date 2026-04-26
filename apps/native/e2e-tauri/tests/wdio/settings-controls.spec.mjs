@@ -5,6 +5,7 @@ import {
   clickWithRetry,
   getInputType,
   openSettingsDialog,
+  selectOptionByText,
   setFieldValue,
   waitForFirstWindow,
   waitForSelector,
@@ -68,11 +69,23 @@ describe('settings controls persistence', () => {
     );
 
     await clickSettingsTabAndAssert('AI Models');
+    await selectOptionByText('#evolveProvider', 'Ollama', {
+      label: 'Evolution provider',
+    });
+    await selectOptionByText('#summaryProvider', 'OpenAI / OpenRouter', {
+      label: 'Summary provider',
+    });
     await setFieldValue('#maxIterations', '42', { label: 'Max iterations' });
     await setFieldValue('#maxBuildAttempts', '3', { label: 'Max build attempts' });
 
     await waitForSettingsMatching(
-      (settings) => settings.maxIterations === 42 && settings.maxBuildAttempts === 3,
+      (settings) =>
+        settings.evolveProvider === 'ollama' &&
+        settings.evolveModel === '' &&
+        settings.summaryProvider === 'openai' &&
+        settings.summaryModel === 'openai/gpt-4o-mini' &&
+        settings.maxIterations === 42 &&
+        settings.maxBuildAttempts === 3,
     );
   });
 });

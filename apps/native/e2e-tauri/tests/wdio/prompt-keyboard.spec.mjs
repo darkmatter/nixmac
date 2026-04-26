@@ -2,13 +2,18 @@
 import { expect } from 'chai';
 import {
   assertPromptFlowReachedEvolveReview,
+  assertPromptHistoryCount,
   assertPromptHistoryContains,
   assertPromptInputVisiblyContains,
   assertPromptInputValue,
   assertSendButtonEnabled,
   assertSendButtonLooksDisabled,
+  clickSendButtonTwiceRapidly,
   clickWithRetry,
-  submitPromptWithAnnotatedKeyboardProof,
+  focusPromptInput,
+  pressKey,
+  submitPromptMessage,
+  waitForEvolveProcessingCycle,
   waitForFirstWindow,
 } from './helpers/app-ui.mjs';
 import {
@@ -34,11 +39,22 @@ describe('prompt keyboard and suggestions', () => {
     await assertPromptInputVisiblyContains('Install vim');
     await assertSendButtonEnabled(true);
 
-    await submitPromptWithAnnotatedKeyboardProof();
+    await focusPromptInput();
+    await pressKey('Tab', 'Keyboard action before rapid submit');
+    await clickSendButtonTwiceRapidly();
+    await waitForEvolveProcessingCycle();
     await assertPromptFlowReachedEvolveReview({ expectedVisibleDiffText: 'jetbrains-mono' });
     await assertPromptHistoryContains('Install vim');
+    await assertPromptHistoryCount('Install vim', 1);
 
     const diff = await waitForConfigRepoGitDiffContaining('jetbrains-mono');
     expect(diff.raw).to.contain('jetbrains-mono');
+
+    await setMockVllmResponses({
+      responseFiles: getMockVllmFixturePreset('basicPromptsAddFont'),
+    });
+    await submitPromptMessage('Install vim');
+    await waitForEvolveProcessingCycle();
+    await assertPromptHistoryCount('Install vim', 1);
   });
 });

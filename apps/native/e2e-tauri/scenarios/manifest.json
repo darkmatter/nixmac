@@ -147,6 +147,60 @@
       "requiredForDefaultPrPack": true
     },
     {
+      "name": "provider_validation_blocks_prompt",
+      "lane": "tauri-wdio",
+      "title": "Provider validation blocks prompt",
+      "summary": "Starts with vLLM selected and no base URL, then verifies the prompt stays blocked with settings guidance instead of submitting into an avoidable provider failure.",
+      "coverage": [
+        "Invalid AI provider setup is detected at the prompt",
+        "Prompt suggestion can still fill the input",
+        "Send remains disabled while required provider configuration is missing",
+        "The user sees an AI Models settings recovery action"
+      ],
+      "riskAreas": ["providers", "prompt", "settings", "validation"],
+      "changePatterns": [
+        "^apps/native/src/lib/ai-provider-validation\\.ts$",
+        "^apps/native/src/components/widget/(prompt-input|prompt-input-section)\\.tsx$",
+        "^apps/native/src/components/widget/settings/(ai-models-tab|api-keys-tab)\\.tsx$",
+        "^apps/native/src/hooks/use-prefs\\.ts$",
+        "^apps/native/src-tauri/src/(prefs|commands|store)\\.rs$",
+        "^apps/native/e2e-tauri/tests/wdio/(provider-validation\\.spec|helpers/(app-ui|test-env))\\.mjs$"
+      ],
+      "knownGaps": [
+        "Uses local vLLM validation and does not call an external provider."
+      ],
+      "currentSpec": "tests/wdio/provider-validation.spec.mjs",
+      "currentScript": "test:wdio:provider-validation",
+      "status": "new-behavior-coverage",
+      "requiredForDefaultPrPack": true
+    },
+    {
+      "name": "provider_failure_recovery",
+      "lane": "tauri-wdio",
+      "title": "Provider failure recovery",
+      "summary": "Submits against a mock provider billing failure and verifies the provider failure is visible in the app instead of being swallowed.",
+      "coverage": [
+        "Prompt submission starts from a configured app state",
+        "Mock provider failure reaches the evolve error path",
+        "A visible, user-actionable error is rendered in the widget"
+      ],
+      "riskAreas": ["providers", "evolve", "failure-recovery", "error-reporting"],
+      "changePatterns": [
+        "^apps/native/src/hooks/use-evolve\\.ts$",
+        "^apps/native/src/components/widget/(error-message|prompt-input|prompt-input-section|widget)\\.tsx$",
+        "^apps/native/src-tauri/src/evolve/",
+        "^apps/native/src-tauri/src/(provider_errors|commands|store)\\.rs$",
+        "^apps/native/e2e-tauri/tests/wdio/(provider-failure\\.spec|helpers/(app-ui|mock-vllm-server|test-env))\\.mjs$"
+      ],
+      "knownGaps": [
+        "Uses a deterministic mock provider failure; it does not exercise every provider's live failure shape."
+      ],
+      "currentSpec": "tests/wdio/provider-failure.spec.mjs",
+      "currentScript": "test:wdio:provider-failure",
+      "status": "new-behavior-coverage",
+      "requiredForDefaultPrPack": true
+    },
+    {
       "name": "prompt_keyboard_and_suggestions",
       "lane": "tauri-wdio",
       "title": "Prompt keyboard and suggestions",

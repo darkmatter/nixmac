@@ -5,6 +5,7 @@ import {
   assertSelectorGone,
   assertVisibleText,
   clickWithRetry,
+  getFieldValue,
   setFieldValue,
   waitForFirstWindow,
   waitForSelector,
@@ -67,6 +68,20 @@ describe('feedback and issue reporting', () => {
     await assertVisibleText('Send Feedback');
     await clickWithRetry('//button[normalize-space()="Cancel"]', {
       label: 'Cancel feedback',
+      forceDomClick: true,
+    });
+    await assertSelectorGone('#feedback-text', { timeout: 5000 });
+
+    await clickWithRetry('button[aria-label="Give feedback"]', { label: 'Reopen feedback' });
+    await clickWithRetry('label[for="bug"]', {
+      label: 'Feedback type: Bug after reopen',
+    });
+    await waitForSelector('#expected-text');
+    expect(await getFieldValue('#feedback-text')).to.equal('');
+    expect(await getFieldValue('#expected-text')).to.equal('');
+    expect(await getFieldValue('#feedback-email')).to.equal('');
+    await clickWithRetry('//button[normalize-space()="Cancel"]', {
+      label: 'Cancel clean feedback',
       forceDomClick: true,
     });
     await assertSelectorGone('#feedback-text', { timeout: 5000 });

@@ -158,6 +158,20 @@ export async function startMockVllmServer(mockVllmOptions = {}) {
 
       const payload = responses[requestIndex];
       requestIndex += 1;
+      if (
+        payload &&
+        typeof payload === 'object' &&
+        Object.prototype.hasOwnProperty.call(payload, '__mockStatus')
+      ) {
+        const statusCode = Number(payload.__mockStatus);
+        writeJsonResponse(
+          response,
+          Number.isFinite(statusCode) ? statusCode : 500,
+          payload.__mockBody ?? { error: 'Mock provider error' },
+        );
+        return;
+      }
+
       writeJsonResponse(response, 200, payload);
     } catch (error) {
       writeJsonResponse(response, 500, {

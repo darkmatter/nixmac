@@ -13,6 +13,7 @@ export const config = createWdioConfig({
     './tests/wdio/prompt-keyboard.spec.mjs',
     './tests/wdio/settings-controls.spec.mjs',
     './tests/wdio/smoke.spec.mjs',
+    './tests/wdio/provider-failure.spec.mjs',
   ],
   setupOptions: {
     initializeConfigRepo: true,

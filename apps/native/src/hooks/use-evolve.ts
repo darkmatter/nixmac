@@ -36,8 +36,9 @@ export function useEvolve() {
     if (!store.evolvePrompt.trim()) {
       return;
     }
-
-    await refreshPromptHistory(store.evolvePrompt.trim());
+    if (store.isProcessing && store.processingAction === "evolve") {
+      return;
+    }
 
     store.setProcessing(true, "evolve");
     store.setGenerating(true);
@@ -49,17 +50,21 @@ export function useEvolve() {
     store.setConversationalResponse(null);
     store.appendLog(`\n> Evolving: "${store.evolvePrompt}"\n`);
 
-    // Set up evolve event listener
-    const unlistenEvolve = await ipcRenderer.on<EvolveEvent>(EVOLVE_EVENT_CHANNEL, (event) => {
-      if (event.payload) {
-        useWidgetStore.getState().appendEvolveEvent(event.payload);
-        if (event.payload.raw) {
-          useWidgetStore.getState().appendLog(`${event.payload.raw}\n`);
-        }
-      }
-    });
+    let unlistenEvolve: (() => void) | null = null;
 
     try {
+      await refreshPromptHistory(store.evolvePrompt.trim());
+
+      // Set up evolve event listener
+      unlistenEvolve = await ipcRenderer.on<EvolveEvent>(EVOLVE_EVENT_CHANNEL, (event) => {
+        if (event.payload) {
+          useWidgetStore.getState().appendEvolveEvent(event.payload);
+          if (event.payload.raw) {
+            useWidgetStore.getState().appendLog(`${event.payload.raw}\n`);
+          }
+        }
+      });
+
       // Run the unified evolution workflow
       // Backend handles: AI + summary + branch + commit + DB
       const result = await darwinAPI.darwin.evolve(store.evolvePrompt);
@@ -99,7 +104,7 @@ export function useEvolve() {
     } finally {
       useWidgetStore.getState().setGenerating(false);
       useWidgetStore.getState().setProcessing(false, "evolve");
-      unlistenEvolve();
+      unlistenEvolve?.();
     }
   }, [refreshGitStatus, refreshPromptHistory, findChangeMap]);
 

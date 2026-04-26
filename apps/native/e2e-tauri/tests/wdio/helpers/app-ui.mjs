@@ -575,11 +575,13 @@ export async function setConfigurationDirectory(configDir, hostAttr) {
       return null;
     }
 
+    el.focus();
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
     setter?.call(el, value);
     el.dispatchEvent(new InputEvent('input', { bubbles: true, data: value, inputType: 'insertText' }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
-    el.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+    el.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: document.body }));
+    el.blur();
     return el.value;
   }, inputSelector, configDir);
 
@@ -887,6 +889,17 @@ export async function assertPromptInputValue(expectedValue) {
   );
 }
 
+export async function getFieldValue(selector) {
+  await waitForSelector(selector);
+  return browser.execute((fieldSelector) => {
+    const el = document.querySelector(fieldSelector);
+    if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) {
+      return null;
+    }
+    return el.value;
+  }, selector);
+}
+
 export async function assertSendButtonEnabled(enabled) {
   await waitUntilOrFailOnError(
     async () => {
@@ -901,6 +914,21 @@ export async function assertSendButtonEnabled(enabled) {
   );
 }
 
+export async function assertPromptHistoryCount(promptText, expectedCount) {
+  await waitUntilOrFailOnError(
+    async () =>
+      await browser.execute((targetPrompt, count) => {
+        const history = window.__testWidget?.getPromptHistory?.() ?? [];
+        return history.filter((entry) => entry === targetPrompt).length === count;
+      }, promptText, expectedCount),
+    {
+      timeout: 30000,
+      interval: 500,
+      timeoutMsg: `Timed out waiting for prompt history count ${expectedCount}: ${promptText}`,
+    },
+  );
+}
+
 export async function assertVisibleText(text, { timeout = 10000 } = {}) {
   await assertVisualCheck(
     `Visible text: ${text}`,
@@ -910,6 +938,22 @@ export async function assertVisibleText(text, { timeout = 10000 } = {}) {
     {
       timeout,
       interval: 250,
+    },
+  );
+}
+
+export async function assertNoVisibleText(text, { timeout = 5000, interval = 250 } = {}) {
+  await ensureVisualHelpers();
+  await browser.waitUntil(
+    async () => {
+      const result = await browser.execute((expectedText) =>
+        window.__nixmacE2eVisual.checkVisibleText(expectedText), text);
+      return result?.ok !== true;
+    },
+    {
+      timeout,
+      interval,
+      timeoutMsg: `Timed out waiting for visible text to disappear: ${text}`,
     },
   );
 }
@@ -955,6 +999,15 @@ export async function assertSelectorGone(selector, { timeout = 10000, interval =
   );
 }
 
+export async function selectOptionByText(triggerSelector, optionText, { label = null } = {}) {
+  const actionLabel = label ?? `${actionLabelFromSelector(triggerSelector)}: ${optionText}`;
+  await waitForSelector(triggerSelector);
+  await clickWithRetry(triggerSelector, { label: actionLabel });
+  const optionSelector = `//*[@role="option" and normalize-space(.)="${optionText}"]`;
+  await waitForSelector(optionSelector);
+  await clickWithRetry(optionSelector, { label: actionLabel, forceDomClick: true });
+}
+
 export async function setFieldValue(selector, value, { label = null, blur = true } = {}) {
   const actionLabel = label ?? actionLabelFromSelector(selector);
   await waitForSelector(selector);
@@ -995,6 +1048,99 @@ export async function setFieldValue(selector, value, { label = null, blur = true
     await browser.pause(250);
   }
   await captureProofFrame(`after-type-${actionLabel}`);
+}
+
+export async function seedDirtyGitStatus(filePath = 'modules/homebrew.nix') {
+  const seeded = await browser.execute((targetPath) => {
+    if (!window.__testWidget?.setDirtyGitStatus) {
+      return false;
+    }
+    window.__testWidget.setDirtyGitStatus(targetPath);
+    return true;
+  }, filePath);
+
+  expect(seeded, 'Expected E2E widget test helper to seed dirty git status').to.equal(true);
+}
+
+export async function seedDirtyRestoreHistory() {
+  const seeded = await browser.execute(() => {
+    if (!window.__testWidget?.seedDirtyRestoreHistory) {
+      return false;
+    }
+    window.__testWidget.seedDirtyRestoreHistory();
+    return true;
+  });
+
+  expect(seeded, 'Expected E2E widget test helper to seed dirty restore history').to.equal(true);
+}
+
+export async function waitForDirtyRestoreHistoryReady() {
+  let lastProbe = null;
+  await waitUntilOrFailOnError(
+    async () => {
+      lastProbe = await browser.execute(() => window.__testWidget?.getStateProbe?.() ?? null);
+      return (
+        lastProbe?.step === 'history' &&
+        lastProbe?.showHistory === true &&
+        lastProbe?.historyCount === 2 &&
+        lastProbe?.gitFileCount > 0
+      );
+    },
+    {
+      timeout: 5000,
+      interval: 200,
+      timeoutMsg: `Dirty restore history state was not ready. Last probe: ${JSON.stringify(lastProbe)}`,
+    },
+  );
+}
+
+export async function clickSendButtonTwiceRapidly() {
+  await waitForSelector(SEND_BUTTON_SELECTOR);
+  await waitUntilOrFailOnError(
+    async () => {
+      const sendButton = await $(SEND_BUTTON_SELECTOR);
+      return (await sendButton.isExisting()) && (await sendButton.isEnabled());
+    },
+    {
+      timeout: 5000,
+      interval: 200,
+      timeoutMsg: 'Send button did not enable before rapid double submit',
+    },
+  );
+
+  await markProofAction({
+    kind: 'click',
+    label: 'Rapid double submit',
+    selector: SEND_BUTTON_SELECTOR,
+    value: null,
+  });
+  await captureProofFrame('before-click-Rapid double submit');
+  await browser.execute((selector) => {
+    const el = document.querySelector(selector);
+    if (!(el instanceof HTMLButtonElement)) {
+      return false;
+    }
+    el.click();
+    el.click();
+    return true;
+  }, SEND_BUTTON_SELECTOR);
+  await captureProofFrame('after-click-Rapid double submit');
+}
+
+export async function waitForWidgetErrorContaining(expectedText, { timeout = 60000, interval = 500 } = {}) {
+  await browser.waitUntil(
+    async () => {
+      const elements = await $$(ERROR_MESSAGE_SELECTOR);
+      if (elements.length === 0) return false;
+      const text = (await elements[0].getText()).trim();
+      return text.includes(expectedText);
+    },
+    {
+      timeout,
+      interval,
+      timeoutMsg: `Timed out waiting for widget error containing: ${expectedText}`,
+    },
+  );
 }
 
 export async function getInputType(selector) {

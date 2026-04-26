@@ -5,7 +5,10 @@ import {
   waitForFirstWindow,
   waitForSetupScreen,
 } from './helpers/app-ui.mjs';
-import { loadE2eEnvironmentMetadata } from './helpers/test-env.mjs';
+import {
+  loadE2eEnvironmentMetadata,
+  waitForSettingsMatching,
+} from './helpers/test-env.mjs';
 
 describe('onboarding existing repo', () => {
   it('connects an existing nix-darwin repo and reaches the prompt screen', async () => {
@@ -16,5 +19,8 @@ describe('onboarding existing repo', () => {
     await setConfigurationDirectory(metadata.configDir, metadata.hostAttr);
     await chooseHostConfiguration(metadata.hostAttr);
     await assertReturnedToInitialPromptScreen();
+    await waitForSettingsMatching((settings) =>
+      settings.configDir === metadata.configDir && settings.hostAttr === metadata.hostAttr,
+    );
   });
 });

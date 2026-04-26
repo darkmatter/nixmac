@@ -101,17 +101,18 @@ export function PromptInput() {
     return null;
   }, [providerErrors.evolve, providerErrors.summary]);
 
+  const isLoading = isProcessing && processingAction === "evolve";
+  const sendDisabled = isLoading || !evolvePrompt.trim() || !!promptValidationError;
+
   const handleSubmit = () => {
     if (!evolvePrompt.trim()) return;
     if (promptValidationError) return;
+    if (isLoading) return;
     if (needsResolution) {
       evolveFromManual();
     }
     handleEvolve();
   };
-
-  const isLoading = isProcessing && processingAction === "evolve";
-  const sendDisabled = isLoading || !evolvePrompt.trim() || !!promptValidationError;
 
   const placeholder =
     evolveState?.step === "evolve"

@@ -12,6 +12,8 @@ const REPLAY_COMMANDS = Object.freeze({
   history_navigation: 'bun run test:wdio:history-navigation',
   manual_evolve_existing_changes: 'bun run test:wdio:modify',
   onboarding_existing_repo: 'bun run test:wdio:onboarding',
+  provider_failure_recovery: 'bun run test:wdio:provider-failure',
+  provider_validation_blocks_prompt: 'bun run test:wdio:provider-validation',
   prompt_keyboard_and_suggestions: 'bun run test:wdio:prompt-keyboard',
   settings_controls_persistence: 'bun run test:wdio:settings-controls',
   settings_provider_change: 'bun run test:wdio:smoke',
