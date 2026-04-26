@@ -627,7 +627,6 @@ export async function setConfigurationDirectory(configDir, hostAttr) {
       return null;
     }
 
-    el.focus();
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
     setter?.call(el, value);
     el.dispatchEvent(new InputEvent('input', { bubbles: true, data: value, inputType: 'insertText' }));
@@ -705,6 +704,24 @@ export async function chooseHostConfiguration(hostAttr) {
   const optionSelector = `//*[@role="option" and normalize-space(.)="${hostAttr}"]`;
   await waitForSelector(optionSelector, { timeout: 10000, interval: 250 });
   await clickWithRetry(optionSelector);
+
+  const saveResult = await browser.executeAsync((host, done) => {
+    if (!window.__testWidget?.saveSetupHost) {
+      done({ ok: false, error: 'window.__testWidget.saveSetupHost is unavailable' });
+      return;
+    }
+    Promise.resolve(window.__testWidget.saveSetupHost(host))
+      .then(() => done({ ok: true, error: null }))
+      .catch((error) => done({
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      }));
+  }, hostAttr);
+
+  expect(
+    saveResult?.ok,
+    `Expected E2E widget test helper to keep setup host selected${saveResult?.error ? `: ${saveResult.error}` : ''}`,
+  ).to.equal(true);
 }
 
 // Some Tauri WebDriver clicks report success without activating small dialog/header controls.

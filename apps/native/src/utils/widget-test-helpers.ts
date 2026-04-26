@@ -57,6 +57,10 @@ export interface WidgetTestHelpers {
    */
   setSetupHosts: (configDir: string, hostAttr: string) => Promise<void>;
   /**
+   * Keep the selected setup host in memory after the visible host-select click.
+   */
+  saveSetupHost: (hostAttr: string) => Promise<void>;
+  /**
    * Capture the most relevant proof surface as a PNG data URL.
    */
   captureProofPng: (options?: ProofCaptureOptions) => Promise<string | null>;
@@ -207,6 +211,14 @@ export function setupWidgetTestHelpers() {
       store.setConfigDir(normalizedDir);
       store.setHost("");
       store.setHosts(hostAttr ? [hostAttr] : []);
+    },
+    saveSetupHost: async (hostAttr: string) => {
+      const store = useWidgetStore.getState();
+      const hosts = store.hosts.includes(hostAttr)
+        ? store.hosts
+        : [...store.hosts, hostAttr];
+      store.setHosts(hosts);
+      store.setHost(hostAttr);
     },
     captureProofPng: async (options) => {
       const target = getProofCaptureTarget(options);
