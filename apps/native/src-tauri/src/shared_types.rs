@@ -178,6 +178,20 @@ impl Default for EvolveState {
 
 
 // =============================================================================
+// Config dir result types
+// =============================================================================
+
+/// Result returned when the config directory is set (typed or picked).
+/// `evolve_state` and `hosts` are `Some` only when the directory actually changed.
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SetDirResult {
+    pub dir: String,
+    pub evolve_state: Option<EvolveState>,
+    pub hosts: Option<Vec<String>>,
+}
+
+// =============================================================================
 // Rollback result types
 // =============================================================================
 

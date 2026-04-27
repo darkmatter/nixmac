@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { FeedbackType } from "@/types/feedback";
 import { Settings } from "lucide-react";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
 /**
  * Error message component - displays errors from store.
@@ -15,9 +15,12 @@ export function ErrorMessage() {
   const setError = useWidgetStore((s) => s.setError);
   const openFeedback = useWidgetStore((s) => s.openFeedback);
   const setSettingsOpen = useWidgetStore((s) => s.setSettingsOpen);
-  const host = useWidgetStore((s) => s.host);
   const step = useCurrentStep();
   const dismissedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (error && step === "setup") setError(null);
+  }, [error, step]);
 
   // more persistent dismissal for certain looping (watcher) errors
   const loopingErrorPatterns = ["is not a git repository"];
@@ -25,13 +28,9 @@ export function ErrorMessage() {
     error === dismissedRef.current &&
     loopingErrorPatterns.some((pattern) => error?.includes(pattern));
 
-  // "not a git repository" is expected on setup when nothing is configured yet.
-  // If host is set, we landed here unexpectedly (e.g. repo deleted) — show the error.
-  const isExpectedSetupError = step === "setup" && !host;
   const isSuppressedError =
     isDismissed ||
-    (step === "setup" && error?.includes("Failed to list hosts: path")) ||
-    (isExpectedSetupError && error?.includes("is not a git repository")) ||
+    step === "setup" ||
     ((step === "evolve" || step === "begin") && error?.includes("cancelled by user"));
 
   if (!error || isSuppressedError) {
