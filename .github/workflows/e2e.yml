@@ -1248,12 +1248,76 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.resolve.outputs.head_sha }}
+
+      - name: Setup sops
+        uses: nhedger/setup-sops@v2
+
+      - name: Setup age
+        uses: alessiodionisi/setup-age-action@v1.3.0
+
       - name: Download E2E artifacts
         if: always()
         uses: actions/download-artifact@v7
         with:
           pattern: e2e-*
           path: e2e-artifacts
+
+      - name: Render aggregate proof gallery
+        if: always() && needs.resolve.outputs.required == 'true'
+        env:
+          NIXMAC_E2E_SKIP_VISUAL_ANALYSIS: "1"
+        run: |
+          rm -rf apps/native/e2e-tauri/artifacts
+          mkdir -p apps/native/e2e-tauri/artifacts
+
+          report_count=0
+          while IFS= read -r -d '' report; do
+            scenario="$(jq -r '.scenario // empty' "$report")"
+            if [ -z "$scenario" ]; then
+              scenario="$(basename "$(dirname "$report")")"
+            fi
+            dest="apps/native/e2e-tauri/artifacts/$scenario"
+            rm -rf "$dest"
+            mkdir -p "$dest"
+            cp -R "$(dirname "$report")"/. "$dest"/
+            report_count=$((report_count + 1))
+          done < <(find e2e-artifacts -path '*/e2e-report.json' -print0)
+
+          if [ "$report_count" -eq 0 ]; then
+            echo "No scenario reports found for aggregate proof gallery" >&2
+            exit 1
+          fi
+
+          node apps/native/e2e-tauri/scripts/render-report.mjs
+          echo "Rendered aggregate proof gallery for $report_count scenario reports"
+
+      - name: Publish aggregate proof gallery to R2
+        id: publish-aggregate
+        if: always() && needs.resolve.outputs.required == 'true' && ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || github.event_name == 'workflow_dispatch')
+        shell: "sops exec-env ops/secrets/secrets.yaml \"bash -e {0}\""
+        env:
+          AWS_DEFAULT_REGION: auto
+          REPORT_PREFIX: ${{ needs.resolve.outputs.report_prefix }}
+        run: |
+          export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
+          export AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
+
+          if [ ! -f apps/native/e2e-tauri/artifacts/index.html ]; then
+            echo "Aggregate proof gallery was not rendered" >&2
+            exit 1
+          fi
+
+          aws s3 cp apps/native/e2e-tauri/artifacts "s3://nixmac-releases/${REPORT_PREFIX}" \
+            --recursive \
+            --endpoint-url "$R2_ENDPOINT" \
+            --cache-control "max-age=2592000"
+
+          echo "report-url=https://releases.nixmac.com/${REPORT_PREFIX}/index.html" >> "$GITHUB_OUTPUT"
+          echo "Published aggregate proof gallery: https://releases.nixmac.com/${REPORT_PREFIX}/index.html"
 
       - name: Resolve gate result
         id: result

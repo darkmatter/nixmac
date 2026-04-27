@@ -214,7 +214,7 @@ function renderProof(proof, { fromDir = ARTIFACT_ROOT } = {}) {
   if (proof.kind === 'screenshot' && relativePath) {
     return `
       <a href="${escapeHtml(encodedPath)}">
-        <img class="thumb" src="${escapeHtml(encodedPath)}" alt="${escapeHtml(proof.caption)}">
+        <img class="thumb" src="${escapeHtml(encodedPath)}" alt="${escapeHtml(proof.caption)}" loading="lazy">
       </a>
     `;
   }
@@ -233,6 +233,56 @@ function renderProof(proof, { fromDir = ARTIFACT_ROOT } = {}) {
   return relativePath
     ? `<a href="${escapeHtml(encodedPath)}">${escapeHtml(proof.caption || proof.kind)}</a>`
     : `<span>${escapeHtml(proof.caption || proof.kind)}</span>`;
+}
+
+function proofIdentity(proof) {
+  return [proof?.kind, proof?.path, proof?.caption].map((value) => String(value ?? '')).join('|');
+}
+
+function renderProofGallery(proof, { fromDir = ARTIFACT_ROOT } = {}) {
+  const entries = [];
+  const seen = new Set();
+  for (const entry of proof ?? []) {
+    const key = proofIdentity(entry);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    entries.push(entry);
+  }
+
+  if (!entries.length) {
+    return '<div class="proof"><span class="muted">none</span></div>';
+  }
+
+  const primaryProof =
+    entries.find((entry) => entry.kind === 'video' && entry.isPrimary) ??
+    entries.find((entry) => entry.isPrimary) ??
+    entries[0];
+  const additionalProof = entries.filter((entry) => entry !== primaryProof);
+
+  return `
+    <div class="proof">
+      ${renderProof(primaryProof, { fromDir })}
+      ${
+        additionalProof.length > 0
+          ? `<details class="proof-gallery">
+              <summary>View additional proof artifacts (${additionalProof.length})</summary>
+              <div class="proof-grid">
+                ${additionalProof
+                  .map(
+                    (entry) => `
+                      <article class="proof-item ${escapeHtml(entry.kind)}">
+                        <strong>${escapeHtml(entry.kind)}</strong>
+                        ${renderProof(entry, { fromDir })}
+                      </article>
+                    `,
+                  )
+                  .join('')}
+              </div>
+            </details>`
+          : ''
+      }
+    </div>
+  `;
 }
 
 function metricLabel(value) {
@@ -356,7 +406,6 @@ function renderReport(report, { fromDir = ARTIFACT_ROOT, manifest = new Map() } 
   const firstFailure = phases.find((phase) => phase.status !== 'passed');
   const failureProof = proof.find((entry) => entry.isFailureProof);
   const diagnosticLog = proof.find((entry) => entry.kind === 'log');
-  const primaryProof = proof.find((entry) => entry.isPrimary) ?? proof[0] ?? null;
   const metadata = manifest.get(report.scenario);
 
   return `
@@ -379,7 +428,7 @@ function renderReport(report, { fromDir = ARTIFACT_ROOT, manifest = new Map() } 
       ${
         firstFailure
           ? renderFailure(report, firstFailure, failureProof, diagnosticLog, { fromDir })
-          : `<div class="proof">${renderProof(primaryProof, { fromDir })}</div>`
+          : renderProofGallery(proof, { fromDir })
       }
       ${renderVisualTimelines(proof, { fromDir })}
       <table>
@@ -461,6 +510,13 @@ function renderPage(reports, { fromDir = ARTIFACT_ROOT, manifest = new Map() } =
     .status-pill.failed, .status-pill.infra_failed { background: #fdecec; color: #a61b13; }
     .thumb { display: block; max-width: 520px; max-height: 320px; border: 1px solid #d8dee8; border-radius: 6px; background: #fff; }
     .video-proof { display: block; width: min(720px, 100%); max-height: 480px; border: 1px solid #d8dee8; border-radius: 6px; background: #000; }
+    .proof-gallery { margin-top: 12px; }
+    .proof-gallery summary { cursor: pointer; color: #384250; font-weight: 600; }
+    .proof-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 10px; }
+    .proof-item { border: 1px solid #d8dee8; border-radius: 8px; padding: 10px; background: #fbfcfe; }
+    .proof-item strong { display: block; margin-bottom: 8px; color: #52606d; font-size: 12px; text-transform: uppercase; }
+    .proof-item .thumb { width: 100%; max-width: 100%; max-height: 180px; object-fit: contain; }
+    .proof-item .video-proof { width: 100%; max-height: 220px; }
     .visual-analysis { margin-top: 16px; border: 1px solid #d8dee8; border-radius: 8px; padding: 12px; background: #fbfcfe; }
     .visual-analysis h3 { margin: 0 0 4px; font-size: 14px; }
     .visual-frame-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 12px; }
@@ -496,6 +552,10 @@ function serializableReport(report) {
 }
 
 async function analyzeReports(reports) {
+  if (process.env.NIXMAC_E2E_SKIP_VISUAL_ANALYSIS === '1') {
+    return reports;
+  }
+
   const analyzed = [];
   for (const report of reports) {
     const result = await analyzeReportVisualProofs(report, {
