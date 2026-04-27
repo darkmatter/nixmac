@@ -55,7 +55,7 @@ export function HistoryStep() {
   }, [previewTargetHash]);
 
   return (
-    <>
+    <div data-testid="history-step" className="flex min-h-0 flex-1 flex-col">
       <HistoryHeader count={history.length} />
       <div ref={scrollAreaRef} className="flex-1 min-h-0">
         <ScrollArea className="h-full pb-3 pr-4">
@@ -105,6 +105,6 @@ export function HistoryStep() {
         open={isDiscardDialogOpen}
         onOpenChange={setIsDiscardDialogOpen}
       />
-    </>
+    </div>
   );
 }

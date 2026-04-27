@@ -349,6 +349,7 @@ export ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
 export E2E_CLEANUP_NIX=1
 export E2E_JSON=1
 export E2E_TERMINAL_CLEANUP_MODE=kill
+export E2E_RECORDING_TRIM_START_SECONDS=3
 export NIXMAC_DISABLE_UPDATER=1   # Updater can crash in CI (unsigned builds, empty platforms)
 export NIXMAC_SKIP_PERMISSIONS=1  # CI Mac may not have FDA granted; skip permissions screen
 

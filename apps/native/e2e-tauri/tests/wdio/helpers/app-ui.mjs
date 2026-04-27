@@ -426,6 +426,14 @@ export async function markProofAction({ kind, label, selector = null, value = nu
     overlay.textContent = `${String(action.kind || 'action').toUpperCase()} ${String(action.label || 'UI action')}${value}`;
     overlay.dataset.kind = String(action.kind || 'action');
     overlay.dataset.updatedAt = String(Date.now());
+    window.__nixmacE2eProofAction = {
+      kind: String(action.kind || 'action'),
+      label: String(action.label || 'UI action'),
+      value: action.value ? String(action.value) : null,
+      x,
+      y,
+      updatedAt: Date.now(),
+    };
   }, {
     kind: kind ?? 'action',
     label: label ?? actionLabelFromSelector(selector ?? 'UI action'),

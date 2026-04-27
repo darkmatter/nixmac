@@ -28,9 +28,18 @@ const CAPTURE_LIMITATION_LABELS = new Map([
   ['screen_recording_missing', 'No screen recording was captured for this run'],
   [
     'webview_recording_invalid',
-    'Webview proof video was produced but failed validation',
+    'Legacy webview frame-replay MP4 was produced but failed validation',
   ],
-  ['webview_recording_missing', 'No webview proof video was captured for this run'],
+  ['webview_recording_missing', 'No legacy webview frame-replay MP4 was captured for this run'],
+  [
+    'webview_frame_timeline_invalid',
+    'Webview frame timeline proof could not be built for this run',
+  ],
+  [
+    'webview_frame_timeline_low_information',
+    'Webview frame timeline was suppressed because captured frames were not visually informative',
+  ],
+  ['webview_frame_timeline_missing', 'No webview frame timeline proof was captured for this run'],
 ]);
 
 function humanizeCaptureLimitation(value) {
@@ -116,8 +125,11 @@ function nextActionForError(error, report) {
   if (/WDIO scenario command failed|Failed to create a session|plugin request failed|no window/i.test(text)) {
     return 'Inspect the WDIO diagnostic log and confirm the hosted runner built and launched the Tauri debug app before rerunning.';
   }
+  if (/webview_frame_timeline_(invalid|missing|low_information)/i.test(text)) {
+    return 'Inspect the hosted WDIO screenshot proof and frame-timeline diagnostics, then rerun the scenario.';
+  }
   if (/webview_recording_(invalid|missing)/i.test(text)) {
-    return 'Inspect the screenshot proof and hosted WDIO video-capture diagnostics, then rerun the scenario.';
+    return 'Inspect the hosted WDIO legacy frame-replay diagnostics, then rerun the scenario.';
   }
   if (/screen_recording_(invalid|missing)|recording/i.test(text)) {
     return 'Inspect screenshots and confirm Screen Recording permission on the Mac runner.';
@@ -254,8 +266,9 @@ function renderProofGallery(proof, { fromDir = ARTIFACT_ROOT } = {}) {
   }
 
   const primaryProof =
-    entries.find((entry) => entry.kind === 'video' && entry.isPrimary) ??
+    entries.find((entry) => entry.isFailureProof) ??
     entries.find((entry) => entry.isPrimary) ??
+    entries.find((entry) => entry.kind === 'video') ??
     entries[0];
   const additionalProof = entries.filter((entry) => entry !== primaryProof);
 
@@ -338,10 +351,29 @@ function renderVisualAnalysis(proof, { fromDir = ARTIFACT_ROOT } = {}) {
 
 function renderVisualTimelines(proof, { fromDir = ARTIFACT_ROOT } = {}) {
   const timelines = (proof ?? [])
-    .filter((entry) => entry.kind === 'video')
+    .filter((entry) => entry.visualAnalysis?.schemaVersion === 1)
     .map((entry) => renderVisualAnalysis(entry, { fromDir }))
     .filter(Boolean);
   return timelines.join('');
+}
+
+function renderLaneExplanation(report) {
+  if (report.lane === 'tauri-wdio') {
+    return `
+      <p class="lane-note">
+        Hosted webview lane: deterministic app-flow assertions with screenshot and frame-timeline proof.
+        It does not claim to be a full desktop screen recording.
+      </p>
+    `;
+  }
+  if (report.lane === 'full-mac') {
+    return `
+      <p class="lane-note">
+        Full-Mac lane: real macOS desktop automation with full-screen recording evidence.
+      </p>
+    `;
+  }
+  return '';
 }
 
 function renderCaptureLimitations(limitations) {
@@ -423,6 +455,7 @@ function renderReport(report, { fromDir = ARTIFACT_ROOT, manifest = new Map() } 
         <dt>Duration</dt><dd>${Math.round((report.durationMs ?? 0) / 1000)}s</dd>
         <dt>Replay</dt><dd><code>${escapeHtml(report.replayCommand)}</code></dd>
       </dl>
+      ${renderLaneExplanation(report)}
       ${renderScenarioScope(metadata)}
       ${renderCaptureLimitations(report.captureLimitations)}
       ${
@@ -479,6 +512,7 @@ function renderPage(reports, { fromDir = ARTIFACT_ROOT, manifest = new Map() } =
     .scenario > header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; border-bottom: 1px solid #edf0f5; padding-bottom: 12px; }
     .scenario h2 { margin: 0; font-size: 18px; }
     .scenario p { margin: 4px 0 0; color: #687483; }
+    .lane-note { border-left: 3px solid #9aa8b7; background: #fbfcfe; padding: 8px 10px; color: #52606d; }
     .passed > header strong { color: #11845b; }
     .failed > header strong, .infra_failed > header strong { color: #b42318; }
     dl { display: grid; grid-template-columns: 90px 1fr; gap: 6px 12px; }
@@ -508,8 +542,8 @@ function renderPage(reports, { fromDir = ARTIFACT_ROOT, manifest = new Map() } =
     .status-pill { display: inline-block; border-radius: 999px; padding: 2px 8px; font-weight: 600; font-size: 12px; }
     .status-pill.passed { background: #e9f8f1; color: #0f6f4f; }
     .status-pill.failed, .status-pill.infra_failed { background: #fdecec; color: #a61b13; }
-    .thumb { display: block; max-width: 520px; max-height: 320px; border: 1px solid #d8dee8; border-radius: 6px; background: #fff; }
-    .video-proof { display: block; width: min(720px, 100%); max-height: 480px; border: 1px solid #d8dee8; border-radius: 6px; background: #000; }
+    .thumb { display: block; width: min(900px, 100%); max-height: 720px; object-fit: contain; border: 1px solid #d8dee8; border-radius: 6px; background: #fff; }
+    .video-proof { display: block; width: min(960px, 100%); max-height: 720px; border: 1px solid #d8dee8; border-radius: 6px; background: #000; }
     .proof-gallery { margin-top: 12px; }
     .proof-gallery summary { cursor: pointer; color: #384250; font-weight: 600; }
     .proof-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 10px; }
@@ -519,9 +553,9 @@ function renderPage(reports, { fromDir = ARTIFACT_ROOT, manifest = new Map() } =
     .proof-item .video-proof { width: 100%; max-height: 220px; }
     .visual-analysis { margin-top: 16px; border: 1px solid #d8dee8; border-radius: 8px; padding: 12px; background: #fbfcfe; }
     .visual-analysis h3 { margin: 0 0 4px; font-size: 14px; }
-    .visual-frame-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 12px; }
+    .visual-frame-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 12px; }
     .visual-frame { border: 1px solid #d8dee8; border-radius: 8px; padding: 10px; background: #fff; }
-    .visual-frame img { display: block; width: 100%; max-height: 180px; object-fit: contain; border: 1px solid #edf0f5; border-radius: 6px; background: #0a0a0a; }
+    .visual-frame img { display: block; width: 100%; max-height: 260px; object-fit: contain; border: 1px solid #edf0f5; border-radius: 6px; background: #0a0a0a; }
     .visual-frame div { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
     .visual-frame dl { grid-template-columns: 64px 1fr; font-size: 12px; margin: 8px 0; }
     .visual-frame p { color: #52606d; font-size: 12px; }

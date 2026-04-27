@@ -13,7 +13,7 @@ export function PromptInputSection() {
   const title = isCommitStep ? "Back to the drawing board!" : "What else can I change for you?";
 
   return (
-    <div className="flex flex-col">
+    <div data-testid="prompt-input-section" className="flex flex-col">
       {showTitle && (
         <div className="flex shrink-0 items-center gap-2 border-border/50 border-b py-2">
           <img src="/outline-white.png" alt="" className="h-4 w-4 object-contain" />

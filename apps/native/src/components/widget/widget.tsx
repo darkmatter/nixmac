@@ -160,6 +160,7 @@ export function DarwinWidget() {
 
   return (
     <div
+      data-testid="widget-shell"
       className={
         isE2eProofMode
           ? "flex h-full w-full flex-col bg-background"

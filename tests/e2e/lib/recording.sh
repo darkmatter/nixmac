@@ -36,6 +36,56 @@ recording_dismiss_terminal_automation_prompt() {
     log "Attempted to dismiss Terminal Automation permission prompt"
 }
 
+recording_hide_terminal_windows() {
+    [ "${E2E_HIDE_RECORDING_TERMINAL:-1}" = "1" ] || return 0
+    command -v osascript &>/dev/null || return 0
+    pgrep -x Terminal &>/dev/null || return 0
+
+    local window_title="${_RECORDER_WINDOW_TITLE:-}"
+
+    if [ "${E2E_TERMINAL_CLEANUP_MODE:-}" = "kill" ]; then
+        osascript >/dev/null 2>&1 <<'OSA' || true
+tell application "System Events"
+    if exists process "Terminal" then set visible of process "Terminal" to false
+end tell
+OSA
+        return 0
+    fi
+
+    osascript >/dev/null 2>&1 <<OSA || true
+set recorderTitle to "$window_title"
+
+on isRecorderWindow(terminalWindow, recorderTitle)
+    if recorderTitle is "" then return false
+    try
+        repeat with terminalTab in tabs of terminalWindow
+            set tabName to ""
+            set tabTitle to ""
+            try
+                set tabName to name of terminalTab as text
+            end try
+            try
+                set tabTitle to custom title of terminalTab as text
+            end try
+            if tabName contains recorderTitle then return true
+            if tabTitle is recorderTitle then return true
+        end repeat
+    end try
+    return false
+end isRecorderWindow
+
+tell application "Terminal"
+    repeat with terminalWindow in windows
+        if my isRecorderWindow(terminalWindow, recorderTitle) then
+            try
+                set miniaturized of terminalWindow to true
+            end try
+        end if
+    end repeat
+end tell
+OSA
+}
+
 recording_add_limitation() {
     local limitation="$1"
     if [ -n "${E2E_CAPTURE_LIMITATIONS:-}" ]; then
@@ -66,6 +116,43 @@ recording_is_valid() {
         "$output" 2>/dev/null | head -1)
 
     awk -v duration="$duration" 'BEGIN { exit !(duration + 0 > 0) }'
+}
+
+recording_duration_seconds() {
+    local output="$1"
+
+    command -v ffprobe &>/dev/null || return 1
+    run_with_timeout 10 ffprobe -v error \
+        -select_streams v:0 \
+        -show_entries stream=duration \
+        -of default=noprint_wrappers=1:nokey=1 \
+        "$output" 2>/dev/null | head -1
+}
+
+recording_trim_leadin() {
+    local output="$1"
+    local trim_seconds="${E2E_RECORDING_TRIM_START_SECONDS:-0}"
+    local duration temp_output
+
+    awk -v trim="$trim_seconds" 'BEGIN { exit !(trim + 0 > 0) }' || return 0
+    [ -f "$output" ] || return 0
+    command -v ffmpeg &>/dev/null || return 0
+
+    duration=$(recording_duration_seconds "$output" || echo 0)
+    awk -v duration="$duration" -v trim="$trim_seconds" \
+        'BEGIN { exit !(duration + 0 > trim + 1) }' || return 0
+
+    temp_output="${output%.mp4}.trimmed.mp4"
+    if run_with_timeout 60 ffmpeg -y -hide_banner -loglevel error \
+        -ss "$trim_seconds" -i "$output" \
+        -c:v libx264 -preset fast -crf 28 -pix_fmt yuv420p \
+        "$temp_output" >/dev/null 2>&1 && recording_is_valid "$temp_output"; then
+        mv "$temp_output" "$output"
+        log "Trimmed ${trim_seconds}s recorder lead-in from screen recording"
+    else
+        rm -f "$temp_output" 2>/dev/null || true
+        warn "Could not trim recorder lead-in; keeping original screen recording"
+    fi
 }
 
 start_recording() {
@@ -125,6 +212,7 @@ OSA
     else
         warn "Screen recorder may not have started"
     fi
+    recording_hide_terminal_windows
 }
 
 recording_close_terminal_windows() {
@@ -227,6 +315,7 @@ stop_recording() {
     rm -f "${_RECORDER_SCRIPT:-}" /tmp/e2e-record.sh 2>/dev/null || true
     
     if [ -f "$output" ]; then
+        recording_trim_leadin "$output"
         if recording_is_valid "$output"; then
             log "Video saved: $output ($(du -h "$output" | cut -f1))"
         else

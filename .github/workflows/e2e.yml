@@ -427,6 +427,9 @@ jobs:
       E2E_HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
       GITHUB_PR_NUMBER: ${{ needs.resolve.outputs.pr_number }}
       NIXMAC_E2E_MOCK_SYSTEM: "1"
+      NIXMAC_E2E_DOM_PROOF_CAPTURE: "1"
+      NIXMAC_E2E_FRAME_TIMELINE: "1"
+      NIXMAC_E2E_WEBVIEW_VIDEO: "0"
     strategy:
       fail-fast: false
       matrix:
@@ -620,9 +623,10 @@ jobs:
                 ? report.proof.find((proof) => proof.kind === "video" && proof.phase === firstFailure.name)
                   || report.proof.find((proof) => proof.kind === "video")
                 : null;
-              const primary = failureVideo
-                || report.proof.find((proof) => proof.kind === "video" && proof.isPrimary)
+              const primary = failure
                 || report.proof.find((proof) => proof.isPrimary)
+                || failureVideo
+                || report.proof.find((proof) => proof.kind === "video")
                 || report.proof[0];
               report.primaryProofUrl = primary?.url || null;
               report.failureProofUrl = failure?.url || null;
@@ -1183,9 +1187,10 @@ jobs:
                 ? report.proof.find((proof) => proof.kind === "video" && proof.phase === firstFailure.name)
                   || report.proof.find((proof) => proof.kind === "video")
                 : null;
-              const primary = failureVideo
-                || report.proof.find((proof) => proof.kind === "video" && proof.isPrimary)
+              const primary = failure
                 || report.proof.find((proof) => proof.isPrimary)
+                || failureVideo
+                || report.proof.find((proof) => proof.kind === "video")
                 || report.proof[0];
               report.primaryProofUrl = primary?.url || null;
               report.failureProofUrl = failure?.url || null;
@@ -1287,6 +1292,11 @@ jobs:
             report_count=$((report_count + 1))
           done < <(find e2e-artifacts -path '*/e2e-report.json' -print0)
 
+          selection_file="$(find e2e-artifacts -name e2e-selection.json -print -quit)"
+          if [ -n "$selection_file" ]; then
+            cp "$selection_file" apps/native/e2e-tauri/artifacts/e2e-selection.json
+          fi
+
           if [ "$report_count" -eq 0 ]; then
             echo "No scenario reports found for aggregate proof gallery" >&2
             exit 1
@@ -1294,6 +1304,18 @@ jobs:
 
           node apps/native/e2e-tauri/scripts/render-report.mjs
           echo "Rendered aggregate proof gallery for $report_count scenario reports"
+
+      - name: Build AI QA evidence packet
+        if: always() && needs.resolve.outputs.required == 'true'
+        env:
+          NIXMAC_E2E_AI_QA_API_KEY: ${{ secrets.NIXMAC_E2E_AI_QA_API_KEY || secrets.OPENAI_API_KEY }}
+          NIXMAC_E2E_AI_QA_MODEL: ${{ vars.NIXMAC_E2E_AI_QA_MODEL }}
+          NIXMAC_E2E_AI_QA_REQUIRED: ${{ vars.NIXMAC_E2E_AI_QA_REQUIRED || 'false' }}
+        run: |
+          node apps/native/e2e-tauri/scripts/build-ai-qa-packet.mjs
+          if [ -f apps/native/e2e-tauri/artifacts/ai-qa/ai-qa-report.md ]; then
+            cat apps/native/e2e-tauri/artifacts/ai-qa/ai-qa-report.md >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Publish aggregate proof gallery to R2
         id: publish-aggregate
@@ -1462,8 +1484,11 @@ jobs:
               ["full_mac_runner_unavailable", "Full-Mac runner was unreachable or did not produce a scenario report"],
               ["screen_recording_invalid", "Screen recording was produced but failed validation"],
               ["screen_recording_missing", "No screen recording was captured for this run"],
-              ["webview_recording_invalid", "Webview proof video was produced but failed validation"],
-              ["webview_recording_missing", "No webview proof video was captured for this run"],
+              ["webview_recording_invalid", "Legacy webview frame-replay MP4 was produced but failed validation"],
+              ["webview_recording_missing", "No legacy webview frame-replay MP4 was captured for this run"],
+              ["webview_frame_timeline_invalid", "Webview frame timeline proof could not be built for this run"],
+              ["webview_frame_timeline_low_information", "Webview frame timeline was suppressed because captured frames were not visually informative"],
+              ["webview_frame_timeline_missing", "No webview frame timeline proof was captured for this run"],
             ]);
 
             function humanizeCaptureLimitation(value) {
@@ -1613,8 +1638,11 @@ jobs:
               if (/WDIO scenario command failed|Failed to create a session|plugin request failed|no window/i.test(text)) {
                 return "Inspect the WDIO diagnostic log and confirm the hosted runner built and launched the Tauri debug app before rerunning.";
               }
+              if (/webview_frame_timeline_(invalid|missing|low_information)/i.test(text)) {
+                return "Inspect the hosted WDIO screenshot proof and frame-timeline diagnostics, then rerun the scenario.";
+              }
               if (/webview_recording_(invalid|missing)/i.test(text)) {
-                return "Inspect the screenshot proof and hosted WDIO video-capture diagnostics, then rerun the scenario.";
+                return "Inspect the hosted WDIO legacy frame-replay diagnostics, then rerun the scenario.";
               }
               if (/screen_recording_(invalid|missing)|recording/i.test(text)) {
                 return "Inspect screenshots and confirm Screen Recording permission on the Mac runner.";
@@ -1627,11 +1655,14 @@ jobs:
 
             function primaryProofLabel(report) {
               const proofs = report.proof || [];
-              const primary = proofs.find((proof) => proof.kind === "video" && proof.isPrimary)
-                || proofs.find((proof) => proof.isPrimary)
+              const primary = proofs.find((proof) => proof.isPrimary)
+                || proofs.find((proof) => proof.kind === "video")
                 || proofs[0];
+              if (primary?.visualAnalysis?.source === "wdio-source-frames") {
+                return "Webview frame timeline";
+              }
               if (primary?.kind === "video" && report.lane === "tauri-wdio") {
-                return "Action-proof webview video";
+                return "Legacy webview frame-replay";
               }
               if (primary?.kind === "video") {
                 return "Full-screen recording";
@@ -1696,7 +1727,7 @@ jobs:
                   ? `\n\n![Failure proof](${report.failureScreenshotUrl})`
                   : "";
                 const videoLink = isPublicUrl(report.failureVideoUrl)
-                  ? `\n\n[${report.lane === "tauri-wdio" ? "Failure action-proof webview video" : "Failure full-screen recording"}](${report.failureVideoUrl})`
+                  ? `\n\n[${report.lane === "tauri-wdio" ? "Failure legacy webview frame-replay" : "Failure full-screen recording"}](${report.failureVideoUrl})`
                   : "";
                 const logProof = (report.proof || []).find((proof) => proof.kind === "log" && isPublicUrl(proof.url));
                 const logLink = logProof
@@ -1720,6 +1751,9 @@ jobs:
             const reportIndexUrl = selection?.reportPrefix
               ? `https://releases.nixmac.com/${selection.reportPrefix}/index.html`
               : "";
+            const aiQaReportUrl = selection?.reportPrefix
+              ? `https://releases.nixmac.com/${selection.reportPrefix}/ai-qa/index.html`
+              : "";
             const previewNotice = prSideEffectsEnabled
               ? ""
               : "\n\n> Preview only: no PR comment, check run, or commit status was updated.";
@@ -1736,6 +1770,7 @@ jobs:
               attentionSection,
               required ? table : "",
               failureSections,
+              aiQaReportUrl ? `[AI QA evidence packet](${aiQaReportUrl})` : "",
               `[Workflow run](${runUrl})`,
             ].filter((section) => String(section || "").trim()).join("\n\n");
 
@@ -1770,6 +1805,7 @@ jobs:
               attentionSection,
               required ? table : "",
               failureSections,
+              aiQaReportUrl ? `[AI QA evidence packet](${aiQaReportUrl})` : "",
               `[Workflow run](${runUrl})`,
             ].filter(Boolean).join("\n\n");
             const failedReports = reports.filter((report) => report.status !== "passed");

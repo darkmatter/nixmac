@@ -171,17 +171,41 @@ The report follows `report.schema.json` and is the local precursor to the PR-gat
 comment/report contract: scenario status, runner metadata, phases, failure proof,
 and replay commands.
 
+### QA surfaces
+
+The PR gate deliberately uses different surfaces for different jobs:
+
+- **Hosted WDIO (`tauri-wdio`)**: deterministic webview assertions for app state,
+  mocked provider behavior, and fast regression coverage. Its proof artifact is a
+  webview screenshot/frame timeline, not a real desktop recording.
+- **Full-Mac (`tests/e2e`)**: real macOS desktop proof using Peekaboo and ffmpeg.
+  These scenarios validate launch/install/OS integration behavior on the configured
+  Mac runner and keep real full-screen recordings.
+- **AI QA packet**: the aggregate gate builds `ai-qa/index.html`,
+  `ai-qa/ai-qa-packet.json`, and `ai-qa/ai-qa-report.md` from scenario reports, manifest metadata, visual
+  timelines, capture limitations, and PR metadata. The packet includes a stable
+  verdict schema for an LLM reviewer. Set `NIXMAC_E2E_AI_QA_API_KEY` (or
+  `OPENAI_API_KEY`) plus `NIXMAC_E2E_AI_QA_MODEL` to run the OpenAI Responses
+  reviewer; otherwise the gate publishes the packet and marks AI review
+  unavailable instead of pretending it ran. Set `NIXMAC_E2E_AI_QA_REQUIRED=true`
+  to make the workflow fail unless the AI reviewer returns a `passed` verdict.
+
+Hosted WDIO used to synthesize MP4s from sparse webview screenshots. That made
+reviewers scrub something that looked like video but was actually a frame replay.
+The default is now a screenshot proof with attached visual timeline. A legacy
+hosted frame-replay MP4 is only generated when `NIXMAC_E2E_WEBVIEW_VIDEO=1`.
+
 ### Visual timeline analysis
 
 Report rendering also attaches deterministic screenshot analysis to video proof
-entries. WDIO scenarios analyze their original action-proof PNG frames before
-video encoding deletes the source directory; full-Mac scenarios fall back to
-sampling the encoded screen recording with `ffmpeg`. The analyzer keeps the
-first frame, last frame, and visually distinct frames above a change threshold,
-then writes those key screenshots under
+entries and hosted WDIO frame-timeline screenshot proof. WDIO scenarios analyze
+their original action-proof PNG frames before deleting the raw frame directory;
+full-Mac scenarios fall back to sampling the encoded screen recording with
+`ffmpeg`. The analyzer keeps the first frame, last frame, and visually distinct
+frames above a change threshold, then writes those key screenshots under
 `e2e-tauri/artifacts/<scenario>/visual-analysis/`.
 
-The generated HTML report shows a Visual timeline for each analyzed video:
+The generated HTML report shows a Visual timeline for each analyzed proof:
 timestamp, thumbnail, change score, contrast/detail metrics, and conservative
 observations such as blank, low-contrast, large visual change, or late-flow
 frame. These observations are bug-finding evidence only; scripted assertions

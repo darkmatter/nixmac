@@ -488,7 +488,7 @@ export function FeedbackDialog() {
         setFeedbackOpen(true);
       }}
     >
-      <DialogContent className="max-w-2xl h-[85vh] flex flex-col">
+      <DialogContent data-testid="feedback-dialog" className="max-w-2xl h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className={hasAutoFilledError ? "flex items-center gap-2" : ""}>
             {hasAutoFilledError && <span className="text-red-500">⚠️</span>}

@@ -61,7 +61,10 @@ export function ConfirmationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("max-w-md gap-6 border-2", colors.border)}>
+      <DialogContent
+        data-testid="confirmation-dialog"
+        className={cn("max-w-md gap-6 border-2", colors.border)}
+      >
         <DialogHeader>
           <DialogTitle className="sr-only">Confirm Action</DialogTitle>
           <DialogDescription className="text-base leading-relaxed">

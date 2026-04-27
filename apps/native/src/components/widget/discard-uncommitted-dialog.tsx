@@ -35,7 +35,10 @@ export function DiscardUncommittedDialog({ open, onOpenChange }: DiscardUncommit
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md gap-0 border-2 border-rose-300/30 p-0 overflow-hidden">
+      <DialogContent
+        data-testid="discard-uncommitted-dialog"
+        className="max-w-md gap-0 border-2 border-rose-300/30 p-0 overflow-hidden"
+      >
         <DialogHeader className="px-5 pt-5 pb-4">
           <DialogTitle className="text-sm font-semibold mb-1">
             Uncommitted changes in <ConfigDirBadge configDir={configDir} />

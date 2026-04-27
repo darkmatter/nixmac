@@ -95,7 +95,10 @@ export function BeginEvolveWarning({ open, onOpenChange, handleEvolve }: BeginEv
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md gap-0 border-2 border-rose-300/30 p-0 overflow-hidden flex flex-col max-h-[85vh]">
+      <DialogContent
+        data-testid="begin-evolve-warning"
+        className="max-w-md gap-0 border-2 border-rose-300/30 p-0 overflow-hidden flex flex-col max-h-[85vh]"
+      >
         <DialogHeader className="px-5 pt-5 pb-4 shrink-0">
           <DialogTitle className="text-sm font-semibold mb-1">
             Can't proceed — changes in <ConfigDirBadge configDir={configDir} />:

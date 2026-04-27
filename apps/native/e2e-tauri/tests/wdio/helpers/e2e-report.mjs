@@ -181,9 +181,9 @@ export async function writeE2eReport(context, { exitCode = 0 } = {}) {
     : null;
   const primaryProof =
     failureProof ??
-    failureVideo ??
-    proof.find((entry) => entry.kind === 'video' && entry.isPrimary) ??
     proof.find((entry) => entry.isPrimary) ??
+    failureVideo ??
+    proof.find((entry) => entry.kind === 'video') ??
     proof[0] ??
     null;
   const startedMs = Date.parse(context.startedAt);
