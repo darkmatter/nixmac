@@ -1705,6 +1705,15 @@ jobs:
               failureSections,
               `[Workflow run](${runUrl})`,
             ].filter(Boolean).join("\n\n");
+            const failedReports = reports.filter((report) => report.status !== "passed");
+            const compactFailures = failedReports.length
+              ? `**Failed:** ${failedReports.map((report) => {
+                  const reportUrl = isPublicUrl(report.htmlReportUrl)
+                    ? `[${markdownCode(report.scenario)}](${report.htmlReportUrl})`
+                    : "`" + markdownCode(report.scenario) + "`";
+                  return reportUrl;
+                }).join(", ")}`
+              : "";
             const checkRunPayload = {
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -1749,9 +1758,16 @@ jobs:
 
             const body = [
               marker,
-              detailsBody,
-              `\n[Full E2E details](${checkHtmlUrl})`,
-            ].join("\n");
+              "## nixmac E2E",
+              previewNotice.trim(),
+              `**Status:** ${status}`,
+              compactFailures,
+              `**Scope:** ${scope}`,
+              runShape ? `**Run shape:** ${runShape}` : "",
+              `**Tested commit:** \`${testedCommit}\``,
+              `[Full E2E details](${checkHtmlUrl})`,
+              `[Workflow run](${runUrl})`,
+            ].filter((section) => String(section || "").trim()).join("\n\n");
 
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
