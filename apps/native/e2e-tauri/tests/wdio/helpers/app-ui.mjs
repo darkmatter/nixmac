@@ -1340,14 +1340,17 @@ export async function assertPromptHistoryContains(promptText) {
   );
 }
 
-export async function assertPromptFlowReachedEvolveReview({ expectedVisibleDiffText = null } = {}) {
+export async function assertPromptFlowReachedEvolveReview({
+  expectedVisibleDiffText = null,
+  timeout = 120000,
+} = {}) {
   await waitForSelector('//h2[normalize-space()="What else can I change for you?"]', {
-    timeout: 120000,
+    timeout,
     interval: 500,
   });
 
   await waitForSelector('//h2[normalize-space()="What\'s changed"]', {
-    timeout: 120000,
+    timeout,
     interval: 500,
   });
 
@@ -1360,7 +1363,7 @@ export async function assertPromptFlowReachedEvolveReview({ expectedVisibleDiffT
       return noDiffMatches.length === 0;
     },
     {
-      timeout: 120000,
+      timeout,
       interval: 500,
       timeoutMsg: 'Timed out waiting for generated git diff content',
     },

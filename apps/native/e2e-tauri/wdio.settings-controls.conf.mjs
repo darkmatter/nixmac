@@ -6,5 +6,8 @@ export const config = createWdioConfig({
   setupOptions: {
     initializeConfigRepo: true,
     mockVllm: {},
+    settingsOverrides: {
+      openrouterApiKey: 'sk-or-existing-openrouter-e2e-key',
+    },
   },
 });

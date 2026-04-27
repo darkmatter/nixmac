@@ -25,7 +25,10 @@ describe('question answer follow-up', () => {
     );
 
     await answerQuestion('Add a programming font');
-    await assertPromptFlowReachedEvolveReview({ expectedVisibleDiffText: 'jetbrains-mono' });
+    await assertPromptFlowReachedEvolveReview({
+      expectedVisibleDiffText: 'jetbrains-mono',
+      timeout: 30000,
+    });
 
     const gitDiff = await getConfigRepoGitDiff();
     const changedPaths = gitDiff.files.map((file) => file.path);

@@ -87,7 +87,13 @@ async function listNixFiles(dirPath) {
   return files;
 }
 
-async function generateNixmacSettings({ host, configDir, vllmApiBaseUrl, vllmApiKey }) {
+async function generateNixmacSettings({
+  host,
+  configDir,
+  vllmApiBaseUrl,
+  vllmApiKey,
+  settingsOverrides = {},
+}) {
   const settings = {
     hostAttr: host,
     configDir,
@@ -95,6 +101,7 @@ async function generateNixmacSettings({ host, configDir, vllmApiBaseUrl, vllmApi
     vllmApiKey: vllmApiKey ?? null,
     evolveProvider: 'vllm',
     summaryProvider: 'vllm',
+    ...settingsOverrides,
   };
 
   await mkdir(path.dirname(NIXMAC_SETTINGS_PATH), { recursive: true });
@@ -343,6 +350,7 @@ export async function setupNixmacTestEnvironment(options = {}) {
     writeSettings = true,
     vllmApiBaseUrl = process.env.VLLM_API_BASE_URL ?? null,
     vllmApiKey = process.env.VLLM_API_KEY ?? null,
+    settingsOverrides = {},
   } = options;
 
   await rm(NIXMAC_APP_SUPPORT_DIR, { recursive: true, force: true });
@@ -386,6 +394,7 @@ export async function setupNixmacTestEnvironment(options = {}) {
       configDir,
       vllmApiBaseUrl: resolvedVllmApiBaseUrl,
       vllmApiKey,
+      settingsOverrides,
     });
   } else {
     console.log('[wdio:test-env] Skipping initial settings.json generation (writeSettings=false)');

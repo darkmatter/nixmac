@@ -1,8 +1,9 @@
 import { expect } from 'chai';
-import { $ } from '@wdio/globals';
+import { $, browser } from '@wdio/globals';
 import {
   clickSettingsTabAndAssert,
   clickWithRetry,
+  getFieldValue,
   getInputType,
   openSettingsDialog,
   selectOptionByText,
@@ -47,6 +48,26 @@ describe('settings controls persistence', () => {
     );
 
     await clickSettingsTabAndAssert('API Keys');
+    await browser.waitUntil(
+      async () => (await getFieldValue('#openrouterApiKey')) === 'sk-or-existing-openrouter-e2e-key',
+      {
+        timeout: 10000,
+        interval: 250,
+        timeoutMsg: 'Timed out waiting for seeded OpenRouter API key to hydrate',
+      },
+    );
+    await setFieldValue('#openrouterApiKey', '', {
+      label: 'OpenRouter API key',
+    });
+    expect(await getFieldValue('#openrouterApiKey')).to.equal('');
+    await waitForSettingsMatching(
+      (settings) => (settings.openrouterApiKey ?? '') === '',
+      {
+        timeoutMessage:
+          'Timed out waiting for cleared OpenRouter API key to persist to settings.json',
+      },
+    );
+
     await setFieldValue('#ollamaApiBaseUrl', 'http://127.0.0.1:11434', {
       label: 'Ollama API base URL',
     });
