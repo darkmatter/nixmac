@@ -180,20 +180,21 @@ The PR gate deliberately uses different surfaces for different jobs:
   webview screenshot/frame timeline, not a real desktop recording.
 - **Live provider WDIO**: `live_openrouter_evolve_smoke` is intentionally separate
   from the mocked pack. It requires `NIXMAC_E2E_OPENROUTER_API_KEY` or
-  `OPENROUTER_API_KEY` and proves one real OpenRouter evolve path reaches review
-  with a generated diff. Missing credentials are reported as infra/not-run, not a
-  product pass.
+  `OPENROUTER_API_KEY` from GitHub secrets or `ops/secrets/secrets.yaml`, and
+  proves one real OpenRouter evolve path reaches review with a generated diff.
+  Missing credentials are reported as infra/not-run, not a product pass.
 - **Full-Mac (`tests/e2e`)**: real macOS desktop proof using Peekaboo and ffmpeg.
   These scenarios validate launch/install/OS integration behavior on the configured
   Mac runner and keep real full-screen recordings.
 - **AI QA packet**: the aggregate gate builds `ai-qa/index.html`,
   `ai-qa/ai-qa-packet.json`, and `ai-qa/ai-qa-report.md` from scenario reports, manifest metadata, visual
   timelines, capture limitations, and PR metadata. The packet includes a stable
-  verdict schema for an LLM reviewer. Set `NIXMAC_E2E_AI_QA_API_KEY` (or
-  `OPENAI_API_KEY`) plus `NIXMAC_E2E_AI_QA_MODEL` to run the OpenAI Responses
-  reviewer; otherwise the gate publishes the packet and marks AI review
-  unavailable instead of pretending it ran. Set `NIXMAC_E2E_AI_QA_REQUIRED=true`
-  to make the workflow fail unless the AI reviewer returns a `passed` verdict.
+  verdict schema for an LLM reviewer. It reads `NIXMAC_E2E_AI_QA_API_KEY` or
+  `OPENAI_API_KEY` from GitHub secrets or `ops/secrets/secrets.yaml`, and
+  defaults to `gpt-5.1` unless `NIXMAC_E2E_AI_QA_MODEL` is set. If the key/model
+  is absent the gate publishes the packet and marks AI review unavailable instead
+  of pretending it ran. Set `NIXMAC_E2E_AI_QA_REQUIRED=true` to make the workflow
+  fail unless the AI reviewer returns a `passed` verdict.
 
 Hosted WDIO used to synthesize MP4s from sparse webview screenshots. That made
 reviewers scrub something that looked like video but was actually a frame replay.

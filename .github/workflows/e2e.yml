@@ -447,9 +447,13 @@ jobs:
 
       - name: Setup sops
         uses: nhedger/setup-sops@v2
+        with:
+          version: v3.12.2
 
       - name: Setup age
         uses: alessiodionisi/setup-age-action@v1.3.0
+        with:
+          version: v1.3.1
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -525,14 +529,15 @@ jobs:
 
       - name: Run scenario
         id: run-scenario
-        working-directory: apps/native
+        shell: "sops exec-env ops/secrets/secrets.yaml \"bash -e {0}\""
         run: |
+          cd apps/native
           SCRIPT=$(jq -r --arg scenario "${{ matrix.scenario }}" '.scenarios[] | select(.name == $scenario and .lane == "tauri-wdio") | .currentScript // empty' e2e-tauri/scenarios/manifest.json)
           if [ -z "$SCRIPT" ]; then
             echo "Unknown or unrunnable Tauri WDIO scenario: ${{ matrix.scenario }}" >&2
             exit 1
           fi
-          if [ "${{ matrix.scenario }}" = "live_openrouter_evolve_smoke" ] && [ -z "${NIXMAC_E2E_OPENROUTER_API_KEY:-}" ]; then
+          if [ "${{ matrix.scenario }}" = "live_openrouter_evolve_smoke" ] && [ -z "${NIXMAC_E2E_OPENROUTER_API_KEY:-${OPENROUTER_API_KEY:-}}" ]; then
             node e2e-tauri/scripts/write-infra-failure.mjs \
               "${{ matrix.scenario }}" \
               "Live OpenRouter scenario did not run because NIXMAC_E2E_OPENROUTER_API_KEY or OPENROUTER_API_KEY is not configured"
@@ -752,9 +757,13 @@ jobs:
 
       - name: Setup sops
         uses: nhedger/setup-sops@v2
+        with:
+          version: v3.12.2
 
       - name: Setup age
         uses: alessiodionisi/setup-age-action@v1.3.0
+        with:
+          version: v1.3.1
 
       - name: Check full-Mac secrets
         env:
@@ -1276,9 +1285,13 @@ jobs:
 
       - name: Setup sops
         uses: nhedger/setup-sops@v2
+        with:
+          version: v3.12.2
 
       - name: Setup age
         uses: alessiodionisi/setup-age-action@v1.3.0
+        with:
+          version: v1.3.1
 
       - name: Download E2E artifacts
         if: always()
@@ -1323,9 +1336,10 @@ jobs:
 
       - name: Build AI QA evidence packet
         if: always() && needs.resolve.outputs.required == 'true'
+        shell: "sops exec-env ops/secrets/secrets.yaml \"bash -e {0}\""
         env:
           NIXMAC_E2E_AI_QA_API_KEY: ${{ secrets.NIXMAC_E2E_AI_QA_API_KEY || secrets.OPENAI_API_KEY }}
-          NIXMAC_E2E_AI_QA_MODEL: ${{ vars.NIXMAC_E2E_AI_QA_MODEL }}
+          NIXMAC_E2E_AI_QA_MODEL: ${{ vars.NIXMAC_E2E_AI_QA_MODEL || 'gpt-5.1' }}
           NIXMAC_E2E_AI_QA_REQUIRED: ${{ vars.NIXMAC_E2E_AI_QA_REQUIRED || 'false' }}
         run: |
           node apps/native/e2e-tauri/scripts/build-ai-qa-packet.mjs
