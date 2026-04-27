@@ -178,6 +178,11 @@ The PR gate deliberately uses different surfaces for different jobs:
 - **Hosted WDIO (`tauri-wdio`)**: deterministic webview assertions for app state,
   mocked provider behavior, and fast regression coverage. Its proof artifact is a
   webview screenshot/frame timeline, not a real desktop recording.
+- **Live provider WDIO**: `live_openrouter_evolve_smoke` is intentionally separate
+  from the mocked pack. It requires `NIXMAC_E2E_OPENROUTER_API_KEY` or
+  `OPENROUTER_API_KEY` and proves one real OpenRouter evolve path reaches review
+  with a generated diff. Missing credentials are reported as infra/not-run, not a
+  product pass.
 - **Full-Mac (`tests/e2e`)**: real macOS desktop proof using Peekaboo and ffmpeg.
   These scenarios validate launch/install/OS integration behavior on the configured
   Mac runner and keep real full-screen recordings.

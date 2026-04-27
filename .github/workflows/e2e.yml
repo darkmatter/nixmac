@@ -430,6 +430,8 @@ jobs:
       NIXMAC_E2E_DOM_PROOF_CAPTURE: "1"
       NIXMAC_E2E_FRAME_TIMELINE: "1"
       NIXMAC_E2E_WEBVIEW_VIDEO: "0"
+      NIXMAC_E2E_OPENROUTER_API_KEY: ${{ secrets.NIXMAC_E2E_OPENROUTER_API_KEY || secrets.OPENROUTER_API_KEY }}
+      NIXMAC_E2E_OPENROUTER_MODEL: ${{ vars.NIXMAC_E2E_OPENROUTER_MODEL || 'anthropic/claude-sonnet-4' }}
     strategy:
       fail-fast: false
       matrix:
@@ -530,6 +532,12 @@ jobs:
             echo "Unknown or unrunnable Tauri WDIO scenario: ${{ matrix.scenario }}" >&2
             exit 1
           fi
+          if [ "${{ matrix.scenario }}" = "live_openrouter_evolve_smoke" ] && [ -z "${NIXMAC_E2E_OPENROUTER_API_KEY:-}" ]; then
+            node e2e-tauri/scripts/write-infra-failure.mjs \
+              "${{ matrix.scenario }}" \
+              "Live OpenRouter scenario did not run because NIXMAC_E2E_OPENROUTER_API_KEY or OPENROUTER_API_KEY is not configured"
+            exit 1
+          fi
           LOG_TMP="$(mktemp -t nixmac-wdio-${{ matrix.scenario }}.XXXXXX.log)"
           LOG_PATH="e2e-tauri/artifacts/${{ matrix.scenario }}/wdio.log"
           mkdir -p "e2e-tauri/artifacts/${{ matrix.scenario }}"
@@ -544,6 +552,14 @@ jobs:
           fi
           rm -f "$LOG_TMP"
           exit "$status"
+
+      - name: Write pre-scenario infra report if setup failed
+        if: failure() && steps.run-scenario.outcome == 'skipped'
+        working-directory: apps/native
+        run: |
+          node e2e-tauri/scripts/write-infra-failure.mjs \
+            "${{ matrix.scenario }}" \
+            "WDIO scenario did not run because a setup/bootstrap step failed before scenario execution"
 
       - name: Render report
         if: always()

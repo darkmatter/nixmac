@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import {
   createE2eReportContext,
+  recordE2eCaptureLimitation,
   recordE2ePhase,
   writeE2eReport,
 } from '../tests/wdio/helpers/e2e-report.mjs';
@@ -81,6 +82,9 @@ const signals = lastSignalLines(logText);
 const error = [message, ...signals].filter(Boolean).join('\n');
 const status = inferFallbackStatus(logText);
 const phaseName = status === 'failed' ? 'WDIO scenario/test' : 'WDIO session/bootstrap';
+if (status === 'infra_failed') {
+  await recordE2eCaptureLimitation(context, 'pre_scenario_setup_failed');
+}
 await recordE2ePhase(context, {
   name: phaseName,
   status,

@@ -44,6 +44,7 @@ const WEBVIEW_FRAME_TIMELINE_ENABLED =
 const WEBVIEW_VIDEO_ENABLED =
   !LEGACY_WEBVIEW_PROOF_DISABLED && process.env.NIXMAC_E2E_WEBVIEW_VIDEO === '1';
 const USE_DOM_PROOF_CAPTURE = process.env.NIXMAC_E2E_DOM_PROOF_CAPTURE !== '0';
+const FULL_CONTEXT_PROOF_ENABLED = process.env.NIXMAC_E2E_FULL_CONTEXT_PROOF !== '0';
 const PROOF_TARGET_SELECTORS = [
   '[data-testid="feedback-dialog"]',
   '[data-testid="settings-dialog"]',
@@ -147,6 +148,10 @@ async function saveVideoFrameScreenshot(outputPath) {
     includeAnnotations: true,
     pixelRatio: VIDEO_CAPTURE_PIXEL_RATIO,
   });
+}
+
+async function saveFullContextScreenshot(outputPath) {
+  await globalThis.browser.saveScreenshot(outputPath);
 }
 
 async function saveProofScreenshot(outputPath, options = {}) {
@@ -876,6 +881,7 @@ export function createWdioConfig({ specs, setupOptions = {}, scenario, lane = 't
     },
     async beforeTest(test) {
       const context = await ensureReportContext();
+      primaryProofCaptured = false;
       activeVideoRecorder = createVideoRecorder({ context, testTitle: test.title });
       globalThis.__nixmacCaptureE2eVideoFrame = async (label = 'action') => {
         if (!activeVideoRecorder || activeVideoRecorder.disabled || activeVideoRecorder.saving) {
@@ -902,13 +908,59 @@ export function createWdioConfig({ specs, setupOptions = {}, scenario, lane = 't
       const proof = [];
 
       await captureVideoFrame(activeVideoRecorder, passed ? 'final-proof' : 'final-failure');
+
+      if (FULL_CONTEXT_PROOF_ENABLED && globalThis.browser?.saveScreenshot) {
+        const fullContextPath = path.join(
+          context.artifactDir,
+          `${passed ? 'proof' : 'failure'}-full-context-${Date.now()}.png`,
+        );
+        try {
+          await withTimeout(
+            saveFullContextScreenshot(fullContextPath),
+            VIDEO_CAPTURE_TIMEOUT_MS,
+            `Timed out capturing full-context E2E screenshot after ${VIDEO_CAPTURE_TIMEOUT_MS}ms`,
+          );
+          proof.push({
+            kind: 'screenshot',
+            path: fullContextPath,
+            url: null,
+            thumbnailUrl: null,
+            timestampMs: null,
+            phase: test.title,
+            caption: `${passed ? 'Proof' : 'Failure'} full webview context screenshot for ${test.title}`,
+            isPrimary: true,
+            isFailureProof: !passed,
+            metadata: {
+              source: 'wdio-full-context-screenshot',
+              note: 'Uncropped browser screenshot kept as primary human-review evidence.',
+            },
+          });
+          primaryProofCaptured = true;
+        } catch (screenshotError) {
+          console.warn(
+            `[wdio:e2e-report] Failed to capture full-context screenshot: ${
+              screenshotError instanceof Error ? screenshotError.message : String(screenshotError)
+            }`,
+          );
+        }
+      }
+
       const primaryWebviewProof = WEBVIEW_VIDEO_ENABLED
         ? await encodeVideo(activeVideoRecorder, { passed, context })
         : await buildFrameTimelineProof(activeVideoRecorder, { passed, context });
       activeVideoRecorder = null;
       delete globalThis.__nixmacCaptureE2eVideoFrame;
       if (primaryWebviewProof) {
-        proof.push(primaryWebviewProof);
+        proof.push(
+          primaryProofCaptured
+            ? {
+                ...primaryWebviewProof,
+                isPrimary: false,
+                isFailureProof: false,
+                caption: `${primaryWebviewProof.caption} (focused proof; full-context screenshot is primary)`,
+              }
+            : primaryWebviewProof,
+        );
         primaryProofCaptured = true;
       }
 

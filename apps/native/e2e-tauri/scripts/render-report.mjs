@@ -5,7 +5,8 @@ import { analyzeReportVisualProofs } from './visual-analysis.mjs';
 
 const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const E2E_TAURI_DIR = path.resolve(THIS_DIR, '..');
-const ARTIFACT_ROOT = path.join(E2E_TAURI_DIR, 'artifacts');
+const DEFAULT_ARTIFACT_ROOT = path.join(E2E_TAURI_DIR, 'artifacts');
+const ARTIFACT_ROOT = path.resolve(process.env.NIXMAC_E2E_ARTIFACT_ROOT ?? DEFAULT_ARTIFACT_ROOT);
 const MANIFEST_PATH = path.join(E2E_TAURI_DIR, 'scenarios', 'manifest.json');
 
 function escapeHtml(value) {
@@ -20,6 +21,14 @@ const CAPTURE_LIMITATION_LABELS = new Map([
   [
     'full_mac_runner_unavailable',
     'Full-Mac runner was unreachable or did not produce a scenario report',
+  ],
+  [
+    'scenario_report_missing',
+    'Selected scenario did not produce e2e-report.json',
+  ],
+  [
+    'pre_scenario_setup_failed',
+    'Scenario did not run because setup failed before the test command',
   ],
   [
     'screen_recording_invalid',
@@ -122,6 +131,9 @@ function nextActionForError(error, report) {
   if (/Full-Mac runner did not produce|full_mac_runner_unavailable|SSH status/i.test(text)) {
     return 'Check the configured Mac runner reachability and scenario log, then rerun the full-Mac lane.';
   }
+  if (/Selected scenario did not produce e2e-report\.json|scenario_report_missing|setup\/bootstrap/i.test(text)) {
+    return 'Open the GitHub Actions matrix job for this scenario, fix the first setup/bootstrap failure, then rerun the E2E gate.';
+  }
   if (/WDIO scenario command failed|Failed to create a session|plugin request failed|no window/i.test(text)) {
     return 'Inspect the WDIO diagnostic log and confirm the hosted runner built and launched the Tauri debug app before rerunning.';
   }
@@ -179,6 +191,14 @@ async function readReports() {
   return reports.sort((a, b) => a.scenario.localeCompare(b.scenario));
 }
 
+async function readSelection() {
+  try {
+    return JSON.parse(await readFile(path.join(ARTIFACT_ROOT, 'e2e-selection.json'), 'utf-8'));
+  } catch {
+    return null;
+  }
+}
+
 async function readScenarioManifest() {
   try {
     const manifest = JSON.parse(await readFile(MANIFEST_PATH, 'utf-8'));
@@ -186,6 +206,95 @@ async function readScenarioManifest() {
   } catch {
     return new Map();
   }
+}
+
+function selectedScenarios(selection) {
+  return (selection?.selected ?? [])
+    .filter((scenario) => scenario?.name)
+    .map((scenario) => ({
+      name: scenario.name,
+      lane: scenario.lane ?? 'unknown',
+      currentScript: scenario.currentScript ?? null,
+    }));
+}
+
+function synthesizeMissingReport({ selected, selection, manifest }) {
+  const now = new Date().toISOString();
+  const metadata = manifest.get(selected.name);
+  const replayCommand =
+    selected.currentScript ??
+    metadata?.currentScript ??
+    (selected.lane === 'full-mac'
+      ? `tests/e2e/run.sh ${selected.name}`
+      : `bun run test:wdio -- ${selected.name}`);
+  const artifactDir = path.join(ARTIFACT_ROOT, selected.name);
+  const error = [
+    'Selected scenario did not produce e2e-report.json.',
+    'The scenario likely failed in workflow setup/bootstrap before scenario-level reporting ran.',
+    'Inspect the GitHub Actions matrix job logs for the first failed setup step.',
+  ].join('\n');
+
+  return {
+    schemaVersion: 1,
+    repo: selection?.repo ?? 'darkmatter/nixmac',
+    prNumber: Number.isFinite(Number(selection?.prNumber)) ? Number(selection.prNumber) : null,
+    headSha: selection?.headSha ?? process.env.GITHUB_SHA ?? 'unknown',
+    baseSha: selection?.baseSha ?? null,
+    workflowRunId: process.env.GITHUB_RUN_ID ?? null,
+    attempt: process.env.GITHUB_RUN_ATTEMPT ? Number(process.env.GITHUB_RUN_ATTEMPT) : null,
+    lane: selected.lane,
+    scenario: selected.name,
+    runnerId: 'GitHub Actions',
+    runnerKind: selected.lane === 'full-mac' ? 'self-hosted-mac' : 'github-hosted',
+    startedAt: now,
+    finishedAt: now,
+    durationMs: 0,
+    status: 'infra_failed',
+    htmlReportUrl: null,
+    primaryProofUrl: null,
+    failureProofUrl: null,
+    failureScreenshotUrl: null,
+    failureVideoUrl: null,
+    failureTimestampMs: null,
+    replayCommand,
+    localReproCommand: replayCommand,
+    captureLimitations: ['scenario_report_missing'],
+    selectedButMissing: true,
+    syntheticMissingReport: true,
+    phases: [
+      {
+        name: 'Scenario report generation',
+        status: 'infra_failed',
+        startedAt: now,
+        finishedAt: now,
+        durationMs: 0,
+        assertions: ['Selected scenario produces e2e-report.json'],
+        proof: [],
+        error,
+      },
+    ],
+    proof: [],
+    artifactDir,
+    reportPath: path.join(artifactDir, 'e2e-report.json'),
+  };
+}
+
+async function synthesizeMissingSelectedReports(reports, { selection, manifest }) {
+  const seen = new Set(reports.map((report) => report.scenario));
+  const syntheticReports = selectedScenarios(selection)
+    .filter((selected) => !seen.has(selected.name))
+    .map((selected) => synthesizeMissingReport({ selected, selection, manifest }));
+
+  for (const report of syntheticReports) {
+    await mkdir(report.artifactDir, { recursive: true });
+    await writeFile(
+      report.reportPath,
+      `${JSON.stringify(serializableReport(report), null, 2)}\n`,
+      'utf-8',
+    );
+  }
+
+  return [...reports, ...syntheticReports].sort((a, b) => a.scenario.localeCompare(b.scenario));
 }
 
 function renderBullets(items, className = '') {
@@ -486,8 +595,11 @@ function renderReport(report, { fromDir = ARTIFACT_ROOT, manifest = new Map() } 
 }
 
 function renderPage(reports, { fromDir = ARTIFACT_ROOT, manifest = new Map() } = {}) {
-  const failed = reports.filter((report) => report.status !== 'passed').length;
-  const passed = reports.length - failed;
+  const passed = reports.filter((report) => report.status === 'passed').length;
+  const assertionFailed = reports.filter((report) => report.status === 'failed').length;
+  const infraFailed = reports.filter((report) => report.status === 'infra_failed').length;
+  const missingReports = reports.filter((report) => report.syntheticMissingReport).length;
+  const reported = reports.length - missingReports;
   const scenarioPage = reports.length === 1 && reports[0]?.artifactDir !== undefined && fromDir !== ARTIFACT_ROOT;
   const pageTitle = scenarioPage
     ? `nixmac E2E Report - ${reports[0].scenario}`
@@ -513,6 +625,8 @@ function renderPage(reports, { fromDir = ARTIFACT_ROOT, manifest = new Map() } =
     .scenario h2 { margin: 0; font-size: 18px; }
     .scenario p { margin: 4px 0 0; color: #687483; }
     .lane-note { border-left: 3px solid #9aa8b7; background: #fbfcfe; padding: 8px 10px; color: #52606d; }
+    .run-summary { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; color: #52606d; margin: 10px 0 18px; }
+    .run-summary strong { color: #1f2933; }
     .passed > header strong { color: #11845b; }
     .failed > header strong, .infra_failed > header strong { color: #b42318; }
     dl { display: grid; grid-template-columns: 90px 1fr; gap: 6px 12px; }
@@ -570,7 +684,12 @@ function renderPage(reports, { fromDir = ARTIFACT_ROOT, manifest = new Map() } =
   <main>
     <h1>${escapeHtml(pageTitle)}</h1>
     ${backLink}
-    <p class="muted">${passed} passed, ${failed} failed, ${reports.length} total</p>
+    <div class="run-summary">
+      <strong>${passed} passed</strong>
+      <strong>${assertionFailed} assertion failed</strong>
+      <strong>${infraFailed} infra/not-run</strong>
+      <span>${reported}/${reports.length} selected scenarios produced reports${missingReports ? `; ${missingReports} synthesized as missing` : ''}</span>
+    </div>
     ${reports.length ? reports.map((report) => renderReport(report, { fromDir, manifest })).join('') : '<p>No scenario reports found.</p>'}
   </main>
 </body>
@@ -609,8 +728,11 @@ async function analyzeReports(reports) {
 }
 
 async function main() {
-  const reports = await analyzeReports(await readReports());
   const manifest = await readScenarioManifest();
+  const selection = await readSelection();
+  const reports = await analyzeReports(
+    await synthesizeMissingSelectedReports(await readReports(), { selection, manifest }),
+  );
 
   await mkdir(ARTIFACT_ROOT, { recursive: true });
   await writeFile(
@@ -621,10 +743,12 @@ async function main() {
 
   await Promise.all(
     reports.map((report) =>
-      writeFile(
-        path.join(report.artifactDir, 'index.html'),
-        renderPage([report], { fromDir: report.artifactDir, manifest }),
-        'utf-8',
+      mkdir(report.artifactDir, { recursive: true }).then(() =>
+        writeFile(
+          path.join(report.artifactDir, 'index.html'),
+          renderPage([report], { fromDir: report.artifactDir, manifest }),
+          'utf-8',
+        ),
       ),
     ),
   );

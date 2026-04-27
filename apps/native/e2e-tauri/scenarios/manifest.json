@@ -229,6 +229,34 @@
       "requiredForDefaultPrPack": true
     },
     {
+      "name": "live_openrouter_evolve_smoke",
+      "lane": "tauri-wdio",
+      "title": "Live OpenRouter evolve smoke",
+      "summary": "Uses a real OpenRouter key to submit one evolve prompt and verifies nixmac reaches review with a generated Nix diff.",
+      "coverage": [
+        "Real OpenRouter credential is loaded into app settings",
+        "OpenAI/OpenRouter provider path submits an evolve prompt",
+        "Live model/tool-call loop produces a non-empty Nix diff",
+        "The flow stops at review without applying or rebuilding the machine"
+      ],
+      "riskAreas": ["providers", "openrouter", "evolve", "live-ai"],
+      "changePatterns": [
+        "^apps/native/src/components/widget/settings/(api-keys-tab|ai-models-tab)\\.tsx$",
+        "^apps/native/src/lib/ai-provider-validation\\.ts$",
+        "^apps/native/src-tauri/src/(providers|provider_errors|commands|store)\\.rs$",
+        "^apps/native/src-tauri/src/evolve/",
+        "^apps/native/e2e-tauri/tests/wdio/(live-openrouter\\.spec|helpers/(app-ui|test-env))\\.mjs$"
+      ],
+      "knownGaps": [
+        "Calls a live model and can fail for provider outages, rate limits, account credit, or prompt nondeterminism.",
+        "Stops at evolve review; it does not apply, rebuild, or verify the final macOS system state."
+      ],
+      "currentSpec": "tests/wdio/live-openrouter.spec.mjs",
+      "currentScript": "test:wdio:live-openrouter",
+      "status": "new-live-provider-coverage",
+      "requiredForDefaultPrPack": false
+    },
+    {
       "name": "prompt_keyboard_and_suggestions",
       "lane": "tauri-wdio",
       "title": "Prompt keyboard and suggestions",

@@ -246,11 +246,58 @@ function summarizeReport(report, manifest) {
     failureVideoUrl: report.failureVideoUrl ?? null,
     replayCommand: report.replayCommand ?? null,
     captureLimitations: report.captureLimitations ?? [],
+    selectedButMissing: Boolean(report.selectedButMissing),
+    syntheticMissingReport: Boolean(report.syntheticMissingReport),
     expectedCoverage: meta?.coverage ?? [],
     knownGaps: meta?.knownGaps ?? [],
     riskAreas: meta?.riskAreas ?? [],
     phases: (report.phases ?? []).map(summarizePhase),
     proof: (report.proof ?? []).map(summarizeProof),
+  };
+}
+
+function summarizeMissingSelection(selectionEntry, selection, manifest) {
+  const meta = scenarioMetadata(manifest, selectionEntry.name);
+  const replayCommand =
+    selectionEntry.currentScript ??
+    meta?.currentScript ??
+    (selectionEntry.lane === 'full-mac'
+      ? `tests/e2e/run.sh ${selectionEntry.name}`
+      : `bun run test:wdio -- ${selectionEntry.name}`);
+
+  return {
+    scenario: selectionEntry.name,
+    title: meta?.title ?? selectionEntry.name,
+    lane: selectionEntry.lane ?? 'unknown',
+    status: 'infra_failed',
+    durationMs: 0,
+    runnerKind: selectionEntry.lane === 'full-mac' ? 'self-hosted-mac' : 'github-hosted',
+    runnerId: 'GitHub Actions',
+    htmlReportUrl: null,
+    primaryProofUrl: null,
+    failureProofUrl: null,
+    failureScreenshotUrl: null,
+    failureVideoUrl: null,
+    replayCommand,
+    captureLimitations: ['scenario_report_missing'],
+    selectedButMissing: true,
+    syntheticMissingReport: true,
+    expectedCoverage: meta?.coverage ?? selectionEntry.coverage ?? [],
+    knownGaps: meta?.knownGaps ?? selectionEntry.knownGaps ?? [],
+    riskAreas: meta?.riskAreas ?? selectionEntry.riskAreas ?? [],
+    phases: [
+      {
+        name: 'Scenario report generation',
+        status: 'infra_failed',
+        durationMs: 0,
+        assertions: ['Selected scenario produces e2e-report.json'],
+        error:
+          'Selected scenario did not produce e2e-report.json; inspect the GitHub Actions matrix job for the first setup/bootstrap failure.',
+        proofCount: 0,
+      },
+    ],
+    proof: [],
+    selectionReason: selection?.reason ?? null,
   };
 }
 
@@ -419,9 +466,11 @@ function markdownReport(packet) {
 - Reason: ${packet.aiReview.reason ?? 'n/a'}
 - PR: ${packet.pr.number ?? 'n/a'}
 - Commit: ${packet.pr.headSha}
-- Scenario reports: ${packet.summary.reportCount}
-- Failed scenarios: ${packet.summary.failedCount}
-- Infra-failed scenarios: ${packet.summary.infraFailedCount}
+- Selected scenarios: ${packet.summary.selectedCount}
+- Scenario reports: ${packet.summary.reportedCount}/${packet.summary.selectedCount}
+- Missing scenario reports: ${packet.summary.missingReportCount}
+- Assertion-failed scenarios: ${packet.summary.failedCount}
+- Infra/not-run scenarios: ${packet.summary.infraFailedCount}
 - Capture limitations: ${packet.summary.captureLimitationCount}
 ${verdictSummary}
 
@@ -469,7 +518,6 @@ function html(value) {
 
 function htmlReport(packet) {
   const reports = packet.scenarioReports;
-  const failed = reports.filter((report) => report.status !== 'passed');
   const verdict = packet.aiReview.verdict;
   const statusClass =
     packet.aiReview.status === 'performed' && verdict?.status === 'passed'
@@ -519,8 +567,11 @@ function htmlReport(packet) {
       <div class="grid">
         <div class="metric"><span>AI review</span><strong><span class="pill ${statusClass}">${html(packet.aiReview.status)}</span></strong></div>
         <div class="metric"><span>Reason</span><strong>${html(packet.aiReview.reason ?? 'n/a')}</strong></div>
-        <div class="metric"><span>Reports</span><strong>${packet.summary.reportCount}</strong></div>
-        <div class="metric"><span>Failed</span><strong>${failed.length}</strong></div>
+        <div class="metric"><span>Selected</span><strong>${packet.summary.selectedCount}</strong></div>
+        <div class="metric"><span>Reports</span><strong>${packet.summary.reportedCount}/${packet.summary.selectedCount}</strong></div>
+        <div class="metric"><span>Missing reports</span><strong>${packet.summary.missingReportCount}</strong></div>
+        <div class="metric"><span>Assertion failed</span><strong>${packet.summary.failedCount}</strong></div>
+        <div class="metric"><span>Infra/not-run</span><strong>${packet.summary.infraFailedCount}</strong></div>
         <div class="metric"><span>Required</span><strong>${packet.aiReview.required ? 'yes' : 'no'}</strong></div>
       </div>
       ${
@@ -572,9 +623,23 @@ async function main() {
 
   const selectionPaths = await findFiles(ARTIFACT_ROOT, 'e2e-selection.json');
   const selection = selectionPaths.length ? await readJson(selectionPaths[0]) : null;
+  const reportedScenarios = new Set(reports.map((report) => report.scenario));
+  for (const selected of selection?.selected ?? []) {
+    if (selected?.name && !reportedScenarios.has(selected.name)) {
+      reports.push(summarizeMissingSelection(selected, selection, manifest));
+      reportedScenarios.add(selected.name);
+    }
+  }
+  reports.sort((a, b) => String(a.scenario).localeCompare(String(b.scenario)));
+
   const files = selection?.changedFiles ?? selection?.changedFileSample ?? (await changedFiles());
+  const selectedCount = selection?.selected?.length ?? reports.length;
+  const missingReportCount = reports.filter((report) => report.syntheticMissingReport).length;
   const summary = {
+    selectedCount,
     reportCount: reports.length,
+    reportedCount: reports.length - missingReportCount,
+    missingReportCount,
     passedCount: reports.filter((report) => report.status === 'passed').length,
     failedCount: reports.filter((report) => report.status === 'failed').length,
     infraFailedCount: reports.filter((report) => report.status === 'infra_failed').length,
