@@ -150,7 +150,21 @@ async function saveVideoFrameScreenshot(outputPath) {
   });
 }
 
-async function saveFullContextScreenshot(outputPath) {
+async function saveFullAppScreenshot(outputPath) {
+  const dataUrl = await captureProofDataUrl({
+    includeAnnotations: true,
+    pixelRatio: VIDEO_CAPTURE_PIXEL_RATIO,
+    targetSelector: '#root',
+  });
+  if (!dataUrl) {
+    throw new Error('window.__testWidget.captureProofPng did not return a full-app screenshot');
+  }
+
+  const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
+  await writeFile(outputPath, Buffer.from(base64, 'base64'));
+}
+
+async function saveNativeFullAppScreenshot(outputPath) {
   await globalThis.browser.saveScreenshot(outputPath);
 }
 
@@ -829,8 +843,15 @@ async function encodeVideo(recorder, { passed, context }) {
  * @param {object} [opts.setupOptions]    - options forwarded to setupNixmacTestEnvironment
  * @param {string} [opts.scenario]        - stable scenario id written into e2e-report.json
  * @param {string} [opts.lane]            - stable lane id written into e2e-report.json
+ * @param {number} [opts.mochaTimeout]    - per-spec timeout in milliseconds
  */
-export function createWdioConfig({ specs, setupOptions = {}, scenario, lane = 'tauri-wdio' }) {
+export function createWdioConfig({
+  specs,
+  setupOptions = {},
+  scenario,
+  lane = 'tauri-wdio',
+  mochaTimeout = 120000,
+}) {
   let testEnvironment;
   let reportContext;
   let primaryProofCaptured = false;
@@ -870,7 +891,7 @@ export function createWdioConfig({ specs, setupOptions = {}, scenario, lane = 't
     reporters: ['spec'],
     mochaOpts: {
       ui: 'bdd',
-      timeout: 120000,
+      timeout: mochaTimeout,
     },
     async onPrepare() {
       await resetE2eReportContext({ scenario: scenarioName, lane });
@@ -909,17 +930,43 @@ export function createWdioConfig({ specs, setupOptions = {}, scenario, lane = 't
 
       await captureVideoFrame(activeVideoRecorder, passed ? 'final-proof' : 'final-failure');
 
-      if (FULL_CONTEXT_PROOF_ENABLED && globalThis.browser?.saveScreenshot) {
+      if (FULL_CONTEXT_PROOF_ENABLED && (globalThis.browser?.executeAsync || globalThis.browser?.saveScreenshot)) {
         const fullContextPath = path.join(
           context.artifactDir,
           `${passed ? 'proof' : 'failure'}-full-context-${Date.now()}.png`,
         );
+        let fullContextMetadata = {
+          source: 'wdio-full-app-dom-screenshot',
+          note: 'Full app DOM capture kept as primary human-review evidence.',
+        };
         try {
-          await withTimeout(
-            saveFullContextScreenshot(fullContextPath),
-            VIDEO_CAPTURE_TIMEOUT_MS,
-            `Timed out capturing full-context E2E screenshot after ${VIDEO_CAPTURE_TIMEOUT_MS}ms`,
-          );
+          try {
+            await withTimeout(
+              saveFullAppScreenshot(fullContextPath),
+              VIDEO_CAPTURE_TIMEOUT_MS,
+              `Timed out capturing full-app E2E screenshot after ${VIDEO_CAPTURE_TIMEOUT_MS}ms`,
+            );
+          } catch (domScreenshotError) {
+            console.warn(
+              `[wdio:e2e-report] DOM full-app screenshot failed; attempting native fallback: ${
+                domScreenshotError instanceof Error
+                  ? domScreenshotError.message
+                  : String(domScreenshotError)
+              }`,
+            );
+            if (!globalThis.browser?.saveScreenshot) {
+              throw domScreenshotError;
+            }
+            await withTimeout(
+              saveNativeFullAppScreenshot(fullContextPath),
+              VIDEO_CAPTURE_TIMEOUT_MS,
+              `Timed out capturing native full-app E2E screenshot after ${VIDEO_CAPTURE_TIMEOUT_MS}ms`,
+            );
+            fullContextMetadata = {
+              source: 'wdio-full-app-native-fallback',
+              note: 'DOM full-app capture failed; native screenshot fallback kept as primary human-review evidence.',
+            };
+          }
           proof.push({
             kind: 'screenshot',
             path: fullContextPath,
@@ -927,13 +974,10 @@ export function createWdioConfig({ specs, setupOptions = {}, scenario, lane = 't
             thumbnailUrl: null,
             timestampMs: null,
             phase: test.title,
-            caption: `${passed ? 'Proof' : 'Failure'} full webview context screenshot for ${test.title}`,
+            caption: `${passed ? 'Proof' : 'Failure'} full app screenshot for ${test.title}`,
             isPrimary: true,
             isFailureProof: !passed,
-            metadata: {
-              source: 'wdio-full-context-screenshot',
-              note: 'Uncropped browser screenshot kept as primary human-review evidence.',
-            },
+            metadata: fullContextMetadata,
           });
           primaryProofCaptured = true;
         } catch (screenshotError) {

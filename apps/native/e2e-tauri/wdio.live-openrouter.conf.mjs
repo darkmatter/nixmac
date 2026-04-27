@@ -8,6 +8,7 @@ const openrouterModel =
 export const config = createWdioConfig({
   scenario: 'live_openrouter_evolve_smoke',
   specs: ['./tests/wdio/live-openrouter.spec.mjs'],
+  mochaTimeout: 360000,
   setupOptions: {
     initializeConfigRepo: true,
     settingsOverrides: {

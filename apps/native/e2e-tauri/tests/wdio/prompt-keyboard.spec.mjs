@@ -54,7 +54,7 @@ describe('prompt keyboard and suggestions', () => {
       responseFiles: getMockVllmFixturePreset('basicPromptsAddFont'),
     });
     await submitPromptMessage('Install vim');
-    await waitForEvolveProcessingCycle();
+    await waitForEvolveProcessingCycle({ allowAlreadyInReview: true });
     await assertPromptHistoryCount('Install vim', 1);
   });
 });

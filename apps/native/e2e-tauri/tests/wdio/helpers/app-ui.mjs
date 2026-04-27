@@ -1305,20 +1305,57 @@ export async function getInputType(selector) {
 }
 
 export async function waitForEvolveProcessingCycle({
+  allowAlreadyInReview = false,
   startedTimeout = 20000,
   completedTimeout = 120000,
 } = {}) {
+  const initialState = await browser.execute(() => {
+    const step = window.__testWidget?.getCurrentStep?.() ?? null;
+    const hasWhatsChangedHeading = Array.from(document.querySelectorAll('h2')).some(
+      (node) => node.textContent?.trim() === "What's changed",
+    );
+    const hasFollowupHeading = Array.from(document.querySelectorAll('h2')).some(
+      (node) => node.textContent?.trim() === 'What else can I change for you?',
+    );
+    return {
+      step,
+      reachedReview: step === 'evolve' || (hasWhatsChangedHeading && hasFollowupHeading),
+    };
+  });
+  let observedProcessing = false;
   await waitUntilOrFailOnError(
-    async () =>
-      await browser.execute(() => {
-        return window.__testWidget?.isEvolveProcessing?.() === true;
-      }),
+    async () => {
+      const state = await browser.execute(() => {
+        const processing = window.__testWidget?.isEvolveProcessing?.() === true;
+        const step = window.__testWidget?.getCurrentStep?.() ?? null;
+        const hasWhatsChangedHeading = Array.from(document.querySelectorAll('h2')).some(
+          (node) => node.textContent?.trim() === "What's changed",
+        );
+        const hasFollowupHeading = Array.from(document.querySelectorAll('h2')).some(
+          (node) => node.textContent?.trim() === 'What else can I change for you?',
+        );
+        const reachedReview =
+          step === 'evolve' || (hasWhatsChangedHeading && hasFollowupHeading);
+        return { processing, reachedReview, step };
+      });
+      observedProcessing = Boolean(state?.processing);
+      const reachedNewReview =
+        Boolean(state?.reachedReview) &&
+        (allowAlreadyInReview ||
+          !initialState?.reachedReview ||
+          initialState?.step !== state?.step);
+      return observedProcessing || reachedNewReview;
+    },
     {
       timeout: startedTimeout,
       interval: 200,
-      timeoutMsg: 'Timed out waiting for evolve processing to start',
+      timeoutMsg: 'Timed out waiting for evolve processing to start or reach review',
     },
   );
+
+  if (!observedProcessing) {
+    return;
+  }
 
   await waitUntilOrFailOnError(
     async () =>

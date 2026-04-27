@@ -73,6 +73,7 @@ export interface WidgetTestHelpers {
 export interface ProofCaptureOptions {
   includeAnnotations?: boolean;
   pixelRatio?: number;
+  targetSelector?: string;
 }
 
 type ProofActionState = {
@@ -132,7 +133,11 @@ function getProofTarget(): HTMLElement | null {
 }
 
 function getProofCaptureTarget(options?: ProofCaptureOptions): HTMLElement | null {
-  void options;
+  if (options?.targetSelector) {
+    const node = document.querySelector<HTMLElement>(options.targetSelector);
+    return node && isCapturableElement(node) ? node : null;
+  }
+
   return getProofTarget();
 }
 
