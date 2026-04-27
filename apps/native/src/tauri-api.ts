@@ -12,6 +12,7 @@ import type {
   RollbackResult,
   SemanticChangeMap,
   SetDirResult,
+  UiPrefs as DarwinPrefs,
 } from "./types/shared";
 
 export type {
@@ -28,6 +29,7 @@ export type {
   SemanticChangeMap,
   SetDirResult,
   SummarizedChangeSet,
+  UiPrefs as DarwinPrefs,
   WatcherEvent,
 } from "./types/shared";
 export type { Change, Commit } from "./types/sqlite";
@@ -41,23 +43,6 @@ export interface DarwinConfig {
   hostAttr?: string | null;
 }
 
-export interface DarwinPrefs {
-  openrouterApiKey?: string;
-  openaiApiKey?: string;
-  summaryProvider?: string;
-  summaryModel?: string;
-  evolveProvider?: string;
-  evolveModel?: string;
-  maxIterations?: number;
-  maxBuildAttempts?: number;
-  ollamaApiBaseUrl?: string;
-  vllmApiBaseUrl?: string;
-  vllmApiKey?: string;
-  sendDiagnostics?: boolean;
-  confirmBuild?: boolean;
-  confirmClear?: boolean;
-  confirmRollback?: boolean;
-}
 
 export const DEFAULT_MAX_ITERATIONS = 25;
 
@@ -292,7 +277,7 @@ export const darwinAPI = {
   },
   summarizedChanges: {
     findChangeMap: () => invoke<SemanticChangeMap>("find_change_map"),
-    summarizeCurrent: () => invoke<void>("summarize_current"),
+    summarizeCurrent: () => invoke<SemanticChangeMap>("summarize_current"),
     generateCommitMessage: () => invoke<string>("generate_commit_message"),
   },
   feedback: {
@@ -302,7 +287,7 @@ export const darwinAPI = {
   },
   ui: {
     getPrefs: () => invoke<DarwinPrefs | null>("ui_get_prefs"),
-    setPrefs: (prefs: DarwinPrefs) => invoke("ui_set_prefs", { prefs }),
+    setPrefs: (prefs: Partial<DarwinPrefs>) => invoke("ui_set_prefs", { prefs }),
   },
   models: {
     getCached: (provider: string) => invoke<string[] | null>("get_cached_models", { provider }),

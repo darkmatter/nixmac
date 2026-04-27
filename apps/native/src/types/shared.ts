@@ -128,6 +128,11 @@ export type SummarizedChange = { change: Change; ownSummary: ChangeSummary | nul
 export type SummarizedChangeSet = { changeSet: ChangeSet; changes: SummarizedChange[]; missedHashes: string[] }
 
 /**
+ * User interface preferences (synced to settings.json via tauri-plugin-store).
+ */
+export type UiPrefs = { openrouterApiKey: string | null; openaiApiKey: string | null; ollamaApiBaseUrl: string | null; vllmApiBaseUrl: string | null; vllmApiKey: string | null; summaryProvider: string | null; summaryModel: string | null; evolveProvider: string | null; evolveModel: string | null; maxIterations: number | null; maxBuildAttempts: number | null; sendDiagnostics: boolean; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean }
+
+/**
  * Event payload emitted by the git status watcher.
  */
 export type WatcherEvent = { gitStatus: GitStatus | null; changeMap: SemanticChangeMap | null; evolveState: EvolveState | null; error: string | null; externalBuildDetected: boolean }

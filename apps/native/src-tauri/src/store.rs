@@ -12,10 +12,17 @@ use tauri_plugin_store::{Store, StoreExt};
 
 const STORE_PATH: &str = "settings.json";
 
-// Confirmation dialog preference keys (shared between store and commands)
+// =============================================================================
+// Preference Tab Keys
+// =============================================================================
+
+// Confirmation dialog preference keys
 pub const CONFIRM_BUILD_KEY: &str = "confirmBuild";
 pub const CONFIRM_CLEAR_KEY: &str = "confirmClear";
 pub const CONFIRM_ROLLBACK_KEY: &str = "confirmRollback";
+
+// Summarization preference keys
+pub const AUTO_SUMMARIZE_ON_FOCUS_KEY: &str = "autoSummarizeOnFocus";
 
 pub const DEFAULT_MAX_ITERATIONS: usize = 25;
 

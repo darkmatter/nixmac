@@ -53,7 +53,8 @@ fn main() {
         .register::<shared_types::EvolutionResult>()
         .register::<shared_types::EvolutionFailureResult>()
         .register::<shared_types::RollbackResult>()
-        .register::<shared_types::SetDirResult>();
+        .register::<shared_types::SetDirResult>()
+        .register::<shared_types::UiPrefs>();
 
     let shared_output_path = "../src/types/shared.ts";
 
