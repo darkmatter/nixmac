@@ -101,6 +101,7 @@ module.exports = async function publishE2ePrSummary({ github, context, core }) {
 
   const captureLimitationLabels = new Map([
     ["full_mac_runner_unavailable", "Full-Mac runner was unreachable or did not produce a scenario report"],
+    ["provider_environment_failed", "Live provider/API account failed before product assertions could complete"],
     ["screen_recording_invalid", "Screen recording was produced but failed validation"],
     ["screen_recording_missing", "No screen recording was captured for this run"],
     ["webview_recording_invalid", "Legacy webview frame-replay MP4 was produced but failed validation"],
@@ -253,6 +254,9 @@ module.exports = async function publishE2ePrSummary({ github, context, core }) {
     }
     if (/Full-Mac runner did not produce|full_mac_runner_unavailable|SSH status/i.test(text)) {
       return "Check the configured Mac runner reachability and scenario log, then rerun the full-Mac lane.";
+    }
+    if (/provider_environment_failed|out of credits|billing limit|provider'?s billing|insufficient[_ -]?quota|payment required|\b402\b|\b429\b|rate limit/i.test(text)) {
+      return "Top up or rotate the live provider/API key, confirm its billing limit, then rerun the live provider lane.";
     }
     if (/WDIO scenario command failed|Failed to create a session|plugin request failed|no window/i.test(text)) {
       return "Inspect the WDIO diagnostic log and confirm the hosted runner built and launched the Tauri debug app before rerunning.";

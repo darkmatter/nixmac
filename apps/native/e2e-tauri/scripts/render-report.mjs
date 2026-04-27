@@ -31,6 +31,10 @@ const CAPTURE_LIMITATION_LABELS = new Map([
     'Scenario did not run because setup failed before the test command',
   ],
   [
+    'provider_environment_failed',
+    'Live provider/API account failed before product assertions could complete',
+  ],
+  [
     'screen_recording_invalid',
     'Screen recording was produced but failed validation',
   ],
@@ -130,6 +134,9 @@ function nextActionForError(error, report) {
   }
   if (/Full-Mac runner did not produce|full_mac_runner_unavailable|SSH status/i.test(text)) {
     return 'Check the configured Mac runner reachability and scenario log, then rerun the full-Mac lane.';
+  }
+  if (/provider_environment_failed|out of credits|billing limit|provider'?s billing|insufficient[_ -]?quota|payment required|\b402\b|\b429\b|rate limit/i.test(text)) {
+    return 'Top up or rotate the live provider/API key, confirm its billing limit, then rerun the live provider lane.';
   }
   if (/Selected scenario did not produce e2e-report\.json|scenario_report_missing|setup\/bootstrap/i.test(text)) {
     return 'Open the GitHub Actions matrix job for this scenario, fix the first setup/bootstrap failure, then rerun the E2E gate.';

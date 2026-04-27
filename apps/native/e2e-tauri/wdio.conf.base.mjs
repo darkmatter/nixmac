@@ -76,6 +76,12 @@ async function withTimeout(promise, timeoutMs, message) {
   }
 }
 
+function isProviderEnvironmentFailure(value) {
+  return /out of credits|billing limit|provider'?s billing|insufficient[_ -]?quota|payment required|\b402\b|\b429\b|rate limit/i.test(
+    String(value ?? ''),
+  );
+}
+
 function createVideoRecorder({ context, testTitle }) {
   const slug = sanitizeSegment(testTitle || 'test');
   const startedAt = Date.now();
@@ -1040,15 +1046,21 @@ export function createWdioConfig({
         }
       }
 
+      const errorMessage = error?.message ?? null;
+      const providerEnvironmentFailed = isProviderEnvironmentFailure(errorMessage);
+      if (providerEnvironmentFailed) {
+        await recordE2eCaptureLimitation(context, 'provider_environment_failed');
+      }
+
       await recordE2ePhase(context, {
         name: test.title,
-        status: passed ? 'passed' : 'failed',
+        status: passed ? 'passed' : providerEnvironmentFailed ? 'infra_failed' : 'failed',
         startedAt: null,
         finishedAt: new Date().toISOString(),
         durationMs: duration ?? 0,
         assertions: [test.title],
         proof,
-        error: error?.message ?? null,
+        error: errorMessage,
       });
     },
     async after(exitCode) {
