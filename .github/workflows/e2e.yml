@@ -1653,6 +1653,9 @@ jobs:
               : "";
             const attentionSection = renderAdversarialFocus(selection);
             const coverageNote = selection?.note || "Scripted product-surface E2E pack runs first; PR-matched risk areas are called out as adversarial focus. Coverage is broad, not exhaustive.";
+            const reportIndexUrl = selection?.reportPrefix
+              ? `https://releases.nixmac.com/${selection.reportPrefix}/index.html`
+              : "";
             const previewNotice = prSideEffectsEnabled
               ? ""
               : "\n\n> Preview only: no PR comment, check run, or commit status was updated.";
@@ -1765,7 +1768,8 @@ jobs:
               `**Scope:** ${scope}`,
               runShape ? `**Run shape:** ${runShape}` : "",
               `**Tested commit:** \`${testedCommit}\``,
-              `[Full E2E details](${checkHtmlUrl})`,
+              reportIndexUrl ? `[Reports & proof](${reportIndexUrl})` : "",
+              `[GitHub E2E details](${checkHtmlUrl})`,
               `[Workflow run](${runUrl})`,
             ].filter((section) => String(section || "").trim()).join("\n\n");
 
