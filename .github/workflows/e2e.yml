@@ -1469,29 +1469,6 @@ jobs:
               return `Ran the standard hosted PR pack plus any matched full-Mac/adversarial scenarios: ${detail}.`;
             }
 
-            function formatRunShape(selection, isRequired) {
-              if (!isRequired) {
-                return "No E2E scenarios were required for this PR.";
-              }
-              const mode = selection?.selectionMode || "unknown";
-              if (mode === "all-label") {
-                return "`e2e:all` forced the full validation pack, including full-Mac. A normal PR keeps this same comment/check format, but only runs full-Mac when labels or matched full-Mac paths select it.";
-              }
-              if (mode === "pr-default") {
-                return "Default PR run: standard hosted pack plus any path-matched adversarial/full-Mac scenarios.";
-              }
-              if (mode === "pr-default-plus-label") {
-                return "Default PR run plus requested E2E label/path focus. Labels add coverage instead of replacing the hosted pack.";
-              }
-              if (mode === "scenario-label" || mode === "full-mac-label") {
-                return "Label-selected run. The comment/check format is the same as a normal PR, but scope is limited to requested labels and matched paths.";
-              }
-              if (mode === "manual") {
-                return "Manual dispatch run. The comment/check format is the same as PR runs when PR side effects are enabled.";
-              }
-              return "Selected E2E scope based on PR labels and changed files.";
-            }
-
             function markdownList(items) {
               return (items || [])
                 .map((item) => `- ${markdownText(item)}`)
@@ -1671,7 +1648,9 @@ jobs:
               })
               .join("\n\n");
             const scope = formatScope(selection, reports, required);
-            const runShape = formatRunShape(selection, required);
+            const runShape = selection?.selectionMode === "all-label"
+              ? "`e2e:all` forced the full validation pack, including full-Mac. Normal PRs keep this format but only run full-Mac when labels or matched full-Mac paths select it."
+              : "";
             const attentionSection = renderAdversarialFocus(selection);
             const coverageNote = selection?.note || "Scripted product-surface E2E pack runs first; PR-matched risk areas are called out as adversarial focus. Coverage is broad, not exhaustive.";
             const previewNotice = prSideEffectsEnabled
@@ -1684,7 +1663,7 @@ jobs:
               `**Status:** ${status}`,
               `**Why this ran:** ${reason}`,
               `**Scope:** ${scope}`,
-              `**Run shape:** ${runShape}`,
+              runShape ? `**Run shape:** ${runShape}` : "",
               `**Coverage note:** ${coverageNote}`,
               `**Tested commit:** \`${testedCommit}\``,
               attentionSection,
@@ -1716,7 +1695,7 @@ jobs:
               `**Status:** ${status}`,
               `**Why this ran:** ${reason}`,
               `**Scope:** ${scope}`,
-              `**Run shape:** ${runShape}`,
+              runShape ? `**Run shape:** ${runShape}` : "",
               `**Coverage note:** ${coverageNote}`,
               `**Tested commit:** \`${testedCommit}\``,
             ].join("\n\n");
