@@ -84,6 +84,59 @@ async function elementExists(selector) {
   }
 }
 
+// Answers an inline question posed during the evolve flow.
+// Addresses React components defined in evolve-progress.tsx
+// that are not easily interacted with via standard WebDriver methods.
+export async function answerQuestion(answerText) {
+  const inputSelector = '[data-testid="question-prompt-input"]';
+  const submitButtonSelector = '[data-testid="question-prompt-submit"]';
+
+  await waitForSelector(inputSelector, { timeout: 60000, interval: 500 });
+  await waitForSelector(submitButtonSelector);
+
+  // This input is React-controlled, so we must trigger updates via DOM mutation
+  // followed by input/change events to ensure React state updates correctly.
+  //
+  // Standard WebDriver approaches (setValue, keyboard input, click/type chains)
+  // were tested but did not reliably update React state for this input.
+  // This appears to be due to the element being rendered inside a shadow root
+  // and/or event handling differences in this component.
+  await browser.execute((value) => {
+    const input = document.querySelector('[data-testid="question-prompt-input"]');
+    if (!(input instanceof HTMLInputElement)) {
+      return;
+    }
+
+    const nativeSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      'value',
+    )?.set;
+
+    if (nativeSetter) {
+      nativeSetter.call(input, value);
+    } else {
+      input.value = value;
+    }
+
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }, answerText);
+
+  await waitUntilOrFailOnError(
+    async () => {
+      const submitButton = await $(submitButtonSelector);
+      return (await submitButton.isExisting()) && (await submitButton.isEnabled());
+    },
+    {
+      timeout: 5000,
+      interval: 200,
+      timeoutMsg: 'Submit button did not enable after setting question prompt text',
+    },
+  );
+
+  await clickWithRetry(submitButtonSelector, { attempts: 20, interval: 300 });
+}
+
 export async function clickDiscardAndConfirm() {
   const discardButtonSelector = '[data-testid="evolve-discard-button"]';
   const confirmButtonSelector = '[data-testid="confirm-dialog-confirm"]';

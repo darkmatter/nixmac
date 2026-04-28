@@ -1,5 +1,6 @@
 // oxlint-disable no-unused-expressions
 import {
+  answerQuestion,
   assertPromptFlowReachedEvolveReview,
   registerPromptSuiteBeforeEach,
   submitPromptMessage,
@@ -23,6 +24,8 @@ describe('basic prompts', () => {
         getMockVllmFixturePreset('basicPromptsAddFont'),
       'handles a prompt that triggers a docs search':
         getMockVllmFixturePreset('basicPromptsConfigureScreenshots'),
+      'asks a question prompt and then submits a follow-up prompt based on the answer':
+        getMockVllmFixturePreset('askQuestionPrompts'),
     },
   });
 
@@ -74,5 +77,21 @@ describe('basic prompts', () => {
     ).to.be.true;
     await assertDiffContains(gitDiff, 'defaults.nix', '~/Screenshots');
     await assertDiffContains(gitDiff, 'defaults.nix', 'png');
+  });
+
+  it('asks a question prompt and then submits a follow-up prompt based on the answer', async () => {
+    await submitPromptMessage('Ask a question. You can chain this prompt with one of the others to create a complete test case.');
+
+    // Wait for the assistant's question to appear in the UI and answer with a request to add a programming font.
+    await answerQuestion('Add a programming font');
+    await assertPromptFlowReachedEvolveReview();
+
+    // Verify that the diff modifies fonts.nix, indicating that the follow-up prompt was processed correctly.
+    const gitDiff = await getConfigRepoGitDiff();
+    const changedPaths = gitDiff.files.map((file) => file.path);
+    expect(
+      changedPaths.some((filePath) => filePath.endsWith('fonts.nix')),
+      `Expected generated changes to include fonts.nix in git diff. Changed paths: ${changedPaths.join(', ')}`,
+    ).to.be.true;
   });
 });
