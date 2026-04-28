@@ -51,8 +51,7 @@ scenario_test() {
     phase_pass "Settings dialog launched"
 
     phase "Preferences persist representative toggles"
-    nixmac_click_button "^Preferences$" --timeout 20 || die "Failed to open Preferences"
-    nixmac_wait_for_text "Confirm|Build|Clear / Discard|Rollback" --timeout 20 \
+    nixmac_open_settings_tab "Preferences" "Confirm|Build|Clear / Discard|Rollback" \
         || die "Preferences controls did not render"
     nixmac_screenshot "03-preferences-before"
     nixmac_click_element_matching "Build" --role "switch" --timeout 20 || die "Failed to toggle Build confirmation"
@@ -66,8 +65,7 @@ scenario_test() {
     phase_pass "Preferences persistence verified"
 
     phase "API Keys state is hydrated from disk"
-    nixmac_click_button "^API Keys$" --timeout 20 || die "Failed to open API Keys"
-    nixmac_wait_for_text "OpenRouter|OpenAI|Ollama|vLLM" --timeout 20 \
+    nixmac_open_settings_tab "API Keys" "OpenRouter|OpenAI|Ollama|vLLM" \
         || die "API Keys tab did not render provider controls"
     nixmac_wait_settings_jq \
         '.openrouterApiKey == "sk-or-existing-openrouter-e2e-key" and .ollamaApiBaseUrl == "http://127.0.0.1:11434" and .vllmApiBaseUrl == "http://127.0.0.1:8000/v1" and .vllmApiKey == "test-vllm-key"' \
@@ -77,8 +75,7 @@ scenario_test() {
     phase_pass "API key settings verified"
 
     phase "AI Models configured state renders"
-    nixmac_click_button "^AI Models$" --timeout 20 || die "Failed to open AI Models"
-    nixmac_wait_for_text "Evolution Model|Summary Model|Max Iterations|Max Build Attempts|vLLM|OpenAI" --timeout 20 \
+    nixmac_open_settings_tab "AI Models" "Evolution Model|Summary Model|Max Iterations|Max Build Attempts|vLLM|OpenAI" \
         || die "AI Models tab did not render expected controls"
     nixmac_wait_settings_jq \
         '.evolveProvider == "vllm" and .summaryProvider == "openai" and .maxIterations == 25 and .maxBuildAttempts == 5' \

@@ -213,11 +213,21 @@ nixmac_start_mock_vllm() {
     log_file="$(mktemp "${TMPDIR:-/tmp}/nixmac-mock-vllm.XXXXXX.log")"
     rm -f "$context_file"
 
-    node "$E2E_ROOT/lib/mock-vllm-server.mjs" \
-        --context "$context_file" \
-        --data-dir "$E2E_ROOT/data" \
-        --response-files "$response_files" \
-        >"$log_file" 2>&1 &
+    if command -v node >/dev/null 2>&1; then
+        node "$E2E_ROOT/lib/mock-vllm-server.mjs" \
+            --context "$context_file" \
+            --data-dir "$E2E_ROOT/data" \
+            --response-files "$response_files" \
+            >"$log_file" 2>&1 &
+    elif command -v python3 >/dev/null 2>&1; then
+        python3 "$E2E_ROOT/lib/mock-vllm-server.py" \
+            --context "$context_file" \
+            --data-dir "$E2E_ROOT/data" \
+            --response-files "$response_files" \
+            >"$log_file" 2>&1 &
+    else
+        die "Mock vLLM server requires node or python3"
+    fi
     NIXMAC_MOCK_VLLM_PID=$!
     NIXMAC_MOCK_VLLM_CONTEXT="$context_file"
     NIXMAC_MOCK_VLLM_LOG="$log_file"
@@ -264,6 +274,43 @@ nixmac_stop_mock_vllm() {
         kill "$NIXMAC_MOCK_VLLM_PID" 2>/dev/null || true
         wait "$NIXMAC_MOCK_VLLM_PID" 2>/dev/null || true
     fi
+}
+
+nixmac_settings_tab_coords() {
+    case "$1" in
+        General) echo "180,235" ;;
+        "AI Models") echo "180,271" ;;
+        "API Keys") echo "180,307" ;;
+        Preferences) echo "180,343" ;;
+        *) return 1 ;;
+    esac
+}
+
+nixmac_open_settings_tab() {
+    local tab="$1"
+    local expected="$2"
+    local coords=""
+
+    log "Opening settings tab: $tab"
+    peekaboo_run click "$tab" --app "$NIXMAC_APP_NAME" --wait-for 20000 >/dev/null 2>&1 || true
+    if nixmac_wait_for_text "$expected" --timeout 6 --interval 2; then
+        pass "Settings tab rendered: $tab"
+        return 0
+    fi
+
+    coords="$(nixmac_settings_tab_coords "$tab" || true)"
+    if [ -n "$coords" ]; then
+        log "Retrying settings tab via coordinates: $tab at $coords"
+        peekaboo_run click --coords "$coords" --app "$NIXMAC_APP_NAME" >/dev/null 2>&1 || true
+        if nixmac_wait_for_text "$expected" --timeout 20 --interval 2; then
+            pass "Settings tab rendered: $tab"
+            return 0
+        fi
+    fi
+
+    nixmac_screenshot "settings-tab-${tab// /-}-missing"
+    fail "Settings tab did not render expected text: $tab"
+    return 1
 }
 
 nixmac_click_element_matching() {

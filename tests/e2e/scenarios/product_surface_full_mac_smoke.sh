@@ -28,11 +28,9 @@ open_settings_tab() {
     local tab="$1"
     local expected="$2"
 
-    nixmac_click_button "^${tab}$" --timeout 20 || die "Failed to open settings tab: $tab"
-    nixmac_wait_for_text "$expected" --timeout 20 \
+    nixmac_open_settings_tab "$tab" "$expected" \
         || die "Settings tab did not render expected text: $tab"
     nixmac_screenshot "settings-${tab// /-}"
-    pass "Settings tab rendered: $tab"
 }
 
 scenario_test() {
