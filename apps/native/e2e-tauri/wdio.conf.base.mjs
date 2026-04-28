@@ -45,6 +45,8 @@ const WEBVIEW_VIDEO_ENABLED =
   !LEGACY_WEBVIEW_PROOF_DISABLED && process.env.NIXMAC_E2E_WEBVIEW_VIDEO === '1';
 const USE_DOM_PROOF_CAPTURE = process.env.NIXMAC_E2E_DOM_PROOF_CAPTURE !== '0';
 const FULL_CONTEXT_PROOF_ENABLED = process.env.NIXMAC_E2E_FULL_CONTEXT_PROOF !== '0';
+const PROVIDER_ENVIRONMENT_FAILURE_PATTERN =
+  /out of credits|billing limit|provider'?s billing|insufficient[_ -]?quota|payment required|(?:provider|api|account|openrouter|openai|billing|quota|rate limit|status|error|code).{0,48}\b(?:402|429)\b|\b(?:402|429)\b.{0,48}(?:provider|api|account|openrouter|openai|billing|quota|rate limit)|(?:provider|api|account|openrouter|openai).{0,48}rate limit|rate limit.{0,48}(?:provider|api|account|openrouter|openai|billing|quota)/i;
 const PROOF_TARGET_SELECTORS = [
   '[data-testid="feedback-dialog"]',
   '[data-testid="settings-dialog"]',
@@ -77,9 +79,7 @@ async function withTimeout(promise, timeoutMs, message) {
 }
 
 function isProviderEnvironmentFailure(value) {
-  return /out of credits|billing limit|provider'?s billing|insufficient[_ -]?quota|payment required|\b402\b|\b429\b|rate limit/i.test(
-    String(value ?? ''),
-  );
+  return PROVIDER_ENVIRONMENT_FAILURE_PATTERN.test(String(value ?? ''));
 }
 
 function createVideoRecorder({ context, testTitle }) {
@@ -160,7 +160,7 @@ async function saveFullAppScreenshot(outputPath) {
   const dataUrl = await captureProofDataUrl({
     includeAnnotations: true,
     pixelRatio: VIDEO_CAPTURE_PIXEL_RATIO,
-    targetSelector: '#root',
+    targetSelector: 'body',
   });
   if (!dataUrl) {
     throw new Error('window.__testWidget.captureProofPng did not return a full-app screenshot');

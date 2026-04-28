@@ -12,6 +12,8 @@ module.exports = async function publishE2ePrSummary({ github, context, core }) {
   const prSideEffectsEnabled = process.env.E2E_PR_SIDE_EFFECTS_ENABLED === "true";
   let testedCommit = process.env.E2E_HEAD_SHA || context.sha;
   const conclusion = process.env.E2E_CONCLUSION || "failure";
+  const providerEnvironmentTextPattern =
+    /provider_environment_failed|out of credits|billing limit|provider'?s billing|insufficient[_ -]?quota|payment required|(?:provider|api|account|openrouter|openai|billing|quota|rate limit|status|error|code).{0,48}\b(?:402|429)\b|\b(?:402|429)\b.{0,48}(?:provider|api|account|openrouter|openai|billing|quota|rate limit)|(?:provider|api|account|openrouter|openai).{0,48}rate limit|rate limit.{0,48}(?:provider|api|account|openrouter|openai|billing|quota)/i;
 
   function findReports(root) {
     const reports = [];
@@ -255,7 +257,7 @@ module.exports = async function publishE2ePrSummary({ github, context, core }) {
     if (/Full-Mac runner did not produce|full_mac_runner_unavailable|SSH status/i.test(text)) {
       return "Check the configured Mac runner reachability and scenario log, then rerun the full-Mac lane.";
     }
-    if (/provider_environment_failed|out of credits|billing limit|provider'?s billing|insufficient[_ -]?quota|payment required|\b402\b|\b429\b|rate limit/i.test(text)) {
+    if (providerEnvironmentTextPattern.test(text)) {
       return "Top up or rotate the live provider/API key, confirm its billing limit, then rerun the live provider lane.";
     }
     if (/WDIO scenario command failed|Failed to create a session|plugin request failed|no window/i.test(text)) {

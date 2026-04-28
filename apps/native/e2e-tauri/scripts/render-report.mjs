@@ -8,6 +8,8 @@ const E2E_TAURI_DIR = path.resolve(THIS_DIR, '..');
 const DEFAULT_ARTIFACT_ROOT = path.join(E2E_TAURI_DIR, 'artifacts');
 const ARTIFACT_ROOT = path.resolve(process.env.NIXMAC_E2E_ARTIFACT_ROOT ?? DEFAULT_ARTIFACT_ROOT);
 const MANIFEST_PATH = path.join(E2E_TAURI_DIR, 'scenarios', 'manifest.json');
+const PROVIDER_ENVIRONMENT_TEXT_PATTERN =
+  /provider_environment_failed|out of credits|billing limit|provider'?s billing|insufficient[_ -]?quota|payment required|(?:provider|api|account|openrouter|openai|billing|quota|rate limit|status|error|code).{0,48}\b(?:402|429)\b|\b(?:402|429)\b.{0,48}(?:provider|api|account|openrouter|openai|billing|quota|rate limit)|(?:provider|api|account|openrouter|openai).{0,48}rate limit|rate limit.{0,48}(?:provider|api|account|openrouter|openai|billing|quota)/i;
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -135,7 +137,7 @@ function nextActionForError(error, report) {
   if (/Full-Mac runner did not produce|full_mac_runner_unavailable|SSH status/i.test(text)) {
     return 'Check the configured Mac runner reachability and scenario log, then rerun the full-Mac lane.';
   }
-  if (/provider_environment_failed|out of credits|billing limit|provider'?s billing|insufficient[_ -]?quota|payment required|\b402\b|\b429\b|rate limit/i.test(text)) {
+  if (PROVIDER_ENVIRONMENT_TEXT_PATTERN.test(text)) {
     return 'Top up or rotate the live provider/API key, confirm its billing limit, then rerun the live provider lane.';
   }
   if (/Selected scenario did not produce e2e-report\.json|scenario_report_missing|setup\/bootstrap/i.test(text)) {
