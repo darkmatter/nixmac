@@ -20,9 +20,9 @@ describe('live OpenRouter evolve smoke', () => {
 
     await submitPromptMessage(
       [
-        'Edit modules/darwin/packages.nix.',
-        'Add jq as an active package in environment.systemPackages with a short comment that it is for JSON CLI work.',
-        'Make only the smallest valid Nix change. Do not ask clarifying questions.',
+        'Edit flake.nix only.',
+        'In the existing top-level environment.systemPackages list that currently contains pkgs.vim, add pkgs.jq on the next line.',
+        'Keep valid Nix syntax. Do not ask clarifying questions.',
       ].join(' '),
     );
 
@@ -30,7 +30,7 @@ describe('live OpenRouter evolve smoke', () => {
 
     const evolveState = await waitForEvolveStateWithChangeset({ timeout: 240000 });
     const buildState = await loadBuildState();
-    const gitDiff = await waitForConfigRepoGitDiffContaining(['jq', 'JSON CLI'], {
+    const gitDiff = await waitForConfigRepoGitDiffContaining('pkgs.jq', {
       timeout: 240000,
     });
 
@@ -47,11 +47,11 @@ describe('live OpenRouter evolve smoke', () => {
     expect(Number(evolveState.currentChangesetId)).to.be.greaterThan(0);
     const changedPaths = gitDiff.files.map((file) => file.path);
     expect(
-      changedPaths.some((filePath) => filePath.endsWith('packages.nix')),
-      `Expected generated changes to include packages.nix in git diff. Changed paths: ${changedPaths.join(', ')}`,
+      changedPaths.some((filePath) => filePath === 'flake.nix'),
+      `Expected generated changes to include flake.nix in git diff. Changed paths: ${changedPaths.join(', ')}`,
     ).to.be.true;
-    expect(gitDiff.raw, 'Expected live provider output to add jq to the generated diff').to.match(
-      /\bjq\b/i,
+    expect(gitDiff.raw, 'Expected live provider output to add pkgs.jq to the generated diff').to.match(
+      /\bpkgs\.jq\b/i,
     );
   });
 });

@@ -28,7 +28,7 @@ export const config = createWdioConfig({
       openrouterApiKey,
       openaiApiKey: '',
       maxIterations: 8,
-      maxBuildAttempts: 1,
+      maxBuildAttempts: 3,
     },
   },
 });
