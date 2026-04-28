@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, FileCode, Pencil } from "lucide-react";
+import { ChevronRight, Pencil } from "lucide-react";
 import type { BundledLanguage } from "shiki";
 import {
   CodeBlock,
@@ -15,11 +15,10 @@ import {
 } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useWidgetStore } from "@/stores/widget-store";
-import type { Change } from "@/types/shared";
-import { getDirectory, getShortFilename } from "@/components/widget/utils";
+import { CHANGE_TYPE_STYLES, getDirectory, getShortFilename, type ChangeWithRichType } from "@/components/widget/utils";
 
 interface DiffProps {
-  changes: Change[];
+  changes: ChangeWithRichType[];
 }
 
 export function Diff({ changes }: DiffProps) {
@@ -35,6 +34,9 @@ export function Diff({ changes }: DiffProps) {
     <ScrollArea className="min-h-0 w-full flex-1">
       <div className="flex flex-col gap-2 py-2">
         {changes.map((change, index) => {
+          const { icon: Icon, iconColor } = CHANGE_TYPE_STYLES[change.changeType];
+          const dir = getDirectory(change.filename);
+          const name = getShortFilename(change.filename);
           const codeData = [
             {
               language: "diff",
@@ -54,16 +56,12 @@ export function Diff({ changes }: DiffProps) {
                 <CollapsibleTrigger className="group inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-muted">
                   <ChevronRight className="h-4 w-4 text-muted-foreground hover:text-foreground transition-transform duration-200 group-data-[state=open]:rotate-90" />
                 </CollapsibleTrigger>
-                <FileCode className="h-4 w-4 shrink-0 text-primary" />
-                <div className="flex min-w-0 flex-1 items-baseline gap-2">
-                  <span className="truncate font-medium text-foreground text-sm">
-                    {getShortFilename(change.filename)}
+                <Icon className={`h-3.5 w-3.5 shrink-0 ${iconColor}`} />
+                <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+                  <span className="min-w-0 font-mono text-[11px]">
+                    {dir && <span className="text-neutral-500">{dir}/</span>}
+                    <span className="font-semibold text-neutral-200">{name}</span>
                   </span>
-                  {getDirectory(change.filename) && (
-                    <span className="truncate text-muted-foreground text-xs">
-                      {getDirectory(change.filename)}
-                    </span>
-                  )}
                 </div>
                 <button
                   type="button"

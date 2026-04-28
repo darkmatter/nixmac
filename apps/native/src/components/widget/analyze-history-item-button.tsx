@@ -1,28 +1,30 @@
-import { useState } from "react";
-import { Dna, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { useWidgetStore } from "@/stores/widget-store";
+import { AnalyzeButton } from "@/components/widget/summaries/analyze-button";
 import { useHistory } from "@/hooks/use-history";
+import { useWidgetStore } from "@/stores/widget-store";
+import { Dna, Loader2 } from "lucide-react";
+import { useState } from "react";
 interface AnalyzeHistoryItemButtonProps {
   hash: string;
   isPartial?: boolean;
   className?: string;
 }
 
-export function AnalyzeHistoryItemButton({ hash, isPartial, className }: AnalyzeHistoryItemButtonProps) {
+export function AnalyzeHistoryItemButton({
+  hash,
+  isPartial,
+  className,
+}: AnalyzeHistoryItemButtonProps) {
   const [localAnalyzing, setLocalAnalyzing] = useState(false);
-  const queuedByMany = useWidgetStore((state) => state.analyzingHistoryForHashes.has(hash));
+  const queuedByMany = useWidgetStore((state) =>
+    state.analyzingHistoryForHashes.has(hash),
+  );
   const isAnalyzing = localAnalyzing || queuedByMany;
   const { analyzeOne } = useHistory();
 
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="sm"
+    <AnalyzeButton
       disabled={isAnalyzing}
-      className={cn("h-auto gap-[3px] px-[7px] py-0.5 text-[10px] text-neutral-500 hover:bg-transparent hover:text-neutral-300", className)}
+      className={className}
       onClick={async (e) => {
         e.stopPropagation();
         setLocalAnalyzing(true);
@@ -44,6 +46,6 @@ export function AnalyzeHistoryItemButton({ hash, isPartial, className }: Analyze
           {isPartial ? "Update" : "Analyze"}
         </>
       )}
-    </Button>
+    </AnalyzeButton>
   );
 }
