@@ -53,6 +53,20 @@ pub struct WatcherEvent {
 }
 
 // =============================================================================
+// Homebrew types
+// =============================================================================
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct HomebrewState {
+    pub is_installed: bool,
+    pub casks: Vec<String>,
+    pub brews: Vec<String>,
+    pub taps: Vec<String>,
+    pub source: Option<String>,
+    pub last_checked: i64,
+}
+
+// =============================================================================
 // Query return types
 // =============================================================================
 
@@ -176,7 +190,6 @@ impl Default for EvolveState {
     }
 }
 
-
 // =============================================================================
 // Config dir result types
 // =============================================================================
@@ -287,4 +300,5 @@ pub struct UiPrefs {
     pub confirm_clear: bool,
     pub confirm_rollback: bool,
     pub auto_summarize_on_focus: bool,
+    pub scan_homebrew_on_startup: bool,
 }

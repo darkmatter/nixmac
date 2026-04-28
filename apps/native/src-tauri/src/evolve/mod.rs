@@ -3,7 +3,7 @@
 mod age;
 mod chat_memory;
 mod config_dir_context;
-mod edit_nix_file;
+pub(crate) mod edit_nix_file;
 mod ensure_secret;
 pub(crate) mod file_ops;
 mod gitignore;
@@ -14,7 +14,7 @@ pub mod search_docs;
 mod search_packages;
 mod sops;
 mod tools;
-mod types;
+pub(crate) mod types;
 mod utils;
 
 /// Directories ignored by file listing and search helpers.
