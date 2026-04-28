@@ -1,5 +1,6 @@
 //! SQLite database for persisting evolution history, summaries, and prompts.
 
+pub mod builds;
 pub mod changesets;
 pub mod commits;
 pub mod evolutions;

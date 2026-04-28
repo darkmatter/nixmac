@@ -26,13 +26,22 @@ async fn prepare(app: &AppHandle) -> Result<(crate::types::GitStatus, evolve_sta
 pub async fn finalize_apply(app: &AppHandle) -> Result<ApplyResult> {
     let (final_status, mut current_evolve) = prepare(app).await?;
 
+    // Manual changes built with nixmac can be rolled back, so in that case we handle the store path
+    // TODO: remove this once build state is fully computed from darwin_builds history
     if current_evolve.evolution_id.is_none() {
-        // Capture the currently-active store path as the "Undo last build" target.
-        let bs = build_state::get(app).ok();
-        current_evolve.manual_rollback_store_path = bs.as_ref().and_then(|b| b.nixmac_built_store_path.clone());
+        if let Ok(bs) = build_state::get(app) {
+            current_evolve.rollback_store_path = bs.nixmac_built_store_path;
+        }
     }
 
     build_state::record_build(app, &final_status).context("Failed to record build state")?;
+
+    let bs = build_state::get(app).unwrap_or_default();
+    if let Some(ref store_path) = bs.nixmac_built_store_path {
+        build_state::record_nixmac_build(app, bs.changeset_id, store_path)
+            .context("Failed to record nixmac build in darwin_builds")?;
+    }
+
     let evolve_state = evolve_state::set(app, current_evolve, &final_status.changes)?;
     Ok(ApplyResult { git_status: final_status, evolve_state })
 }
@@ -44,12 +53,12 @@ pub async fn finalize_rollback(
     changeset_id: Option<i64>,
 ) -> Result<ApplyResult> {
     let (final_status, mut current_evolve) = prepare(app).await?;
-    build_state::set_active_build(app, store_path.clone(), changeset_id, final_status.head_commit_hash.clone())
-        .context("Failed to restore build state")?;
-    // manual_rollback_store_path survives if distinct
-    if current_evolve.manual_rollback_store_path.is_some() && current_evolve.manual_rollback_store_path == store_path {
-        current_evolve.manual_rollback_store_path = None;
+    if let Some(ref path) = store_path {
+        build_state::record_nixmac_build(app, changeset_id, path)
+            .context("Failed to record rollback build in darwin_builds")?;
     }
+    build_state::set_active_build(app, store_path, changeset_id, final_status.head_commit_hash.clone())
+        .context("Failed to restore build state")?;
     current_evolve.rollback_store_path = None;
     current_evolve.rollback_changeset_id = None;
     let evolve_state = evolve_state::set(app, current_evolve, &final_status.changes)?;

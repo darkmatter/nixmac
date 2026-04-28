@@ -83,6 +83,11 @@ where
                     .and_then(|bs| bs.nixmac_built_store_path);
                 if live_store_path.is_some() && live_store_path != nixmac_built {
                     external_build_detected = true;
+                    if let Some(ref path) = live_store_path {
+                        if let Some(gen) = build_state::read_current_nix_generation() {
+                            let _ = build_state::record_external_build(&app_handle, gen, path);
+                        }
+                    }
                 }
             }
 

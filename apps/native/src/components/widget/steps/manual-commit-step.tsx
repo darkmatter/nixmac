@@ -16,13 +16,14 @@ import { useState } from "react";
  */
 export function ManualCommitStep() {
   const { handleRollback } = useRollback();
-  const manualRollbackStorePath = useWidgetStore((s) => s.evolveState?.manualRollbackStorePath);
+  const built = useWidgetStore((s) => s.evolveState?.committable);
+  const rollbackStorePath = useWidgetStore((s) => s.evolveState?.rollbackStorePath);
   const [action, setAction] = useState<"commit" | "amend">("commit");
 
   return (
     <>
       <StepActionsHeader label="All changes active!">
-        {manualRollbackStorePath && (
+        {built && rollbackStorePath && (
           <ConfirmButton
             variant="ghost"
             size="sm"

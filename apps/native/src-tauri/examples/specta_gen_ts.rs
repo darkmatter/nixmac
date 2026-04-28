@@ -23,7 +23,10 @@ fn main() {
         .register::<sqlite_types::Prompt>()
         .register::<sqlite_types::Change>()
         .register::<sqlite_types::ChangeSummary>()
-        .register::<sqlite_types::ChangeSet>();
+        .register::<sqlite_types::ChangeSet>()
+        .register::<sqlite_types::NixmacBuild>()
+        .register::<sqlite_types::DarwinBuild>()
+        .register::<sqlite_types::BuildCommit>();
 
     let output_path = "../src/types/sqlite.ts";
 
@@ -41,6 +44,7 @@ fn main() {
         .register::<shared_types::ChangeWithSummary>()
         .register::<shared_types::SemanticChangeGroup>()
         .register::<shared_types::SemanticChangeMap>()
+        .register::<shared_types::BuildRecord>()
         .register::<shared_types::EvolveStep>()
         .register::<shared_types::EvolveState>()
         .register::<shared_types::HistoryItem>()

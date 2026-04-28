@@ -14,6 +14,7 @@ use std::path::Path;
 static MIGRATIONS: &[M<'_>] = &[
     M::up(include_str!("../../migrations/01-initial/up.sql")),
     M::up(include_str!("../../migrations/02-restore-commits/up.sql")),
+    M::up(include_str!("../../migrations/03-build-records/up.sql")),
 ];
 
 /// Initialize schema, running any pending migrations.

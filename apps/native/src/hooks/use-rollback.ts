@@ -26,7 +26,7 @@ export function useRollback() {
       store.clearPreview();
       store.appendLog("✓ Changes discarded\n");
 
-      const storePathForRebuild = result.rollbackStorePath ?? result.manualRollbackStorePath;
+      const storePathForRebuild = result.rollbackStorePath;
       if (storePathForRebuild && wasCommittable) {
         await triggerRebuild({
           context: "rollback",
