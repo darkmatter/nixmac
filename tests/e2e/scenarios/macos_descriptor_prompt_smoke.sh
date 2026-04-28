@@ -156,13 +156,12 @@ scenario_wait_for_prompt_value() {
 scenario_test() {
     phase "Prepare isolated descriptor prompt fixture"
     peekaboo_check
-    if ! nix_is_installed; then
-        die "Nix must already be installed for macos_descriptor_prompt_smoke"
-    fi
     scenario_create_config_repo
     nixmac_clear_state
     scenario_seed_settings
-    phase_pass "Prepared config repo and local provider-validation settings"
+    export NIXMAC_E2E_MOCK_SYSTEM=1
+    launchctl setenv NIXMAC_E2E_MOCK_SYSTEM 1
+    phase_pass "Prepared config repo, mock system prerequisites, and local provider-validation settings"
 
     phase "Launch nixmac app"
     nixmac_launch || die "App failed to launch"
@@ -203,8 +202,8 @@ scenario_test() {
 
 scenario_cleanup() {
     nixmac_quit
+    launchctl unsetenv NIXMAC_E2E_MOCK_SYSTEM 2>/dev/null || true
     if [ -n "$NIXMAC_E2E_CONFIG_REPO" ]; then
         rm -rf "$NIXMAC_E2E_CONFIG_REPO" 2>/dev/null || true
     fi
 }
-

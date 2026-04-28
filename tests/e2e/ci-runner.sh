@@ -196,6 +196,7 @@ OSA
 cleanup_ci_runner() {
     launchctl unsetenv NIXMAC_DISABLE_UPDATER 2>/dev/null || true
     launchctl unsetenv NIXMAC_SKIP_PERMISSIONS 2>/dev/null || true
+    launchctl unsetenv NIXMAC_E2E_MOCK_SYSTEM 2>/dev/null || true
     cleanup_e2e_gui_leftovers
 }
 
