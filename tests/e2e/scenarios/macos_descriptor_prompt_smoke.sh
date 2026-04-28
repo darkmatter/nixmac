@@ -173,7 +173,7 @@ scenario_test() {
         nixmac_screenshot "missing-descriptor-prompt"
         die "Descriptor prompt screen did not become visible"
     fi
-    scenario_click_element "evolve-prompt-input|Configuration change descriptor" "" \
+    scenario_click_element "evolve-prompt-input|Configuration change descriptor" "textField" \
         || die "Descriptor prompt input was not reachable by accessibility metadata"
     phase_pass "Descriptor prompt input reached"
 
