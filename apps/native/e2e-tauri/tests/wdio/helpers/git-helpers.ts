@@ -1,17 +1,19 @@
 // oxlint-disable no-unused-expressions
 import { expect } from 'chai';
 
-function extractFileDiffContent(rawDiff, targetFilePath) {
+interface GitDiff {
+  raw: string;
+  files: Array<{ status: string; path: string }>;
+}
+
+function extractFileDiffContent(rawDiff: string, targetFilePath: string): string {
   const lines = rawDiff.split('\n');
-  const fileDiffLines = [];
+  const fileDiffLines: string[] = [];
   let foundFile = false;
 
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
 
-    // Match unified diff file header lines like:
-    // diff --git a/path/to/file b/path/to/file
-    // +++ b/path/to/file
     if (
       line.startsWith('diff --git ') &&
       line.includes(targetFilePath)
@@ -22,7 +24,6 @@ function extractFileDiffContent(rawDiff, targetFilePath) {
     if (foundFile) {
       fileDiffLines.push(line);
 
-      // If we hit the next file header, stop collecting
       if (
         fileDiffLines.length > 1 &&
         line.startsWith('diff --git ') &&
@@ -37,7 +38,7 @@ function extractFileDiffContent(rawDiff, targetFilePath) {
   return fileDiffLines.join('\n');
 }
 
-export function assertDiffContains(gitDiff, filePath, searchString) {
+export function assertDiffContains(gitDiff: GitDiff, filePath: string, searchString: string): void {
   const fileDiffContent = extractFileDiffContent(gitDiff.raw, filePath);
 
   if (!fileDiffContent) {
@@ -58,7 +59,7 @@ export function assertDiffContains(gitDiff, filePath, searchString) {
   }
 }
 
-export function assertDiffDoesNotContain(gitDiff, filePath, searchString) {
+export function assertDiffDoesNotContain(gitDiff: GitDiff, filePath: string, searchString: string): void {
   const fileDiffContent = extractFileDiffContent(gitDiff.raw, filePath);
 
   if (!fileDiffContent) {

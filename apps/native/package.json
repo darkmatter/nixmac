@@ -30,12 +30,13 @@
     "test:e2e:install": "playwright install --with-deps chromium",
     "test:e2e:ui:app": "playwright test --ui",
     "test:wdio:services": "process-compose -f e2e-tauri/process-compose.yaml up",
-    "test:wdio": "wdio run wdio.conf.mjs",
-    "test:wdio:smoke": "wdio run e2e-tauri/wdio.smoke.conf.mjs",
-    "test:wdio:basic-prompts": "wdio run e2e-tauri/wdio.basic-prompts.conf.mjs",
-    "test:wdio:discard": "wdio run e2e-tauri/wdio.discard.conf.mjs",
-    "test:wdio:modify": "wdio run e2e-tauri/wdio.modify.conf.mjs",
-    "test:wdio:onboarding": "wdio run e2e-tauri/wdio.onboarding.conf.mjs"
+    "test:wdio": "node scripts/run-wdio-tests.mjs",
+    "build:e2e": "tsc -p e2e-tauri/tsconfig.json",
+    "test:wdio:smoke": "npm run build:e2e && wdio run e2e-tauri/wdio.smoke.conf.mjs",
+    "test:wdio:basic-prompts": "npm run build:e2e && wdio run e2e-tauri/wdio.basic-prompts.conf.mjs",
+    "test:wdio:discard": "npm run build:e2e && wdio run e2e-tauri/wdio.discard.conf.mjs",
+    "test:wdio:modify": "npm run build:e2e && wdio run e2e-tauri/wdio.modify.conf.mjs",
+    "test:wdio:onboarding": "npm run build:e2e && wdio run e2e-tauri/wdio.onboarding.conf.mjs"
   },
   "dependencies": {
     "@distilled.cloud/neon": "^0.7.12",
@@ -139,6 +140,8 @@
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
+    "@types/chai": "^5.2.3",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^25.6.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",

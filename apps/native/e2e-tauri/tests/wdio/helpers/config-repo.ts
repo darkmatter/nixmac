@@ -26,7 +26,13 @@ const NIXMAC_APP_SUPPORT_DIR = path.join(
 );
 const NIXMAC_SETTINGS_PATH = path.join(NIXMAC_APP_SUPPORT_DIR, 'settings.json');
 
-async function pathExists(filePath) {
+export interface GitDiffResult {
+  repoDir: string;
+  raw: string;
+  files: Array<{ status: string; path: string }>;
+}
+
+async function pathExists(filePath: string): Promise<boolean> {
   try {
     await access(filePath, fsConstants.F_OK);
     return true;
@@ -35,11 +41,11 @@ async function pathExists(filePath) {
   }
 }
 
-async function sleep(ms) {
+async function sleep(ms: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function readJsonFileOrThrow(filePath, label) {
+async function readJsonFileOrThrow(filePath: string, label: string): Promise<unknown> {
   if (!(await pathExists(filePath))) {
     throw new Error(`[wdio:test-env] ${label} file not found at ${filePath}`);
   }
@@ -54,24 +60,24 @@ async function readJsonFileOrThrow(filePath, label) {
   }
 }
 
-function getCurrentUsername() {
+function getCurrentUsername(): string {
   try {
     return os.userInfo().username;
   } catch {
-    return process.env.USER || 'nobody';
+    return process.env['USER'] || 'nobody';
   }
 }
 
-function getPlatformTriple() {
-  const archMap = { arm64: 'aarch64', x64: 'x86_64' };
+function getPlatformTriple(): string {
+  const archMap: Record<string, string> = { arm64: 'aarch64', x64: 'x86_64' };
   const arch = archMap[process.arch] ?? process.arch;
   const platform = process.platform;
   return `${arch}-${platform}`;
 }
 
-async function listNixFiles(dirPath) {
+async function listNixFiles(dirPath: string): Promise<string[]> {
   const entries = await readdir(dirPath, { withFileTypes: true });
-  const files = [];
+  const files: string[] = [];
 
   for (const entry of entries) {
     const fullPath = path.join(dirPath, entry.name);
@@ -85,11 +91,11 @@ async function listNixFiles(dirPath) {
   return files;
 }
 
-async function runGit(args, cwd) {
+async function runGit(args: string[], cwd: string): Promise<void> {
   await execFileAsync('git', args, { cwd });
 }
 
-export async function createNixConfigGitRepo(hostname) {
+export async function createNixConfigGitRepo(hostname: string): Promise<string> {
   const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'nix-config-'));
   console.log(`[wdio:test-env] Creating temporary config repo at ${tmpDir}`);
   await cp(CONFIG_TEMPLATE_DIR, tmpDir, { recursive: true });
@@ -123,13 +129,9 @@ export async function createNixConfigGitRepo(hostname) {
   return tmpDir;
 }
 
-export async function createEmptyConfigDir() {
+export async function createEmptyConfigDir(): Promise<string> {
   const tmpDir = await mkdtemp(path.join(os.tmpdir(), 'nix-config-empty-'));
 
-  // Onboarding tests should begin from an empty directory while still being a
-  // git repository.
-  // We intentionally skip an initial commit so the app can own the first
-  // bootstrap commit flow (if it commits) or leave files uncommitted (if not).
   await runGit(['init'], tmpDir);
   await runGit(['config', 'user.name', 'eval'], tmpDir);
   await runGit(['config', 'user.email', 'eval@test'], tmpDir);
@@ -138,9 +140,9 @@ export async function createEmptyConfigDir() {
   return tmpDir;
 }
 
-export async function getConfigRepoDir() {
-  const settings = await readJsonFileOrThrow(NIXMAC_SETTINGS_PATH, 'settings');
-  const repoDir = settings?.configDir;
+export async function getConfigRepoDir(): Promise<string> {
+  const settings = (await readJsonFileOrThrow(NIXMAC_SETTINGS_PATH, 'settings')) as Record<string, unknown>;
+  const repoDir = settings?.['configDir'] as string | undefined;
 
   if (!repoDir) {
     throw new Error('[wdio:test-env] settings.configDir is missing');
@@ -149,7 +151,7 @@ export async function getConfigRepoDir() {
   return repoDir;
 }
 
-export async function getConfigRepoGitDiff({ format = 'structured' } = {}) {
+export async function getConfigRepoGitDiff({ format = 'structured' }: { format?: string } = {}): Promise<GitDiffResult | string> {
   const repoDir = await getConfigRepoDir();
 
   const [{ stdout: rawDiff }, { stdout: nameStatus }] = await Promise.all([
@@ -168,7 +170,7 @@ export async function getConfigRepoGitDiff({ format = 'structured' } = {}) {
     .map((line) => {
       const [status, ...pathParts] = line.split(/\s+/);
       return {
-        status,
+        status: status ?? '',
         path: pathParts.join(' '),
       };
     });
@@ -180,7 +182,7 @@ export async function getConfigRepoGitDiff({ format = 'structured' } = {}) {
   };
 }
 
-export async function assertConfigRepoInitialized() {
+export async function assertConfigRepoInitialized(): Promise<{ repoDir: string }> {
   const repoDir = await getConfigRepoDir();
 
   let stdout = '';
@@ -201,7 +203,7 @@ export async function assertConfigRepoInitialized() {
   return { repoDir };
 }
 
-export async function assertConfigRepoFileExists(relativePath) {
+export async function assertConfigRepoFileExists(relativePath: string): Promise<string> {
   const repoDir = await getConfigRepoDir();
   const absolutePath = path.join(repoDir, relativePath);
 
@@ -214,7 +216,7 @@ export async function assertConfigRepoFileExists(relativePath) {
   return absolutePath;
 }
 
-export async function assertConfigRepoClean() {
+export async function assertConfigRepoClean(): Promise<{ repoDir: string }> {
   const repoDir = await getConfigRepoDir();
 
   const { stdout } = await execFileAsync('git', ['status', '--porcelain'], { cwd: repoDir });
@@ -229,9 +231,23 @@ export async function assertConfigRepoClean() {
   return { repoDir };
 }
 
-export async function waitForConfigRepoInitialized({ timeout = 120000, interval = 1000 } = {}) {
+export async function resetConfigRepoToInitialState(): Promise<{ repoDir: string }> {
+  const repoDir = await getConfigRepoDir();
+
+  // Reset all unstaged changes
+  await runGit(['checkout', '-f'], repoDir);
+  
+  // Reset to the initial commit (HEAD)
+  await runGit(['reset', '--hard', 'HEAD'], repoDir);
+
+  console.log(`[wdio:test-env] Reset config repo to initial state: ${repoDir}`);
+
+  return { repoDir };
+}
+
+export async function waitForConfigRepoInitialized({ timeout = 120000, interval = 1000 }: { timeout?: number; interval?: number } = {}): Promise<{ repoDir: string }> {
   const startedAt = Date.now();
-  let lastError;
+  let lastError: unknown;
 
   while (Date.now() - startedAt < timeout) {
     try {
@@ -247,9 +263,9 @@ export async function waitForConfigRepoInitialized({ timeout = 120000, interval 
   );
 }
 
-export async function waitForConfigRepoFileExists(relativePath, { timeout = 120000, interval = 1000 } = {}) {
+export async function waitForConfigRepoFileExists(relativePath: string, { timeout = 120000, interval = 1000 }: { timeout?: number; interval?: number } = {}): Promise<string> {
   const startedAt = Date.now();
-  let lastError;
+  let lastError: unknown;
 
   while (Date.now() - startedAt < timeout) {
     try {
@@ -265,9 +281,9 @@ export async function waitForConfigRepoFileExists(relativePath, { timeout = 1200
   );
 }
 
-export async function waitForConfigRepoClean({ timeout = 120000, interval = 1000 } = {}) {
+export async function waitForConfigRepoClean({ timeout = 120000, interval = 1000 }: { timeout?: number; interval?: number } = {}): Promise<{ repoDir: string }> {
   const startedAt = Date.now();
-  let lastError;
+  let lastError: unknown;
 
   while (Date.now() - startedAt < timeout) {
     try {
