@@ -10,7 +10,7 @@ const openrouterApiKey =
     ? ''
     : trimEnv('OPENROUTER_API_KEY'));
 const openrouterModel =
-  process.env.NIXMAC_E2E_OPENROUTER_MODEL || 'anthropic/claude-sonnet-4';
+  process.env.NIXMAC_E2E_OPENROUTER_MODEL || 'openai/gpt-4.1';
 const openrouterSummaryModel =
   process.env.NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL || 'openai/gpt-4o-mini';
 

@@ -183,13 +183,22 @@ The PR gate deliberately uses different surfaces for different jobs:
   `NIXMAC_E2E_OPENROUTER_API_KEY` secret and does not fall back to the generic
   `OPENROUTER_API_KEY` from `ops/secrets/secrets.yaml`; this avoids silently
   reusing a stale or unfunded personal key. Before the app build, the workflow
-  calls OpenRouter `/auth/key` and performs tiny completions against
-  `NIXMAC_E2E_OPENROUTER_MODEL` and `NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL` so
-  auth, credits, limits, and model access fail early as infra. If OpenRouter
-  reports a finite `limit_remaining`, the preflight requires at least
-  `NIXMAC_E2E_OPENROUTER_MIN_LIMIT_REMAINING` credits (`1` by default). Local
-  runs can still use `OPENROUTER_API_KEY` unless
-  `NIXMAC_E2E_REQUIRE_DEDICATED_OPENROUTER_KEY=1` is set.
+  calls OpenRouter `/auth/key`, performs tiny completions against
+  `NIXMAC_E2E_OPENROUTER_MODEL` and `NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL`, and
+  checks that the evolve model can return OpenAI-compatible tool calls for a
+  simple edit request. The CI default evolve model is `openai/gpt-4.1` because
+  the WDIO app path uses the OpenAI-compatible tool-call contract; override it
+  with `NIXMAC_E2E_OPENROUTER_MODEL` only after validating the model with this
+  preflight. This lane is a live contract test for the OpenAI-compatible
+  tool-call path, not coverage for the app's production default evolve model.
+  If OpenRouter reports a finite `limit_remaining`, the preflight requires at
+  least `NIXMAC_E2E_OPENROUTER_MIN_LIMIT_REMAINING` credits (`1` by default).
+  Local runs can still use `OPENROUTER_API_KEY` unless
+  `NIXMAC_E2E_REQUIRE_DEDICATED_OPENROUTER_KEY=1` is set. Live provider
+  scenario completion JSONL logs are uploaded as a GitHub Actions artifact for
+  debugging and are intentionally kept out of the public R2 report bundle.
+  Preflight diagnostic JSON still lives in the public report bundle and only
+  contains bounded synthetic auth/model/tool-call checks.
 - **Full-Mac (`tests/e2e`)**: real macOS desktop proof using Peekaboo and ffmpeg.
   These scenarios validate launch/install/OS integration behavior on the configured
   Mac runner and keep real full-screen recordings.

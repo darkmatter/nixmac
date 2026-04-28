@@ -43,7 +43,10 @@ pub fn log_path_for_today(prefix: &str) -> PathBuf {
 /// Checks `NIXMAC_RECORD_COMPLETIONS`, ensures the log directory exists, and
 /// logs the target path. Returns `true` when recording should be enabled.
 pub fn init_recording(prefix: &str, label: &str) -> bool {
-    if std::env::var_os(RECORD_COMPLETIONS_ENV).is_none() {
+    if std::env::var_os(RECORD_COMPLETIONS_ENV)
+        .filter(|value| !value.is_empty())
+        .is_none()
+    {
         return false;
     }
 
@@ -142,6 +145,16 @@ mod tests {
         clear_env();
 
         assert!(!init_recording("test", "test provider"));
+    }
+
+    #[test]
+    fn init_recording_is_disabled_with_empty_env() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        clear_env();
+        std::env::set_var(RECORD_COMPLETIONS_ENV, "");
+
+        assert!(!init_recording("test", "test provider"));
+        clear_env();
     }
 
     #[test]

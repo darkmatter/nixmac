@@ -11,7 +11,7 @@ import {
 const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const E2E_TAURI_DIR = path.resolve(THIS_DIR, '..');
 const SCENARIO = 'live_openrouter_evolve_smoke';
-const EVOLVE_MODEL = process.env.NIXMAC_E2E_OPENROUTER_MODEL || 'anthropic/claude-sonnet-4';
+const EVOLVE_MODEL = process.env.NIXMAC_E2E_OPENROUTER_MODEL || 'openai/gpt-4.1';
 const SUMMARY_MODEL = process.env.NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL || 'openai/gpt-4o-mini';
 const REQUEST_TIMEOUT_MS = Number(process.env.NIXMAC_E2E_OPENROUTER_PREFLIGHT_TIMEOUT_MS ?? 30000);
 const MIN_LIMIT_REMAINING = parseNonNegativeNumber(
@@ -107,6 +107,14 @@ function safeErrorMessage(body) {
   return message ?? JSON.stringify(body);
 }
 
+function textPreview(value, maxLength = 500) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
+}
+
 async function requestJson(url, options) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -147,7 +155,7 @@ async function checkCompletionModel({ model, headers }) {
     body: JSON.stringify({
       model,
       messages: [{ role: 'user', content: 'Reply with exactly: ok' }],
-      max_tokens: 8,
+      max_completion_tokens: 64,
       temperature: 0,
     }),
   });
@@ -158,6 +166,67 @@ async function checkCompletionModel({ model, headers }) {
       httpStatus: result.status,
       model: result.body?.model ?? null,
       answer: result.body?.choices?.[0]?.message?.content ?? null,
+      usage: result.body?.usage ?? null,
+    },
+  };
+}
+
+async function checkToolCallingModel({ model, headers }) {
+  const result = await requestJson('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      model,
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are nixmac. When the user asks for a configuration edit, call the edit_file tool.',
+        },
+        {
+          role: 'user',
+          content:
+            'Edit flake.nix only. Add pkgs.jq next to pkgs.vim. Keep valid Nix syntax.',
+        },
+      ],
+      tools: [
+        {
+          type: 'function',
+          function: {
+            name: 'edit_file',
+            description: 'Edit a file by replacing one exact text fragment.',
+            parameters: {
+              type: 'object',
+              properties: {
+                path: { type: 'string' },
+                search: { type: 'string' },
+                replace: { type: 'string' },
+              },
+              required: ['path', 'search', 'replace'],
+            },
+          },
+        },
+      ],
+      max_completion_tokens: 1024,
+      temperature: 0,
+    }),
+  });
+
+  const choice = result.body?.choices?.[0];
+  const toolCalls = Array.isArray(choice?.message?.tool_calls) ? choice.message.tool_calls : [];
+  const toolNames = toolCalls
+    .map((toolCall) => toolCall?.function?.name)
+    .filter((name) => typeof name === 'string');
+
+  return {
+    result,
+    details: {
+      httpStatus: result.status,
+      model: result.body?.model ?? null,
+      finishReason: choice?.finish_reason ?? null,
+      contentPreview: textPreview(choice?.message?.content),
+      toolCallCount: toolCalls.length,
+      toolNames,
       usage: result.body?.usage ?? null,
     },
   };
@@ -181,7 +250,11 @@ async function failPreflight(message, details, startedAt) {
     startedAt,
     finishedAt,
     durationMs: Date.parse(finishedAt) - Date.parse(startedAt),
-    assertions: ['Authenticate OpenRouter key and complete one tiny request against the live model'],
+    assertions: [
+      'Authenticate OpenRouter key',
+      'Complete one tiny request against the live model',
+      'Confirm the live model can return OpenAI-compatible tool calls',
+    ],
     proof: [
       {
         kind: 'log',
@@ -298,6 +371,37 @@ async function main() {
     );
   }
 
+  const { result: evolveToolCallResult, details: evolveToolCallDetails } =
+    await checkToolCallingModel({ model: EVOLVE_MODEL, headers });
+
+  if (!evolveToolCallResult.ok) {
+    await failPreflight(
+      `OpenRouter live model tool-call preflight failed with HTTP ${
+        evolveToolCallResult.status
+      }: ${safeErrorMessage(evolveToolCallResult.body)}`,
+      {
+        ...baseDetails,
+        auth: authDetails,
+        evolveCompletion: evolveCompletionDetails,
+        evolveToolCall: evolveToolCallDetails,
+      },
+      startedAt,
+    );
+  }
+
+  if (evolveToolCallDetails.toolCallCount < 1) {
+    await failPreflight(
+      'OpenRouter live model preflight did not return an OpenAI-compatible tool call for a simple edit request.',
+      {
+        ...baseDetails,
+        auth: authDetails,
+        evolveCompletion: evolveCompletionDetails,
+        evolveToolCall: evolveToolCallDetails,
+      },
+      startedAt,
+    );
+  }
+
   const { result: summaryCompletionResult, details: summaryCompletionDetails } =
     SUMMARY_MODEL === EVOLVE_MODEL
       ? { result: evolveCompletionResult, details: evolveCompletionDetails }
@@ -321,7 +425,7 @@ async function main() {
   console.log(
     `OpenRouter preflight passed using ${selected.source} (${maskKey(
       selected.key,
-    )}) with evolve=${EVOLVE_MODEL} summary=${SUMMARY_MODEL}`,
+    )}) with evolve=${EVOLVE_MODEL} summary=${SUMMARY_MODEL} toolCalls=${evolveToolCallDetails.toolCallCount}`,
   );
 }
 

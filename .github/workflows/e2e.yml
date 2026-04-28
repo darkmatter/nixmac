@@ -432,9 +432,11 @@ jobs:
       NIXMAC_E2E_WEBVIEW_VIDEO: "0"
       NIXMAC_E2E_OPENROUTER_API_KEY: ${{ secrets.NIXMAC_E2E_OPENROUTER_API_KEY }}
       NIXMAC_E2E_REQUIRE_DEDICATED_OPENROUTER_KEY: "1"
-      NIXMAC_E2E_OPENROUTER_MODEL: ${{ vars.NIXMAC_E2E_OPENROUTER_MODEL || 'anthropic/claude-sonnet-4' }}
+      NIXMAC_E2E_OPENROUTER_MODEL: ${{ vars.NIXMAC_E2E_OPENROUTER_MODEL || 'openai/gpt-4.1' }}
       NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL: ${{ vars.NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL || 'openai/gpt-4o-mini' }}
       NIXMAC_E2E_OPENROUTER_MIN_LIMIT_REMAINING: ${{ vars.NIXMAC_E2E_OPENROUTER_MIN_LIMIT_REMAINING || '1' }}
+      NIXMAC_RECORD_COMPLETIONS: ${{ matrix.scenario == 'live_openrouter_evolve_smoke' && '1' || '' }}
+      NIXMAC_COMPLETION_LOG_DIR: /tmp/nixmac-e2e-provider-completions/${{ matrix.scenario }}
     strategy:
       fail-fast: false
       matrix:
@@ -718,6 +720,15 @@ jobs:
         with:
           name: e2e-${{ matrix.scenario }}
           path: apps/native/e2e-tauri/artifacts/
+          retention-days: 14
+
+      - name: Upload live provider completion logs
+        if: always() && matrix.scenario == 'live_openrouter_evolve_smoke'
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-live-openrouter-completions-${{ matrix.scenario }}
+          path: /tmp/nixmac-e2e-provider-completions/${{ matrix.scenario }}/
+          if-no-files-found: ignore
           retention-days: 14
 
       - name: Scenario summary
