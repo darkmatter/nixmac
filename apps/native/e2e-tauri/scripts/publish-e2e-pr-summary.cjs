@@ -70,6 +70,16 @@ module.exports = async function publishE2ePrSummary({ github, context, core }) {
     }
   }
 
+  function readManifest() {
+    const manifestPath = path.join(process.cwd(), "apps/native/e2e-tauri/scenarios/manifest.json");
+    try {
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+      return new Map((manifest.scenarios || []).map((scenario) => [scenario.name, scenario]));
+    } catch {
+      return new Map();
+    }
+  }
+
   function isPublicUrl(value) {
     return /^https?:\/\//.test(String(value || ""));
   }
@@ -147,6 +157,52 @@ module.exports = async function publishE2ePrSummary({ github, context, core }) {
     return selected.find((scenario) => scenario.name === scenarioName)
       || attention.find((scenario) => scenario.name === scenarioName)
       || {};
+  }
+
+  function scenarioMetadata(selection, manifest, scenarioName) {
+    const manifestMeta = manifest.get(scenarioName) || {};
+    const selectionMeta = scenarioMeta(selection, scenarioName);
+    return {
+      ...manifestMeta,
+      ...selectionMeta,
+      title: selectionMeta.title || manifestMeta.title || scenarioName,
+      summary: selectionMeta.summary || manifestMeta.summary || "",
+      coverage: Array.isArray(selectionMeta.coverage) && selectionMeta.coverage.length
+        ? selectionMeta.coverage
+        : manifestMeta.coverage || [],
+      knownGaps: Array.isArray(selectionMeta.knownGaps) && selectionMeta.knownGaps.length
+        ? selectionMeta.knownGaps
+        : manifestMeta.knownGaps || [],
+      fullMacCompanions: Array.isArray(selectionMeta.fullMacCompanions)
+        ? selectionMeta.fullMacCompanions
+        : manifestMeta.fullMacCompanions || [],
+    };
+  }
+
+  function selectedScenarioNames(selection) {
+    return new Set((selection?.selected || []).map((scenario) => scenario.name).filter(Boolean));
+  }
+
+  function selectedCompanionParents(selection, manifest, scenarioName) {
+    const selectedNames = selectedScenarioNames(selection);
+    return (selection?.selected || [])
+      .filter((scenario) => selectedNames.has(scenario.name))
+      .map((scenario) => scenarioMetadata(selection, manifest, scenario.name))
+      .filter(
+        (metadata) =>
+          metadata.lane === "tauri-wdio"
+          && (metadata.fullMacCompanions || []).includes(scenarioName),
+      );
+  }
+
+  function isUnavailableCompanion(report, selection, manifest) {
+    return report?.lane === "full-mac"
+      && (report.syntheticMissingReport === true || report.selectedButMissing === true)
+      && selectedCompanionParents(selection, manifest, report.scenario).length > 0;
+  }
+
+  function displayStatusForReport(report, selection, manifest) {
+    return isUnavailableCompanion(report, selection, manifest) ? "unavailable" : report.status;
   }
 
   function formatCount(value) {
@@ -304,29 +360,34 @@ module.exports = async function publishE2ePrSummary({ github, context, core }) {
 
   const reports = findReports(artifactRoot);
   const selection = readSelection(artifactRoot);
+  const manifest = readManifest();
   testedCommit = selection?.headSha || testedCommit;
   const table = reports.length
     ? [
         "| Scenario | Lane | Result | What it checks | Report | Proof |",
         "| --- | --- | --- | --- | --- | --- |",
         ...reports.map((report) => {
-          const meta = scenarioMeta(selection, report.scenario);
+          const meta = scenarioMetadata(selection, manifest, report.scenario);
+          const displayStatus = displayStatusForReport(report, selection, manifest);
           const proofUrl = report.primaryProofUrl || report.failureProofUrl;
           const proof = isPublicUrl(proofUrl)
             ? linkOrArtifact(proofUrl, primaryProofLabel(report))
             : publicOrArtifact(proofUrl);
           const reportUrl = linkOrArtifact(report.htmlReportUrl, "Report");
           const checks = meta.summary || "Scenario coverage metadata unavailable.";
-          return "| `" + markdownCode(report.scenario) + "` | " + tableCell(report.lane) + " | **" + tableCell(report.status) + "** | " + tableCell(checks) + " | " + tableCell(reportUrl) + " | " + tableCell(proof) + " |";
+          return "| `" + markdownCode(report.scenario) + "` | " + tableCell(report.lane) + " | **" + tableCell(displayStatus) + "** | " + tableCell(checks) + " | " + tableCell(reportUrl) + " | " + tableCell(proof) + " |";
         }),
       ].join("\n")
     : required
       ? "_No report JSON found. Check workflow artifacts/logs._"
       : "";
   const failureSections = reports
-    .filter((report) => report.status !== "passed")
+    .filter((report) => {
+      const displayStatus = displayStatusForReport(report, selection, manifest);
+      return displayStatus !== "passed" && displayStatus !== "unavailable";
+    })
     .map((report) => {
-      const meta = scenarioMeta(selection, report.scenario);
+      const meta = scenarioMetadata(selection, manifest, report.scenario);
       const phase = (report.phases || []).find((item) => item.status !== "passed");
       const heading = `### Failure: \`${markdownCode(report.scenario)}\``;
       const analysis = summarizeError(phase?.error);
@@ -368,6 +429,24 @@ module.exports = async function publishE2ePrSummary({ github, context, core }) {
       return `${heading}\n\n${phaseText}${coverage}${gaps}${matchedFiles}${limitations}${signals}${image}${videoLink}${logLink}${reportLink}${replay}`;
     })
     .join("\n\n");
+  const unavailableCompanionReports = reports.filter((report) =>
+    isUnavailableCompanion(report, selection, manifest),
+  );
+  const unavailableSections = unavailableCompanionReports
+    .map((report) => {
+      const parents = selectedCompanionParents(selection, manifest, report.scenario)
+        .map((parent) => parent.title || parent.name)
+        .filter(Boolean);
+      const phase = (report.phases || []).find((item) => item.status !== "passed");
+      const parentText = parents.length
+        ? ` Attached to: ${markdownText(parents.join(", "))}.`
+        : "";
+      const replay = report.replayCommand
+        ? `\n\n**Replay:** \`${markdownCode(report.replayCommand)}\``
+        : "";
+      return `### Unavailable companion evidence: \`${markdownCode(report.scenario)}\`\n\nSelected full-Mac companion evidence did not produce scenario-level report JSON.${parentText}\n\n**Underlying status:** \`${markdownCode(report.status)}\`\n\n**Next action:** ${markdownText(nextActionForError(phase?.error, report))}${replay}`;
+    })
+    .join("\n\n");
   const scope = formatScope(selection, reports, required);
   const runShape = selection?.selectionMode === "all-label"
     ? "`e2e:all` forced the full validation pack, including full-Mac. Normal PRs keep this format but only run full-Mac when labels or matched full-Mac paths select it."
@@ -396,6 +475,7 @@ module.exports = async function publishE2ePrSummary({ github, context, core }) {
     attentionSection,
     required ? table : "",
     failureSections,
+    unavailableSections,
     aiQaReportUrl ? `[AI QA evidence packet](${aiQaReportUrl})` : "",
     `[Workflow run](${runUrl})`,
   ].filter((section) => String(section || "").trim()).join("\n\n");
@@ -431,12 +511,24 @@ module.exports = async function publishE2ePrSummary({ github, context, core }) {
     attentionSection,
     required ? table : "",
     failureSections,
+    unavailableSections,
     aiQaReportUrl ? `[AI QA evidence packet](${aiQaReportUrl})` : "",
     `[Workflow run](${runUrl})`,
   ].filter(Boolean).join("\n\n");
-  const failedReports = reports.filter((report) => report.status !== "passed");
+  const failedReports = reports.filter((report) => {
+    const displayStatus = displayStatusForReport(report, selection, manifest);
+    return displayStatus !== "passed" && displayStatus !== "unavailable";
+  });
   const compactFailures = failedReports.length
     ? `**Failed:** ${failedReports.map((report) => {
+        const reportUrl = isPublicUrl(report.htmlReportUrl)
+          ? `[${markdownCode(report.scenario)}](${report.htmlReportUrl})`
+          : "`" + markdownCode(report.scenario) + "`";
+        return reportUrl;
+      }).join(", ")}`
+    : "";
+  const compactUnavailable = unavailableCompanionReports.length
+    ? `**Unavailable companion evidence:** ${unavailableCompanionReports.map((report) => {
         const reportUrl = isPublicUrl(report.htmlReportUrl)
           ? `[${markdownCode(report.scenario)}](${report.htmlReportUrl})`
           : "`" + markdownCode(report.scenario) + "`";
@@ -491,6 +583,7 @@ module.exports = async function publishE2ePrSummary({ github, context, core }) {
     previewNotice.trim(),
     `**Status:** ${status}`,
     compactFailures,
+    compactUnavailable,
     `**Scope:** ${scope}`,
     runShape ? `**Run shape:** ${runShape}` : "",
     `**Tested commit:** \`${testedCommit}\``,

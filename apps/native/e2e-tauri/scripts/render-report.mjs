@@ -231,6 +231,114 @@ function selectedScenarios(selection) {
     }));
 }
 
+function selectedScenarioNameSet(selection, reports) {
+  const selectedNames = selectedScenarios(selection).map((scenario) => scenario.name);
+  if (selectedNames.length) return new Set(selectedNames);
+  return new Set((reports ?? []).map((report) => report.scenario).filter(Boolean));
+}
+
+function reportByScenario(reports) {
+  return new Map((reports ?? []).filter((report) => report?.scenario).map((report) => [report.scenario, report]));
+}
+
+function scenarioAnchor(name) {
+  const slug =
+    String(name ?? 'unknown')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'unknown';
+  return `scenario-${slug}`;
+}
+
+function sortReportsForDisplay(reports, { selection = null, manifest = new Map() } = {}) {
+  const selectedOrder = new Map(
+    selectedScenarios(selection).map((scenario, index) => [scenario.name, index]),
+  );
+  const manifestOrder = new Map(Array.from(manifest.keys()).map((name, index) => [name, index]));
+  const selectedCount = selectedOrder.size;
+  const manifestCount = manifestOrder.size;
+
+  return [...(reports ?? [])].sort((a, b) => {
+    const aSelected = selectedOrder.has(a.scenario);
+    const bSelected = selectedOrder.has(b.scenario);
+    if (aSelected || bSelected) {
+      const aRank = aSelected ? selectedOrder.get(a.scenario) : selectedCount + 1;
+      const bRank = bSelected ? selectedOrder.get(b.scenario) : selectedCount + 1;
+      if (aRank !== bRank) return aRank - bRank;
+    }
+
+    const aManifest = manifestOrder.has(a.scenario);
+    const bManifest = manifestOrder.has(b.scenario);
+    if (aManifest || bManifest) {
+      const aRank = aManifest ? manifestOrder.get(a.scenario) : manifestCount + 1;
+      const bRank = bManifest ? manifestOrder.get(b.scenario) : manifestCount + 1;
+      if (aRank !== bRank) return aRank - bRank;
+    }
+
+    return String(a.scenario ?? '').localeCompare(String(b.scenario ?? ''));
+  });
+}
+
+function selectedCompanionParents(scenarioName, { manifest = new Map(), selectedScenarioNames = new Set() } = {}) {
+  return Array.from(manifest.values()).filter((metadata) => {
+    if (metadata?.lane !== 'tauri-wdio' || !selectedScenarioNames.has(metadata.name)) return false;
+    return (metadata.fullMacCompanions ?? []).includes(scenarioName);
+  });
+}
+
+function evidenceRole(report, { manifest = new Map(), selectedScenarioNames = new Set() } = {}) {
+  const parents = selectedCompanionParents(report.scenario, { manifest, selectedScenarioNames });
+  if (report.lane === 'full-mac' && parents.length > 0) {
+    const parentTitles = parents
+      .map((parent) => parent.title ?? parent.name)
+      .filter(Boolean)
+      .slice(0, 3);
+    const extra = parents.length > parentTitles.length ? ` +${parents.length - parentTitles.length} more` : '';
+    return {
+      kind: 'full-mac-companion',
+      label: 'Real-Mac companion',
+      detail: `Attached to ${parentTitles.join(', ')}${extra}`,
+    };
+  }
+  if (report.lane === 'full-mac') {
+    return {
+      kind: 'full-mac-standalone',
+      label: 'Full-Mac recording',
+      detail: 'Standalone real desktop evidence',
+    };
+  }
+  if (report.lane === 'tauri-wdio') {
+    return {
+      kind: 'hosted-wdio',
+      label: 'Hosted assertions',
+      detail: 'Deterministic webview proof',
+    };
+  }
+  return {
+    kind: 'other',
+    label: report.lane ?? 'unknown lane',
+    detail: '',
+  };
+}
+
+function isUnavailableCompanionReport(report, role) {
+  return (
+    role?.kind === 'full-mac-companion' &&
+    (report?.syntheticMissingReport === true || report?.selectedButMissing === true)
+  );
+}
+
+function displayStatusForReport(report, role) {
+  return isUnavailableCompanionReport(report, role) ? 'unavailable' : report.status;
+}
+
+function scenarioClassName(report, displayStatus) {
+  return Array.from(new Set(['scenario', report.status, displayStatus].filter(Boolean)))
+    .map((value) => escapeHtml(value))
+    .join(' ');
+}
+
 function synthesizeMissingReport({ selected, selection, manifest }) {
   const now = new Date().toISOString();
   const metadata = manifest.get(selected.name);
@@ -307,7 +415,7 @@ async function synthesizeMissingSelectedReports(reports, { selection, manifest }
     );
   }
 
-  return [...reports, ...syntheticReports].sort((a, b) => a.scenario.localeCompare(b.scenario));
+  return sortReportsForDisplay([...reports, ...syntheticReports], { selection, manifest });
 }
 
 function renderBullets(items, className = '') {
@@ -484,11 +592,20 @@ function renderLaneExplanation(report) {
     return `
       <p class="lane-note">
         Hosted webview lane: deterministic app-flow assertions with screenshot and frame-timeline proof.
-        It does not claim to be a full desktop screen recording.
+        Action-cursor markers in screenshots are synthetic WDIO proof overlays, not real cursor captures.
+        This lane does not claim to be a full desktop screen recording.
       </p>
     `;
   }
   if (report.lane === 'full-mac') {
+    if (report.syntheticMissingReport === true || report.selectedButMissing === true) {
+      return `
+        <p class="lane-note">
+          Full-Mac lane: real macOS desktop automation with full-screen recording evidence when the lane completes.
+          This selected companion did not produce its scenario report in this run.
+        </p>
+      `;
+    }
     return `
       <p class="lane-note">
         Full-Mac lane: real macOS desktop automation with full-screen recording evidence.
@@ -554,23 +671,142 @@ function renderPhaseError(error) {
   return escapeHtml(summarizeError(error).summary);
 }
 
-function renderReport(report, { fromDir = ARTIFACT_ROOT, manifest = new Map() } = {}) {
+function renderUnderlyingStatusNote(report, displayStatus) {
+  if (displayStatus !== 'unavailable' || report.status === displayStatus) return '';
+  return `
+    <p class="underlying-status-note">
+      Underlying gate status: <code>${escapeHtml(report.status)}</code>. Kept here for rerun and log triage.
+    </p>
+  `;
+}
+
+function renderUnavailableCompanionSummary(report, firstFailure) {
+  const syntheticMissing = report?.syntheticMissingReport === true || report?.selectedButMissing === true;
+  const analysis = syntheticMissing
+    ? { summary: 'Selected companion did not produce e2e-report.json.' }
+    : summarizeError(firstFailure?.error);
+  const nextAction = nextActionForError(firstFailure?.error, report);
+  return `
+    <div class="companion-unavailable">
+      <strong>Companion lane unavailable</strong>
+      <p>${escapeHtml(analysis.summary)}</p>
+      <p><span>Next action:</span> ${escapeHtml(nextAction)}</p>
+    </div>
+  `;
+}
+
+function renderCompanionEvidence(
+  metadata,
+  {
+    fromDir = ARTIFACT_ROOT,
+    manifest = new Map(),
+    allReports = [],
+    selectedScenarioNames = new Set(),
+  } = {},
+) {
+  const companionNames = (metadata?.fullMacCompanions ?? [])
+    .map((name) => String(name ?? '').trim())
+    .filter(Boolean)
+    .filter((name) => selectedScenarioNames.has(name));
+
+  if (metadata?.lane !== 'tauri-wdio' || companionNames.length === 0) {
+    return '';
+  }
+
+  const reports = reportByScenario(allReports);
+  const cards = companionNames
+    .map((name) => {
+      const companion = reports.get(name);
+      const companionMetadata = manifest.get(name);
+      const title = companionMetadata?.title ?? name;
+      const status = companion?.status ?? 'infra_failed';
+      const companionPage = companion?.artifactDir
+        ? relativeArtifactPath(path.join(companion.artifactDir, 'index.html'), fromDir)
+        : null;
+      const companionPageHref = companionPage ? encodeUriPath(companionPage) : null;
+      const isUnavailable =
+        !companion || companion.syntheticMissingReport === true || companion.selectedButMissing === true;
+      const displayStatus = isUnavailable ? 'unavailable' : status;
+      const firstFailure = companion?.phases?.find((phase) => phase.status !== 'passed');
+
+      let body = '';
+      if (isUnavailable) {
+        body = renderUnavailableCompanionSummary(companion, firstFailure);
+      } else if (firstFailure) {
+        const failureProof = companion.proof?.find((entry) => entry.isFailureProof);
+        const diagnosticLog = companion.proof?.find((entry) => entry.kind === 'log');
+        body = renderFailure(companion, firstFailure, failureProof, diagnosticLog, { fromDir });
+      } else {
+        body = renderProofGallery(companion.proof, { fromDir });
+      }
+
+      return `
+        <article class="companion-card ${escapeHtml(displayStatus)}">
+          <header>
+            <div>
+              <strong>${escapeHtml(title)}</strong>
+              <p><code>${escapeHtml(name)}</code></p>
+            </div>
+            <span class="status-pill ${escapeHtml(displayStatus)}">${escapeHtml(displayStatus)}</span>
+          </header>
+          ${
+            companionPageHref
+              ? `<p class="companion-link"><a href="${escapeHtml(companionPageHref)}">Open companion scenario page</a></p>`
+              : ''
+          }
+          ${body}
+        </article>
+      `;
+    })
+    .join('');
+
+  return `
+    <div class="companion-evidence">
+      <h3>Adjacent real-Mac evidence</h3>
+      <p>
+        This recording exercises the same product surface on a real Mac. It does not re-run this
+        scenario's deterministic hosted assertions.
+      </p>
+      <div class="companion-grid">
+        ${cards}
+      </div>
+    </div>
+  `;
+}
+
+function renderReport(
+  report,
+  {
+    fromDir = ARTIFACT_ROOT,
+    manifest = new Map(),
+    allReports = [],
+    selectedScenarioNames = new Set(),
+  } = {},
+) {
   const phases = report.phases ?? [];
   const proof = report.proof ?? [];
   const firstFailure = phases.find((phase) => phase.status !== 'passed');
   const failureProof = proof.find((entry) => entry.isFailureProof);
   const diagnosticLog = proof.find((entry) => entry.kind === 'log');
   const metadata = manifest.get(report.scenario);
+  const role = evidenceRole(report, { manifest, selectedScenarioNames });
+  const displayStatus = displayStatusForReport(report, role);
+  const body = isUnavailableCompanionReport(report, role)
+    ? renderUnavailableCompanionSummary(report, firstFailure)
+    : firstFailure
+      ? renderFailure(report, firstFailure, failureProof, diagnosticLog, { fromDir })
+      : renderProofGallery(proof, { fromDir });
 
   return `
-    <section class="scenario ${escapeHtml(report.status)}">
+    <section id="${escapeHtml(scenarioAnchor(report.scenario))}" class="${scenarioClassName(report, displayStatus)}">
       <header>
         <div>
           <h2>${escapeHtml(metadata?.title ?? report.scenario)}</h2>
           <p><code>${escapeHtml(report.scenario)}</code></p>
           <p>${escapeHtml(report.lane)} on ${escapeHtml(report.runnerId)} (${escapeHtml(report.runnerKind)})</p>
+          <p class="evidence-role">${escapeHtml(role.label)}${role.detail ? ` - ${escapeHtml(role.detail)}` : ''}</p>
         </div>
-        <strong>${escapeHtml(report.status)}</strong>
+        <strong>${escapeHtml(displayStatus)}</strong>
       </header>
       <dl>
         <dt>Commit</dt><dd><code>${escapeHtml(report.headSha)}</code></dd>
@@ -580,26 +816,25 @@ function renderReport(report, { fromDir = ARTIFACT_ROOT, manifest = new Map() } 
       ${renderLaneExplanation(report)}
       ${renderScenarioScope(metadata)}
       ${renderCaptureLimitations(report.captureLimitations)}
-      ${
-        firstFailure
-          ? renderFailure(report, firstFailure, failureProof, diagnosticLog, { fromDir })
-          : renderProofGallery(proof, { fromDir })
-      }
+      ${body}
+      ${renderCompanionEvidence(metadata, { fromDir, manifest, allReports, selectedScenarioNames })}
       ${renderVisualTimelines(proof, { fromDir })}
+      ${renderUnderlyingStatusNote(report, displayStatus)}
       <table>
         <thead><tr><th>Phase</th><th>Status</th><th>Duration</th><th>Summary</th></tr></thead>
         <tbody>
           ${phases
-            .map(
-              (phase) => `
+            .map((phase) => {
+              const phaseStatusClass = displayStatus === 'unavailable' ? 'unavailable' : phase.status;
+              return `
                 <tr>
                   <td>${escapeHtml(phase.name)}</td>
-                  <td><span class="status-pill ${escapeHtml(phase.status)}">${escapeHtml(phase.status)}</span></td>
+                  <td><span class="status-pill ${escapeHtml(phaseStatusClass)}">${escapeHtml(phase.status)}</span></td>
                   <td>${Math.round((phase.durationMs ?? 0) / 1000)}s</td>
                   <td>${renderPhaseError(phase.error)}</td>
                 </tr>
-              `,
-            )
+              `;
+            })
             .join('')}
         </tbody>
       </table>
@@ -607,10 +842,80 @@ function renderReport(report, { fromDir = ARTIFACT_ROOT, manifest = new Map() } 
   `;
 }
 
-function renderPage(reports, { fromDir = ARTIFACT_ROOT, manifest = new Map() } = {}) {
+function renderEvidenceLegend() {
+  return `
+    <section class="evidence-legend" aria-label="Evidence lane legend">
+      <h2>Evidence lanes</h2>
+      <div class="legend-grid">
+        <div>
+          <strong>Hosted assertions</strong>
+          <p>Deterministic hosted app-flow assertions. Screenshot cursor markers are synthetic proof overlays.</p>
+        </div>
+        <div>
+          <strong>Full-Mac recording</strong>
+          <p>Real macOS desktop automation with full-screen recording evidence.</p>
+        </div>
+        <div>
+          <strong>Real-Mac companion</strong>
+          <p>Real-Mac proof for the same product surface, not a replay of hosted assertions.</p>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderScenarioIndex(
+  reports,
+  { manifest = new Map(), selectedScenarioNames = new Set() } = {},
+) {
+  if ((reports ?? []).length <= 1) return '';
+
+  return `
+    <nav class="scenario-index" aria-label="Scenario index">
+      <h2>Scenario index</h2>
+      <div class="scenario-index-grid">
+        ${reports
+          .map((report) => {
+            const metadata = manifest.get(report.scenario);
+            const role = evidenceRole(report, { manifest, selectedScenarioNames });
+            const displayStatus = displayStatusForReport(report, role);
+            return `
+              <a class="scenario-index-card ${escapeHtml(displayStatus)}" href="#${escapeHtml(scenarioAnchor(report.scenario))}">
+                <span class="status-pill ${escapeHtml(displayStatus)}">${escapeHtml(displayStatus)}</span>
+                <strong>${escapeHtml(metadata?.title ?? report.scenario)}</strong>
+                <code>${escapeHtml(report.scenario)}</code>
+                <span>${escapeHtml(role.label)}</span>
+                ${role.detail ? `<small>${escapeHtml(role.detail)}</small>` : ''}
+              </a>
+            `;
+          })
+          .join('')}
+      </div>
+    </nav>
+  `;
+}
+
+function renderPage(
+  reports,
+  { fromDir = ARTIFACT_ROOT, manifest = new Map(), allReports = reports, selection = null } = {},
+) {
+  const selectedScenarioNames = selectedScenarioNameSet(selection, allReports);
+  const unavailableCompanions = reports.filter((report) =>
+    isUnavailableCompanionReport(
+      report,
+      evidenceRole(report, { manifest, selectedScenarioNames }),
+    ),
+  ).length;
   const passed = reports.filter((report) => report.status === 'passed').length;
   const assertionFailed = reports.filter((report) => report.status === 'failed').length;
-  const infraFailed = reports.filter((report) => report.status === 'infra_failed').length;
+  const infraFailed = reports.filter(
+    (report) =>
+      report.status === 'infra_failed' &&
+      !isUnavailableCompanionReport(
+        report,
+        evidenceRole(report, { manifest, selectedScenarioNames }),
+      ),
+  ).length;
   const missingReports = reports.filter((report) => report.syntheticMissingReport).length;
   const reported = reports.length - missingReports;
   const scenarioPage = reports.length === 1 && reports[0]?.artifactDir !== undefined && fromDir !== ARTIFACT_ROOT;
@@ -637,11 +942,24 @@ function renderPage(reports, { fromDir = ARTIFACT_ROOT, manifest = new Map() } =
     .scenario > header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; border-bottom: 1px solid #edf0f5; padding-bottom: 12px; }
     .scenario h2 { margin: 0; font-size: 18px; }
     .scenario p { margin: 4px 0 0; color: #687483; }
+    .evidence-role { color: #384250; font-weight: 600; }
     .lane-note { border-left: 3px solid #9aa8b7; background: #fbfcfe; padding: 8px 10px; color: #52606d; }
     .run-summary { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; color: #52606d; margin: 10px 0 18px; }
     .run-summary strong { color: #1f2933; }
     .passed > header strong { color: #11845b; }
     .failed > header strong, .infra_failed > header strong { color: #b42318; }
+    .scenario.unavailable > header strong { color: #92400e; }
+    .evidence-legend, .scenario-index { background: #fff; border: 1px solid #d8dee8; border-radius: 8px; margin: 16px 0; padding: 14px; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+    .evidence-legend h2, .scenario-index h2 { margin: 0 0 10px; font-size: 15px; }
+    .legend-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .legend-grid strong { display: block; margin-bottom: 4px; color: #384250; }
+    .legend-grid p { margin: 0; color: #52606d; }
+    .scenario-index-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+    .scenario-index-card { display: grid; gap: 5px; align-content: start; min-height: 112px; border: 1px solid #d8dee8; border-radius: 8px; padding: 10px; color: inherit; text-decoration: none; background: #fbfcfe; }
+    .scenario-index-card:hover { border-color: #9aa8b7; background: #fff; }
+    .scenario-index-card .status-pill { justify-self: start; }
+    .scenario-index-card strong { color: #1f2933; }
+    .scenario-index-card span:not(.status-pill), .scenario-index-card small { color: #52606d; }
     dl { display: grid; grid-template-columns: 90px 1fr; gap: 6px 12px; }
     dt { font-weight: 600; color: #52606d; }
     dd { margin: 0; }
@@ -669,6 +987,7 @@ function renderPage(reports, { fromDir = ARTIFACT_ROOT, manifest = new Map() } =
     .status-pill { display: inline-block; border-radius: 999px; padding: 2px 8px; font-weight: 600; font-size: 12px; }
     .status-pill.passed { background: #e9f8f1; color: #0f6f4f; }
     .status-pill.failed, .status-pill.infra_failed { background: #fdecec; color: #a61b13; }
+    .status-pill.unavailable { background: #fffbeb; color: #92400e; }
     .thumb { display: block; width: min(900px, 100%); max-height: 720px; object-fit: contain; border: 1px solid #d8dee8; border-radius: 6px; background: #fff; }
     .video-proof { display: block; width: min(960px, 100%); max-height: 720px; border: 1px solid #d8dee8; border-radius: 6px; background: #000; }
     .proof-gallery { margin-top: 12px; }
@@ -678,6 +997,19 @@ function renderPage(reports, { fromDir = ARTIFACT_ROOT, manifest = new Map() } =
     .proof-item strong { display: block; margin-bottom: 8px; color: #52606d; font-size: 12px; text-transform: uppercase; }
     .proof-item .thumb { width: 100%; max-width: 100%; max-height: 180px; object-fit: contain; }
     .proof-item .video-proof { width: 100%; max-height: 220px; }
+    .companion-evidence { margin-top: 16px; border: 1px solid #bdd7ff; border-radius: 8px; padding: 12px; background: #f7fbff; }
+    .companion-evidence h3 { margin: 0 0 4px; font-size: 14px; }
+    .companion-evidence > p { margin: 0 0 12px; color: #52606d; }
+    .companion-grid { display: grid; gap: 12px; }
+    .companion-card { border: 1px solid #d8dee8; border-radius: 8px; padding: 12px; background: #fff; }
+    .companion-card > header { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 8px; }
+    .companion-card > header p { margin: 3px 0 0; color: #687483; }
+    .companion-link { margin: 0 0 8px; }
+    .companion-unavailable { border: 1px solid #fcd34d; background: #fffbeb; border-radius: 6px; padding: 10px; color: #7c4a03; }
+    .companion-unavailable strong { display: block; margin-bottom: 4px; }
+    .companion-unavailable p { margin: 4px 0 0; }
+    .companion-unavailable span { font-weight: 600; }
+    .underlying-status-note { color: #7c4a03; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 6px; padding: 8px 10px; }
     .visual-analysis { margin-top: 16px; border: 1px solid #d8dee8; border-radius: 8px; padding: 12px; background: #fbfcfe; }
     .visual-analysis h3 { margin: 0 0 4px; font-size: 14px; }
     .visual-frame-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 12px; }
@@ -689,7 +1021,10 @@ function renderPage(reports, { fromDir = ARTIFACT_ROOT, manifest = new Map() } =
     .visual-observations { margin: 8px 0; padding-left: 18px; color: #52606d; font-size: 12px; }
     .log-link { margin-top: 8px; }
     @media (max-width: 720px) {
+      body { margin: 20px 12px; }
+      .legend-grid { grid-template-columns: 1fr; }
       .scope-grid { grid-template-columns: 1fr; }
+      .scenario > header { display: block; }
     }
   </style>
 </head>
@@ -701,9 +1036,20 @@ function renderPage(reports, { fromDir = ARTIFACT_ROOT, manifest = new Map() } =
       <strong>${passed} passed</strong>
       <strong>${assertionFailed} assertion failed</strong>
       <strong>${infraFailed} infra/not-run</strong>
+      ${unavailableCompanions ? `<strong>${unavailableCompanions} unavailable companion</strong>` : ''}
       <span>${reported}/${reports.length} selected scenarios produced reports${missingReports ? `; ${missingReports} synthesized as missing` : ''}</span>
     </div>
-    ${reports.length ? reports.map((report) => renderReport(report, { fromDir, manifest })).join('') : '<p>No scenario reports found.</p>'}
+    ${scenarioPage ? '' : renderEvidenceLegend()}
+    ${scenarioPage ? '' : renderScenarioIndex(reports, { manifest, selectedScenarioNames })}
+    ${
+      reports.length
+        ? reports
+            .map((report) =>
+              renderReport(report, { fromDir, manifest, allReports, selectedScenarioNames }),
+            )
+            .join('')
+        : '<p>No scenario reports found.</p>'
+    }
   </main>
 </body>
 </html>
@@ -750,7 +1096,7 @@ async function main() {
   await mkdir(ARTIFACT_ROOT, { recursive: true });
   await writeFile(
     path.join(ARTIFACT_ROOT, 'index.html'),
-    renderPage(reports, { fromDir: ARTIFACT_ROOT, manifest }),
+    renderPage(reports, { fromDir: ARTIFACT_ROOT, manifest, allReports: reports, selection }),
     'utf-8',
   );
 
@@ -759,7 +1105,12 @@ async function main() {
       mkdir(report.artifactDir, { recursive: true }).then(() =>
         writeFile(
           path.join(report.artifactDir, 'index.html'),
-          renderPage([report], { fromDir: report.artifactDir, manifest }),
+          renderPage([report], {
+            fromDir: report.artifactDir,
+            manifest,
+            allReports: reports,
+            selection,
+          }),
           'utf-8',
         ),
       ),

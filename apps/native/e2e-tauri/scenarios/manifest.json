@@ -12,7 +12,12 @@
         "Evolve review screen with non-empty diff",
         "Generated diff includes the Darwin fonts module"
       ],
-      "riskAreas": ["evolve", "prompt", "diff", "nix-template"],
+      "riskAreas": [
+        "evolve",
+        "prompt",
+        "diff",
+        "nix-template"
+      ],
       "changePatterns": [
         "^apps/native/src/components/widget/(prompt-input|prompt-input-section|steps/(begin-step|evolve-step)|widget|utils)\\.tsx$",
         "^apps/native/src/hooks/use-evolve\\.ts$",
@@ -27,7 +32,10 @@
       "currentSpec": "tests/wdio/basic-prompts.spec.mjs",
       "currentScript": "test:wdio:basic-prompts",
       "status": "rename-of-existing",
-      "requiredForDefaultPrPack": true
+      "requiredForDefaultPrPack": true,
+      "fullMacCompanions": [
+        "evolve_review_full_mac_journey"
+      ]
     },
     {
       "name": "discard_and_restore_state",
@@ -39,7 +47,12 @@
         "Discard confirmation returns to the initial prompt screen",
         "Discard cancellation leaves the review state intact"
       ],
-      "riskAreas": ["evolve", "discard", "confirmation-dialog", "state-reset"],
+      "riskAreas": [
+        "evolve",
+        "discard",
+        "confirmation-dialog",
+        "state-reset"
+      ],
       "changePatterns": [
         "^apps/native/src/components/widget/(confirmation-dialog|discard-uncommitted-dialog|check-confirmation-off|steps/evolve-step|widget)\\.tsx$",
         "^apps/native/src/components/widget/(prompt-input|prompt-input-section)\\.tsx$",
@@ -53,7 +66,10 @@
       "currentSpec": "tests/wdio/discard.spec.mjs",
       "currentScript": "test:wdio:discard",
       "status": "validated-existing",
-      "requiredForDefaultPrPack": true
+      "requiredForDefaultPrPack": true,
+      "fullMacCompanions": [
+        "evolve_review_full_mac_journey"
+      ]
     },
     {
       "name": "manual_evolve_existing_changes",
@@ -65,7 +81,11 @@
         "Existing uncommitted change preservation",
         "Generated diff contains both first and second package edits"
       ],
-      "riskAreas": ["evolve", "manual-follow-up", "diff-preservation"],
+      "riskAreas": [
+        "evolve",
+        "manual-follow-up",
+        "diff-preservation"
+      ],
       "changePatterns": [
         "^apps/native/src/components/widget/steps/(evolve-step|manual-evolve-step)\\.tsx$",
         "^apps/native/src/components/widget/summaries/",
@@ -83,7 +103,10 @@
       "currentSpec": "tests/wdio/modify.spec.mjs",
       "currentScript": "test:wdio:modify",
       "status": "validated-existing",
-      "requiredForDefaultPrPack": true
+      "requiredForDefaultPrPack": true,
+      "fullMacCompanions": [
+        "evolve_review_full_mac_journey"
+      ]
     },
     {
       "name": "question_answer_followup",
@@ -96,7 +119,12 @@
         "The follow-up model response continues the same evolve flow",
         "Generated diff includes the requested Darwin fonts module change"
       ],
-      "riskAreas": ["evolve", "question-answer", "prompt", "state-machine"],
+      "riskAreas": [
+        "evolve",
+        "question-answer",
+        "prompt",
+        "state-machine"
+      ],
       "changePatterns": [
         "^apps/native/src/components/evolve-progress\\.tsx$",
         "^apps/native/src/components/widget/(prompt-input|prompt-input-section|steps/evolve-step|widget)\\.tsx$",
@@ -111,7 +139,10 @@
       "currentSpec": "tests/wdio/question-answer.spec.mjs",
       "currentScript": "test:wdio:question-answer",
       "status": "new-historical-regression-coverage",
-      "requiredForDefaultPrPack": true
+      "requiredForDefaultPrPack": true,
+      "fullMacCompanions": [
+        "evolve_review_full_mac_journey"
+      ]
     },
     {
       "name": "settings_provider_change",
@@ -124,7 +155,12 @@
         "Each tab renders its expected heading",
         "Critical provider, API key, diagnostics, and confirmation controls are visible"
       ],
-      "riskAreas": ["settings", "providers", "preferences", "api-keys"],
+      "riskAreas": [
+        "settings",
+        "providers",
+        "preferences",
+        "api-keys"
+      ],
       "changePatterns": [
         "^apps/native/src/components/widget/settings-dialog\\.tsx$",
         "^apps/native/src/components/widget/settings/",
@@ -139,6 +175,10 @@
       ],
       "knownGaps": [
         "Checks visibility of key settings controls; it does not mutate every field, verify real API keys, or call live providers."
+      ],
+      "fullMacCompanions": [
+        "product_surface_full_mac_smoke",
+        "settings_state_full_mac_journey"
       ],
       "currentSpec": "tests/wdio/smoke.spec.mjs",
       "currentScript": "test:wdio:smoke",
@@ -156,7 +196,12 @@
         "vLLM key visibility toggle works",
         "AI model iteration/build-attempt limits persist to settings.json"
       ],
-      "riskAreas": ["settings", "preferences", "api-keys", "persistence"],
+      "riskAreas": [
+        "settings",
+        "preferences",
+        "api-keys",
+        "persistence"
+      ],
       "changePatterns": [
         "^apps/native/src/components/widget/settings/(preferences-tab|api-keys-tab|ai-models-tab)\\.tsx$",
         "^apps/native/src/components/widget/settings-dialog\\.tsx$",
@@ -168,6 +213,9 @@
       ],
       "knownGaps": [
         "Uses local persisted settings; it does not validate live provider credentials or call external AI services."
+      ],
+      "fullMacCompanions": [
+        "settings_state_full_mac_journey"
       ],
       "currentSpec": "tests/wdio/settings-controls.spec.mjs",
       "currentScript": "test:wdio:settings-controls",
@@ -185,7 +233,12 @@
         "Send remains disabled while required provider configuration is missing",
         "The user sees an AI Models settings recovery action"
       ],
-      "riskAreas": ["providers", "prompt", "settings", "validation"],
+      "riskAreas": [
+        "providers",
+        "prompt",
+        "settings",
+        "validation"
+      ],
       "changePatterns": [
         "^apps/native/src/lib/ai-provider-validation\\.ts$",
         "^apps/native/src/components/widget/(prompt-input|prompt-input-section)\\.tsx$",
@@ -200,7 +253,10 @@
       "currentSpec": "tests/wdio/provider-validation.spec.mjs",
       "currentScript": "test:wdio:provider-validation",
       "status": "new-behavior-coverage",
-      "requiredForDefaultPrPack": true
+      "requiredForDefaultPrPack": true,
+      "fullMacCompanions": [
+        "provider_resilience_full_mac_journey"
+      ]
     },
     {
       "name": "provider_failure_recovery",
@@ -212,7 +268,12 @@
         "Mock provider failure reaches the evolve error path",
         "A visible, user-actionable error is rendered in the widget"
       ],
-      "riskAreas": ["providers", "evolve", "failure-recovery", "error-reporting"],
+      "riskAreas": [
+        "providers",
+        "evolve",
+        "failure-recovery",
+        "error-reporting"
+      ],
       "changePatterns": [
         "^apps/native/src/hooks/use-evolve\\.ts$",
         "^apps/native/src/components/widget/(error-message|prompt-input|prompt-input-section|widget)\\.tsx$",
@@ -226,7 +287,10 @@
       "currentSpec": "tests/wdio/provider-failure.spec.mjs",
       "currentScript": "test:wdio:provider-failure",
       "status": "new-behavior-coverage",
-      "requiredForDefaultPrPack": true
+      "requiredForDefaultPrPack": true,
+      "fullMacCompanions": [
+        "provider_resilience_full_mac_journey"
+      ]
     },
     {
       "name": "live_openrouter_evolve_smoke",
@@ -239,7 +303,12 @@
         "Live model/tool-call loop produces a non-empty Nix diff",
         "The flow stops at review without applying or rebuilding the machine"
       ],
-      "riskAreas": ["providers", "openrouter", "evolve", "live-ai"],
+      "riskAreas": [
+        "providers",
+        "openrouter",
+        "evolve",
+        "live-ai"
+      ],
       "changePatterns": [
         "^apps/native/src/components/widget/settings/(api-keys-tab|ai-models-tab)\\.tsx$",
         "^apps/native/src/lib/ai-provider-validation\\.ts$",
@@ -254,7 +323,10 @@
       "currentSpec": "tests/wdio/live-openrouter.spec.mjs",
       "currentScript": "test:wdio:live-openrouter",
       "status": "new-live-provider-coverage",
-      "requiredForDefaultPrPack": false
+      "requiredForDefaultPrPack": false,
+      "fullMacCompanions": [
+        "live_openrouter_full_mac_journey"
+      ]
     },
     {
       "name": "prompt_keyboard_and_suggestions",
@@ -268,7 +340,12 @@
         "Prompt history records the submitted prompt",
         "Mocked evolve response reaches review with a generated diff"
       ],
-      "riskAreas": ["prompt", "keyboard", "suggestions", "evolve"],
+      "riskAreas": [
+        "prompt",
+        "keyboard",
+        "suggestions",
+        "evolve"
+      ],
       "changePatterns": [
         "^apps/native/src/components/widget/(prompt-input|prompt-input-section|action-tiles|mac-recommendation-chip|system-defaults-cta|prompt-history-badge)\\.tsx$",
         "^apps/native/src/components/widget/steps/(begin-step|evolve-step)\\.tsx$",
@@ -282,7 +359,10 @@
       "currentSpec": "tests/wdio/prompt-keyboard.spec.mjs",
       "currentScript": "test:wdio:prompt-keyboard",
       "status": "new-pr-surface-coverage",
-      "requiredForDefaultPrPack": true
+      "requiredForDefaultPrPack": true,
+      "fullMacCompanions": [
+        "evolve_review_full_mac_journey"
+      ]
     },
     {
       "name": "feedback_report_issue",
@@ -296,7 +376,12 @@
         "Footer Report Issue opens issue mode with report-specific copy",
         "Cancel controls render in both feedback and issue-report modes"
       ],
-      "riskAreas": ["feedback", "issue-reporting", "diagnostics", "forms"],
+      "riskAreas": [
+        "feedback",
+        "issue-reporting",
+        "diagnostics",
+        "forms"
+      ],
       "changePatterns": [
         "^apps/native/src/components/widget/(feedback-dialog|report-issue-button|header|error-message)\\.tsx$",
         "^apps/native/src/hooks/(use-error-handler|use-panic-handler|use-tray-events)\\.ts$",
@@ -307,6 +392,9 @@
       "knownGaps": [
         "Does not submit feedback to the backend or external services; it validates the user-facing collection flows.",
         "Uses DOM-click fallback for close/cancel controls because native Tauri WebDriver clicks are flaky on these dialog buttons."
+      ],
+      "fullMacCompanions": [
+        "product_surface_full_mac_smoke"
       ],
       "currentSpec": "tests/wdio/feedback-report.spec.mjs",
       "currentScript": "test:wdio:feedback-report",
@@ -324,7 +412,11 @@
         "History toolbar button closes History back to the main prompt",
         "Settings opens from the header and closes without disturbing the main prompt"
       ],
-      "riskAreas": ["history", "navigation", "settings"],
+      "riskAreas": [
+        "history",
+        "navigation",
+        "settings"
+      ],
       "changePatterns": [
         "^apps/native/src/components/widget/(header|widget)\\.tsx$",
         "^apps/native/src/components/widget/steps/history-step\\.tsx$",
@@ -336,6 +428,9 @@
       "knownGaps": [
         "Navigation coverage only; it does not restore historical commits or exercise every history item state.",
         "Uses DOM-click fallback for close/toggle controls because native Tauri WebDriver clicks are flaky on these small header buttons."
+      ],
+      "fullMacCompanions": [
+        "product_surface_full_mac_smoke"
       ],
       "currentSpec": "tests/wdio/history-navigation.spec.mjs",
       "currentScript": "test:wdio:history-navigation",
@@ -353,7 +448,11 @@
         "Host selection is populated and accepted",
         "Onboarding completes to the main prompt screen"
       ],
-      "riskAreas": ["onboarding", "configuration-directory", "host-selection"],
+      "riskAreas": [
+        "onboarding",
+        "configuration-directory",
+        "host-selection"
+      ],
       "changePatterns": [
         "^apps/native/src/components/widget/(bootstrap-config|directory-picker|steps/setup-step|widget)\\.tsx$",
         "^apps/native/src/hooks/(use-darwin-config|use-widget-initialization)\\.ts$",
@@ -368,7 +467,244 @@
       "currentSpec": "tests/wdio/onboarding.spec.mjs",
       "currentScript": "test:wdio:onboarding",
       "status": "validated-existing",
-      "requiredForDefaultPrPack": true
+      "requiredForDefaultPrPack": true,
+      "fullMacCompanions": [
+        "onboarding_settings_contract_full_mac_journey"
+      ]
+    },
+    {
+      "name": "settings_state_full_mac_journey",
+      "lane": "full-mac",
+      "title": "Settings state real-Mac journey",
+      "summary": "Runs the shipped app on a real Mac, opens Settings, records Preferences/API Keys/AI Models, and verifies representative Preferences mutations persist to the real app-support settings.json.",
+      "coverage": [
+        "Configured prompt screen launches from persisted macOS app-support settings",
+        "Preferences tab renders and representative confirmation toggles persist via UI interaction",
+        "API Keys tab renders OpenRouter, OpenAI, Ollama, and vLLM settings from the seeded settings.json",
+        "AI Models tab renders provider and limit controls from the seeded settings.json",
+        "Uses polling against the real settings.json to avoid persistence races",
+        "Publishes screenshots and a full-screen recording as adjacent real-desktop proof"
+      ],
+      "riskAreas": [
+        "settings",
+        "preferences",
+        "api-keys",
+        "providers",
+        "persistence",
+        "full-mac"
+      ],
+      "changePatterns": [
+        "^apps/native/src/components/widget/settings/(preferences-tab|api-keys-tab|ai-models-tab)\\.tsx$",
+        "^apps/native/src/components/widget/settings-dialog\\.tsx$",
+        "^apps/native/src/hooks/use-prefs\\.ts$",
+        "^apps/native/src-tauri/src/(prefs|commands|settings|store)\\.rs$",
+        "^tests/e2e/scenarios/settings_state_full_mac_journey\\.sh$",
+        "^tests/e2e/(adapters|fixtures|lib)/"
+      ],
+      "knownGaps": [
+        "Real-Mac companion proof; WDIO remains the deterministic authority for exact select/input values and full settings-form mutation coverage.",
+        "Only Preferences toggles are mutated through UI in this full-Mac journey; API Keys and AI Models are hydrated/recorded from seeded settings.",
+        "Does not call live providers or validate external API credentials."
+      ],
+      "currentSpec": "tests/e2e/scenarios/settings_state_full_mac_journey.sh",
+      "currentScript": "tests/e2e/run.sh settings_state_full_mac_journey",
+      "status": "new-full-mac-companion",
+      "requiredForDefaultPrPack": false
+    },
+    {
+      "name": "evolve_review_full_mac_journey",
+      "lane": "full-mac",
+      "title": "Evolve review real-Mac journey",
+      "summary": "Runs the shipped app on a real Mac against a local mock vLLM server, records prompt submission, review, follow-up, question-answer, and discard behavior, and verifies generated git diffs.",
+      "coverage": [
+        "Prompt suggestions and Send are usable in the released app",
+        "Mock vLLM response reaches evolve review with a JetBrains Mono diff",
+        "Follow-up prompt preserves the first diff and adds Fira Code",
+        "Discard cancel keeps the review state visible",
+        "Discard confirm returns to the prompt state",
+        "Inline question-answer continues to evolve review",
+        "Reads git diff from a temporary nix-darwin repo on the Mac runner",
+        "Publishes screenshots and a full-screen recording as adjacent real-desktop proof"
+      ],
+      "riskAreas": [
+        "evolve",
+        "prompt",
+        "diff",
+        "question-answer",
+        "discard",
+        "mock-provider",
+        "full-mac"
+      ],
+      "changePatterns": [
+        "^apps/native/src/components/widget/(prompt-input|prompt-input-section|steps/(begin-step|evolve-step)|widget)\\.tsx$",
+        "^apps/native/src/components/evolve-progress\\.tsx$",
+        "^apps/native/src/hooks/use-evolve\\.ts$",
+        "^apps/native/src-tauri/src/evolve/",
+        "^apps/native/src-tauri/src/(evolution|evolve_state|changes_from_diff|store|commands)\\.rs$",
+        "^apps/native/e2e-tauri/tests/data/",
+        "^tests/e2e/(data|fixtures|lib)/",
+        "^tests/e2e/scenarios/evolve_review_full_mac_journey\\.sh$"
+      ],
+      "knownGaps": [
+        "Uses a local mock provider; live provider behavior remains covered by the separate live OpenRouter scenario.",
+        "Does not apply or rebuild the generated nix-darwin configuration.",
+        "Release-app localhost mock reachability is verified only when the full-Mac job actually runs on the Mac runner."
+      ],
+      "currentSpec": "tests/e2e/scenarios/evolve_review_full_mac_journey.sh",
+      "currentScript": "tests/e2e/run.sh evolve_review_full_mac_journey",
+      "status": "new-full-mac-companion",
+      "requiredForDefaultPrPack": false
+    },
+    {
+      "name": "provider_resilience_full_mac_journey",
+      "lane": "full-mac",
+      "title": "Provider resilience real-Mac journey",
+      "summary": "Runs the shipped app on a real Mac through invalid vLLM configuration and mock provider failure states, recording visible recovery/error behavior.",
+      "coverage": [
+        "vLLM selected without a base URL renders provider validation before submission",
+        "Prompt suggestion can fill the input while provider validation remains visible",
+        "Open AI Models settings recovery copy is visible",
+        "Mock provider billing/credits failure surfaces visibly in the widget",
+        "Reads settings.json to prove which provider configuration each phase used",
+        "Publishes screenshots and a full-screen recording as adjacent real-desktop proof"
+      ],
+      "riskAreas": [
+        "providers",
+        "prompt",
+        "validation",
+        "failure-recovery",
+        "error-reporting",
+        "full-mac"
+      ],
+      "changePatterns": [
+        "^apps/native/src/lib/ai-provider-validation\\.ts$",
+        "^apps/native/src/components/widget/(error-message|prompt-input|prompt-input-section|widget)\\.tsx$",
+        "^apps/native/src/components/widget/settings/(ai-models-tab|api-keys-tab)\\.tsx$",
+        "^apps/native/src-tauri/src/(providers|provider_errors|commands|store)\\.rs$",
+        "^apps/native/src-tauri/src/evolve/",
+        "^tests/e2e/(data|fixtures|lib)/",
+        "^tests/e2e/scenarios/provider_resilience_full_mac_journey\\.sh$"
+      ],
+      "knownGaps": [
+        "Uses deterministic local provider states; it does not enumerate every live provider failure shape.",
+        "Does not call external providers."
+      ],
+      "currentSpec": "tests/e2e/scenarios/provider_resilience_full_mac_journey.sh",
+      "currentScript": "tests/e2e/run.sh provider_resilience_full_mac_journey",
+      "status": "new-full-mac-companion",
+      "requiredForDefaultPrPack": false
+    },
+    {
+      "name": "onboarding_settings_contract_full_mac_journey",
+      "lane": "full-mac",
+      "title": "Onboarding settings-contract real-Mac journey",
+      "summary": "Runs the shipped app on a real Mac from fresh state, records setup/onboarding, then seeds the same repo/host settings contract and verifies the app reaches the prompt screen.",
+      "coverage": [
+        "Fresh app-support state routes to setup/onboarding",
+        "Temporary nix-darwin config repo is a real git repo with a host attr",
+        "Persisted configDir and hostAttr route the released app to the prompt screen",
+        "settings.json contains the selected configDir and hostAttr",
+        "Publishes screenshots and a full-screen recording as adjacent real-desktop proof"
+      ],
+      "riskAreas": [
+        "onboarding",
+        "configuration-directory",
+        "host-selection",
+        "settings-contract",
+        "full-mac"
+      ],
+      "changePatterns": [
+        "^apps/native/src/components/widget/(bootstrap-config|directory-picker|steps/setup-step|widget)\\.tsx$",
+        "^apps/native/src/hooks/(use-darwin-config|use-widget-initialization)\\.ts$",
+        "^apps/native/src-tauri/src/(default_config|scanner|template|darwin|commands)\\.rs$",
+        "^apps/native/templates/",
+        "^tests/e2e/(fixtures|lib)/",
+        "^tests/e2e/scenarios/onboarding_settings_contract_full_mac_journey\\.sh$"
+      ],
+      "knownGaps": [
+        "Intentionally settings-contract proof only: it does not drive the native file picker or claim full onboarding picker coverage.",
+        "WDIO remains the deterministic authority for directory picker and host selection interaction."
+      ],
+      "currentSpec": "tests/e2e/scenarios/onboarding_settings_contract_full_mac_journey.sh",
+      "currentScript": "tests/e2e/run.sh onboarding_settings_contract_full_mac_journey",
+      "status": "new-full-mac-companion",
+      "requiredForDefaultPrPack": false
+    },
+    {
+      "name": "live_openrouter_full_mac_journey",
+      "lane": "full-mac",
+      "title": "Live OpenRouter real-Mac journey",
+      "summary": "Runs the shipped app on a real Mac with a real OpenRouter key, submits a constrained prompt, and verifies a live-model diff reaches review without applying.",
+      "coverage": [
+        "OpenRouter key/model are seeded into the released app settings on the Mac runner",
+        "Prompt submission calls a live OpenRouter-backed provider path",
+        "Live model/tool-call loop reaches evolve review",
+        "Temporary config repo diff includes pkgs.jq in flake.nix",
+        "Flow stops at review without applying or rebuilding",
+        "Publishes screenshots and a full-screen recording as adjacent real-desktop proof"
+      ],
+      "riskAreas": [
+        "providers",
+        "openrouter",
+        "live-ai",
+        "evolve",
+        "diff",
+        "full-mac"
+      ],
+      "changePatterns": [
+        "^apps/native/src/components/widget/settings/(api-keys-tab|ai-models-tab)\\.tsx$",
+        "^apps/native/src/lib/ai-provider-validation\\.ts$",
+        "^apps/native/src-tauri/src/(providers|provider_errors|commands|store)\\.rs$",
+        "^apps/native/src-tauri/src/evolve/",
+        "^tests/e2e/(fixtures|lib)/",
+        "^tests/e2e/scenarios/live_openrouter_full_mac_journey\\.sh$"
+      ],
+      "knownGaps": [
+        "Calls a live model and can fail for provider outages, rate limits, account credit, or prompt nondeterminism.",
+        "Stops at evolve review; it does not apply, rebuild, or verify final macOS state."
+      ],
+      "currentSpec": "tests/e2e/scenarios/live_openrouter_full_mac_journey.sh",
+      "currentScript": "tests/e2e/run.sh live_openrouter_full_mac_journey",
+      "status": "new-live-full-mac-companion",
+      "requiredForDefaultPrPack": false
+    },
+    {
+      "name": "product_surface_full_mac_smoke",
+      "lane": "full-mac",
+      "title": "Product surface real-Mac smoke",
+      "summary": "Runs the shipped app on a real Mac with Nix installed and records adjacent desktop proof for Settings, feedback, Report Issue, and History surfaces.",
+      "coverage": [
+        "App launches from /Applications on the Mac runner",
+        "Settings opens and the General, AI Models, API Keys, and Preferences surfaces render",
+        "Header feedback opens the feedback dialog",
+        "Footer Report Issue opens issue-report mode",
+        "History opens and returns to the main surface",
+        "Publishes a full-screen recording as adjacent real-desktop proof"
+      ],
+      "riskAreas": [
+        "settings",
+        "feedback",
+        "issue-reporting",
+        "history",
+        "full-mac"
+      ],
+      "changePatterns": [
+        "^apps/native/src/components/widget/(header|settings-dialog|feedback-dialog|report-issue-button|widget)\\.tsx$",
+        "^apps/native/src/components/widget/(settings|history)/",
+        "^apps/native/src/components/widget/steps/history-step\\.tsx$",
+        "^apps/native/src/hooks/(use-history|use-history-restore|use-prefs|use-tray-events)\\.ts$",
+        "^apps/native/src/stores/widget-store\\.ts$",
+        "^tests/e2e/scenarios/product_surface_full_mac_smoke\\.sh$",
+        "^tests/e2e/(adapters|fixtures|lib)/"
+      ],
+      "knownGaps": [
+        "Adjacent real-Mac smoke only; it does not replay each hosted WDIO assertion or verify settings persistence on disk.",
+        "Uses the nix-installed fixture so the app is past the Nix installation prerequisite, but it does not apply or rebuild a nix-darwin configuration."
+      ],
+      "currentSpec": "tests/e2e/scenarios/product_surface_full_mac_smoke.sh",
+      "currentScript": "tests/e2e/run.sh product_surface_full_mac_smoke",
+      "status": "new-full-mac-companion",
+      "requiredForDefaultPrPack": false
     },
     {
       "name": "release_dmg_app_translocation_smoke",
@@ -381,7 +717,12 @@
         "First screen renders enough nixmac text to rule out startup/App Translocation crashes",
         "Publishes a full-screen recording as proof"
       ],
-      "riskAreas": ["release", "dmg", "app-translocation", "startup"],
+      "riskAreas": [
+        "release",
+        "dmg",
+        "app-translocation",
+        "startup"
+      ],
       "changePatterns": [
         "^apps/native/src-tauri/tauri\\.conf(\\.dev)?\\.json$",
         "^apps/native/src-tauri/(Info|entitlements)\\.plist$",
@@ -412,7 +753,12 @@
         "Final Nix binary verification passes",
         "Publishes a full-screen recording as proof"
       ],
-      "riskAreas": ["install", "nix", "clean-machine", "full-mac"],
+      "riskAreas": [
+        "install",
+        "nix",
+        "clean-machine",
+        "full-mac"
+      ],
       "changePatterns": [
         "^apps/native/src/hooks/use-nix-install\\.ts$",
         "^apps/native/src/components/widget/steps/nix-setup-step\\.tsx$",

@@ -7,6 +7,7 @@
 # =============================================================================
 
 E2E_ADAPTER="nixmac"
+E2E_FIXTURE="clean-machine"
 
 latest_screenshot_for() {
     local prefix="$1"

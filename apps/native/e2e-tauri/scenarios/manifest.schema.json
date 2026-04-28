@@ -24,7 +24,7 @@
           "requiredForDefaultPrPack"
         ],
         "properties": {
-          "name": { "type": "string" },
+          "name": { "type": "string", "pattern": "^[a-z0-9_]+$" },
           "lane": { "type": "string", "enum": ["browser", "tauri-wdio", "full-mac"] },
           "title": { "type": "string" },
           "summary": { "type": "string" },
@@ -41,6 +41,11 @@
           "changePatterns": {
             "type": "array",
             "items": { "type": "string" }
+          },
+          "fullMacCompanions": {
+            "description": "Optional full-Mac scenarios that exercise adjacent real-desktop proof for the same product surface. These are not per-assertion replays of the hosted scenario.",
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[a-z0-9_]+$" }
           },
           "knownGaps": {
             "type": "array",

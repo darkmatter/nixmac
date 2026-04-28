@@ -112,6 +112,13 @@ jobs:
                   throw new Error(`E2E scenario ${scenario.name || "(unnamed)"} is missing ${field}`);
                 }
               }
+              if (
+                scenario.fullMacCompanions !== undefined
+                && (!Array.isArray(scenario.fullMacCompanions)
+                  || scenario.fullMacCompanions.some((name) => typeof name !== "string" || name.trim().length === 0))
+              ) {
+                throw new Error(`E2E scenario ${scenario.name || "(unnamed)"} has invalid fullMacCompanions`);
+              }
               for (const pattern of scenario.changePatterns || []) {
                 new RegExp(pattern);
               }
@@ -122,6 +129,20 @@ jobs:
               .filter((scenario) => scenario.requiredForDefaultPrPack)
               .map((scenario) => scenario.name);
             const scenarioByName = new Map(manifest.scenarios.map((scenario) => [scenario.name, scenario]));
+            for (const scenario of manifest.scenarios || []) {
+              if ((scenario.fullMacCompanions || []).length > 0 && scenario.lane !== "tauri-wdio") {
+                throw new Error(`E2E scenario ${scenario.name} fullMacCompanions can only be declared on lane=tauri-wdio scenarios`);
+              }
+              for (const companionName of scenario.fullMacCompanions || []) {
+                const companion = scenarioByName.get(companionName);
+                if (!companion) {
+                  throw new Error(`E2E scenario ${scenario.name} references unknown fullMacCompanion ${companionName}`);
+                }
+                if (companion.lane !== "full-mac") {
+                  throw new Error(`E2E scenario ${scenario.name} fullMacCompanion ${companionName} must use lane=full-mac`);
+                }
+              }
+            }
             const nativePatterns = [
               /^apps\/native\/src\//,
               /^apps\/native\/src-tauri\//,
@@ -144,6 +165,7 @@ jobs:
             let macScenarios = [];
             let changed = [];
             let labels = [];
+            let skipFullMacCompanions = false;
             const selectionReasons = new Map();
             const matchedFilesByScenario = new Map();
 
@@ -154,6 +176,30 @@ jobs:
               selectionReasons.get(name).add(why);
               if (!matchedFilesByScenario.has(name)) matchedFilesByScenario.set(name, new Set());
               for (const file of files) matchedFilesByScenario.get(name).add(file);
+            }
+
+            function addSelectedFullMacCompanions({ skip = false } = {}) {
+              if (skip) return;
+
+              const selectedHosted = [...selectionReasons.keys()]
+                .map((name) => scenarioByName.get(name))
+                .filter((scenario) => scenario?.lane === "tauri-wdio");
+
+              for (const scenario of selectedHosted) {
+                const reasons = [...(selectionReasons.get(scenario.name) || [])];
+                const companionEligible = reasons.some((why) =>
+                  why.includes("e2e:all label")
+                    || why.startsWith("scenario label ")
+                    || why.startsWith("manual dispatch")
+                    || why.includes("adversarial focus")
+                    || why.includes("matched PR change pattern")
+                );
+                if (!companionEligible) continue;
+
+                for (const companionName of scenario.fullMacCompanions || []) {
+                  addSelection(companionName, `full-Mac companion for ${scenario.name}`);
+                }
+              }
             }
 
             function matchingFilesFor(scenario, files) {
@@ -180,6 +226,7 @@ jobs:
                 coverage: scenario.coverage || [],
                 knownGaps: scenario.knownGaps || [],
                 riskAreas: scenario.riskAreas || [],
+                fullMacCompanions: Array.isArray(scenario.fullMacCompanions) ? scenario.fullMacCompanions : [],
                 currentScript: scenario.currentScript || null,
                 requiredForDefaultPrPack: Boolean(scenario.requiredForDefaultPrPack),
                 selectionReasons: [...(selectionReasons.get(scenario.name) || [])],
@@ -195,7 +242,7 @@ jobs:
             }
 
             function e2eLabelsOnly(allLabels) {
-              return allLabels.filter((label) => label === "e2e:all" || label === "e2e:skip" || label === "e2e:mac" || label === "e2e:release-smoke" || label.startsWith("e2e:scenario:"));
+              return allLabels.filter((label) => label === "e2e:all" || label === "e2e:skip" || label === "e2e:skip-companions" || label === "e2e:mac" || label === "e2e:release-smoke" || label.startsWith("e2e:scenario:"));
             }
 
             function writeSelection(selection) {
@@ -231,6 +278,7 @@ jobs:
                 const requestedAll = labels.includes("e2e:all");
                 const requestedMac = labels.includes("e2e:mac");
                 const requestedReleaseSmoke = labels.includes("e2e:release-smoke");
+                skipFullMacCompanions = labels.includes("e2e:skip-companions");
                 const requestedScenarioLabels = manifest.scenarios
                   .map((scenario) => [`e2e:scenario:${scenario.name}`, scenario])
                   .filter(([label]) => labels.includes(label));
@@ -316,6 +364,8 @@ jobs:
             } else {
               await resolvePullRequest(prForSelection);
             }
+
+            addSelectedFullMacCompanions({ skip: skipFullMacCompanions });
 
             scenarios = selectedNamesFor("tauri-wdio");
             macScenarios = selectedNamesFor("full-mac");
@@ -773,6 +823,9 @@ jobs:
       E2E_BASE_SHA: ${{ needs.resolve.outputs.base_sha }}
       E2E_HEAD_SHA: ${{ needs.resolve.outputs.head_sha }}
       GITHUB_PR_NUMBER: ${{ needs.resolve.outputs.pr_number }}
+      NIXMAC_E2E_OPENROUTER_API_KEY: ${{ secrets.NIXMAC_E2E_OPENROUTER_API_KEY }}
+      NIXMAC_E2E_OPENROUTER_MODEL: ${{ vars.NIXMAC_E2E_OPENROUTER_MODEL || 'openai/gpt-4.1' }}
+      NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL: ${{ vars.NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL || 'openai/gpt-4o-mini' }}
     strategy:
       fail-fast: false
       max-parallel: 1
@@ -987,12 +1040,20 @@ jobs:
           BRANCH_NAME: ${{ needs.resolve.outputs.head_ref || github.head_ref || github.ref_name }}
           COMMIT_SHA: ${{ needs.resolve.outputs.head_sha }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NIXMAC_E2E_OPENROUTER_API_KEY: ${{ env.NIXMAC_E2E_OPENROUTER_API_KEY }}
+          NIXMAC_E2E_OPENROUTER_MODEL: ${{ env.NIXMAC_E2E_OPENROUTER_MODEL }}
+          NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL: ${{ env.NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL }}
           SCENARIO: ${{ matrix.scenario }}
         run: |
           set +e
           {
             echo "export ADMIN_PASSWORD=$(printf '%q' "$ADMIN_PASSWORD")"
             echo "export GH_TOKEN=$(printf '%q' "$GH_TOKEN")"
+            if [ "$SCENARIO" = "live_openrouter_full_mac_journey" ]; then
+              echo "export NIXMAC_E2E_OPENROUTER_API_KEY=$(printf '%q' "$NIXMAC_E2E_OPENROUTER_API_KEY")"
+              echo "export NIXMAC_E2E_OPENROUTER_MODEL=$(printf '%q' "$NIXMAC_E2E_OPENROUTER_MODEL")"
+              echo "export NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL=$(printf '%q' "$NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL")"
+            fi
             echo "export BRANCH=$(printf '%q' "$BRANCH_NAME")"
             echo "export COMMIT_SHA=$(printf '%q' "$COMMIT_SHA")"
             echo "export E2E_HEAD_SHA=$(printf '%q' "$E2E_HEAD_SHA")"
@@ -1067,7 +1128,8 @@ jobs:
             .replace(/gh[pousr]_[A-Za-z0-9_]+/g, "[redacted-github-token]")
             .replace(/github_pat_[A-Za-z0-9_]+/g, "[redacted-github-token]")
             .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [redacted]")
-            .replace(/(ADMIN_PASSWORD=)[^\s]+/g, "$1[redacted]");
+            .replace(/(ADMIN_PASSWORD=)[^\s]+/g, "$1[redacted]")
+            .replace(/(NIXMAC_E2E_OPENROUTER_API_KEY=)[^\s]+/g, "$1[redacted]");
           const flattenForInline = (value) => redactSecrets(value)
             .replace(/[\r\n|]+/g, " ")
             .replace(/\s+/g, " ")

@@ -237,10 +237,7 @@ echo "[ci] Cleaning previous state..."
 cleanup_e2e_gui_leftovers
 pkill -f nixmac 2>/dev/null || true
 pkill -f Installer 2>/dev/null || true
-if [ -f "/nix/nix-installer" ]; then
-    echo "[ci] Uninstalling existing Nix..."
-    sudo /nix/nix-installer uninstall --no-confirm 2>&1
-fi
+echo "[ci] Deferring Nix cleanup until the scenario fixture is known"
 rm -rf /tmp/e2e-screenshots /tmp/e2e-peekaboo-captures /tmp/e2e-recording.mp4 /tmp/e2e-test.log /tmp/e2e-runner.lock
 rm -rf /tmp/e2e-artifacts
 
@@ -340,13 +337,43 @@ chmod +x "$E2E_DIR"/*.sh "$E2E_DIR"/scenarios/*.sh 2>/dev/null || true
 cd /tmp && rm -rf nixmac-e2e-checkout
 echo "[ci] E2E framework deployed to $E2E_DIR"
 
+detect_scenario_fixture() {
+    local scenario_file="$1"
+    [ -f "$scenario_file" ] || return 0
+    grep -E '^E2E_FIXTURE=' "$scenario_file" 2>/dev/null \
+        | head -1 \
+        | cut -d= -f2- \
+        | tr -d "\"'" \
+        | tr -d '[:space:]'
+}
+
+SCENARIO_FIXTURE="$(detect_scenario_fixture "$E2E_DIR/scenarios/${SCENARIO}.sh")"
+echo "[ci] Scenario fixture: ${SCENARIO_FIXTURE:-none}"
+
+if [ "${E2E_FORCE_CLEAN_NIX:-0}" = "1" ] || [ "$SCENARIO_FIXTURE" = "clean-machine" ]; then
+    if [ -f "/nix/nix-installer" ]; then
+        echo "[ci] Uninstalling existing Nix for ${SCENARIO_FIXTURE:-forced clean} scenario..."
+        sudo /nix/nix-installer uninstall --no-confirm 2>&1
+    else
+        echo "[ci] No Nix installer found; clean fixture starts without installed Nix"
+    fi
+else
+    echo "[ci] Preserving existing Nix install for ${SCENARIO_FIXTURE:-no-fixture} scenario"
+fi
+
 # --- Run scenario ---
 echo ""
 echo "[ci] Running scenario: $SCENARIO"
 echo ""
 
 export ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
-export E2E_CLEANUP_NIX=1
+if [ -z "${E2E_CLEANUP_NIX:-}" ]; then
+    if [ "$SCENARIO_FIXTURE" = "clean-machine" ]; then
+        export E2E_CLEANUP_NIX=1
+    else
+        export E2E_CLEANUP_NIX=0
+    fi
+fi
 export E2E_JSON=1
 export E2E_TERMINAL_CLEANUP_MODE=kill
 export E2E_RECORDING_TRIM_START_SECONDS=3
