@@ -400,6 +400,36 @@
       "requiredForDefaultPrPack": false
     },
     {
+      "name": "macos_descriptor_prompt_smoke",
+      "lane": "full-mac",
+      "title": "macOS descriptor prompt smoke",
+      "summary": "Launches the real macOS app, types one descriptor into the main prompt, and verifies the expected local provider-validation block with 30 fps video proof.",
+      "coverage": [
+        "Exact-SHA app artifact launches on the real Mac runner",
+        "Prompt input is reachable through stable accessibility metadata",
+        "Descriptor text can be typed and observed in the real UI",
+        "Submit affordance is reachable through stable accessibility metadata",
+        "Local provider validation blocks submit without requiring a fragile mock provider",
+        "Publishes a 30 fps full-screen recording as primary proof"
+      ],
+      "riskAreas": ["full-mac", "prompt", "accessibility", "recording", "provider-validation"],
+      "changePatterns": [
+        "^apps/native/src/components/widget/(prompt-input|prompt-input-section|steps/begin-step)\\.tsx$",
+        "^apps/native/src/lib/ai-provider-validation\\.ts$",
+        "^apps/native/src-tauri/src/(store|commands|nix|e2e_support)\\.rs$",
+        "^tests/e2e/scenarios/macos_descriptor_prompt_smoke\\.sh$",
+        "^tests/e2e/(adapters|lib)/"
+      ],
+      "knownGaps": [
+        "Intentionally stops at local provider validation; it does not call a live or mock AI provider yet.",
+        "Requires the self-hosted Mac runner to already have Nix and darwin-rebuild available."
+      ],
+      "currentSpec": "tests/e2e/scenarios/macos_descriptor_prompt_smoke.sh",
+      "currentScript": "tests/e2e/run.sh macos_descriptor_prompt_smoke",
+      "status": "macos-first-spike",
+      "requiredForDefaultPrPack": false
+    },
+    {
       "name": "install_nix_clean_machine",
       "lane": "full-mac",
       "title": "Install Nix on clean machine",

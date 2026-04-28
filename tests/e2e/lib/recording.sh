@@ -97,7 +97,7 @@ recording_add_limitation() {
 
 recording_is_valid() {
     local output="$1"
-    local size duration
+    local size duration expected_fps actual_fps
 
     [ -f "$output" ] || return 1
     size=$(wc -c < "$output" 2>/dev/null || echo 0)
@@ -115,7 +115,73 @@ recording_is_valid() {
         -of default=noprint_wrappers=1:nokey=1 \
         "$output" 2>/dev/null | head -1)
 
-    awk -v duration="$duration" 'BEGIN { exit !(duration + 0 > 0) }'
+    awk -v duration="$duration" 'BEGIN { exit !(duration + 0 > 0) }' || return 1
+
+    expected_fps="${E2E_RECORD_FPS:-}"
+    if [ -n "$expected_fps" ]; then
+        actual_fps=$(run_with_timeout 10 ffprobe -v error \
+            -select_streams v:0 \
+            -show_entries stream=avg_frame_rate \
+            -of default=noprint_wrappers=1:nokey=1 \
+            "$output" 2>/dev/null | head -1)
+        awk -v actual="$actual_fps" -v expected="$expected_fps" '
+            function fps(value, parts) {
+                split(value, parts, "/")
+                if ((parts[2] + 0) > 0) return (parts[1] + 0) / (parts[2] + 0)
+                return value + 0
+            }
+            BEGIN {
+                a = fps(actual)
+                e = expected + 0
+                tolerance = e * 0.12
+                if (tolerance < 2) tolerance = 2
+                exit !(a > 0 && a >= e - tolerance && a <= e + tolerance)
+            }
+        ' || return 1
+    fi
+
+    if [ "${E2E_RECORDING_STRICT:-0}" = "1" ]; then
+        recording_frame_has_detail "$output" || return 1
+    fi
+
+    return 0
+}
+
+recording_frame_has_detail() {
+    local output="$1"
+    local frame_raw
+
+    command -v ffmpeg &>/dev/null || return 1
+    command -v perl &>/dev/null || return 1
+
+    frame_raw=$(mktemp "${TMPDIR:-/tmp}/e2e-video-frame.XXXXXX.rgb") || return 1
+    if ! run_with_timeout 20 ffmpeg -y -hide_banner -loglevel error \
+        -ss 2 -i "$output" \
+        -frames:v 1 -vf "scale=64:64,format=rgb24" \
+        -f rawvideo "$frame_raw" >/dev/null 2>&1; then
+        rm -f "$frame_raw"
+        return 1
+    fi
+
+    perl -e '
+        use strict;
+        use warnings;
+        my ($path) = @ARGV;
+        open my $fh, "<:raw", $path or exit 1;
+        local $/;
+        my $bytes = <$fh>;
+        exit 1 unless defined $bytes && length($bytes) > 0;
+        my @values = unpack("C*", $bytes);
+        my ($min, $max) = (255, 0);
+        for my $value (@values) {
+            $min = $value if $value < $min;
+            $max = $value if $value > $max;
+        }
+        exit(($max - $min) >= 12 ? 0 : 1);
+    ' "$frame_raw"
+    local status=$?
+    rm -f "$frame_raw"
+    return "$status"
 }
 
 recording_duration_seconds() {

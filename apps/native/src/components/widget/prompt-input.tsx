@@ -129,6 +129,7 @@ export function PromptInput() {
       <BeginEvolveWarning open={warningOpen} onOpenChange={setWarningOpen} handleEvolve={handleEvolve} />
       <InputGroup>
         <InputGroupTextarea
+          aria-label="Configuration change descriptor"
           id="evolve-prompt-input"
           data-testid="evolve-prompt-input"
           disabled={isLoading}
@@ -171,12 +172,14 @@ export function PromptInput() {
           <InputGroupText className="ml-auto">{contextUsage}</InputGroupText>
           {/* <Separator className="!h-4" orientation="vertical" /> */}
           <InputGroupButton
+            aria-label="Submit configuration change descriptor"
             id="evolve-prompt-send"
             data-testid="evolve-prompt-send"
             className="rounded-full"
             disabled={sendDisabled}
             onClick={handleSubmit}
             size="icon-xs"
+            title="Submit configuration change descriptor"
             variant="default"
           >
             <ArrowUpIcon />
