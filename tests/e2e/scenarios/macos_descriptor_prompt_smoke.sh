@@ -14,6 +14,7 @@ export E2E_RECORDING_STRICT=1
 NIXMAC_E2E_DESCRIPTOR_TEXT="Add ripgrep to my packages"
 NIXMAC_E2E_HOST_ATTR="e2e-host"
 NIXMAC_E2E_CONFIG_REPO=""
+NIXMAC_E2E_ELEMENTS_JSON_FILE="${TMPDIR:-/tmp}/nixmac-e2e-elements-$$.json"
 
 scenario_create_config_repo() {
     NIXMAC_E2E_CONFIG_REPO=$(mktemp -d "${TMPDIR:-/tmp}/nixmac-e2e-config.XXXXXX") \
@@ -87,7 +88,8 @@ scenario_find_element() {
         ' 2>/dev/null | head -1)
 
         if [ -n "$element" ]; then
-            printf '%s\t%s\n' "$element" "$json"
+            printf '%s' "$json" > "$NIXMAC_E2E_ELEMENTS_JSON_FILE"
+            printf '%s\n' "$element"
             return 0
         fi
 
@@ -101,11 +103,11 @@ scenario_find_element() {
 scenario_click_element() {
     local pattern="$1"
     local role="${2:-}"
-    local found element json
+    local element json
 
-    found=$(scenario_find_element "$pattern" "$role" 30) || return 1
-    element=$(printf '%s' "$found" | cut -f1)
-    json=$(printf '%s' "$found" | cut -f2-)
+    element=$(scenario_find_element "$pattern" "$role" 30) || return 1
+    json=$(cat "$NIXMAC_E2E_ELEMENTS_JSON_FILE" 2>/dev/null || true)
+    [ -n "$json" ] || return 1
     log "Clicking element $element matching '$pattern'"
     peek_click "$element" "$json"
 }
@@ -206,4 +208,5 @@ scenario_cleanup() {
     if [ -n "$NIXMAC_E2E_CONFIG_REPO" ]; then
         rm -rf "$NIXMAC_E2E_CONFIG_REPO" 2>/dev/null || true
     fi
+    rm -f "$NIXMAC_E2E_ELEMENTS_JSON_FILE" 2>/dev/null || true
 }
