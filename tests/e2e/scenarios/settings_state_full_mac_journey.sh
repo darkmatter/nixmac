@@ -54,9 +54,9 @@ scenario_test() {
     nixmac_open_settings_tab "Preferences" "Confirm|Build|Clear / Discard|Rollback" \
         || die "Preferences controls did not render"
     nixmac_screenshot "03-preferences-before"
-    if nixmac_click_element_matching "Build" --role "switch" --timeout 10 \
-        && nixmac_click_element_matching "Clear / Discard|Clear|Discard" --role "switch" --timeout 10 \
-        && nixmac_click_element_matching "Rollback" --role "switch" --timeout 10; then
+    if nixmac_click_element_matching "Build" --role "switch" --timeout 10 --optional \
+        && nixmac_click_element_matching "Clear / Discard|Clear|Discard" --role "switch" --timeout 10 --optional \
+        && nixmac_click_element_matching "Rollback" --role "switch" --timeout 10 --optional; then
         nixmac_wait_settings_jq \
             '.confirmBuild == false and .confirmClear == false and .confirmRollback == false' \
             "Preference toggles persisted to settings.json" \

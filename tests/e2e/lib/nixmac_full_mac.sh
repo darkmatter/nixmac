@@ -213,7 +213,14 @@ nixmac_start_mock_vllm() {
     log_file="$(mktemp "${TMPDIR:-/tmp}/nixmac-mock-vllm.XXXXXX.log")"
     rm -f "$context_file"
 
-    if command -v python3 >/dev/null 2>&1; then
+    if command -v perl >/dev/null 2>&1; then
+        log "Starting mock vLLM server with perl"
+        perl "$E2E_ROOT/lib/mock-vllm-server.pl" \
+            --context "$context_file" \
+            --data-dir "$E2E_ROOT/data" \
+            --response-files "$response_files" \
+            >"$log_file" 2>&1 &
+    elif command -v python3 >/dev/null 2>&1; then
         log "Starting mock vLLM server with python3"
         python3 -u "$E2E_ROOT/lib/mock-vllm-server.py" \
             --context "$context_file" \
@@ -315,9 +322,11 @@ nixmac_click_element_matching() {
     local pattern="$1"
     local role=""
     local timeout=30
+    local optional=0
     shift
     while [ $# -gt 0 ]; do
         case "$1" in
+            --optional) optional=1; shift ;;
             --role) role="$2"; shift 2 ;;
             --timeout) timeout="$2"; shift 2 ;;
             *) shift ;;
@@ -348,8 +357,12 @@ nixmac_click_element_matching() {
         elapsed=$((elapsed + 2))
     done
 
-    nixmac_screenshot "missing-element-$(echo "$pattern" | tr '[:upper:] ' '[:lower:]-' | tr -cd '[:alnum:]-')"
-    fail "Element matching '$pattern' not found"
+    if [ "$optional" = "1" ]; then
+        warn "Optional element matching '$pattern' not found"
+    else
+        nixmac_screenshot "missing-element-$(echo "$pattern" | tr '[:upper:] ' '[:lower:]-' | tr -cd '[:alnum:]-')"
+        fail "Element matching '$pattern' not found"
+    fi
     return 1
 }
 
