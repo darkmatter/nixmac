@@ -117,6 +117,12 @@ export type SemanticChangeGroup = { summary: ChangeSummary; changes: ChangeWithS
 
 export type SemanticChangeMap = { groups: SemanticChangeGroup[]; singles: ChangeWithSummary[]; unsummarizedHashes: string[] }
 
+/**
+ * Result returned when the config directory is set (typed or picked).
+ * `evolve_state` and `hosts` are `Some` only when the directory actually changed.
+ */
+export type SetDirResult = { dir: string; evolveState: EvolveState | null; hosts: string[] | null }
+
 export type SummarizedChange = { change: Change; ownSummary: ChangeSummary | null; groupSummary: ChangeSummary | null }
 
 export type SummarizedChangeSet = { changeSet: ChangeSet; changes: SummarizedChange[]; missedHashes: string[] }

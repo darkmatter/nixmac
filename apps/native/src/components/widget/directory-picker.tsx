@@ -12,12 +12,12 @@ type DirectoryPickerProps = {
   subLabel?: string;
 };
 
+const INITIAL_HINT =
+  "Select your own, or proceed below for defaults";
+
 export function DirectoryPicker({ label, subLabel }: DirectoryPickerProps) {
   const configDir = useWidgetStore((state) => state.configDir);
-  const setConfigDir = useWidgetStore((state) => state.setConfigDir);
-  const setHosts = useWidgetStore((state) => state.setHosts);
-  const setHost = useWidgetStore((state) => state.setHost);
-  const { pickDir } = useDarwinConfig();
+  const { pickDir, setDir } = useDarwinConfig();
 
   const [value, setValue] = useState<string>(configDir || "");
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
@@ -42,44 +42,26 @@ export function DirectoryPicker({ label, subLabel }: DirectoryPickerProps) {
     })();
   }, [configDir]);
 
-  const onBlur = async () => {
+  const submit = async (): Promise<boolean> => {
     const normalizedPath = await normalizePathInput(value);
-    if (!normalizedPath) {
-      return;
-    }
-
-    // Check path existence first and show immediate feedback
-    if (!(await validateDirectoryExists(normalizedPath))) {
-      return;
-    }
-
+    if (!normalizedPath) return false;
+    if (!(await validateDirectoryExists(normalizedPath))) return false;
     try {
-      await darwinAPI.config.setDir(normalizedPath);
-      setConfigDir(normalizedPath);
-      setValue(normalizedPath);
-
-      // If we made it this far, we should clear the hosts and make
-      // the user re-select from the one(s) available in the new directory.
-      setHost("");
-      try {
-        await darwinAPI.config.setHostAttr("");
-      } catch {}
-
-      try {
-        const hosts = await darwinAPI.flake.listHosts();
-        setHosts(Array.isArray(hosts) ? hosts : []);
-      } catch {
-        // No flake.nix found - shows bootstrap interface
-        setHosts([]);
-      }
-
-      // Don't validate flake here — missing flake.nix is handled above by
-      // hosts=[], which shows the bootstrap UI. This keeps typed input
-      // behavior consistent with the Browse flow.
+      const result = await setDir(normalizedPath);
+      setValue(result.dir);
+      return true;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       setValidationMessage(`${message}`);
+      return false;
     }
+  };
+
+  const onBlur = () => { submit(); };
+  const onKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== "Enter") return;
+    const target = e.currentTarget;
+    if (await submit()) target.blur();
   };
 
   async function normalizePathInput(input: string): Promise<string | null> {
@@ -104,11 +86,15 @@ export function DirectoryPicker({ label, subLabel }: DirectoryPickerProps) {
     }
   }
 
+  function validateOrInitial(path: string | undefined, fallback: string): void {
+    setValidationMessage(path?.endsWith("/.darwin") ? INITIAL_HINT : fallback);
+  }
+
   async function validateDirectoryExists(path: string): Promise<boolean> {
     try {
       const exists = await darwinAPI.path.exists(path);
       if (!exists) {
-        setValidationMessage(`Directory does not exist: ${path}`);
+        validateOrInitial(path, `Directory does not exist: ${path}`);
         return false;
       }
 
@@ -128,7 +114,7 @@ export function DirectoryPicker({ label, subLabel }: DirectoryPickerProps) {
         return true;
       }
 
-      setValidationMessage("flake.nix not found in this directory");
+      validateOrInitial(path, "flake.nix not found in this directory");
       return false;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
@@ -152,6 +138,7 @@ export function DirectoryPicker({ label, subLabel }: DirectoryPickerProps) {
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onBlur={onBlur}
+            onKeyDown={onKeyDown}
             placeholder="Not selected"
             aria-label={label}
           />
@@ -160,7 +147,11 @@ export function DirectoryPicker({ label, subLabel }: DirectoryPickerProps) {
             Browse
           </Button>
         </div>
-        {validationMessage && <p className="text-destructive text-xs">{validationMessage}</p>}
+        {validationMessage && (
+          <p className={`text-xs ${validationMessage === INITIAL_HINT ? "text-teal-300" : "text-rose-300"}`}>
+            {validationMessage}
+          </p>
+        )}
         <p className="text-muted-foreground text-xs">
           Press ⌘+⇧+. when browsing to show hidden folders like{" "}
           <code className="rounded bg-muted px-1">.darwin</code>

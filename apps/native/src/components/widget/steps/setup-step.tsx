@@ -21,7 +21,7 @@ export function SetupStep() {
   const { saveHost } = useDarwinConfig();
 
   const hasConfigDir = Boolean(configDir);
-  const hasFlake = hasConfigDir && hosts.length > 0;
+  const hasHosts = hasConfigDir && hosts.length > 0;
 
   return (
     <div className="flex flex-col items-center justify-center space-y-6 py-8">
@@ -41,7 +41,7 @@ export function SetupStep() {
 
       {hasConfigDir && (
         <div className="w-full max-w-sm space-y-2">
-          {hasFlake ? (
+          {hasHosts ? (
             <>
               <label className="font-medium text-foreground text-sm">
                 2. Configuration
