@@ -37,6 +37,10 @@ const CAPTURE_LIMITATION_LABELS = new Map([
     'Live provider/API account failed before product assertions could complete',
   ],
   [
+    'live_provider_preflight_failed',
+    'Live provider/API key failed the preflight auth or model-call check',
+  ],
+  [
     'screen_recording_invalid',
     'Screen recording was produced but failed validation',
   ],

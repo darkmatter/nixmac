@@ -430,8 +430,11 @@ jobs:
       NIXMAC_E2E_DOM_PROOF_CAPTURE: "1"
       NIXMAC_E2E_FRAME_TIMELINE: "1"
       NIXMAC_E2E_WEBVIEW_VIDEO: "0"
-      NIXMAC_E2E_OPENROUTER_API_KEY: ${{ secrets.NIXMAC_E2E_OPENROUTER_API_KEY || secrets.OPENROUTER_API_KEY }}
+      NIXMAC_E2E_OPENROUTER_API_KEY: ${{ secrets.NIXMAC_E2E_OPENROUTER_API_KEY }}
+      NIXMAC_E2E_REQUIRE_DEDICATED_OPENROUTER_KEY: "1"
       NIXMAC_E2E_OPENROUTER_MODEL: ${{ vars.NIXMAC_E2E_OPENROUTER_MODEL || 'anthropic/claude-sonnet-4' }}
+      NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL: ${{ vars.NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL || 'openai/gpt-4o-mini' }}
+      NIXMAC_E2E_OPENROUTER_MIN_LIMIT_REMAINING: ${{ vars.NIXMAC_E2E_OPENROUTER_MIN_LIMIT_REMAINING || '1' }}
     strategy:
       fail-fast: false
       matrix:
@@ -454,6 +457,13 @@ jobs:
         uses: alessiodionisi/setup-age-action@v1.3.0
         with:
           version: 1.3.1
+
+      - name: Preflight live OpenRouter provider
+        if: matrix.scenario == 'live_openrouter_evolve_smoke'
+        shell: "sops exec-env ops/secrets/secrets.yaml \"bash -e {0}\""
+        run: |
+          cd apps/native
+          node e2e-tauri/scripts/preflight-openrouter.mjs
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -537,11 +547,19 @@ jobs:
             echo "Unknown or unrunnable Tauri WDIO scenario: ${{ matrix.scenario }}" >&2
             exit 1
           fi
-          if [ "${{ matrix.scenario }}" = "live_openrouter_evolve_smoke" ] && [ -z "${NIXMAC_E2E_OPENROUTER_API_KEY:-${OPENROUTER_API_KEY:-}}" ]; then
-            node e2e-tauri/scripts/write-infra-failure.mjs \
-              "${{ matrix.scenario }}" \
-              "Live OpenRouter scenario did not run because NIXMAC_E2E_OPENROUTER_API_KEY or OPENROUTER_API_KEY is not configured"
-            exit 1
+          if [ "${{ matrix.scenario }}" = "live_openrouter_evolve_smoke" ]; then
+            if [ "${NIXMAC_E2E_REQUIRE_DEDICATED_OPENROUTER_KEY:-}" = "1" ] && [ -z "${NIXMAC_E2E_OPENROUTER_API_KEY:-}" ]; then
+              node e2e-tauri/scripts/write-infra-failure.mjs \
+                "${{ matrix.scenario }}" \
+                "Live OpenRouter scenario did not run because dedicated GitHub secret NIXMAC_E2E_OPENROUTER_API_KEY is not configured"
+              exit 1
+            fi
+            if [ -z "${NIXMAC_E2E_OPENROUTER_API_KEY:-${OPENROUTER_API_KEY:-}}" ]; then
+              node e2e-tauri/scripts/write-infra-failure.mjs \
+                "${{ matrix.scenario }}" \
+                "Live OpenRouter scenario did not run because NIXMAC_E2E_OPENROUTER_API_KEY or OPENROUTER_API_KEY is not configured"
+              exit 1
+            fi
           fi
           LOG_TMP="$(mktemp -t nixmac-wdio-${{ matrix.scenario }}.XXXXXX.log)"
           LOG_PATH="e2e-tauri/artifacts/${{ matrix.scenario }}/wdio.log"

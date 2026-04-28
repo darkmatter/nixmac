@@ -179,10 +179,17 @@ The PR gate deliberately uses different surfaces for different jobs:
   mocked provider behavior, and fast regression coverage. Its proof artifact is a
   webview screenshot/frame timeline, not a real desktop recording.
 - **Live provider WDIO**: `live_openrouter_evolve_smoke` is intentionally separate
-  from the mocked pack. It requires `NIXMAC_E2E_OPENROUTER_API_KEY` or
-  `OPENROUTER_API_KEY` from GitHub secrets or `ops/secrets/secrets.yaml`, and
-  proves one real OpenRouter evolve path reaches review with a generated diff.
-  Missing credentials are reported as infra/not-run, not a product pass.
+  from the mocked pack. In GitHub Actions it requires the dedicated
+  `NIXMAC_E2E_OPENROUTER_API_KEY` secret and does not fall back to the generic
+  `OPENROUTER_API_KEY` from `ops/secrets/secrets.yaml`; this avoids silently
+  reusing a stale or unfunded personal key. Before the app build, the workflow
+  calls OpenRouter `/auth/key` and performs tiny completions against
+  `NIXMAC_E2E_OPENROUTER_MODEL` and `NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL` so
+  auth, credits, limits, and model access fail early as infra. If OpenRouter
+  reports a finite `limit_remaining`, the preflight requires at least
+  `NIXMAC_E2E_OPENROUTER_MIN_LIMIT_REMAINING` credits (`1` by default). Local
+  runs can still use `OPENROUTER_API_KEY` unless
+  `NIXMAC_E2E_REQUIRE_DEDICATED_OPENROUTER_KEY=1` is set.
 - **Full-Mac (`tests/e2e`)**: real macOS desktop proof using Peekaboo and ffmpeg.
   These scenarios validate launch/install/OS integration behavior on the configured
   Mac runner and keep real full-screen recordings.

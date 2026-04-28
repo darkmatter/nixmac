@@ -1,9 +1,18 @@
 import { createWdioConfig } from './wdio.conf.base.mjs';
 
+function trimEnv(name) {
+  return typeof process.env[name] === 'string' ? process.env[name].trim() : '';
+}
+
 const openrouterApiKey =
-  process.env.NIXMAC_E2E_OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY || '';
+  trimEnv('NIXMAC_E2E_OPENROUTER_API_KEY') ||
+  (trimEnv('NIXMAC_E2E_REQUIRE_DEDICATED_OPENROUTER_KEY') === '1'
+    ? ''
+    : trimEnv('OPENROUTER_API_KEY'));
 const openrouterModel =
   process.env.NIXMAC_E2E_OPENROUTER_MODEL || 'anthropic/claude-sonnet-4';
+const openrouterSummaryModel =
+  process.env.NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL || 'openai/gpt-4o-mini';
 
 export const config = createWdioConfig({
   scenario: 'live_openrouter_evolve_smoke',
@@ -15,7 +24,7 @@ export const config = createWdioConfig({
       evolveProvider: 'openai',
       summaryProvider: 'openai',
       evolveModel: openrouterModel,
-      summaryModel: 'openai/gpt-4o-mini',
+      summaryModel: openrouterSummaryModel,
       openrouterApiKey,
       openaiApiKey: '',
       maxIterations: 8,

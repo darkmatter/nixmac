@@ -104,6 +104,7 @@ module.exports = async function publishE2ePrSummary({ github, context, core }) {
   const captureLimitationLabels = new Map([
     ["full_mac_runner_unavailable", "Full-Mac runner was unreachable or did not produce a scenario report"],
     ["provider_environment_failed", "Live provider/API account failed before product assertions could complete"],
+    ["live_provider_preflight_failed", "Live provider/API key failed the preflight auth or model-call check"],
     ["screen_recording_invalid", "Screen recording was produced but failed validation"],
     ["screen_recording_missing", "No screen recording was captured for this run"],
     ["webview_recording_invalid", "Legacy webview frame-replay MP4 was produced but failed validation"],
