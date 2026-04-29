@@ -193,6 +193,22 @@ pub fn is_nix_installed() -> bool {
         return true;
     }
 
+    for nix_path in [
+        "/nix/var/nix/profiles/default/bin/nix",
+        "/run/current-system/sw/bin/nix",
+    ] {
+        if Command::new(nix_path)
+            .arg("--version")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false)
+        {
+            return true;
+        }
+    }
+
     Command::new("nix")
         .arg("--version")
         .env("PATH", get_nix_path_with_login_shell())
