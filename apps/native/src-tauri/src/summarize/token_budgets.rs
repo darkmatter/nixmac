@@ -4,6 +4,7 @@ use once_cell::sync::Lazy;
 use tiktoken_rs::{cl100k_base, CoreBPE};
 
 const DEFAULT_MODEL_CONTEXT_WINDOW: u32 = 8192;
+const MIN_MEANINGFUL_OUTPUT_TOKENS: u32 = 128;
 
 #[derive(Debug, Clone, Copy)]
 pub struct TokenAllocation {
@@ -32,27 +33,49 @@ pub fn compute_token_allocation(
 
     let safety_margin = (max_context_tokens / 16).max(128);
 
-    let required_context_tokens = input_est
+    let desired_total = input_est
         .saturating_add(requested_output_tokens)
-        .saturating_add(safety_margin)
-        .min(max_context_tokens);
+        .saturating_add(safety_margin);
 
-    // Never reduce output_tokens
-    let output_tokens = requested_output_tokens;
-
-    // Only warn when we *know* truncation risk exists
-    if input_est + requested_output_tokens + safety_margin > max_context_tokens {
-        log::warn!(
-            "Token budget overflow (non-fatal). input={}, output={}, ctx={}",
-            input_est,
-            requested_output_tokens,
-            max_context_tokens
-        );
+    if desired_total <= max_context_tokens {
+        return TokenAllocation {
+            output_tokens: requested_output_tokens,
+            required_context_tokens: desired_total,
+        };
     }
 
+    let available_for_output = max_context_tokens
+        .saturating_sub(input_est)
+        .saturating_sub(safety_margin);
+
+    if available_for_output < MIN_MEANINGFUL_OUTPUT_TOKENS {
+        log::warn!(
+            "Prompt exceeds context window without enough room for meaningful completion. input={} available_output={} min_output={} ctx={}",
+            input_est,
+            available_for_output,
+            MIN_MEANINGFUL_OUTPUT_TOKENS,
+            max_context_tokens
+        );
+
+        return TokenAllocation {
+            output_tokens: 0,
+            required_context_tokens: max_context_tokens,
+        };
+    }
+
+    let clamped_output = requested_output_tokens.min(available_for_output);
+
+    log::warn!(
+        "Token allocation clamped. input={} requested_output={} clamped_output={} ctx={}",
+        input_est,
+        requested_output_tokens,
+        clamped_output,
+        max_context_tokens
+    );
+
     TokenAllocation {
-        output_tokens,
-        required_context_tokens,
+        output_tokens: clamped_output,
+        required_context_tokens: max_context_tokens,
     }
 }
 
@@ -150,14 +173,15 @@ mod tests {
         let prompt = "one line";
         let input = estimate_input_tokens(prompt);
         let requested_output = 300;
-        let max_ctx = input + requested_output + 100 + 50;
+        let safety_margin = (4096 / 16).max(128);
+        let max_ctx = input + requested_output + safety_margin + 50;
 
         let alloc = compute_token_allocation(prompt, requested_output, max_ctx);
 
         assert_eq!(alloc.output_tokens, requested_output);
         assert_eq!(
             alloc.required_context_tokens,
-            input + requested_output + 100 + 50
+            input + requested_output + safety_margin
         );
     }
 
@@ -166,12 +190,29 @@ mod tests {
         let prompt = "one line";
         let input = estimate_input_tokens(prompt);
         let requested_output = 300;
-        let available_output = 42;
-        let max_ctx = input + 100 + 50 + available_output;
+        let max_ctx = 4096;
+        let safety_margin = (max_ctx / 16).max(128);
+        let available_output = 256;
+        let max_ctx = input + safety_margin + available_output;
 
         let alloc = compute_token_allocation(prompt, requested_output, max_ctx);
 
         assert_eq!(alloc.output_tokens, available_output);
+        assert_eq!(alloc.required_context_tokens, max_ctx);
+    }
+
+    #[test]
+    fn returns_zero_output_when_only_tiny_completion_would_fit() {
+        let prompt = "one line";
+        let input = estimate_input_tokens(prompt);
+        let max_ctx = 4096;
+        let safety_margin = (max_ctx / 16).max(128);
+        let tiny_available_output = MIN_MEANINGFUL_OUTPUT_TOKENS - 1;
+        let max_ctx = input + safety_margin + tiny_available_output;
+
+        let alloc = compute_token_allocation(prompt, 300, max_ctx);
+
+        assert_eq!(alloc.output_tokens, 0);
         assert_eq!(alloc.required_context_tokens, max_ctx);
     }
 
