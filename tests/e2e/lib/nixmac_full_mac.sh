@@ -393,11 +393,17 @@ nixmac_type_text() {
     [ "$status" -eq 0 ] && return 0
 
     warn "Peekaboo type timed out or failed; retrying text entry via clipboard paste"
-    command -v pbcopy >/dev/null 2>&1 || return "$status"
-    printf '%s' "$text" | pbcopy || return "$status"
+    nixmac_paste_text "$text" || return "$status"
+}
+
+nixmac_paste_text() {
+    local text="$1"
+
+    command -v pbcopy >/dev/null 2>&1 || return 1
+    printf '%s' "$text" | pbcopy || return 1
     peek_hotkey "cmd+a" || true
     sleep 0.5
-    peek_hotkey "cmd+v" || return "$status"
+    peek_hotkey "cmd+v" || return 1
 }
 
 nixmac_type_prompt_and_submit() {
