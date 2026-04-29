@@ -20,27 +20,29 @@ const TEMPERATURE: f32 = 0.3;
 async fn request_json<R: Runtime, T: serde::de::DeserializeOwned>(
     system_prompt: &str,
     user_prompt: &str,
-    completion_tokens: u32,
-    input_tokens_budget: Option<u32>,
+    budget_for: fn(&str, &str) -> crate::summarize::token_budgets::TokenAllocation,
     temperature: f32,
     fn_name: &str,
     app_handle: Option<&AppHandle<R>>,
 ) -> Result<(T, TokenUsage)> {
     let provider = create_provider(app_handle)?;
+    let allocation = budget_for(user_prompt, provider.model());
     let request_id = uuid::Uuid::new_v4().to_string();
     debug!(
-        "[{}] requesting from {} [id: {}]",
+        "[{}] requesting from {} [id: {}] output_tokens={} context_window_tokens={}",
         fn_name,
         provider.model(),
-        request_id
+        request_id,
+        allocation.output_tokens,
+        allocation.required_context_tokens
     );
 
     let (raw_response, tokens_used) = match provider
         .json_completion(
             system_prompt,
             user_prompt,
-            completion_tokens,
-            input_tokens_budget,
+            allocation.output_tokens,
+            Some(allocation.required_context_tokens),
             temperature,
             &request_id,
         )
@@ -57,8 +59,12 @@ async fn request_json<R: Runtime, T: serde::de::DeserializeOwned>(
 
     if raw_response.trim().is_empty() {
         warn!(
-            "[{}] model returned empty response [id: {}] for user prompt: {} and system prompt: {}",
-            fn_name, request_id, user_prompt, system_prompt
+            "[{}] model returned empty response [id: {}]",
+            fn_name, request_id,
+        );
+        debug!(
+            "[{}] user prompt: {}\nsystem prompt: {}",
+            fn_name, user_prompt, system_prompt
         );
         return Err(anyhow::anyhow!(
             "{}: model returned empty response",
@@ -89,12 +95,10 @@ pub async fn generate_commit_message<R: Runtime>(
     prompt: &str,
     app_handle: Option<&AppHandle<R>>,
 ) -> Result<(String, TokenUsage)> {
-    let budget = commit_message_budget(prompt);
     let (parsed, usage) = request_json::<_, CommitMessageJson>(
         "",
         prompt,
-        budget.output_tokens,
-        Some(budget.required_context_tokens),
+        commit_message_budget,
         0.2,
         "generate_commit_message",
         app_handle,
@@ -121,12 +125,10 @@ pub async fn map_relations<R: Runtime>(
     prompt: &str,
     app_handle: Option<&AppHandle<R>>,
 ) -> Result<(Vec<RawNewMapEntry>, TokenUsage)> {
-    let budget = map_relations_budget(prompt);
     let (raw, usage) = request_json::<_, RawNewMapResponse>(
         "",
         prompt,
-        budget.output_tokens,
-        Some(budget.required_context_tokens),
+        map_relations_budget,
         TEMPERATURE,
         "map_relations",
         app_handle,
@@ -147,12 +149,10 @@ pub async fn map_relations_to_existing<R: Runtime>(
     prompt: &str,
     app_handle: Option<&AppHandle<R>>,
 ) -> Result<(Vec<RawHunkPlacement>, TokenUsage)> {
-    let budget = map_relations_to_existing_budget(prompt);
     let (raw, usage) = request_json::<_, RawPlacementResponse>(
         "",
         prompt,
-        budget.output_tokens,
-        Some(budget.required_context_tokens),
+        map_relations_to_existing_budget,
         TEMPERATURE,
         "map_relations_to_existing",
         app_handle,
@@ -181,13 +181,11 @@ pub async fn summarize_evolved_group<R: Runtime>(
     former_group_id: i64,
     app_handle: Option<&AppHandle<R>>,
 ) -> Result<(EvolvedGroupSummary, TokenUsage)> {
-    let budget = group_budget(prompt);
     let fn_name = format!("summarize_evolved_group[{}]", former_group_id);
     let (raw, usage) = request_json::<_, EvolvedGroupRaw>(
         "",
         prompt,
-        budget.output_tokens,
-        Some(budget.required_context_tokens),
+        group_budget,
         TEMPERATURE,
         &fn_name,
         app_handle,
@@ -220,12 +218,10 @@ pub async fn summarize_new_group<R: Runtime>(
     prompt: &str,
     app_handle: Option<&AppHandle<R>>,
 ) -> Result<(EvolvedGroupSummary, TokenUsage)> {
-    let budget = group_budget(prompt);
     let (raw, usage) = request_json::<_, EvolvedGroupRaw>(
         "",
         prompt,
-        budget.output_tokens,
-        Some(budget.required_context_tokens),
+        group_budget,
         TEMPERATURE,
         "summarize_new_group",
         app_handle,
@@ -258,16 +254,10 @@ pub async fn summarize_new_single<R: Runtime>(
     prompt: &str,
     app_handle: Option<&AppHandle<R>>,
 ) -> Result<(HunkSummary, TokenUsage)> {
-    let budget = single_budget(prompt);
-    debug!(
-        "summarize_new_single: completion_tokens {}, required_context_tokens {}",
-        budget.output_tokens, budget.required_context_tokens
-    );
     request_json::<_, HunkSummary>(
         "",
         prompt,
-        budget.output_tokens,
-        Some(budget.required_context_tokens),
+        single_budget,
         TEMPERATURE,
         "summarize_new_single",
         app_handle,

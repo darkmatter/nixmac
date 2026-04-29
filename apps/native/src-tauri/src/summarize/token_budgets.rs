@@ -3,7 +3,7 @@
 use once_cell::sync::Lazy;
 use tiktoken_rs::{cl100k_base, CoreBPE};
 
-const CTX_SAFETY_MARGIN: u32 = 512;
+const DEFAULT_MODEL_CONTEXT_WINDOW: u32 = 8192;
 
 #[derive(Debug, Clone, Copy)]
 pub struct TokenAllocation {
@@ -23,69 +23,110 @@ fn estimate_input_tokens(prompt: &str) -> u32 {
     (prompt.len() as u32) / 4
 }
 
-/// Computes token allocation for a model call from completion and context budgets.
 pub fn compute_token_allocation(
     prompt: &str,
-    completion_tokens: u32,
+    requested_output_tokens: u32,
     max_context_tokens: u32,
 ) -> TokenAllocation {
     let input_est = estimate_input_tokens(prompt);
 
+    let safety_margin = (max_context_tokens / 16).max(128);
+
     let required_context_tokens = input_est
-        .saturating_add(CTX_SAFETY_MARGIN)
+        .saturating_add(requested_output_tokens)
+        .saturating_add(safety_margin)
         .min(max_context_tokens);
 
+    // Never reduce output_tokens
+    let output_tokens = requested_output_tokens;
+
+    // Only warn when we *know* truncation risk exists
+    if input_est + requested_output_tokens + safety_margin > max_context_tokens {
+        log::warn!(
+            "Token budget overflow (non-fatal). input={}, output={}, ctx={}",
+            input_est,
+            requested_output_tokens,
+            max_context_tokens
+        );
+    }
+
     TokenAllocation {
-        output_tokens: completion_tokens,
+        output_tokens,
         required_context_tokens,
     }
 }
 
-// ── map_relations ─────────────────────────────────────────────────────────────
-const MAP_COMPLETION_TOKENS: u32 = 800;
-const MAP_MAX_CONTEXT_TOKENS: u32 = 8000;
+/// Returns a best-effort context window size for a model identifier.
+pub fn model_context_window(model: &str) -> u32 {
+    let m = model.to_ascii_lowercase();
 
-pub fn map_relations_budget(prompt: &str) -> TokenAllocation {
-    compute_token_allocation(prompt, MAP_COMPLETION_TOKENS, MAP_MAX_CONTEXT_TOKENS)
+    if m.contains("gpt-oss")
+        || m.contains("o1")
+        || m.contains("o3")
+        || m.contains("gpt-4.1")
+        || m.contains("claude-3")
+        || m.contains("gemini-1.5")
+        || m.contains("gemini-2")
+    {
+        return 32768;
+    }
+
+    if m.contains("gpt-4o")
+        || m.contains("llama3")
+        || m.contains("qwen")
+        || m.contains("mistral")
+        || m.contains("codellama")
+    {
+        return 16384;
+    }
+
+    DEFAULT_MODEL_CONTEXT_WINDOW
+}
+
+// ── map_relations ─────────────────────────────────────────────────────────────
+const MAP_MAX_OUTPUT_TOKENS: u32 = 800;
+
+pub fn map_relations_budget(prompt: &str, model: &str) -> TokenAllocation {
+    compute_token_allocation(prompt, MAP_MAX_OUTPUT_TOKENS, model_context_window(model))
 }
 
 // ── map_relations_to_existing ─────────────────────────────────────────────────
-const MAP_TO_EXISTING_COMPLETION_TOKENS: u32 = 800;
-const MAP_TO_EXISTING_MAX_CONTEXT_TOKENS: u32 = 8000;
+const MAP_TO_EXISTING_MAX_OUTPUT_TOKENS: u32 = 800;
 
-pub fn map_relations_to_existing_budget(prompt: &str) -> TokenAllocation {
+pub fn map_relations_to_existing_budget(prompt: &str, model: &str) -> TokenAllocation {
     compute_token_allocation(
         prompt,
-        MAP_TO_EXISTING_COMPLETION_TOKENS,
-        MAP_TO_EXISTING_MAX_CONTEXT_TOKENS,
+        MAP_TO_EXISTING_MAX_OUTPUT_TOKENS,
+        model_context_window(model),
     )
 }
 
 // ── summarize_evolved_group / summarize_new_group ─────────────────────────────
-const GROUP_COMPLETION_TOKENS: u32 = 700;
-const GROUP_MAX_CONTEXT_TOKENS: u32 = 6000;
+const GROUP_MAX_OUTPUT_TOKENS: u32 = 700;
 
-pub fn group_budget(prompt: &str) -> TokenAllocation {
-    compute_token_allocation(prompt, GROUP_COMPLETION_TOKENS, GROUP_MAX_CONTEXT_TOKENS)
+pub fn group_budget(prompt: &str, model: &str) -> TokenAllocation {
+    compute_token_allocation(prompt, GROUP_MAX_OUTPUT_TOKENS, model_context_window(model))
 }
 
 // ── summarize_new_single ──────────────────────────────────────────────────────
-const SINGLE_COMPLETION_TOKENS: u32 = 800;
-const SINGLE_MAX_CONTEXT_TOKENS: u32 = 2500;
+const SINGLE_MAX_OUTPUT_TOKENS: u32 = 800;
 
-pub fn single_budget(prompt: &str) -> TokenAllocation {
-    compute_token_allocation(prompt, SINGLE_COMPLETION_TOKENS, SINGLE_MAX_CONTEXT_TOKENS)
+pub fn single_budget(prompt: &str, model: &str) -> TokenAllocation {
+    compute_token_allocation(
+        prompt,
+        SINGLE_MAX_OUTPUT_TOKENS,
+        model_context_window(model),
+    )
 }
 
 // ── generate_commit_message_from_map ─────────────────────────────────────────
-const COMMIT_MESSAGE_COMPLETION_TOKENS: u32 = 300;
-const COMMIT_MESSAGE_MAX_CONTEXT_TOKENS: u32 = 600;
+const COMMIT_MESSAGE_MAX_OUTPUT_TOKENS: u32 = 300;
 
-pub fn commit_message_budget(prompt: &str) -> TokenAllocation {
+pub fn commit_message_budget(prompt: &str, model: &str) -> TokenAllocation {
     compute_token_allocation(
         prompt,
-        COMMIT_MESSAGE_COMPLETION_TOKENS,
-        COMMIT_MESSAGE_MAX_CONTEXT_TOKENS,
+        COMMIT_MESSAGE_MAX_OUTPUT_TOKENS,
+        model_context_window(model),
     )
 }
 
@@ -105,14 +146,42 @@ mod tests {
     }
 
     #[test]
-    fn output_budget_matches_configured_completion_tokens() {
-        let single = "one line";
-        let multi = "one line\ntwo line\nthree line";
+    fn returns_requested_output_when_budget_fits() {
+        let prompt = "one line";
+        let input = estimate_input_tokens(prompt);
+        let requested_output = 300;
+        let max_ctx = input + requested_output + 100 + 50;
 
-        let single_alloc = compute_token_allocation(single, 300, 600);
-        let multi_alloc = compute_token_allocation(multi, 300, 600);
+        let alloc = compute_token_allocation(prompt, requested_output, max_ctx);
 
-        assert_eq!(single_alloc.output_tokens, 300);
-        assert_eq!(multi_alloc.output_tokens, 300);
+        assert_eq!(alloc.output_tokens, requested_output);
+        assert_eq!(
+            alloc.required_context_tokens,
+            input + requested_output + 100 + 50
+        );
+    }
+
+    #[test]
+    fn clamps_output_to_available_context_when_needed() {
+        let prompt = "one line";
+        let input = estimate_input_tokens(prompt);
+        let requested_output = 300;
+        let available_output = 42;
+        let max_ctx = input + 100 + 50 + available_output;
+
+        let alloc = compute_token_allocation(prompt, requested_output, max_ctx);
+
+        assert_eq!(alloc.output_tokens, available_output);
+        assert_eq!(alloc.required_context_tokens, max_ctx);
+    }
+
+    #[test]
+    fn model_context_window_uses_reasonable_defaults() {
+        assert_eq!(model_context_window("openai/gpt-4o-mini"), 16384);
+        assert_eq!(model_context_window("gpt-oss-120b"), 32768);
+        assert_eq!(
+            model_context_window("unknown-model"),
+            DEFAULT_MODEL_CONTEXT_WINDOW
+        );
     }
 }
