@@ -249,16 +249,30 @@ scenario_wait_for_prompt_value() {
 
 scenario_enter_text() {
     local text="$1"
+    local chunk remaining
 
     if command -v pbcopy >/dev/null 2>&1; then
-        printf '%s' "$text" | pbcopy || return 1
+        printf '%s' "$text" | pbcopy || true
         peek_hotkey "cmd+a" >/dev/null 2>&1 || true
         sleep 1
-        peek_hotkey "cmd+v" >/dev/null 2>&1 || return 1
-        return 0
+        peek_hotkey "cmd+v" >/dev/null 2>&1 \
+            || osascript -e 'tell application "System Events" to keystroke "v" using command down' >/dev/null 2>&1 \
+            || true
+
+        if scenario_wait_for_prompt_value "$text" 8; then
+            return 0
+        fi
     fi
 
-    peek_type "$text"
+    peek_hotkey "cmd+a" >/dev/null 2>&1 || true
+    remaining="$text"
+    while [ -n "$remaining" ]; do
+        chunk="${remaining:0:120}"
+        remaining="${remaining:120}"
+        peek_type "$chunk" >/dev/null 2>&1 || return 1
+        sleep 0.2
+    done
+    scenario_wait_for_prompt_value "$text" 10
 }
 
 scenario_commit_message_value() {
@@ -479,8 +493,7 @@ scenario_test() {
     fi
     scenario_click_element "evolve-prompt-input|Configuration change descriptor" "textField" \
         || die "Descriptor prompt input was not reachable by accessibility metadata"
-    scenario_enter_text "$NIXMAC_E2E_DESCRIPTOR_TEXT" || die "Failed to enter descriptor"
-    scenario_wait_for_prompt_value "$NIXMAC_E2E_DESCRIPTOR_TEXT" 20 \
+    scenario_enter_text "$NIXMAC_E2E_DESCRIPTOR_TEXT" \
         || die "Typed descriptor was not visible in the prompt input"
     nixmac_screenshot "02-descriptor-typed"
     scenario_click_element "evolve-prompt-send|Submit configuration change descriptor" "" 20 \
