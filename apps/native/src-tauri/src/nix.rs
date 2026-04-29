@@ -193,8 +193,9 @@ pub fn is_nix_installed() -> bool {
         return true;
     }
 
-    Command::new("/bin/bash")
-        .args(["-l", "-c", "nix --version"])
+    Command::new("nix")
+        .arg("--version")
+        .env("PATH", get_nix_path_with_login_shell())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
