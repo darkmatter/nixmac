@@ -10,6 +10,8 @@
 E2E_ADAPTER="nixmac"
 E2E_FIXTURE="nix-installed"
 
+source "$E2E_LIB/nixmac_full_mac.sh"
+
 assert_nixmac_text() {
     local pattern="$1"
     local description="$2"

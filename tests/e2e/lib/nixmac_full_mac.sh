@@ -315,7 +315,7 @@ nixmac_open_settings_tab() {
     fi
 
     warn "Settings tab text was not confirmed by Peekaboo capture: $tab"
-    return 0
+    return 1
 }
 
 nixmac_click_element_matching() {
