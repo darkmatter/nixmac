@@ -36,7 +36,7 @@ scenario_test() {
     nixmac_wait_for_text "Install vim|Add Rectangle|Settings|History" --timeout 45 \
         || die "Prompt screen did not render"
     nixmac_screenshot "01-live-prompt"
-    nixmac_type_prompt_and_submit "Edit flake.nix only. In the existing top-level environment.systemPackages list that currently contains pkgs.vim, add pkgs.jq on the next line. Keep valid Nix syntax. Do not ask clarifying questions." \
+    nixmac_type_prompt_and_submit "In flake.nix, add pkgs.jq next to pkgs.vim in environment.systemPackages." \
         || die "Failed to submit live OpenRouter prompt"
     nixmac_wait_for_text "Build & Test|Discard|pkgs.jq" --timeout 240 \
         || die "Live OpenRouter prompt did not reach review"

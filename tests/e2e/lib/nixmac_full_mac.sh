@@ -410,9 +410,12 @@ nixmac_paste_text() {
 
     command -v pbcopy >/dev/null 2>&1 || return 1
     printf '%s' "$text" | pbcopy || return 1
+    osascript -e "tell application \"${NIXMAC_APP_NAME}\" to activate" >/dev/null 2>&1 || true
     peek_hotkey "cmd+a" || true
     sleep 0.5
-    peek_hotkey "cmd+v" || return 1
+    peek_hotkey "cmd+v" \
+        || osascript -e 'tell application "System Events" to keystroke "v" using command down' >/dev/null 2>&1 \
+        || return 1
 }
 
 nixmac_type_prompt_and_submit() {
