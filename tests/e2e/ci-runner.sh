@@ -405,9 +405,11 @@ fi
 # Use launchctl setenv so the app process inherits these flags.
 launchctl setenv NIXMAC_DISABLE_UPDATER 1
 launchctl setenv NIXMAC_SKIP_PERMISSIONS 1
-if scenario_requires_unattended_auth && [ -n "${NIXMAC_E2E_ADMIN_PASSWORD:-}" ]; then
+if scenario_requires_unattended_auth; then
     launchctl setenv NIXMAC_E2E_UNATTENDED_AUTH 1
-    launchctl setenv NIXMAC_E2E_ADMIN_PASSWORD "$NIXMAC_E2E_ADMIN_PASSWORD"
+    if [ -n "${NIXMAC_E2E_ADMIN_PASSWORD:-}" ]; then
+        launchctl setenv NIXMAC_E2E_ADMIN_PASSWORD "$NIXMAC_E2E_ADMIN_PASSWORD"
+    fi
 fi
 
 EXIT_CODE=0

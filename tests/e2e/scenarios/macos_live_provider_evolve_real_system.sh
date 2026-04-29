@@ -623,8 +623,8 @@ scenario_test() {
     launchctl unsetenv NIXMAC_E2E_MOCK_SYSTEM 2>/dev/null || true
     launchctl setenv NIXMAC_RECORD_COMPLETIONS 1
     launchctl setenv NIXMAC_COMPLETION_LOG_DIR "$NIXMAC_E2E_COMPLETION_LOG_DIR"
+    launchctl setenv NIXMAC_E2E_UNATTENDED_AUTH 1
     if [ -n "${NIXMAC_E2E_ADMIN_PASSWORD:-${ADMIN_PASSWORD:-}}" ]; then
-        launchctl setenv NIXMAC_E2E_UNATTENDED_AUTH 1
         launchctl setenv NIXMAC_E2E_ADMIN_PASSWORD "${NIXMAC_E2E_ADMIN_PASSWORD:-${ADMIN_PASSWORD:-}}"
     fi
     phase_pass "Prepared real OpenRouter settings, real nix-darwin flake, and preserved current system profile"

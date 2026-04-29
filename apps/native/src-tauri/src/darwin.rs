@@ -385,7 +385,7 @@ fn run_activate_with_path(activate_path: &str) -> Result<ActivateResult, anyhow:
     let nix_path = crate::nix::get_nix_path();
     let home = std::env::var("HOME").unwrap_or_default();
     let ssh_sock = std::env::var("SSH_AUTH_SOCK").unwrap_or_default();
-    let user = std::env::var("USER").unwrap_or_else(|_| "root".to_string());
+    let user = current_user_name();
 
     // Resolve the symlink to the real nix store path.
     // sudo / visudo match against the canonical path, not the symlink.
@@ -430,28 +430,40 @@ fn run_activate_with_path(activate_path: &str) -> Result<ActivateResult, anyhow:
         sock = sq(&ssh_sock),
     );
 
-    let escaped_script = osa(&shell_script);
-    let automation_auth = crate::e2e_support::unattended_admin_password()
-        .map(|password| {
-            format!(
-                " user name \"{}\" password \"{}\"",
-                osa(&user),
-                osa(&password)
-            )
-        })
-        .unwrap_or_default();
+    let output = if crate::e2e_support::unattended_auth_enabled() {
+        info!(
+            "[darwin] Running unattended activation via sudo -n with launchctl asuser"
+        );
+        // CI runner setup requires passwordless sudo. Use it for unattended
+        // full-Mac E2E so a native admin prompt cannot block the run.
+        Command::new("sudo")
+            .args(["-n", "/bin/sh", "-c", &shell_script])
+            .output()
+            .map_err(|e| anyhow::anyhow!("Failed to run unattended activation via sudo: {}", e))?
+    } else {
+        let escaped_script = osa(&shell_script);
+        let automation_auth = crate::e2e_support::unattended_admin_password()
+            .map(|password| {
+                format!(
+                    " user name \"{}\" password \"{}\"",
+                    osa(&user),
+                    osa(&password)
+                )
+            })
+            .unwrap_or_default();
 
-    let osascript_cmd = format!(
-        "do shell script \"{}\"{} with administrator privileges",
-        escaped_script, automation_auth
-    );
+        let osascript_cmd = format!(
+            "do shell script \"{}\"{} with administrator privileges",
+            escaped_script, automation_auth
+        );
 
-    info!("[darwin] Running activation with launchctl asuser (Aqua bootstrap domain)");
+        info!("[darwin] Running activation with launchctl asuser (Aqua bootstrap domain)");
 
-    let output = Command::new("osascript")
-        .args(["-e", &osascript_cmd])
-        .output()
-        .map_err(|e| anyhow::anyhow!("Failed to run osascript: {}", e))?;
+        Command::new("osascript")
+            .args(["-e", &osascript_cmd])
+            .output()
+            .map_err(|e| anyhow::anyhow!("Failed to run osascript: {}", e))?
+    };
 
     let stdout_str = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr_str = String::from_utf8_lossy(&output.stderr).to_string();
@@ -469,6 +481,30 @@ fn run_activate_with_path(activate_path: &str) -> Result<ActivateResult, anyhow:
         stdout: stdout_str,
         stderr: stderr_str,
     })
+}
+
+fn current_user_name() -> String {
+    for key in ["USER", "LOGNAME"] {
+        if let Ok(value) = std::env::var(key) {
+            if !value.is_empty() {
+                return value;
+            }
+        }
+    }
+
+    Command::new("id")
+        .arg("-un")
+        .output()
+        .ok()
+        .and_then(|output| {
+            if output.status.success() {
+                Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
+            } else {
+                None
+            }
+        })
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "root".to_string())
 }
 
 /// Handle activation failures and determine the appropriate error response.

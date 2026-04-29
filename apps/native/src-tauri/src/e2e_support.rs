@@ -60,13 +60,17 @@ pub fn should_mock_system() -> bool {
 }
 
 pub fn unattended_admin_password() -> Option<String> {
-    if std::env::var(E2E_UNATTENDED_AUTH_ENV).unwrap_or_default() != "1" {
+    if !unattended_auth_enabled() {
         return None;
     }
 
     std::env::var(E2E_ADMIN_PASSWORD_ENV)
         .ok()
         .filter(|value| !value.is_empty())
+}
+
+pub fn unattended_auth_enabled() -> bool {
+    std::env::var(E2E_UNATTENDED_AUTH_ENV).unwrap_or_default() == "1"
 }
 
 pub fn is_e2e_mode() -> bool {
