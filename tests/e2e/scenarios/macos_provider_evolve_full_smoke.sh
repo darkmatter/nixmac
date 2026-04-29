@@ -12,6 +12,8 @@ E2E_ADAPTER="nixmac"
 export E2E_RECORD_FPS=30
 export E2E_RECORDING_STRICT=1
 
+source "$E2E_LIB/nixmac_full_mac.sh"
+
 NIXMAC_E2E_DESCRIPTOR_TEXT="Add ripgrep to my system packages"
 NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE="feat(e2e): provider generated ripgrep package"
 NIXMAC_E2E_HOST_ATTR="e2e-host"
@@ -439,9 +441,15 @@ scenario_test() {
     scenario_click_element "evolve-prompt-input|Configuration change descriptor" "textField" \
         || die "Descriptor prompt input was not reachable by accessibility metadata"
     peek_hotkey "cmd+a" >/dev/null 2>&1 || true
-    peek_type "$NIXMAC_E2E_DESCRIPTOR_TEXT" || die "Failed to type descriptor"
-    scenario_wait_for_prompt_value "$NIXMAC_E2E_DESCRIPTOR_TEXT" 20 \
-        || die "Typed descriptor was not visible in the prompt input"
+    nixmac_type_text "$NIXMAC_E2E_DESCRIPTOR_TEXT" || die "Failed to type descriptor"
+    if ! scenario_wait_for_prompt_value "$NIXMAC_E2E_DESCRIPTOR_TEXT" 20; then
+        warn "Typed descriptor was not visible; retrying with clipboard paste"
+        scenario_click_element "evolve-prompt-input|Configuration change descriptor" "textField" \
+            || die "Descriptor prompt input was not reachable for paste retry"
+        nixmac_paste_text "$NIXMAC_E2E_DESCRIPTOR_TEXT" || die "Failed to paste descriptor"
+        scenario_wait_for_prompt_value "$NIXMAC_E2E_DESCRIPTOR_TEXT" 20 \
+            || die "Typed descriptor was not visible in the prompt input"
+    fi
     nixmac_screenshot "02-descriptor-typed"
     scenario_click_element "evolve-prompt-send|Submit configuration change descriptor" "" 20 \
         || die "Submit target was not reachable by accessibility metadata"
