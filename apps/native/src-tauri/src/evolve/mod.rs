@@ -255,8 +255,6 @@ fn log_api_error(
 }
 
 // Use OpenRouter with Claude for evolution - better reasoning without strict content policies
-const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
-const OPENAI_BASE_URL: &str = "https://api.openai.com/v1";
 const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 const DEFAULT_MAX_BUILD_ATTEMPTS: usize = 5;
@@ -430,38 +428,11 @@ pub async fn generate_evolution<R: Runtime>(
             .flatten()
             .or_else(|| std::env::var("VLLM_API_BASE").ok())
             .ok_or_else(|| anyhow!("No vLLM base URL configured. Please set it in Settings."))?;
-        let api_key = store::get_vllm_api_key(app)
-            .ok()
-            .flatten()
-            .unwrap_or_else(|| "none".to_string());
+        let api_key = store::get_effective_vllm_api_key(app)?.unwrap_or_else(|| "none".to_string());
         info!("Using vLLM provider | Model: {} | URL: {}", model, base_url);
         Arc::new(OpenAIProvider::new(api_key, base_url, model))
     } else {
-        // Resolve API key and matching base URL together.
-        // Prefer OpenRouter; fall back to direct OpenAI.
-        let (api_key, base_url) = store::get_openrouter_api_key(app)
-            .ok()
-            .flatten()
-            .map(|k| (k, OPENROUTER_BASE_URL))
-            .or_else(|| {
-                info!("OpenRouter key not found, trying OpenAI key from store");
-                store::get_openai_api_key(app)
-                    .ok()
-                    .flatten()
-                    .map(|k| (k, OPENAI_BASE_URL))
-            })
-            .or_else(|| {
-                info!("Falling back to OPENROUTER_API_KEY environment variable");
-                std::env::var("OPENROUTER_API_KEY")
-                    .ok()
-                    .map(|k| (k, OPENROUTER_BASE_URL))
-            })
-            .or_else(|| {
-                info!("Falling back to OPENAI_API_KEY environment variable");
-                std::env::var("OPENAI_API_KEY")
-                    .ok()
-                    .map(|k| (k, OPENAI_BASE_URL))
-            })
+        let (api_key, base_url) = store::get_effective_openai_compatible_credential(app)?
             .ok_or_else(|| {
                 anyhow!("No API key found. Please add your API key in Settings to get started.")
             })?;
@@ -470,12 +441,12 @@ pub async fn generate_evolution<R: Runtime>(
             .or_else(|| std::env::var("EVOLVE_MODEL").ok())
             .unwrap_or_else(|| DEFAULT_MODEL.to_string());
         // Strip OpenRouter-style "openai/" prefix for direct OpenAI usage
-        let model = if base_url == OPENAI_BASE_URL {
+        let model = if base_url == store::OPENAI_BASE_URL {
             model.strip_prefix("openai/").unwrap_or(&model).to_string()
         } else {
             model
         };
-        let provider_name = if base_url.contains("openrouter") {
+        let provider_name = if base_url == store::OPENROUTER_BASE_URL {
             "OpenRouter"
         } else {
             "OpenAI"

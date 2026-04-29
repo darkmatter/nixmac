@@ -9,10 +9,11 @@
 
 mod apply_system_defaults;
 mod build_state;
-mod completion_log;
 mod changes_from_diff;
 mod cli;
 mod commands;
+mod completion_log;
+mod credential_store;
 mod darwin;
 mod db;
 mod default_config;
@@ -165,6 +166,7 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
                 let app = match tauri::Builder::default()
                     // Ensure store plugin (and its managed state) is initialized so we can load settings
                     .plugin(tauri_plugin_store::Builder::default().build())
+                    .plugin(tauri_plugin_keyring::init())
                     .invoke_handler(tauri::generate_handler![])
                     .setup(|_app| Ok(()))
                     .build(context)
@@ -290,6 +292,7 @@ fn run_gui_mode(
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
+        .plugin(tauri_plugin_keyring::init())
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))

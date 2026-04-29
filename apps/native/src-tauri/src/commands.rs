@@ -786,9 +786,9 @@ pub async fn generate_commit_message(app: AppHandle) -> Result<String, String> {
 #[tauri::command]
 pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
     let openrouter_api_key =
-        store::get_openrouter_api_key(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+        store::get_effective_openrouter_api_key(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
     let openai_api_key =
-        store::get_openai_api_key(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+        store::get_effective_openai_api_key(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
     let send_diagnostics =
         store::get_send_diagnostics(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
 
@@ -807,8 +807,8 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
         store::get_ollama_api_base_url(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
     let vllm_api_base_url: Option<String> =
         store::get_vllm_api_base_url(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
-    let vllm_api_key: Option<String> =
-        store::get_vllm_api_key(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+    let vllm_api_key =
+        store::get_effective_vllm_api_key(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
 
     let confirm_build = store::get_bool_pref(&app, store::CONFIRM_BUILD_KEY, true)
         .map_err(|e| capture_err("ui_get_prefs", e))?;
