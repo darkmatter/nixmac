@@ -1069,7 +1069,7 @@ jobs:
             echo "export GITHUB_RUN_ATTEMPT=$(printf '%q' "${{ github.run_attempt }}")"
             echo "export PATH=/opt/homebrew/bin:\$PATH"
             cat tests/e2e/ci-runner.sh
-          } | timeout 40m ssh -o StrictHostKeyChecking=no \
+          } | timeout 75m ssh -o StrictHostKeyChecking=no \
             -o ConnectTimeout=30 \
             -o ServerAliveInterval=15 \
             -o ServerAliveCountMax=4 \

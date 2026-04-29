@@ -10,9 +10,10 @@
 
 # shellcheck disable=SC2034 # Sourced by tests/e2e/lib/runner.sh.
 E2E_ADAPTER="nixmac"
+E2E_FIXTURE="clean-machine"
 export E2E_RECORD_FPS=30
 export E2E_RECORDING_STRICT=1
-export E2E_RECORD_MAX_DURATION_SECONDS="${E2E_RECORD_MAX_DURATION_SECONDS:-2700}"
+export E2E_RECORD_MAX_DURATION_SECONDS="${E2E_RECORD_MAX_DURATION_SECONDS:-4500}"
 
 NIXMAC_E2E_DESCRIPTOR_TEXT="Edit flake.nix only. In the top-level environment.systemPackages list, add pkgs.hello on its own line. Use the edit_file tool with the exact file text, run build_check, and do not call done until build_check passes. Do not ask clarifying questions."
 NIXMAC_E2E_HOST_ATTR=""
@@ -47,6 +48,7 @@ scenario_host_attr() {
 
 scenario_current_system_path() {
     local profile="/nix/var/nix/profiles/system"
+    [ -e "$profile" ] || return 0
     realpath "$profile" 2>/dev/null \
         || python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$profile" 2>/dev/null \
         || true
@@ -284,6 +286,20 @@ scenario_latest_darwin_log() {
         | cut -d' ' -f2-
 }
 
+scenario_install_nix_with_app() {
+    phase "Install Nix through the real app flow"
+    nixmac_launch || die "App failed to launch for Nix install"
+    nixmac_wait_for_install_screen 45 || die "Install screen did not become visible"
+    nixmac_click_install || die "Failed to click Install Nix"
+    nixmac_wait_for_download 300 || die "Nix installer download failed or timed out"
+    nixmac_handle_pkg_install || die "Package installation failed"
+    nixmac_wait_for_detection 90 || die "App did not detect Nix after installation"
+    nixmac_wait_for_prefetch 420 || die "darwin-rebuild prefetch timed out"
+    nix_verify || die "Nix binary not functional after app install flow"
+    nixmac_screenshot "00-nix-installed-through-app"
+    phase_pass "Nix installed and detected through the shipped app"
+}
+
 scenario_build_and_wait_for_commit_step() {
     scenario_click_element "Build & Test" "button" 45 \
         || die "Build & Test button was not reachable"
@@ -297,8 +313,16 @@ scenario_build_and_wait_for_commit_step() {
 
 scenario_restore_previous_system() {
     [ "$NIXMAC_E2E_RESTORE_ATTEMPTED" = "1" ] && return 0
-    [ -n "$NIXMAC_E2E_PREVIOUS_SYSTEM_PATH" ] || return 0
-    [ -x "$NIXMAC_E2E_PREVIOUS_SYSTEM_PATH/activate" ] || return 0
+    if [ -z "$NIXMAC_E2E_PREVIOUS_SYSTEM_PATH" ]; then
+        log "No previous system profile existed before this run; uninstalling test Nix install"
+        nix_uninstall || return 1
+        NIXMAC_E2E_RESTORE_ATTEMPTED=1
+        return 0
+    fi
+    [ -x "$NIXMAC_E2E_PREVIOUS_SYSTEM_PATH/activate" ] || {
+        warn "Previous system profile has no activate script: $NIXMAC_E2E_PREVIOUS_SYSTEM_PATH"
+        return 1
+    }
 
     local current
     current=$(scenario_current_system_path)
@@ -337,25 +361,79 @@ SH
 )
         escaped_script=$(scenario_osa "$restore_script")
         osascript_cmd="do shell script \"$escaped_script\" user name \"$(scenario_osa "$user_name")\" password \"$(scenario_osa "$admin_password")\" with administrator privileges"
-        osascript -e "$osascript_cmd" 2>&1 | tee -a "$E2E_LOG_FILE" || return 1
+        osascript -e "$osascript_cmd" 2>&1 | tee -a "$E2E_LOG_FILE" || {
+            warn "Primary previous-profile activation failed; trying nix-env system rollback fallback"
+            scenario_restore_previous_system_rollback "$nix_env" || return 1
+        }
     else
-        sudo -n "$prev_path/activate" 2>&1 | tee -a "$E2E_LOG_FILE" || return 1
+        sudo -n "$prev_path/activate" 2>&1 | tee -a "$E2E_LOG_FILE" || {
+            warn "Primary previous-profile activation failed; trying nix-env system rollback fallback"
+            scenario_restore_previous_system_rollback "$nix_env" || return 1
+        }
         sudo -n "$nix_env" -p /nix/var/nix/profiles/system --set "$prev_path" 2>&1 | tee -a "$E2E_LOG_FILE" || return 1
     fi
 
     current=$(scenario_current_system_path)
     if [ "$current" = "$NIXMAC_E2E_PREVIOUS_SYSTEM_PATH" ]; then
         NIXMAC_E2E_RESTORE_ATTEMPTED=1
+        return 0
+    fi
+    return 1
+}
+
+scenario_restore_previous_system_rollback() {
+    local nix_env="$1"
+    [ -n "$nix_env" ] || return 1
+
+    local admin_password user_name rollback_script escaped_script osascript_cmd
+    admin_password="${NIXMAC_E2E_ADMIN_PASSWORD:-${ADMIN_PASSWORD:-}}"
+    user_name="${USER:-$(id -un)}"
+
+    if [ -n "$admin_password" ]; then
+        rollback_script=$(cat <<SH
+set -e
+NIX_ENV='$(scenario_sq "$nix_env")'
+"\$NIX_ENV" -p /nix/var/nix/profiles/system --rollback
+CURRENT=\$(/usr/bin/realpath /nix/var/nix/profiles/system 2>/dev/null || python3 -c 'import os; print(os.path.realpath("/nix/var/nix/profiles/system"))')
+test -x "\$CURRENT/activate"
+"\$CURRENT/activate" 2>&1
+SH
+)
+        escaped_script=$(scenario_osa "$rollback_script")
+        osascript_cmd="do shell script \"$escaped_script\" user name \"$(scenario_osa "$user_name")\" password \"$(scenario_osa "$admin_password")\" with administrator privileges"
+        osascript -e "$osascript_cmd" 2>&1 | tee -a "$E2E_LOG_FILE"
+    else
+        sudo -n "$nix_env" -p /nix/var/nix/profiles/system --rollback 2>&1 | tee -a "$E2E_LOG_FILE" || return 1
+        local current
+        current=$(scenario_current_system_path)
+        [ -n "$current" ] && [ -x "$current/activate" ] || return 1
+        sudo -n "$current/activate" 2>&1 | tee -a "$E2E_LOG_FILE"
     fi
 }
 
+scenario_preserve_completion_logs() {
+    [ -n "$NIXMAC_E2E_COMPLETION_LOG_DIR" ] || return 0
+    [ -d "$NIXMAC_E2E_COMPLETION_LOG_DIR" ] || return 0
+
+    local artifact_dir="/tmp/e2e-artifacts/${E2E_SCENARIO_NAME:-macos_live_provider_evolve_real_system}/completion-logs"
+    mkdir -p "$artifact_dir" || return 1
+    cp -R "$NIXMAC_E2E_COMPLETION_LOG_DIR"/. "$artifact_dir"/ 2>/dev/null || true
+}
+
 scenario_test() {
+    scenario_install_nix_with_app
+    nixmac_quit
+
     phase "Prepare real provider and real nix-darwin fixture"
     peekaboo_check
     command -v jq >/dev/null 2>&1 || die "jq is required"
     scenario_nix >/dev/null || die "Nix is required"
     NIXMAC_E2E_PREVIOUS_SYSTEM_PATH=$(scenario_current_system_path)
-    [ -n "$NIXMAC_E2E_PREVIOUS_SYSTEM_PATH" ] || die "Could not read current system profile"
+    if [ -n "$NIXMAC_E2E_PREVIOUS_SYSTEM_PATH" ]; then
+        log "Preserved previous system profile: $NIXMAC_E2E_PREVIOUS_SYSTEM_PATH"
+    else
+        log "No previous system profile found; cleanup will uninstall the test Nix install"
+    fi
     scenario_create_config_repo
     nixmac_clear_state
     scenario_seed_settings
@@ -424,7 +502,7 @@ scenario_test() {
     fi
     local new_system_path
     new_system_path=$(scenario_current_system_path)
-    if [ -z "$new_system_path" ] || [ "$new_system_path" = "$NIXMAC_E2E_PREVIOUS_SYSTEM_PATH" ]; then
+    if [ -z "$new_system_path" ] || { [ -n "$NIXMAC_E2E_PREVIOUS_SYSTEM_PATH" ] && [ "$new_system_path" = "$NIXMAC_E2E_PREVIOUS_SYSTEM_PATH" ]; }; then
         die "System profile did not change after real activation"
     fi
     nixmac_screenshot "05-save-step-after-real-activation"
@@ -462,13 +540,16 @@ scenario_test() {
     scenario_restore_previous_system
     local restored_path
     restored_path=$(scenario_current_system_path)
-    if [ "$restored_path" != "$NIXMAC_E2E_PREVIOUS_SYSTEM_PATH" ]; then
+    if [ -n "$NIXMAC_E2E_PREVIOUS_SYSTEM_PATH" ] && [ "$restored_path" != "$NIXMAC_E2E_PREVIOUS_SYSTEM_PATH" ]; then
         die "Previous system profile was not restored"
+    elif [ -z "$NIXMAC_E2E_PREVIOUS_SYSTEM_PATH" ] && nix_is_installed; then
+        die "Test Nix install was not removed after no-previous-profile run"
     fi
-    phase_pass "Previous system profile restored after no-stub activation proof"
+    phase_pass "Previous system state restored after no-stub activation proof"
 }
 
 scenario_cleanup() {
+    scenario_preserve_completion_logs || true
     scenario_restore_previous_system
     sudo -n rm -f /etc/sudoers.d/nixmac-e2e-restore-temp 2>/dev/null || true
     nixmac_quit
@@ -483,4 +564,5 @@ scenario_cleanup() {
     if [ -n "$NIXMAC_E2E_COMPLETION_LOG_DIR" ]; then
         rm -rf "$NIXMAC_E2E_COMPLETION_LOG_DIR" 2>/dev/null || true
     fi
+    nixmac_clear_state 2>/dev/null || true
 }

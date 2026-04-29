@@ -223,7 +223,7 @@ echo "macOS:    $(sw_vers -productVersion)"
 echo "Date:     $(date)"
 echo ""
 
-scenario_requires_existing_nix() {
+scenario_requires_unattended_auth() {
     case "$SCENARIO" in
         macos_live_provider_evolve_real_system)
             return 0
@@ -397,20 +397,15 @@ export E2E_TERMINAL_CLEANUP_MODE=kill
 export E2E_RECORDING_TRIM_START_SECONDS=3
 export NIXMAC_DISABLE_UPDATER=1   # Updater can crash in CI (unsigned builds, empty platforms)
 export NIXMAC_SKIP_PERMISSIONS=1  # CI Mac may not have FDA granted; skip permissions screen
-if scenario_requires_existing_nix; then
-    export E2E_CLEANUP_NIX=0
+if scenario_requires_unattended_auth; then
     export NIXMAC_E2E_UNATTENDED_AUTH=1
-    if [ ! -x "/nix/var/nix/profiles/default/bin/nix" ]; then
-        echo "[ci] ERROR: Real full-system scenario requires Nix to already be installed"
-        exit 1
-    fi
 fi
 
 # macOS `open` launches apps via Launch Services which ignores shell env vars.
 # Use launchctl setenv so the app process inherits these flags.
 launchctl setenv NIXMAC_DISABLE_UPDATER 1
 launchctl setenv NIXMAC_SKIP_PERMISSIONS 1
-if scenario_requires_existing_nix && [ -n "${NIXMAC_E2E_ADMIN_PASSWORD:-}" ]; then
+if scenario_requires_unattended_auth && [ -n "${NIXMAC_E2E_ADMIN_PASSWORD:-}" ]; then
     launchctl setenv NIXMAC_E2E_UNATTENDED_AUTH 1
     launchctl setenv NIXMAC_E2E_ADMIN_PASSWORD "$NIXMAC_E2E_ADMIN_PASSWORD"
 fi

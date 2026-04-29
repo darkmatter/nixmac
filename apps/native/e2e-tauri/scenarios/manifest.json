@@ -809,8 +809,10 @@
       "name": "macos_live_provider_evolve_real_system",
       "lane": "full-mac",
       "title": "macOS live provider real system evolve",
-      "summary": "Launches the installed macOS app, submits a descriptor, calls the real OpenRouter provider, applies the provider's Nix edit, runs real nix-darwin build and activation, generates the Save-step commit message through the provider, commits the result, and restores the previous system profile.",
+      "summary": "Starts from a clean Mac fixture, installs Nix through the shipped app, submits a descriptor, calls the real OpenRouter provider, applies the provider's Nix edit, runs real nix-darwin build and activation, generates the Save-step commit message through the provider, commits the result, and restores or uninstalls the test system state.",
       "coverage": [
+        "Clean-machine fixture is used so the lane can bootstrap Nix instead of assuming the runner already has it",
+        "Install Nix flow runs through the shipped app before provider evolution begins",
         "Exact-SHA app artifact launches on the real Mac runner",
         "Prompt input is reached and submitted through accessibility metadata",
         "Real OpenRouter evolve provider receives the descriptor and returns tool calls",
@@ -819,7 +821,7 @@
         "System profile changes after activation, proving the mock-system path was not used",
         "Summary/commit provider completions are recorded from the real provider",
         "Save step commits the provider-generated message and returns to Describe",
-        "Previous system profile is restored after the proof run",
+        "Previous system profile is restored after the proof run when one existed, otherwise the test Nix install is removed",
         "Publishes a 30 fps full-screen recording as primary proof"
       ],
       "riskAreas": ["full-mac", "live-provider", "evolve", "build-test", "activation", "commit", "recording"],
@@ -835,7 +837,8 @@
       ],
       "knownGaps": [
         "Calls a live model and can fail for provider outages, rate limits, account credit, or prompt nondeterminism.",
-        "Runs on the configured full-Mac runner and mutates then restores that runner's real nix-darwin system profile; it is intentionally not parallel-safe on one Mac."
+        "Runs on the configured full-Mac runner and mutates then restores or uninstalls that runner's real nix-darwin system state; it is intentionally not parallel-safe on one Mac.",
+        "Uses live nix-darwin/nixpkgs inputs during the temporary fixture lock step, so upstream flakes can still affect runtime stability."
       ],
       "currentSpec": "tests/e2e/scenarios/macos_live_provider_evolve_real_system.sh",
       "currentScript": "tests/e2e/run.sh macos_live_provider_evolve_real_system",
