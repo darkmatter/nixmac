@@ -374,7 +374,9 @@ nixmac_submit_prompt_from_suggestion() {
 }
 
 nixmac_click_prompt_submit() {
-    nixmac_click_element_matching "evolve-prompt-send|Submit configuration change descriptor|^Send$" --timeout 30 \
+    local pattern="evolve-prompt-send|Submit configuration change descriptor|(^| )Send($| )"
+    nixmac_click_element_matching "$pattern" --role button --timeout 20 --optional && return 0
+    nixmac_click_element_matching "$pattern" --timeout 10 \
         || return 1
 }
 
