@@ -302,6 +302,8 @@ nixmac_open_settings_tab() {
     local tab_pattern="(^| )${tab}($| )"
 
     log "Opening settings tab: $tab"
+    osascript -e "tell application \"${NIXMAC_APP_NAME}\" to activate" >/dev/null 2>&1 || true
+    sleep 1
     if nixmac_click_element_matching "$tab_pattern" --role button --timeout 12 --optional; then
         sleep 2
         if nixmac_wait_for_text "$expected" --timeout 12 --interval 2; then
@@ -315,7 +317,9 @@ nixmac_open_settings_tab() {
         osascript -e "tell application \"${NIXMAC_APP_NAME}\" to activate" >/dev/null 2>&1 || true
         sleep 1
         log "Clicking settings tab via coordinates: $tab at $coords"
-        peekaboo_run click --coords "$coords" >/dev/null 2>&1 || true
+        peekaboo_run click --app "$NIXMAC_APP_NAME" --coords "$coords" --focus-timeout-seconds 5 --focus-retry-count 3 >/dev/null 2>&1 \
+            || peekaboo_run click --coords "$coords" >/dev/null 2>&1 \
+            || true
         sleep 2
         if nixmac_wait_for_text "$expected" --timeout 12 --interval 2; then
             pass "Settings tab rendered: $tab"
