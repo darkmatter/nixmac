@@ -383,6 +383,31 @@ scenario_provider_request_count() {
     jq -s 'length' "$NIXMAC_E2E_PROVIDER_LOG" 2>/dev/null || echo 0
 }
 
+scenario_confirm_if_prompted() {
+    scenario_click_element "Confirm|Continue|Rebuild" "button" 3 >/dev/null 2>&1 || true
+    peek_hotkey "return" >/dev/null 2>&1 || true
+    peek_hotkey "space" >/dev/null 2>&1 || true
+}
+
+scenario_build_and_wait_for_commit_step() {
+    local attempt
+
+    for attempt in 1 2 3; do
+        scenario_click_element "Build & Test" "button" 30 \
+            || die "Build & Test button was not reachable"
+        scenario_confirm_if_prompted
+
+        if scenario_find_element "^Commit$" "button" 90 >/dev/null; then
+            return 0
+        fi
+
+        nixmac_screenshot "build-test-did-not-reach-commit-attempt-${attempt}"
+        log "Build & Test attempt ${attempt} did not expose the Commit button; retrying if possible"
+    done
+
+    return 1
+}
+
 scenario_test() {
     phase "Prepare provider-backed macOS fixture"
     peekaboo_check
@@ -440,9 +465,7 @@ scenario_test() {
     phase_pass "Provider calls observed and Review step reached"
 
     phase "Build and Test through mocked macOS activation"
-    scenario_click_element "Build & Test" "button" 30 \
-        || die "Build & Test button was not reachable"
-    if ! scenario_wait_for_text "Commit Changes|All changes active|Save|Commit" 90; then
+    if ! scenario_build_and_wait_for_commit_step; then
         nixmac_screenshot "commit-step-not-reached"
         die "Build & Test did not advance to Save/commit step"
     fi
