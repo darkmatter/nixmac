@@ -717,12 +717,19 @@ pub async fn generate_history_from(
 
 /// Summarizes the current working state, running the from-scratch pipeline if
 /// no existing summaries are found, or grouping and simplifying existing ones.
+/// Returns the updated SemanticChangeMap so the frontend can apply it immediately.
 #[tauri::command]
-pub async fn summarize_current(app: AppHandle) -> Result<(), String> {
+pub async fn summarize_current(
+    app: AppHandle,
+) -> Result<crate::shared_types::SemanticChangeMap, String> {
     crate::summarize::new_changeset(&app, None)
         .await
-        .map(|_| ())
-        .map_err(|e| capture_err("summarize_current", e))
+        .map_err(|e| capture_err("summarize_current", e))?;
+    let db_path = db::get_db_path(&app).map_err(|e| capture_err("summarize_current", e))?;
+    let dir = store::get_config_dir(&app).map_err(|e| capture_err("summarize_current", e))?;
+    let change_sets = crate::summarize::find_existing::for_current_state(&db_path, &dir)
+        .map_err(|e| capture_err("summarize_current", e))?;
+    Ok(crate::summarize::group_existing::from_change_sets(change_sets))
 }
 
 /// Returns all commits on the main branch, each paired with optional DB metadata, summary,
@@ -809,6 +816,9 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
         .map_err(|e| capture_err("ui_get_prefs", e))?;
     let confirm_rollback = store::get_bool_pref(&app, store::CONFIRM_ROLLBACK_KEY, true)
         .map_err(|e| capture_err("ui_get_prefs", e))?;
+    let auto_summarize_on_focus =
+        store::get_bool_pref(&app, store::AUTO_SUMMARIZE_ON_FOCUS_KEY, false)
+            .map_err(|e| capture_err("ui_get_prefs", e))?;
 
     Ok(types::UiPrefs {
         openrouter_api_key,
@@ -830,6 +840,7 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
         confirm_build,
         confirm_clear,
         confirm_rollback,
+        auto_summarize_on_focus,
     })
 }
 
@@ -904,6 +915,13 @@ pub async fn ui_set_prefs(
         .and_then(|v| v.as_bool())
     {
         store::set_bool_pref(&app, store::CONFIRM_ROLLBACK_KEY, confirm_rollback)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
+    }
+    if let Some(auto_summarize_on_focus) = prefs
+        .get(store::AUTO_SUMMARIZE_ON_FOCUS_KEY)
+        .and_then(|v| v.as_bool())
+    {
+        store::set_bool_pref(&app, store::AUTO_SUMMARIZE_ON_FOCUS_KEY, auto_summarize_on_focus)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
 
