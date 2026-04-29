@@ -247,6 +247,20 @@ scenario_wait_for_prompt_value() {
     return 1
 }
 
+scenario_enter_text() {
+    local text="$1"
+
+    if command -v pbcopy >/dev/null 2>&1; then
+        printf '%s' "$text" | pbcopy || return 1
+        peek_hotkey "cmd+a" >/dev/null 2>&1 || true
+        sleep 1
+        peek_hotkey "cmd+v" >/dev/null 2>&1 || return 1
+        return 0
+    fi
+
+    peek_type "$text"
+}
+
 scenario_commit_message_value() {
     local json
     json=$(peek_elements "$NIXMAC_APP_NAME")
@@ -465,8 +479,7 @@ scenario_test() {
     fi
     scenario_click_element "evolve-prompt-input|Configuration change descriptor" "textField" \
         || die "Descriptor prompt input was not reachable by accessibility metadata"
-    peek_hotkey "cmd+a" >/dev/null 2>&1 || true
-    peek_type "$NIXMAC_E2E_DESCRIPTOR_TEXT" || die "Failed to type descriptor"
+    scenario_enter_text "$NIXMAC_E2E_DESCRIPTOR_TEXT" || die "Failed to enter descriptor"
     scenario_wait_for_prompt_value "$NIXMAC_E2E_DESCRIPTOR_TEXT" 20 \
         || die "Typed descriptor was not visible in the prompt input"
     nixmac_screenshot "02-descriptor-typed"
