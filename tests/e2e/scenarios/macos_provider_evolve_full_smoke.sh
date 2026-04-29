@@ -384,9 +384,11 @@ scenario_provider_request_count() {
 }
 
 scenario_confirm_if_prompted() {
-    scenario_click_element "Confirm|Continue|Rebuild" "button" 3 >/dev/null 2>&1 || true
-    peek_hotkey "return" >/dev/null 2>&1 || true
-    peek_hotkey "space" >/dev/null 2>&1 || true
+    if scenario_click_element "^Confirm$" "button" 15; then
+        log "Confirmed build prompt"
+    else
+        log "No build confirmation prompt observed"
+    fi
 }
 
 scenario_build_and_wait_for_commit_step() {
