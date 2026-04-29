@@ -12,8 +12,8 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { constants as fsConstants } from 'node:fs';
-import { startMockVllmServer, stopMockVllmServer } from './mock-vllm-server.mjs';
-import { isPlaybackMode } from './vllm-test-mode.mjs';
+import { startMockVllmServer, stopMockVllmServer, type MockVllmServerContext, type MockVllmOptions } from './mock-vllm-server.js';
+import { isPlaybackMode } from './vllm-test-mode.js';
 import {
   assertConfigRepoClean,
   assertConfigRepoFileExists,
@@ -22,10 +22,23 @@ import {
   createNixConfigGitRepo,
   getConfigRepoDir,
   getConfigRepoGitDiff,
+  resetConfigRepoToInitialState,
   waitForConfigRepoClean,
   waitForConfigRepoFileExists,
   waitForConfigRepoInitialized,
-} from './config-repo.mjs';
+} from './config-repo.js';
+
+export {
+  assertConfigRepoClean,
+  assertConfigRepoFileExists,
+  assertConfigRepoInitialized,
+  getConfigRepoDir,
+  getConfigRepoGitDiff,
+  resetConfigRepoToInitialState,
+  waitForConfigRepoClean,
+  waitForConfigRepoFileExists,
+  waitForConfigRepoInitialized,
+};
 
 const execFileAsync = promisify(execFile);
 
@@ -35,15 +48,31 @@ const NIXMAC_APP_SUPPORT_DIR = path.join(
   'Application Support',
   'com.darkmatter.nixmac',
 );
-const NIXMAC_SETTINGS_PATH = path.join(
-  NIXMAC_APP_SUPPORT_DIR,
-  'settings.json',
-);
+const NIXMAC_SETTINGS_PATH = path.join(NIXMAC_APP_SUPPORT_DIR, 'settings.json');
 const NIXMAC_EVOLVE_STATE_PATH = path.join(NIXMAC_APP_SUPPORT_DIR, 'evolve-state.json');
 const NIXMAC_BUILD_STATE_PATH = path.join(NIXMAC_APP_SUPPORT_DIR, 'build-state.json');
 const NIXMAC_DB_PATH = path.join(NIXMAC_APP_SUPPORT_DIR, 'nixmac.db');
 
-async function pathExists(filePath) {
+export interface NixmacTestEnvironmentContext {
+  backupPath: string | null;
+  evolveBackupPath: string | null;
+  buildBackupPath: string | null;
+  dbBackupPath: string | null;
+  configDir: string | null;
+  mockVllmServer: MockVllmServerContext | null;
+  hostAttr: string;
+}
+
+export interface SetupOptions {
+  initializeConfigRepo?: boolean;
+  initializeEmptyConfigDir?: boolean;
+  host?: string;
+  mockVllm?: MockVllmOptions;
+  vllmApiBaseUrl?: string | null;
+  vllmApiKey?: string | null;
+}
+
+async function pathExists(filePath: string): Promise<boolean> {
   try {
     await access(filePath, fsConstants.F_OK);
     return true;
@@ -52,7 +81,7 @@ async function pathExists(filePath) {
   }
 }
 
-async function getEvalHostname() {
+async function getEvalHostname(): Promise<string> {
   try {
     const { stdout } = await execFileAsync('scutil', ['--get', 'LocalHostName']);
     const hostname = stdout.trim();
@@ -62,7 +91,7 @@ async function getEvalHostname() {
   }
 }
 
-async function backupNixmacSettings() {
+async function backupNixmacSettings(): Promise<string | null> {
   if (!(await pathExists(NIXMAC_SETTINGS_PATH))) {
     console.log(`[wdio:test-env] No existing settings found to back up at ${NIXMAC_SETTINGS_PATH}`);
     return null;
@@ -74,7 +103,7 @@ async function backupNixmacSettings() {
   return backupPath;
 }
 
-async function restoreNixmacSettings(backupPath) {
+async function restoreNixmacSettings(backupPath: string | null): Promise<void> {
   if (!backupPath) {
     console.log('[wdio:test-env] No settings backup to restore');
     return;
@@ -91,7 +120,7 @@ async function restoreNixmacSettings(backupPath) {
   console.log(`[wdio:test-env] Restored settings from backup: ${backupPath}`);
 }
 
-async function backupStatefulFile(statePath, label) {
+async function backupStatefulFile(statePath: string, label: string): Promise<string | null> {
   if (!(await pathExists(statePath))) {
     console.log(`[wdio:test-env] No existing ${label} found to back up at ${statePath}`);
     return null;
@@ -103,7 +132,7 @@ async function backupStatefulFile(statePath, label) {
   return backupPath;
 }
 
-async function restoreStatefulFile(backupPath, targetPath, label) {
+async function restoreStatefulFile(backupPath: string | null, targetPath: string, label: string): Promise<void> {
   if (!backupPath) {
     console.log(`[wdio:test-env] No ${label} backup to restore`);
     return;
@@ -120,7 +149,17 @@ async function restoreStatefulFile(backupPath, targetPath, label) {
   console.log(`[wdio:test-env] Restored ${label} from backup: ${backupPath}`);
 }
 
-async function generateNixmacSettings({ host, configDir, vllmApiBaseUrl, vllmApiKey }) {
+async function generateNixmacSettings({
+  host,
+  configDir,
+  vllmApiBaseUrl,
+  vllmApiKey,
+}: {
+  host: string;
+  configDir: string | null;
+  vllmApiBaseUrl: string | null;
+  vllmApiKey: string | null;
+}): Promise<void> {
   const settings = {
     hostAttr: host,
     configDir,
@@ -135,7 +174,7 @@ async function generateNixmacSettings({ host, configDir, vllmApiBaseUrl, vllmApi
   console.log(`[wdio:test-env] Generated settings at ${NIXMAC_SETTINGS_PATH}`);
 }
 
-async function readJsonFileOrThrow(filePath, label) {
+async function readJsonFileOrThrow(filePath: string, label: string): Promise<Record<string, unknown>> {
   if (!(await pathExists(filePath))) {
     throw new Error(`[wdio:test-env] ${label} file not found at ${filePath}`);
   }
@@ -150,7 +189,7 @@ async function readJsonFileOrThrow(filePath, label) {
   }
 }
 
-export async function loadEvolveState() {
+export async function loadEvolveState(): Promise<Record<string, unknown> | null> {
   if (!(await pathExists(NIXMAC_EVOLVE_STATE_PATH))) {
     console.log(`[wdio:test-env] No evolve-state file found at ${NIXMAC_EVOLVE_STATE_PATH}`);
     return null;
@@ -158,10 +197,10 @@ export async function loadEvolveState() {
 
   const parsed = await readJsonFileOrThrow(NIXMAC_EVOLVE_STATE_PATH, 'evolve-state');
   if (parsed == null) return null;
-  return parsed.evolveState ?? parsed;
+  return (parsed['evolveState'] as Record<string, unknown>) ?? parsed;
 }
 
-export async function loadBuildState() {
+export async function loadBuildState(): Promise<Record<string, unknown> | null> {
   if (!(await pathExists(NIXMAC_BUILD_STATE_PATH))) {
     console.log(`[wdio:test-env] No build-state file found at ${NIXMAC_BUILD_STATE_PATH}`);
     return null;
@@ -169,23 +208,29 @@ export async function loadBuildState() {
 
   const parsed = await readJsonFileOrThrow(NIXMAC_BUILD_STATE_PATH, 'build-state');
   if (parsed == null) return null;
-  return parsed.buildState ?? parsed;
+  return (parsed['buildState'] as Record<string, unknown>) ?? parsed;
 }
 
-export async function setMockVllmResponses({ responseFiles = [], responses = null } = {}) {
+export async function setMockVllmResponses({
+  responseFiles = [],
+  responses = null,
+}: {
+  responseFiles?: string[];
+  responses?: unknown[] | null;
+} = {}): Promise<unknown> {
   if (!isPlaybackMode()) {
     console.log('[wdio:test-env] Skipping setMockVllmResponses because playback mode is disabled');
     return { skipped: true, reason: 'playback-mode-disabled' };
   }
 
   const settings = await readJsonFileOrThrow(NIXMAC_SETTINGS_PATH, 'settings');
-  const vllmApiBaseUrl = settings?.vllmApiBaseUrl;
+  const vllmApiBaseUrl = settings?.['vllmApiBaseUrl'] as string | undefined;
 
   if (!vllmApiBaseUrl) {
     throw new Error('[wdio:test-env] settings.vllmApiBaseUrl is missing; mock server may not be enabled');
   }
 
-  let adminUrl;
+  let adminUrl: string;
   try {
     adminUrl = new URL('/__admin/mock-responses', vllmApiBaseUrl).toString();
   } catch (error) {
@@ -194,9 +239,7 @@ export async function setMockVllmResponses({ responseFiles = [], responses = nul
     );
   }
 
-  const payload = responses
-    ? { responses }
-    : { responseFiles };
+  const payload = responses ? { responses } : { responseFiles };
 
   const response = await fetch(adminUrl, {
     method: 'POST',
@@ -214,25 +257,14 @@ export async function setMockVllmResponses({ responseFiles = [], responses = nul
   return response.json();
 }
 
-export {
-  assertConfigRepoClean,
-  assertConfigRepoFileExists,
-  assertConfigRepoInitialized,
-  getConfigRepoDir,
-  getConfigRepoGitDiff,
-  waitForConfigRepoClean,
-  waitForConfigRepoFileExists,
-  waitForConfigRepoInitialized,
-};
-
-export async function setupNixmacTestEnvironment(options = {}) {
+export async function setupNixmacTestEnvironment(options: SetupOptions = {}): Promise<NixmacTestEnvironmentContext> {
   const {
     initializeConfigRepo = false,
     initializeEmptyConfigDir = false,
     host,
     mockVllm,
-    vllmApiBaseUrl = process.env.VLLM_API_BASE_URL ?? null,
-    vllmApiKey = process.env.VLLM_API_KEY ?? null,
+    vllmApiBaseUrl = process.env['VLLM_API_BASE_URL'] ?? null,
+    vllmApiKey = process.env['VLLM_API_KEY'] ?? null,
   } = options;
 
   if (initializeConfigRepo && initializeEmptyConfigDir) {
@@ -246,9 +278,9 @@ export async function setupNixmacTestEnvironment(options = {}) {
   const buildBackupPath = await backupStatefulFile(NIXMAC_BUILD_STATE_PATH, 'build-state');
   const dbBackupPath = await backupStatefulFile(NIXMAC_DB_PATH, 'nixmac.db');
   const evalHostname = host || (await getEvalHostname());
-  let configDir = null;
-  let mockVllmServer = null;
-  let resolvedVllmApiBaseUrl = vllmApiBaseUrl;
+  let configDir: string | null = null;
+  let mockVllmServer: MockVllmServerContext | null = null;
+  let resolvedVllmApiBaseUrl: string | null = vllmApiBaseUrl;
 
   if (mockVllm) {
     mockVllmServer = await startMockVllmServer(mockVllm);
@@ -270,7 +302,6 @@ export async function setupNixmacTestEnvironment(options = {}) {
     vllmApiKey,
   });
 
-  // Clear any existing evolve/build/db state so tests start from a clean slate
   if (await pathExists(NIXMAC_EVOLVE_STATE_PATH)) {
     await unlink(NIXMAC_EVOLVE_STATE_PATH);
     console.log(`[wdio:test-env] Cleared existing evolve-state at ${NIXMAC_EVOLVE_STATE_PATH}`);
@@ -297,7 +328,7 @@ export async function setupNixmacTestEnvironment(options = {}) {
   };
 }
 
-export async function teardownNixmacTestEnvironment(context) {
+export async function teardownNixmacTestEnvironment(context: NixmacTestEnvironmentContext | null | undefined): Promise<void> {
   if (context?.configDir) {
     console.log(`[wdio:test-env] Removing temporary config repo: ${context.configDir}`);
     await rm(context.configDir, { recursive: true, force: true });

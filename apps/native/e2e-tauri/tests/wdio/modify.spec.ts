@@ -5,10 +5,12 @@ import {
   preparePromptTestCase,
   submitPromptMessage,
   waitForEvolveProcessingCycle,
-} from './helpers/app-ui.mjs';
-import { assertDiffContains, assertDiffDoesNotContain } from './helpers/git-helpers.mjs';
-import { getConfigRepoGitDiff } from './helpers/test-env.mjs';
-import { getMockVllmFixturePreset } from './helpers/mock-vllm-presets.mjs';
+} from './helpers/app-ui.js';
+import { assertDiffContains, assertDiffDoesNotContain } from './helpers/git-helpers.js';
+import {
+  getConfigRepoGitDiff,
+} from './helpers/test-env.js';
+import { getMockVllmFixturePreset } from './helpers/mock-vllm-presets.js';
 import { expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 
@@ -28,25 +30,22 @@ describe('modify', () => {
     await assertPromptHistoryContains(firstPrompt);
     await assertPromptFlowReachedEvolveReview();
 
-    // The diff should include JetBrains Mono as the added font:
     let gitDiff = await getConfigRepoGitDiff();
-    const changedPaths = gitDiff.files.map((file) => file.path);
+    const changedPaths = (gitDiff as any).files.map((file: { path: string }) => file.path);
     expect(
-      changedPaths.some((filePath) => filePath.endsWith('fonts.nix')),
+      changedPaths.some((filePath: string) => filePath.endsWith('fonts.nix')),
       `Expected generated changes to include fonts.nix in git diff. Changed paths: ${changedPaths.join(', ')}`,
     ).to.be.true;
-    await assertDiffContains(gitDiff, 'fonts.nix', 'jetbrains-mono');
-    await assertDiffDoesNotContain(gitDiff, 'fonts.nix', 'nerdfonts.monaspace');
+    assertDiffContains(gitDiff as any, 'fonts.nix', 'jetbrains-mono');
+    assertDiffDoesNotContain(gitDiff as any, 'fonts.nix', 'nerdfonts.monaspace');
 
-    // Now submit the second prompt to add another font (e.g. Nerd Fonts Monaspace)
     await submitPromptMessage(secondPrompt);
     await waitForEvolveProcessingCycle();
     await assertPromptHistoryContains(secondPrompt);
     await assertPromptFlowReachedEvolveReview();
 
-    // The diff should now include the second font addition as well (e.g. Nerd Fonts Monaspace):
     gitDiff = await getConfigRepoGitDiff();
-    await assertDiffContains(gitDiff, 'fonts.nix', 'jetbrains-mono');
-    await assertDiffContains(gitDiff, 'fonts.nix', 'nerdfonts.monaspace');
+    assertDiffContains(gitDiff as any, 'fonts.nix', 'jetbrains-mono');
+    assertDiffContains(gitDiff as any, 'fonts.nix', 'nerdfonts.monaspace');
   });
 });

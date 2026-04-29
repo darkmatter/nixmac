@@ -5,7 +5,7 @@ import {
   openHistory,
   openSettingsDialog,
   waitForFirstWindow,
-} from './helpers/app-ui.mjs';
+} from './helpers/app-ui.js';
 
 describe('tauri app smoke', () => {
   it('opens and has at least one window', async () => {

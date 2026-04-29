@@ -6,11 +6,11 @@ import {
   clickDiscardAndConfirm,
   registerPromptSuiteBeforeEach,
   submitPromptMessage,
-} from './helpers/app-ui.mjs';
+} from './helpers/app-ui.js';
 import {
   getConfigRepoGitDiff,
-} from './helpers/test-env.mjs';
-import { getMockVllmFixturePreset } from './helpers/mock-vllm-presets.mjs';
+} from './helpers/test-env.js';
+import { getMockVllmFixturePreset } from './helpers/mock-vllm-presets.js';
 import { expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 
@@ -35,9 +35,11 @@ describe('discard', () => {
 
     await assertReturnedToInitialPromptScreen();
 
-    // Git should have no changes after discard.
     const gitDiff = await getConfigRepoGitDiff();
-    expect(gitDiff.files.length, `Expected no changed files in git diff after discard, but found: ${gitDiff.files.map((f) => f.path).join(', ')}`).to.equal(0);
+    expect(
+      (gitDiff as any).files.length,
+      `Expected no changed files in git diff after discard, but found: ${(gitDiff as any).files.map((f: { path: string }) => f.path).join(', ')}`,
+    ).to.equal(0);
   });
 
   it('submits a prompt, reaches evolve review, then cancels discard and stays on review', async () => {
@@ -49,11 +51,10 @@ describe('discard', () => {
 
     await assertPromptFlowReachedEvolveReview();
 
-    // Git should still have changes.
     const gitDiff = await getConfigRepoGitDiff();
-    const changedPaths = gitDiff.files.map((file) => file.path);
+    const changedPaths = (gitDiff as any).files.map((file: { path: string }) => file.path);
     expect(
-      changedPaths.some((filePath) => filePath.endsWith('fonts.nix')),
+      changedPaths.some((filePath: string) => filePath.endsWith('fonts.nix')),
       `Expected generated changes to include fonts.nix in git diff. Changed paths: ${changedPaths.join(', ')}`,
     ).to.be.true;
   });
