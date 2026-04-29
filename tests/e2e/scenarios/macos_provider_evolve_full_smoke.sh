@@ -271,10 +271,11 @@ scenario_find_element() {
     local pattern="$1"
     local role="${2:-}"
     local timeout="${3:-30}"
-    local elapsed=0
+    local deadline
     local json element
 
-    while [ "$elapsed" -lt "$timeout" ]; do
+    deadline=$(($(date +%s) + timeout))
+    while [ "$(date +%s)" -lt "$deadline" ]; do
         json=$(peek_elements "$NIXMAC_APP_NAME")
         element=$(echo "$json" | jq -r --arg pattern "$pattern" --arg role "$role" '
             .data.ui_elements[]? |
@@ -296,7 +297,6 @@ scenario_find_element() {
         fi
 
         sleep 2
-        elapsed=$((elapsed + 2))
     done
 
     return 1
@@ -318,15 +318,15 @@ scenario_click_element() {
 scenario_wait_for_text() {
     local pattern="$1"
     local timeout="${2:-30}"
-    local elapsed=0 text
+    local deadline text
 
-    while [ "$elapsed" -lt "$timeout" ]; do
+    deadline=$(($(date +%s) + timeout))
+    while [ "$(date +%s)" -lt "$deadline" ]; do
         text=$(nixmac_text)
         if echo "$text" | grep -qiE "$pattern"; then
             return 0
         fi
         sleep 2
-        elapsed=$((elapsed + 2))
     done
 
     return 1
@@ -335,9 +335,10 @@ scenario_wait_for_text() {
 scenario_wait_for_prompt_value() {
     local expected="$1"
     local timeout="${2:-20}"
-    local elapsed=0 json
+    local deadline json
 
-    while [ "$elapsed" -lt "$timeout" ]; do
+    deadline=$(($(date +%s) + timeout))
+    while [ "$(date +%s)" -lt "$deadline" ]; do
         json=$(peek_elements "$NIXMAC_APP_NAME")
         if echo "$json" | jq -e --arg expected "$expected" '
             .data.ui_elements[]? |
@@ -352,7 +353,6 @@ scenario_wait_for_prompt_value() {
             return 0
         fi
         sleep 2
-        elapsed=$((elapsed + 2))
     done
 
     return 1
@@ -366,14 +366,14 @@ scenario_provider_log_has() {
 scenario_wait_for_provider_log() {
     local filter="$1"
     local timeout="${2:-30}"
-    local elapsed=0
+    local deadline
 
-    while [ "$elapsed" -lt "$timeout" ]; do
+    deadline=$(($(date +%s) + timeout))
+    while [ "$(date +%s)" -lt "$deadline" ]; do
         if scenario_provider_log_has "$filter"; then
             return 0
         fi
         sleep 2
-        elapsed=$((elapsed + 2))
     done
 
     return 1
