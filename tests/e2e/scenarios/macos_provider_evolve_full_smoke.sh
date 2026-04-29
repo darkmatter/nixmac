@@ -399,7 +399,7 @@ scenario_build_and_wait_for_commit_step() {
             || die "Build & Test button was not reachable"
         scenario_confirm_if_prompted
 
-        if scenario_find_element "^Commit$" "button" 90 >/dev/null; then
+        if scenario_wait_for_text "All changes active|Commit Changes" 90; then
             return 0
         fi
 
@@ -480,12 +480,12 @@ scenario_test() {
     else
         log "Commit-message provider request was not observed before manual commit; continuing after evolve and summary provider calls were verified"
     fi
-    if scenario_find_element "Loading|feat\\(e2e\\)|commit" "textField" 10 >/dev/null; then
-        scenario_click_element "Loading|feat\\(e2e\\)|commit" "textField" 10 || true
+    if scenario_find_element "Loading|feat\\(e2e\\)|Commit message" "textField" 10 >/dev/null; then
+        scenario_click_element "Loading|feat\\(e2e\\)|Commit message" "textField" 10 || true
         peek_hotkey "cmd+a" >/dev/null 2>&1 || true
         peek_type "feat(e2e): add ripgrep package" || true
     fi
-    scenario_click_element "^Commit$" "button" 30 \
+    scenario_click_element "Commit" "button" 30 \
         || die "Commit button was not reachable"
     if ! scenario_wait_for_text "Describe changes|What to change" 45; then
         nixmac_screenshot "begin-step-not-restored"
