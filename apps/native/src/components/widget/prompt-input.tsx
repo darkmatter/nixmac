@@ -17,13 +17,14 @@ import { getProviderConfigInvalidReason } from "@/lib/ai-provider-validation";
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
 import { ArrowUpIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const MAX_CONTEXT_LENGTH = 1000;
 
 const STATIC_SUGGESTIONS = ["Install vim", "Add Rectangle app"];
 
 export function PromptInput() {
+  const promptInputRef = useRef<HTMLTextAreaElement>(null);
   const evolvePrompt = useWidgetStore((s) => s.evolvePrompt);
   const setEvolvePrompt = useWidgetStore((s) => s.setEvolvePrompt);
   const isProcessing = useWidgetStore((s) => s.isProcessing);
@@ -104,6 +105,18 @@ export function PromptInput() {
   const isLoading = isProcessing && processingAction === "evolve";
   const sendDisabled = isLoading || !evolvePrompt.trim() || !!promptValidationError;
 
+  useEffect(() => {
+    if (isLoading || settingsOpen) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      promptInputRef.current?.focus();
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [isLoading, settingsOpen, evolveState?.step]);
+
   const handleSubmit = () => {
     if (!evolvePrompt.trim()) return;
     if (promptValidationError) return;
@@ -140,6 +153,7 @@ export function PromptInput() {
             }
           }}
           placeholder={placeholder}
+          ref={promptInputRef}
           value={evolvePrompt}
         />
 

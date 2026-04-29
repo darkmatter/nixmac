@@ -65,6 +65,18 @@ scenario_osa() {
     printf "%s" "$value"
 }
 
+scenario_activate_app() {
+    osascript -e "tell application \"${NIXMAC_APP_NAME}\" to activate" >/dev/null 2>&1 || true
+    osascript -e "tell application \"System Events\" to tell process \"${NIXMAC_APP_NAME}\" to set frontmost to true" >/dev/null 2>&1 || true
+    sleep 0.5
+}
+
+scenario_app_is_frontmost() {
+    local frontmost
+    frontmost=$(osascript -e 'tell application "System Events" to name of first process whose frontmost is true' 2>/dev/null || true)
+    [ "$frontmost" = "$NIXMAC_APP_NAME" ]
+}
+
 scenario_create_config_repo() {
     local platform username
     platform=$(scenario_darwin_platform)
@@ -211,6 +223,41 @@ scenario_click_element() {
     peek_click "$element" "$json"
 }
 
+scenario_log_prompt_field_state() {
+    local json
+    json=$(peek_elements "$NIXMAC_APP_NAME")
+    log "Prompt field accessibility candidates:"
+    echo "$json" | jq -r '
+        .data.ui_elements[]? |
+        select([
+            .identifier? // "",
+            .label? // "",
+            .title? // "",
+            .value? // "",
+            .description? // ""
+        ] | join(" ") | test("evolve-prompt-input|Configuration change descriptor|Describe changes"; "i")) |
+        {
+            id,
+            role,
+            identifier: (.identifier? // ""),
+            label: (.label? // ""),
+            title: (.title? // ""),
+            value: (.value? // ""),
+            description: (.description? // "")
+        } | @json
+    ' 2>/dev/null | sed 's/^/  /' | tee -a "$E2E_LOG_FILE" >/dev/null || true
+}
+
+scenario_focus_prompt_input() {
+    scenario_activate_app
+    scenario_click_element "evolve-prompt-input|Configuration change descriptor" "textField" 20 >/dev/null 2>&1 || true
+    sleep 0.4
+    peekaboo_run click "Configuration change descriptor" --app "$NIXMAC_APP_NAME" --wait-for 5000 >/dev/null 2>&1 || true
+    sleep 0.4
+    peekaboo_run click --app "$NIXMAC_APP_NAME" --coords "400,365" --focus-timeout-seconds 5 --focus-retry-count 3 >/dev/null 2>&1 || true
+    sleep 0.4
+}
+
 scenario_wait_for_text() {
     local pattern="$1"
     local timeout="${2:-30}"
@@ -256,15 +303,39 @@ scenario_enter_text() {
     local text="$1"
     local chunk remaining
 
-    peekaboo_run click --app "$NIXMAC_APP_NAME" --coords "400,365" >/dev/null 2>&1 || true
-    if peekaboo_run type --app "$NIXMAC_APP_NAME" --text "$text" --clear --profile linear --delay 5 >/dev/null 2>&1; then
+    scenario_log_prompt_field_state
+    scenario_focus_prompt_input
+
+    if command -v pbcopy >/dev/null 2>&1; then
+        printf '%s' "$text" | pbcopy || true
+        scenario_activate_app
+        if scenario_app_is_frontmost; then
+            osascript \
+                -e 'tell application "System Events" to keystroke "a" using command down' \
+                -e 'delay 0.1' \
+                -e 'tell application "System Events" to key code 51' \
+                -e 'delay 0.1' \
+                -e 'tell application "System Events" to keystroke "v" using command down' >/dev/null 2>&1 || true
+            if scenario_wait_for_prompt_value "$text" 10; then
+                return 0
+            fi
+        else
+            warn "Skipping System Events paste because nixmac is not frontmost"
+        fi
+        scenario_log_prompt_field_state
+    fi
+
+    scenario_focus_prompt_input
+    if peekaboo_run type "$text" --app "$NIXMAC_APP_NAME" --clear --profile linear --delay 10 >/dev/null 2>&1; then
         if scenario_wait_for_prompt_value "$text" 10; then
             return 0
         fi
+        scenario_log_prompt_field_state
     fi
 
     if command -v pbcopy >/dev/null 2>&1; then
         printf '%s' "$text" | pbcopy || true
+        scenario_focus_prompt_input
         peek_hotkey "cmd+a" >/dev/null 2>&1 || true
         sleep 1
         peek_hotkey "cmd+v" >/dev/null 2>&1 \
@@ -274,17 +345,24 @@ scenario_enter_text() {
         if scenario_wait_for_prompt_value "$text" 8; then
             return 0
         fi
+        scenario_log_prompt_field_state
     fi
 
+    scenario_focus_prompt_input
     peek_hotkey "cmd+a" >/dev/null 2>&1 || true
     remaining="$text"
     while [ -n "$remaining" ]; do
         chunk="${remaining:0:120}"
         remaining="${remaining:120}"
-        peek_type "$chunk" >/dev/null 2>&1 || return 1
+        peekaboo_run type "$chunk" --app "$NIXMAC_APP_NAME" --profile linear --delay 10 >/dev/null 2>&1 \
+            || peek_type "$chunk" >/dev/null 2>&1 \
+            || return 1
         sleep 0.2
     done
-    scenario_wait_for_prompt_value "$text" 10
+    scenario_wait_for_prompt_value "$text" 10 || {
+        scenario_log_prompt_field_state
+        return 1
+    }
 }
 
 scenario_commit_message_value() {
