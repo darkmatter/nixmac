@@ -108,10 +108,12 @@ NIX
 
     local nix_bin
     nix_bin=$(scenario_nix) || die "Nix is required for real full-system E2E"
-    NIX_CONFIG="experimental-features = nix-command flakes" \
-        "$nix_bin" flake lock --extra-experimental-features "nix-command flakes" \
+    (
+        cd "$NIXMAC_E2E_CONFIG_REPO" || exit 1
+        NIX_CONFIG="experimental-features = nix-command flakes" \
+            "$nix_bin" flake lock --extra-experimental-features "nix-command flakes" \
         --option accept-flake-config true 2>&1 | tee -a "$E2E_LOG_FILE" \
-        || die "Failed to generate flake.lock for real full-system fixture"
+    ) || die "Failed to generate flake.lock for real full-system fixture"
 
     git -C "$NIXMAC_E2E_CONFIG_REPO" add -A
     git -C "$NIXMAC_E2E_CONFIG_REPO" commit -m "initial real e2e config" >/dev/null 2>&1 \

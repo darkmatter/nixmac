@@ -254,7 +254,7 @@ cleanup_e2e_gui_leftovers
 pkill -f nixmac 2>/dev/null || true
 pkill -f Installer 2>/dev/null || true
 echo "[ci] Deferring Nix cleanup until the scenario fixture is known"
-rm -rf /tmp/e2e-screenshots /tmp/e2e-peekaboo-captures /tmp/e2e-recording.mp4 /tmp/e2e-test.log /tmp/e2e-runner.lock
+rm -rf /tmp/e2e-screenshots /tmp/e2e-peekaboo-captures /tmp/e2e-recording.mp4 /tmp/e2e-test.log /tmp/e2e-test-results.json /tmp/e2e-runner.lock
 rm -rf /tmp/e2e-artifacts
 
 # --- Download app artifact pinned to the exact commit SHA ---
