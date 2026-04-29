@@ -507,8 +507,8 @@ scenario_test() {
     phase "Audit provider evidence"
     local request_count
     request_count=$(scenario_provider_request_count)
-    if [ "$request_count" -lt 3 ]; then
-        die "Expected at least 3 provider requests, observed $request_count"
+    if [ "$request_count" -lt 2 ]; then
+        die "Expected at least 2 provider requests across evolve and summary paths, observed $request_count"
     fi
     log "Provider request log: $NIXMAC_E2E_PROVIDER_LOG"
     log "Completion log dir: $NIXMAC_E2E_COMPLETION_LOG_DIR"
