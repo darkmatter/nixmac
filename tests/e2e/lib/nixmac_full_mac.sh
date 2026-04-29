@@ -380,11 +380,31 @@ nixmac_click_prompt_submit() {
         || return 1
 }
 
+nixmac_type_text() {
+    local text="$1"
+    local timeout="${NIXMAC_E2E_TYPE_TIMEOUT:-90}"
+    local previous_timeout="${PEEKABOO_COMMAND_TIMEOUT:-15}"
+    local status=0
+
+    PEEKABOO_COMMAND_TIMEOUT="$timeout"
+    peek_type "$text"
+    status=$?
+    PEEKABOO_COMMAND_TIMEOUT="$previous_timeout"
+    [ "$status" -eq 0 ] && return 0
+
+    warn "Peekaboo type timed out or failed; retrying text entry via clipboard paste"
+    command -v pbcopy >/dev/null 2>&1 || return "$status"
+    printf '%s' "$text" | pbcopy || return "$status"
+    peek_hotkey "cmd+a" || true
+    sleep 0.5
+    peek_hotkey "cmd+v" || return "$status"
+}
+
 nixmac_type_prompt_and_submit() {
     local prompt="$1"
     nixmac_click_element_matching "Describe changes|Describe additional|evolve-prompt-input|prompt" --timeout 30 || return 1
     peek_hotkey "cmd+a" || true
-    peek_type "$prompt" || return 1
+    nixmac_type_text "$prompt" || return 1
     sleep 1
     nixmac_click_prompt_submit || return 1
 }
@@ -393,7 +413,7 @@ nixmac_answer_inline_question() {
     local answer="$1"
     nixmac_click_element_matching "question|answer|question-prompt-input" --timeout 30 || return 1
     peek_hotkey "cmd+a" || true
-    peek_type "$answer" || return 1
+    nixmac_type_text "$answer" || return 1
     sleep 1
     nixmac_click_element_matching "submit|send|question-prompt-submit" --timeout 30 || return 1
 }
