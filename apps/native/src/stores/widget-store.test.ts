@@ -135,9 +135,9 @@ describe("setProcessing", () => {
 // ---------------------------------------------------------------------------
 
 describe("confirmation preferences", () => {
-  it("setConfirmPref updates only the targeted key", () => {
+  it("setBoolPref updates only the targeted key", () => {
     const store = createWidgetStore();
-    store.getState().setConfirmPref("confirmBuild", false);
+    store.getState().setBoolPref("confirmBuild", false);
     const s = store.getState();
     expect(s.confirmBuild).toBe(false);
     expect(s.confirmClear).toBe(true);
