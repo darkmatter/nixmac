@@ -1043,7 +1043,7 @@ jobs:
           ADMIN_PASSWORD: ${{ secrets.MAC_E2E_ADMIN_PASSWORD }}
           BRANCH_NAME: ${{ needs.resolve.outputs.head_ref || github.head_ref || github.ref_name }}
           COMMIT_SHA: ${{ needs.resolve.outputs.head_sha }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           NIXMAC_E2E_OPENROUTER_API_KEY: ${{ env.NIXMAC_E2E_OPENROUTER_API_KEY }}
           NIXMAC_E2E_OPENROUTER_MODEL: ${{ env.NIXMAC_E2E_OPENROUTER_MODEL }}
           NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL: ${{ env.NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL }}
