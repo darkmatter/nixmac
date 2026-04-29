@@ -741,6 +741,108 @@
       "requiredForDefaultPrPack": false
     },
     {
+      "name": "macos_descriptor_prompt_smoke",
+      "lane": "full-mac",
+      "title": "macOS descriptor prompt smoke",
+      "summary": "Launches the real macOS app, types one descriptor into the main prompt, and verifies the expected local provider-validation block with 30 fps video proof.",
+      "coverage": [
+        "Exact-SHA app artifact launches on the real Mac runner",
+        "Prompt input is reachable through stable accessibility metadata",
+        "Descriptor text can be typed and observed in the real UI",
+        "Submit affordance is reachable through stable accessibility metadata",
+        "Local provider validation blocks submit without requiring a fragile mock provider",
+        "Publishes a 30 fps full-screen recording as primary proof"
+      ],
+      "riskAreas": ["full-mac", "prompt", "accessibility", "recording", "provider-validation"],
+      "changePatterns": [
+        "^apps/native/src/components/widget/(prompt-input|prompt-input-section|steps/begin-step)\\.tsx$",
+        "^apps/native/src/lib/ai-provider-validation\\.ts$",
+        "^apps/native/src-tauri/src/(store|commands|nix|e2e_support)\\.rs$",
+        "^tests/e2e/scenarios/macos_descriptor_prompt_smoke\\.sh$",
+        "^tests/e2e/(adapters|lib)/"
+      ],
+      "knownGaps": [
+        "Intentionally stops at local provider validation; it does not call a live or mock AI provider yet.",
+        "Requires the self-hosted Mac runner to already have Nix and darwin-rebuild available."
+      ],
+      "currentSpec": "tests/e2e/scenarios/macos_descriptor_prompt_smoke.sh",
+      "currentScript": "tests/e2e/run.sh macos_descriptor_prompt_smoke",
+      "status": "macos-first-spike",
+      "requiredForDefaultPrPack": false
+    },
+    {
+      "name": "macos_provider_evolve_full_smoke",
+      "lane": "full-mac",
+      "title": "macOS provider evolve full smoke",
+      "summary": "Launches the installed macOS app, submits a descriptor, calls an OpenAI-compatible HTTP provider, applies the provider's Nix edit, runs the mocked host rebuild/activation step, generates the Save-step commit message through the provider, and commits the result.",
+      "coverage": [
+        "Exact-SHA app artifact launches on the real Mac runner",
+        "Prompt input is reached and submitted through accessibility metadata",
+        "Evolution provider receives a real HTTP chat completion request with tool schemas",
+        "Provider tool calls edit flake.nix and run build_check through the backend",
+        "Summary provider receives JSON completion requests for the generated diff",
+        "Build & Test advances to Save using the explicit E2E mock-system activation path",
+        "Commit-message provider receives a conventional-commit request and populates the Save step",
+        "Save step commits the provider-generated message and returns to Describe",
+        "Publishes a 30 fps full-screen recording as primary proof"
+      ],
+      "riskAreas": ["full-mac", "providers", "evolve", "review", "build-test", "commit", "recording"],
+      "changePatterns": [
+        "^apps/native/src/components/widget/(prompt-input|prompt-input-section|merge-section|steps/(begin-step|evolve-step|commit-step)|summaries/.*)\\.tsx$",
+        "^apps/native/src/hooks/(use-evolve|use-apply|use-rebuild-stream|use-summary|use-git-operations)\\.ts$",
+        "^apps/native/src-tauri/src/(darwin|evolution|evolve_state|commands|store|completion_log)\\.rs$",
+        "^apps/native/src-tauri/src/summarize/(build_prompt|pipelines/commit_message)\\.rs$",
+        "^apps/native/src-tauri/src/(evolve|providers)/",
+        "^tests/e2e/scenarios/macos_provider_evolve_full_smoke\\.sh$",
+        "^tests/e2e/(adapters|lib)/"
+      ],
+      "knownGaps": [
+        "Uses a deterministic local OpenAI-compatible provider so the test is stable; it does not depend on external provider billing, latency, or model nondeterminism.",
+        "Mocks only the host system rebuild/activation under NIXMAC_E2E_MOCK_SYSTEM=1, so it does not mutate the self-hosted runner's real macOS configuration."
+      ],
+      "currentSpec": "tests/e2e/scenarios/macos_provider_evolve_full_smoke.sh",
+      "currentScript": "tests/e2e/run.sh macos_provider_evolve_full_smoke",
+      "status": "macos-first-spike",
+      "requiredForDefaultPrPack": false
+    },
+    {
+      "name": "macos_live_provider_evolve_real_system",
+      "lane": "full-mac",
+      "title": "macOS live provider real system evolve",
+      "summary": "Launches the installed macOS app, submits a descriptor, calls the real OpenRouter provider, applies the provider's Nix edit, runs real nix-darwin build and activation, generates the Save-step commit message through the provider, commits the result, and restores the previous system profile.",
+      "coverage": [
+        "Exact-SHA app artifact launches on the real Mac runner",
+        "Prompt input is reached and submitted through accessibility metadata",
+        "Real OpenRouter evolve provider receives the descriptor and returns tool calls",
+        "Provider tool calls edit flake.nix and run real build_check through nix",
+        "Build & Test runs real darwin-rebuild build and activation with macOS admin authentication",
+        "System profile changes after activation, proving the mock-system path was not used",
+        "Summary/commit provider completions are recorded from the real provider",
+        "Save step commits the provider-generated message and returns to Describe",
+        "Previous system profile is restored after the proof run",
+        "Publishes a 30 fps full-screen recording as primary proof"
+      ],
+      "riskAreas": ["full-mac", "live-provider", "evolve", "build-test", "activation", "commit", "recording"],
+      "changePatterns": [
+        "^apps/native/src/components/widget/(prompt-input|prompt-input-section|merge-section|steps/(begin-step|evolve-step|commit-step)|summaries/.*)\\.tsx$",
+        "^apps/native/src/hooks/(use-evolve|use-apply|use-rebuild-stream|use-summary|use-git-operations)\\.ts$",
+        "^apps/native/src-tauri/src/(darwin|evolution|evolve_state|commands|store|completion_log|e2e_support)\\.rs$",
+        "^apps/native/src-tauri/src/summarize/(build_prompt|model_calls|pipelines/commit_message)\\.rs$",
+        "^apps/native/src-tauri/src/(evolve|providers)/",
+        "^tests/e2e/scenarios/macos_live_provider_evolve_real_system\\.sh$",
+        "^tests/e2e/ci-runner\\.sh$",
+        "^tests/e2e/(adapters|lib)/"
+      ],
+      "knownGaps": [
+        "Calls a live model and can fail for provider outages, rate limits, account credit, or prompt nondeterminism.",
+        "Runs on the configured full-Mac runner and mutates then restores that runner's real nix-darwin system profile; it is intentionally not parallel-safe on one Mac."
+      ],
+      "currentSpec": "tests/e2e/scenarios/macos_live_provider_evolve_real_system.sh",
+      "currentScript": "tests/e2e/run.sh macos_live_provider_evolve_real_system",
+      "status": "macos-first-spike",
+      "requiredForDefaultPrPack": false
+    },
+    {
       "name": "install_nix_clean_machine",
       "lane": "full-mac",
       "title": "Install Nix on clean machine",

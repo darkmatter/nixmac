@@ -35,6 +35,10 @@ impl BuildState {
 
 /// Resolve the nix store path for the currently active system profile.
 pub fn read_current_store_path() -> Option<String> {
+    if crate::e2e_support::should_mock_system() {
+        return Some("/nix/store/nixmac-e2e-mock-system".to_string());
+    }
+
     std::fs::canonicalize("/nix/var/nix/profiles/system")
         .ok()
         .and_then(|p| p.to_str().map(String::from))

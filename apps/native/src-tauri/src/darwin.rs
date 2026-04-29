@@ -393,8 +393,10 @@ fn run_activate_with_path(activate_path: &str) -> Result<ActivateResult, anyhow:
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_else(|_| activate_path.to_owned());
 
-    // Escape a value for safe embedding inside a shell single-quoted string.
-    let sq = |s: &str| s.replace('\'', "'\\''" );
+    // Escape values for the two shells involved: the privileged POSIX shell
+    // script and the AppleScript wrapper that launches it.
+    let sq = |s: &str| s.replace('\'', "'\\''");
+    let osa = |s: &str| s.replace('\\', "\\\\").replace('"', "\\\"");
 
     // Build the privileged shell script that runs as root via osascript.
     // It:
@@ -428,13 +430,20 @@ fn run_activate_with_path(activate_path: &str) -> Result<ActivateResult, anyhow:
         sock = sq(&ssh_sock),
     );
 
-    // Escape the shell script for embedding in an AppleScript string literal:
-    //   \ → \\ and " → \"
-    let escaped_script = shell_script.replace('\\', "\\\\").replace('"', "\\\"");
+    let escaped_script = osa(&shell_script);
+    let automation_auth = crate::e2e_support::unattended_admin_password()
+        .map(|password| {
+            format!(
+                " user name \"{}\" password \"{}\"",
+                osa(&user),
+                osa(&password)
+            )
+        })
+        .unwrap_or_default();
 
     let osascript_cmd = format!(
-        "do shell script \"{}\" with administrator privileges",
-        escaped_script
+        "do shell script \"{}\"{} with administrator privileges",
+        escaped_script, automation_auth
     );
 
     info!("[darwin] Running activation with launchctl asuser (Aqua bootstrap domain)");
@@ -596,6 +605,24 @@ fn run_darwin_rebuild(
         let _ = writeln!(f, "Log file: {:?}", log_path);
         let _ = writeln!(f);
         let _ = f.flush();
+    }
+
+    if crate::e2e_support::should_mock_system() {
+        log_and_emit!("E2E mock system enabled; simulating darwin-rebuild build.");
+        log_and_emit!("darwin-rebuild build completed successfully.");
+        log_and_emit!(
+            "E2E mock system enabled; simulating activation without changing the runner."
+        );
+        log_and_emit!("Activating configuration...");
+        log_and_emit!("E2E mock activation completed successfully.");
+        summarizer.complete(true);
+
+        return Ok(serde_json::json!({
+            "ok": true,
+            "code": 0,
+            "log_file": log_path.to_string_lossy(),
+            "mock_system": true,
+        }));
     }
 
     // =========================================================================

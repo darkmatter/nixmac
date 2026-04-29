@@ -853,6 +853,7 @@ jobs:
           MAC_E2E_HOST: ${{ secrets.MAC_E2E_HOST }}
           MAC_E2E_SSH_KEY: ${{ secrets.MAC_E2E_SSH_KEY }}
           MAC_E2E_USER: ${{ secrets.MAC_E2E_USER }}
+          NIXMAC_E2E_OPENROUTER_API_KEY: ${{ secrets.NIXMAC_E2E_OPENROUTER_API_KEY }}
           SCENARIO: ${{ matrix.scenario }}
         run: |
           missing=()
@@ -860,6 +861,9 @@ jobs:
           [ -n "$MAC_E2E_USER" ] || missing+=("MAC_E2E_USER")
           [ -n "$MAC_E2E_SSH_KEY" ] || missing+=("MAC_E2E_SSH_KEY")
           [ -n "$ADMIN_PASSWORD" ] || missing+=("MAC_E2E_ADMIN_PASSWORD")
+          if [ "$SCENARIO" = "macos_live_provider_evolve_real_system" ]; then
+            [ -n "$NIXMAC_E2E_OPENROUTER_API_KEY" ] || missing+=("NIXMAC_E2E_OPENROUTER_API_KEY")
+          fi
           if [ "${#missing[@]}" -eq 0 ]; then
             exit 0
           fi
@@ -1049,7 +1053,7 @@ jobs:
           {
             echo "export ADMIN_PASSWORD=$(printf '%q' "$ADMIN_PASSWORD")"
             echo "export GH_TOKEN=$(printf '%q' "$GH_TOKEN")"
-            if [ "$SCENARIO" = "live_openrouter_full_mac_journey" ]; then
+            if [ "$SCENARIO" = "live_openrouter_full_mac_journey" ] || [ "$SCENARIO" = "macos_live_provider_evolve_real_system" ]; then
               echo "export NIXMAC_E2E_OPENROUTER_API_KEY=$(printf '%q' "$NIXMAC_E2E_OPENROUTER_API_KEY")"
               echo "export NIXMAC_E2E_OPENROUTER_MODEL=$(printf '%q' "$NIXMAC_E2E_OPENROUTER_MODEL")"
               echo "export NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL=$(printf '%q' "$NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL")"
@@ -1128,8 +1132,10 @@ jobs:
             .replace(/gh[pousr]_[A-Za-z0-9_]+/g, "[redacted-github-token]")
             .replace(/github_pat_[A-Za-z0-9_]+/g, "[redacted-github-token]")
             .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [redacted]")
-            .replace(/(ADMIN_PASSWORD=)[^\s]+/g, "$1[redacted]")
-            .replace(/(NIXMAC_E2E_OPENROUTER_API_KEY=)[^\s]+/g, "$1[redacted]");
+            .replace(/sk-or-v1-[A-Za-z0-9_-]+/g, "[redacted-openrouter-key]")
+            .replace(/(NIXMAC_E2E_OPENROUTER_API_KEY=)[^\s]+/g, "$1[redacted]")
+            .replace(/(NIXMAC_E2E_ADMIN_PASSWORD=)[^\s]+/g, "$1[redacted]")
+            .replace(/(ADMIN_PASSWORD=)[^\s]+/g, "$1[redacted]");
           const flattenForInline = (value) => redactSecrets(value)
             .replace(/[\r\n|]+/g, " ")
             .replace(/\s+/g, " ")
