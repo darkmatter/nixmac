@@ -433,7 +433,7 @@
       "name": "macos_provider_evolve_full_smoke",
       "lane": "full-mac",
       "title": "macOS provider evolve full smoke",
-      "summary": "Launches the installed macOS app, submits a descriptor, calls an OpenAI-compatible HTTP provider, applies the provider's Nix edit, runs the mocked host rebuild/activation step, and commits the result.",
+      "summary": "Launches the installed macOS app, submits a descriptor, calls an OpenAI-compatible HTTP provider, applies the provider's Nix edit, runs the mocked host rebuild/activation step, generates the Save-step commit message through the provider, and commits the result.",
       "coverage": [
         "Exact-SHA app artifact launches on the real Mac runner",
         "Prompt input is reached and submitted through accessibility metadata",
@@ -441,7 +441,8 @@
         "Provider tool calls edit flake.nix and run build_check through the backend",
         "Summary provider receives JSON completion requests for the generated diff",
         "Build & Test advances to Save using the explicit E2E mock-system activation path",
-        "Save step commits the generated config and returns to Describe",
+        "Commit-message provider receives a conventional-commit request and populates the Save step",
+        "Save step commits the provider-generated message and returns to Describe",
         "Publishes a 30 fps full-screen recording as primary proof"
       ],
       "riskAreas": ["full-mac", "providers", "evolve", "review", "build-test", "commit", "recording"],

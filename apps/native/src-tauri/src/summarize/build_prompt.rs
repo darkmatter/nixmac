@@ -209,3 +209,14 @@ pub fn commit_message(map: &crate::shared_types::SemanticChangeMap) -> String {
     prompt.push_str("Return JSON: {\"message\": \"<full commit message string>\"}\n");
     prompt
 }
+
+pub fn commit_message_from_raw_changes(changes: &[&crate::sqlite_types::Change]) -> String {
+    let mut prompt = String::new();
+    prompt.push_str("Current uncommitted nix-darwin configuration changes:\n");
+    prompt.push_str(&list_changes(changes));
+    prompt.push('\n');
+    prompt.push_str("Write a conventional commit message for these changes.\n");
+    prompt.push_str("Use the format: <type>(<scope>): <description> — types: feat, fix, chore, refactor, docs, style, test, perf\n");
+    prompt.push_str("Return JSON: {\"message\": \"<full commit message string>\"}\n");
+    prompt
+}

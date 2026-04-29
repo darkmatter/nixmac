@@ -13,6 +13,7 @@ export E2E_RECORD_FPS=30
 export E2E_RECORDING_STRICT=1
 
 NIXMAC_E2E_DESCRIPTOR_TEXT="Add ripgrep to my system packages"
+NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE="feat(e2e): provider generated ripgrep package"
 NIXMAC_E2E_HOST_ATTR="e2e-host"
 NIXMAC_E2E_CONFIG_REPO=""
 NIXMAC_E2E_ELEMENTS_JSON_FILE="${TMPDIR:-/tmp}/nixmac-e2e-elements-$$.json"
@@ -115,7 +116,7 @@ def content_for(body):
     prompt = "\n".join(str((message.get("content") or "")) for message in messages)
 
     if "conventional commit message" in prompt:
-        return json.dumps({"message": "feat(e2e): add ripgrep package"})
+        return json.dumps({"message": "feat(e2e): provider generated ripgrep package"})
 
     if "group new nix-darwin configuration changes" in prompt:
         hashes = hashes_from_prompt(prompt)
@@ -475,17 +476,16 @@ scenario_test() {
     phase_pass "Build & Test advanced to Save step using explicit E2E mock activation"
 
     phase "Commit saved changes"
-    if scenario_wait_for_provider_log 'select([.body.messages[]?.content? // ""] | join(" ") | test("conventional commit message"; "i"))' 10; then
-        log "Observed commit-message provider request"
-    else
-        log "Commit-message provider request was not observed before manual commit; continuing after evolve and summary provider calls were verified"
+    if ! scenario_wait_for_provider_log 'select([.body.messages[]?.content? // ""] | join(" ") | test("conventional commit message"; "i"))' 45; then
+        nixmac_screenshot "commit-message-provider-request-missing"
+        die "Commit-message provider request was not observed"
     fi
-    if scenario_find_element "Loading|feat\\(e2e\\)|Commit message" "textField" 10 >/dev/null; then
-        scenario_click_element "Loading|feat\\(e2e\\)|Commit message" "textField" 10 || true
-        peek_hotkey "cmd+a" >/dev/null 2>&1 || true
-        peek_type "feat(e2e): add ripgrep package" || true
+    log "Observed commit-message provider request"
+    if ! scenario_wait_for_prompt_value "$NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE" 30; then
+        nixmac_screenshot "commit-message-suggestion-missing"
+        die "Provider-generated commit message did not populate the Save step"
     fi
-    scenario_click_element "Commit" "button" 30 \
+    scenario_click_element "^Commit$" "button" 30 \
         || die "Commit button was not reachable"
     if ! scenario_wait_for_text "Describe changes|What to change" 45; then
         nixmac_screenshot "begin-step-not-restored"
@@ -493,9 +493,9 @@ scenario_test() {
     fi
     local latest_message
     latest_message=$(git -C "$NIXMAC_E2E_CONFIG_REPO" log -1 --pretty=%s)
-    if [ "$latest_message" != "feat(e2e): add ripgrep package" ]; then
+    if [ "$latest_message" != "$NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE" ]; then
         nixmac_screenshot "unexpected-commit-message"
-        die "Expected saved commit message, got: $latest_message"
+        die "Expected provider-generated commit message, got: $latest_message"
     fi
     if [ -n "$(git -C "$NIXMAC_E2E_CONFIG_REPO" status --short)" ]; then
         nixmac_screenshot "repo-not-clean-after-commit"
@@ -507,12 +507,12 @@ scenario_test() {
     phase "Audit provider evidence"
     local request_count
     request_count=$(scenario_provider_request_count)
-    if [ "$request_count" -lt 2 ]; then
-        die "Expected at least 2 provider requests across evolve and summary paths, observed $request_count"
+    if [ "$request_count" -lt 3 ]; then
+        die "Expected at least 3 provider requests across evolve, summary, and commit-message paths, observed $request_count"
     fi
     log "Provider request log: $NIXMAC_E2E_PROVIDER_LOG"
     log "Completion log dir: $NIXMAC_E2E_COMPLETION_LOG_DIR"
-    phase_pass "Observed $request_count provider HTTP requests across evolve and summary paths"
+    phase_pass "Observed $request_count provider HTTP requests across evolve, summary, and commit-message paths"
 }
 
 scenario_cleanup() {
