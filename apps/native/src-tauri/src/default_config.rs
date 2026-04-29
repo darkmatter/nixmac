@@ -223,7 +223,7 @@ pub fn finalize_flake_lock(app: &AppHandle) -> Result<(), String> {
         .map_err(|e| format!("Failed to ensure config dir: {}", e))?;
 
     // Generate flake.lock
-    let flake_lock_result = Command::new("nix")
+    let flake_lock_result = Command::new(nix::nix_executable())
         .args(["flake", "lock"])
         .current_dir(&dir)
         .env("PATH", nix::get_nix_path())

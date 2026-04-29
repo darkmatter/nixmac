@@ -63,7 +63,7 @@ pub fn dry_run_build_check(
     // build result would be misleading.
     crate::git::intent_add_untracked(config_dir)?;
 
-    let mut command = Command::new("nix");
+    let mut command = Command::new(crate::nix::nix_executable());
     command
         .arg("build")
         .arg(format!(".#darwinConfigurations.{}.system", host_attr))
@@ -166,7 +166,7 @@ fn run_build_step(
     let flake_arg = format!(".#{}", host_attr);
 
     let mut build_cmd = if use_fallback {
-        let mut cmd = Command::new("nix");
+        let mut cmd = Command::new(crate::nix::nix_executable());
         cmd.args([
             "run",
             "nix-darwin/master#darwin-rebuild",

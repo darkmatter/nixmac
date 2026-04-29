@@ -43,6 +43,18 @@ const NIX_PATHS_FALLBACK: &[&str] = &[
 
 static NIX_PATH_CACHE: OnceLock<String> = OnceLock::new();
 
+pub fn nix_executable() -> &'static str {
+    for nix_path in [
+        "/nix/var/nix/profiles/default/bin/nix",
+        "/run/current-system/sw/bin/nix",
+    ] {
+        if std::path::Path::new(nix_path).exists() {
+            return nix_path;
+        }
+    }
+    "nix"
+}
+
 /// Resolves PATH for Nix commands by prepending known Nix paths to the current environment.
 ///
 /// **Important:** This version uses the process environment PATH directly without spawning
@@ -104,7 +116,7 @@ pub fn evaluate_installed_apps(config_dir: &str, host_attr: &str) -> Result<Vec<
         host_attr
     );
 
-    let output = Command::new("nix")
+    let output = Command::new(nix_executable())
         .args(["eval", "--json", &attr])
         .current_dir(config_dir)
         .env("PATH", get_nix_path())
@@ -128,7 +140,7 @@ pub fn list_darwin_hosts(config_dir: &str) -> Result<Vec<String>> {
         return list_darwin_hosts_from_flake(config_dir);
     }
 
-    let output = Command::new("nix")
+    let output = Command::new(nix_executable())
         .args([
             "eval",
             "--json",
@@ -193,23 +205,7 @@ pub fn is_nix_installed() -> bool {
         return true;
     }
 
-    for nix_path in [
-        "/nix/var/nix/profiles/default/bin/nix",
-        "/run/current-system/sw/bin/nix",
-    ] {
-        if Command::new(nix_path)
-            .arg("--version")
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false)
-        {
-            return true;
-        }
-    }
-
-    Command::new("nix")
+    Command::new(nix_executable())
         .arg("--version")
         .env("PATH", get_nix_path_with_login_shell())
         .stdout(Stdio::null())
@@ -238,7 +234,7 @@ pub fn is_darwin_rebuild_available() -> bool {
 /// Uses the login shell because it's typically called in contexts where we want to reliably detect Nix
 /// even if launched from Finder. The original use case is for nix-install.
 pub fn get_nix_version() -> Option<String> {
-    let output = Command::new("nix")
+    let output = Command::new(nix_executable())
         .arg("--version")
         .env("PATH", get_nix_path_with_login_shell())
         .output()
@@ -260,7 +256,7 @@ pub fn prefetch_darwin_rebuild_stream(app: &AppHandle) -> Result<()> {
     let app_handle = app.clone();
 
     std::thread::spawn(move || {
-        let result = Command::new("nix")
+        let result = Command::new(nix_executable())
             .args(["build", "--no-link", "nix-darwin/master#darwin-rebuild"])
             .env("PATH", get_nix_path_with_login_shell())
             .env("NIX_CONFIG", "experimental-features = nix-command flakes")
@@ -502,7 +498,7 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
     );
 
     info!("[nix] Prefetching darwin-rebuild in background");
-    let mut child = match Command::new("nix")
+    let mut child = match Command::new(nix_executable())
         .args(["build", "--no-link", "nix-darwin/master#darwin-rebuild"])
         .env("PATH", get_nix_path_with_login_shell())
         .env("NIX_CONFIG", "experimental-features = nix-command flakes")

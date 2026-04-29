@@ -30,7 +30,7 @@ pub fn execute_search_packages(
             _ => query_term.to_string(), // "both"
         };
 
-        let mut cmd = Command::new("nix");
+        let mut cmd = Command::new(crate::nix::nix_executable());
         cmd.args(["search", channel]);
 
         if use_regex {
