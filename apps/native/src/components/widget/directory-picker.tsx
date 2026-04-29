@@ -3,6 +3,9 @@
 import { Button } from "@/components/ui/button";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { useWidgetStore } from "@/stores/widget-store";
+import { HoverClickPopoverIcon } from "@/components/ui/hover-click-popover-icon";
+import { ConfigDirBadge } from "@/components/widget/config-dir-badge";
+import { GitignoreBadge } from "@/components/widget/gitignore-badge";
 import { FolderOpen } from "lucide-react";
 import { useEffect, useState } from "react";
 import { darwinAPI } from "@/tauri-api";
@@ -21,6 +24,11 @@ export function DirectoryPicker({ label, subLabel }: DirectoryPickerProps) {
 
   const [value, setValue] = useState<string>(configDir || "");
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
+  const [showPrivacyNote, setShowPrivacyNote] = useState(false);
+
+  useEffect(() => {
+    setShowPrivacyNote(Boolean(configDir && !configDir.endsWith("/.darwin")));
+  }, [configDir]);
 
   // Keep local input in sync when store changes externally (like via the directory picker)
   useEffect(() => {
@@ -152,10 +160,16 @@ export function DirectoryPicker({ label, subLabel }: DirectoryPickerProps) {
             {validationMessage}
           </p>
         )}
-        <p className="text-muted-foreground text-xs">
-          Press ⌘+⇧+. when browsing to show hidden folders like{" "}
-          <code className="rounded bg-muted px-1">.darwin</code>
-        </p>
+        {showPrivacyNote && (
+          <p className="text-muted-foreground text-xs flex items-center gap-1 flex-wrap">
+            Content of <ConfigDirBadge configDir={configDir!} /> may be seen by your AI provider{" "}
+            <HoverClickPopoverIcon>
+              <p>
+                Files and folders listed in a <GitignoreBadge /> will be hidden from AI agents.
+              </p>
+            </HoverClickPopoverIcon>
+          </p>
+        )}
       </div>
     </div>
   );

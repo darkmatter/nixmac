@@ -135,7 +135,10 @@ fn get_tracked_diff(dir: &str, path_filter: Option<&str>) -> Result<String> {
         unstaged_args.extend(&extra);
 
         let staged = git_command().args(&staged_args).current_dir(dir).output()?;
-        let unstaged = git_command().args(&unstaged_args).current_dir(dir).output()?;
+        let unstaged = git_command()
+            .args(&unstaged_args)
+            .current_dir(dir)
+            .output()?;
 
         let mut result = String::from_utf8_lossy(&staged.stdout).to_string();
         result.push_str(&String::from_utf8_lossy(&unstaged.stdout));
@@ -571,7 +574,6 @@ pub fn create_evolution_backup(
     Ok(Some(branch_name))
 }
 
-
 /// Restore working tree to the content of a specific branch ref.
 /// Replaces the current index with the branch's tree, then checks out the working tree.
 pub fn restore_from_branch_ref(repo_path: &str, ref_name: &str) -> Result<()> {
@@ -739,7 +741,10 @@ deleted file mode 100644
         fs::write(repo_dir.join("new.nix"), "{ new = true; }").unwrap();
 
         let diff = get_full_diff(&repo_dir_str).unwrap();
-        assert!(diff.contains("new.nix"), "untracked file should appear in diff");
+        assert!(
+            diff.contains("new.nix"),
+            "untracked file should appear in diff"
+        );
         assert!(diff.contains("+{ new = true; }"));
     }
 
@@ -756,7 +761,10 @@ deleted file mode 100644
         fs::write(repo_dir.join("secret.txt"), "password123").unwrap();
 
         let diff = get_full_diff(&repo_dir_str).unwrap();
-        assert!(!diff.contains("secret.txt"), "gitignored file must not appear in diff");
+        assert!(
+            !diff.contains("secret.txt"),
+            "gitignored file must not appear in diff"
+        );
     }
 
     #[test]
@@ -772,8 +780,14 @@ deleted file mode 100644
         fs::write(repo_dir.join("readme.txt"), "hello").unwrap();
 
         let diff = get_nix_diff(&repo_dir_str).unwrap();
-        assert!(diff.contains("config.nix"), ".nix untracked file should appear");
-        assert!(!diff.contains("readme.txt"), "non-.nix file should be excluded");
+        assert!(
+            diff.contains("config.nix"),
+            ".nix untracked file should appear"
+        );
+        assert!(
+            !diff.contains("readme.txt"),
+            "non-.nix file should be excluded"
+        );
     }
 
     #[test]
@@ -789,7 +803,10 @@ deleted file mode 100644
         fs::write(repo_dir.join("secret.nix"), "{ password = \"123\"; }").unwrap();
 
         let diff = get_nix_diff(&repo_dir_str).unwrap();
-        assert!(!diff.contains("secret.nix"), "gitignored .nix file must not appear in diff");
+        assert!(
+            !diff.contains("secret.nix"),
+            "gitignored .nix file must not appear in diff"
+        );
     }
 
     #[test]
@@ -837,5 +854,4 @@ deleted file mode 100644
         let result = create_evolution_backup(&repo_dir_str, Some(1), 0).unwrap();
         assert!(result.is_some());
     }
-
 }

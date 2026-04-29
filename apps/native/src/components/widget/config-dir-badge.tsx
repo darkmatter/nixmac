@@ -1,19 +1,10 @@
 "use client";
 
+import { FileBadge } from "@/components/ui/file-badge";
 import { getShortFilename } from "@/components/widget/utils";
 import { FolderOpen } from "lucide-react";
 
-interface ConfigDirBadgeProps {
-  configDir: string;
-}
-
-export function ConfigDirBadge({ configDir }: ConfigDirBadgeProps) {
+export function ConfigDirBadge({ configDir }: { configDir: string }) {
   const dirName = getShortFilename(configDir) || "config";
-
-  return (
-    <code className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5 font-mono">
-      <FolderOpen className="h-3 w-3" />
-      {dirName}
-    </code>
-  );
+  return <FileBadge icon={FolderOpen}>{dirName}</FileBadge>;
 }
