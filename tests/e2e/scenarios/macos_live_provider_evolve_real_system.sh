@@ -105,6 +105,8 @@ NIX
         || die "Failed to initialize temporary config repo"
     git -C "$NIXMAC_E2E_CONFIG_REPO" config user.name "nixmac e2e"
     git -C "$NIXMAC_E2E_CONFIG_REPO" config user.email "e2e@nixmac.local"
+    git -C "$NIXMAC_E2E_CONFIG_REPO" add flake.nix \
+        || die "Failed to stage flake.nix before locking fixture"
 
     local nix_bin
     nix_bin=$(scenario_nix) || die "Nix is required for real full-system E2E"
