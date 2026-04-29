@@ -430,6 +430,39 @@
       "requiredForDefaultPrPack": false
     },
     {
+      "name": "macos_provider_evolve_full_smoke",
+      "lane": "full-mac",
+      "title": "macOS provider evolve full smoke",
+      "summary": "Launches the installed macOS app, submits a descriptor, calls an OpenAI-compatible HTTP provider, applies the provider's Nix edit, runs the mocked host rebuild/activation step, and commits the result.",
+      "coverage": [
+        "Exact-SHA app artifact launches on the real Mac runner",
+        "Prompt input is reached and submitted through accessibility metadata",
+        "Evolution provider receives a real HTTP chat completion request with tool schemas",
+        "Provider tool calls edit flake.nix and run build_check through the backend",
+        "Summary provider receives JSON completion requests for the generated diff",
+        "Build & Test advances to Save using the explicit E2E mock-system activation path",
+        "Commit-message provider request is observed before the Save step commits",
+        "Publishes a 30 fps full-screen recording as primary proof"
+      ],
+      "riskAreas": ["full-mac", "providers", "evolve", "review", "build-test", "commit", "recording"],
+      "changePatterns": [
+        "^apps/native/src/components/widget/(prompt-input|prompt-input-section|merge-section|steps/(begin-step|evolve-step|commit-step)|summaries/.*)\\.tsx$",
+        "^apps/native/src/hooks/(use-evolve|use-apply|use-rebuild-stream|use-summary|use-git-operations)\\.ts$",
+        "^apps/native/src-tauri/src/(darwin|evolution|evolve_state|commands|store|completion_log)\\.rs$",
+        "^apps/native/src-tauri/src/(evolve|providers)/",
+        "^tests/e2e/scenarios/macos_provider_evolve_full_smoke\\.sh$",
+        "^tests/e2e/(adapters|lib)/"
+      ],
+      "knownGaps": [
+        "Uses a deterministic local OpenAI-compatible provider so the test is stable; it does not depend on external provider billing, latency, or model nondeterminism.",
+        "Mocks only the host system rebuild/activation under NIXMAC_E2E_MOCK_SYSTEM=1, so it does not mutate the self-hosted runner's real macOS configuration."
+      ],
+      "currentSpec": "tests/e2e/scenarios/macos_provider_evolve_full_smoke.sh",
+      "currentScript": "tests/e2e/run.sh macos_provider_evolve_full_smoke",
+      "status": "macos-first-spike",
+      "requiredForDefaultPrPack": false
+    },
+    {
       "name": "install_nix_clean_machine",
       "lane": "full-mac",
       "title": "Install Nix on clean machine",

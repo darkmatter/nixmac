@@ -598,6 +598,24 @@ fn run_darwin_rebuild(
         let _ = f.flush();
     }
 
+    if crate::e2e_support::should_mock_system() {
+        log_and_emit!("E2E mock system enabled; simulating darwin-rebuild build.");
+        log_and_emit!("darwin-rebuild build completed successfully.");
+        log_and_emit!(
+            "E2E mock system enabled; simulating activation without changing the runner."
+        );
+        log_and_emit!("Activating configuration...");
+        log_and_emit!("E2E mock activation completed successfully.");
+        summarizer.complete(true);
+
+        return Ok(serde_json::json!({
+            "ok": true,
+            "code": 0,
+            "log_file": log_path.to_string_lossy(),
+            "mock_system": true,
+        }));
+    }
+
     // =========================================================================
     // Step 1: build as user (no sudo, avoids Git ownership issues)
     // =========================================================================
