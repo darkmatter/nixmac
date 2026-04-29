@@ -370,7 +370,12 @@ nixmac_submit_prompt_from_suggestion() {
     local suggestion="${1:-Install vim}"
     nixmac_click_button "^${suggestion}$" --timeout 30 || return 1
     sleep 1
-    nixmac_click_button "Send" --timeout 30 || return 1
+    nixmac_click_prompt_submit || return 1
+}
+
+nixmac_click_prompt_submit() {
+    nixmac_click_element_matching "evolve-prompt-send|Submit configuration change descriptor|^Send$" --timeout 30 \
+        || return 1
 }
 
 nixmac_type_prompt_and_submit() {
@@ -379,7 +384,7 @@ nixmac_type_prompt_and_submit() {
     peek_hotkey "cmd+a" || true
     peek_type "$prompt" || return 1
     sleep 1
-    nixmac_click_button "Send" --timeout 30 || return 1
+    nixmac_click_prompt_submit || return 1
 }
 
 nixmac_answer_inline_question() {
