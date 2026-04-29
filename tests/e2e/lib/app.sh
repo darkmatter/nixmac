@@ -18,7 +18,7 @@ app_launch() {
     open "$app_path"
     sleep "$wait"
     
-    if pgrep -f "$app_name" &>/dev/null; then
+    if pgrep -x "$app_name" &>/dev/null; then
         pass "App launched: $app_name"
         return 0
     else
@@ -34,13 +34,13 @@ app_quit() {
     peekaboo_run app quit --app "$app_name" 2>/dev/null || true
     sleep 1
     
-    if pgrep -f "$app_name" &>/dev/null; then
+    if pgrep -x "$app_name" &>/dev/null; then
         debug "App still running, force-killing..."
-        pkill -f "$app_name" 2>/dev/null || true
+        pkill -x "$app_name" 2>/dev/null || true
         sleep 1
     fi
     
-    if ! pgrep -f "$app_name" &>/dev/null; then
+    if ! pgrep -x "$app_name" &>/dev/null; then
         debug "App quit: $app_name"
     else
         warn "Could not quit $app_name"
@@ -50,7 +50,7 @@ app_quit() {
 # Check if an app is running
 app_is_running() {
     local app_name="$1"
-    pgrep -f "$app_name" &>/dev/null
+    pgrep -x "$app_name" &>/dev/null
 }
 
 # Wait for an app process to appear
@@ -59,8 +59,8 @@ app_wait_for_process() {
     local timeout="${2:-30}"
     
     local elapsed=0
-    while [ $elapsed -lt $timeout ]; do
-        if pgrep -f "$process_name" &>/dev/null; then
+    while [ "$elapsed" -lt "$timeout" ]; do
+        if pgrep -x "$process_name" &>/dev/null; then
             return 0
         fi
         sleep 2
@@ -75,8 +75,8 @@ app_wait_for_exit() {
     local timeout="${2:-30}"
     
     local elapsed=0
-    while [ $elapsed -lt $timeout ]; do
-        if ! pgrep -f "$process_name" &>/dev/null; then
+    while [ "$elapsed" -lt "$timeout" ]; do
+        if ! pgrep -x "$process_name" &>/dev/null; then
             return 0
         fi
         sleep 2
@@ -108,6 +108,6 @@ pkg_find() {
 
 # Kill macOS Installer.app if running
 installer_kill() {
-    pkill -f "Installer" 2>/dev/null || true
+    pkill -x "Installer" 2>/dev/null || true
     sleep 1
 }
