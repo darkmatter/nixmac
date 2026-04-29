@@ -1,15 +1,15 @@
-const MOCK_VLLM_FIXTURE_PRESETS = Object.freeze({
+const MOCK_VLLM_FIXTURE_PRESETS: Record<string, string[]> = Object.freeze({
   basicPromptsAddFont: ['add-font.jsonl'],
   basicPromptsConfigureScreenshots: ['configure-screenshots.jsonl'],
   modifySequentialPrompts: ['add-font-add-another.jsonl'],
   askQuestionPrompts: ['ask-question.jsonl', 'add-font.jsonl'],
 });
 
-export function listMockVllmFixturePresetNames() {
+export function listMockVllmFixturePresetNames(): string[] {
   return Object.keys(MOCK_VLLM_FIXTURE_PRESETS);
 }
 
-export function getMockVllmFixturePreset(presetName) {
+export function getMockVllmFixturePreset(presetName: string): string[] {
   const files = MOCK_VLLM_FIXTURE_PRESETS[presetName];
   if (!files) {
     const available = listMockVllmFixturePresetNames().join(', ');
@@ -25,7 +25,14 @@ export function createMockVllmSetupOptions({
   preset,
   initializeConfigRepo = true,
   mockVllm = {},
-} = {}) {
+}: {
+  preset?: string;
+  initializeConfigRepo?: boolean;
+  mockVllm?: Record<string, unknown>;
+} = {}): {
+  initializeConfigRepo: boolean;
+  mockVllm: Record<string, unknown>;
+} {
   if (!preset) {
     throw new Error('[wdio:test-env] createMockVllmSetupOptions requires a "preset" value');
   }

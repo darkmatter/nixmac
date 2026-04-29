@@ -1,6 +1,6 @@
 import { createWdioConfig } from './wdio.conf.base.mjs';
 
 export const config = createWdioConfig({
-  specs: ['./tests/wdio/smoke.spec.mjs'],
+  specs: ['../dist-e2e/tests/wdio/smoke.spec.js'],
   setupOptions: { initializeConfigRepo: true },
 });

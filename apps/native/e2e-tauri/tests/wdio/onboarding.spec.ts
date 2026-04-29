@@ -2,12 +2,12 @@ import {
   assertOnboardingVisible,
   clickCreateDefaultConfiguration,
   waitForFirstWindow,
-} from './helpers/app-ui.mjs';
+} from './helpers/app-ui.js';
 import {
   waitForConfigRepoFileExists,
   waitForConfigRepoClean,
   waitForConfigRepoInitialized,
-} from './helpers/test-env.mjs';
+} from './helpers/test-env.js';
 
 describe('onboarding', () => {
   it('shows onboarding UI and bootstraps a new config repo', async () => {

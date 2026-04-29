@@ -1,11 +1,11 @@
 import { $, $$, browser } from '@wdio/globals';
 import { expect } from 'chai';
-import { setMockVllmResponses } from './test-env.mjs';
+import { setMockVllmResponses } from './test-env.js';
 
 const ERROR_MESSAGE_SELECTOR = '[data-testid="widget-error-message"]';
 
 async function failIfWidgetErrorPresent() {
-  let errorElements = [];
+  let errorElements = [] as any[];
   try {
     errorElements = await $$(ERROR_MESSAGE_SELECTOR);
   } catch {
@@ -24,13 +24,12 @@ async function failIfWidgetErrorPresent() {
   expect.fail(`Widget error surfaced during test: ${message}`);
 }
 
-async function waitUntilOrFailOnError(condition, options) {
+async function waitUntilOrFailOnError(condition: () => Promise<boolean>, options: any) {
   const { timeout, interval, timeoutMsg } = options;
   const startedAt = Date.now();
-  let lastError;
+  let lastError: any;
 
   while (Date.now() - startedAt < timeout) {
-    // Surface widget errors immediately instead of waiting for timeout.
     await failIfWidgetErrorPresent();
 
     let matched = false;
@@ -46,7 +45,7 @@ async function waitUntilOrFailOnError(condition, options) {
       return;
     }
 
-    await browser.pause(interval);
+    await (browser as any).pause(interval);
   }
 
   await failIfWidgetErrorPresent();
@@ -57,7 +56,7 @@ async function waitUntilOrFailOnError(condition, options) {
   expect.fail(`${timeoutMsg}.${suffix}`);
 }
 
-async function waitForSelector(selector, { timeout = 15000, interval = 250 } = {}) {
+async function waitForSelector(selector: string, { timeout = 15000, interval = 250 } = {}) {
   await waitUntilOrFailOnError(
     async () => {
       try {
@@ -75,7 +74,7 @@ async function waitForSelector(selector, { timeout = 15000, interval = 250 } = {
   );
 }
 
-async function elementExists(selector) {
+async function elementExists(selector: string) {
   try {
     const element = await $(selector);
     return await element.isExisting();
@@ -84,24 +83,14 @@ async function elementExists(selector) {
   }
 }
 
-// Answers an inline question posed during the evolve flow.
-// Addresses React components defined in evolve-progress.tsx
-// that are not easily interacted with via standard WebDriver methods.
-export async function answerQuestion(answerText) {
+export async function answerQuestion(answerText: string) {
   const inputSelector = '[data-testid="question-prompt-input"]';
   const submitButtonSelector = '[data-testid="question-prompt-submit"]';
 
   await waitForSelector(inputSelector, { timeout: 60000, interval: 500 });
   await waitForSelector(submitButtonSelector);
 
-  // This input is React-controlled, so we must trigger updates via DOM mutation
-  // followed by input/change events to ensure React state updates correctly.
-  //
-  // Standard WebDriver approaches (setValue, keyboard input, click/type chains)
-  // were tested but did not reliably update React state for this input.
-  // This appears to be due to the element being rendered inside a shadow root
-  // and/or event handling differences in this component.
-  await browser.execute((value) => {
+  await (browser as any).execute((value: string) => {
     const input = document.querySelector('[data-testid="question-prompt-input"]');
     if (!(input instanceof HTMLInputElement)) {
       return;
@@ -115,7 +104,7 @@ export async function answerQuestion(answerText) {
     if (nativeSetter) {
       nativeSetter.call(input, value);
     } else {
-      input.value = value;
+      (input as HTMLInputElement).value = value;
     }
 
     input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -144,7 +133,6 @@ export async function clickDiscardAndConfirm() {
   await waitForSelector(discardButtonSelector);
   await clickWithRetry(discardButtonSelector);
 
-  // Confirmation dialog appears — click Confirm
   await waitForSelector(confirmButtonSelector, { timeout: 10000 });
   await clickWithRetry(confirmButtonSelector);
 }
@@ -156,7 +144,6 @@ export async function clickDiscardAndCancel() {
   await waitForSelector(discardButtonSelector);
   await clickWithRetry(discardButtonSelector);
 
-  // Confirmation dialog appears — click Cancel
   await waitForSelector(cancelButtonSelector, { timeout: 10000 });
   await clickWithRetry(cancelButtonSelector);
 }
@@ -189,14 +176,14 @@ export async function assertReturnedToInitialPromptScreen() {
   await assertEvolveReviewGone();
 }
 
-async function clickWithRetry(selector, { attempts = 12, interval = 250 } = {}) {
-  let lastError;
+async function clickWithRetry(selector: string, { attempts = 12, interval = 250 } = {}) {
+  let lastError: any;
   for (let i = 0; i < attempts; i += 1) {
     try {
       await failIfWidgetErrorPresent();
       const el = await $(selector);
       if (!(await el.isExisting())) {
-        await browser.pause(interval);
+        await (browser as any).pause(interval);
         continue;
       }
       await el.click();
@@ -210,7 +197,7 @@ async function clickWithRetry(selector, { attempts = 12, interval = 250 } = {}) 
       }
 
       lastError = error;
-      await browser.pause(interval);
+      await (browser as any).pause(interval);
     }
   }
 
@@ -221,14 +208,14 @@ async function clickWithRetry(selector, { attempts = 12, interval = 250 } = {}) 
   expect.fail(`Failed to click selector after retries: ${selector}.${suffix}`);
 }
 
-export async function waitForFirstWindow(options = {}) {
+export async function waitForFirstWindow(options: any = {}) {
   const timeout = options.timeout ?? 45000;
   const interval = options.interval ?? 500;
 
   await waitUntilOrFailOnError(
     async () => {
       try {
-        const handles = await browser.getWindowHandles();
+        const handles = await (browser as any).getWindowHandles();
         return handles.length > 0;
       } catch {
         return false;
@@ -241,8 +228,8 @@ export async function waitForFirstWindow(options = {}) {
     },
   );
 
-  const handles = await browser.getWindowHandles();
-  await browser.switchToWindow(handles[0]);
+  const handles = await (browser as any).getWindowHandles();
+  await (browser as any).switchToWindow(handles[0]);
   return handles;
 }
 
@@ -259,8 +246,8 @@ export async function resetPromptWorkflowState() {
     });
   }
 
-  await browser.execute(() => {
-    window.__testWidget?.resetForTest?.();
+  await (browser as any).execute(() => {
+    (window as any).__testWidget?.resetForTest?.();
   });
 
   await assertNoWidgetError();
@@ -273,9 +260,9 @@ export async function preparePromptTestCase({ responseFiles = [], responses = nu
 
 export function registerPromptSuiteBeforeEach({
   fixtureByTestTitle,
-} = {}) {
+}: any = {}) {
   beforeEach(async function () {
-    const testTitle = this?.currentTest?.title;
+    const testTitle = (this as any)?.currentTest?.title;
     if (!testTitle) {
       throw new Error('[wdio:test-env] registerPromptSuiteBeforeEach could not determine current test title');
     }
@@ -305,7 +292,6 @@ export async function openFeedbackDialog() {
   await waitForSelector(feedbackButtonSelector);
   await clickWithRetry(feedbackButtonSelector);
 
-  // Wait for feedback dialog to appear
   await waitForSelector('button[aria-label="Send feedback"]');
 }
 
@@ -314,7 +300,6 @@ export async function openHistory() {
   await waitForSelector(historyButtonSelector);
   await clickWithRetry(historyButtonSelector);
 
-  // Wait for history view to appear
   await waitForSelector('[data-testid="history-header"]');
 }
 
@@ -345,7 +330,7 @@ export async function clickCreateDefaultConfiguration() {
   });
 }
 
-export async function clickSettingsTabAndAssert(tabName) {
+export async function clickSettingsTabAndAssert(tabName: string) {
   const tabButtonSelector = `//button[.//span[normalize-space()="${tabName}"]]`;
   await waitForSelector(tabButtonSelector);
   await clickWithRetry(tabButtonSelector);
@@ -353,17 +338,14 @@ export async function clickSettingsTabAndAssert(tabName) {
   await waitForSelector(`//h2[normalize-space()="${tabName}"]`);
 }
 
-export async function submitPromptMessage(promptMessage) {
+export async function submitPromptMessage(promptMessage: string) {
   const promptInputSelector = '#evolve-prompt-input, [data-testid="evolve-prompt-input"]';
   const sendButtonSelector = '#evolve-prompt-send, [data-testid="evolve-prompt-send"]';
 
   await waitForSelector(promptInputSelector, { timeout: 60000, interval: 250 });
 
-  // Drive the Zustand store directly via the dev-only window test hook.
-  // This is cleaner and more reliable than trying to simulate DOM events
-  // through WebDriver against a React-controlled textarea.
-  await browser.execute((value) => {
-    window.__testWidget?.setEvolvePrompt(value);
+  await (browser as any).execute((value: string) => {
+    (window as any).__testWidget?.setEvolvePrompt(value);
   }, promptMessage);
 
   await waitForSelector(sendButtonSelector);
@@ -388,8 +370,8 @@ export async function waitForEvolveProcessingCycle({
 } = {}) {
   await waitUntilOrFailOnError(
     async () =>
-      await browser.execute(() => {
-        return window.__testWidget?.isEvolveProcessing?.() === true;
+      await (browser as any).execute(() => {
+        return (window as any).__testWidget?.isEvolveProcessing?.() === true;
       }),
     {
       timeout: startedTimeout,
@@ -400,8 +382,8 @@ export async function waitForEvolveProcessingCycle({
 
   await waitUntilOrFailOnError(
     async () =>
-      await browser.execute(() => {
-        return window.__testWidget?.isEvolveProcessing?.() === false;
+      await (browser as any).execute(() => {
+        return (window as any).__testWidget?.isEvolveProcessing?.() === false;
       }),
     {
       timeout: completedTimeout,
@@ -411,11 +393,11 @@ export async function waitForEvolveProcessingCycle({
   );
 }
 
-export async function assertPromptHistoryContains(promptText) {
+export async function assertPromptHistoryContains(promptText: string) {
   await waitUntilOrFailOnError(
     async () =>
-      await browser.execute((targetPrompt) => {
-        const history = window.__testWidget?.getPromptHistory?.() ?? [];
+      await (browser as any).execute((targetPrompt: string) => {
+        const history = (window as any).__testWidget?.getPromptHistory?.() ?? [];
         return history.includes(targetPrompt);
       }, promptText),
     {
