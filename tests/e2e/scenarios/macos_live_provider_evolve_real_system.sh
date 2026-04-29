@@ -13,7 +13,7 @@ E2E_ADAPTER="nixmac"
 E2E_FIXTURE="clean-machine"
 export E2E_RECORD_FPS=30
 export E2E_RECORDING_STRICT=1
-export E2E_RECORD_MAX_DURATION_SECONDS="${E2E_RECORD_MAX_DURATION_SECONDS:-4500}"
+export E2E_RECORD_MAX_DURATION_SECONDS="${E2E_RECORD_MAX_DURATION_SECONDS:-6900}"
 
 NIXMAC_E2E_DESCRIPTOR_TEXT="Edit flake.nix only. In the top-level environment.systemPackages list, add pkgs.hello on its own line. Use the edit_file tool with the exact file text, run build_check, and do not call done until build_check passes. Do not ask clarifying questions."
 NIXMAC_E2E_HOST_ATTR=""
@@ -92,6 +92,11 @@ scenario_create_config_repo() {
           nixpkgs.hostPlatform = "${platform}";
           system.primaryUser = "${username}";
           system.stateVersion = 6;
+          documentation.enable = false;
+          documentation.doc.enable = false;
+          documentation.info.enable = false;
+          documentation.man.enable = false;
+          programs.man.enable = false;
           environment.systemPackages = [
           ];
         })
@@ -318,6 +323,58 @@ scenario_latest_darwin_log() {
         | cut -d' ' -f2-
 }
 
+scenario_log_visible_app_text() {
+    log "Visible nixmac UI text:"
+    nixmac_text 2>/dev/null | sed 's/^/  /' | tee -a "$E2E_LOG_FILE" >/dev/null || true
+}
+
+scenario_log_latest_darwin_tail() {
+    local latest_log="$1"
+    [ -n "$latest_log" ] || latest_log=$(scenario_latest_darwin_log)
+    [ -n "$latest_log" ] || {
+        warn "No darwin-rebuild log found while collecting diagnostics"
+        return 0
+    }
+    log "Latest darwin-rebuild log: $latest_log"
+    log "Latest darwin-rebuild log tail:"
+    tail -120 "$latest_log" 2>/dev/null | sed 's/^/  /' | tee -a "$E2E_LOG_FILE" >/dev/null || true
+}
+
+scenario_wait_for_build_completion() {
+    local timeout="${1:-2700}"
+    local deadline next_checkpoint started_at now text elapsed
+
+    started_at=$(date +%s)
+    deadline=$((started_at + timeout))
+    next_checkpoint=$((started_at + 300))
+    while [ "$(date +%s)" -lt "$deadline" ]; do
+        text=$(nixmac_text)
+        if echo "$text" | grep -qiE "All changes active|Commit Changes"; then
+            return 0
+        fi
+
+        now=$(date +%s)
+        if [ "$now" -ge "$next_checkpoint" ]; then
+            elapsed=$((now - started_at))
+            log "Build & Test still running after ${elapsed}s; collecting checkpoint diagnostics"
+            scenario_log_visible_app_text
+            scenario_log_latest_darwin_tail ""
+            next_checkpoint=$((now + 300))
+        fi
+        sleep 2
+    done
+    return 1
+}
+
+scenario_preserve_runtime_logs() {
+    local artifact_dir="/tmp/e2e-artifacts/${E2E_SCENARIO_NAME:-macos_live_provider_evolve_real_system}/runtime-logs"
+    mkdir -p "$artifact_dir" || return 1
+
+    if [ -d "$HOME/Library/Logs/nixmac" ]; then
+        cp -R "$HOME/Library/Logs/nixmac"/. "$artifact_dir"/ 2>/dev/null || true
+    fi
+}
+
 scenario_install_nix_with_app() {
     phase "Install Nix through the real app flow"
     nixmac_launch || die "App failed to launch for Nix install"
@@ -340,7 +397,13 @@ scenario_build_and_wait_for_commit_step() {
         nixmac_screenshot "04-real-build-started"
     fi
 
-    scenario_wait_for_text "All changes active|Commit Changes" 900
+    if scenario_wait_for_build_completion 2700; then
+        return 0
+    fi
+
+    scenario_log_visible_app_text
+    scenario_log_latest_darwin_tail ""
+    return 1
 }
 
 scenario_restore_previous_system() {
@@ -580,6 +643,7 @@ scenario_test() {
 
 scenario_cleanup() {
     scenario_preserve_completion_logs || true
+    scenario_preserve_runtime_logs || true
     scenario_restore_previous_system
     sudo -n rm -f /etc/sudoers.d/nixmac-e2e-restore-temp 2>/dev/null || true
     nixmac_quit
