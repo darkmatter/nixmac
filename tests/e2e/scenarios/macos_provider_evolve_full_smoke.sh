@@ -56,11 +56,11 @@ NIX
 scenario_start_provider() {
     command -v python3 >/dev/null 2>&1 || die "python3 is required for provider smoke"
 
-    NIXMAC_E2E_PROVIDER_SCRIPT=$(mktemp "${TMPDIR:-/tmp}/nixmac-e2e-provider.XXXXXX.py") \
+    NIXMAC_E2E_PROVIDER_SCRIPT=$(mktemp "${TMPDIR:-/tmp}/nixmac-e2e-provider.XXXXXX") \
         || die "Failed to create provider script"
     NIXMAC_E2E_PROVIDER_PORT_FILE=$(mktemp "${TMPDIR:-/tmp}/nixmac-e2e-provider-port.XXXXXX") \
         || die "Failed to create provider port file"
-    NIXMAC_E2E_PROVIDER_LOG=$(mktemp "${TMPDIR:-/tmp}/nixmac-e2e-provider-calls.XXXXXX.jsonl") \
+    NIXMAC_E2E_PROVIDER_LOG=$(mktemp "${TMPDIR:-/tmp}/nixmac-e2e-provider-calls.XXXXXX") \
         || die "Failed to create provider log"
 
     cat > "$NIXMAC_E2E_PROVIDER_SCRIPT" <<'PY'
