@@ -15,7 +15,7 @@ export E2E_RECORD_FPS=30
 export E2E_RECORDING_STRICT=1
 export E2E_RECORD_MAX_DURATION_SECONDS="${E2E_RECORD_MAX_DURATION_SECONDS:-6900}"
 
-NIXMAC_E2E_DESCRIPTOR_TEXT="Edit flake.nix only. In the top-level environment.systemPackages list, add pkgs.hello on its own line. Use the edit_file tool with the exact file text, run build_check, and do not call done until build_check passes. Do not ask clarifying questions."
+NIXMAC_E2E_DESCRIPTOR_TEXT="In flake.nix, add pkgs.hello to environment.systemPackages. Run build_check, then done."
 NIXMAC_E2E_HOST_ATTR=""
 NIXMAC_E2E_CONFIG_REPO=""
 NIXMAC_E2E_ELEMENTS_JSON_FILE="${TMPDIR:-/tmp}/nixmac-real-e2e-elements-$$.json"
