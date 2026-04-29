@@ -256,6 +256,13 @@ scenario_enter_text() {
     local text="$1"
     local chunk remaining
 
+    peekaboo_run click --app "$NIXMAC_APP_NAME" --coords "400,365" >/dev/null 2>&1 || true
+    if peekaboo_run type --app "$NIXMAC_APP_NAME" --text "$text" --clear --profile linear --delay 5 >/dev/null 2>&1; then
+        if scenario_wait_for_prompt_value "$text" 10; then
+            return 0
+        fi
+    fi
+
     if command -v pbcopy >/dev/null 2>&1; then
         printf '%s' "$text" | pbcopy || true
         peek_hotkey "cmd+a" >/dev/null 2>&1 || true
