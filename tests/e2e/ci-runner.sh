@@ -197,6 +197,10 @@ cleanup_ci_runner() {
     launchctl unsetenv NIXMAC_DISABLE_UPDATER 2>/dev/null || true
     launchctl unsetenv NIXMAC_SKIP_PERMISSIONS 2>/dev/null || true
     launchctl unsetenv NIXMAC_E2E_MOCK_SYSTEM 2>/dev/null || true
+    launchctl unsetenv NIXMAC_E2E_UNATTENDED_AUTH 2>/dev/null || true
+    launchctl unsetenv NIXMAC_E2E_ADMIN_PASSWORD 2>/dev/null || true
+    launchctl unsetenv NIXMAC_RECORD_COMPLETIONS 2>/dev/null || true
+    launchctl unsetenv NIXMAC_COMPLETION_LOG_DIR 2>/dev/null || true
     cleanup_e2e_gui_leftovers
 }
 
@@ -219,6 +223,17 @@ echo "macOS:    $(sw_vers -productVersion)"
 echo "Date:     $(date)"
 echo ""
 
+scenario_requires_existing_nix() {
+    case "$SCENARIO" in
+        macos_live_provider_evolve_real_system)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
 # --- Preflight ---
 echo "[ci] Checking Peekaboo Bridge..."
 if ! peekaboo_with_timeout bridge status 2>&1 | grep -qE "remote (gui|onDemand)"; then
@@ -239,8 +254,12 @@ cleanup_e2e_gui_leftovers
 pkill -f nixmac 2>/dev/null || true
 pkill -f Installer 2>/dev/null || true
 if [ -f "/nix/nix-installer" ]; then
-    echo "[ci] Uninstalling existing Nix..."
-    sudo /nix/nix-installer uninstall --no-confirm 2>&1
+    if scenario_requires_existing_nix; then
+        echo "[ci] Preserving existing Nix for no-stub full-system scenario"
+    else
+        echo "[ci] Uninstalling existing Nix..."
+        sudo /nix/nix-installer uninstall --no-confirm 2>&1
+    fi
 fi
 rm -rf /tmp/e2e-screenshots /tmp/e2e-peekaboo-captures /tmp/e2e-recording.mp4 /tmp/e2e-test.log /tmp/e2e-runner.lock
 rm -rf /tmp/e2e-artifacts
@@ -347,17 +366,31 @@ echo "[ci] Running scenario: $SCENARIO"
 echo ""
 
 export ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
+export NIXMAC_E2E_ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
+export NIXMAC_E2E_UNATTENDED_AUTH=0
 export E2E_CLEANUP_NIX=1
 export E2E_JSON=1
 export E2E_TERMINAL_CLEANUP_MODE=kill
 export E2E_RECORDING_TRIM_START_SECONDS=3
 export NIXMAC_DISABLE_UPDATER=1   # Updater can crash in CI (unsigned builds, empty platforms)
 export NIXMAC_SKIP_PERMISSIONS=1  # CI Mac may not have FDA granted; skip permissions screen
+if scenario_requires_existing_nix; then
+    export E2E_CLEANUP_NIX=0
+    export NIXMAC_E2E_UNATTENDED_AUTH=1
+    if [ ! -x "/nix/var/nix/profiles/default/bin/nix" ]; then
+        echo "[ci] ERROR: Real full-system scenario requires Nix to already be installed"
+        exit 1
+    fi
+fi
 
 # macOS `open` launches apps via Launch Services which ignores shell env vars.
 # Use launchctl setenv so the app process inherits these flags.
 launchctl setenv NIXMAC_DISABLE_UPDATER 1
 launchctl setenv NIXMAC_SKIP_PERMISSIONS 1
+if scenario_requires_existing_nix && [ -n "${NIXMAC_E2E_ADMIN_PASSWORD:-}" ]; then
+    launchctl setenv NIXMAC_E2E_UNATTENDED_AUTH 1
+    launchctl setenv NIXMAC_E2E_ADMIN_PASSWORD "$NIXMAC_E2E_ADMIN_PASSWORD"
+fi
 
 EXIT_CODE=0
 bash "$E2E_DIR/run.sh" "$SCENARIO" || EXIT_CODE=$?

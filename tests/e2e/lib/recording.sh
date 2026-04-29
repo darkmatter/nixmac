@@ -224,7 +224,7 @@ recording_trim_leadin() {
 start_recording() {
     local output="${1:-$E2E_VIDEO_FILE}"
     local framerate="${2:-${E2E_RECORD_FPS:-20}}"
-    local max_duration="${3:-600}"
+    local max_duration="${3:-${E2E_RECORD_MAX_DURATION_SECONDS:-600}}"
     local run_id
     local window_title
     local script

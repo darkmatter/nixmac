@@ -800,6 +800,7 @@ jobs:
           MAC_E2E_HOST: ${{ secrets.MAC_E2E_HOST }}
           MAC_E2E_SSH_KEY: ${{ secrets.MAC_E2E_SSH_KEY }}
           MAC_E2E_USER: ${{ secrets.MAC_E2E_USER }}
+          NIXMAC_E2E_OPENROUTER_API_KEY: ${{ secrets.NIXMAC_E2E_OPENROUTER_API_KEY }}
           SCENARIO: ${{ matrix.scenario }}
         run: |
           missing=()
@@ -807,6 +808,9 @@ jobs:
           [ -n "$MAC_E2E_USER" ] || missing+=("MAC_E2E_USER")
           [ -n "$MAC_E2E_SSH_KEY" ] || missing+=("MAC_E2E_SSH_KEY")
           [ -n "$ADMIN_PASSWORD" ] || missing+=("MAC_E2E_ADMIN_PASSWORD")
+          if [ "$SCENARIO" = "macos_live_provider_evolve_real_system" ]; then
+            [ -n "$NIXMAC_E2E_OPENROUTER_API_KEY" ] || missing+=("NIXMAC_E2E_OPENROUTER_API_KEY")
+          fi
           if [ "${#missing[@]}" -eq 0 ]; then
             exit 0
           fi
@@ -987,12 +991,18 @@ jobs:
           BRANCH_NAME: ${{ needs.resolve.outputs.head_ref || github.head_ref || github.ref_name }}
           COMMIT_SHA: ${{ needs.resolve.outputs.head_sha }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NIXMAC_E2E_OPENROUTER_API_KEY: ${{ secrets.NIXMAC_E2E_OPENROUTER_API_KEY }}
+          NIXMAC_E2E_OPENROUTER_MODEL: ${{ vars.NIXMAC_E2E_OPENROUTER_MODEL || 'openai/gpt-4.1' }}
+          NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL: ${{ vars.NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL || 'openai/gpt-4o-mini' }}
           SCENARIO: ${{ matrix.scenario }}
         run: |
           set +e
           {
             echo "export ADMIN_PASSWORD=$(printf '%q' "$ADMIN_PASSWORD")"
             echo "export GH_TOKEN=$(printf '%q' "$GH_TOKEN")"
+            echo "export NIXMAC_E2E_OPENROUTER_API_KEY=$(printf '%q' "$NIXMAC_E2E_OPENROUTER_API_KEY")"
+            echo "export NIXMAC_E2E_OPENROUTER_MODEL=$(printf '%q' "$NIXMAC_E2E_OPENROUTER_MODEL")"
+            echo "export NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL=$(printf '%q' "$NIXMAC_E2E_OPENROUTER_SUMMARY_MODEL")"
             echo "export BRANCH=$(printf '%q' "$BRANCH_NAME")"
             echo "export COMMIT_SHA=$(printf '%q' "$COMMIT_SHA")"
             echo "export E2E_HEAD_SHA=$(printf '%q' "$E2E_HEAD_SHA")"
@@ -1067,6 +1077,9 @@ jobs:
             .replace(/gh[pousr]_[A-Za-z0-9_]+/g, "[redacted-github-token]")
             .replace(/github_pat_[A-Za-z0-9_]+/g, "[redacted-github-token]")
             .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [redacted]")
+            .replace(/sk-or-v1-[A-Za-z0-9_-]+/g, "[redacted-openrouter-key]")
+            .replace(/(NIXMAC_E2E_OPENROUTER_API_KEY=)[^\s]+/g, "$1[redacted]")
+            .replace(/(NIXMAC_E2E_ADMIN_PASSWORD=)[^\s]+/g, "$1[redacted]")
             .replace(/(ADMIN_PASSWORD=)[^\s]+/g, "$1[redacted]");
           const flattenForInline = (value) => redactSecrets(value)
             .replace(/[\r\n|]+/g, " ")

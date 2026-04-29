@@ -450,6 +450,7 @@
         "^apps/native/src/components/widget/(prompt-input|prompt-input-section|merge-section|steps/(begin-step|evolve-step|commit-step)|summaries/.*)\\.tsx$",
         "^apps/native/src/hooks/(use-evolve|use-apply|use-rebuild-stream|use-summary|use-git-operations)\\.ts$",
         "^apps/native/src-tauri/src/(darwin|evolution|evolve_state|commands|store|completion_log)\\.rs$",
+        "^apps/native/src-tauri/src/summarize/(build_prompt|pipelines/commit_message)\\.rs$",
         "^apps/native/src-tauri/src/(evolve|providers)/",
         "^tests/e2e/scenarios/macos_provider_evolve_full_smoke\\.sh$",
         "^tests/e2e/(adapters|lib)/"
@@ -460,6 +461,43 @@
       ],
       "currentSpec": "tests/e2e/scenarios/macos_provider_evolve_full_smoke.sh",
       "currentScript": "tests/e2e/run.sh macos_provider_evolve_full_smoke",
+      "status": "macos-first-spike",
+      "requiredForDefaultPrPack": false
+    },
+    {
+      "name": "macos_live_provider_evolve_real_system",
+      "lane": "full-mac",
+      "title": "macOS live provider real system evolve",
+      "summary": "Launches the installed macOS app, submits a descriptor, calls the real OpenRouter provider, applies the provider's Nix edit, runs real nix-darwin build and activation, generates the Save-step commit message through the provider, commits the result, and restores the previous system profile.",
+      "coverage": [
+        "Exact-SHA app artifact launches on the real Mac runner",
+        "Prompt input is reached and submitted through accessibility metadata",
+        "Real OpenRouter evolve provider receives the descriptor and returns tool calls",
+        "Provider tool calls edit flake.nix and run real build_check through nix",
+        "Build & Test runs real darwin-rebuild build and activation with macOS admin authentication",
+        "System profile changes after activation, proving the mock-system path was not used",
+        "Summary/commit provider completions are recorded from the real provider",
+        "Save step commits the provider-generated message and returns to Describe",
+        "Previous system profile is restored after the proof run",
+        "Publishes a 30 fps full-screen recording as primary proof"
+      ],
+      "riskAreas": ["full-mac", "live-provider", "evolve", "build-test", "activation", "commit", "recording"],
+      "changePatterns": [
+        "^apps/native/src/components/widget/(prompt-input|prompt-input-section|merge-section|steps/(begin-step|evolve-step|commit-step)|summaries/.*)\\.tsx$",
+        "^apps/native/src/hooks/(use-evolve|use-apply|use-rebuild-stream|use-summary|use-git-operations)\\.ts$",
+        "^apps/native/src-tauri/src/(darwin|evolution|evolve_state|commands|store|completion_log|e2e_support)\\.rs$",
+        "^apps/native/src-tauri/src/summarize/(build_prompt|model_calls|pipelines/commit_message)\\.rs$",
+        "^apps/native/src-tauri/src/(evolve|providers)/",
+        "^tests/e2e/scenarios/macos_live_provider_evolve_real_system\\.sh$",
+        "^tests/e2e/ci-runner\\.sh$",
+        "^tests/e2e/(adapters|lib)/"
+      ],
+      "knownGaps": [
+        "Calls a live model and can fail for provider outages, rate limits, account credit, or prompt nondeterminism.",
+        "Runs on the configured full-Mac runner and mutates then restores that runner's real nix-darwin system profile; it is intentionally not parallel-safe on one Mac."
+      ],
+      "currentSpec": "tests/e2e/scenarios/macos_live_provider_evolve_real_system.sh",
+      "currentScript": "tests/e2e/run.sh macos_live_provider_evolve_real_system",
       "status": "macos-first-spike",
       "requiredForDefaultPrPack": false
     },
