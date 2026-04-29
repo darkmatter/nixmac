@@ -129,14 +129,13 @@ fn extract_response(tool: &CliTool, raw: &str) -> Result<String> {
         CliTool::Claude => {
             // `claude -p --output-format json` returns:
             // {"type":"result","subtype":"success","is_error":false,"result":"...","cost_usd":...}
-            let json: serde_json::Value =
-                serde_json::from_str(raw.trim()).map_err(|e| {
-                    anyhow!(
-                        "Failed to parse Claude CLI JSON: {} — starts with: {}",
-                        e,
-                        &raw[..raw.len().min(200)]
-                    )
-                })?;
+            let json: serde_json::Value = serde_json::from_str(raw.trim()).map_err(|e| {
+                anyhow!(
+                    "Failed to parse Claude CLI JSON: {} — starts with: {}",
+                    e,
+                    &raw[..raw.len().min(200)]
+                )
+            })?;
 
             if json
                 .get("is_error")
@@ -162,11 +161,7 @@ fn extract_response(tool: &CliTool, raw: &str) -> Result<String> {
 /// Build the CLI args for a given tool + optional model override.
 fn build_args(tool: &CliTool, model: Option<&str>) -> Vec<String> {
     let mut args: Vec<String> = match tool {
-        CliTool::Claude => vec![
-            "-p".into(),
-            "--output-format".into(),
-            "json".into(),
-        ],
+        CliTool::Claude => vec!["-p".into(), "--output-format".into(), "json".into()],
         CliTool::Codex => vec!["--quiet".into()],
         CliTool::OpenCode => vec!["-p".into()],
     };
@@ -194,7 +189,7 @@ impl ChatCompletionProvider for CliCompletionClient {
         system_prompt: &str,
         user_prompt: &str,
         _max_tokens: u32,
-        _num_ctx: Option<u32>,
+        _context_window_tokens: Option<u32>,
         _temperature: f32,
         request_id: &str,
     ) -> Result<(String, TokenUsage)> {
@@ -208,10 +203,15 @@ impl ChatCompletionProvider for CliCompletionClient {
             request_id
         );
 
-        let raw =
-            run_cli_process(self.tool.binary_name(), &arg_refs, &combined, 300).await?;
+        let raw = run_cli_process(self.tool.binary_name(), &arg_refs, &combined, 300).await?;
         let content = extract_response(&self.tool, &raw)?;
-        Ok((content, TokenUsage { input: None, output: None }))
+        Ok((
+            content,
+            TokenUsage {
+                input: None,
+                output: None,
+            },
+        ))
     }
 
     async fn json_completion(
@@ -219,7 +219,7 @@ impl ChatCompletionProvider for CliCompletionClient {
         system_prompt: &str,
         user_prompt: &str,
         max_tokens: u32,
-        num_ctx: Option<u32>,
+        context_window_tokens: Option<u32>,
         temperature: f32,
         request_id: &str,
     ) -> Result<(String, TokenUsage)> {
@@ -231,7 +231,7 @@ impl ChatCompletionProvider for CliCompletionClient {
             &augmented,
             user_prompt,
             max_tokens,
-            num_ctx,
+            context_window_tokens,
             temperature,
             request_id,
         )

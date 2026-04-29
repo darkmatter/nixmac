@@ -61,7 +61,7 @@ impl ChatCompletionProvider for OpenAIClient {
         system_prompt: &str,
         user_prompt: &str,
         max_tokens: u32,
-        _num_ctx: Option<u32>,
+        _context_window_tokens: Option<u32>,
         temperature: f32,
         request_id: &str,
     ) -> Result<(String, TokenUsage)> {
@@ -116,7 +116,7 @@ impl ChatCompletionProvider for OpenAIClient {
         system_prompt: &str,
         user_prompt: &str,
         max_tokens: u32,
-        _num_ctx: Option<u32>,
+        _context_window_tokens: Option<u32>,
         temperature: f32,
         request_id: &str,
     ) -> Result<(String, TokenUsage)> {

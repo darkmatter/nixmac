@@ -28,13 +28,14 @@ pub trait ChatCompletionProvider: Send + Sync {
     fn model(&self) -> &str;
 
     /// Request a chat completion.
-    /// `num_ctx` — overrides Ollama default context-window size
+    /// `context_window_tokens` sets a provider context-window target.
+    /// For Ollama this maps to `num_ctx`; OpenAI-compatible providers ignore it.
     async fn completion(
         &self,
         system_prompt: &str,
         user_prompt: &str,
         max_tokens: u32,
-        num_ctx: Option<u32>,
+        context_window_tokens: Option<u32>,
         temperature: f32,
         request_id: &str,
     ) -> Result<(String, TokenUsage)>;
@@ -45,7 +46,7 @@ pub trait ChatCompletionProvider: Send + Sync {
         system_prompt: &str,
         user_prompt: &str,
         max_tokens: u32,
-        num_ctx: Option<u32>,
+        context_window_tokens: Option<u32>,
         temperature: f32,
         request_id: &str,
     ) -> Result<(String, TokenUsage)> {
@@ -53,7 +54,7 @@ pub trait ChatCompletionProvider: Send + Sync {
             system_prompt,
             user_prompt,
             max_tokens,
-            num_ctx,
+            context_window_tokens,
             temperature,
             request_id,
         )
