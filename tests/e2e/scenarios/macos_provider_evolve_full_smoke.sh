@@ -485,7 +485,7 @@ scenario_test() {
         nixmac_screenshot "commit-message-suggestion-missing"
         die "Provider-generated commit message did not populate the Save step"
     fi
-    scenario_click_element "^Commit$" "button" 30 \
+    scenario_click_element "Commit( Changes)?" "button" 30 \
         || die "Commit button was not reachable"
     if ! scenario_wait_for_text "Describe changes|What to change" 45; then
         nixmac_screenshot "begin-step-not-restored"
