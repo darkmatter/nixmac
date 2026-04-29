@@ -401,6 +401,22 @@ fn list_full_attrpath(content: &str, list_start: usize) -> Option<String> {
     Some(path_segments.join("."))
 }
 
+fn attrpath_matches(candidate: &str, target: &str) -> bool {
+    let candidate = normalize_attrpath_for_match(candidate);
+    let target = normalize_attrpath_for_match(target);
+    if candidate == target {
+        return true;
+    }
+
+    let candidate_parts: Vec<&str> = candidate.split('.').collect();
+    let target_parts: Vec<&str> = target.split('.').collect();
+    if candidate_parts.len() < 2 || target_parts.len() < 2 {
+        return false;
+    }
+
+    candidate_parts.ends_with(&target_parts) || target_parts.ends_with(&candidate_parts)
+}
+
 fn assignment_lhs_at_equals(content: &str, equals_pos: usize) -> Option<&str> {
     let before_equals = content.get(..equals_pos)?;
 
@@ -540,7 +556,7 @@ fn find_list_for_attrpath(root: &SyntaxNode, content: &str, attrpath: &str) -> O
             let list_start = text_size_to_usize(node.text_range().start());
             if let Some(full_path) = list_full_attrpath(content, list_start) {
                 let full_path_normalized = normalize_attrpath_for_match(&full_path);
-                if full_path_normalized == target {
+                if attrpath_matches(&full_path_normalized, &target) {
                     return Some(node);
                 }
             }
@@ -852,6 +868,44 @@ environment.systemPackages = with pkgs; [
 }
 "#;
 
+    const FLAKE_MODULE_LAMBDA: &str = r#"{
+  description = "nixmac real full-system E2E fixture";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nix-darwin.url = "github:nix-darwin/nix-darwin/master";
+    nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  outputs = { self, nixpkgs, nix-darwin }: {
+    darwinConfigurations."Test-Mac" = nix-darwin.lib.darwinSystem {
+      modules = [
+        ({ pkgs, ... }: {
+          nix.settings.experimental-features = "nix-command flakes";
+          nix.enable = false;
+          nixpkgs.hostPlatform = "aarch64-darwin";
+          system.primaryUser = "cloud";
+          system.stateVersion = 6;
+          environment.systemPackages = [
+          ];
+        })
+      ];
+    };
+  };
+}
+"#;
+
+    const DOTTED_LIST_INSIDE_PARENT_ATTRSET: &str = r#"{ config, pkgs, ... }:
+{
+  programs.alacritty = {
+    settings = {
+      keyboard.bindings = [
+      ];
+    };
+  };
+}
+"#;
+
     const BOOL_ASSIGNMENT: &str = r#"{ config, pkgs, ... }:
 {
     services.tailscale.enable = false;
@@ -936,6 +990,70 @@ environment.systemPackages = with pkgs; [
             edited.matches("environment.systemPackages =").count(),
             1,
             "should not insert duplicate environment.systemPackages assignment"
+        );
+    }
+
+    #[test]
+    fn add_updates_existing_list_inside_flake_module_lambda() {
+        let edited = add(
+            FLAKE_MODULE_LAMBDA,
+            "environment.systemPackages",
+            &["pkgs.hello".to_string()],
+        )
+        .expect("add should update the module assignment inside a flake");
+
+        assert!(
+            edited.contains("environment.systemPackages = [ pkgs.hello ];"),
+            "expected add to update the existing module assignment"
+        );
+        assert_eq!(
+            edited.matches("environment.systemPackages =").count(),
+            1,
+            "should not insert a duplicate environment.systemPackages assignment"
+        );
+        assert!(
+            edited.contains("({ pkgs, ... }: {\n          nix.settings.experimental-features"),
+            "expected edit to stay inside the module lambda where pkgs is in scope"
+        );
+    }
+
+    #[test]
+    fn add_matches_dotted_list_inside_parent_attrset() {
+        let edited = add(
+            DOTTED_LIST_INSIDE_PARENT_ATTRSET,
+            "settings.keyboard.bindings",
+            &["new-binding".to_string()],
+        )
+        .expect("add should match parent-prefixed dotted leaf assignment");
+
+        assert!(
+            edited.contains("keyboard.bindings = [ new-binding ];"),
+            "expected add to update the nested dotted list in place"
+        );
+        assert_eq!(
+            edited.matches("keyboard.bindings =").count(),
+            1,
+            "should not insert a duplicate keyboard.bindings assignment"
+        );
+    }
+
+    #[test]
+    fn add_matches_suffix_of_dotted_list_inside_parent_attrset() {
+        let edited = add(
+            DOTTED_LIST_INSIDE_PARENT_ATTRSET,
+            "keyboard.bindings",
+            &["new-binding".to_string()],
+        )
+        .expect("add should match dotted leaf assignment by suffix");
+
+        assert!(
+            edited.contains("keyboard.bindings = [ new-binding ];"),
+            "expected suffix add to update the nested dotted list in place"
+        );
+        assert_eq!(
+            edited.matches("keyboard.bindings =").count(),
+            1,
+            "should not insert a duplicate keyboard.bindings assignment"
         );
     }
 
