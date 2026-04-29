@@ -284,7 +284,7 @@ IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with
                          Return JSON only (no prose). \
                          Parameters: search_type controls where to search (names, descriptions, or both); \
                          use_regex enables regex patterns for advanced matching; \
-                         channel lets you search in different flakes (nixpkgs, nixpkgs-unstable, etc.)".to_string(),
+                         channels lets you search in different flakes (one or more of nixpkgs, nixpkgs-unstable, etc.)".to_string(),
             parameters: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -305,9 +305,12 @@ IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with
                         "type": "boolean",
                         "description": "Whether to interpret query as a regex pattern (default: false). Use for complex patterns like 'python[0-9]+'"
                     },
-                    "channel": {
-                        "type": "string",
-                        "description": "Flake/channel to search in: 'nixpkgs' (default), 'nixpkgs-unstable', 'nixpkgs-master', etc."
+                    "channels": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Flake/channels to search in: list of 'nixpkgs' (default), 'nixpkgs-unstable', 'nixpkgs-master', etc."
                     }
                 },
                 "required": ["query"]
@@ -563,18 +566,18 @@ pub fn execute_tool(
             }
 
             if !escaped_matches.is_empty() {
-                let sample = escaped_matches
+                let _sample = escaped_matches
                     .iter()
                     .take(3)
                     .cloned()
                     .collect::<Vec<_>>()
                     .join(", ");
 
+                // Don't return the sample as part of the error return since it contains local paths outside config_dir.
                 return Err(anyhow!(
-                    "list_files matched one or more files outside config_dir after symlink resolution. pattern='{}' config_dir='{}'. Example match(es): {}. Fix: narrow the pattern to files under config_dir and avoid symlink targets outside config_dir.",
+                    "list_files matched one or more files outside config_dir after symlink resolution. pattern='{}' config_dir='{}'. Fix: narrow the pattern to files under config_dir and avoid symlink targets outside config_dir.",
                     pattern,
                     base.display(),
-                    sample
                 ));
             }
 
@@ -795,10 +798,23 @@ pub fn execute_tool(
             let limit = args["limit"].as_i64().unwrap_or(20).clamp(1, 50) as u64;
             let search_type = args["search_type"].as_str().unwrap_or("both");
             let use_regex = args["use_regex"].as_bool().unwrap_or(false);
-            let channel = args["channel"].as_str().unwrap_or("nixpkgs");
+            let channels = args["channels"]
+                .as_array()
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(str::to_string))
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_else(|| vec!["nixpkgs".to_string()]);
 
-            let result =
-                execute_search_packages(config_dir, query, limit, search_type, use_regex, channel)?;
+            let result = execute_search_packages(
+                config_dir,
+                query,
+                limit,
+                search_type,
+                use_regex,
+                &channels,
+            )?;
             Ok(ToolResult::Continue(result))
         }
 
