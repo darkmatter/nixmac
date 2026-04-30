@@ -9,6 +9,14 @@ use crate::sqlite_types::{Change, ChangeSet, ChangeSummary};
 // Git status types
 // =============================================================================
 
+/// HEAD content vs working-tree content for a file, used by the diff tab Monaco DiffEditor.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct FileDiffContents {
+    pub original: String,
+    pub modified: String,
+}
+
 /// Type of change for a file in git status.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]

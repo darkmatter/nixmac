@@ -5,7 +5,7 @@ import {
   AnimatedTabsTrigger,
 } from "@/components/ui/animated-tabs";
 import { Tabs } from "@/components/ui/tabs";
-import { Diff } from "@/components/widget/summaries/diff";
+import { DiffSection } from "@/components/widget/summaries/diff-section";
 import { SummaryItems } from "@/components/widget/summaries/summary-items";
 import { useSummary } from "@/hooks/use-summary";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,7 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   const evolveState = useWidgetStore((s) => s.evolveState);
   const { summarizeOnFocus } = useSummary();
   const [activeTab, setActiveTab] = useState("summary");
+  const [diffMounted, setDiffMounted] = useState(false);
 
   useEffect(() => {
     window.addEventListener("focus", summarizeOnFocus);
@@ -34,11 +35,17 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   if (!gitStatus || !evolveState || evolveState.step === "begin") {
     return null;
   }
-  const changes = enrichChanges(gitStatus.changes) ?? [];
-
   const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
-    if (tab === "summary") summarizeOnFocus();
+    if (tab !== "diff") {
+      // Unmount editors first, then switch tab next frame
+      requestAnimationFrame(() => {
+        setActiveTab(tab);
+        if (tab === "summary") summarizeOnFocus();
+      });
+    } else {
+      setActiveTab(tab);
+      if (!diffMounted) setDiffMounted(true);
+    }
   };
 
   const hashSet = new Set(changeMap?.unsummarizedHashes);
@@ -82,9 +89,12 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
             />
           )}
         </Activity>
-        <Activity mode={activeTab === "diff" ? "visible" : "hidden"}>
-          <Diff changes={changes} />
-        </Activity>
+        {diffMounted && (
+          // Monaco crashes on unmount, so we just hide it
+          <div className={activeTab !== "diff" ? "hidden" : undefined}>
+            <DiffSection changes={gitStatus.changes} />
+          </div>
+        )}
       </>
     </Tabs>
   );

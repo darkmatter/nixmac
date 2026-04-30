@@ -349,6 +349,23 @@ pub async fn git_stash(app: AppHandle, message: String) -> Result<serde_json::Va
     Ok(serde_json::json!({"ok": true}))
 }
 
+/// Returns original (HEAD) and modified (working-tree) content for each requested file.
+#[tauri::command]
+pub async fn git_file_diff_contents(
+    app: AppHandle,
+    filenames: Vec<String>,
+) -> Result<std::collections::HashMap<String, shared_types::FileDiffContents>, String> {
+    let dir =
+        store::get_config_dir(&app).map_err(|e| capture_err("git_file_diff_contents", e))?;
+    Ok(filenames
+        .into_iter()
+        .map(|f| {
+            let (original, modified) = git::file_diff_contents(&dir, &f);
+            (f, shared_types::FileDiffContents { original, modified })
+        })
+        .collect())
+}
+
 // =============================================================================
 // Darwin/Nix Commands
 // =============================================================================

@@ -328,6 +328,7 @@ fn run_gui_mode(
             commands::git_cached,
             commands::git_commit,
             commands::git_stash,
+            commands::git_file_diff_contents,
             // Darwin/Nix
             commands::darwin_evolve,
             commands::darwin_evolve_cancel,

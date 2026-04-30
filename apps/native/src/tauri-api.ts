@@ -7,6 +7,7 @@ import {
 import type {
   EvolutionResult,
   EvolveState,
+  FileDiffContents,
   GitStatus,
   HistoryItem,
   RollbackResult,
@@ -23,6 +24,7 @@ export type {
   EvolutionTelemetry,
   EvolveState,
   EvolveStep,
+  FileDiffContents,
   GitFileStatus,
   GitStatus,
   HistoryItem,
@@ -234,6 +236,7 @@ export const darwinAPI = {
     cached: () => invoke<GitStatus | null>("git_cached"),
     commit: (message: string) => invoke<CommitResult>("git_commit", { message }),
     stash: (message: string) => invoke("git_stash", { message }),
+    fileDiffContents: (filenames: string[]) => invoke<Record<string, FileDiffContents>>("git_file_diff_contents", { filenames }),
   },
   darwin: {
     evolve: (description: string) => invoke<EvolutionResult>("darwin_evolve", { description }),

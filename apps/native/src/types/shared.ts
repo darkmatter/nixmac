@@ -94,6 +94,11 @@ rollbackBranch: string | null; rollbackStorePath: string | null; rollbackChanges
 export type EvolveStep = "begin" | "evolve" | "commit" | "manualEvolve" | "manualCommit"
 
 /**
+ * HEAD content vs working-tree content for a file, used by the diff tab Monaco DiffEditor.
+ */
+export type FileDiffContents = { original: string; modified: string }
+
+/**
  * Individual file status parsed from diff headers.
  */
 export type GitFileStatus = { path: string; changeType: ChangeType }

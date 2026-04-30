@@ -254,6 +254,7 @@ export const storybookDarwinAPI = {
     cached: async () => baseGitStatus(),
     commit: async () => ({ hash: "mock123", evolveState: baseEvolveState() }),
     stash: async () => undefined,
+    fileDiffContents: async (_filenames: string[]) => ({}),
     stageAll: async () => undefined,
     unstageAll: async () => undefined,
     restoreAll: async () => undefined,

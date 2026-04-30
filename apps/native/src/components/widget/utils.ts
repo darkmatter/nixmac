@@ -44,23 +44,6 @@ export function getDirectory(path: string): string {
   return parts.slice(0, -1).join("/");
 }
 
-/**
- * Infer change type from diff chunk content.
- */
-export function getChangeTypeFromChunks(
-  chunks: string,
-): "new" | "edited" | "removed" {
-  const contentLines = chunks
-    .split("\n")
-    .filter((l) => l.startsWith("+") || l.startsWith("-"));
-  if (contentLines.length === 0) return "edited";
-  const hasAdditions = contentLines.some((l) => l.startsWith("+"));
-  const hasDeletions = contentLines.some((l) => l.startsWith("-"));
-  if (hasAdditions && !hasDeletions) return "new";
-  if (!hasAdditions && hasDeletions) return "removed";
-  return "edited";
-}
-
 // =============================================================================
 // SUMMARY CATEGORY COLORS
 // =============================================================================
@@ -206,12 +189,13 @@ export type ChangeWithRichType = Change & {
   changeType: ChangeType;
   oldFilename?: string;
   shortFilename?: string;
+  hasMultipleHunks?: boolean;
 };
 
 export function inferChangeType(diff: string): ChangeType {
   if (/^new file mode/m.test(diff)) return "new";
   if (/^deleted file mode/m.test(diff)) return "removed";
-  return getChangeTypeFromChunks(diff) as ChangeType;
+  return "edited";
 }
 
 export type RenamePair = {

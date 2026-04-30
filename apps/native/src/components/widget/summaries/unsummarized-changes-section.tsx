@@ -23,7 +23,7 @@ export function UnsummarizedChangesSection({
         <div className="flex flex-wrap gap-1.5 px-1 pb-2 pt-1">
           {changesWithRenamed.map((item) => (
             <UnsummarizedChange
-              key={item.oldFilename ?? item.filename}
+              key={item.hash}
               {...item}
             />
           ))}
