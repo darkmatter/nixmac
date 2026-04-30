@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-use crate::sqlite_types::{Change, ChangeSet, ChangeSummary};
+use crate::sqlite_types::{Change, ChangeSet, ChangeSummary, NixmacBuild};
 
 // =============================================================================
 // Git status types
@@ -120,6 +120,24 @@ pub struct HistoryItem {
     pub origin_hash: Option<String>,
     pub is_orphaned_restore: bool,
     pub is_undone: bool,
+}
+
+// =============================================================================
+// Build record types
+// =============================================================================
+
+/// Flat composed view of a darwin_builds row with its FK resolved to the sidecar.
+/// `nixmac_build.is_some()` means this was a nixmac-initiated build.
+/// See `sqlite_types::DarwinBuild` for the raw row mirror.
+#[allow(dead_code)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct BuildRecord {
+    pub id: i64,
+    pub nix_generation: i64,
+    pub store_path: String,
+    pub detected_at: i64,
+    pub nixmac_build: Option<NixmacBuild>,
 }
 
 // =============================================================================

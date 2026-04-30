@@ -137,6 +137,46 @@ pub fn record_build<R: Runtime>(app: &AppHandle<R>, git_status: &GitStatus) -> R
     )
 }
 
+/// Read the current nix-darwin generation number from the system profile symlink.
+/// `/nix/var/nix/profiles/system` → `system-N-link` → N
+pub fn read_current_nix_generation() -> Option<i64> {
+    let target = std::fs::read_link("/nix/var/nix/profiles/system").ok()?;
+    let name = target.file_name()?.to_str()?;
+    let stripped = name.strip_prefix("system-")?;
+    let (num_str, _) = stripped.split_once('-')?;
+    num_str.parse().ok()
+}
+
+/// Record a completed nixmac-initiated build into the new build tables.
+pub fn record_nixmac_build<R: Runtime>(
+    app: &AppHandle<R>,
+    changeset_id: Option<i64>,
+    store_path: &str,
+) -> Result<()> {
+    let Some(gen) = read_current_nix_generation() else {
+        return Err(anyhow::anyhow!(
+            "record_nixmac_build: could not read nix generation from /nix/var/nix/profiles/system"
+        ));
+    };
+    let db_path = crate::db::get_db_path(app)?;
+    let now = crate::utils::unix_now();
+    let conn = rusqlite::Connection::open(&db_path)?;
+    crate::db::builds::record_nixmac(&conn, gen, store_path, changeset_id, now)?;
+    Ok(())
+}
+
+/// Record a watcher-detected external build (nixmac_build_id = NULL).
+pub fn record_external_build<R: Runtime>(
+    app: &AppHandle<R>,
+    nix_generation: i64,
+    store_path: &str,
+) -> Result<()> {
+    let db_path = crate::db::get_db_path(app)?;
+    let conn = rusqlite::Connection::open(&db_path)?;
+    let now = crate::utils::unix_now();
+    crate::db::builds::record_external(&conn, nix_generation, store_path, now)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

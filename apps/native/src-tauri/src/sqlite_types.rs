@@ -26,7 +26,6 @@ pub struct Evolution {
     pub builds: i64,
 }
 
-
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -77,6 +76,36 @@ pub struct QueuedSummary {
     pub hash_own_summary_id_pairs: Option<String>,
     /// One of `"NEW_SINGLE"`, `"NEW_GROUP"`, or `"EVOLVED_GROUP"`.
     pub summary_type: String,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NixmacBuild {
+    pub id: i64,
+    pub changeset_id: Option<i64>,
+    pub built_at: i64,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct DarwinBuild {
+    pub id: i64,
+    pub nix_generation: i64,
+    pub store_path: String,
+    pub nixmac_build_id: Option<i64>,
+    pub detected_at: i64,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct BuildCommit {
+    pub id: i64,
+    pub commit_id: i64,
+    pub darwin_build_id: i64,
+    pub created_at: i64,
 }
 
 /// Groups Changes for a commit→base_commit pair. `commit_id` is NULL for speculative

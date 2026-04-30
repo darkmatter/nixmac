@@ -33,8 +33,15 @@ pub fn rollback_erase<R: Runtime>(app: &AppHandle<R>) -> Result<RollbackResult> 
 
     let final_status = git::status(&config_dir).context("Failed to get final git status")?;
     let _ = store::set_cached_git_status(app, &final_status);
-    let evolve_state = evolve_state::set(app, evolve_state::EvolveState::default(), &final_status.changes)
-        .context("Failed to clear evolve state")?;
+    let evolve_state = evolve_state::set(
+        app,
+        evolve_state::EvolveState {
+            rollback_changeset_id,
+            ..evolve_state::EvolveState::default()
+        },
+        &final_status.changes,
+    )
+    .context("Failed to clear evolve state")?;
 
     Ok(RollbackResult {
         git_status: final_status,

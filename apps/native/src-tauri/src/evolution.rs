@@ -191,7 +191,7 @@ pub async fn backup_evolve_and_record_changeset(
         Err(e) => {
             let duration_ms = elapsed_since(start_time_ms);
             let git_status = git::status(&config_dir).ok();
-            restore_after_failure(app, &config_dir, &backup_branch);
+            restore_after_failure(app, &config_dir, &backup_branch, &initial_status.changes);
             if let Some(run_error) = e.downcast_ref::<evolve::EvolutionRunError>() {
                 return Err(EvolutionFailureResult::new(
                     run_error.message.clone(),
@@ -229,7 +229,7 @@ pub async fn backup_evolve_and_record_changeset(
     let final_status = match git::status(&config_dir) {
         Ok(status) => status,
         Err(e) => {
-            restore_after_failure(app, &config_dir, &backup_branch);
+            restore_after_failure(app, &config_dir, &backup_branch, &initial_status.changes);
             return Err(EvolutionFailureResult::from_evolution(
                 format!("Failed to get final git status: {}", e),
                 None,
@@ -275,7 +275,7 @@ pub async fn backup_evolve_and_record_changeset(
     })
 }
 
-fn restore_after_failure(app: &AppHandle, config_dir: &str, backup_branch: &Option<String>) {
+fn restore_after_failure(app: &AppHandle, config_dir: &str, backup_branch: &Option<String>, pre_evolve_changes: &[crate::sqlite_types::Change]) {
     // Allow skipping the actual git restore calls for debugging/testing.
     // If `DEBUG_SKIP_RESTORE_ALL` is set to a non-zero value, skip restore operations
     // but keep the same state updates and logging behavior.
@@ -295,14 +295,25 @@ fn restore_after_failure(app: &AppHandle, config_dir: &str, backup_branch: &Opti
         log::error!("[evolution] restore_after_failure called without backup_branch — skipping restore");
     }
 
-    let _ = evolve_state::set(
-        app,
-        evolve_state::EvolveState {
-            backup_branch: None,
-            ..evolve_state::get(app).unwrap_or_default()
-        },
-        &[],
-    );
+    let mut current = evolve_state::get(app).unwrap_or_default();
+
+    // Detect fresh adoption: backup_evolve sets rollback_branch = backup_branch
+    // or whether to restore the pre-evolution backend evolve_state,
+    // by removing the AI evolution specific fields
+    let is_fresh_adoption = match (backup_branch, &current.rollback_branch) {
+        (Some(b), Some(r)) => b == r,
+        _ => false,
+    };
+
+    current.backup_branch = None;
+    if is_fresh_adoption {
+        current.evolution_id = None;
+        current.rollback_branch = None;
+        current.rollback_store_path = None;
+        current.rollback_changeset_id = None;
+    }
+
+    let _ = evolve_state::set(app, current, pre_evolve_changes);
 }
 
 /// Insert a DB evolution (or reuse the active one), and summarize a changeset to link to it.
