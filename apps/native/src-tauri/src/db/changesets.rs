@@ -24,17 +24,17 @@ pub fn insert_change_summary(
     Ok(tx.last_insert_rowid())
 }
 
-pub fn upsert_change(
-    tx: &Transaction,
-    change: &Change,
-    own_summary_id: Option<i64>,
-) -> Result<()> {
+pub fn upsert_change(tx: &Transaction, change: &Change, own_summary_id: Option<i64>) -> Result<()> {
     tx.execute(
         "INSERT OR IGNORE INTO changes \
          (hash, filename, diff, line_count, created_at, own_summary_id) \
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         rusqlite::params![
-            &change.hash, &change.filename, &change.diff, change.line_count, change.created_at,
+            &change.hash,
+            &change.filename,
+            &change.diff,
+            change.line_count,
+            change.created_at,
             own_summary_id,
         ],
     )?;
@@ -55,7 +55,11 @@ pub fn insert_change_or_ignore(
          (hash, filename, diff, line_count, created_at, own_summary_id) \
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         rusqlite::params![
-            &change.hash, &change.filename, &change.diff, change.line_count, change.created_at,
+            &change.hash,
+            &change.filename,
+            &change.diff,
+            change.line_count,
+            change.created_at,
             own_summary_id,
         ],
     )?;
@@ -100,11 +104,11 @@ pub fn insert_change_set(
 }
 
 pub fn get_change_id_by_hash(tx: &Transaction, hash: &str) -> Result<i64> {
-    Ok(tx.query_row(
-        "SELECT id FROM changes WHERE hash = ?1",
-        [hash],
-        |row| row.get("id"),
-    )?)
+    Ok(
+        tx.query_row("SELECT id FROM changes WHERE hash = ?1", [hash], |row| {
+            row.get("id")
+        })?,
+    )
 }
 
 pub fn link_change_to_set(tx: &Transaction, change_set_id: i64, change_id: i64) -> Result<()> {
@@ -126,7 +130,12 @@ pub fn insert_queued_summary(
         "INSERT INTO queued_summaries \
          (status, prompt, type, group_summary_id, hash_own_summary_id_pairs) \
          VALUES ('QUEUED', ?1, ?2, ?3, ?4)",
-        rusqlite::params![prompt, summary_type, group_summary_id, hash_own_summary_id_pairs],
+        rusqlite::params![
+            prompt,
+            summary_type,
+            group_summary_id,
+            hash_own_summary_id_pairs
+        ],
     )?;
     Ok(tx.last_insert_rowid())
 }
@@ -163,7 +172,11 @@ fn map_summarized_change(row: &rusqlite::Row) -> rusqlite::Result<SummarizedChan
     } else {
         None
     };
-    Ok(SummarizedChange { change, own_summary, group_summary })
+    Ok(SummarizedChange {
+        change,
+        own_summary,
+        group_summary,
+    })
 }
 
 const CHANGE_SELECT: &str = "SELECT \
@@ -174,6 +187,74 @@ const CHANGE_SELECT: &str = "SELECT \
         os.status AS os_status, os.created_at AS os_created_at, \
         gs.id AS gs_id, gs.title AS gs_title, gs.description AS gs_description, \
         gs.status AS gs_status, gs.created_at AS gs_created_at";
+
+const REUSABLE_SUMMARY_STATUSES: &str = "('DONE', 'QUEUED')";
+
+#[allow(dead_code)]
+/// Query a changeset by its ID, returning the changes and their summaries.
+/// This is more precise than having to match on base_commit_id + hashes,
+/// and can be used for looking up the results of a just-created changeset.
+pub fn query_change_set_by_id(
+    conn: &Connection,
+    change_set_id: i64,
+) -> Result<Option<SummarizedChangeSet>> {
+    let cs_result = conn.query_row(
+        "SELECT id, commit_id, base_commit_id, commit_message, generated_commit_message, created_at, evolution_id
+         FROM change_sets WHERE id = ?1 LIMIT 1",
+        [change_set_id],
+        |row| {
+            Ok(ChangeSet {
+                id: row.get("id")?,
+                commit_id: row.get("commit_id")?,
+                base_commit_id: row.get("base_commit_id")?,
+                commit_message: row.get("commit_message")?,
+                generated_commit_message: row.get("generated_commit_message")?,
+                created_at: row.get("created_at")?,
+                evolution_id: row.get("evolution_id")?,
+            })
+        },
+    );
+
+    let change_set = match cs_result {
+        Ok(cs) => cs,
+        Err(rusqlite::Error::QueryReturnedNoRows) => return Ok(None),
+        Err(e) => return Err(e.into()),
+    };
+
+    let mut stmt = conn.prepare(&format!(
+        "{CHANGE_SELECT}
+         FROM set_changes sc
+         JOIN changes c ON c.id = sc.change_id
+                 LEFT JOIN change_summaries os
+                     ON os.id = c.own_summary_id
+                    AND os.status IN {REUSABLE_SUMMARY_STATUSES}
+         LEFT JOIN (
+             SELECT g.change_id, MAX(g.change_summary_id) AS change_summary_id
+             FROM group_summaries g
+             WHERE NOT EXISTS (
+                 SELECT 1 FROM group_summaries g2
+                 WHERE g2.change_summary_id = g.change_summary_id
+                   AND g2.change_id NOT IN (
+                       SELECT change_id FROM set_changes WHERE change_set_id = ?1
+                   )
+             )
+             GROUP BY g.change_id
+         ) best_gs ON best_gs.change_id = c.id
+                 LEFT JOIN change_summaries gs
+                     ON gs.id = best_gs.change_summary_id
+                    AND gs.status IN {REUSABLE_SUMMARY_STATUSES}
+         WHERE sc.change_set_id = ?1"
+    ))?;
+    let changes: Vec<SummarizedChange> = stmt
+        .query_map([change_set_id], map_summarized_change)?
+        .collect::<rusqlite::Result<_>>()?;
+
+    Ok(Some(SummarizedChangeSet {
+        change_set,
+        changes,
+        missed_hashes: vec![],
+    }))
+}
 
 #[allow(dead_code)]
 pub fn query_change_set_for_commit_pair(
@@ -212,7 +293,9 @@ pub fn query_change_set_for_commit_pair(
         "{CHANGE_SELECT}
          FROM set_changes sc
          JOIN changes c ON c.id = sc.change_id
-         LEFT JOIN change_summaries os ON os.id = c.own_summary_id
+                 LEFT JOIN change_summaries os
+                     ON os.id = c.own_summary_id
+                    AND os.status IN {REUSABLE_SUMMARY_STATUSES}
          LEFT JOIN (
              SELECT g.change_id, MAX(g.change_summary_id) AS change_summary_id
              FROM group_summaries g
@@ -225,14 +308,20 @@ pub fn query_change_set_for_commit_pair(
              )
              GROUP BY g.change_id
          ) best_gs ON best_gs.change_id = c.id
-         LEFT JOIN change_summaries gs ON gs.id = best_gs.change_summary_id
+                 LEFT JOIN change_summaries gs
+                     ON gs.id = best_gs.change_summary_id
+                    AND gs.status IN {REUSABLE_SUMMARY_STATUSES}
          WHERE sc.change_set_id = ?1"
     ))?;
     let changes: Vec<SummarizedChange> = stmt
         .query_map([change_set_id], map_summarized_change)?
         .collect::<rusqlite::Result<_>>()?;
 
-    Ok(Some(SummarizedChangeSet { change_set, changes, missed_hashes: vec![] }))
+    Ok(Some(SummarizedChangeSet {
+        change_set,
+        changes,
+        missed_hashes: vec![],
+    }))
 }
 
 pub fn query_change_set_for_base_with_hashes(
@@ -267,10 +356,17 @@ pub fn query_change_set_for_base_with_hashes(
     let matched = query_changes_by_hashes_for_base(conn, base_commit_id, hashes)?;
     let matched_set: std::collections::HashSet<&str> =
         matched.iter().map(|sc| sc.change.hash.as_str()).collect();
-    let missed_hashes =
-        hashes.iter().filter(|h| !matched_set.contains(h.as_str())).cloned().collect();
+    let missed_hashes = hashes
+        .iter()
+        .filter(|h| !matched_set.contains(h.as_str()))
+        .cloned()
+        .collect();
 
-    Ok(Some(SummarizedChangeSet { change_set, changes: matched, missed_hashes }))
+    Ok(Some(SummarizedChangeSet {
+        change_set,
+        changes: matched,
+        missed_hashes,
+    }))
 }
 
 fn query_changes_by_hashes_for_base(
@@ -293,7 +389,9 @@ fn query_changes_by_hashes_for_base(
          FROM changes c
          JOIN set_changes sc ON sc.change_id = c.id
          JOIN change_sets cs ON cs.id = sc.change_set_id
-         LEFT JOIN change_summaries os ON os.id = c.own_summary_id
+                 LEFT JOIN change_summaries os
+                     ON os.id = c.own_summary_id
+                    AND os.status IN {REUSABLE_SUMMARY_STATUSES}
          LEFT JOIN (
              SELECT g.change_id, MAX(g.change_summary_id) AS change_summary_id
              FROM group_summaries g
@@ -306,7 +404,9 @@ fn query_changes_by_hashes_for_base(
              )
              GROUP BY g.change_id
          ) best_gs ON best_gs.change_id = c.id
-         LEFT JOIN change_summaries gs ON gs.id = best_gs.change_summary_id
+                 LEFT JOIN change_summaries gs
+                     ON gs.id = best_gs.change_summary_id
+                    AND gs.status IN {REUSABLE_SUMMARY_STATUSES}
          WHERE cs.base_commit_id = ?1 AND c.hash IN ({placeholders})"
     );
 
@@ -316,7 +416,10 @@ fn query_changes_by_hashes_for_base(
         .collect();
     let mut stmt = conn.prepare(&sql)?;
     let result = stmt
-        .query_map(rusqlite::params_from_iter(params.iter()), map_summarized_change)?
+        .query_map(
+            rusqlite::params_from_iter(params.iter()),
+            map_summarized_change,
+        )?
         .collect::<rusqlite::Result<Vec<_>>>()?;
     Ok(result)
 }
@@ -336,28 +439,30 @@ fn map_queued_summary(row: &rusqlite::Row) -> rusqlite::Result<QueuedSummary> {
     })
 }
 
-const QUEUED_SUMMARY_SELECT: &str =
-    "SELECT id, status, attempted_count, prompt, model_response, \
+const QUEUED_SUMMARY_SELECT: &str = "SELECT id, status, attempted_count, prompt, model_response, \
      group_summary_id, hash_own_summary_id_pairs, type FROM queued_summaries";
 
 /// Fetch specific QUEUED rows by ID, preserving the order of the `ids` slice.
-pub fn fetch_queued_summaries_by_ids(
-    conn: &Connection,
-    ids: &[i64],
-) -> Result<Vec<QueuedSummary>> {
+pub fn fetch_queued_summaries_by_ids(conn: &Connection, ids: &[i64]) -> Result<Vec<QueuedSummary>> {
     if ids.is_empty() {
         return Ok(vec![]);
     }
-    let placeholders = (1..=ids.len()).map(|i| format!("?{i}")).collect::<Vec<_>>().join(", ");
-    let sql = format!(
-        "{QUEUED_SUMMARY_SELECT} WHERE status = 'QUEUED' AND id IN ({placeholders})"
-    );
+    let placeholders = (1..=ids.len())
+        .map(|i| format!("?{i}"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let sql = format!("{QUEUED_SUMMARY_SELECT} WHERE status = 'QUEUED' AND id IN ({placeholders})");
     use rusqlite::types::ToSql;
-    let params: Vec<Box<dyn ToSql>> =
-        ids.iter().map(|&id| Box::new(id) as Box<dyn ToSql>).collect();
+    let params: Vec<Box<dyn ToSql>> = ids
+        .iter()
+        .map(|&id| Box::new(id) as Box<dyn ToSql>)
+        .collect();
     let mut stmt = conn.prepare(&sql)?;
     let mut rows: Vec<QueuedSummary> = stmt
-        .query_map(rusqlite::params_from_iter(params.iter()), map_queued_summary)?
+        .query_map(
+            rusqlite::params_from_iter(params.iter()),
+            map_queued_summary,
+        )?
         .collect::<rusqlite::Result<_>>()?;
     let id_order: std::collections::HashMap<i64, usize> =
         ids.iter().enumerate().map(|(i, &id)| (id, i)).collect();
@@ -451,4 +556,107 @@ pub fn build_pairs_json(changes: &[PendingChange]) -> String {
         })
         .collect();
     serde_json::to_string(&pairs).unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn setup_test_conn() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch(include_str!("../../migrations/01-initial/up.sql"))
+            .expect("apply initial schema");
+        conn.execute_batch(include_str!("../../migrations/02-restore-commits/up.sql"))
+            .expect("apply restore schema");
+        conn
+    }
+
+    #[test]
+    fn failed_own_summary_is_not_reused_for_base_hash_lookup() {
+        let conn = setup_test_conn();
+        let tx = conn.unchecked_transaction().expect("start tx");
+
+        tx.execute(
+            "INSERT INTO commits (id, hash, tree_hash, message, created_at) VALUES (1, 'base', 'tree', NULL, 0)",
+            [],
+        )
+        .expect("insert base commit");
+
+        let summary_id =
+            insert_change_summary(&tx, "old", "stale", "FAILED", 0).expect("insert failed summary");
+        let change = Change {
+            id: 0,
+            hash: "abc123".to_string(),
+            filename: "flake.nix".to_string(),
+            diff: "diff".to_string(),
+            line_count: 1,
+            created_at: 0,
+            own_summary_id: Some(summary_id),
+        };
+        upsert_change(&tx, &change, Some(summary_id)).expect("insert change");
+        let change_id = get_change_id_by_hash(&tx, &change.hash).expect("lookup change id");
+        let change_set_id =
+            insert_change_set(&tx, None, 1, None, None, 0, None).expect("insert change set");
+        link_change_to_set(&tx, change_set_id, change_id).expect("link change to set");
+
+        tx.commit().expect("commit tx");
+
+        let result = query_change_set_for_base_with_hashes(&conn, 1, &[change.hash.clone()])
+            .expect("query change set")
+            .expect("change set exists");
+
+        assert_eq!(result.changes.len(), 1);
+        assert!(result.changes[0].own_summary.is_none());
+        assert!(result.missed_hashes.is_empty());
+
+        let grouped = crate::summarize::group_existing::from_change_sets(vec![
+            crate::summarize::find_existing::FoundSetForCurrent::from(result),
+        ]);
+        assert_eq!(grouped.unsummarized_hashes, vec![change.hash]);
+    }
+
+    #[test]
+    fn queued_summary_is_still_reused_for_base_hash_lookup() {
+        let conn = setup_test_conn();
+        let tx = conn.unchecked_transaction().expect("start tx");
+
+        tx.execute(
+            "INSERT INTO commits (id, hash, tree_hash, message, created_at) VALUES (1, 'base', 'tree', NULL, 0)",
+            [],
+        )
+        .expect("insert base commit");
+
+        let summary_id = insert_change_summary(&tx, "pending", "waiting", "QUEUED", 0)
+            .expect("insert queued summary");
+        let change = Change {
+            id: 0,
+            hash: "def456".to_string(),
+            filename: "flake.nix".to_string(),
+            diff: "diff".to_string(),
+            line_count: 1,
+            created_at: 0,
+            own_summary_id: Some(summary_id),
+        };
+        upsert_change(&tx, &change, Some(summary_id)).expect("insert change");
+        let change_id = get_change_id_by_hash(&tx, &change.hash).expect("lookup change id");
+        let change_set_id =
+            insert_change_set(&tx, None, 1, None, None, 0, None).expect("insert change set");
+        link_change_to_set(&tx, change_set_id, change_id).expect("link change to set");
+
+        tx.commit().expect("commit tx");
+
+        let result = query_change_set_for_base_with_hashes(&conn, 1, &[change.hash.clone()])
+            .expect("query change set")
+            .expect("change set exists");
+
+        assert_eq!(result.changes.len(), 1);
+        assert_eq!(
+            result.changes[0]
+                .own_summary
+                .as_ref()
+                .map(|s| s.status.as_str()),
+            Some("QUEUED")
+        );
+        assert!(result.missed_hashes.is_empty());
+    }
 }
