@@ -88,9 +88,14 @@ function renderExisting(runDir) {
 
 function reportPositionChecks(runDir) {
   const html = readFileSync(path.join(runDir, 'index.html'), 'utf8');
+  const headingIndex = (id, text) => {
+    const anchored = html.indexOf(`id="${id}"`);
+    if (anchored >= 0) return anchored;
+    return html.indexOf(text);
+  };
   const positions = {
-    prFocus: html.indexOf('<h2>Pull Request Focus</h2>'),
-    findings: html.indexOf('<h2>Findings First</h2>'),
+    prFocus: headingIndex('pull-request-focus', 'Pull Request Focus'),
+    findings: headingIndex('findings-first', 'Findings First'),
     failures: html.indexOf('<h3>Failures</h3>'),
     inconclusive: html.indexOf('<h3>Inconclusive</h3>'),
     passes: html.indexOf('<summary>Passing Checks'),

@@ -231,6 +231,13 @@ lane for now:
   publish the generated report to the public `gh-pages` report branch and
   maintain one sticky PR comment with the hosted links, Actions run, artifact
   backup, verdict, and counts.
+- Use `htmlpreview.github.io` as the V1 hosted-report shim while GitHub Pages is
+  not configured for the repository. Keep the public `gh-pages` report branch as
+  the storage source either way, so the URL can move to first-party Pages later
+  without changing the report format.
+- Retain the `latest` report plus the 20 newest immutable `run-*` report
+  directories per PR/manual prefix on `gh-pages`; rely on Actions artifact
+  retention only as a short-lived backup.
 - Capture PR metadata and changed files when available. If user-visible files
   are inferred but no dedicated Computer Use focus scenario is run, mark
   PR-specific coverage inconclusive.

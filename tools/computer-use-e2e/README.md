@@ -99,6 +99,16 @@ the verdict, counts, public hosted `index.html`, Actions run, and artifact
 backup. The workflow does not send Slack or other team
 notifications.
 
+The V1 public report URL uses `htmlpreview.github.io` to render the HTML stored
+on the public `gh-pages` report branch. The repository Pages API currently
+returns `404`, so first-party GitHub Pages hosting is not configured for this
+repo. If Pages is enabled later, the report URL can move to the first-party
+Pages URL without changing the runner output format.
+
+The workflow keeps the `latest` report plus the 20 newest immutable `run-*`
+directories for each PR/manual report prefix on `gh-pages`. GitHub Actions
+artifact backups are retained separately for 14 days.
+
 The workflow serializes all runs through one DXU remote-machine concurrency
 group. Do not make concurrency per PR while the suite depends on a singleton
 interactive Mac, because overlapping runs can race on app state, launchd

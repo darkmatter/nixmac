@@ -543,6 +543,7 @@ jobs:
             echo "pass=$pass"
             echo "fail=$fail"
             echo "inconclusive=$inconclusive"
+            echo "report_prefix=$report_prefix"
             echo "publish_path=$publish_path"
             echo "latest_path=$latest_path"
             echo "index_url=${html_preview_base}/${publish_path}/index.html"
@@ -568,7 +569,7 @@ jobs:
       - name: Upload evidence report
         id: upload-report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: computer-use-e2e-report
           path: artifacts/computer-use-remote/
@@ -582,11 +583,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPORT_DIR: ${{ steps.report-meta.outputs.report_dir }}
+          REPORT_PREFIX: ${{ steps.report-meta.outputs.report_prefix }}
           PUBLISH_PATH: ${{ steps.report-meta.outputs.publish_path }}
           LATEST_PATH: ${{ steps.report-meta.outputs.latest_path }}
           INDEX_URL: ${{ steps.report-meta.outputs.index_url }}
           LATEST_INDEX_URL: ${{ steps.report-meta.outputs.latest_index_url }}
           RUN_ASSET_BASE_URL: https://cdn.jsdelivr.net/gh/${{ github.repository }}@gh-pages/${{ steps.report-meta.outputs.publish_path }}/
+          RETENTION_KEEP_RUNS: "20"
         run: |
           set -euo pipefail
           site_dir="$(mktemp -d)"
@@ -606,8 +609,16 @@ jobs:
           cp -a "$REPORT_DIR"/. "$site_dir/${LATEST_PATH:?}"/
           RUN_ASSET_BASE_URL="$RUN_ASSET_BASE_URL" perl -0pi -e 's#<head>#<head>\n<base href="$ENV{RUN_ASSET_BASE_URL}">#' "$site_dir/${PUBLISH_PATH:?}/index.html"
           RUN_ASSET_BASE_URL="$RUN_ASSET_BASE_URL" perl -0pi -e 's#<head>#<head>\n<base href="$ENV{RUN_ASSET_BASE_URL}">#' "$site_dir/${LATEST_PATH:?}/index.html"
+          if [[ -n "${REPORT_PREFIX:-}" && -d "$site_dir/$REPORT_PREFIX" ]]; then
+            find "$site_dir/$REPORT_PREFIX" -mindepth 1 -maxdepth 1 -type d -name 'run-*' \
+              | sort -r \
+              | tail -n +"$((RETENTION_KEEP_RUNS + 1))" \
+              | while IFS= read -r old_report; do
+                  rm -rf "$old_report"
+                done
+          fi
           touch "$site_dir/.nojekyll"
-          git -C "$site_dir" add .nojekyll "$PUBLISH_PATH" "$LATEST_PATH"
+          git -C "$site_dir" add -A .nojekyll "$REPORT_PREFIX"
           if git -C "$site_dir" diff --cached --quiet; then
             echo "No GitHub Pages report changes to publish."
           else
@@ -648,7 +659,7 @@ jobs:
           - Actions run: $RUN_URL
           - Artifact backup: $ARTIFACT_URL
 
-          The hosted report contains pass/fail state, screenshots, annotations, text evidence, and remote Mac/app metadata. The artifact backup is retained for 14 days.
+          The hosted report contains pass/fail state, screenshots, annotations, text evidence, and remote Mac/app metadata. V1 report links use the htmlpreview.github.io shim over the public gh-pages report branch; the Actions artifact backup is retained for 14 days.
           EOF
           body_json="$(mktemp)"
           jq -Rs '{body: .}' "$body_file" > "$body_json"
