@@ -295,6 +295,9 @@ Use the adversarial runner to test the E2E/reporting suite itself:
 node tools/computer-use-e2e/run-adversarial.mjs
 ```
 
+The adversarial runner requires `ffmpeg`, because one fixture generates a
+blank screenshot to verify visual-proof quality checks.
+
 It copies the newest local `artifacts/computer-use-remote/<timestamp>` baseline
 that contains `state.json`, introduces reversible fixture failures, then
 re-renders each case through `run-remote-cua.mjs render-existing`. On a clean

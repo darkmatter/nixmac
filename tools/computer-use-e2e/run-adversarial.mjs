@@ -554,6 +554,15 @@ async function main() {
   mkdirSync(root, { recursive: true });
   const results = caseDefinitions.map((definition) => runCase(root, baseRun, definition));
   renderAggregate(root, results, baseRun);
+  const uncaught = results.filter((result) => result.verdict !== 'caught');
+  if (uncaught.length > 0) {
+    console.error(
+      `Adversarial validation did not catch all cases: ${uncaught
+        .map((result) => `${result.id}:${result.verdict}`)
+        .join(', ')}. Check the aggregate report for details.`,
+    );
+    process.exitCode = 1;
+  }
   console.log(path.join(root, 'index.html'));
 }
 

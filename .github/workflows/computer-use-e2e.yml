@@ -289,7 +289,7 @@ jobs:
         run: node tools/computer-use-e2e/run-remote-cua.mjs run
 
       - name: Render setup failure report
-        if: failure() && steps.remote-secrets.outputs.available == 'true'
+        if: failure() && steps.remote-secrets.outputs.available != 'false'
         shell: bash
         run: |
           if compgen -G "${REPORT_ROOT}/*/state.json" >/dev/null; then
