@@ -1,4 +1,5 @@
 use crate::evolve::edit_nix_file::{apply_semantic_edit, nix_quote_values};
+use crate::evolve::file_ops::resolve_path_in_dir_allow_create;
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
 use crate::nix_ast_lists::parse_string_lists_by_attrpath;
 use crate::scanner::inject_module_import;
@@ -66,13 +67,13 @@ pub async fn apply_homebrew_diff(
 }
 
 /// Scan the system for Homebrew packages, casks, and taps.
-/// Only includes explicitly installed brews and casks, not their dependencies.
+/// Only includes explicitly installed brews and casks (via `--installed-on-request`), not their dependencies.
 /// Excludes default taps (homebrew/core, homebrew/cask).
 /// If homebrew is not installed, returns an empty state with is_installed set to false.
 pub fn scan_homebrew() -> HomebrewState {
     let mut state = make_homebrew_state(is_homebrew_installed(), None);
     if let Ok(output) = std::process::Command::new("brew")
-        .args(["list", "--formula"])
+        .args(["list", "--installed-on-request", "--formula"])
         .env("PATH", crate::nix::get_nix_path())
         .output()
     {
@@ -84,7 +85,7 @@ pub fn scan_homebrew() -> HomebrewState {
         }
     }
     if let Ok(output) = std::process::Command::new("brew")
-        .args(["list", "--cask"])
+        .args(["list", "--installed-on-request", "--cask"])
         .env("PATH", crate::nix::get_nix_path())
         .output()
     {
@@ -203,7 +204,8 @@ pub fn apply_homebrew_import(diff: HomebrewState, config_dir: &std::path::Path) 
         .source
         .clone()
         .unwrap_or_else(|| "modules/darwin/homebrew.nix".to_string());
-    let source = config_dir.join(&source_rel);
+    let source = resolve_path_in_dir_allow_create(config_dir, &source_rel)
+        .with_context(|| format!("invalid homebrew source path '{}'", source_rel))?;
     let creating_default_module = diff.source.is_none();
 
     // If the source doesn't exist, use the homebrew.nix template from templates/nix-darwin-determinate:

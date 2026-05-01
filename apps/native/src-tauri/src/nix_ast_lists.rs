@@ -71,7 +71,7 @@ fn parse_nix_string_literal(value: &str) -> Option<String> {
                     out.push('\\');
                     out.push(other);
                 }
-                None => out.push('\\'),
+                None => return None,
             }
         }
         return Some(out);
@@ -114,6 +114,9 @@ fn assignment_lhs_at_equals(content: &str, equals_pos: usize) -> Option<&str> {
     Some(lhs_line)
 }
 
+/// Returns the dotted attrpath for the list whose source starts at `list_start`.
+/// Supports up to one level of parent attrset nesting (e.g. `homebrew.taps` but not `a.b.c`).
+/// For deeper nesting, only the immediate parent key is included in the path.
 fn list_full_attrpath(content: &str, list_start: usize) -> Option<String> {
     let before_list = content.get(..list_start)?;
     let equals_pos = before_list.rfind('=')?;
@@ -205,5 +208,37 @@ mod tests {
 
         let parsed = parse_string_lists_by_attrpath(content);
         assert_eq!(parsed.get("homebrew.brews"), Some(&vec!["git".to_string()]));
+    }
+
+    #[test]
+    fn parse_nix_string_literal_handles_escape_sequences() {
+        assert_eq!(
+            parse_nix_string_literal(r#""hello\nworld""#),
+            Some("hello\nworld".to_string())
+        );
+        assert_eq!(
+            parse_nix_string_literal(r#""tab\there""#),
+            Some("tab\there".to_string())
+        );
+        assert_eq!(
+            parse_nix_string_literal(r#""back\\slash""#),
+            Some("back\\slash".to_string())
+        );
+        assert_eq!(
+            parse_nix_string_literal(r#""quote\"here""#),
+            Some("quote\"here".to_string())
+        );
+        // Unknown escape sequences preserve the backslash
+        assert_eq!(
+            parse_nix_string_literal(r#""foo\xbar""#),
+            Some("foo\\xbar".to_string())
+        );
+        // Trailing backslash (invalid Nix string) returns None
+        assert_eq!(parse_nix_string_literal(r#""trailing\""#), None);
+        // Plain strings pass through unchanged
+        assert_eq!(
+            parse_nix_string_literal(r#""aws/tap""#),
+            Some("aws/tap".to_string())
+        );
     }
 }
