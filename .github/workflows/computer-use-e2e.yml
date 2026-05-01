@@ -259,7 +259,9 @@ jobs:
           fi
           nohup /Applications/Codex.app/Contents/Resources/codex app-server --listen ws://127.0.0.1:18790 >/tmp/nixmac-codex-app-server.log 2>&1 &
           sleep 2
-          open -a "$REMOTE_APP_PATH"
+          if ! open "$REMOTE_APP_PATH"; then
+            echo "warning: open returned non-zero while launching $REMOTE_APP_PATH; continuing so Computer Use can inspect app state" >&2
+          fi
           sleep 4
           REMOTE
 
@@ -298,7 +300,7 @@ jobs:
           NIXMAC_E2E_REMOTE_SSH_DEST: ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}
           NIXMAC_E2E_SSH_KEY: /home/runner/.ssh/nixmac-e2e
           NIXMAC_E2E_SSH_KNOWN_HOSTS: /home/runner/.ssh/known_hosts
-          NIXMAC_E2E_APP_COMMAND: open -a /Applications/nixmac.app
+          NIXMAC_E2E_APP_COMMAND: open /Applications/nixmac.app
           NIXMAC_E2E_REMOTE_CONFIG_DIR: ${{ steps.remote-start.outputs.remote_config }}/config
           NIXMAC_E2E_DISPOSABLE_CONFIG: "true"
           NIXMAC_E2E_ALLOW_BUILD_CONFIRM: "true"
