@@ -94,6 +94,7 @@ Required repository secrets for the real remote lane:
 - `NIXMAC_E2E_REMOTE_HOST`
 - `NIXMAC_E2E_REMOTE_USER`
 - `NIXMAC_E2E_REMOTE_SSH_KEY`
+- `NIXMAC_E2E_REMOTE_KNOWN_HOSTS`
 - `NIXMAC_E2E_OPENROUTER_API_KEY`
 
 The GitHub-hosted runner installs `ffmpeg` before running the suite. The report
@@ -107,6 +108,17 @@ separately by requiring the remote `LocalHostName` to be `DXU97120`. If the
 target Mac changes, set repository variable `NIXMAC_E2E_REMOTE_LOCAL_HOSTNAME`
 to the new expected local hostname.
 
+`NIXMAC_E2E_REMOTE_KNOWN_HOSTS` must contain the pinned SSH host key entry for
+`NIXMAC_E2E_REMOTE_HOST`, for example from a trusted-network capture of:
+
+```bash
+ssh-keyscan dxu97120.macincloud.com
+```
+
+Do not generate known_hosts inside the workflow. The workflow sends provider
+credentials and runs privileged cleanup on the remote Mac, so SSH host
+authenticity must be checked before any remote secret is copied.
+
 Remote connectivity can be checked without running the full suite:
 
 ```bash
@@ -114,6 +126,7 @@ node tools/computer-use-e2e/check-remote.mjs \
   --host dxu97120.macincloud.com \
   --user admin \
   --key ~/.ssh/nixmac_e2e_ci \
+  --known-hosts ~/.ssh/known_hosts \
   --expected-local-hostname DXU97120 \
   --check-codex-binary \
   --check-app-path /Applications/nixmac.app

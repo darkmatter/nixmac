@@ -22,6 +22,7 @@ jobs:
       REMOTE_HOST: ${{ secrets.NIXMAC_E2E_REMOTE_HOST }}
       REMOTE_USER: ${{ secrets.NIXMAC_E2E_REMOTE_USER }}
       REMOTE_SSH_KEY: ${{ secrets.NIXMAC_E2E_REMOTE_SSH_KEY }}
+      REMOTE_KNOWN_HOSTS: ${{ secrets.NIXMAC_E2E_REMOTE_KNOWN_HOSTS }}
       OPENROUTER_API_KEY: ${{ secrets.NIXMAC_E2E_OPENROUTER_API_KEY }}
       REMOTE_EXPECTED_LOCAL_HOSTNAME: ${{ vars.NIXMAC_E2E_REMOTE_LOCAL_HOSTNAME }}
       REMOTE_APP_PATH: /Applications/nixmac.app
@@ -84,6 +85,7 @@ jobs:
           [[ -n "$REMOTE_HOST" ]] || missing+=("NIXMAC_E2E_REMOTE_HOST")
           [[ -n "$REMOTE_USER" ]] || missing+=("NIXMAC_E2E_REMOTE_USER")
           [[ -n "$REMOTE_SSH_KEY" ]] || missing+=("NIXMAC_E2E_REMOTE_SSH_KEY")
+          [[ -n "$REMOTE_KNOWN_HOSTS" ]] || missing+=("NIXMAC_E2E_REMOTE_KNOWN_HOSTS")
           [[ -n "$OPENROUTER_API_KEY" ]] || missing+=("NIXMAC_E2E_OPENROUTER_API_KEY")
           if [[ "${#missing[@]}" -eq 0 ]]; then
             echo "available=true" >> "$GITHUB_OUTPUT"
@@ -105,7 +107,9 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "$REMOTE_SSH_KEY" > ~/.ssh/nixmac-e2e
           chmod 600 ~/.ssh/nixmac-e2e
-          ssh-keyscan -H "$REMOTE_HOST" >> ~/.ssh/known_hosts
+          printf '%s\n' "$REMOTE_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          ssh-keygen -F "$REMOTE_HOST" -f ~/.ssh/known_hosts >/dev/null
           echo "::add-mask::$OPENROUTER_API_KEY"
 
       - name: Preflight remote Mac
@@ -116,6 +120,7 @@ jobs:
             --host "$REMOTE_HOST" \
             --user "$REMOTE_USER" \
             --key ~/.ssh/nixmac-e2e \
+            --known-hosts ~/.ssh/known_hosts \
             --expected-local-hostname "${REMOTE_EXPECTED_LOCAL_HOSTNAME:-DXU97120}" \
             --check-codex-binary \
             --check-app-path "$REMOTE_APP_PATH"
@@ -144,9 +149,10 @@ jobs:
           remote_key_file_q=$(printf '%q' "$REMOTE_KEY_FILE")
           remote_auth_backup_q=$(printf '%q' "$REMOTE_AUTH_BACKUP")
           app_path_q=$(printf '%q' "$REMOTE_APP_PATH")
+          ssh_common=(-i ~/.ssh/nixmac-e2e -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts)
 
-          REMOTE_HOSTNAME="$(ssh -i ~/.ssh/nixmac-e2e -o BatchMode=yes -o StrictHostKeyChecking=no "$SSH_DEST" 'scutil --get LocalHostName 2>/dev/null || hostname')"
-          REMOTE_ARCH="$(ssh -i ~/.ssh/nixmac-e2e -o BatchMode=yes -o StrictHostKeyChecking=no "$SSH_DEST" 'uname -m')"
+          REMOTE_HOSTNAME="$(ssh "${ssh_common[@]}" "$SSH_DEST" 'scutil --get LocalHostName 2>/dev/null || hostname')"
+          REMOTE_ARCH="$(ssh "${ssh_common[@]}" "$SSH_DEST" 'uname -m')"
           case "$REMOTE_ARCH" in
             arm64) REMOTE_PLATFORM="aarch64-darwin" ;;
             x86_64) REMOTE_PLATFORM="x86_64-darwin" ;;
@@ -164,19 +170,21 @@ jobs:
           git -C "$config_tmp/config" init -q
           git -C "$config_tmp/config" add .
           git -C "$config_tmp/config" -c user.name='nixmac E2E' -c user.email='nixmac-e2e@example.invalid' commit -q -m 'Initial disposable nixmac E2E config'
-          ssh -i ~/.ssh/nixmac-e2e -o BatchMode=yes -o StrictHostKeyChecking=no "$SSH_DEST" "rm -rf $remote_config_q && mkdir -p $remote_config_q"
-          scp -i ~/.ssh/nixmac-e2e -o BatchMode=yes -o StrictHostKeyChecking=no -r "$config_tmp/config" "$SSH_DEST:$REMOTE_CONFIG/config"
+          # shellcheck disable=SC2029
+          ssh "${ssh_common[@]}" "$SSH_DEST" "rm -rf $remote_config_q && mkdir -p $remote_config_q"
+          scp "${ssh_common[@]}" -r "$config_tmp/config" "$SSH_DEST:$REMOTE_CONFIG/config"
           rm -rf "$config_tmp"
 
           if [[ -n "${OPENROUTER_API_KEY:-}" ]]; then
             key_tmp=$(mktemp)
             printf '%s' "$OPENROUTER_API_KEY" > "$key_tmp"
             chmod 600 "$key_tmp"
-            scp -i ~/.ssh/nixmac-e2e -o BatchMode=yes -o StrictHostKeyChecking=no "$key_tmp" "$SSH_DEST:$REMOTE_KEY_FILE"
+            scp "${ssh_common[@]}" "$key_tmp" "$SSH_DEST:$REMOTE_KEY_FILE"
             rm -f "$key_tmp"
           fi
 
-          ssh -i ~/.ssh/nixmac-e2e "$SSH_DEST" "REMOTE_BACKUP=$remote_backup_q REMOTE_CONFIG=$remote_config_q REMOTE_KEY_FILE=$remote_key_file_q REMOTE_AUTH_BACKUP=$remote_auth_backup_q REMOTE_APP_PATH=$app_path_q REMOTE_HOSTNAME=$(printf '%q' "$REMOTE_HOSTNAME") bash -s" <<'REMOTE'
+          # shellcheck disable=SC2029
+          ssh "${ssh_common[@]}" "$SSH_DEST" "REMOTE_BACKUP=$remote_backup_q REMOTE_CONFIG=$remote_config_q REMOTE_KEY_FILE=$remote_key_file_q REMOTE_AUTH_BACKUP=$remote_auth_backup_q REMOTE_APP_PATH=$app_path_q REMOTE_HOSTNAME=$(printf '%q' "$REMOTE_HOSTNAME") bash -s" <<'REMOTE'
           set -euo pipefail
           cleanup_key_file() {
             if [[ -n "${REMOTE_KEY_FILE:-}" ]]; then
@@ -256,7 +264,8 @@ jobs:
         run: |
           ssh -i ~/.ssh/nixmac-e2e \
             -o BatchMode=yes \
-            -o StrictHostKeyChecking=no \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
             -o ServerAliveInterval=15 \
             -N -L 18790:127.0.0.1:18790 \
             "$SSH_DEST" \
@@ -321,7 +330,12 @@ jobs:
           remote_config_q=$(printf '%q' "${REMOTE_CONFIG:-}")
           remote_key_file_q=$(printf '%q' "${REMOTE_KEY_FILE:-}")
           remote_auth_backup_q=$(printf '%q' "${REMOTE_AUTH_BACKUP:-}")
-          ssh -i ~/.ssh/nixmac-e2e "$SSH_DEST" "REMOTE_BACKUP=$remote_backup_q REMOTE_CONFIG=$remote_config_q REMOTE_KEY_FILE=$remote_key_file_q REMOTE_AUTH_BACKUP=$remote_auth_backup_q bash -s" <<'REMOTE'
+          ssh -i ~/.ssh/nixmac-e2e \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            "$SSH_DEST" \
+            "REMOTE_BACKUP=$remote_backup_q REMOTE_CONFIG=$remote_config_q REMOTE_KEY_FILE=$remote_key_file_q REMOTE_AUTH_BACKUP=$remote_auth_backup_q bash -s" <<'REMOTE'
           set +e
           cleanup_status=0
           auth_requires_user() {

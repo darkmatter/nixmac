@@ -17,6 +17,7 @@ function usage() {
     'Options:',
     '  --user <user>                       SSH user for remote identity checks',
     '  --key <path>                        SSH private key path',
+    '  --known-hosts <path>                Known hosts file for strict SSH host verification',
     '  --port <port>                       SSH port, default 22',
     '  --expected-local-hostname <name>    Require scutil LocalHostName/hostname to match',
     '  --check-app-path <path>             Require a remote app path to exist',
@@ -39,6 +40,7 @@ function parseArgs(argv) {
     if (arg === '--host') out.host = next;
     else if (arg === '--user') out.user = next;
     else if (arg === '--key') out.key = expandHome(next);
+    else if (arg === '--known-hosts') out.knownHosts = expandHome(next);
     else if (arg === '--port') out.port = Number(next);
     else if (arg === '--expected-local-hostname') out.expectedLocalHostname = next;
     else if (arg === '--check-app-path') out.checkAppPath = next;
@@ -91,9 +93,10 @@ function sshArgs(options, command) {
   const args = [
     '-o', 'BatchMode=yes',
     '-o', 'ConnectTimeout=8',
-    '-o', 'StrictHostKeyChecking=no',
+    '-o', 'StrictHostKeyChecking=yes',
     '-p', String(options.port),
   ];
+  if (options.knownHosts) args.push('-o', `UserKnownHostsFile=${options.knownHosts}`);
   if (options.key) args.push('-i', options.key);
   args.push(`${options.user}@${options.host}`, command);
   return args;
@@ -102,6 +105,7 @@ function sshArgs(options, command) {
 function runSsh(options, command) {
   if (!options.user) throw new Error('SSH checks require --user');
   if (options.key && !fs.existsSync(options.key)) throw new Error(`SSH key does not exist: ${options.key}`);
+  if (options.knownHosts && !fs.existsSync(options.knownHosts)) throw new Error(`Known hosts file does not exist: ${options.knownHosts}`);
   const result = spawnSync('ssh', sshArgs(options, command), {
     encoding: 'utf8',
     maxBuffer: 1024 * 1024,
