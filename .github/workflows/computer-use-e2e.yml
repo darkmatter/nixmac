@@ -48,6 +48,7 @@ jobs:
         run: |
           node --check tools/computer-use-e2e/run-remote-cua.mjs
           node --check tools/computer-use-e2e/check-remote.mjs
+          node tools/computer-use-e2e/run-remote-cua.mjs self-test
 
       - name: Capture PR focus metadata
         if: github.event_name == 'pull_request'

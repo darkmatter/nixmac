@@ -32,6 +32,12 @@ NIXMAC_E2E_SSH_KNOWN_HOSTS=/path/to/known_hosts \
 node tools/computer-use-e2e/run-remote-cua.mjs run
 ```
 
+Predicate and click-result guards can be checked without a remote Mac:
+
+```bash
+node tools/computer-use-e2e/run-remote-cua.mjs self-test
+```
+
 The runner:
 
 - captures screenshots from `get_app_state`, not Screen Sharing;
@@ -39,6 +45,8 @@ The runner:
   retaining redacted accessibility text snapshots;
 - drives visible UI through Computer Use clicks and settable accessibility
   fields;
+- treats explicit Computer Use click-tool failures as failed interactions
+  instead of continuing from a stale snapshot;
 - tests launch, Settings tabs, History, Console, Feedback, Report Issue,
   suggestion cards, real prompt submission, Review/Summary/Diff/Build boundary,
   guarded Step 3 commit/save, History restore cleanup, and guarded Discard

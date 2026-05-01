@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
+import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -281,6 +282,7 @@ function usage() {
   node tools/computer-use-e2e/run-remote-cua.mjs run [--prompt "..."]
   node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable --note "..."
   node tools/computer-use-e2e/run-remote-cua.mjs render-existing --run-dir artifacts/computer-use-remote/<timestamp>
+  node tools/computer-use-e2e/run-remote-cua.mjs self-test
 
 Environment:
   NIXMAC_COMPUTER_USE_WS       WebSocket for Codex app-server (default ${DEFAULT_WS})
@@ -397,6 +399,49 @@ function findElement(text, patterns) {
 
 function hasAny(text, patterns) {
   return patterns.some((pattern) => pattern.test(text));
+}
+
+function countMatches(text, patterns) {
+  return patterns.filter((pattern) => pattern.test(text)).length;
+}
+
+function hasSettingsFrameEvidence(text) {
+  return (
+    /button Close settings/i.test(text) &&
+    /\btext Settings\b/i.test(text) &&
+    countMatches(text, [/button General/i, /button AI Models/i, /button API Keys/i, /button Preferences/i]) >= 3
+  );
+}
+
+function hasSettingsGeneralEvidence(text) {
+  return hasSettingsFrameEvidence(text) && countMatches(text, [/heading General/i, /Configuration Directory/i, /button Browse/i, /\bHost\b/i, /Send diagnostics/i, /Privacy policy/i]) >= 2;
+}
+
+function hasSettingsAIModelsEvidence(text) {
+  return hasSettingsFrameEvidence(text) && countMatches(text, [/heading AI Models/i, /Evolution Model/i, /Summary Model/i, /\bProvider\b/i, /Model Name/i, /Max Iterations/i, /Max Build Attempts/i]) >= 3;
+}
+
+function hasSettingsAPIKeysEvidence(text) {
+  return hasSettingsFrameEvidence(text) && countMatches(text, [/heading API Keys/i, /heading OpenRouter/i, /heading OpenAI/i, /\bAPI Key\b/i, /secure text field/i, /API Base URL/i]) >= 3;
+}
+
+function hasSettingsPreferencesEvidence(text) {
+  return hasSettingsFrameEvidence(text) && countMatches(text, [/heading Preferences/i, /Confirmation dialogs/i, /\bBuild\b/i, /Clear \/ Discard/i, /\bRollback\b/i, /Summarization/i, /switch \(settable/i]) >= 3;
+}
+
+const clickToolFailurePatterns = [
+  /^\s*(?:error|failed|failure):\s*(?:click|action|element|stale|invalid|no such|unable|could not|not found|not clickable)/im,
+  /^\s*(?:click|action)\s+(?:failed|could not|unable)/im,
+  /^\s*element(?:\s+index)?\s+\d+\s+(?:not found|not clickable|is stale|stale|invalid)/im,
+  /\b(?:stale|invalid)\s+element(?:\s+index)?\b/i,
+  /\bno such element\b/i,
+  /\belement(?:\s+index)?\s+\d+\s+(?:not found|not clickable)\b/i,
+  /\b(?:could not|unable to)\s+click\b/i,
+];
+
+function clickResponseIndicatesFailure(response, responseText = contentText(response)) {
+  if (response?.result?.isError === true) return true;
+  return clickToolFailurePatterns.some((pattern) => pattern.test(responseText));
 }
 
 function verdictFor(state) {
@@ -1135,8 +1180,30 @@ async function clickByPattern(client, state, text, label, patterns, note = '') {
     await addEvent(state, 'computer-use.click.skipped', { label, note: `No element found for ${label}` });
     return false;
   }
-  const response = await client.tool('click', { app: state.app, element_index: elementIndex }, 60000);
-  const responseText = redact(contentText(response));
+  let response;
+  try {
+    response = await client.tool('click', { app: state.app, element_index: elementIndex }, 60000);
+  } catch (error) {
+    await addEvent(state, 'computer-use.click.failed', {
+      label,
+      elementIndex,
+      error: redact(error instanceof Error ? error.message : String(error)).slice(0, 800),
+      note,
+    });
+    return false;
+  }
+  const rawResponseText = contentText(response);
+  const responseText = redact(rawResponseText);
+  if (clickResponseIndicatesFailure(response, rawResponseText)) {
+    await addEvent(state, 'computer-use.click.failed', {
+      label,
+      elementIndex,
+      response: responseText.slice(0, 800),
+      isError: response?.result?.isError === true,
+      note,
+    });
+    return false;
+  }
   await addEvent(state, 'computer-use.click', { label, elementIndex, response: responseText.slice(0, 800), note });
   return true;
 }
@@ -1682,7 +1749,7 @@ async function runSuite(args) {
 
     const settingsOpened = await clickByPattern(client, state, text, 'Settings', [/button Settings/i], 'Open Settings.');
     text = await captureState(client, state, 'settings-general', 'Computer Use opened Settings.');
-    if (settingsOpened && /Settings|General/i.test(text)) {
+    if (settingsOpened && hasSettingsGeneralEvidence(text)) {
       updateScenario(state, 'settingsGeneral', 'pass', 'Settings opened and General-related content was visible.');
     } else {
       updateScenario(state, 'settingsGeneral', 'fail', 'Computer Use could not open Settings General.');
@@ -1690,7 +1757,10 @@ async function runSuite(args) {
 
     if (await clickByPattern(client, state, text, 'AI Models tab', [/AI Models/i], 'Open AI Models settings.')) {
       text = await captureState(client, state, 'settings-ai-models', 'Computer Use opened AI Models settings.');
-      updateScenario(state, 'settingsAIModels', /AI Models|Provider|Model|Max Build Attempts/i.test(text) ? 'pass' : 'fail', /AI Models|Provider|Model|Max Build Attempts/i.test(text) ? 'AI Models settings content was visible with provider/model controls.' : 'AI Models tab did not visibly render expected content.');
+      const aiModelsVisible = hasSettingsAIModelsEvidence(text);
+      updateScenario(state, 'settingsAIModels', aiModelsVisible ? 'pass' : 'fail', aiModelsVisible ? 'AI Models settings content was visible with provider/model controls.' : 'AI Models tab did not visibly render expected content.');
+    } else {
+      updateScenario(state, 'settingsAIModels', 'fail', 'Computer Use could not click the AI Models settings tab.');
     }
 
     if (await clickByPattern(client, state, text, 'API Keys tab', [/API Keys/i], 'Open API Keys settings.')) {
@@ -1698,7 +1768,7 @@ async function runSuite(args) {
         client,
         state,
         'settings-api-keys',
-        (candidate) => (/API Keys|OpenRouter|API key|Add key|Provider|No API key/i.test(candidate) ? 'rendered' : null),
+        (candidate) => (hasSettingsAPIKeysEvidence(candidate) ? 'rendered' : null),
         { attempts: 5, delayMs: 1000 },
       );
       text = apiWait.text;
@@ -1710,6 +1780,8 @@ async function runSuite(args) {
           ? 'API Keys content was visible after Computer Use polling, including OpenRouter/API key controls.'
           : 'API Keys stayed blank or exposed only an empty WebView accessibility tree after polling.',
       );
+    } else {
+      updateScenario(state, 'settingsAPIKeys', 'fail', 'Computer Use could not click the API Keys settings tab.');
     }
 
     if (state.scenarios.settingsAPIKeys.status === 'fail') {
@@ -1721,9 +1793,10 @@ async function runSuite(args) {
 
     if (await clickByPattern(client, state, text, 'Preferences tab', [/Preferences/i], 'Open Preferences settings.')) {
       text = await captureState(client, state, 'settings-preferences', 'Computer Use opened Preferences settings.');
-      updateScenario(state, 'settingsPreferences', /Preferences|Confirm|Build|Clear|Discard|Diagnostics/i.test(text) ? 'pass' : 'fail', /Preferences|Confirm|Build|Clear|Discard|Diagnostics/i.test(text) ? 'Preferences settings content was visible with confirmation controls.' : 'Preferences tab did not visibly render expected content.');
+      const preferencesVisible = hasSettingsPreferencesEvidence(text);
+      updateScenario(state, 'settingsPreferences', preferencesVisible ? 'pass' : 'fail', preferencesVisible ? 'Preferences settings content was visible with confirmation controls.' : 'Preferences tab did not visibly render expected content.');
     } else {
-      updateScenario(state, 'settingsPreferences', 'inconclusive', 'Preferences tab was not found in the current Settings tree.');
+      updateScenario(state, 'settingsPreferences', 'fail', 'Computer Use could not click the Preferences settings tab.');
     }
 
     await clickByPattern(client, state, text, 'Close settings', [/button Close/i, /^button ×/i, /^button X/i], 'Close Settings.');
@@ -2144,12 +2217,46 @@ async function renderErrorReport(error, args) {
   await renderUnavailable([...args, '--note', note]);
 }
 
+function runSelfTest() {
+  const launchText = `
+    5 button History
+    6 button Give feedback
+    7 button Settings
+    8 content list Progress: step 1 of 3, Describe
+    15 heading Get started, Value: 3
+    26 button Report Issue
+  `;
+  const settingsFrame = `
+    27 button Close settings
+    28 text Settings
+    30 button General
+    31 button AI Models
+    32 button API Keys
+    33 button Preferences
+    34 button Close
+  `;
+  assert.equal(hasSettingsGeneralEvidence(launchText), false, 'launch text must not satisfy Settings General evidence');
+  assert.equal(hasSettingsAIModelsEvidence(`${settingsFrame}\n35 heading General\n37 text Configuration Directory\n44 text Host`), false, 'General pane must not satisfy AI Models evidence');
+  assert.equal(hasSettingsPreferencesEvidence(`${settingsFrame}\n35 heading AI Models\n37 heading Evolution Model\n40 text Provider\n44 text Model Name\n66 text Max Build Attempts`), false, 'AI Models pane must not satisfy Preferences evidence');
+  assert.equal(hasSettingsGeneralEvidence(`${settingsFrame}\n35 heading General\n37 text Configuration Directory\n39 button Browse\n44 text Host`), true, 'General pane should satisfy General evidence');
+  assert.equal(hasSettingsAIModelsEvidence(`${settingsFrame}\n35 heading AI Models\n37 heading Evolution Model\n40 text Provider\n44 text Model Name\n66 text Max Build Attempts`), true, 'AI Models pane should satisfy AI Models evidence');
+  assert.equal(hasSettingsAPIKeysEvidence(`${settingsFrame}\n35 heading API Keys\n38 heading OpenRouter\n41 text API Key\n43 secure text field API Key\n49 heading OpenAI`), true, 'API Keys pane should satisfy API Keys evidence');
+  assert.equal(hasSettingsPreferencesEvidence(`${settingsFrame}\n35 heading Preferences\n37 text Confirmation dialogs\n38 text Build\n41 text Clear / Discard\n44 text Rollback\n50 switch (settable, boolean) off`), true, 'Preferences pane should satisfy Preferences evidence');
+
+  assert.equal(clickResponseIndicatesFailure({ result: { isError: true, content: [{ type: 'text', text: 'Tool returned an error.' }] } }), true, 'MCP isError should fail click');
+  assert.equal(clickResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'App state includes button Report Error and Console Error logs.' }] } }), false, 'ordinary app-state Error text should not fail click');
+  assert.equal(clickResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'Error: stale element index 7' }] } }), true, 'stale element sentinel should fail click');
+  assert.equal(clickResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'Element index 7 not clickable' }] } }), true, 'not-clickable element sentinel should fail click');
+  console.log('Computer Use E2E runner self-test passed.');
+}
+
 async function main() {
   const [command, ...args] = process.argv.slice(2);
   try {
     if (command === 'run') await runSuite(args);
     else if (command === 'render-unavailable') await renderUnavailable(args);
     else if (command === 'render-existing') await renderExisting(args);
+    else if (command === 'self-test') runSelfTest();
     else {
       usage();
       process.exit(command ? 1 : 0);
