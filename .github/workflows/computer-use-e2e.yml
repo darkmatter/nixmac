@@ -139,14 +139,16 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          BUILD_ARTIFACT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
           build_run_id=""
           build_conclusion=""
+          echo "Waiting for Build macOS App artifact for commit $BUILD_ARTIFACT_SHA"
           for _ in {1..120}; do
             run_json="$(
               gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/workflows/build.yaml/runs" \
-                -f head_sha="$GITHUB_SHA" \
+                -f head_sha="$BUILD_ARTIFACT_SHA" \
                 -f per_page=100
             )"
             build_run_id="$(jq -r '.workflow_runs | sort_by(.created_at) | reverse | .[0].id // ""' <<<"$run_json")"
@@ -162,7 +164,7 @@ jobs:
             sleep 30
           done
           if [[ -z "$build_run_id" || "$build_conclusion" != "success" ]]; then
-            echo "Timed out waiting for successful Build macOS App run for $GITHUB_SHA"
+            echo "Timed out waiting for successful Build macOS App run for $BUILD_ARTIFACT_SHA"
             exit 1
           fi
           rm -rf artifacts/computer-use-app
