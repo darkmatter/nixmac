@@ -90,8 +90,10 @@ the HTML report as Main Coverage Freshness.
 ## PR Workflow
 
 `.github/workflows/computer-use-e2e.yml` triggers on every pull request and
-`workflow_dispatch`. It is intentionally quiet: no PR comments, no Slack, and no
-team-visible automation beyond the GitHub check and uploaded artifact.
+`workflow_dispatch`. On same-repository pull requests, it publishes the generated
+report to GitHub Pages and upserts one sticky PR comment with the verdict,
+counts, hosted `index.html`, hosted evidence video, Actions run, and artifact
+backup. The workflow does not send Slack or other team notifications.
 
 The workflow serializes all runs through one DXU remote-machine concurrency
 group. Do not make concurrency per PR while the suite depends on a singleton
@@ -100,14 +102,14 @@ environment, Authorization Services policy, and the Codex app-server port.
 
 Before touching remote app state, the workflow waits for the matching
 `Build macOS App` run for the same commit, downloads the `nixmac-macos-app`
-artifact, and installs that app bundle onto DXU for the duration of the test.
+artifact, and stages that app bundle under a per-run `/tmp` directory on DXU for
+the duration of the test.
 The build artifact must preserve hidden files because Tauri bundles resources
 under dot-prefixed directories; stripping those files invalidates the app
 signature and can leave LaunchServices wedged on a broken `/Applications`
 bundle.
-The workflow backs up and restores the pre-existing DXU `/Applications`
-bundle for isolation; it does not repair that persistent bundle outside the
-test window.
+The workflow intentionally does not repair or replace the persistent DXU
+`/Applications/nixmac.app` bundle.
 
 Required repository secrets for the real remote lane:
 

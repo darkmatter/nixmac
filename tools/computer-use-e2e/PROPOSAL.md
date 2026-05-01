@@ -207,8 +207,10 @@ suite should cover:
 - Drive the actual app through the Codex app-server `computer-use` MCP. Do not
   replace the UI interaction with Screen Sharing, WDIO, Playwright, shell DOM
   inspection, or screenshot-only automation.
-- Trigger the remote lane on every pull request, but keep output quiet:
-  uploaded artifact plus workflow check only, no PR comments.
+- Trigger the remote lane on every pull request. For same-repository PRs,
+  publish the generated report/video to GitHub Pages and maintain one sticky PR
+  comment with the hosted links, Actions run, artifact backup, verdict, and
+  counts.
 - Capture PR metadata and changed files when available. If user-visible files
   are inferred but no dedicated Computer Use focus scenario is run, mark
   PR-specific coverage inconclusive.
