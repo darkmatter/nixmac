@@ -117,7 +117,7 @@ pub fn execute_search_packages(
     limit: u64,
     search_type: &str,
     use_regex: bool,
-    channels: &Vec<String>,
+    channels: &[String],
 ) -> Result<String> {
     let search_type = search_type.to_string();
 

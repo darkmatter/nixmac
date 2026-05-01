@@ -284,7 +284,7 @@ IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with
                          Return JSON only (no prose). \
                          Parameters: search_type controls where to search (names, descriptions, or both); \
                          use_regex enables regex patterns for advanced matching; \
-                         channels lets you search in different flakes (one or more of nixpkgs, nixpkgs-unstable, etc.)".to_string(),
+                         channels lets you search in different flakes (one or more of nixpkgs, nixpkgs-unstable, etc.), max 5".to_string(),
             parameters: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -798,6 +798,9 @@ pub fn execute_tool(
             let limit = args["limit"].as_i64().unwrap_or(20).clamp(1, 50) as u64;
             let search_type = args["search_type"].as_str().unwrap_or("both");
             let use_regex = args["use_regex"].as_bool().unwrap_or(false);
+
+            // Clamp to at most 5 channels to prevent abuse since each channel adds latency
+            // and we don't want to encourage broad searches across many channels.
             let channels = args["channels"]
                 .as_array()
                 .map(|arr| {
@@ -806,6 +809,14 @@ pub fn execute_tool(
                         .collect::<Vec<_>>()
                 })
                 .unwrap_or_else(|| vec!["nixpkgs".to_string()]);
+            let channels = channels.into_iter().take(5).collect::<Vec<_>>();
+
+            // If channels is empty after filtering, default to ["nixpkgs"] to ensure we search something.
+            let channels = if channels.is_empty() {
+                vec!["nixpkgs".to_string()]
+            } else {
+                channels
+            };
 
             let result = execute_search_packages(
                 config_dir,
