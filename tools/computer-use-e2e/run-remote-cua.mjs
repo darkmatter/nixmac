@@ -105,6 +105,21 @@ const scenarioGroups = [
   },
 ];
 
+const curatedProofKeys = [
+  'review',
+  'summary',
+  'diff',
+  'buildBoundary',
+  'saveFlow',
+  'rollbackCleanup',
+  'settingsAPIKeys',
+  'settingsGeneral',
+  'settingsAIModels',
+  'settingsPreferences',
+  'visualProofQuality',
+  'reportInspection',
+];
+
 const scenarioProofCatalog = {
   launch: {
     grade: 'action-confirmed',
@@ -1259,9 +1274,11 @@ function renderFailureTaxonomy(state) {
   </section>`;
 }
 
-async function renderVisualProofBoard(state) {
+async function renderVisualProofCards(state, keys) {
   const cards = [];
-  for (const [key, scenario] of Object.entries(state.scenarios)) {
+  for (const key of keys) {
+    const scenario = state.scenarios[key];
+    if (!scenario) continue;
     const proof = proofForScenario(state, key);
     if (proof.screenshotArtifacts.length === 0 && proof.textArtifacts.length === 0) continue;
     const screenshots = proof.screenshotArtifacts
@@ -1285,6 +1302,31 @@ async function renderVisualProofBoard(state) {
   return cards.length ? cards.join('\n') : '<p>No visual proof cards generated.</p>';
 }
 
+async function renderVisualProofBoard(state) {
+  const prKeys = new Set(state.prFocus?.scenarioKeys || []);
+  const nonPassKeys = Object.entries(state.scenarios)
+    .filter(([, scenario]) => scenario.status !== 'pass')
+    .map(([key]) => key);
+  const settingsFocused = [...prKeys].some((key) => /^settings/.test(key));
+  const defaultKeys = [
+    ...nonPassKeys,
+    ...curatedProofKeys.filter((key) => !/^settings/.test(key) || settingsFocused || state.scenarios[key]?.status !== 'pass'),
+    ...[...prKeys],
+  ];
+  const uniqueDefaultKeys = [...new Set(defaultKeys)].filter((key) => state.scenarios[key]);
+  const allKeys = Object.keys(state.scenarios);
+  const additionalKeys = allKeys.filter((key) => !uniqueDefaultKeys.includes(key));
+  const defaultCards = await renderVisualProofCards(state, uniqueDefaultKeys);
+  const additionalCards = await renderVisualProofCards(state, additionalKeys);
+  return `<section class="proof-priority">
+    ${defaultCards}
+    <details>
+      <summary>Additional passing visual/text proof (${escapeHtml(String(additionalKeys.length))})</summary>
+      ${additionalCards}
+    </details>
+  </section>`;
+}
+
 function renderCoverageGaps(state) {
   const gaps = knownCoverageGaps(state);
   if (!gaps.length) return '<p>No known coverage gaps recorded.</p>';
@@ -1304,12 +1346,14 @@ function renderPrFocus(state) {
   return `<section class="panel">
     <p><strong>PR:</strong> ${escapeHtml(pr.number || 'not provided')} ${pr.title ? `- ${escapeHtml(pr.title)}` : ''}</p>
     <p><strong>Refs:</strong> ${escapeHtml(pr.baseRef || 'base ?')} ← ${escapeHtml(pr.headRef || 'head ?')}</p>
-    <h3>Changed Files</h3>
-    <ul>${changed}</ul>
     <h3>User-Visible Focus Candidates</h3>
     <ul>${userVisible}</ul>
     <h3>Mapped Scenario Focus</h3>
     <ul>${scenarios}</ul>
+    <details>
+      <summary>Full changed-file list (${escapeHtml(String(pr.changedFiles?.length || 0))})</summary>
+      <ul>${changed}</ul>
+    </details>
   </section>`;
 }
 
@@ -1352,7 +1396,7 @@ function renderPriorityTriage(state) {
 
 function renderPrPriority(state) {
   const pr = state.prFocus || buildPrFocus();
-  if (!pr.configured) return '';
+  if (!pr.configured) return `<h2 id="pull-request-focus">Pull Request Focus</h2>${renderPrFocus(state)}`;
   const keys = pr.scenarioKeys?.length ? pr.scenarioKeys : ['prSpecificCoverage'];
   const evidenceRows = keys
     .filter((key) => state.scenarios[key])
@@ -1401,8 +1445,34 @@ function detailRows(object = {}) {
 
 function renderRemoteMetadata(state) {
   const env = state.processEnvVerification || {};
+  const machineSummary = [
+    state.remoteMachine?.hostname || state.remoteMachine?.localHostName || 'unknown host',
+    state.remoteMachine?.macosProductVersion ? `macOS ${state.remoteMachine.macosProductVersion}` : null,
+    state.remoteMachine?.architecture,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const appSummary = [
+    state.remoteApp?.bundleName || 'nixmac',
+    state.remoteApp?.shortVersion || state.remoteApp?.bundleVersion,
+    state.remoteApp?.codesignVerified === true ? 'codesign verified' : 'codesign not verified',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const envSummary = [
+    env.processFound === true ? `process ${env.pid || 'found'}` : 'process not found',
+    `OpenRouter key ${env.openrouterApiKeyInProcess || 'unknown'}`,
+    env.secretValuesRecorded === false ? 'secrets not recorded' : 'secret recording unknown',
+  ].join(' · ');
   return `<h2 id="remote-metadata">Remote Mac / App Metadata</h2>
-  <section class="meta metadata-grid">
+  <section class="summary metadata-summary" aria-label="Remote metadata summary">
+    <div class="metric"><strong>Machine</strong>${escapeHtml(machineSummary)}</div>
+    <div class="metric"><strong>App</strong>${escapeHtml(appSummary)}</div>
+    <div class="metric"><strong>Process</strong>${escapeHtml(envSummary)}</div>
+  </section>
+  <details class="panel">
+    <summary>Full remote metadata tables</summary>
+    <section class="meta metadata-grid">
     <div class="panel">
       <h3>Remote Mac</h3>
       <table>${detailRows(state.remoteMachine)}</table>
@@ -1423,7 +1493,8 @@ function renderRemoteMetadata(state) {
         note: env.note,
       })}</table>
     </div>
-  </section>
+    </section>
+  </details>
   ${state.remoteMetadataError ? `<p class="warning"><strong>Metadata capture error:</strong> ${escapeHtml(state.remoteMetadataError)}</p>` : ''}`;
 }
 
@@ -1453,8 +1524,8 @@ function renderEvolvedCaseStrategy(state) {
         )
         .join('\n')
     : '<tr><td colspan="4">No optional evolved review-only cases were enabled for this run.</td></tr>';
-  return `<h2 id="evolved-flow">Evolved Flow Case Strategy</h2>
-  <section class="panel">
+  return `<section>
+    <h3>Evolved Flow Case Strategy</h3>
     <p>${escapeHtml(strategy.reviewDecision || '')}</p>
     <p><strong>Default case:</strong> ${escapeHtml((strategy.defaultCaseIds || []).join(', ') || 'none')}<br>
     <strong>Enabled extra cases:</strong> ${escapeHtml((strategy.extraCaseIds || []).join(', ') || 'none')}</p>
@@ -1468,6 +1539,221 @@ function renderEvolvedCaseStrategy(state) {
       <thead><tr><th>Case</th><th>Mode</th><th>Status</th><th>Evidence</th></tr></thead>
       <tbody>${runRows}</tbody>
     </table></div>
+  </section>`;
+}
+
+function renderExecutiveSummary(state, counts, evidenceSummary) {
+  const pr = state.prFocus || buildPrFocus();
+  const prLabel = pr.configured ? `PR ${pr.number || '?'}${pr.title ? ` - ${pr.title}` : ''}` : 'No pull request metadata provided';
+  const prStatus = state.scenarios.prSpecificCoverage?.status || 'inconclusive';
+  const coverageStatus = state.scenarios.mainCoverageFreshness?.status || 'inconclusive';
+  const saveStatus = state.scenarios.saveFlow?.status || 'inconclusive';
+  const rollbackStatus = state.scenarios.rollbackCleanup?.status || 'inconclusive';
+  const metadataStatus = state.remoteMachine && state.remoteApp ? 'pass' : 'inconclusive';
+  const interpretation =
+    state.verdict === 'pass'
+      ? 'The PR-head run passed on the DXU remote Mac with no failed or inconclusive scenario checks.'
+      : state.verdict === 'fail'
+        ? 'The run has failures that should be inspected before treating this PR as E2E-clean.'
+        : 'The run is inconclusive; inspect setup, provider, and coverage notes before relying on it.';
+  const signal = (label, status, note) => `<div class="signal signal-${escapeHtml(status)}">
+    <span class="verdict ${escapeHtml(status)}">${escapeHtml(status)}</span>
+    <strong>${escapeHtml(label)}</strong>
+    <small>${escapeHtml(note)}</small>
+  </div>`;
+  return `<section id="summary" class="executive panel">
+    <div>
+      <h2>Review Summary</h2>
+      <p>${escapeHtml(interpretation)}</p>
+      <p><strong>${escapeHtml(prLabel)}</strong><br><small>Head: <code>${escapeHtml(state.github?.headSha || state.sha || 'unknown')}</code></small></p>
+    </div>
+    <div class="summary" aria-label="Run summary">
+      <div class="metric"><strong>${counts.pass}</strong>Passed</div>
+      <div class="metric"><strong>${counts.fail}</strong>Failed</div>
+      <div class="metric"><strong>${counts.inconclusive}</strong>Inconclusive</div>
+      <div class="metric"><strong>${escapeHtml(String(state.screenshots.length))}</strong>Screenshots</div>
+    </div>
+    <div class="signal-grid">
+      ${signal('PR focus', prStatus, pr.configured ? 'Mapped PR-relevant scenarios were evaluated.' : 'No PR metadata was provided.')}
+      ${signal('Coverage freshness', coverageStatus, 'Main user-visible surfaces remain mapped or explicitly waived.')}
+      ${signal('Step 3 save', saveStatus, 'Disposable config change persisted through the save path.')}
+      ${signal('Rollback cleanup', rollbackStatus, 'History rollback returned the disposable config to baseline.')}
+      ${signal('Remote metadata', metadataStatus, 'DXU machine, app, and process metadata were captured.')}
+    </div>
+    <p class="summary-links">
+      <a href="#pull-request-focus">Review PR Focus</a>
+      <a href="#findings-first">Inspect Findings</a>
+      <a href="#visual-proof">Open Visual Proof</a>
+      <a href="#remote-metadata">Check Remote Metadata</a>
+    </p>
+    <p><small>Evidence footprint: ${escapeHtml(evidenceSummary)}.</small></p>
+  </section>`;
+}
+
+function navBadge(label, value, tone = '') {
+  if (value === undefined || value === null || value === '') return '';
+  return `<span class="nav-badge ${escapeHtml(tone)}">${escapeHtml(String(value))}</span>`;
+}
+
+function renderReportNav(state, counts) {
+  const riskCount = Object.values(state.v2?.scenarioContracts || {}).filter((item) => item.accessibilityRisk === 'high' || item.accessibilityRisk === 'medium').length;
+  return `<aside class="report-nav" aria-label="Report navigation">
+    <a href="#summary">Summary</a>
+    <a href="#pull-request-focus">PR Focus ${navBadge('', state.prFocus?.scenarioKeys?.length || 0)}</a>
+    <a href="#findings-first">Findings ${navBadge('', counts.fail + counts.inconclusive, counts.fail ? 'fail' : counts.inconclusive ? 'inconclusive' : 'pass')}</a>
+    <a href="#evidence-quality">Evidence Quality ${navBadge('', riskCount)}</a>
+    <a href="#visual-proof">Visual Proof ${navBadge('', state.screenshots.length)}</a>
+    <a href="#scenario-checklist">Scenario Checklist</a>
+    <a href="#main-coverage">Coverage</a>
+    <a href="#remote-metadata">Remote Metadata</a>
+    <a href="#raw-evidence">Raw Evidence</a>
+    <a href="#cleanup">Cleanup</a>
+  </aside>`;
+}
+
+function renderEvidenceQuality(state) {
+  const contracts = Object.values(state.v2?.scenarioContracts || {});
+  const strengthCounts = contracts.reduce((counts, item) => {
+    counts[item.evidenceStrength] = (counts[item.evidenceStrength] || 0) + 1;
+    return counts;
+  }, {});
+  const strengthRows = ['strong', 'operational', 'visual-supported', 'weak', 'not-proved']
+    .map((strength) => `<tr><td><span class="strength strength-${escapeHtml(strength)}">${escapeHtml(strength)}</span></td><td>${escapeHtml(String(strengthCounts[strength] || 0))}</td></tr>`)
+    .join('\n');
+  const mappingRows = Object.entries(state.v2?.evidenceGradeMapping || {})
+    .map(([legacy, strength]) => `<tr><td><code>${escapeHtml(legacy)}</code></td><td><span class="strength strength-${escapeHtml(strength)}">${escapeHtml(strength)}</span></td></tr>`)
+    .join('\n');
+  const risky = contracts
+    .filter((item) => item.accessibilityRisk === 'high' || item.accessibilityRisk === 'medium')
+    .sort((a, b) => ({ high: 0, medium: 1, low: 2 }[a.accessibilityRisk] ?? 3) - ({ high: 0, medium: 1, low: 2 }[b.accessibilityRisk] ?? 3));
+  const riskRows = (items) =>
+    items.length
+      ? items
+          .map(
+            (item) => `<tr>
+              <td>${escapeHtml(item.label)}<br><small>${escapeHtml(item.assertionTypes.join(', '))}</small></td>
+              <td><span class="risk risk-${escapeHtml(item.accessibilityRisk)}">${escapeHtml(item.accessibilityRisk)}</span></td>
+              <td>${escapeHtml(item.accessibilityRiskReason)}</td>
+            </tr>`,
+          )
+          .join('\n')
+      : '<tr><td colspan="3">No elevated assertion-risk scenarios.</td></tr>';
+  const nonPassRows = contracts
+    .filter((item) => item.status !== 'pass')
+    .map(
+      (item) => `<tr>
+        <td>${escapeHtml(item.label)}</td>
+        <td><span class="verdict ${escapeHtml(item.status)}">${escapeHtml(item.status)}</span></td>
+        <td><span class="failure-class">${escapeHtml(item.failureClass || 'unclassified')}</span></td>
+        <td>${escapeHtml(failureTaxonomy[item.failureClass] || item.failureClassReason || 'No classification recorded.')}</td>
+      </tr>`,
+    )
+    .join('\n');
+  const taxonomyRows = Object.entries(failureTaxonomy)
+    .map(([key, description]) => `<tr><td><code>${escapeHtml(key)}</code></td><td>${escapeHtml(description)}</td></tr>`)
+    .join('\n');
+  const boundaryRows = state.confirmationBoundaries.length
+    ? state.confirmationBoundaries.map((boundary) => `<li>${escapeHtml(boundary)}</li>`).join('\n')
+    : '<li>No confirmation boundaries recorded.</li>';
+  return `<h2 id="evidence-quality">Evidence Quality</h2>
+  <section class="panel">
+    <span id="v2-evidence-model" class="anchor-alias"></span>
+    <span id="accessibility-risk" class="anchor-alias"></span>
+    <span id="failure-taxonomy" class="anchor-alias"></span>
+    <span id="confirmation-boundaries" class="anchor-alias"></span>
+    <p><strong>Deterministic verdict remains source of truth.</strong> Evidence strength and assertion risk explain how much independent proof backs each scenario.</p>
+    <div class="quality-grid">
+      <div>
+        <h3>Evidence Strength</h3>
+        <table><thead><tr><th>Strength</th><th>Count</th></tr></thead><tbody>${strengthRows}</tbody></table>
+      </div>
+      <div>
+        <h3>Elevated Assertion Risk</h3>
+        <table><thead><tr><th>Scenario</th><th>Risk</th><th>Why</th></tr></thead><tbody>${riskRows(risky)}</tbody></table>
+      </div>
+    </div>
+    <h3>Failure Classification</h3>
+    ${
+      nonPassRows
+        ? `<div class="table-scroll"><table><thead><tr><th>Scenario</th><th>Status</th><th>Class</th><th>Meaning</th></tr></thead><tbody>${nonPassRows}</tbody></table></div>`
+        : '<p>No non-pass scenarios require failure classification.</p>'
+    }
+    <details>
+      <summary>Confirmation boundaries</summary>
+      <ul>${boundaryRows}</ul>
+    </details>
+    <details>
+      <summary>Full assertion-risk table</summary>
+      <div class="table-scroll"><table><thead><tr><th>Scenario</th><th>Risk</th><th>Why</th></tr></thead><tbody>${riskRows(contracts)}</tbody></table></div>
+    </details>
+    <details>
+      <summary>Legacy grade mapping</summary>
+      <table><thead><tr><th>V1 Grade</th><th>V2 Strength</th></tr></thead><tbody>${mappingRows}</tbody></table>
+    </details>
+    <details>
+      <summary>Taxonomy definitions</summary>
+      <table><thead><tr><th>Class</th><th>Definition</th></tr></thead><tbody>${taxonomyRows}</tbody></table>
+    </details>
+  </section>`;
+}
+
+function renderScenarioChecklist(state, groupedScenarioHtml) {
+  return `<h2 id="scenario-checklist">Scenario Checklist</h2>
+  <p>Grouped scenario tables are collapsed by default so reviewers can drill into a specific surface without reading the whole suite linearly.</p>
+  ${groupedScenarioHtml}`;
+}
+
+function renderRunMetadata(state, evidenceSummary) {
+  return `<section class="meta run-metadata">
+    <div class="panel"><strong>Timestamp</strong><br>${escapeHtml(state.startedAt)}</div>
+    <div class="panel"><strong>Branch</strong><br>${escapeHtml(state.branch)}</div>
+    <div class="panel"><strong>SHA</strong><br><code>${escapeHtml(state.sha)}</code></div>
+    <div class="panel"><strong>macOS</strong><br>${escapeHtml(state.remoteMachine?.macosProductVersion || state.macosVersion)}</div>
+    <div class="panel"><strong>App</strong><br><code>${escapeHtml(state.app)}</code></div>
+    <div class="panel"><strong>Provider</strong><br><code>${escapeHtml(state.provider.kind)}</code><br>${escapeHtml(state.provider.note)}</div>
+    <div class="panel"><strong>Prompt</strong><br>${escapeHtml(state.prompt)}</div>
+    <div class="panel"><strong>Evidence</strong><br>${escapeHtml(evidenceSummary)}</div>
+  </section>`;
+}
+
+function renderRawEvidence(state, screenshotHtml) {
+  return `<h2 id="raw-evidence">Raw Evidence</h2>
+  <section class="panel">
+    <span id="screenshots" class="anchor-alias"></span>
+    <span id="narrative" class="anchor-alias"></span>
+    <span id="claims" class="anchor-alias"></span>
+    <span id="pr-specific-focus" class="anchor-alias"></span>
+    <details>
+      <summary>Full screenshot gallery (${escapeHtml(String(state.screenshots.length))})</summary>
+      ${screenshotHtml}
+    </details>
+    <details>
+      <summary>Human QA narrative (${escapeHtml(String(state.narrative.length))})</summary>
+      ${
+        state.narrative.length
+          ? `<ul>${state.narrative.map((item) => `<li>${escapeHtml(item.ts)} - ${escapeHtml(item.text)}</li>`).join('\n')}</ul>`
+          : '<p>No narrative recorded.</p>'
+      }
+    </details>
+    <details>
+      <summary>Claims vs evidence (${escapeHtml(String(state.claims.length))})</summary>
+      <table>
+        <thead><tr><th>Claim</th><th>Status</th><th>Evidence</th></tr></thead>
+        <tbody>
+          ${
+            state.claims.length
+              ? state.claims
+                  .map((claim) => `<tr><td>${escapeHtml(claim.claim)}</td><td><span class="verdict ${claim.status}">${escapeHtml(claim.status)}</span></td><td>${escapeHtml(claim.evidence)}</td></tr>`)
+                  .join('\n')
+              : '<tr><td colspan="3">No claims recorded.</td></tr>'
+          }
+        </tbody>
+      </table>
+    </details>
+    <details>
+      <summary>Run metadata</summary>
+      ${renderRunMetadata(state, `${state.screenshots.length} screenshots, ${state.textSnapshots.length} redacted text snapshots`)}
+    </details>
   </section>`;
 }
 
@@ -2252,8 +2538,14 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
   const counts = statusCounts(state);
   const groupedScenarioHtml = groupedScenarios(state)
     .map(
-      (group) => `<section class="group">
-  <h3>${escapeHtml(group.name)}</h3>
+      (group) => {
+        const groupCounts = {
+          pass: group.items.filter((item) => item.status === 'pass').length,
+          fail: group.items.filter((item) => item.status === 'fail').length,
+          inconclusive: group.items.filter((item) => item.status === 'inconclusive').length,
+        };
+        return `<details class="group">
+  <summary>${escapeHtml(group.name)} <span class="nav-badge pass">${groupCounts.pass} pass</span>${groupCounts.fail ? ` <span class="nav-badge fail">${groupCounts.fail} fail</span>` : ''}${groupCounts.inconclusive ? ` <span class="nav-badge inconclusive">${groupCounts.inconclusive} inconclusive</span>` : ''}</summary>
   <div class="table-scroll"><table class="scenario-table">
     <thead><tr><th class="scenario-col">Scenario</th><th class="status-col">Status</th><th class="grade-col">Evidence Grade</th><th class="artifacts-col">Primary Artifacts</th><th class="proof-col">What Proved It</th><th class="untested-col">Still Untested</th></tr></thead>
     <tbody>
@@ -2266,19 +2558,21 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
         .join('\n')}
     </tbody>
   </table></div>
-</section>`,
+  </details>`;
+      },
     )
     .join('\n');
   const evidenceSummary = `${state.screenshots.length} screenshots, ${state.textSnapshots.length} redacted text snapshots`;
   const coverageGapsHtml = renderCoverageGaps(state);
-  const prFocusHtml = renderPrFocus(state);
   const prPriorityHtml = renderPrPriority(state);
   const priorityTriageHtml = renderPriorityTriage(state);
-  const evidenceModelHtml = renderV2EvidenceModel(state);
-  const accessibilityAuditHtml = renderAccessibilityAudit(state);
-  const failureTaxonomyHtml = renderFailureTaxonomy(state);
+  const executiveSummaryHtml = renderExecutiveSummary(state, counts, evidenceSummary);
+  const reportNavHtml = renderReportNav(state, counts);
+  const evidenceQualityHtml = renderEvidenceQuality(state);
   const visualProofHtml = await renderVisualProofBoard(state);
   const remoteMetadataHtml = renderRemoteMetadata(state);
+  const rawEvidenceHtml = renderRawEvidence(state, screenshotHtml);
+  const scenarioChecklistHtml = renderScenarioChecklist(state, groupedScenarioHtml);
 
   const html = `<!doctype html>
 <html lang="en">
@@ -2289,12 +2583,12 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
   <style>
     :root { color-scheme: light dark; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     body { margin: 0; background: #111318; color: #eef1f5; }
-    main { max-width: 1180px; margin: 0 auto; padding: 32px 20px 56px; }
+    main { max-width: 1460px; margin: 0 auto; padding: 32px 20px 56px; }
     h1, h2, h3 { margin: 0 0 12px; }
     h1 { font-size: 28px; letter-spacing: 0; }
     html { scroll-behavior: smooth; }
     h2 { font-size: 18px; margin-top: 30px; letter-spacing: 0; }
-    h2[id] { scroll-margin-top: 18px; }
+    h2[id], .anchor-alias { scroll-margin-top: 18px; }
     h3 { font-size: 15px; margin-top: 18px; color: #f6f8fb; letter-spacing: 0; }
     p, li { color: #c5cbd3; line-height: 1.5; }
     .lede { max-width: 850px; color: #d9dee6; }
@@ -2302,12 +2596,20 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
     .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 18px 0; }
     .panel { border: 1px solid #303640; border-radius: 8px; padding: 14px; background: #171a21; overflow-wrap: anywhere; }
     .metadata-grid .panel { overflow-x: auto; }
-    .toc { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 22px; padding: 10px; border: 1px solid #303640; border-radius: 8px; background: rgba(17, 19, 24, 0.94); backdrop-filter: blur(8px); }
-    .toc a { border: 1px solid #3c4654; border-radius: 999px; padding: 6px 10px; color: #dce3ec; text-decoration: none; font-size: 13px; line-height: 1; white-space: nowrap; background: #171a21; }
-    .toc a:hover { border-color: #7fbfff; color: #a7d7ff; }
+    .report-shell { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 22px; align-items: start; margin-top: 22px; }
+    .report-nav { position: sticky; top: 14px; display: grid; gap: 8px; padding: 12px; border: 1px solid #303640; border-radius: 8px; background: rgba(17, 19, 24, 0.96); backdrop-filter: blur(8px); }
+    .report-nav a, .summary-links a { border: 1px solid #3c4654; border-radius: 999px; padding: 7px 10px; color: #dce3ec; text-decoration: none; font-size: 13px; line-height: 1.15; background: #171a21; }
+    .report-nav a:hover, .summary-links a:hover { border-color: #7fbfff; color: #a7d7ff; }
+    .report-content { min-width: 0; }
     .warning { color: #ffd36e; }
     .metric { border: 1px solid #303640; border-radius: 8px; padding: 14px; background: #171a21; }
     .metric strong { display: block; font-size: 28px; color: #fff; margin-bottom: 4px; }
+    .executive { border-color: #3c4654; background: #151922; }
+    .signal-grid, .quality-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; margin: 16px 0; }
+    .signal { border: 1px solid #303640; border-radius: 8px; padding: 10px; background: #111318; }
+    .signal strong { display: block; margin: 8px 0 4px; }
+    .summary-links { display: flex; flex-wrap: wrap; gap: 8px; }
+    .nav-badge { display: inline-flex; align-items: center; justify-content: center; border: 1px solid #3c4654; border-radius: 999px; padding: 2px 6px; margin-left: 4px; font-size: 11px; color: #dce3ec; background: #20242d; }
     .verdict { display: inline-block; border-radius: 999px; padding: 5px 10px; font-weight: 700; text-transform: uppercase; }
     .pass { background: #123d2a; color: #8bf0bb; }
     .fail { background: #471a1a; color: #ff9e9e; }
@@ -2356,10 +2658,17 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
     .annotation-pin { border-radius: 999px; }
     .annotation-pin::after { border-radius: 999px; inset: -5px; }
     .annotation-pin span { left: 50%; top: -28px; transform: translateX(-50%); white-space: nowrap; max-width: none; }
+    .anchor-alias { display: block; height: 0; overflow: hidden; }
     figure { margin: 0 0 18px; }
     figcaption { margin-top: 6px; color: #c5cbd3; font-size: 13px; }
     code { color: #a7d7ff; overflow-wrap: anywhere; }
     ul { padding-left: 20px; }
+    @media (max-width: 860px) {
+      main { padding: 24px 12px 44px; }
+      .report-shell { display: block; }
+      .report-nav { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: nowrap; overflow-x: auto; margin: 18px 0; }
+      .report-nav a { white-space: nowrap; }
+    }
   </style>
 </head>
 <body>
@@ -2368,111 +2677,45 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
   <p class="lede">Remote desktop QA driven through Codex Computer Use against the real macOS app. The report summarizes major feature coverage, functional UX/UI checks, screenshots, redacted text evidence, and remote machine metadata.</p>
   <p><span class="verdict ${verdict}">Verdict: ${verdict}</span></p>
 
-  <section class="summary" aria-label="Run summary">
-    <div class="metric"><strong>${counts.pass}</strong>Passed</div>
-    <div class="metric"><strong>${counts.fail}</strong>Failed</div>
-    <div class="metric"><strong>${counts.inconclusive}</strong>Inconclusive</div>
-    <div class="metric"><strong>${escapeHtml(String(state.screenshots.length))}</strong>Screenshots</div>
-  </section>
+  ${executiveSummaryHtml}
 
-  <nav class="toc" aria-label="Report navigation">
-    ${prPriorityHtml ? '<a href="#pull-request-focus">PR Focus</a>' : ''}
-    <a href="#findings-first">Findings First</a>
-    <a href="#v2-evidence-model">Evidence Model</a>
-    <a href="#accessibility-risk">Assertion Risk</a>
-    <a href="#failure-taxonomy">Failure Classes</a>
-    <a href="#remote-metadata">Remote Metadata</a>
-    <a href="#evolved-flow">Evolved Flow</a>
-    <a href="#scenario-checklist">Scenario Checklist</a>
-    <a href="#visual-proof">Visual Proof</a>
-    <a href="#screenshots">Screenshots</a>
-    <a href="#claims">Claims</a>
-    <a href="#cleanup">Cleanup</a>
-  </nav>
+  <div class="report-shell">
+    ${reportNavHtml}
+    <div class="report-content">
+      ${prPriorityHtml}
 
-  ${prPriorityHtml}
+      <h2 id="findings-first">Findings</h2>
+      <p>Failures are shown first, then inconclusive checks. Passing checks stay collapsed unless a reviewer wants the full inventory.</p>
+      ${priorityTriageHtml}
 
-  <h2 id="findings-first">Findings First</h2>
-  <p>Failures are shown first, then inconclusive checks, then passing checks. The full grouped checklist and visual proof board remain below.</p>
-  ${priorityTriageHtml}
+      ${evidenceQualityHtml}
 
-  ${evidenceModelHtml}
+      <h2 id="visual-proof">Visual Proof</h2>
+      <p>Annotations are reviewer aids, not the sole assertion source. The pass/fail source of truth is the paired Computer Use accessibility text and recorded action events.</p>
+      ${visualProofHtml}
 
-  ${accessibilityAuditHtml}
+      ${scenarioChecklistHtml}
 
-  ${failureTaxonomyHtml}
+      ${coverageFreshnessHtml}
 
-  ${coverageFreshnessHtml}
+      <h2 id="coverage-gaps">Coverage Gaps / Not Proved</h2>
+      ${coverageGapsHtml}
 
-  <section class="meta">
-    <div class="panel"><strong>Timestamp</strong><br>${escapeHtml(state.startedAt)}</div>
-    <div class="panel"><strong>Branch</strong><br>${escapeHtml(state.branch)}</div>
-    <div class="panel"><strong>SHA</strong><br><code>${escapeHtml(state.sha)}</code></div>
-    <div class="panel"><strong>macOS</strong><br>${escapeHtml(state.remoteMachine?.macosProductVersion || state.macosVersion)}</div>
-    <div class="panel"><strong>App</strong><br><code>${escapeHtml(state.app)}</code></div>
-    <div class="panel"><strong>App Command</strong><br><code>${escapeHtml(state.appCommand)}</code></div>
-    <div class="panel"><strong>Provider</strong><br><code>${escapeHtml(state.provider.kind)}</code><br>${escapeHtml(state.provider.note)}</div>
-    <div class="panel"><strong>Prompt</strong><br>${escapeHtml(state.prompt)}</div>
-    <div class="panel"><strong>Evidence</strong><br>${escapeHtml(evidenceSummary)}</div>
-	  </section>
+      ${remoteMetadataHtml}
 
-  ${remoteMetadataHtml}
+      <details class="panel" id="evolved-flow">
+        <summary>Evolved Flow Case Strategy</summary>
+        ${renderEvolvedCaseStrategy(state)}
+      </details>
 
-  ${renderEvolvedCaseStrategy(state)}
+      ${rawEvidenceHtml}
 
-  <h2 id="scenario-checklist">Scenario Checklist</h2>
-  ${groupedScenarioHtml}
-
-  <h2 id="coverage-gaps">Coverage Gaps / Not Proved</h2>
-  ${coverageGapsHtml}
-
-  <h2 id="pr-specific-focus">PR-Specific Focus</h2>
-  ${prFocusHtml}
-
-  <h2 id="visual-proof">Visual Proof Board</h2>
-  <p>Annotations are reviewer aids, not the sole assertion source. The pass/fail source of truth is the paired Computer Use accessibility text and recorded action events.</p>
-  ${visualProofHtml}
-
-  <h2 id="screenshots">Screenshots</h2>
-  ${screenshotHtml}
-
-  <h2 id="narrative">Human QA Narrative</h2>
-  ${
-    state.narrative.length
-      ? `<ul>${state.narrative.map((item) => `<li>${escapeHtml(item.ts)} - ${escapeHtml(item.text)}</li>`).join('\n')}</ul>`
-      : '<p>No narrative recorded.</p>'
-  }
-
-  <h2 id="claims">Claims vs Evidence</h2>
-  <table>
-    <thead><tr><th>Claim</th><th>Status</th><th>Evidence</th></tr></thead>
-    <tbody>
-      ${
-        state.claims.length
-          ? state.claims
-              .map((claim) => `<tr><td>${escapeHtml(claim.claim)}</td><td><span class="verdict ${claim.status}">${escapeHtml(claim.status)}</span></td><td>${escapeHtml(claim.evidence)}</td></tr>`)
-              .join('\n')
-          : '<tr><td colspan="3">No claims recorded.</td></tr>'
-      }
-    </tbody>
-  </table>
-
-  <h2 id="open-issues">Failures / Open Issues</h2>
-  ${
-    failures.length
-      ? `<ul>${failures.map((failure) => `<li><strong>${escapeHtml(failure.status)}:</strong> ${escapeHtml(failure.label)} - ${escapeHtml(failure.notes.join(' ') || 'No detail recorded.')}</li>`).join('\n')}</ul>`
-      : '<p>None recorded.</p>'
-  }
-
-  <h2 id="confirmation-boundaries">Confirmation Boundaries</h2>
-  ${
-    state.confirmationBoundaries.length
-      ? `<ul>${state.confirmationBoundaries.map((boundary) => `<li>${escapeHtml(boundary)}</li>`).join('\n')}</ul>`
-      : '<p>None recorded.</p>'
-  }
-
-  <h2 id="cleanup">Cleanup / Restore Status</h2>
-  <p>${escapeHtml(state.cleanup.note)}</p>
+      <h2 id="cleanup">Cleanup / Restore Status</h2>
+      <section class="panel">
+        <p>${escapeHtml(state.cleanup.note)}</p>
+      </section>
+    </div>
+  </div>
 </main>
 </body>
 </html>
@@ -2990,7 +3233,7 @@ async function renderErrorReport(error, args) {
   await renderUnavailable([...args, '--note', note]);
 }
 
-function runSelfTest() {
+async function runSelfTest() {
   const launchText = `
     5 button History
     6 button Give feedback
@@ -3057,6 +3300,66 @@ function runSelfTest() {
   updateScenario(prCoverageState, 'review', 'fail', 'review failed');
   updatePrSpecificCoverage(prCoverageState);
   assert.equal(prCoverageState.scenarios.prSpecificCoverage.status, 'fail', 'PR focus coverage should fail when a mapped scenario fails');
+
+  const renderRunDir = path.join(os.tmpdir(), `nixmac-e2e-self-test-${Date.now()}`);
+  await mkdir(renderRunDir, { recursive: true });
+  const renderState = await baseState(renderRunDir, {
+    app: DEFAULT_APP,
+    prompt: DEFAULT_PROMPT,
+  });
+  renderState.prFocus = {
+    configured: true,
+    number: '63',
+    title: 'Self-test PR',
+    headRef: 'feature',
+    baseRef: 'main',
+    changedFiles: ['tools/computer-use-e2e/run-remote-cua.mjs'],
+    userVisibleFiles: ['tools/computer-use-e2e/run-remote-cua.mjs'],
+    scenarioKeys: ['visualProofQuality', 'reportInspection'],
+  };
+  for (const key of Object.keys(renderState.scenarios)) {
+    renderState.scenarios[key].status = 'pass';
+    renderState.scenarios[key].notes = ['Self-test pass note.'];
+  }
+  renderState.screenshots.push({ path: 'screenshots/self-test.png', label: 'Self test', note: 'Synthetic screenshot metadata.', capturedAt: new Date().toISOString() });
+  renderState.textSnapshots.push({ path: 'texts/self-test.txt', label: 'Self test text' });
+  renderState.remoteMachine = { hostname: 'DXU97120', macosProductVersion: '26.2', architecture: 'arm64' };
+  renderState.remoteApp = { bundleName: 'nixmac', shortVersion: '0.22.40', codesignVerified: true };
+  renderState.processEnvVerification = {
+    processFound: true,
+    pid: '123',
+    openrouterApiKeyInProcess: 'present-redacted',
+    secretValuesRecorded: false,
+  };
+  renderState.confirmationBoundaries = ['Self-test confirmation boundary.'];
+  await render(renderState, { stateFileName: 'state.self-test.json', recordEvent: false });
+  const renderedHtml = await readFile(path.join(renderRunDir, 'index.html'), 'utf8');
+  for (const anchor of [
+    'id="summary"',
+    'class="report-nav"',
+    'id="pull-request-focus"',
+    'id="findings-first"',
+    'id="evidence-quality"',
+    'id="v2-evidence-model"',
+    'id="accessibility-risk"',
+    'id="failure-taxonomy"',
+    'id="confirmation-boundaries"',
+    'id="visual-proof"',
+    'id="scenario-checklist"',
+    'id="remote-metadata"',
+    'id="raw-evidence"',
+    'id="screenshots"',
+    'id="narrative"',
+    'id="claims"',
+    'id="pr-specific-focus"',
+    'id="cleanup"',
+  ]) {
+    assert.equal(renderedHtml.includes(anchor), true, `rendered report should include ${anchor}`);
+  }
+  assert.equal(renderedHtml.includes('id="open-issues"'), false, 'duplicate open-issues section should not be rendered');
+  const ids = [...renderedHtml.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
+  const duplicateIds = ids.filter((id, index) => ids.indexOf(id) !== index);
+  assert.deepEqual(duplicateIds, [], 'rendered report should not include duplicate element ids');
   console.log('Computer Use E2E runner self-test passed.');
 }
 
@@ -3066,7 +3369,7 @@ async function main() {
     if (command === 'run') await runSuite(args);
     else if (command === 'render-unavailable') await renderUnavailable(args);
     else if (command === 'render-existing') await renderExisting(args);
-    else if (command === 'self-test') runSelfTest();
+    else if (command === 'self-test') await runSelfTest();
     else {
       usage();
       process.exit(command ? 1 : 0);

@@ -488,7 +488,7 @@ const caseDefinitions = [
     expected: 'API Keys has high accessibility/assertion risk because screenshots are suppressed.',
     evaluate(state, runDir) {
       const html = readFileSync(path.join(runDir, 'index.html'), 'utf8');
-      return state.v2?.scenarioContracts?.settingsAPIKeys?.accessibilityRisk === 'high' && /Accessibility Dependency \/ Assertion Risk/i.test(html);
+      return state.v2?.scenarioContracts?.settingsAPIKeys?.accessibilityRisk === 'high' && /Evidence Quality/i.test(html) && /id="accessibility-risk"/i.test(html);
     },
   },
   {
