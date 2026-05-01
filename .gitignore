@@ -79,6 +79,10 @@ build
 # Testing
 coverage
 .nyc_output
+artifacts/computer-use-local/
+artifacts/computer-use-real/
+artifacts/computer-use-remote/
+artifacts/computer-use-adversarial/
 
 # Misc
 *.tgz

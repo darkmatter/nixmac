@@ -1,0 +1,387 @@
+name: Computer Use E2E
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+concurrency:
+  group: computer-use-e2e-dxu-remote
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  remote-computer-use:
+    name: Remote Computer Use E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      REMOTE_HOST: ${{ secrets.NIXMAC_E2E_REMOTE_HOST }}
+      REMOTE_USER: ${{ secrets.NIXMAC_E2E_REMOTE_USER }}
+      REMOTE_SSH_KEY: ${{ secrets.NIXMAC_E2E_REMOTE_SSH_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.NIXMAC_E2E_OPENROUTER_API_KEY }}
+      REMOTE_EXPECTED_LOCAL_HOSTNAME: ${{ vars.NIXMAC_E2E_REMOTE_LOCAL_HOSTNAME }}
+      REMOTE_APP_PATH: /Applications/nixmac.app
+      REPORT_ROOT: artifacts/computer-use-remote
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Validate runner syntax
+        run: |
+          node --check tools/computer-use-e2e/run-remote-cua.mjs
+          node --check tools/computer-use-e2e/check-remote.mjs
+
+      - name: Capture PR focus metadata
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          {
+            echo "NIXMAC_E2E_PR_NUMBER=${{ github.event.pull_request.number }}"
+            echo "NIXMAC_E2E_PR_TITLE<<EOF"
+            printf '%s\n' "$PR_TITLE"
+            echo "EOF"
+            echo "NIXMAC_E2E_PR_HEAD_REF=$PR_HEAD_REF"
+            echo "NIXMAC_E2E_PR_BASE_REF=$PR_BASE_REF"
+            echo "NIXMAC_E2E_PR_CHANGED_FILES<<EOF"
+            git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}" || true
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: Check remote Computer Use secrets
+        id: remote-secrets
+        shell: bash
+        run: |
+          if [[ -n "$REMOTE_HOST" && -n "$REMOTE_USER" && -n "$REMOTE_SSH_KEY" ]]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Render unavailable report
+        if: steps.remote-secrets.outputs.available != 'true'
+        run: |
+          node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable \
+            --note "Remote Computer Use secrets are not configured for this repository. The workflow triggered quietly and produced an inconclusive report without touching app state."
+
+      - name: Prepare SSH
+        if: steps.remote-secrets.outputs.available == 'true'
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$REMOTE_SSH_KEY" > ~/.ssh/nixmac-e2e
+          chmod 600 ~/.ssh/nixmac-e2e
+          ssh-keyscan -H "$REMOTE_HOST" >> ~/.ssh/known_hosts
+          echo "::add-mask::$OPENROUTER_API_KEY"
+
+      - name: Preflight remote Mac
+        if: steps.remote-secrets.outputs.available == 'true'
+        shell: bash
+        run: |
+          node tools/computer-use-e2e/check-remote.mjs \
+            --host "$REMOTE_HOST" \
+            --user "$REMOTE_USER" \
+            --key ~/.ssh/nixmac-e2e \
+            --expected-local-hostname "${REMOTE_EXPECTED_LOCAL_HOSTNAME:-DXU97120}" \
+            --check-codex-binary \
+            --check-app-path "$REMOTE_APP_PATH"
+
+      - name: Start remote Codex app-server and nixmac
+        if: steps.remote-secrets.outputs.available == 'true'
+        id: remote-start
+        shell: bash
+        env:
+          SSH_DEST: ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}
+        run: |
+          set -euo pipefail
+          RUN_ID_SAFE="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          REMOTE_BACKUP="/tmp/nixmac-computer-use-e2e-backup-${RUN_ID_SAFE}"
+          REMOTE_CONFIG="/tmp/nixmac-computer-use-e2e-config-${RUN_ID_SAFE}"
+          REMOTE_KEY_FILE="/tmp/nixmac-openrouter-key-${RUN_ID_SAFE}"
+          REMOTE_AUTH_BACKUP="/tmp/nixmac-computer-use-e2e-auth-system-privilege-admin-${RUN_ID_SAFE}.plist"
+          {
+            echo "remote_backup=$REMOTE_BACKUP"
+            echo "remote_config=$REMOTE_CONFIG"
+            echo "remote_key_file=$REMOTE_KEY_FILE"
+            echo "remote_auth_backup=$REMOTE_AUTH_BACKUP"
+          } >> "$GITHUB_OUTPUT"
+          remote_backup_q=$(printf '%q' "$REMOTE_BACKUP")
+          remote_config_q=$(printf '%q' "$REMOTE_CONFIG")
+          remote_key_file_q=$(printf '%q' "$REMOTE_KEY_FILE")
+          remote_auth_backup_q=$(printf '%q' "$REMOTE_AUTH_BACKUP")
+          app_path_q=$(printf '%q' "$REMOTE_APP_PATH")
+
+          REMOTE_HOSTNAME="$(ssh -i ~/.ssh/nixmac-e2e -o BatchMode=yes -o StrictHostKeyChecking=no "$SSH_DEST" 'scutil --get LocalHostName 2>/dev/null || hostname')"
+          REMOTE_ARCH="$(ssh -i ~/.ssh/nixmac-e2e -o BatchMode=yes -o StrictHostKeyChecking=no "$SSH_DEST" 'uname -m')"
+          case "$REMOTE_ARCH" in
+            arm64) REMOTE_PLATFORM="aarch64-darwin" ;;
+            x86_64) REMOTE_PLATFORM="x86_64-darwin" ;;
+            *) REMOTE_PLATFORM="${REMOTE_ARCH}-darwin" ;;
+          esac
+
+          config_tmp="$(mktemp -d)"
+          cp -R apps/native/templates/nix-darwin-determinate "$config_tmp/config"
+          if [[ -f "$config_tmp/config/modules/darwin/security.nix" ]]; then
+            perl -0pi -e 's/security\.pam\.services\.sudo_local\.touchIdAuth = true;/# Disabled in remote E2E: AppleScript GUI activation on MacinCloud can hang creating sudo_local.\n  security.pam.services.sudo_local.enable = false;\n  security.pam.services.sudo_local.touchIdAuth = false;/' "$config_tmp/config/modules/darwin/security.nix"
+          fi
+          while IFS= read -r file; do
+            perl -pi -e "s/HOSTNAME_PLACEHOLDER/\\Q$REMOTE_HOSTNAME\\E/g; s/USERNAME_PLACEHOLDER/\\Q$REMOTE_USER\\E/g; s/PLATFORM_PLACEHOLDER/\\Q$REMOTE_PLATFORM\\E/g" "$file"
+          done < <(find "$config_tmp/config" -type f)
+          git -C "$config_tmp/config" init -q
+          git -C "$config_tmp/config" add .
+          git -C "$config_tmp/config" -c user.name='nixmac E2E' -c user.email='nixmac-e2e@example.invalid' commit -q -m 'Initial disposable nixmac E2E config'
+          ssh -i ~/.ssh/nixmac-e2e -o BatchMode=yes -o StrictHostKeyChecking=no "$SSH_DEST" "rm -rf $remote_config_q && mkdir -p $remote_config_q"
+          scp -i ~/.ssh/nixmac-e2e -o BatchMode=yes -o StrictHostKeyChecking=no -r "$config_tmp/config" "$SSH_DEST:$REMOTE_CONFIG/config"
+          rm -rf "$config_tmp"
+
+          if [[ -n "${OPENROUTER_API_KEY:-}" ]]; then
+            key_tmp=$(mktemp)
+            printf '%s' "$OPENROUTER_API_KEY" > "$key_tmp"
+            chmod 600 "$key_tmp"
+            scp -i ~/.ssh/nixmac-e2e -o BatchMode=yes -o StrictHostKeyChecking=no "$key_tmp" "$SSH_DEST:$REMOTE_KEY_FILE"
+            rm -f "$key_tmp"
+          fi
+
+          ssh -i ~/.ssh/nixmac-e2e "$SSH_DEST" "REMOTE_BACKUP=$remote_backup_q REMOTE_CONFIG=$remote_config_q REMOTE_KEY_FILE=$remote_key_file_q REMOTE_AUTH_BACKUP=$remote_auth_backup_q REMOTE_APP_PATH=$app_path_q REMOTE_HOSTNAME=$(printf '%q' "$REMOTE_HOSTNAME") bash -s" <<'REMOTE'
+          set -euo pipefail
+          cleanup_key_file() {
+            if [[ -n "${REMOTE_KEY_FILE:-}" ]]; then
+              rm -f "$REMOTE_KEY_FILE"
+            fi
+          }
+          trap cleanup_key_file EXIT
+          auth_requires_user() {
+            local plist_path="$1"
+            /usr/bin/plutil -extract authenticate-user raw -o - "$plist_path" 2>/dev/null || true
+          }
+          pkill -f 'codex app-server --listen ws://127.0.0.1:18790' >/dev/null 2>&1 || true
+          pkill -f 'nixmac-activate-temp|with administrator privileges|/nix/store/.*/activate|ln -s /etc/static/pam.d/sudo_local /etc/pam.d/sudo_local' >/dev/null 2>&1 || true
+          osascript -e 'tell application id "com.darkmatter.nixmac" to quit' >/dev/null 2>&1 || true
+          mkdir -p "$(dirname "$REMOTE_BACKUP")"
+          rm -rf "$REMOTE_BACKUP"
+          rm -f "${REMOTE_BACKUP}.state"
+          SUPPORT="$HOME/Library/Application Support/com.darkmatter.nixmac"
+          if [[ -d "$SUPPORT" ]]; then
+            cp -pR "$SUPPORT" "$REMOTE_BACKUP"
+            printf 'existed\n' > "${REMOTE_BACKUP}.state"
+          else
+            printf 'absent\n' > "${REMOTE_BACKUP}.state"
+          fi
+          sudo -n security authorizationdb read system.privilege.admin > "$REMOTE_AUTH_BACKUP" 2>/tmp/nixmac-e2e-auth-read.err
+          if [[ "$(auth_requires_user "$REMOTE_AUTH_BACKUP")" != "true" ]]; then
+            echo "error: refusing to start E2E because system.privilege.admin is not at the expected authenticated baseline" >&2
+            exit 1
+          fi
+          sudo -n security authorizationdb write system.privilege.admin allow >/tmp/nixmac-e2e-auth-write.out 2>/tmp/nixmac-e2e-auth-write.err
+          GUI_UID="$(stat -f %u /dev/console 2>/dev/null || id -u)"
+          gui_launchctl() {
+            if sudo -n launchctl asuser "$GUI_UID" launchctl "$@" >/dev/null 2>&1; then
+              return 0
+            fi
+            echo "warning: could not run launchctl in gui/$GUI_UID; falling back to current bootstrap domain" >&2
+            launchctl "$@" >/dev/null 2>&1 || true
+          }
+          python3 - <<'PY'
+          import json
+          import os
+
+          support = os.path.expanduser("~/Library/Application Support/com.darkmatter.nixmac")
+          os.makedirs(support, exist_ok=True)
+          settings_path = os.path.join(support, "settings.json")
+          try:
+              with open(settings_path, "r", encoding="utf-8") as handle:
+                  settings = json.load(handle)
+          except FileNotFoundError:
+              settings = {}
+          settings["confirmBuild"] = True
+          settings["confirmClear"] = True
+          settings["confirmRollback"] = True
+          settings["hostAttr"] = os.environ["REMOTE_HOSTNAME"]
+          settings["configDir"] = os.path.join(os.environ["REMOTE_CONFIG"], "config")
+          with open(settings_path, "w", encoding="utf-8") as handle:
+              json.dump(settings, handle, indent=2, sort_keys=True)
+              handle.write("\n")
+          PY
+          gui_launchctl unsetenv OPENROUTER_API_KEY
+          if [[ -s "${REMOTE_KEY_FILE:-}" ]]; then
+            chmod 600 "$REMOTE_KEY_FILE"
+            gui_launchctl setenv OPENROUTER_API_KEY "$(cat "$REMOTE_KEY_FILE")"
+            rm -f "$REMOTE_KEY_FILE"
+          fi
+          nohup /Applications/Codex.app/Contents/Resources/codex app-server --listen ws://127.0.0.1:18790 >/tmp/nixmac-codex-app-server.log 2>&1 &
+          sleep 2
+          open -a "$REMOTE_APP_PATH"
+          sleep 4
+          REMOTE
+
+      - name: Tunnel remote app-server
+        if: steps.remote-secrets.outputs.available == 'true'
+        shell: bash
+        env:
+          SSH_DEST: ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}
+        run: |
+          ssh -i ~/.ssh/nixmac-e2e \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=no \
+            -o ServerAliveInterval=15 \
+            -N -L 18790:127.0.0.1:18790 \
+            "$SSH_DEST" \
+            >/tmp/nixmac-e2e-tunnel.log 2>&1 &
+          echo $! > /tmp/nixmac-e2e-tunnel.pid
+          for _ in {1..20}; do
+            if command -v nc >/dev/null 2>&1 && nc -z 127.0.0.1 18790; then
+              exit 0
+            fi
+            if bash -c '</dev/tcp/127.0.0.1/18790' >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/nixmac-e2e-tunnel.log
+          exit 1
+
+      - name: Run Computer Use E2E
+        if: steps.remote-secrets.outputs.available == 'true'
+        env:
+          NIXMAC_COMPUTER_USE_WS: ws://127.0.0.1:18790
+          NIXMAC_COMPUTER_USE_APP: com.darkmatter.nixmac
+          NIXMAC_E2E_REMOTE_SSH_DEST: ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}
+          NIXMAC_E2E_SSH_KEY: /home/runner/.ssh/nixmac-e2e
+          NIXMAC_E2E_APP_COMMAND: open -a /Applications/nixmac.app
+          NIXMAC_E2E_REMOTE_CONFIG_DIR: ${{ steps.remote-start.outputs.remote_config }}/config
+          NIXMAC_E2E_DISPOSABLE_CONFIG: "true"
+          NIXMAC_E2E_ALLOW_BUILD_CONFIRM: "true"
+          NIXMAC_E2E_ALLOW_DISCARD_CONFIRM: "true"
+        run: node tools/computer-use-e2e/run-remote-cua.mjs run
+
+      - name: Restore remote app support
+        if: always() && steps.remote-secrets.outputs.available == 'true'
+        shell: bash
+        env:
+          SSH_DEST: ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}
+          REMOTE_BACKUP: ${{ steps.remote-start.outputs.remote_backup }}
+          REMOTE_CONFIG: ${{ steps.remote-start.outputs.remote_config }}
+          REMOTE_KEY_FILE: ${{ steps.remote-start.outputs.remote_key_file }}
+          REMOTE_AUTH_BACKUP: ${{ steps.remote-start.outputs.remote_auth_backup }}
+        run: |
+          set +e
+          if [[ -f /tmp/nixmac-e2e-tunnel.pid ]]; then
+            kill "$(cat /tmp/nixmac-e2e-tunnel.pid)" >/dev/null 2>&1 || true
+          fi
+          remote_backup_q=$(printf '%q' "${REMOTE_BACKUP:-}")
+          remote_config_q=$(printf '%q' "${REMOTE_CONFIG:-}")
+          remote_key_file_q=$(printf '%q' "${REMOTE_KEY_FILE:-}")
+          remote_auth_backup_q=$(printf '%q' "${REMOTE_AUTH_BACKUP:-}")
+          ssh -i ~/.ssh/nixmac-e2e "$SSH_DEST" "REMOTE_BACKUP=$remote_backup_q REMOTE_CONFIG=$remote_config_q REMOTE_KEY_FILE=$remote_key_file_q REMOTE_AUTH_BACKUP=$remote_auth_backup_q bash -s" <<'REMOTE'
+          set +e
+          cleanup_status=0
+          auth_requires_user() {
+            local plist_path="$1"
+            /usr/bin/plutil -extract authenticate-user raw -o - "$plist_path" 2>/dev/null || true
+          }
+          pkill -f 'nixmac-activate-temp|with administrator privileges|/nix/store/.*/activate|ln -s /etc/static/pam.d/sudo_local /etc/pam.d/sudo_local' >/dev/null 2>&1 || true
+          osascript -e 'tell application id "com.darkmatter.nixmac" to quit' >/dev/null 2>&1 || true
+          rm -f "$REMOTE_KEY_FILE"
+          SUPPORT="$HOME/Library/Application Support/com.darkmatter.nixmac"
+          STATE=""
+          if [[ -n "$REMOTE_BACKUP" && -f "${REMOTE_BACKUP}.state" ]]; then
+            STATE="$(cat "${REMOTE_BACKUP}.state")"
+          fi
+          GUI_UID="$(stat -f %u /dev/console 2>/dev/null || id -u)"
+          if ! sudo -n launchctl asuser "$GUI_UID" launchctl unsetenv OPENROUTER_API_KEY >/dev/null 2>&1; then
+            launchctl unsetenv OPENROUTER_API_KEY >/dev/null 2>&1 || true
+          fi
+          if [[ -n "$REMOTE_AUTH_BACKUP" && -f "$REMOTE_AUTH_BACKUP" ]]; then
+            if [[ "$(auth_requires_user "$REMOTE_AUTH_BACKUP")" != "true" ]]; then
+              echo "error: refusing to restore system.privilege.admin from an unexpected backup" >&2
+              cleanup_status=1
+            elif ! sudo -n security authorizationdb write system.privilege.admin < "$REMOTE_AUTH_BACKUP" >/tmp/nixmac-e2e-auth-restore.out 2>/tmp/nixmac-e2e-auth-restore.err; then
+              echo "error: failed to restore system.privilege.admin authorization policy" >&2
+              cleanup_status=1
+            fi
+          fi
+          current_auth="$(mktemp /tmp/nixmac-e2e-auth-current.XXXXXX)"
+          if sudo -n security authorizationdb read system.privilege.admin > "$current_auth" 2>/tmp/nixmac-e2e-auth-current.err; then
+            if [[ "$(auth_requires_user "$current_auth")" != "true" ]]; then
+              echo "error: system.privilege.admin did not return to authenticated baseline" >&2
+              cleanup_status=1
+            fi
+          else
+            echo "error: could not read system.privilege.admin after cleanup" >&2
+            cleanup_status=1
+          fi
+          rm -f "$current_auth"
+          if sudo -n launchctl asuser "$GUI_UID" launchctl getenv OPENROUTER_API_KEY >/tmp/nixmac-e2e-openrouter-env.out 2>/dev/null; then
+            if [[ -s /tmp/nixmac-e2e-openrouter-env.out ]]; then
+              echo "error: OPENROUTER_API_KEY still exists in GUI launchd environment after cleanup" >&2
+              cleanup_status=1
+            fi
+          elif launchctl getenv OPENROUTER_API_KEY >/tmp/nixmac-e2e-openrouter-env.out 2>/dev/null; then
+            if [[ -s /tmp/nixmac-e2e-openrouter-env.out ]]; then
+              echo "error: OPENROUTER_API_KEY still exists in launchd environment after cleanup" >&2
+              cleanup_status=1
+            fi
+          fi
+          rm -f /tmp/nixmac-e2e-openrouter-env.out
+          if [[ "$STATE" == "existed" && -d "$REMOTE_BACKUP" ]]; then
+            if ! rm -rf "$SUPPORT" || ! mkdir -p "$(dirname "$SUPPORT")" || ! cp -pR "$REMOTE_BACKUP" "$SUPPORT"; then
+              echo "error: failed to restore nixmac app-support backup" >&2
+              cleanup_status=1
+            fi
+          elif [[ "$STATE" == "absent" ]]; then
+            if ! rm -rf "$SUPPORT"; then
+              echo "error: failed to remove disposable nixmac app-support directory" >&2
+              cleanup_status=1
+            fi
+          fi
+          rm -rf "$REMOTE_BACKUP" "${REMOTE_BACKUP}.state" || cleanup_status=1
+          rm -rf "$REMOTE_CONFIG" || cleanup_status=1
+          rm -f "$REMOTE_AUTH_BACKUP" || cleanup_status=1
+          pkill -f 'codex app-server --listen ws://127.0.0.1:18790' >/dev/null 2>&1 || true
+          exit "$cleanup_status"
+          REMOTE
+          cleanup_status=$?
+          exit "$cleanup_status"
+
+      - name: Summarize evidence report
+        if: always()
+        shell: bash
+        run: |
+          latest_report="$(find artifacts/computer-use-remote -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort | tail -1 || true)"
+          {
+            echo "### nixmac Computer Use E2E"
+            if [[ -n "$latest_report" && -f "$latest_report/state.json" ]]; then
+              verdict="$(jq -r '.verdict // "unknown"' "$latest_report/state.json")"
+              pass="$(jq -r '[.scenarios[]? | select(.status == "pass")] | length' "$latest_report/state.json")"
+              fail="$(jq -r '[.scenarios[]? | select(.status == "fail")] | length' "$latest_report/state.json")"
+              inconclusive="$(jq -r '[.scenarios[]? | select(.status == "inconclusive")] | length' "$latest_report/state.json")"
+              echo "- Verdict: \`$verdict\`"
+              echo "- Counts: \`$pass pass / $fail fail / $inconclusive inconclusive\`"
+              echo "- Artifact path: \`$latest_report/index.html\`"
+            else
+              echo "- No report artifact was generated."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload evidence report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: computer-use-e2e-report
+          path: artifacts/computer-use-remote/
+          if-no-files-found: warn
+          retention-days: 14
