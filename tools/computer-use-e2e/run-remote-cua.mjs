@@ -279,7 +279,7 @@ const screenshotAnnotations = {
 
 function usage() {
   console.log(`Usage:
-  node tools/computer-use-e2e/run-remote-cua.mjs run [--prompt "..."]
+  node tools/computer-use-e2e/run-remote-cua.mjs run
   node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable --note "..."
   node tools/computer-use-e2e/run-remote-cua.mjs render-existing --run-dir artifacts/computer-use-remote/<timestamp>
   node tools/computer-use-e2e/run-remote-cua.mjs self-test
@@ -439,9 +439,24 @@ const clickToolFailurePatterns = [
   /\b(?:could not|unable to)\s+click\b/i,
 ];
 
+const setValueToolFailurePatterns = [
+  /^\s*(?:error|failed|failure):\s*(?:set|set_value|input|value|element|stale|invalid|no such|unable|could not|not found)/im,
+  /^\s*(?:set_value|set value|input|type)\s+(?:failed|could not|unable)/im,
+  /^\s*element(?:\s+index)?\s+\d+\s+(?:not found|not settable|is stale|stale|invalid)/im,
+  /\b(?:stale|invalid)\s+element(?:\s+index)?\b/i,
+  /\bno such element\b/i,
+  /\belement(?:\s+index)?\s+\d+\s+(?:not found|not settable)\b/i,
+  /\b(?:could not|unable to)\s+(?:set|type|enter)\b/i,
+];
+
 function clickResponseIndicatesFailure(response, responseText = contentText(response)) {
   if (response?.result?.isError === true) return true;
   return clickToolFailurePatterns.some((pattern) => pattern.test(responseText));
+}
+
+function setValueResponseIndicatesFailure(response, responseText = contentText(response)) {
+  if (response?.result?.isError === true) return true;
+  return setValueToolFailurePatterns.some((pattern) => pattern.test(responseText));
 }
 
 function verdictFor(state) {
@@ -1214,8 +1229,28 @@ async function setValueByPattern(client, state, text, label, patterns, value) {
     await addEvent(state, 'computer-use.set_value.skipped', { label, note: `No element found for ${label}` });
     return false;
   }
-  const response = await client.tool('set_value', { app: state.app, element_index: elementIndex, value }, 60000);
-  const responseText = redact(contentText(response));
+  let response;
+  try {
+    response = await client.tool('set_value', { app: state.app, element_index: elementIndex, value }, 60000);
+  } catch (error) {
+    await addEvent(state, 'computer-use.set_value.failed', {
+      label,
+      elementIndex,
+      error: redact(error instanceof Error ? error.message : String(error)).slice(0, 800),
+    });
+    return false;
+  }
+  const rawResponseText = contentText(response);
+  const responseText = redact(rawResponseText);
+  if (setValueResponseIndicatesFailure(response, rawResponseText)) {
+    await addEvent(state, 'computer-use.set_value.failed', {
+      label,
+      elementIndex,
+      response: responseText.slice(0, 800),
+      isError: response?.result?.isError === true,
+    });
+    return false;
+  }
   await addEvent(state, 'computer-use.set_value', { label, elementIndex, response: responseText.slice(0, 800) });
   return true;
 }
@@ -1714,10 +1749,13 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
 }
 
 async function runSuite(args) {
+  if (args.includes('--prompt') || process.env.NIXMAC_E2E_PROMPT) {
+    throw new Error('Custom prompts are not supported by this E2E runner; assertions are calibrated to the fixed bat/Homebrew prompt.');
+  }
   const options = {
     ws: process.env.NIXMAC_COMPUTER_USE_WS || DEFAULT_WS,
     app: process.env.NIXMAC_COMPUTER_USE_APP || DEFAULT_APP,
-    prompt: argValue(args, '--prompt', process.env.NIXMAC_E2E_PROMPT || DEFAULT_PROMPT),
+    prompt: DEFAULT_PROMPT,
   };
   const runDir = argValue(args, '--run-dir', path.join(ARTIFACT_ROOT, timestampSlug()));
   await mkdir(path.join(runDir, 'screenshots'), { recursive: true });
@@ -2154,7 +2192,7 @@ async function renderUnavailable(args) {
   const state = await baseState(runDir, {
     ws: process.env.NIXMAC_COMPUTER_USE_WS || DEFAULT_WS,
     app: process.env.NIXMAC_COMPUTER_USE_APP || DEFAULT_APP,
-    prompt: process.env.NIXMAC_E2E_PROMPT || DEFAULT_PROMPT,
+    prompt: DEFAULT_PROMPT,
   });
   addNarrative(state, note);
   for (const key of Object.keys(state.scenarios)) updateScenario(state, key, 'inconclusive', note);
@@ -2250,6 +2288,9 @@ function runSelfTest() {
   assert.equal(clickResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'App state includes button Report Error and Console Error logs.' }] } }), false, 'ordinary app-state Error text should not fail click');
   assert.equal(clickResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'Error: stale element index 7' }] } }), true, 'stale element sentinel should fail click');
   assert.equal(clickResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'Element index 7 not clickable' }] } }), true, 'not-clickable element sentinel should fail click');
+  assert.equal(setValueResponseIndicatesFailure({ result: { isError: true, content: [{ type: 'text', text: 'Tool returned an error.' }] } }), true, 'MCP isError should fail set_value');
+  assert.equal(setValueResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'App state includes Value: Add the bat command line tool.' }] } }), false, 'ordinary set_value app-state text should not fail input');
+  assert.equal(setValueResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'Error: set_value element index 18 not found' }] } }), true, 'set_value element sentinel should fail input');
   console.log('Computer Use E2E runner self-test passed.');
 }
 
