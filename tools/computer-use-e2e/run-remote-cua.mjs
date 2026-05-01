@@ -3433,8 +3433,8 @@ async function runSuite(args) {
     state.cleanup.note = 'Remote app state was not restored by this runner. CI wrapper is responsible for remote app-support backup/restore; local artifacts are retained.';
     await render(state);
     await inspectReportWithComputerUse(client, state);
-    updatePrSpecificCoverage(state);
     refreshVisualProofQuality(state);
+    updatePrSpecificCoverage(state);
     await render(state);
     await saveState(state);
     console.log(path.join(state.runDir, 'index.html'));
