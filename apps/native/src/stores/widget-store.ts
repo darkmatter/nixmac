@@ -26,7 +26,7 @@ export type {
  * Widget step state - updated by useEffect based on app state.
  */
 export type SettingsTab = "general" | "api-keys" | "ai-models" | "preferences";
-export type WidgetStep = "permissions" | "nix-setup" | "setup" | "begin" | "evolve" | "commit" | "manualEvolve" | "manualCommit" | "history";
+export type WidgetStep = "permissions" | "nix-setup" | "setup" | "begin" | "evolve" | "commit" | "manualEvolve" | "manualCommit" | "history" | "filesystem";
 export type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
 export type ConfirmPrefKey = "confirmBuild" | "confirmClear" | "confirmRollback";
 export type BoolPrefKey = ConfirmPrefKey | "autoSummarizeOnFocus";
@@ -120,6 +120,7 @@ export interface WidgetState {
   settingsOpen: boolean;
   settingsActiveTab: SettingsTab | null;
   showHistory: boolean;
+  showFilesystem: boolean;
   feedbackOpen: boolean;
   feedbackTypeOverride: FeedbackType | null;
   feedbackInitialText: string | null;
@@ -171,6 +172,7 @@ export interface WidgetActions {
   setChangeMap: (map: SemanticChangeMap | null) => void;
   setSettingsOpen: (open: boolean, tab?: SettingsTab | null) => void;
   setShowHistory: (show: boolean) => void;
+  setShowFilesystem: (show: boolean) => void;
   setFeedbackOpen: (open: boolean) => void;
   setError: (error: string | null) => void;
   setPanicDetails: (
@@ -298,6 +300,7 @@ export const initialWidgetState: WidgetState = {
   settingsOpen: false,
   settingsActiveTab: null,
   showHistory: false,
+  showFilesystem: false,
   feedbackOpen: false,
   feedbackTypeOverride: null,
   feedbackInitialText: null,
@@ -374,6 +377,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setSettingsOpen: (settingsOpen, tab) =>
       set({ settingsOpen, settingsActiveTab: tab ?? null }),
     setShowHistory: (showHistory) => set({ showHistory }),
+    setShowFilesystem: (showFilesystem) => set({ showFilesystem }),
     setFeedbackOpen: (feedbackOpen) => set({ feedbackOpen }),
     setFeedbackTypeOverride: (feedbackTypeOverride) => set({ feedbackTypeOverride }),
     openFeedback: (type, initialText) =>

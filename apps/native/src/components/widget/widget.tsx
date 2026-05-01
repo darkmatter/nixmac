@@ -15,6 +15,7 @@ import {
     BeginStep,
     CommitStep,
     EvolveStep,
+    FilesystemStep,
     HistoryStep,
     ManualCommitStep,
     ManualEvolveStep,
@@ -78,14 +79,25 @@ export function DarwinWidget() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
-      const { settingsOpen, showHistory, isProcessing, isGenerating, setSettingsOpen, setShowHistory } =
-        useWidgetStore.getState();
+      const {
+        settingsOpen,
+        showHistory,
+        showFilesystem,
+        isProcessing,
+        isGenerating,
+        setSettingsOpen,
+        setShowHistory,
+        setShowFilesystem,
+      } = useWidgetStore.getState();
       if (settingsOpen) {
         e.preventDefault();
         setSettingsOpen(false);
       } else if (showHistory && !(isProcessing || isGenerating)) {
         e.preventDefault();
         setShowHistory(false);
+      } else if (showFilesystem && !(isProcessing || isGenerating)) {
+        e.preventDefault();
+        setShowFilesystem(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -144,8 +156,15 @@ export function DarwinWidget() {
 
       case "history":
         return <HistoryStep />;
+
+      case "filesystem":
+        return <FilesystemStep />;
     }
   };
+
+  // Filesystem renders edge-to-edge with its own internal scrollers, so it skips
+  // the StepContentWrapper's padding & overflow handling.
+  const isEdgeToEdgeStep = step === "filesystem";
 
   return (
     <div className="flex h-full w-full flex-col bg-background/90 backdrop-blur-xl">
@@ -153,11 +172,18 @@ export function DarwinWidget() {
       <Stepper />
       <UpdateBanner />
 
-      <StepContentWrapper>
-        <ErrorMessage />
-        {getActiveStepComponent()}
-        <ReportIssueButton />
-      </StepContentWrapper>
+      {isEdgeToEdgeStep ? (
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <ErrorMessage />
+          {getActiveStepComponent()}
+        </div>
+      ) : (
+        <StepContentWrapper>
+          <ErrorMessage />
+          {getActiveStepComponent()}
+          <ReportIssueButton />
+        </StepContentWrapper>
+      )}
 
       <EvolveOverlayPanel />
       <RebuildOverlayPanel />

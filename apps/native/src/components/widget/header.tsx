@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Clock, Settings, MessageSquarePlus } from "lucide-react";
+import { Clock, FolderTree, Settings, MessageSquarePlus } from "lucide-react";
 import { APP_NAME } from "../../../shared/constants";
 import { useWidgetStore } from "@/stores/widget-store";
 import { computeCurrentStep } from "@/components/widget/utils";
@@ -11,6 +11,8 @@ export function Header() {
   const setFeedbackOpen = useWidgetStore((s) => s.setFeedbackOpen);
   const showHistory = useWidgetStore((s) => s.showHistory);
   const setShowHistory = useWidgetStore((s) => s.setShowHistory);
+  const showFilesystem = useWidgetStore((s) => s.showFilesystem);
+  const setShowFilesystem = useWidgetStore((s) => s.setShowFilesystem);
   const isProcessing = useWidgetStore((s) => s.isProcessing);
   const isGenerating = useWidgetStore((s) => s.isGenerating);
   const [isPulsing, setIsPulsing] = useState(false);
@@ -40,13 +42,33 @@ export function Header() {
         <Button
           className={cn(
             "h-6 w-6 p-0 mr-[2px]",
+            showFilesystem && "border border-teal-500/50 text-teal-400 hover:text-teal-300 hover:border-teal-500/70",
+          )}
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            if (isProcessing || isGenerating) return;
+            const next = !showFilesystem;
+            setShowFilesystem(next);
+            if (next && showHistory) setShowHistory(false);
+          }}
+          aria-label="Filesystem"
+          title="Filesystem"
+        >
+          <FolderTree className="h-4 w-4" />
+        </Button>
+        <Button
+          className={cn(
+            "h-6 w-6 p-0 mr-[2px]",
             showHistory && "border border-teal-500/50 text-teal-400 hover:text-teal-300 hover:border-teal-500/70",
           )}
           size="sm"
           variant="ghost"
           onClick={() => {
             if (isProcessing || isGenerating) return;
-            setShowHistory(!showHistory);
+            const next = !showHistory;
+            setShowHistory(next);
+            if (next && showFilesystem) setShowFilesystem(false);
           }}
           aria-label="History"
           title="History"

@@ -29,6 +29,10 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
     return "history";
   }
 
+  if (state.showFilesystem) {
+    return "filesystem";
+  }
+
   // Backend is the source of truth for evolve routing
   return state.evolveState?.step ?? "begin";
 }
