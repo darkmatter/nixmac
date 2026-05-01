@@ -549,7 +549,6 @@ jobs:
             echo "index_url=${html_preview_base}/${publish_path}/index.html"
             echo "latest_index_url=${html_preview_base}/${latest_path}/index.html"
             echo "video_url=${cdn_base}/${publish_path}/video/computer-use-evidence.mp4"
-            echo "latest_video_url=${cdn_base}/${latest_path}/video/computer-use-evidence.mp4"
           } >> "$GITHUB_OUTPUT"
 
       - name: Summarize evidence report
@@ -591,9 +590,7 @@ jobs:
           INDEX_URL: ${{ steps.report-meta.outputs.index_url }}
           LATEST_INDEX_URL: ${{ steps.report-meta.outputs.latest_index_url }}
           VIDEO_URL: ${{ steps.report-meta.outputs.video_url }}
-          LATEST_VIDEO_URL: ${{ steps.report-meta.outputs.latest_video_url }}
           RUN_ASSET_BASE_URL: https://cdn.jsdelivr.net/gh/${{ github.repository }}@gh-pages/${{ steps.report-meta.outputs.publish_path }}/
-          LATEST_ASSET_BASE_URL: https://cdn.jsdelivr.net/gh/${{ github.repository }}@gh-pages/${{ steps.report-meta.outputs.latest_path }}/
         run: |
           set -euo pipefail
           site_dir="$(mktemp -d)"
@@ -612,7 +609,7 @@ jobs:
           cp -a "$REPORT_DIR"/. "$site_dir/${PUBLISH_PATH:?}"/
           cp -a "$REPORT_DIR"/. "$site_dir/${LATEST_PATH:?}"/
           RUN_ASSET_BASE_URL="$RUN_ASSET_BASE_URL" perl -0pi -e 's#<head>#<head>\n<base href="$ENV{RUN_ASSET_BASE_URL}">#' "$site_dir/${PUBLISH_PATH:?}/index.html"
-          LATEST_ASSET_BASE_URL="$LATEST_ASSET_BASE_URL" perl -0pi -e 's#<head>#<head>\n<base href="$ENV{LATEST_ASSET_BASE_URL}">#' "$site_dir/${LATEST_PATH:?}/index.html"
+          RUN_ASSET_BASE_URL="$RUN_ASSET_BASE_URL" perl -0pi -e 's#<head>#<head>\n<base href="$ENV{RUN_ASSET_BASE_URL}">#' "$site_dir/${LATEST_PATH:?}/index.html"
           touch "$site_dir/.nojekyll"
           git -C "$site_dir" add .nojekyll "$PUBLISH_PATH" "$LATEST_PATH"
           if git -C "$site_dir" diff --cached --quiet; then
@@ -625,7 +622,6 @@ jobs:
             echo "index_url=$INDEX_URL"
             echo "latest_index_url=$LATEST_INDEX_URL"
             echo "video_url=$VIDEO_URL"
-            echo "latest_video_url=$LATEST_VIDEO_URL"
           } >> "$GITHUB_OUTPUT"
 
       - name: Comment evidence report on pull request
@@ -641,7 +637,6 @@ jobs:
           INDEX_URL: ${{ steps.publish-report.outputs.index_url }}
           LATEST_INDEX_URL: ${{ steps.publish-report.outputs.latest_index_url }}
           VIDEO_URL: ${{ steps.publish-report.outputs.video_url }}
-          LATEST_VIDEO_URL: ${{ steps.publish-report.outputs.latest_video_url }}
           ARTIFACT_URL: ${{ steps.upload-report.outputs.artifact-url }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
@@ -657,7 +652,6 @@ jobs:
           - Hosted HTML report: $INDEX_URL
           - Hosted evidence video: $VIDEO_URL
           - Latest report alias: $LATEST_INDEX_URL
-          - Latest video alias: $LATEST_VIDEO_URL
           - Actions run: $RUN_URL
           - Artifact backup: $ARTIFACT_URL
 
