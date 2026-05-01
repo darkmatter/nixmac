@@ -149,14 +149,16 @@ jobs:
                 -f head_sha="$BUILD_ARTIFACT_SHA" \
                 -f per_page=100
             )"
-            build_run_id="$(jq -r '.workflow_runs | sort_by(.created_at) | reverse | .[0].id // ""' <<<"$run_json")"
-            build_status="$(jq -r '.workflow_runs | sort_by(.created_at) | reverse | .[0].status // ""' <<<"$run_json")"
-            build_conclusion="$(jq -r '.workflow_runs | sort_by(.created_at) | reverse | .[0].conclusion // ""' <<<"$run_json")"
-            if [[ -n "$build_run_id" && "$build_status" == "completed" && "$build_conclusion" == "success" ]]; then
+            build_run_id="$(jq -r '.workflow_runs | sort_by(.created_at) | reverse | map(select(.status == "completed" and .conclusion == "success")) | .[0].id // ""' <<<"$run_json")"
+            build_conclusion="success"
+            if [[ -n "$build_run_id" ]]; then
               break
             fi
-            if [[ -n "$build_run_id" && "$build_status" == "completed" && "$build_conclusion" != "success" ]]; then
-              echo "Build macOS App run $build_run_id completed with conclusion $build_conclusion"
+            active_count="$(jq -r '[.workflow_runs[] | select(.status != "completed")] | length' <<<"$run_json")"
+            completed_count="$(jq -r '[.workflow_runs[] | select(.status == "completed")] | length' <<<"$run_json")"
+            latest_build="$(jq -r '.workflow_runs | sort_by(.created_at) | reverse | .[0] | if . then "\(.id) \(.status) \(.conclusion // "")" else "" end' <<<"$run_json")"
+            if [[ "$active_count" == "0" && "$completed_count" != "0" ]]; then
+              echo "No successful Build macOS App run found for $BUILD_ARTIFACT_SHA. Latest run: ${latest_build:-none}"
               exit 1
             fi
             sleep 30
