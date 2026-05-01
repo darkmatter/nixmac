@@ -288,6 +288,17 @@ jobs:
           NIXMAC_E2E_ALLOW_DISCARD_CONFIRM: "true"
         run: node tools/computer-use-e2e/run-remote-cua.mjs run
 
+      - name: Render setup failure report
+        if: failure() && steps.remote-secrets.outputs.available == 'true'
+        shell: bash
+        run: |
+          if compgen -G "${REPORT_ROOT}/*/state.json" >/dev/null; then
+            echo "Computer Use E2E already produced a report; preserving it."
+            exit 0
+          fi
+          node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable \
+            --note "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+
       - name: Restore remote app support
         if: always() && steps.remote-secrets.outputs.available == 'true'
         shell: bash
@@ -301,6 +312,10 @@ jobs:
           set +e
           if [[ -f /tmp/nixmac-e2e-tunnel.pid ]]; then
             kill "$(cat /tmp/nixmac-e2e-tunnel.pid)" >/dev/null 2>&1 || true
+          fi
+          if [[ -z "${REMOTE_BACKUP:-}" ]]; then
+            echo "remote-start outputs are unset; skipping remote cleanup."
+            exit 0
           fi
           remote_backup_q=$(printf '%q' "${REMOTE_BACKUP:-}")
           remote_config_q=$(printf '%q' "${REMOTE_CONFIG:-}")
