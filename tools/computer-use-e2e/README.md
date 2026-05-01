@@ -148,8 +148,7 @@ node tools/computer-use-e2e/check-remote.mjs \
   --key ~/.ssh/nixmac_e2e_ci \
   --known-hosts ~/.ssh/known_hosts \
   --expected-local-hostname DXU97120 \
-  --check-codex-binary \
-  --check-app-path /Applications/nixmac.app
+  --check-codex-binary
 ```
 
 During the remote lane, the workflow also backs up the DXU macOS
@@ -173,6 +172,11 @@ The OpenRouter key is copied to a per-run remote `/tmp` file only long enough
 to seed the GUI launchd environment. Start and cleanup both remove that file,
 and cleanup fails the check if `OPENROUTER_API_KEY` remains in launchd after the
 run. The report never prints the key value.
+
+The PR-built macOS app artifact is also staged under a per-run `/tmp`
+directory and launched from that exact staged `.app` bundle. The workflow
+removes the staged bundle in cleanup and intentionally does not repair or
+replace the persistent `/Applications/nixmac.app` installation on DXU.
 
 If any required remote secret is missing, including the OpenRouter provider
 key, the workflow still triggers and uploads an inconclusive HTML report

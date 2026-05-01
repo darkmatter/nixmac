@@ -1017,6 +1017,7 @@ async function baseState(runDir, options) {
     process.env.NIXMAC_E2E_MACOS_VERSION ||
     tryRun('sw_vers', ['-productVersion']).stdout ||
     'unknown';
+  const remoteAppPath = process.env.NIXMAC_E2E_REMOTE_APP_PATH || '/Applications/nixmac.app';
   const scenarios = Object.fromEntries(
     Object.entries(scenarioLabels).map(([key, label]) => [
       key,
@@ -1032,7 +1033,7 @@ async function baseState(runDir, options) {
     branch,
     sha,
     macosVersion,
-    appCommand: process.env.NIXMAC_E2E_APP_COMMAND || 'open /Applications/nixmac.app',
+    appCommand: process.env.NIXMAC_E2E_APP_COMMAND || `open -n ${remoteAppPath}`,
     provider: {
       kind: 'real-openrouter-compatible-provider',
       note: 'The key value is never written to this report. Failures may reflect provider billing/auth state.',
@@ -1298,8 +1299,9 @@ async function maybeRelaunchRemote(state) {
   }
   const dest = process.env.NIXMAC_E2E_REMOTE_SSH_DEST;
   if (!dest) return;
+  const remoteAppPath = process.env.NIXMAC_E2E_REMOTE_APP_PATH || '/Applications/nixmac.app';
   const result = ssh(
-    "osascript -e 'tell application id \"com.darkmatter.nixmac\" to quit' >/dev/null 2>&1 || true; sleep 1; open /Applications/nixmac.app || true; sleep 5",
+    `osascript -e 'tell application id "com.darkmatter.nixmac" to quit' >/dev/null 2>&1 || true; sleep 1; open -n ${shellQuote(remoteAppPath)} || true; sleep 5`,
   );
   await addEvent(state, 'remote.relaunch', {
     ok: result.ok,

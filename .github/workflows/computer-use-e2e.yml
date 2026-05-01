@@ -26,7 +26,6 @@ jobs:
       REMOTE_KNOWN_HOSTS: ${{ secrets.NIXMAC_E2E_REMOTE_KNOWN_HOSTS }}
       OPENROUTER_API_KEY: ${{ secrets.NIXMAC_E2E_OPENROUTER_API_KEY }}
       REMOTE_EXPECTED_LOCAL_HOSTNAME: ${{ vars.NIXMAC_E2E_REMOTE_LOCAL_HOSTNAME }}
-      REMOTE_APP_PATH: /Applications/nixmac.app
       REPORT_ROOT: artifacts/computer-use-remote
     steps:
       - name: Checkout repository
@@ -130,8 +129,7 @@ jobs:
             --key ~/.ssh/nixmac-e2e \
             --known-hosts ~/.ssh/known_hosts \
             --expected-local-hostname "${REMOTE_EXPECTED_LOCAL_HOSTNAME:-DXU97120}" \
-            --check-codex-binary \
-            --check-app-path "$REMOTE_APP_PATH"
+            --check-codex-binary
 
       - name: Download PR-built app artifact
         if: steps.remote-secrets.outputs.available == 'true'
@@ -194,21 +192,23 @@ jobs:
           REMOTE_CONFIG="/tmp/nixmac-computer-use-e2e-config-${RUN_ID_SAFE}"
           REMOTE_KEY_FILE="/tmp/nixmac-openrouter-key-${RUN_ID_SAFE}"
           REMOTE_AUTH_BACKUP="/tmp/nixmac-computer-use-e2e-auth-system-privilege-admin-${RUN_ID_SAFE}.plist"
-          REMOTE_APP_BACKUP="/tmp/nixmac-computer-use-e2e-app-backup-${RUN_ID_SAFE}.app"
+          REMOTE_APP_STAGE="/tmp/nixmac-computer-use-e2e-app-${RUN_ID_SAFE}"
+          REMOTE_APP_PATH="${REMOTE_APP_STAGE}/nixmac.app"
           REMOTE_APP_TAR="/tmp/nixmac-computer-use-e2e-app-${RUN_ID_SAFE}.tar.gz"
           {
             echo "remote_backup=$REMOTE_BACKUP"
             echo "remote_config=$REMOTE_CONFIG"
             echo "remote_key_file=$REMOTE_KEY_FILE"
             echo "remote_auth_backup=$REMOTE_AUTH_BACKUP"
-            echo "remote_app_backup=$REMOTE_APP_BACKUP"
+            echo "remote_app_stage=$REMOTE_APP_STAGE"
+            echo "remote_app_path=$REMOTE_APP_PATH"
             echo "remote_app_tar=$REMOTE_APP_TAR"
           } >> "$GITHUB_OUTPUT"
           remote_backup_q=$(printf '%q' "$REMOTE_BACKUP")
           remote_config_q=$(printf '%q' "$REMOTE_CONFIG")
           remote_key_file_q=$(printf '%q' "$REMOTE_KEY_FILE")
           remote_auth_backup_q=$(printf '%q' "$REMOTE_AUTH_BACKUP")
-          remote_app_backup_q=$(printf '%q' "$REMOTE_APP_BACKUP")
+          remote_app_stage_q=$(printf '%q' "$REMOTE_APP_STAGE")
           remote_app_tar_q=$(printf '%q' "$REMOTE_APP_TAR")
           app_path_q=$(printf '%q' "$REMOTE_APP_PATH")
           ssh_common=(-i ~/.ssh/nixmac-e2e -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts)
@@ -248,7 +248,7 @@ jobs:
           rm -f "${{ steps.pr-app.outputs.app_tar }}"
 
           # shellcheck disable=SC2029
-          ssh "${ssh_common[@]}" "$SSH_DEST" "REMOTE_BACKUP=$remote_backup_q REMOTE_CONFIG=$remote_config_q REMOTE_KEY_FILE=$remote_key_file_q REMOTE_AUTH_BACKUP=$remote_auth_backup_q REMOTE_APP_BACKUP=$remote_app_backup_q REMOTE_APP_TAR=$remote_app_tar_q REMOTE_APP_PATH=$app_path_q REMOTE_HOSTNAME=$(printf '%q' "$REMOTE_HOSTNAME") bash -s" <<'REMOTE'
+          ssh "${ssh_common[@]}" "$SSH_DEST" "REMOTE_BACKUP=$remote_backup_q REMOTE_CONFIG=$remote_config_q REMOTE_KEY_FILE=$remote_key_file_q REMOTE_AUTH_BACKUP=$remote_auth_backup_q REMOTE_APP_STAGE=$remote_app_stage_q REMOTE_APP_TAR=$remote_app_tar_q REMOTE_APP_PATH=$app_path_q REMOTE_HOSTNAME=$(printf '%q' "$REMOTE_HOSTNAME") bash -s" <<'REMOTE'
           set -euo pipefail
           cleanup_key_file() {
             if [[ -n "${REMOTE_KEY_FILE:-}" ]]; then
@@ -265,29 +265,23 @@ jobs:
           osascript -e 'tell application id "com.darkmatter.nixmac" to quit' >/dev/null 2>&1 || true
           pkill -x nixmac >/dev/null 2>&1 || true
           sleep 2
-          if [[ -d "$REMOTE_APP_PATH" ]]; then
-            sudo -n rm -rf "$REMOTE_APP_BACKUP"
-            sudo -n cp -pR "$REMOTE_APP_PATH" "$REMOTE_APP_BACKUP"
-            printf 'existed\n' > "${REMOTE_APP_BACKUP}.state"
-          else
-            printf 'absent\n' > "${REMOTE_APP_BACKUP}.state"
-          fi
-          app_stage="$(mktemp -d /tmp/nixmac-computer-use-e2e-app-stage.XXXXXX)"
-          tar -xzf "$REMOTE_APP_TAR" -C "$app_stage"
-          staged_app="$(find "$app_stage" -maxdepth 1 -name "*.app" -type d | head -1)"
+          rm -rf "$REMOTE_APP_STAGE"
+          mkdir -p "$REMOTE_APP_STAGE"
+          tar -xzf "$REMOTE_APP_TAR" -C "$REMOTE_APP_STAGE"
+          staged_app="$(find "$REMOTE_APP_STAGE" -maxdepth 1 -name "*.app" -type d | head -1)"
           if [[ -z "$staged_app" ]]; then
             echo "error: PR-built app artifact did not contain a top-level .app bundle" >&2
             exit 1
           fi
-          sudo -n rm -rf "$REMOTE_APP_PATH"
-          sudo -n ditto "$staged_app" "$REMOTE_APP_PATH"
-          sudo -n chown -R root:admin "$REMOTE_APP_PATH"
-          sudo -n xattr -dr com.apple.quarantine "$REMOTE_APP_PATH" >/dev/null 2>&1 || true
-          rm -rf "$app_stage" "$REMOTE_APP_TAR"
+          if [[ "$staged_app" != "$REMOTE_APP_PATH" ]]; then
+            mv "$staged_app" "$REMOTE_APP_PATH"
+          fi
+          xattr -dr com.apple.quarantine "$REMOTE_APP_PATH" >/dev/null 2>&1 || true
+          rm -f "$REMOTE_APP_TAR"
           # This is the load-bearing transport check: GitHub artifact download
           # and Linux-to-macOS copy must preserve a runnable sealed app bundle.
           if ! codesign --verify --deep --strict --verbose=2 "$REMOTE_APP_PATH"; then
-            echo "error: PR-built bundle failed codesign verification; cleanup will restore the previous remote app bundle" >&2
+            echo "error: PR-built bundle failed codesign verification; cleanup will remove the staged app bundle" >&2
             exit 1
           fi
           mkdir -p "$(dirname "$REMOTE_BACKUP")"
@@ -343,7 +337,7 @@ jobs:
           fi
           nohup /Applications/Codex.app/Contents/Resources/codex app-server --listen ws://127.0.0.1:18790 >/tmp/nixmac-codex-app-server.log 2>&1 &
           sleep 2
-          if ! open "$REMOTE_APP_PATH"; then
+          if ! open -n "$REMOTE_APP_PATH"; then
             echo "warning: open returned non-zero while launching $REMOTE_APP_PATH; continuing so Computer Use can inspect app state" >&2
           fi
           sleep 4
@@ -384,7 +378,8 @@ jobs:
           NIXMAC_E2E_REMOTE_SSH_DEST: ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}
           NIXMAC_E2E_SSH_KEY: /home/runner/.ssh/nixmac-e2e
           NIXMAC_E2E_SSH_KNOWN_HOSTS: /home/runner/.ssh/known_hosts
-          NIXMAC_E2E_APP_COMMAND: open /Applications/nixmac.app
+          NIXMAC_E2E_APP_COMMAND: open -n ${{ steps.remote-start.outputs.remote_app_path }}
+          NIXMAC_E2E_REMOTE_APP_PATH: ${{ steps.remote-start.outputs.remote_app_path }}
           NIXMAC_E2E_REMOTE_CONFIG_DIR: ${{ steps.remote-start.outputs.remote_config }}/config
           NIXMAC_E2E_DISPOSABLE_CONFIG: "true"
           NIXMAC_E2E_ALLOW_BUILD_CONFIRM: "true"
@@ -411,7 +406,7 @@ jobs:
           REMOTE_CONFIG: ${{ steps.remote-start.outputs.remote_config }}
           REMOTE_KEY_FILE: ${{ steps.remote-start.outputs.remote_key_file }}
           REMOTE_AUTH_BACKUP: ${{ steps.remote-start.outputs.remote_auth_backup }}
-          REMOTE_APP_BACKUP: ${{ steps.remote-start.outputs.remote_app_backup }}
+          REMOTE_APP_STAGE: ${{ steps.remote-start.outputs.remote_app_stage }}
         run: |
           set +e
           if [[ -f /tmp/nixmac-e2e-tunnel.pid ]]; then
@@ -425,14 +420,13 @@ jobs:
           remote_config_q=$(printf '%q' "${REMOTE_CONFIG:-}")
           remote_key_file_q=$(printf '%q' "${REMOTE_KEY_FILE:-}")
           remote_auth_backup_q=$(printf '%q' "${REMOTE_AUTH_BACKUP:-}")
-          remote_app_backup_q=$(printf '%q' "${REMOTE_APP_BACKUP:-}")
-          app_path_q=$(printf '%q' "$REMOTE_APP_PATH")
+          remote_app_stage_q=$(printf '%q' "${REMOTE_APP_STAGE:-}")
           ssh -i ~/.ssh/nixmac-e2e \
             -o BatchMode=yes \
             -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile=~/.ssh/known_hosts \
             "$SSH_DEST" \
-            "REMOTE_BACKUP=$remote_backup_q REMOTE_CONFIG=$remote_config_q REMOTE_KEY_FILE=$remote_key_file_q REMOTE_AUTH_BACKUP=$remote_auth_backup_q REMOTE_APP_BACKUP=$remote_app_backup_q REMOTE_APP_PATH=$app_path_q bash -s" <<'REMOTE'
+            "REMOTE_BACKUP=$remote_backup_q REMOTE_CONFIG=$remote_config_q REMOTE_KEY_FILE=$remote_key_file_q REMOTE_AUTH_BACKUP=$remote_auth_backup_q REMOTE_APP_STAGE=$remote_app_stage_q bash -s" <<'REMOTE'
           set +e
           cleanup_status=0
           auth_requires_user() {
@@ -443,24 +437,7 @@ jobs:
           osascript -e 'tell application id "com.darkmatter.nixmac" to quit' >/dev/null 2>&1 || true
           pkill -x nixmac >/dev/null 2>&1 || true
           rm -f "$REMOTE_KEY_FILE"
-          if [[ -n "$REMOTE_APP_BACKUP" ]]; then
-            APP_STATE=""
-            if [[ -f "${REMOTE_APP_BACKUP}.state" ]]; then
-              APP_STATE="$(cat "${REMOTE_APP_BACKUP}.state")"
-            fi
-            if [[ "$APP_STATE" == "existed" && -d "$REMOTE_APP_BACKUP" ]]; then
-              if ! sudo -n rm -rf "$REMOTE_APP_PATH" || ! sudo -n cp -pR "$REMOTE_APP_BACKUP" "$REMOTE_APP_PATH"; then
-                echo "error: failed to restore nixmac app bundle backup" >&2
-                cleanup_status=1
-              fi
-            elif [[ "$APP_STATE" == "absent" ]]; then
-              if ! sudo -n rm -rf "$REMOTE_APP_PATH"; then
-                echo "error: failed to remove temporary nixmac app bundle" >&2
-                cleanup_status=1
-              fi
-            fi
-            sudo -n rm -rf "$REMOTE_APP_BACKUP" "${REMOTE_APP_BACKUP}.state" || cleanup_status=1
-          fi
+          rm -rf "$REMOTE_APP_STAGE" || cleanup_status=1
           SUPPORT="$HOME/Library/Application Support/com.darkmatter.nixmac"
           STATE=""
           if [[ -n "$REMOTE_BACKUP" && -f "${REMOTE_BACKUP}.state" ]]; then
