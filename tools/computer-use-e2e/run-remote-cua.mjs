@@ -285,10 +285,10 @@ const scenarioProofCatalog = {
 
 const screenshotAnnotations = {
   launch: [
-    { label: 'Workflow stepper', x: 13, y: 15, w: 74, h: 10 },
-    { label: 'Save step', x: 72, y: 20, tone: 'pin' },
-    { label: 'Prompt input', x: 12, y: 45, w: 76, h: 12 },
-    { label: 'Disabled send', x: 89, y: 51, tone: 'pin' },
+    { label: 'Step 1 active', x: 13, y: 18, tone: 'pin' },
+    { label: 'Save step inactive', x: 72, y: 18, tone: 'pin' },
+    { label: 'Prompt field', x: 8, y: 39, w: 84, h: 14 },
+    { label: 'Send disabled', x: 88, y: 46, tone: 'pin' },
   ],
   'settings-general': [{ label: 'Settings content', x: 50, y: 36, tone: 'pin' }],
   'settings-ai-models': [{ label: 'Provider/model controls', x: 50, y: 43, tone: 'pin' }],
@@ -296,7 +296,7 @@ const screenshotAnnotations = {
   history: [{ label: 'History surface', x: 50, y: 40, tone: 'pin' }],
   feedback: [{ label: 'Feedback dialog', x: 50, y: 42, tone: 'pin' }],
   'report-issue': [{ label: 'Report Issue dialog', x: 50, y: 42, tone: 'pin' }],
-  'typed-intent': [{ label: 'Typed prompt', x: 50, y: 52, w: 68, h: 12 }],
+  'typed-intent': [{ label: 'Typed prompt', x: 8, y: 39, w: 84, h: 14 }],
   'review-summary': [{ label: 'Summary after Review', x: 50, y: 38, tone: 'pin' }],
   'review-diff': [{ label: 'Diff includes requested change', x: 50, y: 45, tone: 'pin' }],
   'build-boundary': [{ label: 'Confirm button', x: 57, y: 50, tone: 'pin' }],
@@ -806,9 +806,10 @@ function proofForScenario(state, key) {
 
 function artifactLinks(state, key) {
   const proof = proofForScenario(state, key);
-  return [...proof.screenshotArtifacts, ...proof.textArtifacts]
+  const links = [...proof.screenshotArtifacts, ...proof.textArtifacts]
     .map((artifact) => `<code>${escapeHtml(artifact.path)}</code>`)
-    .join('<br>') || 'No primary artifact linked.';
+    .join('<br>');
+  return links ? `<div class="artifact-list">${links}</div>` : 'No primary artifact linked.';
 }
 
 async function readTextExcerpt(state, artifact, maxLines = 10) {
@@ -1019,7 +1020,7 @@ function scenarioRows(state, items) {
   return items
     .map((item) => {
       const proof = proofForScenario(state, item.key);
-      return `<tr><td>${escapeHtml(item.label)}<br><small>${item.notes.map(escapeHtml).join('<br>') || 'No notes recorded.'}</small></td><td class="status-cell"><span class="verdict ${item.status}">${escapeHtml(item.status)}</span></td><td class="grade-cell"><span class="grade">${escapeHtml(proof.grade)}</span></td><td>${artifactLinks(state, item.key)}</td><td>${escapeHtml(proof.proof)}</td></tr>`;
+      return `<tr><td class="scenario-cell">${escapeHtml(item.label)}<br><small>${item.notes.map(escapeHtml).join('<br>') || 'No notes recorded.'}</small></td><td class="status-cell"><span class="verdict ${item.status}">${escapeHtml(item.status)}</span></td><td class="grade-cell"><span class="grade">${escapeHtml(proof.grade)}</span></td><td class="artifact-cell">${artifactLinks(state, item.key)}</td><td class="proof-cell">${escapeHtml(proof.proof)}</td></tr>`;
     })
     .join('\n');
 }
@@ -1034,10 +1035,10 @@ function renderPriorityTriage(state) {
   const failed = scenariosWithStatus(state, 'fail');
   const inconclusive = scenariosWithStatus(state, 'inconclusive');
   const passed = scenariosWithStatus(state, 'pass');
-  const table = (items) => `<table class="scenario-table">
-    <thead><tr><th>Scenario</th><th>Status</th><th>Evidence Grade</th><th>Primary Artifacts</th><th>What Proved It / Why It Matters</th></tr></thead>
+  const table = (items) => `<div class="table-scroll"><table class="scenario-table">
+    <thead><tr><th class="scenario-col">Scenario</th><th class="status-col">Status</th><th class="grade-col">Evidence Grade</th><th class="artifacts-col">Primary Artifacts</th><th class="proof-col">What Proved It / Why It Matters</th></tr></thead>
     <tbody>${scenarioRows(state, items)}</tbody>
-  </table>`;
+  </table></div>`;
   return `<section class="priority">
     <h3>Failures</h3>
     ${table(failed)}
@@ -1058,14 +1059,14 @@ function renderPrPriority(state) {
     .filter((key) => state.scenarios[key])
     .map((key) => ({ key, ...state.scenarios[key] }))
     .sort((a, b) => statusRank(a.status) - statusRank(b.status));
-  return `<h2>Pull Request Focus</h2>
+  return `<h2 id="pull-request-focus">Pull Request Focus</h2>
   ${renderPrFocus(state)}
   <section class="panel">
     <h3>PR-Relevant Evidence</h3>
-    <table class="scenario-table">
-      <thead><tr><th>Scenario</th><th>Status</th><th>Evidence Grade</th><th>Primary Artifacts</th><th>What Proved It</th></tr></thead>
+    <div class="table-scroll"><table class="scenario-table">
+      <thead><tr><th class="scenario-col">Scenario</th><th class="status-col">Status</th><th class="grade-col">Evidence Grade</th><th class="artifacts-col">Primary Artifacts</th><th class="proof-col">What Proved It</th></tr></thead>
       <tbody>${scenarioRows(state, evidenceRows)}</tbody>
-    </table>
+    </table></div>
   </section>`;
 }
 
@@ -1078,7 +1079,7 @@ function renderCoverageFreshness(state) {
   const waiverRows = coverage.waivers?.length
     ? coverage.waivers.map((item) => `<tr><td>${escapeHtml(item.id)}</td><td>${escapeHtml(item.label)}</td><td>${escapeHtml(item.reason)}</td></tr>`).join('\n')
     : '<tr><td colspan="3">No waivers recorded.</td></tr>';
-  return `<h2>Main Coverage Freshness</h2>
+  return `<h2 id="main-coverage">Main Coverage Freshness</h2>
   <section class="panel">
     <p><strong>Manifest v${escapeHtml(String(coverage.manifestVersion))}</strong>: ${escapeHtml(String(coverage.mappedSurfaces))}/${escapeHtml(String(coverage.totalSurfaces))} surfaces have direct scenario mappings; ${escapeHtml(String(coverage.waivedSurfaces))} have explicit waivers; ${escapeHtml(String(coverage.candidateFiles))} user-visible candidate files scanned.</p>
     <h3>Coverage Drift</h3>
@@ -1101,7 +1102,7 @@ function detailRows(object = {}) {
 
 function renderRemoteMetadata(state) {
   const env = state.processEnvVerification || {};
-  return `<h2>Remote Mac / App Metadata</h2>
+  return `<h2 id="remote-metadata">Remote Mac / App Metadata</h2>
   <section class="meta metadata-grid">
     <div class="panel">
       <h3>Remote Mac</h3>
@@ -1153,21 +1154,21 @@ function renderEvolvedCaseStrategy(state) {
         )
         .join('\n')
     : '<tr><td colspan="4">No optional evolved review-only cases were enabled for this run.</td></tr>';
-  return `<h2>Evolved Flow Case Strategy</h2>
+  return `<h2 id="evolved-flow">Evolved Flow Case Strategy</h2>
   <section class="panel">
     <p>${escapeHtml(strategy.reviewDecision || '')}</p>
     <p><strong>Default case:</strong> ${escapeHtml((strategy.defaultCaseIds || []).join(', ') || 'none')}<br>
     <strong>Enabled extra cases:</strong> ${escapeHtml((strategy.extraCaseIds || []).join(', ') || 'none')}</p>
     <h3>Case Catalog</h3>
-    <table class="scenario-table">
+    <div class="table-scroll"><table class="scenario-table">
       <thead><tr><th>Case</th><th>Mode</th><th>PR Lane</th><th>Source</th><th>Notes</th></tr></thead>
       <tbody>${catalogRows}</tbody>
-    </table>
+    </table></div>
     <h3>Optional Case Runs</h3>
-    <table class="scenario-table">
+    <div class="table-scroll"><table class="scenario-table">
       <thead><tr><th>Case</th><th>Mode</th><th>Status</th><th>Evidence</th></tr></thead>
       <tbody>${runRows}</tbody>
-    </table>
+    </table></div>
   </section>`;
 }
 
@@ -1953,17 +1954,17 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
     .map(
       (group) => `<section class="group">
   <h3>${escapeHtml(group.name)}</h3>
-  <table class="scenario-table">
-    <thead><tr><th>Scenario</th><th>Status</th><th>Evidence Grade</th><th>Primary Artifacts</th><th>What Proved It</th><th>Still Untested</th></tr></thead>
+  <div class="table-scroll"><table class="scenario-table">
+    <thead><tr><th class="scenario-col">Scenario</th><th class="status-col">Status</th><th class="grade-col">Evidence Grade</th><th class="artifacts-col">Primary Artifacts</th><th class="proof-col">What Proved It</th><th class="untested-col">Still Untested</th></tr></thead>
     <tbody>
       ${group.items
         .map((item) => {
           const proof = proofForScenario(state, item.key);
-          return `<tr><td>${escapeHtml(item.label)}<br><small>${item.notes.map(escapeHtml).join('<br>') || 'No notes recorded.'}</small></td><td class="status-cell"><span class="verdict ${item.status}">${escapeHtml(item.status)}</span></td><td class="grade-cell"><span class="grade">${escapeHtml(proof.grade)}</span></td><td>${artifactLinks(state, item.key)}</td><td>${escapeHtml(proof.proof)}</td><td>${escapeHtml(proof.untested)}</td></tr>`;
+          return `<tr><td class="scenario-cell">${escapeHtml(item.label)}<br><small>${item.notes.map(escapeHtml).join('<br>') || 'No notes recorded.'}</small></td><td class="status-cell"><span class="verdict ${item.status}">${escapeHtml(item.status)}</span></td><td class="grade-cell"><span class="grade">${escapeHtml(proof.grade)}</span></td><td class="artifact-cell">${artifactLinks(state, item.key)}</td><td class="proof-cell">${escapeHtml(proof.proof)}</td><td>${escapeHtml(proof.untested)}</td></tr>`;
         })
         .join('\n')}
     </tbody>
-  </table>
+  </table></div>
 </section>`,
     )
     .join('\n');
@@ -1987,7 +1988,9 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
     main { max-width: 1180px; margin: 0 auto; padding: 32px 20px 56px; }
     h1, h2, h3 { margin: 0 0 12px; }
     h1 { font-size: 28px; letter-spacing: 0; }
+    html { scroll-behavior: smooth; }
     h2 { font-size: 18px; margin-top: 30px; letter-spacing: 0; }
+    h2[id] { scroll-margin-top: 18px; }
     h3 { font-size: 15px; margin-top: 18px; color: #f6f8fb; letter-spacing: 0; }
     p, li { color: #c5cbd3; line-height: 1.5; }
     .lede { max-width: 850px; color: #d9dee6; }
@@ -1995,6 +1998,9 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
     .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 18px 0; }
     .panel { border: 1px solid #303640; border-radius: 8px; padding: 14px; background: #171a21; overflow-wrap: anywhere; }
     .metadata-grid .panel { overflow-x: auto; }
+    .toc { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 22px; padding: 10px; border: 1px solid #303640; border-radius: 8px; background: rgba(17, 19, 24, 0.94); backdrop-filter: blur(8px); }
+    .toc a { border: 1px solid #3c4654; border-radius: 999px; padding: 6px 10px; color: #dce3ec; text-decoration: none; font-size: 13px; line-height: 1; white-space: nowrap; background: #171a21; }
+    .toc a:hover { border-color: #7fbfff; color: #a7d7ff; }
     .warning { color: #ffd36e; }
     .metric { border: 1px solid #303640; border-radius: 8px; padding: 14px; background: #171a21; }
     .metric strong { display: block; font-size: 28px; color: #fff; margin-bottom: 4px; }
@@ -2004,18 +2010,29 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
     .inconclusive { background: #443512; color: #ffd36e; }
     .group { margin-top: 18px; }
     table { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 8px; }
+    .table-scroll { width: 100%; overflow-x: auto; border-radius: 8px; }
+    .scenario-table { min-width: 1050px; table-layout: fixed; }
     th, td { border: 1px solid #303640; padding: 10px; text-align: left; vertical-align: top; }
     th { background: #20242d; }
+    .scenario-table th { white-space: nowrap; }
+    .scenario-table .scenario-col { width: 30%; }
+    .scenario-table .status-col { width: 92px; }
+    .scenario-table .grade-col { width: 138px; }
+    .scenario-table .artifacts-col { width: 190px; }
+    .scenario-table .proof-col { width: 29%; }
+    .scenario-table .untested-col { width: 20%; }
     img { width: 100%; max-width: 100%; border: 1px solid #303640; border-radius: 8px; background: #000; }
     small { color: #9ba3ae; }
     pre { max-height: 280px; overflow: auto; white-space: pre-wrap; border: 1px solid #303640; border-radius: 8px; padding: 10px; background: #0d0f14; color: #dce3ec; }
     details { margin: 10px 0; }
     summary { cursor: pointer; color: #a7d7ff; }
     details > summary { font-weight: 700; margin: 12px 0; }
-    .grade { display: inline-block; border: 1px solid #3c4654; border-radius: 999px; padding: 4px 8px; color: #dce3ec; background: #20242d; font-size: 12px; white-space: nowrap; }
+    .grade { display: inline-flex; align-items: center; justify-content: center; border: 1px solid #3c4654; border-radius: 999px; padding: 4px 8px; color: #dce3ec; background: #20242d; font-size: 12px; line-height: 1.15; white-space: nowrap; }
     .verdict { white-space: nowrap; text-align: center; }
-    .scenario-table .status-cell { width: 96px; min-width: 96px; text-align: center; }
-    .scenario-table .grade-cell { width: 160px; min-width: 160px; text-align: center; }
+    .scenario-table .status-cell { width: 92px; min-width: 92px; text-align: center; }
+    .scenario-table .grade-cell { width: 138px; min-width: 138px; text-align: center; }
+    .scenario-table .status-cell .verdict { min-width: 54px; padding-left: 8px; padding-right: 8px; }
+    .artifact-list { max-height: 230px; overflow: auto; padding-right: 4px; }
     .priority table { margin-bottom: 18px; }
     .proof-card { margin-top: 18px; border: 1px solid #303640; border-radius: 8px; padding: 14px; background: #151922; }
     .annotated-shot { position: relative; overflow: hidden; border: 1px solid #303640; border-radius: 8px; background: #000; }
@@ -2045,9 +2062,21 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
     <div class="metric"><strong>${escapeHtml(String(state.screenshots.length))}</strong>Screenshots</div>
   </section>
 
+  <nav class="toc" aria-label="Report navigation">
+    ${prPriorityHtml ? '<a href="#pull-request-focus">PR Focus</a>' : ''}
+    <a href="#findings-first">Findings First</a>
+    <a href="#remote-metadata">Remote Metadata</a>
+    <a href="#evolved-flow">Evolved Flow</a>
+    <a href="#scenario-checklist">Scenario Checklist</a>
+    <a href="#visual-proof">Visual Proof</a>
+    <a href="#screenshots">Screenshots</a>
+    <a href="#claims">Claims</a>
+    <a href="#cleanup">Cleanup</a>
+  </nav>
+
   ${prPriorityHtml}
 
-  <h2>Findings First</h2>
+  <h2 id="findings-first">Findings First</h2>
   <p>Failures are shown first, then inconclusive checks, then passing checks. The full grouped checklist and visual proof board remain below.</p>
   ${priorityTriageHtml}
 
@@ -2069,30 +2098,30 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
 
   ${renderEvolvedCaseStrategy(state)}
 
-  <h2>Scenario Checklist</h2>
+  <h2 id="scenario-checklist">Scenario Checklist</h2>
   ${groupedScenarioHtml}
 
-  <h2>Coverage Gaps / Not Proved</h2>
+  <h2 id="coverage-gaps">Coverage Gaps / Not Proved</h2>
   ${coverageGapsHtml}
 
-  <h2>PR-Specific Focus</h2>
+  <h2 id="pr-specific-focus">PR-Specific Focus</h2>
   ${prFocusHtml}
 
-  <h2>Visual Proof Board</h2>
+  <h2 id="visual-proof">Visual Proof Board</h2>
   <p>Annotations are reviewer aids, not the sole assertion source. The pass/fail source of truth is the paired Computer Use accessibility text and recorded action events.</p>
   ${visualProofHtml}
 
-  <h2>Screenshots</h2>
+  <h2 id="screenshots">Screenshots</h2>
   ${screenshotHtml}
 
-  <h2>Human QA Narrative</h2>
+  <h2 id="narrative">Human QA Narrative</h2>
   ${
     state.narrative.length
       ? `<ul>${state.narrative.map((item) => `<li>${escapeHtml(item.ts)} - ${escapeHtml(item.text)}</li>`).join('\n')}</ul>`
       : '<p>No narrative recorded.</p>'
   }
 
-  <h2>Claims vs Evidence</h2>
+  <h2 id="claims">Claims vs Evidence</h2>
   <table>
     <thead><tr><th>Claim</th><th>Status</th><th>Evidence</th></tr></thead>
     <tbody>
@@ -2106,21 +2135,21 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
     </tbody>
   </table>
 
-  <h2>Failures / Open Issues</h2>
+  <h2 id="open-issues">Failures / Open Issues</h2>
   ${
     failures.length
       ? `<ul>${failures.map((failure) => `<li><strong>${escapeHtml(failure.status)}:</strong> ${escapeHtml(failure.label)} - ${escapeHtml(failure.notes.join(' ') || 'No detail recorded.')}</li>`).join('\n')}</ul>`
       : '<p>None recorded.</p>'
   }
 
-  <h2>Confirmation Boundaries</h2>
+  <h2 id="confirmation-boundaries">Confirmation Boundaries</h2>
   ${
     state.confirmationBoundaries.length
       ? `<ul>${state.confirmationBoundaries.map((boundary) => `<li>${escapeHtml(boundary)}</li>`).join('\n')}</ul>`
       : '<p>None recorded.</p>'
   }
 
-  <h2>Cleanup / Restore Status</h2>
+  <h2 id="cleanup">Cleanup / Restore Status</h2>
   <p>${escapeHtml(state.cleanup.note)}</p>
 </main>
 </body>
