@@ -542,7 +542,6 @@ function buildPrFocus() {
       scenarioKeys.add('visualProofQuality');
       scenarioKeys.add('videoEvidence');
       scenarioKeys.add('reportInspection');
-      scenarioKeys.add('prSpecificCoverage');
     }
   }
   return {
@@ -645,14 +644,16 @@ function updatePrSpecificCoverage(state) {
   } else if (!state.prFocus.userVisibleFiles?.length) {
     updateScenario(state, 'prSpecificCoverage', 'pass', 'Changed-file metadata did not infer user-visible app changes requiring a dedicated Computer Use focus pass.');
   } else if (state.prFocus.scenarioKeys?.length) {
-    const mappedScenarios = state.prFocus.scenarioKeys.map((key) => ({
+    const mappedScenarios = state.prFocus.scenarioKeys.filter((key) => key !== 'prSpecificCoverage').map((key) => ({
       key,
       label: state.scenarios[key]?.label || key,
       status: state.scenarios[key]?.status || 'inconclusive',
     }));
     const failed = mappedScenarios.filter((scenario) => scenario.status === 'fail');
     const incomplete = mappedScenarios.filter((scenario) => scenario.status !== 'pass' && scenario.status !== 'fail');
-    if (failed.length) {
+    if (!mappedScenarios.length) {
+      updateScenario(state, 'prSpecificCoverage', 'inconclusive', `User-visible changed files were inferred, but no dedicated PR-specific Computer Use scenario has been executed yet: ${state.prFocus.userVisibleFiles.join(', ')}`);
+    } else if (failed.length) {
       updateScenario(
         state,
         'prSpecificCoverage',
@@ -2181,8 +2182,6 @@ async function runSuite(args) {
     );
     updateMainCoverageFreshness(state);
 
-    updatePrSpecificCoverage(state);
-
     state.cleanup.note = 'Remote app state was not restored by this runner. CI wrapper is responsible for remote app-support backup/restore; local artifacts are retained.';
     await assembleVideo(state);
     const videoIssue = videoArtifactIssue(state);
@@ -2196,6 +2195,7 @@ async function runSuite(args) {
     );
     await render(state);
     await inspectReportWithComputerUse(client, state);
+    updatePrSpecificCoverage(state);
     await render(state);
     await saveState(state);
     console.log(path.join(state.runDir, 'index.html'));
@@ -2322,6 +2322,12 @@ function runSelfTest() {
   const prFocus = buildPrFocus();
   assert.deepEqual(prFocus.userVisibleFiles, ['apps/native/src/components/widget/adversarial-new-visible-surface.tsx'], 'PR focus should infer user-visible files');
   assert.deepEqual(prFocus.scenarioKeys, [], 'non-user-visible changed files must not create PR scenario mappings');
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = 'tools/computer-use-e2e/run-remote-cua.mjs';
+  const toolPrFocus = buildPrFocus();
+  assert.equal(toolPrFocus.scenarioKeys.includes('visualProofQuality'), true, 'Computer Use E2E changes should focus visual proof quality');
+  assert.equal(toolPrFocus.scenarioKeys.includes('videoEvidence'), true, 'Computer Use E2E changes should focus video evidence');
+  assert.equal(toolPrFocus.scenarioKeys.includes('reportInspection'), true, 'Computer Use E2E changes should focus report inspection');
+  assert.equal(toolPrFocus.scenarioKeys.includes('prSpecificCoverage'), false, 'PR focus coverage must not require itself');
   if (previousChangedFiles === undefined) delete process.env.NIXMAC_E2E_PR_CHANGED_FILES;
   else process.env.NIXMAC_E2E_PR_CHANGED_FILES = previousChangedFiles;
 
