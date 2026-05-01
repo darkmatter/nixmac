@@ -11,6 +11,7 @@ use tauri::AppHandle;
 fn is_homebrew_installed() -> bool {
     std::process::Command::new("brew")
         .arg("--version")
+        .env("PATH", crate::nix::get_nix_path())
         .output()
         .map(|output| output.status.success())
         .unwrap_or(false)
@@ -72,6 +73,7 @@ pub fn scan_homebrew() -> HomebrewState {
     let mut state = make_homebrew_state(is_homebrew_installed(), None);
     if let Ok(output) = std::process::Command::new("brew")
         .args(["list", "--formula"])
+        .env("PATH", crate::nix::get_nix_path())
         .output()
     {
         if output.status.success() {
@@ -83,6 +85,7 @@ pub fn scan_homebrew() -> HomebrewState {
     }
     if let Ok(output) = std::process::Command::new("brew")
         .args(["list", "--cask"])
+        .env("PATH", crate::nix::get_nix_path())
         .output()
     {
         if output.status.success() {
@@ -92,7 +95,11 @@ pub fn scan_homebrew() -> HomebrewState {
                 .collect();
         }
     }
-    if let Ok(output) = std::process::Command::new("brew").args(["tap"]).output() {
+    if let Ok(output) = std::process::Command::new("brew")
+        .args(["tap"])
+        .env("PATH", crate::nix::get_nix_path())
+        .output()
+    {
         if output.status.success() {
             state.taps = String::from_utf8_lossy(&output.stdout)
                 .lines()
