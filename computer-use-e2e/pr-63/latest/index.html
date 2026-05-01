@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
+<base href="https://cdn.jsdelivr.net/gh/darkmatter/nixmac@gh-pages/computer-use-e2e/pr-63/latest/">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>nixmac Computer Use E2E Evidence</title>
@@ -53,11 +54,11 @@
 <main>
   <h1>nixmac Computer Use E2E Evidence</h1>
   <p class="lede">Remote desktop QA driven through Codex Computer Use against the real macOS app. The report summarizes major feature coverage, functional UX/UI checks, screenshots, and a generated evidence video.</p>
-  <p><span class="verdict fail">Verdict: fail</span></p>
+  <p><span class="verdict pass">Verdict: pass</span></p>
 
   <section class="summary" aria-label="Run summary">
-    <div class="metric"><strong>24</strong>Passed</div>
-    <div class="metric"><strong>1</strong>Failed</div>
+    <div class="metric"><strong>25</strong>Passed</div>
+    <div class="metric"><strong>0</strong>Failed</div>
     <div class="metric"><strong>0</strong>Inconclusive</div>
     <div class="metric"><strong>29</strong>Screenshots</div>
     <div class="metric"><strong>available</strong>Video</div>
@@ -72,33 +73,6 @@
     <ul><li><code>.github/workflows/build.yaml</code></li>
 <li><code>.github/workflows/computer-use-e2e.yml</code></li>
 <li><code>.gitignore</code></li>
-<li><code>apps/native/src-tauri/examples/specta_gen_ts.rs</code></li>
-<li><code>apps/native/src-tauri/src/apply_system_defaults.rs</code></li>
-<li><code>apps/native/src-tauri/src/commands.rs</code></li>
-<li><code>apps/native/src-tauri/src/evolve/edit_nix_file.rs</code></li>
-<li><code>apps/native/src-tauri/src/evolve/mod.rs</code></li>
-<li><code>apps/native/src-tauri/src/mac/homebrew.rs</code></li>
-<li><code>apps/native/src-tauri/src/mac/mod.rs</code></li>
-<li><code>apps/native/src-tauri/src/main.rs</code></li>
-<li><code>apps/native/src-tauri/src/managed_edit.rs</code></li>
-<li><code>apps/native/src-tauri/src/nix_ast_lists.rs</code></li>
-<li><code>apps/native/src-tauri/src/shared_types.rs</code></li>
-<li><code>apps/native/src-tauri/src/store.rs</code></li>
-<li><code>apps/native/src-tauri/src/summarize/find_existing.rs</code></li>
-<li><code>apps/native/src-tauri/src/summarize/group_existing.rs</code></li>
-<li><code>apps/native/src-tauri/src/summarize/token_budgets.rs</code></li>
-<li><code>apps/native/src/components/config-edit-overlay-panel.tsx</code></li>
-<li><code>apps/native/src/components/widget/homebrew-badge.tsx</code></li>
-<li><code>apps/native/src/components/widget/prompt-input.tsx</code></li>
-<li><code>apps/native/src/components/widget/settings/preferences-tab.tsx</code></li>
-<li><code>apps/native/src/components/widget/system-defaults-cta.tsx</code></li>
-<li><code>apps/native/src/components/widget/widget.tsx</code></li>
-<li><code>apps/native/src/hooks/use-homebrew-diff.ts</code></li>
-<li><code>apps/native/src/hooks/use-prefs.ts</code></li>
-<li><code>apps/native/src/stores/widget-store.test.ts</code></li>
-<li><code>apps/native/src/stores/widget-store.ts</code></li>
-<li><code>apps/native/src/tauri-api.ts</code></li>
-<li><code>apps/native/src/types/shared.ts</code></li>
 <li><code>tools/computer-use-e2e/PROPOSAL.md</code></li>
 <li><code>tools/computer-use-e2e/README.md</code></li>
 <li><code>tools/computer-use-e2e/check-remote.mjs</code></li>
@@ -108,31 +82,6 @@
 <li><code>tools/computer-use-e2e/run-remote-cua.mjs</code></li></ul>
     <h3>User-Visible Focus Candidates</h3>
     <ul><li><code>.github/workflows/computer-use-e2e.yml</code></li>
-<li><code>apps/native/src-tauri/examples/specta_gen_ts.rs</code></li>
-<li><code>apps/native/src-tauri/src/apply_system_defaults.rs</code></li>
-<li><code>apps/native/src-tauri/src/commands.rs</code></li>
-<li><code>apps/native/src-tauri/src/evolve/edit_nix_file.rs</code></li>
-<li><code>apps/native/src-tauri/src/evolve/mod.rs</code></li>
-<li><code>apps/native/src-tauri/src/mac/homebrew.rs</code></li>
-<li><code>apps/native/src-tauri/src/mac/mod.rs</code></li>
-<li><code>apps/native/src-tauri/src/main.rs</code></li>
-<li><code>apps/native/src-tauri/src/managed_edit.rs</code></li>
-<li><code>apps/native/src-tauri/src/nix_ast_lists.rs</code></li>
-<li><code>apps/native/src-tauri/src/shared_types.rs</code></li>
-<li><code>apps/native/src-tauri/src/store.rs</code></li>
-<li><code>apps/native/src-tauri/src/summarize/find_existing.rs</code></li>
-<li><code>apps/native/src-tauri/src/summarize/group_existing.rs</code></li>
-<li><code>apps/native/src-tauri/src/summarize/token_budgets.rs</code></li>
-<li><code>apps/native/src/components/config-edit-overlay-panel.tsx</code></li>
-<li><code>apps/native/src/components/widget/homebrew-badge.tsx</code></li>
-<li><code>apps/native/src/components/widget/prompt-input.tsx</code></li>
-<li><code>apps/native/src/components/widget/settings/preferences-tab.tsx</code></li>
-<li><code>apps/native/src/components/widget/system-defaults-cta.tsx</code></li>
-<li><code>apps/native/src/components/widget/widget.tsx</code></li>
-<li><code>apps/native/src/hooks/use-homebrew-diff.ts</code></li>
-<li><code>apps/native/src/hooks/use-prefs.ts</code></li>
-<li><code>apps/native/src/stores/widget-store.test.ts</code></li>
-<li><code>apps/native/src/stores/widget-store.ts</code></li>
 <li><code>tools/computer-use-e2e/PROPOSAL.md</code></li>
 <li><code>tools/computer-use-e2e/README.md</code></li>
 <li><code>tools/computer-use-e2e/check-remote.mjs</code></li>
@@ -150,30 +99,22 @@
 <li>My History opens and renders</li>
 <li>Scenario results include inspectable visual/text evidence</li>
 <li>Evidence video is generated and embedded</li>
-<li>Generated HTML report is inspected with Computer Use</li>
-<li>Settings General tab visibly renders</li>
-<li>Settings AI Models tab visibly renders</li>
-<li>Settings API Keys tab visibly renders</li>
-<li>Settings Preferences tab visibly renders</li></ul>
+<li>Generated HTML report is inspected with Computer Use</li></ul>
   </section>
   <section class="panel">
     <h3>PR-Relevant Evidence</h3>
     <table>
       <thead><tr><th>Scenario</th><th>Status</th><th>Evidence Grade</th><th>Primary Artifacts</th><th>What Proved It</th></tr></thead>
-      <tbody><tr><td>Real provider workflow reaches Review<br><small>The real provider workflow reached Review or a Review-equivalent state.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/18-provider-progress-01.png</code><br><code>screenshots/19-provider-progress-02.png</code><br><code>screenshots/20-provider-progress-03.png</code><br><code>screenshots/21-provider-progress-04.png</code><br><code>screenshots/22-provider-progress-05.png</code><br><code>texts/18-provider-progress-01.txt</code><br><code>texts/19-provider-progress-02.txt</code><br><code>texts/20-provider-progress-03.txt</code><br><code>texts/21-provider-progress-04.txt</code><br><code>texts/22-provider-progress-05.txt</code></td><td>Polling reached Review-equivalent UI with Build &amp; Test/Discard/Summary/Diff controls.</td></tr>
+      <tbody><tr><td>Real provider workflow reaches Review<br><small>The real provider workflow reached Review or a Review-equivalent state.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/17-provider-progress-01.png</code><br><code>screenshots/18-provider-progress-02.png</code><br><code>screenshots/19-provider-progress-03.png</code><br><code>screenshots/20-provider-progress-04.png</code><br><code>screenshots/21-provider-progress-05.png</code><br><code>texts/17-provider-progress-01.txt</code><br><code>texts/18-provider-progress-02.txt</code><br><code>texts/19-provider-progress-03.txt</code><br><code>texts/20-provider-progress-04.txt</code><br><code>texts/21-provider-progress-05.txt</code></td><td>Polling reached Review-equivalent UI with Build &amp; Test/Discard/Summary/Diff controls.</td></tr>
 <tr><td>Summary tab renders after intent review<br><small>Summary described the requested bat/Homebrew package intent.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td><code>screenshots/23-review-summary.png</code><br><code>texts/23-review-summary.txt</code></td><td>Summary text must mention the requested package/change domain.</td></tr>
 <tr><td>Diff tab renders after intent review<br><small>Diff rendered a candidate Homebrew configuration change for bat.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td><code>screenshots/24-review-diff.png</code><br><code>texts/24-review-diff.txt</code></td><td>Diff text must show the requested package/change in a configuration file.</td></tr>
 <tr><td>Build &amp; Test destructive boundary appears before activation<br><small>Build &amp; Test presented a visible confirmation/boundary before activation.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/25-build-boundary.png</code><br><code>screenshots/27-step-3-ready.png</code><br><code>texts/25-build-boundary.txt</code><br><code>texts/27-step-3-ready.txt</code></td><td>Build &amp; Test opens a confirmation dialog before activation; disposable runs confirm it and wait for Step 3.</td></tr>
 <tr><td>Step 3 Save / Keep changes persists a change<br><small>Step 3 Commit persisted the generated bat/Homebrew change in the disposable config repo and left the worktree clean.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/27-step-3-ready.png</code><br><code>screenshots/28-after-commit.png</code><br><code>texts/27-step-3-ready.txt</code><br><code>texts/28-after-commit.txt</code></td><td>In disposable build-confirm mode, Computer Use reaches Step 3, clicks Commit, and the runner verifies the disposable repo HEAD changed with a clean worktree.</td></tr>
 <tr><td>Rollback cleanup returns disposable config to clean state<br><small>History restore rollback returned the disposable config tree to pre-test baseline content with a clean worktree; the top-level nix build result symlink was ignored as a build artifact.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/29-history-before-restore.png</code><br><code>screenshots/30-history-restore-preview.png</code><br><code>screenshots/31-after-history-restore.png</code><br><code>texts/29-history-before-restore.txt</code><br><code>texts/30-history-restore-preview.txt</code><br><code>texts/31-after-history-restore.txt</code></td><td>After Save, Computer Use opens History, restores the pre-test baseline commit, and the runner verifies HEAD returned to that baseline with a clean worktree.</td></tr>
-<tr><td>My History opens and renders<br><small>History rendered a visible state.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/08-history.png</code><br><code>texts/08-history.txt</code></td><td>Computer Use opened History and captured a visible history/empty state.</td></tr>
+<tr><td>My History opens and renders<br><small>History rendered a visible state.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/07-history.png</code><br><code>texts/07-history.txt</code></td><td>Computer Use opened History and captured a visible history/empty state.</td></tr>
 <tr><td>Scenario results include inspectable visual/text evidence<br><small>Every passing scenario has a linked screenshot or redacted accessibility text artifact in the proof catalog.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td>No primary artifact linked.</td><td>Every passing scenario must have at least one primary screenshot or text artifact listed in the proof catalog.</td></tr>
 <tr><td>Evidence video is generated and embedded<br><small>Evidence video generated at video/computer-use-evidence.mp4.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">artifact-confirmed</span></td><td>No primary artifact linked.</td><td>Report embeds an MP4 under video/computer-use-evidence.mp4.</td></tr>
-<tr><td>Generated HTML report is inspected with Computer Use<br><small>Computer Use inspected the generated report in Safari; report text and evidence sections were visible.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/29-report-inspection-Safari.png</code><br><code>texts/29-report-inspection-Safari.txt</code></td><td>Computer Use opens the generated report on the remote Mac and sees report sections.</td></tr>
-<tr><td>Settings General tab visibly renders<br><small>Settings opened and General-related content was visible.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/03-settings-general.png</code><br><code>texts/03-settings-general.txt</code></td><td>Computer Use clicked Settings and captured the General tab content.</td></tr>
-<tr><td>Settings AI Models tab visibly renders<br><small>AI Models settings content was visible with provider/model controls.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/04-settings-ai-models.png</code><br><code>texts/04-settings-ai-models.txt</code></td><td>Computer Use opened AI Models and captured provider/model/build controls.</td></tr>
-<tr><td>Settings API Keys tab visibly renders<br><small>API Keys content was visible after Computer Use polling, including OpenRouter/API key controls.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td><code>texts/05-settings-api-keys-01.txt</code></td><td>Sensitive screenshot omitted; redacted accessibility text must show API Keys/OpenRouter/API-key controls.</td></tr>
-<tr><td>Settings Preferences tab visibly renders<br><small>Preferences settings content was visible with confirmation controls.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/06-settings-preferences.png</code><br><code>texts/06-settings-preferences.txt</code></td><td>Computer Use opened Preferences and captured confirmation controls.</td></tr></tbody>
+<tr><td>Generated HTML report is inspected with Computer Use<br><small>Computer Use inspected the generated report in Safari; report text and evidence sections were visible.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/29-report-inspection-Safari.png</code><br><code>texts/29-report-inspection-Safari.txt</code></td><td>Computer Use opens the generated report on the remote Mac and sees report sections.</td></tr></tbody>
     </table>
   </section>
 
@@ -183,7 +124,7 @@
     <h3>Failures</h3>
     <table>
     <thead><tr><th>Scenario</th><th>Status</th><th>Evidence Grade</th><th>Primary Artifacts</th><th>What Proved It / Why It Matters</th></tr></thead>
-    <tbody><tr><td>Main branch user-visible coverage stays mapped<br><small>Coverage drift detected against main: Unmapped user-visible candidate files: apps/native/src/components/widget/homebrew-badge.tsx Explicit waivers: onboarding-permissions: Current remote lane starts from a configured app state. This must become a dedicated clean-profile Computer Use scenario before the suite can honestly claim full main coverage. | sudo-local-activation-fixture: The DXU remote lane disables sudo_local in the disposable fixture because unattended MacinCloud AppleScript activation can hang while creating /etc/pam.d/sudo_local. This is an explicit CI fixture waiver, not proof that the production sudo_local path works. | preview-indicator: Not yet in the remote major-feature lane; needs either a deterministic preview-state setup or a real workflow that activates it.</small></td><td><span class="verdict fail">fail</span></td><td><span class="grade">manifest-confirmed</span></td><td>No primary artifact linked.</td><td>A repo-local coverage manifest maps major user-visible surfaces on main to Computer Use scenarios or explicit waivers, and the runner scans for unmapped candidate files.</td></tr></tbody>
+    <tbody><tr><td colspan="5">None.</td></tr></tbody>
   </table>
     <h3>Inconclusive</h3>
     <table>
@@ -191,31 +132,32 @@
     <tbody><tr><td colspan="5">None.</td></tr></tbody>
   </table>
     <details>
-      <summary>Passing Checks (24)</summary>
+      <summary>Passing Checks (25)</summary>
       <table>
     <thead><tr><th>Scenario</th><th>Status</th><th>Evidence Grade</th><th>Primary Artifacts</th><th>What Proved It / Why It Matters</th></tr></thead>
     <tbody><tr><td>App launches and first screen is usable<br><small>Computer Use saw the nixmac app window, prompt surface, progress stepper, and top-level controls.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/01-launch.png</code><br><code>texts/01-launch.txt</code></td><td>Accessibility text shows the nixmac window, Settings/History/Feedback controls, stepper, prompt text area, and disabled Send button.</td></tr>
-<tr><td>Update banner does not block the main workflow<br><small>A visible Dismiss button was clicked and the UI remained usable.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td><code>screenshots/01-launch.png</code><br><code>texts/01-launch.txt</code></td><td>Runner checks for a visible Dismiss button. If present, it dismisses it; if absent, it proves no update banner blocked the initial UI.</td></tr>
-<tr><td>Settings General tab visibly renders<br><small>Settings opened and General-related content was visible.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/03-settings-general.png</code><br><code>texts/03-settings-general.txt</code></td><td>Computer Use clicked Settings and captured the General tab content.</td></tr>
-<tr><td>Settings AI Models tab visibly renders<br><small>AI Models settings content was visible with provider/model controls.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/04-settings-ai-models.png</code><br><code>texts/04-settings-ai-models.txt</code></td><td>Computer Use opened AI Models and captured provider/model/build controls.</td></tr>
-<tr><td>Settings API Keys tab visibly renders<br><small>API Keys content was visible after Computer Use polling, including OpenRouter/API key controls.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td><code>texts/05-settings-api-keys-01.txt</code></td><td>Sensitive screenshot omitted; redacted accessibility text must show API Keys/OpenRouter/API-key controls.</td></tr>
-<tr><td>Settings Preferences tab visibly renders<br><small>Preferences settings content was visible with confirmation controls.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/06-settings-preferences.png</code><br><code>texts/06-settings-preferences.txt</code></td><td>Computer Use opened Preferences and captured confirmation controls.</td></tr>
-<tr><td>My History opens and renders<br><small>History rendered a visible state.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/08-history.png</code><br><code>texts/08-history.txt</code></td><td>Computer Use opened History and captured a visible history/empty state.</td></tr>
-<tr><td>Console opens and renders<br><small>Console rendered visible content.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td><code>texts/10-console.txt</code></td><td>Sensitive screenshot omitted; redacted accessibility text must show Console/log content.</td></tr>
-<tr><td>Give Feedback opens and can be cancelled<br><small>Feedback dialog rendered and no submission was made.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/12-feedback.png</code><br><code>screenshots/13-home-after-feedback.png</code><br><code>texts/12-feedback.txt</code><br><code>texts/13-home-after-feedback.txt</code></td><td>Computer Use opened and cancelled the feedback dialog.</td></tr>
-<tr><td>Report Issue opens and can be cancelled<br><small>Report Issue dialog rendered and no submission was made.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/14-report-issue.png</code><br><code>screenshots/15-home-after-report-issue.png</code><br><code>texts/14-report-issue.txt</code><br><code>texts/15-home-after-report-issue.txt</code></td><td>Computer Use opened and cancelled the report issue dialog.</td></tr>
-<tr><td>Home suggestion cards are visible/clickable<br><small>A suggestion card was clicked and the UI remained usable.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/16-suggestion-card.png</code><br><code>texts/16-suggestion-card.txt</code></td><td>Computer Use found and clicked a suggestion card; the UI stayed usable afterward.</td></tr>
-<tr><td>A typed real intent can be submitted<br><small>Computer Use entered the real prompt into the app prompt field.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/17-typed-intent.png</code><br><code>texts/17-typed-intent.txt</code></td><td>Prompt text appears in the Computer Use state after set_value.</td></tr>
-<tr><td>Real provider workflow reaches Review<br><small>The real provider workflow reached Review or a Review-equivalent state.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/18-provider-progress-01.png</code><br><code>screenshots/19-provider-progress-02.png</code><br><code>screenshots/20-provider-progress-03.png</code><br><code>screenshots/21-provider-progress-04.png</code><br><code>screenshots/22-provider-progress-05.png</code><br><code>texts/18-provider-progress-01.txt</code><br><code>texts/19-provider-progress-02.txt</code><br><code>texts/20-provider-progress-03.txt</code><br><code>texts/21-provider-progress-04.txt</code><br><code>texts/22-provider-progress-05.txt</code></td><td>Polling reached Review-equivalent UI with Build &amp; Test/Discard/Summary/Diff controls.</td></tr>
+<tr><td>Update banner does not block the main workflow<br><small>No dismissible update banner was visible; no banner blocked the main workflow.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td><code>screenshots/01-launch.png</code><br><code>texts/01-launch.txt</code></td><td>Runner checks for a visible Dismiss button. If present, it dismisses it; if absent, it proves no update banner blocked the initial UI.</td></tr>
+<tr><td>Settings General tab visibly renders<br><small>Settings opened and General-related content was visible.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/02-settings-general.png</code><br><code>texts/02-settings-general.txt</code></td><td>Computer Use clicked Settings and captured the General tab content.</td></tr>
+<tr><td>Settings AI Models tab visibly renders<br><small>AI Models settings content was visible with provider/model controls.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/03-settings-ai-models.png</code><br><code>texts/03-settings-ai-models.txt</code></td><td>Computer Use opened AI Models and captured provider/model/build controls.</td></tr>
+<tr><td>Settings API Keys tab visibly renders<br><small>API Keys content was visible after Computer Use polling, including OpenRouter/API key controls.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td><code>texts/04-settings-api-keys-01.txt</code></td><td>Sensitive screenshot omitted; redacted accessibility text must show API Keys/OpenRouter/API-key controls.</td></tr>
+<tr><td>Settings Preferences tab visibly renders<br><small>Preferences settings content was visible with confirmation controls.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/05-settings-preferences.png</code><br><code>texts/05-settings-preferences.txt</code></td><td>Computer Use opened Preferences and captured confirmation controls.</td></tr>
+<tr><td>My History opens and renders<br><small>History rendered a visible state.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/07-history.png</code><br><code>texts/07-history.txt</code></td><td>Computer Use opened History and captured a visible history/empty state.</td></tr>
+<tr><td>Console opens and renders<br><small>Console rendered visible content.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td><code>texts/09-console.txt</code></td><td>Sensitive screenshot omitted; redacted accessibility text must show Console/log content.</td></tr>
+<tr><td>Give Feedback opens and can be cancelled<br><small>Feedback dialog rendered and no submission was made.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/11-feedback.png</code><br><code>screenshots/12-home-after-feedback.png</code><br><code>texts/11-feedback.txt</code><br><code>texts/12-home-after-feedback.txt</code></td><td>Computer Use opened and cancelled the feedback dialog.</td></tr>
+<tr><td>Report Issue opens and can be cancelled<br><small>Report Issue dialog rendered and no submission was made.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/13-report-issue.png</code><br><code>screenshots/14-home-after-report-issue.png</code><br><code>texts/13-report-issue.txt</code><br><code>texts/14-home-after-report-issue.txt</code></td><td>Computer Use opened and cancelled the report issue dialog.</td></tr>
+<tr><td>Home suggestion cards are visible/clickable<br><small>A suggestion card was clicked and the UI remained usable.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/15-suggestion-card.png</code><br><code>texts/15-suggestion-card.txt</code></td><td>Computer Use found and clicked a suggestion card; the UI stayed usable afterward.</td></tr>
+<tr><td>A typed real intent can be submitted<br><small>Computer Use entered the real prompt into the app prompt field.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/16-typed-intent.png</code><br><code>texts/16-typed-intent.txt</code></td><td>Prompt text appears in the Computer Use state after set_value.</td></tr>
+<tr><td>Real provider workflow reaches Review<br><small>The real provider workflow reached Review or a Review-equivalent state.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/17-provider-progress-01.png</code><br><code>screenshots/18-provider-progress-02.png</code><br><code>screenshots/19-provider-progress-03.png</code><br><code>screenshots/20-provider-progress-04.png</code><br><code>screenshots/21-provider-progress-05.png</code><br><code>texts/17-provider-progress-01.txt</code><br><code>texts/18-provider-progress-02.txt</code><br><code>texts/19-provider-progress-03.txt</code><br><code>texts/20-provider-progress-04.txt</code><br><code>texts/21-provider-progress-05.txt</code></td><td>Polling reached Review-equivalent UI with Build &amp; Test/Discard/Summary/Diff controls.</td></tr>
 <tr><td>Summary tab renders after intent review<br><small>Summary described the requested bat/Homebrew package intent.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td><code>screenshots/23-review-summary.png</code><br><code>texts/23-review-summary.txt</code></td><td>Summary text must mention the requested package/change domain.</td></tr>
 <tr><td>Diff tab renders after intent review<br><small>Diff rendered a candidate Homebrew configuration change for bat.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td><code>screenshots/24-review-diff.png</code><br><code>texts/24-review-diff.txt</code></td><td>Diff text must show the requested package/change in a configuration file.</td></tr>
 <tr><td>Build &amp; Test destructive boundary appears before activation<br><small>Build &amp; Test presented a visible confirmation/boundary before activation.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/25-build-boundary.png</code><br><code>screenshots/27-step-3-ready.png</code><br><code>texts/25-build-boundary.txt</code><br><code>texts/27-step-3-ready.txt</code></td><td>Build &amp; Test opens a confirmation dialog before activation; disposable runs confirm it and wait for Step 3.</td></tr>
 <tr><td>Step 3 Save / Keep changes persists a change<br><small>Step 3 Commit persisted the generated bat/Homebrew change in the disposable config repo and left the worktree clean.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/27-step-3-ready.png</code><br><code>screenshots/28-after-commit.png</code><br><code>texts/27-step-3-ready.txt</code><br><code>texts/28-after-commit.txt</code></td><td>In disposable build-confirm mode, Computer Use reaches Step 3, clicks Commit, and the runner verifies the disposable repo HEAD changed with a clean worktree.</td></tr>
 <tr><td>Rollback cleanup returns disposable config to clean state<br><small>History restore rollback returned the disposable config tree to pre-test baseline content with a clean worktree; the top-level nix build result symlink was ignored as a build artifact.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/29-history-before-restore.png</code><br><code>screenshots/30-history-restore-preview.png</code><br><code>screenshots/31-after-history-restore.png</code><br><code>texts/29-history-before-restore.txt</code><br><code>texts/30-history-restore-preview.txt</code><br><code>texts/31-after-history-restore.txt</code></td><td>After Save, Computer Use opens History, restores the pre-test baseline commit, and the runner verifies HEAD returned to that baseline with a clean worktree.</td></tr>
 <tr><td>Discard confirmation is guarded and only confirmed in disposable state<br><small>Discard was intentionally not exercised because the stronger Step 3 save plus History restore cleanup path returned the disposable config to baseline.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">guardrail-confirmed</span></td><td><code>screenshots/30-history-restore-preview.png</code><br><code>screenshots/31-after-history-restore.png</code><br><code>texts/30-history-restore-preview.txt</code><br><code>texts/31-after-history-restore.txt</code></td><td>Discard opens a confirmation boundary when used. In full-lifecycle runs, the stronger History restore cleanup path can supersede Discard and is proven by rollback artifacts.</td></tr>
-<tr><td>Core UX/UI surfaces are captured and inspectable<br><small>Screenshots/text snapshots cover the core app shell, settings, support dialogs, prompt input, and provider flow.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td><code>screenshots/01-launch.png</code><br><code>screenshots/03-settings-general.png</code><br><code>screenshots/04-settings-ai-models.png</code><br><code>screenshots/06-settings-preferences.png</code><br><code>screenshots/08-history.png</code><br><code>screenshots/12-feedback.png</code><br><code>screenshots/14-report-issue.png</code><br><code>screenshots/17-typed-intent.png</code><br><code>texts/01-launch.txt</code><br><code>texts/03-settings-general.txt</code><br><code>texts/04-settings-ai-models.txt</code><br><code>texts/06-settings-preferences.txt</code><br><code>texts/08-history.txt</code><br><code>texts/12-feedback.txt</code><br><code>texts/14-report-issue.txt</code><br><code>texts/17-typed-intent.txt</code></td><td>Required core UI surfaces have screenshot and text artifacts.</td></tr>
+<tr><td>Core UX/UI surfaces are captured and inspectable<br><small>Screenshots/text snapshots cover the core app shell, settings, support dialogs, prompt input, and provider flow.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td><code>screenshots/01-launch.png</code><br><code>screenshots/02-settings-general.png</code><br><code>screenshots/03-settings-ai-models.png</code><br><code>screenshots/05-settings-preferences.png</code><br><code>screenshots/07-history.png</code><br><code>screenshots/11-feedback.png</code><br><code>screenshots/13-report-issue.png</code><br><code>screenshots/16-typed-intent.png</code><br><code>texts/01-launch.txt</code><br><code>texts/02-settings-general.txt</code><br><code>texts/03-settings-ai-models.txt</code><br><code>texts/05-settings-preferences.txt</code><br><code>texts/07-history.txt</code><br><code>texts/11-feedback.txt</code><br><code>texts/13-report-issue.txt</code><br><code>texts/16-typed-intent.txt</code></td><td>Required core UI surfaces have screenshot and text artifacts.</td></tr>
 <tr><td>Scenario results include inspectable visual/text evidence<br><small>Every passing scenario has a linked screenshot or redacted accessibility text artifact in the proof catalog.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td>No primary artifact linked.</td><td>Every passing scenario must have at least one primary screenshot or text artifact listed in the proof catalog.</td></tr>
-<tr><td>PR-specific user-visible behavior is covered when applicable<br><small>User-visible changed files were mapped to passing Computer Use scenarios and surfaced at the top of the report: Real provider workflow reaches Review, Summary tab renders after intent review, Diff tab renders after intent review, Build &amp; Test destructive boundary appears before activation, Step 3 Save / Keep changes persists a change, Rollback cleanup returns disposable config to clean state, My History opens and renders, Scenario results include inspectable visual/text evidence, Evidence video is generated and embedded, Generated HTML report is inspected with Computer Use, Settings General tab visibly renders, Settings AI Models tab visibly renders, Settings API Keys tab visibly renders, Settings Preferences tab visibly renders</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">not-run</span></td><td>No primary artifact linked.</td><td>Requires PR metadata and changed-file/user-visible focus input.</td></tr>
+<tr><td>Main branch user-visible coverage stays mapped<br><small>Coverage manifest v1 maps 13 user-visible surfaces to scenarios or explicit waivers. Explicit waivers: homebrew-badge: Not yet deterministic in the remote major-feature lane; needs a fixture with Homebrew installed and a known untracked tap/brew/cask diff before the suite can honestly claim coverage for the badge popover and Add to config action. | onboarding-permissions: Current remote lane starts from a configured app state. This must become a dedicated clean-profile Computer Use scenario before the suite can honestly claim full main coverage. | sudo-local-activation-fixture: The DXU remote lane disables sudo_local in the disposable fixture because unattended MacinCloud AppleScript activation can hang while creating /etc/pam.d/sudo_local. This is an explicit CI fixture waiver, not proof that the production sudo_local path works. | preview-indicator: Not yet in the remote major-feature lane; needs either a deterministic preview-state setup or a real workflow that activates it.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">manifest-confirmed</span></td><td>No primary artifact linked.</td><td>A repo-local coverage manifest maps major user-visible surfaces on main to Computer Use scenarios or explicit waivers, and the runner scans for unmapped candidate files.</td></tr>
+<tr><td>PR-specific user-visible behavior is covered when applicable<br><small>User-visible changed files were mapped to passing Computer Use scenarios and surfaced at the top of the report: Real provider workflow reaches Review, Summary tab renders after intent review, Diff tab renders after intent review, Build &amp; Test destructive boundary appears before activation, Step 3 Save / Keep changes persists a change, Rollback cleanup returns disposable config to clean state, My History opens and renders, Scenario results include inspectable visual/text evidence, Evidence video is generated and embedded, Generated HTML report is inspected with Computer Use</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">not-run</span></td><td>No primary artifact linked.</td><td>Requires PR metadata and changed-file/user-visible focus input.</td></tr>
 <tr><td>Evidence video is generated and embedded<br><small>Evidence video generated at video/computer-use-evidence.mp4.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">artifact-confirmed</span></td><td>No primary artifact linked.</td><td>Report embeds an MP4 under video/computer-use-evidence.mp4.</td></tr>
 <tr><td>Generated HTML report is inspected with Computer Use<br><small>Computer Use inspected the generated report in Safari; report text and evidence sections were visible.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/29-report-inspection-Safari.png</code><br><code>texts/29-report-inspection-Safari.txt</code></td><td>Computer Use opens the generated report on the remote Mac and sees report sections.</td></tr></tbody>
   </table>
@@ -224,22 +166,23 @@
 
   <h2>Main Coverage Freshness</h2>
   <section class="panel">
-    <p><strong>Manifest v1</strong>: 9/12 surfaces have direct scenario mappings; 3 have explicit waivers; 99 user-visible candidate files scanned.</p>
+    <p><strong>Manifest v1</strong>: 9/13 surfaces have direct scenario mappings; 4 have explicit waivers; 99 user-visible candidate files scanned.</p>
     <h3>Coverage Drift</h3>
-    <table><thead><tr><th>Status</th><th>Detail</th></tr></thead><tbody><tr><td><span class="verdict fail">drift</span></td><td>Unmapped user-visible candidate files: apps/native/src/components/widget/homebrew-badge.tsx</td></tr></tbody></table>
+    <table><thead><tr><th>Status</th><th>Detail</th></tr></thead><tbody><tr><td><span class="verdict pass">clean</span></td><td>No unmapped user-visible candidate files or manifest mapping errors detected.</td></tr></tbody></table>
     <h3>Explicit Waivers</h3>
-    <table><thead><tr><th>ID</th><th>Surface</th><th>Reason</th></tr></thead><tbody><tr><td>onboarding-permissions</td><td>First-run permissions and nix setup/onboarding</td><td>Current remote lane starts from a configured app state. This must become a dedicated clean-profile Computer Use scenario before the suite can honestly claim full main coverage.</td></tr>
+    <table><thead><tr><th>ID</th><th>Surface</th><th>Reason</th></tr></thead><tbody><tr><td>homebrew-badge</td><td>Homebrew untracked package badge and add-to-config popover</td><td>Not yet deterministic in the remote major-feature lane; needs a fixture with Homebrew installed and a known untracked tap/brew/cask diff before the suite can honestly claim coverage for the badge popover and Add to config action.</td></tr>
+<tr><td>onboarding-permissions</td><td>First-run permissions and nix setup/onboarding</td><td>Current remote lane starts from a configured app state. This must become a dedicated clean-profile Computer Use scenario before the suite can honestly claim full main coverage.</td></tr>
 <tr><td>sudo-local-activation-fixture</td><td>nix-darwin sudo_local activation path</td><td>The DXU remote lane disables sudo_local in the disposable fixture because unattended MacinCloud AppleScript activation can hang while creating /etc/pam.d/sudo_local. This is an explicit CI fixture waiver, not proof that the production sudo_local path works.</td></tr>
 <tr><td>preview-indicator</td><td>Preview indicator floating commit/revert UI</td><td>Not yet in the remote major-feature lane; needs either a deterministic preview-state setup or a real workflow that activates it.</td></tr></tbody></table>
   </section>
 
   <section class="meta">
-    <div class="panel"><strong>Timestamp</strong><br>2026-05-01T14:53:15.112Z</div>
+    <div class="panel"><strong>Timestamp</strong><br>2026-05-01T15:15:56.881Z</div>
     <div class="panel"><strong>Branch</strong><br>unknown</div>
-    <div class="panel"><strong>SHA</strong><br><code>092fbfb</code></div>
+    <div class="panel"><strong>SHA</strong><br><code>8362be2</code></div>
     <div class="panel"><strong>macOS</strong><br>unknown</div>
     <div class="panel"><strong>App</strong><br><code>com.darkmatter.nixmac</code></div>
-    <div class="panel"><strong>App Command</strong><br><code>open -n /tmp/nixmac-computer-use-e2e-app-25218704371-1/nixmac.app</code></div>
+    <div class="panel"><strong>App Command</strong><br><code>open -n /tmp/nixmac-computer-use-e2e-app-25219567861-1/nixmac.app</code></div>
     <div class="panel"><strong>Provider</strong><br><code>real-openrouter-compatible-provider</code><br>The key value is never written to this report. Failures may reflect provider billing/auth state.</div>
     <div class="panel"><strong>Prompt</strong><br>Add the bat command line tool to my Homebrew packages as the plain string &quot;bat&quot; only, with no inline comments.</div>
     <div class="panel"><strong>Evidence</strong><br>29 screenshots, 32 text snapshots, video available</div>
@@ -255,8 +198,8 @@
     <thead><tr><th>Scenario</th><th>Status</th><th>Evidence Grade</th><th>Primary Artifacts</th><th>What Proved It</th><th>Still Untested</th></tr></thead>
     <tbody>
       <tr><td>App launches and first screen is usable<br><small>Computer Use saw the nixmac app window, prompt surface, progress stepper, and top-level controls.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/01-launch.png</code><br><code>texts/01-launch.txt</code></td><td>Accessibility text shows the nixmac window, Settings/History/Feedback controls, stepper, prompt text area, and disabled Send button.</td><td>Does not prove provider or config state.</td></tr>
-<tr><td>Update banner does not block the main workflow<br><small>A visible Dismiss button was clicked and the UI remained usable.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td><code>screenshots/01-launch.png</code><br><code>texts/01-launch.txt</code></td><td>Runner checks for a visible Dismiss button. If present, it dismisses it; if absent, it proves no update banner blocked the initial UI.</td><td>The explicit dismiss interaction is only tested on runs where a banner is actually present.</td></tr>
-<tr><td>Core UX/UI surfaces are captured and inspectable<br><small>Screenshots/text snapshots cover the core app shell, settings, support dialogs, prompt input, and provider flow.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td><code>screenshots/01-launch.png</code><br><code>screenshots/03-settings-general.png</code><br><code>screenshots/04-settings-ai-models.png</code><br><code>screenshots/06-settings-preferences.png</code><br><code>screenshots/08-history.png</code><br><code>screenshots/12-feedback.png</code><br><code>screenshots/14-report-issue.png</code><br><code>screenshots/17-typed-intent.png</code><br><code>texts/01-launch.txt</code><br><code>texts/03-settings-general.txt</code><br><code>texts/04-settings-ai-models.txt</code><br><code>texts/06-settings-preferences.txt</code><br><code>texts/08-history.txt</code><br><code>texts/12-feedback.txt</code><br><code>texts/14-report-issue.txt</code><br><code>texts/17-typed-intent.txt</code></td><td>Required core UI surfaces have screenshot and text artifacts.</td><td>Does not prove screenshot annotations are exact bounding boxes.</td></tr>
+<tr><td>Update banner does not block the main workflow<br><small>No dismissible update banner was visible; no banner blocked the main workflow.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td><code>screenshots/01-launch.png</code><br><code>texts/01-launch.txt</code></td><td>Runner checks for a visible Dismiss button. If present, it dismisses it; if absent, it proves no update banner blocked the initial UI.</td><td>The explicit dismiss interaction is only tested on runs where a banner is actually present.</td></tr>
+<tr><td>Core UX/UI surfaces are captured and inspectable<br><small>Screenshots/text snapshots cover the core app shell, settings, support dialogs, prompt input, and provider flow.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td><code>screenshots/01-launch.png</code><br><code>screenshots/02-settings-general.png</code><br><code>screenshots/03-settings-ai-models.png</code><br><code>screenshots/05-settings-preferences.png</code><br><code>screenshots/07-history.png</code><br><code>screenshots/11-feedback.png</code><br><code>screenshots/13-report-issue.png</code><br><code>screenshots/16-typed-intent.png</code><br><code>texts/01-launch.txt</code><br><code>texts/02-settings-general.txt</code><br><code>texts/03-settings-ai-models.txt</code><br><code>texts/05-settings-preferences.txt</code><br><code>texts/07-history.txt</code><br><code>texts/11-feedback.txt</code><br><code>texts/13-report-issue.txt</code><br><code>texts/16-typed-intent.txt</code></td><td>Required core UI surfaces have screenshot and text artifacts.</td><td>Does not prove screenshot annotations are exact bounding boxes.</td></tr>
     </tbody>
   </table>
 </section>
@@ -265,10 +208,10 @@
   <table>
     <thead><tr><th>Scenario</th><th>Status</th><th>Evidence Grade</th><th>Primary Artifacts</th><th>What Proved It</th><th>Still Untested</th></tr></thead>
     <tbody>
-      <tr><td>Settings General tab visibly renders<br><small>Settings opened and General-related content was visible.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/03-settings-general.png</code><br><code>texts/03-settings-general.txt</code></td><td>Computer Use clicked Settings and captured the General tab content.</td><td>Does not persist setting edits.</td></tr>
-<tr><td>Settings AI Models tab visibly renders<br><small>AI Models settings content was visible with provider/model controls.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/04-settings-ai-models.png</code><br><code>texts/04-settings-ai-models.txt</code></td><td>Computer Use opened AI Models and captured provider/model/build controls.</td><td>Does not change models or verify every provider.</td></tr>
-<tr><td>Settings API Keys tab visibly renders<br><small>API Keys content was visible after Computer Use polling, including OpenRouter/API key controls.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td><code>texts/05-settings-api-keys-01.txt</code></td><td>Sensitive screenshot omitted; redacted accessibility text must show API Keys/OpenRouter/API-key controls.</td><td>Does not edit/delete keys and does not prove keychain persistence by itself.</td></tr>
-<tr><td>Settings Preferences tab visibly renders<br><small>Preferences settings content was visible with confirmation controls.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/06-settings-preferences.png</code><br><code>texts/06-settings-preferences.txt</code></td><td>Computer Use opened Preferences and captured confirmation controls.</td><td>Does not toggle preferences permanently.</td></tr>
+      <tr><td>Settings General tab visibly renders<br><small>Settings opened and General-related content was visible.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/02-settings-general.png</code><br><code>texts/02-settings-general.txt</code></td><td>Computer Use clicked Settings and captured the General tab content.</td><td>Does not persist setting edits.</td></tr>
+<tr><td>Settings AI Models tab visibly renders<br><small>AI Models settings content was visible with provider/model controls.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/03-settings-ai-models.png</code><br><code>texts/03-settings-ai-models.txt</code></td><td>Computer Use opened AI Models and captured provider/model/build controls.</td><td>Does not change models or verify every provider.</td></tr>
+<tr><td>Settings API Keys tab visibly renders<br><small>API Keys content was visible after Computer Use polling, including OpenRouter/API key controls.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td><code>texts/04-settings-api-keys-01.txt</code></td><td>Sensitive screenshot omitted; redacted accessibility text must show API Keys/OpenRouter/API-key controls.</td><td>Does not edit/delete keys and does not prove keychain persistence by itself.</td></tr>
+<tr><td>Settings Preferences tab visibly renders<br><small>Preferences settings content was visible with confirmation controls.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/05-settings-preferences.png</code><br><code>texts/05-settings-preferences.txt</code></td><td>Computer Use opened Preferences and captured confirmation controls.</td><td>Does not toggle preferences permanently.</td></tr>
     </tbody>
   </table>
 </section>
@@ -277,10 +220,10 @@
   <table>
     <thead><tr><th>Scenario</th><th>Status</th><th>Evidence Grade</th><th>Primary Artifacts</th><th>What Proved It</th><th>Still Untested</th></tr></thead>
     <tbody>
-      <tr><td>My History opens and renders<br><small>History rendered a visible state.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/08-history.png</code><br><code>texts/08-history.txt</code></td><td>Computer Use opened History and captured a visible history/empty state.</td><td>Current run does not prove a newly saved change appears there.</td></tr>
-<tr><td>Console opens and renders<br><small>Console rendered visible content.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td><code>texts/10-console.txt</code></td><td>Sensitive screenshot omitted; redacted accessibility text must show Console/log content.</td><td>Does not prove log completeness and may omit secret-bearing visuals by design.</td></tr>
-<tr><td>Give Feedback opens and can be cancelled<br><small>Feedback dialog rendered and no submission was made.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/12-feedback.png</code><br><code>screenshots/13-home-after-feedback.png</code><br><code>texts/12-feedback.txt</code><br><code>texts/13-home-after-feedback.txt</code></td><td>Computer Use opened and cancelled the feedback dialog.</td><td>Does not submit feedback.</td></tr>
-<tr><td>Report Issue opens and can be cancelled<br><small>Report Issue dialog rendered and no submission was made.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/14-report-issue.png</code><br><code>screenshots/15-home-after-report-issue.png</code><br><code>texts/14-report-issue.txt</code><br><code>texts/15-home-after-report-issue.txt</code></td><td>Computer Use opened and cancelled the report issue dialog.</td><td>Does not submit a report.</td></tr>
+      <tr><td>My History opens and renders<br><small>History rendered a visible state.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/07-history.png</code><br><code>texts/07-history.txt</code></td><td>Computer Use opened History and captured a visible history/empty state.</td><td>Current run does not prove a newly saved change appears there.</td></tr>
+<tr><td>Console opens and renders<br><small>Console rendered visible content.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td><code>texts/09-console.txt</code></td><td>Sensitive screenshot omitted; redacted accessibility text must show Console/log content.</td><td>Does not prove log completeness and may omit secret-bearing visuals by design.</td></tr>
+<tr><td>Give Feedback opens and can be cancelled<br><small>Feedback dialog rendered and no submission was made.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/11-feedback.png</code><br><code>screenshots/12-home-after-feedback.png</code><br><code>texts/11-feedback.txt</code><br><code>texts/12-home-after-feedback.txt</code></td><td>Computer Use opened and cancelled the feedback dialog.</td><td>Does not submit feedback.</td></tr>
+<tr><td>Report Issue opens and can be cancelled<br><small>Report Issue dialog rendered and no submission was made.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/13-report-issue.png</code><br><code>screenshots/14-home-after-report-issue.png</code><br><code>texts/13-report-issue.txt</code><br><code>texts/14-home-after-report-issue.txt</code></td><td>Computer Use opened and cancelled the report issue dialog.</td><td>Does not submit a report.</td></tr>
     </tbody>
   </table>
 </section>
@@ -289,9 +232,9 @@
   <table>
     <thead><tr><th>Scenario</th><th>Status</th><th>Evidence Grade</th><th>Primary Artifacts</th><th>What Proved It</th><th>Still Untested</th></tr></thead>
     <tbody>
-      <tr><td>Home suggestion cards are visible/clickable<br><small>A suggestion card was clicked and the UI remained usable.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/16-suggestion-card.png</code><br><code>texts/16-suggestion-card.txt</code></td><td>Computer Use found and clicked a suggestion card; the UI stayed usable afterward.</td><td>Does not prove every suggestion works.</td></tr>
-<tr><td>A typed real intent can be submitted<br><small>Computer Use entered the real prompt into the app prompt field.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/17-typed-intent.png</code><br><code>texts/17-typed-intent.txt</code></td><td>Prompt text appears in the Computer Use state after set_value.</td><td>Does not prove provider execution until Review is reached.</td></tr>
-<tr><td>Real provider workflow reaches Review<br><small>The real provider workflow reached Review or a Review-equivalent state.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/18-provider-progress-01.png</code><br><code>screenshots/19-provider-progress-02.png</code><br><code>screenshots/20-provider-progress-03.png</code><br><code>screenshots/21-provider-progress-04.png</code><br><code>screenshots/22-provider-progress-05.png</code><br><code>texts/18-provider-progress-01.txt</code><br><code>texts/19-provider-progress-02.txt</code><br><code>texts/20-provider-progress-03.txt</code><br><code>texts/21-provider-progress-04.txt</code><br><code>texts/22-provider-progress-05.txt</code></td><td>Polling reached Review-equivalent UI with Build &amp; Test/Discard/Summary/Diff controls.</td><td>Does not prove Save/commit.</td></tr>
+      <tr><td>Home suggestion cards are visible/clickable<br><small>A suggestion card was clicked and the UI remained usable.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/15-suggestion-card.png</code><br><code>texts/15-suggestion-card.txt</code></td><td>Computer Use found and clicked a suggestion card; the UI stayed usable afterward.</td><td>Does not prove every suggestion works.</td></tr>
+<tr><td>A typed real intent can be submitted<br><small>Computer Use entered the real prompt into the app prompt field.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/16-typed-intent.png</code><br><code>texts/16-typed-intent.txt</code></td><td>Prompt text appears in the Computer Use state after set_value.</td><td>Does not prove provider execution until Review is reached.</td></tr>
+<tr><td>Real provider workflow reaches Review<br><small>The real provider workflow reached Review or a Review-equivalent state.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/17-provider-progress-01.png</code><br><code>screenshots/18-provider-progress-02.png</code><br><code>screenshots/19-provider-progress-03.png</code><br><code>screenshots/20-provider-progress-04.png</code><br><code>screenshots/21-provider-progress-05.png</code><br><code>texts/17-provider-progress-01.txt</code><br><code>texts/18-provider-progress-02.txt</code><br><code>texts/19-provider-progress-03.txt</code><br><code>texts/20-provider-progress-04.txt</code><br><code>texts/21-provider-progress-05.txt</code></td><td>Polling reached Review-equivalent UI with Build &amp; Test/Discard/Summary/Diff controls.</td><td>Does not prove Save/commit.</td></tr>
 <tr><td>Summary tab renders after intent review<br><small>Summary described the requested bat/Homebrew package intent.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td><code>screenshots/23-review-summary.png</code><br><code>texts/23-review-summary.txt</code></td><td>Summary text must mention the requested package/change domain.</td><td>Does not prove file persistence.</td></tr>
 <tr><td>Diff tab renders after intent review<br><small>Diff rendered a candidate Homebrew configuration change for bat.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">text-confirmed</span></td><td><code>screenshots/24-review-diff.png</code><br><code>texts/24-review-diff.txt</code></td><td>Diff text must show the requested package/change in a configuration file.</td><td>Does not prove the change builds or saves.</td></tr>
 <tr><td>Build &amp; Test destructive boundary appears before activation<br><small>Build &amp; Test presented a visible confirmation/boundary before activation.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">action-confirmed</span></td><td><code>screenshots/25-build-boundary.png</code><br><code>screenshots/27-step-3-ready.png</code><br><code>texts/25-build-boundary.txt</code><br><code>texts/27-step-3-ready.txt</code></td><td>Build &amp; Test opens a confirmation dialog before activation; disposable runs confirm it and wait for Step 3.</td><td>Without explicit disposable build-confirm mode, the runner still cancels at the boundary.</td></tr>
@@ -306,8 +249,8 @@
   <table>
     <thead><tr><th>Scenario</th><th>Status</th><th>Evidence Grade</th><th>Primary Artifacts</th><th>What Proved It</th><th>Still Untested</th></tr></thead>
     <tbody>
-      <tr><td>Main branch user-visible coverage stays mapped<br><small>Coverage drift detected against main: Unmapped user-visible candidate files: apps/native/src/components/widget/homebrew-badge.tsx Explicit waivers: onboarding-permissions: Current remote lane starts from a configured app state. This must become a dedicated clean-profile Computer Use scenario before the suite can honestly claim full main coverage. | sudo-local-activation-fixture: The DXU remote lane disables sudo_local in the disposable fixture because unattended MacinCloud AppleScript activation can hang while creating /etc/pam.d/sudo_local. This is an explicit CI fixture waiver, not proof that the production sudo_local path works. | preview-indicator: Not yet in the remote major-feature lane; needs either a deterministic preview-state setup or a real workflow that activates it.</small></td><td><span class="verdict fail">fail</span></td><td><span class="grade">manifest-confirmed</span></td><td>No primary artifact linked.</td><td>A repo-local coverage manifest maps major user-visible surfaces on main to Computer Use scenarios or explicit waivers, and the runner scans for unmapped candidate files.</td><td>This proves scenario mapping freshness, not that every mapped scenario passed in the current run.</td></tr>
-<tr><td>PR-specific user-visible behavior is covered when applicable<br><small>User-visible changed files were mapped to passing Computer Use scenarios and surfaced at the top of the report: Real provider workflow reaches Review, Summary tab renders after intent review, Diff tab renders after intent review, Build &amp; Test destructive boundary appears before activation, Step 3 Save / Keep changes persists a change, Rollback cleanup returns disposable config to clean state, My History opens and renders, Scenario results include inspectable visual/text evidence, Evidence video is generated and embedded, Generated HTML report is inspected with Computer Use, Settings General tab visibly renders, Settings AI Models tab visibly renders, Settings API Keys tab visibly renders, Settings Preferences tab visibly renders</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">not-run</span></td><td>No primary artifact linked.</td><td>Requires PR metadata and changed-file/user-visible focus input.</td><td>No PR-specific scenario is executed unless PR context is provided.</td></tr>
+      <tr><td>Main branch user-visible coverage stays mapped<br><small>Coverage manifest v1 maps 13 user-visible surfaces to scenarios or explicit waivers. Explicit waivers: homebrew-badge: Not yet deterministic in the remote major-feature lane; needs a fixture with Homebrew installed and a known untracked tap/brew/cask diff before the suite can honestly claim coverage for the badge popover and Add to config action. | onboarding-permissions: Current remote lane starts from a configured app state. This must become a dedicated clean-profile Computer Use scenario before the suite can honestly claim full main coverage. | sudo-local-activation-fixture: The DXU remote lane disables sudo_local in the disposable fixture because unattended MacinCloud AppleScript activation can hang while creating /etc/pam.d/sudo_local. This is an explicit CI fixture waiver, not proof that the production sudo_local path works. | preview-indicator: Not yet in the remote major-feature lane; needs either a deterministic preview-state setup or a real workflow that activates it.</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">manifest-confirmed</span></td><td>No primary artifact linked.</td><td>A repo-local coverage manifest maps major user-visible surfaces on main to Computer Use scenarios or explicit waivers, and the runner scans for unmapped candidate files.</td><td>This proves scenario mapping freshness, not that every mapped scenario passed in the current run.</td></tr>
+<tr><td>PR-specific user-visible behavior is covered when applicable<br><small>User-visible changed files were mapped to passing Computer Use scenarios and surfaced at the top of the report: Real provider workflow reaches Review, Summary tab renders after intent review, Diff tab renders after intent review, Build &amp; Test destructive boundary appears before activation, Step 3 Save / Keep changes persists a change, Rollback cleanup returns disposable config to clean state, My History opens and renders, Scenario results include inspectable visual/text evidence, Evidence video is generated and embedded, Generated HTML report is inspected with Computer Use</small></td><td><span class="verdict pass">pass</span></td><td><span class="grade">not-run</span></td><td>No primary artifact linked.</td><td>Requires PR metadata and changed-file/user-visible focus input.</td><td>No PR-specific scenario is executed unless PR context is provided.</td></tr>
     </tbody>
   </table>
 </section>
@@ -327,8 +270,7 @@
   <table>
     <thead><tr><th>Gap</th><th>Status</th><th>Detail</th></tr></thead>
     <tbody>
-      <tr><td>Main branch user-visible coverage stays mapped</td><td><span class="verdict fail">fail</span></td><td>Coverage drift detected against main: Unmapped user-visible candidate files: apps/native/src/components/widget/homebrew-badge.tsx Explicit waivers: onboarding-permissions: Current remote lane starts from a configured app state. This must become a dedicated clean-profile Computer Use scenario before the suite can honestly claim full main coverage. | sudo-local-activation-fixture: The DXU remote lane disables sudo_local in the disposable fixture because unattended MacinCloud AppleScript activation can hang while creating /etc/pam.d/sudo_local. This is an explicit CI fixture waiver, not proof that the production sudo_local path works. | preview-indicator: Not yet in the remote major-feature lane; needs either a deterministic preview-state setup or a real workflow that activates it.</td></tr>
-<tr><td>Continuous video recording</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Video is assembled from Computer Use screenshots, not a continuous window-bounded recording.</td></tr>
+      <tr><td>Continuous video recording</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Video is assembled from Computer Use screenshots, not a continuous window-bounded recording.</td></tr>
 <tr><td>Remote Mac/app metadata</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote macOS/app version is not yet captured separately from the runner metadata.</td></tr>
 <tr><td>Credential process-env verification</td><td><span class="verdict inconclusive">inconclusive</span></td><td>The actual nixmac process environment is not yet recorded in the report.</td></tr>
     </tbody>
@@ -343,33 +285,6 @@
     <ul><li><code>.github/workflows/build.yaml</code></li>
 <li><code>.github/workflows/computer-use-e2e.yml</code></li>
 <li><code>.gitignore</code></li>
-<li><code>apps/native/src-tauri/examples/specta_gen_ts.rs</code></li>
-<li><code>apps/native/src-tauri/src/apply_system_defaults.rs</code></li>
-<li><code>apps/native/src-tauri/src/commands.rs</code></li>
-<li><code>apps/native/src-tauri/src/evolve/edit_nix_file.rs</code></li>
-<li><code>apps/native/src-tauri/src/evolve/mod.rs</code></li>
-<li><code>apps/native/src-tauri/src/mac/homebrew.rs</code></li>
-<li><code>apps/native/src-tauri/src/mac/mod.rs</code></li>
-<li><code>apps/native/src-tauri/src/main.rs</code></li>
-<li><code>apps/native/src-tauri/src/managed_edit.rs</code></li>
-<li><code>apps/native/src-tauri/src/nix_ast_lists.rs</code></li>
-<li><code>apps/native/src-tauri/src/shared_types.rs</code></li>
-<li><code>apps/native/src-tauri/src/store.rs</code></li>
-<li><code>apps/native/src-tauri/src/summarize/find_existing.rs</code></li>
-<li><code>apps/native/src-tauri/src/summarize/group_existing.rs</code></li>
-<li><code>apps/native/src-tauri/src/summarize/token_budgets.rs</code></li>
-<li><code>apps/native/src/components/config-edit-overlay-panel.tsx</code></li>
-<li><code>apps/native/src/components/widget/homebrew-badge.tsx</code></li>
-<li><code>apps/native/src/components/widget/prompt-input.tsx</code></li>
-<li><code>apps/native/src/components/widget/settings/preferences-tab.tsx</code></li>
-<li><code>apps/native/src/components/widget/system-defaults-cta.tsx</code></li>
-<li><code>apps/native/src/components/widget/widget.tsx</code></li>
-<li><code>apps/native/src/hooks/use-homebrew-diff.ts</code></li>
-<li><code>apps/native/src/hooks/use-prefs.ts</code></li>
-<li><code>apps/native/src/stores/widget-store.test.ts</code></li>
-<li><code>apps/native/src/stores/widget-store.ts</code></li>
-<li><code>apps/native/src/tauri-api.ts</code></li>
-<li><code>apps/native/src/types/shared.ts</code></li>
 <li><code>tools/computer-use-e2e/PROPOSAL.md</code></li>
 <li><code>tools/computer-use-e2e/README.md</code></li>
 <li><code>tools/computer-use-e2e/check-remote.mjs</code></li>
@@ -379,31 +294,6 @@
 <li><code>tools/computer-use-e2e/run-remote-cua.mjs</code></li></ul>
     <h3>User-Visible Focus Candidates</h3>
     <ul><li><code>.github/workflows/computer-use-e2e.yml</code></li>
-<li><code>apps/native/src-tauri/examples/specta_gen_ts.rs</code></li>
-<li><code>apps/native/src-tauri/src/apply_system_defaults.rs</code></li>
-<li><code>apps/native/src-tauri/src/commands.rs</code></li>
-<li><code>apps/native/src-tauri/src/evolve/edit_nix_file.rs</code></li>
-<li><code>apps/native/src-tauri/src/evolve/mod.rs</code></li>
-<li><code>apps/native/src-tauri/src/mac/homebrew.rs</code></li>
-<li><code>apps/native/src-tauri/src/mac/mod.rs</code></li>
-<li><code>apps/native/src-tauri/src/main.rs</code></li>
-<li><code>apps/native/src-tauri/src/managed_edit.rs</code></li>
-<li><code>apps/native/src-tauri/src/nix_ast_lists.rs</code></li>
-<li><code>apps/native/src-tauri/src/shared_types.rs</code></li>
-<li><code>apps/native/src-tauri/src/store.rs</code></li>
-<li><code>apps/native/src-tauri/src/summarize/find_existing.rs</code></li>
-<li><code>apps/native/src-tauri/src/summarize/group_existing.rs</code></li>
-<li><code>apps/native/src-tauri/src/summarize/token_budgets.rs</code></li>
-<li><code>apps/native/src/components/config-edit-overlay-panel.tsx</code></li>
-<li><code>apps/native/src/components/widget/homebrew-badge.tsx</code></li>
-<li><code>apps/native/src/components/widget/prompt-input.tsx</code></li>
-<li><code>apps/native/src/components/widget/settings/preferences-tab.tsx</code></li>
-<li><code>apps/native/src/components/widget/system-defaults-cta.tsx</code></li>
-<li><code>apps/native/src/components/widget/widget.tsx</code></li>
-<li><code>apps/native/src/hooks/use-homebrew-diff.ts</code></li>
-<li><code>apps/native/src/hooks/use-prefs.ts</code></li>
-<li><code>apps/native/src/stores/widget-store.test.ts</code></li>
-<li><code>apps/native/src/stores/widget-store.ts</code></li>
 <li><code>tools/computer-use-e2e/PROPOSAL.md</code></li>
 <li><code>tools/computer-use-e2e/README.md</code></li>
 <li><code>tools/computer-use-e2e/check-remote.mjs</code></li>
@@ -421,11 +311,7 @@
 <li>My History opens and renders</li>
 <li>Scenario results include inspectable visual/text evidence</li>
 <li>Evidence video is generated and embedded</li>
-<li>Generated HTML report is inspected with Computer Use</li>
-<li>Settings General tab visibly renders</li>
-<li>Settings AI Models tab visibly renders</li>
-<li>Settings API Keys tab visibly renders</li>
-<li>Settings Preferences tab visibly renders</li></ul>
+<li>Generated HTML report is inspected with Computer Use</li></ul>
   </section>
 
   <h2>Visual Proof Board</h2>
@@ -444,7 +330,7 @@
 </div><figcaption><strong>launch</strong> - Computer Use observed the nixmac window at launch.</figcaption></figure>
   <details><summary>texts/01-launch.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -467,7 +353,7 @@ Window: &quot;nixmac&quot;, App: nixmac.
 </div><figcaption><strong>launch</strong> - Computer Use observed the nixmac window at launch.</figcaption></figure>
   <details><summary>texts/01-launch.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -482,12 +368,12 @@ Window: &quot;nixmac&quot;, App: nixmac.
   <p><strong>Assertion:</strong> Computer Use clicked Settings and captured the General tab content.</p>
   <p><strong>Not proved:</strong> Does not persist setting edits.</p>
   <figure><div class="annotated-shot">
-  <img src="screenshots/03-settings-general.png" alt="settings-general">
+  <img src="screenshots/02-settings-general.png" alt="settings-general">
   <span class="annotation" style="left:18%;top:15%;width:64%;height:48%"><span>Settings content rendered</span></span>
 </div><figcaption><strong>settings-general</strong> - Computer Use opened Settings.</figcaption></figure>
-  <details><summary>texts/03-settings-general.txt</summary><pre>Computer Use state (CUA App Version: 758)
+  <details><summary>texts/02-settings-general.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -502,12 +388,12 @@ Window: &quot;nixmac&quot;, App: nixmac.
   <p><strong>Assertion:</strong> Computer Use opened AI Models and captured provider/model/build controls.</p>
   <p><strong>Not proved:</strong> Does not change models or verify every provider.</p>
   <figure><div class="annotated-shot">
-  <img src="screenshots/04-settings-ai-models.png" alt="settings-ai-models">
+  <img src="screenshots/03-settings-ai-models.png" alt="settings-ai-models">
   <span class="annotation" style="left:22%;top:18%;width:56%;height:52%"><span>Provider/model controls</span></span>
 </div><figcaption><strong>settings-ai-models</strong> - Computer Use opened AI Models settings.</figcaption></figure>
-  <details><summary>texts/04-settings-ai-models.txt</summary><pre>Computer Use state (CUA App Version: 758)
+  <details><summary>texts/03-settings-ai-models.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -522,9 +408,9 @@ Window: &quot;nixmac&quot;, App: nixmac.
   <p><strong>Assertion:</strong> Sensitive screenshot omitted; redacted accessibility text must show API Keys/OpenRouter/API-key controls.</p>
   <p><strong>Not proved:</strong> Does not edit/delete keys and does not prove keychain persistence by itself.</p>
   
-  <details><summary>texts/05-settings-api-keys-01.txt</summary><pre>Computer Use state (CUA App Version: 758)
+  <details><summary>texts/04-settings-api-keys-01.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -539,12 +425,12 @@ Window: &quot;nixmac&quot;, App: nixmac.
   <p><strong>Assertion:</strong> Computer Use opened Preferences and captured confirmation controls.</p>
   <p><strong>Not proved:</strong> Does not toggle preferences permanently.</p>
   <figure><div class="annotated-shot">
-  <img src="screenshots/06-settings-preferences.png" alt="settings-preferences">
+  <img src="screenshots/05-settings-preferences.png" alt="settings-preferences">
   <span class="annotation" style="left:22%;top:20%;width:56%;height:52%"><span>Confirmation controls</span></span>
 </div><figcaption><strong>settings-preferences</strong> - Computer Use opened Preferences settings.</figcaption></figure>
-  <details><summary>texts/06-settings-preferences.txt</summary><pre>Computer Use state (CUA App Version: 758)
+  <details><summary>texts/05-settings-preferences.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -559,12 +445,12 @@ Window: &quot;nixmac&quot;, App: nixmac.
   <p><strong>Assertion:</strong> Computer Use opened History and captured a visible history/empty state.</p>
   <p><strong>Not proved:</strong> Current run does not prove a newly saved change appears there.</p>
   <figure><div class="annotated-shot">
-  <img src="screenshots/08-history.png" alt="history">
+  <img src="screenshots/07-history.png" alt="history">
   <span class="annotation" style="left:18%;top:18%;width:64%;height:56%"><span>History surface visible</span></span>
 </div><figcaption><strong>history</strong> - Computer Use opened History.</figcaption></figure>
-  <details><summary>texts/08-history.txt</summary><pre>Computer Use state (CUA App Version: 758)
+  <details><summary>texts/07-history.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -579,9 +465,9 @@ Window: &quot;nixmac&quot;, App: nixmac.
   <p><strong>Assertion:</strong> Sensitive screenshot omitted; redacted accessibility text must show Console/log content.</p>
   <p><strong>Not proved:</strong> Does not prove log completeness and may omit secret-bearing visuals by design.</p>
   
-  <details><summary>texts/10-console.txt</summary><pre>Computer Use state (CUA App Version: 758)
+  <details><summary>texts/09-console.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -596,16 +482,16 @@ Window: &quot;nixmac&quot;, App: nixmac.
   <p><strong>Assertion:</strong> Computer Use opened and cancelled the feedback dialog.</p>
   <p><strong>Not proved:</strong> Does not submit feedback.</p>
   <figure><div class="annotated-shot">
-  <img src="screenshots/12-feedback.png" alt="feedback">
+  <img src="screenshots/11-feedback.png" alt="feedback">
   <span class="annotation" style="left:24%;top:22%;width:52%;height:52%"><span>Feedback dialog opened</span></span>
 </div><figcaption><strong>feedback</strong> - Computer Use opened Give Feedback.</figcaption></figure>
 <figure><div class="annotated-shot">
-  <img src="screenshots/13-home-after-feedback.png" alt="home-after-feedback">
+  <img src="screenshots/12-home-after-feedback.png" alt="home-after-feedback">
   
 </div><figcaption><strong>home-after-feedback</strong> - Computer Use returned home after Feedback.</figcaption></figure>
-  <details><summary>texts/12-feedback.txt</summary><pre>Computer Use state (CUA App Version: 758)
+  <details><summary>texts/11-feedback.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -613,9 +499,9 @@ Window: &quot;nixmac&quot;, App: nixmac.
 				3 container Notifications alt+T
 				4 container Give feedback
 					5 heading Give feedback, Value: 2</pre></details>
-<details><summary>texts/13-home-after-feedback.txt</summary><pre>Computer Use state (CUA App Version: 758)
+<details><summary>texts/12-home-after-feedback.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -630,16 +516,16 @@ Window: &quot;nixmac&quot;, App: nixmac.
   <p><strong>Assertion:</strong> Computer Use opened and cancelled the report issue dialog.</p>
   <p><strong>Not proved:</strong> Does not submit a report.</p>
   <figure><div class="annotated-shot">
-  <img src="screenshots/14-report-issue.png" alt="report-issue">
+  <img src="screenshots/13-report-issue.png" alt="report-issue">
   <span class="annotation" style="left:24%;top:22%;width:52%;height:52%"><span>Report Issue dialog opened</span></span>
 </div><figcaption><strong>report-issue</strong> - Computer Use opened Report Issue.</figcaption></figure>
 <figure><div class="annotated-shot">
-  <img src="screenshots/15-home-after-report-issue.png" alt="home-after-report-issue">
+  <img src="screenshots/14-home-after-report-issue.png" alt="home-after-report-issue">
   
 </div><figcaption><strong>home-after-report-issue</strong> - Computer Use returned home after Report Issue.</figcaption></figure>
-  <details><summary>texts/14-report-issue.txt</summary><pre>Computer Use state (CUA App Version: 758)
+  <details><summary>texts/13-report-issue.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -647,9 +533,9 @@ Window: &quot;nixmac&quot;, App: nixmac.
 				3 container Notifications alt+T
 				4 container Report an issue
 					5 heading Report an issue, Value: 2</pre></details>
-<details><summary>texts/15-home-after-report-issue.txt</summary><pre>Computer Use state (CUA App Version: 758)
+<details><summary>texts/14-home-after-report-issue.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -664,12 +550,12 @@ Window: &quot;nixmac&quot;, App: nixmac.
   <p><strong>Assertion:</strong> Computer Use found and clicked a suggestion card; the UI stayed usable afterward.</p>
   <p><strong>Not proved:</strong> Does not prove every suggestion works.</p>
   <figure><div class="annotated-shot">
-  <img src="screenshots/16-suggestion-card.png" alt="suggestion-card">
+  <img src="screenshots/15-suggestion-card.png" alt="suggestion-card">
   
 </div><figcaption><strong>suggestion-card</strong> - Computer Use checked home suggestion cards.</figcaption></figure>
-  <details><summary>texts/16-suggestion-card.txt</summary><pre>Computer Use state (CUA App Version: 758)
+  <details><summary>texts/15-suggestion-card.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -684,12 +570,12 @@ Window: &quot;nixmac&quot;, App: nixmac.
   <p><strong>Assertion:</strong> Prompt text appears in the Computer Use state after set_value.</p>
   <p><strong>Not proved:</strong> Does not prove provider execution until Review is reached.</p>
   <figure><div class="annotated-shot">
-  <img src="screenshots/17-typed-intent.png" alt="typed-intent">
+  <img src="screenshots/16-typed-intent.png" alt="typed-intent">
   <span class="annotation" style="left:18%;top:31%;width:64%;height:20%"><span>Typed prompt visible</span></span>
 </div><figcaption><strong>typed-intent</strong> - Computer Use set a real prompt in the app prompt field.</figcaption></figure>
-  <details><summary>texts/17-typed-intent.txt</summary><pre>Computer Use state (CUA App Version: 758)
+  <details><summary>texts/16-typed-intent.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -704,16 +590,16 @@ Window: &quot;nixmac&quot;, App: nixmac.
   <p><strong>Assertion:</strong> Polling reached Review-equivalent UI with Build &amp; Test/Discard/Summary/Diff controls.</p>
   <p><strong>Not proved:</strong> Does not prove Save/commit.</p>
   <figure><div class="annotated-shot">
-  <img src="screenshots/18-provider-progress-01.png" alt="provider-progress-01">
+  <img src="screenshots/17-provider-progress-01.png" alt="provider-progress-01">
   
 </div><figcaption><strong>provider-progress-01</strong> - Polling provider-progress.</figcaption></figure>
 <figure><div class="annotated-shot">
-  <img src="screenshots/19-provider-progress-02.png" alt="provider-progress-02">
+  <img src="screenshots/18-provider-progress-02.png" alt="provider-progress-02">
   
 </div><figcaption><strong>provider-progress-02</strong> - Polling provider-progress.</figcaption></figure>
-  <details><summary>texts/18-provider-progress-01.txt</summary><pre>Computer Use state (CUA App Version: 758)
+  <details><summary>texts/17-provider-progress-01.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -721,9 +607,9 @@ Window: &quot;nixmac&quot;, App: nixmac.
 				3 heading nixmac, Value: 3
 					4 text nixmac
 				5 button History</pre></details>
-<details><summary>texts/19-provider-progress-02.txt</summary><pre>Computer Use state (CUA App Version: 758)
+<details><summary>texts/18-provider-progress-02.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -743,7 +629,7 @@ Window: &quot;nixmac&quot;, App: nixmac.
 </div><figcaption><strong>review-summary</strong> - Computer Use opened Summary after Review.</figcaption></figure>
   <details><summary>texts/23-review-summary.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -763,7 +649,7 @@ Window: &quot;nixmac&quot;, App: nixmac.
 </div><figcaption><strong>review-diff</strong> - Computer Use opened Diff after Review.</figcaption></figure>
   <details><summary>texts/24-review-diff.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -787,7 +673,7 @@ Window: &quot;nixmac&quot;, App: nixmac.
 </div><figcaption><strong>step-3-ready</strong> - Computer Use reached Step 3 after Build &amp; Test.</figcaption></figure>
   <details><summary>texts/25-build-boundary.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -797,7 +683,7 @@ Window: &quot;nixmac&quot;, App: nixmac.
 					5 heading Confirm Action, Value: 2</pre></details>
 <details><summary>texts/27-step-3-ready.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -821,7 +707,7 @@ Window: &quot;nixmac&quot;, App: nixmac.
 </div><figcaption><strong>after-commit</strong> - Computer Use committed Step 3 changes.</figcaption></figure>
   <details><summary>texts/27-step-3-ready.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -831,7 +717,7 @@ Window: &quot;nixmac&quot;, App: nixmac.
 				5 button History</pre></details>
 <details><summary>texts/28-after-commit.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -855,7 +741,7 @@ Window: &quot;nixmac&quot;, App: nixmac.
 </div><figcaption><strong>history-restore-preview</strong> - Computer Use previewed History restore.</figcaption></figure>
   <details><summary>texts/29-history-before-restore.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -865,7 +751,7 @@ Window: &quot;nixmac&quot;, App: nixmac.
 				5 button History</pre></details>
 <details><summary>texts/30-history-restore-preview.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -889,7 +775,7 @@ Window: &quot;nixmac&quot;, App: nixmac.
 </div><figcaption><strong>after-history-restore</strong> - Computer Use completed History restore cleanup.</figcaption></figure>
   <details><summary>texts/30-history-restore-preview.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -899,7 +785,7 @@ Window: &quot;nixmac&quot;, App: nixmac.
 				5 button History</pre></details>
 <details><summary>texts/31-after-history-restore.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -921,12 +807,12 @@ Window: &quot;nixmac&quot;, App: nixmac.
 <span class="annotation annotation-pin" style="left:88%;top:50%;width:4%;height:4%"><span>Disabled send</span></span>
 </div><figcaption><strong>launch</strong> - Computer Use observed the nixmac window at launch.</figcaption></figure>
 <figure><div class="annotated-shot">
-  <img src="screenshots/03-settings-general.png" alt="settings-general">
+  <img src="screenshots/02-settings-general.png" alt="settings-general">
   <span class="annotation" style="left:18%;top:15%;width:64%;height:48%"><span>Settings content rendered</span></span>
 </div><figcaption><strong>settings-general</strong> - Computer Use opened Settings.</figcaption></figure>
   <details><summary>texts/01-launch.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -934,9 +820,9 @@ Window: &quot;nixmac&quot;, App: nixmac.
 				3 heading nixmac, Value: 3
 					4 text nixmac
 				5 button History</pre></details>
-<details><summary>texts/03-settings-general.txt</summary><pre>Computer Use state (CUA App Version: 758)
+<details><summary>texts/02-settings-general.txt</summary><pre>Computer Use state (CUA App Version: 758)
 &lt;app_state&gt;
-App=com.darkmatter.nixmac (pid 13686)
+App=com.darkmatter.nixmac (pid 18592)
 Window: &quot;nixmac&quot;, App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -969,161 +855,161 @@ Window: &quot;nixmac Computer Use E2E Evidence&quot;, App: Safari.
   <h2>Screenshots</h2>
   <figure>
   <img src="screenshots/01-launch.png" alt="launch">
-  <figcaption><strong>launch</strong> - Computer Use observed the nixmac window at launch. (2026-05-01T14:53:27.818Z)</figcaption>
+  <figcaption><strong>launch</strong> - Computer Use observed the nixmac window at launch. (2026-05-01T15:16:07.627Z)</figcaption>
 </figure>
 <figure>
-  <img src="screenshots/02-after-dismiss.png" alt="after-dismiss">
-  <figcaption><strong>after-dismiss</strong> - Computer Use clicked a visible Dismiss button. (2026-05-01T14:53:30.432Z)</figcaption>
+  <img src="screenshots/02-settings-general.png" alt="settings-general">
+  <figcaption><strong>settings-general</strong> - Computer Use opened Settings. (2026-05-01T15:16:10.213Z)</figcaption>
 </figure>
 <figure>
-  <img src="screenshots/03-settings-general.png" alt="settings-general">
-  <figcaption><strong>settings-general</strong> - Computer Use opened Settings. (2026-05-01T14:53:33.527Z)</figcaption>
+  <img src="screenshots/03-settings-ai-models.png" alt="settings-ai-models">
+  <figcaption><strong>settings-ai-models</strong> - Computer Use opened AI Models settings. (2026-05-01T15:16:13.477Z)</figcaption>
 </figure>
 <figure>
-  <img src="screenshots/04-settings-ai-models.png" alt="settings-ai-models">
-  <figcaption><strong>settings-ai-models</strong> - Computer Use opened AI Models settings. (2026-05-01T14:53:36.639Z)</figcaption>
+  <img src="screenshots/05-settings-preferences.png" alt="settings-preferences">
+  <figcaption><strong>settings-preferences</strong> - Computer Use opened Preferences settings. (2026-05-01T15:16:20.572Z)</figcaption>
 </figure>
 <figure>
-  <img src="screenshots/06-settings-preferences.png" alt="settings-preferences">
-  <figcaption><strong>settings-preferences</strong> - Computer Use opened Preferences settings. (2026-05-01T14:53:43.923Z)</figcaption>
+  <img src="screenshots/06-home-after-settings.png" alt="home-after-settings">
+  <figcaption><strong>home-after-settings</strong> - Computer Use returned to the main app surface after Settings coverage. (2026-05-01T15:16:23.468Z)</figcaption>
 </figure>
 <figure>
-  <img src="screenshots/07-home-after-settings.png" alt="home-after-settings">
-  <figcaption><strong>home-after-settings</strong> - Computer Use returned to the main app surface after Settings coverage. (2026-05-01T14:53:46.919Z)</figcaption>
+  <img src="screenshots/07-history.png" alt="history">
+  <figcaption><strong>history</strong> - Computer Use opened History. (2026-05-01T15:16:26.284Z)</figcaption>
 </figure>
 <figure>
-  <img src="screenshots/08-history.png" alt="history">
-  <figcaption><strong>history</strong> - Computer Use opened History. (2026-05-01T14:53:49.831Z)</figcaption>
+  <img src="screenshots/08-home-after-history.png" alt="home-after-history">
+  <figcaption><strong>home-after-history</strong> - Computer Use returned home after History. (2026-05-01T15:16:29.149Z)</figcaption>
 </figure>
 <figure>
-  <img src="screenshots/09-home-after-history.png" alt="home-after-history">
-  <figcaption><strong>home-after-history</strong> - Computer Use returned home after History. (2026-05-01T14:53:52.839Z)</figcaption>
+  <img src="screenshots/11-feedback.png" alt="feedback">
+  <figcaption><strong>feedback</strong> - Computer Use opened Give Feedback. (2026-05-01T15:16:37.705Z)</figcaption>
 </figure>
 <figure>
-  <img src="screenshots/12-feedback.png" alt="feedback">
-  <figcaption><strong>feedback</strong> - Computer Use opened Give Feedback. (2026-05-01T14:54:01.940Z)</figcaption>
+  <img src="screenshots/12-home-after-feedback.png" alt="home-after-feedback">
+  <figcaption><strong>home-after-feedback</strong> - Computer Use returned home after Feedback. (2026-05-01T15:16:40.671Z)</figcaption>
 </figure>
 <figure>
-  <img src="screenshots/13-home-after-feedback.png" alt="home-after-feedback">
-  <figcaption><strong>home-after-feedback</strong> - Computer Use returned home after Feedback. (2026-05-01T14:54:05.066Z)</figcaption>
+  <img src="screenshots/13-report-issue.png" alt="report-issue">
+  <figcaption><strong>report-issue</strong> - Computer Use opened Report Issue. (2026-05-01T15:16:43.496Z)</figcaption>
 </figure>
 <figure>
-  <img src="screenshots/14-report-issue.png" alt="report-issue">
-  <figcaption><strong>report-issue</strong> - Computer Use opened Report Issue. (2026-05-01T14:54:08.075Z)</figcaption>
+  <img src="screenshots/14-home-after-report-issue.png" alt="home-after-report-issue">
+  <figcaption><strong>home-after-report-issue</strong> - Computer Use returned home after Report Issue. (2026-05-01T15:16:46.473Z)</figcaption>
 </figure>
 <figure>
-  <img src="screenshots/15-home-after-report-issue.png" alt="home-after-report-issue">
-  <figcaption><strong>home-after-report-issue</strong> - Computer Use returned home after Report Issue. (2026-05-01T14:54:11.199Z)</figcaption>
+  <img src="screenshots/15-suggestion-card.png" alt="suggestion-card">
+  <figcaption><strong>suggestion-card</strong> - Computer Use checked home suggestion cards. (2026-05-01T15:16:49.393Z)</figcaption>
 </figure>
 <figure>
-  <img src="screenshots/16-suggestion-card.png" alt="suggestion-card">
-  <figcaption><strong>suggestion-card</strong> - Computer Use checked home suggestion cards. (2026-05-01T14:54:14.258Z)</figcaption>
+  <img src="screenshots/16-typed-intent.png" alt="typed-intent">
+  <figcaption><strong>typed-intent</strong> - Computer Use set a real prompt in the app prompt field. (2026-05-01T15:16:52.533Z)</figcaption>
 </figure>
 <figure>
-  <img src="screenshots/17-typed-intent.png" alt="typed-intent">
-  <figcaption><strong>typed-intent</strong> - Computer Use set a real prompt in the app prompt field. (2026-05-01T14:54:17.570Z)</figcaption>
+  <img src="screenshots/17-provider-progress-01.png" alt="provider-progress-01">
+  <figcaption><strong>provider-progress-01</strong> - Polling provider-progress. (2026-05-01T15:17:00.601Z)</figcaption>
 </figure>
 <figure>
-  <img src="screenshots/18-provider-progress-01.png" alt="provider-progress-01">
-  <figcaption><strong>provider-progress-01</strong> - Polling provider-progress. (2026-05-01T14:54:25.713Z)</figcaption>
+  <img src="screenshots/18-provider-progress-02.png" alt="provider-progress-02">
+  <figcaption><strong>provider-progress-02</strong> - Polling provider-progress. (2026-05-01T15:17:06.067Z)</figcaption>
 </figure>
 <figure>
-  <img src="screenshots/19-provider-progress-02.png" alt="provider-progress-02">
-  <figcaption><strong>provider-progress-02</strong> - Polling provider-progress. (2026-05-01T14:54:31.216Z)</figcaption>
+  <img src="screenshots/19-provider-progress-03.png" alt="provider-progress-03">
+  <figcaption><strong>provider-progress-03</strong> - Polling provider-progress. (2026-05-01T15:17:11.474Z)</figcaption>
 </figure>
 <figure>
-  <img src="screenshots/20-provider-progress-03.png" alt="provider-progress-03">
-  <figcaption><strong>provider-progress-03</strong> - Polling provider-progress. (2026-05-01T14:54:36.711Z)</figcaption>
+  <img src="screenshots/20-provider-progress-04.png" alt="provider-progress-04">
+  <figcaption><strong>provider-progress-04</strong> - Polling provider-progress. (2026-05-01T15:17:16.925Z)</figcaption>
 </figure>
 <figure>
-  <img src="screenshots/21-provider-progress-04.png" alt="provider-progress-04">
-  <figcaption><strong>provider-progress-04</strong> - Polling provider-progress. (2026-05-01T14:54:42.230Z)</figcaption>
+  <img src="screenshots/21-provider-progress-05.png" alt="provider-progress-05">
+  <figcaption><strong>provider-progress-05</strong> - Polling provider-progress. (2026-05-01T15:17:22.456Z)</figcaption>
 </figure>
 <figure>
-  <img src="screenshots/22-provider-progress-05.png" alt="provider-progress-05">
-  <figcaption><strong>provider-progress-05</strong> - Polling provider-progress. (2026-05-01T14:54:47.891Z)</figcaption>
+  <img src="screenshots/22-provider-progress-06.png" alt="provider-progress-06">
+  <figcaption><strong>provider-progress-06</strong> - Polling provider-progress. (2026-05-01T15:17:27.942Z)</figcaption>
 </figure>
 <figure>
   <img src="screenshots/23-review-summary.png" alt="review-summary">
-  <figcaption><strong>review-summary</strong> - Computer Use opened Summary after Review. (2026-05-01T14:54:49.929Z)</figcaption>
+  <figcaption><strong>review-summary</strong> - Computer Use opened Summary after Review. (2026-05-01T15:17:29.821Z)</figcaption>
 </figure>
 <figure>
   <img src="screenshots/24-review-diff.png" alt="review-diff">
-  <figcaption><strong>review-diff</strong> - Computer Use opened Diff after Review. (2026-05-01T14:54:53.243Z)</figcaption>
+  <figcaption><strong>review-diff</strong> - Computer Use opened Diff after Review. (2026-05-01T15:17:33.110Z)</figcaption>
 </figure>
 <figure>
   <img src="screenshots/25-build-boundary.png" alt="build-boundary">
-  <figcaption><strong>build-boundary</strong> - Computer Use clicked Build &amp; Test to verify the destructive boundary. (2026-05-01T14:54:56.408Z)</figcaption>
+  <figcaption><strong>build-boundary</strong> - Computer Use clicked Build &amp; Test to verify the destructive boundary. (2026-05-01T15:17:36.207Z)</figcaption>
 </figure>
 <figure>
   <img src="screenshots/26-build-to-step-3-01.png" alt="build-to-step-3-01">
-  <figcaption><strong>build-to-step-3-01</strong> - Polling build-to-step-3. (2026-05-01T14:55:05.458Z)</figcaption>
+  <figcaption><strong>build-to-step-3-01</strong> - Polling build-to-step-3. (2026-05-01T15:17:44.965Z)</figcaption>
 </figure>
 <figure>
   <img src="screenshots/27-step-3-ready.png" alt="step-3-ready">
-  <figcaption><strong>step-3-ready</strong> - Computer Use reached Step 3 after Build &amp; Test. (2026-05-01T14:55:06.003Z)</figcaption>
+  <figcaption><strong>step-3-ready</strong> - Computer Use reached Step 3 after Build &amp; Test. (2026-05-01T15:17:45.412Z)</figcaption>
 </figure>
 <figure>
   <img src="screenshots/28-after-commit.png" alt="after-commit">
-  <figcaption><strong>after-commit</strong> - Computer Use committed Step 3 changes. (2026-05-01T14:55:11.082Z)</figcaption>
+  <figcaption><strong>after-commit</strong> - Computer Use committed Step 3 changes. (2026-05-01T15:17:50.327Z)</figcaption>
 </figure>
 <figure>
   <img src="screenshots/29-history-before-restore.png" alt="history-before-restore">
-  <figcaption><strong>history-before-restore</strong> - Computer Use opened History after Step 3 commit. (2026-05-01T14:55:14.288Z)</figcaption>
+  <figcaption><strong>history-before-restore</strong> - Computer Use opened History after Step 3 commit. (2026-05-01T15:17:53.467Z)</figcaption>
 </figure>
 <figure>
   <img src="screenshots/30-history-restore-preview.png" alt="history-restore-preview">
-  <figcaption><strong>history-restore-preview</strong> - Computer Use previewed History restore. (2026-05-01T14:55:17.480Z)</figcaption>
+  <figcaption><strong>history-restore-preview</strong> - Computer Use previewed History restore. (2026-05-01T15:17:56.611Z)</figcaption>
 </figure>
 <figure>
   <img src="screenshots/31-after-history-restore.png" alt="after-history-restore">
-  <figcaption><strong>after-history-restore</strong> - Computer Use completed History restore cleanup. (2026-05-01T14:55:32.209Z)</figcaption>
+  <figcaption><strong>after-history-restore</strong> - Computer Use completed History restore cleanup. (2026-05-01T15:18:10.388Z)</figcaption>
 </figure>
 <figure>
   <img src="screenshots/29-report-inspection-Safari.png" alt="HTML report inspection">
-  <figcaption><strong>HTML report inspection</strong> - Computer Use inspected the generated report in Safari. (2026-05-01T14:55:58.927Z)</figcaption>
+  <figcaption><strong>HTML report inspection</strong> - Computer Use inspected the generated report in Safari. (2026-05-01T15:18:24.476Z)</figcaption>
 </figure>
 
   <h2>Human QA Narrative</h2>
-  <ul><li>2026-05-01T14:53:27.818Z - Computer Use observed the nixmac window at launch.</li>
-<li>2026-05-01T14:53:30.432Z - Computer Use clicked a visible Dismiss button.</li>
-<li>2026-05-01T14:53:33.527Z - Computer Use opened Settings.</li>
-<li>2026-05-01T14:53:36.639Z - Computer Use opened AI Models settings.</li>
-<li>2026-05-01T14:53:40.814Z - Polling settings-api-keys.</li>
-<li>2026-05-01T14:53:43.923Z - Computer Use opened Preferences settings.</li>
-<li>2026-05-01T14:53:46.919Z - Computer Use returned to the main app surface after Settings coverage.</li>
-<li>2026-05-01T14:53:49.831Z - Computer Use opened History.</li>
-<li>2026-05-01T14:53:52.839Z - Computer Use returned home after History.</li>
-<li>2026-05-01T14:53:55.908Z - Computer Use opened Console.</li>
-<li>2026-05-01T14:53:58.853Z - Computer Use returned home after Console.</li>
-<li>2026-05-01T14:54:01.940Z - Computer Use opened Give Feedback.</li>
-<li>2026-05-01T14:54:05.066Z - Computer Use returned home after Feedback.</li>
-<li>2026-05-01T14:54:08.075Z - Computer Use opened Report Issue.</li>
-<li>2026-05-01T14:54:11.199Z - Computer Use returned home after Report Issue.</li>
-<li>2026-05-01T14:54:14.258Z - Computer Use checked home suggestion cards.</li>
-<li>2026-05-01T14:54:17.570Z - Computer Use set a real prompt in the app prompt field.</li>
-<li>2026-05-01T14:54:25.713Z - Polling provider-progress.</li>
-<li>2026-05-01T14:54:31.216Z - Polling provider-progress.</li>
-<li>2026-05-01T14:54:36.711Z - Polling provider-progress.</li>
-<li>2026-05-01T14:54:42.230Z - Polling provider-progress.</li>
-<li>2026-05-01T14:54:47.891Z - Polling provider-progress.</li>
-<li>2026-05-01T14:54:49.929Z - Computer Use opened Summary after Review.</li>
-<li>2026-05-01T14:54:53.243Z - Computer Use opened Diff after Review.</li>
-<li>2026-05-01T14:54:56.408Z - Computer Use clicked Build &amp; Test to verify the destructive boundary.</li>
-<li>2026-05-01T14:55:05.458Z - Polling build-to-step-3.</li>
-<li>2026-05-01T14:55:06.003Z - Computer Use reached Step 3 after Build &amp; Test.</li>
-<li>2026-05-01T14:55:11.082Z - Computer Use committed Step 3 changes.</li>
-<li>2026-05-01T14:55:14.288Z - Computer Use opened History after Step 3 commit.</li>
-<li>2026-05-01T14:55:17.480Z - Computer Use previewed History restore.</li>
-<li>2026-05-01T14:55:32.209Z - Computer Use completed History restore cleanup.</li>
-<li>2026-05-01T14:55:58.927Z - Computer Use inspected the generated HTML report in Safari on the remote Mac.</li></ul>
+  <ul><li>2026-05-01T15:16:07.627Z - Computer Use observed the nixmac window at launch.</li>
+<li>2026-05-01T15:16:10.213Z - Computer Use opened Settings.</li>
+<li>2026-05-01T15:16:13.477Z - Computer Use opened AI Models settings.</li>
+<li>2026-05-01T15:16:17.557Z - Polling settings-api-keys.</li>
+<li>2026-05-01T15:16:20.572Z - Computer Use opened Preferences settings.</li>
+<li>2026-05-01T15:16:23.468Z - Computer Use returned to the main app surface after Settings coverage.</li>
+<li>2026-05-01T15:16:26.284Z - Computer Use opened History.</li>
+<li>2026-05-01T15:16:29.149Z - Computer Use returned home after History.</li>
+<li>2026-05-01T15:16:32.018Z - Computer Use opened Console.</li>
+<li>2026-05-01T15:16:34.845Z - Computer Use returned home after Console.</li>
+<li>2026-05-01T15:16:37.705Z - Computer Use opened Give Feedback.</li>
+<li>2026-05-01T15:16:40.671Z - Computer Use returned home after Feedback.</li>
+<li>2026-05-01T15:16:43.496Z - Computer Use opened Report Issue.</li>
+<li>2026-05-01T15:16:46.473Z - Computer Use returned home after Report Issue.</li>
+<li>2026-05-01T15:16:49.393Z - Computer Use checked home suggestion cards.</li>
+<li>2026-05-01T15:16:52.533Z - Computer Use set a real prompt in the app prompt field.</li>
+<li>2026-05-01T15:17:00.601Z - Polling provider-progress.</li>
+<li>2026-05-01T15:17:06.067Z - Polling provider-progress.</li>
+<li>2026-05-01T15:17:11.474Z - Polling provider-progress.</li>
+<li>2026-05-01T15:17:16.925Z - Polling provider-progress.</li>
+<li>2026-05-01T15:17:22.456Z - Polling provider-progress.</li>
+<li>2026-05-01T15:17:27.942Z - Polling provider-progress.</li>
+<li>2026-05-01T15:17:29.821Z - Computer Use opened Summary after Review.</li>
+<li>2026-05-01T15:17:33.110Z - Computer Use opened Diff after Review.</li>
+<li>2026-05-01T15:17:36.207Z - Computer Use clicked Build &amp; Test to verify the destructive boundary.</li>
+<li>2026-05-01T15:17:44.965Z - Polling build-to-step-3.</li>
+<li>2026-05-01T15:17:45.412Z - Computer Use reached Step 3 after Build &amp; Test.</li>
+<li>2026-05-01T15:17:50.327Z - Computer Use committed Step 3 changes.</li>
+<li>2026-05-01T15:17:53.467Z - Computer Use opened History after Step 3 commit.</li>
+<li>2026-05-01T15:17:56.611Z - Computer Use previewed History restore.</li>
+<li>2026-05-01T15:18:10.388Z - Computer Use completed History restore cleanup.</li>
+<li>2026-05-01T15:18:24.476Z - Computer Use inspected the generated HTML report in Safari on the remote Mac.</li></ul>
 
   <h2>Claims vs Evidence</h2>
   <table>
     <thead><tr><th>Claim</th><th>Status</th><th>Evidence</th></tr></thead>
     <tbody>
       <tr><td>App launches and first screen is usable</td><td><span class="verdict pass">pass</span></td><td>Computer Use saw the nixmac app window, prompt surface, progress stepper, and top-level controls.</td></tr>
-<tr><td>Update banner does not block the main workflow</td><td><span class="verdict pass">pass</span></td><td>A visible Dismiss button was clicked and the UI remained usable.</td></tr>
+<tr><td>Update banner does not block the main workflow</td><td><span class="verdict pass">pass</span></td><td>No dismissible update banner was visible; no banner blocked the main workflow.</td></tr>
 <tr><td>Settings General tab visibly renders</td><td><span class="verdict pass">pass</span></td><td>Settings opened and General-related content was visible.</td></tr>
 <tr><td>Settings AI Models tab visibly renders</td><td><span class="verdict pass">pass</span></td><td>AI Models settings content was visible with provider/model controls.</td></tr>
 <tr><td>Settings API Keys tab visibly renders</td><td><span class="verdict pass">pass</span></td><td>API Keys content was visible after Computer Use polling, including OpenRouter/API key controls.</td></tr>
@@ -1143,15 +1029,15 @@ Window: &quot;nixmac Computer Use E2E Evidence&quot;, App: Safari.
 <tr><td>Discard confirmation is guarded and only confirmed in disposable state</td><td><span class="verdict pass">pass</span></td><td>Discard was intentionally not exercised because the stronger Step 3 save plus History restore cleanup path returned the disposable config to baseline.</td></tr>
 <tr><td>Core UX/UI surfaces are captured and inspectable</td><td><span class="verdict pass">pass</span></td><td>Screenshots/text snapshots cover the core app shell, settings, support dialogs, prompt input, and provider flow.</td></tr>
 <tr><td>Scenario results include inspectable visual/text evidence</td><td><span class="verdict pass">pass</span></td><td>Every passing scenario has a linked screenshot or redacted accessibility text artifact in the proof catalog.</td></tr>
-<tr><td>Main branch user-visible coverage stays mapped</td><td><span class="verdict fail">fail</span></td><td>Coverage drift detected against main: Unmapped user-visible candidate files: apps/native/src/components/widget/homebrew-badge.tsx Explicit waivers: onboarding-permissions: Current remote lane starts from a configured app state. This must become a dedicated clean-profile Computer Use scenario before the suite can honestly claim full main coverage. | sudo-local-activation-fixture: The DXU remote lane disables sudo_local in the disposable fixture because unattended MacinCloud AppleScript activation can hang while creating /etc/pam.d/sudo_local. This is an explicit CI fixture waiver, not proof that the production sudo_local path works. | preview-indicator: Not yet in the remote major-feature lane; needs either a deterministic preview-state setup or a real workflow that activates it.</td></tr>
-<tr><td>PR-specific user-visible behavior is covered when applicable</td><td><span class="verdict pass">pass</span></td><td>User-visible changed files were mapped to passing Computer Use scenarios and surfaced at the top of the report: Real provider workflow reaches Review, Summary tab renders after intent review, Diff tab renders after intent review, Build &amp; Test destructive boundary appears before activation, Step 3 Save / Keep changes persists a change, Rollback cleanup returns disposable config to clean state, My History opens and renders, Scenario results include inspectable visual/text evidence, Evidence video is generated and embedded, Generated HTML report is inspected with Computer Use, Settings General tab visibly renders, Settings AI Models tab visibly renders, Settings API Keys tab visibly renders, Settings Preferences tab visibly renders</td></tr>
+<tr><td>Main branch user-visible coverage stays mapped</td><td><span class="verdict pass">pass</span></td><td>Coverage manifest v1 maps 13 user-visible surfaces to scenarios or explicit waivers. Explicit waivers: homebrew-badge: Not yet deterministic in the remote major-feature lane; needs a fixture with Homebrew installed and a known untracked tap/brew/cask diff before the suite can honestly claim coverage for the badge popover and Add to config action. | onboarding-permissions: Current remote lane starts from a configured app state. This must become a dedicated clean-profile Computer Use scenario before the suite can honestly claim full main coverage. | sudo-local-activation-fixture: The DXU remote lane disables sudo_local in the disposable fixture because unattended MacinCloud AppleScript activation can hang while creating /etc/pam.d/sudo_local. This is an explicit CI fixture waiver, not proof that the production sudo_local path works. | preview-indicator: Not yet in the remote major-feature lane; needs either a deterministic preview-state setup or a real workflow that activates it.</td></tr>
+<tr><td>PR-specific user-visible behavior is covered when applicable</td><td><span class="verdict pass">pass</span></td><td>User-visible changed files were mapped to passing Computer Use scenarios and surfaced at the top of the report: Real provider workflow reaches Review, Summary tab renders after intent review, Diff tab renders after intent review, Build &amp; Test destructive boundary appears before activation, Step 3 Save / Keep changes persists a change, Rollback cleanup returns disposable config to clean state, My History opens and renders, Scenario results include inspectable visual/text evidence, Evidence video is generated and embedded, Generated HTML report is inspected with Computer Use</td></tr>
 <tr><td>Evidence video is generated and embedded</td><td><span class="verdict pass">pass</span></td><td>Evidence video generated at video/computer-use-evidence.mp4.</td></tr>
 <tr><td>Generated HTML report is inspected with Computer Use</td><td><span class="verdict pass">pass</span></td><td>Computer Use inspected the generated report in Safari; report text and evidence sections were visible.</td></tr>
     </tbody>
   </table>
 
   <h2>Failures / Open Issues</h2>
-  <ul><li><strong>fail:</strong> Main branch user-visible coverage stays mapped - Coverage drift detected against main: Unmapped user-visible candidate files: apps/native/src/components/widget/homebrew-badge.tsx Explicit waivers: onboarding-permissions: Current remote lane starts from a configured app state. This must become a dedicated clean-profile Computer Use scenario before the suite can honestly claim full main coverage. | sudo-local-activation-fixture: The DXU remote lane disables sudo_local in the disposable fixture because unattended MacinCloud AppleScript activation can hang while creating /etc/pam.d/sudo_local. This is an explicit CI fixture waiver, not proof that the production sudo_local path works. | preview-indicator: Not yet in the remote major-feature lane; needs either a deterministic preview-state setup or a real workflow that activates it.</li></ul>
+  <p>None recorded.</p>
 
   <h2>Confirmation Boundaries</h2>
   <ul><li>Build &amp; Test boundary observed and confirmed in proven disposable state.</li></ul>
