@@ -52,6 +52,17 @@ function parseArgs(argv) {
   if (Object.hasOwn(out, 'requireAppServer') && (!Number.isInteger(out.requireAppServer) || out.requireAppServer <= 0)) {
     throw new Error(`Invalid --require-app-server: ${out.requireAppServer}`);
   }
+  const sshChecksRequested = Boolean(
+    out.expectedLocalHostname ||
+      out.checkCodexBinary ||
+      out.checkAppPath ||
+      out.requireAppServer ||
+      out.key ||
+      out.knownHosts,
+  );
+  if (sshChecksRequested && !out.user) {
+    throw new Error('SSH-dependent checks require --user');
+  }
   return out;
 }
 

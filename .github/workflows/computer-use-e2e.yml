@@ -55,6 +55,12 @@ jobs:
             exit 1
           fi
           grep -q "Invalid --require-app-server" /tmp/check-remote-invalid.out
+          if node tools/computer-use-e2e/check-remote.mjs --host example.com --check-codex-binary >/tmp/check-remote-missing-user.out 2>&1; then
+            cat /tmp/check-remote-missing-user.out
+            echo "Expected SSH-dependent checks without --user to fail"
+            exit 1
+          fi
+          grep -q "SSH-dependent checks require --user" /tmp/check-remote-missing-user.out
 
       - name: Capture PR focus metadata
         if: github.event_name == 'pull_request'

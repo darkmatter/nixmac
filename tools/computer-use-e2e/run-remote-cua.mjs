@@ -1953,17 +1953,24 @@ async function runSuite(args) {
     }
 
     if (state.scenarios.review.status === 'pass') {
-      if (await clickByPattern(client, state, text, 'Summary tab', [/Summary/i], 'Open Summary tab.')) {
+      const summaryClicked = await clickByPattern(client, state, text, 'Summary tab', [/Summary/i], 'Open Summary tab.');
+      if (summaryClicked) {
         text = await captureState(client, state, 'review-summary', 'Computer Use opened Summary after Review.');
         const summaryMatchesIntent = /bat/i.test(text) && /Homebrew|brew|package|command line/i.test(text);
         updateScenario(state, 'summary', summaryMatchesIntent ? 'pass' : 'fail', summaryMatchesIntent ? 'Summary described the requested bat/Homebrew package intent.' : 'Summary did not visibly describe the typed bat/Homebrew intent.');
+      } else {
+        updateScenario(state, 'summary', 'fail', 'Review passed, but Computer Use could not open the Summary tab.');
       }
-      if (await clickByPattern(client, state, text, 'Diff tab', [/Diff/i], 'Open Diff tab.')) {
+      const diffClicked = await clickByPattern(client, state, text, 'Diff tab', [/Diff/i], 'Open Diff tab.');
+      if (diffClicked) {
         text = await captureState(client, state, 'review-diff', 'Computer Use opened Diff after Review.');
         const expectedPackage = /"bat"|bat command line|Homebrew formulae|brews = \[/i.test(text);
         updateScenario(state, 'diff', expectedPackage ? 'pass' : 'fail', expectedPackage ? 'Diff rendered a candidate Homebrew configuration change for bat.' : 'Diff did not visibly show the expected bat/Homebrew change.');
+      } else {
+        updateScenario(state, 'diff', 'fail', 'Review passed, but Computer Use could not open the Diff tab.');
       }
-      if (await clickByPattern(client, state, text, 'Build & Test', [/Build & Test/i, /Build/i], 'Click Build & Test boundary.')) {
+      const buildClicked = await clickByPattern(client, state, text, 'Build & Test', [/Build & Test/i, /Build/i], 'Click Build & Test boundary.');
+      if (buildClicked) {
         text = await captureState(client, state, 'build-boundary', 'Computer Use clicked Build & Test to verify the destructive boundary.');
         const boundary = /Confirm|Are you sure|Build & Test|Cancel/i.test(text);
         updateScenario(state, 'buildBoundary', boundary ? 'pass' : 'fail', boundary ? 'Build & Test presented a visible confirmation/boundary before activation.' : 'Build & Test did not present an obvious confirmation boundary.');
@@ -2140,6 +2147,8 @@ async function runSuite(args) {
         } else {
           updateScenario(state, 'discard', 'inconclusive', 'Discard boundary appeared, but confirmation was skipped because disposable config mode was not proven.');
         }
+      } else {
+        updateScenario(state, 'buildBoundary', 'fail', 'Review passed, but Computer Use could not open the Build & Test boundary.');
       }
     } else {
       updateScenario(state, 'summary', 'inconclusive', 'Summary was not tested because the real provider workflow did not reach Review.');
