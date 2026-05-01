@@ -36,6 +36,7 @@ fn main() {
 
     let mut shared_collection = TypeCollection::default();
     let shared_types_reg = shared_collection
+        .register::<shared_types::HomebrewState>()
         .register::<shared_types::SummarizedChange>()
         .register::<shared_types::SummarizedChangeSet>()
         .register::<shared_types::ChangeWithSummary>()

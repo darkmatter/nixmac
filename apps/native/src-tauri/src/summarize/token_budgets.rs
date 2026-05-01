@@ -107,14 +107,14 @@ pub fn model_context_window(model: &str) -> u32 {
 }
 
 // ── map_relations ─────────────────────────────────────────────────────────────
-const MAP_MAX_OUTPUT_TOKENS: u32 = 800;
+const MAP_MAX_OUTPUT_TOKENS: u32 = 1600;
 
 pub fn map_relations_budget(prompt: &str, model: &str) -> TokenAllocation {
     compute_token_allocation(prompt, MAP_MAX_OUTPUT_TOKENS, model_context_window(model))
 }
 
 // ── map_relations_to_existing ─────────────────────────────────────────────────
-const MAP_TO_EXISTING_MAX_OUTPUT_TOKENS: u32 = 800;
+const MAP_TO_EXISTING_MAX_OUTPUT_TOKENS: u32 = 1600;
 
 pub fn map_relations_to_existing_budget(prompt: &str, model: &str) -> TokenAllocation {
     compute_token_allocation(
@@ -125,14 +125,14 @@ pub fn map_relations_to_existing_budget(prompt: &str, model: &str) -> TokenAlloc
 }
 
 // ── summarize_evolved_group / summarize_new_group ─────────────────────────────
-const GROUP_MAX_OUTPUT_TOKENS: u32 = 700;
+const GROUP_MAX_OUTPUT_TOKENS: u32 = 1400;
 
 pub fn group_budget(prompt: &str, model: &str) -> TokenAllocation {
     compute_token_allocation(prompt, GROUP_MAX_OUTPUT_TOKENS, model_context_window(model))
 }
 
 // ── summarize_new_single ──────────────────────────────────────────────────────
-const SINGLE_MAX_OUTPUT_TOKENS: u32 = 800;
+const SINGLE_MAX_OUTPUT_TOKENS: u32 = 1600;
 
 pub fn single_budget(prompt: &str, model: &str) -> TokenAllocation {
     compute_token_allocation(
@@ -143,7 +143,7 @@ pub fn single_budget(prompt: &str, model: &str) -> TokenAllocation {
 }
 
 // ── generate_commit_message_from_map ─────────────────────────────────────────
-const COMMIT_MESSAGE_MAX_OUTPUT_TOKENS: u32 = 300;
+const COMMIT_MESSAGE_MAX_OUTPUT_TOKENS: u32 = 600;
 
 pub fn commit_message_budget(prompt: &str, model: &str) -> TokenAllocation {
     compute_token_allocation(

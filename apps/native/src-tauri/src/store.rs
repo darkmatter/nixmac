@@ -30,6 +30,9 @@ pub const CONFIRM_ROLLBACK_KEY: &str = "confirmRollback";
 // Summarization preference keys
 pub const AUTO_SUMMARIZE_ON_FOCUS_KEY: &str = "autoSummarizeOnFocus";
 
+// Startup scan preference keys
+pub const SCAN_HOMEBREW_ON_STARTUP_KEY: &str = "scanHomebrewOnStartup";
+
 pub const DEFAULT_MAX_ITERATIONS: usize = 25;
 const KEYCHAIN_SERVICE: &str = "com.darkmatter.nixmac";
 
