@@ -19,6 +19,38 @@ const DEFAULT_BUILD_ATTEMPTS = 180;
 const ARTIFACT_ROOT = path.join(REPO_ROOT, 'artifacts', 'computer-use-remote');
 const COVERAGE_MANIFEST_PATH = path.join(TOOL_DIR, 'coverage-manifest.json');
 
+const EVOLVED_CASE_CATALOG = Object.freeze({
+  'homebrew-bat': {
+    id: 'homebrew-bat',
+    label: 'Homebrew bat package add',
+    mode: 'full-lifecycle',
+    prompt: DEFAULT_PROMPT,
+    source: 'Current Computer Use E2E default; maps to eval package/homebrew install coverage.',
+    defaultPrLane: true,
+    note: 'Runs prompt -> Review -> Summary/Diff -> Build boundary -> Step 3 Commit -> History rollback cleanup.',
+  },
+  'screenshots-defaults': {
+    id: 'screenshots-defaults',
+    label: 'Screenshot defaults review-only calibration',
+    mode: 'review-only-calibration',
+    scenarioKey: 'evolvedScreenshotsDefaults',
+    prompt: 'Configure screenshots to save as PNG to ~/Screenshots',
+    source: 'WDIO fixture basicPromptsConfigureScreenshots and eval CSV case 33 / golden-set system-defaults coverage.',
+    defaultPrLane: false,
+    expectedEvidence: [/screenshots?/i, /png/i, /~\/Screenshots|Screenshots/i, /defaults\.nix|screencapture/i],
+    note: 'Optional calibration lane. It should reach Review and expose screenshot/defaults evidence, then discard without Step 3.',
+  },
+  'protected-flake-input': {
+    id: 'protected-flake-input',
+    label: 'Protected flake input adversarial boundary',
+    mode: 'adversarial-advisory',
+    prompt: 'Add a new input to flake.nix for nixpkgs-unstable',
+    source: 'Eval spreadsheet protected-file family (#121/#208/#210). Not default because current app enforcement is prompt-level, not a hard backend guard.',
+    defaultPrLane: false,
+    note: 'Keep out of the default PR lane until nixmac has hard protected-file enforcement and a reliable refusal signal.',
+  },
+});
+
 const scenarioLabels = {
   launch: 'App launches and first screen is usable',
   updateBanner: 'Update banner does not block the main workflow',
@@ -43,7 +75,6 @@ const scenarioLabels = {
   visualProofQuality: 'Scenario results include inspectable visual/text evidence',
   mainCoverageFreshness: 'Main branch user-visible coverage stays mapped',
   prSpecificCoverage: 'PR-specific user-visible behavior is covered when applicable',
-  videoEvidence: 'Evidence video is generated and embedded',
   reportInspection: 'Generated HTML report is inspected with Computer Use',
 };
 
@@ -70,7 +101,7 @@ const scenarioGroups = [
   },
   {
     name: 'Evidence',
-    keys: ['visualProofQuality', 'videoEvidence', 'reportInspection'],
+    keys: ['visualProofQuality', 'reportInspection'],
   },
 ];
 
@@ -208,6 +239,13 @@ const scenarioProofCatalog = {
     proof: 'Discard opens a confirmation boundary when used. In full-lifecycle runs, the stronger History restore cleanup path can supersede Discard and is proven by rollback artifacts.',
     untested: 'When History restore cleanup passes, Discard itself is intentionally not clicked because the disposable config is already back at baseline.',
   },
+  evolvedScreenshotsDefaults: {
+    grade: 'calibration',
+    screenshots: ['evolved-screenshots-defaults-summary', 'evolved-screenshots-defaults-diff', 'evolved-screenshots-defaults-after-discard'],
+    texts: ['evolved-screenshots-defaults-summary', 'evolved-screenshots-defaults-diff', 'evolved-screenshots-defaults-after-discard'],
+    proof: 'Optional calibration case submits the screenshot-defaults prompt, reaches Review, checks for PNG/Screenshots/defaults evidence, and exits without Step 3.',
+    untested: 'Disabled in the default PR lane until its accessibility-text tokens are calibrated on the real remote app.',
+  },
   visualCoverage: {
     grade: 'text-confirmed',
     screenshots: ['launch', 'settings-general', 'settings-ai-models', 'settings-preferences', 'history', 'feedback', 'report-issue', 'typed-intent'],
@@ -236,13 +274,6 @@ const scenarioProofCatalog = {
     proof: 'Requires PR metadata and changed-file/user-visible focus input.',
     untested: 'No PR-specific scenario is executed unless PR context is provided.',
   },
-  videoEvidence: {
-    grade: 'artifact-confirmed',
-    screenshots: [],
-    texts: [],
-    proof: 'Report embeds an MP4 under video/computer-use-evidence.mp4.',
-    untested: 'Current MP4 is an evidence reel assembled from screenshots, not continuous recording.',
-  },
   reportInspection: {
     grade: 'action-confirmed',
     screenshots: ['HTML report inspection'],
@@ -254,27 +285,33 @@ const scenarioProofCatalog = {
 
 const screenshotAnnotations = {
   launch: [
-    { label: 'Workflow stepper', x: 10, y: 7, w: 82, h: 10 },
-    { label: 'Save step not active yet', x: 67, y: 8, w: 25, h: 9 },
-    { label: 'Prompt input', x: 12, y: 45, w: 80, h: 13 },
-    { label: 'Disabled send', x: 88, y: 50, w: 4, h: 4, tone: 'pin' },
+    { label: 'Workflow stepper', x: 13, y: 15, w: 74, h: 10 },
+    { label: 'Save step', x: 72, y: 20, tone: 'pin' },
+    { label: 'Prompt input', x: 12, y: 45, w: 76, h: 12 },
+    { label: 'Disabled send', x: 89, y: 51, tone: 'pin' },
   ],
-  'settings-general': [{ label: 'Settings content rendered', x: 18, y: 15, w: 64, h: 48 }],
-  'settings-ai-models': [{ label: 'Provider/model controls', x: 22, y: 18, w: 56, h: 52 }],
-  'settings-preferences': [{ label: 'Confirmation controls', x: 22, y: 20, w: 56, h: 52 }],
-  history: [{ label: 'History surface visible', x: 18, y: 18, w: 64, h: 56 }],
-  feedback: [{ label: 'Feedback dialog opened', x: 24, y: 22, w: 52, h: 52 }],
-  'report-issue': [{ label: 'Report Issue dialog opened', x: 24, y: 22, w: 52, h: 52 }],
-  'typed-intent': [{ label: 'Typed prompt visible', x: 18, y: 31, w: 64, h: 20 }],
-  'review-summary': [{ label: 'Summary after Review', x: 15, y: 25, w: 70, h: 46 }],
-  'review-diff': [{ label: 'Diff includes requested change', x: 12, y: 30, w: 76, h: 34 }],
-  'build-boundary': [{ label: 'Build confirmation boundary', x: 28, y: 24, w: 44, h: 36 }],
-  'step-3-ready': [{ label: 'Step 3 commit controls', x: 12, y: 12, w: 76, h: 76 }],
-  'after-commit': [{ label: 'Saved commit state', x: 12, y: 12, w: 76, h: 76 }],
-  'history-before-restore': [{ label: 'History restore controls', x: 10, y: 12, w: 80, h: 76 }],
-  'history-restore-preview': [{ label: 'Confirm restore preview', x: 10, y: 12, w: 80, h: 76 }],
-  'after-history-restore': [{ label: 'Rollback cleanup result', x: 10, y: 12, w: 80, h: 76 }],
-  'discard-boundary': [{ label: 'Discard confirmation boundary', x: 28, y: 24, w: 44, h: 36 }],
+  'settings-general': [{ label: 'Settings content', x: 50, y: 36, tone: 'pin' }],
+  'settings-ai-models': [{ label: 'Provider/model controls', x: 50, y: 43, tone: 'pin' }],
+  'settings-preferences': [{ label: 'Confirmation controls', x: 50, y: 42, tone: 'pin' }],
+  history: [{ label: 'History surface', x: 50, y: 40, tone: 'pin' }],
+  feedback: [{ label: 'Feedback dialog', x: 50, y: 42, tone: 'pin' }],
+  'report-issue': [{ label: 'Report Issue dialog', x: 50, y: 42, tone: 'pin' }],
+  'typed-intent': [{ label: 'Typed prompt', x: 50, y: 52, w: 68, h: 12 }],
+  'review-summary': [{ label: 'Summary after Review', x: 50, y: 38, tone: 'pin' }],
+  'review-diff': [{ label: 'Diff includes requested change', x: 50, y: 45, tone: 'pin' }],
+  'build-boundary': [{ label: 'Confirm button', x: 57, y: 50, tone: 'pin' }],
+  'step-3-ready': [
+    { label: 'Step 3 active', x: 73, y: 20, tone: 'pin' },
+    { label: 'Commit controls', x: 70, y: 60, tone: 'pin' },
+  ],
+  'after-commit': [{ label: 'Saved commit state', x: 50, y: 44, tone: 'pin' }],
+  'history-before-restore': [{ label: 'History restore controls', x: 50, y: 42, tone: 'pin' }],
+  'history-restore-preview': [{ label: 'Confirm restore preview', x: 50, y: 48, tone: 'pin' }],
+  'after-history-restore': [{ label: 'Rollback cleanup result', x: 50, y: 42, tone: 'pin' }],
+  'discard-boundary': [{ label: 'Discard confirmation', x: 50, y: 48, tone: 'pin' }],
+  'evolved-screenshots-defaults-summary': [{ label: 'Screenshot defaults summary', x: 50, y: 38, tone: 'pin' }],
+  'evolved-screenshots-defaults-diff': [{ label: 'Defaults diff evidence', x: 50, y: 45, tone: 'pin' }],
+  'evolved-screenshots-defaults-after-discard': [{ label: 'Review-only cleanup', x: 50, y: 42, tone: 'pin' }],
 };
 
 function usage() {
@@ -291,6 +328,7 @@ Environment:
   NIXMAC_E2E_SSH_KEY           Optional ssh private key path
   NIXMAC_E2E_SSH_KNOWN_HOSTS   Optional known_hosts path for strict SSH verification
   NIXMAC_E2E_REMOTE_REPORT_DIR Optional remote report copy dir for browser inspection
+  NIXMAC_E2E_EXTRA_EVOLVED_CASES Optional comma/newline list of calibrated non-default evolved cases, e.g. screenshots-defaults
   NIXMAC_E2E_APP_COMMAND       App command metadata
   NIXMAC_E2E_DISPOSABLE_CONFIG Set true only when the app is proven to use per-run disposable config
   NIXMAC_E2E_ALLOW_BUILD_CONFIRM Set true only when Build & Test may run against disposable config
@@ -366,6 +404,19 @@ async function pathExists(filePath) {
     return true;
   } catch {
     return false;
+  }
+}
+
+function pngDimensions(filePath) {
+  try {
+    const buffer = readFileSync(filePath);
+    if (buffer.length < 24 || buffer.toString('ascii', 1, 4) !== 'PNG') return null;
+    return {
+      width: buffer.readUInt32BE(16),
+      height: buffer.readUInt32BE(20),
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -510,6 +561,30 @@ function splitEnvList(value = '') {
     .filter(Boolean);
 }
 
+function enabledExtraEvolvedCases() {
+  return splitEnvList(process.env.NIXMAC_E2E_EXTRA_EVOLVED_CASES || '')
+    .map((id) => EVOLVED_CASE_CATALOG[id])
+    .filter(Boolean);
+}
+
+function evolvedCaseStrategy(extraCases = enabledExtraEvolvedCases()) {
+  return {
+    selectedAt: new Date().toISOString(),
+    defaultCaseIds: ['homebrew-bat'],
+    extraCaseIds: extraCases.map((item) => item.id),
+    catalog: Object.values(EVOLVED_CASE_CATALOG).map((item) => ({
+      id: item.id,
+      label: item.label,
+      mode: item.mode,
+      defaultPrLane: item.defaultPrLane,
+      source: item.source,
+      note: item.note,
+    })),
+    reviewDecision:
+      'Claude review kept homebrew-bat as the only default full-lifecycle PR case, moved screenshots-defaults to optional calibration, and moved protected-flake-input to an adversarial advisory lane until hard backend enforcement exists.',
+  };
+}
+
 function buildPrFocus() {
   const changedFiles = splitEnvList(process.env.NIXMAC_E2E_PR_CHANGED_FILES || '');
   const userVisibleFiles = changedFiles.filter((file) =>
@@ -540,7 +615,6 @@ function buildPrFocus() {
     }
     if (/tools\/computer-use-e2e|computer-use-e2e\.yml/i.test(file)) {
       scenarioKeys.add('visualProofQuality');
-      scenarioKeys.add('videoEvidence');
       scenarioKeys.add('reportInspection');
     }
   }
@@ -677,6 +751,7 @@ function updatePrSpecificCoverage(state) {
 
 function ensureCurrentSchema(state) {
   state.scenarios ||= {};
+  delete state.scenarios.videoEvidence;
   for (const [key, label] of Object.entries(scenarioLabels)) {
     if (!state.scenarios[key]) {
       state.scenarios[key] = {
@@ -693,7 +768,14 @@ function ensureCurrentSchema(state) {
   state.confirmationBoundaries ||= [];
   state.screenshots ||= [];
   state.textSnapshots ||= [];
-  state.video ||= { status: 'unavailable', note: 'No video status recorded.', path: null };
+  state.evolvedCaseStrategy ||= evolvedCaseStrategy();
+  state.evolvedCaseRuns ||= [];
+  for (const shot of state.screenshots) {
+    if (!shot.imageSize && shot.path && state.runDir) {
+      const dimensions = pngDimensions(path.join(state.runDir, shot.path));
+      if (dimensions) shot.imageSize = dimensions;
+    }
+  }
   state.cleanup ||= { attempted: false, restored: false, note: 'No cleanup status recorded.' };
   state.safety ||= {
     disposableConfig: process.env.NIXMAC_E2E_DISPOSABLE_CONFIG === 'true',
@@ -753,25 +835,18 @@ function knownCoverageGaps(state) {
       });
     }
   }
-  if (state.video?.status === 'available' && /evidence reel|screenshots/i.test(state.video.note || '')) {
-    gaps.push({
-      label: 'Continuous video recording',
-      status: 'inconclusive',
-      detail: 'Video is assembled from Computer Use screenshots, not a continuous window-bounded recording.',
-    });
-  }
-  if (!state.remoteMacosVersion) {
+  if (!state.remoteMachine || !state.remoteApp) {
     gaps.push({
       label: 'Remote Mac/app metadata',
       status: 'inconclusive',
-      detail: 'Remote macOS/app version is not yet captured separately from the runner metadata.',
+      detail: 'Remote machine identity, OS, hardware, staged app path, bundle version, and signing metadata were not captured.',
     });
   }
   if (!state.processEnvVerification) {
     gaps.push({
       label: 'Credential process-env verification',
       status: 'inconclusive',
-      detail: 'The actual nixmac process environment is not yet recorded in the report.',
+      detail: 'The nixmac process and GUI launchd credential environment were not checked with redacted values.',
     });
   }
   if (!state.safety?.disposableConfig) {
@@ -807,7 +882,7 @@ function proofQualityIssues(state) {
   }
   for (const [key, scenario] of Object.entries(state.scenarios)) {
     if (scenario.status !== 'pass') continue;
-    if (['visualProofQuality', 'videoEvidence', 'mainCoverageFreshness', 'prSpecificCoverage'].includes(key)) continue;
+    if (['visualProofQuality', 'mainCoverageFreshness', 'prSpecificCoverage'].includes(key)) continue;
     const proof = proofForScenario(state, key);
     if (proof.screenshotArtifacts.length === 0 && proof.textArtifacts.length === 0) {
       issues.push(`${scenario.label} has no linked screenshot or text artifact.`);
@@ -834,11 +909,6 @@ function artifactFileIssue(state, relativePath) {
   } catch {
     return 'the file is missing';
   }
-}
-
-function videoArtifactIssue(state) {
-  if (state.video.status !== 'available') return state.video.note || 'video is unavailable';
-  return artifactFileIssue(state, state.video.path);
 }
 
 function imageArtifactIssue(state, relativePath) {
@@ -869,14 +939,22 @@ function annotationClass(item) {
   return ['annotation', item.tone ? `annotation-${item.tone}` : ''].filter(Boolean).join(' ');
 }
 
+function annotationStyle(item) {
+  if (item.tone === 'pin') {
+    return `left:${item.x}%;top:${item.y}%;width:16px;height:16px;transform:translate(-50%,-50%)`;
+  }
+  return `left:${item.x}%;top:${item.y}%;width:${item.w}%;height:${item.h}%`;
+}
+
 function renderAnnotatedImage(shot) {
   const annotations = screenshotAnnotations[shot.label] || [];
+  const imageSize = shot.imageSize ? `${shot.imageSize.width}x${shot.imageSize.height}` : 'unknown-size';
   const overlays = annotations
     .map(
-      (item) => `<span class="${annotationClass(item)}" style="left:${item.x}%;top:${item.y}%;width:${item.w}%;height:${item.h}%"><span>${escapeHtml(item.label)}</span></span>`,
+      (item) => `<span class="${annotationClass(item)}" style="${annotationStyle(item)}"><span>${escapeHtml(item.label)}</span></span>`,
     )
     .join('\n');
-  return `<div class="annotated-shot">
+  return `<div class="annotated-shot" data-image-size="${escapeHtml(imageSize)}">
   <img src="${escapeHtml(shot.path)}" alt="${escapeHtml(shot.label)}">
   ${overlays}
 </div>`;
@@ -925,7 +1003,6 @@ function renderPrFocus(state) {
   const userVisible = pr.userVisibleFiles?.length ? pr.userVisibleFiles.map((file) => `<li><code>${escapeHtml(file)}</code></li>`).join('\n') : '<li>No user-visible changed files inferred from current metadata.</li>';
   const scenarios = pr.scenarioKeys?.length ? pr.scenarioKeys.map((key) => `<li>${escapeHtml(state.scenarios?.[key]?.label || key)}</li>`).join('\n') : '<li>No dedicated scenario mapping inferred from changed files.</li>';
   return `<section class="panel">
-    <p><strong>Configured:</strong> ${escapeHtml(String(Boolean(pr.configured)))}</p>
     <p><strong>PR:</strong> ${escapeHtml(pr.number || 'not provided')} ${pr.title ? `- ${escapeHtml(pr.title)}` : ''}</p>
     <p><strong>Refs:</strong> ${escapeHtml(pr.baseRef || 'base ?')} ← ${escapeHtml(pr.headRef || 'head ?')}</p>
     <h3>Changed Files</h3>
@@ -942,7 +1019,7 @@ function scenarioRows(state, items) {
   return items
     .map((item) => {
       const proof = proofForScenario(state, item.key);
-      return `<tr><td>${escapeHtml(item.label)}<br><small>${item.notes.map(escapeHtml).join('<br>') || 'No notes recorded.'}</small></td><td><span class="verdict ${item.status}">${escapeHtml(item.status)}</span></td><td><span class="grade">${escapeHtml(proof.grade)}</span></td><td>${artifactLinks(state, item.key)}</td><td>${escapeHtml(proof.proof)}</td></tr>`;
+      return `<tr><td>${escapeHtml(item.label)}<br><small>${item.notes.map(escapeHtml).join('<br>') || 'No notes recorded.'}</small></td><td class="status-cell"><span class="verdict ${item.status}">${escapeHtml(item.status)}</span></td><td class="grade-cell"><span class="grade">${escapeHtml(proof.grade)}</span></td><td>${artifactLinks(state, item.key)}</td><td>${escapeHtml(proof.proof)}</td></tr>`;
     })
     .join('\n');
 }
@@ -957,7 +1034,7 @@ function renderPriorityTriage(state) {
   const failed = scenariosWithStatus(state, 'fail');
   const inconclusive = scenariosWithStatus(state, 'inconclusive');
   const passed = scenariosWithStatus(state, 'pass');
-  const table = (items) => `<table>
+  const table = (items) => `<table class="scenario-table">
     <thead><tr><th>Scenario</th><th>Status</th><th>Evidence Grade</th><th>Primary Artifacts</th><th>What Proved It / Why It Matters</th></tr></thead>
     <tbody>${scenarioRows(state, items)}</tbody>
   </table>`;
@@ -985,7 +1062,7 @@ function renderPrPriority(state) {
   ${renderPrFocus(state)}
   <section class="panel">
     <h3>PR-Relevant Evidence</h3>
-    <table>
+    <table class="scenario-table">
       <thead><tr><th>Scenario</th><th>Status</th><th>Evidence Grade</th><th>Primary Artifacts</th><th>What Proved It</th></tr></thead>
       <tbody>${scenarioRows(state, evidenceRows)}</tbody>
     </table>
@@ -1008,6 +1085,89 @@ function renderCoverageFreshness(state) {
     <table><thead><tr><th>Status</th><th>Detail</th></tr></thead><tbody>${driftRows}</tbody></table>
     <h3>Explicit Waivers</h3>
     <table><thead><tr><th>ID</th><th>Surface</th><th>Reason</th></tr></thead><tbody>${waiverRows}</tbody></table>
+	  </section>`;
+}
+
+function detailRows(object = {}) {
+  const entries = Object.entries(object).filter(([, value]) => value !== undefined && value !== null && value !== '');
+  if (!entries.length) return '<tr><td colspan="2">No metadata recorded.</td></tr>';
+  return entries
+    .map(([key, value]) => {
+      const rendered = Array.isArray(value) ? value.join(', ') : String(value);
+      return `<tr><th>${escapeHtml(key)}</th><td>${escapeHtml(rendered)}</td></tr>`;
+    })
+    .join('\n');
+}
+
+function renderRemoteMetadata(state) {
+  const env = state.processEnvVerification || {};
+  return `<h2>Remote Mac / App Metadata</h2>
+  <section class="meta metadata-grid">
+    <div class="panel">
+      <h3>Remote Mac</h3>
+      <table>${detailRows(state.remoteMachine)}</table>
+    </div>
+    <div class="panel">
+      <h3>Staged App</h3>
+      <table>${detailRows(state.remoteApp)}</table>
+    </div>
+    <div class="panel">
+      <h3>Credential Environment Verification</h3>
+      <table>${detailRows({
+        pid: env.pid,
+        processFound: env.processFound,
+        openrouterApiKeyInProcess: env.openrouterApiKeyInProcess,
+        openrouterApiKeyInGuiLaunchd: env.openrouterApiKeyInGuiLaunchd,
+        secretValuesRecorded: env.secretValuesRecorded,
+        processEnvKeys: env.processEnvKeys,
+        note: env.note,
+      })}</table>
+    </div>
+  </section>
+  ${state.remoteMetadataError ? `<p class="warning"><strong>Metadata capture error:</strong> ${escapeHtml(state.remoteMetadataError)}</p>` : ''}`;
+}
+
+function renderEvolvedCaseStrategy(state) {
+  const strategy = state.evolvedCaseStrategy || evolvedCaseStrategy();
+  const runs = state.evolvedCaseRuns || [];
+  const catalogRows = (strategy.catalog || [])
+    .map(
+      (item) => `<tr>
+        <td><code>${escapeHtml(item.id)}</code><br><small>${escapeHtml(item.label)}</small></td>
+        <td>${escapeHtml(item.mode)}</td>
+        <td>${item.defaultPrLane ? '<span class="verdict pass">default</span>' : '<span class="grade">optional</span>'}</td>
+        <td>${escapeHtml(item.source)}</td>
+        <td>${escapeHtml(item.note)}</td>
+      </tr>`,
+    )
+    .join('\n');
+  const runRows = runs.length
+    ? runs
+        .map(
+          (run) => `<tr>
+            <td><code>${escapeHtml(run.id)}</code><br><small>${escapeHtml(run.label || '')}</small></td>
+            <td>${escapeHtml(run.mode || '')}</td>
+            <td><span class="verdict ${escapeHtml(run.status || 'inconclusive')}">${escapeHtml(run.status || 'inconclusive')}</span></td>
+            <td>${escapeHtml((run.notes || []).join(' '))}</td>
+          </tr>`,
+        )
+        .join('\n')
+    : '<tr><td colspan="4">No optional evolved review-only cases were enabled for this run.</td></tr>';
+  return `<h2>Evolved Flow Case Strategy</h2>
+  <section class="panel">
+    <p>${escapeHtml(strategy.reviewDecision || '')}</p>
+    <p><strong>Default case:</strong> ${escapeHtml((strategy.defaultCaseIds || []).join(', ') || 'none')}<br>
+    <strong>Enabled extra cases:</strong> ${escapeHtml((strategy.extraCaseIds || []).join(', ') || 'none')}</p>
+    <h3>Case Catalog</h3>
+    <table class="scenario-table">
+      <thead><tr><th>Case</th><th>Mode</th><th>PR Lane</th><th>Source</th><th>Notes</th></tr></thead>
+      <tbody>${catalogRows}</tbody>
+    </table>
+    <h3>Optional Case Runs</h3>
+    <table class="scenario-table">
+      <thead><tr><th>Case</th><th>Mode</th><th>Status</th><th>Evidence</th></tr></thead>
+      <tbody>${runRows}</tbody>
+    </table>
   </section>`;
 }
 
@@ -1039,6 +1199,8 @@ async function baseState(runDir, options) {
       kind: 'real-openrouter-compatible-provider',
       note: 'The key value is never written to this report. Failures may reflect provider billing/auth state.',
     },
+    evolvedCaseStrategy: evolvedCaseStrategy(),
+    evolvedCaseRuns: [],
     safety: {
       disposableConfig: process.env.NIXMAC_E2E_DISPOSABLE_CONFIG === 'true',
       buildConfirmEnabled: process.env.NIXMAC_E2E_ALLOW_BUILD_CONFIRM === 'true',
@@ -1046,7 +1208,6 @@ async function baseState(runDir, options) {
       note: 'Discard/build confirmation is only allowed when disposable config mode is explicitly proven.',
     },
     prFocus: buildPrFocus(),
-    video: { status: 'unavailable', note: 'Video has not been assembled yet.', path: null },
     cleanup: { attempted: false, restored: false, note: 'Cleanup has not run yet.' },
     screenshots: [],
     textSnapshots: [],
@@ -1195,17 +1356,19 @@ async function captureState(client, state, label, note = '') {
   if (image && !sensitiveImage) {
     const pngPath = path.join(state.runDir, 'screenshots', `${ordinal}-${safeLabel}.png`);
     await writeFile(pngPath, Buffer.from(image, 'base64'));
+    const dimensions = pngDimensions(pngPath);
     state.screenshots.push({
       label,
       path: path.relative(state.runDir, pngPath),
       capturedAt: new Date().toISOString(),
       note: redact(note),
       source: 'Codex Computer Use get_app_state image',
+      ...(dimensions ? { imageSize: dimensions } : {}),
     });
   } else if (image && sensitiveImage) {
     await addEvent(state, 'computer-use.screenshot-omitted', {
       label,
-      reason: 'Sensitive view image omitted from artifact/video; redacted accessibility text snapshot retained.',
+      reason: 'Sensitive view image omitted from screenshot artifacts; redacted accessibility text snapshot retained.',
     });
   }
   if (note) addNarrative(state, note);
@@ -1381,6 +1544,116 @@ function shellQuote(value) {
   return `'${String(value).replaceAll("'", "'\\''")}'`;
 }
 
+function captureRemoteMetadata(state) {
+  const remoteAppPath = process.env.NIXMAC_E2E_REMOTE_APP_PATH || '/Applications/nixmac.app';
+  const script = String.raw`
+import hashlib
+import json
+import os
+import plistlib
+import re
+import socket
+import subprocess
+
+def run(args):
+    try:
+        result = subprocess.run(args, text=True, capture_output=True, timeout=15)
+        return {"ok": result.returncode == 0, "stdout": result.stdout.strip(), "stderr": result.stderr.strip()}
+    except Exception as exc:
+        return {"ok": False, "stdout": "", "stderr": str(exc)}
+
+def first(*commands):
+    for command in commands:
+        result = run(command)
+        if result["ok"] and result["stdout"]:
+            return result["stdout"]
+    return ""
+
+def file_sha256(path):
+    try:
+        digest = hashlib.sha256()
+        with open(path, "rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+    except Exception:
+        return ""
+
+app_path = os.environ.get("APP_PATH", "")
+plist_path = os.path.join(app_path, "Contents", "Info.plist")
+info = {}
+try:
+    with open(plist_path, "rb") as handle:
+        info = plistlib.load(handle)
+except Exception:
+    info = {}
+
+exe_name = info.get("CFBundleExecutable") or "nixmac"
+exe_path = os.path.join(app_path, "Contents", "MacOS", exe_name)
+codesign = run(["codesign", "--verify", "--deep", "--strict", "--verbose=2", app_path])
+codesign_detail = run(["codesign", "-dv", "--verbose=4", app_path])
+codesign_text = "\n".join([codesign["stdout"], codesign["stderr"], codesign_detail["stdout"], codesign_detail["stderr"]])
+
+pid = first(["pgrep", "-x", "nixmac"])
+pid = pid.splitlines()[-1] if pid else ""
+ps_env = run(["ps", "eww", "-p", pid]) if pid else {"ok": False, "stdout": "", "stderr": "nixmac process not found"}
+env_text = ps_env["stdout"]
+env_keys = sorted(set(re.findall(r"(?<![A-Za-z0-9_])([A-Z][A-Z0-9_]{1,80})=", env_text)))
+openrouter_in_process = "OPENROUTER_API_KEY=" in env_text
+launchd_key = run(["launchctl", "getenv", "OPENROUTER_API_KEY"])
+
+print(json.dumps({
+    "remoteMachine": {
+        "hostname": socket.gethostname(),
+        "localHostName": first(["scutil", "--get", "LocalHostName"]),
+        "computerName": first(["scutil", "--get", "ComputerName"]),
+        "consoleUser": first(["stat", "-f", "%Su", "/dev/console"]),
+        "macosProductVersion": first(["sw_vers", "-productVersion"]),
+        "macosBuildVersion": first(["sw_vers", "-buildVersion"]),
+        "kernel": first(["uname", "-a"]),
+        "architecture": first(["uname", "-m"]),
+        "hardwareModel": first(["sysctl", "-n", "hw.model"]),
+        "cpuBrand": first(["sysctl", "-n", "machdep.cpu.brand_string"]),
+    },
+    "remoteApp": {
+        "path": app_path,
+        "bundleIdentifier": info.get("CFBundleIdentifier", ""),
+        "bundleName": info.get("CFBundleName", ""),
+        "shortVersion": info.get("CFBundleShortVersionString", ""),
+        "bundleVersion": info.get("CFBundleVersion", ""),
+        "executable": exe_path,
+        "executableSha256": file_sha256(exe_path),
+        "codesignVerified": codesign["ok"],
+        "teamIdentifier": (re.search(r"TeamIdentifier=(.*)", codesign_text) or ["", ""])[1].strip(),
+        "designatedRequirement": (re.search(r"designated => (.*)", codesign_text) or ["", ""])[1].strip(),
+    },
+    "processEnvVerification": {
+        "pid": pid,
+        "processFound": bool(pid),
+        "secretValuesRecorded": False,
+        "processEnvKeys": env_keys,
+        "openrouterApiKeyInProcess": "present-redacted" if openrouter_in_process else "absent-or-not-visible",
+        "openrouterApiKeyInGuiLaunchd": "present-redacted" if launchd_key["stdout"] else "absent",
+        "note": "Only environment variable names and presence checks are recorded; secret values are never written to the report.",
+    }
+}, sort_keys=True))
+`;
+  const result = ssh(`APP_PATH=${shellQuote(remoteAppPath)} python3 -c ${shellQuote(script)}`);
+  if (!result.ok) {
+    state.remoteMetadataError = redact(result.stderr || result.stdout || 'Remote metadata command failed.');
+    return;
+  }
+  try {
+    const metadata = JSON.parse(result.stdout);
+    state.remoteMachine = metadata.remoteMachine;
+    state.remoteApp = metadata.remoteApp;
+    state.processEnvVerification = metadata.processEnvVerification;
+    if (state.remoteMachine?.macosProductVersion) state.remoteMacosVersion = state.remoteMachine.macosProductVersion;
+  } catch (error) {
+    state.remoteMetadataError = redact(error instanceof Error ? error.message : String(error));
+  }
+}
+
 function decodeBase64(value = '') {
   if (!value) return '';
   return Buffer.from(value, 'base64').toString('utf8').trim();
@@ -1468,6 +1741,135 @@ async function waitForRemoteGit(state, label, predicate, { attempts = 20, delayM
   return { ok: false, snapshot };
 }
 
+async function restoreRemoteBaseline(state, label) {
+  if (state.safety?.disposableConfig !== true || !state.remoteConfig?.baselineHead || !state.remoteConfig?.configDir) {
+    await addEvent(state, 'remote.git.restore-baseline.skipped', {
+      label,
+      reason: 'External git reset cleanup requires a proven disposable config and a prepared baseline.',
+    });
+    return { ok: false, reason: 'not-disposable-or-no-baseline' };
+  }
+  const command = [
+    `cd ${shellQuote(state.remoteConfig.configDir)}`,
+    `git reset --hard ${shellQuote(state.remoteConfig.baselineHead)} >/dev/null`,
+    'git clean -fd >/dev/null',
+  ].join('; ');
+  const result = ssh(command);
+  await addEvent(state, 'remote.git.restore-baseline', {
+    label,
+    ok: result.ok,
+    stdout: redact(result.stdout),
+    stderr: redact(result.stderr),
+  });
+  const snapshot = remoteGitSnapshot(state.remoteConfig.configDir, state.remoteConfig.baselineHead);
+  await addRemoteGitEvent(state, `remote.git.${label}.restore-baseline`, snapshot);
+  return { ok: result.ok && snapshot.ok && !snapshot.statusShort && !meaningfulBaselineDiff(snapshot), snapshot };
+}
+
+function evidenceMatches(text, patterns = []) {
+  return patterns.filter((pattern) => pattern.test(text)).length;
+}
+
+async function cleanupReviewOnlyCase(client, state, text, caseDef) {
+  const discardOpened = await clickByPattern(client, state, text, `Discard ${caseDef.id}`, [/Discard/i], `Open Discard for ${caseDef.label}.`);
+  if (discardOpened) {
+    text = await captureState(client, state, `evolved-${caseDef.id}-discard-boundary`, `Computer Use opened Discard for ${caseDef.label}.`);
+    const canConfirmDiscard = state.safety?.disposableConfig === true && state.safety?.discardConfirmEnabled === true;
+    if (canConfirmDiscard) {
+      await clickByPattern(client, state, text, `Confirm discard ${caseDef.id}`, [/button Confirm/i, /^button Discard$/i], `Confirm Discard for ${caseDef.label}.`);
+      const cleaned = await waitForRemoteGit(
+        state,
+        `evolved-${caseDef.id}-discard-clean`,
+        (snapshot) => snapshot?.ok && !snapshot.statusShort && !meaningfulBaselineDiff(snapshot),
+        { attempts: 20, delayMs: 1000 },
+      );
+      text = await captureState(client, state, `evolved-${caseDef.id}-after-discard`, `Computer Use cleaned up ${caseDef.label}.`);
+      return { ok: cleaned.ok, text, method: 'discard' };
+    }
+    await clickByPattern(client, state, text, `Cancel discard ${caseDef.id}`, [/Cancel/i, /Close/i, /^button ×/i, /^button X/i], `Cancel Discard for ${caseDef.label}.`);
+  }
+  const restored = await restoreRemoteBaseline(state, `evolved-${caseDef.id}`);
+  await maybeRelaunchRemote(state);
+  text = await captureState(client, state, `evolved-${caseDef.id}-after-discard`, `Computer Use relaunched after external cleanup for ${caseDef.label}.`);
+  return { ok: restored.ok, text, method: 'external-restore' };
+}
+
+async function runReviewOnlyEvolvedCase(client, state, caseDef) {
+  state.scenarios[caseDef.scenarioKey] ||= {
+    label: `Optional evolved case: ${caseDef.label}`,
+    status: 'inconclusive',
+    notes: [],
+  };
+  const run = {
+    id: caseDef.id,
+    label: caseDef.label,
+    mode: caseDef.mode,
+    status: 'inconclusive',
+    notes: [],
+    startedAt: new Date().toISOString(),
+  };
+  state.evolvedCaseRuns.push(run);
+  await addEvent(state, 'evolved-case.started', { id: caseDef.id, mode: caseDef.mode, prompt: redact(caseDef.prompt) });
+  await maybeRelaunchRemote(state);
+  let text = await captureState(client, state, `evolved-${caseDef.id}-home`, `Computer Use started optional evolved case: ${caseDef.label}.`);
+  const inputSet = await setValueByPattern(client, state, text, `Prompt input ${caseDef.id}`, [/text entry area/i], caseDef.prompt);
+  text = await captureState(client, state, `evolved-${caseDef.id}-typed`, `Computer Use entered optional evolved prompt: ${caseDef.label}.`);
+  if (!inputSet || !text.includes(caseDef.prompt)) {
+    run.status = 'fail';
+    run.notes.push('Could not enter the optional evolved prompt.');
+    updateScenario(state, caseDef.scenarioKey, 'fail', run.notes.at(-1));
+    return text;
+  }
+  const submitted = await clickByPattern(client, state, text, `Send ${caseDef.id}`, [/button Send/i], `Submit optional evolved prompt: ${caseDef.label}.`);
+  if (!submitted) {
+    run.status = 'fail';
+    run.notes.push('Could not submit the optional evolved prompt.');
+    updateScenario(state, caseDef.scenarioKey, 'fail', run.notes.at(-1));
+    return text;
+  }
+  const wait = await waitFor(
+    client,
+    state,
+    `evolved-${caseDef.id}-provider-progress`,
+    (candidate) => {
+      if (/heading Review|button Build & Test|button Discard|Summary|Diff/i.test(candidate)) return 'review';
+      if (/Payment Required|Insufficient credits|out of credits|billing limit/i.test(candidate)) return 'billing-error';
+      if (/No API key|missing API key|API key is required|invalid API key|Unauthorized|401/i.test(candidate)) return 'credential-error';
+      if (/Provider request failed|provider error|OpenRouter error|fatal error|uncaught/i.test(candidate)) return 'provider-error';
+      return null;
+    },
+    { attempts: Number(process.env.NIXMAC_E2E_EXTRA_PROVIDER_ATTEMPTS || 36), delayMs: Number(process.env.NIXMAC_E2E_PROVIDER_DELAY_MS || 5000) },
+  );
+  text = wait.text;
+  if (wait.result !== 'review') {
+    run.status = wait.result ? 'fail' : 'inconclusive';
+    run.notes.push(wait.result ? `Provider reached ${wait.result} before Review.` : 'Review did not appear before the optional-case polling window ended.');
+    updateScenario(state, caseDef.scenarioKey, run.status, run.notes.at(-1));
+    return text;
+  }
+  let evidenceText = text;
+  if (await clickByPattern(client, state, text, `Summary ${caseDef.id}`, [/Summary/i], `Open Summary for ${caseDef.label}.`)) {
+    text = await captureState(client, state, `evolved-${caseDef.id}-summary`, `Computer Use opened Summary for ${caseDef.label}.`);
+    evidenceText += `\n${text}`;
+  }
+  if (await clickByPattern(client, state, text, `Diff ${caseDef.id}`, [/Diff/i], `Open Diff for ${caseDef.label}.`)) {
+    text = await captureState(client, state, `evolved-${caseDef.id}-diff`, `Computer Use opened Diff for ${caseDef.label}.`);
+    evidenceText += `\n${text}`;
+  }
+  const matches = evidenceMatches(evidenceText, caseDef.expectedEvidence);
+  const cleanup = await cleanupReviewOnlyCase(client, state, text, caseDef);
+  run.status = matches >= 2 && cleanup.ok ? 'pass' : matches >= 2 ? 'inconclusive' : 'fail';
+  run.notes.push(
+    matches >= 2
+      ? `Review evidence matched ${matches}/${caseDef.expectedEvidence.length} screenshot-defaults tokens.`
+      : `Review evidence matched only ${matches}/${caseDef.expectedEvidence.length} screenshot-defaults tokens.`,
+  );
+  run.notes.push(cleanup.ok ? `Cleanup succeeded via ${cleanup.method}.` : `Cleanup did not prove a clean baseline via ${cleanup.method}.`);
+  run.completedAt = new Date().toISOString();
+  updateScenario(state, caseDef.scenarioKey, run.status, run.notes.join(' '));
+  return cleanup.text;
+}
+
 async function prepareDisposableRemoteBaseline(state) {
   const canConfirmBuild = state.safety?.disposableConfig === true && state.safety?.buildConfirmEnabled === true;
   if (!canConfirmBuild) {
@@ -1522,54 +1924,6 @@ async function prepareDisposableRemoteBaseline(state) {
   return baseline;
 }
 
-async function assembleVideo(state) {
-  const ffmpeg = tryRun('which', ['ffmpeg']);
-  if (!ffmpeg.ok) {
-    state.video = { status: 'unavailable', path: null, note: `ffmpeg unavailable: ${ffmpeg.stderr || ffmpeg.error || 'not found'}` };
-    return;
-  }
-  if (state.screenshots.length < 2) {
-    state.video = { status: 'unavailable', path: null, note: 'Not enough Computer Use screenshots to assemble a video.' };
-    return;
-  }
-  const concatPath = path.join(state.runDir, 'video', 'frames.txt');
-  const lines = state.screenshots
-    .filter((shot) => shot.path.endsWith('.png'))
-    .map((shot) => `file '${path.join(state.runDir, shot.path).replaceAll("'", "'\\''")}'\nduration 1`)
-    .join('\n');
-  await writeFile(concatPath, `${lines}\n`, 'utf8');
-  const videoPath = path.join(state.runDir, 'video', 'computer-use-evidence.mp4');
-  const result = tryRun('ffmpeg', [
-    '-y',
-    '-f',
-    'concat',
-    '-safe',
-    '0',
-    '-i',
-    concatPath,
-    '-r',
-    '30',
-    '-vf',
-    'scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p',
-    '-movflags',
-    '+faststart',
-    videoPath,
-  ]);
-  if (!result.ok) {
-    state.video = {
-      status: 'unavailable',
-      path: null,
-      note: `ffmpeg failed to assemble Computer Use evidence video: ${redact(result.stderr || result.error)}`,
-    };
-    return;
-  }
-  state.video = {
-    status: 'available',
-    path: path.relative(state.runDir, videoPath),
-    note: 'Video assembled at 30 fps from Computer Use screenshots. This is an evidence reel, not a continuous screen recording.',
-  };
-}
-
 async function render(state, { stateFileName = 'state.json', recordEvent = true } = {}) {
   ensureCurrentSchema(state);
   const verdict = verdictFor(state);
@@ -1593,22 +1947,18 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
         )
         .join('\n')
     : '<p>No screenshots captured.</p>';
-  const videoHtml =
-    state.video.status === 'available' && state.video.path
-      ? `<video controls src="${escapeHtml(state.video.path)}"></video><p>${escapeHtml(state.video.note)}</p>`
-      : `<p><strong>Unavailable.</strong> ${escapeHtml(state.video.note || 'No video status recorded.')}</p>`;
   const counts = statusCounts(state);
   const groupedScenarioHtml = groupedScenarios(state)
     .map(
       (group) => `<section class="group">
   <h3>${escapeHtml(group.name)}</h3>
-  <table>
+  <table class="scenario-table">
     <thead><tr><th>Scenario</th><th>Status</th><th>Evidence Grade</th><th>Primary Artifacts</th><th>What Proved It</th><th>Still Untested</th></tr></thead>
     <tbody>
       ${group.items
         .map((item) => {
           const proof = proofForScenario(state, item.key);
-          return `<tr><td>${escapeHtml(item.label)}<br><small>${item.notes.map(escapeHtml).join('<br>') || 'No notes recorded.'}</small></td><td><span class="verdict ${item.status}">${escapeHtml(item.status)}</span></td><td><span class="grade">${escapeHtml(proof.grade)}</span></td><td>${artifactLinks(state, item.key)}</td><td>${escapeHtml(proof.proof)}</td><td>${escapeHtml(proof.untested)}</td></tr>`;
+          return `<tr><td>${escapeHtml(item.label)}<br><small>${item.notes.map(escapeHtml).join('<br>') || 'No notes recorded.'}</small></td><td class="status-cell"><span class="verdict ${item.status}">${escapeHtml(item.status)}</span></td><td class="grade-cell"><span class="grade">${escapeHtml(proof.grade)}</span></td><td>${artifactLinks(state, item.key)}</td><td>${escapeHtml(proof.proof)}</td><td>${escapeHtml(proof.untested)}</td></tr>`;
         })
         .join('\n')}
     </tbody>
@@ -1616,12 +1966,13 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
 </section>`,
     )
     .join('\n');
-  const evidenceSummary = `${state.screenshots.length} screenshots, ${state.textSnapshots.length} text snapshots, video ${state.video.status}`;
+  const evidenceSummary = `${state.screenshots.length} screenshots, ${state.textSnapshots.length} redacted text snapshots`;
   const coverageGapsHtml = renderCoverageGaps(state);
   const prFocusHtml = renderPrFocus(state);
   const prPriorityHtml = renderPrPriority(state);
   const priorityTriageHtml = renderPriorityTriage(state);
   const visualProofHtml = await renderVisualProofBoard(state);
+  const remoteMetadataHtml = renderRemoteMetadata(state);
 
   const html = `<!doctype html>
 <html lang="en">
@@ -1642,6 +1993,8 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
     .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
     .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 18px 0; }
     .panel { border: 1px solid #303640; border-radius: 8px; padding: 14px; background: #171a21; overflow-wrap: anywhere; }
+    .metadata-grid .panel { overflow-x: auto; }
+    .warning { color: #ffd36e; }
     .metric { border: 1px solid #303640; border-radius: 8px; padding: 14px; background: #171a21; }
     .metric strong { display: block; font-size: 28px; color: #fff; margin-bottom: 4px; }
     .verdict { display: inline-block; border-radius: 999px; padding: 5px 10px; font-weight: 700; text-transform: uppercase; }
@@ -1652,13 +2005,16 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
     table { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 8px; }
     th, td { border: 1px solid #303640; padding: 10px; text-align: left; vertical-align: top; }
     th { background: #20242d; }
-    img, video { width: 100%; max-width: 100%; border: 1px solid #303640; border-radius: 8px; background: #000; }
+    img { width: 100%; max-width: 100%; border: 1px solid #303640; border-radius: 8px; background: #000; }
     small { color: #9ba3ae; }
     pre { max-height: 280px; overflow: auto; white-space: pre-wrap; border: 1px solid #303640; border-radius: 8px; padding: 10px; background: #0d0f14; color: #dce3ec; }
     details { margin: 10px 0; }
     summary { cursor: pointer; color: #a7d7ff; }
     details > summary { font-weight: 700; margin: 12px 0; }
-    .grade { display: inline-block; border: 1px solid #3c4654; border-radius: 999px; padding: 4px 8px; color: #dce3ec; background: #20242d; font-size: 12px; }
+    .grade { display: inline-block; border: 1px solid #3c4654; border-radius: 999px; padding: 4px 8px; color: #dce3ec; background: #20242d; font-size: 12px; white-space: nowrap; }
+    .verdict { white-space: nowrap; text-align: center; }
+    .scenario-table .status-cell { width: 96px; min-width: 96px; text-align: center; }
+    .scenario-table .grade-cell { width: 160px; min-width: 160px; text-align: center; }
     .priority table { margin-bottom: 18px; }
     .proof-card { margin-top: 18px; border: 1px solid #303640; border-radius: 8px; padding: 14px; background: #151922; }
     .annotated-shot { position: relative; overflow: hidden; border: 1px solid #303640; border-radius: 8px; background: #000; }
@@ -1667,6 +2023,7 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
     .annotation::after { content: ""; position: absolute; inset: -4px; border: 1px solid rgba(255, 214, 94, 0.28); border-radius: 8px; }
     .annotation span { position: absolute; left: 6px; top: 6px; max-width: min(260px, calc(100% - 12px)); border-radius: 4px; padding: 3px 6px; background: rgba(255, 214, 94, 0.95); color: #111318; font-size: 12px; line-height: 1.15; font-weight: 700; white-space: normal; box-shadow: 0 2px 8px rgba(0,0,0,0.22); }
     .annotation-pin { border-radius: 999px; }
+    .annotation-pin::after { border-radius: 999px; inset: -5px; }
     .annotation-pin span { left: 50%; top: -28px; transform: translateX(-50%); white-space: nowrap; max-width: none; }
     figure { margin: 0 0 18px; }
     figcaption { margin-top: 6px; color: #c5cbd3; font-size: 13px; }
@@ -1677,7 +2034,7 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
 <body>
 <main>
   <h1>nixmac Computer Use E2E Evidence</h1>
-  <p class="lede">Remote desktop QA driven through Codex Computer Use against the real macOS app. The report summarizes major feature coverage, functional UX/UI checks, screenshots, and a generated evidence video.</p>
+  <p class="lede">Remote desktop QA driven through Codex Computer Use against the real macOS app. The report summarizes major feature coverage, functional UX/UI checks, screenshots, redacted text evidence, and remote machine metadata.</p>
   <p><span class="verdict ${verdict}">Verdict: ${verdict}</span></p>
 
   <section class="summary" aria-label="Run summary">
@@ -1685,7 +2042,6 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
     <div class="metric"><strong>${counts.fail}</strong>Failed</div>
     <div class="metric"><strong>${counts.inconclusive}</strong>Inconclusive</div>
     <div class="metric"><strong>${escapeHtml(String(state.screenshots.length))}</strong>Screenshots</div>
-    <div class="metric"><strong>${escapeHtml(state.video.status)}</strong>Video</div>
   </section>
 
   ${prPriorityHtml}
@@ -1700,16 +2056,17 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
     <div class="panel"><strong>Timestamp</strong><br>${escapeHtml(state.startedAt)}</div>
     <div class="panel"><strong>Branch</strong><br>${escapeHtml(state.branch)}</div>
     <div class="panel"><strong>SHA</strong><br><code>${escapeHtml(state.sha)}</code></div>
-    <div class="panel"><strong>macOS</strong><br>${escapeHtml(state.macosVersion)}</div>
+    <div class="panel"><strong>macOS</strong><br>${escapeHtml(state.remoteMachine?.macosProductVersion || state.macosVersion)}</div>
     <div class="panel"><strong>App</strong><br><code>${escapeHtml(state.app)}</code></div>
     <div class="panel"><strong>App Command</strong><br><code>${escapeHtml(state.appCommand)}</code></div>
     <div class="panel"><strong>Provider</strong><br><code>${escapeHtml(state.provider.kind)}</code><br>${escapeHtml(state.provider.note)}</div>
     <div class="panel"><strong>Prompt</strong><br>${escapeHtml(state.prompt)}</div>
     <div class="panel"><strong>Evidence</strong><br>${escapeHtml(evidenceSummary)}</div>
-  </section>
+	  </section>
 
-  <h2>Video</h2>
-  ${videoHtml}
+  ${remoteMetadataHtml}
+
+  ${renderEvolvedCaseStrategy(state)}
 
   <h2>Scenario Checklist</h2>
   ${groupedScenarioHtml}
@@ -1786,7 +2143,6 @@ async function runSuite(args) {
   const runDir = argValue(args, '--run-dir', path.join(ARTIFACT_ROOT, timestampSlug()));
   await mkdir(path.join(runDir, 'screenshots'), { recursive: true });
   await mkdir(path.join(runDir, 'texts'), { recursive: true });
-  await mkdir(path.join(runDir, 'video'), { recursive: true });
   const state = await baseState(runDir, options);
   await saveState(state);
 
@@ -1795,6 +2151,7 @@ async function runSuite(args) {
     await client.connect();
     await prepareDisposableRemoteBaseline(state);
     await maybeRelaunchRemote(state);
+    captureRemoteMetadata(state);
 
     let text = await captureState(client, state, 'launch', 'Computer Use observed the nixmac window at launch.');
     if (/nixmac/i.test(text) && hasAny(text, [/button Settings/i, /text entry area/i, /Get started/i, /Progress: step 1 of 3/i])) {
@@ -2159,6 +2516,17 @@ async function runSuite(args) {
       updateScenario(state, 'discard', 'inconclusive', 'Discard-after-review was not tested because the real provider workflow did not reach Review.');
     }
 
+    for (const caseDef of enabledExtraEvolvedCases()) {
+      if (caseDef.mode === 'review-only-calibration') {
+        text = await runReviewOnlyEvolvedCase(client, state, caseDef);
+      } else {
+        await addEvent(state, 'evolved-case.skipped', {
+          id: caseDef.id,
+          reason: `Mode ${caseDef.mode} is not executed by the default remote runner.`,
+        });
+      }
+    }
+
     const coreSurfaceLabels = new Set(state.screenshots.map((shot) => shot.label));
     const requiredVisualSurfaces = [
       'launch',
@@ -2192,16 +2560,6 @@ async function runSuite(args) {
     updateMainCoverageFreshness(state);
 
     state.cleanup.note = 'Remote app state was not restored by this runner. CI wrapper is responsible for remote app-support backup/restore; local artifacts are retained.';
-    await assembleVideo(state);
-    const videoIssue = videoArtifactIssue(state);
-    updateScenario(
-      state,
-      'videoEvidence',
-      videoIssue ? 'fail' : 'pass',
-      videoIssue
-        ? `Evidence video artifact is not valid: ${videoIssue}.`
-        : `Evidence video generated at ${state.video.path}.`,
-    );
     await render(state);
     await inspectReportWithComputerUse(client, state);
     updatePrSpecificCoverage(state);
@@ -2222,7 +2580,6 @@ async function renderUnavailable(args) {
   const runDir = argValue(args, '--run-dir', path.join(ARTIFACT_ROOT, timestampSlug()));
   await mkdir(path.join(runDir, 'screenshots'), { recursive: true });
   await mkdir(path.join(runDir, 'texts'), { recursive: true });
-  await mkdir(path.join(runDir, 'video'), { recursive: true });
   const state = await baseState(runDir, {
     ws: process.env.NIXMAC_COMPUTER_USE_WS || DEFAULT_WS,
     app: process.env.NIXMAC_COMPUTER_USE_APP || DEFAULT_APP,
@@ -2270,17 +2627,6 @@ async function renderExisting(args) {
       ? 'Every passing scenario has a linked screenshot or redacted accessibility text artifact in the proof catalog.'
       : `Missing proof artifacts for passing scenarios: ${proofIssues.join('; ')}`,
   ];
-  const videoIssue = videoArtifactIssue(state);
-  const preserveUnavailableVideoEvidence =
-    state.video.status !== 'available' && state.scenarios.videoEvidence.status === 'inconclusive';
-  if (!preserveUnavailableVideoEvidence) {
-    state.scenarios.videoEvidence.status = videoIssue ? 'fail' : 'pass';
-    state.scenarios.videoEvidence.notes = [
-      videoIssue
-        ? `Evidence video artifact is not valid: ${videoIssue}.`
-        : `Evidence video generated at ${state.video.path}.`,
-    ];
-  }
   updateMainCoverageFreshness(state);
   updatePrSpecificCoverage(state);
   await render(state, { stateFileName: 'state.regenerated.json', recordEvent: false });
@@ -2334,7 +2680,6 @@ function runSelfTest() {
   process.env.NIXMAC_E2E_PR_CHANGED_FILES = 'tools/computer-use-e2e/run-remote-cua.mjs';
   const toolPrFocus = buildPrFocus();
   assert.equal(toolPrFocus.scenarioKeys.includes('visualProofQuality'), true, 'Computer Use E2E changes should focus visual proof quality');
-  assert.equal(toolPrFocus.scenarioKeys.includes('videoEvidence'), true, 'Computer Use E2E changes should focus video evidence');
   assert.equal(toolPrFocus.scenarioKeys.includes('reportInspection'), true, 'Computer Use E2E changes should focus report inspection');
   assert.equal(toolPrFocus.scenarioKeys.includes('prSpecificCoverage'), false, 'PR focus coverage must not require itself');
   if (previousChangedFiles === undefined) delete process.env.NIXMAC_E2E_PR_CHANGED_FILES;

@@ -5,12 +5,12 @@ real nixmac macOS app like a human QA tester.
 
 The first-class lane now uses Codex app-server on a Mac that has GUI access to
 nixmac. It drives the app through the `computer-use` MCP, records evidence
-metadata, captures Computer Use screenshots, assembles a 30 fps evidence video
-from those screenshots, and renders a standalone HTML report.
+metadata, captures Computer Use screenshots and redacted text snapshots, records
+remote Mac/app/process metadata, and renders a standalone HTML report.
 
 Computer Use is required for the actual app interaction and final report
 inspection. Shell is used for setup, launch, backup/restore, artifact movement,
-and HTML/video generation only.
+metadata capture, and HTML generation only.
 
 ## Remote Computer Use Lane
 
@@ -51,6 +51,9 @@ The runner:
   suggestion cards, real prompt submission, Review/Summary/Diff/Build boundary,
   guarded Step 3 commit/save, History restore cleanup, and guarded Discard
   boundary when reachable;
+- keeps the default PR lane to one calibrated full-lifecycle evolved prompt
+  (`homebrew-bat`) and exposes additional eval-derived evolved cases through
+  `NIXMAC_E2E_EXTRA_EVOLVED_CASES` after calibration;
 - confirms Build & Test only when `NIXMAC_E2E_DISPOSABLE_CONFIG=true`,
   `NIXMAC_E2E_ALLOW_BUILD_CONFIRM=true`, and a disposable baseline git commit
   has been prepared;
@@ -67,7 +70,7 @@ The runner:
 - copies the generated report back to the remote Mac and uses Computer Use to
   inspect it in a browser when `NIXMAC_E2E_REMOTE_SSH_DEST` is set;
 - writes `index.html`, `state.json`, `events.json`, screenshots, text
-  snapshots, and optional video under `artifacts/computer-use-remote/<timestamp>/`.
+  snapshots, and remote metadata under `artifacts/computer-use-remote/<timestamp>/`.
 - exits non-zero when the final report verdict is `fail` or `inconclusive`
   unless `NIXMAC_E2E_STRICT_VERDICT=false` is set. For PRs, keep the check
   non-blocking through branch protection rather than by forcing a green result.
@@ -92,8 +95,8 @@ the HTML report as Main Coverage Freshness.
 `.github/workflows/computer-use-e2e.yml` triggers on every pull request and
 `workflow_dispatch`. On same-repository pull requests, it publishes the generated
 report to the `gh-pages` report branch and upserts one sticky PR comment with
-the verdict, counts, public hosted `index.html`, public hosted evidence video,
-Actions run, and artifact backup. The workflow does not send Slack or other team
+the verdict, counts, public hosted `index.html`, Actions run, and artifact
+backup. The workflow does not send Slack or other team
 notifications.
 
 The workflow serializes all runs through one DXU remote-machine concurrency
@@ -121,8 +124,7 @@ Required repository secrets for the real remote lane:
 - `NIXMAC_E2E_OPENROUTER_API_KEY`
 
 The GitHub-hosted runner installs `ffmpeg` before running the suite. The report
-renderer uses it both to assemble the evidence reel and to reject blank or
-corrupt screenshot artifacts.
+renderer uses it to reject blank or corrupt screenshot artifacts.
 
 `NIXMAC_E2E_REMOTE_HOST` must be a resolvable FQDN or stable IP address, not
 the Mac's local hostname. For the current DXU MacinCloud lane, use
@@ -137,6 +139,21 @@ to the new expected local hostname.
 ```bash
 ssh-keyscan dxu97120.macincloud.com
 ```
+
+Optional evolved-case calibration:
+
+```bash
+NIXMAC_E2E_EXTRA_EVOLVED_CASES=screenshots-defaults \
+  node tools/computer-use-e2e/run-remote-cua.mjs run
+```
+
+The default PR lane intentionally runs only the calibrated `homebrew-bat` case
+through Step 3 and rollback. The `screenshots-defaults` case comes from the WDIO
+fixture suite and eval corpus case 33, but stays opt-in until its Review/Diff
+accessibility-text evidence is calibrated on the real remote app. The
+`protected-flake-input` eval case stays in the adversarial/advisory backlog until
+nixmac has hard backend protected-file enforcement; the current app has
+prompt-level guidance, not a reliable PR-gating refusal signal.
 
 Do not generate known_hosts inside the workflow. The workflow sends provider
 credentials and runs privileged cleanup on the remote Mac, so SSH host
@@ -211,19 +228,6 @@ The setup command:
 
 Use Computer Use to interact with the app. Shell helpers may capture evidence
 and inspect the disposable git diff, but must not replace UI interaction.
-
-To record bounded video when the nixmac window is visible:
-
-```bash
-node tools/computer-use-e2e/run-local.mjs start-video --seconds 300
-# drive the app with Computer Use
-node tools/computer-use-e2e/run-local.mjs stop-video
-```
-
-The video helper records the nixmac window region reported by Accessibility
-using macOS `screencapture -v`, then validates the output dimensions with
-`ffprobe` before attaching it to the report. Skip video for sensitive views such
-as API Keys and Console if auth metadata could be visible.
 
 ### Deterministic Lane
 
@@ -307,7 +311,7 @@ triage section: failures first, inconclusive checks second, and passing checks
 collapsed last. It also includes verdict, timestamp, branch, SHA, macOS version,
 mode, app command, provider label, grouped scenario checklist, evidence grades,
 primary artifact links, coverage gaps, PR-specific focus, screenshot proof cards,
-optional video, human QA narrative, claims versus evidence, failures/open issues,
+remote Mac/app/process metadata, human QA narrative, claims versus evidence, failures/open issues,
 confirmation boundaries, and cleanup/restore status. Machine-readable
 `state.json` and `events.json` files sit next to the report.
 
@@ -360,5 +364,5 @@ boundary, commit no-op, rollback no-op, activation admin-auth blockers, corrupt
 artifacts, blank screenshots, PR report priority, main coverage drift,
 zero-byte image/text evidence,
 findings ordering, sensitive screenshot leakage, stale verdicts, missing report
-inspection proof, unmapped PR-visible files, unavailable video, and missing
-rollback proof.
+inspection proof, unmapped PR-visible files, missing remote metadata, and
+missing rollback proof.

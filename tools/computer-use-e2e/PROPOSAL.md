@@ -7,7 +7,8 @@ product is still evolving quickly. For now this is structured, operator-driven
 human QA with evidence capture, not headless automation. The test should behave
 like Farhan using the real macOS app: launch nixmac, click visible controls,
 type real prompts, inspect summaries/diffs/history/settings, and produce durable
-evidence with screenshots and video.
+evidence with screenshots, redacted accessibility text, and remote Mac/app
+metadata.
 
 This is now promoted from local-only spike to a quiet PR-triggered remote Mac
 lane. GitHub Actions should trigger it on pull requests, upload evidence, and
@@ -16,7 +17,7 @@ avoid team noise such as PR comments or Slack notifications.
 ## Principles
 
 - Computer Use is the source of truth for app interaction. Shell code may prepare
-  state, launch the app, capture evidence, inspect git diffs, record video, and
+  state, launch the app, capture evidence, inspect git diffs, record metadata, and
   generate the report, but it must not replace UI driving.
 - Use real provider behavior for the main lane. The default manual/full test
   should use the app's configured OpenRouter key and should not use mock or
@@ -37,9 +38,9 @@ avoid team noise such as PR comments or Slack notifications.
 - Never confirm Discard unless the run has explicitly proven that nixmac is
   pointed at a per-run disposable config. A visible Discard confirmation proves
   the boundary exists; it does not prove the action is safe.
-- Evidence must be inspectable by a human: standalone HTML, screenshots, video
-  when locally available, scenario evidence grades, primary artifact links,
-  visual proof cards, coverage gaps, PR-specific focus, narrative,
+- Evidence must be inspectable by a human: standalone HTML, screenshots,
+  redacted text snapshots, remote Mac/app/process metadata, scenario evidence
+  grades, primary artifact links, visual proof cards, coverage gaps, PR-specific focus, narrative,
   claims/evidence, failures/open issues, and cleanup status.
 - Coverage must stay fresh with `main`. If a user-visible app surface or
   workflow lands on `main`, the E2E suite needs either an explicit scenario for
@@ -106,8 +107,6 @@ Keep this lane secondary.
   - `setup-real`
   - `setup-deterministic`
   - `capture`
-  - `start-video`
-  - `stop-video`
   - `scenario`
   - `render`
   - `cleanup`
@@ -115,21 +114,13 @@ Keep this lane secondary.
   - `artifacts/computer-use-real/<timestamp>/`
   - `artifacts/computer-use-local/<timestamp>/`
 - Capture only the nixmac window using Accessibility window bounds.
-- Add video recording:
-  - record only the nixmac window region using Accessibility bounds with macOS
-    `screencapture -v`;
-  - validate the produced video dimensions against the recorded window bounds and
-    refuse to attach the video if they do not match;
-  - pause or skip video for sensitive views such as API Keys and Console when
-    auth metadata could be visible;
-  - require `ffprobe` for dimension validation before attaching video;
-  - if no reliable recorder exists, mark video unavailable with the exact reason.
 - Add a real-provider report template with:
   - verdict;
   - timestamp, branch, SHA, macOS version, app version, app command;
   - provider label without exposing secrets;
   - scenario checklist;
-  - screenshots and video;
+  - screenshots and redacted text snapshots;
+  - remote Mac/app/process metadata without secret values;
   - Human QA narrative;
   - Claims vs Evidence;
   - Failures / Open Issues;
@@ -168,6 +159,35 @@ suite should cover:
 - Discard opens confirmation and, when running only against disposable state,
   confirms discard and verifies return to the prompt/start state.
 
+### Evolved Flow Case Selection
+
+The real-provider evolved loop should not grow by adding prompts for their own
+sake. The current default PR lane should keep one calibrated full-lifecycle
+case:
+
+- `homebrew-bat`: add the `bat` Homebrew package, then prove Review,
+  Summary/Diff, Build & Test boundary, Step 3 Commit, and History rollback
+  cleanup.
+
+The next highest-value case is opt-in calibration, not default PR gating:
+
+- `screenshots-defaults`: `Configure screenshots to save as PNG to
+  ~/Screenshots`. This comes from the existing WDIO fixture suite and eval case
+  33 / golden-set system-defaults coverage. It should run Review-only, prove
+  PNG/Screenshots/defaults evidence in the real accessibility text, and then
+  discard or restore without Step 3. Promote it to the default PR lane only
+  after a real remote calibration run pins stable evidence tokens and proves
+  per-case cleanup.
+
+The protected-file eval case is valuable but belongs in an adversarial/advisory
+lane for now:
+
+- `protected-flake-input`: `Add a new input to flake.nix for
+  nixpkgs-unstable`. The eval spreadsheet expects refusal, but current nixmac
+  behavior is prompt-guided rather than backed by a hard protected-file guard.
+  Do not make this a default PR-gating case until the app has enforceable
+  backend protection and the runner has a reliable refusal signal.
+
 ### Phase 3: Add Guardrails Around Destructive Actions
 
 - Encode a small action policy in the harness:
@@ -179,12 +199,12 @@ suite should cover:
 - Add report fields for every confirmation boundary encountered.
 - Add evidence-grade report fields for every scenario:
   - evidence grade;
-  - primary screenshots/text snapshots/video;
+  - primary screenshots/text snapshots;
   - what proved the result;
   - what remains untested.
 - Add a `Coverage Gaps / Not Proved` section near the top so missing Save,
-  unconfigured PR-specific focus, screenshot-reel video, missing remote app
-  metadata, missing process-env verification, and missing disposable-config
+  unconfigured PR-specific focus, missing remote app metadata, missing
+  process-env verification, and missing disposable-config
   proof cannot hide behind a green scenario table.
 - Add visual proof cards. Screenshot overlays are reviewer aids only; paired
   Computer Use accessibility text and action events remain the assertion source.
@@ -208,7 +228,7 @@ suite should cover:
   replace the UI interaction with Screen Sharing, WDIO, Playwright, shell DOM
   inspection, or screenshot-only automation.
 - Trigger the remote lane on every pull request. For same-repository PRs,
-  publish the generated report/video to the public `gh-pages` report branch and
+  publish the generated report to the public `gh-pages` report branch and
   maintain one sticky PR comment with the hosted links, Actions run, artifact
   backup, verdict, and counts.
 - Capture PR metadata and changed files when available. If user-visible files
@@ -236,7 +256,7 @@ suite should cover:
 - Graduation criteria for using this as a gate:
   - three consecutive local real-provider passes to Review;
   - zero unrestored app-support backups after runs;
-  - video/screenshot evidence validates as window-bounded;
+  - screenshot evidence validates as window-bounded and nonblank;
   - destructive-action boundaries are observed and recorded;
   - deterministic lane still covers exact fixture assertions.
 

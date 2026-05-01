@@ -535,7 +535,6 @@ jobs:
           publish_path="${report_prefix}/run-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           latest_path="${report_prefix}/latest"
           html_preview_base="https://htmlpreview.github.io/?https://github.com/${GITHUB_REPOSITORY}/blob/gh-pages"
-          cdn_base="https://cdn.jsdelivr.net/gh/${GITHUB_REPOSITORY}@gh-pages"
           {
             echo "has_report=true"
             echo "report_dir=$latest_report"
@@ -548,7 +547,6 @@ jobs:
             echo "latest_path=$latest_path"
             echo "index_url=${html_preview_base}/${publish_path}/index.html"
             echo "latest_index_url=${html_preview_base}/${latest_path}/index.html"
-            echo "video_url=${cdn_base}/${publish_path}/video/computer-use-evidence.mp4"
           } >> "$GITHUB_OUTPUT"
 
       - name: Summarize evidence report
@@ -562,7 +560,6 @@ jobs:
               echo "- Counts: \`${{ steps.report-meta.outputs.pass }} pass / ${{ steps.report-meta.outputs.fail }} fail / ${{ steps.report-meta.outputs.inconclusive }} inconclusive\`"
               echo "- Artifact path: \`${{ steps.report-meta.outputs.report_dir }}/index.html\`"
               echo "- Hosted HTML: ${{ steps.report-meta.outputs.index_url }}"
-              echo "- Hosted video: ${{ steps.report-meta.outputs.video_url }}"
             else
               echo "- No report artifact was generated."
             fi
@@ -589,7 +586,6 @@ jobs:
           LATEST_PATH: ${{ steps.report-meta.outputs.latest_path }}
           INDEX_URL: ${{ steps.report-meta.outputs.index_url }}
           LATEST_INDEX_URL: ${{ steps.report-meta.outputs.latest_index_url }}
-          VIDEO_URL: ${{ steps.report-meta.outputs.video_url }}
           RUN_ASSET_BASE_URL: https://cdn.jsdelivr.net/gh/${{ github.repository }}@gh-pages/${{ steps.report-meta.outputs.publish_path }}/
         run: |
           set -euo pipefail
@@ -621,7 +617,6 @@ jobs:
           {
             echo "index_url=$INDEX_URL"
             echo "latest_index_url=$LATEST_INDEX_URL"
-            echo "video_url=$VIDEO_URL"
           } >> "$GITHUB_OUTPUT"
 
       - name: Comment evidence report on pull request
@@ -636,7 +631,6 @@ jobs:
           INCONCLUSIVE_COUNT: ${{ steps.report-meta.outputs.inconclusive }}
           INDEX_URL: ${{ steps.publish-report.outputs.index_url }}
           LATEST_INDEX_URL: ${{ steps.publish-report.outputs.latest_index_url }}
-          VIDEO_URL: ${{ steps.publish-report.outputs.video_url }}
           ARTIFACT_URL: ${{ steps.upload-report.outputs.artifact-url }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
@@ -650,12 +644,11 @@ jobs:
 
           - Result: \`$PASS_COUNT pass / $FAIL_COUNT fail / $INCONCLUSIVE_COUNT inconclusive\`
           - Hosted HTML report: $INDEX_URL
-          - Hosted evidence video: $VIDEO_URL
           - Latest report alias: $LATEST_INDEX_URL
           - Actions run: $RUN_URL
           - Artifact backup: $ARTIFACT_URL
 
-          The hosted report contains pass/fail state, screenshots, annotations, text evidence, and the embedded evidence video. The artifact backup is retained for 14 days.
+          The hosted report contains pass/fail state, screenshots, annotations, text evidence, and remote Mac/app metadata. The artifact backup is retained for 14 days.
           EOF
           body_json="$(mktemp)"
           jq -Rs '{body: .}' "$body_file" > "$body_json"

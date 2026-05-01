@@ -230,13 +230,12 @@ const caseDefinitions = [
     id: 8,
     slug: 'corrupt-evidence',
     name: 'Report evidence artifact corruption',
-    expected: 'visualProofQuality and videoEvidence fail when referenced artifacts are missing.',
+    expected: 'visualProofQuality fails when referenced screenshot artifacts are missing.',
     mutate({ runDir }) {
       rmSync(path.join(runDir, 'screenshots/01-launch.png'), { force: true });
-      rmSync(path.join(runDir, 'video/computer-use-evidence.mp4'), { force: true });
     },
     evaluate(state) {
-      return state.scenarios.visualProofQuality.status === 'fail' && state.scenarios.videoEvidence.status === 'fail';
+      return state.scenarios.visualProofQuality.status === 'fail';
     },
   },
   {
@@ -398,15 +397,17 @@ const caseDefinitions = [
   },
   {
     id: 19,
-    slug: 'video-unavailable-stale-pass',
-    name: 'Unavailable video with stale pass status',
-    expected: 'videoEvidence fails when video status is unavailable even if stale state claimed pass.',
+    slug: 'missing-remote-metadata',
+    name: 'Missing remote Mac/app/process metadata',
+    expected: 'coverage gaps call out missing remote machine/app metadata and process-env verification.',
     mutate({ state }) {
-      state.video = { status: 'unavailable', path: null, note: 'Adversarial fixture: encoder failed.' };
-      mutateScenario(state, 'videoEvidence', 'pass', 'Adversarial fixture: stale pass should be downgraded.');
+      delete state.remoteMachine;
+      delete state.remoteApp;
+      delete state.processEnvVerification;
     },
-    evaluate(state) {
-      return state.scenarios.videoEvidence.status === 'fail' && /unavailable|encoder failed/i.test(state.scenarios.videoEvidence.notes.join(' '));
+    evaluate(_state, runDir) {
+      const html = readFileSync(path.join(runDir, 'index.html'), 'utf8');
+      return /Remote Mac\/app metadata|Credential process-env verification/i.test(html);
     },
   },
   {

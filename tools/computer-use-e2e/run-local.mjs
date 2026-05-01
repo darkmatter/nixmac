@@ -77,14 +77,11 @@ function usage() {
   node tools/computer-use-e2e/run-local.mjs setup-deterministic
   node tools/computer-use-e2e/run-local.mjs setup-real
   node tools/computer-use-e2e/run-local.mjs serve-mock <run-dir>
-  node tools/computer-use-e2e/run-local.mjs start-video [--seconds 300]
-  node tools/computer-use-e2e/run-local.mjs stop-video
   node tools/computer-use-e2e/run-local.mjs capture <label> [--note "..."]
   node tools/computer-use-e2e/run-local.mjs scenario <key> <pass|fail|inconclusive> [--note "..."]
   node tools/computer-use-e2e/run-local.mjs confirmation <label> --note "..."
   node tools/computer-use-e2e/run-local.mjs narrative "..."
   node tools/computer-use-e2e/run-local.mjs app-command "..."
-  node tools/computer-use-e2e/run-local.mjs video-status <available|unavailable> --note "..."
   node tools/computer-use-e2e/run-local.mjs render
   node tools/computer-use-e2e/run-local.mjs cleanup`);
 }
@@ -436,11 +433,6 @@ function createInitialState({
     screenshots: [],
     narrative: [],
     claims: [],
-    video: {
-      status: 'unavailable',
-      note: 'Video recording was not started yet. start-video uses macOS screencapture and stop-video validates dimensions with ffprobe before attaching.',
-      path: null,
-    },
     confirmationBoundaries: [],
     cleanup: {
       attempted: false,
@@ -463,7 +455,6 @@ async function setup({ mode = 'deterministic' } = {}) {
   const runSlug = timestampSlug(startedAt);
   const runDir = path.join(artifactRoot, runSlug);
   await mkdir(path.join(runDir, 'screenshots'), { recursive: true });
-  await mkdir(path.join(runDir, 'video'), { recursive: true });
 
   const branch = run('git', ['branch', '--show-current'], { cwd: REPO_ROOT });
   const sha = run('git', ['rev-parse', 'HEAD'], { cwd: REPO_ROOT });
@@ -589,137 +580,6 @@ end tell`;
   return region;
 }
 
-function parseRegion(region) {
-  const [x, y, width, height] = region.split(',').map((value) => Number(value));
-  if (![x, y, width, height].every((value) => Number.isFinite(value))) {
-    throw new Error(`Invalid region: ${region}`);
-  }
-  return { x, y, width, height };
-}
-
-async function startVideo(args) {
-  const state = await loadState();
-  const seconds = Number(argValue(args, '--seconds', '300'));
-  if (!Number.isFinite(seconds) || seconds < 1) {
-    throw new Error('--seconds must be a positive number');
-  }
-  const recorder = tryRun('which', ['screencapture']);
-  if (!recorder.ok) {
-    state.video = {
-      status: 'unavailable',
-      note: `screencapture unavailable: ${recorder.stderr || recorder.error || 'which returned non-zero'}`,
-      path: null,
-    };
-    await saveState(state);
-    return;
-  }
-  const region = getNixmacWindowRegion();
-  const bounds = parseRegion(region);
-  const videoPath = path.join(state.runDir, 'video', 'nixmac-window.mov');
-  const child = spawn('screencapture', ['-x', '-v', `-V${Math.trunc(seconds)}`, '-R', region, videoPath], {
-    detached: true,
-    stdio: 'ignore',
-  });
-  child.unref();
-  state.video = {
-    status: 'recording',
-    note: `Recording nixmac window region ${region} for up to ${Math.trunc(seconds)} seconds.`,
-    path: path.relative(state.runDir, videoPath),
-    pid: child.pid,
-    bounds,
-    startedAt: new Date().toISOString(),
-  };
-  await saveState(state);
-  await appendEvent(state, 'video.started', { path: state.video.path, bounds });
-  console.log(videoPath);
-}
-
-function validateVideoDimensions(videoPath, bounds) {
-  const ffprobe = tryRun('which', ['ffprobe']);
-  if (!ffprobe.ok) {
-    return { ok: false, note: 'ffprobe unavailable; refusing to attach video without dimension validation.' };
-  }
-  const probe = tryRun('ffprobe', [
-    '-v',
-    'error',
-    '-select_streams',
-    'v:0',
-    '-show_entries',
-    'stream=width,height',
-    '-of',
-    'csv=s=x:p=0',
-    videoPath,
-  ]);
-  if (!probe.ok || !probe.stdout) {
-    return { ok: false, note: `ffprobe failed: ${probe.stderr || probe.error || 'no dimensions'}` };
-  }
-  const [width, height] = probe.stdout.split('x').map((value) => Number(value));
-  const exact = width === bounds.width && height === bounds.height;
-  const retina = width === bounds.width * 2 && height === bounds.height * 2;
-  if (!exact && !retina) {
-    return {
-      ok: false,
-      note: `Video dimensions ${width}x${height} did not match window bounds ${bounds.width}x${bounds.height} or retina-scaled bounds.`,
-    };
-  }
-  return { ok: true, note: `Video dimensions validated: ${width}x${height}.` };
-}
-
-async function stopVideo() {
-  const state = await loadState();
-  if (state.video?.status !== 'recording') {
-    throw new Error('No recording video found in current run state.');
-  }
-  const videoPath = path.join(state.runDir, state.video.path);
-  if (state.video.pid) {
-    try {
-      process.kill(state.video.pid, 'SIGINT');
-    } catch {
-      // The fixed-duration recording may already have exited.
-    }
-  }
-  const started = Date.now();
-  while (Date.now() - started < 10000) {
-    if (await pathExists(videoPath)) break;
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
-  if (!(await pathExists(videoPath))) {
-    state.video = {
-      status: 'unavailable',
-      note: 'Recording stopped but no video file was produced.',
-      path: null,
-    };
-    await saveState(state);
-    await appendEvent(state, 'video.unavailable', { note: state.video.note });
-    return;
-  }
-  const fileStat = await stat(videoPath);
-  const validation = validateVideoDimensions(videoPath, state.video.bounds);
-  if (!validation.ok) {
-    state.video = {
-      status: 'unavailable',
-      note: validation.note,
-      path: null,
-      rejectedPath: path.relative(state.runDir, videoPath),
-      bytes: fileStat.size,
-    };
-  } else {
-    state.video = {
-      status: 'available',
-      note: validation.note,
-      path: path.relative(state.runDir, videoPath),
-      bytes: fileStat.size,
-      bounds: state.video.bounds,
-      stoppedAt: new Date().toISOString(),
-    };
-  }
-  await saveState(state);
-  await appendEvent(state, `video.${state.video.status}`, {
-    note: state.video.note,
-    path: state.video.path ?? state.video.rejectedPath ?? null,
-  });
-}
-
 async function capture(args) {
   const label = args[0];
   if (!label) throw new Error('capture requires a label');
@@ -797,22 +657,6 @@ async function appCommand(args) {
   if (!text) throw new Error('app-command requires text');
   const state = await loadState();
   state.appCommand = text;
-  await saveState(state);
-}
-
-async function videoStatus(args) {
-  const statusValue = args[0];
-  if (!['available', 'unavailable'].includes(statusValue)) {
-    throw new Error('video-status must be available or unavailable');
-  }
-  const note = argValue(args, '--note', '');
-  const videoPath = argValue(args, '--path', null);
-  const state = await loadState();
-  state.video = {
-    status: statusValue,
-    note,
-    path: videoPath ? path.relative(state.runDir, path.resolve(videoPath)) : null,
-  };
   await saveState(state);
 }
 
@@ -910,13 +754,6 @@ async function render() {
       : '<p>No screenshots captured.</p>'
   }
 
-  <h2>Video</h2>
-  ${
-    state.video.status === 'available' && state.video.path
-      ? `<video controls style="max-width:100%; border:1px solid #303640; border-radius:8px;" src="${escapeHtml(state.video.path)}"></video><p>${escapeHtml(state.video.note)}</p>`
-      : `<p><strong>Unavailable.</strong> ${escapeHtml(state.video.note || 'No video status recorded.')}</p>`
-  }
-
   <h2>Human QA Narrative</h2>
   ${
     state.narrative.length
@@ -980,17 +817,6 @@ async function cleanup() {
   state.cleanup.note = 'Cleanup started.';
   await saveState(state);
   await appendEvent(state, 'cleanup.started');
-  if (state.video?.status === 'recording' && state.video.pid) {
-    try {
-      process.kill(state.video.pid, 'SIGINT');
-      state.cleanup.videoStop = `Sent SIGINT to recording pid ${state.video.pid}.`;
-    } catch {
-      state.cleanup.videoStop = `Recording pid ${state.video.pid} was already stopped.`;
-    }
-    state.video.status = 'unavailable';
-    state.video.note = `${state.video.note} Cleanup stopped recording before validation.`;
-    await saveState(state);
-  }
   const quitResult = await quitNixmac();
   state.cleanup.quitResult = quitResult;
   await saveState(state);
@@ -1057,14 +883,11 @@ async function main() {
     else if (command === 'setup-deterministic') await setup();
     else if (command === 'setup-real') await setup({ mode: 'real' });
     else if (command === 'serve-mock') await serveMock(args[0]);
-    else if (command === 'start-video') await startVideo(args);
-    else if (command === 'stop-video') await stopVideo(args);
     else if (command === 'capture') await capture(args);
     else if (command === 'scenario') await scenario(args);
     else if (command === 'confirmation') await confirmation(args);
     else if (command === 'narrative') await narrative(args);
     else if (command === 'app-command') await appCommand(args);
-    else if (command === 'video-status') await videoStatus(args);
     else if (command === 'render') await render();
     else if (command === 'cleanup') await cleanup();
     else {
