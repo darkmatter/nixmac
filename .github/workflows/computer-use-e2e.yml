@@ -29,6 +29,10 @@ jobs:
       OPENROUTER_API_KEY: ${{ secrets.NIXMAC_E2E_OPENROUTER_API_KEY }}
       REMOTE_EXPECTED_LOCAL_HOSTNAME: ${{ vars.NIXMAC_E2E_REMOTE_LOCAL_HOSTNAME }}
       REPORT_ROOT: artifacts/computer-use-remote
+      NIXMAC_E2E_EVOLVE_PROVIDER: openai
+      NIXMAC_E2E_EVOLVE_MODEL: anthropic/claude-sonnet-4.6
+      NIXMAC_E2E_SUMMARY_PROVIDER: openai
+      NIXMAC_E2E_SUMMARY_MODEL: openai/gpt-4o-mini
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -223,6 +227,10 @@ jobs:
           remote_app_stage_q=$(printf '%q' "$REMOTE_APP_STAGE")
           remote_app_tar_q=$(printf '%q' "$REMOTE_APP_TAR")
           app_path_q=$(printf '%q' "$REMOTE_APP_PATH")
+          remote_evolve_provider_q=$(printf '%q' "$NIXMAC_E2E_EVOLVE_PROVIDER")
+          remote_evolve_model_q=$(printf '%q' "$NIXMAC_E2E_EVOLVE_MODEL")
+          remote_summary_provider_q=$(printf '%q' "$NIXMAC_E2E_SUMMARY_PROVIDER")
+          remote_summary_model_q=$(printf '%q' "$NIXMAC_E2E_SUMMARY_MODEL")
           ssh_common=(-i ~/.ssh/nixmac-e2e -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts)
 
           REMOTE_HOSTNAME="$(ssh "${ssh_common[@]}" "$SSH_DEST" 'scutil --get LocalHostName 2>/dev/null || hostname')"
@@ -260,7 +268,7 @@ jobs:
           rm -f "${{ steps.pr-app.outputs.app_tar }}"
 
           # shellcheck disable=SC2029
-          ssh "${ssh_common[@]}" "$SSH_DEST" "REMOTE_BACKUP=$remote_backup_q REMOTE_CONFIG=$remote_config_q REMOTE_KEY_FILE=$remote_key_file_q REMOTE_AUTH_BACKUP=$remote_auth_backup_q REMOTE_APP_STAGE=$remote_app_stage_q REMOTE_APP_TAR=$remote_app_tar_q REMOTE_APP_PATH=$app_path_q REMOTE_HOSTNAME=$(printf '%q' "$REMOTE_HOSTNAME") bash -s" <<'REMOTE'
+          ssh "${ssh_common[@]}" "$SSH_DEST" "REMOTE_BACKUP=$remote_backup_q REMOTE_CONFIG=$remote_config_q REMOTE_KEY_FILE=$remote_key_file_q REMOTE_AUTH_BACKUP=$remote_auth_backup_q REMOTE_APP_STAGE=$remote_app_stage_q REMOTE_APP_TAR=$remote_app_tar_q REMOTE_APP_PATH=$app_path_q REMOTE_HOSTNAME=$(printf '%q' "$REMOTE_HOSTNAME") NIXMAC_E2E_EVOLVE_PROVIDER=$remote_evolve_provider_q NIXMAC_E2E_EVOLVE_MODEL=$remote_evolve_model_q NIXMAC_E2E_SUMMARY_PROVIDER=$remote_summary_provider_q NIXMAC_E2E_SUMMARY_MODEL=$remote_summary_model_q bash -s" <<'REMOTE'
           set -euo pipefail
           cleanup_key_file() {
             if [[ -n "${REMOTE_KEY_FILE:-}" ]]; then
@@ -337,6 +345,11 @@ jobs:
           settings["confirmRollback"] = True
           settings["hostAttr"] = os.environ["REMOTE_HOSTNAME"]
           settings["configDir"] = os.path.join(os.environ["REMOTE_CONFIG"], "config")
+          settings["evolveProvider"] = os.environ["NIXMAC_E2E_EVOLVE_PROVIDER"]
+          settings["evolveModel"] = os.environ["NIXMAC_E2E_EVOLVE_MODEL"]
+          settings["summaryProvider"] = os.environ["NIXMAC_E2E_SUMMARY_PROVIDER"]
+          settings["summaryModel"] = os.environ["NIXMAC_E2E_SUMMARY_MODEL"]
+          settings["sendDiagnostics"] = False
           with open(settings_path, "w", encoding="utf-8") as handle:
               json.dump(settings, handle, indent=2, sort_keys=True)
               handle.write("\n")

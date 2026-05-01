@@ -66,7 +66,7 @@ Use this as the first-class lane for now.
   - `hostAttr`: the disposable template host;
   - `evolveProvider`: `openai`;
   - `evolveModel`: the OpenRouter model configured for the run, for example
-    `anthropic/claude-sonnet-4`;
+    `anthropic/claude-sonnet-4.6`;
   - `summaryProvider`: `openai`;
   - `summaryModel`: a valid OpenRouter-compatible summary model;
   - `confirmBuild`, `confirmClear`, `confirmRollback`: `true`;
