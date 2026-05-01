@@ -40,7 +40,7 @@
       "id": "settings",
       "label": "Settings dialog and all settings tabs",
       "scenarioKeys": ["settingsGeneral", "settingsAIModels", "settingsAPIKeys", "settingsPreferences"],
-      "sourcePrefixes": ["apps/native/src/components/widget/settings-dialog.tsx", "apps/native/src/components/widget/settings/", "apps/native/src/components/widget/directory-picker.tsx", "apps/native/src/components/widget/model-combobox.tsx", "apps/native/src/hooks/use-darwin-config.ts", "apps/native/src-tauri/src/store.rs"]
+      "sourcePrefixes": ["apps/native/src/components/widget/settings-dialog.tsx", "apps/native/src/components/widget/settings/", "apps/native/src/components/widget/directory-picker.tsx", "apps/native/src/components/widget/gitignore-badge.tsx", "apps/native/src/components/widget/model-combobox.tsx", "apps/native/src/hooks/use-darwin-config.ts", "apps/native/src-tauri/src/store.rs"]
     },
     {
       "id": "support-dialogs",

@@ -96,6 +96,10 @@ Required repository secrets for the real remote lane:
 - `NIXMAC_E2E_REMOTE_SSH_KEY`
 - `NIXMAC_E2E_OPENROUTER_API_KEY`
 
+The GitHub-hosted runner installs `ffmpeg` before running the suite. The report
+renderer uses it both to assemble the evidence reel and to reject blank or
+corrupt screenshot artifacts.
+
 `NIXMAC_E2E_REMOTE_HOST` must be a resolvable FQDN or stable IP address, not
 the Mac's local hostname. For the current DXU MacinCloud lane, use
 `dxu97120.macincloud.com` or `38.79.97.120`; the machine identity is checked

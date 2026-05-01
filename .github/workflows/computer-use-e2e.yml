@@ -37,6 +37,12 @@ jobs:
         with:
           node-version: 22
 
+      - name: Install media dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
       - name: Validate runner syntax
         run: |
           node --check tools/computer-use-e2e/run-remote-cua.mjs
