@@ -528,6 +528,58 @@ const caseDefinitions = [
       );
     },
   },
+  {
+    id: 28,
+    slug: 'model-critic-advisory-only',
+    name: 'Advisory model critic cannot flip deterministic verdict',
+    expected: 'A needs-review model critic artifact renders as advisory evidence while deterministic pass/fail remains unchanged.',
+    mutate({ runDir }) {
+      const criticDir = path.join(runDir, 'model-critic');
+      mkdirSync(criticDir, { recursive: true });
+      writeJson(path.join(criticDir, 'model-critic.json'), {
+        status: 'needs-review',
+        generatedAt: new Date().toISOString(),
+        deterministicSourceOfTruth: true,
+        note: 'Adversarial fixture: model critic must remain advisory.',
+        models: [
+          {
+            model: 'fixture/model',
+            advisoryStatus: 'needs-review',
+            confidence: 0.91,
+            latencyMs: 1,
+            summary: 'Fixture critic found a reviewer concern.',
+            findings: [
+              {
+                severity: 'medium',
+                title: 'Fixture advisory finding',
+                scenarioId: 'visualProofQuality',
+                rationale: 'This should render without changing deterministic verdict.',
+              },
+            ],
+          },
+        ],
+      });
+    },
+    evaluate(state, runDir) {
+      const html = readFileSync(path.join(runDir, 'index.html'), 'utf8');
+      return state.verdict === 'pass' && state.modelCritic?.status === 'needs-review' && /id="model-critic"/i.test(html) && /Advisory only/i.test(html);
+    },
+  },
+  {
+    id: 29,
+    slug: 'model-critic-malformed-artifact',
+    name: 'Malformed model critic artifact is contained',
+    expected: 'A malformed model critic artifact renders an advisory error instead of crashing report generation or changing deterministic verdict.',
+    mutate({ runDir }) {
+      const criticDir = path.join(runDir, 'model-critic');
+      mkdirSync(criticDir, { recursive: true });
+      writeFileSync(path.join(criticDir, 'model-critic.json'), '{"status":');
+    },
+    evaluate(state, runDir) {
+      const html = readFileSync(path.join(runDir, 'index.html'), 'utf8');
+      return state.verdict === 'pass' && state.modelCritic?.status === 'error' && /could not be parsed/i.test(html);
+    },
+  },
 ];
 
 function runCase(root, baseRun, definition) {

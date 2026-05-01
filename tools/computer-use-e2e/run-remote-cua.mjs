@@ -912,6 +912,8 @@ function ensureCurrentSchema(state) {
   state.confirmationBoundaries ||= [];
   state.screenshots ||= [];
   state.textSnapshots ||= [];
+  state.video ||= null;
+  state.modelCritic ||= null;
   state.visualAssertions ||= [];
   state.evolvedCaseStrategy ||= evolvedCaseStrategy();
   state.evolvedCaseRuns ||= [];
@@ -1206,6 +1208,100 @@ function artifactFileIssue(state, relativePath) {
     return '';
   } catch {
     return 'the file is missing';
+  }
+}
+
+function screenshotVideoFrameEntries(state) {
+  const runDir = path.resolve(state.runDir);
+  return (state.screenshots || [])
+    .filter((shot) => shot?.path && !/settings-api-keys|console/i.test(shot.label || ''))
+    .map((shot) => path.join(runDir, shot.path))
+    .filter((fullPath) => {
+      try {
+        const stats = statSync(fullPath);
+        return stats.isFile() && stats.size > 0;
+      } catch {
+        return false;
+      }
+    });
+}
+
+async function maybeGenerateEvidenceVideo(state) {
+  const runDir = path.resolve(state.runDir);
+  const frames = screenshotVideoFrameEntries(state);
+  if (!frames.length) {
+    state.video = {
+      status: 'unavailable',
+      note: 'No non-sensitive screenshot frames were available for the evidence video.',
+    };
+    return;
+  }
+
+  const videoDir = path.join(runDir, 'video');
+  const framesPath = path.join(videoDir, 'frames.txt');
+  const videoPath = path.join(videoDir, 'computer-use-evidence.mp4');
+  await mkdir(videoDir, { recursive: true });
+  const frameDuration = Number(process.env.NIXMAC_E2E_VIDEO_FRAME_DURATION_SECONDS || 1.1);
+  const frameList = frames
+    .flatMap((framePath) => [`file '${framePath.replaceAll("'", "'\\''")}'`, `duration ${Number.isFinite(frameDuration) && frameDuration > 0 ? frameDuration : 1.1}`])
+    .join('\n');
+  await writeFile(framesPath, `${frameList}\nfile '${frames.at(-1).replaceAll("'", "'\\''")}'\n`, 'utf8');
+
+  const result = tryRun('ffmpeg', [
+    '-y',
+    '-hide_banner',
+    '-loglevel',
+    'error',
+    '-f',
+    'concat',
+    '-safe',
+    '0',
+    '-i',
+    framesPath,
+    '-vf',
+    'scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p',
+    '-movflags',
+    '+faststart',
+    videoPath,
+  ]);
+
+  if (!result.ok) {
+    state.video = {
+      status: 'unavailable',
+      note: `ffmpeg could not generate the screenshot evidence video: ${redact(result.stderr || result.error || 'unknown error')}`,
+      frames: frames.length,
+    };
+    return;
+  }
+
+  const relativePath = path.relative(runDir, videoPath);
+  const issue = artifactFileIssue(state, relativePath);
+  state.video = issue
+    ? {
+        status: 'unavailable',
+        path: relativePath,
+        note: `Evidence video was generated but is not usable: ${issue}`,
+        frames: frames.length,
+      }
+    : {
+        status: 'available',
+        path: relativePath,
+        frames: frames.length,
+        note: 'Screenshot-compilation video generated from non-sensitive Computer Use frames.',
+      };
+}
+
+async function maybeLoadModelCritic(state) {
+  const criticPath = path.join(state.runDir, 'model-critic', 'model-critic.json');
+  if (!existsSync(criticPath)) return;
+  try {
+    state.modelCritic = JSON.parse(await readFile(criticPath, 'utf8'));
+  } catch (error) {
+    state.modelCritic = {
+      status: 'error',
+      note: `Model critic artifact could not be parsed: ${redact(error instanceof Error ? error.message : String(error))}`,
+      deterministicSourceOfTruth: true,
+    };
   }
 }
 
@@ -1799,6 +1895,24 @@ function renderEvolvedCaseStrategy(state) {
   </section>`;
 }
 
+function renderSummaryVideo(state) {
+  if (state.video?.status === 'available' && state.video.path) {
+    return `<div id="summary-video" class="summary-video">
+      <div class="summary-video-copy">
+        <strong>Evidence video</strong>
+        <small>Screenshot walkthrough compiled from ${escapeHtml(String(state.video.frames || state.screenshots.length))} non-sensitive frames.</small>
+      </div>
+      <video controls preload="metadata" src="${escapeHtml(state.video.path)}"></video>
+    </div>`;
+  }
+  return `<div id="summary-video" class="summary-video summary-video-unavailable">
+    <div class="summary-video-copy">
+      <strong>Evidence video unavailable</strong>
+      <small>${escapeHtml(state.video?.note || 'No screenshot compilation video was generated for this run.')}</small>
+    </div>
+  </div>`;
+}
+
 function renderExecutiveSummary(state, counts, evidenceSummary) {
   const pr = state.prFocus || buildPrFocus();
   const prLabel = pr.configured ? `PR ${pr.number || '?'}${pr.title ? ` - ${pr.title}` : ''}` : 'No pull request metadata provided';
@@ -1807,6 +1921,7 @@ function renderExecutiveSummary(state, counts, evidenceSummary) {
   const saveStatus = state.scenarios.saveFlow?.status || 'inconclusive';
   const rollbackStatus = state.scenarios.rollbackCleanup?.status || 'inconclusive';
   const metadataStatus = state.remoteMachine && state.remoteApp ? 'pass' : 'inconclusive';
+  const criticStatus = state.modelCritic?.status || 'not-run';
   const interpretation =
     state.verdict === 'pass'
       ? 'The PR-head run passed on the DXU remote Mac with no failed or inconclusive scenario checks.'
@@ -1830,12 +1945,14 @@ function renderExecutiveSummary(state, counts, evidenceSummary) {
       <div class="metric"><strong>${counts.inconclusive}</strong>Inconclusive</div>
       <div class="metric"><strong>${escapeHtml(String(state.screenshots.length))}</strong>Screenshots</div>
     </div>
+    ${renderSummaryVideo(state)}
     <div class="signal-grid">
       ${signal('PR focus', prStatus, pr.configured ? 'Mapped PR-relevant scenarios were evaluated.' : 'No PR metadata was provided.')}
       ${signal('Coverage freshness', coverageStatus, 'Main user-visible surfaces remain mapped or explicitly waived.')}
       ${signal('Step 3 save', saveStatus, 'Disposable config change persisted through the save path.')}
       ${signal('Rollback cleanup', rollbackStatus, 'History rollback returned the disposable config to baseline.')}
       ${signal('Remote metadata', metadataStatus, 'DXU machine, app, and process metadata were captured.')}
+      ${signal('Model critic', criticStatus === 'clean' ? 'pass' : criticStatus === 'not-run' ? 'inconclusive' : 'inconclusive', criticStatus === 'not-run' ? 'Advisory critic was not enabled.' : `Advisory status: ${criticStatus}.`)}
     </div>
     <p class="summary-links">
       <a href="#pull-request-focus">Review PR Focus</a>
@@ -1860,6 +1977,8 @@ function renderReportNav(state, counts) {
     <a href="#findings-first">Findings ${navBadge('', counts.fail + counts.inconclusive, counts.fail ? 'fail' : counts.inconclusive ? 'inconclusive' : 'pass')}</a>
     <a href="#evidence-quality">Evidence Quality ${navBadge('', riskCount)}</a>
     <a href="#visual-assertions">Visual Assertions ${navBadge('', state.visualAssertions?.length || 0)}</a>
+    <a href="#summary-video">Evidence Video ${navBadge('', state.video?.status === 'available' ? 'available' : 'off')}</a>
+    <a href="#model-critic">Model Critic ${navBadge('', state.modelCritic?.status || 'not-run')}</a>
     <a href="#visual-proof">Visual Proof ${navBadge('', state.screenshots.length)}</a>
     <a href="#scenario-checklist">Scenario Checklist</a>
     <a href="#main-coverage">Coverage</a>
@@ -1974,6 +2093,57 @@ function renderEvidenceQuality(state) {
     <details>
       <summary>Taxonomy definitions</summary>
       <table><thead><tr><th>Class</th><th>Definition</th></tr></thead><tbody>${taxonomyRows}</tbody></table>
+    </details>
+  </section>`;
+}
+
+function renderModelCritic(state) {
+  const critic = state.modelCritic;
+  const status = critic?.status || 'not-run';
+  const modelRows = critic?.models?.length
+    ? critic.models
+        .map(
+          (model) => `<tr>
+            <td><code>${escapeHtml(model.model)}</code></td>
+            <td><span class="verdict ${model.advisoryStatus === 'clean' ? 'pass' : model.advisoryStatus === 'needs-review' ? 'inconclusive' : 'inconclusive'}">${escapeHtml(model.advisoryStatus)}</span></td>
+            <td>${escapeHtml(String(model.confidence ?? ''))}</td>
+            <td>${escapeHtml(String(model.latencyMs ?? ''))}ms</td>
+            <td>${escapeHtml(model.summary || '')}</td>
+          </tr>`,
+        )
+        .join('\n')
+    : '<tr><td colspan="5">No model critic calls were recorded.</td></tr>';
+  const findings = critic?.models?.flatMap((model) => (model.findings || []).map((finding) => ({ ...finding, model: model.model }))) || [];
+  const findingRows = findings.length
+    ? findings
+        .map(
+          (finding) => `<tr>
+            <td><code>${escapeHtml(finding.model)}</code></td>
+            <td>${escapeHtml(finding.severity)}</td>
+            <td>${escapeHtml(finding.title)}</td>
+            <td>${escapeHtml(finding.scenarioId || '')}</td>
+            <td>${escapeHtml(finding.rationale)}</td>
+          </tr>`,
+        )
+        .join('\n')
+    : '<tr><td colspan="5">No advisory findings.</td></tr>';
+  return `<h2 id="model-critic">Model Critic</h2>
+  <section class="panel">
+    <p><strong>Advisory only.</strong> Deterministic pass/fail remains the source of truth; model critic output cannot override scenario status, screenshot signal checks, remote git proof, or cleanup proof.</p>
+    <p><strong>Status:</strong> <span class="grade">${escapeHtml(status)}</span>${critic?.note ? ` ${escapeHtml(critic.note)}` : ''}</p>
+    <details ${status === 'needs-review' || status === 'advisory' ? 'open' : ''}>
+      <summary>Model calls</summary>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Model</th><th>Advisory Status</th><th>Confidence</th><th>Latency</th><th>Summary</th></tr></thead>
+        <tbody>${modelRows}</tbody>
+      </table></div>
+    </details>
+    <details ${findings.length ? 'open' : ''}>
+      <summary>Advisory findings</summary>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Model</th><th>Severity</th><th>Finding</th><th>Scenario</th><th>Rationale</th></tr></thead>
+        <tbody>${findingRows}</tbody>
+      </table></div>
     </details>
   </section>`;
 }
@@ -2847,13 +3017,17 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
       },
     )
     .join('\n');
-  const evidenceSummary = `${state.screenshots.length} screenshots, ${state.textSnapshots.length} redacted text snapshots`;
+  let evidenceSummary = `${state.screenshots.length} screenshots, ${state.textSnapshots.length} redacted text snapshots`;
   const coverageGapsHtml = renderCoverageGaps(state);
   const prPriorityHtml = renderPrPriority(state);
   const priorityTriageHtml = renderPriorityTriage(state);
+  await maybeGenerateEvidenceVideo(state);
+  await maybeLoadModelCritic(state);
+  if (state.video?.status === 'available') evidenceSummary += ', 1 screenshot video';
   const executiveSummaryHtml = renderExecutiveSummary(state, counts, evidenceSummary);
   const reportNavHtml = renderReportNav(state, counts);
   const evidenceQualityHtml = renderEvidenceQuality(state);
+  const modelCriticHtml = renderModelCritic(state);
   const visualProofHtml = await renderVisualProofBoard(state);
   const remoteMetadataHtml = renderRemoteMetadata(state);
   const rawEvidenceHtml = renderRawEvidence(state, screenshotHtml);
@@ -2944,6 +3118,11 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
     .annotation-pin::after { border-radius: 999px; inset: -5px; }
     .annotation-pin span { left: 50%; top: -28px; transform: translateX(-50%); white-space: nowrap; max-width: none; }
     .anchor-alias { display: block; height: 0; overflow: hidden; }
+    .summary-video { margin: 24px 0; display: grid; grid-template-columns: minmax(220px, 0.42fr) minmax(360px, 1fr); gap: 18px; align-items: start; padding: 16px; border: 1px solid #2e3541; border-radius: 8px; background: #10131a; }
+    .summary-video-copy strong { display: block; margin-bottom: 6px; }
+    .summary-video-copy small { color: #b8c0cb; line-height: 1.45; }
+    .summary-video video { width: 100%; max-height: 520px; border: 1px solid #2e3541; border-radius: 6px; background: #050609; }
+    .summary-video-unavailable { display: block; }
     figure { margin: 0 0 18px; }
     figcaption { margin-top: 6px; color: #c5cbd3; font-size: 13px; }
     code { color: #a7d7ff; overflow-wrap: anywhere; }
@@ -2953,6 +3132,7 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
       .report-shell { display: block; }
       .report-nav { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: nowrap; overflow-x: auto; margin: 18px 0; }
       .report-nav a { white-space: nowrap; }
+      .summary-video { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -2974,6 +3154,8 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
       ${priorityTriageHtml}
 
       ${evidenceQualityHtml}
+
+      ${modelCriticHtml}
 
       <h2 id="visual-proof">Visual Proof</h2>
       <p>Screenshots are binding corroborating assertions for non-sensitive visual scenarios. Accessibility text, action events, provider state, and remote git state remain the semantic proof; screenshot signal checks catch missing, blank, occluded, or low-signal visual evidence.</p>
@@ -3617,6 +3799,7 @@ async function runSelfTest() {
     'id="findings-first"',
     'id="evidence-quality"',
     'id="visual-assertions"',
+    'id="model-critic"',
     'id="v2-evidence-model"',
     'id="accessibility-risk"',
     'id="failure-taxonomy"',

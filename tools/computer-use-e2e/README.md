@@ -43,6 +43,8 @@ The runner:
 - captures screenshots from `get_app_state`, not Screen Sharing;
 - omits image artifacts for sensitive API Keys and Console captures while
   retaining redacted accessibility text snapshots;
+- compiles non-sensitive screenshots into `video/computer-use-evidence.mp4` and
+  embeds that video near the top of the report for fast reviewer scanning;
 - treats non-sensitive required screenshots as binding corroborating evidence:
   missing, corrupt, blank, occluded, or low-signal screenshot regions can fail
   the owning scenario and the final verdict;
@@ -70,10 +72,13 @@ The runner:
   failures;
 - renders coverage gaps, PR-specific focus, evidence grades, primary artifact
   links, and visual proof cards with screenshot callouts plus text excerpts;
+- can attach an opt-in advisory model critic artifact via OpenRouter; critic
+  output is reviewer guidance only and cannot change deterministic pass/fail;
 - copies the generated report back to the remote Mac and uses Computer Use to
   inspect it in a browser when `NIXMAC_E2E_REMOTE_SSH_DEST` is set;
 - writes `index.html`, `state.json`, `events.json`, screenshots, text
-  snapshots, and remote metadata under `artifacts/computer-use-remote/<timestamp>/`.
+  snapshots, a screenshot-compilation video, and remote metadata under
+  `artifacts/computer-use-remote/<timestamp>/`.
 - exits non-zero when the final report verdict is `fail` or `inconclusive`
   unless `NIXMAC_E2E_STRICT_VERDICT=false` is set. For PRs, keep the check
   non-blocking through branch protection rather than by forcing a green result.
@@ -87,6 +92,11 @@ not replace the baseline `main` coverage check.
 The testing-suite-only V2 contract is documented in
 [`V2_PROPOSAL.md`](./V2_PROPOSAL.md). V2 remains inside this feature/PR and does
 not modify core nixmac app code.
+
+Optional V2 follow-up scope is documented in
+[`V2_OPTIONAL_PROPOSAL.md`](./V2_OPTIONAL_PROPOSAL.md). The branch implements
+the model-critic artifact path as opt-in reviewer guidance, not as a blocking
+gate.
 
 The coverage freshness manifest lives at:
 
@@ -141,8 +151,9 @@ Required repository secrets for the real remote lane:
 - `NIXMAC_E2E_OPENROUTER_API_KEY`
 
 The GitHub-hosted runner installs `ffmpeg` before running the suite. The report
-renderer uses it to reject blank or corrupt screenshot artifacts and to run
-deterministic signal checks on broad required screenshot regions.
+renderer uses it to reject blank or corrupt screenshot artifacts, run
+deterministic signal checks on broad required screenshot regions, and generate
+the screenshot-compilation evidence video.
 
 `NIXMAC_E2E_REMOTE_HOST` must be a resolvable FQDN or stable IP address, not
 the Mac's local hostname. For the current DXU MacinCloud lane, use
@@ -382,7 +393,7 @@ The aggregate report lands under:
 artifacts/computer-use-adversarial/<timestamp>/index.html
 ```
 
-The current adversarial suite covers twenty-seven cases: API Keys blank render,
+The current adversarial suite covers twenty-nine cases: API Keys blank render,
 settings mismatch, provider credential failure, provider timeout, missing build
 boundary, commit no-op, rollback no-op, activation admin-auth blockers, corrupt
 artifacts, blank screenshots that fail owning scenarios, PR report priority,
@@ -391,4 +402,35 @@ findings ordering, sensitive screenshot leakage, stale verdicts, missing report
 inspection proof, unmapped PR-visible files, missing remote metadata, and
 missing rollback proof, plus V2 evidence-strength, failure-taxonomy,
 accessibility-risk, annotation-geometry, and visual assertion calibration
-regressions.
+regressions, plus advisory model-critic containment.
+
+## Advisory Model Critic
+
+Model critics are optional and advisory. They review redacted E2E report state
+for overclaims, missing evidence, weak PR focus, cleanup risk, and failure
+taxonomy issues. They cannot flip scenario status or final verdict.
+
+Run a critic for an existing report:
+
+```bash
+OPENROUTER_API_KEY=... \
+node tools/computer-use-e2e/run-model-critics.mjs review \
+  --run-dir artifacts/computer-use-remote/<timestamp>
+
+node tools/computer-use-e2e/run-remote-cua.mjs render-existing \
+  --run-dir artifacts/computer-use-remote/<timestamp>
+```
+
+Run the model-selection benchmark against adversarial fixtures:
+
+```bash
+OPENROUTER_API_KEY=... \
+node tools/computer-use-e2e/run-model-critics.mjs benchmark \
+  --base-adversarial artifacts/computer-use-adversarial/<timestamp> \
+  --baseline-run artifacts/computer-use-remote/<timestamp>
+```
+
+The benchmark reports accuracy, recall, Wilson 95% intervals, pairwise exact
+sign-test p-values, and latency. When models are statistically tied, the
+recommended default is the fastest non-inferior model with a stronger escalation
+model reserved for low-confidence or non-pass runs.
