@@ -2299,7 +2299,11 @@ function meaningfulBaselineDiff(snapshot) {
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
+    // The fixed Homebrew E2E prompt proves config cleanup through the package
+    // file and absence of bat. Nix may refresh these generated build artifacts
+    // while leaving user-visible Homebrew config restored.
     .filter((line) => line !== 'result')
+    .filter((line) => line !== 'flake.lock')
     .join('\n');
 }
 
@@ -2425,7 +2429,7 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
       if (/Provider request failed|provider error|OpenRouter error|fatal error|uncaught/i.test(candidate)) return 'provider-error';
       return null;
     },
-    { attempts: Number(process.env.NIXMAC_E2E_EXTRA_PROVIDER_ATTEMPTS || 36), delayMs: Number(process.env.NIXMAC_E2E_PROVIDER_DELAY_MS || 5000) },
+    { attempts: Number(process.env.NIXMAC_E2E_EXTRA_PROVIDER_ATTEMPTS || 60), delayMs: Number(process.env.NIXMAC_E2E_PROVIDER_DELAY_MS || 5000) },
   );
   text = wait.text;
   if (wait.result !== 'review') {
@@ -2883,7 +2887,7 @@ async function runSuite(args) {
           if (/Provider request failed|provider error|OpenRouter error|fatal error|uncaught/i.test(candidate)) return 'provider-error';
           return null;
         },
-        { attempts: Number(process.env.NIXMAC_E2E_PROVIDER_ATTEMPTS || 48), delayMs: Number(process.env.NIXMAC_E2E_PROVIDER_DELAY_MS || 5000) },
+        { attempts: Number(process.env.NIXMAC_E2E_PROVIDER_ATTEMPTS || 72), delayMs: Number(process.env.NIXMAC_E2E_PROVIDER_DELAY_MS || 5000) },
       );
       text = wait.text;
       if (wait.result === 'review') {
@@ -3049,7 +3053,7 @@ async function runSuite(args) {
                 'rollbackCleanup',
                 restored.ok ? 'pass' : 'fail',
                 restored.ok
-                  ? 'History restore rollback returned the disposable config tree to pre-test baseline content with a clean worktree; the top-level nix build result symlink was ignored as a build artifact.'
+                  ? 'History restore rollback returned the disposable Homebrew config to pre-test baseline content with a clean worktree; the top-level nix build result symlink and flake.lock refresh were ignored as build artifacts for this fixed Homebrew prompt.'
                   : 'History restore was confirmed, but the disposable config tree did not return to the pre-test baseline content cleanly.',
               );
               if (!restored.ok) state.failures.push('Rollback cleanup did not restore the disposable config tree to baseline content.');
@@ -3266,6 +3270,8 @@ async function runSelfTest() {
   assert.equal(setValueResponseIndicatesFailure({ result: { isError: true, content: [{ type: 'text', text: 'Tool returned an error.' }] } }), true, 'MCP isError should fail set_value');
   assert.equal(setValueResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'App state includes Value: Add the bat command line tool.' }] } }), false, 'ordinary set_value app-state text should not fail input');
   assert.equal(setValueResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'Error: set_value element index 18 not found' }] } }), true, 'set_value element sentinel should fail input');
+  assert.equal(meaningfulBaselineDiff({ baselineDiffNameOnly: 'flake.lock\nresult\n' }), '', 'generated build artifacts should not make Homebrew rollback cleanup fail');
+  assert.equal(meaningfulBaselineDiff({ baselineDiffNameOnly: 'modules/darwin/homebrew.nix\nflake.lock\nresult\n' }), 'modules/darwin/homebrew.nix', 'user-visible Homebrew config drift should remain meaningful');
 
   const previousChangedFiles = process.env.NIXMAC_E2E_PR_CHANGED_FILES;
   process.env.NIXMAC_E2E_PR_CHANGED_FILES = 'apps/native/src/components/widget/adversarial-new-visible-surface.tsx\ndocs/history.md';
