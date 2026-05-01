@@ -645,7 +645,30 @@ function updatePrSpecificCoverage(state) {
   } else if (!state.prFocus.userVisibleFiles?.length) {
     updateScenario(state, 'prSpecificCoverage', 'pass', 'Changed-file metadata did not infer user-visible app changes requiring a dedicated Computer Use focus pass.');
   } else if (state.prFocus.scenarioKeys?.length) {
-    updateScenario(state, 'prSpecificCoverage', 'pass', `User-visible changed files were mapped to existing Computer Use scenarios and surfaced at the top of the report: ${state.prFocus.scenarioKeys.map((key) => state.scenarios[key]?.label || key).join(', ')}`);
+    const mappedScenarios = state.prFocus.scenarioKeys.map((key) => ({
+      key,
+      label: state.scenarios[key]?.label || key,
+      status: state.scenarios[key]?.status || 'inconclusive',
+    }));
+    const failed = mappedScenarios.filter((scenario) => scenario.status === 'fail');
+    const incomplete = mappedScenarios.filter((scenario) => scenario.status !== 'pass' && scenario.status !== 'fail');
+    if (failed.length) {
+      updateScenario(
+        state,
+        'prSpecificCoverage',
+        'fail',
+        `User-visible changed files mapped to scenarios, but PR-focused scenarios failed: ${failed.map((scenario) => scenario.label).join(', ')}`,
+      );
+    } else if (incomplete.length) {
+      updateScenario(
+        state,
+        'prSpecificCoverage',
+        'inconclusive',
+        `User-visible changed files mapped to scenarios, but PR-focused scenarios did not all complete: ${incomplete.map((scenario) => scenario.label).join(', ')}`,
+      );
+    } else {
+      updateScenario(state, 'prSpecificCoverage', 'pass', `User-visible changed files were mapped to passing Computer Use scenarios and surfaced at the top of the report: ${mappedScenarios.map((scenario) => scenario.label).join(', ')}`);
+    }
   } else {
     updateScenario(state, 'prSpecificCoverage', 'inconclusive', `User-visible changed files were inferred, but no dedicated PR-specific Computer Use scenario has been executed yet: ${state.prFocus.userVisibleFiles.join(', ')}`);
   }
@@ -2299,6 +2322,27 @@ function runSelfTest() {
   assert.deepEqual(prFocus.scenarioKeys, [], 'non-user-visible changed files must not create PR scenario mappings');
   if (previousChangedFiles === undefined) delete process.env.NIXMAC_E2E_PR_CHANGED_FILES;
   else process.env.NIXMAC_E2E_PR_CHANGED_FILES = previousChangedFiles;
+
+  const prCoverageState = ensureCurrentSchema({
+    scenarios: {},
+    claims: [],
+    prFocus: {
+      configured: true,
+      changedFiles: ['tools/computer-use-e2e/run-remote-cua.mjs'],
+      userVisibleFiles: ['tools/computer-use-e2e/run-remote-cua.mjs'],
+      scenarioKeys: ['review', 'summary'],
+    },
+  });
+  updateScenario(prCoverageState, 'review', 'pass', 'review passed');
+  updateScenario(prCoverageState, 'summary', 'inconclusive', 'summary did not run');
+  updatePrSpecificCoverage(prCoverageState);
+  assert.equal(prCoverageState.scenarios.prSpecificCoverage.status, 'inconclusive', 'PR focus coverage should not pass while mapped scenarios are incomplete');
+  updateScenario(prCoverageState, 'summary', 'pass', 'summary passed');
+  updatePrSpecificCoverage(prCoverageState);
+  assert.equal(prCoverageState.scenarios.prSpecificCoverage.status, 'pass', 'PR focus coverage should pass only when mapped scenarios pass');
+  updateScenario(prCoverageState, 'review', 'fail', 'review failed');
+  updatePrSpecificCoverage(prCoverageState);
+  assert.equal(prCoverageState.scenarios.prSpecificCoverage.status, 'fail', 'PR focus coverage should fail when a mapped scenario fails');
   console.log('Computer Use E2E runner self-test passed.');
 }
 
