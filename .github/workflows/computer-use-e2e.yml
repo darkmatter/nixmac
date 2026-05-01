@@ -49,6 +49,12 @@ jobs:
           node --check tools/computer-use-e2e/run-remote-cua.mjs
           node --check tools/computer-use-e2e/check-remote.mjs
           node tools/computer-use-e2e/run-remote-cua.mjs self-test
+          if node tools/computer-use-e2e/check-remote.mjs --host example.com --require-app-server nope >/tmp/check-remote-invalid.out 2>&1; then
+            cat /tmp/check-remote-invalid.out
+            echo "Expected invalid --require-app-server to fail"
+            exit 1
+          fi
+          grep -q "Invalid --require-app-server" /tmp/check-remote-invalid.out
 
       - name: Capture PR focus metadata
         if: github.event_name == 'pull_request'

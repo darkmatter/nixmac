@@ -768,7 +768,7 @@ function proofQualityIssues(state) {
   }
   for (const [key, scenario] of Object.entries(state.scenarios)) {
     if (scenario.status !== 'pass') continue;
-    if (['visualProofQuality', 'videoEvidence', 'mainCoverageFreshness'].includes(key)) continue;
+    if (['visualProofQuality', 'videoEvidence', 'mainCoverageFreshness', 'prSpecificCoverage'].includes(key)) continue;
     const proof = proofForScenario(state, key);
     if (proof.screenshotArtifacts.length === 0 && proof.textArtifacts.length === 0) {
       issues.push(`${scenario.label} has no linked screenshot or text artifact.`);

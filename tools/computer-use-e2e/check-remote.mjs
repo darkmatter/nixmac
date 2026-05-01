@@ -49,7 +49,7 @@ function parseArgs(argv) {
   }
   if (!out.host) throw new Error('Missing required --host');
   if (!Number.isInteger(out.port) || out.port <= 0) throw new Error(`Invalid --port: ${out.port}`);
-  if (out.requireAppServer && (!Number.isInteger(out.requireAppServer) || out.requireAppServer <= 0)) {
+  if (Object.hasOwn(out, 'requireAppServer') && (!Number.isInteger(out.requireAppServer) || out.requireAppServer <= 0)) {
     throw new Error(`Invalid --require-app-server: ${out.requireAppServer}`);
   }
   return out;
