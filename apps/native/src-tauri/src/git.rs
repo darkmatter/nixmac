@@ -103,85 +103,59 @@ fn has_head_commit(dir: &str) -> bool {
 
 /// Full diff vs HEAD, including tracked changes and untracked files as diffs.
 pub fn get_full_diff(dir: &str) -> Result<String> {
-    // In repos without any commits, `git diff HEAD` fails because HEAD is unborn.
-    // Fall back to combining staged and unstaged diffs in that state.
-    let mut diff = if has_head_commit(dir) {
-        let diff_output = git_command()
-            .args(["diff", "HEAD"])
-            .current_dir(dir)
-            .output()?;
-        String::from_utf8_lossy(&diff_output.stdout).to_string()
-    } else {
-        let staged_output = git_command()
-            .args(["diff", "--cached"])
-            .current_dir(dir)
-            .output()?;
-        let unstaged_output = git_command()
-            .args(["diff"])
-            .current_dir(dir)
-            .output()?;
-        let mut staged = String::from_utf8_lossy(&staged_output.stdout).to_string();
-        staged.push_str(&String::from_utf8_lossy(&unstaged_output.stdout));
-        staged
-    };
-
-    // Also get untracked files and show their contents as diffs
-    let untracked_output = git_command()
-        .args(["ls-files", "--others", "--exclude-standard"])
-        .current_dir(dir)
-        .output()?;
-
-    let untracked_files = String::from_utf8_lossy(&untracked_output.stdout);
-
-    for file in untracked_files.lines() {
-        if file.is_empty() {
-            continue;
-        }
-        let file_path = std::path::Path::new(dir).join(file);
-        if let Ok(contents) = std::fs::read_to_string(&file_path) {
-            // Format as a diff showing the entire file as added
-            diff.push_str(&format!("\ndiff --git a/{} b/{}\n", file, file));
-            diff.push_str("new file mode 100644\n");
-            diff.push_str("--- /dev/null\n");
-            diff.push_str(&format!("+++ b/{}\n", file));
-            let line_count = contents.lines().count();
-            diff.push_str(&format!("@@ -0,0 +1,{} @@\n", line_count));
-            for line in contents.lines() {
-                diff.push_str(&format!("+{}\n", line));
-            }
-        }
-    }
-
+    let mut diff = get_tracked_diff(dir, None)?;
+    append_untracked_diffs(&mut diff, dir, None)?;
     Ok(diff)
 }
 
 /// Gets a diff containing only .nix files (including untracked .nix files).
 pub fn get_nix_diff(dir: &str) -> Result<String> {
-    let mut diff = if has_head_commit(dir) {
-        let diff_output = git_command()
-            .args(["diff", "HEAD", "--", "*.nix"])
-            .current_dir(dir)
-            .output()?;
-        String::from_utf8_lossy(&diff_output.stdout).to_string()
-    } else {
-        let staged_output = git_command()
-            .args(["diff", "--cached", "--", "*.nix"])
-            .current_dir(dir)
-            .output()?;
-        let unstaged_output = git_command()
-            .args(["diff", "--", "*.nix"])
-            .current_dir(dir)
-            .output()?;
-        let mut staged = String::from_utf8_lossy(&staged_output.stdout).to_string();
-        staged.push_str(&String::from_utf8_lossy(&unstaged_output.stdout));
-        staged
+    let mut diff = get_tracked_diff(dir, Some("*.nix"))?;
+    append_untracked_diffs(&mut diff, dir, Some("*.nix"))?;
+    Ok(diff)
+}
+
+/// Returns a diff of tracked changes, optionally restricted to a path glob.
+/// Falls back to staged+unstaged when HEAD is unborn (fresh repo with no commits).
+fn get_tracked_diff(dir: &str, path_filter: Option<&str>) -> Result<String> {
+    let extra: Vec<&str> = match path_filter {
+        Some(f) => vec!["--", f],
+        None => vec![],
     };
 
-    let untracked_output = git_command()
-        .args(["ls-files", "--others", "--exclude-standard", "--", "*.nix"])
-        .current_dir(dir)
-        .output()?;
+    if has_head_commit(dir) {
+        let mut args = vec!["diff", "HEAD"];
+        args.extend(&extra);
+        let output = git_command().args(&args).current_dir(dir).output()?;
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        let mut staged_args = vec!["diff", "--cached"];
+        staged_args.extend(&extra);
+        let mut unstaged_args = vec!["diff"];
+        unstaged_args.extend(&extra);
 
+        let staged = git_command().args(&staged_args).current_dir(dir).output()?;
+        let unstaged = git_command()
+            .args(&unstaged_args)
+            .current_dir(dir)
+            .output()?;
+
+        let mut result = String::from_utf8_lossy(&staged.stdout).to_string();
+        result.push_str(&String::from_utf8_lossy(&unstaged.stdout));
+        Ok(result)
+    }
+}
+
+/// Appends untracked files to `diff` as synthetic new-file diff blocks.
+/// `path_filter` restricts to a glob (e.g. `Some("*.nix")`); `None` includes all files.
+fn append_untracked_diffs(diff: &mut String, dir: &str, path_filter: Option<&str>) -> Result<()> {
+    // --exclude-standard omits gitignored files — hiding them from git status and summarize.
+    let mut args = vec!["ls-files", "--others", "--exclude-standard"];
+    if let Some(filter) = path_filter {
+        args.extend(["--", filter]);
+    }
+
+    let untracked_output = git_command().args(&args).current_dir(dir).output()?;
     let untracked_files = String::from_utf8_lossy(&untracked_output.stdout);
 
     for file in untracked_files.lines() {
@@ -202,7 +176,7 @@ pub fn get_nix_diff(dir: &str) -> Result<String> {
         }
     }
 
-    Ok(diff)
+    Ok(())
 }
 
 /// Counts additions and deletions from a diff string.
@@ -600,7 +574,6 @@ pub fn create_evolution_backup(
     Ok(Some(branch_name))
 }
 
-
 /// Restore working tree to the content of a specific branch ref.
 /// Replaces the current index with the branch's tree, then checks out the working tree.
 pub fn restore_from_branch_ref(repo_path: &str, ref_name: &str) -> Result<()> {
@@ -757,6 +730,86 @@ deleted file mode 100644
     }
 
     #[test]
+    fn test_get_full_diff_includes_untracked_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+        fs::write(repo_dir.join("new.nix"), "{ new = true; }").unwrap();
+
+        let diff = get_full_diff(&repo_dir_str).unwrap();
+        assert!(
+            diff.contains("new.nix"),
+            "untracked file should appear in diff"
+        );
+        assert!(diff.contains("+{ new = true; }"));
+    }
+
+    #[test]
+    fn test_get_full_diff_excludes_gitignored_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join(".gitignore"), "secret.txt\n").unwrap();
+        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+        fs::write(repo_dir.join("secret.txt"), "password123").unwrap();
+
+        let diff = get_full_diff(&repo_dir_str).unwrap();
+        assert!(
+            !diff.contains("secret.txt"),
+            "gitignored file must not appear in diff"
+        );
+    }
+
+    #[test]
+    fn test_get_nix_diff_excludes_non_nix_untracked() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+        fs::write(repo_dir.join("config.nix"), "{ }").unwrap();
+        fs::write(repo_dir.join("readme.txt"), "hello").unwrap();
+
+        let diff = get_nix_diff(&repo_dir_str).unwrap();
+        assert!(
+            diff.contains("config.nix"),
+            ".nix untracked file should appear"
+        );
+        assert!(
+            !diff.contains("readme.txt"),
+            "non-.nix file should be excluded"
+        );
+    }
+
+    #[test]
+    fn test_get_nix_diff_excludes_gitignored_nix_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join(".gitignore"), "secret.nix\n").unwrap();
+        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+        fs::write(repo_dir.join("secret.nix"), "{ password = \"123\"; }").unwrap();
+
+        let diff = get_nix_diff(&repo_dir_str).unwrap();
+        assert!(
+            !diff.contains("secret.nix"),
+            "gitignored .nix file must not appear in diff"
+        );
+    }
+
+    #[test]
     fn test_create_evolution_backup_does_not_move_head() {
         let temp_dir = TempDir::new().unwrap();
         let repo_dir = temp_dir.path().join("repo");
@@ -801,5 +854,4 @@ deleted file mode 100644
         let result = create_evolution_backup(&repo_dir_str, Some(1), 0).unwrap();
         assert!(result.is_some());
     }
-
 }
