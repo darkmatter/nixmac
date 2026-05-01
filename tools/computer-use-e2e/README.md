@@ -98,6 +98,17 @@ group. Do not make concurrency per PR while the suite depends on a singleton
 interactive Mac, because overlapping runs can race on app state, launchd
 environment, Authorization Services policy, and the Codex app-server port.
 
+Before touching remote app state, the workflow waits for the matching
+`Build macOS App` run for the same commit, downloads the `nixmac-macos-app`
+artifact, and installs that app bundle onto DXU for the duration of the test.
+The build artifact must preserve hidden files because Tauri bundles resources
+under dot-prefixed directories; stripping those files invalidates the app
+signature and can leave LaunchServices wedged on a broken `/Applications`
+bundle.
+The workflow backs up and restores the pre-existing DXU `/Applications`
+bundle for isolation; it does not repair that persistent bundle outside the
+test window.
+
 Required repository secrets for the real remote lane:
 
 - `NIXMAC_E2E_REMOTE_HOST`
