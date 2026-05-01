@@ -272,8 +272,8 @@ const scenarioProofCatalog = {
     grade: 'text-confirmed',
     screenshots: [],
     texts: [],
-    proof: 'Every passing scenario must have at least one primary screenshot or text artifact listed in the proof catalog.',
-    untested: 'Overlay callouts are visual aids; text snapshots remain the assertion source.',
+    proof: 'Every passing scenario must have linked proof artifacts, and required non-sensitive screenshots must pass deterministic visual signal checks.',
+    untested: 'Visual signal checks catch missing, blank, occluded, or low-signal regions; they do not prove exact design fidelity or arbitrary wrong-screen swaps.',
   },
   adversarialOutOfBounds: {
     grade: 'action-confirmed',
@@ -385,6 +385,77 @@ const screenshotAnnotations = {
   'evolved-screenshots-defaults-diff': [{ label: 'Defaults diff evidence', x: 50, y: 45, tone: 'pin' }],
   'evolved-screenshots-defaults-after-discard': [{ label: 'Review-only cleanup', x: 50, y: 42, tone: 'pin' }],
   'adversarial-out-of-bounds-annotation': [{ label: 'Out of bounds fixture', x: 96, y: 50, w: 12, h: 10 }],
+};
+
+const visualProbeDefaults = {
+  minWidth: 500,
+  minHeight: 500,
+  minYMax: 50,
+  minYRange: 10,
+  minCropYMax: 38,
+  minCropYRange: 4,
+};
+
+const scenarioVisualContracts = {
+  launch: {
+    screenshots: [
+      {
+        label: 'launch',
+        probes: [
+          { label: 'workflow stepper band', x: 4, y: 7, w: 90, h: 20 },
+          { label: 'prompt and controls band', x: 5, y: 35, w: 90, h: 22 },
+        ],
+      },
+    ],
+  },
+  settingsGeneral: {
+    screenshots: [{ label: 'settings-general', probes: [{ label: 'settings content panel', x: 12, y: 16, w: 80, h: 66 }] }],
+  },
+  settingsAIModels: {
+    screenshots: [{ label: 'settings-ai-models', probes: [{ label: 'provider and model controls', x: 12, y: 16, w: 80, h: 70 }] }],
+  },
+  settingsPreferences: {
+    screenshots: [{ label: 'settings-preferences', probes: [{ label: 'preference controls', x: 12, y: 16, w: 80, h: 70 }] }],
+  },
+  history: {
+    screenshots: [{ label: 'history', probes: [{ label: 'history surface', x: 10, y: 15, w: 82, h: 70 }] }],
+  },
+  feedback: {
+    screenshots: [{ label: 'feedback', probes: [{ label: 'feedback dialog', x: 20, y: 18, w: 60, h: 60 }] }],
+  },
+  reportIssue: {
+    screenshots: [{ label: 'report-issue', probes: [{ label: 'report issue dialog', x: 20, y: 18, w: 60, h: 60 }] }],
+  },
+  suggestionCards: {
+    screenshots: [{ label: 'suggestion-card', probes: [{ label: 'prompt and suggestion area', x: 5, y: 35, w: 90, h: 34 }] }],
+  },
+  typedIntent: {
+    screenshots: [{ label: 'typed-intent', probes: [{ label: 'typed prompt area', x: 5, y: 35, w: 90, h: 24 }] }],
+  },
+  review: {
+    screenshots: [{ label: 'provider-progress-05', probes: [{ label: 'review controls area', x: 8, y: 8, w: 84, h: 82 }] }],
+  },
+  summary: {
+    screenshots: [{ label: 'review-summary', probes: [{ label: 'summary content area', x: 8, y: 15, w: 84, h: 78 }] }],
+  },
+  diff: {
+    screenshots: [{ label: 'review-diff', probes: [{ label: 'diff content area', x: 8, y: 15, w: 84, h: 78 }] }],
+  },
+  buildBoundary: {
+    screenshots: [{ label: 'build-boundary', probes: [{ label: 'build confirmation dialog', x: 20, y: 22, w: 60, h: 56 }] }],
+  },
+  saveFlow: {
+    screenshots: [{ label: 'step-3-ready', probes: [{ label: 'step 3 save surface', x: 8, y: 8, w: 84, h: 82 }] }],
+  },
+  rollbackCleanup: {
+    screenshots: [
+      { label: 'history-restore-preview', probes: [{ label: 'restore confirmation preview', x: 12, y: 14, w: 76, h: 72 }] },
+      { label: 'after-history-restore', probes: [{ label: 'post-restore app state', x: 8, y: 8, w: 84, h: 82 }] },
+    ],
+  },
+  reportInspection: {
+    screenshots: [{ label: 'HTML report inspection', probes: [{ label: 'rendered report body', x: 8, y: 8, w: 84, h: 82 }] }],
+  },
 };
 
 function usage() {
@@ -841,6 +912,7 @@ function ensureCurrentSchema(state) {
   state.confirmationBoundaries ||= [];
   state.screenshots ||= [];
   state.textSnapshots ||= [];
+  state.visualAssertions ||= [];
   state.evolvedCaseStrategy ||= evolvedCaseStrategy();
   state.evolvedCaseRuns ||= [];
   for (const shot of state.screenshots) {
@@ -882,6 +954,7 @@ function assertionTypesForScenario(key, proof = scenarioProofCatalog[key] || {})
   const derived = [];
   if (proof.texts?.length) derived.push('accessibility_text');
   if (proof.screenshots?.length) derived.push('visual_heuristic');
+  if (scenarioVisualContracts[key]) derived.push('visual_signalstats');
   const merged = [...new Set([...hints, ...derived])];
   return merged.length ? merged : ['not_classified'];
 }
@@ -911,7 +984,7 @@ function evidenceStrengthForScenario(state, key) {
   const reasonByStrength = {
     strong: 'User-visible interaction is backed by independent state proof.',
     operational: 'Computer Use interacted with the real UI and matched expected state.',
-    'visual-supported': 'Accessibility text is the assertion source and screenshots support human inspection.',
+    'visual-supported': 'Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.',
     weak: 'The claim depends on sparse text, calibration, or intentionally limited artifacts.',
     'not-proved': 'The scenario is skipped, inconclusive, or lacks sufficient proof artifacts.',
   };
@@ -960,8 +1033,10 @@ function accessibilityRiskForScenario(state, key) {
   }
   if (assertionTypes.includes('accessibility_text')) {
     return {
-      risk: 'medium',
-      reason: 'Accessibility text is the semantic assertion source; screenshots are reviewer support.',
+      risk: assertionTypes.includes('visual_signalstats') ? 'low' : 'medium',
+      reason: assertionTypes.includes('visual_signalstats')
+        ? 'Accessibility text is the semantic assertion source and screenshot signal checks corroborate non-sensitive visual evidence.'
+        : 'Accessibility text is the semantic assertion source without binding screenshot checks.',
     };
   }
   return {
@@ -976,6 +1051,7 @@ function buildScenarioContract(state, key) {
   const failure = classifyScenarioResult(key, scenario);
   const evidence = evidenceStrengthForScenario(state, key);
   const accessibility = accessibilityRiskForScenario(state, key);
+  const visualAssertion = state.visualAssertions?.find((item) => item.scenarioKey === key) || null;
   return {
     id: key,
     label: scenario.label || scenarioLabels[key] || key,
@@ -988,6 +1064,7 @@ function buildScenarioContract(state, key) {
     failureClassReason: failure.reason,
     accessibilityRisk: accessibility.risk,
     accessibilityRiskReason: accessibility.reason,
+    visualAssertionStatus: visualAssertion?.status || (scenarioVisualContracts[key] ? 'not-run' : 'not-applicable'),
     proof: proof.proof,
     limitation: proof.untested,
   };
@@ -1110,6 +1187,13 @@ function proofQualityIssues(state) {
       if (issue) issues.push(`${scenario.label} references ${artifact.path}, but ${issue}.`);
     }
   }
+  for (const assertion of state.visualAssertions || []) {
+    if (assertion.status !== 'fail') continue;
+    const failed = assertion.screenshots
+      .flatMap((shot) => shot.checks.filter((check) => check.status === 'fail').map((check) => `${shot.label} ${check.name}: ${check.detail}`))
+      .join('; ');
+    issues.push(`${assertion.label} has failing screenshot visual assertions: ${failed}`);
+  }
   return issues;
 }
 
@@ -1125,28 +1209,201 @@ function artifactFileIssue(state, relativePath) {
   }
 }
 
-function imageArtifactIssue(state, relativePath) {
-  const baseIssue = artifactFileIssue(state, relativePath);
-  if (baseIssue) return baseIssue;
-  if (!/\.png$/i.test(relativePath)) return '';
-  const fullPath = path.join(state.runDir, relativePath);
+function parseSignalStats(output) {
+  const stats = {};
+  for (const line of String(output || '').split('\n')) {
+    const match = line.match(/lavfi\.signalstats\.([A-Z]+)=([0-9.]+)/);
+    if (match) stats[match[1]] = Number(match[2]);
+  }
+  return stats;
+}
+
+function pngSignalStats(filePath, crop = null) {
+  const filters = [];
+  if (crop) filters.push(`crop=${crop.w}:${crop.h}:${crop.x}:${crop.y}`);
+  filters.push('signalstats', 'metadata=print:file=-');
   const result = tryRun('ffmpeg', [
     '-hide_banner',
     '-i',
-    fullPath,
+    filePath,
     '-vf',
-    'signalstats,metadata=print:file=-',
+    filters.join(','),
     '-frames:v',
     '1',
     '-f',
     'null',
     '-',
   ]);
-  if (!result.ok) return `ffmpeg could not inspect the image (${result.stderr || result.error})`;
-  const text = `${result.stdout}\n${result.stderr}`;
-  const match = text.match(/lavfi\.signalstats\.YMAX=([0-9.]+)/);
-  if (match && Number(match[1]) < 40) return 'the screenshot appears blank or visually occluded';
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: result.stderr || result.error,
+      stats: {},
+    };
+  }
+  return {
+    ok: true,
+    stats: parseSignalStats(`${result.stdout}\n${result.stderr}`),
+  };
+}
+
+function imageArtifactIssue(state, relativePath) {
+  const baseIssue = artifactFileIssue(state, relativePath);
+  if (baseIssue) return baseIssue;
+  if (!/\.png$/i.test(relativePath)) return '';
+  const fullPath = path.join(state.runDir, relativePath);
+  const result = pngSignalStats(fullPath);
+  if (!result.ok) return `ffmpeg could not inspect the image (${result.error})`;
+  const yMax = result.stats.YMAX;
+  const yMin = result.stats.YMIN;
+  if (Number.isFinite(yMax) && yMax < 40) return 'the screenshot appears blank or visually occluded';
+  if (Number.isFinite(yMax) && Number.isFinite(yMin) && yMax - yMin < 4) return 'the screenshot has too little visual contrast';
   return '';
+}
+
+function probeCropForImage(imageSize, probe) {
+  if (!imageSize?.width || !imageSize?.height) return null;
+  const x = Math.max(0, Math.floor((imageSize.width * probe.x) / 100));
+  const y = Math.max(0, Math.floor((imageSize.height * probe.y) / 100));
+  const w = Math.max(1, Math.floor((imageSize.width * probe.w) / 100));
+  const h = Math.max(1, Math.floor((imageSize.height * probe.h) / 100));
+  if (x + w > imageSize.width || y + h > imageSize.height) return null;
+  return { x, y, w, h };
+}
+
+function visualCheckPass(name, detail) {
+  return { name, status: 'pass', detail };
+}
+
+function visualCheckFail(name, detail) {
+  return { name, status: 'fail', detail };
+}
+
+function evaluateScreenshotVisualContract(state, screenshotRequirement) {
+  const shot = artifactForLabel(state.screenshots, screenshotRequirement.label);
+  const checks = [];
+  if (!shot) {
+    return {
+      label: screenshotRequirement.label,
+      status: 'fail',
+      checks: [visualCheckFail('screenshot artifact', 'Required screenshot artifact is missing from state.screenshots.')],
+    };
+  }
+
+  const fullPath = path.join(state.runDir, shot.path);
+  const baseIssue = artifactFileIssue(state, shot.path);
+  if (baseIssue) {
+    return {
+      label: shot.label,
+      path: shot.path,
+      status: 'fail',
+      checks: [visualCheckFail('screenshot artifact', baseIssue)],
+    };
+  }
+
+  const imageSize = shot.imageSize || pngDimensions(fullPath);
+  if (!imageSize) {
+    checks.push(visualCheckFail('image dimensions', 'Could not read PNG dimensions.'));
+  } else if (imageSize.width < visualProbeDefaults.minWidth || imageSize.height < visualProbeDefaults.minHeight) {
+    checks.push(visualCheckFail('image dimensions', `${imageSize.width}x${imageSize.height} is below ${visualProbeDefaults.minWidth}x${visualProbeDefaults.minHeight}.`));
+  } else {
+    checks.push(visualCheckPass('image dimensions', `${imageSize.width}x${imageSize.height}.`));
+  }
+
+  const fullStats = pngSignalStats(fullPath);
+  if (!fullStats.ok) {
+    checks.push(visualCheckFail('full-frame decode', `ffmpeg could not inspect the image (${fullStats.error}).`));
+  } else {
+    const yMin = fullStats.stats.YMIN;
+    const yMax = fullStats.stats.YMAX;
+    const yRange = Number.isFinite(yMin) && Number.isFinite(yMax) ? yMax - yMin : NaN;
+    if (!Number.isFinite(yMax) || yMax < visualProbeDefaults.minYMax) {
+      checks.push(visualCheckFail('full-frame brightness', `YMAX ${yMax ?? 'unknown'} is below ${visualProbeDefaults.minYMax}.`));
+    } else if (!Number.isFinite(yRange) || yRange < visualProbeDefaults.minYRange) {
+      checks.push(visualCheckFail('full-frame contrast', `Y range ${Number.isFinite(yRange) ? yRange : 'unknown'} is below ${visualProbeDefaults.minYRange}.`));
+    } else {
+      checks.push(visualCheckPass('full-frame signal', `Y range ${yMin}-${yMax}.`));
+    }
+  }
+
+  for (const probe of screenshotRequirement.probes || []) {
+    if (typeof probe.x !== 'number' || typeof probe.y !== 'number' || typeof probe.w !== 'number' || typeof probe.h !== 'number') {
+      checks.push(visualCheckFail(probe.label || 'visual probe', 'Probe coordinates are incomplete.'));
+      continue;
+    }
+    if (probe.x < 0 || probe.y < 0 || probe.w <= 0 || probe.h <= 0 || probe.x + probe.w > 100 || probe.y + probe.h > 100) {
+      checks.push(visualCheckFail(probe.label || 'visual probe', 'Probe coordinates are outside image bounds.'));
+      continue;
+    }
+    const crop = probeCropForImage(imageSize, probe);
+    if (!crop) {
+      checks.push(visualCheckFail(probe.label || 'visual probe', 'Probe could not be mapped into image pixels.'));
+      continue;
+    }
+    const cropStats = pngSignalStats(fullPath, crop);
+    if (!cropStats.ok) {
+      checks.push(visualCheckFail(probe.label, `ffmpeg could not inspect crop (${cropStats.error}).`));
+      continue;
+    }
+    const yMin = cropStats.stats.YMIN;
+    const yMax = cropStats.stats.YMAX;
+    const yRange = Number.isFinite(yMin) && Number.isFinite(yMax) ? yMax - yMin : NaN;
+    const minYMax = probe.minYMax ?? visualProbeDefaults.minCropYMax;
+    const minYRange = probe.minYRange ?? visualProbeDefaults.minCropYRange;
+    if (!Number.isFinite(yMax) || yMax < minYMax) {
+      checks.push(visualCheckFail(probe.label, `crop YMAX ${yMax ?? 'unknown'} is below ${minYMax}.`));
+    } else if (!Number.isFinite(yRange) || yRange < minYRange) {
+      checks.push(visualCheckFail(probe.label, `crop Y range ${Number.isFinite(yRange) ? yRange : 'unknown'} is below ${minYRange}.`));
+    } else {
+      checks.push(visualCheckPass(probe.label, `crop ${crop.w}x${crop.h}+${crop.x}+${crop.y}, Y range ${yMin}-${yMax}.`));
+    }
+  }
+
+  return {
+    label: shot.label,
+    path: shot.path,
+    status: checks.some((check) => check.status === 'fail') ? 'fail' : 'pass',
+    checks,
+  };
+}
+
+function applyVisualAssertions(state) {
+  state.visualAssertions = [];
+  for (const [scenarioKey, contract] of Object.entries(scenarioVisualContracts)) {
+    const scenario = state.scenarios?.[scenarioKey];
+    if (!scenario || scenario.status !== 'pass') continue;
+    const screenshotResults = (contract.screenshots || []).map((requirement) => evaluateScreenshotVisualContract(state, requirement));
+    const failedChecks = screenshotResults.flatMap((result) =>
+      result.checks
+        .filter((check) => check.status === 'fail')
+        .map((check) => `${result.label}: ${check.name} - ${check.detail}`),
+    );
+    const assertion = {
+      scenarioKey,
+      label: scenario.label || scenarioLabels[scenarioKey] || scenarioKey,
+      status: failedChecks.length ? 'fail' : 'pass',
+      screenshots: screenshotResults,
+    };
+    state.visualAssertions.push(assertion);
+    if (failedChecks.length) {
+      updateScenario(state, scenarioKey, 'fail', `Screenshot visual assertion failed: ${failedChecks.join('; ')}`);
+      state.failures.push(`${assertion.label} failed screenshot visual assertion.`);
+    }
+  }
+  return state.visualAssertions;
+}
+
+function refreshVisualProofQuality(state) {
+  applyVisualAssertions(state);
+  const proofIssues = proofQualityIssues(state);
+  updateScenario(
+    state,
+    'visualProofQuality',
+    proofIssues.length === 0 ? 'pass' : 'fail',
+    proofIssues.length === 0
+      ? 'Every passing scenario has linked text proof, and required non-sensitive screenshots passed binding visual signal checks.'
+      : `Missing proof artifacts or failing screenshot visual assertions: ${proofIssues.join('; ')}`,
+  );
 }
 
 function annotationClass(item) {
@@ -1602,6 +1859,7 @@ function renderReportNav(state, counts) {
     <a href="#pull-request-focus">PR Focus ${navBadge('', state.prFocus?.scenarioKeys?.length || 0)}</a>
     <a href="#findings-first">Findings ${navBadge('', counts.fail + counts.inconclusive, counts.fail ? 'fail' : counts.inconclusive ? 'inconclusive' : 'pass')}</a>
     <a href="#evidence-quality">Evidence Quality ${navBadge('', riskCount)}</a>
+    <a href="#visual-assertions">Visual Assertions ${navBadge('', state.visualAssertions?.length || 0)}</a>
     <a href="#visual-proof">Visual Proof ${navBadge('', state.screenshots.length)}</a>
     <a href="#scenario-checklist">Scenario Checklist</a>
     <a href="#main-coverage">Coverage</a>
@@ -1609,6 +1867,27 @@ function renderReportNav(state, counts) {
     <a href="#raw-evidence">Raw Evidence</a>
     <a href="#cleanup">Cleanup</a>
   </aside>`;
+}
+
+function renderVisualAssertionResults(state) {
+  const assertions = state.visualAssertions || [];
+  if (!assertions.length) return '<p>No binding screenshot visual assertions were evaluated for this run.</p>';
+  const rows = assertions
+    .map((assertion) => {
+      const failed = assertion.screenshots.flatMap((shot) => shot.checks.filter((check) => check.status === 'fail').map((check) => `${shot.label}: ${check.name} - ${check.detail}`));
+      const checked = assertion.screenshots.reduce((count, shot) => count + shot.checks.length, 0);
+      return `<tr>
+        <td>${escapeHtml(assertion.label)}<br><small><code>${escapeHtml(assertion.scenarioKey)}</code></small></td>
+        <td><span class="verdict ${escapeHtml(assertion.status)}">${escapeHtml(assertion.status)}</span></td>
+        <td>${escapeHtml(String(checked))}</td>
+        <td>${failed.length ? escapeHtml(failed.join('; ')) : 'Required screenshots decoded and broad visual regions contained visible signal.'}</td>
+      </tr>`;
+    })
+    .join('\n');
+  return `<div class="table-scroll"><table>
+    <thead><tr><th>Scenario</th><th>Visual Status</th><th>Checks</th><th>Result</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
 }
 
 function renderEvidenceQuality(state) {
@@ -1661,7 +1940,9 @@ function renderEvidenceQuality(state) {
     <span id="accessibility-risk" class="anchor-alias"></span>
     <span id="failure-taxonomy" class="anchor-alias"></span>
     <span id="confirmation-boundaries" class="anchor-alias"></span>
-    <p><strong>Deterministic verdict remains source of truth.</strong> Evidence strength and assertion risk explain how much independent proof backs each scenario.</p>
+    <p><strong>Deterministic verdict remains source of truth.</strong> Evidence strength and assertion risk explain how much independent proof backs each scenario. Non-sensitive screenshots are binding corroborating evidence: missing, blank, occluded, or low-signal required screenshots can fail their owning scenario.</p>
+    <h3 id="visual-assertions">Visual Assertion Results</h3>
+    ${renderVisualAssertionResults(state)}
     <div class="quality-grid">
       <div>
         <h3>Evidence Strength</h3>
@@ -2695,7 +2976,7 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
       ${evidenceQualityHtml}
 
       <h2 id="visual-proof">Visual Proof</h2>
-      <p>Annotations are reviewer aids, not the sole assertion source. The pass/fail source of truth is the paired Computer Use accessibility text and recorded action events.</p>
+      <p>Screenshots are binding corroborating assertions for non-sensitive visual scenarios. Accessibility text, action events, provider state, and remote git state remain the semantic proof; screenshot signal checks catch missing, blank, occluded, or low-signal visual evidence.</p>
       ${visualProofHtml}
 
       ${scenarioChecklistHtml}
@@ -3147,21 +3428,13 @@ async function runSuite(args) {
         : `Missing expected visual evidence for: ${missingVisualSurfaces.join(', ')}.`,
     );
 
-    const proofIssues = proofQualityIssues(state);
-    updateScenario(
-      state,
-      'visualProofQuality',
-      proofIssues.length === 0 ? 'pass' : 'fail',
-      proofIssues.length === 0
-        ? 'Every passing scenario has a linked screenshot or redacted accessibility text artifact in the proof catalog.'
-        : `Missing proof artifacts for passing scenarios: ${proofIssues.join('; ')}`,
-    );
     updateMainCoverageFreshness(state);
 
     state.cleanup.note = 'Remote app state was not restored by this runner. CI wrapper is responsible for remote app-support backup/restore; local artifacts are retained.';
     await render(state);
     await inspectReportWithComputerUse(client, state);
     updatePrSpecificCoverage(state);
+    refreshVisualProofQuality(state);
     await render(state);
     await saveState(state);
     console.log(path.join(state.runDir, 'index.html'));
@@ -3214,18 +3487,12 @@ async function renderExisting(args) {
     state.scenarios.discard.status = 'pass';
     state.scenarios.discard.notes = ['Discard was intentionally not exercised because the stronger Step 3 save plus History restore cleanup path returned the disposable config to baseline.'];
   }
+  refreshVisualProofQuality(state);
   state.claims = Object.values(state.scenarios).map((scenario) => ({
     claim: scenario.label,
     status: scenario.status,
     evidence: scenario.notes.join(' ') || 'See proof artifacts and coverage gaps.',
   }));
-  const proofIssues = proofQualityIssues(state);
-  state.scenarios.visualProofQuality.status = proofIssues.length === 0 ? 'pass' : 'fail';
-  state.scenarios.visualProofQuality.notes = [
-    proofIssues.length === 0
-      ? 'Every passing scenario has a linked screenshot or redacted accessibility text artifact in the proof catalog.'
-      : `Missing proof artifacts for passing scenarios: ${proofIssues.join('; ')}`,
-  ];
   updateMainCoverageFreshness(state);
   updatePrSpecificCoverage(state);
   await render(state, { stateFileName: 'state.regenerated.json', recordEvent: false });
@@ -3272,6 +3539,9 @@ async function runSelfTest() {
   assert.equal(setValueResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'Error: set_value element index 18 not found' }] } }), true, 'set_value element sentinel should fail input');
   assert.equal(meaningfulBaselineDiff({ baselineDiffNameOnly: 'flake.lock\nresult\n' }), '', 'generated build artifacts should not make Homebrew rollback cleanup fail');
   assert.equal(meaningfulBaselineDiff({ baselineDiffNameOnly: 'modules/darwin/homebrew.nix\nflake.lock\nresult\n' }), 'modules/darwin/homebrew.nix', 'user-visible Homebrew config drift should remain meaningful');
+  assert.deepEqual(parseSignalStats('lavfi.signalstats.YMIN=16\nlavfi.signalstats.YMAX=235\n'), { YMIN: 16, YMAX: 235 }, 'signalstats parser should extract luminance metrics');
+  assert.deepEqual(probeCropForImage({ width: 768, height: 768 }, { x: 5, y: 35, w: 90, h: 22 }), { x: 38, y: 268, w: 691, h: 168 }, 'visual probe coordinates should map to image pixels');
+  assert.equal(probeCropForImage({ width: 768, height: 768 }, { x: 95, y: 95, w: 10, h: 10 }), null, 'out-of-bounds visual probes should be rejected');
 
   const previousChangedFiles = process.env.NIXMAC_E2E_PR_CHANGED_FILES;
   process.env.NIXMAC_E2E_PR_CHANGED_FILES = 'apps/native/src/components/widget/adversarial-new-visible-surface.tsx\ndocs/history.md';
@@ -3346,6 +3616,7 @@ async function runSelfTest() {
     'id="pull-request-focus"',
     'id="findings-first"',
     'id="evidence-quality"',
+    'id="visual-assertions"',
     'id="v2-evidence-model"',
     'id="accessibility-risk"',
     'id="failure-taxonomy"',

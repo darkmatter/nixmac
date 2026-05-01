@@ -43,6 +43,9 @@ The runner:
 - captures screenshots from `get_app_state`, not Screen Sharing;
 - omits image artifacts for sensitive API Keys and Console captures while
   retaining redacted accessibility text snapshots;
+- treats non-sensitive required screenshots as binding corroborating evidence:
+  missing, corrupt, blank, occluded, or low-signal screenshot regions can fail
+  the owning scenario and the final verdict;
 - drives visible UI through Computer Use clicks and settable accessibility
   fields;
 - treats explicit Computer Use click-tool failures as failed interactions
@@ -138,7 +141,8 @@ Required repository secrets for the real remote lane:
 - `NIXMAC_E2E_OPENROUTER_API_KEY`
 
 The GitHub-hosted runner installs `ffmpeg` before running the suite. The report
-renderer uses it to reject blank or corrupt screenshot artifacts.
+renderer uses it to reject blank or corrupt screenshot artifacts and to run
+deterministic signal checks on broad required screenshot regions.
 
 `NIXMAC_E2E_REMOTE_HOST` must be a resolvable FQDN or stable IP address, not
 the Mac's local hostname. For the current DXU MacinCloud lane, use
@@ -329,9 +333,10 @@ The report opens with PR focus when PR metadata is present, then a findings-firs
 triage section: failures first, inconclusive checks second, and passing checks
 collapsed last. It also includes verdict, timestamp, branch, SHA, macOS version,
 mode, app command, provider label, grouped scenario checklist, evidence grades,
-primary artifact links, coverage gaps, PR-specific focus, screenshot proof cards,
-remote Mac/app/process metadata, human QA narrative, claims versus evidence, failures/open issues,
-confirmation boundaries, and cleanup/restore status. Machine-readable
+binding visual assertion results, primary artifact links, coverage gaps,
+PR-specific focus, screenshot proof cards, remote Mac/app/process metadata,
+human QA narrative, claims versus evidence, failures/open issues, confirmation
+boundaries, and cleanup/restore status. Machine-readable
 `state.json` and `events.json` files sit next to the report.
 
 Once the coverage freshness feature is implemented, the report should also show
@@ -358,8 +363,8 @@ Use the adversarial runner to test the E2E/reporting suite itself:
 node tools/computer-use-e2e/run-adversarial.mjs
 ```
 
-The adversarial runner requires `ffmpeg`, because one fixture generates a
-blank screenshot to verify visual-proof quality checks.
+The adversarial runner requires `ffmpeg`, because fixtures generate blank
+screenshots and re-run deterministic screenshot signal checks.
 
 It copies the newest local `artifacts/computer-use-remote/<timestamp>` baseline
 that contains `state.json`, introduces reversible fixture failures, then
@@ -377,12 +382,13 @@ The aggregate report lands under:
 artifacts/computer-use-adversarial/<timestamp>/index.html
 ```
 
-The current adversarial suite covers twenty-six cases: API Keys blank render,
+The current adversarial suite covers twenty-seven cases: API Keys blank render,
 settings mismatch, provider credential failure, provider timeout, missing build
 boundary, commit no-op, rollback no-op, activation admin-auth blockers, corrupt
-artifacts, blank screenshots, PR report priority, main coverage drift,
-zero-byte image/text evidence,
+artifacts, blank screenshots that fail owning scenarios, PR report priority,
+main coverage drift, zero-byte image/text evidence,
 findings ordering, sensitive screenshot leakage, stale verdicts, missing report
 inspection proof, unmapped PR-visible files, missing remote metadata, and
 missing rollback proof, plus V2 evidence-strength, failure-taxonomy,
-accessibility-risk, and annotation-geometry regressions.
+accessibility-risk, annotation-geometry, and visual assertion calibration
+regressions.

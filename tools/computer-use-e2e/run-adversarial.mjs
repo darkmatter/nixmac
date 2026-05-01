@@ -235,24 +235,24 @@ const caseDefinitions = [
     id: 8,
     slug: 'corrupt-evidence',
     name: 'Report evidence artifact corruption',
-    expected: 'visualProofQuality fails when referenced screenshot artifacts are missing.',
+    expected: 'visualProofQuality and the owning scenario fail when a required screenshot artifact is missing.',
     mutate({ runDir }) {
       rmSync(path.join(runDir, 'screenshots/01-launch.png'), { force: true });
     },
     evaluate(state) {
-      return state.scenarios.visualProofQuality.status === 'fail';
+      return state.scenarios.visualProofQuality.status === 'fail' && state.scenarios.launch.status === 'fail' && /Screenshot visual assertion/i.test(state.scenarios.launch.notes.join(' '));
     },
   },
   {
     id: 9,
     slug: 'blank-screenshot',
     name: 'Visual UI regression: blank/occluded screenshot',
-    expected: 'visualProofQuality fails when a required screenshot is visually blank.',
+    expected: 'visualProofQuality and the owning scenario fail when a required screenshot is visually blank.',
     mutate({ runDir }) {
       createBlackPng(path.join(runDir, 'screenshots/01-launch.png'));
     },
     evaluate(state) {
-      return state.scenarios.visualProofQuality.status === 'fail' && /blank|occluded/i.test(state.scenarios.visualProofQuality.notes.join(' '));
+      return state.scenarios.visualProofQuality.status === 'fail' && state.scenarios.launch.status === 'fail' && /visual assertion|brightness|contrast|blank|occluded/i.test(state.scenarios.launch.notes.join(' '));
     },
   },
   {
@@ -511,6 +511,21 @@ const caseDefinitions = [
     },
     evaluate(state) {
       return state.scenarios.visualProofQuality.status === 'fail' && /outside image bounds/i.test(state.scenarios.visualProofQuality.notes.join(' '));
+    },
+  },
+  {
+    id: 27,
+    slug: 'visual-assertion-baseline-calibration',
+    name: 'Visual assertion baseline calibration stays green',
+    expected: 'known-good baseline artifacts pass all binding screenshot visual assertions.',
+    evaluate(state) {
+      return (
+        state.verdict === 'pass' &&
+        Array.isArray(state.visualAssertions) &&
+        state.visualAssertions.length > 0 &&
+        state.visualAssertions.every((assertion) => assertion.status === 'pass') &&
+        state.scenarios.visualProofQuality.status === 'pass'
+      );
     },
   },
 ];
