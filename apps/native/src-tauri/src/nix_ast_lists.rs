@@ -51,18 +51,28 @@ fn parse_nix_string_literal(value: &str) -> Option<String> {
     let value = value.trim();
 
     if value.starts_with('"') && value.ends_with('"') && value.len() >= 2 {
+        let inner = &value[1..value.len() - 1];
         let mut out = String::new();
-        let bytes = value.as_bytes();
-        let mut i = 1usize;
-        while i + 1 < bytes.len() {
-            match bytes[i] {
-                b'\\' if i + 2 < bytes.len() => {
-                    i += 1;
-                    out.push(bytes[i] as char);
-                }
-                ch => out.push(ch as char),
+        let mut chars = inner.chars();
+
+        while let Some(ch) = chars.next() {
+            if ch != '\\' {
+                out.push(ch);
+                continue;
             }
-            i += 1;
+
+            match chars.next() {
+                Some('n') => out.push('\n'),
+                Some('r') => out.push('\r'),
+                Some('t') => out.push('\t'),
+                Some('"') => out.push('"'),
+                Some('\\') => out.push('\\'),
+                Some(other) => {
+                    out.push('\\');
+                    out.push(other);
+                }
+                None => out.push('\\'),
+            }
         }
         return Some(out);
     }
