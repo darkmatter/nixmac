@@ -272,8 +272,6 @@ jobs:
           NIXMAC_E2E_DISPOSABLE_CONFIG: "true"
           NIXMAC_E2E_ALLOW_BUILD_CONFIRM: "true"
           NIXMAC_E2E_ALLOW_DISCARD_CONFIRM: "true"
-          NIXMAC_E2E_PROVIDER_ATTEMPTS: "1"
-          NIXMAC_E2E_PROVIDER_DELAY_MS: "1"
         run: node tools/computer-use-e2e/run-remote-cua.mjs run
 
       - name: Restore remote app support
