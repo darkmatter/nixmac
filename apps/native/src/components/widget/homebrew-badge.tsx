@@ -21,6 +21,7 @@ export function HomebrewBadge() {
   const prefsLoaded = useWidgetStore((s) => s.prefsLoaded);
   const scanHomebrewOnStartup = useWidgetStore((s) => s.scanHomebrewOnStartup);
   const shouldScan = prefsLoaded && scanHomebrewOnStartup;
+  const setConversationalResponse = useWidgetStore((s) => s.setConversationalResponse);
   const { diff, hasDiff, isApplying, applyDiff } = useHomebrewDiff(shouldScan);
 
   // Only show on the begin step (clean tree, no in-progress evolution).
@@ -62,7 +63,10 @@ export function HomebrewBadge() {
             size="sm"
             className="mt-3 w-full"
             disabled={isApplying}
-            onClick={applyDiff}
+            onClick={() => {
+              applyDiff();
+              setConversationalResponse(null);
+            }}
           >
             {isApplying ? "Adding…" : "Add to config"}
           </Button>
