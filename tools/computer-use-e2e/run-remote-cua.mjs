@@ -1634,7 +1634,7 @@ print(json.dumps({
         "processEnvKeys": env_keys,
         "openrouterApiKeyInProcess": "present-redacted" if openrouter_in_process else "absent-or-not-visible",
         "openrouterApiKeyInGuiLaunchd": "present-redacted" if launchd_key["stdout"] else "absent",
-        "note": "Only environment variable names and presence checks are recorded; secret values are never written to the report.",
+        "note": "The launched nixmac process environment is the source of truth for this run. launchctl getenv is diagnostic only and may be absent when the app is launched with an inline environment. Only environment variable names and presence checks are recorded; secret values are never written to the report.",
     }
 }, sort_keys=True))
 `;
@@ -1645,6 +1645,7 @@ print(json.dumps({
   }
   try {
     const metadata = JSON.parse(result.stdout);
+    state.remoteMetadata = metadata;
     state.remoteMachine = metadata.remoteMachine;
     state.remoteApp = metadata.remoteApp;
     state.processEnvVerification = metadata.processEnvVerification;
