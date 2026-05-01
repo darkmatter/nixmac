@@ -29,7 +29,10 @@ mod git;
 mod historelog;
 mod log_summarizer;
 mod lsp;
+mod mac;
+mod managed_edit;
 mod nix;
+mod nix_ast_lists;
 mod panic_handler;
 mod peek;
 mod permissions;
@@ -321,6 +324,9 @@ fn run_gui_mode(
             commands::trigger_test_panic,
             #[cfg(debug_assertions)]
             commands::debug_sentry_event,
+            // Homebrew
+            commands::homebrew_apply_diff,
+            commands::homebrew_get_state_diff,
             // Git
             commands::git_init_repo,
             commands::git_status,

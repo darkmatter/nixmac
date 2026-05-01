@@ -8,6 +8,7 @@ export function PreferencesTab() {
   const confirmClear = useWidgetStore((s) => s.confirmClear);
   const confirmRollback = useWidgetStore((s) => s.confirmRollback);
   const autoSummarizeOnFocus = useWidgetStore((s) => s.autoSummarizeOnFocus);
+  const scanHomebrewOnStartup = useWidgetStore((s) => s.scanHomebrewOnStartup);
 
   return (
     <div className="space-y-6">
@@ -61,6 +62,23 @@ export function PreferencesTab() {
               <Switch
                 checked={autoSummarizeOnFocus}
                 onCheckedChange={(checked) => setPref("autoSummarizeOnFocus", checked)}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div className="space-y-3">
+          <div className="font-medium text-sm">Startup scans</div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between rounded-lg border border-border p-3">
+              <div className="space-y-0.5">
+                <div className="text-sm">Scan Homebrew</div>
+                <div className="text-muted-foreground text-xs">Detect Homebrew drift and offer to resolve</div>
+              </div>
+              <Switch
+                checked={scanHomebrewOnStartup}
+                onCheckedChange={(checked) => setPref("scanHomebrewOnStartup", checked)}
               />
             </div>
           </div>
