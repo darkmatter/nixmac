@@ -2148,7 +2148,7 @@ async function runSuite(args) {
           updateScenario(state, 'discard', 'inconclusive', 'Discard boundary appeared, but confirmation was skipped because disposable config mode was not proven.');
         }
       } else {
-        updateScenario(state, 'buildBoundary', 'fail', 'Review passed, but Computer Use could not open the Build & Test boundary.');
+        updateScenario(state, 'discard', 'fail', 'Discard cleanup was required, but Computer Use could not open the Discard confirmation.');
       }
     } else {
       updateScenario(state, 'summary', 'inconclusive', 'Summary was not tested because the real provider workflow did not reach Review.');
