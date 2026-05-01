@@ -1,0 +1,1120 @@
+Computer Use state (CUA App Version: 758)
+<app_specific_instructions>
+## Browser Computer Use
+
+When navigating to a new website or starting a separate web task, prefer opening a new tab instead of reusing the current tab; reuse the current tab only when the user explicitly asks to continue there or when the current page is clearly the right place to continue the existing workflow.
+</app_specific_instructions>
+<app_state>
+App=com.apple.Safari (pid 388)
+Window: "nixmac Computer Use E2E Evidence", App: Safari.
+	0 standard window nixmac Computer Use E2E Evidence, ID: SafariWindow?IsSecure=false&UUID=858A5D8A-FDE8-4952-9215-0C7DE118A883, Secondary Actions: Raise
+		1 split group
+			2 tab group
+				3 scroll area
+					4 HTML content Description: nixmac Computer Use E2E Evidence, URL: file:///private/tmp/nixmac-computer-use-reports/2026-05-01T213508143Z/index.html
+						5 container
+							6 heading nixmac Computer Use E2E Evidence, Value: 1
+								7 text nixmac Computer Use E2E Evidence
+							8 text Remote desktop QA driven through Codex Computer Use against the real macOS app. The report summarizes major feature coverage, functional UX/UI checks, screenshots, redacted text evidence, and remote machine metadata. VERDICT: INCONCLUSIVE
+							9 heading Review Summary, Value: 2
+								10 text Review Summary
+							11 text The run is inconclusive; inspect setup, provider, and coverage notes before relying on it. PR 63 - Add Computer Use E2E non-blocking PR report Head: 
+							12 text b112f9d
+							13 container Run summary
+								14 text 22
+								15 text Passed
+								16 text 0
+								17 text Failed
+								18 text 2
+								19 text Inconclusive
+								20 text 28
+								21 text Screenshots
+							22 text INCONCLUSIVE PR focus Mapped PR-relevant scenarios were evaluated. PASS Coverage freshness Main user-visible surfaces remain mapped or explicitly waived. PASS Step 3 save Disposable config change persisted through the save path. PASS Rollback cleanup History rollback returned the disposable config to baseline. PASS Remote metadata DXU machine, app, and process metadata were captured. [Review PR Focus](file:///private/tmp/nixmac-computer-use-reports/2026-05-01T213508143Z/index.html#pull-request-focus) [Inspect Findings](file:///private/tmp/nixmac-computer-use-reports/2026-05-01T213508143Z/index.html#findings-first) [Open Visual Proof](file:///private/tmp/nixmac-computer-use-reports/2026-05-01T213508143Z/index.html#visual-proof) [Check Remote Metadata](file:///private/tmp/nixmac-computer-use-reports/2026-05-01T213508143Z/index.html#remote-metadata) Evidence footprint: 28 screenshots, 31 redacted text snapshots.
+							23 container Report navigation
+								24 link Summary, Value: file:///private/tmp/nixmac-computer-use-reports/2026-05-01T213508143Z/index.html#summary
+								25 link PR Focus 9, Value: file:///private/tmp/nixmac-computer-use-reports/2026-05-01T213508143Z/index.html#pull-request-focus
+								26 link Findings 2, Value: file:///private/tmp/nixmac-computer-use-reports/2026-05-01T213508143Z/index.html#findings-first
+								27 link Evidence Quality 20, Value: file:///private/tmp/nixmac-computer-use-reports/2026-05-01T213508143Z/index.html#evidence-quality
+								28 link Visual Proof 28, Value: file:///private/tmp/nixmac-computer-use-reports/2026-05-01T213508143Z/index.html#visual-proof
+								29 link Scenario Checklist, Value: file:///private/tmp/nixmac-computer-use-reports/2026-05-01T213508143Z/index.html#scenario-checklist
+								30 link Coverage, Value: file:///private/tmp/nixmac-computer-use-reports/2026-05-01T213508143Z/index.html#main-coverage
+								31 link Remote Metadata, Value: file:///private/tmp/nixmac-computer-use-reports/2026-05-01T213508143Z/index.html#remote-metadata
+								32 link Raw Evidence, Value: file:///private/tmp/nixmac-computer-use-reports/2026-05-01T213508143Z/index.html#raw-evidence
+								33 link Cleanup, Value: file:///private/tmp/nixmac-computer-use-reports/2026-05-01T213508143Z/index.html#cleanup
+							34 heading Pull Request Focus, Value: 2
+								35 text Pull Request Focus
+							36 text PR:  63 - Add Computer Use E2E non-blocking PR report Refs:  main ← fkb/e2e-computer-use-local
+							37 heading User-Visible Focus Candidates, Value: 3
+								38 text User-Visible Focus Candidates
+							39 content list
+								40 container .github/workflows/computer-use-e2e.yml
+									41 list marker •
+									42 text .github/workflows/computer-use-e2e.yml
+								43 container tools/computer-use-e2e/PROPOSAL.md
+									44 list marker •
+									45 text tools/computer-use-e2e/PROPOSAL.md
+								46 container tools/computer-use-e2e/README.md
+									47 list marker •
+									48 text tools/computer-use-e2e/README.md
+								49 container tools/computer-use-e2e/V2_PROPOSAL.md
+									50 list marker •
+									51 text tools/computer-use-e2e/V2_PROPOSAL.md
+								52 container tools/computer-use-e2e/check-remote.mjs
+									53 list marker •
+									54 text tools/computer-use-e2e/check-remote.mjs
+								55 container tools/computer-use-e2e/coverage-manifest.json
+									56 list marker •
+									57 text tools/computer-use-e2e/coverage-manifest.json
+								58 container tools/computer-use-e2e/run-adversarial.mjs
+									59 list marker •
+									60 text tools/computer-use-e2e/run-adversarial.mjs
+								61 container tools/computer-use-e2e/run-local.mjs
+									62 list marker •
+									63 text tools/computer-use-e2e/run-local.mjs
+								64 container tools/computer-use-e2e/run-remote-cua.mjs
+									65 list marker •
+									66 text tools/computer-use-e2e/run-remote-cua.mjs
+							67 heading Mapped Scenario Focus, Value: 3
+								68 text Mapped Scenario Focus
+							69 content list
+								70 container Real provider workflow reaches Review
+									71 list marker •
+									72 text Real provider workflow reaches Review
+								73 container Summary tab renders after intent review
+									74 list marker •
+									75 text Summary tab renders after intent review
+								76 container Diff tab renders after intent review
+									77 list marker •
+									78 text Diff tab renders after intent review
+								79 container Build & Test destructive boundary appears before activation
+									80 list marker •
+									81 text Build & Test destructive boundary appears before activation
+								82 container Step 3 Save / Keep changes persists a change
+									83 list marker •
+									84 text Step 3 Save / Keep changes persists a change
+								85 container Rollback cleanup returns disposable config to clean state
+									86 list marker •
+									87 text Rollback cleanup returns disposable config to clean state
+								88 container My History opens and renders
+									89 list marker •
+									90 text My History opens and renders
+								91 container Scenario results include inspectable visual/text evidence
+									92 list marker •
+									93 text Scenario results include inspectable visual/text evidence
+								94 container Generated HTML report is inspected with Computer Use
+									95 list marker •
+									96 text Generated HTML report is inspected with Computer Use
+							97 summary Full changed-file list (11), Value: off
+								98 text Full changed-file list (11)
+							99 heading PR-Relevant Evidence, Value: 3
+								100 text PR-Relevant Evidence
+							101 table
+								102 row (selectable) Scenario
+Status
+Evidence Grade
+Primary Artifacts
+What Proved It
+								103 row (selectable)
+									104 cell (selectable) Generated HTML report is inspected with Computer Use
+No notes recorded.
+									105 cell (selectable) INCONCLUSIVE
+									106 cell (selectable) action-confirmed
+not-proved
+									107 cell (selectable) No primary artifact linked.
+									108 cell (selectable) Computer Use opens the generated report on the remote Mac and sees report sections.
+Failure class: inconclusive
+								109 row (selectable)
+									110 cell (selectable) Real provider workflow reaches Review
+The real provider workflow reached Review or a Review-equivalent state.
+									111 cell (selectable) PASS
+									112 cell (selectable) action-confirmed
+operational
+									113 cell (selectable) screenshots/17-provider-progress-01.png
+screenshots/18-provider-progress-02.png
+screenshots/19-provider-progress-03.png
+screenshots/20-provider-progress-04.png
+screenshots/21-provider-progress-05.png
+texts/17-provider-progress-01.txt
+texts/18-provider-progress-02.txt
+texts/19-provider-progress-03.txt
+texts/20-provider-progress-04.txt
+texts/21-provider-progress-05.txt
+									114 cell (selectable) Polling reached Review-equivalent UI with Build & Test/Discard/Summary/Diff controls.
+								115 row (selectable)
+									116 cell (selectable) Summary tab renders after intent review
+Summary described the requested bat/Homebrew package intent.
+									117 cell (selectable) PASS
+									118 cell (selectable) text-confirmed
+visual-supported
+									119 cell (selectable) screenshots/23-review-summary.png
+texts/23-review-summary.txt
+									120 cell (selectable) Summary text must mention the requested package/change domain.
+								121 row (selectable)
+									122 cell (selectable) Diff tab renders after intent review
+Diff rendered a candidate Homebrew configuration change for bat.
+									123 cell (selectable) PASS
+									124 cell (selectable) text-confirmed
+visual-supported
+									125 cell (selectable) screenshots/24-review-diff.png
+texts/24-review-diff.txt
+									126 cell (selectable) Diff text must show the requested package/change in a configuration file.
+								127 row (selectable)
+									128 cell (selectable) Build & Test destructive boundary appears before activation
+Build & Test presented a visible confirmation/boundary before activation.
+									129 cell (selectable) PASS
+									130 cell (selectable) action-confirmed
+operational
+									131 cell (selectable) screenshots/25-build-boundary.png
+screenshots/27-step-3-ready.png
+texts/25-build-boundary.txt
+texts/27-step-3-ready.txt
+									132 cell (selectable) Build & Test opens a confirmation dialog before activation; disposable runs confirm it and wait for Step 3.
+								133 row (selectable)
+									134 cell (selectable) Step 3 Save / Keep changes persists a change
+Step 3 Commit persisted the generated bat/Homebrew change in the disposable config repo and left the worktree clean.
+									135 cell (selectable) PASS
+									136 cell (selectable) action-confirmed
+strong
+									137 cell (selectable) screenshots/27-step-3-ready.png
+screenshots/28-after-commit.png
+texts/27-step-3-ready.txt
+texts/28-after-commit.txt
+									138 cell (selectable) In disposable build-confirm mode, Computer Use reaches Step 3, clicks Commit, and the runner verifies the disposable repo HEAD changed with a clean worktree.
+								139 row (selectable)
+									140 cell (selectable) Rollback cleanup returns disposable config to clean state
+History restore rollback returned the disposable Homebrew config to pre-test baseline content with a clean worktree; the top-level nix build result symlink and flake.lock refresh were ignored as build artifacts for this fixed Homebrew prompt.
+									141 cell (selectable) PASS
+									142 cell (selectable) action-confirmed
+strong
+									143 cell (selectable) screenshots/29-history-before-restore.png
+screenshots/30-history-restore-preview.png
+screenshots/31-after-history-restore.png
+texts/29-history-before-restore.txt
+texts/30-history-restore-preview.txt
+texts/31-after-history-restore.txt
+									144 cell (selectable) After Save, Computer Use opens History, restores the pre-test baseline commit, and the runner verifies HEAD returned to that baseline with a clean worktree.
+								145 row (selectable)
+									146 cell (selectable) My History opens and renders
+History rendered a visible state.
+									147 cell (selectable) PASS
+									148 cell (selectable) action-confirmed
+operational
+									149 cell (selectable) screenshots/07-history.png
+texts/07-history.txt
+									150 cell (selectable) Computer Use opened History and captured a visible history/empty state.
+								151 row (selectable)
+									152 cell (selectable) Scenario results include inspectable visual/text evidence
+Every passing scenario has a linked screenshot or redacted accessibility text artifact in the proof catalog.
+									153 cell (selectable) PASS
+									154 cell (selectable) text-confirmed
+weak
+									155 cell (selectable) No primary artifact linked.
+									156 cell (selectable) Every passing scenario must have at least one primary screenshot or text artifact listed in the proof catalog.
+								157 column
+									158 cell
+										159 text Scenario
+									160 cell (selectable) Generated HTML report is inspected with Computer Use
+No notes recorded.
+									161 cell (selectable) Real provider workflow reaches Review
+The real provider workflow reached Review or a Review-equivalent state.
+									162 cell (selectable) Summary tab renders after intent review
+Summary described the requested bat/Homebrew package intent.
+									163 cell (selectable) Diff tab renders after intent review
+Diff rendered a candidate Homebrew configuration change for bat.
+									164 cell (selectable) Build & Test destructive boundary appears before activation
+Build & Test presented a visible confirmation/boundary before activation.
+									165 cell (selectable) Step 3 Save / Keep changes persists a change
+Step 3 Commit persisted the generated bat/Homebrew change in the disposable config repo and left the worktree clean.
+									166 cell (selectable) Rollback cleanup returns disposable config to clean state
+History restore rollback returned the disposable Homebrew config to pre-test baseline content with a clean worktree; the top-level nix build result symlink and flake.lock refresh were ignored as build artifacts for this fixed Homebrew prompt.
+									167 cell (selectable) My History opens and renders
+History rendered a visible state.
+									168 cell (selectable) Scenario results include inspectable visual/text evidence
+Every passing scenario has a linked screenshot or redacted accessibility text artifact in the proof catalog.
+								169 column
+									170 cell
+										171 text Status
+									172 cell (selectable) INCONCLUSIVE
+									173 cell (selectable) PASS
+									174 cell (selectable) PASS
+									175 cell (selectable) PASS
+									176 cell (selectable) PASS
+									177 cell (selectable) PASS
+									178 cell (selectable) PASS
+									179 cell (selectable) PASS
+									180 cell (selectable) PASS
+								181 column
+									182 cell
+										183 text Evidence Grade
+									184 cell (selectable) action-confirmed
+not-proved
+									185 cell (selectable) action-confirmed
+operational
+									186 cell (selectable) text-confirmed
+visual-supported
+									187 cell (selectable) text-confirmed
+visual-supported
+									188 cell (selectable) action-confirmed
+operational
+									189 cell (selectable) action-confirmed
+strong
+									190 cell (selectable) action-confirmed
+strong
+									191 cell (selectable) action-confirmed
+operational
+									192 cell (selectable) text-confirmed
+weak
+								193 column
+									194 cell
+										195 text Primary Artifacts
+									196 cell (selectable) No primary artifact linked.
+									197 cell (selectable) screenshots/17-provider-progress-01.png
+screenshots/18-provider-progress-02.png
+screenshots/19-provider-progress-03.png
+screenshots/20-provider-progress-04.png
+screenshots/21-provider-progress-05.png
+texts/17-provider-progress-01.txt
+texts/18-provider-progress-02.txt
+texts/19-provider-progress-03.txt
+texts/20-provider-progress-04.txt
+texts/21-provider-progress-05.txt
+									198 cell (selectable) screenshots/23-review-summary.png
+texts/23-review-summary.txt
+									199 cell (selectable) screenshots/24-review-diff.png
+texts/24-review-diff.txt
+									200 cell (selectable) screenshots/25-build-boundary.png
+screenshots/27-step-3-ready.png
+texts/25-build-boundary.txt
+texts/27-step-3-ready.txt
+									201 cell (selectable) screenshots/27-step-3-ready.png
+screenshots/28-after-commit.png
+texts/27-step-3-ready.txt
+texts/28-after-commit.txt
+									202 cell (selectable) screenshots/29-history-before-restore.png
+screenshots/30-history-restore-preview.png
+screenshots/31-after-history-restore.png
+texts/29-history-before-restore.txt
+texts/30-history-restore-preview.txt
+texts/31-after-history-restore.txt
+									203 cell (selectable) screenshots/07-history.png
+texts/07-history.txt
+									204 cell (selectable) No primary artifact linked.
+								205 column
+									206 cell
+										207 text What Proved It
+									208 cell (selectable) Computer Use opens the generated report on the remote Mac and sees report sections.
+Failure class: inconclusive
+									209 cell (selectable) Polling reached Review-equivalent UI with Build & Test/Discard/Summary/Diff controls.
+									210 cell (selectable) Summary text must mention the requested package/change domain.
+									211 cell (selectable) Diff text must show the requested package/change in a configuration file.
+									212 cell (selectable) Build & Test opens a confirmation dialog before activation; disposable runs confirm it and wait for Step 3.
+									213 cell (selectable) In disposable build-confirm mode, Computer Use reaches Step 3, clicks Commit, and the runner verifies the disposable repo HEAD changed with a clean worktree.
+									214 cell (selectable) After Save, Computer Use opens History, restores the pre-test baseline commit, and the runner verifies HEAD returned to that baseline with a clean worktree.
+									215 cell (selectable) Computer Use opened History and captured a visible history/empty state.
+									216 cell (selectable) Every passing scenario must have at least one primary screenshot or text artifact listed in the proof catalog.
+								217 container
+									218 cell
+										219 text Scenario
+									220 cell
+										221 text Status
+									222 cell
+										223 text Evidence Grade
+									224 cell
+										225 text Primary Artifacts
+									226 cell
+										227 text What Proved It
+							228 heading Findings, Value: 2
+								229 text Findings
+							230 text Failures are shown first, then inconclusive checks. Passing checks stay collapsed unless a reviewer wants the full inventory.
+							231 heading Failures, Value: 3
+								232 text Failures
+							233 table
+								234 row (selectable) Scenario
+Status
+Evidence Grade
+Primary Artifacts
+What Proved It / Why It Matters
+								235 row (selectable)
+									236 cell (selectable) None.
+								237 column
+									238 cell
+										239 text Scenario
+									240 cell (selectable) None.
+								241 column
+									242 cell
+										243 text Status
+									244 cell (selectable) None.
+								245 column
+									246 cell
+										247 text Evidence Grade
+									248 cell (selectable) None.
+								249 column
+									250 cell
+										251 text Primary Artifacts
+									252 cell (selectable) None.
+								253 column
+									254 cell
+										255 text What Proved It / Why It Matters
+									256 cell (selectable) None.
+								257 container
+									258 cell
+										259 text Scenario
+									260 cell
+										261 text Status
+									262 cell
+										263 text Evidence Grade
+									264 cell
+										265 text Primary Artifacts
+									266 cell
+										267 text What Proved It / Why It Matters
+							268 heading Inconclusive, Value: 3
+								269 text Inconclusive
+							270 table
+								271 row (selectable) Scenario
+Status
+Evidence Grade
+Primary Artifacts
+What Proved It / Why It Matters
+								272 row (selectable)
+									273 cell (selectable) PR-specific user-visible behavior is covered when applicable
+No notes recorded.
+									274 cell (selectable) INCONCLUSIVE
+									275 cell (selectable) not-run
+not-proved
+									276 cell (selectable) No primary artifact linked.
+									277 cell (selectable) Requires PR metadata and changed-file/user-visible focus input.
+Failure class: coverage
+								278 row (selectable)
+									279 cell (selectable) Generated HTML report is inspected with Computer Use
+No notes recorded.
+									280 cell (selectable) INCONCLUSIVE
+									281 cell (selectable) action-confirmed
+not-proved
+									282 cell (selectable) No primary artifact linked.
+									283 cell (selectable) Computer Use opens the generated report on the remote Mac and sees report sections.
+Failure class: inconclusive
+								284 column
+									285 cell
+										286 text Scenario
+									287 cell (selectable) PR-specific user-visible behavior is covered when applicable
+No notes recorded.
+									288 cell (selectable) Generated HTML report is inspected with Computer Use
+No notes recorded.
+								289 column
+									290 cell
+										291 text Status
+									292 cell (selectable) INCONCLUSIVE
+									293 cell (selectable) INCONCLUSIVE
+								294 column
+									295 cell
+										296 text Evidence Grade
+									297 cell (selectable) not-run
+not-proved
+									298 cell (selectable) action-confirmed
+not-proved
+								299 column
+									300 cell
+										301 text Primary Artifacts
+									302 cell (selectable) No primary artifact linked.
+									303 cell (selectable) No primary artifact linked.
+								304 column
+									305 cell
+										306 text What Proved It / Why It Matters
+									307 cell (selectable) Requires PR metadata and changed-file/user-visible focus input.
+Failure class: coverage
+									308 cell (selectable) Computer Use opens the generated report on the remote Mac and sees report sections.
+Failure class: inconclusive
+								309 container
+									310 cell
+										311 text Scenario
+									312 cell
+										313 text Status
+									314 cell
+										315 text Evidence Grade
+									316 cell
+										317 text Primary Artifacts
+									318 cell
+										319 text What Proved It / Why It Matters
+							320 summary Passing Checks (22), Value: off
+								321 text Passing Checks (22)
+							322 heading Evidence Quality, Value: 2
+								323 text Evidence Quality
+							324 text Deterministic verdict remains source of truth.  Evidence strength and assertion risk explain how much independent proof backs each scenario.
+							325 heading Evidence Strength, Value: 3
+								326 text Evidence Strength
+							327 table
+								328 row (selectable) Strength
+Count
+								329 row (selectable)
+									330 cell (selectable) strong
+									331 cell (selectable) 2
+								332 row (selectable)
+									333 cell (selectable) operational
+									334 cell (selectable) 13
+								335 row (selectable)
+									336 cell (selectable) visual-supported
+									337 cell (selectable) 4
+								338 row (selectable)
+									339 cell (selectable) weak
+									340 cell (selectable) 3
+								341 row (selectable)
+									342 cell (selectable) not-proved
+									343 cell (selectable) 2
+								344 column
+									345 cell
+										346 text Strength
+									347 cell (selectable) strong
+									348 cell (selectable) operational
+									349 cell (selectable) visual-supported
+									350 cell (selectable) weak
+									351 cell (selectable) not-proved
+								352 column
+									353 cell
+										354 text Count
+									355 cell (selectable) 2
+									356 cell (selectable) 13
+									357 cell (selectable) 4
+									358 cell (selectable) 3
+									359 cell (selectable) 2
+								360 container
+									361 cell
+										362 text Strength
+									363 cell
+										364 text Count
+							365 heading Elevated Assertion Risk, Value: 3
+								366 text Elevated Assertion Risk
+							367 table
+								368 row (selectable) Scenario
+Risk
+Why
+								369 row (selectable)
+									370 cell (selectable) Settings API Keys tab visibly renders
+accessibility_text, sensitive_redaction
+									371 cell (selectable) high
+									372 cell (selectable) The claim depends on accessibility text without a screenshot, usually due sensitive-surface redaction.
+								373 row (selectable)
+									374 cell (selectable) Console opens and renders
+accessibility_text, sensitive_redaction
+									375 cell (selectable) high
+									376 cell (selectable) The claim depends on accessibility text without a screenshot, usually due sensitive-surface redaction.
+								377 row (selectable)
+									378 cell (selectable) App launches and first screen is usable
+accessibility_text, visual_heuristic
+									379 cell (selectable) medium
+									380 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+								381 row (selectable)
+									382 cell (selectable) Update banner does not block the main workflow
+accessibility_text, action_result, visual_heuristic
+									383 cell (selectable) medium
+									384 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+								385 row (selectable)
+									386 cell (selectable) Settings General tab visibly renders
+accessibility_text, action_result, visual_heuristic
+									387 cell (selectable) medium
+									388 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+								389 row (selectable)
+									390 cell (selectable) Settings AI Models tab visibly renders
+accessibility_text, action_result, visual_heuristic
+									391 cell (selectable) medium
+									392 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+								393 row (selectable)
+									394 cell (selectable) Settings Preferences tab visibly renders
+accessibility_text, action_result, visual_heuristic
+									395 cell (selectable) medium
+									396 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+								397 row (selectable)
+									398 cell (selectable) My History opens and renders
+accessibility_text, action_result, visual_heuristic
+									399 cell (selectable) medium
+									400 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+								401 row (selectable)
+									402 cell (selectable) Give Feedback opens and can be cancelled
+accessibility_text, action_result, visual_heuristic
+									403 cell (selectable) medium
+									404 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+								405 row (selectable)
+									406 cell (selectable) Report Issue opens and can be cancelled
+accessibility_text, action_result, visual_heuristic
+									407 cell (selectable) medium
+									408 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+								409 row (selectable)
+									410 cell (selectable) Home suggestion cards are visible/clickable
+accessibility_text, action_result, visual_heuristic
+									411 cell (selectable) medium
+									412 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+								413 row (selectable)
+									414 cell (selectable) A typed real intent can be submitted
+accessibility_text, action_result, visual_heuristic
+									415 cell (selectable) medium
+									416 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+								417 row (selectable)
+									418 cell (selectable) Real provider workflow reaches Review
+accessibility_text, provider_state, action_result, visual_heuristic
+									419 cell (selectable) medium
+									420 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+								421 row (selectable)
+									422 cell (selectable) Summary tab renders after intent review
+accessibility_text, provider_state, visual_heuristic
+									423 cell (selectable) medium
+									424 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+								425 row (selectable)
+									426 cell (selectable) Diff tab renders after intent review
+accessibility_text, provider_state, visual_heuristic
+									427 cell (selectable) medium
+									428 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+								429 row (selectable)
+									430 cell (selectable) Build & Test destructive boundary appears before activation
+accessibility_text, action_result, confirmation_boundary, visual_heuristic
+									431 cell (selectable) medium
+									432 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+								433 row (selectable)
+									434 cell (selectable) Discard confirmation is guarded and only confirmed in disposable state
+accessibility_text, action_result, confirmation_boundary, visual_heuristic
+									435 cell (selectable) medium
+									436 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+								437 row (selectable)
+									438 cell (selectable) Core UX/UI surfaces are captured and inspectable
+artifact_quality, accessibility_text, visual_heuristic
+									439 cell (selectable) medium
+									440 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+								441 row (selectable)
+									442 cell (selectable) PR-specific user-visible behavior is covered when applicable
+pr_metadata, coverage_manifest
+									443 cell (selectable) medium
+									444 cell (selectable) The claim has non-UI state or manifest proof in addition to UI evidence.
+								445 row (selectable)
+									446 cell (selectable) Generated HTML report is inspected with Computer Use
+accessibility_text, artifact_quality, visual_heuristic
+									447 cell (selectable) medium
+									448 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+								449 column
+									450 cell
+										451 text Scenario
+									452 cell (selectable) Settings API Keys tab visibly renders
+accessibility_text, sensitive_redaction
+									453 cell (selectable) Console opens and renders
+accessibility_text, sensitive_redaction
+									454 cell (selectable) App launches and first screen is usable
+accessibility_text, visual_heuristic
+									455 cell (selectable) Update banner does not block the main workflow
+accessibility_text, action_result, visual_heuristic
+									456 cell (selectable) Settings General tab visibly renders
+accessibility_text, action_result, visual_heuristic
+									457 cell (selectable) Settings AI Models tab visibly renders
+accessibility_text, action_result, visual_heuristic
+									458 cell (selectable) Settings Preferences tab visibly renders
+accessibility_text, action_result, visual_heuristic
+									459 cell (selectable) My History opens and renders
+accessibility_text, action_result, visual_heuristic
+									460 cell (selectable) Give Feedback opens and can be cancelled
+accessibility_text, action_result, visual_heuristic
+									461 cell (selectable) Report Issue opens and can be cancelled
+accessibility_text, action_result, visual_heuristic
+									462 cell (selectable) Home suggestion cards are visible/clickable
+accessibility_text, action_result, visual_heuristic
+									463 cell (selectable) A typed real intent can be submitted
+accessibility_text, action_result, visual_heuristic
+									464 cell (selectable) Real provider workflow reaches Review
+accessibility_text, provider_state, action_result, visual_heuristic
+									465 cell (selectable) Summary tab renders after intent review
+accessibility_text, provider_state, visual_heuristic
+									466 cell (selectable) Diff tab renders after intent review
+accessibility_text, provider_state, visual_heuristic
+									467 cell (selectable) Build & Test destructive boundary appears before activation
+accessibility_text, action_result, confirmation_boundary, visual_heuristic
+									468 cell (selectable) Discard confirmation is guarded and only confirmed in disposable state
+accessibility_text, action_result, confirmation_boundary, visual_heuristic
+									469 cell (selectable) Core UX/UI surfaces are captured and inspectable
+artifact_quality, accessibility_text, visual_heuristic
+									470 cell (selectable) PR-specific user-visible behavior is covered when applicable
+pr_metadata, coverage_manifest
+									471 cell (selectable) Generated HTML report is inspected with Computer Use
+accessibility_text, artifact_quality, visual_heuristic
+								472 column
+									473 cell
+										474 text Risk
+									475 cell (selectable) high
+									476 cell (selectable) high
+									477 cell (selectable) medium
+									478 cell (selectable) medium
+									479 cell (selectable) medium
+									480 cell (selectable) medium
+									481 cell (selectable) medium
+									482 cell (selectable) medium
+									483 cell (selectable) medium
+									484 cell (selectable) medium
+									485 cell (selectable) medium
+									486 cell (selectable) medium
+									487 cell (selectable) medium
+									488 cell (selectable) medium
+									489 cell (selectable) medium
+									490 cell (selectable) medium
+									491 cell (selectable) medium
+									492 cell (selectable) medium
+									493 cell (selectable) medium
+									494 cell (selectable) medium
+								495 column
+									496 cell
+										497 text Why
+									498 cell (selectable) The claim depends on accessibility text without a screenshot, usually due sensitive-surface redaction.
+									499 cell (selectable) The claim depends on accessibility text without a screenshot, usually due sensitive-surface redaction.
+									500 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+									501 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+									502 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+									503 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+									504 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+									505 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+									506 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+									507 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+									508 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+									509 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+									510 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+									511 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+									512 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+									513 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+									514 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+									515 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+									516 cell (selectable) The claim has non-UI state or manifest proof in addition to UI evidence.
+									517 cell (selectable) Accessibility text is the semantic assertion source; screenshots are reviewer support.
+								518 container
+									519 cell
+										520 text Scenario
+									521 cell
+										522 text Risk
+									523 cell
+										524 text Why
+							525 heading Failure Classification, Value: 3
+								526 text Failure Classification
+							527 table
+								528 row (selectable) Scenario
+Status
+Class
+Meaning
+								529 row (selectable)
+									530 cell (selectable) PR-specific user-visible behavior is covered when applicable
+									531 cell (selectable) INCONCLUSIVE
+									532 cell (selectable) coverage
+									533 cell (selectable) The suite lacks a scenario, manifest mapping, PR focus, or waiver for the behavior.
+								534 row (selectable)
+									535 cell (selectable) Generated HTML report is inspected with Computer Use
+									536 cell (selectable) INCONCLUSIVE
+									537 cell (selectable) inconclusive
+									538 cell (selectable) The runner could not prove either pass or fail.
+								539 column
+									540 cell
+										541 text Scenario
+									542 cell (selectable) PR-specific user-visible behavior is covered when applicable
+									543 cell (selectable) Generated HTML report is inspected with Computer Use
+								544 column
+									545 cell
+										546 text Status
+									547 cell (selectable) INCONCLUSIVE
+									548 cell (selectable) INCONCLUSIVE
+								549 column
+									550 cell
+										551 text Class
+									552 cell (selectable) coverage
+									553 cell (selectable) inconclusive
+								554 column
+									555 cell
+										556 text Meaning
+									557 cell (selectable) The suite lacks a scenario, manifest mapping, PR focus, or waiver for the behavior.
+									558 cell (selectable) The runner could not prove either pass or fail.
+								559 container
+									560 cell
+										561 text Scenario
+									562 cell
+										563 text Status
+									564 cell
+										565 text Class
+									566 cell
+										567 text Meaning
+							568 summary Confirmation boundaries, Value: off
+								569 text Confirmation boundaries
+							570 summary Full assertion-risk table, Value: off
+								571 text Full assertion-risk table
+							572 summary Legacy grade mapping, Value: off
+								573 text Legacy grade mapping
+							574 summary Taxonomy definitions, Value: off
+								575 text Taxonomy definitions
+							576 heading Visual Proof, Value: 2
+								577 text Visual Proof
+							578 text Annotations are reviewer aids, not the sole assertion source. The pass/fail source of truth is the paired Computer Use accessibility text and recorded action events.
+							579 heading Real provider workflow reaches Review, Value: 3
+								580 text Real provider workflow reaches Review
+							581 text PASS action-confirmed Assertion:  Polling reached Review-equivalent UI with Build & Test/Discard/Summary/Diff controls. Not proved:  Does not prove Save/commit.
+							582 image provider-progress-01
+							583 container
+								584 text provider-progress-01  - Polling provider-progress.
+							585 image provider-progress-02
+							586 container
+								587 text provider-progress-02  - Polling provider-progress.
+							588 summary texts/17-provider-progress-01.txt, Value: off
+								589 text texts/17-provider-progress-01.txt
+							590 summary texts/18-provider-progress-02.txt, Value: off
+								591 text texts/18-provider-progress-02.txt
+							592 heading Summary tab renders after intent review, Value: 3
+								593 text Summary tab renders after intent review
+							594 text PASS text-confirmed Assertion:  Summary text must mention the requested package/change domain. Not proved:  Does not prove file persistence.
+							595 image review-summary
+							596 text Summary after Review
+							597 container
+								598 text review-summary  - Computer Use opened Summary after Review.
+							599 summary texts/23-review-summary.txt, Value: off
+								600 text texts/23-review-summary.txt
+							601 heading Diff tab renders after intent review, Value: 3
+								602 text Diff tab renders after intent review
+							603 text PASS text-confirmed Assertion:  Diff text must show the requested package/change in a configuration file. Not proved:  Does not prove the change builds or saves.
+							604 image review-diff
+							605 text Diff includes requested change
+							606 container
+								607 text review-diff  - Computer Use opened Diff after Review.
+							608 summary texts/24-review-diff.txt, Value: off
+								609 text texts/24-review-diff.txt
+							610 heading Build & Test destructive boundary appears before activation, Value: 3
+								611 text Build & Test destructive boundary appears before activation
+							612 text PASS action-confirmed Assertion:  Build & Test opens a confirmation dialog before activation; disposable runs confirm it and wait for Step 3. Not proved:  Without explicit disposable build-confirm mode, the runner still cancels at the boundary.
+							613 image build-boundary
+							614 text Confirm button
+							615 container
+								616 text build-boundary  - Computer Use clicked Build & Test to verify the destructive boundary.
+							617 image step-3-ready
+							618 text Step 3 active Commit controls
+							619 container
+								620 text step-3-ready  - Computer Use reached Step 3 after Build & Test.
+							621 summary texts/25-build-boundary.txt, Value: off
+								622 text texts/25-build-boundary.txt
+							623 summary texts/27-step-3-ready.txt, Value: off
+								624 text texts/27-step-3-ready.txt
+							625 heading Step 3 Save / Keep changes persists a change, Value: 3
+								626 text Step 3 Save / Keep changes persists a change
+							627 text PASS action-confirmed Assertion:  In disposable build-confirm mode, Computer Use reaches Step 3, clicks Commit, and the runner verifies the disposable repo HEAD changed with a clean worktree. Not proved:  When disposable build-confirm mode is not enabled, Save remains untested.
+							628 image step-3-ready
+							629 text Step 3 active Commit controls
+							630 container
+								631 text step-3-ready  - Computer Use reached Step 3 after Build & Test.
+							632 image after-commit
+							633 text Saved commit state
+							634 container
+								635 text after-commit  - Computer Use committed Step 3 changes.
+							636 summary texts/27-step-3-ready.txt, Value: off
+								637 text texts/27-step-3-ready.txt
+							638 summary texts/28-after-commit.txt, Value: off
+								639 text texts/28-after-commit.txt
+							640 heading Rollback cleanup returns disposable config to clean state, Value: 3
+								641 text Rollback cleanup returns disposable config to clean state
+							642 text PASS action-confirmed Assertion:  After Save, Computer Use opens History, restores the pre-test baseline commit, and the runner verifies HEAD returned to that baseline with a clean worktree. Not proved:  Only runs when Save succeeded and a restorable disposable baseline exists.
+							643 image history-before-restore
+							644 text History restore controls
+							645 container
+								646 text history-before-restore  - Computer Use opened History after Step 3 commit.
+							647 image history-restore-preview
+							648 text Confirm restore preview
+							649 container
+								650 text history-restore-preview  - Computer Use previewed History restore.
+							651 summary texts/29-history-before-restore.txt, Value: off
+								652 text texts/29-history-before-restore.txt
+							653 summary texts/30-history-restore-preview.txt, Value: off
+								654 text texts/30-history-restore-preview.txt
+							655 heading My History opens and renders, Value: 3
+								656 text My History opens and renders
+							657 text PASS action-confirmed Assertion:  Computer Use opened History and captured a visible history/empty state. Not proved:  Current run does not prove a newly saved change appears there.
+							658 image history
+							659 text History surface
+							660 container
+								661 text history  - Computer Use opened History.
+							662 summary texts/07-history.txt, Value: off
+								663 text texts/07-history.txt
+							664 summary Additional passing visual/text proof (14), Value: off
+								665 text Additional passing visual/text proof (14)
+							666 heading Scenario Checklist, Value: 2
+								667 text Scenario Checklist
+							668 text Grouped scenario tables are collapsed by default so reviewers can drill into a specific surface without reading the whole suite linearly.
+							669 summary App Shell 3 pass, Value: off
+								670 text App Shell 
+								671 text 3 pass
+							672 summary Settings 4 pass, Value: off
+								673 text Settings 
+								674 text 4 pass
+							675 summary Support Surfaces 4 pass, Value: off
+								676 text Support Surfaces 
+								677 text 4 pass
+							678 summary Real Provider Workflow 9 pass, Value: off
+								679 text Real Provider Workflow 
+								680 text 9 pass
+							681 summary PR-Specific Focus 1 pass 1 inconclusive, Value: off
+								682 text PR-Specific Focus 
+								683 text 1 pass
+								684 text 1 inconclusive
+							685 summary Evidence 1 pass 1 inconclusive, Value: off
+								686 text Evidence 
+								687 text 1 pass
+								688 text 1 inconclusive
+							689 heading Main Coverage Freshness, Value: 2
+								690 text Main Coverage Freshness
+							691 text Manifest v1 : 9/13 surfaces have direct scenario mappings; 4 have explicit waivers; 99 user-visible candidate files scanned.
+							692 heading Coverage Drift, Value: 3
+								693 text Coverage Drift
+							694 table
+								695 row (selectable) Status
+Detail
+								696 row (selectable)
+									697 cell (selectable) CLEAN
+									698 cell (selectable) No unmapped user-visible candidate files or manifest mapping errors detected.
+								699 column
+									700 cell
+										701 text Status
+									702 cell (selectable) CLEAN
+								703 column
+									704 cell
+										705 text Detail
+									706 cell (selectable) No unmapped user-visible candidate files or manifest mapping errors detected.
+								707 container
+									708 cell
+										709 text Status
+									710 cell
+										711 text Detail
+							712 heading Explicit Waivers, Value: 3
+								713 text Explicit Waivers
+							714 table
+								715 row (selectable) ID
+Surface
+Reason
+								716 row (selectable)
+									717 cell (selectable) homebrew-badge
+									718 cell (selectable) Homebrew untracked package badge and add-to-config popover
+									719 cell (selectable) Not yet deterministic in the remote major-feature lane; needs a fixture with Homebrew installed and a known untracked tap/brew/cask diff before the suite can honestly claim coverage for the badge popover and Add to config action.
+								720 row (selectable)
+									721 cell (selectable) onboarding-permissions
+									722 cell (selectable) First-run permissions and nix setup/onboarding
+									723 cell (selectable) Current remote lane starts from a configured app state. This must become a dedicated clean-profile Computer Use scenario before the suite can honestly claim full main coverage.
+								724 row (selectable)
+									725 cell (selectable) sudo-local-activation-fixture
+									726 cell (selectable) nix-darwin sudo_local activation path
+									727 cell (selectable) The DXU remote lane disables sudo_local in the disposable fixture because unattended MacinCloud AppleScript activation can hang while creating /etc/pam.d/sudo_local. This is an explicit CI fixture waiver, not proof that the production sudo_local path works.
+								728 row (selectable)
+									729 cell (selectable) preview-indicator
+									730 cell (selectable) Preview indicator floating commit/revert UI
+									731 cell (selectable) Not yet in the remote major-feature lane; needs either a deterministic preview-state setup or a real workflow that activates it.
+								732 column
+									733 cell
+										734 text ID
+									735 cell (selectable) homebrew-badge
+									736 cell (selectable) onboarding-permissions
+									737 cell (selectable) sudo-local-activation-fixture
+									738 cell (selectable) preview-indicator
+								739 column
+									740 cell
+										741 text Surface
+									742 cell (selectable) Homebrew untracked package badge and add-to-config popover
+									743 cell (selectable) First-run permissions and nix setup/onboarding
+									744 cell (selectable) nix-darwin sudo_local activation path
+									745 cell (selectable) Preview indicator floating commit/revert UI
+								746 column
+									747 cell
+										748 text Reason
+									749 cell (selectable) Not yet deterministic in the remote major-feature lane; needs a fixture with Homebrew installed and a known untracked tap/brew/cask diff before the suite can honestly claim coverage for the badge popover and Add to config action.
+									750 cell (selectable) Current remote lane starts from a configured app state. This must become a dedicated clean-profile Computer Use scenario before the suite can honestly claim full main coverage.
+									751 cell (selectable) The DXU remote lane disables sudo_local in the disposable fixture because unattended MacinCloud AppleScript activation can hang while creating /etc/pam.d/sudo_local. This is an explicit CI fixture waiver, not proof that the production sudo_local path works.
+									752 cell (selectable) Not yet in the remote major-feature lane; needs either a deterministic preview-state setup or a real workflow that activates it.
+								753 container
+									754 cell
+										755 text ID
+									756 cell
+										757 text Surface
+									758 cell
+										759 text Reason
+							760 heading Coverage Gaps / Not Proved, Value: 2
+								761 text Coverage Gaps / Not Proved
+							762 table
+								763 row (selectable) Gap
+Status
+Detail
+								764 row (selectable)
+									765 cell (selectable) PR-specific user-visible behavior is covered when applicable
+									766 cell (selectable) INCONCLUSIVE
+									767 cell (selectable) No detail recorded.
+								768 row (selectable)
+									769 cell (selectable) Generated HTML report is inspected with Computer Use
+									770 cell (selectable) INCONCLUSIVE
+									771 cell (selectable) No detail recorded.
+								772 column
+									773 cell
+										774 text Gap
+									775 cell (selectable) PR-specific user-visible behavior is covered when applicable
+									776 cell (selectable) Generated HTML report is inspected with Computer Use
+								777 column
+									778 cell
+										779 text Status
+									780 cell (selectable) INCONCLUSIVE
+									781 cell (selectable) INCONCLUSIVE
+								782 column
+									783 cell
+										784 text Detail
+									785 cell (selectable) No detail recorded.
+									786 cell (selectable) No detail recorded.
+								787 container
+									788 cell
+										789 text Gap
+									790 cell
+										791 text Status
+									792 cell
+										793 text Detail
+							794 heading Remote Mac / App Metadata, Value: 2
+								795 text Remote Mac / App Metadata
+							796 container Remote metadata summary
+								797 text Machine
+								798 text DXU97120 · macOS 26.2 · arm64
+								799 text App
+								800 text nixmac · 0.22.40 · codesign verified
+								801 text Process
+								802 text process 75027 · OpenRouter key present-redacted · secrets not recorded
+							803 summary Full remote metadata tables, Value: off
+								804 text Full remote metadata tables
+							805 summary Evolved Flow Case Strategy, Value: off
+								806 text Evolved Flow Case Strategy
+							807 heading Raw Evidence, Value: 2
+								808 text Raw Evidence
+							809 summary Full screenshot gallery (28), Value: off
+								810 text Full screenshot gallery (28)
+							811 summary Human QA narrative (31), Value: off
+								812 text Human QA narrative (31)
+							813 summary Claims vs evidence (24), Value: off
+								814 text Claims vs evidence (24)
+							815 summary Run metadata, Value: off
+								816 text Run metadata
+							817 heading Cleanup / Restore Status, Value: 2
+								818 text Cleanup / Restore Status
+							819 text Remote app state was not restored by this runner. CI wrapper is responsible for remote app-support backup/restore; local artifacts are retained.
+					820 scroll bar (settable, float) 0
+		821 image WindowControlShadowView._shadowImageView
+		822 toolbar
+			823 container Secondary Actions: Move next, Remove from toolbar
+				824 button Description: show sidebar, Help: Show sidebar, ID: SidebarButton
+				825 menu button Description: Tab Group picker, ID: TabGroupPickerButton?TabGroup=
+			826 container BackForwardSegmentedControl
+				827 button (disabled) Description: Go back, Help: Show the previous page, ID: BackButton
+				828 button (disabled) Description: Go forward, Help: Show the next page, ID: ForwardButton
+			829 container Secondary Actions: Move previous, Move next, Remove from toolbar
+				830 text field (settable, string) Description: smart search field, Value: file:///private/tmp/nixmac-computer-use-reports/2026-05-01T213508143Z/index.html, Placeholder: Search or enter website name, ID: WEB_BROWSER_ADDRESS_AND_SEARCH_FIELD
+				831 image Description: Website icon, ID: UnifiedFieldIcon?IsSymbolImage=true
+				832 button Reload this page, ID: ReloadButton
+			833 button Description: Share, ID: ShareButton, Secondary Actions: Move previous, Move next, Remove from toolbar
+			834 button Description: New Tab, ID: NewTabButton, Secondary Actions: Move previous, Move next, Remove from toolbar
+				835 button Description: new tab, Help: New Tab, ID: NewTabButton
+					836 button Description: add, Help: New Tab
+			837 button Description: Tab Overview, ID: TabOverviewButton, Secondary Actions: Move previous, Remove from toolbar
+		838 tab group Description: Tab bar, 57 tabs, ID: TabBar?isSeparate=false
+			839 tab (disabled) Description: nixmac, Value: off
+			840 tab (disabled) Description: nixmac Remote Computer Use E2E Report, Value: off
+			841 tab (disabled) Description: nixmac Computer Use E2E Evidence, Value: off
+			842 tab (disabled) Description: nixmac Computer Use E2E Evidence, Value: off
+			843 tab (disabled) Description: nixmac Computer Use E2E Evidence, Value: off
+			844 tab (disabled) Description: nixmac Computer Use E2E Evidence, Value: off
+			845 tab (disabled) Description: nixmac Computer Use E2E Evidence, Value: off
+			846 tab (disabled) Description: nixmac Computer Use E2E Evidence, Value: off
+			847 tab (disabled) Description: nixmac Computer Use Prompt E2E, Value: off
+			848 tab (disabled) Description: nixmac Computer Use E2E Evidence, Value: off
+			849 tab (disabled) Description: nixmac Computer Use E2E Evidence, Value: off
+			850 tab (disabled) Description: nixmac Computer Use E2E Evidence, Value: off
+			851 tab (disabled) Description: nixmac Computer Use E2E Evidence, Value: off
+			852 tab (disabled) Description: nixmac Computer Use E2E Evidence, Value: off
+			853 tab (disabled) Description: nixmac Computer Use E2E Evidence, Value: off
+			854 tab (disabled) Description: nixmac Computer Use E2E Evidence, Value: off
+			855 tab (disabled) Description: nixmac Computer Use E2E Evidence, Value: off
+			856 tab (disabled) Description: nixmac Computer Use E2E Evidence, Value: off
+			857 tab (disabled) Description: nixmac Computer Use E2E Evidence, Value: off
+			858 tab (disabled) Description: nixmac Computer Use E2E Evidence, Value: off
+			859 tab (disabled) Description: nixmac Computer Use E2E Evidence, Value: off
+			860 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				861 image Description: safari, ID: FaviconImageView
+			862 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				863 image Description: safari, ID: FaviconImageView
+			864 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				865 image Description: safari, ID: FaviconImageView
+			866 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				867 image Description: safari, ID: FaviconImageView
+			868 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				869 image Description: safari, ID: FaviconImageView
+			870 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				871 image Description: safari, ID: FaviconImageView
+			872 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				873 image Description: safari, ID: FaviconImageView
+			874 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				875 image Description: safari, ID: FaviconImageView
+			876 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				877 image Description: safari, ID: FaviconImageView
+			878 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				879 image Description: safari, ID: FaviconImageView
+			880 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				881 image Description: safari, ID: FaviconImageView
+			882 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				883 image Description: safari, ID: FaviconImageView
+			884 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				885 image Description: safari, ID: FaviconImageView
+			886 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				887 image Description: safari, ID: FaviconImageView
+			888 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				889 image Description: safari, ID: FaviconImageView
+			890 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				891 image Description: safari, ID: FaviconImageView
+			892 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				893 image Description: safari, ID: FaviconImageView
+			894 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				895 image Description: safari, ID: FaviconImageView
+			896 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				897 image Description: safari, ID: FaviconImageView
+			898 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				899 image Description: safari, ID: FaviconImageView
+			900 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				901 image Description: safari, ID: FaviconImageView
+			902 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				903 image Description: safari, ID: FaviconImageView
+			904 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				905 image Description: safari, ID: FaviconImageView
+			906 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				907 image Description: safari, ID: FaviconImageView
+			908 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				909 image Description: safari, ID: FaviconImageView
+			910 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				911 image Description: safari, ID: FaviconImageView
+			912 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				913 image Description: safari, ID: FaviconImageView
+			914 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				915 image Description: safari, ID: FaviconImageView
+			916 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				917 image Description: safari, ID: FaviconImageView
+			918 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				919 image Description: safari, ID: FaviconImageView
+			920 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				921 image Description: safari, ID: FaviconImageView
+			922 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				923 image Description: safari, ID: FaviconImageView
+			924 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				925 image Description: safari, ID: FaviconImageView
+			926 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				927 image Description: safari, ID: FaviconImageView
+			928 tab nixmac Computer Use E2E Evidence, Value: off, ID: TabBarTab?isPinned=false&isNarrow=true&isActive=false, Secondary Actions: close tab
+				929 image Description: safari, ID: FaviconImageView
+			930 tab nixmac Computer Use E2E Evidence, Help: To interact with the items in this button, press Control-Option-Shift-Down Arrow., Value: on, ID: TabBarTab?isPinned=false&isNarrow=false&isActive=true, Secondary Actions: close tab
+				931 image Description: safari, ID: FaviconImageView
+				932 text Value: nixmac Computer Use E2E Evidence, ID: UnifedTabBarButton._titleTextField
+		933 close button
+		934 full screen button Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+		935 minimize button
+	936 menu bar
+		937 Safari
+		938 File
+		939 Edit
+		940 View, ID: SafariViewMenu
+		941 History
+		942 Bookmarks, ID: SafariBookmarksMenu
+		943 Window, ID: SafariWindowMenu
+		944 Help, ID: SafariHelpMenu
+
+Selected text: ```
+file:///private/tmp/nixmac-computer-use-reports/2026-05-01T213508143Z/index.html
+```
+
+Note: Pay special attention to the content selected by the user. If the user asks a question or refers to the content they are looking at on-screen, they might be referring to the selected content (but they might be referring to something else that's visible, too).
+</app_state>
