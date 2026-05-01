@@ -208,9 +208,9 @@ suite should cover:
   replace the UI interaction with Screen Sharing, WDIO, Playwright, shell DOM
   inspection, or screenshot-only automation.
 - Trigger the remote lane on every pull request. For same-repository PRs,
-  publish the generated report/video to GitHub Pages and maintain one sticky PR
-  comment with the hosted links, Actions run, artifact backup, verdict, and
-  counts.
+  publish the generated report/video to the public `gh-pages` report branch and
+  maintain one sticky PR comment with the hosted links, Actions run, artifact
+  backup, verdict, and counts.
 - Capture PR metadata and changed files when available. If user-visible files
   are inferred but no dedicated Computer Use focus scenario is run, mark
   PR-specific coverage inconclusive.

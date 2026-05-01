@@ -91,9 +91,10 @@ the HTML report as Main Coverage Freshness.
 
 `.github/workflows/computer-use-e2e.yml` triggers on every pull request and
 `workflow_dispatch`. On same-repository pull requests, it publishes the generated
-report to GitHub Pages and upserts one sticky PR comment with the verdict,
-counts, hosted `index.html`, hosted evidence video, Actions run, and artifact
-backup. The workflow does not send Slack or other team notifications.
+report to the `gh-pages` report branch and upserts one sticky PR comment with
+the verdict, counts, public hosted `index.html`, public hosted evidence video,
+Actions run, and artifact backup. The workflow does not send Slack or other team
+notifications.
 
 The workflow serializes all runs through one DXU remote-machine concurrency
 group. Do not make concurrency per PR while the suite depends on a singleton

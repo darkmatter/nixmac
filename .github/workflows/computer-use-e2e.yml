@@ -14,7 +14,6 @@ permissions:
   contents: write
   actions: read
   issues: write
-  pages: write
   pull-requests: write
 
 jobs:
@@ -72,6 +71,8 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
           PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           append_multiline_env() {
             local name="$1"
@@ -90,7 +91,7 @@ jobs:
             echo "NIXMAC_E2E_PR_BASE_REF=$PR_BASE_REF"
           } >> "$GITHUB_ENV"
           printf '%s\n' "$PR_TITLE" | append_multiline_env "NIXMAC_E2E_PR_TITLE"
-          { git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}" || true; } |
+          { git diff --name-only "$PR_BASE_SHA" "$PR_HEAD_SHA" || true; } |
             append_multiline_env "NIXMAC_E2E_PR_CHANGED_FILES"
 
       - name: Check remote Computer Use secrets
@@ -526,8 +527,6 @@ jobs:
           fail="$(jq -r '[.scenarios[]? | select(.status == "fail")] | length' "$latest_report/state.json")"
           inconclusive="$(jq -r '[.scenarios[]? | select(.status == "inconclusive")] | length' "$latest_report/state.json")"
           report_slug="$(basename "$latest_report")"
-          owner_lc="$(tr '[:upper:]' '[:lower:]' <<<"${GITHUB_REPOSITORY_OWNER}")"
-          repo_name="${GITHUB_REPOSITORY#*/}"
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             report_prefix="computer-use-e2e/pr-${{ github.event.pull_request.number }}"
           else
@@ -535,7 +534,8 @@ jobs:
           fi
           publish_path="${report_prefix}/run-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           latest_path="${report_prefix}/latest"
-          pages_base_url="https://${owner_lc}.github.io/${repo_name}"
+          html_preview_base="https://htmlpreview.github.io/?https://github.com/${GITHUB_REPOSITORY}/blob/gh-pages"
+          cdn_base="https://cdn.jsdelivr.net/gh/${GITHUB_REPOSITORY}@gh-pages"
           {
             echo "has_report=true"
             echo "report_dir=$latest_report"
@@ -546,10 +546,10 @@ jobs:
             echo "inconclusive=$inconclusive"
             echo "publish_path=$publish_path"
             echo "latest_path=$latest_path"
-            echo "index_url=${pages_base_url}/${publish_path}/index.html"
-            echo "latest_index_url=${pages_base_url}/${latest_path}/index.html"
-            echo "video_url=${pages_base_url}/${publish_path}/video/computer-use-evidence.mp4"
-            echo "latest_video_url=${pages_base_url}/${latest_path}/video/computer-use-evidence.mp4"
+            echo "index_url=${html_preview_base}/${publish_path}/index.html"
+            echo "latest_index_url=${html_preview_base}/${latest_path}/index.html"
+            echo "video_url=${cdn_base}/${publish_path}/video/computer-use-evidence.mp4"
+            echo "latest_video_url=${cdn_base}/${latest_path}/video/computer-use-evidence.mp4"
           } >> "$GITHUB_OUTPUT"
 
       - name: Summarize evidence report
@@ -579,7 +579,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      - name: Publish evidence report to GitHub Pages
+      - name: Publish evidence report to public report branch
         id: publish-report
         if: always() && steps.report-meta.outputs.has_report == 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         shell: bash
@@ -592,6 +592,8 @@ jobs:
           LATEST_INDEX_URL: ${{ steps.report-meta.outputs.latest_index_url }}
           VIDEO_URL: ${{ steps.report-meta.outputs.video_url }}
           LATEST_VIDEO_URL: ${{ steps.report-meta.outputs.latest_video_url }}
+          RUN_ASSET_BASE_URL: https://cdn.jsdelivr.net/gh/${{ github.repository }}@gh-pages/${{ steps.report-meta.outputs.publish_path }}/
+          LATEST_ASSET_BASE_URL: https://cdn.jsdelivr.net/gh/${{ github.repository }}@gh-pages/${{ steps.report-meta.outputs.latest_path }}/
         run: |
           set -euo pipefail
           site_dir="$(mktemp -d)"
@@ -609,6 +611,8 @@ jobs:
           mkdir -p "$site_dir/${PUBLISH_PATH:?}" "$site_dir/${LATEST_PATH:?}"
           cp -a "$REPORT_DIR"/. "$site_dir/${PUBLISH_PATH:?}"/
           cp -a "$REPORT_DIR"/. "$site_dir/${LATEST_PATH:?}"/
+          RUN_ASSET_BASE_URL="$RUN_ASSET_BASE_URL" perl -0pi -e 's#<head>#<head>\n<base href="$ENV{RUN_ASSET_BASE_URL}">#' "$site_dir/${PUBLISH_PATH:?}/index.html"
+          LATEST_ASSET_BASE_URL="$LATEST_ASSET_BASE_URL" perl -0pi -e 's#<head>#<head>\n<base href="$ENV{LATEST_ASSET_BASE_URL}">#' "$site_dir/${LATEST_PATH:?}/index.html"
           touch "$site_dir/.nojekyll"
           git -C "$site_dir" add .nojekyll "$PUBLISH_PATH" "$LATEST_PATH"
           if git -C "$site_dir" diff --cached --quiet; then
@@ -616,11 +620,6 @@ jobs:
           else
             git -C "$site_dir" commit -q -m "Publish Computer Use E2E report for PR #${{ github.event.pull_request.number }} run ${GITHUB_RUN_ID}"
             git -C "$site_dir" push -q origin gh-pages
-          fi
-          if ! gh api "repos/${GITHUB_REPOSITORY}/pages" >/tmp/nixmac-pages.json 2>/tmp/nixmac-pages.err; then
-            gh api -X POST "repos/${GITHUB_REPOSITORY}/pages" --input - <<'JSON'
-          {"source":{"branch":"gh-pages","path":"/"}}
-          JSON
           fi
           {
             echo "index_url=$INDEX_URL"
@@ -630,7 +629,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Comment evidence report on pull request
-        if: always() && steps.report-meta.outputs.has_report == 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: always() && steps.report-meta.outputs.has_report == 'true' && steps.publish-report.outcome == 'success' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}

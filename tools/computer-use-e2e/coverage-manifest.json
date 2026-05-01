@@ -67,6 +67,13 @@
       "sourcePrefixes": ["apps/native/src/components/widget/action-tiles.tsx", "apps/native/src/components/widget/badge-list.tsx", "apps/native/src/components/widget/begin-evolve-warning.tsx", "apps/native/src/components/widget/conversational-response.tsx", "apps/native/src/components/widget/mac-recommendation-chip.tsx", "apps/native/src/components/widget/prompt-history-badge.tsx", "apps/native/src/components/widget/prompt-input.tsx", "apps/native/src/components/widget/prompt-input-section.tsx", "apps/native/src/components/widget/steps/begin-step.tsx", "apps/native/src/components/widget/steps/evolve-step.tsx", "apps/native/src/components/widget/steps/manual-evolve-step.tsx", "apps/native/src/components/widget/summaries/", "apps/native/src/hooks/use-evolve.ts", "apps/native/src/hooks/use-prompt-history.ts", "apps/native/src/hooks/use-recommended-prompt.ts", "apps/native/src/hooks/use-summary.ts", "apps/native/src-tauri/src/evolution.rs", "apps/native/src-tauri/src/evolve_state.rs", "apps/native/src-tauri/src/provider_errors.rs"]
     },
     {
+      "id": "homebrew-badge",
+      "label": "Homebrew untracked package badge and add-to-config popover",
+      "scenarioKeys": [],
+      "sourcePrefixes": ["apps/native/src/components/widget/homebrew-badge.tsx"],
+      "waiver": "Not yet deterministic in the remote major-feature lane; needs a fixture with Homebrew installed and a known untracked tap/brew/cask diff before the suite can honestly claim coverage for the badge popover and Add to config action."
+    },
+    {
       "id": "build-boundaries",
       "label": "Build & Test, discard, rollback, and confirmation boundaries",
       "scenarioKeys": ["buildBoundary", "discard", "rollbackCleanup"],
