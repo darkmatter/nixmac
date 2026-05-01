@@ -309,8 +309,8 @@ jobs:
         if: failure() && steps.remote-secrets.outputs.available != 'false'
         shell: bash
         run: |
-          if compgen -G "${REPORT_ROOT}/*/state.json" >/dev/null; then
-            echo "Computer Use E2E already produced a report; preserving it."
+          if compgen -G "${REPORT_ROOT}/*/index.html" >/dev/null; then
+            echo "Computer Use E2E already produced an HTML report; preserving it."
             exit 0
           fi
           node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable \
