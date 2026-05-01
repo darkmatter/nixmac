@@ -5,8 +5,11 @@ use crate::nix_ast_lists::parse_string_lists_by_attrpath;
 use crate::scanner::inject_module_import;
 use crate::shared_types::HomebrewState;
 use crate::{mac, managed_edit, shared_types};
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use tauri::AppHandle;
+
+const DEFAULT_HOMEBREW_SOURCE: &str = "modules/darwin/homebrew.nix";
+const INLINE_DARWIN_SOURCE: &str = "flake-modules/darwin.nix";
 
 /// Checks if Homebrew is installed by trying to run `brew --version`.
 fn is_homebrew_installed() -> bool {
@@ -190,6 +193,18 @@ pub fn compute_homebrew_diff(installed: HomebrewState, config: HomebrewState) ->
     state
 }
 
+fn ensure_supported_homebrew_source(source_rel: &str) -> Result<()> {
+    match source_rel {
+        DEFAULT_HOMEBREW_SOURCE | INLINE_DARWIN_SOURCE => Ok(()),
+        _ => bail!(
+            "unsupported Homebrew source '{}'; expected '{}' or '{}'",
+            source_rel,
+            DEFAULT_HOMEBREW_SOURCE,
+            INLINE_DARWIN_SOURCE
+        ),
+    }
+}
+
 /// Writes missing items in the diff to the nix config, using the source field to determine where to write.
 /// If the source is empty, we'll set up a new modules/darwin/homebrew.nix file and write to that.
 /// We also need to hook up to flake.nix in that case.
@@ -203,13 +218,22 @@ pub fn apply_homebrew_import(diff: HomebrewState, config_dir: &std::path::Path) 
     let source_rel = diff
         .source
         .clone()
-        .unwrap_or_else(|| "modules/darwin/homebrew.nix".to_string());
+        .unwrap_or_else(|| DEFAULT_HOMEBREW_SOURCE.to_string());
+    ensure_supported_homebrew_source(&source_rel)?;
     let source = resolve_path_in_dir_allow_create(config_dir, &source_rel)
         .with_context(|| format!("invalid homebrew source path '{}'", source_rel))?;
     let creating_default_module = diff.source.is_none();
 
-    // If the source doesn't exist, use the homebrew.nix template from templates/nix-darwin-determinate:
+    // Only the no-source path is allowed to create a new module. An explicit
+    // source came from a previous scan, so a missing file means the diff is stale.
     if !source.exists() {
+        if !creating_default_module {
+            bail!(
+                "Homebrew source '{}' no longer exists; rescan Homebrew before applying",
+                source_rel
+            );
+        }
+
         if let Some(parent) = source.parent() {
             std::fs::create_dir_all(parent)
                 .with_context(|| format!("failed to create directory '{}'", parent.display()))?;
@@ -520,6 +544,75 @@ mod tests {
             flake_content, flake_initial,
             "expected explicit source mode not to touch flake imports"
         );
+    }
+
+    #[test]
+    fn apply_homebrew_import_rejects_missing_explicit_source() {
+        let temp = tempfile::tempdir().expect("tempdir should be created");
+        write_file(
+            &temp.path().join("flake-modules/darwin.nix"),
+            r#"{ config, pkgs, ... }:
+{
+  homebrew.brews = [ ];
+}
+"#,
+        );
+
+        let diff = HomebrewState {
+            casks: vec![],
+            brews: vec!["git".to_string()],
+            taps: vec![],
+            source: Some("flake-modules/darwin.nix".to_string()),
+            is_installed: true,
+            last_checked: 0,
+        };
+
+        std::fs::remove_file(temp.path().join("flake-modules/darwin.nix"))
+            .expect("source file should be removable");
+
+        let err = apply_homebrew_import(diff, temp.path())
+            .expect_err("stale explicit source should not be recreated from template");
+        assert!(
+            err.to_string().contains("no longer exists"),
+            "unexpected error: {err:#}"
+        );
+        assert!(
+            !temp.path().join("flake-modules/darwin.nix").exists(),
+            "stale inline source should not be recreated as a homebrew module"
+        );
+    }
+
+    #[test]
+    fn apply_homebrew_import_rejects_unsupported_source() {
+        let temp = tempfile::tempdir().expect("tempdir should be created");
+        let system_file = temp.path().join("modules/darwin/system.nix");
+        write_file(
+            &system_file,
+            r#"{ config, pkgs, ... }:
+{
+  system.stateVersion = 6;
+}
+"#,
+        );
+        let before = std::fs::read_to_string(&system_file).expect("system file should be readable");
+
+        let diff = HomebrewState {
+            casks: vec![],
+            brews: vec!["git".to_string()],
+            taps: vec![],
+            source: Some("modules/darwin/system.nix".to_string()),
+            is_installed: true,
+            last_checked: 0,
+        };
+
+        let err = apply_homebrew_import(diff, temp.path())
+            .expect_err("unsupported source should be rejected");
+        assert!(
+            err.to_string().contains("unsupported Homebrew source"),
+            "unexpected error: {err:#}"
+        );
+        let after = std::fs::read_to_string(&system_file).expect("system file should be readable");
+        assert_eq!(after, before, "unsupported source must not be edited");
     }
 
     #[test]
