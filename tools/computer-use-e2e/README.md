@@ -141,8 +141,9 @@ to seed the GUI launchd environment. Start and cleanup both remove that file,
 and cleanup fails the check if `OPENROUTER_API_KEY` remains in launchd after the
 run. The report never prints the key value.
 
-If the remote secrets are missing, the workflow still triggers and uploads an
-inconclusive HTML report without touching app state.
+If any required remote secret is missing, including the OpenRouter provider
+key, the workflow still triggers and uploads an inconclusive HTML report
+without touching app state.
 
 ## Usage
 
@@ -294,9 +295,17 @@ Use the adversarial runner to test the E2E/reporting suite itself:
 node tools/computer-use-e2e/run-adversarial.mjs
 ```
 
-It copies a historical remote run, introduces reversible fixture failures, then
-re-renders each case through `run-remote-cua.mjs render-existing`. The aggregate
-report lands under:
+It copies the newest local `artifacts/computer-use-remote/<timestamp>` baseline
+that contains `state.json`, introduces reversible fixture failures, then
+re-renders each case through `run-remote-cua.mjs render-existing`. On a clean
+checkout, first run or download a baseline report, or pass one explicitly:
+
+```bash
+node tools/computer-use-e2e/run-adversarial.mjs \
+  --base-run artifacts/computer-use-remote/<timestamp>
+```
+
+The aggregate report lands under:
 
 ```bash
 artifacts/computer-use-adversarial/<timestamp>/index.html

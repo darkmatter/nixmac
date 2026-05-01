@@ -72,17 +72,23 @@ jobs:
         id: remote-secrets
         shell: bash
         run: |
-          if [[ -n "$REMOTE_HOST" && -n "$REMOTE_USER" && -n "$REMOTE_SSH_KEY" ]]; then
+          missing=()
+          [[ -n "$REMOTE_HOST" ]] || missing+=("NIXMAC_E2E_REMOTE_HOST")
+          [[ -n "$REMOTE_USER" ]] || missing+=("NIXMAC_E2E_REMOTE_USER")
+          [[ -n "$REMOTE_SSH_KEY" ]] || missing+=("NIXMAC_E2E_REMOTE_SSH_KEY")
+          [[ -n "$OPENROUTER_API_KEY" ]] || missing+=("NIXMAC_E2E_OPENROUTER_API_KEY")
+          if [[ "${#missing[@]}" -eq 0 ]]; then
             echo "available=true" >> "$GITHUB_OUTPUT"
           else
             echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "missing=${missing[*]}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Render unavailable report
         if: steps.remote-secrets.outputs.available != 'true'
         run: |
           node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable \
-            --note "Remote Computer Use secrets are not configured for this repository. The workflow triggered quietly and produced an inconclusive report without touching app state."
+            --note "Remote Computer Use secrets are not fully configured for this repository. Missing: ${{ steps.remote-secrets.outputs.missing }}. The workflow triggered quietly and produced an inconclusive report without touching app state."
 
       - name: Prepare SSH
         if: steps.remote-secrets.outputs.available == 'true'

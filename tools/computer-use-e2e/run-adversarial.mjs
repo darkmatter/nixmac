@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, truncateSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, truncateSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -8,13 +8,16 @@ import { fileURLToPath } from 'node:url';
 const THIS_FILE = fileURLToPath(import.meta.url);
 const TOOL_DIR = path.dirname(THIS_FILE);
 const REPO_ROOT = path.resolve(TOOL_DIR, '../..');
-const DEFAULT_BASE_RUN = path.join(REPO_ROOT, 'artifacts/computer-use-remote/2026-04-30T225851446Z');
+const DEFAULT_BASE_ROOT = path.resolve(REPO_ROOT, process.env.NIXMAC_E2E_ADVERSARIAL_BASE_ROOT || 'artifacts/computer-use-remote');
 const OUT_ROOT = path.join(REPO_ROOT, 'artifacts/computer-use-adversarial');
 const RUNNER = path.join(TOOL_DIR, 'run-remote-cua.mjs');
 
 function usage() {
   console.log(`Usage:
   node tools/computer-use-e2e/run-adversarial.mjs [--base-run artifacts/computer-use-remote/<timestamp>]
+
+When --base-run is omitted, the runner uses the newest local
+artifacts/computer-use-remote/<timestamp> directory that contains state.json.
 `);
 }
 
@@ -39,6 +42,27 @@ function readJson(file) {
 
 function writeJson(file, value) {
   writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function discoverLatestBaseRun() {
+  if (!existsSync(DEFAULT_BASE_ROOT)) return '';
+  const candidates = readdirSync(DEFAULT_BASE_ROOT, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => path.join(DEFAULT_BASE_ROOT, entry.name))
+    .filter((candidate) => existsSync(path.join(candidate, 'state.json')))
+    .sort((a, b) => path.basename(b).localeCompare(path.basename(a)));
+  return candidates[0] ?? '';
+}
+
+function resolveBaseRun(args) {
+  const explicitBaseRun = argValue(args, '--base-run');
+  if (explicitBaseRun) return path.resolve(REPO_ROOT, explicitBaseRun);
+  const discovered = discoverLatestBaseRun();
+  if (discovered) return discovered;
+  throw new Error(
+    `No baseline remote E2E artifact found under ${DEFAULT_BASE_ROOT}. ` +
+      'Run/download a baseline report first or pass --base-run artifacts/computer-use-remote/<timestamp>.',
+  );
 }
 
 function escapeHtml(value) {
@@ -334,9 +358,15 @@ const caseDefinitions = [
     name: 'Missing report-inspection proof artifact',
     expected: 'visualProofQuality fails when a passing reportInspection scenario lacks its proof screenshot/text.',
     mutate({ runDir, state }) {
+      const removedProofPaths = state.screenshots
+        .concat(state.textSnapshots)
+        .filter((artifact) => artifact.label === 'HTML report inspection')
+        .map((artifact) => artifact.path);
       state.screenshots = state.screenshots.filter((shot) => shot.label !== 'HTML report inspection');
       state.textSnapshots = state.textSnapshots.filter((shot) => shot.label !== 'HTML report inspection');
-      rmSync(path.join(runDir, 'screenshots/26-report-inspection-Safari.png'), { force: true });
+      for (const artifactPath of removedProofPaths) {
+        rmSync(path.join(runDir, artifactPath), { force: true });
+      }
       mutateScenario(state, 'reportInspection', 'pass', 'Adversarial fixture: report inspection was marked pass without proof.');
     },
     evaluate(state) {
@@ -518,7 +548,7 @@ async function main() {
     usage();
     return;
   }
-  const baseRun = path.resolve(argValue(args, '--base-run', DEFAULT_BASE_RUN));
+  const baseRun = resolveBaseRun(args);
   if (!existsSync(path.join(baseRun, 'state.json'))) throw new Error(`Base run is missing state.json: ${baseRun}`);
   const root = path.join(OUT_ROOT, timestampSlug());
   mkdirSync(root, { recursive: true });
