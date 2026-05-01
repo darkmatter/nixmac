@@ -56,17 +56,25 @@ jobs:
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
           PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
+          append_multiline_env() {
+            local name="$1"
+            local delimiter
+            delimiter="NIXMAC_E2E_${name}_$(openssl rand -hex 16)"
+            {
+              printf '%s<<%s\n' "$name" "$delimiter"
+              cat
+              printf '%s\n' "$delimiter"
+            } >> "$GITHUB_ENV"
+          }
+
           {
             echo "NIXMAC_E2E_PR_NUMBER=${{ github.event.pull_request.number }}"
-            echo "NIXMAC_E2E_PR_TITLE<<EOF"
-            printf '%s\n' "$PR_TITLE"
-            echo "EOF"
             echo "NIXMAC_E2E_PR_HEAD_REF=$PR_HEAD_REF"
             echo "NIXMAC_E2E_PR_BASE_REF=$PR_BASE_REF"
-            echo "NIXMAC_E2E_PR_CHANGED_FILES<<EOF"
-            git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}" || true
-            echo "EOF"
           } >> "$GITHUB_ENV"
+          printf '%s\n' "$PR_TITLE" | append_multiline_env "NIXMAC_E2E_PR_TITLE"
+          { git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}" || true; } |
+            append_multiline_env "NIXMAC_E2E_PR_CHANGED_FILES"
 
       - name: Check remote Computer Use secrets
         id: remote-secrets
