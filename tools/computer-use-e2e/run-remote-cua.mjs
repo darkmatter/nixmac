@@ -1739,10 +1739,13 @@ async function runSuite(args) {
       updateScenario(state, 'launch', 'fail', 'Computer Use did not see a usable nixmac app window.');
     }
 
+    const updateDismissButtonPresent = Boolean(findElement(text, [/button Dismiss/i]));
     const updateDismissed = await clickByPattern(client, state, text, 'Dismiss update banner', [/button Dismiss/i], 'Dismiss update/error banner if present.');
     if (updateDismissed) {
       text = await captureState(client, state, 'after-dismiss', 'Computer Use clicked a visible Dismiss button.');
       updateScenario(state, 'updateBanner', 'pass', 'A visible Dismiss button was clicked and the UI remained usable.');
+    } else if (updateDismissButtonPresent) {
+      updateScenario(state, 'updateBanner', 'fail', 'A visible Dismiss button was present, but Computer Use could not click it.');
     } else {
       updateScenario(state, 'updateBanner', 'pass', 'No dismissible update banner was visible; no banner blocked the main workflow.');
     }
