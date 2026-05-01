@@ -92,7 +92,7 @@ function useProviderPrefs(form: AiModelsTabProps["form"]) {
       vllmApiBaseUrl: v.vllmApiBaseUrl ?? "",
     });
 
-    return subscription;
+    return () => subscription.unsubscribe();
   }, [form]);
   return prefs;
 }

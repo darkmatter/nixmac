@@ -384,6 +384,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setGenerating: (isGenerating) => set({ isGenerating }),
     clearPreview: () =>
       set({
+        changeMap: null,
         summaryAvailable: false,
       }),
 
