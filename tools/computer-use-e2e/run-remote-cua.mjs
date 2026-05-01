@@ -516,7 +516,7 @@ function buildPrFocus() {
     /^(apps\/native\/src\/(components|hooks|stores|lib|styles)|apps\/native\/src-tauri|tools\/computer-use-e2e|\.github\/workflows\/computer-use-e2e\.yml)/.test(file),
   );
   const scenarioKeys = new Set();
-  for (const file of changedFiles) {
+  for (const file of userVisibleFiles) {
     if (/settings|prefs|api-keys|store|commands\.rs|store\.rs/i.test(file)) {
       scenarioKeys.add('settingsGeneral');
       scenarioKeys.add('settingsAIModels');
@@ -2291,6 +2291,14 @@ function runSelfTest() {
   assert.equal(setValueResponseIndicatesFailure({ result: { isError: true, content: [{ type: 'text', text: 'Tool returned an error.' }] } }), true, 'MCP isError should fail set_value');
   assert.equal(setValueResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'App state includes Value: Add the bat command line tool.' }] } }), false, 'ordinary set_value app-state text should not fail input');
   assert.equal(setValueResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'Error: set_value element index 18 not found' }] } }), true, 'set_value element sentinel should fail input');
+
+  const previousChangedFiles = process.env.NIXMAC_E2E_PR_CHANGED_FILES;
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = 'apps/native/src/components/widget/adversarial-new-visible-surface.tsx\ndocs/history.md';
+  const prFocus = buildPrFocus();
+  assert.deepEqual(prFocus.userVisibleFiles, ['apps/native/src/components/widget/adversarial-new-visible-surface.tsx'], 'PR focus should infer user-visible files');
+  assert.deepEqual(prFocus.scenarioKeys, [], 'non-user-visible changed files must not create PR scenario mappings');
+  if (previousChangedFiles === undefined) delete process.env.NIXMAC_E2E_PR_CHANGED_FILES;
+  else process.env.NIXMAC_E2E_PR_CHANGED_FILES = previousChangedFiles;
   console.log('Computer Use E2E runner self-test passed.');
 }
 
