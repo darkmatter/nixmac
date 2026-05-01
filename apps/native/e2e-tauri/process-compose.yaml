@@ -1,0 +1,8 @@
+version: "0.5"
+
+processes:
+  vite:
+    command: bun run dev
+  tauri-wd:
+    command: tauri-wd
+

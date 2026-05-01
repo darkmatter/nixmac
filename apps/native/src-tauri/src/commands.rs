@@ -9,7 +9,8 @@
 
 use crate::{
     darwin, db, default_config, editor, evolution, evolve_state, feedback, finalize_restore, git,
-    lsp, nix, peek, permissions, rollback, scanner, shared_types, store, types, utils,
+    lsp, mac, nix, peek, permissions, rollback, scanner, shared_types, store, types, utils,
+    watcher,
 };
 use std::path::Path;
 use std::process::Command;
@@ -23,6 +24,27 @@ fn capture_err<E: std::fmt::Display>(cmd: &str, e: E) -> String {
     // Only send the command name to Sentry to avoid leaking chat or user data.
     sentry::capture_message(cmd, sentry::Level::Error);
     e.to_string()
+}
+
+/// Initializes app state after switching to a new config directory:
+/// caches git status, starts the file watcher, resets evolve state, and lists hosts.
+fn handle_new_config_dir(
+    app: &AppHandle,
+    dir: &str,
+) -> Result<(shared_types::EvolveState, Option<Vec<String>>), String> {
+    let git_status = git::status(dir).ok();
+    let changes = git_status
+        .as_ref()
+        .map(|s| s.changes.clone())
+        .unwrap_or_default();
+    if let Some(ref s) = git_status {
+        let _ = store::set_cached_git_status(app, s);
+    }
+    watcher::start_watching(app.clone(), dir.to_string(), 2500);
+    let evolve_state = evolve_state::set(app, shared_types::EvolveState::default(), &changes)
+        .map_err(|e| e.to_string())?;
+    let hosts = nix::list_darwin_hosts(dir).ok();
+    Ok((evolve_state, hosts))
 }
 
 // =============================================================================
@@ -55,7 +77,10 @@ pub async fn config_set_host_attr(
 
 /// Sets the flake configuration directory path.
 #[tauri::command]
-pub async fn config_set_dir(app: AppHandle, dir: String) -> Result<serde_json::Value, String> {
+pub async fn config_set_dir(
+    app: AppHandle,
+    dir: String,
+) -> Result<shared_types::SetDirResult, String> {
     let normalized_dir =
         utils::normalize_dir_input(&dir).map_err(|e| capture_err("config_set_dir", e))?;
 
@@ -71,30 +96,58 @@ pub async fn config_set_dir(app: AppHandle, dir: String) -> Result<serde_json::V
         ));
     }
 
-    store::set_config_dir(&app, &normalized_dir.to_string_lossy())
-        .map_err(|e| capture_err("config_set_dir", e))?;
-    Ok(serde_json::json!({"ok": true}))
+    let prev_dir = store::get_config_dir(&app).ok();
+    let new_dir = normalized_dir.to_string_lossy().to_string();
+    store::set_config_dir(&app, &new_dir).map_err(|e| capture_err("config_set_dir", e))?;
+
+    let (evolve_state, hosts) = if prev_dir.as_deref() != Some(&new_dir) {
+        let (es, hosts) =
+            handle_new_config_dir(&app, &new_dir).map_err(|e| capture_err("config_set_dir", e))?;
+        (Some(es), hosts)
+    } else {
+        (None, None)
+    };
+
+    Ok(shared_types::SetDirResult {
+        dir: new_dir,
+        evolve_state,
+        hosts,
+    })
 }
 
 /// Opens a native folder picker dialog to select the flake directory.
 #[tauri::command]
-pub async fn config_pick_dir(app: AppHandle) -> Result<Option<String>, String> {
+pub async fn config_pick_dir(app: AppHandle) -> Result<Option<shared_types::SetDirResult>, String> {
     let dialog = app.dialog();
     // Try to open the picker at the currently configured directory
-    let default_dir = store::get_config_dir(&app).map_err(|e| capture_err("config_pick_dir", e))?;
+    let prev_dir = store::get_config_dir(&app).map_err(|e| capture_err("config_pick_dir", e))?;
     let result = dialog
         .file()
         .set_title(
             "Select Configuration Directory - TIP: press '⌘'+'⇧'+'.' to show hidden directories",
         )
-        .set_directory(std::path::PathBuf::from(default_dir))
+        .set_directory({
+            let p = std::path::PathBuf::from(&prev_dir);
+            p.parent().map(std::path::PathBuf::from).unwrap_or(p)
+        })
         .blocking_pick_folder();
 
     if let Some(path) = result {
         let dir = path.to_string();
         store::set_config_dir(&app, &dir).map_err(|e| capture_err("config_pick_dir", e))?;
         store::ensure_config_dir_exists(&app).map_err(|e| capture_err("config_pick_dir", e))?;
-        return Ok(Some(dir));
+        let (evolve_state, hosts) = if dir != prev_dir {
+            let (es, hosts) =
+                handle_new_config_dir(&app, &dir).map_err(|e| capture_err("config_pick_dir", e))?;
+            (Some(es), hosts)
+        } else {
+            (None, None)
+        };
+        return Ok(Some(shared_types::SetDirResult {
+            dir,
+            evolve_state,
+            hosts,
+        }));
     }
 
     Ok(None)
@@ -194,6 +247,30 @@ pub async fn debug_sentry_event() -> Result<serde_json::Value, String> {
     sentry::capture_message("Debug Sentry event from Rust backend", sentry::Level::Error);
 
     Ok(serde_json::json!({"ok": true, "message": "Debug event captured from Rust"}))
+}
+
+// =============================================================================
+// Homebrew Commands
+// =============================================================================
+#[tauri::command]
+pub async fn homebrew_apply_diff(
+    app: AppHandle,
+    diff: shared_types::HomebrewState,
+) -> Result<serde_json::Value, String> {
+    crate::mac::homebrew::apply_homebrew_diff(&app, diff)
+        .await
+        .map_err(|e| capture_err("homebrew_apply_diff", e))
+}
+
+#[tauri::command]
+pub async fn homebrew_get_state_diff(
+    app: AppHandle,
+) -> Result<shared_types::HomebrewState, String> {
+    let dir = store::ensure_config_dir_exists(&app)
+        .map_err(|e| capture_err("homebrew_get_state_diff", e))?;
+
+    mac::homebrew::get_homebrew_state_diff(Path::new(&dir))
+        .map_err(|e| capture_err("homebrew_get_state_diff", e))
 }
 
 // =============================================================================
@@ -322,40 +399,46 @@ fn reset_evolve_cancelled() {
     EVOLVE_CANCELLED.store(false, std::sync::atomic::Ordering::SeqCst);
 }
 
-/// Global channel for user responses to agent questions.
-/// The sender is held here; the receiver is consumed by the evolve loop.
-static QUESTION_RESPONSE: std::sync::OnceLock<
-    tokio::sync::Mutex<(
-        tokio::sync::mpsc::Sender<String>,
-        tokio::sync::mpsc::Receiver<String>,
-    )>,
+/// Global holder for an in-flight question sender.
+/// We use a oneshot per-question so the evolve loop can await a response
+/// without holding a mutex across an await (which would cause a deadlock).
+static ONGOING_QUESTION: std::sync::OnceLock<
+    tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<String>>>,
 > = std::sync::OnceLock::new();
 
-fn get_question_channel() -> &'static tokio::sync::Mutex<(
-    tokio::sync::mpsc::Sender<String>,
-    tokio::sync::mpsc::Receiver<String>,
-)> {
-    QUESTION_RESPONSE.get_or_init(|| {
-        let (tx, rx) = tokio::sync::mpsc::channel(1);
-        tokio::sync::Mutex::new((tx, rx))
-    })
+fn ongoing_question_slot(
+) -> &'static tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<String>>> {
+    ONGOING_QUESTION.get_or_init(|| tokio::sync::Mutex::new(None))
 }
 
 /// Send a user's answer to the evolve loop's pending question.
 pub async fn send_question_response(answer: String) -> anyhow::Result<()> {
-    let channel = get_question_channel();
-    let lock = channel.lock().await;
-    lock.0
-        .send(answer)
-        .await
-        .map_err(|e| anyhow::anyhow!("Failed to send question response: {}", e))
+    let slot = ongoing_question_slot();
+    let mut guard = slot.lock().await;
+    if let Some(tx) = guard.take() {
+        tx.send(answer)
+            .map_err(|_e| anyhow::anyhow!("Failed to send question response"))
+    } else {
+        Err(anyhow::anyhow!("No pending question to answer"))
+    }
 }
 
 /// Wait for a user response to a question (called from the evolve loop).
 pub async fn wait_for_question_response() -> Option<String> {
-    let channel = get_question_channel();
-    let mut lock = channel.lock().await;
-    lock.1.recv().await
+    let slot = ongoing_question_slot();
+
+    // Create a oneshot for this question and register its sender globally.
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    {
+        let mut guard = slot.lock().await;
+        // If there's already a pending question, replace it (dropping old sender).
+        *guard = Some(tx);
+    }
+
+    match rx.await {
+        Ok(ans) => Some(ans),
+        Err(_) => None,
+    }
 }
 
 /// Handles the complete evolution cycle returning the git status and summary to react
@@ -667,12 +750,21 @@ pub async fn generate_history_from(
 
 /// Summarizes the current working state, running the from-scratch pipeline if
 /// no existing summaries are found, or grouping and simplifying existing ones.
+/// Returns the updated SemanticChangeMap so the frontend can apply it immediately.
 #[tauri::command]
-pub async fn summarize_current(app: AppHandle) -> Result<(), String> {
+pub async fn summarize_current(
+    app: AppHandle,
+) -> Result<crate::shared_types::SemanticChangeMap, String> {
     crate::summarize::new_changeset(&app, None)
         .await
-        .map(|_| ())
-        .map_err(|e| capture_err("summarize_current", e))
+        .map_err(|e| capture_err("summarize_current", e))?;
+    let db_path = db::get_db_path(&app).map_err(|e| capture_err("summarize_current", e))?;
+    let dir = store::get_config_dir(&app).map_err(|e| capture_err("summarize_current", e))?;
+    let change_sets = crate::summarize::find_existing::for_current_state(&db_path, &dir)
+        .map_err(|e| capture_err("summarize_current", e))?;
+    Ok(crate::summarize::group_existing::from_change_sets(
+        change_sets,
+    ))
 }
 
 /// Returns all commits on the main branch, each paired with optional DB metadata, summary,
@@ -687,8 +779,7 @@ pub async fn get_history(app: AppHandle) -> Result<Vec<crate::shared_types::Hist
 /// Checks out `target_hash` for history restore rebuild
 #[tauri::command]
 pub async fn prepare_restore(app: AppHandle, target_hash: String) -> Result<(), String> {
-    let config_dir =
-        store::get_config_dir(&app).map_err(|e| capture_err("prepare_restore", e))?;
+    let config_dir = store::get_config_dir(&app).map_err(|e| capture_err("prepare_restore", e))?;
     git::checkout_files_at_commit(&config_dir, &target_hash)
         .map_err(|e| capture_err("prepare_restore", e))?;
     crate::historelog::log_prepare(&config_dir);
@@ -697,8 +788,7 @@ pub async fn prepare_restore(app: AppHandle, target_hash: String) -> Result<(), 
 
 #[tauri::command]
 pub async fn abort_restore(app: AppHandle) -> Result<(), String> {
-    let config_dir =
-        store::get_config_dir(&app).map_err(|e| capture_err("abort_restore", e))?;
+    let config_dir = store::get_config_dir(&app).map_err(|e| capture_err("abort_restore", e))?;
     git::restore_all(&config_dir).map_err(|e| capture_err("abort_restore", e))?;
     crate::historelog::log_abort(&config_dir);
     Ok(())
@@ -730,10 +820,10 @@ pub async fn generate_commit_message(app: AppHandle) -> Result<String, String> {
 /// Returns all UI preferences.
 #[tauri::command]
 pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
-    let openrouter_api_key =
-        store::get_openrouter_api_key(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+    let openrouter_api_key = store::get_effective_openrouter_api_key(&app)
+        .map_err(|e| capture_err("ui_get_prefs", e))?;
     let openai_api_key =
-        store::get_openai_api_key(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+        store::get_effective_openai_api_key(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
     let send_diagnostics =
         store::get_send_diagnostics(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
 
@@ -752,8 +842,8 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
         store::get_ollama_api_base_url(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
     let vllm_api_base_url: Option<String> =
         store::get_vllm_api_base_url(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
-    let vllm_api_key: Option<String> =
-        store::get_vllm_api_key(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+    let vllm_api_key =
+        store::get_effective_vllm_api_key(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
 
     let confirm_build = store::get_bool_pref(&app, store::CONFIRM_BUILD_KEY, true)
         .map_err(|e| capture_err("ui_get_prefs", e))?;
@@ -761,6 +851,12 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
         .map_err(|e| capture_err("ui_get_prefs", e))?;
     let confirm_rollback = store::get_bool_pref(&app, store::CONFIRM_ROLLBACK_KEY, true)
         .map_err(|e| capture_err("ui_get_prefs", e))?;
+    let auto_summarize_on_focus =
+        store::get_bool_pref(&app, store::AUTO_SUMMARIZE_ON_FOCUS_KEY, false)
+            .map_err(|e| capture_err("ui_get_prefs", e))?;
+    let scan_homebrew_on_startup =
+        store::get_bool_pref(&app, store::SCAN_HOMEBREW_ON_STARTUP_KEY, true)
+            .map_err(|e| capture_err("ui_get_prefs", e))?;
 
     Ok(types::UiPrefs {
         openrouter_api_key,
@@ -782,6 +878,8 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
         confirm_build,
         confirm_clear,
         confirm_rollback,
+        auto_summarize_on_focus,
+        scan_homebrew_on_startup,
     })
 }
 
@@ -857,6 +955,28 @@ pub async fn ui_set_prefs(
     {
         store::set_bool_pref(&app, store::CONFIRM_ROLLBACK_KEY, confirm_rollback)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
+    }
+    if let Some(auto_summarize_on_focus) = prefs
+        .get(store::AUTO_SUMMARIZE_ON_FOCUS_KEY)
+        .and_then(|v| v.as_bool())
+    {
+        store::set_bool_pref(
+            &app,
+            store::AUTO_SUMMARIZE_ON_FOCUS_KEY,
+            auto_summarize_on_focus,
+        )
+        .map_err(|e| capture_err("ui_set_prefs", e))?;
+    }
+    if let Some(scan_homebrew_on_startup) = prefs
+        .get(store::SCAN_HOMEBREW_ON_STARTUP_KEY)
+        .and_then(|v| v.as_bool())
+    {
+        store::set_bool_pref(
+            &app,
+            store::SCAN_HOMEBREW_ON_STARTUP_KEY,
+            scan_homebrew_on_startup,
+        )
+        .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
 
     Ok(serde_json::json!({"ok": true}))
@@ -1215,9 +1335,7 @@ pub async fn routing_state_get(app: AppHandle) -> Result<evolve_state::EvolveSta
     let state = evolve_state::get(&app).map_err(|e| capture_err("routing_state_get", e))?;
     // Recompute step from live git status to surface manual changes
     let dir = store::get_config_dir(&app).map_err(|e| capture_err("routing_state_get", e))?;
-    let changes = git::status(&dir)
-        .map(|s| s.changes)
-        .unwrap_or_default();
+    let changes = git::status(&dir).map(|s| s.changes).unwrap_or_default();
     evolve_state::set(&app, state, &changes).map_err(|e| capture_err("routing_state_get", e))
 }
 

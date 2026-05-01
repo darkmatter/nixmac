@@ -11,6 +11,7 @@ pub const GROUP_EXISTING: bool = false;
 pub const SIMPLIFY_GROUP: bool = false;
 pub const FRESH_CHANGESET: bool = false;
 pub const EVOLVED_CHANGESET: bool = false;
+pub const QUEUE_SUMMARIZER: bool = false;
 
 // ── Imports ───────────────────────────────────────────────────────────────────
 
@@ -261,4 +262,54 @@ pub fn grouped_log_assignments(assignments: &Assignments) {
         return;
     }
     emit_json("EVOLVED_CHANGESET", "assignments", assignments);
+}
+
+// ── queue_summarizer ──────────────────────────────────────────────────────────
+
+pub fn queue_log_started(ids: &[i64]) {
+    if !QUEUE_SUMMARIZER {
+        return;
+    }
+    emit_json("QUEUE_SUMMARIZER", "started", &serde_json::json!({ "ids": ids }));
+}
+
+pub fn queue_log_prompt(queued_id: i64, prompt: &str) {
+    if !QUEUE_SUMMARIZER {
+        return;
+    }
+    let label = format!("QUEUE_SUMMARIZER — item {}", queued_id);
+    emit_text(&label, "prompt", prompt);
+}
+
+pub fn queue_log_response(queued_id: i64, response: &str) {
+    if !QUEUE_SUMMARIZER {
+        return;
+    }
+    emit_json(
+        "QUEUE_SUMMARIZER",
+        &format!("item {} response", queued_id),
+        &serde_json::json!({ "response": response }),
+    );
+}
+
+pub fn queue_log_validation_ok(queued_id: i64, pair_count: usize) {
+    if !QUEUE_SUMMARIZER {
+        return;
+    }
+    emit_json(
+        "QUEUE_SUMMARIZER",
+        &format!("item {} validation ok", queued_id),
+        &serde_json::json!({ "pairs_validated": pair_count }),
+    );
+}
+
+pub fn queue_log_done(passed: usize, retrying: usize) {
+    if !QUEUE_SUMMARIZER {
+        return;
+    }
+    emit_json(
+        "QUEUE_SUMMARIZER",
+        "done",
+        &serde_json::json!({ "passed": passed, "retrying": retrying }),
+    );
 }

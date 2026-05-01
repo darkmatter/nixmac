@@ -21,13 +21,13 @@ export function SetupStep() {
   const { saveHost } = useDarwinConfig();
 
   const hasConfigDir = Boolean(configDir);
-  const hasFlake = hasConfigDir && hosts.length > 0;
+  const hasHosts = hasConfigDir && hosts.length > 0;
 
   return (
     <div className="flex flex-col items-center justify-center space-y-6 py-8">
       <img src="/outline-white.png" alt="" className="h-16 w-16 object-contain" />
       <div className="text-center">
-        <h2 className="font-semibold text-foreground text-lg">
+        <h2 data-testid="onboarding-welcome-title" className="font-semibold text-foreground text-lg">
           Welcome to nixmac
         </h2>
         <p className="mt-1 text-muted-foreground text-sm">
@@ -41,7 +41,7 @@ export function SetupStep() {
 
       {hasConfigDir && (
         <div className="w-full max-w-sm space-y-2">
-          {hasFlake ? (
+          {hasHosts ? (
             <>
               <label className="font-medium text-foreground text-sm">
                 2. Configuration

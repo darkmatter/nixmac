@@ -179,10 +179,22 @@ pub fn bootstrap(app: &AppHandle, hostname: &str) -> Result<(), String> {
         .map_err(|e| format!("Failed to ensure config dir: {}", e))?;
     let dest_path = Path::new(&dir);
 
+    // If a flake.nix already exists, just make the initial git commit without
+    // copying any template files (the user brought their own config).
+    if dest_path.join("flake.nix").exists() {
+        git::init_repo(&dir).map_err(|e| format!("Failed to init git: {}", e))?;
+        let info = git::commit_all(&dir, "chore: initial nix-darwin configuration")
+            .map_err(|e| format!("Failed to commit: {}", e))?;
+        if let Err(e) = git::tag_commit(&dir, &format!("nixmac-base-{}", &info.hash[..8]), &info.hash, false) {
+            log::warn!("Failed to tag initial commit as base: {}", e);
+        }
+        return Ok(());
+    }
+
     // Safety check: only proceed if directory is empty or contains only .git
     if !is_dir_safe_for_bootstrap(dest_path)? {
         return Err(
-            "Directory is not empty. Please use an empty directory or remove existing files."
+            "Directory is not empty. Please use an empty directory or a directory containing a flake.nix."
                 .to_string(),
         );
     }

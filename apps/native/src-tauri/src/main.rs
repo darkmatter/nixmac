@@ -12,6 +12,8 @@ mod build_state;
 mod changes_from_diff;
 mod cli;
 mod commands;
+mod completion_log;
+mod credential_store;
 mod darwin;
 mod db;
 mod default_config;
@@ -27,7 +29,10 @@ mod git;
 mod historelog;
 mod log_summarizer;
 mod lsp;
+mod mac;
+mod managed_edit;
 mod nix;
+mod nix_ast_lists;
 mod panic_handler;
 mod peek;
 mod permissions;
@@ -164,6 +169,7 @@ fn run_cli_mode(context: tauri::Context<tauri::Wry>) -> i32 {
                 let app = match tauri::Builder::default()
                     // Ensure store plugin (and its managed state) is initialized so we can load settings
                     .plugin(tauri_plugin_store::Builder::default().build())
+                    .plugin(tauri_plugin_keyring::init())
                     .invoke_handler(tauri::generate_handler![])
                     .setup(|_app| Ok(()))
                     .build(context)
@@ -289,6 +295,7 @@ fn run_gui_mode(
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
+        .plugin(tauri_plugin_keyring::init())
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_single_instance::init(|_, _, _| {}))
@@ -317,6 +324,9 @@ fn run_gui_mode(
             commands::trigger_test_panic,
             #[cfg(debug_assertions)]
             commands::debug_sentry_event,
+            // Homebrew
+            commands::homebrew_apply_diff,
+            commands::homebrew_get_state_diff,
             // Git
             commands::git_init_repo,
             commands::git_status,

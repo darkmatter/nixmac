@@ -53,6 +53,20 @@ pub struct WatcherEvent {
 }
 
 // =============================================================================
+// Homebrew types
+// =============================================================================
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct HomebrewState {
+    pub is_installed: bool,
+    pub casks: Vec<String>,
+    pub brews: Vec<String>,
+    pub taps: Vec<String>,
+    pub source: Option<String>,
+    pub last_checked: i64,
+}
+
+// =============================================================================
 // Query return types
 // =============================================================================
 
@@ -176,6 +190,19 @@ impl Default for EvolveState {
     }
 }
 
+// =============================================================================
+// Config dir result types
+// =============================================================================
+
+/// Result returned when the config directory is set (typed or picked).
+/// `evolve_state` and `hosts` are `Some` only when the directory actually changed.
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SetDirResult {
+    pub dir: String,
+    pub evolve_state: Option<EvolveState>,
+    pub hosts: Option<Vec<String>>,
+}
 
 // =============================================================================
 // Rollback result types
@@ -247,4 +274,31 @@ pub struct EvolutionFailureResult {
     pub error: String,
     pub git_status: Option<GitStatus>,
     pub telemetry: EvolutionTelemetry,
+}
+
+// =============================================================================
+// UI Preferences
+// =============================================================================
+
+/// User interface preferences (synced to settings.json via tauri-plugin-store).
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct UiPrefs {
+    pub openrouter_api_key: Option<String>,
+    pub openai_api_key: Option<String>,
+    pub ollama_api_base_url: Option<String>,
+    pub vllm_api_base_url: Option<String>,
+    pub vllm_api_key: Option<String>,
+    pub summary_provider: Option<String>,
+    pub summary_model: Option<String>,
+    pub evolve_provider: Option<String>,
+    pub evolve_model: Option<String>,
+    pub max_iterations: Option<usize>,
+    pub max_build_attempts: Option<usize>,
+    pub send_diagnostics: bool,
+    pub confirm_build: bool,
+    pub confirm_clear: bool,
+    pub confirm_rollback: bool,
+    pub auto_summarize_on_focus: bool,
+    pub scan_homebrew_on_startup: bool,
 }

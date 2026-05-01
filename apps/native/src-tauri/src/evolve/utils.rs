@@ -11,8 +11,12 @@ pub fn truncate_error(s: &str, max_len: usize) -> String {
 
     // Keep the beginning and end, which usually have the most relevant info
     let half = max_len / 2;
-    let start = &s[..half];
-    let end = &s[s.len() - half..];
+    let mut start = s.to_string();
+    crate::utils::truncate_utf8(&mut start, half);
+
+    let tail_budget = max_len.saturating_sub(start.len());
+    let end_start = s.floor_char_boundary(s.len().saturating_sub(tail_budget));
+    let end = &s[end_start..];
 
     format!(
         "{}\n\n... [truncated {} bytes] ...\n\n{}",
@@ -53,8 +57,36 @@ pub(crate) fn normalize_relative_path(path: &Path) -> Result<PathBuf> {
 
 #[cfg(test)]
 mod tests {
-    use super::normalize_relative_path;
+    use super::{normalize_relative_path, truncate_error};
     use std::path::{Path, PathBuf};
+
+    #[test]
+    fn truncate_error_returns_original_when_short_enough() {
+        let s = "small error";
+        assert_eq!(truncate_error(s, s.len()), s);
+        assert_eq!(truncate_error(s, s.len() + 10), s);
+    }
+
+    #[test]
+    fn truncate_error_handles_utf8_boundaries_without_panicking() {
+        let s = "hello😅world";
+        let truncated = truncate_error(s, 9);
+
+        assert!(truncated.contains("[truncated"));
+        assert!(truncated.contains("hell"));
+        assert!(truncated.contains("world"));
+        assert!(!truncated.contains('�'));
+    }
+
+    #[test]
+    fn truncate_error_keeps_expected_ascii_edges() {
+        let s = "abcdefghijklmnopqrstuvwxyz";
+        let truncated = truncate_error(s, 10);
+
+        assert!(truncated.contains("abcde"));
+        assert!(truncated.contains("vwxyz"));
+        assert!(truncated.contains("[truncated 16 bytes]"));
+    }
 
     #[test]
     fn normalizes_simple_relative_path() {

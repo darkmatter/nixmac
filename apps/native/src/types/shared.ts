@@ -108,6 +108,8 @@ export type GitStatus = { files: GitFileStatus[]; branch: string | null; diff: s
  */
 export type HistoryItem = { hash: string; message: string | null; createdAt: number; isBuilt: boolean; isBase: boolean; isExternal: boolean; fileCount: number; commit: Commit | null; changeMap: SemanticChangeMap | null; unsummarizedHashes: string[]; rawChanges: Change[]; originMessage: string | null; originHash: string | null; isOrphanedRestore: boolean; isUndone: boolean }
 
+export type HomebrewState = { isInstalled: boolean; casks: string[]; brews: string[]; taps: string[]; source: string | null; lastChecked: number }
+
 /**
  * Result returned from a rollback erase operation.
  */
@@ -117,9 +119,20 @@ export type SemanticChangeGroup = { summary: ChangeSummary; changes: ChangeWithS
 
 export type SemanticChangeMap = { groups: SemanticChangeGroup[]; singles: ChangeWithSummary[]; unsummarizedHashes: string[] }
 
+/**
+ * Result returned when the config directory is set (typed or picked).
+ * `evolve_state` and `hosts` are `Some` only when the directory actually changed.
+ */
+export type SetDirResult = { dir: string; evolveState: EvolveState | null; hosts: string[] | null }
+
 export type SummarizedChange = { change: Change; ownSummary: ChangeSummary | null; groupSummary: ChangeSummary | null }
 
 export type SummarizedChangeSet = { changeSet: ChangeSet; changes: SummarizedChange[]; missedHashes: string[] }
+
+/**
+ * User interface preferences (synced to settings.json via tauri-plugin-store).
+ */
+export type UiPrefs = { openrouterApiKey: string | null; openaiApiKey: string | null; ollamaApiBaseUrl: string | null; vllmApiBaseUrl: string | null; vllmApiKey: string | null; summaryProvider: string | null; summaryModel: string | null; evolveProvider: string | null; evolveModel: string | null; maxIterations: number | null; maxBuildAttempts: number | null; sendDiagnostics: boolean; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean }
 
 /**
  * Event payload emitted by the git status watcher.

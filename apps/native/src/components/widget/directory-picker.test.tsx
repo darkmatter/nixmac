@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -11,17 +11,12 @@ import { DirectoryPicker } from "./directory-picker";
 
 const mockPickDir = vi.fn();
 
-vi.mock("@/hooks/use-darwin-config", () => ({
-  useDarwinConfig: () => ({
-    pickDir: mockPickDir,
-  }),
-}));
-
 const mockNormalize = vi.fn<(p: string) => Promise<string | null>>();
 const mockExists = vi.fn<(p: string) => Promise<boolean>>();
-const mockSetDir = vi.fn<(p: string) => Promise<void>>();
+const mockSetDir = vi.fn<
+  (p: string) => Promise<{ dir: string; evolveState: never; hosts: string[] | null }>
+>();
 const mockSetHostAttr = vi.fn<(h: string) => Promise<void>>();
-const mockListHosts = vi.fn<() => Promise<string[]>>();
 const mockFlakeExistsAt = vi.fn<(p: string) => Promise<boolean>>();
 const mockFlakeExists = vi.fn<() => Promise<boolean>>();
 
@@ -33,10 +28,10 @@ vi.mock("@/tauri-api", () => ({
     },
     config: {
       setDir: (p: string) => mockSetDir(p),
+      pickDir: () => mockPickDir(),
       setHostAttr: (h: string) => mockSetHostAttr(h),
     },
     flake: {
-      listHosts: () => mockListHosts(),
       existsAt: (p: string) => mockFlakeExistsAt(p),
       exists: () => mockFlakeExists(),
     },
@@ -61,18 +56,21 @@ function resetMocks() {
   mockExists.mockReset();
   mockSetDir.mockReset();
   mockSetHostAttr.mockReset();
-  mockListHosts.mockReset();
   mockFlakeExistsAt.mockReset();
   mockFlakeExists.mockReset();
 
   // Sensible "happy-path" defaults; individual tests override as needed.
   mockNormalize.mockImplementation(async (p) => p.trim());
   mockExists.mockResolvedValue(true);
-  mockSetDir.mockResolvedValue();
+  mockSetDir.mockImplementation(async (p) => ({
+    dir: p,
+    evolveState: {} as never,
+    hosts: [],
+  }));
   mockSetHostAttr.mockResolvedValue();
-  mockListHosts.mockResolvedValue([]);
   mockFlakeExistsAt.mockResolvedValue(true);
   mockFlakeExists.mockResolvedValue(true);
+  mockPickDir.mockResolvedValue(null);
 }
 
 /** Type into the input then fire a blur event. Mirrors `userEvent.type` + tab-out
@@ -133,21 +131,24 @@ describe("<DirectoryPicker>", () => {
 
   it("on a valid path, normalizes, persists, clears host, and refreshes the hosts list", async () => {
     mockNormalize.mockResolvedValue("/Users/me/.darwin");
-    mockListHosts.mockResolvedValue(["mbp", "workbook"]);
+    mockSetDir.mockResolvedValue({
+      dir: "/Users/me/.darwin",
+      evolveState: {} as never,
+      hosts: ["mbp", "workbook"],
+    });
     useWidgetStore.getState().setHost("old-host");
 
     render(<DirectoryPicker label="Config directory" />);
     typeAndBlur(screen.getByLabelText("Config directory"), "  /Users/me/.darwin  ");
 
-    // Allow all chained awaits in onBlur to settle.
-    await screen.findByDisplayValue("/Users/me/.darwin");
+    await waitFor(() => {
+      expect(mockSetDir).toHaveBeenCalledWith("/Users/me/.darwin");
+    });
 
     // Input is trimmed before being passed to `darwinAPI.path.normalize`.
     expect(mockNormalize).toHaveBeenCalledWith("/Users/me/.darwin");
     expect(mockExists).toHaveBeenCalledWith("/Users/me/.darwin");
-    expect(mockSetDir).toHaveBeenCalledWith("/Users/me/.darwin");
     expect(mockSetHostAttr).toHaveBeenCalledWith("");
-    expect(mockListHosts).toHaveBeenCalledTimes(1);
 
     const s = useWidgetStore.getState();
     expect(s.configDir).toBe("/Users/me/.darwin");
@@ -155,16 +156,20 @@ describe("<DirectoryPicker>", () => {
     expect(s.hosts).toEqual(["mbp", "workbook"]);
   });
 
-  it("survives a listHosts failure by setting hosts to [] (bootstrap UI) and still persists the dir", async () => {
+  it("uses empty hosts when setDir has no hosts and still persists the dir", async () => {
     mockNormalize.mockResolvedValue("/Users/me/.darwin");
-    mockListHosts.mockRejectedValue(new Error("no flake.nix"));
+    mockSetDir.mockResolvedValue({
+      dir: "/Users/me/.darwin",
+      evolveState: {} as never,
+      hosts: null,
+    });
 
     render(<DirectoryPicker label="Config directory" />);
     typeAndBlur(screen.getByLabelText("Config directory"), "/Users/me/.darwin");
 
-    await screen.findByDisplayValue("/Users/me/.darwin");
-
-    expect(mockSetDir).toHaveBeenCalledWith("/Users/me/.darwin");
+    await waitFor(() => {
+      expect(mockSetDir).toHaveBeenCalledWith("/Users/me/.darwin");
+    });
     expect(useWidgetStore.getState().configDir).toBe("/Users/me/.darwin");
     expect(useWidgetStore.getState().hosts).toEqual([]);
   });
@@ -172,12 +177,18 @@ describe("<DirectoryPicker>", () => {
   it("ignores setHostAttr failures without breaking the happy path", async () => {
     mockNormalize.mockResolvedValue("/Users/me/.darwin");
     mockSetHostAttr.mockRejectedValue(new Error("host-attr persist failed"));
-    mockListHosts.mockResolvedValue(["mbp"]);
+    mockSetDir.mockResolvedValue({
+      dir: "/Users/me/.darwin",
+      evolveState: {} as never,
+      hosts: ["mbp"],
+    });
 
     render(<DirectoryPicker label="Config directory" />);
     typeAndBlur(screen.getByLabelText("Config directory"), "/Users/me/.darwin");
 
-    await screen.findByDisplayValue("/Users/me/.darwin");
+    await waitFor(() => {
+      expect(useWidgetStore.getState().configDir).toBe("/Users/me/.darwin");
+    });
 
     expect(useWidgetStore.getState().configDir).toBe("/Users/me/.darwin");
     expect(useWidgetStore.getState().hosts).toEqual(["mbp"]);

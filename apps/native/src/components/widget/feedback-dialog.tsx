@@ -946,7 +946,7 @@ export function FeedbackDialog() {
           <Button variant="outline" onClick={handleClose} disabled={submitting}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={submitting}>
+          <Button onClick={handleSubmit} disabled={submitting} aria-label="Send feedback">
             {submitting ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : isReportMode ? (

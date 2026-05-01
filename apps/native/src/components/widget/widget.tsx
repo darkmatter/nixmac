@@ -1,5 +1,6 @@
 "use client";
 
+import { ConfigEditOverlayPanel } from "@/components/config-edit-overlay-panel";
 import { EditorPanel } from "@/components/editor-panel";
 import { EvolveOverlayPanel } from "@/components/evolve-overlay-panel";
 import { RebuildOverlayPanel } from "@/components/rebuild-overlay-panel";
@@ -37,6 +38,7 @@ import { useSummary } from "@/hooks/use-summary";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { UpdateBanner } from "@/components/update-banner";
 import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
+import { setupWidgetTestHelpers } from "@/utils/widget-test-helpers";
 import { useEffect } from "react";
 
 /**
@@ -63,10 +65,11 @@ export function DarwinWidget() {
   // Set up error handler to catch unhandled JavaScript errors and promise rejections
   useErrorHandler();
 
-  // Set up test helpers for error handlers (development only)
+  // Set up test helpers for error handlers and widget store (development only)
   useEffect(() => {
     if (import.meta.env.DEV) {
       setupErrorTestHelpers();
+      setupWidgetTestHelpers();
     }
   }, []);
 
@@ -158,6 +161,7 @@ export function DarwinWidget() {
       </StepContentWrapper>
 
       <EvolveOverlayPanel />
+      <ConfigEditOverlayPanel />
       <RebuildOverlayPanel />
       <EditorPanel />
 

@@ -67,7 +67,7 @@ impl ChatCompletionProvider for OllamaClient {
         system_prompt: &str,
         user_prompt: &str,
         max_tokens: u32,
-        num_ctx: Option<u32>,
+        context_window_tokens: Option<u32>,
         temperature: f32,
         request_id: &str,
     ) -> Result<(String, TokenUsage)> {
@@ -89,7 +89,7 @@ impl ChatCompletionProvider for OllamaClient {
             options: OllamaOptions {
                 temperature,
                 num_predict: max_tokens,
-                num_ctx,
+                num_ctx: context_window_tokens,
             },
             format: None,
         };
@@ -120,17 +120,17 @@ impl ChatCompletionProvider for OllamaClient {
         system_prompt: &str,
         user_prompt: &str,
         max_tokens: u32,
-        num_ctx: Option<u32>,
+        context_window_tokens: Option<u32>,
         temperature: f32,
         request_id: &str,
     ) -> Result<(String, TokenUsage)> {
         let url = format!("{}/api/chat", self.base_url);
 
         log::info!(
-            "json_completion called: model={} format=json max_tokens={} num_ctx={:?} [id: {}]",
+            "json_completion called: model={} format=json max_tokens={} context_window_tokens={:?} [id: {}]",
             self.model,
             max_tokens,
-            num_ctx,
+            context_window_tokens,
             request_id
         );
 
@@ -150,7 +150,7 @@ impl ChatCompletionProvider for OllamaClient {
             options: OllamaOptions {
                 temperature,
                 num_predict: max_tokens,
-                num_ctx,
+                num_ctx: context_window_tokens,
             },
             format: Some("json"),
         };

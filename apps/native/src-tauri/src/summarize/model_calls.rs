@@ -7,29 +7,45 @@ use sha2::{Digest, Sha256};
 use tauri::{AppHandle, Runtime};
 
 use crate::providers::{create_provider, TokenUsage};
+use crate::summarize::model_output_types::{
+    EvolvedGroupSummary, HunkSummary, RawHunkPlacement, RawNewMapEntry,
+};
 use crate::summarize::token_budgets::{
     commit_message_budget, group_budget, map_relations_budget, map_relations_to_existing_budget,
-    new_single_budget,
+    single_budget,
 };
-use crate::summarize::model_output_types::{EvolvedGroupSummary, HunkSummary, RawHunkPlacement, RawNewMapEntry};
 
 const TEMPERATURE: f32 = 0.3;
 
 async fn request_json<R: Runtime, T: serde::de::DeserializeOwned>(
     system_prompt: &str,
     user_prompt: &str,
-    max_output_tokens: u32,
-    num_ctx: Option<u32>,
+    budget_for: fn(&str, &str) -> crate::summarize::token_budgets::TokenAllocation,
     temperature: f32,
     fn_name: &str,
     app_handle: Option<&AppHandle<R>>,
 ) -> Result<(T, TokenUsage)> {
     let provider = create_provider(app_handle)?;
+    let allocation = budget_for(user_prompt, provider.model());
     let request_id = uuid::Uuid::new_v4().to_string();
-    debug!("[{}] requesting from {} [id: {}]", fn_name, provider.model(), request_id);
+    debug!(
+        "[{}] requesting from {} [id: {}] output_tokens={} context_window_tokens={}",
+        fn_name,
+        provider.model(),
+        request_id,
+        allocation.output_tokens,
+        allocation.required_context_tokens
+    );
 
     let (raw_response, tokens_used) = match provider
-        .json_completion(system_prompt, user_prompt, max_output_tokens, num_ctx, temperature, &request_id)
+        .json_completion(
+            system_prompt,
+            user_prompt,
+            allocation.output_tokens,
+            Some(allocation.required_context_tokens),
+            temperature,
+            &request_id,
+        )
         .await
     {
         Ok(t) => t,
@@ -42,14 +58,27 @@ async fn request_json<R: Runtime, T: serde::de::DeserializeOwned>(
     };
 
     if raw_response.trim().is_empty() {
-        warn!("[{}] model returned empty response [id: {}]", fn_name, request_id);
-        return Err(anyhow::anyhow!("{}: model returned empty response", fn_name));
+        warn!(
+            "[{}] model returned empty response [id: {}]",
+            fn_name, request_id,
+        );
+        debug!(
+            "[{}] user prompt: {}\nsystem prompt: {}",
+            fn_name, user_prompt, system_prompt
+        );
+        return Err(anyhow::anyhow!(
+            "{}: model returned empty response",
+            fn_name
+        ));
     }
 
     match serde_json::from_str::<T>(&raw_response) {
         Ok(parsed) => Ok((parsed, tokens_used)),
         Err(e) => {
-            warn!("[{}] failed to parse JSON [id: {}]: {}. Raw: {}", fn_name, request_id, e, raw_response);
+            warn!(
+                "[{}] failed to parse JSON [id: {}]: {}. Raw: {}",
+                fn_name, request_id, e, raw_response
+            );
             Err(anyhow::anyhow!("{}: failed to parse JSON: {}", fn_name, e))
         }
     }
@@ -66,19 +95,19 @@ pub async fn generate_commit_message<R: Runtime>(
     prompt: &str,
     app_handle: Option<&AppHandle<R>>,
 ) -> Result<(String, TokenUsage)> {
-    let (max_out, ctx) = commit_message_budget(prompt);
     let (parsed, usage) = request_json::<_, CommitMessageJson>(
         "",
         prompt,
-        max_out,
-        Some(ctx),
+        commit_message_budget,
         0.2,
         "generate_commit_message",
         app_handle,
     )
     .await?;
     if parsed.message.trim().is_empty() {
-        return Err(anyhow::anyhow!("generate_commit_message: parsed empty message"));
+        return Err(anyhow::anyhow!(
+            "generate_commit_message: parsed empty message"
+        ));
     }
     Ok((parsed.message.trim().to_string(), usage))
 }
@@ -96,12 +125,10 @@ pub async fn map_relations<R: Runtime>(
     prompt: &str,
     app_handle: Option<&AppHandle<R>>,
 ) -> Result<(Vec<RawNewMapEntry>, TokenUsage)> {
-    let (max_out, ctx) = map_relations_budget(prompt);
     let (raw, usage) = request_json::<_, RawNewMapResponse>(
         "",
         prompt,
-        max_out,
-        Some(ctx),
+        map_relations_budget,
         TEMPERATURE,
         "map_relations",
         app_handle,
@@ -122,12 +149,10 @@ pub async fn map_relations_to_existing<R: Runtime>(
     prompt: &str,
     app_handle: Option<&AppHandle<R>>,
 ) -> Result<(Vec<RawHunkPlacement>, TokenUsage)> {
-    let (max_out, ctx) = map_relations_to_existing_budget(prompt);
     let (raw, usage) = request_json::<_, RawPlacementResponse>(
         "",
         prompt,
-        max_out,
-        Some(ctx),
+        map_relations_to_existing_budget,
         TEMPERATURE,
         "map_relations_to_existing",
         app_handle,
@@ -156,29 +181,47 @@ pub async fn summarize_evolved_group<R: Runtime>(
     former_group_id: i64,
     app_handle: Option<&AppHandle<R>>,
 ) -> Result<(EvolvedGroupSummary, TokenUsage)> {
-    let (max_out, ctx) = group_budget(prompt);
     let fn_name = format!("summarize_evolved_group[{}]", former_group_id);
-    let (raw, usage) =
-        request_json::<_, EvolvedGroupRaw>("", prompt, max_out, Some(ctx), TEMPERATURE, &fn_name, app_handle)
-            .await?;
+    let (raw, usage) = request_json::<_, EvolvedGroupRaw>(
+        "",
+        prompt,
+        group_budget,
+        TEMPERATURE,
+        &fn_name,
+        app_handle,
+    )
+    .await?;
     let own_summaries = raw
         .changes
         .into_iter()
-        .map(|e| (e.hash, HunkSummary { title: e.title, description: e.description }))
+        .map(|e| {
+            (
+                e.hash,
+                HunkSummary {
+                    title: e.title,
+                    description: e.description,
+                },
+            )
+        })
         .collect();
-    Ok((EvolvedGroupSummary { former_group_id, group: raw.group, own_summaries }, usage))
+    Ok((
+        EvolvedGroupSummary {
+            former_group_id,
+            group: raw.group,
+            own_summaries,
+        },
+        usage,
+    ))
 }
 
 pub async fn summarize_new_group<R: Runtime>(
     prompt: &str,
     app_handle: Option<&AppHandle<R>>,
 ) -> Result<(EvolvedGroupSummary, TokenUsage)> {
-    let (max_out, ctx) = group_budget(prompt);
     let (raw, usage) = request_json::<_, EvolvedGroupRaw>(
         "",
         prompt,
-        max_out,
-        Some(ctx),
+        group_budget,
         TEMPERATURE,
         "summarize_new_group",
         app_handle,
@@ -187,18 +230,39 @@ pub async fn summarize_new_group<R: Runtime>(
     let own_summaries = raw
         .changes
         .into_iter()
-        .map(|e| (e.hash, HunkSummary { title: e.title, description: e.description }))
+        .map(|e| {
+            (
+                e.hash,
+                HunkSummary {
+                    title: e.title,
+                    description: e.description,
+                },
+            )
+        })
         .collect();
-    Ok((EvolvedGroupSummary { former_group_id: 0, group: raw.group, own_summaries }, usage))
+    Ok((
+        EvolvedGroupSummary {
+            former_group_id: 0,
+            group: raw.group,
+            own_summaries,
+        },
+        usage,
+    ))
 }
 
 pub async fn summarize_new_single<R: Runtime>(
     prompt: &str,
     app_handle: Option<&AppHandle<R>>,
 ) -> Result<(HunkSummary, TokenUsage)> {
-    let (max_out, ctx) = new_single_budget(prompt);
-    request_json::<_, HunkSummary>("", prompt, max_out, Some(ctx), TEMPERATURE, "summarize_new_single", app_handle)
-        .await
+    request_json::<_, HunkSummary>(
+        "",
+        prompt,
+        single_budget,
+        TEMPERATURE,
+        "summarize_new_single",
+        app_handle,
+    )
+    .await
 }
 
 // ── Private helpers ───────────────────────────────────────────────────────────

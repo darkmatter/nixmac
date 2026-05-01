@@ -2225,9 +2225,17 @@
     url = "https://registry.npmjs.org/ccount/-/ccount-2.0.1.tgz";
     hash = "sha512-eyrF0jiFpY+3drT6383f1qhkbGsLSifNAjA61IUjZjmLCWjItY6LB9ft9YhoDgwfmclB2zhu51Lc7+95b8NRAg==";
   };
+  "chai-as-promised@8.0.2" = fetchurl {
+    url = "https://registry.npmjs.org/chai-as-promised/-/chai-as-promised-8.0.2.tgz";
+    hash = "sha512-1GadL+sEJVLzDjcawPM4kjfnL+p/9vrxiEUonowKOAzvVg0PixJUdtuDzdkDeQhK3zfOE76GqGkZIQ7/Adcrqw==";
+  };
   "chai@5.3.3" = fetchurl {
     url = "https://registry.npmjs.org/chai/-/chai-5.3.3.tgz";
     hash = "sha512-4zNhdJD/iOjSH0A05ea+Ke6MU5mmpQcbQsSOkgdaUMJ9zTlDTD/GYlwohmIE2u0gaxHYiVHEn1Fw9mZ/ktJWgw==";
+  };
+  "chai@6.2.2" = fetchurl {
+    url = "https://registry.npmjs.org/chai/-/chai-6.2.2.tgz";
+    hash = "sha512-NUPRluOfOiTKBKvWPtSD4PhFvWCqOi0BGStNWs57X9js7XGTprSmFoz5F0tWhR4WPjNeR9jXqdC7/UpSJTnlRg==";
   };
   "chalk@2.4.2" = fetchurl {
     url = "https://registry.npmjs.org/chalk/-/chalk-2.4.2.tgz";
@@ -2728,6 +2736,10 @@
   "escodegen@2.1.0" = fetchurl {
     url = "https://registry.npmjs.org/escodegen/-/escodegen-2.1.0.tgz";
     hash = "sha512-2NlIDTwUWJN0mRPQOdtQBzbUHvdGY2P1VXSyU83Q3xKxM7WHX2Ql8dKq782Q9TgQUNOLEzEYu9bzLNj1q88I5w==";
+  };
+  "eslint-plugin-chai-friendly@1.2.0" = fetchurl {
+    url = "https://registry.npmjs.org/eslint-plugin-chai-friendly/-/eslint-plugin-chai-friendly-1.2.0.tgz";
+    hash = "sha512-um2pBb4ZXNCoTRPRAWiUaXeIaw1dRaPOEZ+G/qcZqfyTdkCXXwOBctnfnbIRbZiQf4AXl3ImV1grt423SlK+mg==";
   };
   "eslint-plugin-storybook@0.11.6" = fetchurl {
     url = "https://registry.npmjs.org/eslint-plugin-storybook/-/eslint-plugin-storybook-0.11.6.tgz";
