@@ -260,6 +260,13 @@ const scenarioProofCatalog = {
     proof: 'Every passing scenario must have at least one primary screenshot or text artifact listed in the proof catalog.',
     untested: 'Overlay callouts are visual aids; text snapshots remain the assertion source.',
   },
+  adversarialOutOfBounds: {
+    grade: 'action-confirmed',
+    screenshots: ['adversarial-out-of-bounds-annotation'],
+    texts: [],
+    proof: 'Adversarial-only fixture used by run-adversarial.mjs to prove bad overlay geometry is caught.',
+    untested: 'Not a real app scenario.',
+  },
   mainCoverageFreshness: {
     grade: 'manifest-confirmed',
     screenshots: [],
@@ -281,6 +288,56 @@ const scenarioProofCatalog = {
     proof: 'Computer Use opens the generated report on the remote Mac and sees report sections.',
     untested: 'Does not prove a human reviewed every screenshot.',
   },
+};
+
+const scenarioContractVersion = 2;
+
+const v1GradeToEvidenceStrength = {
+  'action-confirmed': 'operational',
+  'text-confirmed': 'visual-supported',
+  'guardrail-confirmed': 'operational',
+  'manifest-confirmed': 'operational',
+  calibration: 'weak',
+  'not-run': 'not-proved',
+  insufficient: 'not-proved',
+};
+
+const scenarioAssertionTypeHints = {
+  launch: ['accessibility_text', 'visual_heuristic'],
+  updateBanner: ['accessibility_text', 'action_result'],
+  settingsGeneral: ['accessibility_text', 'action_result', 'visual_heuristic'],
+  settingsAIModels: ['accessibility_text', 'action_result', 'visual_heuristic'],
+  settingsAPIKeys: ['accessibility_text', 'sensitive_redaction'],
+  settingsPreferences: ['accessibility_text', 'action_result', 'visual_heuristic'],
+  history: ['accessibility_text', 'action_result', 'visual_heuristic'],
+  console: ['accessibility_text', 'sensitive_redaction'],
+  feedback: ['accessibility_text', 'action_result', 'visual_heuristic'],
+  reportIssue: ['accessibility_text', 'action_result', 'visual_heuristic'],
+  suggestionCards: ['accessibility_text', 'action_result', 'visual_heuristic'],
+  typedIntent: ['accessibility_text', 'action_result'],
+  review: ['accessibility_text', 'provider_state', 'action_result'],
+  summary: ['accessibility_text', 'provider_state'],
+  diff: ['accessibility_text', 'provider_state'],
+  buildBoundary: ['accessibility_text', 'action_result', 'confirmation_boundary'],
+  saveFlow: ['accessibility_text', 'action_result', 'remote_state'],
+  rollbackCleanup: ['accessibility_text', 'action_result', 'remote_state'],
+  discard: ['accessibility_text', 'action_result', 'confirmation_boundary'],
+  evolvedScreenshotsDefaults: ['accessibility_text', 'provider_state', 'calibration'],
+  visualCoverage: ['artifact_quality'],
+  visualProofQuality: ['artifact_quality', 'visual_heuristic'],
+  mainCoverageFreshness: ['coverage_manifest'],
+  prSpecificCoverage: ['pr_metadata', 'coverage_manifest'],
+  reportInspection: ['accessibility_text', 'artifact_quality'],
+};
+
+const failureTaxonomy = {
+  app: 'The app UI/state did not behave as expected.',
+  provider: 'The real provider returned a billing, rate-limit, timeout, or model error.',
+  credential: 'A provider key was missing, invalid, unavailable, or not injected into the launched app process.',
+  remote_infra: 'DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.',
+  harness: 'Computer Use actions, artifact generation, report rendering, or runner bookkeeping failed.',
+  coverage: 'The suite lacks a scenario, manifest mapping, PR focus, or waiver for the behavior.',
+  inconclusive: 'The runner could not prove either pass or fail.',
 };
 
 const screenshotAnnotations = {
@@ -312,6 +369,7 @@ const screenshotAnnotations = {
   'evolved-screenshots-defaults-summary': [{ label: 'Screenshot defaults summary', x: 50, y: 38, tone: 'pin' }],
   'evolved-screenshots-defaults-diff': [{ label: 'Defaults diff evidence', x: 50, y: 45, tone: 'pin' }],
   'evolved-screenshots-defaults-after-discard': [{ label: 'Review-only cleanup', x: 50, y: 42, tone: 'pin' }],
+  'adversarial-out-of-bounds-annotation': [{ label: 'Out of bounds fixture', x: 96, y: 50, w: 12, h: 10 }],
 };
 
 function usage() {
@@ -804,6 +862,145 @@ function proofForScenario(state, key) {
   return { ...proof, screenshotArtifacts, textArtifacts };
 }
 
+function assertionTypesForScenario(key, proof = scenarioProofCatalog[key] || {}) {
+  const hints = scenarioAssertionTypeHints[key] || [];
+  const derived = [];
+  if (proof.texts?.length) derived.push('accessibility_text');
+  if (proof.screenshots?.length) derived.push('visual_heuristic');
+  const merged = [...new Set([...hints, ...derived])];
+  return merged.length ? merged : ['not_classified'];
+}
+
+function evidenceStrengthForScenario(state, key) {
+  const scenario = state.scenarios?.[key];
+  const proof = proofForScenario(state, key);
+  if (!scenario || scenario.status !== 'pass') {
+    return {
+      strength: 'not-proved',
+      reason: 'Scenario did not pass, so no positive evidence strength is assigned.',
+    };
+  }
+  if (['saveFlow', 'rollbackCleanup'].includes(key)) {
+    return {
+      strength: 'strong',
+      reason: 'Computer Use path is backed by independent disposable git state proof.',
+    };
+  }
+  if (proof.grade === 'text-confirmed' && proof.screenshotArtifacts.length === 0) {
+    return {
+      strength: 'weak',
+      reason: 'Pass relies on redacted accessibility text only, usually because screenshots are intentionally suppressed for a sensitive surface.',
+    };
+  }
+  const strength = v1GradeToEvidenceStrength[proof.grade] || 'not-proved';
+  const reasonByStrength = {
+    strong: 'User-visible interaction is backed by independent state proof.',
+    operational: 'Computer Use interacted with the real UI and matched expected state.',
+    'visual-supported': 'Accessibility text is the assertion source and screenshots support human inspection.',
+    weak: 'The claim depends on sparse text, calibration, or intentionally limited artifacts.',
+    'not-proved': 'The scenario is skipped, inconclusive, or lacks sufficient proof artifacts.',
+  };
+  return { strength, reason: reasonByStrength[strength] || reasonByStrength['not-proved'] };
+}
+
+function classifyScenarioResult(key, scenario) {
+  if (!scenario || scenario.status === 'pass') return { class: '', reason: '' };
+  const note = scenario.notes?.join(' ') || '';
+  if (/api key|credential|unauthorized|401|missing key|invalid key/i.test(note)) {
+    return { class: 'credential', reason: 'Provider credential wording was detected in the scenario notes.' };
+  }
+  if (/OpenRouter|provider|billing|credits|rate.?limit|timeout|model error|payment required/i.test(note)) {
+    return { class: 'provider', reason: 'Provider-side failure wording was detected in the scenario notes.' };
+  }
+  if (/DXU|SSH|remote|launchd|app-server|WebSocket|administrator authentication|authorization|activation|sudo|pam|macOS|MacinCloud/i.test(note)) {
+    return { class: 'remote_infra', reason: 'Remote Mac, launch, authorization, or activation wording was detected.' };
+  }
+  if (/Computer Use could not|click|set_value|artifact|screenshot|text snapshot|ffmpeg|report|proof catalog|proof artifact|runner/i.test(note)) {
+    return { class: 'harness', reason: 'Runner, Computer Use action, or artifact wording was detected.' };
+  }
+  if (/coverage|manifest|PR metadata|mapped scenario|added after this run|not exercised|no dedicated|waiver/i.test(note) || /Coverage|Freshness|prSpecificCoverage/.test(key)) {
+    return { class: 'coverage', reason: 'Coverage or mapping wording was detected.' };
+  }
+  if (/blank WebView|did not visibly|did not show|missing|not visible|no Restore|boundary was missing|wrong content|mismatch/i.test(note)) {
+    return { class: 'app', reason: 'App UI/state mismatch wording was detected.' };
+  }
+  return { class: 'inconclusive', reason: 'No more specific failure class matched.' };
+}
+
+function accessibilityRiskForScenario(state, key) {
+  const scenario = state.scenarios?.[key];
+  const proof = proofForScenario(state, key);
+  const assertionTypes = assertionTypesForScenario(key, proof);
+  if (assertionTypes.includes('remote_state') || assertionTypes.includes('coverage_manifest')) {
+    return {
+      risk: scenario?.status === 'pass' ? 'low' : 'medium',
+      reason: 'The claim has non-UI state or manifest proof in addition to UI evidence.',
+    };
+  }
+  if (proof.textArtifacts.length > 0 && proof.screenshotArtifacts.length === 0) {
+    return {
+      risk: 'high',
+      reason: 'The claim depends on accessibility text without a screenshot, usually due sensitive-surface redaction.',
+    };
+  }
+  if (assertionTypes.includes('accessibility_text')) {
+    return {
+      risk: 'medium',
+      reason: 'Accessibility text is the semantic assertion source; screenshots are reviewer support.',
+    };
+  }
+  return {
+    risk: 'low',
+    reason: 'The scenario is not primarily an accessibility-text assertion.',
+  };
+}
+
+function buildScenarioContract(state, key) {
+  const proof = proofForScenario(state, key);
+  const scenario = state.scenarios?.[key] || { status: 'inconclusive', notes: [] };
+  const failure = classifyScenarioResult(key, scenario);
+  const evidence = evidenceStrengthForScenario(state, key);
+  const accessibility = accessibilityRiskForScenario(state, key);
+  return {
+    id: key,
+    label: scenario.label || scenarioLabels[key] || key,
+    status: scenario.status || 'inconclusive',
+    legacyEvidenceGrade: proof.grade,
+    evidenceStrength: evidence.strength,
+    evidenceStrengthReason: evidence.reason,
+    assertionTypes: assertionTypesForScenario(key, proof),
+    failureClass: failure.class,
+    failureClassReason: failure.reason,
+    accessibilityRisk: accessibility.risk,
+    accessibilityRiskReason: accessibility.reason,
+    proof: proof.proof,
+    limitation: proof.untested,
+  };
+}
+
+function updateV2Contracts(state) {
+  state.v2 ||= {};
+  const scenarioContracts = {};
+  for (const key of Object.keys(state.scenarios || {})) {
+    scenarioContracts[key] = buildScenarioContract(state, key);
+    state.scenarios[key].evidenceStrength = scenarioContracts[key].evidenceStrength;
+    state.scenarios[key].evidenceStrengthReason = scenarioContracts[key].evidenceStrengthReason;
+    state.scenarios[key].assertionTypes = scenarioContracts[key].assertionTypes;
+    state.scenarios[key].failureClass = scenarioContracts[key].failureClass;
+    state.scenarios[key].failureClassReason = scenarioContracts[key].failureClassReason;
+    state.scenarios[key].accessibilityRisk = scenarioContracts[key].accessibilityRisk;
+    state.scenarios[key].accessibilityRiskReason = scenarioContracts[key].accessibilityRiskReason;
+  }
+  state.v2 = {
+    contractVersion: scenarioContractVersion,
+    canonicalSource:
+      'V2 is derived from the runner-owned scenarioLabels, scenarioGroups, scenarioProofCatalog, evolved case catalog, and coverage manifest until a later implementation consolidates those into a single registry module.',
+    evidenceGradeMapping: v1GradeToEvidenceStrength,
+    failureTaxonomy,
+    scenarioContracts,
+  };
+}
+
 function artifactLinks(state, key) {
   const proof = proofForScenario(state, key);
   const links = [...proof.screenshotArtifacts, ...proof.textArtifacts]
@@ -881,6 +1078,7 @@ function proofQualityIssues(state) {
   for (const shot of sensitiveScreenshots) {
     issues.push(`Sensitive surface ${shot.label} has a screenshot artifact (${shot.path}); use redacted text only.`);
   }
+  issues.push(...annotationGeometryIssues(state));
   for (const [key, scenario] of Object.entries(state.scenarios)) {
     if (scenario.status !== 'pass') continue;
     if (['visualProofQuality', 'mainCoverageFreshness', 'prSpecificCoverage'].includes(key)) continue;
@@ -947,6 +1145,23 @@ function annotationStyle(item) {
   return `left:${item.x}%;top:${item.y}%;width:${item.w}%;height:${item.h}%`;
 }
 
+function annotationGeometryIssues(state) {
+  const issues = [];
+  const screenshotLabels = new Set((state.screenshots || []).map((shot) => shot.label));
+  for (const [label, annotations] of Object.entries(screenshotAnnotations)) {
+    if (!screenshotLabels.has(label)) continue;
+    for (const [index, item] of annotations.entries()) {
+      const prefix = `${label} annotation ${index + 1} (${item.label})`;
+      if (typeof item.x !== 'number' || item.x < 0 || item.x > 100) issues.push(`${prefix} has x outside image bounds.`);
+      if (typeof item.y !== 'number' || item.y < 0 || item.y > 100) issues.push(`${prefix} has y outside image bounds.`);
+      if (item.tone === 'pin') continue;
+      if (typeof item.w !== 'number' || item.w <= 0 || item.x + item.w > 100) issues.push(`${prefix} has width outside image bounds.`);
+      if (typeof item.h !== 'number' || item.h <= 0 || item.y + item.h > 100) issues.push(`${prefix} has height outside image bounds.`);
+    }
+  }
+  return issues;
+}
+
 function renderAnnotatedImage(shot) {
   const annotations = screenshotAnnotations[shot.label] || [];
   const imageSize = shot.imageSize ? `${shot.imageSize.width}x${shot.imageSize.height}` : 'unknown-size';
@@ -959,6 +1174,89 @@ function renderAnnotatedImage(shot) {
   <img src="${escapeHtml(shot.path)}" alt="${escapeHtml(shot.label)}">
   ${overlays}
 </div>`;
+}
+
+function renderV2EvidenceModel(state) {
+  const contracts = Object.values(state.v2?.scenarioContracts || {});
+  const strengthCounts = contracts.reduce((counts, item) => {
+    counts[item.evidenceStrength] = (counts[item.evidenceStrength] || 0) + 1;
+    return counts;
+  }, {});
+  const rows = ['strong', 'operational', 'visual-supported', 'weak', 'not-proved']
+    .map((strength) => {
+      const matching = contracts.filter((item) => item.evidenceStrength === strength);
+      const examples = matching
+        .slice(0, 5)
+        .map((item) => item.label)
+        .join(', ');
+      return `<tr><td><span class="strength strength-${escapeHtml(strength)}">${escapeHtml(strength)}</span></td><td>${escapeHtml(String(strengthCounts[strength] || 0))}</td><td>${escapeHtml(examples || 'None')}</td></tr>`;
+    })
+    .join('\n');
+  const mappingRows = Object.entries(state.v2?.evidenceGradeMapping || {})
+    .map(([legacy, strength]) => `<tr><td><code>${escapeHtml(legacy)}</code></td><td><span class="strength strength-${escapeHtml(strength)}">${escapeHtml(strength)}</span></td></tr>`)
+    .join('\n');
+  return `<h2 id="v2-evidence-model">V2 Evidence Model</h2>
+  <section class="panel">
+    <p><strong>Deterministic verdict remains source of truth.</strong> Evidence strength explains how much independent proof backs each scenario; advisory/model review cannot flip pass/fail.</p>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Evidence Strength</th><th>Scenario Count</th><th>Examples</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <details>
+      <summary>Legacy grade mapping</summary>
+      <table><thead><tr><th>V1 Grade</th><th>V2 Strength</th></tr></thead><tbody>${mappingRows}</tbody></table>
+    </details>
+  </section>`;
+}
+
+function renderAccessibilityAudit(state) {
+  const rows = Object.values(state.v2?.scenarioContracts || {})
+    .sort((a, b) => ({ high: 0, medium: 1, low: 2 }[a.accessibilityRisk] ?? 3) - ({ high: 0, medium: 1, low: 2 }[b.accessibilityRisk] ?? 3))
+    .map(
+      (item) => `<tr>
+        <td>${escapeHtml(item.label)}<br><small>${escapeHtml(item.assertionTypes.join(', '))}</small></td>
+        <td><span class="risk risk-${escapeHtml(item.accessibilityRisk)}">${escapeHtml(item.accessibilityRisk)}</span></td>
+        <td>${escapeHtml(item.accessibilityRiskReason)}</td>
+      </tr>`,
+    )
+    .join('\n');
+  return `<h2 id="accessibility-risk">Accessibility Dependency / Assertion Risk</h2>
+  <section class="panel">
+    <p>This is a reviewer-risk audit, not a separate verdict. It calls out where Computer Use accessibility text is the main assertion source and where independent state proof exists.</p>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Scenario</th><th>Risk</th><th>Why</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </section>`;
+}
+
+function renderFailureTaxonomy(state) {
+  const rows = Object.values(state.v2?.scenarioContracts || {})
+    .filter((item) => item.status !== 'pass')
+    .map(
+      (item) => `<tr>
+        <td>${escapeHtml(item.label)}</td>
+        <td><span class="verdict ${escapeHtml(item.status)}">${escapeHtml(item.status)}</span></td>
+        <td><span class="failure-class">${escapeHtml(item.failureClass || 'unclassified')}</span></td>
+        <td>${escapeHtml(failureTaxonomy[item.failureClass] || item.failureClassReason || 'No classification recorded.')}</td>
+      </tr>`,
+    )
+    .join('\n');
+  const taxonomyRows = Object.entries(failureTaxonomy)
+    .map(([key, description]) => `<tr><td><code>${escapeHtml(key)}</code></td><td>${escapeHtml(description)}</td></tr>`)
+    .join('\n');
+  return `<h2 id="failure-taxonomy">Failure Taxonomy</h2>
+  <section class="panel">
+    ${
+      rows
+        ? `<div class="table-scroll"><table><thead><tr><th>Scenario</th><th>Status</th><th>Class</th><th>Meaning</th></tr></thead><tbody>${rows}</tbody></table></div>`
+        : '<p>No non-pass scenarios require failure classification.</p>'
+    }
+    <details>
+      <summary>Taxonomy definitions</summary>
+      <table><thead><tr><th>Class</th><th>Definition</th></tr></thead><tbody>${taxonomyRows}</tbody></table>
+    </details>
+  </section>`;
 }
 
 async function renderVisualProofBoard(state) {
@@ -1020,7 +1318,8 @@ function scenarioRows(state, items) {
   return items
     .map((item) => {
       const proof = proofForScenario(state, item.key);
-      return `<tr><td class="scenario-cell">${escapeHtml(item.label)}<br><small>${item.notes.map(escapeHtml).join('<br>') || 'No notes recorded.'}</small></td><td class="status-cell"><span class="verdict ${item.status}">${escapeHtml(item.status)}</span></td><td class="grade-cell"><span class="grade">${escapeHtml(proof.grade)}</span></td><td class="artifact-cell">${artifactLinks(state, item.key)}</td><td class="proof-cell">${escapeHtml(proof.proof)}</td></tr>`;
+      const contract = state.v2?.scenarioContracts?.[item.key] || buildScenarioContract(state, item.key);
+      return `<tr><td class="scenario-cell">${escapeHtml(item.label)}<br><small>${item.notes.map(escapeHtml).join('<br>') || 'No notes recorded.'}</small></td><td class="status-cell"><span class="verdict ${item.status}">${escapeHtml(item.status)}</span></td><td class="grade-cell"><span class="grade">${escapeHtml(proof.grade)}</span><br><span class="strength strength-${escapeHtml(contract.evidenceStrength)}">${escapeHtml(contract.evidenceStrength)}</span></td><td class="artifact-cell">${artifactLinks(state, item.key)}</td><td class="proof-cell">${escapeHtml(proof.proof)}${contract.failureClass ? `<br><small>Failure class: ${escapeHtml(contract.failureClass)}</small>` : ''}</td></tr>`;
     })
     .join('\n');
 }
@@ -1930,6 +2229,7 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
   ensureCurrentSchema(state);
   const verdict = verdictFor(state);
   state.verdict = verdict;
+  updateV2Contracts(state);
   state.claims = Object.values(state.scenarios).map((scenario) => ({
     claim: scenario.label,
     status: scenario.status,
@@ -1960,7 +2260,8 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
       ${group.items
         .map((item) => {
           const proof = proofForScenario(state, item.key);
-          return `<tr><td class="scenario-cell">${escapeHtml(item.label)}<br><small>${item.notes.map(escapeHtml).join('<br>') || 'No notes recorded.'}</small></td><td class="status-cell"><span class="verdict ${item.status}">${escapeHtml(item.status)}</span></td><td class="grade-cell"><span class="grade">${escapeHtml(proof.grade)}</span></td><td class="artifact-cell">${artifactLinks(state, item.key)}</td><td class="proof-cell">${escapeHtml(proof.proof)}</td><td>${escapeHtml(proof.untested)}</td></tr>`;
+          const contract = state.v2?.scenarioContracts?.[item.key] || buildScenarioContract(state, item.key);
+          return `<tr><td class="scenario-cell">${escapeHtml(item.label)}<br><small>${item.notes.map(escapeHtml).join('<br>') || 'No notes recorded.'}</small></td><td class="status-cell"><span class="verdict ${item.status}">${escapeHtml(item.status)}</span></td><td class="grade-cell"><span class="grade">${escapeHtml(proof.grade)}</span><br><span class="strength strength-${escapeHtml(contract.evidenceStrength)}">${escapeHtml(contract.evidenceStrength)}</span></td><td class="artifact-cell">${artifactLinks(state, item.key)}</td><td class="proof-cell">${escapeHtml(proof.proof)}${contract.failureClass ? `<br><small>Failure class: ${escapeHtml(contract.failureClass)}</small>` : ''}</td><td>${escapeHtml(proof.untested)}</td></tr>`;
         })
         .join('\n')}
     </tbody>
@@ -1973,6 +2274,9 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
   const prFocusHtml = renderPrFocus(state);
   const prPriorityHtml = renderPrPriority(state);
   const priorityTriageHtml = renderPriorityTriage(state);
+  const evidenceModelHtml = renderV2EvidenceModel(state);
+  const accessibilityAuditHtml = renderAccessibilityAudit(state);
+  const failureTaxonomyHtml = renderFailureTaxonomy(state);
   const visualProofHtml = await renderVisualProofBoard(state);
   const remoteMetadataHtml = renderRemoteMetadata(state);
 
@@ -2032,6 +2336,15 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
     .scenario-table .status-cell { width: 92px; min-width: 92px; text-align: center; }
     .scenario-table .grade-cell { width: 138px; min-width: 138px; text-align: center; }
     .scenario-table .status-cell .verdict { min-width: 54px; padding-left: 8px; padding-right: 8px; }
+    .strength, .risk, .failure-class { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; padding: 4px 8px; font-size: 12px; line-height: 1.15; font-weight: 700; white-space: nowrap; }
+    .strength { margin-top: 6px; border: 1px solid #3c4654; background: #20242d; color: #dce3ec; }
+    .strength-strong { background: #103829; color: #8bf0bb; border-color: #236b4c; }
+    .strength-operational { background: #173247; color: #a7d7ff; border-color: #315f82; }
+    .strength-visual-supported { background: #342f18; color: #ffe08a; border-color: #66592a; }
+    .strength-weak, .risk-high { background: #471a1a; color: #ffb0b0; border-color: #744; }
+    .strength-not-proved, .risk-medium { background: #443512; color: #ffd36e; border-color: #705c22; }
+    .risk-low { background: #123d2a; color: #8bf0bb; border-color: #236b4c; }
+    .failure-class { background: #20242d; color: #dce3ec; border: 1px solid #3c4654; }
     .artifact-list { max-height: 230px; overflow: auto; padding-right: 4px; }
     .priority table { margin-bottom: 18px; }
     .proof-card { margin-top: 18px; border: 1px solid #303640; border-radius: 8px; padding: 14px; background: #151922; }
@@ -2065,6 +2378,9 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
   <nav class="toc" aria-label="Report navigation">
     ${prPriorityHtml ? '<a href="#pull-request-focus">PR Focus</a>' : ''}
     <a href="#findings-first">Findings First</a>
+    <a href="#v2-evidence-model">Evidence Model</a>
+    <a href="#accessibility-risk">Assertion Risk</a>
+    <a href="#failure-taxonomy">Failure Classes</a>
     <a href="#remote-metadata">Remote Metadata</a>
     <a href="#evolved-flow">Evolved Flow</a>
     <a href="#scenario-checklist">Scenario Checklist</a>
@@ -2079,6 +2395,12 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
   <h2 id="findings-first">Findings First</h2>
   <p>Failures are shown first, then inconclusive checks, then passing checks. The full grouped checklist and visual proof board remain below.</p>
   ${priorityTriageHtml}
+
+  ${evidenceModelHtml}
+
+  ${accessibilityAuditHtml}
+
+  ${failureTaxonomyHtml}
 
   ${coverageFreshnessHtml}
 

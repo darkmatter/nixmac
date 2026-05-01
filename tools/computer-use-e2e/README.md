@@ -81,6 +81,10 @@ surface/workflow on `main`, then reporting coverage drift when a surface has no
 Computer Use scenario or explicit waiver. PR-specific focus is additive; it does
 not replace the baseline `main` coverage check.
 
+The testing-suite-only V2 contract is documented in
+[`V2_PROPOSAL.md`](./V2_PROPOSAL.md). V2 remains inside this feature/PR and does
+not modify core nixmac app code.
+
 The coverage freshness manifest lives at:
 
 ```bash
@@ -368,11 +372,12 @@ The aggregate report lands under:
 artifacts/computer-use-adversarial/<timestamp>/index.html
 ```
 
-The current adversarial suite covers twenty-one cases: API Keys blank render,
+The current adversarial suite covers twenty-six cases: API Keys blank render,
 settings mismatch, provider credential failure, provider timeout, missing build
 boundary, commit no-op, rollback no-op, activation admin-auth blockers, corrupt
 artifacts, blank screenshots, PR report priority, main coverage drift,
 zero-byte image/text evidence,
 findings ordering, sensitive screenshot leakage, stale verdicts, missing report
 inspection proof, unmapped PR-visible files, missing remote metadata, and
-missing rollback proof.
+missing rollback proof, plus V2 evidence-strength, failure-taxonomy,
+accessibility-risk, and annotation-geometry regressions.

@@ -447,6 +447,72 @@ const caseDefinitions = [
       );
     },
   },
+  {
+    id: 22,
+    slug: 'v2-weak-evidence-not-strong',
+    name: 'V2 evidence strength does not overstate text-only proof',
+    expected: 'settingsAPIKeys remains weak because it is intentionally redacted/text-only, not strong.',
+    evaluate(state) {
+      const contract = state.v2?.scenarioContracts?.settingsAPIKeys;
+      return contract?.legacyEvidenceGrade === 'text-confirmed' && contract?.evidenceStrength === 'weak';
+    },
+  },
+  {
+    id: 23,
+    slug: 'v2-failure-taxonomy-provider',
+    name: 'V2 provider failure taxonomy',
+    expected: 'review failure is classified as provider when notes indicate OpenRouter billing/credits.',
+    mutate({ state }) {
+      mutateScenario(state, 'review', 'fail', 'OpenRouter provider billing limit prevented Review.');
+    },
+    evaluate(state) {
+      return state.v2?.scenarioContracts?.review?.failureClass === 'provider';
+    },
+  },
+  {
+    id: 24,
+    slug: 'v2-failure-taxonomy-credential',
+    name: 'V2 credential failure taxonomy',
+    expected: 'review failure is classified as credential when notes indicate missing/invalid API key.',
+    mutate({ state }) {
+      mutateScenario(state, 'review', 'fail', 'The real provider call failed because nixmac could not access an invalid API key.');
+    },
+    evaluate(state) {
+      return state.v2?.scenarioContracts?.review?.failureClass === 'credential';
+    },
+  },
+  {
+    id: 25,
+    slug: 'v2-accessibility-risk',
+    name: 'V2 accessibility dependency audit flags text-only sensitive surfaces',
+    expected: 'API Keys has high accessibility/assertion risk because screenshots are suppressed.',
+    evaluate(state, runDir) {
+      const html = readFileSync(path.join(runDir, 'index.html'), 'utf8');
+      return state.v2?.scenarioContracts?.settingsAPIKeys?.accessibilityRisk === 'high' && /Accessibility Dependency \/ Assertion Risk/i.test(html);
+    },
+  },
+  {
+    id: 26,
+    slug: 'v2-annotation-geometry',
+    name: 'V2 annotation geometry guard',
+    expected: 'visualProofQuality fails if a screenshot overlay annotation is outside image bounds.',
+    mutate({ state }) {
+      state.screenshots.push({
+        label: 'adversarial-out-of-bounds-annotation',
+        path: state.screenshots.find((shot) => shot.label === 'launch')?.path || 'screenshots/01-launch.png',
+        note: 'Adversarial fixture: annotation geometry should be bounded.',
+        capturedAt: new Date().toISOString(),
+      });
+      state.scenarios.adversarialOutOfBounds = {
+        label: 'Adversarial out-of-bounds annotation',
+        status: 'pass',
+        notes: ['Adversarial fixture: this scenario uses a bad annotation.'],
+      };
+    },
+    evaluate(state) {
+      return state.scenarios.visualProofQuality.status === 'fail' && /outside image bounds/i.test(state.scenarios.visualProofQuality.notes.join(' '));
+    },
+  },
 ];
 
 function runCase(root, baseRun, definition) {

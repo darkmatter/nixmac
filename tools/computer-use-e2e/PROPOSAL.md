@@ -14,6 +14,10 @@ This is now promoted from local-only spike to a quiet PR-triggered remote Mac
 lane. GitHub Actions should trigger it on pull requests, upload evidence, and
 avoid team noise such as PR comments or Slack notifications.
 
+For the testing-suite-only V2 contract that stays inside this feature/PR and
+does not modify the core app, see
+[`V2_PROPOSAL.md`](./V2_PROPOSAL.md).
+
 ## Principles
 
 - Computer Use is the source of truth for app interaction. Shell code may prepare
