@@ -290,6 +290,7 @@ jobs:
           NIXMAC_COMPUTER_USE_APP: com.darkmatter.nixmac
           NIXMAC_E2E_REMOTE_SSH_DEST: ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}
           NIXMAC_E2E_SSH_KEY: /home/runner/.ssh/nixmac-e2e
+          NIXMAC_E2E_SSH_KNOWN_HOSTS: /home/runner/.ssh/known_hosts
           NIXMAC_E2E_APP_COMMAND: open -a /Applications/nixmac.app
           NIXMAC_E2E_REMOTE_CONFIG_DIR: ${{ steps.remote-start.outputs.remote_config }}/config
           NIXMAC_E2E_DISPOSABLE_CONFIG: "true"

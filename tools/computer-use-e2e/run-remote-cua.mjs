@@ -287,6 +287,7 @@ Environment:
   NIXMAC_COMPUTER_USE_APP      Bundle id/app name (default ${DEFAULT_APP})
   NIXMAC_E2E_REMOTE_SSH_DEST   Optional ssh destination, e.g. admin@38.79.97.120
   NIXMAC_E2E_SSH_KEY           Optional ssh private key path
+  NIXMAC_E2E_SSH_KNOWN_HOSTS   Optional known_hosts path for strict SSH verification
   NIXMAC_E2E_REMOTE_REPORT_DIR Optional remote report copy dir for browser inspection
   NIXMAC_E2E_APP_COMMAND       App command metadata
   NIXMAC_E2E_DISPOSABLE_CONFIG Set true only when the app is proven to use per-run disposable config
@@ -330,7 +331,10 @@ function tryRun(command, args, options = {}) {
 function sshArgs(remoteCommand) {
   const dest = process.env.NIXMAC_E2E_REMOTE_SSH_DEST;
   if (!dest) return null;
-  const args = ['-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=no'];
+  const args = ['-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes'];
+  if (process.env.NIXMAC_E2E_SSH_KNOWN_HOSTS) {
+    args.push('-o', `UserKnownHostsFile=${process.env.NIXMAC_E2E_SSH_KNOWN_HOSTS}`);
+  }
   if (process.env.NIXMAC_E2E_SSH_KEY) args.push('-i', process.env.NIXMAC_E2E_SSH_KEY);
   args.push(dest, remoteCommand);
   return args;
@@ -345,7 +349,10 @@ function ssh(remoteCommand) {
 function scpToRemote(localPath, remotePath) {
   const dest = process.env.NIXMAC_E2E_REMOTE_SSH_DEST;
   if (!dest) return { ok: false, stdout: '', stderr: 'NIXMAC_E2E_REMOTE_SSH_DEST is not set' };
-  const args = ['-r', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=no'];
+  const args = ['-r', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes'];
+  if (process.env.NIXMAC_E2E_SSH_KNOWN_HOSTS) {
+    args.push('-o', `UserKnownHostsFile=${process.env.NIXMAC_E2E_SSH_KNOWN_HOSTS}`);
+  }
   if (process.env.NIXMAC_E2E_SSH_KEY) args.push('-i', process.env.NIXMAC_E2E_SSH_KEY);
   args.push(localPath, `${dest}:${remotePath}`);
   return tryRun('scp', args);

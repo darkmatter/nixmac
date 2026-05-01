@@ -28,6 +28,7 @@ NIXMAC_COMPUTER_USE_WS=ws://127.0.0.1:18790 \
 NIXMAC_COMPUTER_USE_APP=com.darkmatter.nixmac \
 NIXMAC_E2E_REMOTE_SSH_DEST=admin@REMOTE-MAC \
 NIXMAC_E2E_SSH_KEY=/path/to/key \
+NIXMAC_E2E_SSH_KNOWN_HOSTS=/path/to/known_hosts \
 node tools/computer-use-e2e/run-remote-cua.mjs run
 ```
 
