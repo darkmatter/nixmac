@@ -2116,12 +2116,16 @@ async function renderExisting(args) {
       : `Missing proof artifacts for passing scenarios: ${proofIssues.join('; ')}`,
   ];
   const videoIssue = videoArtifactIssue(state);
-  state.scenarios.videoEvidence.status = videoIssue ? 'fail' : 'pass';
-  state.scenarios.videoEvidence.notes = [
-    videoIssue
-      ? `Evidence video artifact is not valid: ${videoIssue}.`
-      : `Evidence video generated at ${state.video.path}.`,
-  ];
+  const preserveUnavailableVideoEvidence =
+    state.video.status !== 'available' && state.scenarios.videoEvidence.status === 'inconclusive';
+  if (!preserveUnavailableVideoEvidence) {
+    state.scenarios.videoEvidence.status = videoIssue ? 'fail' : 'pass';
+    state.scenarios.videoEvidence.notes = [
+      videoIssue
+        ? `Evidence video artifact is not valid: ${videoIssue}.`
+        : `Evidence video generated at ${state.video.path}.`,
+    ];
+  }
   updateMainCoverageFreshness(state);
   updatePrSpecificCoverage(state);
   await render(state, { stateFileName: 'state.regenerated.json', recordEvent: false });
