@@ -528,6 +528,18 @@ const caseDefinitions = [
       );
     },
   },
+  {
+    id: 28,
+    slug: 'secret-masking-violation',
+    name: 'Secret masking violation fails visual proof quality',
+    expected: 'visualProofQuality fails if an API Keys masking violation is recorded.',
+    mutate({ state }) {
+      state.secretMaskingViolations = ['adversarial fixture: API Keys raw accessibility text contained an unmasked key-like secret.'];
+    },
+    evaluate(state) {
+      return state.verdict === 'fail' && state.scenarios.visualProofQuality.status === 'fail' && /Secret masking violation/i.test(state.scenarios.visualProofQuality.notes.join(' '));
+    },
+  },
 ];
 
 function runCase(root, baseRun, definition) {

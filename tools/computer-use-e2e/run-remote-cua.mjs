@@ -2313,7 +2313,7 @@ function contentImage(response) {
 }
 
 function containsUnmaskedSecret(text) {
-  return /sk-(?:or|proj|live|test)-[A-Za-z0-9_-]{16,}|OPENROUTER_API_KEY=(?!\\[REDACTED\\])[^\s"'<>]+|OPENAI_API_KEY=(?!\\[REDACTED\\])[^\s"'<>]+/i.test(text || '');
+  return /(?:sk-[A-Za-z0-9_-]{16,}|Bearer\s+[A-Za-z0-9._-]{16,}|(?:OPENROUTER|OPENAI|ANTHROPIC|GROQ|XAI|MISTRAL|COHERE)_API_KEY=(?!\[REDACTED\])[^\s"'<>]+)/i.test(text || '');
 }
 
 async function captureState(client, state, label, note = '') {
@@ -3025,8 +3025,6 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
     .pass { background: #123d2a; color: #8bf0bb; }
     .fail { background: #471a1a; color: #ff9e9e; }
     .inconclusive { background: #443512; color: #ffd36e; }
-    .review { background: #24324a; color: #9ec5ff; }
-    .not-run { background: #20242d; color: #c3cbd7; }
     .group { margin-top: 18px; }
     table { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 8px; }
     .table-scroll { width: 100%; overflow-x: auto; border-radius: 8px; }
@@ -3663,6 +3661,10 @@ async function runSelfTest() {
   assert.equal(hasSettingsAIModelsEvidence(`${settingsFrame}\n35 heading AI Models\n37 heading Evolution Model\n40 text Provider\n44 text Model Name\n66 text Max Build Attempts`), true, 'AI Models pane should satisfy AI Models evidence');
   assert.equal(hasSettingsAPIKeysEvidence(`${settingsFrame}\n35 heading API Keys\n38 heading OpenRouter\n41 text API Key\n43 secure text field API Key\n49 heading OpenAI`), true, 'API Keys pane should satisfy API Keys evidence');
   assert.equal(hasSettingsPreferencesEvidence(`${settingsFrame}\n35 heading Preferences\n37 text Confirmation dialogs\n38 text Build\n41 text Clear / Discard\n44 text Rollback\n50 switch (settable, boolean) off`), true, 'Preferences pane should satisfy Preferences evidence');
+  assert.equal(containsUnmaskedSecret(`${settingsFrame}\n43 secure text field API Key, Value: ••••••••••••`), false, 'masked API key text should not be treated as an unmasked secret');
+  assert.equal(containsUnmaskedSecret(`${settingsFrame}\n43 text API Key, Value: sk-or-v1-1234567890abcdef1234567890abcdef`), true, 'raw OpenRouter key should be treated as an unmasked secret');
+  assert.equal(containsUnmaskedSecret(`${settingsFrame}\n43 text API Key, Value: sk-ant-api03-1234567890abcdef1234567890abcdef`), true, 'raw Anthropic-style key should be treated as an unmasked secret');
+  assert.equal(containsUnmaskedSecret('OPENAI_API_KEY=sk-1234567890abcdef1234567890abcdef'), true, 'raw API key env var should be treated as an unmasked secret');
 
   assert.equal(clickResponseIndicatesFailure({ result: { isError: true, content: [{ type: 'text', text: 'Tool returned an error.' }] } }), true, 'MCP isError should fail click');
   assert.equal(clickResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'App state includes button Report Error and Console Error logs.' }] } }), false, 'ordinary app-state Error text should not fail click');
@@ -3771,6 +3773,8 @@ async function runSelfTest() {
   const ids = [...renderedHtml.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
   const duplicateIds = ids.filter((id, index) => ids.indexOf(id) !== index);
   assert.deepEqual(duplicateIds, [], 'rendered report should not include duplicate element ids');
+  const screenshotAnchors = [...renderedHtml.matchAll(/href="#(screenshot-[^"]+)"/g)].map((match) => match[1]);
+  assert.equal(screenshotAnchors.every((anchor) => ids.includes(anchor)), true, 'artifact screenshot links should target rendered screenshot gallery anchors');
   console.log('Computer Use E2E runner self-test passed.');
 }
 

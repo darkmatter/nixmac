@@ -387,7 +387,7 @@ The aggregate report lands under:
 artifacts/computer-use-adversarial/<timestamp>/index.html
 ```
 
-The current adversarial suite covers twenty-seven cases: API Keys blank render,
+The current adversarial suite covers twenty-eight cases: API Keys blank render,
 settings mismatch, provider credential failure, provider timeout, missing build
 boundary, commit no-op, rollback no-op, activation admin-auth blockers, corrupt
 artifacts, blank screenshots that fail owning scenarios, PR report priority,
@@ -395,5 +395,5 @@ main coverage drift, zero-byte image/text evidence,
 findings ordering, sensitive screenshot leakage, stale verdicts, missing report
 inspection proof, unmapped PR-visible files, missing remote metadata, and
 missing rollback proof, plus V2 evidence-strength, failure-taxonomy,
-accessibility-risk, annotation-geometry, and visual assertion calibration
-regressions.
+accessibility-risk, annotation-geometry, visual assertion calibration, and
+secret-masking violations.
