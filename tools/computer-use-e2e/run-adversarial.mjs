@@ -118,11 +118,11 @@ function createBlackPng(file) {
 function addSensitiveScreenshot(state) {
   const source = state.screenshots.find((shot) => shot.label === 'launch')?.path;
   if (!source) throw new Error('launch screenshot missing from base state');
-  const dest = 'screenshots/adversarial-settings-api-keys.png';
+  const dest = 'screenshots/adversarial-console.png';
   state.screenshots.push({
-    label: 'settings-api-keys',
+    label: 'console',
     path: dest,
-    note: 'Adversarial fixture: sensitive API Keys screenshot should not be allowed.',
+    note: 'Adversarial fixture: Console screenshot should not be allowed.',
     capturedAt: new Date().toISOString(),
   });
   return { source, dest };
@@ -334,7 +334,7 @@ const caseDefinitions = [
     id: 15,
     slug: 'sensitive-screenshot',
     name: 'Sensitive screenshot leak',
-    expected: 'visualProofQuality fails if API Keys/Console screenshots are attached.',
+    expected: 'visualProofQuality fails if Console screenshots are attached.',
     mutate({ runDir, state }) {
       const { source, dest } = addSensitiveScreenshot(state);
       cpSync(path.join(runDir, source), path.join(runDir, dest));
@@ -450,11 +450,11 @@ const caseDefinitions = [
   {
     id: 22,
     slug: 'v2-weak-evidence-not-strong',
-    name: 'V2 evidence strength does not overstate text-only proof',
-    expected: 'settingsAPIKeys remains weak because it is intentionally redacted/text-only, not strong.',
+    name: 'V2 evidence strength does not overstate API Keys proof',
+    expected: 'settingsAPIKeys is weak for historical text-only evidence or visual-supported when a masked screenshot is present, but not strong.',
     evaluate(state) {
       const contract = state.v2?.scenarioContracts?.settingsAPIKeys;
-      return contract?.legacyEvidenceGrade === 'text-confirmed' && contract?.evidenceStrength === 'weak';
+      return contract?.legacyEvidenceGrade === 'text-confirmed' && ['weak', 'visual-supported'].includes(contract?.evidenceStrength);
     },
   },
   {
@@ -484,11 +484,11 @@ const caseDefinitions = [
   {
     id: 25,
     slug: 'v2-accessibility-risk',
-    name: 'V2 accessibility dependency audit flags text-only sensitive surfaces',
-    expected: 'API Keys has high accessibility/assertion risk because screenshots are suppressed.',
+    name: 'V2 accessibility dependency audit flags API Keys as elevated risk',
+    expected: 'API Keys has high risk for historical text-only evidence or medium risk when masked screenshot evidence is present.',
     evaluate(state, runDir) {
       const html = readFileSync(path.join(runDir, 'index.html'), 'utf8');
-      return state.v2?.scenarioContracts?.settingsAPIKeys?.accessibilityRisk === 'high' && /Evidence Quality/i.test(html) && /id="accessibility-risk"/i.test(html);
+      return ['high', 'medium'].includes(state.v2?.scenarioContracts?.settingsAPIKeys?.accessibilityRisk) && /Evidence Quality/i.test(html) && /id="accessibility-risk"/i.test(html);
     },
   },
   {
@@ -526,58 +526,6 @@ const caseDefinitions = [
         state.visualAssertions.every((assertion) => assertion.status === 'pass') &&
         state.scenarios.visualProofQuality.status === 'pass'
       );
-    },
-  },
-  {
-    id: 28,
-    slug: 'model-critic-advisory-only',
-    name: 'Advisory model critic cannot flip deterministic verdict',
-    expected: 'A needs-review model critic artifact renders as advisory evidence while deterministic pass/fail remains unchanged.',
-    mutate({ runDir }) {
-      const criticDir = path.join(runDir, 'model-critic');
-      mkdirSync(criticDir, { recursive: true });
-      writeJson(path.join(criticDir, 'model-critic.json'), {
-        status: 'needs-review',
-        generatedAt: new Date().toISOString(),
-        deterministicSourceOfTruth: true,
-        note: 'Adversarial fixture: model critic must remain advisory.',
-        models: [
-          {
-            model: 'fixture/model',
-            advisoryStatus: 'needs-review',
-            confidence: 0.91,
-            latencyMs: 1,
-            summary: 'Fixture critic found a reviewer concern.',
-            findings: [
-              {
-                severity: 'medium',
-                title: 'Fixture advisory finding',
-                scenarioId: 'visualProofQuality',
-                rationale: 'This should render without changing deterministic verdict.',
-              },
-            ],
-          },
-        ],
-      });
-    },
-    evaluate(state, runDir) {
-      const html = readFileSync(path.join(runDir, 'index.html'), 'utf8');
-      return state.verdict === 'pass' && state.modelCritic?.status === 'needs-review' && /id="model-critic"/i.test(html) && /Advisory only/i.test(html);
-    },
-  },
-  {
-    id: 29,
-    slug: 'model-critic-malformed-artifact',
-    name: 'Malformed model critic artifact is contained',
-    expected: 'A malformed model critic artifact renders an advisory error instead of crashing report generation or changing deterministic verdict.',
-    mutate({ runDir }) {
-      const criticDir = path.join(runDir, 'model-critic');
-      mkdirSync(criticDir, { recursive: true });
-      writeFileSync(path.join(criticDir, 'model-critic.json'), '{"status":');
-    },
-    evaluate(state, runDir) {
-      const html = readFileSync(path.join(runDir, 'index.html'), 'utf8');
-      return state.verdict === 'pass' && state.modelCritic?.status === 'error' && /could not be parsed/i.test(html);
     },
   },
 ];

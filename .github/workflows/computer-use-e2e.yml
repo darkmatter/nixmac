@@ -33,9 +33,6 @@ jobs:
       NIXMAC_E2E_EVOLVE_MODEL: anthropic/claude-sonnet-4.6
       NIXMAC_E2E_SUMMARY_PROVIDER: openai
       NIXMAC_E2E_SUMMARY_MODEL: openai/gpt-4o-mini
-      NIXMAC_E2E_MODEL_CRITIC: ${{ vars.NIXMAC_E2E_MODEL_CRITIC || 'false' }}
-      NIXMAC_E2E_MODEL_CRITIC_MODEL: ${{ vars.NIXMAC_E2E_MODEL_CRITIC_MODEL || 'openai/gpt-5.4-mini' }}
-      NIXMAC_E2E_MODEL_CRITIC_ESCALATION_MODEL: ${{ vars.NIXMAC_E2E_MODEL_CRITIC_ESCALATION_MODEL || 'openai/gpt-5.4' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -526,22 +523,6 @@ jobs:
           REMOTE
           cleanup_status=$?
           exit "$cleanup_status"
-
-      - name: Run advisory model critic
-        if: always() && env.NIXMAC_E2E_MODEL_CRITIC == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          latest_report="$(find artifacts/computer-use-remote -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort | tail -1 || true)"
-          if [[ -z "$latest_report" || ! -f "$latest_report/state.json" ]]; then
-            echo "No Computer Use report exists; skipping advisory model critic."
-            exit 0
-          fi
-          node tools/computer-use-e2e/run-model-critics.mjs review \
-            --run-dir "$latest_report" \
-            --model "$NIXMAC_E2E_MODEL_CRITIC_MODEL" \
-            --escalation-model "$NIXMAC_E2E_MODEL_CRITIC_ESCALATION_MODEL"
-          node tools/computer-use-e2e/run-remote-cua.mjs render-existing --run-dir "$latest_report"
 
       - name: Collect evidence report metadata
         id: report-meta

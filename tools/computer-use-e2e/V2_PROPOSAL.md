@@ -17,8 +17,7 @@ misread by separating three concepts that V1 partially merged:
 - evidence strength behind each scenario;
 - failure/risk classification when a scenario is weak, inconclusive, or failed.
 
-The deterministic runner remains the source of truth. Model critics, if added
-later, are advisory only and cannot flip pass/fail.
+The deterministic runner remains the source of truth.
 
 ## Canonical Scenario Contract
 
@@ -70,9 +69,11 @@ semantic assertion source. This does not make the suite unreliable by itself;
 it tells reviewers which green checks depend on the app's accessibility tree and
 which checks have independent state or manifest proof.
 
-Sensitive surfaces such as API Keys and Console intentionally omit screenshots.
-Those passes should be visibly weaker than Save/Rollback passes, even when the
-deterministic scenario verdict is green.
+Console intentionally omits screenshots. API Keys screenshots are allowed only
+when raw accessibility text confirms no unmasked key-like secret is present; if
+that masking contract fails, the screenshot is omitted and the report relies on
+redacted text evidence. Those passes should be visibly weaker than
+Save/Rollback passes, even when the deterministic scenario verdict is green.
 
 ## Targeted Visual Heuristics
 
@@ -128,19 +129,6 @@ External config mutation lanes must:
 - clean up with `git reset --hard <baseline>` plus `git clean -fd`;
 - never push implicit product behavior changes through the test suite.
 
-## Model Critics
-
-Model critics are useful in V2 only as advisory reviewers of already-generated
-evidence. They should be offline/manual or opt-in until these are solved:
-
-- data egress and redaction for screenshots/text/remote metadata;
-- cost ceiling;
-- deterministic placement in the report;
-- no authority over pass/fail.
-
-If added, advisory output belongs below deterministic results or in a collapsed
-section/artifact.
-
 ## Acceptance Criteria
 
 Already met by V1:
@@ -162,5 +150,4 @@ Required for V2 in this PR:
 - no core app files modified.
 
 Future implementation PRs may add a consolidated registry module, optional
-provider-edge workflows, external-config mutation lanes, and model critic
-artifacts.
+provider-edge workflows, and external-config mutation lanes.

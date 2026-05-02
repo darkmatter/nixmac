@@ -151,9 +151,9 @@ const scenarioProofCatalog = {
   },
   settingsAPIKeys: {
     grade: 'text-confirmed',
-    screenshots: [],
+    screenshots: ['settings-api-keys-01'],
     texts: ['settings-api-keys-01'],
-    proof: 'Sensitive screenshot omitted; redacted accessibility text must show API Keys/OpenRouter/API-key controls.',
+    proof: 'API Keys screenshot is captured only when raw accessibility text confirms no unmasked key-like secret is present; redacted text must show API Keys/OpenRouter/API-key controls.',
     untested: 'Does not edit/delete keys and does not prove keychain persistence by itself.',
   },
   settingsPreferences: {
@@ -581,6 +581,13 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
+function slugify(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 function findElement(text, patterns) {
   const list = Array.isArray(patterns) ? patterns : [patterns];
   for (const line of text.split('\n')) {
@@ -913,7 +920,7 @@ function ensureCurrentSchema(state) {
   state.screenshots ||= [];
   state.textSnapshots ||= [];
   state.video ||= null;
-  state.modelCritic ||= null;
+  state.secretMaskingViolations ||= [];
   state.visualAssertions ||= [];
   state.evolvedCaseStrategy ||= evolvedCaseStrategy();
   state.evolvedCaseRuns ||= [];
@@ -1037,7 +1044,7 @@ function accessibilityRiskForScenario(state, key) {
     return {
       risk: assertionTypes.includes('visual_signalstats') ? 'low' : 'medium',
       reason: assertionTypes.includes('visual_signalstats')
-        ? 'Accessibility text is the semantic assertion source and screenshot signal checks corroborate non-sensitive visual evidence.'
+        ? 'Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.'
         : 'Accessibility text is the semantic assertion source without binding screenshot checks.',
     };
   }
@@ -1097,9 +1104,9 @@ function updateV2Contracts(state) {
 
 function artifactLinks(state, key) {
   const proof = proofForScenario(state, key);
-  const links = [...proof.screenshotArtifacts, ...proof.textArtifacts]
-    .map((artifact) => `<code>${escapeHtml(artifact.path)}</code>`)
-    .join('<br>');
+  const screenshotLinks = proof.screenshotArtifacts.map((artifact) => `<a href="#screenshot-${escapeHtml(slugify(artifact.label || artifact.path))}"><code>${escapeHtml(artifact.path)}</code></a>`);
+  const textLinks = proof.textArtifacts.map((artifact) => `<a href="${escapeHtml(artifact.path)}" target="_blank" rel="noopener"><code>${escapeHtml(artifact.path)}</code></a>`);
+  const links = [...screenshotLinks, ...textLinks].join('<br>');
   return links ? `<div class="artifact-list">${links}</div>` : 'No primary artifact linked.';
 }
 
@@ -1168,7 +1175,10 @@ function remoteActivationPamSymlinkHang() {
 
 function proofQualityIssues(state) {
   const issues = [];
-  const sensitiveScreenshots = state.screenshots.filter((shot) => /settings-api-keys|console/i.test(shot.label || ''));
+  for (const violation of state.secretMaskingViolations || []) {
+    issues.push(`Secret masking violation: ${violation}`);
+  }
+  const sensitiveScreenshots = state.screenshots.filter((shot) => /console/i.test(shot.label || ''));
   for (const shot of sensitiveScreenshots) {
     issues.push(`Sensitive surface ${shot.label} has a screenshot artifact (${shot.path}); use redacted text only.`);
   }
@@ -1214,7 +1224,7 @@ function artifactFileIssue(state, relativePath) {
 function screenshotVideoFrameEntries(state) {
   const runDir = path.resolve(state.runDir);
   return (state.screenshots || [])
-    .filter((shot) => shot?.path && !/settings-api-keys|console/i.test(shot.label || ''))
+    .filter((shot) => shot?.path && !/console/i.test(shot.label || ''))
     .map((shot) => path.join(runDir, shot.path))
     .filter((fullPath) => {
       try {
@@ -1232,7 +1242,7 @@ async function maybeGenerateEvidenceVideo(state) {
   if (!frames.length) {
     state.video = {
       status: 'unavailable',
-      note: 'No non-sensitive screenshot frames were available for the evidence video.',
+      note: 'No safe-to-store screenshot frames were available for the evidence video.',
     };
     return;
   }
@@ -1287,22 +1297,8 @@ async function maybeGenerateEvidenceVideo(state) {
         status: 'available',
         path: relativePath,
         frames: frames.length,
-        note: 'Screenshot-compilation video generated from non-sensitive Computer Use frames.',
+        note: 'Screenshot-compilation video generated from safe-to-store Computer Use frames.',
       };
-}
-
-async function maybeLoadModelCritic(state) {
-  const criticPath = path.join(state.runDir, 'model-critic', 'model-critic.json');
-  if (!existsSync(criticPath)) return;
-  try {
-    state.modelCritic = JSON.parse(await readFile(criticPath, 'utf8'));
-  } catch (error) {
-    state.modelCritic = {
-      status: 'error',
-      note: `Model critic artifact could not be parsed: ${redact(error instanceof Error ? error.message : String(error))}`,
-      deterministicSourceOfTruth: true,
-    };
-  }
 }
 
 function parseSignalStats(output) {
@@ -1565,7 +1561,7 @@ function renderV2EvidenceModel(state) {
     .join('\n');
   return `<h2 id="v2-evidence-model">V2 Evidence Model</h2>
   <section class="panel">
-    <p><strong>Deterministic verdict remains source of truth.</strong> Evidence strength explains how much independent proof backs each scenario; advisory/model review cannot flip pass/fail.</p>
+    <p><strong>Deterministic verdict remains source of truth.</strong> Evidence strength explains how much independent proof backs each scenario.</p>
     <div class="table-scroll"><table>
       <thead><tr><th>Evidence Strength</th><th>Scenario Count</th><th>Examples</th></tr></thead>
       <tbody>${rows}</tbody>
@@ -1900,7 +1896,7 @@ function renderSummaryVideo(state) {
     return `<div id="summary-video" class="summary-video">
       <div class="summary-video-copy">
         <strong>Evidence video</strong>
-        <small>Screenshot walkthrough compiled from ${escapeHtml(String(state.video.frames || state.screenshots.length))} non-sensitive frames.</small>
+        <small>Screenshot walkthrough compiled from ${escapeHtml(String(state.video.frames || state.screenshots.length))} safe-to-store frames.</small>
       </div>
       <video controls preload="metadata" src="${escapeHtml(state.video.path)}"></video>
     </div>`;
@@ -1921,7 +1917,6 @@ function renderExecutiveSummary(state, counts, evidenceSummary) {
   const saveStatus = state.scenarios.saveFlow?.status || 'inconclusive';
   const rollbackStatus = state.scenarios.rollbackCleanup?.status || 'inconclusive';
   const metadataStatus = state.remoteMachine && state.remoteApp ? 'pass' : 'inconclusive';
-  const criticStatus = state.modelCritic?.status || 'not-run';
   const interpretation =
     state.verdict === 'pass'
       ? 'The PR-head run passed on the DXU remote Mac with no failed or inconclusive scenario checks.'
@@ -1952,7 +1947,6 @@ function renderExecutiveSummary(state, counts, evidenceSummary) {
       ${signal('Step 3 save', saveStatus, 'Disposable config change persisted through the save path.')}
       ${signal('Rollback cleanup', rollbackStatus, 'History rollback returned the disposable config to baseline.')}
       ${signal('Remote metadata', metadataStatus, 'DXU machine, app, and process metadata were captured.')}
-      ${signal('Model critic', criticStatus === 'clean' ? 'pass' : criticStatus === 'not-run' ? 'inconclusive' : 'inconclusive', criticStatus === 'not-run' ? 'Advisory critic was not enabled.' : `Advisory status: ${criticStatus}.`)}
     </div>
     <p class="summary-links">
       <a href="#pull-request-focus">Review PR Focus</a>
@@ -1978,7 +1972,6 @@ function renderReportNav(state, counts) {
     <a href="#evidence-quality">Evidence Quality ${navBadge('', riskCount)}</a>
     <a href="#visual-assertions">Visual Assertions ${navBadge('', state.visualAssertions?.length || 0)}</a>
     <a href="#summary-video">Evidence Video ${navBadge('', state.video?.status === 'available' ? 'available' : 'off')}</a>
-    <a href="#model-critic">Model Critic ${navBadge('', state.modelCritic?.status || 'not-run')}</a>
     <a href="#visual-proof">Visual Proof ${navBadge('', state.screenshots.length)}</a>
     <a href="#scenario-checklist">Scenario Checklist</a>
     <a href="#main-coverage">Coverage</a>
@@ -2059,7 +2052,7 @@ function renderEvidenceQuality(state) {
     <span id="accessibility-risk" class="anchor-alias"></span>
     <span id="failure-taxonomy" class="anchor-alias"></span>
     <span id="confirmation-boundaries" class="anchor-alias"></span>
-    <p><strong>Deterministic verdict remains source of truth.</strong> Evidence strength and assertion risk explain how much independent proof backs each scenario. Non-sensitive screenshots are binding corroborating evidence: missing, blank, occluded, or low-signal required screenshots can fail their owning scenario.</p>
+    <p><strong>Deterministic verdict remains source of truth.</strong> Evidence strength and assertion risk explain how much independent proof backs each scenario. Safe-to-store screenshots are binding corroborating evidence: missing, blank, occluded, or low-signal required screenshots can fail their owning scenario.</p>
     <h3 id="visual-assertions">Visual Assertion Results</h3>
     ${renderVisualAssertionResults(state)}
     <div class="quality-grid">
@@ -2093,57 +2086,6 @@ function renderEvidenceQuality(state) {
     <details>
       <summary>Taxonomy definitions</summary>
       <table><thead><tr><th>Class</th><th>Definition</th></tr></thead><tbody>${taxonomyRows}</tbody></table>
-    </details>
-  </section>`;
-}
-
-function renderModelCritic(state) {
-  const critic = state.modelCritic;
-  const status = critic?.status || 'not-run';
-  const modelRows = critic?.models?.length
-    ? critic.models
-        .map(
-          (model) => `<tr>
-            <td><code>${escapeHtml(model.model)}</code></td>
-            <td><span class="verdict ${model.advisoryStatus === 'clean' ? 'pass' : model.advisoryStatus === 'needs-review' ? 'inconclusive' : 'inconclusive'}">${escapeHtml(model.advisoryStatus)}</span></td>
-            <td>${escapeHtml(String(model.confidence ?? ''))}</td>
-            <td>${escapeHtml(String(model.latencyMs ?? ''))}ms</td>
-            <td>${escapeHtml(model.summary || '')}</td>
-          </tr>`,
-        )
-        .join('\n')
-    : '<tr><td colspan="5">No model critic calls were recorded.</td></tr>';
-  const findings = critic?.models?.flatMap((model) => (model.findings || []).map((finding) => ({ ...finding, model: model.model }))) || [];
-  const findingRows = findings.length
-    ? findings
-        .map(
-          (finding) => `<tr>
-            <td><code>${escapeHtml(finding.model)}</code></td>
-            <td>${escapeHtml(finding.severity)}</td>
-            <td>${escapeHtml(finding.title)}</td>
-            <td>${escapeHtml(finding.scenarioId || '')}</td>
-            <td>${escapeHtml(finding.rationale)}</td>
-          </tr>`,
-        )
-        .join('\n')
-    : '<tr><td colspan="5">No advisory findings.</td></tr>';
-  return `<h2 id="model-critic">Model Critic</h2>
-  <section class="panel">
-    <p><strong>Advisory only.</strong> Deterministic pass/fail remains the source of truth; model critic output cannot override scenario status, screenshot signal checks, remote git proof, or cleanup proof.</p>
-    <p><strong>Status:</strong> <span class="grade">${escapeHtml(status)}</span>${critic?.note ? ` ${escapeHtml(critic.note)}` : ''}</p>
-    <details ${status === 'needs-review' || status === 'advisory' ? 'open' : ''}>
-      <summary>Model calls</summary>
-      <div class="table-scroll"><table>
-        <thead><tr><th>Model</th><th>Advisory Status</th><th>Confidence</th><th>Latency</th><th>Summary</th></tr></thead>
-        <tbody>${modelRows}</tbody>
-      </table></div>
-    </details>
-    <details ${findings.length ? 'open' : ''}>
-      <summary>Advisory findings</summary>
-      <div class="table-scroll"><table>
-        <thead><tr><th>Model</th><th>Severity</th><th>Finding</th><th>Scenario</th><th>Rationale</th></tr></thead>
-        <tbody>${findingRows}</tbody>
-      </table></div>
     </details>
   </section>`;
 }
@@ -2370,13 +2312,19 @@ function contentImage(response) {
   return response?.result?.content?.find((item) => item.type === 'image')?.data ?? '';
 }
 
+function containsUnmaskedSecret(text) {
+  return /sk-(?:or|proj|live|test)-[A-Za-z0-9_-]{16,}|OPENROUTER_API_KEY=(?!\\[REDACTED\\])[^\s"'<>]+|OPENAI_API_KEY=(?!\\[REDACTED\\])[^\s"'<>]+/i.test(text || '');
+}
+
 async function captureState(client, state, label, note = '') {
   let response = await client.tool('get_app_state', { app: state.app }, 90000);
-  let text = redact(contentText(response));
+  let rawText = contentText(response);
+  let text = redact(rawText);
   for (let attempt = 0; attempt < 8 && /procNotFound|no eligible process|not running|timed out/i.test(text); attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 1500));
     response = await client.tool('get_app_state', { app: state.app }, 90000);
-    text = redact(contentText(response));
+    rawText = contentText(response);
+    text = redact(rawText);
   }
   const image = contentImage(response);
   const safeLabel = label.replace(/[^a-zA-Z0-9._-]+/g, '-');
@@ -2389,7 +2337,11 @@ async function captureState(client, state, label, note = '') {
     capturedAt: new Date().toISOString(),
     note: redact(note),
   });
-  const sensitiveImage = /api-keys|console/i.test(label);
+  const apiKeysHasUnmaskedSecret = /api-keys/i.test(label) && containsUnmaskedSecret(rawText);
+  if (apiKeysHasUnmaskedSecret) {
+    state.secretMaskingViolations.push(`${label} raw accessibility text contained an unmasked key-like secret; screenshot omitted.`);
+  }
+  const sensitiveImage = /console/i.test(label) || apiKeysHasUnmaskedSecret;
   if (image && !sensitiveImage) {
     const pngPath = path.join(state.runDir, 'screenshots', `${ordinal}-${safeLabel}.png`);
     await writeFile(pngPath, Buffer.from(image, 'base64'));
@@ -2405,7 +2357,9 @@ async function captureState(client, state, label, note = '') {
   } else if (image && sensitiveImage) {
     await addEvent(state, 'computer-use.screenshot-omitted', {
       label,
-      reason: 'Sensitive view image omitted from screenshot artifacts; redacted accessibility text snapshot retained.',
+      reason: /api-keys/i.test(label)
+        ? 'API Keys image omitted because raw accessibility text contained an unmasked key-like secret; redacted text snapshot retained.'
+        : 'Sensitive view image omitted from screenshot artifacts; redacted accessibility text snapshot retained.',
     });
   }
   if (note) addNarrative(state, note);
@@ -2983,7 +2937,7 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
   const screenshotHtml = state.screenshots.length
     ? state.screenshots
         .map(
-          (shot) => `<figure>
+          (shot) => `<figure id="screenshot-${escapeHtml(slugify(shot.label || shot.path))}">
   <img src="${escapeHtml(shot.path)}" alt="${escapeHtml(shot.label)}">
   <figcaption><strong>${escapeHtml(shot.label)}</strong> - ${escapeHtml(shot.note || 'No note')} (${escapeHtml(shot.capturedAt)})</figcaption>
 </figure>`,
@@ -3022,12 +2976,10 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
   const prPriorityHtml = renderPrPriority(state);
   const priorityTriageHtml = renderPriorityTriage(state);
   await maybeGenerateEvidenceVideo(state);
-  await maybeLoadModelCritic(state);
   if (state.video?.status === 'available') evidenceSummary += ', 1 screenshot video';
   const executiveSummaryHtml = renderExecutiveSummary(state, counts, evidenceSummary);
   const reportNavHtml = renderReportNav(state, counts);
   const evidenceQualityHtml = renderEvidenceQuality(state);
-  const modelCriticHtml = renderModelCritic(state);
   const visualProofHtml = await renderVisualProofBoard(state);
   const remoteMetadataHtml = renderRemoteMetadata(state);
   const rawEvidenceHtml = renderRawEvidence(state, screenshotHtml);
@@ -3073,6 +3025,8 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
     .pass { background: #123d2a; color: #8bf0bb; }
     .fail { background: #471a1a; color: #ff9e9e; }
     .inconclusive { background: #443512; color: #ffd36e; }
+    .review { background: #24324a; color: #9ec5ff; }
+    .not-run { background: #20242d; color: #c3cbd7; }
     .group { margin-top: 18px; }
     table { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 8px; }
     .table-scroll { width: 100%; overflow-x: auto; border-radius: 8px; }
@@ -3155,10 +3109,8 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
 
       ${evidenceQualityHtml}
 
-      ${modelCriticHtml}
-
       <h2 id="visual-proof">Visual Proof</h2>
-      <p>Screenshots are binding corroborating assertions for non-sensitive visual scenarios. Accessibility text, action events, provider state, and remote git state remain the semantic proof; screenshot signal checks catch missing, blank, occluded, or low-signal visual evidence.</p>
+      <p>Screenshots are binding corroborating assertions for safe-to-store visual scenarios. Accessibility text, action events, provider state, and remote git state remain the semantic proof; screenshot signal checks catch missing, blank, occluded, or low-signal visual evidence.</p>
       ${visualProofHtml}
 
       ${scenarioChecklistHtml}
@@ -3799,7 +3751,6 @@ async function runSelfTest() {
     'id="findings-first"',
     'id="evidence-quality"',
     'id="visual-assertions"',
-    'id="model-critic"',
     'id="v2-evidence-model"',
     'id="accessibility-risk"',
     'id="failure-taxonomy"',
