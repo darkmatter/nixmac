@@ -375,6 +375,24 @@ Acceptable fixture sources:
 The fixture cannot require a remote Mac, secrets, network, or a live Computer Use
 server.
 
+Current implementation:
+
+```bash
+node tools/computer-use-e2e/preservation-harness.mjs run
+```
+
+The fixture is a sanitized hybrid under
+`tools/computer-use-e2e/fixtures/preservation/`: a normalized `state.seed.json`,
+curated real screenshots required by current visual contracts, generated text
+snapshots, and expected normalized JSON signatures. The harness always runs full
+adversarial replay. It does not expose a skip-adversarial acceptance path.
+
+`run-adversarial.mjs` intentionally creates and removes
+`apps/native/src/components/widget/adversarial-new-visible-surface.tsx` for the
+main-coverage-drift case. The preservation harness performs defensive cleanup
+before and after replay so failures do not leave that fixture file in the
+worktree.
+
 ## Extraction Rules
 
 Each extraction chunk must:
@@ -386,7 +404,7 @@ Each extraction chunk must:
 - keep the current Codex app-server path as the only production driver;
 - run `node --check` on touched `.mjs` files;
 - run `node tools/computer-use-e2e/run-remote-cua.mjs self-test`;
-- run the preservation harness;
+- run `node tools/computer-use-e2e/preservation-harness.mjs run`;
 - run adversarial replay when the changed seam can affect report, visual proof,
   state, scenario contracts, or CLI rendering.
 

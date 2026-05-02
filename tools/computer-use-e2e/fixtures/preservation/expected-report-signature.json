@@ -1,0 +1,205 @@
+{
+  "anchors": {
+    "class=\"report-nav\"": true,
+    "id=\"accessibility-risk\"": true,
+    "id=\"claims\"": true,
+    "id=\"cleanup\"": true,
+    "id=\"evidence-pack\"": true,
+    "id=\"evidence-quality\"": true,
+    "id=\"failure-taxonomy\"": true,
+    "id=\"findings-first\"": true,
+    "id=\"narrative\"": true,
+    "id=\"pr-specific-focus\"": true,
+    "id=\"pull-request-focus\"": true,
+    "id=\"raw-evidence\"": true,
+    "id=\"remote-metadata\"": true,
+    "id=\"scenario-checklist\"": true,
+    "id=\"screenshots\"": true,
+    "id=\"summary\"": true,
+    "id=\"v2-evidence-model\"": true,
+    "id=\"visual-assertions\"": true,
+    "id=\"visual-proof\"": true
+  },
+  "duplicateIds": [],
+  "evidenceStrengthCounts": {
+    "operational": 13,
+    "strong": 4,
+    "visual-supported": 4,
+    "weak": 3
+  },
+  "nonDynamicScenarioCounts": {
+    "pass": 24
+  },
+  "order": {
+    "failuresBeforeInconclusive": true,
+    "findingsBeforeFailures": true,
+    "inconclusiveBeforePassing": true,
+    "prFocusBeforeFindings": true
+  },
+  "visualAssertions": [
+    {
+      "scenarioKey": "launch",
+      "screenshots": [
+        {
+          "label": "launch",
+          "status": "pass"
+        }
+      ],
+      "status": "pass"
+    },
+    {
+      "scenarioKey": "settingsGeneral",
+      "screenshots": [
+        {
+          "label": "settings-general",
+          "status": "pass"
+        }
+      ],
+      "status": "pass"
+    },
+    {
+      "scenarioKey": "settingsAIModels",
+      "screenshots": [
+        {
+          "label": "settings-ai-models",
+          "status": "pass"
+        }
+      ],
+      "status": "pass"
+    },
+    {
+      "scenarioKey": "settingsPreferences",
+      "screenshots": [
+        {
+          "label": "settings-preferences",
+          "status": "pass"
+        }
+      ],
+      "status": "pass"
+    },
+    {
+      "scenarioKey": "history",
+      "screenshots": [
+        {
+          "label": "history",
+          "status": "pass"
+        }
+      ],
+      "status": "pass"
+    },
+    {
+      "scenarioKey": "feedback",
+      "screenshots": [
+        {
+          "label": "feedback",
+          "status": "pass"
+        }
+      ],
+      "status": "pass"
+    },
+    {
+      "scenarioKey": "reportIssue",
+      "screenshots": [
+        {
+          "label": "report-issue",
+          "status": "pass"
+        }
+      ],
+      "status": "pass"
+    },
+    {
+      "scenarioKey": "suggestionCards",
+      "screenshots": [
+        {
+          "label": "suggestion-card",
+          "status": "pass"
+        }
+      ],
+      "status": "pass"
+    },
+    {
+      "scenarioKey": "typedIntent",
+      "screenshots": [
+        {
+          "label": "typed-intent",
+          "status": "pass"
+        }
+      ],
+      "status": "pass"
+    },
+    {
+      "scenarioKey": "review",
+      "screenshots": [
+        {
+          "label": "provider-progress-05",
+          "status": "pass"
+        }
+      ],
+      "status": "pass"
+    },
+    {
+      "scenarioKey": "summary",
+      "screenshots": [
+        {
+          "label": "review-summary",
+          "status": "pass"
+        }
+      ],
+      "status": "pass"
+    },
+    {
+      "scenarioKey": "diff",
+      "screenshots": [
+        {
+          "label": "review-diff",
+          "status": "pass"
+        }
+      ],
+      "status": "pass"
+    },
+    {
+      "scenarioKey": "buildBoundary",
+      "screenshots": [
+        {
+          "label": "build-boundary",
+          "status": "pass"
+        }
+      ],
+      "status": "pass"
+    },
+    {
+      "scenarioKey": "saveFlow",
+      "screenshots": [
+        {
+          "label": "step-3-ready",
+          "status": "pass"
+        }
+      ],
+      "status": "pass"
+    },
+    {
+      "scenarioKey": "rollbackCleanup",
+      "screenshots": [
+        {
+          "label": "history-restore-preview",
+          "status": "pass"
+        },
+        {
+          "label": "after-history-restore",
+          "status": "pass"
+        }
+      ],
+      "status": "pass"
+    },
+    {
+      "scenarioKey": "reportInspection",
+      "screenshots": [
+        {
+          "label": "HTML report inspection",
+          "status": "pass"
+        }
+      ],
+      "status": "pass"
+    }
+  ]
+}

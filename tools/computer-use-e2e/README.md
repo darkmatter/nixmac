@@ -115,6 +115,12 @@ The modularization and preservation contracts for this toolchain live in
 before moving code out of `run-remote-cua.mjs`; module extraction should not
 start until the preservation harness it describes exists and is green.
 
+Run the preservation harness locally with:
+
+```bash
+node tools/computer-use-e2e/preservation-harness.mjs run
+```
+
 The scenario catalog lives in `scenario-catalog.mjs` so reviewers can inspect
 scenario labels, proof metadata, assertion hints, and optional evolved cases
 without reading the full runner. Adding a scenario usually means updating that

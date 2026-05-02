@@ -9,7 +9,7 @@ const THIS_FILE = fileURLToPath(import.meta.url);
 const TOOL_DIR = path.dirname(THIS_FILE);
 const REPO_ROOT = path.resolve(TOOL_DIR, '../..');
 const DEFAULT_BASE_ROOT = path.resolve(REPO_ROOT, process.env.NIXMAC_E2E_ADVERSARIAL_BASE_ROOT || 'artifacts/computer-use-remote');
-const OUT_ROOT = path.join(REPO_ROOT, 'artifacts/computer-use-adversarial');
+const OUT_ROOT = path.resolve(REPO_ROOT, process.env.NIXMAC_E2E_ADVERSARIAL_OUT_ROOT || 'artifacts/computer-use-adversarial');
 const RUNNER = path.join(TOOL_DIR, 'run-remote-cua.mjs');
 
 function usage() {
