@@ -38,6 +38,7 @@ export function useUpdater() {
   const checkedRef = useRef(false);
   const isDevMode = import.meta.env.DEV;
   const pinnedVersion = useWidgetStore((s) => s.pinnedVersion);
+  const prefsLoaded = useWidgetStore((s) => s.prefsLoaded);
 
   const checkForUpdates = useCallback(async () => {
     setState((s) => ({ ...s, checking: true, error: null }));
@@ -148,9 +149,12 @@ export function useUpdater() {
   }, []);
 
   // Silent check on mount — skipped while a developer pin is active so the app
-  // doesn't try to jump back to latest mid-bisect.
+  // doesn't try to jump back to latest mid-bisect. Wait for prefs to load before
+  // deciding, otherwise pinnedVersion is still the store default (null) and the
+  // check fires before the actual pin has been hydrated from disk.
   useEffect(() => {
     if (checkedRef.current) return;
+    if (!prefsLoaded) return;
     if (pinnedVersion) {
       checkedRef.current = true;
       console.debug("[updater] silent check suppressed (pinned to", pinnedVersion, ")");
@@ -158,7 +162,7 @@ export function useUpdater() {
     }
     checkedRef.current = true;
     checkForUpdates();
-  }, [checkForUpdates, pinnedVersion]);
+  }, [checkForUpdates, pinnedVersion, prefsLoaded]);
 
   return {
     ...state,
