@@ -224,10 +224,14 @@ function evolvedCaseStrategy(extraCases = enabledExtraEvolvedCases()) {
 function buildPrFocus() {
   const changedFiles = splitEnvList(process.env.NIXMAC_E2E_PR_CHANGED_FILES || '');
   const userVisibleFiles = changedFiles.filter((file) =>
-    /^(apps\/native\/src\/(components|hooks|stores|lib|styles)|apps\/native\/src-tauri|tools\/computer-use-e2e|\.github\/workflows\/computer-use-e2e\.yml)/.test(file),
+    /^(apps\/native\/src\/(?:[^/]+\.(?:css|ts|tsx)|(?:components|hooks|stores|lib|styles)\/)|apps\/native\/src-tauri|tools\/computer-use-e2e|\.github\/workflows\/computer-use-e2e\.yml)/.test(file),
   );
   const scenarioKeys = new Set();
   for (const file of userVisibleFiles) {
+    if (/^apps\/native\/src\/[^/]+\.(?:css|ts|tsx)$/i.test(file)) {
+      scenarioKeys.add('launch');
+      scenarioKeys.add('visualCoverage');
+    }
     if (/settings|prefs|api-keys|store|commands\.rs|store\.rs/i.test(file)) {
       scenarioKeys.add('settingsGeneral');
       scenarioKeys.add('settingsAIModels');
@@ -2932,6 +2936,15 @@ async function runSelfTest() {
   const prFocus = buildPrFocus();
   assert.deepEqual(prFocus.userVisibleFiles, ['apps/native/src/components/widget/adversarial-new-visible-surface.tsx'], 'PR focus should infer user-visible files');
   assert.deepEqual(prFocus.scenarioKeys, [], 'non-user-visible changed files must not create PR scenario mappings');
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = 'apps/native/src/App.tsx\napps/native/src/index.css\napps/native/src/preview-indicator-window.tsx';
+  const rootPrFocus = buildPrFocus();
+  assert.deepEqual(
+    rootPrFocus.userVisibleFiles,
+    ['apps/native/src/App.tsx', 'apps/native/src/index.css', 'apps/native/src/preview-indicator-window.tsx'],
+    'PR focus should infer root-level native app source files as user-visible',
+  );
+  assert.equal(rootPrFocus.scenarioKeys.includes('launch'), true, 'root-level native app source changes should focus launch coverage');
+  assert.equal(rootPrFocus.scenarioKeys.includes('visualCoverage'), true, 'root-level native app source changes should focus visual coverage');
   process.env.NIXMAC_E2E_PR_CHANGED_FILES = 'tools/computer-use-e2e/run-remote-cua.mjs';
   const toolPrFocus = buildPrFocus();
   assert.equal(toolPrFocus.scenarioKeys.includes('visualProofQuality'), true, 'Computer Use E2E changes should focus visual proof quality');
