@@ -1,0 +1,57 @@
+Computer Use state (CUA App Version: 758)
+<app_state>
+App=com.darkmatter.nixmac (pid 63807)
+Window: "nixmac", App: nixmac.
+	0 standard window nixmac, Secondary Actions: Raise
+		1 scroll area
+			2 HTML content Description: nixmac, URL: tauri://localhost
+				3 container Notifications alt+T
+				4 container Give feedback
+					5 heading Give feedback, Value: 2
+						6 text Give feedback
+					7 text Help us make nixmac better
+					8 text TYPE
+					10 container
+						11 radio button Suggestion, Value: 1
+						12 text Suggestion
+					13 container
+						14 radio button Bug, Value: 0
+						15 text Bug
+					16 container
+						17 radio button General, Value: 0
+						18 text General
+					19 text WHAT WOULD YOU LIKE TO SEE
+					20 text entry area (settable, string) WHAT WOULD YOU LIKE TO SEE, Placeholder: Tell us more...
+						21 text Tell us more...
+					22 text PROMPT (optional)
+					23 combo box (collapsed, settable, string) Secondary Actions: Expand, Value: Select a prompt (optional)
+
+						24 text Select a prompt (optional)
+					25 text Email (optional)
+					26 email field (settable, string) Email (optional), Placeholder: you@example.com
+					27 text SHARE WITH THE TEAM
+					28 checkbox (settable, integer) Current app state, Value: 1
+					29 text Current app state
+					30 button More information
+					31 checkbox (settable, integer) System info, Value: 1
+					32 text System info
+					33 button More information
+					34 checkbox (settable, integer) Usage stats, Value: 1
+					35 text Usage stats
+					36 button More information
+					37 button Cancel
+					38 button Send feedback
+					39 button Close
+		40 close button
+		41 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+		42 minimize button
+	43 menu bar
+		44 nixmac
+		45 File
+		46 Edit
+		47 View
+		48 Window
+		49 Help
+
+The focused UI element is 11 radio button.
+</app_state>

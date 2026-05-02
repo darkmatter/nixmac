@@ -1,0 +1,52 @@
+Computer Use state (CUA App Version: 758)
+<app_state>
+App=com.darkmatter.nixmac (pid 67931)
+Window: "nixmac", App: nixmac.
+	0 standard window nixmac, Secondary Actions: Raise
+		1 scroll area
+			2 HTML content Description: nixmac, URL: tauri://localhost
+				3 heading nixmac, Value: 3
+					4 text nixmac
+				5 button History
+				6 button Give feedback
+				7 button Settings
+				8 text Ready to test-drive your changes?
+				9 button Discard
+				10 button Build & Test
+				11 heading What's changed, Value: 2
+					12 text What's changed
+				13 tab group (selectable)
+					14 tab (selected) Summary
+					15 tab (selectable) Diff
+				16 text Nix-Darwin Config
+				17 button (collapsed) 2, Secondary Actions: Expand
+				18 text Updates to system defaults and configuration settings for macOS
+				19 heading What else can I change for you?, Value: 2
+					20 text What else can I change for you?
+				21 container
+					22 text entry area (settable, string) Describe additional changes or refinements...
+						23 text Describe additional changes or refinements...
+					24 button (disabled) Send
+				25 button Install vim
+				26 button Add Rectangle app
+				27 button Enable the Finder path bar and status bar
+				28 pop up button My History
+				29 button Report Issue
+				30 button Console
+				31 container
+					32 text Preparing rebuild... Starting system rebuild... Evaluating Nix configuration files for various services. Evaluating Python and Haskell development packages. Evaluating various Nix packages and configurations.
+				33 button Console
+				34 container Notifications alt+T
+		35 close button
+		36 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+		37 minimize button
+	38 menu bar
+		39 nixmac
+		40 File
+		41 Edit
+		42 View
+		43 Window
+		44 Help
+
+The focused UI element is 2 HTML content.
+</app_state>
