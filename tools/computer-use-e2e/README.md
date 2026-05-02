@@ -110,6 +110,11 @@ core nixmac app code. Its durable contract is the runner-owned scenario catalog,
 coverage manifest, derived `state.v2.scenarioContracts`, and rendered report
 sections rather than a separate proposal doc.
 
+The modularization and preservation contracts for this toolchain live in
+`tools/computer-use-e2e/ARCHITECTURE.md`. Use that document as the review gate
+before moving code out of `run-remote-cua.mjs`; module extraction should not
+start until the preservation harness it describes exists and is green.
+
 The scenario catalog lives in `scenario-catalog.mjs` so reviewers can inspect
 scenario labels, proof metadata, assertion hints, and optional evolved cases
 without reading the full runner. Adding a scenario usually means updating that
