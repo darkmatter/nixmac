@@ -69,9 +69,14 @@
     {
       "id": "homebrew-badge",
       "label": "Homebrew untracked package badge and add-to-config popover",
-      "scenarioKeys": [],
-      "sourcePrefixes": ["apps/native/src/components/widget/homebrew-badge.tsx"],
-      "waiver": "Not yet deterministic in the remote major-feature lane; needs a fixture with Homebrew installed and a known untracked tap/brew/cask diff before the suite can honestly claim coverage for the badge popover and Add to config action."
+      "scenarioKeys": ["homebrewSaveRollback"],
+      "sourcePrefixes": ["apps/native/src/components/widget/homebrew-badge.tsx", "apps/native/src/hooks/use-homebrew-diff.ts", "apps/native/src-tauri/src/mac/homebrew.rs"]
+    },
+    {
+      "id": "system-defaults-cta",
+      "label": "macOS system defaults untracked customization badge and add-to-config popover",
+      "scenarioKeys": ["customizationSaveRollback"],
+      "sourcePrefixes": ["apps/native/src/components/widget/system-defaults-cta.tsx", "apps/native/src-tauri/src/apply_system_defaults.rs", "apps/native/src-tauri/src/scanner.rs"]
     },
     {
       "id": "build-boundaries",
@@ -89,7 +94,7 @@
       "id": "onboarding-permissions",
       "label": "First-run permissions and nix setup/onboarding",
       "scenarioKeys": [],
-      "sourcePrefixes": ["apps/native/src/components/permissions-screen.tsx", "apps/native/src/components/backup-notification-screen.tsx", "apps/native/src/components/widget/bootstrap-config.tsx", "apps/native/src/components/widget/step-content-wrapper.tsx", "apps/native/src/components/widget/steps/nix-setup-step.tsx", "apps/native/src/components/widget/steps/permissions-step.tsx", "apps/native/src/components/widget/steps/setup-step.tsx", "apps/native/src/components/widget/system-defaults-cta.tsx", "apps/native/src/hooks/use-permissions.ts", "apps/native/src/hooks/use-nix-install.ts", "apps/native/src-tauri/src/permissions.rs"],
+      "sourcePrefixes": ["apps/native/src/components/permissions-screen.tsx", "apps/native/src/components/backup-notification-screen.tsx", "apps/native/src/components/widget/bootstrap-config.tsx", "apps/native/src/components/widget/step-content-wrapper.tsx", "apps/native/src/components/widget/steps/nix-setup-step.tsx", "apps/native/src/components/widget/steps/permissions-step.tsx", "apps/native/src/components/widget/steps/setup-step.tsx", "apps/native/src/hooks/use-permissions.ts", "apps/native/src/hooks/use-nix-install.ts", "apps/native/src-tauri/src/permissions.rs"],
       "waiver": "Current remote lane starts from a configured app state. This must become a dedicated clean-profile Computer Use scenario before the suite can honestly claim full main coverage."
     },
     {

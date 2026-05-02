@@ -63,6 +63,8 @@ const scenarioLabels = {
   feedback: 'Give Feedback opens and can be cancelled',
   reportIssue: 'Report Issue opens and can be cancelled',
   suggestionCards: 'Home suggestion cards are visible/clickable',
+  customizationSaveRollback: 'Untracked macOS customizations can be saved and rolled back',
+  homebrewSaveRollback: 'Untracked Homebrew items can be saved and rolled back',
   typedIntent: 'A typed real intent can be submitted',
   review: 'Real provider workflow reaches Review',
   summary: 'Summary tab renders after intent review',
@@ -93,7 +95,7 @@ const scenarioGroups = [
   },
   {
     name: 'Real Provider Workflow',
-    keys: ['suggestionCards', 'typedIntent', 'review', 'summary', 'diff', 'buildBoundary', 'saveFlow', 'rollbackCleanup', 'discard'],
+    keys: ['suggestionCards', 'customizationSaveRollback', 'homebrewSaveRollback', 'typedIntent', 'review', 'summary', 'diff', 'buildBoundary', 'saveFlow', 'rollbackCleanup', 'discard'],
   },
   {
     name: 'PR-Specific Focus',
@@ -110,6 +112,8 @@ const curatedProofKeys = [
   'summary',
   'diff',
   'buildBoundary',
+  'customizationSaveRollback',
+  'homebrewSaveRollback',
   'saveFlow',
   'rollbackCleanup',
   'settingsAPIKeys',
@@ -226,6 +230,20 @@ const scenarioProofCatalog = {
     proof: 'Diff text must show the requested package/change in a configuration file.',
     untested: 'Does not prove the change builds or saves.',
   },
+  customizationSaveRollback: {
+    grade: 'action-confirmed',
+    screenshots: ['customization-absent', 'customization-apply', 'customization-step-3-ready', 'customization-after-commit', 'customization-after-history-restore'],
+    texts: ['customization-absent', 'customization-apply', 'customization-step-3-ready', 'customization-after-commit', 'customization-after-history-restore'],
+    proof: 'When the untracked customizations chip is visible, Computer Use adds it to config, confirms Build & Test, commits Step 3, then restores the disposable baseline and verifies the remote git tree is clean.',
+    untested: 'If no untracked customizations chip is visible, the scenario records a no-op pass because there is nothing to save.',
+  },
+  homebrewSaveRollback: {
+    grade: 'action-confirmed',
+    screenshots: ['homebrew-absent', 'homebrew-apply', 'homebrew-step-3-ready', 'homebrew-after-commit', 'homebrew-after-history-restore'],
+    texts: ['homebrew-absent', 'homebrew-apply', 'homebrew-step-3-ready', 'homebrew-after-commit', 'homebrew-after-history-restore'],
+    proof: 'When the untracked Homebrew chip is visible, Computer Use adds it to config, confirms Build & Test, commits Step 3, then restores the disposable baseline and verifies the remote git tree is clean.',
+    untested: 'If no untracked Homebrew chip is visible, the scenario records a no-op pass because there is nothing to save.',
+  },
   buildBoundary: {
     grade: 'action-confirmed',
     screenshots: ['build-boundary', 'step-3-ready'],
@@ -333,6 +351,8 @@ const scenarioAssertionTypeHints = {
   review: ['accessibility_text', 'provider_state', 'action_result'],
   summary: ['accessibility_text', 'provider_state'],
   diff: ['accessibility_text', 'provider_state'],
+  customizationSaveRollback: ['accessibility_text', 'action_result', 'remote_state'],
+  homebrewSaveRollback: ['accessibility_text', 'action_result', 'remote_state'],
   buildBoundary: ['accessibility_text', 'action_result', 'confirmation_boundary'],
   saveFlow: ['accessibility_text', 'action_result', 'remote_state'],
   rollbackCleanup: ['accessibility_text', 'action_result', 'remote_state'],
@@ -749,6 +769,12 @@ function buildPrFocus() {
       scenarioKeys.add('settingsAPIKeys');
       scenarioKeys.add('settingsPreferences');
     }
+    if (/system-defaults|apply_system_defaults|scanner\.rs/i.test(file)) {
+      scenarioKeys.add('customizationSaveRollback');
+    }
+    if (/homebrew-badge|use-homebrew-diff|mac\/homebrew\.rs/i.test(file)) {
+      scenarioKeys.add('homebrewSaveRollback');
+    }
     if (/evolve|use-apply|use-rollback|rebuild|merge|commit|history|rollback|git|finalize/i.test(file)) {
       scenarioKeys.add('review');
       scenarioKeys.add('summary');
@@ -977,7 +1003,7 @@ function evidenceStrengthForScenario(state, key) {
       reason: 'Scenario did not pass, so no positive evidence strength is assigned.',
     };
   }
-  if (['saveFlow', 'rollbackCleanup'].includes(key)) {
+  if (['saveFlow', 'rollbackCleanup', 'customizationSaveRollback', 'homebrewSaveRollback'].includes(key)) {
     return {
       strength: 'strong',
       reason: 'Computer Use path is backed by independent disposable git state proof.',
@@ -2807,6 +2833,205 @@ async function cleanupReviewOnlyCase(client, state, text, caseDef) {
   return { ok: restored.ok, text, method: 'external-restore' };
 }
 
+async function restoreManagedEditViaHistory(client, state, text, labels) {
+  if (await clickByPattern(client, state, text, `${labels.name} History after commit`, [/button History/i], `Open History to restore baseline after ${labels.name}.`)) {
+    text = await captureState(client, state, `${labels.prefix}-history-before-restore`, `Computer Use opened History after ${labels.name} commit.`);
+    if (await clickByPattern(client, state, text, `${labels.name} restore previous commit`, [/button Restore/i], `Restore the pre-test baseline after ${labels.name}.`)) {
+      text = await captureState(client, state, `${labels.prefix}-history-restore-preview`, `Computer Use previewed History restore after ${labels.name}.`);
+      if (await clickByPattern(client, state, text, `${labels.name} confirm restore`, [/Confirm Restore/i], `Confirm History restore cleanup after ${labels.name}.`)) {
+        const restored = await waitForRemoteGit(
+          state,
+          `${labels.prefix}-after-history-restore`,
+          (snapshot) => snapshot?.ok && !snapshot.statusShort && !meaningfulBaselineDiff(snapshot),
+          { attempts: Number(process.env.NIXMAC_E2E_RESTORE_ATTEMPTS || 80), delayMs: Number(process.env.NIXMAC_E2E_RESTORE_DELAY_MS || 5000) },
+        );
+        text = await captureState(client, state, `${labels.prefix}-after-history-restore`, `Computer Use completed History restore cleanup after ${labels.name}.`);
+        return { ok: restored.ok, text, method: 'history-restore', snapshot: restored.snapshot };
+      }
+      return { ok: false, text, method: 'history-restore', reason: 'confirm-restore-unreachable' };
+    }
+    return { ok: false, text, method: 'history-restore', reason: 'restore-control-unreachable' };
+  }
+  return { ok: false, text, method: 'history-restore', reason: 'history-unreachable' };
+}
+
+async function externallyRestoreManagedEdit(client, state, labels) {
+  const restored = await restoreRemoteBaseline(state, labels.prefix);
+  await maybeRelaunchRemote(state);
+  const text = await captureState(client, state, `${labels.prefix}-external-restore`, `Computer Use relaunched after external cleanup for ${labels.name}.`);
+  return { ok: restored.ok, text, method: 'external-restore', snapshot: restored.snapshot };
+}
+
+async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
+  const canConfirmBuild = state.safety?.disposableConfig === true && state.safety?.buildConfirmEnabled === true && state.remoteConfig?.baselinePrepared === true;
+  const buildClicked = await clickByPattern(client, state, text, `${labels.name} Build & Test`, [/Build & Test/i, /Build/i], `Click Build & Test for ${labels.name}.`);
+  if (!buildClicked) {
+    const cleanup = await externallyRestoreManagedEdit(client, state, labels);
+    return {
+      ok: false,
+      text: cleanup.text,
+      note: `Build & Test was not reachable after ${labels.name} Add to config; cleanup ${cleanup.ok ? 'restored' : 'did not prove'} the disposable baseline via ${cleanup.method}.`,
+    };
+  }
+
+  text = await captureState(client, state, `${labels.prefix}-build-boundary`, `Computer Use clicked Build & Test for ${labels.name}.`);
+  const boundary = /Confirm|Are you sure|Cancel/i.test(text);
+  if (!boundary || !canConfirmBuild) {
+    await clickByPattern(client, state, text, `${labels.name} cancel build boundary`, [/Cancel/i, /Close/i, /^button ×/i, /^button X/i], `Cancel Build & Test boundary for ${labels.name}.`);
+    const cleanup = await externallyRestoreManagedEdit(client, state, labels);
+    return {
+      ok: false,
+      text: cleanup.text,
+      note: boundary
+        ? `Build & Test boundary appeared for ${labels.name}, but disposable build confirmation was not proven; cleanup ${cleanup.ok ? 'restored' : 'did not prove'} the baseline via ${cleanup.method}.`
+        : `Build & Test did not present a confirmation boundary for ${labels.name}; cleanup ${cleanup.ok ? 'restored' : 'did not prove'} the baseline via ${cleanup.method}.`,
+    };
+  }
+
+  const buildConfirmed = await clickByPattern(client, state, text, `${labels.name} confirm build boundary`, [/button Confirm/i], `Confirm Build & Test for ${labels.name} in proven disposable state.`);
+  if (!buildConfirmed) {
+    const cleanup = await externallyRestoreManagedEdit(client, state, labels);
+    return {
+      ok: false,
+      text: cleanup.text,
+      note: `Build & Test confirmation was not reachable for ${labels.name}; cleanup ${cleanup.ok ? 'restored' : 'did not prove'} the baseline via ${cleanup.method}.`,
+    };
+  }
+
+  let pamSymlinkHangSeen = 0;
+  const step3 = await waitFor(
+    client,
+    state,
+    `${labels.prefix}-build-to-step-3`,
+    (candidate) => {
+      if (/All changes active|Commit Changes|button Commit|Progress: step 3 of 3|Save Keep changes/i.test(candidate) && !/button \(disabled\) Commit/i.test(candidate)) return 'step-3';
+      if (activationAuthRequired(candidate)) return 'activation-auth-required';
+      if (buildAppearsActive(candidate) && remoteActivationPamSymlinkHang()) {
+        pamSymlinkHangSeen += 1;
+        if (pamSymlinkHangSeen >= 2) return 'activation-pam-symlink-hang';
+      } else {
+        pamSymlinkHangSeen = 0;
+      }
+      if (/Build Failed|Nix Evaluation Error|Package build failed|Full Disk Access|Permission denied|failed with|❌/i.test(candidate)) return 'build-error';
+      return null;
+    },
+    { attempts: Number(process.env.NIXMAC_E2E_BUILD_ATTEMPTS || DEFAULT_BUILD_ATTEMPTS), delayMs: Number(process.env.NIXMAC_E2E_BUILD_DELAY_MS || 5000) },
+  );
+  text = step3.text;
+  if (step3.result !== 'step-3') {
+    const cleanup = await externallyRestoreManagedEdit(client, state, labels);
+    const reason = step3.result || (buildAppearsActive(text) ? 'build-still-active' : 'step-3-timeout');
+    return {
+      ok: false,
+      text: cleanup.text,
+      note: `${labels.name} Build & Test was confirmed but did not reach Step 3 (${reason}); cleanup ${cleanup.ok ? 'restored' : 'did not prove'} the baseline via ${cleanup.method}.`,
+    };
+  }
+
+  text = await captureState(client, state, `${labels.prefix}-step-3-ready`, `Computer Use reached Step 3 after ${labels.name} Build & Test.`);
+  if (/button \(disabled\) Commit/i.test(text)) {
+    const commitReady = await waitFor(
+      client,
+      state,
+      `${labels.prefix}-commit-ready`,
+      (candidate) => (/button Commit/i.test(candidate) && !/button \(disabled\) Commit/i.test(candidate) ? 'ready' : null),
+      { attempts: Number(process.env.NIXMAC_E2E_COMMIT_READY_ATTEMPTS || 20), delayMs: Number(process.env.NIXMAC_E2E_COMMIT_READY_DELAY_MS || 1000) },
+    );
+    text = commitReady.text;
+  }
+
+  if (!(await clickByPattern(client, state, text, `${labels.name} commit changes`, [/button Commit/i], `Commit Step 3 changes for ${labels.name}.`))) {
+    const cleanup = await externallyRestoreManagedEdit(client, state, labels);
+    return {
+      ok: false,
+      text: cleanup.text,
+      note: `Step 3 appeared for ${labels.name}, but Commit was not reachable; cleanup ${cleanup.ok ? 'restored' : 'did not prove'} the baseline via ${cleanup.method}.`,
+    };
+  }
+
+  const committed = await waitForRemoteGit(
+    state,
+    `${labels.prefix}-after-commit`,
+    (snapshot) => snapshot?.ok && snapshot.head && snapshot.head !== state.remoteConfig?.baselineHead && !snapshot.statusShort && Boolean(snapshot.baselineDiffNameOnly),
+    { attempts: Number(process.env.NIXMAC_E2E_COMMIT_ATTEMPTS || 30), delayMs: Number(process.env.NIXMAC_E2E_COMMIT_DELAY_MS || 1000) },
+  );
+  text = await captureState(client, state, `${labels.prefix}-after-commit`, `Computer Use committed ${labels.name} changes.`);
+  if (!committed.ok) {
+    const cleanup = await externallyRestoreManagedEdit(client, state, labels);
+    return {
+      ok: false,
+      text: cleanup.text,
+      note: `${labels.name} Commit was clicked, but the disposable repo did not show a clean committed change; cleanup ${cleanup.ok ? 'restored' : 'did not prove'} the baseline via ${cleanup.method}.`,
+    };
+  }
+
+  const rollback = await restoreManagedEditViaHistory(client, state, text, labels);
+  if (rollback.ok) {
+    await maybeRelaunchRemote(state);
+    text = await captureState(client, state, `${labels.prefix}-after-rollback-home`, `Computer Use returned to the prompt surface after ${labels.name} rollback cleanup.`);
+    return {
+      ok: true,
+      text,
+      note: `${labels.name} Add to config was built, committed, and rolled back to the disposable baseline with a clean git tree via ${rollback.method}.`,
+    };
+  }
+
+  const cleanup = await externallyRestoreManagedEdit(client, state, labels);
+  return {
+    ok: false,
+    text: cleanup.text,
+    note: `${labels.name} committed successfully, but History restore did not prove cleanup (${rollback.reason || 'unknown'}); external cleanup ${cleanup.ok ? 'restored' : 'did not prove'} the baseline.`,
+  };
+}
+
+async function runConditionalBadgeSaveScenario(client, state, text, scenarioKey, config) {
+  if (!hasAny(text, config.badgePatterns)) {
+    text = await captureState(client, state, `${config.prefix}-absent`, `Computer Use checked for ${config.name}; no matching chip was visible.`);
+    updateScenario(state, scenarioKey, 'pass', `${config.name} chip was not visible, so there were no ${config.absentNoun} to save in this run.`);
+    return text;
+  }
+
+  if (!(await clickByPattern(client, state, text, `${config.name} chip`, config.badgePatterns, `Open ${config.name} Add to config popover.`))) {
+    updateScenario(state, scenarioKey, 'fail', `${config.name} chip was visible, but Computer Use could not open it.`);
+    return text;
+  }
+
+  text = await captureState(client, state, `${config.prefix}-popover`, `Computer Use opened ${config.name} Add to config popover.`);
+  if (!(await clickByPattern(client, state, text, `${config.name} Add to config`, [/Add to config/i], `Apply ${config.name} to config.`))) {
+    updateScenario(state, scenarioKey, 'fail', `${config.name} popover opened, but Add to config was not reachable.`);
+    return text;
+  }
+
+  const applyWait = await waitFor(
+    client,
+    state,
+    `${config.prefix}-apply`,
+    (candidate) => {
+      if (/Ready to test-drive|heading Review|button Build & Test|button Discard|Summary|Diff/i.test(candidate)) return 'review';
+      if (/failed|error|could not|Could not|Failed/i.test(candidate)) return 'error';
+      return null;
+    },
+    { attempts: Number(process.env.NIXMAC_E2E_MANAGED_EDIT_ATTEMPTS || 30), delayMs: Number(process.env.NIXMAC_E2E_MANAGED_EDIT_DELAY_MS || 1000) },
+  );
+  text = applyWait.text;
+  if (applyWait.result !== 'review') {
+    const cleanup = await externallyRestoreManagedEdit(client, state, { name: config.name, prefix: config.prefix });
+    updateScenario(
+      state,
+      scenarioKey,
+      'fail',
+      `${config.name} Add to config did not reach the review/build step${applyWait.result ? ` (${applyWait.result})` : ''}; cleanup ${cleanup.ok ? 'restored' : 'did not prove'} the disposable baseline.`,
+    );
+    return cleanup.text;
+  }
+
+  text = await captureState(client, state, `${config.prefix}-apply`, `Computer Use reached review/build state after applying ${config.name} to config.`);
+  const result = await buildCommitAndRestoreManagedEdit(client, state, text, { name: config.name, prefix: config.prefix });
+  updateScenario(state, scenarioKey, result.ok ? 'pass' : 'fail', result.note);
+  if (!result.ok) state.failures.push(result.note);
+  return result.text;
+}
+
 async function runReviewOnlyEvolvedCase(client, state, caseDef) {
   state.scenarios[caseDef.scenarioKey] ||= {
     label: `Optional evolved case: ${caseDef.label}`,
@@ -3299,6 +3524,20 @@ async function runSuite(args) {
     } else {
       updateScenario(state, 'reportIssue', 'inconclusive', 'Report Issue button was not visible in the current state.');
     }
+
+    text = await runConditionalBadgeSaveScenario(client, state, text, 'customizationSaveRollback', {
+      name: 'Untracked customizations',
+      prefix: 'customization',
+      badgePatterns: [/untracked customization/i, /untracked Mac customization/i],
+      absentNoun: 'macOS customizations',
+    });
+
+    text = await runConditionalBadgeSaveScenario(client, state, text, 'homebrewSaveRollback', {
+      name: 'Untracked Homebrew items',
+      prefix: 'homebrew',
+      badgePatterns: [/untracked Homebrew/i],
+      absentNoun: 'Homebrew items',
+    });
 
     const suggestionVisible = hasAny(text, [/Install vim/i, /Add Rectangle/i, /Finder path bar/i]);
     const suggestionClicked = suggestionVisible

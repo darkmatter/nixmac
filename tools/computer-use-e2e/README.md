@@ -57,6 +57,8 @@ The runner:
   suggestion cards, real prompt submission, Review/Summary/Diff/Build boundary,
   guarded Step 3 commit/save, History restore cleanup, and guarded Discard
   boundary when reachable;
+- conditionally saves visible untracked macOS customization and Homebrew item
+  chips, commits them through Step 3, then restores the disposable baseline;
 - keeps the default PR lane to one calibrated full-lifecycle evolved prompt
   (`homebrew-bat`) and exposes additional eval-derived evolved cases through
   `NIXMAC_E2E_EXTRA_EVOLVED_CASES` after calibration;
