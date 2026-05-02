@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Update } from "@tauri-apps/plugin-updater";
 import { invoke } from "@tauri-apps/api/core";
+import { darwinAPI } from "@/tauri-api";
 import { useWidgetStore } from "@/stores/widget-store";
 
 export interface UpdateState {
@@ -154,15 +155,36 @@ export function useUpdater() {
   // check fires before the actual pin has been hydrated from disk.
   useEffect(() => {
     if (checkedRef.current) return;
-    if (!prefsLoaded) return;
+
     if (pinnedVersion) {
       checkedRef.current = true;
       console.debug("[updater] silent check suppressed (pinned to", pinnedVersion, ")");
       return;
     }
-    checkedRef.current = true;
-    checkForUpdates();
-  }, [checkForUpdates, pinnedVersion, prefsLoaded]);
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const prefs = await darwinAPI.ui.getPrefs();
+        if (cancelled || checkedRef.current) return;
+        if (prefs?.pinnedVersion) {
+          checkedRef.current = true;
+          console.debug("[updater] silent check suppressed (pinned to", prefs.pinnedVersion, ")");
+          return;
+        }
+      } catch {
+        // If prefs can't be read here, fall back to checking for updates.
+      }
+
+      if (cancelled || checkedRef.current) return;
+      checkedRef.current = true;
+      checkForUpdates();
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [checkForUpdates, pinnedVersion]);
 
   return {
     ...state,
