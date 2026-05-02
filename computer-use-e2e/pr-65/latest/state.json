@@ -1,0 +1,2783 @@
+{
+  "startedAt": "2026-05-02T14:16:51.773Z",
+  "runDir": "/home/runner/work/nixmac/nixmac/artifacts/computer-use-remote/2026-05-02T141651765Z",
+  "ws": "ws://127.0.0.1:18790",
+  "app": "com.darkmatter.nixmac",
+  "prompt": "Add the bat command line tool to my Homebrew packages as the plain string \"bat\" only, with no inline comments.",
+  "branch": "unknown",
+  "sha": "db55179",
+  "macosVersion": "unknown",
+  "appCommand": "open -n /tmp/nixmac-computer-use-e2e-app-25253696161-1/nixmac.app",
+  "provider": {
+    "kind": "real-openrouter-compatible-provider",
+    "note": "The key value is never written to this report. Failures may reflect provider billing/auth state."
+  },
+  "evolvedCaseStrategy": {
+    "selectedAt": "2026-05-02T14:16:51.774Z",
+    "defaultCaseIds": [
+      "homebrew-bat"
+    ],
+    "extraCaseIds": [],
+    "catalog": [
+      {
+        "id": "homebrew-bat",
+        "label": "Homebrew bat package add",
+        "mode": "full-lifecycle",
+        "defaultPrLane": true,
+        "source": "Current Computer Use E2E default; maps to eval package/homebrew install coverage.",
+        "note": "Runs prompt -> Review -> Summary/Diff -> Build boundary -> Step 3 Commit -> History rollback cleanup."
+      },
+      {
+        "id": "screenshots-defaults",
+        "label": "Screenshot defaults review-only calibration",
+        "mode": "review-only-calibration",
+        "defaultPrLane": false,
+        "source": "WDIO fixture basicPromptsConfigureScreenshots and eval CSV case 33 / golden-set system-defaults coverage.",
+        "note": "Optional calibration lane. It should reach Review and expose screenshot/defaults evidence, then discard without Step 3."
+      },
+      {
+        "id": "inline-question-font",
+        "label": "Inline question answer to font change",
+        "mode": "question-answer-calibration",
+        "defaultPrLane": false,
+        "source": "Historical inline-question deadlock/race gap from PR #50/#53 plus WDIO ask-question fixture coverage.",
+        "note": "Optional P0 calibration lane. It proves the question UI accepts an answer and the provider workflow progresses past Waiting for next event into Review evidence."
+      },
+      {
+        "id": "protected-flake-input",
+        "label": "Protected flake input adversarial boundary",
+        "mode": "adversarial-advisory",
+        "defaultPrLane": false,
+        "source": "Eval spreadsheet protected-file family (#121/#208/#210). Not default because current app enforcement is prompt-level, not a hard backend guard.",
+        "note": "Keep out of the default PR lane until nixmac has hard protected-file enforcement and a reliable refusal signal."
+      }
+    ],
+    "reviewDecision": "Claude review kept homebrew-bat as the only default full-lifecycle PR case, moved screenshots-defaults to optional calibration, and moved protected-flake-input to an adversarial advisory lane until hard backend enforcement exists."
+  },
+  "evolvedCaseRuns": [],
+  "safety": {
+    "disposableConfig": true,
+    "buildConfirmEnabled": true,
+    "discardConfirmEnabled": true,
+    "note": "Discard/build confirmation is only allowed when disposable config mode is explicitly proven."
+  },
+  "prFocus": {
+    "eventName": "pull_request",
+    "number": "65",
+    "title": "feat(widget): add Filesystem view from claude.ai/design handoff",
+    "headRef": "claude/implement-filesystem-0EY4O",
+    "baseRef": "main",
+    "changedFiles": [
+      "apps/native/src/components/widget/filesystem/data.ts",
+      "apps/native/src/components/widget/filesystem/detail.stories.tsx",
+      "apps/native/src/components/widget/filesystem/detail.tsx",
+      "apps/native/src/components/widget/filesystem/file-list.stories.tsx",
+      "apps/native/src/components/widget/filesystem/file-list.tsx",
+      "apps/native/src/components/widget/filesystem/filesystem-step.stories.tsx",
+      "apps/native/src/components/widget/filesystem/filesystem-step.tsx",
+      "apps/native/src/components/widget/filesystem/highlight.stories.tsx",
+      "apps/native/src/components/widget/filesystem/highlight.tsx",
+      "apps/native/src/components/widget/filesystem/hosts-combobox.stories.tsx",
+      "apps/native/src/components/widget/filesystem/hosts-combobox.tsx",
+      "apps/native/src/components/widget/filesystem/icons.ts",
+      "apps/native/src/components/widget/filesystem/mode-toggle.stories.tsx",
+      "apps/native/src/components/widget/filesystem/mode-toggle.tsx",
+      "apps/native/src/components/widget/filesystem/section-tabs.stories.tsx",
+      "apps/native/src/components/widget/filesystem/section-tabs.tsx",
+      "apps/native/src/components/widget/header.tsx",
+      "apps/native/src/components/widget/stepper.tsx",
+      "apps/native/src/components/widget/steps/index.ts",
+      "apps/native/src/components/widget/utils.ts",
+      "apps/native/src/components/widget/widget.tsx",
+      "apps/native/src/lib/flags.ts",
+      "apps/native/src/stores/widget-store.ts"
+    ],
+    "userVisibleFiles": [
+      "apps/native/src/components/widget/filesystem/data.ts",
+      "apps/native/src/components/widget/filesystem/detail.stories.tsx",
+      "apps/native/src/components/widget/filesystem/detail.tsx",
+      "apps/native/src/components/widget/filesystem/file-list.stories.tsx",
+      "apps/native/src/components/widget/filesystem/file-list.tsx",
+      "apps/native/src/components/widget/filesystem/filesystem-step.stories.tsx",
+      "apps/native/src/components/widget/filesystem/filesystem-step.tsx",
+      "apps/native/src/components/widget/filesystem/highlight.stories.tsx",
+      "apps/native/src/components/widget/filesystem/highlight.tsx",
+      "apps/native/src/components/widget/filesystem/hosts-combobox.stories.tsx",
+      "apps/native/src/components/widget/filesystem/hosts-combobox.tsx",
+      "apps/native/src/components/widget/filesystem/icons.ts",
+      "apps/native/src/components/widget/filesystem/mode-toggle.stories.tsx",
+      "apps/native/src/components/widget/filesystem/mode-toggle.tsx",
+      "apps/native/src/components/widget/filesystem/section-tabs.stories.tsx",
+      "apps/native/src/components/widget/filesystem/section-tabs.tsx",
+      "apps/native/src/components/widget/header.tsx",
+      "apps/native/src/components/widget/stepper.tsx",
+      "apps/native/src/components/widget/steps/index.ts",
+      "apps/native/src/components/widget/utils.ts",
+      "apps/native/src/components/widget/widget.tsx",
+      "apps/native/src/lib/flags.ts",
+      "apps/native/src/stores/widget-store.ts"
+    ],
+    "scenarioKeys": [
+      "settingsGeneral",
+      "settingsAIModels",
+      "settingsAPIKeys",
+      "settingsPreferences"
+    ],
+    "configured": true
+  },
+  "cleanup": {
+    "attempted": false,
+    "restored": false,
+    "note": "Remote app state was not restored by this runner. CI wrapper is responsible for remote app-support backup/restore; local artifacts are retained."
+  },
+  "screenshots": [
+    {
+      "label": "launch",
+      "path": "screenshots/01-launch.png",
+      "capturedAt": "2026-05-02T14:17:05.772Z",
+      "note": "Computer Use observed the nixmac window at launch.",
+      "source": "Codex Computer Use get_app_state image",
+      "imageSize": {
+        "width": 768,
+        "height": 768
+      }
+    },
+    {
+      "label": "settings-general",
+      "path": "screenshots/02-settings-general.png",
+      "capturedAt": "2026-05-02T14:17:08.583Z",
+      "note": "Computer Use opened Settings.",
+      "source": "Codex Computer Use get_app_state image",
+      "imageSize": {
+        "width": 768,
+        "height": 768
+      }
+    },
+    {
+      "label": "settings-ai-models",
+      "path": "screenshots/03-settings-ai-models.png",
+      "capturedAt": "2026-05-02T14:17:11.741Z",
+      "note": "Computer Use opened AI Models settings.",
+      "source": "Codex Computer Use get_app_state image",
+      "imageSize": {
+        "width": 768,
+        "height": 768
+      }
+    },
+    {
+      "label": "settings-api-keys-01",
+      "path": "screenshots/04-settings-api-keys-01.png",
+      "capturedAt": "2026-05-02T14:17:16.008Z",
+      "note": "Polling settings-api-keys.",
+      "source": "Codex Computer Use get_app_state image",
+      "imageSize": {
+        "width": 768,
+        "height": 768
+      }
+    },
+    {
+      "label": "settings-preferences",
+      "path": "screenshots/05-settings-preferences.png",
+      "capturedAt": "2026-05-02T14:17:19.224Z",
+      "note": "Computer Use opened Preferences settings.",
+      "source": "Codex Computer Use get_app_state image",
+      "imageSize": {
+        "width": 768,
+        "height": 768
+      }
+    },
+    {
+      "label": "home-after-settings",
+      "path": "screenshots/06-home-after-settings.png",
+      "capturedAt": "2026-05-02T14:17:22.311Z",
+      "note": "Computer Use returned to the main app surface after Settings coverage.",
+      "source": "Codex Computer Use get_app_state image",
+      "imageSize": {
+        "width": 768,
+        "height": 768
+      }
+    },
+    {
+      "label": "history",
+      "path": "screenshots/07-history.png",
+      "capturedAt": "2026-05-02T14:17:25.364Z",
+      "note": "Computer Use opened History.",
+      "source": "Codex Computer Use get_app_state image",
+      "imageSize": {
+        "width": 768,
+        "height": 768
+      }
+    },
+    {
+      "label": "home-after-history",
+      "path": "screenshots/08-home-after-history.png",
+      "capturedAt": "2026-05-02T14:17:28.501Z",
+      "note": "Computer Use returned home after History.",
+      "source": "Codex Computer Use get_app_state image",
+      "imageSize": {
+        "width": 768,
+        "height": 768
+      }
+    },
+    {
+      "label": "feedback",
+      "path": "screenshots/11-feedback.png",
+      "capturedAt": "2026-05-02T14:17:37.869Z",
+      "note": "Computer Use opened Give Feedback.",
+      "source": "Codex Computer Use get_app_state image",
+      "imageSize": {
+        "width": 768,
+        "height": 768
+      }
+    },
+    {
+      "label": "home-after-feedback",
+      "path": "screenshots/12-home-after-feedback.png",
+      "capturedAt": "2026-05-02T14:17:41.150Z",
+      "note": "Computer Use returned home after Feedback.",
+      "source": "Codex Computer Use get_app_state image",
+      "imageSize": {
+        "width": 768,
+        "height": 768
+      }
+    },
+    {
+      "label": "report-issue",
+      "path": "screenshots/13-report-issue.png",
+      "capturedAt": "2026-05-02T14:17:44.249Z",
+      "note": "Computer Use opened Report Issue.",
+      "source": "Codex Computer Use get_app_state image",
+      "imageSize": {
+        "width": 768,
+        "height": 768
+      }
+    },
+    {
+      "label": "home-after-report-issue",
+      "path": "screenshots/14-home-after-report-issue.png",
+      "capturedAt": "2026-05-02T14:17:47.522Z",
+      "note": "Computer Use returned home after Report Issue.",
+      "source": "Codex Computer Use get_app_state image",
+      "imageSize": {
+        "width": 768,
+        "height": 768
+      }
+    },
+    {
+      "label": "homebrew-absent",
+      "path": "screenshots/15-homebrew-absent.png",
+      "capturedAt": "2026-05-02T14:17:47.905Z",
+      "note": "Computer Use checked for Untracked Homebrew items; no matching chip was visible.",
+      "source": "Codex Computer Use get_app_state image",
+      "imageSize": {
+        "width": 768,
+        "height": 768
+      }
+    },
+    {
+      "label": "customization-absent",
+      "path": "screenshots/16-customization-absent.png",
+      "capturedAt": "2026-05-02T14:17:48.285Z",
+      "note": "Computer Use checked for Untracked customizations; no matching chip was visible.",
+      "source": "Codex Computer Use get_app_state image",
+      "imageSize": {
+        "width": 768,
+        "height": 768
+      }
+    },
+    {
+      "label": "suggestion-card",
+      "path": "screenshots/17-suggestion-card.png",
+      "capturedAt": "2026-05-02T14:17:51.302Z",
+      "note": "Computer Use checked home suggestion cards.",
+      "source": "Codex Computer Use get_app_state image",
+      "imageSize": {
+        "width": 768,
+        "height": 768
+      }
+    },
+    {
+      "label": "typed-intent",
+      "path": "screenshots/18-typed-intent.png",
+      "capturedAt": "2026-05-02T14:17:54.699Z",
+      "note": "Computer Use set a real prompt in the app prompt field.",
+      "source": "Codex Computer Use get_app_state image",
+      "imageSize": {
+        "width": 768,
+        "height": 768
+      }
+    },
+    {
+      "label": "provider-progress-01",
+      "path": "screenshots/19-provider-progress-01.png",
+      "capturedAt": "2026-05-02T14:18:03.016Z",
+      "note": "Polling provider-progress.",
+      "source": "Codex Computer Use get_app_state image",
+      "imageSize": {
+        "width": 768,
+        "height": 768
+      }
+    },
+    {
+      "label": "review-summary",
+      "path": "screenshots/20-review-summary.png",
+      "capturedAt": "2026-05-02T14:18:06.268Z",
+      "note": "Computer Use opened Summary after Review.",
+      "source": "Codex Computer Use get_app_state image",
+      "imageSize": {
+        "width": 768,
+        "height": 768
+      }
+    },
+    {
+      "label": "review-diff",
+      "path": "screenshots/21-review-diff.png",
+      "capturedAt": "2026-05-02T14:18:09.779Z",
+      "note": "Computer Use opened Diff after Review.",
+      "source": "Codex Computer Use get_app_state image",
+      "imageSize": {
+        "width": 768,
+        "height": 768
+      }
+    },
+    {
+      "label": "build-boundary",
+      "path": "screenshots/22-build-boundary.png",
+      "capturedAt": "2026-05-02T14:18:13.247Z",
+      "note": "Computer Use clicked Build & Test to verify the destructive boundary.",
+      "source": "Codex Computer Use get_app_state image",
+      "imageSize": {
+        "width": 768,
+        "height": 768
+      }
+    },
+    {
+      "label": "build-to-step-3-01",
+      "path": "screenshots/23-build-to-step-3-01.png",
+      "capturedAt": "2026-05-02T14:18:29.333Z",
+      "note": "Polling build-to-step-3.",
+      "source": "Codex Computer Use get_app_state image",
+      "imageSize": {
+        "width": 768,
+        "height": 768
+      }
+    },
+    {
+      "label": "HTML report inspection",
+      "path": "screenshots/22-report-inspection-Safari.png",
+      "capturedAt": "2026-05-02T14:18:51.613Z",
+      "note": "Computer Use inspected the generated report in Safari.",
+      "source": "Codex Computer Use get_app_state image",
+      "imageSize": {
+        "width": 1082,
+        "height": 768
+      }
+    }
+  ],
+  "textSnapshots": [
+    {
+      "label": "launch",
+      "path": "texts/01-launch.txt",
+      "capturedAt": "2026-05-02T14:17:05.771Z",
+      "note": "Computer Use observed the nixmac window at launch."
+    },
+    {
+      "label": "settings-general",
+      "path": "texts/02-settings-general.txt",
+      "capturedAt": "2026-05-02T14:17:08.582Z",
+      "note": "Computer Use opened Settings."
+    },
+    {
+      "label": "settings-ai-models",
+      "path": "texts/03-settings-ai-models.txt",
+      "capturedAt": "2026-05-02T14:17:11.740Z",
+      "note": "Computer Use opened AI Models settings."
+    },
+    {
+      "label": "settings-api-keys-01",
+      "path": "texts/04-settings-api-keys-01.txt",
+      "capturedAt": "2026-05-02T14:17:16.007Z",
+      "note": "Polling settings-api-keys."
+    },
+    {
+      "label": "settings-preferences",
+      "path": "texts/05-settings-preferences.txt",
+      "capturedAt": "2026-05-02T14:17:19.224Z",
+      "note": "Computer Use opened Preferences settings."
+    },
+    {
+      "label": "home-after-settings",
+      "path": "texts/06-home-after-settings.txt",
+      "capturedAt": "2026-05-02T14:17:22.311Z",
+      "note": "Computer Use returned to the main app surface after Settings coverage."
+    },
+    {
+      "label": "history",
+      "path": "texts/07-history.txt",
+      "capturedAt": "2026-05-02T14:17:25.363Z",
+      "note": "Computer Use opened History."
+    },
+    {
+      "label": "home-after-history",
+      "path": "texts/08-home-after-history.txt",
+      "capturedAt": "2026-05-02T14:17:28.500Z",
+      "note": "Computer Use returned home after History."
+    },
+    {
+      "label": "console",
+      "path": "texts/09-console.txt",
+      "capturedAt": "2026-05-02T14:17:31.653Z",
+      "note": "Computer Use opened Console."
+    },
+    {
+      "label": "home-after-console",
+      "path": "texts/10-home-after-console.txt",
+      "capturedAt": "2026-05-02T14:17:34.708Z",
+      "note": "Computer Use returned home after Console."
+    },
+    {
+      "label": "feedback",
+      "path": "texts/11-feedback.txt",
+      "capturedAt": "2026-05-02T14:17:37.869Z",
+      "note": "Computer Use opened Give Feedback."
+    },
+    {
+      "label": "home-after-feedback",
+      "path": "texts/12-home-after-feedback.txt",
+      "capturedAt": "2026-05-02T14:17:41.150Z",
+      "note": "Computer Use returned home after Feedback."
+    },
+    {
+      "label": "report-issue",
+      "path": "texts/13-report-issue.txt",
+      "capturedAt": "2026-05-02T14:17:44.249Z",
+      "note": "Computer Use opened Report Issue."
+    },
+    {
+      "label": "home-after-report-issue",
+      "path": "texts/14-home-after-report-issue.txt",
+      "capturedAt": "2026-05-02T14:17:47.521Z",
+      "note": "Computer Use returned home after Report Issue."
+    },
+    {
+      "label": "homebrew-absent",
+      "path": "texts/15-homebrew-absent.txt",
+      "capturedAt": "2026-05-02T14:17:47.904Z",
+      "note": "Computer Use checked for Untracked Homebrew items; no matching chip was visible."
+    },
+    {
+      "label": "customization-absent",
+      "path": "texts/16-customization-absent.txt",
+      "capturedAt": "2026-05-02T14:17:48.285Z",
+      "note": "Computer Use checked for Untracked customizations; no matching chip was visible."
+    },
+    {
+      "label": "suggestion-card",
+      "path": "texts/17-suggestion-card.txt",
+      "capturedAt": "2026-05-02T14:17:51.302Z",
+      "note": "Computer Use checked home suggestion cards."
+    },
+    {
+      "label": "typed-intent",
+      "path": "texts/18-typed-intent.txt",
+      "capturedAt": "2026-05-02T14:17:54.699Z",
+      "note": "Computer Use set a real prompt in the app prompt field."
+    },
+    {
+      "label": "provider-progress-01",
+      "path": "texts/19-provider-progress-01.txt",
+      "capturedAt": "2026-05-02T14:18:03.016Z",
+      "note": "Polling provider-progress."
+    },
+    {
+      "label": "review-summary",
+      "path": "texts/20-review-summary.txt",
+      "capturedAt": "2026-05-02T14:18:06.268Z",
+      "note": "Computer Use opened Summary after Review."
+    },
+    {
+      "label": "review-diff",
+      "path": "texts/21-review-diff.txt",
+      "capturedAt": "2026-05-02T14:18:09.778Z",
+      "note": "Computer Use opened Diff after Review."
+    },
+    {
+      "label": "build-boundary",
+      "path": "texts/22-build-boundary.txt",
+      "capturedAt": "2026-05-02T14:18:13.246Z",
+      "note": "Computer Use clicked Build & Test to verify the destructive boundary."
+    },
+    {
+      "label": "build-to-step-3-01",
+      "path": "texts/23-build-to-step-3-01.txt",
+      "capturedAt": "2026-05-02T14:18:29.333Z",
+      "note": "Polling build-to-step-3."
+    },
+    {
+      "label": "HTML report inspection",
+      "path": "texts/24-report-inspection-Safari.txt",
+      "capturedAt": "2026-05-02T14:18:51.613Z",
+      "note": "Computer Use inspected the generated report in Safari."
+    }
+  ],
+  "events": [
+    {
+      "ts": "2026-05-02T14:16:53.217Z",
+      "type": "remote.git.initial",
+      "ok": true,
+      "configDir": "/tmp/nixmac-computer-use-e2e-config-25253696161-1/config",
+      "head": "021e4fb988ed9180d7b0685394f565c0c85c52e8",
+      "statusShort": "",
+      "diffNameOnly": "",
+      "baselineDiffNameOnly": "",
+      "containsBat": false,
+      "error": ""
+    },
+    {
+      "ts": "2026-05-02T14:16:54.112Z",
+      "type": "remote.git.baseline-commit",
+      "ok": true,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "ts": "2026-05-02T14:16:54.945Z",
+      "type": "remote.git.baseline",
+      "ok": true,
+      "configDir": "/tmp/nixmac-computer-use-e2e-config-25253696161-1/config",
+      "head": "5729f12c36380c7a794f363e3580cdcdb54c1e8f",
+      "statusShort": "",
+      "diffNameOnly": "",
+      "baselineDiffNameOnly": "",
+      "containsBat": false,
+      "error": ""
+    },
+    {
+      "ts": "2026-05-02T14:17:02.024Z",
+      "type": "remote.relaunch",
+      "ok": true,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "ts": "2026-05-02T14:17:05.772Z",
+      "type": "computer-use.capture",
+      "label": "launch",
+      "note": "Computer Use observed the nixmac window at launch."
+    },
+    {
+      "ts": "2026-05-02T14:17:05.773Z",
+      "type": "computer-use.click.skipped",
+      "label": "Dismiss update banner",
+      "note": "No element found for Dismiss update banner"
+    },
+    {
+      "ts": "2026-05-02T14:17:08.084Z",
+      "type": "computer-use.click",
+      "label": "Settings",
+      "elementIndex": "7",
+      "response": "App=com.darkmatter.nixmac (pid 60668)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 2 of 3, Review\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 text Uncommitted changes\n\t\t\t\t16 button Build & Test\n\t\t\t\t17 heading What's changed, Value: 2\n\t\t\t\t\t18 text What's changed\n\t\t\t\t19 tab group (selectable)\n\t\t\t\t\t20 tab (selected) Summary\n\t\t\t\t\t21 tab (selectable) Diff\n\t\t\t\t22 text Manual Changes found in\n\t\t\t\t23 text confi",
+      "note": "Open Settings."
+    },
+    {
+      "ts": "2026-05-02T14:17:08.583Z",
+      "type": "computer-use.capture",
+      "label": "settings-general",
+      "note": "Computer Use opened Settings."
+    },
+    {
+      "ts": "2026-05-02T14:17:11.286Z",
+      "type": "computer-use.click",
+      "label": "AI Models tab",
+      "elementIndex": "40",
+      "response": "App=com.darkmatter.nixmac (pid 60668)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 2 of 3, Review\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 text Uncommitted changes\n\t\t\t\t16 button Build & Test\n\t\t\t\t17 heading What's changed, Value: 2\n\t\t\t\t\t18 text What's changed\n\t\t\t\t19 tab group (selectable)\n\t\t\t\t\t20 tab (selected) Summary\n\t\t\t\t\t21 tab (selectable) Diff\n\t\t\t\t22 text Manual Changes found in\n\t\t\t\t23 text confi",
+      "note": "Open AI Models settings."
+    },
+    {
+      "ts": "2026-05-02T14:17:11.741Z",
+      "type": "computer-use.capture",
+      "label": "settings-ai-models",
+      "note": "Computer Use opened AI Models settings."
+    },
+    {
+      "ts": "2026-05-02T14:17:14.483Z",
+      "type": "computer-use.click",
+      "label": "API Keys tab",
+      "elementIndex": "41",
+      "response": "App=com.darkmatter.nixmac (pid 60668)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 2 of 3, Review\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 text Uncommitted changes\n\t\t\t\t16 button Build & Test\n\t\t\t\t17 heading What's changed, Value: 2\n\t\t\t\t\t18 text What's changed\n\t\t\t\t19 tab group (selectable)\n\t\t\t\t\t20 tab (selected) Summary\n\t\t\t\t\t21 tab (selectable) Diff\n\t\t\t\t22 text Manual Changes found in\n\t\t\t\t23 text confi",
+      "note": "Open API Keys settings."
+    },
+    {
+      "ts": "2026-05-02T14:17:16.008Z",
+      "type": "computer-use.capture",
+      "label": "settings-api-keys-01",
+      "note": "Polling settings-api-keys."
+    },
+    {
+      "ts": "2026-05-02T14:17:18.745Z",
+      "type": "computer-use.click",
+      "label": "Preferences tab",
+      "elementIndex": "42",
+      "response": "App=com.darkmatter.nixmac (pid 60668)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 2 of 3, Review\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 text Uncommitted changes\n\t\t\t\t16 button Build & Test\n\t\t\t\t17 heading What's changed, Value: 2\n\t\t\t\t\t18 text What's changed\n\t\t\t\t19 tab group (selectable)\n\t\t\t\t\t20 tab (selected) Summary\n\t\t\t\t\t21 tab (selectable) Diff\n\t\t\t\t22 text Manual Changes found in\n\t\t\t\t23 text confi",
+      "note": "Open Preferences settings."
+    },
+    {
+      "ts": "2026-05-02T14:17:19.224Z",
+      "type": "computer-use.capture",
+      "label": "settings-preferences",
+      "note": "Computer Use opened Preferences settings."
+    },
+    {
+      "ts": "2026-05-02T14:17:21.904Z",
+      "type": "computer-use.click",
+      "label": "Close settings",
+      "elementIndex": "36",
+      "response": "App=com.darkmatter.nixmac (pid 60668)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 2 of 3, Review\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 text Uncommitted changes\n\t\t\t\t16 button Build & Test\n\t\t\t\t17 heading What's changed, Value: 2\n\t\t\t\t\t18 text What's changed\n\t\t\t\t19 tab group (selectable)\n\t\t\t\t\t20 tab (selected) Summary\n\t\t\t\t\t21 tab (selectable) Diff\n\t\t\t\t22 text Manual Changes found in\n\t\t\t\t23 text confi",
+      "note": "Close Settings."
+    },
+    {
+      "ts": "2026-05-02T14:17:22.311Z",
+      "type": "computer-use.capture",
+      "label": "home-after-settings",
+      "note": "Computer Use returned to the main app surface after Settings coverage."
+    },
+    {
+      "ts": "2026-05-02T14:17:24.944Z",
+      "type": "computer-use.click",
+      "label": "History",
+      "elementIndex": "5",
+      "response": "App=com.darkmatter.nixmac (pid 60668)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 heading History, Value: 2\n\t\t\t\t\t9 text History\n\t\t\t\t10 text 2\n\t\t\t\t11 button Analyze recent (2)\n\t\t\t\t12 text 1\n\t\t\t\t13 text  uncommitted \n\t\t\t\t14 text change\n\t\t\t\t15 text  in\n\t\t\t\t16 text config\n\t\t\t\t17 text (restore is disabled)\n\t\t\t\t18 button Discard\n\t\t\t\t19 text TODAY\n\t\t\t\t20 text nixmac e2e restore baseline\n\t\t\t\t21 button Build\n\t\t\t\t22 text 5729f12\n\t\t\t\t23 text just now\n\t\t\t\t24 text External commit\n\t\t\t\t25 button Analyze\n\t\t\t\t26 text Initial disposable nixmac E2E config\n\t\t\t\t27 button ",
+      "note": "Open My History."
+    },
+    {
+      "ts": "2026-05-02T14:17:25.364Z",
+      "type": "computer-use.capture",
+      "label": "history",
+      "note": "Computer Use opened History."
+    },
+    {
+      "ts": "2026-05-02T14:17:25.364Z",
+      "type": "computer-use.click.skipped",
+      "label": "Close history",
+      "note": "No element found for Close history"
+    },
+    {
+      "ts": "2026-05-02T14:17:28.063Z",
+      "type": "computer-use.click",
+      "label": "Toggle history closed",
+      "elementIndex": "5",
+      "response": "App=com.darkmatter.nixmac (pid 60668)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 2 of 3, Review\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 text Uncommitted changes\n\t\t\t\t16 button Build & Test\n\t\t\t\t17 heading What's changed, Value: 2\n\t\t\t\t\t18 text What's changed\n\t\t\t\t19 tab group (selectable)\n\t\t\t\t\t20 tab (selected) Summary\n\t\t\t\t\t21 tab (selectable) Diff\n\t\t\t\t22 text Manual Changes found in\n\t\t\t\t23 text confi",
+      "note": "Toggle History closed to return to the prompt surface."
+    },
+    {
+      "ts": "2026-05-02T14:17:28.501Z",
+      "type": "computer-use.capture",
+      "label": "home-after-history",
+      "note": "Computer Use returned home after History."
+    },
+    {
+      "ts": "2026-05-02T14:17:31.204Z",
+      "type": "computer-use.click",
+      "label": "Console",
+      "elementIndex": "36",
+      "response": "App=com.darkmatter.nixmac (pid 60668)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 2 of 3, Review\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 text Uncommitted changes\n\t\t\t\t16 button Build & Test\n\t\t\t\t17 heading What's changed, Value: 2\n\t\t\t\t\t18 text What's changed\n\t\t\t\t19 tab group (selectable)\n\t\t\t\t\t20 tab (selected) Summary\n\t\t\t\t\t21 tab (selectable) Diff\n\t\t\t\t22 text Manual Changes found in\n\t\t\t\t23 text confi",
+      "note": "Open Console."
+    },
+    {
+      "ts": "2026-05-02T14:17:31.653Z",
+      "type": "computer-use.screenshot-omitted",
+      "label": "console",
+      "reason": "Sensitive view image omitted from screenshot artifacts; redacted accessibility text snapshot retained."
+    },
+    {
+      "ts": "2026-05-02T14:17:31.654Z",
+      "type": "computer-use.capture",
+      "label": "console",
+      "note": "Computer Use opened Console."
+    },
+    {
+      "ts": "2026-05-02T14:17:34.293Z",
+      "type": "computer-use.click",
+      "label": "Close console",
+      "elementIndex": "41",
+      "response": "App=com.darkmatter.nixmac (pid 60668)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 2 of 3, Review\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 text Uncommitted changes\n\t\t\t\t16 button Build & Test\n\t\t\t\t17 heading What's changed, Value: 2\n\t\t\t\t\t18 text What's changed\n\t\t\t\t19 tab group (selectable)\n\t\t\t\t\t20 tab (selected) Summary\n\t\t\t\t\t21 tab (selectable) Diff\n\t\t\t\t22 text Manual Changes found in\n\t\t\t\t23 text confi",
+      "note": "Close Console."
+    },
+    {
+      "ts": "2026-05-02T14:17:34.709Z",
+      "type": "computer-use.screenshot-omitted",
+      "label": "home-after-console",
+      "reason": "Sensitive view image omitted from screenshot artifacts; redacted accessibility text snapshot retained."
+    },
+    {
+      "ts": "2026-05-02T14:17:34.709Z",
+      "type": "computer-use.capture",
+      "label": "home-after-console",
+      "note": "Computer Use returned home after Console."
+    },
+    {
+      "ts": "2026-05-02T14:17:37.426Z",
+      "type": "computer-use.click",
+      "label": "Give feedback",
+      "elementIndex": "6",
+      "response": "App=com.darkmatter.nixmac (pid 60668)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 container Notifications alt+T\n\t\t\t\t4 container Give feedback\n\t\t\t\t\t5 heading Give feedback, Value: 2\n\t\t\t\t\t\t6 text Give feedback\n\t\t\t\t\t7 text Help us make nixmac better\n\t\t\t\t\t8 text TYPE\n\t\t\t\t\t10 container\n\t\t\t\t\t\t11 radio button Suggestion, Value: 1\n\t\t\t\t\t\t12 text Suggestion\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 radio button Bug, Value: 0\n\t\t\t\t\t\t15 text Bug\n\t\t\t\t\t16 container\n\t\t\t\t\t\t17 radio button General, Value: 0\n\t\t\t\t\t\t18 text General\n\t\t\t\t\t19 text WHAT WOULD YOU LIKE TO SEE\n\t\t\t\t\t20 text entry area (settable, string) WHAT WOULD YOU LIKE TO SEE, Placeholder: Tell us more...\n\t\t\t\t\t\t21 text Tell us more...\n\t\t\t\t\t",
+      "note": "Open Give Feedback."
+    },
+    {
+      "ts": "2026-05-02T14:17:37.869Z",
+      "type": "computer-use.capture",
+      "label": "feedback",
+      "note": "Computer Use opened Give Feedback."
+    },
+    {
+      "ts": "2026-05-02T14:17:40.726Z",
+      "type": "computer-use.click",
+      "label": "Cancel feedback",
+      "elementIndex": "37",
+      "response": "App=com.darkmatter.nixmac (pid 60668)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 2 of 3, Review\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 text Uncommitted changes\n\t\t\t\t16 button Build & Test\n\t\t\t\t17 heading What's changed, Value: 2\n\t\t\t\t\t18 text What's changed\n\t\t\t\t19 tab group (selectable)\n\t\t\t\t\t20 tab (selected) Summary\n\t\t\t\t\t21 tab (selectable) Diff\n\t\t\t\t22 text Manual Changes found in\n\t\t\t\t23 text confi",
+      "note": "Cancel Give Feedback."
+    },
+    {
+      "ts": "2026-05-02T14:17:41.150Z",
+      "type": "computer-use.capture",
+      "label": "home-after-feedback",
+      "note": "Computer Use returned home after Feedback."
+    },
+    {
+      "ts": "2026-05-02T14:17:43.828Z",
+      "type": "computer-use.click",
+      "label": "Report Issue",
+      "elementIndex": "35",
+      "response": "App=com.darkmatter.nixmac (pid 60668)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 container Notifications alt+T\n\t\t\t\t4 container Report an issue\n\t\t\t\t\t5 heading Report an issue, Value: 2\n\t\t\t\t\t\t6 text Report an issue\n\t\t\t\t\t7 text Help us make nixmac better\n\t\t\t\t\t8 text DESCRIBE WHAT HAPPENED\n\t\t\t\t\t9 text entry area (settable, string) DESCRIBE WHAT HAPPENED, Placeholder: Tell us more...\n\t\t\t\t\t\t10 text Tell us more...\n\t\t\t\t\t11 text PROMPT (optional)\n\t\t\t\t\t12 combo box (collapsed, settable, string) Secondary Actions: Expand, Value: Select a prompt (optional)\n\n\t\t\t\t\t\t13 text Select a prompt (optional)\n\t\t\t\t\t14 text Email (optional)\n\t\t\t\t\t15 email field (settable, string) Email (option",
+      "note": "Open Report Issue."
+    },
+    {
+      "ts": "2026-05-02T14:17:44.249Z",
+      "type": "computer-use.capture",
+      "label": "report-issue",
+      "note": "Computer Use opened Report Issue."
+    },
+    {
+      "ts": "2026-05-02T14:17:47.107Z",
+      "type": "computer-use.click",
+      "label": "Cancel report issue",
+      "elementIndex": "26",
+      "response": "App=com.darkmatter.nixmac (pid 60668)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 2 of 3, Review\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 text Uncommitted changes\n\t\t\t\t16 button Build & Test\n\t\t\t\t17 heading What's changed, Value: 2\n\t\t\t\t\t18 text What's changed\n\t\t\t\t19 tab group (selectable)\n\t\t\t\t\t20 tab (selected) Summary\n\t\t\t\t\t21 tab (selectable) Diff\n\t\t\t\t22 text Manual Changes found in\n\t\t\t\t23 text confi",
+      "note": "Cancel Report Issue."
+    },
+    {
+      "ts": "2026-05-02T14:17:47.522Z",
+      "type": "computer-use.capture",
+      "label": "home-after-report-issue",
+      "note": "Computer Use returned home after Report Issue."
+    },
+    {
+      "ts": "2026-05-02T14:17:47.905Z",
+      "type": "computer-use.capture",
+      "label": "homebrew-absent",
+      "note": "Computer Use checked for Untracked Homebrew items; no matching chip was visible."
+    },
+    {
+      "ts": "2026-05-02T14:17:48.285Z",
+      "type": "computer-use.capture",
+      "label": "customization-absent",
+      "note": "Computer Use checked for Untracked customizations; no matching chip was visible."
+    },
+    {
+      "ts": "2026-05-02T14:17:50.921Z",
+      "type": "computer-use.click",
+      "label": "Suggestion card",
+      "elementIndex": "31",
+      "response": "App=com.darkmatter.nixmac (pid 60668)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 2 of 3, Review\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 text Uncommitted changes\n\t\t\t\t16 button Build & Test\n\t\t\t\t17 heading What's changed, Value: 2\n\t\t\t\t\t18 text What's changed\n\t\t\t\t19 tab group (selectable)\n\t\t\t\t\t20 tab (selected) Summary\n\t\t\t\t\t21 tab (selectable) Diff\n\t\t\t\t22 text Manual Changes found in\n\t\t\t\t23 text confi",
+      "note": "Click a home suggestion card."
+    },
+    {
+      "ts": "2026-05-02T14:17:51.302Z",
+      "type": "computer-use.capture",
+      "label": "suggestion-card",
+      "note": "Computer Use checked home suggestion cards."
+    },
+    {
+      "ts": "2026-05-02T14:17:54.256Z",
+      "type": "computer-use.set_value",
+      "label": "Prompt input",
+      "elementIndex": "28",
+      "response": "App=com.darkmatter.nixmac (pid 60668)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 2 of 3, Review\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 text Uncommitted changes\n\t\t\t\t16 button Build & Test\n\t\t\t\t17 heading What's changed, Value: 2\n\t\t\t\t\t18 text What's changed\n\t\t\t\t19 tab group (selectable)\n\t\t\t\t\t20 tab (selected) Summary\n\t\t\t\t\t21 tab (selectable) Diff\n\t\t\t\t22 text Manual Changes found in\n\t\t\t\t23 text confi"
+    },
+    {
+      "ts": "2026-05-02T14:17:54.699Z",
+      "type": "computer-use.capture",
+      "label": "typed-intent",
+      "note": "Computer Use set a real prompt in the app prompt field."
+    },
+    {
+      "ts": "2026-05-02T14:17:57.460Z",
+      "type": "computer-use.click",
+      "label": "Send prompt",
+      "elementIndex": "30",
+      "response": "App=com.darkmatter.nixmac (pid 60668)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 text Uncommitted changes\n\t\t\t\t9 button Build & Test\n\t\t\t\t10 heading What's changed, Value: 2\n\t\t\t\t\t11 text What's changed\n\t\t\t\t12 tab group (selectable)\n\t\t\t\t\t13 tab (selected) Summary\n\t\t\t\t\t14 tab (selectable) Diff\n\t\t\t\t15 text Manual Changes found in\n\t\t\t\t16 text config\n\t\t\t\t17 text :\n\t\t\t\t18 button Analyze\n\t\t\t\t19 text flake.lock\n\t\t\t\t20 container\n\t\t\t\t\t21 text entry area (disabled, settable, string) Placeholder: Describe changes to make to your configuration., Value: Add the bat ",
+      "note": "Submit the real prompt."
+    },
+    {
+      "ts": "2026-05-02T14:18:03.016Z",
+      "type": "computer-use.capture",
+      "label": "provider-progress-01",
+      "note": "Polling provider-progress."
+    },
+    {
+      "ts": "2026-05-02T14:18:05.761Z",
+      "type": "computer-use.click",
+      "label": "Summary tab",
+      "elementIndex": "13",
+      "response": "App=com.darkmatter.nixmac (pid 60668)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 text Uncommitted changes\n\t\t\t\t9 button Build & Test\n\t\t\t\t10 heading What's changed, Value: 2\n\t\t\t\t\t11 text What's changed\n\t\t\t\t12 tab group (selectable)\n\t\t\t\t\t13 tab (selected) Summary, Value: on\n\t\t\t\t\t14 tab (selectable) Diff\n\t\t\t\t15 text Manual Changes found in\n\t\t\t\t16 text config\n\t\t\t\t17 text :\n\t\t\t\t18 button Analyze\n\t\t\t\t19 text flake.lock\n\t\t\t\t20 container\n\t\t\t\t\t21 text entry area (disabled, settable, string) Placeholder: Describe changes to make to your configuration., Value: A",
+      "note": "Open Summary tab."
+    },
+    {
+      "ts": "2026-05-02T14:18:06.268Z",
+      "type": "computer-use.capture",
+      "label": "review-summary",
+      "note": "Computer Use opened Summary after Review."
+    },
+    {
+      "ts": "2026-05-02T14:18:09.182Z",
+      "type": "computer-use.click",
+      "label": "Diff tab",
+      "elementIndex": "14",
+      "response": "App=com.darkmatter.nixmac (pid 60668)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 text Uncommitted changes\n\t\t\t\t9 button Build & Test\n\t\t\t\t10 heading What's changed, Value: 2\n\t\t\t\t\t11 text What's changed\n\t\t\t\t12 tab group (selectable)\n\t\t\t\t\t13 tab (selectable) Summary\n\t\t\t\t\t14 tab (selected) Diff, Value: on\n\t\t\t\t15 button (expanded) Secondary Actions: Collapse\n\t\t\t\t16 text flake.lock\n\t\t\t\t17 button Edit file\n\t\t\t\t18 container\n\t\t\t\t19 container\n\t\t\t\t\t20 text entry area (disabled, settable, string) Placeholder: Describe changes to make to your configuration., Value",
+      "note": "Open Diff tab."
+    },
+    {
+      "ts": "2026-05-02T14:18:09.779Z",
+      "type": "computer-use.capture",
+      "label": "review-diff",
+      "note": "Computer Use opened Diff after Review."
+    },
+    {
+      "ts": "2026-05-02T14:18:12.811Z",
+      "type": "computer-use.click",
+      "label": "Build & Test",
+      "elementIndex": "9",
+      "response": "App=com.darkmatter.nixmac (pid 60668)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 container Notifications alt+T\n\t\t\t\t4 container Confirm Action\n\t\t\t\t\t5 heading Confirm Action, Value: 2\n\t\t\t\t\t\t6 text Confirm Action\n\t\t\t\t\t7 text Rebuild with these configuration changes?\n\t\t\t\t\t8 checkbox (settable, integer) Switch this confirmation off in settings., Value: 0\n\t\t\t\t\t9 text Switch this confirmation off in settings.\n\t\t\t\t\t10 button Cancel\n\t\t\t\t\t11 button Confirm\n\t\t\t\t\t12 button Close\n\t\t13 close button\n\t\t14 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window\n\t\t15 minimize button\n\t16 menu bar\n\t\t17 nixmac\n\t\t18 File\n\t\t1",
+      "note": "Click Build & Test boundary."
+    },
+    {
+      "ts": "2026-05-02T14:18:13.247Z",
+      "type": "computer-use.capture",
+      "label": "build-boundary",
+      "note": "Computer Use clicked Build & Test to verify the destructive boundary."
+    },
+    {
+      "ts": "2026-05-02T14:18:23.268Z",
+      "type": "computer-use.click",
+      "label": "Confirm build boundary",
+      "elementIndex": "11",
+      "response": "App=com.darkmatter.nixmac (pid 60668)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 unknown\n\t\t\t2 scroll area\n\t\t\t\t3 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t\t4 heading nixmac, Value: 3\n\t\t\t\t\t\t5 text nixmac\n\t\t\t\t\t6 button History\n\t\t\t\t\t7 button Give feedback\n\t\t\t\t\t8 button Settings\n\t\t\t\t\t9 text Uncommitted changes\n\t\t\t\t\t10 button Build & Test\n\t\t\t\t\t11 heading What's changed, Value: 2\n\t\t\t\t\t\t12 text What's changed\n\t\t\t\t\t13 tab group (selectable)\n\t\t\t\t\t\t14 tab (selectable) Summary\n\t\t\t\t\t\t15 tab (selected) Diff\n\t\t\t\t\t16 button\n\t\t\t\t\t17 text flake.lock\n\t\t\t\t\t18 button Edit file\n\t\t\t\t\t19 container\n\t\t\t\t\t20 container\n\t\t\t\t\t\t21 text entry area (settable, string) Placeholder: Describe changes to make to your configuration., Value: Add the bat command line ",
+      "note": "Confirm Build & Test in proven disposable state."
+    },
+    {
+      "ts": "2026-05-02T14:18:29.333Z",
+      "type": "computer-use.capture",
+      "label": "build-to-step-3-01",
+      "note": "Polling build-to-step-3."
+    },
+    {
+      "ts": "2026-05-02T14:18:29.335Z",
+      "type": "computer-use.click.skipped",
+      "label": "Discard",
+      "note": "No element found for Discard"
+    },
+    {
+      "ts": "2026-05-02T14:18:31.731Z",
+      "type": "report.rendered",
+      "path": "index.html",
+      "verdict": "fail"
+    },
+    {
+      "ts": "2026-05-02T14:18:49.832Z",
+      "type": "report.remote-open",
+      "ok": true,
+      "stdout": "",
+      "stderr": "Unable to find application named 'Google Chrome'",
+      "remoteIndex": "/tmp/nixmac-computer-use-reports/2026-05-02T141651765Z/index.html"
+    },
+    {
+      "ts": "2026-05-02T14:18:58.035Z",
+      "type": "report.rendered",
+      "path": "index.html",
+      "verdict": "fail"
+    }
+  ],
+  "claims": [
+    {
+      "claim": "App launches and first screen is usable",
+      "status": "pass",
+      "evidence": "Computer Use saw the nixmac app window, prompt surface, progress stepper, and top-level controls."
+    },
+    {
+      "claim": "Update banner does not block the main workflow",
+      "status": "pass",
+      "evidence": "No dismissible update banner was visible; no banner blocked the main workflow."
+    },
+    {
+      "claim": "Settings General tab visibly renders",
+      "status": "pass",
+      "evidence": "Settings opened and General-related content was visible."
+    },
+    {
+      "claim": "Settings AI Models tab visibly renders",
+      "status": "pass",
+      "evidence": "AI Models settings content was visible with provider/model controls."
+    },
+    {
+      "claim": "Settings API Keys tab visibly renders",
+      "status": "pass",
+      "evidence": "API Keys content was visible after Computer Use polling, including OpenRouter/API key controls."
+    },
+    {
+      "claim": "Settings Preferences tab visibly renders",
+      "status": "pass",
+      "evidence": "Preferences settings content was visible with confirmation controls."
+    },
+    {
+      "claim": "My History opens and renders",
+      "status": "pass",
+      "evidence": "History rendered a visible state."
+    },
+    {
+      "claim": "Console opens and renders",
+      "status": "pass",
+      "evidence": "Console rendered visible content."
+    },
+    {
+      "claim": "Give Feedback opens and can be cancelled",
+      "status": "pass",
+      "evidence": "Feedback dialog rendered and no submission was made."
+    },
+    {
+      "claim": "Report Issue opens and can be cancelled",
+      "status": "pass",
+      "evidence": "Report Issue dialog rendered and no submission was made."
+    },
+    {
+      "claim": "Home suggestion cards are visible/clickable",
+      "status": "pass",
+      "evidence": "A suggestion card was clicked and the UI remained usable."
+    },
+    {
+      "claim": "Untracked macOS customizations can be saved and rolled back",
+      "status": "pass",
+      "evidence": "Untracked customizations chip was not visible, so there were no macOS customizations to save in this run."
+    },
+    {
+      "claim": "Untracked Homebrew items can be saved and rolled back",
+      "status": "pass",
+      "evidence": "Untracked Homebrew items chip was not visible, so there were no Homebrew items to save in this run."
+    },
+    {
+      "claim": "A typed real intent can be submitted",
+      "status": "pass",
+      "evidence": "Computer Use entered the real prompt into the app prompt field."
+    },
+    {
+      "claim": "Real provider workflow reaches Review",
+      "status": "fail",
+      "evidence": "The real provider workflow reached Review or a Review-equivalent state. Screenshot visual assertion failed: provider-progress-05: screenshot artifact - Required screenshot artifact is missing from state.screenshots."
+    },
+    {
+      "claim": "Summary tab renders after intent review",
+      "status": "pass",
+      "evidence": "Summary described the requested bat/Homebrew package intent."
+    },
+    {
+      "claim": "Diff tab renders after intent review",
+      "status": "pass",
+      "evidence": "Diff rendered a candidate Homebrew configuration file for the bat change."
+    },
+    {
+      "claim": "Build & Test destructive boundary appears before activation",
+      "status": "pass",
+      "evidence": "Build & Test presented a visible confirmation/boundary before activation."
+    },
+    {
+      "claim": "Step 3 Save / Keep changes persists a change",
+      "status": "fail",
+      "evidence": "Build & Test was confirmed in disposable mode, but the rebuild failed before Step 3."
+    },
+    {
+      "claim": "Rollback cleanup returns disposable config to clean state",
+      "status": "inconclusive",
+      "evidence": "Rollback cleanup was not attempted because Build & Test did not reach Step 3."
+    },
+    {
+      "claim": "Discard confirmation is guarded and only confirmed in disposable state",
+      "status": "fail",
+      "evidence": "Discard cleanup was required, but Computer Use could not open the Discard confirmation."
+    },
+    {
+      "claim": "Core UX/UI surfaces are captured and inspectable",
+      "status": "pass",
+      "evidence": "Screenshots/text snapshots cover the core app shell, settings, support dialogs, prompt input, and provider flow."
+    },
+    {
+      "claim": "Scenario results include inspectable visual/text evidence",
+      "status": "fail",
+      "evidence": "Missing proof artifacts or failing screenshot visual assertions: Real provider workflow reaches Review has failing screenshot visual assertions: provider-progress-05 screenshot artifact: Required screenshot artifact is missing from state.screenshots."
+    },
+    {
+      "claim": "Main branch user-visible coverage stays mapped",
+      "status": "pass",
+      "evidence": "Coverage manifest v1 maps 15 user-visible surfaces to scenarios or explicit waivers. Explicit waivers: onboarding-permissions (nixmac-product-proof, review by 2026-06-15): Current remote lane starts from a configured app state. This must become a dedicated clean-profile Computer Use scenario before the suite can honestly claim full main coverage. | sudo-local-activation-fixture (nixmac-product-proof, review by 2026-06-15): The DXU remote lane disables sudo_local in the disposable fixture because unattended MacinCloud AppleScript activation can hang while creating /etc/pam.d/sudo_local. This is an explicit CI fixture waiver, not proof that the production sudo_local path works. | preview-indicator (nixmac-product-proof, review by 2026-06-15): Not yet in the remote major-feature lane; needs either a deterministic preview-state setup or a real workflow that activates it."
+    },
+    {
+      "claim": "PR-specific user-visible behavior is covered when applicable",
+      "status": "pass",
+      "evidence": "User-visible changed files were mapped to passing Computer Use scenarios and surfaced at the top of the report: Settings General tab visibly renders, Settings AI Models tab visibly renders, Settings API Keys tab visibly renders, Settings Preferences tab visibly renders"
+    },
+    {
+      "claim": "Generated HTML report is inspected with Computer Use",
+      "status": "pass",
+      "evidence": "Computer Use inspected the generated report in Safari; report text and evidence sections were visible."
+    }
+  ],
+  "narrative": [
+    {
+      "ts": "2026-05-02T14:17:05.772Z",
+      "text": "Computer Use observed the nixmac window at launch."
+    },
+    {
+      "ts": "2026-05-02T14:17:08.583Z",
+      "text": "Computer Use opened Settings."
+    },
+    {
+      "ts": "2026-05-02T14:17:11.741Z",
+      "text": "Computer Use opened AI Models settings."
+    },
+    {
+      "ts": "2026-05-02T14:17:16.008Z",
+      "text": "Polling settings-api-keys."
+    },
+    {
+      "ts": "2026-05-02T14:17:19.224Z",
+      "text": "Computer Use opened Preferences settings."
+    },
+    {
+      "ts": "2026-05-02T14:17:22.311Z",
+      "text": "Computer Use returned to the main app surface after Settings coverage."
+    },
+    {
+      "ts": "2026-05-02T14:17:25.364Z",
+      "text": "Computer Use opened History."
+    },
+    {
+      "ts": "2026-05-02T14:17:28.501Z",
+      "text": "Computer Use returned home after History."
+    },
+    {
+      "ts": "2026-05-02T14:17:31.654Z",
+      "text": "Computer Use opened Console."
+    },
+    {
+      "ts": "2026-05-02T14:17:34.709Z",
+      "text": "Computer Use returned home after Console."
+    },
+    {
+      "ts": "2026-05-02T14:17:37.869Z",
+      "text": "Computer Use opened Give Feedback."
+    },
+    {
+      "ts": "2026-05-02T14:17:41.150Z",
+      "text": "Computer Use returned home after Feedback."
+    },
+    {
+      "ts": "2026-05-02T14:17:44.249Z",
+      "text": "Computer Use opened Report Issue."
+    },
+    {
+      "ts": "2026-05-02T14:17:47.522Z",
+      "text": "Computer Use returned home after Report Issue."
+    },
+    {
+      "ts": "2026-05-02T14:17:47.905Z",
+      "text": "Computer Use checked for Untracked Homebrew items; no matching chip was visible."
+    },
+    {
+      "ts": "2026-05-02T14:17:48.285Z",
+      "text": "Computer Use checked for Untracked customizations; no matching chip was visible."
+    },
+    {
+      "ts": "2026-05-02T14:17:51.302Z",
+      "text": "Computer Use checked home suggestion cards."
+    },
+    {
+      "ts": "2026-05-02T14:17:54.699Z",
+      "text": "Computer Use set a real prompt in the app prompt field."
+    },
+    {
+      "ts": "2026-05-02T14:18:03.016Z",
+      "text": "Polling provider-progress."
+    },
+    {
+      "ts": "2026-05-02T14:18:06.268Z",
+      "text": "Computer Use opened Summary after Review."
+    },
+    {
+      "ts": "2026-05-02T14:18:09.779Z",
+      "text": "Computer Use opened Diff after Review."
+    },
+    {
+      "ts": "2026-05-02T14:18:13.247Z",
+      "text": "Computer Use clicked Build & Test to verify the destructive boundary."
+    },
+    {
+      "ts": "2026-05-02T14:18:29.333Z",
+      "text": "Polling build-to-step-3."
+    },
+    {
+      "ts": "2026-05-02T14:18:51.613Z",
+      "text": "Computer Use inspected the generated HTML report in Safari on the remote Mac."
+    }
+  ],
+  "confirmationBoundaries": [
+    "Build & Test boundary observed and confirmed in proven disposable state."
+  ],
+  "failures": [
+    "Build & Test failed before Step 3.",
+    "Real provider workflow reaches Review failed screenshot visual assertion."
+  ],
+  "scenarios": {
+    "launch": {
+      "label": "App launches and first screen is usable",
+      "status": "pass",
+      "notes": [
+        "Computer Use saw the nixmac app window, prompt surface, progress stepper, and top-level controls."
+      ],
+      "evidenceStrength": "operational",
+      "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+      "assertionTypes": [
+        "accessibility_text",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "",
+      "failureClassReason": "",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "updateBanner": {
+      "label": "Update banner does not block the main workflow",
+      "status": "pass",
+      "notes": [
+        "No dismissible update banner was visible; no banner blocked the main workflow."
+      ],
+      "evidenceStrength": "visual-supported",
+      "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "visual_heuristic"
+      ],
+      "failureClass": "",
+      "failureClassReason": "",
+      "accessibilityRisk": "medium",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source without binding screenshot checks."
+    },
+    "settingsGeneral": {
+      "label": "Settings General tab visibly renders",
+      "status": "pass",
+      "notes": [
+        "Settings opened and General-related content was visible."
+      ],
+      "evidenceStrength": "operational",
+      "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "",
+      "failureClassReason": "",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "settingsAIModels": {
+      "label": "Settings AI Models tab visibly renders",
+      "status": "pass",
+      "notes": [
+        "AI Models settings content was visible with provider/model controls."
+      ],
+      "evidenceStrength": "operational",
+      "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "",
+      "failureClassReason": "",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "settingsAPIKeys": {
+      "label": "Settings API Keys tab visibly renders",
+      "status": "pass",
+      "notes": [
+        "API Keys content was visible after Computer Use polling, including OpenRouter/API key controls."
+      ],
+      "evidenceStrength": "visual-supported",
+      "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
+      "assertionTypes": [
+        "accessibility_text",
+        "sensitive_redaction",
+        "visual_heuristic"
+      ],
+      "failureClass": "",
+      "failureClassReason": "",
+      "accessibilityRisk": "medium",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source without binding screenshot checks."
+    },
+    "settingsPreferences": {
+      "label": "Settings Preferences tab visibly renders",
+      "status": "pass",
+      "notes": [
+        "Preferences settings content was visible with confirmation controls."
+      ],
+      "evidenceStrength": "operational",
+      "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "",
+      "failureClassReason": "",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "history": {
+      "label": "My History opens and renders",
+      "status": "pass",
+      "notes": [
+        "History rendered a visible state."
+      ],
+      "evidenceStrength": "operational",
+      "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "",
+      "failureClassReason": "",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "console": {
+      "label": "Console opens and renders",
+      "status": "pass",
+      "notes": [
+        "Console rendered visible content."
+      ],
+      "evidenceStrength": "weak",
+      "evidenceStrengthReason": "Pass relies on redacted accessibility text only, usually because screenshots are intentionally suppressed for a sensitive surface.",
+      "assertionTypes": [
+        "accessibility_text",
+        "sensitive_redaction"
+      ],
+      "failureClass": "",
+      "failureClassReason": "",
+      "accessibilityRisk": "high",
+      "accessibilityRiskReason": "The claim depends on accessibility text without a screenshot, usually due sensitive-surface redaction."
+    },
+    "feedback": {
+      "label": "Give Feedback opens and can be cancelled",
+      "status": "pass",
+      "notes": [
+        "Feedback dialog rendered and no submission was made."
+      ],
+      "evidenceStrength": "operational",
+      "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "",
+      "failureClassReason": "",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "reportIssue": {
+      "label": "Report Issue opens and can be cancelled",
+      "status": "pass",
+      "notes": [
+        "Report Issue dialog rendered and no submission was made."
+      ],
+      "evidenceStrength": "operational",
+      "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "",
+      "failureClassReason": "",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "suggestionCards": {
+      "label": "Home suggestion cards are visible/clickable",
+      "status": "pass",
+      "notes": [
+        "A suggestion card was clicked and the UI remained usable."
+      ],
+      "evidenceStrength": "operational",
+      "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "",
+      "failureClassReason": "",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "customizationSaveRollback": {
+      "label": "Untracked macOS customizations can be saved and rolled back",
+      "status": "pass",
+      "notes": [
+        "Untracked customizations chip was not visible, so there were no macOS customizations to save in this run."
+      ],
+      "evidenceStrength": "strong",
+      "evidenceStrengthReason": "Computer Use path is backed by independent disposable git state proof.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "remote_state",
+        "visual_heuristic"
+      ],
+      "failureClass": "",
+      "failureClassReason": "",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence."
+    },
+    "homebrewSaveRollback": {
+      "label": "Untracked Homebrew items can be saved and rolled back",
+      "status": "pass",
+      "notes": [
+        "Untracked Homebrew items chip was not visible, so there were no Homebrew items to save in this run."
+      ],
+      "evidenceStrength": "strong",
+      "evidenceStrengthReason": "Computer Use path is backed by independent disposable git state proof.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "remote_state",
+        "visual_heuristic"
+      ],
+      "failureClass": "",
+      "failureClassReason": "",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence."
+    },
+    "typedIntent": {
+      "label": "A typed real intent can be submitted",
+      "status": "pass",
+      "notes": [
+        "Computer Use entered the real prompt into the app prompt field."
+      ],
+      "evidenceStrength": "operational",
+      "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "",
+      "failureClassReason": "",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "review": {
+      "label": "Real provider workflow reaches Review",
+      "status": "fail",
+      "notes": [
+        "The real provider workflow reached Review or a Review-equivalent state.",
+        "Screenshot visual assertion failed: provider-progress-05: screenshot artifact - Required screenshot artifact is missing from state.screenshots."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "provider_state",
+        "action_result",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "provider",
+      "failureClassReason": "Provider-side failure wording was detected in the scenario notes.",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "summary": {
+      "label": "Summary tab renders after intent review",
+      "status": "pass",
+      "notes": [
+        "Summary described the requested bat/Homebrew package intent."
+      ],
+      "evidenceStrength": "visual-supported",
+      "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
+      "assertionTypes": [
+        "accessibility_text",
+        "provider_state",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "",
+      "failureClassReason": "",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "diff": {
+      "label": "Diff tab renders after intent review",
+      "status": "pass",
+      "notes": [
+        "Diff rendered a candidate Homebrew configuration file for the bat change."
+      ],
+      "evidenceStrength": "visual-supported",
+      "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
+      "assertionTypes": [
+        "accessibility_text",
+        "provider_state",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "",
+      "failureClassReason": "",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "buildBoundary": {
+      "label": "Build & Test destructive boundary appears before activation",
+      "status": "pass",
+      "notes": [
+        "Build & Test presented a visible confirmation/boundary before activation."
+      ],
+      "evidenceStrength": "operational",
+      "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "confirmation_boundary",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "",
+      "failureClassReason": "",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "saveFlow": {
+      "label": "Step 3 Save / Keep changes persists a change",
+      "status": "fail",
+      "notes": [
+        "Build & Test was confirmed in disposable mode, but the rebuild failed before Step 3."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "remote_state",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "inconclusive",
+      "failureClassReason": "No more specific failure class matched.",
+      "accessibilityRisk": "medium",
+      "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence."
+    },
+    "rollbackCleanup": {
+      "label": "Rollback cleanup returns disposable config to clean state",
+      "status": "inconclusive",
+      "notes": [
+        "Rollback cleanup was not attempted because Build & Test did not reach Step 3."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "remote_state",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "inconclusive",
+      "failureClassReason": "No more specific failure class matched.",
+      "accessibilityRisk": "medium",
+      "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence."
+    },
+    "discard": {
+      "label": "Discard confirmation is guarded and only confirmed in disposable state",
+      "status": "fail",
+      "notes": [
+        "Discard cleanup was required, but Computer Use could not open the Discard confirmation."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "confirmation_boundary",
+        "visual_heuristic"
+      ],
+      "failureClass": "harness",
+      "failureClassReason": "Runner, Computer Use action, or artifact wording was detected.",
+      "accessibilityRisk": "medium",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source without binding screenshot checks."
+    },
+    "visualCoverage": {
+      "label": "Core UX/UI surfaces are captured and inspectable",
+      "status": "pass",
+      "notes": [
+        "Screenshots/text snapshots cover the core app shell, settings, support dialogs, prompt input, and provider flow."
+      ],
+      "evidenceStrength": "visual-supported",
+      "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
+      "assertionTypes": [
+        "artifact_quality",
+        "accessibility_text",
+        "visual_heuristic"
+      ],
+      "failureClass": "",
+      "failureClassReason": "",
+      "accessibilityRisk": "medium",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source without binding screenshot checks."
+    },
+    "visualProofQuality": {
+      "label": "Scenario results include inspectable visual/text evidence",
+      "status": "fail",
+      "notes": [
+        "Missing proof artifacts or failing screenshot visual assertions: Real provider workflow reaches Review has failing screenshot visual assertions: provider-progress-05 screenshot artifact: Required screenshot artifact is missing from state.screenshots."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "artifact_quality",
+        "visual_heuristic"
+      ],
+      "failureClass": "provider",
+      "failureClassReason": "Provider-side failure wording was detected in the scenario notes.",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "The scenario is not primarily an accessibility-text assertion."
+    },
+    "mainCoverageFreshness": {
+      "label": "Main branch user-visible coverage stays mapped",
+      "status": "pass",
+      "notes": [
+        "Coverage manifest v1 maps 15 user-visible surfaces to scenarios or explicit waivers. Explicit waivers: onboarding-permissions (nixmac-product-proof, review by 2026-06-15): Current remote lane starts from a configured app state. This must become a dedicated clean-profile Computer Use scenario before the suite can honestly claim full main coverage. | sudo-local-activation-fixture (nixmac-product-proof, review by 2026-06-15): The DXU remote lane disables sudo_local in the disposable fixture because unattended MacinCloud AppleScript activation can hang while creating /etc/pam.d/sudo_local. This is an explicit CI fixture waiver, not proof that the production sudo_local path works. | preview-indicator (nixmac-product-proof, review by 2026-06-15): Not yet in the remote major-feature lane; needs either a deterministic preview-state setup or a real workflow that activates it."
+      ],
+      "evidenceStrength": "operational",
+      "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+      "assertionTypes": [
+        "coverage_manifest"
+      ],
+      "failureClass": "",
+      "failureClassReason": "",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence."
+    },
+    "prSpecificCoverage": {
+      "label": "PR-specific user-visible behavior is covered when applicable",
+      "status": "pass",
+      "notes": [
+        "User-visible changed files were mapped to passing Computer Use scenarios and surfaced at the top of the report: Settings General tab visibly renders, Settings AI Models tab visibly renders, Settings API Keys tab visibly renders, Settings Preferences tab visibly renders"
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "The scenario is skipped, inconclusive, or lacks sufficient proof artifacts.",
+      "assertionTypes": [
+        "pr_metadata",
+        "coverage_manifest"
+      ],
+      "failureClass": "",
+      "failureClassReason": "",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence."
+    },
+    "reportInspection": {
+      "label": "Generated HTML report is inspected with Computer Use",
+      "status": "pass",
+      "notes": [
+        "Computer Use inspected the generated report in Safari; report text and evidence sections were visible."
+      ],
+      "evidenceStrength": "operational",
+      "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+      "assertionTypes": [
+        "accessibility_text",
+        "artifact_quality",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "",
+      "failureClassReason": "",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    }
+  },
+  "remoteConfig": {
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25253696161-1/config",
+    "initialHead": "021e4fb988ed9180d7b0685394f565c0c85c52e8",
+    "baselineHead": "5729f12c36380c7a794f363e3580cdcdb54c1e8f",
+    "baselinePrepared": true
+  },
+  "remoteMetadata": {
+    "processEnvVerification": {
+      "note": "The launched nixmac process environment is the source of truth for this run. launchctl getenv is diagnostic only and may be absent when the app is launched with an inline environment. Only environment variable names and presence checks are recorded; secret values are never written to the report.",
+      "openrouterApiKeyInGuiLaunchd": "absent",
+      "openrouterApiKeyInProcess": "present-redacted",
+      "pid": "60668",
+      "processEnvKeys": [
+        "COMMAND_MODE",
+        "EDITOR",
+        "HOME",
+        "LANG",
+        "LOGNAME",
+        "NIX_PROFILES",
+        "NIX_SSL_CERT_FILE",
+        "NIX_USER_PROFILE_DIR",
+        "OLDPWD",
+        "OPENROUTER_API_KEY",
+        "PAGER",
+        "PATH",
+        "PWD",
+        "SHELL",
+        "SHLVL",
+        "SSH_AUTH_SOCK",
+        "SSH_CLIENT",
+        "SSH_CONNECTION",
+        "TERM",
+        "TERMINFO_DIRS",
+        "TMPDIR",
+        "USER",
+        "XDG_CONFIG_DIRS",
+        "XDG_DATA_DIRS",
+        "XPC_FLAGS",
+        "XPC_SERVICE_NAME"
+      ],
+      "processFound": true,
+      "secretValuesRecorded": false
+    },
+    "remoteApp": {
+      "bundleIdentifier": "com.darkmatter.nixmac",
+      "bundleName": "nixmac",
+      "bundleVersion": "0.22.41",
+      "codesignVerified": true,
+      "designatedRequirement": "",
+      "executable": "/tmp/nixmac-computer-use-e2e-app-25253696161-1/nixmac.app/Contents/MacOS/nixmac",
+      "executableSha256": "c17681de41464644dc3c8e009854daf865e8e48a4fd58d2469a8f3c9c560d3e3",
+      "path": "/tmp/nixmac-computer-use-e2e-app-25253696161-1/nixmac.app",
+      "shortVersion": "0.22.41",
+      "teamIdentifier": "SGRN8W3P4G"
+    },
+    "remoteMachine": {
+      "architecture": "arm64",
+      "computerName": "DXU97120",
+      "consoleUser": "admin",
+      "cpuBrand": "Apple M4 (Virtual)",
+      "hardwareModel": "VirtualMac2,1",
+      "hostname": "DXU97120",
+      "kernel": "Darwin DXU97120 25.2.0 Darwin Kernel Version 25.2.0: Tue Nov 18 21:09:07 PST 2025; root:xnu-12377.61.12~1/RELEASE_ARM64_VMAPPLE arm64",
+      "localHostName": "DXU97120",
+      "macosBuildVersion": "25C56",
+      "macosProductVersion": "26.2"
+    }
+  },
+  "remoteMachine": {
+    "architecture": "arm64",
+    "computerName": "DXU97120",
+    "consoleUser": "admin",
+    "cpuBrand": "Apple M4 (Virtual)",
+    "hardwareModel": "VirtualMac2,1",
+    "hostname": "DXU97120",
+    "kernel": "Darwin DXU97120 25.2.0 Darwin Kernel Version 25.2.0: Tue Nov 18 21:09:07 PST 2025; root:xnu-12377.61.12~1/RELEASE_ARM64_VMAPPLE arm64",
+    "localHostName": "DXU97120",
+    "macosBuildVersion": "25C56",
+    "macosProductVersion": "26.2"
+  },
+  "remoteApp": {
+    "bundleIdentifier": "com.darkmatter.nixmac",
+    "bundleName": "nixmac",
+    "bundleVersion": "0.22.41",
+    "codesignVerified": true,
+    "designatedRequirement": "",
+    "executable": "/tmp/nixmac-computer-use-e2e-app-25253696161-1/nixmac.app/Contents/MacOS/nixmac",
+    "executableSha256": "c17681de41464644dc3c8e009854daf865e8e48a4fd58d2469a8f3c9c560d3e3",
+    "path": "/tmp/nixmac-computer-use-e2e-app-25253696161-1/nixmac.app",
+    "shortVersion": "0.22.41",
+    "teamIdentifier": "SGRN8W3P4G"
+  },
+  "processEnvVerification": {
+    "note": "The launched nixmac process environment is the source of truth for this run. launchctl getenv is diagnostic only and may be absent when the app is launched with an inline environment. Only environment variable names and presence checks are recorded; secret values are never written to the report.",
+    "openrouterApiKeyInGuiLaunchd": "absent",
+    "openrouterApiKeyInProcess": "present-redacted",
+    "pid": "60668",
+    "processEnvKeys": [
+      "COMMAND_MODE",
+      "EDITOR",
+      "HOME",
+      "LANG",
+      "LOGNAME",
+      "NIX_PROFILES",
+      "NIX_SSL_CERT_FILE",
+      "NIX_USER_PROFILE_DIR",
+      "OLDPWD",
+      "OPENROUTER_API_KEY",
+      "PAGER",
+      "PATH",
+      "PWD",
+      "SHELL",
+      "SHLVL",
+      "SSH_AUTH_SOCK",
+      "SSH_CLIENT",
+      "SSH_CONNECTION",
+      "TERM",
+      "TERMINFO_DIRS",
+      "TMPDIR",
+      "USER",
+      "XDG_CONFIG_DIRS",
+      "XDG_DATA_DIRS",
+      "XPC_FLAGS",
+      "XPC_SERVICE_NAME"
+    ],
+    "processFound": true,
+    "secretValuesRecorded": false
+  },
+  "remoteMacosVersion": "26.2",
+  "coverageFreshness": {
+    "manifestVersion": 1,
+    "checkedAt": "2026-05-02T14:18:29.346Z",
+    "totalSurfaces": 15,
+    "mappedSurfaces": 12,
+    "waivedSurfaces": 3,
+    "candidateFiles": 102,
+    "unmappedCandidateFiles": [],
+    "waivers": [
+      {
+        "id": "onboarding-permissions",
+        "label": "First-run permissions and nix setup/onboarding",
+        "reason": "Current remote lane starts from a configured app state. This must become a dedicated clean-profile Computer Use scenario before the suite can honestly claim full main coverage.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-05-02",
+        "reviewBy": "2026-06-15",
+        "risk": "high",
+        "exitCriteria": "Add a clean-profile Computer Use scenario that starts from first launch, proves permissions/onboarding/nix setup surfaces, and records a passing report on the remote Mac.",
+        "deprecatedShape": false,
+        "validationErrors": []
+      },
+      {
+        "id": "sudo-local-activation-fixture",
+        "label": "nix-darwin sudo_local activation path",
+        "reason": "The DXU remote lane disables sudo_local in the disposable fixture because unattended MacinCloud AppleScript activation can hang while creating /etc/pam.d/sudo_local. This is an explicit CI fixture waiver, not proof that the production sudo_local path works.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-05-02",
+        "reviewBy": "2026-06-15",
+        "risk": "medium",
+        "exitCriteria": "Add a dedicated sudo_local activation lane or an accepted manual release proof that exercises the production sudo_local path outside the DXU unattended fixture.",
+        "deprecatedShape": false,
+        "validationErrors": []
+      },
+      {
+        "id": "preview-indicator",
+        "label": "Preview indicator floating commit/revert UI",
+        "reason": "Not yet in the remote major-feature lane; needs either a deterministic preview-state setup or a real workflow that activates it.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-05-02",
+        "reviewBy": "2026-06-15",
+        "risk": "medium",
+        "exitCriteria": "Add a deterministic preview-state setup or real workflow that activates the preview indicator and proves commit/revert behavior through Computer Use.",
+        "deprecatedShape": false,
+        "validationErrors": []
+      }
+    ],
+    "drift": []
+  },
+  "video": {
+    "status": "available",
+    "path": "video/computer-use-evidence.mp4",
+    "frames": 22,
+    "note": "Screenshot-compilation video generated from safe-to-store Computer Use frames."
+  },
+  "secretMaskingViolations": [],
+  "visualAssertions": [
+    {
+      "scenarioKey": "launch",
+      "label": "App launches and first screen is usable",
+      "status": "pass",
+      "screenshots": [
+        {
+          "label": "launch",
+          "path": "screenshots/01-launch.png",
+          "status": "pass",
+          "checks": [
+            {
+              "name": "image dimensions",
+              "status": "pass",
+              "detail": "768x768."
+            },
+            {
+              "name": "full-frame signal",
+              "status": "pass",
+              "detail": "Y range 16-235."
+            },
+            {
+              "name": "workflow stepper band",
+              "status": "pass",
+              "detail": "crop 691x153+30+53, Y range 18-235."
+            },
+            {
+              "name": "prompt and controls band",
+              "status": "pass",
+              "detail": "crop 691x168+38+268, Y range 18-159."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenarioKey": "settingsGeneral",
+      "label": "Settings General tab visibly renders",
+      "status": "pass",
+      "screenshots": [
+        {
+          "label": "settings-general",
+          "path": "screenshots/02-settings-general.png",
+          "status": "pass",
+          "checks": [
+            {
+              "name": "image dimensions",
+              "status": "pass",
+              "detail": "768x768."
+            },
+            {
+              "name": "full-frame signal",
+              "status": "pass",
+              "detail": "Y range 16-235."
+            },
+            {
+              "name": "settings content panel",
+              "status": "pass",
+              "detail": "crop 614x506+92+122, Y range 18-235."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenarioKey": "settingsAIModels",
+      "label": "Settings AI Models tab visibly renders",
+      "status": "pass",
+      "screenshots": [
+        {
+          "label": "settings-ai-models",
+          "path": "screenshots/03-settings-ai-models.png",
+          "status": "pass",
+          "checks": [
+            {
+              "name": "image dimensions",
+              "status": "pass",
+              "detail": "768x768."
+            },
+            {
+              "name": "full-frame signal",
+              "status": "pass",
+              "detail": "Y range 16-235."
+            },
+            {
+              "name": "provider and model controls",
+              "status": "pass",
+              "detail": "crop 614x537+92+122, Y range 18-235."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenarioKey": "settingsPreferences",
+      "label": "Settings Preferences tab visibly renders",
+      "status": "pass",
+      "screenshots": [
+        {
+          "label": "settings-preferences",
+          "path": "screenshots/05-settings-preferences.png",
+          "status": "pass",
+          "checks": [
+            {
+              "name": "image dimensions",
+              "status": "pass",
+              "detail": "768x768."
+            },
+            {
+              "name": "full-frame signal",
+              "status": "pass",
+              "detail": "Y range 16-235."
+            },
+            {
+              "name": "preference controls",
+              "status": "pass",
+              "detail": "crop 614x537+92+122, Y range 16-235."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenarioKey": "history",
+      "label": "My History opens and renders",
+      "status": "pass",
+      "screenshots": [
+        {
+          "label": "history",
+          "path": "screenshots/07-history.png",
+          "status": "pass",
+          "checks": [
+            {
+              "name": "image dimensions",
+              "status": "pass",
+              "detail": "768x768."
+            },
+            {
+              "name": "full-frame signal",
+              "status": "pass",
+              "detail": "Y range 16-234."
+            },
+            {
+              "name": "history surface",
+              "status": "pass",
+              "detail": "crop 629x537+76+115, Y range 19-234."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenarioKey": "feedback",
+      "label": "Give Feedback opens and can be cancelled",
+      "status": "pass",
+      "screenshots": [
+        {
+          "label": "feedback",
+          "path": "screenshots/11-feedback.png",
+          "status": "pass",
+          "checks": [
+            {
+              "name": "image dimensions",
+              "status": "pass",
+              "detail": "768x768."
+            },
+            {
+              "name": "full-frame signal",
+              "status": "pass",
+              "detail": "Y range 16-235."
+            },
+            {
+              "name": "feedback dialog",
+              "status": "pass",
+              "detail": "crop 460x460+153+138, Y range 16-235."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenarioKey": "reportIssue",
+      "label": "Report Issue opens and can be cancelled",
+      "status": "pass",
+      "screenshots": [
+        {
+          "label": "report-issue",
+          "path": "screenshots/13-report-issue.png",
+          "status": "pass",
+          "checks": [
+            {
+              "name": "image dimensions",
+              "status": "pass",
+              "detail": "768x768."
+            },
+            {
+              "name": "full-frame signal",
+              "status": "pass",
+              "detail": "Y range 16-235."
+            },
+            {
+              "name": "report issue dialog",
+              "status": "pass",
+              "detail": "crop 460x460+153+138, Y range 16-235."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenarioKey": "suggestionCards",
+      "label": "Home suggestion cards are visible/clickable",
+      "status": "pass",
+      "screenshots": [
+        {
+          "label": "suggestion-card",
+          "path": "screenshots/17-suggestion-card.png",
+          "status": "pass",
+          "checks": [
+            {
+              "name": "image dimensions",
+              "status": "pass",
+              "detail": "768x768."
+            },
+            {
+              "name": "full-frame signal",
+              "status": "pass",
+              "detail": "Y range 16-235."
+            },
+            {
+              "name": "prompt and suggestion area",
+              "status": "pass",
+              "detail": "crop 691x261+38+268, Y range 18-233."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenarioKey": "typedIntent",
+      "label": "A typed real intent can be submitted",
+      "status": "pass",
+      "screenshots": [
+        {
+          "label": "typed-intent",
+          "path": "screenshots/18-typed-intent.png",
+          "status": "pass",
+          "checks": [
+            {
+              "name": "image dimensions",
+              "status": "pass",
+              "detail": "768x768."
+            },
+            {
+              "name": "full-frame signal",
+              "status": "pass",
+              "detail": "Y range 16-235."
+            },
+            {
+              "name": "typed prompt area",
+              "status": "pass",
+              "detail": "crop 691x184+38+268, Y range 18-233."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenarioKey": "review",
+      "label": "Real provider workflow reaches Review",
+      "status": "fail",
+      "screenshots": [
+        {
+          "label": "provider-progress-05",
+          "status": "fail",
+          "checks": [
+            {
+              "name": "screenshot artifact",
+              "status": "fail",
+              "detail": "Required screenshot artifact is missing from state.screenshots."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenarioKey": "summary",
+      "label": "Summary tab renders after intent review",
+      "status": "pass",
+      "screenshots": [
+        {
+          "label": "review-summary",
+          "path": "screenshots/20-review-summary.png",
+          "status": "pass",
+          "checks": [
+            {
+              "name": "image dimensions",
+              "status": "pass",
+              "detail": "768x768."
+            },
+            {
+              "name": "full-frame signal",
+              "status": "pass",
+              "detail": "Y range 16-235."
+            },
+            {
+              "name": "summary content area",
+              "status": "pass",
+              "detail": "crop 645x599+61+115, Y range 21-235."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenarioKey": "diff",
+      "label": "Diff tab renders after intent review",
+      "status": "pass",
+      "screenshots": [
+        {
+          "label": "review-diff",
+          "path": "screenshots/21-review-diff.png",
+          "status": "pass",
+          "checks": [
+            {
+              "name": "image dimensions",
+              "status": "pass",
+              "detail": "768x768."
+            },
+            {
+              "name": "full-frame signal",
+              "status": "pass",
+              "detail": "Y range 16-235."
+            },
+            {
+              "name": "diff content area",
+              "status": "pass",
+              "detail": "crop 645x599+61+115, Y range 21-235."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenarioKey": "buildBoundary",
+      "label": "Build & Test destructive boundary appears before activation",
+      "status": "pass",
+      "screenshots": [
+        {
+          "label": "build-boundary",
+          "path": "screenshots/22-build-boundary.png",
+          "status": "pass",
+          "checks": [
+            {
+              "name": "image dimensions",
+              "status": "pass",
+              "detail": "768x768."
+            },
+            {
+              "name": "full-frame signal",
+              "status": "pass",
+              "detail": "Y range 16-228."
+            },
+            {
+              "name": "build confirmation dialog",
+              "status": "pass",
+              "detail": "crop 460x430+153+168, Y range 17-228."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "scenarioKey": "reportInspection",
+      "label": "Generated HTML report is inspected with Computer Use",
+      "status": "pass",
+      "screenshots": [
+        {
+          "label": "HTML report inspection",
+          "path": "screenshots/22-report-inspection-Safari.png",
+          "status": "pass",
+          "checks": [
+            {
+              "name": "image dimensions",
+              "status": "pass",
+              "detail": "1082x768."
+            },
+            {
+              "name": "full-frame signal",
+              "status": "pass",
+              "detail": "Y range 16-235."
+            },
+            {
+              "name": "rendered report body",
+              "status": "pass",
+              "detail": "crop 908x629+86+61, Y range 17-235."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "verdict": "fail",
+  "v2": {
+    "contractVersion": 2,
+    "canonicalSource": "V2 is derived from the runner-owned scenarioLabels, scenarioGroups, scenarioProofCatalog, evolved case catalog, and coverage manifest until a later implementation consolidates those into a single registry module.",
+    "evidenceGradeMapping": {
+      "action-confirmed": "operational",
+      "text-confirmed": "visual-supported",
+      "guardrail-confirmed": "operational",
+      "manifest-confirmed": "operational",
+      "calibration": "weak",
+      "not-run": "not-proved",
+      "insufficient": "not-proved"
+    },
+    "failureTaxonomy": {
+      "app": "The app UI/state did not behave as expected.",
+      "provider": "The real provider returned a billing, rate-limit, timeout, or model error.",
+      "credential": "A provider key was missing, invalid, unavailable, or not injected into the launched app process.",
+      "remote_infra": "DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.",
+      "harness": "Computer Use actions, artifact generation, report rendering, or runner bookkeeping failed.",
+      "coverage": "The suite lacks a scenario, manifest mapping, PR focus, or waiver for the behavior.",
+      "inconclusive": "The runner could not prove either pass or fail."
+    },
+    "scenarioContracts": {
+      "launch": {
+        "id": "launch",
+        "label": "App launches and first screen is usable",
+        "status": "pass",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "operational",
+        "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+        "assertionTypes": [
+          "accessibility_text",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "",
+        "failureClassReason": "",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "pass",
+        "proof": "Accessibility text shows the nixmac window, Settings/History/Feedback controls, stepper, prompt text area, and disabled Send button.",
+        "limitation": "Does not prove provider or config state."
+      },
+      "updateBanner": {
+        "id": "updateBanner",
+        "label": "Update banner does not block the main workflow",
+        "status": "pass",
+        "legacyEvidenceGrade": "text-confirmed",
+        "evidenceStrength": "visual-supported",
+        "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "visual_heuristic"
+        ],
+        "failureClass": "",
+        "failureClassReason": "",
+        "accessibilityRisk": "medium",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source without binding screenshot checks.",
+        "visualAssertionStatus": "not-applicable",
+        "proof": "Runner checks for a visible Dismiss button. If present, it dismisses it; if absent, it proves no update banner blocked the initial UI.",
+        "limitation": "The explicit dismiss interaction is only tested on runs where a banner is actually present."
+      },
+      "settingsGeneral": {
+        "id": "settingsGeneral",
+        "label": "Settings General tab visibly renders",
+        "status": "pass",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "operational",
+        "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "",
+        "failureClassReason": "",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "pass",
+        "proof": "Computer Use clicked Settings and captured the General tab content.",
+        "limitation": "Does not persist setting edits."
+      },
+      "settingsAIModels": {
+        "id": "settingsAIModels",
+        "label": "Settings AI Models tab visibly renders",
+        "status": "pass",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "operational",
+        "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "",
+        "failureClassReason": "",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "pass",
+        "proof": "Computer Use opened AI Models and captured provider/model/build controls.",
+        "limitation": "Does not change models or verify every provider."
+      },
+      "settingsAPIKeys": {
+        "id": "settingsAPIKeys",
+        "label": "Settings API Keys tab visibly renders",
+        "status": "pass",
+        "legacyEvidenceGrade": "text-confirmed",
+        "evidenceStrength": "visual-supported",
+        "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
+        "assertionTypes": [
+          "accessibility_text",
+          "sensitive_redaction",
+          "visual_heuristic"
+        ],
+        "failureClass": "",
+        "failureClassReason": "",
+        "accessibilityRisk": "medium",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source without binding screenshot checks.",
+        "visualAssertionStatus": "not-applicable",
+        "proof": "API Keys screenshot is captured only when raw accessibility text confirms no unmasked key-like secret is present; redacted text must show API Keys/OpenRouter/API-key controls.",
+        "limitation": "Does not edit/delete keys and does not prove keychain persistence by itself."
+      },
+      "settingsPreferences": {
+        "id": "settingsPreferences",
+        "label": "Settings Preferences tab visibly renders",
+        "status": "pass",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "operational",
+        "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "",
+        "failureClassReason": "",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "pass",
+        "proof": "Computer Use opened Preferences and captured confirmation controls.",
+        "limitation": "Does not toggle preferences permanently."
+      },
+      "history": {
+        "id": "history",
+        "label": "My History opens and renders",
+        "status": "pass",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "operational",
+        "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "",
+        "failureClassReason": "",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "pass",
+        "proof": "Computer Use opened History and captured a visible history/empty state.",
+        "limitation": "Current run does not prove a newly saved change appears there."
+      },
+      "console": {
+        "id": "console",
+        "label": "Console opens and renders",
+        "status": "pass",
+        "legacyEvidenceGrade": "text-confirmed",
+        "evidenceStrength": "weak",
+        "evidenceStrengthReason": "Pass relies on redacted accessibility text only, usually because screenshots are intentionally suppressed for a sensitive surface.",
+        "assertionTypes": [
+          "accessibility_text",
+          "sensitive_redaction"
+        ],
+        "failureClass": "",
+        "failureClassReason": "",
+        "accessibilityRisk": "high",
+        "accessibilityRiskReason": "The claim depends on accessibility text without a screenshot, usually due sensitive-surface redaction.",
+        "visualAssertionStatus": "not-applicable",
+        "proof": "Sensitive screenshot omitted; redacted accessibility text must show Console/log content.",
+        "limitation": "Does not prove log completeness and may omit secret-bearing visuals by design."
+      },
+      "feedback": {
+        "id": "feedback",
+        "label": "Give Feedback opens and can be cancelled",
+        "status": "pass",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "operational",
+        "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "",
+        "failureClassReason": "",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "pass",
+        "proof": "Computer Use opened and cancelled the feedback dialog.",
+        "limitation": "Does not submit feedback."
+      },
+      "reportIssue": {
+        "id": "reportIssue",
+        "label": "Report Issue opens and can be cancelled",
+        "status": "pass",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "operational",
+        "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "",
+        "failureClassReason": "",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "pass",
+        "proof": "Computer Use opened and cancelled the report issue dialog.",
+        "limitation": "Does not submit a report."
+      },
+      "suggestionCards": {
+        "id": "suggestionCards",
+        "label": "Home suggestion cards are visible/clickable",
+        "status": "pass",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "operational",
+        "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "",
+        "failureClassReason": "",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "pass",
+        "proof": "Computer Use found and clicked a suggestion card; the UI stayed usable afterward.",
+        "limitation": "Does not prove every suggestion works."
+      },
+      "customizationSaveRollback": {
+        "id": "customizationSaveRollback",
+        "label": "Untracked macOS customizations can be saved and rolled back",
+        "status": "pass",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "strong",
+        "evidenceStrengthReason": "Computer Use path is backed by independent disposable git state proof.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "remote_state",
+          "visual_heuristic"
+        ],
+        "failureClass": "",
+        "failureClassReason": "",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence.",
+        "visualAssertionStatus": "not-applicable",
+        "proof": "When the untracked customizations chip is visible, Computer Use adds it to config, confirms Build & Test, commits Step 3, then restores the disposable baseline and verifies the remote git tree is clean.",
+        "limitation": "If no untracked customizations chip is visible, the scenario records a no-op pass because there is nothing to save."
+      },
+      "homebrewSaveRollback": {
+        "id": "homebrewSaveRollback",
+        "label": "Untracked Homebrew items can be saved and rolled back",
+        "status": "pass",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "strong",
+        "evidenceStrengthReason": "Computer Use path is backed by independent disposable git state proof.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "remote_state",
+          "visual_heuristic"
+        ],
+        "failureClass": "",
+        "failureClassReason": "",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence.",
+        "visualAssertionStatus": "not-applicable",
+        "proof": "When the untracked Homebrew chip is visible, Computer Use adds it to config, confirms Build & Test, commits Step 3, then restores the disposable baseline and verifies the remote git tree is clean.",
+        "limitation": "If no untracked Homebrew chip is visible, the scenario records a no-op pass because there is nothing to save."
+      },
+      "typedIntent": {
+        "id": "typedIntent",
+        "label": "A typed real intent can be submitted",
+        "status": "pass",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "operational",
+        "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "",
+        "failureClassReason": "",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "pass",
+        "proof": "Prompt text appears in the Computer Use state after set_value.",
+        "limitation": "Does not prove provider execution until Review is reached."
+      },
+      "review": {
+        "id": "review",
+        "label": "Real provider workflow reaches Review",
+        "status": "fail",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "provider_state",
+          "action_result",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "provider",
+        "failureClassReason": "Provider-side failure wording was detected in the scenario notes.",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "fail",
+        "proof": "Polling reached Review-equivalent UI with Build & Test/Discard/Summary/Diff controls.",
+        "limitation": "Does not prove Save/commit."
+      },
+      "summary": {
+        "id": "summary",
+        "label": "Summary tab renders after intent review",
+        "status": "pass",
+        "legacyEvidenceGrade": "text-confirmed",
+        "evidenceStrength": "visual-supported",
+        "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
+        "assertionTypes": [
+          "accessibility_text",
+          "provider_state",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "",
+        "failureClassReason": "",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "pass",
+        "proof": "Summary text must mention the requested package/change domain.",
+        "limitation": "Does not prove file persistence."
+      },
+      "diff": {
+        "id": "diff",
+        "label": "Diff tab renders after intent review",
+        "status": "pass",
+        "legacyEvidenceGrade": "text-confirmed",
+        "evidenceStrength": "visual-supported",
+        "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
+        "assertionTypes": [
+          "accessibility_text",
+          "provider_state",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "",
+        "failureClassReason": "",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "pass",
+        "proof": "Diff view must expose the candidate Homebrew config file or requested package/change.",
+        "limitation": "Does not prove the change builds or saves; save/rollback scenarios provide that remote git proof."
+      },
+      "buildBoundary": {
+        "id": "buildBoundary",
+        "label": "Build & Test destructive boundary appears before activation",
+        "status": "pass",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "operational",
+        "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "confirmation_boundary",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "",
+        "failureClassReason": "",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "pass",
+        "proof": "Build & Test opens a confirmation dialog before activation; disposable runs confirm it and wait for Step 3.",
+        "limitation": "Without explicit disposable build-confirm mode, the runner still cancels at the boundary."
+      },
+      "saveFlow": {
+        "id": "saveFlow",
+        "label": "Step 3 Save / Keep changes persists a change",
+        "status": "fail",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "remote_state",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "inconclusive",
+        "failureClassReason": "No more specific failure class matched.",
+        "accessibilityRisk": "medium",
+        "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence.",
+        "visualAssertionStatus": "not-run",
+        "proof": "In disposable build-confirm mode, Computer Use reaches Step 3, clicks Commit, and the runner verifies the disposable repo HEAD changed with a clean worktree.",
+        "limitation": "When disposable build-confirm mode is not enabled, Save remains untested."
+      },
+      "rollbackCleanup": {
+        "id": "rollbackCleanup",
+        "label": "Rollback cleanup returns disposable config to clean state",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "remote_state",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "inconclusive",
+        "failureClassReason": "No more specific failure class matched.",
+        "accessibilityRisk": "medium",
+        "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence.",
+        "visualAssertionStatus": "not-run",
+        "proof": "After Save, Computer Use opens History, restores the pre-test baseline commit, and the runner verifies HEAD returned to that baseline with a clean worktree.",
+        "limitation": "Only runs when Save succeeded and a restorable disposable baseline exists."
+      },
+      "discard": {
+        "id": "discard",
+        "label": "Discard confirmation is guarded and only confirmed in disposable state",
+        "status": "fail",
+        "legacyEvidenceGrade": "guardrail-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "confirmation_boundary",
+          "visual_heuristic"
+        ],
+        "failureClass": "harness",
+        "failureClassReason": "Runner, Computer Use action, or artifact wording was detected.",
+        "accessibilityRisk": "medium",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source without binding screenshot checks.",
+        "visualAssertionStatus": "not-applicable",
+        "proof": "Discard opens a confirmation boundary when used. In full-lifecycle runs, the stronger History restore cleanup path can supersede Discard and is proven by rollback artifacts.",
+        "limitation": "When History restore cleanup passes, Discard itself is intentionally not clicked because the disposable config is already back at baseline."
+      },
+      "visualCoverage": {
+        "id": "visualCoverage",
+        "label": "Core UX/UI surfaces are captured and inspectable",
+        "status": "pass",
+        "legacyEvidenceGrade": "text-confirmed",
+        "evidenceStrength": "visual-supported",
+        "evidenceStrengthReason": "Accessibility text is the semantic assertion source and screenshot signal checks provide binding visual corroboration where screenshots are safe to store.",
+        "assertionTypes": [
+          "artifact_quality",
+          "accessibility_text",
+          "visual_heuristic"
+        ],
+        "failureClass": "",
+        "failureClassReason": "",
+        "accessibilityRisk": "medium",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source without binding screenshot checks.",
+        "visualAssertionStatus": "not-applicable",
+        "proof": "Required core UI surfaces have screenshot and text artifacts.",
+        "limitation": "Does not prove screenshot annotations are exact bounding boxes."
+      },
+      "visualProofQuality": {
+        "id": "visualProofQuality",
+        "label": "Scenario results include inspectable visual/text evidence",
+        "status": "fail",
+        "legacyEvidenceGrade": "text-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "artifact_quality",
+          "visual_heuristic"
+        ],
+        "failureClass": "provider",
+        "failureClassReason": "Provider-side failure wording was detected in the scenario notes.",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "The scenario is not primarily an accessibility-text assertion.",
+        "visualAssertionStatus": "not-applicable",
+        "proof": "Every passing scenario must have linked proof artifacts, and required non-sensitive screenshots must pass deterministic visual signal checks.",
+        "limitation": "Visual signal checks catch missing, blank, occluded, or low-signal regions; they do not prove exact design fidelity or arbitrary wrong-screen swaps."
+      },
+      "mainCoverageFreshness": {
+        "id": "mainCoverageFreshness",
+        "label": "Main branch user-visible coverage stays mapped",
+        "status": "pass",
+        "legacyEvidenceGrade": "manifest-confirmed",
+        "evidenceStrength": "operational",
+        "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+        "assertionTypes": [
+          "coverage_manifest"
+        ],
+        "failureClass": "",
+        "failureClassReason": "",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence.",
+        "visualAssertionStatus": "not-applicable",
+        "proof": "A repo-local coverage manifest maps major user-visible surfaces on main to Computer Use scenarios or explicit waivers, and the runner scans for unmapped candidate files.",
+        "limitation": "This proves scenario mapping freshness, not that every mapped scenario passed in the current run."
+      },
+      "prSpecificCoverage": {
+        "id": "prSpecificCoverage",
+        "label": "PR-specific user-visible behavior is covered when applicable",
+        "status": "pass",
+        "legacyEvidenceGrade": "not-run",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "The scenario is skipped, inconclusive, or lacks sufficient proof artifacts.",
+        "assertionTypes": [
+          "pr_metadata",
+          "coverage_manifest"
+        ],
+        "failureClass": "",
+        "failureClassReason": "",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence.",
+        "visualAssertionStatus": "not-applicable",
+        "proof": "Requires PR metadata and changed-file/user-visible focus input.",
+        "limitation": "No PR-specific scenario is executed unless PR context is provided."
+      },
+      "reportInspection": {
+        "id": "reportInspection",
+        "label": "Generated HTML report is inspected with Computer Use",
+        "status": "pass",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "operational",
+        "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+        "assertionTypes": [
+          "accessibility_text",
+          "artifact_quality",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "",
+        "failureClassReason": "",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "pass",
+        "proof": "Computer Use opens the generated report on the remote Mac and sees report sections.",
+        "limitation": "Does not prove a human reviewed every screenshot."
+      }
+    }
+  }
+}
