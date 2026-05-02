@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "description": "Baseline user-visible nixmac surfaces that must stay mapped to Computer Use E2E scenarios or explicit waivers.",
+  "candidateRoots": [
+    "apps/native/src/components",
+    "apps/native/src/components/widget",
+    "apps/native/src/hooks",
+    "apps/native/src-tauri/src"
+  ],
+  "candidateIncludes": [
+    "apps/native/src/components/(permissions-screen|backup-notification-screen|update-banner|console|preview-indicator|git-widget)\\.tsx$",
+    "apps/native/src/components/widget/[a-z0-9-]+\\.tsx$",
+    "apps/native/src/components/widget/(settings|history|steps|summaries)/.*\\.tsx$",
+    "apps/native/src/hooks/use-(apply|rollback|evolve|git-operations|history|history-restore|rebuild-stream|updater|permissions|darwin-config|error-handler)\\.ts$",
+    "apps/native/src-tauri/src/(commands|finalize_apply|finalize_restore|rollback|get_history|store|provider_errors|evolve_state)\\.rs$",
+    "apps/native/src-tauri/src/mac/homebrew\\.rs$",
+    "apps/native/src-tauri/src/evolve/(mod|tools)\\.rs$"
+  ],
+  "candidateExcludes": [
+    "\\.stories\\.tsx$",
+    "\\.test\\.tsx$",
+    "__snapshots__/",
+    "components/ui/",
+    "components/styles/",
+    "components/kibo-ui/",
+    "apps/native/src/components/widget/debug-overlay\\.tsx$"
+  ],
+  "surfaces": [
+    {
+      "id": "app-shell",
+      "label": "App shell, header controls, stepper, prompt start state",
+      "scenarioKeys": ["launch", "typedIntent"],
+      "sourcePrefixes": ["apps/native/src/components/widget/widget.tsx", "apps/native/src/components/widget/header.tsx", "apps/native/src/components/widget/stepper.tsx", "apps/native/src/components/widget/step-actions-header.tsx", "apps/native/src/components/widget/get-started-message.tsx", "apps/native/src/components/widget/config-dir-badge.tsx", "apps/native/src/components/widget/error-message.tsx", "apps/native/src/components/widget/git-status-debug.tsx", "apps/native/src/components/widget/uncommitted-changes-detected.tsx", "apps/native/src/components/widget/unsummarized-changes-detected.tsx"]
+    },
+    {
+      "id": "update-banner",
+      "label": "Update banner non-blocking behavior",
+      "scenarioKeys": ["updateBanner"],
+      "sourcePrefixes": ["apps/native/src/components/update-banner.tsx", "apps/native/src/hooks/use-updater.ts"]
+    },
+    {
+      "id": "settings",
+      "label": "Settings dialog and all settings tabs",
+      "scenarioKeys": ["settingsGeneral", "settingsAIModels", "settingsAPIKeys", "settingsPreferences"],
+      "sourcePrefixes": ["apps/native/src/components/widget/settings-dialog.tsx", "apps/native/src/components/widget/settings/", "apps/native/src/components/widget/directory-picker.tsx", "apps/native/src/components/widget/gitignore-badge.tsx", "apps/native/src/components/widget/model-combobox.tsx", "apps/native/src/hooks/use-darwin-config.ts", "apps/native/src-tauri/src/store.rs"]
+    },
+    {
+      "id": "support-dialogs",
+      "label": "Feedback and Report Issue dialogs",
+      "scenarioKeys": ["feedback", "reportIssue"],
+      "sourcePrefixes": ["apps/native/src/components/widget/feedback-dialog.tsx", "apps/native/src/components/widget/report-issue-button.tsx", "apps/native/src/hooks/use-error-handler.ts", "apps/native/src-tauri/src/feedback.rs"]
+    },
+    {
+      "id": "history",
+      "label": "History list, restore preview, and restore confirmation",
+      "scenarioKeys": ["history", "rollbackCleanup"],
+      "sourcePrefixes": ["apps/native/src/components/widget/analyze-history-button.tsx", "apps/native/src/components/widget/analyze-history-item-button.tsx", "apps/native/src/components/widget/history/", "apps/native/src/components/widget/steps/history-step.tsx", "apps/native/src/hooks/use-history.ts", "apps/native/src/hooks/use-history-restore.ts", "apps/native/src-tauri/src/get_history.rs", "apps/native/src-tauri/src/finalize_restore.rs"]
+    },
+    {
+      "id": "console",
+      "label": "Console surface",
+      "scenarioKeys": ["console"],
+      "sourcePrefixes": ["apps/native/src/components/console.tsx", "apps/native/src/components/widget/console.tsx"]
+    },
+    {
+      "id": "provider-review",
+      "label": "Prompt submission, provider progress, Review, Summary, and Diff",
+      "scenarioKeys": ["suggestionCards", "typedIntent", "review", "summary", "diff"],
+      "sourcePrefixes": ["apps/native/src/components/widget/action-tiles.tsx", "apps/native/src/components/widget/badge-list.tsx", "apps/native/src/components/widget/begin-evolve-warning.tsx", "apps/native/src/components/widget/conversational-response.tsx", "apps/native/src/components/widget/mac-recommendation-chip.tsx", "apps/native/src/components/widget/prompt-history-badge.tsx", "apps/native/src/components/widget/prompt-input.tsx", "apps/native/src/components/widget/prompt-input-section.tsx", "apps/native/src/components/widget/steps/begin-step.tsx", "apps/native/src/components/widget/steps/evolve-step.tsx", "apps/native/src/components/widget/steps/manual-evolve-step.tsx", "apps/native/src/components/widget/summaries/", "apps/native/src/hooks/use-evolve.ts", "apps/native/src/hooks/use-prompt-history.ts", "apps/native/src/hooks/use-recommended-prompt.ts", "apps/native/src/hooks/use-summary.ts", "apps/native/src-tauri/src/evolution.rs", "apps/native/src-tauri/src/evolve_state.rs", "apps/native/src-tauri/src/provider_errors.rs"]
+    },
+    {
+      "id": "inline-question-answer",
+      "label": "Inline provider question and answer progression",
+      "scenarioKeys": ["inlineQuestionAnswer"],
+      "sourcePrefixes": ["apps/native/src/components/evolve-progress.tsx", "apps/native/src-tauri/src/commands.rs", "apps/native/src-tauri/src/evolve/mod.rs", "apps/native/src-tauri/src/evolve/tools.rs"]
+    },
+    {
+      "id": "homebrew-badge",
+      "label": "Homebrew untracked package badge and add-to-config popover",
+      "scenarioKeys": ["homebrewSaveRollback"],
+      "sourcePrefixes": ["apps/native/src/components/widget/homebrew-badge.tsx", "apps/native/src/hooks/use-homebrew-diff.ts", "apps/native/src-tauri/src/mac/homebrew.rs"]
+    },
+    {
+      "id": "system-defaults-cta",
+      "label": "macOS system defaults untracked customization badge and add-to-config popover",
+      "scenarioKeys": ["customizationSaveRollback"],
+      "sourcePrefixes": ["apps/native/src/components/widget/system-defaults-cta.tsx", "apps/native/src-tauri/src/apply_system_defaults.rs", "apps/native/src-tauri/src/scanner.rs"]
+    },
+    {
+      "id": "build-boundaries",
+      "label": "Build & Test, discard, rollback, and confirmation boundaries",
+      "scenarioKeys": ["buildBoundary", "discard", "rollbackCleanup"],
+      "sourcePrefixes": ["apps/native/src/components/git-widget.tsx", "apps/native/src/components/widget/build-head-button.tsx", "apps/native/src/components/widget/check-confirmation-off.tsx", "apps/native/src/components/widget/confirm-button.tsx", "apps/native/src/components/widget/confirmation-dialog.tsx", "apps/native/src/components/widget/external-build-detected.tsx", "apps/native/src/components/widget/steps/evolve-step.tsx", "apps/native/src/components/widget/steps/commit-step.tsx", "apps/native/src/components/widget/discard-uncommitted-dialog.tsx", "apps/native/src/hooks/use-apply.ts", "apps/native/src/hooks/use-rebuild-stream.ts", "apps/native/src/hooks/use-rollback.ts", "apps/native/src-tauri/src/finalize_apply.rs", "apps/native/src-tauri/src/rollback.rs"]
+    },
+    {
+      "id": "step-3-save",
+      "label": "Step 3 Save / Commit",
+      "scenarioKeys": ["saveFlow"],
+      "sourcePrefixes": ["apps/native/src/components/widget/commit-message.tsx", "apps/native/src/components/widget/keep-branch-checkbox.tsx", "apps/native/src/components/widget/merge-section.tsx", "apps/native/src/components/widget/steps/manual-commit-step.tsx", "apps/native/src/hooks/use-git-operations.ts", "apps/native/src-tauri/src/commands.rs"]
+    },
+    {
+      "id": "onboarding-permissions",
+      "label": "First-run permissions and nix setup/onboarding",
+      "scenarioKeys": [],
+      "sourcePrefixes": ["apps/native/src/components/permissions-screen.tsx", "apps/native/src/components/backup-notification-screen.tsx", "apps/native/src/components/widget/bootstrap-config.tsx", "apps/native/src/components/widget/step-content-wrapper.tsx", "apps/native/src/components/widget/steps/nix-setup-step.tsx", "apps/native/src/components/widget/steps/permissions-step.tsx", "apps/native/src/components/widget/steps/setup-step.tsx", "apps/native/src/hooks/use-permissions.ts", "apps/native/src/hooks/use-nix-install.ts", "apps/native/src-tauri/src/permissions.rs"],
+      "waiver": {
+        "reason": "Current remote lane starts from a configured app state. This must become a dedicated clean-profile Computer Use scenario before the suite can honestly claim full main coverage.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-05-02",
+        "reviewBy": "2026-06-15",
+        "risk": "high",
+        "exitCriteria": "Add a clean-profile Computer Use scenario that starts from first launch, proves permissions/onboarding/nix setup surfaces, and records a passing report on the remote Mac."
+      }
+    },
+    {
+      "id": "sudo-local-activation-fixture",
+      "label": "nix-darwin sudo_local activation path",
+      "scenarioKeys": [],
+      "sourcePrefixes": ["apps/native/templates/nix-darwin-determinate/modules/darwin/security.nix"],
+      "waiver": {
+        "reason": "The DXU remote lane disables sudo_local in the disposable fixture because unattended MacinCloud AppleScript activation can hang while creating /etc/pam.d/sudo_local. This is an explicit CI fixture waiver, not proof that the production sudo_local path works.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-05-02",
+        "reviewBy": "2026-06-15",
+        "risk": "medium",
+        "exitCriteria": "Add a dedicated sudo_local activation lane or an accepted manual release proof that exercises the production sudo_local path outside the DXU unattended fixture."
+      }
+    },
+    {
+      "id": "preview-indicator",
+      "label": "Preview indicator floating commit/revert UI",
+      "scenarioKeys": [],
+      "sourcePrefixes": ["apps/native/src/components/preview-indicator.tsx", "apps/native/src/hooks/use-preview-indicator.ts", "apps/native/src-tauri/src/commands.rs"],
+      "waiver": {
+        "reason": "Not yet in the remote major-feature lane; needs either a deterministic preview-state setup or a real workflow that activates it.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-05-02",
+        "reviewBy": "2026-06-15",
+        "risk": "medium",
+        "exitCriteria": "Add a deterministic preview-state setup or real workflow that activates the preview indicator and proves commit/revert behavior through Computer Use."
+      }
+    }
+  ]
+}

@@ -435,10 +435,7 @@ pub async fn wait_for_question_response() -> Option<String> {
         *guard = Some(tx);
     }
 
-    match rx.await {
-        Ok(ans) => Some(ans),
-        Err(_) => None,
-    }
+    rx.await.ok()
 }
 
 /// Handles the complete evolution cycle returning the git status and summary to react

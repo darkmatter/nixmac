@@ -20,7 +20,7 @@ pub fn from_change_sets(change_sets: Vec<FoundSetForCurrent>) -> SemanticChangeM
         unsummarized_hashes.extend(cs.missed_hashes);
         for sc in cs.changes {
             let change_id = sc.change.id;
-            if sc.own_summary.as_ref().map_or(true, is_invalid) {
+            if sc.own_summary.as_ref().is_none_or(is_invalid) {
                 if let std::collections::hash_map::Entry::Vacant(e) = seen.entry(change_id) {
                     unsummarized_hashes.push(sc.change.hash.clone());
                     e.insert(false);
