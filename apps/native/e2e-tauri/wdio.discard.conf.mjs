@@ -1,6 +1,9 @@
 import { createWdioConfig } from './wdio.conf.base.mjs';
+import { createVllmSetupOptionsForSuite } from '../dist-e2e/tests/wdio/helpers/vllm-test-mode.js';
 
 export const config = createWdioConfig({
-  specs: ['./tests/wdio/discard.spec.mjs'],
-  setupOptions: { initializeConfigRepo: true },
+  specs: ['../dist-e2e/tests/wdio/discard.spec.js'],
+  setupOptions: createVllmSetupOptionsForSuite({
+    initializeConfigRepo: true,
+  }),
 });

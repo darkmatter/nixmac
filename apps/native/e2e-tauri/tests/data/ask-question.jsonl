@@ -1,0 +1,2 @@
+// Prompt: Ask a question. You can chain this prompt with one of the others to create a complete test case.
+{"id":"chatcmpl-aa6d8be6cf9442ae","choices":[{"index":0,"message":{"tool_calls":[{"id":"chatcmpl-tool-bc4e843a865e551c","type":"function","function":{"name":"ask_user","arguments":"{\"question\": \"What question would you like me to ask?\"}"}}],"role":"assistant"},"finish_reason":"tool_calls"}],"created":1777085355,"model":"gpt-oss-120b","object":"chat.completion","usage":{"prompt_tokens":6333,"completion_tokens":442,"total_tokens":6775}}

@@ -6,6 +6,8 @@ import { useCallback } from "react";
  * Hook for fetching and managing the AI-generated summary of changes.
  */
 export function useSummary() {
+  const autoSummarizeOnFocus = useWidgetStore((s) => s.autoSummarizeOnFocus);
+
   const findChangeMap = useCallback(async (): Promise<void> => {
     const { setChangeMap, setSummaryAvailable } = useWidgetStore.getState();
     try {
@@ -31,8 +33,20 @@ export function useSummary() {
   }, []);
 
   const generateCurrentSummary = useCallback(async () => {
-    await darwinAPI.summarizedChanges.summarizeCurrent();
+    const { setSummarizing, setChangeMap, setSummaryAvailable } = useWidgetStore.getState();
+    setSummarizing(true);
+    try {
+      const map = await darwinAPI.summarizedChanges.summarizeCurrent();
+      setChangeMap(map);
+      setSummaryAvailable(map.groups.length > 0 || map.singles.length > 0);
+    } finally {
+      setSummarizing(false);
+    }
   }, []);
 
-  return { findChangeMap, generateCommitMessage, generateCurrentSummary };
+  const summarizeOnFocus = useCallback(() => {
+    if (autoSummarizeOnFocus) generateCurrentSummary();
+  }, [autoSummarizeOnFocus, generateCurrentSummary]);
+
+  return { findChangeMap, generateCommitMessage, generateCurrentSummary, summarizeOnFocus };
 }

@@ -29,6 +29,7 @@ export type SettingsTab = "general" | "api-keys" | "ai-models" | "preferences";
 export type WidgetStep = "permissions" | "nix-setup" | "setup" | "begin" | "evolve" | "commit" | "manualEvolve" | "manualCommit" | "history";
 export type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
 export type ConfirmPrefKey = "confirmBuild" | "confirmClear" | "confirmRollback";
+export type BoolPrefKey = ConfirmPrefKey | "autoSummarizeOnFocus" | "scanHomebrewOnStartup";
 
 // Rebuild state for showing progress inline in the widget
 export type RebuildErrorType =
@@ -114,9 +115,11 @@ export interface WidgetState {
 
   // UI
   summaryAvailable: boolean;
+  isSummarizing: boolean;
   isGenerating: boolean;
   settingsOpen: boolean;
   settingsActiveTab: SettingsTab | null;
+  prefsLoaded: boolean;
   showHistory: boolean;
   feedbackOpen: boolean;
   feedbackTypeOverride: FeedbackType | null;
@@ -135,6 +138,12 @@ export interface WidgetState {
   confirmBuild: boolean;
   confirmClear: boolean;
   confirmRollback: boolean;
+
+  // Summarization preferences
+  autoSummarizeOnFocus: boolean;
+
+  // Startup scanning preferences
+  scanHomebrewOnStartup: boolean;
 
   // Editor
   editingFile: string | null;
@@ -165,6 +174,7 @@ export interface WidgetActions {
   setProcessing: (isProcessing: boolean, action?: ProcessingAction) => void;
   setChangeMap: (map: SemanticChangeMap | null) => void;
   setSettingsOpen: (open: boolean, tab?: SettingsTab | null) => void;
+  setPrefsLoaded: (loaded: boolean) => void;
   setShowHistory: (show: boolean) => void;
   setFeedbackOpen: (open: boolean) => void;
   setError: (error: string | null) => void;
@@ -181,11 +191,15 @@ export interface WidgetActions {
   addAnalyzingHistoryHash: (hash: string) => void;
   removeAnalyzingHistoryHash: (hash: string) => void;
 
-  // Confirmation preferences
-  setConfirmPref: (key: ConfirmPrefKey, value: boolean) => void;
+  // Boolean preferences
+  setBoolPref: (key: BoolPrefKey, value: boolean) => void;
   initConfirmPrefs: (prefs: Partial<Record<ConfirmPrefKey, boolean>>) => void;
 
+  // Summarization preferences
+  setAutoSummarizeOnFocus: (value: boolean) => void;
+
   // Client-side state (NOT from server)
+  setSummarizing: (summarizing: boolean) => void;
   setGenerating: (generating: boolean) => void;
   clearPreview: () => void;
   setFeedbackTypeOverride: (type: FeedbackType | null) => void;
@@ -284,9 +298,11 @@ export const initialWidgetState: WidgetState = {
 
   // UI
   isBootstrapping: false,
+  isSummarizing: false,
   isGenerating: false,
   settingsOpen: false,
   settingsActiveTab: null,
+  prefsLoaded: false,
   showHistory: false,
   feedbackOpen: false,
   feedbackTypeOverride: null,
@@ -299,6 +315,12 @@ export const initialWidgetState: WidgetState = {
   confirmBuild: true,
   confirmClear: true,
   confirmRollback: true,
+
+  // Summarization preferences
+  autoSummarizeOnFocus: false,
+
+  // Startup scanning preferences
+  scanHomebrewOnStartup: true,
 
   // Editor
   editingFile: null,
@@ -338,13 +360,14 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
       }),
     setChangeMap: (changeMap) => set({ changeMap }),
     setSummaryAvailable: (summaryAvailable) => set({ summaryAvailable }),
-    setConfirmPref: (key, value) => set({ [key]: value }),
+    setBoolPref: (key: BoolPrefKey, value: boolean) => set({ [key]: value }),
     initConfirmPrefs: (prefs) =>
       set({
         confirmBuild: prefs.confirmBuild ?? true,
         confirmClear: prefs.confirmClear ?? true,
         confirmRollback: prefs.confirmRollback ?? true,
       }),
+    setAutoSummarizeOnFocus: (value) => set({ autoSummarizeOnFocus: value }),
     setHistory: (history) => set({ history }),
     setHistoryLoading: (historyLoading) => set({ historyLoading }),
     addAnalyzingHistoryHash: (hash) =>
@@ -359,6 +382,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
       }),
     setSettingsOpen: (settingsOpen, tab) =>
       set({ settingsOpen, settingsActiveTab: tab ?? null }),
+    setPrefsLoaded: (prefsLoaded) => set({ prefsLoaded }),
     setShowHistory: (showHistory) => set({ showHistory }),
     setFeedbackOpen: (feedbackOpen) => set({ feedbackOpen }),
     setFeedbackTypeOverride: (feedbackTypeOverride) => set({ feedbackTypeOverride }),
@@ -381,6 +405,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setNixDownloadProgress: (nixDownloadProgress) => set({ nixDownloadProgress }),
     setDarwinRebuildAvailable: (darwinRebuildAvailable) => set({ darwinRebuildAvailable }),
     setDarwinRebuildPrefetching: (darwinRebuildPrefetching) => set({ darwinRebuildPrefetching }),
+    setSummarizing: (isSummarizing) => set({ isSummarizing }),
     setGenerating: (isGenerating) => set({ isGenerating }),
     clearPreview: () =>
       set({

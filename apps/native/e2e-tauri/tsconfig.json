@@ -1,0 +1,25 @@
+{
+    "compilerOptions": {
+        "target": "ES2021",
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "strict": false,
+        "skipLibCheck": true,
+        "types": [
+            "node",
+            "mocha"
+        ],
+        "allowJs": true,
+        "outDir": "../dist-e2e",
+        "rootDir": "./"
+    },
+    "include": [
+        "tests/**/*.ts",
+        "tests/**/*.d.ts"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}

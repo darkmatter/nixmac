@@ -12,6 +12,26 @@
 
 use async_openai::error::OpenAIError;
 
+fn auth_status_override(status: u16, message: &str) -> Option<u16> {
+    let message = message.to_ascii_lowercase();
+    let looks_like_auth_failure = message.contains("authentication error")
+        || message.contains("invalid api key")
+        || message.contains("api key")
+        || message.contains("virtual key expected")
+        || message.contains("expected to start with 'sk-'")
+        || message.contains("expected to start with \"sk-\"");
+
+    if status >= 500 && looks_like_auth_failure {
+        Some(401)
+    } else {
+        None
+    }
+}
+
+fn normalize_provider_status(status: u16, message: &str) -> u16 {
+    auth_status_override(status, message).unwrap_or(status)
+}
+
 /// Map an OpenAI/OpenRouter symbolic error code to an HTTP status code.
 ///
 /// Returns `None` for unrecognised codes — callers should treat those as 500.
@@ -35,10 +55,17 @@ pub fn classify_openai_error(e: &OpenAIError) -> Option<(u16, String)> {
     match e {
         OpenAIError::ApiError(api_err) => {
             let code = api_err.code.as_deref().unwrap_or("");
-            let status = openai_error_code_to_status(code).unwrap_or(500);
+            let status = normalize_provider_status(
+                openai_error_code_to_status(code).unwrap_or(500),
+                &api_err.message,
+            );
             Some((status, api_err.message.clone()))
         }
-        OpenAIError::JSONDeserialize(_serde_err, content) => parse_provider_error_body(content),
+        OpenAIError::JSONDeserialize(_serde_err, content) => parse_provider_error_body(content)
+            .map(|(status, message)| {
+                let status = normalize_provider_status(status, &message);
+                (status, message)
+            }),
         _ => None,
     }
 }
@@ -146,5 +173,20 @@ mod tests {
         let msg = friendly_provider_error(500);
         assert!(msg.contains("provider") && msg.contains("try again"));
         assert!(!msg.contains("API key"));
+    }
+
+    #[test]
+    fn remaps_misleading_500_auth_message_to_401() {
+        let status = normalize_provider_status(
+            500,
+            "Authentication Error, LiteLLM Virtual Key expected. Received=****, expected to start with 'sk-'.",
+        );
+        assert_eq!(status, 401);
+    }
+
+    #[test]
+    fn keeps_real_500s_as_server_errors() {
+        let status = normalize_provider_status(500, "Upstream model backend timed out");
+        assert_eq!(status, 500);
     }
 }

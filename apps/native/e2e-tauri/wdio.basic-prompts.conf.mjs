@@ -1,9 +1,9 @@
 import { createWdioConfig } from './wdio.conf.base.mjs';
+import { createVllmSetupOptionsForSuite } from '../dist-e2e/tests/wdio/helpers/vllm-test-mode.js';
 
 export const config = createWdioConfig({
-  specs: ['./tests/wdio/basic-prompts.spec.mjs'],
-  setupOptions: {
+  specs: ['../dist-e2e/tests/wdio/basic-prompts.spec.js'],
+  setupOptions: createVllmSetupOptionsForSuite({
     initializeConfigRepo: true,
-    mockVllm: {},
-  },
+  }),
 });

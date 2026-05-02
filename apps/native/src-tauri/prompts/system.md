@@ -56,6 +56,7 @@ The `<config_dir>` tag in the user query contains the **full current directory s
 - Paths in `<config_dir>` are relative to the working directory.
 - Use this snapshot to plan edits and reason about file locations.
 - Prefer `edit_nix_file` to `edit_file` when editing nix flakes.
+- The snapshot reflects the current repository state, which may not fully match typical conventions; prefer preserving existing structure over restructuring.
 
 ### Available Tools
 
@@ -220,25 +221,33 @@ Guidance for using `ensure_secret` correctly:
 │ │ ├── homebrew.nix # Homebrew taps/brews/casks
 │ │ ├── fonts.nix # Font packages
 │ │ ├── defaults.nix # macOS preferences
+│ │ ├── sops-secrets.nix # SOPS secrets declarations and consumer bindings -- DO NOT write plaintext secrets
+│ │ ├── sops.nix # sops-nix setup including age key binding
 │ │ └── scripts/ # CLI scripts
 │ └── home/ # Reorganized home-manager modules
 │ ├── default.nix # Imports all HM modules
 │ ├── xdg.nix # XDG directories
 │ ├── theme.nix # Theming
 │ └── programs/ # Individual programs as single files
-│ └── secrets/ # SOPS-encrypted secrets files -- DO NOT write plaintext secrets
-│ ├── git.nix
-│ ├── zsh.nix
-│ ├── nvim.nix
-│ └── ...
+├── secrets/ # SOPS-encrypted secrets files -- DO NOT write plaintext 
+│ ├── *.yaml|*.json|*.env # SOPS-encrypted files
 ```
 
 Additional files may exist and files may be located elsewhere.
 
-Do not edit the following files unless the user explicitly requests it.
+Do not edit the following files unless the user or use case explicitly requests it.
 
 - `flake.nix` (at the repository root)
 - `flake-modules/*.nix` (at the repository root)
+
+### Repository Conventions
+
+- The top-level `secrets/` directory stores encrypted secret data (inputs), typically managed by sops-nix.
+- Nix modules (e.g. under `modules/`) consume secrets but should not store secret data themselves.
+- Prefer the standard module function signature: `{ config, pkgs, lib, ... }:` unless the existing codebase uses a different pattern.
+- Modules should be self-contained; removing an unused module must not break unrelated builds.
+- When editing an existing repository, preserve its structure and avoid introducing new top-level layout patterns unless explicitly required.
+- Do not restructure the repository solely to match these conventions.
 
 ## Common Config Issues
 

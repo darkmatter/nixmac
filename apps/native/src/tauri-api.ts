@@ -8,9 +8,12 @@ import type {
   EvolutionResult,
   EvolveState,
   GitStatus,
+  HomebrewState,
   HistoryItem,
   RollbackResult,
   SemanticChangeMap,
+  SetDirResult,
+  UiPrefs as DarwinPrefs,
 } from "./types/shared";
 
 export type {
@@ -23,9 +26,12 @@ export type {
   EvolveStep,
   GitFileStatus,
   GitStatus,
+  HomebrewState,
   HistoryItem,
   SemanticChangeMap,
+  SetDirResult,
   SummarizedChangeSet,
+  UiPrefs as DarwinPrefs,
   WatcherEvent,
 } from "./types/shared";
 export type { Change, Commit } from "./types/sqlite";
@@ -39,27 +45,18 @@ export interface DarwinConfig {
   hostAttr?: string | null;
 }
 
-export interface DarwinPrefs {
-  openrouterApiKey?: string;
-  openaiApiKey?: string;
-  summaryProvider?: string;
-  summaryModel?: string;
-  evolveProvider?: string;
-  evolveModel?: string;
-  maxIterations?: number;
-  maxBuildAttempts?: number;
-  ollamaApiBaseUrl?: string;
-  vllmApiBaseUrl?: string;
-  vllmApiKey?: string;
-  sendDiagnostics?: boolean;
-  confirmBuild?: boolean;
-  confirmClear?: boolean;
-  confirmRollback?: boolean;
-}
 
 export const DEFAULT_MAX_ITERATIONS = 25;
 
 export interface ApplyResult {
+  gitStatus: GitStatus;
+  evolveState: EvolveState;
+}
+
+export interface ConfigEditApplyResult {
+  ok: boolean;
+  count: number;
+  changeMap: SemanticChangeMap;
   gitStatus: GitStatus;
   evolveState: EvolveState;
 }
@@ -236,8 +233,8 @@ export interface ConfigChangedEvent {
 export const darwinAPI = {
   config: {
     get: () => invoke<DarwinConfig | null>("config_get"),
-    setDir: (dir: string) => invoke("config_set_dir", { dir }),
-    pickDir: () => invoke("config_pick_dir"),
+    setDir: (dir: string) => invoke<SetDirResult>("config_set_dir", { dir }),
+    pickDir: () => invoke<SetDirResult | null>("config_pick_dir"),
     setHostAttr: (host: string) => invoke("config_set_host_attr", { host }),
   },
   git: {
@@ -290,7 +287,7 @@ export const darwinAPI = {
   },
   summarizedChanges: {
     findChangeMap: () => invoke<SemanticChangeMap>("find_change_map"),
-    summarizeCurrent: () => invoke<void>("summarize_current"),
+    summarizeCurrent: () => invoke<SemanticChangeMap>("summarize_current"),
     generateCommitMessage: () => invoke<string>("generate_commit_message"),
   },
   feedback: {
@@ -300,7 +297,7 @@ export const darwinAPI = {
   },
   ui: {
     getPrefs: () => invoke<DarwinPrefs | null>("ui_get_prefs"),
-    setPrefs: (prefs: DarwinPrefs) => invoke("ui_set_prefs", { prefs }),
+    setPrefs: (prefs: Partial<DarwinPrefs>) => invoke("ui_set_prefs", { prefs }),
   },
   models: {
     getCached: (provider: string) => invoke<string[] | null>("get_cached_models", { provider }),
@@ -330,13 +327,7 @@ export const darwinAPI = {
     getRecommendedPrompt: () => invoke<RecommendedPrompt | null>("get_recommended_prompt"),
     scanDefaults: () => invoke<SystemDefaultsScan>("scan_system_defaults"),
     applyDefaults: (defaults: SystemDefault[]) =>
-      invoke<{
-        ok: boolean;
-        count: number;
-        changeMap: SemanticChangeMap;
-        gitStatus: GitStatus;
-        evolveState: EvolveState;
-      }>("apply_system_defaults", { defaults }),
+      invoke<ConfigEditApplyResult>("apply_system_defaults", { defaults }),
   },
   permissions: {
     checkAll: () => invoke<PermissionsState>("permissions_check_all"),
@@ -370,6 +361,11 @@ export const darwinAPI = {
     start: () => invoke<void>("lsp_start"),
     send: (message: string) => invoke<void>("lsp_send", { message }),
     stop: () => invoke<void>("lsp_stop"),
+  },
+
+  homebrew: {
+    getStateDiff: () => invoke<HomebrewState>("homebrew_get_state_diff"),
+    applyDiff: (diff: HomebrewState) => invoke<ConfigEditApplyResult>("homebrew_apply_diff", { diff }),
   },
 };
 

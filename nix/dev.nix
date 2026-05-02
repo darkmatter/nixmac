@@ -132,6 +132,7 @@ lib.mkIf (!(config.container.isBuilding or false)) {
 
     # Run treefmt on commit
     hooks.treefmt.enable = true;
+    hooks.treefmt.pass_filenames = lib.mkForce false;
 
     hooks.shellcheck.enable = true;
     excludes = [

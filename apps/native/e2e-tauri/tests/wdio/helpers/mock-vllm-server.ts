@@ -4,40 +4,67 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
-const TEST_DATA_DIR = path.resolve(THIS_DIR, '../../data');
+// Always resolve fixture data from the source tree so compiled dist-e2e helpers
+// can still load test data without copying fixtures into dist output.
+const TEST_DATA_DIR = process.env['NIXMAC_WDIO_TEST_DATA_DIR']
+  ?? path.resolve(THIS_DIR, '../../../../e2e-tauri/tests/data');
 
-function resolveMockResponseFilePath(filePath, dataDir) {
+interface MockResponse {
+  [key: string]: unknown;
+}
+
+export interface MockVllmServerContext {
+  server: http.Server;
+  baseUrl: string;
+  origin: string;
+  responseCount: number;
+}
+
+export interface MockVllmOptions {
+  responseFiles?: string[];
+  host?: string;
+  pathnames?: string[];
+  dataDir?: string;
+}
+
+function resolveMockResponseFilePath(filePath: string, dataDir: string): string {
   if (path.isAbsolute(filePath)) {
     return filePath;
   }
-
   return path.join(dataDir, filePath);
 }
 
-function parseMockResponseJsonl(content, filePath) {
-  const lines = content
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean);
+function parseMockResponseJsonl(content: string, filePath: string): MockResponse[] {
+  const rawLines = content.split('\n');
+  const responses: MockResponse[] = [];
 
-  return lines.map((line, index) => {
+  for (let i = 0; i < rawLines.length; i += 1) {
+    const raw = rawLines[i];
+    const line = raw.trim();
+
+    if (!line || line.startsWith('//')) {
+      continue;
+    }
+
     try {
-      return JSON.parse(line);
+      responses.push(JSON.parse(line));
     } catch (error) {
       throw new Error(
-        `[wdio:test-env] Failed parsing JSONL response at ${filePath}:${index + 1}: ${error instanceof Error ? error.message : String(error)}`,
+        `[wdio:test-env] Failed parsing JSONL response at ${filePath}:${i + 1}: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
-  });
+  }
+
+  return responses;
 }
 
-async function loadMockResponses(responseFiles, dataDir) {
+async function loadMockResponses(responseFiles: string[], dataDir: string): Promise<MockResponse[]> {
   const files = Array.isArray(responseFiles) ? responseFiles : [];
   if (files.length === 0) {
     return [];
   }
 
-  const responses = [];
+  const responses: MockResponse[] = [];
   for (const file of files) {
     const resolvedPath = resolveMockResponseFilePath(file, dataDir);
     const raw = await readFile(resolvedPath, 'utf-8');
@@ -52,25 +79,25 @@ async function loadMockResponses(responseFiles, dataDir) {
   return responses;
 }
 
-function writeJsonResponse(response, statusCode, body) {
+function writeJsonResponse(response: http.ServerResponse, statusCode: number, body: unknown): void {
   response.writeHead(statusCode, { 'content-type': 'application/json; charset=utf-8' });
   response.end(`${JSON.stringify(body)}\n`);
 }
 
-async function readRequestBody(request, { maxPreviewChars = 4000 } = {}) {
+async function readRequestBody(request: http.IncomingMessage): Promise<string> {
   let rawBody = '';
   for await (const chunk of request) {
     rawBody += chunk;
   }
 
-  if (rawBody.length <= maxPreviewChars) {
+  if (rawBody.length <= 4000) {
     return rawBody;
   }
 
-  return `${rawBody.slice(0, maxPreviewChars)}…[truncated ${rawBody.length - maxPreviewChars} chars]`;
+  return `${rawBody.slice(0, 4000)}…[truncated ${rawBody.length - 4000} chars]`;
 }
 
-export async function startMockVllmServer(mockVllmOptions = {}) {
+export async function startMockVllmServer(mockVllmOptions: MockVllmOptions = {}): Promise<MockVllmServerContext> {
   const {
     responseFiles = [],
     host = '127.0.0.1',
@@ -95,13 +122,13 @@ export async function startMockVllmServer(mockVllmOptions = {}) {
       if (request.method === 'POST' && pathname === '/__admin/mock-responses') {
         const rawBody = await readRequestBody(request);
 
-        let parsedBody = {};
+        let parsedBody: { responses?: MockResponse[]; responseFiles?: string[] } = {};
         if (rawBody.trim()) {
           try {
             parsedBody = JSON.parse(rawBody);
           } catch (err) {
             writeJsonResponse(response, 400, {
-              error: `Invalid JSON in request body: ${err.message}`,
+              error: `Invalid JSON in request body: ${err instanceof Error ? err.message : String(err)}`,
             });
             return;
           }
@@ -133,7 +160,6 @@ export async function startMockVllmServer(mockVllmOptions = {}) {
         return;
       }
 
-      // Consume request body once so we can log/inspect it on failures.
       const requestBodyPreview = await readRequestBody(request);
 
       if (requestIndex >= responses.length) {
@@ -158,6 +184,7 @@ export async function startMockVllmServer(mockVllmOptions = {}) {
 
       const payload = responses[requestIndex];
       requestIndex += 1;
+
       writeJsonResponse(response, 200, payload);
     } catch (error) {
       writeJsonResponse(response, 500, {
@@ -166,7 +193,7 @@ export async function startMockVllmServer(mockVllmOptions = {}) {
     }
   });
 
-  await new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
     server.listen(0, host, resolve);
   });
@@ -190,18 +217,17 @@ export async function startMockVllmServer(mockVllmOptions = {}) {
   };
 }
 
-export async function stopMockVllmServer(serverContext) {
+export async function stopMockVllmServer(serverContext: MockVllmServerContext | null | undefined): Promise<void> {
   if (!serverContext?.server) {
     return;
   }
 
-  await new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     serverContext.server.close((error) => {
       if (error) {
         reject(error);
         return;
       }
-
       resolve();
     });
   });

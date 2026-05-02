@@ -4,9 +4,9 @@ use anyhow::Result;
 use rusqlite::Connection;
 use std::path::Path;
 
-use crate::summarize::sumlog as dbg;
 use crate::shared_types::{SummarizedChange, SummarizedChangeSet};
 use crate::sqlite_types::ChangeSet;
+use crate::summarize::sumlog as dbg;
 
 /// Type shared only between `for_current_state` and `group_existing::from_change_sets`.
 /// Ensures missing hashes can be passed through when DB had nothing
@@ -33,7 +33,11 @@ pub fn by_base_with_hashes(
     hashes: &[String],
 ) -> Result<FoundSetForCurrent> {
     let conn = Connection::open(db_path)?;
-    match crate::db::changesets::query_change_set_for_base_with_hashes(&conn, base_commit_id, hashes)? {
+    match crate::db::changesets::query_change_set_for_base_with_hashes(
+        &conn,
+        base_commit_id,
+        hashes,
+    )? {
         Some(cs) => Ok(FoundSetForCurrent::from(cs)),
         None => Ok(FoundSetForCurrent {
             change_set: None,
@@ -69,7 +73,11 @@ pub fn for_current_state(db_path: &Path, dir: &str) -> Result<Vec<FoundSetForCur
     });
     let conn = Connection::open(db_path)?;
     let result: Vec<FoundSetForCurrent> =
-        match crate::db::changesets::query_change_set_for_base_with_hashes(&conn, commit.id, &diff_hashes)? {
+        match crate::db::changesets::query_change_set_for_base_with_hashes(
+            &conn,
+            commit.id,
+            &diff_hashes,
+        )? {
             Some(cs) => vec![FoundSetForCurrent::from(cs)],
             None => vec![FoundSetForCurrent {
                 change_set: None,
@@ -78,6 +86,12 @@ pub fn for_current_state(db_path: &Path, dir: &str) -> Result<Vec<FoundSetForCur
             }],
         };
 
-    dbg::find_log_result(result.iter().map(|e| (e.change_set.is_some(), e.changes.len(), e.missed_hashes.len())));
+    dbg::find_log_result(result.iter().map(|e| {
+        (
+            e.change_set.is_some(),
+            e.changes.len(),
+            e.missed_hashes.len(),
+        )
+    }));
     Ok(result)
 }

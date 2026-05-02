@@ -30,17 +30,6 @@ pub(crate) const NIX_EXPR_MARKER_KEY: &str = "__nixExpr";
 /// and renders it as `builtins.path { path = ...; }`.
 pub(crate) const NIX_BUILTINS_PATH_MARKER_KEY: &str = "__nixBuiltinsPath";
 
-#[allow(dead_code)]
-pub(crate) fn nix_path_meta_value(path: &str) -> serde_json::Value {
-    let mut value = serde_json::Map::new();
-    value.insert(
-        NIX_PATH_MARKER_KEY.to_string(),
-        serde_json::Value::String(path.to_string()),
-    );
-    serde_json::Value::Object(value)
-}
-
-#[allow(dead_code)]
 pub(crate) fn nix_expr_meta_value(expression: &str) -> serde_json::Value {
     let mut value = serde_json::Map::new();
     value.insert(
@@ -50,7 +39,6 @@ pub(crate) fn nix_expr_meta_value(expression: &str) -> serde_json::Value {
     serde_json::Value::Object(value)
 }
 
-#[allow(dead_code)]
 pub(crate) fn nix_builtins_path_meta_value(path: &str) -> serde_json::Value {
     let mut value = serde_json::Map::new();
     value.insert(
@@ -827,6 +815,23 @@ fn infer_inner_indent(attrset_text: &str) -> String {
     "    ".to_string() // default: 4 spaces
 }
 
+/// Quote and escape a list of string values for safe insertion into Nix list literals.
+///
+/// This escapes backslashes, double quotes and dollar signs, and wraps each value
+/// in double quotes so callers can insert them into a Nix list like: `[ "a" "b" ]`.
+pub(crate) fn nix_quote_values(values: &[String]) -> Vec<String> {
+    values
+        .iter()
+        .map(|value| {
+            let escaped = value
+                .replace('\\', "\\\\")
+                .replace('"', "\\\"")
+                .replace('$', "\\$");
+            format!("\"{}\"", escaped)
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1177,27 +1182,6 @@ environment.systemPackages = with pkgs; [
     }
 
     #[test]
-    fn set_attrs_renders_nix_path_literal_marker_without_quotes() {
-        let mut attrs = serde_json::Map::new();
-        attrs.insert(
-            "sopsFile".to_string(),
-            nix_path_meta_value("../../secrets/ssh-private-key.yaml"),
-        );
-
-        let edited = set_attrs(WITH_PKGS_EMPTY, "sops.secrets.\"ssh-private-key\"", &attrs)
-            .expect("set_attrs should render nix path literal marker");
-
-        assert!(
-            edited.contains("sopsFile = ../../secrets/ssh-private-key.yaml;"),
-            "expected sopsFile to render as a Nix path literal"
-        );
-        assert!(
-            !edited.contains("sopsFile = \"../../secrets/ssh-private-key.yaml\";"),
-            "expected sopsFile not to be rendered as a quoted string"
-        );
-    }
-
-    #[test]
     fn set_attrs_renders_nix_expr_marker_without_quotes() {
         let mut attrs = serde_json::Map::new();
         attrs.insert(
@@ -1245,7 +1229,7 @@ environment.systemPackages = with pkgs; [
       # "dotenvx/brew" # required for dotenvx formula
     ];
 
-    # Homebrew formulae (non-GUI packages)
+    # Homebrew brews (non-GUI packages)
     brews = [
       # "git" # required for CLI workflows
     ];
@@ -1277,5 +1261,36 @@ environment.systemPackages = with pkgs; [
             1,
             "should not insert duplicate taps assignment"
         );
+    }
+
+    #[test]
+    fn nix_quote_values_basic() {
+        let input = vec!["git".to_string(), "visual-studio-code".to_string()];
+        let quoted = nix_quote_values(&input);
+        assert_eq!(
+            quoted,
+            vec!["\"git\"".to_string(), "\"visual-studio-code\"".to_string()]
+        );
+    }
+
+    #[test]
+    fn nix_quote_values_escapes() {
+        let input = vec!["a\"b".to_string(), "c\\d".to_string(), "e$f".to_string()];
+        let quoted = nix_quote_values(&input);
+        assert_eq!(
+            quoted,
+            vec![
+                "\"a\\\"b\"".to_string(),
+                "\"c\\\\d\"".to_string(),
+                "\"e\\$f\"".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn nix_quote_values_empty() {
+        let input: Vec<String> = vec![];
+        let quoted = nix_quote_values(&input);
+        assert!(quoted.is_empty());
     }
 }

@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Clock, Settings, MessageSquarePlus } from "lucide-react";
 import { APP_NAME } from "../../../shared/constants";
 import { useWidgetStore } from "@/stores/widget-store";
+import { computeCurrentStep } from "@/components/widget/utils";
 
 export function Header() {
   const setSettingsOpen = useWidgetStore((s) => s.setSettingsOpen);
@@ -17,7 +18,8 @@ export function Header() {
   // Flash the feedback icon when an error occurs (subscribe to detect all changes)
   useEffect(() => {
     return useWidgetStore.subscribe((state, prevState) => {
-      if (state.error && state.error !== prevState.error) {
+      const step = computeCurrentStep(state);
+      if (step !== "setup" && state.error && state.error !== prevState.error) {
         setIsPulsing(true);
         setTimeout(() => setIsPulsing(false), 2000);
       }

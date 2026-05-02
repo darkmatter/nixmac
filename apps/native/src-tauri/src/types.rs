@@ -21,71 +21,7 @@ pub struct Config {
     pub host_attr: Option<String>,
 }
 
-pub use crate::shared_types::{GitFileStatus, GitStatus};
-
-/// User interface preferences.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UiPrefs {
-    /// OpenRouter API key for AI features via OpenRouter.
-    #[serde(rename = "openrouterApiKey")]
-    pub openrouter_api_key: Option<String>,
-
-    /// OpenAI API key for direct OpenAI access.
-    #[serde(rename = "openaiApiKey")]
-    pub openai_api_key: Option<String>,
-
-    /// Ollama API base URL for local model access.
-    #[serde(rename = "ollamaApiBaseUrl")]
-    pub ollama_api_base_url: Option<String>,
-
-    /// vLLM API base URL (OpenAI-compatible endpoint).
-    #[serde(rename = "vllmApiBaseUrl")]
-    pub vllm_api_base_url: Option<String>,
-
-    /// vLLM API key (optional — defaults to "none" if not set).
-    #[serde(rename = "vllmApiKey")]
-    pub vllm_api_key: Option<String>,
-
-    /// Provider for summarization (openai/ollama/vllm).
-    #[serde(rename = "summaryProvider")]
-    pub summary_provider: Option<String>,
-
-    /// Model name for summarization.
-    #[serde(rename = "summaryModel")]
-    pub summary_model: Option<String>,
-
-    /// Provider for evolution (openai/ollama).
-    #[serde(rename = "evolveProvider")]
-    pub evolve_provider: Option<String>,
-
-    /// Model name for evolution.
-    #[serde(rename = "evolveModel")]
-    pub evolve_model: Option<String>,
-
-    /// Maximum iterations for evolution before giving up.
-    #[serde(rename = "maxIterations")]
-    pub max_iterations: Option<usize>,
-
-    /// Maximum build attempts for evolution before giving up.
-    #[serde(rename = "maxBuildAttempts")]
-    pub max_build_attempts: Option<usize>,
-
-    /// Whether to send diagnostics to the nixmac team.
-    #[serde(rename = "sendDiagnostics")]
-    pub send_diagnostics: bool,
-
-    /// Whether to show a confirmation dialog before building.
-    #[serde(rename = "confirmBuild")]
-    pub confirm_build: bool,
-
-    /// Whether to show a confirmation dialog before clearing/discarding.
-    #[serde(rename = "confirmClear")]
-    pub confirm_clear: bool,
-
-    /// Whether to show a confirmation dialog before rolling back.
-    #[serde(rename = "confirmRollback")]
-    pub confirm_rollback: bool,
-}
+pub use crate::shared_types::{GitFileStatus, GitStatus, UiPrefs};
 
 /// Result of a darwin-rebuild operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
