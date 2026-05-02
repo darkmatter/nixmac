@@ -698,25 +698,22 @@ jobs:
           FAIL_COUNT: ${{ steps.report-meta.outputs.fail }}
           INCONCLUSIVE_COUNT: ${{ steps.report-meta.outputs.inconclusive }}
           INDEX_URL: ${{ steps.publish-report.outputs.index_url }}
-          LATEST_INDEX_URL: ${{ steps.publish-report.outputs.latest_index_url }}
-          ARTIFACT_URL: ${{ steps.upload-report.outputs.artifact-url }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
           marker="<!-- nixmac-computer-use-e2e-report -->"
-          status_label="$(tr '[:lower:]' '[:upper:]' <<<"$VERDICT")"
+          case "$VERDICT" in
+            pass) status_label="✅ PASS" ;;
+            fail) status_label="❌ FAIL" ;;
+            inconclusive) status_label="⚠️ INCONCLUSIVE" ;;
+            *) status_label="❔ UNKNOWN" ;;
+          esac
           body_file="$(mktemp)"
           cat > "$body_file" <<EOF
           $marker
-          ### nixmac Computer Use E2E: \`$status_label\`
+          ### nixmac Computer Use E2E: $status_label
 
           - Result: \`$PASS_COUNT pass / $FAIL_COUNT fail / $INCONCLUSIVE_COUNT inconclusive\`
           - Hosted HTML report: $INDEX_URL
-          - Latest report alias: $LATEST_INDEX_URL
-          - Actions run: $RUN_URL
-          - Artifact backup: $ARTIFACT_URL
-
-          The hosted report contains pass/fail state, screenshots, a screenshot-compilation video, annotations, text evidence, and remote Mac/app metadata. V1 report links use the htmlpreview.github.io shim over the public gh-pages report branch; the Actions artifact backup is retained for 14 days.
           EOF
           body_json="$(mktemp)"
           jq -Rs '{body: .}' "$body_file" > "$body_json"
