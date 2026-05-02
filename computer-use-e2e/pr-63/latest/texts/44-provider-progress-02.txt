@@ -1,0 +1,66 @@
+Computer Use state (CUA App Version: 758)
+<app_state>
+App=com.darkmatter.nixmac (pid 44869)
+Window: "nixmac", App: nixmac.
+	0 standard window nixmac, Secondary Actions: Raise
+		1 scroll area
+			2 HTML content Description: nixmac, URL: tauri://localhost
+				3 heading nixmac, Value: 3
+					4 text nixmac
+				5 button History
+				6 button Give feedback
+				7 button Settings
+				8 heading Get started, Value: 3
+					9 text Get started
+				10 container
+					11 text entry area (disabled, settable, string) Placeholder: Describe changes to make to your configuration., Value: Add the bat command line tool to my Homebrew packages as the plain string "bat" only, with no inline comments.
+						12 text Add the bat command line tool to my Homebrew packages as the plain string "bat" only, with no inline comments.
+					13 button (disabled) Send
+				14 button Install vim
+				15 button Add Rectangle app
+				16 button Enable the Finder path bar and status bar
+				17 pop up button 12 untracked customizations
+				18 pop up button 7 untracked Homebrew items
+				19 pop up button (disabled) My History
+				20 button Report Issue
+				21 text Evolving...
+				22 text 19
+				23 text  event
+				24 text s
+				25 button Stop
+				26 button Starting AI evolution... 0s
+				27 text Target host: DXU97120
+				28 text 0s
+				29 button Processing iteration 1... 0s iter 1
+				30 button Querying AI model... 0s iter 1
+				31 button Received AI response 4s iter 1
+				32 button Thinking... 4s iter 1
+				33 button Planning approach... 4s iter 1
+				34 button Processing iteration 2... 4s iter 2
+				35 button Querying AI model... 4s iter 2
+				36 button Received AI response 7s iter 2
+				37 button Reading file... 7s iter 2
+				38 button Reading homebrew.nix 7s iter 2
+				39 button Processing iteration 3... 7s iter 3
+				40 button Querying AI model... 7s iter 3
+				41 button Received AI response 9s iter 3
+				42 button Thinking... 9s iter 3
+				43 button Planning approach... 9s iter 3
+				44 button Processing iteration 4... 9s iter 4
+				45 button Querying AI model... 9s iter 4
+				46 text Waiting for next event...
+				47 button Console
+				48 container Notifications alt+T
+		49 close button
+		50 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+		51 minimize button
+	52 menu bar
+		53 nixmac
+		54 File
+		55 Edit
+		56 View
+		57 Window
+		58 Help
+
+The focused UI element is 2 HTML content.
+</app_state>
