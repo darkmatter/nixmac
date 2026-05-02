@@ -1,3 +1,4 @@
+import { filesystemViewEnabled } from "@/lib/flags";
 import type { WidgetState, WidgetStep } from "@/stores/widget-store";
 import { FilePen, FilePlus, FileX, FileCode, type LucideIcon } from "lucide-react";
 
@@ -29,7 +30,7 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
     return "history";
   }
 
-  if (state.showFilesystem) {
+  if (state.showFilesystem && filesystemViewEnabled) {
     return "filesystem";
   }
 

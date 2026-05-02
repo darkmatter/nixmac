@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { filesystemViewEnabled } from "@/lib/flags";
 import { cn } from "@/lib/utils";
 import { Clock, FolderTree, Settings, MessageSquarePlus } from "lucide-react";
 import { APP_NAME } from "../../../shared/constants";
@@ -39,24 +40,26 @@ export function Header() {
         {APP_NAME}
       </h3>
       <div className="absolute right-3 flex items-center gap-1">
-        <Button
-          className={cn(
-            "h-6 w-6 p-0 mr-[2px]",
-            showFilesystem && "border border-teal-500/50 text-teal-400 hover:text-teal-300 hover:border-teal-500/70",
-          )}
-          size="sm"
-          variant="ghost"
-          onClick={() => {
-            if (isProcessing || isGenerating) return;
-            const next = !showFilesystem;
-            setShowFilesystem(next);
-            if (next && showHistory) setShowHistory(false);
-          }}
-          aria-label="Filesystem"
-          title="Filesystem"
-        >
-          <FolderTree className="h-4 w-4" />
-        </Button>
+        {filesystemViewEnabled && (
+          <Button
+            className={cn(
+              "h-6 w-6 p-0 mr-[2px]",
+              showFilesystem && "border border-teal-500/50 text-teal-400 hover:text-teal-300 hover:border-teal-500/70",
+            )}
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              if (isProcessing || isGenerating) return;
+              const next = !showFilesystem;
+              setShowFilesystem(next);
+              if (next && showHistory) setShowHistory(false);
+            }}
+            aria-label="Filesystem"
+            title="Filesystem"
+          >
+            <FolderTree className="h-4 w-4" />
+          </Button>
+        )}
         <Button
           className={cn(
             "h-6 w-6 p-0 mr-[2px]",
