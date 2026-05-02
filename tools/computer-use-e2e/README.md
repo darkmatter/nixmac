@@ -8,6 +8,8 @@ nixmac. It drives the app through the `computer-use` MCP, records evidence
 metadata, captures Computer Use screenshots and redacted text snapshots, records
 remote Mac/app/process metadata, and renders a standalone HTML report.
 
+![nixmac Computer Use E2E feature diagram](./computer-use-e2e-feature-diagram.svg)
+
 Computer Use is required for the actual app interaction and final report
 inspection. Shell is used for setup, launch, backup/restore, artifact movement,
 metadata capture, and HTML generation only.
@@ -90,9 +92,10 @@ surface/workflow on `main`, then reporting coverage drift when a surface has no
 Computer Use scenario or explicit waiver. PR-specific focus is additive; it does
 not replace the baseline `main` coverage check.
 
-The testing-suite-only V2 contract is documented in
-[`V2_PROPOSAL.md`](./V2_PROPOSAL.md). V2 remains inside this feature/PR and does
-not modify core nixmac app code.
+The V2 evidence layer remains inside this feature/PR and does not modify core
+nixmac app code. Its durable contract is the runner-owned scenario catalog,
+coverage manifest, derived `state.v2.scenarioContracts`, and rendered report
+sections rather than a separate proposal doc.
 
 The coverage freshness manifest lives at:
 
