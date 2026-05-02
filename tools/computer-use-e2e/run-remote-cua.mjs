@@ -8,6 +8,12 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import {
+  artifactFileIssue,
+  artifactForLabel,
+  pngDimensions,
+} from './artifact-utils.mjs';
+import { tryRun } from './process-utils.mjs';
+import {
   DEFAULT_PROMPT,
   EVOLVED_CASE_CATALOG,
   curatedProofKeys,
@@ -20,6 +26,12 @@ import {
   supportedHomebrewSourcePaths,
 } from './scenario-catalog.mjs';
 import { failureTaxonomy, scenarioContractVersion, v1GradeToEvidenceStrength } from './schemas.mjs';
+import {
+  evaluateScreenshotVisualContract,
+  imageArtifactIssue,
+  parseSignalStats,
+  probeCropForImage,
+} from './visual-proof.mjs';
 
 const THIS_FILE = fileURLToPath(import.meta.url);
 const TOOL_DIR = path.dirname(THIS_FILE);
@@ -32,15 +44,6 @@ const ARTIFACT_ROOT = path.join(REPO_ROOT, 'artifacts', 'computer-use-remote');
 const COVERAGE_MANIFEST_PATH = path.join(TOOL_DIR, 'coverage-manifest.json');
 
 let activeRunDir = '';
-
-const visualProbeDefaults = {
-  minWidth: 500,
-  minHeight: 500,
-  minYMax: 50,
-  minYRange: 10,
-  minCropYMax: 38,
-  minCropYRange: 4,
-};
 
 function usage() {
   console.log(`Usage:
@@ -90,17 +93,6 @@ function run(command, args, options = {}) {
   return result.stdout.trim();
 }
 
-function tryRun(command, args, options = {}) {
-  const result = spawnSync(command, args, { encoding: 'utf8', ...options });
-  return {
-    ok: result.status === 0,
-    status: result.status,
-    stdout: result.stdout?.trim() ?? '',
-    stderr: result.stderr?.trim() ?? '',
-    error: result.error ? String(result.error) : '',
-  };
-}
-
 function sshArgs(remoteCommand) {
   const dest = process.env.NIXMAC_E2E_REMOTE_SSH_DEST;
   if (!dest) return null;
@@ -137,19 +129,6 @@ async function pathExists(filePath) {
     return true;
   } catch {
     return false;
-  }
-}
-
-function pngDimensions(filePath) {
-  try {
-    const buffer = readFileSync(filePath);
-    if (buffer.length < 24 || buffer.toString('ascii', 1, 4) !== 'PNG') return null;
-    return {
-      width: buffer.readUInt32BE(16),
-      height: buffer.readUInt32BE(20),
-    };
-  } catch {
-    return null;
   }
 }
 
@@ -677,10 +656,6 @@ function ensureCurrentSchema(state) {
   return state;
 }
 
-function artifactForLabel(items, label) {
-  return items.find((item) => item.label === label || item.label === `HTML report inspection` && label === 'HTML report inspection') || null;
-}
-
 function proofForScenario(state, key) {
   const proof = scenarioProofCatalog[key] || {
     grade: 'insufficient',
@@ -945,18 +920,6 @@ function proofQualityIssues(state) {
   return issues;
 }
 
-function artifactFileIssue(state, relativePath) {
-  if (!relativePath) return 'artifact path is empty';
-  try {
-    const stats = statSync(path.join(state.runDir, relativePath));
-    if (!stats.isFile()) return 'it is not a file';
-    if (stats.size === 0) return 'the file is empty';
-    return '';
-  } catch {
-    return 'the file is missing';
-  }
-}
-
 function screenshotVideoFrameEntries(state) {
   const runDir = path.resolve(state.runDir);
   return (state.screenshots || [])
@@ -1035,164 +998,6 @@ async function maybeGenerateEvidenceVideo(state) {
         frames: frames.length,
         note: 'Screenshot-compilation video generated from safe-to-store Computer Use frames.',
       };
-}
-
-function parseSignalStats(output) {
-  const stats = {};
-  for (const line of String(output || '').split('\n')) {
-    const match = line.match(/lavfi\.signalstats\.([A-Z]+)=([0-9.]+)/);
-    if (match) stats[match[1]] = Number(match[2]);
-  }
-  return stats;
-}
-
-function pngSignalStats(filePath, crop = null) {
-  const filters = [];
-  if (crop) filters.push(`crop=${crop.w}:${crop.h}:${crop.x}:${crop.y}`);
-  filters.push('signalstats', 'metadata=print:file=-');
-  const result = tryRun('ffmpeg', [
-    '-hide_banner',
-    '-i',
-    filePath,
-    '-vf',
-    filters.join(','),
-    '-frames:v',
-    '1',
-    '-f',
-    'null',
-    '-',
-  ]);
-  if (!result.ok) {
-    return {
-      ok: false,
-      error: result.stderr || result.error,
-      stats: {},
-    };
-  }
-  return {
-    ok: true,
-    stats: parseSignalStats(`${result.stdout}\n${result.stderr}`),
-  };
-}
-
-function imageArtifactIssue(state, relativePath) {
-  const baseIssue = artifactFileIssue(state, relativePath);
-  if (baseIssue) return baseIssue;
-  if (!/\.png$/i.test(relativePath)) return '';
-  const fullPath = path.join(state.runDir, relativePath);
-  const result = pngSignalStats(fullPath);
-  if (!result.ok) return `ffmpeg could not inspect the image (${result.error})`;
-  const yMax = result.stats.YMAX;
-  const yMin = result.stats.YMIN;
-  if (Number.isFinite(yMax) && yMax < 40) return 'the screenshot appears blank or visually occluded';
-  if (Number.isFinite(yMax) && Number.isFinite(yMin) && yMax - yMin < 4) return 'the screenshot has too little visual contrast';
-  return '';
-}
-
-function probeCropForImage(imageSize, probe) {
-  if (!imageSize?.width || !imageSize?.height) return null;
-  const x = Math.max(0, Math.floor((imageSize.width * probe.x) / 100));
-  const y = Math.max(0, Math.floor((imageSize.height * probe.y) / 100));
-  const w = Math.max(1, Math.floor((imageSize.width * probe.w) / 100));
-  const h = Math.max(1, Math.floor((imageSize.height * probe.h) / 100));
-  if (x + w > imageSize.width || y + h > imageSize.height) return null;
-  return { x, y, w, h };
-}
-
-function visualCheckPass(name, detail) {
-  return { name, status: 'pass', detail };
-}
-
-function visualCheckFail(name, detail) {
-  return { name, status: 'fail', detail };
-}
-
-function evaluateScreenshotVisualContract(state, screenshotRequirement) {
-  const shot = artifactForLabel(state.screenshots, screenshotRequirement.label);
-  const checks = [];
-  if (!shot) {
-    return {
-      label: screenshotRequirement.label,
-      status: 'fail',
-      checks: [visualCheckFail('screenshot artifact', 'Required screenshot artifact is missing from state.screenshots.')],
-    };
-  }
-
-  const fullPath = path.join(state.runDir, shot.path);
-  const baseIssue = artifactFileIssue(state, shot.path);
-  if (baseIssue) {
-    return {
-      label: shot.label,
-      path: shot.path,
-      status: 'fail',
-      checks: [visualCheckFail('screenshot artifact', baseIssue)],
-    };
-  }
-
-  const imageSize = shot.imageSize || pngDimensions(fullPath);
-  if (!imageSize) {
-    checks.push(visualCheckFail('image dimensions', 'Could not read PNG dimensions.'));
-  } else if (imageSize.width < visualProbeDefaults.minWidth || imageSize.height < visualProbeDefaults.minHeight) {
-    checks.push(visualCheckFail('image dimensions', `${imageSize.width}x${imageSize.height} is below ${visualProbeDefaults.minWidth}x${visualProbeDefaults.minHeight}.`));
-  } else {
-    checks.push(visualCheckPass('image dimensions', `${imageSize.width}x${imageSize.height}.`));
-  }
-
-  const fullStats = pngSignalStats(fullPath);
-  if (!fullStats.ok) {
-    checks.push(visualCheckFail('full-frame decode', `ffmpeg could not inspect the image (${fullStats.error}).`));
-  } else {
-    const yMin = fullStats.stats.YMIN;
-    const yMax = fullStats.stats.YMAX;
-    const yRange = Number.isFinite(yMin) && Number.isFinite(yMax) ? yMax - yMin : NaN;
-    if (!Number.isFinite(yMax) || yMax < visualProbeDefaults.minYMax) {
-      checks.push(visualCheckFail('full-frame brightness', `YMAX ${yMax ?? 'unknown'} is below ${visualProbeDefaults.minYMax}.`));
-    } else if (!Number.isFinite(yRange) || yRange < visualProbeDefaults.minYRange) {
-      checks.push(visualCheckFail('full-frame contrast', `Y range ${Number.isFinite(yRange) ? yRange : 'unknown'} is below ${visualProbeDefaults.minYRange}.`));
-    } else {
-      checks.push(visualCheckPass('full-frame signal', `Y range ${yMin}-${yMax}.`));
-    }
-  }
-
-  for (const probe of screenshotRequirement.probes || []) {
-    if (typeof probe.x !== 'number' || typeof probe.y !== 'number' || typeof probe.w !== 'number' || typeof probe.h !== 'number') {
-      checks.push(visualCheckFail(probe.label || 'visual probe', 'Probe coordinates are incomplete.'));
-      continue;
-    }
-    if (probe.x < 0 || probe.y < 0 || probe.w <= 0 || probe.h <= 0 || probe.x + probe.w > 100 || probe.y + probe.h > 100) {
-      checks.push(visualCheckFail(probe.label || 'visual probe', 'Probe coordinates are outside image bounds.'));
-      continue;
-    }
-    const crop = probeCropForImage(imageSize, probe);
-    if (!crop) {
-      checks.push(visualCheckFail(probe.label || 'visual probe', 'Probe could not be mapped into image pixels.'));
-      continue;
-    }
-    const cropStats = pngSignalStats(fullPath, crop);
-    if (!cropStats.ok) {
-      checks.push(visualCheckFail(probe.label, `ffmpeg could not inspect crop (${cropStats.error}).`));
-      continue;
-    }
-    const yMin = cropStats.stats.YMIN;
-    const yMax = cropStats.stats.YMAX;
-    const yRange = Number.isFinite(yMin) && Number.isFinite(yMax) ? yMax - yMin : NaN;
-    const minYMax = probe.minYMax ?? visualProbeDefaults.minCropYMax;
-    const minYRange = probe.minYRange ?? visualProbeDefaults.minCropYRange;
-    if (!Number.isFinite(yMax) || yMax < minYMax) {
-      checks.push(visualCheckFail(probe.label, `crop YMAX ${yMax ?? 'unknown'} is below ${minYMax}.`));
-    } else if (!Number.isFinite(yRange) || yRange < minYRange) {
-      checks.push(visualCheckFail(probe.label, `crop Y range ${Number.isFinite(yRange) ? yRange : 'unknown'} is below ${minYRange}.`));
-    } else {
-      checks.push(visualCheckPass(probe.label, `crop ${crop.w}x${crop.h}+${crop.x}+${crop.y}, Y range ${yMin}-${yMax}.`));
-    }
-  }
-
-  return {
-    label: shot.label,
-    path: shot.path,
-    status: checks.some((check) => check.status === 'fail') ? 'fail' : 'pass',
-    checks,
-  };
 }
 
 function applyVisualAssertions(state) {
@@ -3987,6 +3792,15 @@ async function runSelfTest() {
   assert.deepEqual(parseSignalStats('lavfi.signalstats.YMIN=16\nlavfi.signalstats.YMAX=235\n'), { YMIN: 16, YMAX: 235 }, 'signalstats parser should extract luminance metrics');
   assert.deepEqual(probeCropForImage({ width: 768, height: 768 }, { x: 5, y: 35, w: 90, h: 22 }), { x: 38, y: 268, w: 691, h: 168 }, 'visual probe coordinates should map to image pixels');
   assert.equal(probeCropForImage({ width: 768, height: 768 }, { x: 95, y: 95, w: 10, h: 10 }), null, 'out-of-bounds visual probes should be rejected');
+  assert.deepEqual(
+    evaluateScreenshotVisualContract({ screenshots: [], runDir: os.tmpdir() }, { label: 'missing-proof', probes: [] }),
+    {
+      label: 'missing-proof',
+      status: 'fail',
+      checks: [{ name: 'screenshot artifact', status: 'fail', detail: 'Required screenshot artifact is missing from state.screenshots.' }],
+    },
+    'visual contract evaluation should fail with a stable shape when the required screenshot is missing',
+  );
 
   const previousChangedFiles = process.env.NIXMAC_E2E_PR_CHANGED_FILES;
   process.env.NIXMAC_E2E_PR_CHANGED_FILES = 'apps/native/src/components/widget/adversarial-new-visible-surface.tsx\ndocs/history.md';
