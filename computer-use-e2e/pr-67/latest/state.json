@@ -1,0 +1,1315 @@
+{
+  "startedAt": "2026-05-02T12:33:11.763Z",
+  "runDir": "/home/runner/work/nixmac/nixmac/artifacts/computer-use-remote/2026-05-02T123311754Z",
+  "ws": "ws://127.0.0.1:18790",
+  "app": "com.darkmatter.nixmac",
+  "prompt": "Add the bat command line tool to my Homebrew packages as the plain string \"bat\" only, with no inline comments.",
+  "branch": "unknown",
+  "sha": "ce09d27",
+  "macosVersion": "unknown",
+  "appCommand": "open -n /Applications/nixmac.app",
+  "provider": {
+    "kind": "real-openrouter-compatible-provider",
+    "note": "The key value is never written to this report. Failures may reflect provider billing/auth state."
+  },
+  "evolvedCaseStrategy": {
+    "selectedAt": "2026-05-02T12:33:11.763Z",
+    "defaultCaseIds": [
+      "homebrew-bat"
+    ],
+    "extraCaseIds": [],
+    "catalog": [
+      {
+        "id": "homebrew-bat",
+        "label": "Homebrew bat package add",
+        "mode": "full-lifecycle",
+        "defaultPrLane": true,
+        "source": "Current Computer Use E2E default; maps to eval package/homebrew install coverage.",
+        "note": "Runs prompt -> Review -> Summary/Diff -> Build boundary -> Step 3 Commit -> History rollback cleanup."
+      },
+      {
+        "id": "screenshots-defaults",
+        "label": "Screenshot defaults review-only calibration",
+        "mode": "review-only-calibration",
+        "defaultPrLane": false,
+        "source": "WDIO fixture basicPromptsConfigureScreenshots and eval CSV case 33 / golden-set system-defaults coverage.",
+        "note": "Optional calibration lane. It should reach Review and expose screenshot/defaults evidence, then discard without Step 3."
+      },
+      {
+        "id": "inline-question-font",
+        "label": "Inline question answer to font change",
+        "mode": "question-answer-calibration",
+        "defaultPrLane": false,
+        "source": "Historical inline-question deadlock/race gap from PR #50/#53 plus WDIO ask-question fixture coverage.",
+        "note": "Optional P0 calibration lane. It proves the question UI accepts an answer and the provider workflow progresses past Waiting for next event into Review evidence."
+      },
+      {
+        "id": "protected-flake-input",
+        "label": "Protected flake input adversarial boundary",
+        "mode": "adversarial-advisory",
+        "defaultPrLane": false,
+        "source": "Eval spreadsheet protected-file family (#121/#208/#210). Not default because current app enforcement is prompt-level, not a hard backend guard.",
+        "note": "Keep out of the default PR lane until nixmac has hard protected-file enforcement and a reliable refusal signal."
+      }
+    ],
+    "reviewDecision": "Claude review kept homebrew-bat as the only default full-lifecycle PR case, moved screenshots-defaults to optional calibration, and moved protected-flake-input to an adversarial advisory lane until hard backend enforcement exists."
+  },
+  "evolvedCaseRuns": [],
+  "safety": {
+    "disposableConfig": false,
+    "buildConfirmEnabled": false,
+    "discardConfirmEnabled": false,
+    "note": "Discard/build confirmation is only allowed when disposable config mode is explicitly proven."
+  },
+  "prFocus": {
+    "eventName": "pull_request",
+    "number": "67",
+    "title": "feat(settings): add hidden Developer panel with version-pin install",
+    "headRef": "claude/dreamy-kapitsa-76197b",
+    "baseRef": "main",
+    "changedFiles": [
+      "Cargo.lock",
+      "apps/native/.storybook/main.ts",
+      "apps/native/.storybook/mocks/tauri-app.ts",
+      "apps/native/src-tauri/Cargo.toml",
+      "apps/native/src-tauri/src/commands.rs",
+      "apps/native/src-tauri/src/main.rs",
+      "apps/native/src-tauri/src/shared_types.rs",
+      "apps/native/src-tauri/src/store.rs",
+      "apps/native/src-tauri/src/updater_pin.rs",
+      "apps/native/src/components/widget/settings-dialog.tsx",
+      "apps/native/src/components/widget/settings/developer-tab.stories.tsx",
+      "apps/native/src/components/widget/settings/developer-tab.tsx",
+      "apps/native/src/components/widget/settings/general-tab.tsx",
+      "apps/native/src/hooks/use-prefs.ts",
+      "apps/native/src/hooks/use-updater.ts",
+      "apps/native/src/stores/widget-store.ts",
+      "apps/native/src/types/shared.ts"
+    ],
+    "userVisibleFiles": [
+      "apps/native/src-tauri/Cargo.toml",
+      "apps/native/src-tauri/src/commands.rs",
+      "apps/native/src-tauri/src/main.rs",
+      "apps/native/src-tauri/src/shared_types.rs",
+      "apps/native/src-tauri/src/store.rs",
+      "apps/native/src-tauri/src/updater_pin.rs",
+      "apps/native/src/components/widget/settings-dialog.tsx",
+      "apps/native/src/components/widget/settings/developer-tab.stories.tsx",
+      "apps/native/src/components/widget/settings/developer-tab.tsx",
+      "apps/native/src/components/widget/settings/general-tab.tsx",
+      "apps/native/src/hooks/use-prefs.ts",
+      "apps/native/src/hooks/use-updater.ts",
+      "apps/native/src/stores/widget-store.ts"
+    ],
+    "scenarioKeys": [
+      "settingsGeneral",
+      "settingsAIModels",
+      "settingsAPIKeys",
+      "settingsPreferences"
+    ],
+    "configured": true
+  },
+  "cleanup": {
+    "attempted": false,
+    "restored": false,
+    "note": "No app state touched; unavailable report only."
+  },
+  "screenshots": [],
+  "textSnapshots": [],
+  "events": [],
+  "claims": [
+    {
+      "claim": "App launches and first screen is usable",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "Update banner does not block the main workflow",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "Settings General tab visibly renders",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "Settings AI Models tab visibly renders",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "Settings API Keys tab visibly renders",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "Settings Preferences tab visibly renders",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "My History opens and renders",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "Console opens and renders",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "Give Feedback opens and can be cancelled",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "Report Issue opens and can be cancelled",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "Home suggestion cards are visible/clickable",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "Untracked macOS customizations can be saved and rolled back",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "Untracked Homebrew items can be saved and rolled back",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "A typed real intent can be submitted",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "Real provider workflow reaches Review",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "Summary tab renders after intent review",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "Diff tab renders after intent review",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "Build & Test destructive boundary appears before activation",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "Step 3 Save / Keep changes persists a change",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "Rollback cleanup returns disposable config to clean state",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "Discard confirmation is guarded and only confirmed in disposable state",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "Core UX/UI surfaces are captured and inspectable",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "Scenario results include inspectable visual/text evidence",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "Main branch user-visible coverage stays mapped",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "PR-specific user-visible behavior is covered when applicable",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    },
+    {
+      "claim": "Generated HTML report is inspected with Computer Use",
+      "status": "inconclusive",
+      "evidence": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    }
+  ],
+  "narrative": [
+    {
+      "ts": "2026-05-02T12:33:11.764Z",
+      "text": "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+    }
+  ],
+  "confirmationBoundaries": [],
+  "failures": [],
+  "scenarios": {
+    "launch": {
+      "label": "App launches and first screen is usable",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "updateBanner": {
+      "label": "Update banner does not block the main workflow",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "visual_heuristic"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "medium",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source without binding screenshot checks."
+    },
+    "settingsGeneral": {
+      "label": "Settings General tab visibly renders",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "settingsAIModels": {
+      "label": "Settings AI Models tab visibly renders",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "settingsAPIKeys": {
+      "label": "Settings API Keys tab visibly renders",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "sensitive_redaction",
+        "visual_heuristic"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "medium",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source without binding screenshot checks."
+    },
+    "settingsPreferences": {
+      "label": "Settings Preferences tab visibly renders",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "history": {
+      "label": "My History opens and renders",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "console": {
+      "label": "Console opens and renders",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "sensitive_redaction"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "medium",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source without binding screenshot checks."
+    },
+    "feedback": {
+      "label": "Give Feedback opens and can be cancelled",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "reportIssue": {
+      "label": "Report Issue opens and can be cancelled",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "suggestionCards": {
+      "label": "Home suggestion cards are visible/clickable",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "customizationSaveRollback": {
+      "label": "Untracked macOS customizations can be saved and rolled back",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "remote_state",
+        "visual_heuristic"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "medium",
+      "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence."
+    },
+    "homebrewSaveRollback": {
+      "label": "Untracked Homebrew items can be saved and rolled back",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "remote_state",
+        "visual_heuristic"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "medium",
+      "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence."
+    },
+    "typedIntent": {
+      "label": "A typed real intent can be submitted",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "review": {
+      "label": "Real provider workflow reaches Review",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "provider_state",
+        "action_result",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "summary": {
+      "label": "Summary tab renders after intent review",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "provider_state",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "diff": {
+      "label": "Diff tab renders after intent review",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "provider_state",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "buildBoundary": {
+      "label": "Build & Test destructive boundary appears before activation",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "confirmation_boundary",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    },
+    "saveFlow": {
+      "label": "Step 3 Save / Keep changes persists a change",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "remote_state",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "medium",
+      "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence."
+    },
+    "rollbackCleanup": {
+      "label": "Rollback cleanup returns disposable config to clean state",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "remote_state",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "medium",
+      "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence."
+    },
+    "discard": {
+      "label": "Discard confirmation is guarded and only confirmed in disposable state",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "action_result",
+        "confirmation_boundary",
+        "visual_heuristic"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "medium",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source without binding screenshot checks."
+    },
+    "visualCoverage": {
+      "label": "Core UX/UI surfaces are captured and inspectable",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "artifact_quality",
+        "accessibility_text",
+        "visual_heuristic"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "medium",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source without binding screenshot checks."
+    },
+    "visualProofQuality": {
+      "label": "Scenario results include inspectable visual/text evidence",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "artifact_quality",
+        "visual_heuristic"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "The scenario is not primarily an accessibility-text assertion."
+    },
+    "mainCoverageFreshness": {
+      "label": "Main branch user-visible coverage stays mapped",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "coverage_manifest"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "medium",
+      "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence."
+    },
+    "prSpecificCoverage": {
+      "label": "PR-specific user-visible behavior is covered when applicable",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "pr_metadata",
+        "coverage_manifest"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "medium",
+      "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence."
+    },
+    "reportInspection": {
+      "label": "Generated HTML report is inspected with Computer Use",
+      "status": "inconclusive",
+      "notes": [
+        "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+      ],
+      "evidenceStrength": "not-proved",
+      "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+      "assertionTypes": [
+        "accessibility_text",
+        "artifact_quality",
+        "visual_heuristic",
+        "visual_signalstats"
+      ],
+      "failureClass": "remote_infra",
+      "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+      "accessibilityRisk": "low",
+      "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence."
+    }
+  },
+  "video": {
+    "status": "unavailable",
+    "note": "No safe-to-store screenshot frames were available for the evidence video."
+  },
+  "secretMaskingViolations": [],
+  "visualAssertions": [],
+  "verdict": "inconclusive",
+  "v2": {
+    "contractVersion": 2,
+    "canonicalSource": "V2 is derived from the runner-owned scenarioLabels, scenarioGroups, scenarioProofCatalog, evolved case catalog, and coverage manifest until a later implementation consolidates those into a single registry module.",
+    "evidenceGradeMapping": {
+      "action-confirmed": "operational",
+      "text-confirmed": "visual-supported",
+      "guardrail-confirmed": "operational",
+      "manifest-confirmed": "operational",
+      "calibration": "weak",
+      "not-run": "not-proved",
+      "insufficient": "not-proved"
+    },
+    "failureTaxonomy": {
+      "app": "The app UI/state did not behave as expected.",
+      "provider": "The real provider returned a billing, rate-limit, timeout, or model error.",
+      "credential": "A provider key was missing, invalid, unavailable, or not injected into the launched app process.",
+      "remote_infra": "DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.",
+      "harness": "Computer Use actions, artifact generation, report rendering, or runner bookkeeping failed.",
+      "coverage": "The suite lacks a scenario, manifest mapping, PR focus, or waiver for the behavior.",
+      "inconclusive": "The runner could not prove either pass or fail."
+    },
+    "scenarioContracts": {
+      "launch": {
+        "id": "launch",
+        "label": "App launches and first screen is usable",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "not-run",
+        "proof": "Accessibility text shows the nixmac window, Settings/History/Feedback controls, stepper, prompt text area, and disabled Send button.",
+        "limitation": "Does not prove provider or config state."
+      },
+      "updateBanner": {
+        "id": "updateBanner",
+        "label": "Update banner does not block the main workflow",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "text-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "visual_heuristic"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "medium",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source without binding screenshot checks.",
+        "visualAssertionStatus": "not-applicable",
+        "proof": "Runner checks for a visible Dismiss button. If present, it dismisses it; if absent, it proves no update banner blocked the initial UI.",
+        "limitation": "The explicit dismiss interaction is only tested on runs where a banner is actually present."
+      },
+      "settingsGeneral": {
+        "id": "settingsGeneral",
+        "label": "Settings General tab visibly renders",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "not-run",
+        "proof": "Computer Use clicked Settings and captured the General tab content.",
+        "limitation": "Does not persist setting edits."
+      },
+      "settingsAIModels": {
+        "id": "settingsAIModels",
+        "label": "Settings AI Models tab visibly renders",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "not-run",
+        "proof": "Computer Use opened AI Models and captured provider/model/build controls.",
+        "limitation": "Does not change models or verify every provider."
+      },
+      "settingsAPIKeys": {
+        "id": "settingsAPIKeys",
+        "label": "Settings API Keys tab visibly renders",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "text-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "sensitive_redaction",
+          "visual_heuristic"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "medium",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source without binding screenshot checks.",
+        "visualAssertionStatus": "not-applicable",
+        "proof": "API Keys screenshot is captured only when raw accessibility text confirms no unmasked key-like secret is present; redacted text must show API Keys/OpenRouter/API-key controls.",
+        "limitation": "Does not edit/delete keys and does not prove keychain persistence by itself."
+      },
+      "settingsPreferences": {
+        "id": "settingsPreferences",
+        "label": "Settings Preferences tab visibly renders",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "not-run",
+        "proof": "Computer Use opened Preferences and captured confirmation controls.",
+        "limitation": "Does not toggle preferences permanently."
+      },
+      "history": {
+        "id": "history",
+        "label": "My History opens and renders",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "not-run",
+        "proof": "Computer Use opened History and captured a visible history/empty state.",
+        "limitation": "Current run does not prove a newly saved change appears there."
+      },
+      "console": {
+        "id": "console",
+        "label": "Console opens and renders",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "text-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "sensitive_redaction"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "medium",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source without binding screenshot checks.",
+        "visualAssertionStatus": "not-applicable",
+        "proof": "Sensitive screenshot omitted; redacted accessibility text must show Console/log content.",
+        "limitation": "Does not prove log completeness and may omit secret-bearing visuals by design."
+      },
+      "feedback": {
+        "id": "feedback",
+        "label": "Give Feedback opens and can be cancelled",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "not-run",
+        "proof": "Computer Use opened and cancelled the feedback dialog.",
+        "limitation": "Does not submit feedback."
+      },
+      "reportIssue": {
+        "id": "reportIssue",
+        "label": "Report Issue opens and can be cancelled",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "not-run",
+        "proof": "Computer Use opened and cancelled the report issue dialog.",
+        "limitation": "Does not submit a report."
+      },
+      "suggestionCards": {
+        "id": "suggestionCards",
+        "label": "Home suggestion cards are visible/clickable",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "not-run",
+        "proof": "Computer Use found and clicked a suggestion card; the UI stayed usable afterward.",
+        "limitation": "Does not prove every suggestion works."
+      },
+      "customizationSaveRollback": {
+        "id": "customizationSaveRollback",
+        "label": "Untracked macOS customizations can be saved and rolled back",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "remote_state",
+          "visual_heuristic"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "medium",
+        "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence.",
+        "visualAssertionStatus": "not-applicable",
+        "proof": "When the untracked customizations chip is visible, Computer Use adds it to config, confirms Build & Test, commits Step 3, then restores the disposable baseline and verifies the remote git tree is clean.",
+        "limitation": "If no untracked customizations chip is visible, the scenario records a no-op pass because there is nothing to save."
+      },
+      "homebrewSaveRollback": {
+        "id": "homebrewSaveRollback",
+        "label": "Untracked Homebrew items can be saved and rolled back",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "remote_state",
+          "visual_heuristic"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "medium",
+        "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence.",
+        "visualAssertionStatus": "not-applicable",
+        "proof": "When the untracked Homebrew chip is visible, Computer Use adds it to config, confirms Build & Test, commits Step 3, then restores the disposable baseline and verifies the remote git tree is clean.",
+        "limitation": "If no untracked Homebrew chip is visible, the scenario records a no-op pass because there is nothing to save."
+      },
+      "typedIntent": {
+        "id": "typedIntent",
+        "label": "A typed real intent can be submitted",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "not-run",
+        "proof": "Prompt text appears in the Computer Use state after set_value.",
+        "limitation": "Does not prove provider execution until Review is reached."
+      },
+      "review": {
+        "id": "review",
+        "label": "Real provider workflow reaches Review",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "provider_state",
+          "action_result",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "not-run",
+        "proof": "Polling reached Review-equivalent UI with Build & Test/Discard/Summary/Diff controls.",
+        "limitation": "Does not prove Save/commit."
+      },
+      "summary": {
+        "id": "summary",
+        "label": "Summary tab renders after intent review",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "text-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "provider_state",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "not-run",
+        "proof": "Summary text must mention the requested package/change domain.",
+        "limitation": "Does not prove file persistence."
+      },
+      "diff": {
+        "id": "diff",
+        "label": "Diff tab renders after intent review",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "text-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "provider_state",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "not-run",
+        "proof": "Diff view must expose the candidate Homebrew config file or requested package/change.",
+        "limitation": "Does not prove the change builds or saves; save/rollback scenarios provide that remote git proof."
+      },
+      "buildBoundary": {
+        "id": "buildBoundary",
+        "label": "Build & Test destructive boundary appears before activation",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "confirmation_boundary",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "not-run",
+        "proof": "Build & Test opens a confirmation dialog before activation; disposable runs confirm it and wait for Step 3.",
+        "limitation": "Without explicit disposable build-confirm mode, the runner still cancels at the boundary."
+      },
+      "saveFlow": {
+        "id": "saveFlow",
+        "label": "Step 3 Save / Keep changes persists a change",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "remote_state",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "medium",
+        "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence.",
+        "visualAssertionStatus": "not-run",
+        "proof": "In disposable build-confirm mode, Computer Use reaches Step 3, clicks Commit, and the runner verifies the disposable repo HEAD changed with a clean worktree.",
+        "limitation": "When disposable build-confirm mode is not enabled, Save remains untested."
+      },
+      "rollbackCleanup": {
+        "id": "rollbackCleanup",
+        "label": "Rollback cleanup returns disposable config to clean state",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "remote_state",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "medium",
+        "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence.",
+        "visualAssertionStatus": "not-run",
+        "proof": "After Save, Computer Use opens History, restores the pre-test baseline commit, and the runner verifies HEAD returned to that baseline with a clean worktree.",
+        "limitation": "Only runs when Save succeeded and a restorable disposable baseline exists."
+      },
+      "discard": {
+        "id": "discard",
+        "label": "Discard confirmation is guarded and only confirmed in disposable state",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "guardrail-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "action_result",
+          "confirmation_boundary",
+          "visual_heuristic"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "medium",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source without binding screenshot checks.",
+        "visualAssertionStatus": "not-applicable",
+        "proof": "Discard opens a confirmation boundary when used. In full-lifecycle runs, the stronger History restore cleanup path can supersede Discard and is proven by rollback artifacts.",
+        "limitation": "When History restore cleanup passes, Discard itself is intentionally not clicked because the disposable config is already back at baseline."
+      },
+      "visualCoverage": {
+        "id": "visualCoverage",
+        "label": "Core UX/UI surfaces are captured and inspectable",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "text-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "artifact_quality",
+          "accessibility_text",
+          "visual_heuristic"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "medium",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source without binding screenshot checks.",
+        "visualAssertionStatus": "not-applicable",
+        "proof": "Required core UI surfaces have screenshot and text artifacts.",
+        "limitation": "Does not prove screenshot annotations are exact bounding boxes."
+      },
+      "visualProofQuality": {
+        "id": "visualProofQuality",
+        "label": "Scenario results include inspectable visual/text evidence",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "text-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "artifact_quality",
+          "visual_heuristic"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "The scenario is not primarily an accessibility-text assertion.",
+        "visualAssertionStatus": "not-applicable",
+        "proof": "Every passing scenario must have linked proof artifacts, and required non-sensitive screenshots must pass deterministic visual signal checks.",
+        "limitation": "Visual signal checks catch missing, blank, occluded, or low-signal regions; they do not prove exact design fidelity or arbitrary wrong-screen swaps."
+      },
+      "mainCoverageFreshness": {
+        "id": "mainCoverageFreshness",
+        "label": "Main branch user-visible coverage stays mapped",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "manifest-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "coverage_manifest"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "medium",
+        "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence.",
+        "visualAssertionStatus": "not-applicable",
+        "proof": "A repo-local coverage manifest maps major user-visible surfaces on main to Computer Use scenarios or explicit waivers, and the runner scans for unmapped candidate files.",
+        "limitation": "This proves scenario mapping freshness, not that every mapped scenario passed in the current run."
+      },
+      "prSpecificCoverage": {
+        "id": "prSpecificCoverage",
+        "label": "PR-specific user-visible behavior is covered when applicable",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "not-run",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "pr_metadata",
+          "coverage_manifest"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "medium",
+        "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence.",
+        "visualAssertionStatus": "not-applicable",
+        "proof": "Requires PR metadata and changed-file/user-visible focus input.",
+        "limitation": "No PR-specific scenario is executed unless PR context is provided."
+      },
+      "reportInspection": {
+        "id": "reportInspection",
+        "label": "Generated HTML report is inspected with Computer Use",
+        "status": "inconclusive",
+        "legacyEvidenceGrade": "action-confirmed",
+        "evidenceStrength": "not-proved",
+        "evidenceStrengthReason": "Scenario did not pass, so no positive evidence strength is assigned.",
+        "assertionTypes": [
+          "accessibility_text",
+          "artifact_quality",
+          "visual_heuristic",
+          "visual_signalstats"
+        ],
+        "failureClass": "remote_infra",
+        "failureClassReason": "Remote Mac, launch, authorization, or activation wording was detected.",
+        "accessibilityRisk": "low",
+        "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",
+        "visualAssertionStatus": "not-run",
+        "proof": "Computer Use opens the generated report on the remote Mac and sees report sections.",
+        "limitation": "Does not prove a human reviewed every screenshot."
+      }
+    }
+  }
+}
