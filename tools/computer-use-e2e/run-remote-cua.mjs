@@ -3341,91 +3341,98 @@ async function runSuite(args) {
       const buildClicked = await clickByPattern(client, state, text, 'Build & Test', [/Build & Test/i, /Build/i], 'Click Build & Test boundary.');
       if (buildClicked) {
         text = await captureState(client, state, 'build-boundary', 'Computer Use clicked Build & Test to verify the destructive boundary.');
-        const boundary = /Confirm|Are you sure|Build & Test|Cancel/i.test(text);
+        const boundary = /Confirm|Are you sure|Cancel/i.test(text);
         updateScenario(state, 'buildBoundary', boundary ? 'pass' : 'fail', boundary ? 'Build & Test presented a visible confirmation/boundary before activation.' : 'Build & Test did not present an obvious confirmation boundary.');
         const canConfirmBuild = boundary && state.safety?.disposableConfig === true && state.safety?.buildConfirmEnabled === true && state.remoteConfig?.baselinePrepared === true;
         if (boundary && canConfirmBuild) {
-          state.confirmationBoundaries.push('Build & Test boundary observed and confirmed in proven disposable state.');
-          await clickByPattern(client, state, text, 'Confirm build boundary', [/button Confirm/i], 'Confirm Build & Test in proven disposable state.');
-          let pamSymlinkHangSeen = 0;
-          const step3 = await waitFor(
-            client,
-            state,
-            'build-to-step-3',
-            (candidate) => {
-              if (/All changes active|Commit Changes|button Commit|Progress: step 3 of 3|Save Keep changes/i.test(candidate) && !/button \(disabled\) Commit/i.test(candidate)) return 'step-3';
-              if (activationAuthRequired(candidate)) return 'activation-auth-required';
-              if (buildAppearsActive(candidate) && remoteActivationPamSymlinkHang()) {
-                pamSymlinkHangSeen += 1;
-                if (pamSymlinkHangSeen >= 2) return 'activation-pam-symlink-hang';
-              } else {
-                pamSymlinkHangSeen = 0;
-              }
-              if (/Build Failed|Nix Evaluation Error|Package build failed|Full Disk Access|Permission denied|failed with|❌/i.test(candidate)) return 'build-error';
-              return null;
-            },
-            { attempts: Number(process.env.NIXMAC_E2E_BUILD_ATTEMPTS || DEFAULT_BUILD_ATTEMPTS), delayMs: Number(process.env.NIXMAC_E2E_BUILD_DELAY_MS || 5000) },
-          );
-          text = step3.text;
-          if (step3.result === 'step-3') {
-            text = await captureState(client, state, 'step-3-ready', 'Computer Use reached Step 3 after Build & Test.');
-            if (/button \(disabled\) Commit/i.test(text)) {
-              const commitReady = await waitFor(
-                client,
-                state,
-                'commit-ready',
-                (candidate) => (/button Commit/i.test(candidate) && !/button \(disabled\) Commit/i.test(candidate) ? 'ready' : null),
-                { attempts: Number(process.env.NIXMAC_E2E_COMMIT_READY_ATTEMPTS || 20), delayMs: Number(process.env.NIXMAC_E2E_COMMIT_READY_DELAY_MS || 1000) },
-              );
-              text = commitReady.text;
-            }
-            if (await clickByPattern(client, state, text, 'Commit changes', [/button Commit/i], 'Commit Step 3 changes.')) {
-              const committed = await waitForRemoteGit(
-                state,
-                'after-commit',
-                (snapshot) =>
-                  snapshot?.ok &&
-                  snapshot.head &&
-                  snapshot.head !== state.remoteConfig?.baselineHead &&
-                  !snapshot.statusShort &&
-                  Boolean(snapshot.baselineDiffNameOnly) &&
-                  snapshot.containsBat === true,
-                { attempts: Number(process.env.NIXMAC_E2E_COMMIT_ATTEMPTS || 30), delayMs: Number(process.env.NIXMAC_E2E_COMMIT_DELAY_MS || 1000) },
-              );
-              text = await captureState(client, state, 'after-commit', 'Computer Use committed Step 3 changes.');
-              if (committed.ok) {
-                state.remoteConfig.savedHead = committed.snapshot.head;
-                updateScenario(state, 'saveFlow', 'pass', 'Step 3 Commit persisted the generated bat/Homebrew change in the disposable config repo and left the worktree clean.');
-              } else {
-                updateScenario(state, 'saveFlow', 'fail', 'Step 3 Commit was clicked, but the disposable repo did not show a clean committed bat/Homebrew change.');
-                state.failures.push('Step 3 Commit did not produce the expected clean disposable git state.');
-              }
-            } else {
-              updateScenario(state, 'saveFlow', 'fail', 'Step 3 appeared, but Computer Use could not click Commit.');
-              state.failures.push('Step 3 Commit button was not reachable.');
-            }
-          } else if (step3.result === 'build-error') {
-            updateScenario(state, 'saveFlow', 'fail', 'Build & Test was confirmed in disposable mode, but the rebuild failed before Step 3.');
-            updateScenario(state, 'rollbackCleanup', 'inconclusive', 'Rollback cleanup was not attempted because Build & Test did not reach Step 3.');
-            state.failures.push('Build & Test failed before Step 3.');
-          } else if (step3.result === 'activation-auth-required') {
-            updateScenario(state, 'saveFlow', 'fail', 'Build & Test reached macOS activation, but the remote lane requires an interactive administrator authentication prompt before Step 3 can appear.');
-            updateScenario(state, 'rollbackCleanup', 'inconclusive', 'Rollback cleanup was not attempted because activation was blocked by macOS administrator authentication.');
-            state.failures.push('Remote activation requires interactive macOS administrator authentication before Step 3.');
-          } else if (step3.result === 'activation-pam-symlink-hang') {
-            updateScenario(state, 'saveFlow', 'fail', 'Build & Test reached macOS activation, but remote AppleScript activation hung while creating /etc/pam.d/sudo_local for Touch ID sudo.');
-            updateScenario(state, 'rollbackCleanup', 'inconclusive', 'Rollback cleanup was not attempted because activation hung before Step 3.');
-            state.failures.push('Remote activation hung creating /etc/pam.d/sudo_local during Touch ID sudo setup.');
-          } else {
-            updateScenario(
+          const buildConfirmed = await clickByPattern(client, state, text, 'Confirm build boundary', [/button Confirm/i], 'Confirm Build & Test in proven disposable state.');
+          if (buildConfirmed) {
+            state.confirmationBoundaries.push('Build & Test boundary observed and confirmed in proven disposable state.');
+            let pamSymlinkHangSeen = 0;
+            const step3 = await waitFor(
+              client,
               state,
-              'saveFlow',
-              'inconclusive',
-              buildAppearsActive(text)
-                ? 'Build & Test was confirmed in disposable mode, but the rebuild still appeared active when the polling window ended.'
-                : 'Build & Test was confirmed in disposable mode, but Step 3 did not appear before the polling window ended.',
+              'build-to-step-3',
+              (candidate) => {
+                if (/All changes active|Commit Changes|button Commit|Progress: step 3 of 3|Save Keep changes/i.test(candidate) && !/button \(disabled\) Commit/i.test(candidate)) return 'step-3';
+                if (activationAuthRequired(candidate)) return 'activation-auth-required';
+                if (buildAppearsActive(candidate) && remoteActivationPamSymlinkHang()) {
+                  pamSymlinkHangSeen += 1;
+                  if (pamSymlinkHangSeen >= 2) return 'activation-pam-symlink-hang';
+                } else {
+                  pamSymlinkHangSeen = 0;
+                }
+                if (/Build Failed|Nix Evaluation Error|Package build failed|Full Disk Access|Permission denied|failed with|❌/i.test(candidate)) return 'build-error';
+                return null;
+              },
+              { attempts: Number(process.env.NIXMAC_E2E_BUILD_ATTEMPTS || DEFAULT_BUILD_ATTEMPTS), delayMs: Number(process.env.NIXMAC_E2E_BUILD_DELAY_MS || 5000) },
             );
-            updateScenario(state, 'rollbackCleanup', 'inconclusive', 'Rollback cleanup was not attempted because Step 3 was not reached.');
+            text = step3.text;
+            if (step3.result === 'step-3') {
+              text = await captureState(client, state, 'step-3-ready', 'Computer Use reached Step 3 after Build & Test.');
+              if (/button \(disabled\) Commit/i.test(text)) {
+                const commitReady = await waitFor(
+                  client,
+                  state,
+                  'commit-ready',
+                  (candidate) => (/button Commit/i.test(candidate) && !/button \(disabled\) Commit/i.test(candidate) ? 'ready' : null),
+                  { attempts: Number(process.env.NIXMAC_E2E_COMMIT_READY_ATTEMPTS || 20), delayMs: Number(process.env.NIXMAC_E2E_COMMIT_READY_DELAY_MS || 1000) },
+                );
+                text = commitReady.text;
+              }
+              if (await clickByPattern(client, state, text, 'Commit changes', [/button Commit/i], 'Commit Step 3 changes.')) {
+                const committed = await waitForRemoteGit(
+                  state,
+                  'after-commit',
+                  (snapshot) =>
+                    snapshot?.ok &&
+                    snapshot.head &&
+                    snapshot.head !== state.remoteConfig?.baselineHead &&
+                    !snapshot.statusShort &&
+                    Boolean(snapshot.baselineDiffNameOnly) &&
+                    snapshot.containsBat === true,
+                  { attempts: Number(process.env.NIXMAC_E2E_COMMIT_ATTEMPTS || 30), delayMs: Number(process.env.NIXMAC_E2E_COMMIT_DELAY_MS || 1000) },
+                );
+                text = await captureState(client, state, 'after-commit', 'Computer Use committed Step 3 changes.');
+                if (committed.ok) {
+                  state.remoteConfig.savedHead = committed.snapshot.head;
+                  updateScenario(state, 'saveFlow', 'pass', 'Step 3 Commit persisted the generated bat/Homebrew change in the disposable config repo and left the worktree clean.');
+                } else {
+                  updateScenario(state, 'saveFlow', 'fail', 'Step 3 Commit was clicked, but the disposable repo did not show a clean committed bat/Homebrew change.');
+                  state.failures.push('Step 3 Commit did not produce the expected clean disposable git state.');
+                }
+              } else {
+                updateScenario(state, 'saveFlow', 'fail', 'Step 3 appeared, but Computer Use could not click Commit.');
+                state.failures.push('Step 3 Commit button was not reachable.');
+              }
+            } else if (step3.result === 'build-error') {
+              updateScenario(state, 'saveFlow', 'fail', 'Build & Test was confirmed in disposable mode, but the rebuild failed before Step 3.');
+              updateScenario(state, 'rollbackCleanup', 'inconclusive', 'Rollback cleanup was not attempted because Build & Test did not reach Step 3.');
+              state.failures.push('Build & Test failed before Step 3.');
+            } else if (step3.result === 'activation-auth-required') {
+              updateScenario(state, 'saveFlow', 'fail', 'Build & Test reached macOS activation, but the remote lane requires an interactive administrator authentication prompt before Step 3 can appear.');
+              updateScenario(state, 'rollbackCleanup', 'inconclusive', 'Rollback cleanup was not attempted because activation was blocked by macOS administrator authentication.');
+              state.failures.push('Remote activation requires interactive macOS administrator authentication before Step 3.');
+            } else if (step3.result === 'activation-pam-symlink-hang') {
+              updateScenario(state, 'saveFlow', 'fail', 'Build & Test reached macOS activation, but remote AppleScript activation hung while creating /etc/pam.d/sudo_local for Touch ID sudo.');
+              updateScenario(state, 'rollbackCleanup', 'inconclusive', 'Rollback cleanup was not attempted because activation hung before Step 3.');
+              state.failures.push('Remote activation hung creating /etc/pam.d/sudo_local during Touch ID sudo setup.');
+            } else {
+              updateScenario(
+                state,
+                'saveFlow',
+                'inconclusive',
+                buildAppearsActive(text)
+                  ? 'Build & Test was confirmed in disposable mode, but the rebuild still appeared active when the polling window ended.'
+                  : 'Build & Test was confirmed in disposable mode, but Step 3 did not appear before the polling window ended.',
+              );
+              updateScenario(state, 'rollbackCleanup', 'inconclusive', 'Rollback cleanup was not attempted because Step 3 was not reached.');
+            }
+          } else {
+            updateScenario(state, 'buildBoundary', 'fail', 'Build & Test confirmation appeared, but Computer Use could not click Confirm in proven disposable state.');
+            updateScenario(state, 'saveFlow', 'inconclusive', 'Step 3 Save / Keep changes was not exercised because Build & Test confirmation could not be clicked.');
+            updateScenario(state, 'rollbackCleanup', 'inconclusive', 'Rollback cleanup was not attempted because Build & Test confirmation did not run.');
+            state.failures.push('Build & Test confirmation was not reachable in disposable mode.');
           }
         } else {
           if (boundary) state.confirmationBoundaries.push('Build & Test boundary observed; not confirmed because disposable build-confirm mode was not proven.');
@@ -3441,6 +3448,7 @@ async function runSuite(args) {
           updateScenario(state, 'rollbackCleanup', 'inconclusive', 'Rollback cleanup was not exercised because Step 3 Save did not run.');
         }
       } else {
+        updateScenario(state, 'buildBoundary', 'fail', 'Review passed, but Computer Use could not click Build & Test to verify the destructive boundary.');
         updateScenario(state, 'saveFlow', 'inconclusive', 'Step 3 Save / Keep changes was not exercised because Build & Test was not available.');
         updateScenario(state, 'rollbackCleanup', 'inconclusive', 'Rollback cleanup was not exercised because Build & Test was not available.');
       }
@@ -3511,6 +3519,9 @@ async function runSuite(args) {
         text = await captureState(client, state, 'after-discard', 'Computer Use exited Discard flow.');
         if (!boundary) {
           updateScenario(state, 'discard', 'fail', 'Discard did not show a visible confirmation boundary.');
+        } else if (canConfirmDiscard && !exitedDiscard) {
+          updateScenario(state, 'discard', 'fail', 'Discard confirmation appeared in proven disposable state, but Computer Use could not confirm it.');
+          state.failures.push('Discard confirmation was not reachable in disposable mode.');
         } else if (canConfirmDiscard) {
           updateScenario(state, 'discard', /Progress: step 1 of 3|Get started/i.test(text) ? 'pass' : 'fail', /Progress: step 1 of 3|Get started/i.test(text) ? 'Discard was confirmed in proven disposable state and returned to the prompt/start state.' : 'Discard confirmation did not return to start.');
         } else {
