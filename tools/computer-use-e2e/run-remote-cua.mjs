@@ -2550,11 +2550,12 @@ async function inspectReportWithComputerUse(client, state) {
       if (/nixmac Computer Use|Scenario Checklist|Claims vs Evidence|Failures \/ Open Issues/i.test(text)) {
         const label = `report-inspection-${app.replace(/[^a-zA-Z0-9._-]+/g, '-')}`;
         const image = contentImage(response);
-        const ordinal = String(state.screenshots.length + 1).padStart(2, '0');
-        const textPath = path.join(state.runDir, 'texts', `${ordinal}-${label}.txt`);
+        const textOrdinal = String(state.textSnapshots.length + 1).padStart(2, '0');
+        const textPath = path.join(state.runDir, 'texts', `${textOrdinal}-${label}.txt`);
         await writeFile(textPath, `${text}\n`, 'utf8');
         if (image) {
-          const pngPath = path.join(state.runDir, 'screenshots', `${ordinal}-${label}.png`);
+          const screenshotOrdinal = String(state.screenshots.length + 1).padStart(2, '0');
+          const pngPath = path.join(state.runDir, 'screenshots', `${screenshotOrdinal}-${label}.png`);
           await writeFile(pngPath, Buffer.from(image, 'base64'));
           state.screenshots.push({
             label: 'HTML report inspection',
