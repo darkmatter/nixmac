@@ -3,6 +3,58 @@ import process from 'node:process';
 import { writeFile } from 'node:fs/promises';
 import { redact } from './redaction.mjs';
 
+export function ensureCurrentSchema(
+  state,
+  {
+    scenarioLabels = {},
+    evolvedCaseStrategy = () => null,
+    buildPrFocus = () => null,
+    pngDimensions = () => null,
+    env = process.env,
+  } = {},
+) {
+  // Runner-owned defaults are injected by run-remote-cua.mjs to avoid circular
+  // imports while keeping this lifecycle helper independently testable.
+  state.scenarios ||= {};
+  delete state.scenarios.videoEvidence;
+  for (const [key, label] of Object.entries(scenarioLabels)) {
+    if (!state.scenarios[key]) {
+      state.scenarios[key] = {
+        label,
+        status: 'inconclusive',
+        notes: [`Scenario was added after this run or was not exercised by this runner.`],
+      };
+    }
+  }
+  for (const [key, label] of Object.entries(scenarioLabels)) state.scenarios[key].label = label;
+  state.claims ||= [];
+  state.failures ||= [];
+  state.narrative ||= [];
+  state.confirmationBoundaries ||= [];
+  state.screenshots ||= [];
+  state.textSnapshots ||= [];
+  state.video ||= null;
+  state.secretMaskingViolations ||= [];
+  state.visualAssertions ||= [];
+  state.evolvedCaseStrategy ||= evolvedCaseStrategy();
+  state.evolvedCaseRuns ||= [];
+  for (const shot of state.screenshots) {
+    if (!shot.imageSize && shot.path && state.runDir) {
+      const dimensions = pngDimensions(path.join(state.runDir, shot.path));
+      if (dimensions) shot.imageSize = dimensions;
+    }
+  }
+  state.cleanup ||= { attempted: false, restored: false, note: 'No cleanup status recorded.' };
+  state.safety ||= {
+    disposableConfig: env.NIXMAC_E2E_DISPOSABLE_CONFIG === 'true',
+    buildConfirmEnabled: env.NIXMAC_E2E_ALLOW_BUILD_CONFIRM === 'true',
+    discardConfirmEnabled: env.NIXMAC_E2E_ALLOW_DISCARD_CONFIRM === 'true',
+    note: 'Discard/build confirmation is only allowed when disposable config mode is explicitly proven.',
+  };
+  state.prFocus ||= buildPrFocus();
+  return state;
+}
+
 export function verdictFor(state) {
   const statuses = Object.values(state.scenarios).map((item) => item.status);
   if (statuses.includes('fail')) return 'fail';

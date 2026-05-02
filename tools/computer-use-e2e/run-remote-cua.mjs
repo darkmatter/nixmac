@@ -46,6 +46,7 @@ import { containsUnmaskedSecret, redact } from './redaction.mjs';
 import {
   addEvent,
   addNarrative,
+  ensureCurrentSchema as ensureStateCurrentSchema,
   saveState,
   shouldFailProcessForVerdict,
   updateScenario,
@@ -489,44 +490,13 @@ function updatePrSpecificCoverage(state) {
 }
 
 function ensureCurrentSchema(state) {
-  state.scenarios ||= {};
-  delete state.scenarios.videoEvidence;
-  for (const [key, label] of Object.entries(scenarioLabels)) {
-    if (!state.scenarios[key]) {
-      state.scenarios[key] = {
-        label,
-        status: 'inconclusive',
-        notes: [`Scenario was added after this run or was not exercised by this runner.`],
-      };
-    }
-  }
-  for (const [key, label] of Object.entries(scenarioLabels)) state.scenarios[key].label = label;
-  state.claims ||= [];
-  state.failures ||= [];
-  state.narrative ||= [];
-  state.confirmationBoundaries ||= [];
-  state.screenshots ||= [];
-  state.textSnapshots ||= [];
-  state.video ||= null;
-  state.secretMaskingViolations ||= [];
-  state.visualAssertions ||= [];
-  state.evolvedCaseStrategy ||= evolvedCaseStrategy();
-  state.evolvedCaseRuns ||= [];
-  for (const shot of state.screenshots) {
-    if (!shot.imageSize && shot.path && state.runDir) {
-      const dimensions = pngDimensions(path.join(state.runDir, shot.path));
-      if (dimensions) shot.imageSize = dimensions;
-    }
-  }
-  state.cleanup ||= { attempted: false, restored: false, note: 'No cleanup status recorded.' };
-  state.safety ||= {
-    disposableConfig: process.env.NIXMAC_E2E_DISPOSABLE_CONFIG === 'true',
-    buildConfirmEnabled: process.env.NIXMAC_E2E_ALLOW_BUILD_CONFIRM === 'true',
-    discardConfirmEnabled: process.env.NIXMAC_E2E_ALLOW_DISCARD_CONFIRM === 'true',
-    note: 'Discard/build confirmation is only allowed when disposable config mode is explicitly proven.',
-  };
-  state.prFocus ||= buildPrFocus();
-  return state;
+  return ensureStateCurrentSchema(state, {
+    scenarioLabels,
+    evolvedCaseStrategy,
+    buildPrFocus,
+    pngDimensions,
+    env: process.env,
+  });
 }
 
 function proofForScenario(state, key) {
@@ -2398,6 +2368,54 @@ async function runSelfTest() {
   );
   await saveState(stateHelperState);
   assert.equal(JSON.parse(await readFile(path.join(stateHelperRunDir, 'state.json'), 'utf8')).scenarios.sample.status, 'pass', 'saveState should persist state.json');
+  const schemaLifecycleState = ensureStateCurrentSchema(
+    {
+      runDir: stateHelperRunDir,
+      scenarios: {
+        sample: { label: 'Old sample label', status: 'pass', notes: [] },
+        videoEvidence: { label: 'Legacy video evidence', status: 'pass', notes: [] },
+      },
+      screenshots: [{ label: 'sample-shot', path: 'screenshots/sample.png' }],
+    },
+    {
+      scenarioLabels: { sample: 'Sample scenario', added: 'Added scenario' },
+      evolvedCaseStrategy: () => ({ defaultCaseId: 'homebrew-bat', extraCaseIds: [] }),
+      buildPrFocus: () => ({ changedFiles: ['apps/native/src/app.tsx'], scenarioKeys: ['sample'] }),
+      pngDimensions: (filePath) => (filePath.endsWith('screenshots/sample.png') ? { width: 100, height: 80 } : null),
+      env: {
+        NIXMAC_E2E_DISPOSABLE_CONFIG: 'true',
+        NIXMAC_E2E_ALLOW_BUILD_CONFIRM: 'true',
+        NIXMAC_E2E_ALLOW_DISCARD_CONFIRM: 'false',
+      },
+    },
+  );
+  assert.equal(schemaLifecycleState.scenarios.sample.label, 'Sample scenario', 'ensureCurrentSchema should refresh existing scenario labels');
+  assert.equal(schemaLifecycleState.scenarios.added.status, 'inconclusive', 'ensureCurrentSchema should add missing scenarios as inconclusive');
+  assert.equal(Object.hasOwn(schemaLifecycleState.scenarios, 'videoEvidence'), false, 'ensureCurrentSchema should remove legacy videoEvidence scenario');
+  assert.deepEqual(schemaLifecycleState.screenshots[0].imageSize, { width: 100, height: 80 }, 'ensureCurrentSchema should backfill screenshot dimensions');
+  assert.equal(schemaLifecycleState.safety.disposableConfig, true, 'ensureCurrentSchema should derive safety defaults from injected env');
+  assert.equal(schemaLifecycleState.safety.buildConfirmEnabled, true, 'ensureCurrentSchema should derive build-confirm safety from injected env');
+  assert.equal(schemaLifecycleState.safety.discardConfirmEnabled, false, 'ensureCurrentSchema should derive discard-confirm safety from injected env');
+  assert.deepEqual(schemaLifecycleState.prFocus.scenarioKeys, ['sample'], 'ensureCurrentSchema should derive prFocus from injected builder');
+  assert.deepEqual(schemaLifecycleState.evolvedCaseStrategy.extraCaseIds, [], 'ensureCurrentSchema should derive evolved-case strategy from injected builder');
+  const previousPrFocus = schemaLifecycleState.prFocus;
+  const previousSafety = schemaLifecycleState.safety;
+  const previousEvolvedCaseStrategy = schemaLifecycleState.evolvedCaseStrategy;
+  ensureStateCurrentSchema(schemaLifecycleState, {
+    scenarioLabels: { sample: 'Sample scenario', added: 'Added scenario' },
+    evolvedCaseStrategy: () => ({ defaultCaseId: 'unexpected', extraCaseIds: ['unexpected'] }),
+    buildPrFocus: () => ({ scenarioKeys: ['unexpected'] }),
+    pngDimensions: () => ({ width: 1, height: 1 }),
+    env: {
+      NIXMAC_E2E_DISPOSABLE_CONFIG: 'false',
+      NIXMAC_E2E_ALLOW_BUILD_CONFIRM: 'false',
+      NIXMAC_E2E_ALLOW_DISCARD_CONFIRM: 'true',
+    },
+  });
+  assert.equal(schemaLifecycleState.prFocus, previousPrFocus, 'ensureCurrentSchema should not replace existing prFocus on a later call');
+  assert.equal(schemaLifecycleState.safety, previousSafety, 'ensureCurrentSchema should not replace existing safety on a later call');
+  assert.equal(schemaLifecycleState.evolvedCaseStrategy, previousEvolvedCaseStrategy, 'ensureCurrentSchema should not replace existing evolved-case strategy on a later call');
+  assert.deepEqual(schemaLifecycleState.screenshots[0].imageSize, { width: 100, height: 80 }, 'ensureCurrentSchema should not replace existing screenshot dimensions on a later call');
   assert.equal(sourcePrefixExists('apps/native/src/components/widget/settings/'), true, 'coverage freshness should accept existing directory prefixes');
   assert.equal(sourcePrefixExists('apps/native/src/components/widget/settings-dialog.tsx'), true, 'coverage freshness should accept existing file prefixes');
   assert.equal(sourcePrefixExists('apps/native/src/components/widget/__missing__/'), false, 'coverage freshness should reject missing directory prefixes');
