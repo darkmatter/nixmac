@@ -8,6 +8,7 @@ import type {
   EvolutionResult,
   EvolveState,
   GitStatus,
+  HomebrewState,
   HistoryItem,
   RollbackResult,
   SemanticChangeMap,
@@ -25,6 +26,7 @@ export type {
   EvolveStep,
   GitFileStatus,
   GitStatus,
+  HomebrewState,
   HistoryItem,
   SemanticChangeMap,
   SetDirResult,
@@ -47,6 +49,14 @@ export interface DarwinConfig {
 export const DEFAULT_MAX_ITERATIONS = 25;
 
 export interface ApplyResult {
+  gitStatus: GitStatus;
+  evolveState: EvolveState;
+}
+
+export interface ConfigEditApplyResult {
+  ok: boolean;
+  count: number;
+  changeMap: SemanticChangeMap;
   gitStatus: GitStatus;
   evolveState: EvolveState;
 }
@@ -317,13 +327,7 @@ export const darwinAPI = {
     getRecommendedPrompt: () => invoke<RecommendedPrompt | null>("get_recommended_prompt"),
     scanDefaults: () => invoke<SystemDefaultsScan>("scan_system_defaults"),
     applyDefaults: (defaults: SystemDefault[]) =>
-      invoke<{
-        ok: boolean;
-        count: number;
-        changeMap: SemanticChangeMap;
-        gitStatus: GitStatus;
-        evolveState: EvolveState;
-      }>("apply_system_defaults", { defaults }),
+      invoke<ConfigEditApplyResult>("apply_system_defaults", { defaults }),
   },
   permissions: {
     checkAll: () => invoke<PermissionsState>("permissions_check_all"),
@@ -357,6 +361,11 @@ export const darwinAPI = {
     start: () => invoke<void>("lsp_start"),
     send: (message: string) => invoke<void>("lsp_send", { message }),
     stop: () => invoke<void>("lsp_stop"),
+  },
+
+  homebrew: {
+    getStateDiff: () => invoke<HomebrewState>("homebrew_get_state_diff"),
+    applyDiff: (diff: HomebrewState) => invoke<ConfigEditApplyResult>("homebrew_apply_diff", { diff }),
   },
 };
 

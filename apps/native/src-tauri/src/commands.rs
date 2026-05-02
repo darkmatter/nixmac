@@ -9,7 +9,8 @@
 
 use crate::{
     darwin, db, default_config, editor, evolution, evolve_state, feedback, finalize_restore, git,
-    lsp, nix, peek, permissions, rollback, scanner, shared_types, store, types, utils, watcher,
+    lsp, mac, nix, peek, permissions, rollback, scanner, shared_types, store, types, utils,
+    watcher,
 };
 use std::path::Path;
 use std::process::Command;
@@ -32,7 +33,10 @@ fn handle_new_config_dir(
     dir: &str,
 ) -> Result<(shared_types::EvolveState, Option<Vec<String>>), String> {
     let git_status = git::status(dir).ok();
-    let changes = git_status.as_ref().map(|s| s.changes.clone()).unwrap_or_default();
+    let changes = git_status
+        .as_ref()
+        .map(|s| s.changes.clone())
+        .unwrap_or_default();
     if let Some(ref s) = git_status {
         let _ = store::set_cached_git_status(app, s);
     }
@@ -94,25 +98,26 @@ pub async fn config_set_dir(
 
     let prev_dir = store::get_config_dir(&app).ok();
     let new_dir = normalized_dir.to_string_lossy().to_string();
-    store::set_config_dir(&app, &new_dir)
-        .map_err(|e| capture_err("config_set_dir", e))?;
+    store::set_config_dir(&app, &new_dir).map_err(|e| capture_err("config_set_dir", e))?;
 
     let (evolve_state, hosts) = if prev_dir.as_deref() != Some(&new_dir) {
-        let (es, hosts) = handle_new_config_dir(&app, &new_dir)
-            .map_err(|e| capture_err("config_set_dir", e))?;
+        let (es, hosts) =
+            handle_new_config_dir(&app, &new_dir).map_err(|e| capture_err("config_set_dir", e))?;
         (Some(es), hosts)
     } else {
         (None, None)
     };
 
-    Ok(shared_types::SetDirResult { dir: new_dir, evolve_state, hosts })
+    Ok(shared_types::SetDirResult {
+        dir: new_dir,
+        evolve_state,
+        hosts,
+    })
 }
 
 /// Opens a native folder picker dialog to select the flake directory.
 #[tauri::command]
-pub async fn config_pick_dir(
-    app: AppHandle,
-) -> Result<Option<shared_types::SetDirResult>, String> {
+pub async fn config_pick_dir(app: AppHandle) -> Result<Option<shared_types::SetDirResult>, String> {
     let dialog = app.dialog();
     // Try to open the picker at the currently configured directory
     let prev_dir = store::get_config_dir(&app).map_err(|e| capture_err("config_pick_dir", e))?;
@@ -132,13 +137,17 @@ pub async fn config_pick_dir(
         store::set_config_dir(&app, &dir).map_err(|e| capture_err("config_pick_dir", e))?;
         store::ensure_config_dir_exists(&app).map_err(|e| capture_err("config_pick_dir", e))?;
         let (evolve_state, hosts) = if dir != prev_dir {
-            let (es, hosts) = handle_new_config_dir(&app, &dir)
-                .map_err(|e| capture_err("config_pick_dir", e))?;
+            let (es, hosts) =
+                handle_new_config_dir(&app, &dir).map_err(|e| capture_err("config_pick_dir", e))?;
             (Some(es), hosts)
         } else {
             (None, None)
         };
-        return Ok(Some(shared_types::SetDirResult { dir, evolve_state, hosts }));
+        return Ok(Some(shared_types::SetDirResult {
+            dir,
+            evolve_state,
+            hosts,
+        }));
     }
 
     Ok(None)
@@ -238,6 +247,30 @@ pub async fn debug_sentry_event() -> Result<serde_json::Value, String> {
     sentry::capture_message("Debug Sentry event from Rust backend", sentry::Level::Error);
 
     Ok(serde_json::json!({"ok": true, "message": "Debug event captured from Rust"}))
+}
+
+// =============================================================================
+// Homebrew Commands
+// =============================================================================
+#[tauri::command]
+pub async fn homebrew_apply_diff(
+    app: AppHandle,
+    diff: shared_types::HomebrewState,
+) -> Result<serde_json::Value, String> {
+    crate::mac::homebrew::apply_homebrew_diff(&app, diff)
+        .await
+        .map_err(|e| capture_err("homebrew_apply_diff", e))
+}
+
+#[tauri::command]
+pub async fn homebrew_get_state_diff(
+    app: AppHandle,
+) -> Result<shared_types::HomebrewState, String> {
+    let dir = store::ensure_config_dir_exists(&app)
+        .map_err(|e| capture_err("homebrew_get_state_diff", e))?;
+
+    mac::homebrew::get_homebrew_state_diff(Path::new(&dir))
+        .map_err(|e| capture_err("homebrew_get_state_diff", e))
 }
 
 // =============================================================================
@@ -729,7 +762,9 @@ pub async fn summarize_current(
     let dir = store::get_config_dir(&app).map_err(|e| capture_err("summarize_current", e))?;
     let change_sets = crate::summarize::find_existing::for_current_state(&db_path, &dir)
         .map_err(|e| capture_err("summarize_current", e))?;
-    Ok(crate::summarize::group_existing::from_change_sets(change_sets))
+    Ok(crate::summarize::group_existing::from_change_sets(
+        change_sets,
+    ))
 }
 
 /// Returns all commits on the main branch, each paired with optional DB metadata, summary,
@@ -785,8 +820,8 @@ pub async fn generate_commit_message(app: AppHandle) -> Result<String, String> {
 /// Returns all UI preferences.
 #[tauri::command]
 pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
-    let openrouter_api_key =
-        store::get_effective_openrouter_api_key(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+    let openrouter_api_key = store::get_effective_openrouter_api_key(&app)
+        .map_err(|e| capture_err("ui_get_prefs", e))?;
     let openai_api_key =
         store::get_effective_openai_api_key(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
     let send_diagnostics =
@@ -819,6 +854,9 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
     let auto_summarize_on_focus =
         store::get_bool_pref(&app, store::AUTO_SUMMARIZE_ON_FOCUS_KEY, false)
             .map_err(|e| capture_err("ui_get_prefs", e))?;
+    let scan_homebrew_on_startup =
+        store::get_bool_pref(&app, store::SCAN_HOMEBREW_ON_STARTUP_KEY, true)
+            .map_err(|e| capture_err("ui_get_prefs", e))?;
     let developer_mode = store::get_bool_pref(&app, store::DEVELOPER_MODE_KEY, false)
         .map_err(|e| capture_err("ui_get_prefs", e))?;
     let pinned_version = store::get_string_pref_public(&app, store::PINNED_VERSION_KEY)
@@ -845,6 +883,7 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
         confirm_clear,
         confirm_rollback,
         auto_summarize_on_focus,
+        scan_homebrew_on_startup,
         developer_mode,
         pinned_version,
     })
@@ -927,8 +966,23 @@ pub async fn ui_set_prefs(
         .get(store::AUTO_SUMMARIZE_ON_FOCUS_KEY)
         .and_then(|v| v.as_bool())
     {
-        store::set_bool_pref(&app, store::AUTO_SUMMARIZE_ON_FOCUS_KEY, auto_summarize_on_focus)
-            .map_err(|e| capture_err("ui_set_prefs", e))?;
+        store::set_bool_pref(
+            &app,
+            store::AUTO_SUMMARIZE_ON_FOCUS_KEY,
+            auto_summarize_on_focus,
+        )
+        .map_err(|e| capture_err("ui_set_prefs", e))?;
+    }
+    if let Some(scan_homebrew_on_startup) = prefs
+        .get(store::SCAN_HOMEBREW_ON_STARTUP_KEY)
+        .and_then(|v| v.as_bool())
+    {
+        store::set_bool_pref(
+            &app,
+            store::SCAN_HOMEBREW_ON_STARTUP_KEY,
+            scan_homebrew_on_startup,
+        )
+        .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
     if let Some(developer_mode) = prefs
         .get(store::DEVELOPER_MODE_KEY)
