@@ -23,6 +23,7 @@ const config: StorybookConfig = {
         alias: {
           "@/tauri-api": path.resolve(storybookDir, "mocks/tauri-api.ts"),
           "@tauri-apps/api/core": path.resolve(storybookDir, "mocks/tauri-core.ts"),
+          "@tauri-apps/api/app": path.resolve(storybookDir, "mocks/tauri-app.ts"),
           "@tauri-apps/api/event": path.resolve(storybookDir, "mocks/tauri-event.ts"),
           "@tauri-apps/plugin-shell": path.resolve(storybookDir, "mocks/tauri-plugin-shell.ts"),
           "tauri-plugin-macos-permissions-api": path.resolve(
