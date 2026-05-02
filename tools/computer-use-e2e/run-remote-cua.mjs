@@ -1892,6 +1892,21 @@ function renderEvolvedCaseStrategy(state) {
 }
 
 function renderSummaryVideo(state) {
+  const textCount = state.textSnapshots?.length || 0;
+  const eventCount = state.events?.length || 0;
+  const visualCount = state.visualAssertions?.length || 0;
+  const evidencePack = `<div id="evidence-pack" class="evidence-pack" aria-label="Evidence pack">
+    <div class="evidence-pack-copy">
+      <strong>Evidence pack</strong>
+      <small>Concise proof bundle behind the verdict: redacted text, action events, remote state, and screenshot assertions.</small>
+    </div>
+    <div class="evidence-pack-grid">
+      <a href="#raw-evidence"><strong>${escapeHtml(String(textCount))}</strong><span>Text snapshots</span><small>Redacted accessibility state for each major action.</small></a>
+      <a href="#scenario-checklist"><strong>${escapeHtml(String(eventCount))}</strong><span>Action events</span><small>Click, type, polling, save, and cleanup trail.</small></a>
+      <a href="#visual-assertions"><strong>${escapeHtml(String(visualCount))}</strong><span>Visual assertions</span><small>Binding screenshot signal checks.</small></a>
+      <a href="#remote-metadata"><strong>DXU</strong><span>Remote state</span><small>Machine, app, process, and git metadata.</small></a>
+    </div>
+  </div>`;
   if (state.video?.status === 'available' && state.video.path) {
     return `<div id="summary-video" class="summary-video">
       <div class="summary-video-copy">
@@ -1899,14 +1914,16 @@ function renderSummaryVideo(state) {
         <small>Screenshot walkthrough compiled from ${escapeHtml(String(state.video.frames || state.screenshots.length))} safe-to-store frames.</small>
       </div>
       <video controls preload="metadata" src="${escapeHtml(state.video.path)}"></video>
-    </div>`;
+    </div>
+    ${evidencePack}`;
   }
   return `<div id="summary-video" class="summary-video summary-video-unavailable">
     <div class="summary-video-copy">
       <strong>Evidence video unavailable</strong>
       <small>${escapeHtml(state.video?.note || 'No screenshot compilation video was generated for this run.')}</small>
     </div>
-  </div>`;
+  </div>
+  ${evidencePack}`;
 }
 
 function renderExecutiveSummary(state, counts, evidenceSummary) {
@@ -3075,6 +3092,15 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
     .summary-video-copy small { color: #b8c0cb; line-height: 1.45; }
     .summary-video video { width: 100%; max-height: 520px; border: 1px solid #2e3541; border-radius: 6px; background: #050609; }
     .summary-video-unavailable { display: block; }
+    .evidence-pack { margin: -8px 0 22px; display: grid; grid-template-columns: minmax(220px, 0.42fr) minmax(360px, 1fr); gap: 18px; align-items: stretch; padding: 14px 16px; border: 1px solid #2e3541; border-radius: 8px; background: #10131a; }
+    .evidence-pack-copy strong { display: block; margin-bottom: 6px; }
+    .evidence-pack-copy small { color: #b8c0cb; line-height: 1.45; }
+    .evidence-pack-grid { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 10px; }
+    .evidence-pack-grid a { display: block; min-height: 86px; border: 1px solid #303640; border-radius: 8px; padding: 10px; background: #151922; color: #dce3ec; text-decoration: none; }
+    .evidence-pack-grid a:hover { border-color: #7fbfff; }
+    .evidence-pack-grid strong { display: block; color: #fff; font-size: 20px; line-height: 1.1; margin-bottom: 6px; }
+    .evidence-pack-grid span { display: block; color: #f6f8fb; font-weight: 700; margin-bottom: 4px; }
+    .evidence-pack-grid small { display: block; color: #9ba3ae; line-height: 1.35; }
     figure { margin: 0 0 18px; }
     figcaption { margin-top: 6px; color: #c5cbd3; font-size: 13px; }
     code { color: #a7d7ff; overflow-wrap: anywhere; }
@@ -3084,7 +3110,8 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
       .report-shell { display: block; }
       .report-nav { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: nowrap; overflow-x: auto; margin: 18px 0; }
       .report-nav a { white-space: nowrap; }
-      .summary-video { grid-template-columns: 1fr; }
+      .summary-video, .evidence-pack { grid-template-columns: 1fr; }
+      .evidence-pack-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
     }
   </style>
 </head>
@@ -3759,6 +3786,7 @@ async function runSelfTest() {
   const renderedHtml = await readFile(path.join(renderRunDir, 'index.html'), 'utf8');
   for (const anchor of [
     'id="summary"',
+    'id="evidence-pack"',
     'class="report-nav"',
     'id="pull-request-focus"',
     'id="findings-first"',
