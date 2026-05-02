@@ -1,0 +1,767 @@
+[
+  {
+    "ts": "2026-05-02T23:55:40.703Z",
+    "type": "remote.git.initial",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25264863256-1/config",
+    "head": "529cc5d991c4af62f8b7e7bed29f3c80240f3699",
+    "statusShort": "A flake.lock",
+    "diffNameOnly": "flake.lock",
+    "baselineDiffNameOnly": "",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T23:55:41.096Z",
+    "type": "remote.git.baseline-commit",
+    "ok": true,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "ts": "2026-05-02T23:55:41.503Z",
+    "type": "remote.git.baseline",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25264863256-1/config",
+    "head": "d763e3c85ebe8591808b5015d855096b11b029e4",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T23:55:48.091Z",
+    "type": "remote.relaunch",
+    "ok": true,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "ts": "2026-05-02T23:55:51.232Z",
+    "type": "computer-use.capture",
+    "label": "launch",
+    "note": "Computer Use observed the nixmac window at launch."
+  },
+  {
+    "ts": "2026-05-02T23:55:53.337Z",
+    "type": "computer-use.click",
+    "label": "Dismiss update banner",
+    "elementIndex": "20",
+    "response": "App=com.darkmatter.nixmac (pid 91331)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Dismiss update/error banner if present."
+  },
+  {
+    "ts": "2026-05-02T23:55:53.689Z",
+    "type": "computer-use.capture",
+    "label": "after-dismiss",
+    "note": "Computer Use clicked a visible Dismiss button."
+  },
+  {
+    "ts": "2026-05-02T23:55:56.314Z",
+    "type": "computer-use.click",
+    "label": "Settings",
+    "elementIndex": "7",
+    "response": "App=com.darkmatter.nixmac (pid 91331)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Open Settings."
+  },
+  {
+    "ts": "2026-05-02T23:55:56.775Z",
+    "type": "computer-use.capture",
+    "label": "settings-general",
+    "note": "Computer Use opened Settings."
+  },
+  {
+    "ts": "2026-05-02T23:55:59.393Z",
+    "type": "computer-use.click",
+    "label": "AI Models tab",
+    "elementIndex": "32",
+    "response": "App=com.darkmatter.nixmac (pid 91331)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Open AI Models settings."
+  },
+  {
+    "ts": "2026-05-02T23:55:59.826Z",
+    "type": "computer-use.capture",
+    "label": "settings-ai-models",
+    "note": "Computer Use opened AI Models settings."
+  },
+  {
+    "ts": "2026-05-02T23:56:02.578Z",
+    "type": "computer-use.click",
+    "label": "API Keys tab",
+    "elementIndex": "33",
+    "response": "App=com.darkmatter.nixmac (pid 91331)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Open API Keys settings."
+  },
+  {
+    "ts": "2026-05-02T23:56:04.018Z",
+    "type": "computer-use.capture",
+    "label": "settings-api-keys-01",
+    "note": "Polling settings-api-keys."
+  },
+  {
+    "ts": "2026-05-02T23:56:06.673Z",
+    "type": "computer-use.click",
+    "label": "Preferences tab",
+    "elementIndex": "34",
+    "response": "App=com.darkmatter.nixmac (pid 91331)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Open Preferences settings."
+  },
+  {
+    "ts": "2026-05-02T23:56:07.083Z",
+    "type": "computer-use.capture",
+    "label": "settings-preferences",
+    "note": "Computer Use opened Preferences settings."
+  },
+  {
+    "ts": "2026-05-02T23:56:09.587Z",
+    "type": "computer-use.click",
+    "label": "Close settings",
+    "elementIndex": "28",
+    "response": "App=com.darkmatter.nixmac (pid 91331)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Close Settings."
+  },
+  {
+    "ts": "2026-05-02T23:56:09.983Z",
+    "type": "computer-use.capture",
+    "label": "home-after-settings",
+    "note": "Computer Use returned to the main app surface after Settings coverage."
+  },
+  {
+    "ts": "2026-05-02T23:56:12.460Z",
+    "type": "computer-use.click",
+    "label": "History",
+    "elementIndex": "5",
+    "response": "App=com.darkmatter.nixmac (pid 91331)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 heading History, Value: 2\n\t\t\t\t\t9 text History\n\t\t\t\t10 text 2\n\t\t\t\t11 button Analyze recent (2)\n\t\t\t\t12 text TODAY\n\t\t\t\t13 text nixmac e2e restore baseline\n\t\t\t\t14 button Build\n\t\t\t\t15 text d763e3c\n\t\t\t\t16 text just now\n\t\t\t\t17 text 1\n\t\t\t\t18 text file\n\t\t\t\t19 text External commit\n\t\t\t\t20 button Analyze\n\t\t\t\t21 text flake.lock\n\t\t\t\t22 text Initial disposable nixmac E2E config\n\t\t\t\t23 button Restore\n\t\t\t\t24 text 529cc5d\n\t\t\t\t25 text just now\n\t\t\t\t26 text External commit\n\t\t\t\t27 button Analy",
+    "note": "Open My History."
+  },
+  {
+    "ts": "2026-05-02T23:56:12.796Z",
+    "type": "computer-use.capture",
+    "label": "history",
+    "note": "Computer Use opened History."
+  },
+  {
+    "ts": "2026-05-02T23:56:12.797Z",
+    "type": "computer-use.click.skipped",
+    "label": "Close history",
+    "note": "No element found for Close history"
+  },
+  {
+    "ts": "2026-05-02T23:56:15.322Z",
+    "type": "computer-use.click",
+    "label": "Toggle history closed",
+    "elementIndex": "5",
+    "response": "App=com.darkmatter.nixmac (pid 91331)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Toggle History closed to return to the prompt surface."
+  },
+  {
+    "ts": "2026-05-02T23:56:15.681Z",
+    "type": "computer-use.capture",
+    "label": "home-after-history",
+    "note": "Computer Use returned home after History."
+  },
+  {
+    "ts": "2026-05-02T23:56:18.216Z",
+    "type": "computer-use.click",
+    "label": "Console",
+    "elementIndex": "27",
+    "response": "App=com.darkmatter.nixmac (pid 91331)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Open Console."
+  },
+  {
+    "ts": "2026-05-02T23:56:18.603Z",
+    "type": "computer-use.screenshot-omitted",
+    "label": "console",
+    "reason": "Sensitive view image omitted from screenshot artifacts; redacted accessibility text snapshot retained."
+  },
+  {
+    "ts": "2026-05-02T23:56:18.603Z",
+    "type": "computer-use.capture",
+    "label": "console",
+    "note": "Computer Use opened Console."
+  },
+  {
+    "ts": "2026-05-02T23:56:21.105Z",
+    "type": "computer-use.click",
+    "label": "Close console",
+    "elementIndex": "33",
+    "response": "App=com.darkmatter.nixmac (pid 91331)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Close Console."
+  },
+  {
+    "ts": "2026-05-02T23:56:21.460Z",
+    "type": "computer-use.screenshot-omitted",
+    "label": "home-after-console",
+    "reason": "Sensitive view image omitted from screenshot artifacts; redacted accessibility text snapshot retained."
+  },
+  {
+    "ts": "2026-05-02T23:56:21.461Z",
+    "type": "computer-use.capture",
+    "label": "home-after-console",
+    "note": "Computer Use returned home after Console."
+  },
+  {
+    "ts": "2026-05-02T23:56:24.026Z",
+    "type": "computer-use.click",
+    "label": "Give feedback",
+    "elementIndex": "6",
+    "response": "App=com.darkmatter.nixmac (pid 91331)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 container Notifications alt+T\n\t\t\t\t4 container Give feedback\n\t\t\t\t\t5 heading Give feedback, Value: 2\n\t\t\t\t\t\t6 text Give feedback\n\t\t\t\t\t7 text Help us make nixmac better\n\t\t\t\t\t8 text TYPE\n\t\t\t\t\t10 container\n\t\t\t\t\t\t11 radio button Suggestion, Value: 1\n\t\t\t\t\t\t12 text Suggestion\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 radio button Bug, Value: 0\n\t\t\t\t\t\t15 text Bug\n\t\t\t\t\t16 container\n\t\t\t\t\t\t17 radio button General, Value: 0\n\t\t\t\t\t\t18 text General\n\t\t\t\t\t19 text WHAT WOULD YOU LIKE TO SEE\n\t\t\t\t\t20 text entry area (settable, string) WHAT WOULD YOU LIKE TO SEE, Placeholder: Tell us more...\n\t\t\t\t\t\t21 text Tell us more...\n\t\t\t\t\t",
+    "note": "Open Give Feedback."
+  },
+  {
+    "ts": "2026-05-02T23:56:24.426Z",
+    "type": "computer-use.capture",
+    "label": "feedback",
+    "note": "Computer Use opened Give Feedback."
+  },
+  {
+    "ts": "2026-05-02T23:56:27.141Z",
+    "type": "computer-use.click",
+    "label": "Cancel feedback",
+    "elementIndex": "37",
+    "response": "App=com.darkmatter.nixmac (pid 91331)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Cancel Give Feedback."
+  },
+  {
+    "ts": "2026-05-02T23:56:27.498Z",
+    "type": "computer-use.capture",
+    "label": "home-after-feedback",
+    "note": "Computer Use returned home after Feedback."
+  },
+  {
+    "ts": "2026-05-02T23:56:30.030Z",
+    "type": "computer-use.click",
+    "label": "Report Issue",
+    "elementIndex": "27",
+    "response": "App=com.darkmatter.nixmac (pid 91331)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 container Notifications alt+T\n\t\t\t\t4 container Report an issue\n\t\t\t\t\t5 heading Report an issue, Value: 2\n\t\t\t\t\t\t6 text Report an issue\n\t\t\t\t\t7 text Help us make nixmac better\n\t\t\t\t\t8 text DESCRIBE WHAT HAPPENED\n\t\t\t\t\t9 text entry area (settable, string) DESCRIBE WHAT HAPPENED, Placeholder: Tell us more...\n\t\t\t\t\t\t10 text Tell us more...\n\t\t\t\t\t11 text PROMPT (optional)\n\t\t\t\t\t12 combo box (collapsed, settable, string) Secondary Actions: Expand, Value: Select a prompt (optional)\n\n\t\t\t\t\t\t13 text Select a prompt (optional)\n\t\t\t\t\t14 text Email (optional)\n\t\t\t\t\t15 email field (settable, string) Email (option",
+    "note": "Open Report Issue."
+  },
+  {
+    "ts": "2026-05-02T23:56:30.381Z",
+    "type": "computer-use.capture",
+    "label": "report-issue",
+    "note": "Computer Use opened Report Issue."
+  },
+  {
+    "ts": "2026-05-02T23:56:33.093Z",
+    "type": "computer-use.click",
+    "label": "Cancel report issue",
+    "elementIndex": "26",
+    "response": "App=com.darkmatter.nixmac (pid 91331)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Cancel Report Issue."
+  },
+  {
+    "ts": "2026-05-02T23:56:33.444Z",
+    "type": "computer-use.capture",
+    "label": "home-after-report-issue",
+    "note": "Computer Use returned home after Report Issue."
+  },
+  {
+    "ts": "2026-05-02T23:56:36.014Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items chip",
+    "elementIndex": "25",
+    "response": "App=com.darkmatter.nixmac (pid 91331)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Open Untracked Homebrew items Add to config popover."
+  },
+  {
+    "ts": "2026-05-02T23:56:36.443Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-popover",
+    "note": "Computer Use opened Untracked Homebrew items Add to config popover."
+  },
+  {
+    "ts": "2026-05-02T23:56:39.036Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items Add to config",
+    "elementIndex": "55",
+    "response": "App=com.darkmatter.nixmac (pid 91331)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Apply Untracked Homebrew items to config."
+  },
+  {
+    "ts": "2026-05-02T23:56:40.430Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-apply-01",
+    "note": "Polling homebrew-apply."
+  },
+  {
+    "ts": "2026-05-02T23:56:41.802Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-apply-02",
+    "note": "Polling homebrew-apply."
+  },
+  {
+    "ts": "2026-05-02T23:56:43.181Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-apply-03",
+    "note": "Polling homebrew-apply."
+  },
+  {
+    "ts": "2026-05-02T23:56:44.557Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-apply-04",
+    "note": "Polling homebrew-apply."
+  },
+  {
+    "ts": "2026-05-02T23:56:44.948Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-apply",
+    "note": "Computer Use reached review/build state after applying Untracked Homebrew items to config."
+  },
+  {
+    "ts": "2026-05-02T23:56:47.485Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items Build & Test",
+    "elementIndex": "17",
+    "response": "App=com.darkmatter.nixmac (pid 91331)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 container Notifications alt+T\n\t\t\t\t4 container Confirm Action\n\t\t\t\t\t5 heading Confirm Action, Value: 2\n\t\t\t\t\t\t6 text Confirm Action\n\t\t\t\t\t7 text Rebuild with these configuration changes?\n\t\t\t\t\t8 checkbox (settable, integer) Switch this confirmation off in settings., Value: 0\n\t\t\t\t\t9 text Switch this confirmation off in settings.\n\t\t\t\t\t10 button Cancel\n\t\t\t\t\t11 button Confirm\n\t\t\t\t\t12 button Close\n\t\t13 close button\n\t\t14 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window\n\t\t15 minimize button\n\t16 menu bar\n\t\t17 nixmac\n\t\t18 File\n\t\t1",
+    "note": "Click Build & Test for Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-05-02T23:56:47.840Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-build-boundary",
+    "note": "Computer Use clicked Build & Test for Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-05-02T23:56:51.699Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items confirm build boundary",
+    "elementIndex": "11",
+    "response": "App=com.darkmatter.nixmac (pid 91331)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 text Ready to test-drive your changes?\n\t\t\t\t9 button Discard\n\t\t\t\t10 button Build & Test\n\t\t\t\t11 heading What's changed, Value: 2\n\t\t\t\t\t12 text What's changed\n\t\t\t\t13 tab group (selectable)\n\t\t\t\t\t14 tab (selected) Summary\n\t\t\t\t\t15 tab (selectable) Diff\n\t\t\t\t16 text Homebrew Taps\n\t\t\t\t17 text Added tap 'steipete/tap' for Homebrew.\n\t\t\t\t18 heading What else can I change for you?, Value: 2\n\t\t\t\t\t19 text What else can I change for you?\n\t\t\t\t20 container\n\t\t\t\t\t21 text entry area (settable",
+    "note": "Confirm Build & Test for Untracked Homebrew items in proven disposable state."
+  },
+  {
+    "ts": "2026-05-02T23:56:57.794Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-build-to-step-3-01",
+    "note": "Polling homebrew-build-to-step-3."
+  },
+  {
+    "ts": "2026-05-02T23:57:03.743Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-build-to-step-3-02",
+    "note": "Polling homebrew-build-to-step-3."
+  },
+  {
+    "ts": "2026-05-02T23:57:04.186Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-step-3-ready",
+    "note": "Computer Use reached Step 3 after Untracked Homebrew items Build & Test."
+  },
+  {
+    "ts": "2026-05-02T23:57:07.072Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items commit changes",
+    "elementIndex": "29",
+    "response": "App=com.darkmatter.nixmac (pid 91331)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Commit Step 3 changes for Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-05-02T23:57:08.498Z",
+    "type": "remote.git.homebrew-after-commit.01",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25264863256-1/config",
+    "head": "a340a0a32de0f07a9c0ec82ba4c23c260c4fd98a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/homebrew.nix\nresult",
+    "containsBat": true,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T23:57:08.911Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-after-commit",
+    "note": "Computer Use committed Untracked Homebrew items changes."
+  },
+  {
+    "ts": "2026-05-02T23:57:11.450Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items History after commit",
+    "elementIndex": "5",
+    "response": "App=com.darkmatter.nixmac (pid 91331)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 heading History, Value: 2\n\t\t\t\t\t9 text History\n\t\t\t\t10 text 3\n\t\t\t\t11 button Analyze recent (3)\n\t\t\t\t12 text TODAY\n\t\t\t\t13 button chore(tap): added tap 'steipete/tap' for Homebrew CURRENTa340a0a just now 2 files UpdateHomebrew Taps\n\t\t\t\t14 text nixmac e2e restore baseline\n\t\t\t\t15 button Restore\n\t\t\t\t16 text d763e3c\n\t\t\t\t17 text 1 min ago\n\t\t\t\t18 text 1\n\t\t\t\t19 text file\n\t\t\t\t20 text External commit\n\t\t\t\t21 button Analyze\n\t\t\t\t22 text flake.lock\n\t\t\t\t23 text Initial disposable nixmac E2",
+    "note": "Open History to restore baseline after Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-05-02T23:57:11.825Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-history-before-restore",
+    "note": "Computer Use opened History after Untracked Homebrew items commit."
+  },
+  {
+    "ts": "2026-05-02T23:57:14.408Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items restore previous commit",
+    "elementIndex": "15",
+    "response": "App=com.darkmatter.nixmac (pid 91331)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 heading History, Value: 2\n\t\t\t\t\t9 text History\n\t\t\t\t10 text 3\n\t\t\t\t11 button Analyze recent (3)\n\t\t\t\t12 text TODAY\n\t\t\t\t13 text Restore Commit d763e3c\n\t\t\t\t14 text nixmac e2e restore baseline\n\t\t\t\t15 button Confirm Restore\n\t\t\t\t16 button Cancel\n\t\t\t\t17 container\n\t\t\t\t\t18 text This will deactivate  1  commit .\n\t\t\t\t19 text Deactivated commits will stay in history.\n\t\t\t\t20 text You can restore them again later.\n\t\t\t\t21 text n1xm4c0\n\t\t\t\t22 text 1\n\t\t\t\t23 text file\n\t\t\t\t24 button Analyze\n\t",
+    "note": "Restore the pre-test baseline after Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-05-02T23:57:14.824Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-history-restore-preview",
+    "note": "Computer Use previewed History restore after Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-05-02T23:57:17.509Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items confirm restore",
+    "elementIndex": "15",
+    "response": "App=com.darkmatter.nixmac (pid 91331)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 heading History, Value: 2\n\t\t\t\t\t9 text History\n\t\t\t\t10 text 3\n\t\t\t\t11 button Analyze recent (3)\n\t\t\t\t12 text TODAY\n\t\t\t\t13 button chore(tap): added tap 'steipete/tap' for Homebrew CURRENTa340a0a just now 2 files UpdateHomebrew Taps\n\t\t\t\t14 text nixmac e2e restore baseline\n\t\t\t\t15 button Restore\n\t\t\t\t16 text d763e3c\n\t\t\t\t17 text 1 min ago\n\t\t\t\t18 text 1\n\t\t\t\t19 text file\n\t\t\t\t20 text External commit\n\t\t\t\t21 button Analyze\n\t\t\t\t22 text flake.lock\n\t\t\t\t23 text Initial disposable nixmac E2",
+    "note": "Confirm History restore cleanup after Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-05-02T23:57:22.994Z",
+    "type": "remote.git.homebrew-after-history-restore.01",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25264863256-1/config",
+    "head": "a340a0a32de0f07a9c0ec82ba4c23c260c4fd98a",
+    "statusShort": "M  modules/darwin/homebrew.nix\n M result",
+    "diffNameOnly": "result",
+    "baselineDiffNameOnly": "modules/darwin/homebrew.nix\nresult",
+    "containsBat": true,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T23:57:28.402Z",
+    "type": "remote.git.homebrew-after-history-restore.02",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25264863256-1/config",
+    "head": "69632b0ff29fddba7ab5ca036b882d3f69037e18",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "result",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T23:57:28.845Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-after-history-restore",
+    "note": "Computer Use completed History restore cleanup after Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-05-02T23:57:35.451Z",
+    "type": "remote.relaunch",
+    "ok": true,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "ts": "2026-05-02T23:57:36.047Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-after-rollback-home",
+    "note": "Computer Use returned to the prompt surface after Untracked Homebrew items rollback cleanup."
+  },
+  {
+    "ts": "2026-05-02T23:57:37.853Z",
+    "type": "computer-use.click",
+    "label": "Untracked customizations chip",
+    "elementIndex": "30",
+    "response": "App=com.darkmatter.nixmac (pid 95347)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 container\n\t\t\t\t\t16 text Update available: v 0.23.0\n\t\t\t\t17 text ## What's Changed\r * Document Product Proof hook behavior by @fkb032 in https://github.com/darkmatter/nixmac/pull/69\r * feat(settings): add hidden Developer panel with version-pin install by @czxtm ",
+    "note": "Open Untracked customizations Add to config popover."
+  },
+  {
+    "ts": "2026-05-02T23:57:38.342Z",
+    "type": "computer-use.capture",
+    "label": "customization-popover",
+    "note": "Computer Use opened Untracked customizations Add to config popover."
+  },
+  {
+    "ts": "2026-05-02T23:57:41.083Z",
+    "type": "computer-use.click",
+    "label": "Untracked customizations Add to config",
+    "elementIndex": "89",
+    "response": "App=com.darkmatter.nixmac (pid 95347)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 container\n\t\t\t\t\t16 text Update available: v 0.23.0\n\t\t\t\t17 text ## What's Changed\r * Document Product Proof hook behavior by @fkb032 in https://github.com/darkmatter/nixmac/pull/69\r * feat(settings): add hidden Developer panel with version-pin install by @czxtm ",
+    "note": "Apply Untracked customizations to config."
+  },
+  {
+    "ts": "2026-05-02T23:57:42.466Z",
+    "type": "computer-use.capture",
+    "label": "customization-apply-01",
+    "note": "Polling customization-apply."
+  },
+  {
+    "ts": "2026-05-02T23:57:43.940Z",
+    "type": "computer-use.capture",
+    "label": "customization-apply-02",
+    "note": "Polling customization-apply."
+  },
+  {
+    "ts": "2026-05-02T23:57:44.390Z",
+    "type": "computer-use.capture",
+    "label": "customization-apply",
+    "note": "Computer Use reached review/build state after applying Untracked customizations to config."
+  },
+  {
+    "ts": "2026-05-02T23:57:47.002Z",
+    "type": "computer-use.click",
+    "label": "Untracked customizations Build & Test",
+    "elementIndex": "23",
+    "response": "App=com.darkmatter.nixmac (pid 95347)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 container Notifications alt+T\n\t\t\t\t4 container Confirm Action\n\t\t\t\t\t5 heading Confirm Action, Value: 2\n\t\t\t\t\t\t6 text Confirm Action\n\t\t\t\t\t7 text Rebuild with these configuration changes?\n\t\t\t\t\t8 checkbox (settable, integer) Switch this confirmation off in settings., Value: 0\n\t\t\t\t\t9 text Switch this confirmation off in settings.\n\t\t\t\t\t10 button Cancel\n\t\t\t\t\t11 button Confirm\n\t\t\t\t\t12 button Close\n\t\t13 close button\n\t\t14 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window\n\t\t15 minimize button\n\t16 menu bar\n\t\t17 nixmac\n\t\t18 File\n\t\t1",
+    "note": "Click Build & Test for Untracked customizations."
+  },
+  {
+    "ts": "2026-05-02T23:57:47.380Z",
+    "type": "computer-use.capture",
+    "label": "customization-build-boundary",
+    "note": "Computer Use clicked Build & Test for Untracked customizations."
+  },
+  {
+    "ts": "2026-05-02T23:57:51.504Z",
+    "type": "computer-use.click",
+    "label": "Untracked customizations confirm build boundary",
+    "elementIndex": "11",
+    "response": "App=com.darkmatter.nixmac (pid 95347)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 container\n\t\t\t\t\t9 text Update available: v 0.23.0\n\t\t\t\t10 text ## What's Changed\r * Document Product Proof hook behavior by @fkb032 in https://github.com/darkmatter/nixmac/pull/69\r * feat(settings): add hidden Developer panel with version-pin install by @czxtm in https://github.com/darkmatter/nixmac/pull/67\r * fix(db): migrate legacy evolution branch column by @czxtm in https://github.com/darkmatter/nixmac/pull/73\r \r \r **Full Changelog**: https://github.com/darkmatter/nixm",
+    "note": "Confirm Build & Test for Untracked customizations in proven disposable state."
+  },
+  {
+    "ts": "2026-05-02T23:57:57.530Z",
+    "type": "computer-use.capture",
+    "label": "customization-build-to-step-3-01",
+    "note": "Polling customization-build-to-step-3."
+  },
+  {
+    "ts": "2026-05-02T23:58:03.646Z",
+    "type": "computer-use.capture",
+    "label": "customization-build-to-step-3-02",
+    "note": "Polling customization-build-to-step-3."
+  },
+  {
+    "ts": "2026-05-02T23:58:04.069Z",
+    "type": "computer-use.capture",
+    "label": "customization-step-3-ready",
+    "note": "Computer Use reached Step 3 after Untracked customizations Build & Test."
+  },
+  {
+    "ts": "2026-05-02T23:58:06.849Z",
+    "type": "computer-use.click",
+    "label": "Untracked customizations commit changes",
+    "elementIndex": "36",
+    "response": "App=com.darkmatter.nixmac (pid 95347)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 container\n\t\t\t\t\t16 text Update available: v 0.23.0\n\t\t\t\t17 text ## What's Changed\r * Document Product Proof hook behavior by @fkb032 in https://github.com/darkmatter/nixmac/pull/69\r * feat(settings): add hidden Developer panel with version-pin install by @czxtm ",
+    "note": "Commit Step 3 changes for Untracked customizations."
+  },
+  {
+    "ts": "2026-05-02T23:58:08.313Z",
+    "type": "remote.git.customization-after-commit.01",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25264863256-1/config",
+    "head": "d2b44f4bb899afda023dd7b1f3b5964d204ccd35",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "flake.nix\nmodules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T23:58:08.705Z",
+    "type": "computer-use.capture",
+    "label": "customization-after-commit",
+    "note": "Computer Use committed Untracked customizations changes."
+  },
+  {
+    "ts": "2026-05-02T23:58:11.313Z",
+    "type": "computer-use.click",
+    "label": "Untracked customizations History after commit",
+    "elementIndex": "5",
+    "response": "App=com.darkmatter.nixmac (pid 95347)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 container\n\t\t\t\t\t9 text Update available: v 0.23.0\n\t\t\t\t10 text ## What's Changed\r * Document Product Proof hook behavior by @fkb032 in https://github.com/darkmatter/nixmac/pull/69\r * feat(settings): add hidden Developer panel with version-pin install by @czxtm in https://github.com/darkmatter/nixmac/pull/67\r * fix(db): migrate legacy evolution branch column by @czxtm in https://github.com/darkmatter/nixmac/pull/73\r \r \r **Full Changelog**: https://github.com/darkmatter/nixm",
+    "note": "Open History to restore baseline after Untracked customizations."
+  },
+  {
+    "ts": "2026-05-02T23:58:11.748Z",
+    "type": "computer-use.capture",
+    "label": "customization-history-before-restore",
+    "note": "Computer Use opened History after Untracked customizations commit."
+  },
+  {
+    "ts": "2026-05-02T23:58:14.332Z",
+    "type": "computer-use.click",
+    "label": "Untracked customizations restore previous commit",
+    "elementIndex": "22",
+    "response": "App=com.darkmatter.nixmac (pid 95347)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 container\n\t\t\t\t\t9 text Update available: v 0.23.0\n\t\t\t\t10 text ## What's Changed\r * Document Product Proof hook behavior by @fkb032 in https://github.com/darkmatter/nixmac/pull/69\r * feat(settings): add hidden Developer panel with version-pin install by @czxtm in https://github.com/darkmatter/nixmac/pull/67\r * fix(db): migrate legacy evolution branch column by @czxtm in https://github.com/darkmatter/nixmac/pull/73\r \r \r **Full Changelog**: https://github.com/darkmatter/nixm",
+    "note": "Restore the pre-test baseline after Untracked customizations."
+  },
+  {
+    "ts": "2026-05-02T23:58:14.804Z",
+    "type": "computer-use.capture",
+    "label": "customization-history-restore-preview",
+    "note": "Computer Use previewed History restore after Untracked customizations."
+  },
+  {
+    "ts": "2026-05-02T23:58:17.353Z",
+    "type": "computer-use.click",
+    "label": "Untracked customizations confirm restore",
+    "elementIndex": "21",
+    "response": "App=com.darkmatter.nixmac (pid 95347)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 container\n\t\t\t\t\t9 text Update available: v 0.23.0\n\t\t\t\t10 text ## What's Changed\r * Document Product Proof hook behavior by @fkb032 in https://github.com/darkmatter/nixmac/pull/69\r * feat(settings): add hidden Developer panel with version-pin install by @czxtm in https://github.com/darkmatter/nixmac/pull/67\r * fix(db): migrate legacy evolution branch column by @czxtm in https://github.com/darkmatter/nixmac/pull/73\r \r \r **Full Changelog**: https://github.com/darkmatter/nixm",
+    "note": "Confirm History restore cleanup after Untracked customizations."
+  },
+  {
+    "ts": "2026-05-02T23:58:22.839Z",
+    "type": "remote.git.customization-after-history-restore.01",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25264863256-1/config",
+    "head": "d2b44f4bb899afda023dd7b1f3b5964d204ccd35",
+    "statusShort": "M  flake.nix\n M result",
+    "diffNameOnly": "result",
+    "baselineDiffNameOnly": "flake.nix\nmodules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T23:58:28.243Z",
+    "type": "remote.git.customization-after-history-restore.02",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25264863256-1/config",
+    "head": "48fc1db7df163b4a0910b47d77470347477da7a7",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T23:58:33.658Z",
+    "type": "remote.git.customization-after-history-restore.03",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25264863256-1/config",
+    "head": "48fc1db7df163b4a0910b47d77470347477da7a7",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T23:58:39.070Z",
+    "type": "remote.git.customization-after-history-restore.04",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25264863256-1/config",
+    "head": "48fc1db7df163b4a0910b47d77470347477da7a7",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T23:58:44.483Z",
+    "type": "remote.git.customization-after-history-restore.05",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25264863256-1/config",
+    "head": "48fc1db7df163b4a0910b47d77470347477da7a7",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T23:58:49.897Z",
+    "type": "remote.git.customization-after-history-restore.06",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25264863256-1/config",
+    "head": "48fc1db7df163b4a0910b47d77470347477da7a7",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T23:58:55.316Z",
+    "type": "remote.git.customization-after-history-restore.07",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25264863256-1/config",
+    "head": "48fc1db7df163b4a0910b47d77470347477da7a7",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T23:59:00.742Z",
+    "type": "remote.git.customization-after-history-restore.08",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25264863256-1/config",
+    "head": "48fc1db7df163b4a0910b47d77470347477da7a7",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T23:59:06.151Z",
+    "type": "remote.git.customization-after-history-restore.09",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25264863256-1/config",
+    "head": "48fc1db7df163b4a0910b47d77470347477da7a7",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T23:59:11.565Z",
+    "type": "remote.git.customization-after-history-restore.10",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25264863256-1/config",
+    "head": "48fc1db7df163b4a0910b47d77470347477da7a7",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T23:59:16.976Z",
+    "type": "remote.git.customization-after-history-restore.11",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25264863256-1/config",
+    "head": "48fc1db7df163b4a0910b47d77470347477da7a7",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T23:59:22.394Z",
+    "type": "remote.git.customization-after-history-restore.12",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25264863256-1/config",
+    "head": "48fc1db7df163b4a0910b47d77470347477da7a7",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T23:59:27.807Z",
+    "type": "remote.git.customization-after-history-restore.13",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25264863256-1/config",
+    "head": "48fc1db7df163b4a0910b47d77470347477da7a7",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T23:59:33.192Z",
+    "type": "remote.git.customization-after-history-restore.14",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25264863256-1/config",
+    "head": "STATUS_B64=",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "",
+    "containsBat": false,
+    "error": ""
+  }
+]
