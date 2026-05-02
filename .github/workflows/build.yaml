@@ -71,9 +71,11 @@ jobs:
             VERSION="${MAJ}.${MIN}.${PAT}"
             TAG="v${VERSION}"
           fi
-          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          {
+            echo "mode=$MODE"
+            echo "version=$VERSION"
+            echo "tag=$TAG"
+          } >> "$GITHUB_OUTPUT"
           echo "Computed: mode=$MODE version=$VERSION tag=$TAG"
       # Sync native app version files. Tag + release modes use the computed
       # version directly; branch/PR builds fall back to the max(package.json,
@@ -194,11 +196,11 @@ jobs:
             
             # Get the signing identity from the keychain
             KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-            IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+            IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)".*/\1/')
             
             if [ -z "$IDENTITY" ]; then
               echo "ERROR: No Developer ID Application identity found in keychain"
-              security find-identity -v -p codesigning $KEYCHAIN_PATH
+              security find-identity -v -p codesigning "$KEYCHAIN_PATH"
               exit 1
             fi
             
@@ -317,7 +319,7 @@ jobs:
         shell: "sops exec-env ops/secrets/secrets.yaml \"bash -e {0}\""
         run: |
           # Write the API key to a file
-          echo "$APPLE_API_KEY_CONTENT" > $RUNNER_TEMP/AuthKey.p8
+          echo "$APPLE_API_KEY_CONTENT" > "$RUNNER_TEMP/AuthKey.p8"
 
           DMG_PATH=$(find target/release/bundle/dmg -name "*.dmg" -type f | head -1)
 
@@ -334,18 +336,20 @@ jobs:
           fi
 
           # Clean up the key file
-          rm -f $RUNNER_TEMP/AuthKey.p8
+          rm -f "$RUNNER_TEMP/AuthKey.p8"
       - name: Get artifact paths
         id: artifacts
         run: |
           DMG_PATH=$(find target/release/bundle/dmg -name "*.dmg" -type f 2>/dev/null | head -1 || echo "")
           APP_PATH=$(find target/release/bundle/macos -name "*.app" -type d 2>/dev/null | head -1 || echo "")
 
-          echo "dmg_path=$DMG_PATH" >> $GITHUB_OUTPUT
-          echo "app_path=$APP_PATH" >> $GITHUB_OUTPUT
+          {
+            echo "dmg_path=$DMG_PATH"
+            echo "app_path=$APP_PATH"
+          } >> "$GITHUB_OUTPUT"
 
           if [ -n "$DMG_PATH" ]; then
-            echo "dmg_name=$(basename "$DMG_PATH")" >> $GITHUB_OUTPUT
+            echo "dmg_name=$(basename "$DMG_PATH")" >> "$GITHUB_OUTPUT"
           fi
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v7
@@ -359,6 +363,7 @@ jobs:
           name: nixmac-macos-app
           path: target/release/bundle/macos/*.app
           if-no-files-found: warn
+          include-hidden-files: true
       # On push-to-main releases: tag HEAD and push the tag. Tags are the
       # source of truth for shipped versions — no commit is pushed to main,
       # so the repo ruleset (which requires the `build` check on any branch
@@ -474,5 +479,5 @@ jobs:
         run: |
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
           if [ -f "$KEYCHAIN_PATH" ]; then
-            security delete-keychain $KEYCHAIN_PATH || true
+            security delete-keychain "$KEYCHAIN_PATH" || true
           fi
