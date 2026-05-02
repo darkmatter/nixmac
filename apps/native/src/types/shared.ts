@@ -108,6 +108,8 @@ export type GitStatus = { files: GitFileStatus[]; branch: string | null; diff: s
  */
 export type HistoryItem = { hash: string; message: string | null; createdAt: number; isBuilt: boolean; isBase: boolean; isExternal: boolean; fileCount: number; commit: Commit | null; changeMap: SemanticChangeMap | null; unsummarizedHashes: string[]; rawChanges: Change[]; originMessage: string | null; originHash: string | null; isOrphanedRestore: boolean; isUndone: boolean }
 
+export type HomebrewState = { isInstalled: boolean; casks: string[]; brews: string[]; taps: string[]; source: string | null; lastChecked: number }
+
 /**
  * Result returned from a rollback erase operation.
  */
@@ -130,7 +132,7 @@ export type SummarizedChangeSet = { changeSet: ChangeSet; changes: SummarizedCha
 /**
  * User interface preferences (synced to settings.json via tauri-plugin-store).
  */
-export type UiPrefs = { openrouterApiKey: string | null; openaiApiKey: string | null; ollamaApiBaseUrl: string | null; vllmApiBaseUrl: string | null; vllmApiKey: string | null; summaryProvider: string | null; summaryModel: string | null; evolveProvider: string | null; evolveModel: string | null; maxIterations: number | null; maxBuildAttempts: number | null; sendDiagnostics: boolean; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; developerMode: boolean; pinnedVersion: string | null }
+export type UiPrefs = { openrouterApiKey: string | null; openaiApiKey: string | null; ollamaApiBaseUrl: string | null; vllmApiBaseUrl: string | null; vllmApiKey: string | null; summaryProvider: string | null; summaryModel: string | null; evolveProvider: string | null; evolveModel: string | null; maxIterations: number | null; maxBuildAttempts: number | null; sendDiagnostics: boolean; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; scanHomebrewOnStartup: boolean; developerMode: boolean; pinnedVersion: string | null }
 
 /**
  * Event payload emitted by the git status watcher.

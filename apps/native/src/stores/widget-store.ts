@@ -29,7 +29,7 @@ export type SettingsTab = "general" | "api-keys" | "ai-models" | "preferences" |
 export type WidgetStep = "permissions" | "nix-setup" | "setup" | "begin" | "evolve" | "commit" | "manualEvolve" | "manualCommit" | "history";
 export type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
 export type ConfirmPrefKey = "confirmBuild" | "confirmClear" | "confirmRollback";
-export type BoolPrefKey = ConfirmPrefKey | "autoSummarizeOnFocus";
+export type BoolPrefKey = ConfirmPrefKey | "autoSummarizeOnFocus" | "scanHomebrewOnStartup";
 
 // Rebuild state for showing progress inline in the widget
 export type RebuildErrorType =
@@ -119,6 +119,7 @@ export interface WidgetState {
   isGenerating: boolean;
   settingsOpen: boolean;
   settingsActiveTab: SettingsTab | null;
+  prefsLoaded: boolean;
   showHistory: boolean;
   feedbackOpen: boolean;
   feedbackTypeOverride: FeedbackType | null;
@@ -140,6 +141,9 @@ export interface WidgetState {
 
   // Summarization preferences
   autoSummarizeOnFocus: boolean;
+
+  // Startup scanning preferences
+  scanHomebrewOnStartup: boolean;
 
   // Developer mode (hidden settings panel for bisecting / pinning to a past release)
   developerMode: boolean;
@@ -174,6 +178,7 @@ export interface WidgetActions {
   setProcessing: (isProcessing: boolean, action?: ProcessingAction) => void;
   setChangeMap: (map: SemanticChangeMap | null) => void;
   setSettingsOpen: (open: boolean, tab?: SettingsTab | null) => void;
+  setPrefsLoaded: (loaded: boolean) => void;
   setShowHistory: (show: boolean) => void;
   setFeedbackOpen: (open: boolean) => void;
   setError: (error: string | null) => void;
@@ -305,6 +310,7 @@ export const initialWidgetState: WidgetState = {
   isGenerating: false,
   settingsOpen: false,
   settingsActiveTab: null,
+  prefsLoaded: false,
   showHistory: false,
   feedbackOpen: false,
   feedbackTypeOverride: null,
@@ -320,6 +326,9 @@ export const initialWidgetState: WidgetState = {
 
   // Summarization preferences
   autoSummarizeOnFocus: false,
+
+  // Startup scanning preferences
+  scanHomebrewOnStartup: true,
 
   // Developer mode
   developerMode: false,
@@ -387,6 +396,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
       }),
     setSettingsOpen: (settingsOpen, tab) =>
       set({ settingsOpen, settingsActiveTab: tab ?? null }),
+    setPrefsLoaded: (prefsLoaded) => set({ prefsLoaded }),
     setShowHistory: (showHistory) => set({ showHistory }),
     setFeedbackOpen: (feedbackOpen) => set({ feedbackOpen }),
     setFeedbackTypeOverride: (feedbackTypeOverride) => set({ feedbackTypeOverride }),

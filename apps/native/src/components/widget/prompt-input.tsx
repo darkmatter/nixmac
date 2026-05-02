@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/input-group";
 import { BeginEvolveWarning } from "@/components/widget/begin-evolve-warning";
 import { MacRecommendationChip } from "@/components/widget/mac-recommendation-chip";
+import { HomebrewBadge } from "@/components/widget/homebrew-badge";
 import { PromptHistoryBadge } from "@/components/widget/prompt-history-badge";
 import { SystemDefaultsCTA } from "@/components/widget/system-defaults-cta";
 import { useEvolve } from "@/hooks/use-evolve";
@@ -210,6 +211,7 @@ export function PromptInput() {
           ))}
           <MacRecommendationChip />
           <SystemDefaultsCTA />
+          <HomebrewBadge />
         </div>
         <div className="ml-auto shrink-0">
           <PromptHistoryBadge />

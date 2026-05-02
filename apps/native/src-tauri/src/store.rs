@@ -30,6 +30,9 @@ pub const CONFIRM_ROLLBACK_KEY: &str = "confirmRollback";
 // Summarization preference keys
 pub const AUTO_SUMMARIZE_ON_FOCUS_KEY: &str = "autoSummarizeOnFocus";
 
+// Startup scan preference keys
+pub const SCAN_HOMEBREW_ON_STARTUP_KEY: &str = "scanHomebrewOnStartup";
+
 // Developer-mode preference keys
 pub const DEVELOPER_MODE_KEY: &str = "developerMode";
 pub const PINNED_VERSION_KEY: &str = "pinnedVersion";

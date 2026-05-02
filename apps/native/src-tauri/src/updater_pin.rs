@@ -16,6 +16,34 @@
 //!
 //! Gated to release builds because the updater plugin isn't registered in dev.
 
+#[allow(dead_code)]
+const RELEASES_BASE: &str = "https://releases.nixmac.com";
+
+/// We claim a sentinel-newer version so the updater plugin doesn't reject the
+/// install as a downgrade. Bisecting requires walking backwards through the
+/// release history, which the production updater would otherwise refuse.
+#[allow(dead_code)]
+const FAKE_NEWER_VERSION: &str = "9999.0.0";
+
+/// Build the synthetic Tauri updater manifest that points at a historic release.
+/// Pure helper, exercised by unit tests.
+#[allow(dead_code)]
+fn build_manifest_json(version: &str, signature: &str) -> String {
+    let bundle_url = format!("{RELEASES_BASE}/{version}/nixmac.app.tar.gz");
+    serde_json::json!({
+        "version": FAKE_NEWER_VERSION,
+        "notes": format!("Pinned to v{version} (developer install)"),
+        "pub_date": "2020-01-01T00:00:00Z",
+        "platforms": {
+            "darwin-aarch64": {
+                "signature": signature,
+                "url": bundle_url,
+            }
+        }
+    })
+    .to_string()
+}
+
 #[cfg(not(debug_assertions))]
 async fn install_version_impl(
     app: tauri::AppHandle,
@@ -27,12 +55,6 @@ async fn install_version_impl(
     use std::thread;
     use std::time::{Duration, Instant};
     use tauri_plugin_updater::UpdaterExt;
-
-    const RELEASES_BASE: &str = "https://releases.nixmac.com";
-    // We claim a sentinel-newer version so the updater plugin doesn't reject
-    // the install as a downgrade. Bisecting requires walking backwards through
-    // the release history, which the production updater would otherwise refuse.
-    const FAKE_NEWER_VERSION: &str = "9999.0.0";
 
     if version.trim().is_empty() {
         return Err("version cannot be empty".to_string());
@@ -56,20 +78,7 @@ async fn install_version_impl(
         .await
         .map_err(|e| format!("failed to read signature body: {e}"))?;
 
-    // Build a synthetic latest.json. `serde_json` handles the multi-line sig safely.
-    let bundle_url = format!("{RELEASES_BASE}/{version}/nixmac.app.tar.gz");
-    let manifest = serde_json::json!({
-        "version": FAKE_NEWER_VERSION,
-        "notes": format!("Pinned to v{version} (developer install)"),
-        "pub_date": "2020-01-01T00:00:00Z",
-        "platforms": {
-            "darwin-aarch64": {
-                "signature": signature,
-                "url": bundle_url,
-            }
-        }
-    })
-    .to_string();
+    let manifest = build_manifest_json(&version, &signature);
 
     // Spawn a one-shot localhost HTTP server that returns the manifest.
     let listener = TcpListener::bind("127.0.0.1:0")
@@ -169,4 +178,68 @@ pub async fn clear_pinned_version(app: tauri::AppHandle) -> Result<(), String> {
     crate::store::delete_pref(&app, crate::store::PINNED_VERSION_KEY)
         .map_err(|e| format!("failed to clear pinned version: {e}"))?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::Value;
+
+    #[test]
+    fn manifest_uses_fake_newer_version_to_bypass_downgrade_block() {
+        // The updater plugin refuses installs that aren't strict semver upgrades.
+        // The synthesized manifest must claim a sentinel-newer version so the
+        // bisect path actually runs; the bundle inside the tarball still has the
+        // real version baked in.
+        let manifest: Value =
+            serde_json::from_str(&build_manifest_json("0.21.0", "fake-sig")).unwrap();
+        assert_eq!(manifest["version"], FAKE_NEWER_VERSION);
+    }
+
+    #[test]
+    fn manifest_includes_signature_and_versioned_bundle_url() {
+        let manifest: Value =
+            serde_json::from_str(&build_manifest_json("0.21.0", "untrusted-comment\nsig-bytes"))
+                .unwrap();
+        let platform = &manifest["platforms"]["darwin-aarch64"];
+        assert_eq!(platform["signature"], "untrusted-comment\nsig-bytes");
+        assert_eq!(
+            platform["url"],
+            "https://releases.nixmac.com/0.21.0/nixmac.app.tar.gz"
+        );
+    }
+
+    #[test]
+    fn manifest_only_publishes_apple_silicon_target() {
+        // Mirrors how production latest.json is published — Intel is intentionally
+        // not supported. If this fails, the build pipeline likely changed and the
+        // synthesized manifest needs to follow.
+        let manifest: Value =
+            serde_json::from_str(&build_manifest_json("0.21.0", "sig")).unwrap();
+        let platforms = manifest["platforms"].as_object().unwrap();
+        assert!(platforms.contains_key("darwin-aarch64"));
+        assert_eq!(platforms.len(), 1);
+    }
+
+    #[test]
+    fn manifest_is_valid_json_for_multiline_minisign_signatures() {
+        // Minisign signatures contain `\n` and untrusted-comment headers. The
+        // manifest must round-trip through serde_json without breaking the
+        // updater plugin's parser.
+        let multiline_sig = "untrusted comment: signature from minisign secret key\nRWTLUaCT...\ntrusted comment: timestamp\nABC123==\n";
+        let json_str = build_manifest_json("0.21.0", multiline_sig);
+        let parsed: Value = serde_json::from_str(&json_str).expect("manifest must round-trip");
+        assert_eq!(parsed["platforms"]["darwin-aarch64"]["signature"], multiline_sig);
+    }
+
+    #[test]
+    fn manifest_notes_reference_the_real_target_version() {
+        // The user-visible "notes" field should reference the version they
+        // actually requested, not the sentinel-newer marker.
+        let manifest: Value =
+            serde_json::from_str(&build_manifest_json("0.21.0", "sig")).unwrap();
+        let notes = manifest["notes"].as_str().unwrap();
+        assert!(notes.contains("0.21.0"), "notes should reference target version: {notes}");
+        assert!(!notes.contains(FAKE_NEWER_VERSION), "notes should not leak the sentinel");
+    }
 }
