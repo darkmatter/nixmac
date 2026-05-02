@@ -1,0 +1,26 @@
+{
+  "chunk": "14a",
+  "title": "Extract Product Proof state helpers and redaction",
+  "reviewDir": "/tmp/claude-review-TcMUSO",
+  "reviewedAt": "2026-05-02T19:11:30.936Z",
+  "blockingIssuesRemaining": 0,
+  "convergenceScore": 88,
+  "decisions": [
+    {
+      "label": "Duplicate redact() in report.mjs not aligned with new hardening",
+      "severity": "low",
+      "reviewerRecommendation": "CONSIDER",
+      "finalDecision": "ACCEPT_APPLIED",
+      "rationale": "Updated report.mjs to import redact from redaction.mjs so the hardened redaction leaf module is the single source of truth."
+    }
+  ],
+  "validationAfterReviewFixes": [
+    "node --check tools/computer-use-e2e/redaction.mjs",
+    "node --check tools/computer-use-e2e/state.mjs",
+    "node --check tools/computer-use-e2e/report.mjs",
+    "node --check tools/computer-use-e2e/run-remote-cua.mjs",
+    "node tools/computer-use-e2e/run-remote-cua.mjs self-test",
+    "node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable --note 'state smoke after review fixes' --run-dir /tmp/nixmac-state-unavailable-smoke",
+    "node tools/computer-use-e2e/preservation-harness.mjs run --work-dir /tmp/nixmac-preservation-fixture-run"
+  ]
+}

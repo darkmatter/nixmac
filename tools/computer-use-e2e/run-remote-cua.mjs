@@ -42,6 +42,15 @@ import {
   findElement,
   setValueResponseIndicatesFailure,
 } from './transport.mjs';
+import { containsUnmaskedSecret, redact } from './redaction.mjs';
+import {
+  addEvent,
+  addNarrative,
+  saveState,
+  shouldFailProcessForVerdict,
+  updateScenario,
+  verdictFor,
+} from './state.mjs';
 import {
   captureRemoteMetadata as readRemoteMetadata,
   meaningfulBaselineDiff,
@@ -116,14 +125,6 @@ function run(command, args, options = {}) {
   return result.stdout.trim();
 }
 
-function redact(value) {
-  return String(value)
-    .replace(/sk-or-[A-Za-z0-9_-]+/g, '[REDACTED_OPENROUTER_KEY]')
-    .replace(/sk-[A-Za-z0-9_-]+/g, '[REDACTED_API_KEY]')
-    .replace(/OPENROUTER_API_KEY=[^\s"'<>]+/g, 'OPENROUTER_API_KEY=[REDACTED]')
-    .replace(/Bearer\s+[A-Za-z0-9._-]+/g, 'Bearer [REDACTED]');
-}
-
 function findQuestionInputEntry(text) {
   return elementEntries(text).find((entry) => /Type your answer|question-prompt-input/i.test(entry.label)) || null;
 }
@@ -192,18 +193,6 @@ function hasSettingsAPIKeysEvidence(text) {
 
 function hasSettingsPreferencesEvidence(text) {
   return hasSettingsFrameEvidence(text) && countMatches(text, [/heading Preferences/i, /Confirmation dialogs/i, /\bBuild\b/i, /Clear \/ Discard/i, /\bRollback\b/i, /Summarization/i, /switch \(settable/i]) >= 3;
-}
-
-function verdictFor(state) {
-  const statuses = Object.values(state.scenarios).map((item) => item.status);
-  if (statuses.includes('fail')) return 'fail';
-  if (statuses.includes('inconclusive')) return 'inconclusive';
-  return 'pass';
-}
-
-function shouldFailProcessForVerdict(state) {
-  if (process.env.NIXMAC_E2E_STRICT_VERDICT === 'false') return false;
-  return state.verdict === 'fail' || state.verdict === 'inconclusive';
 }
 
 function splitEnvList(value = '') {
@@ -924,37 +913,6 @@ async function baseState(runDir, options) {
     failures: [],
     scenarios,
   };
-}
-
-async function saveState(state) {
-  await writeFile(path.join(state.runDir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`, 'utf8');
-}
-
-async function addEvent(state, type, detail = {}) {
-  state.events.push({ ts: new Date().toISOString(), type, ...detail });
-  await writeFile(path.join(state.runDir, 'events.json'), `${JSON.stringify(state.events, null, 2)}\n`, 'utf8');
-}
-
-function updateScenario(state, key, status, note) {
-  if (!state.scenarios[key]) throw new Error(`Unknown scenario ${key}`);
-  state.scenarios[key].status = status;
-  if (note) state.scenarios[key].notes.push(redact(note));
-  const claim = {
-    claim: state.scenarios[key].label,
-    status,
-    evidence: redact(note || 'See Computer Use screenshots and text snapshots.'),
-  };
-  const existing = state.claims.find((item) => item.claim === claim.claim);
-  if (existing) Object.assign(existing, claim);
-  else state.claims.push(claim);
-}
-
-function addNarrative(state, text) {
-  state.narrative.push({ ts: new Date().toISOString(), text: redact(text) });
-}
-
-function containsUnmaskedSecret(text) {
-  return /(?:sk-[A-Za-z0-9_-]{16,}|Bearer\s+[A-Za-z0-9._-]{16,}|(?:OPENROUTER|OPENAI|ANTHROPIC|GROQ|XAI|MISTRAL|COHERE)_API_KEY=(?!\[REDACTED\])[^\s"'<>]+)/i.test(text || '');
 }
 
 async function captureState(client, state, label, note = '') {
@@ -2396,6 +2354,50 @@ async function runSelfTest() {
   assert.equal(containsUnmaskedSecret(`${settingsFrame}\n43 text API Key, Value: sk-or-v1-1234567890abcdef1234567890abcdef`), true, 'raw OpenRouter key should be treated as an unmasked secret');
   assert.equal(containsUnmaskedSecret(`${settingsFrame}\n43 text API Key, Value: sk-ant-api03-1234567890abcdef1234567890abcdef`), true, 'raw Anthropic-style key should be treated as an unmasked secret');
   assert.equal(containsUnmaskedSecret('OPENAI_API_KEY=sk-1234567890abcdef1234567890abcdef'), true, 'raw API key env var should be treated as an unmasked secret');
+  assert.equal(redact('ordinary text'), 'ordinary text', 'redact should leave ordinary text unchanged');
+  assert.equal(redact('OPENAI_API_KEY=sk-1234567890abcdef1234567890abcdef'), 'OPENAI_API_KEY=[REDACTED]', 'redact should mask provider API key environment assignments');
+  assert.equal(redact('Bearer abcdefghijklmnopqrstuvwxyz'), 'Bearer [REDACTED]', 'redact should mask Bearer tokens');
+  assert.equal(verdictFor({ scenarios: { launch: { status: 'pass' }, review: { status: 'fail' } } }), 'fail', 'verdictFor should fail when any scenario fails');
+  assert.equal(verdictFor({ scenarios: { launch: { status: 'pass' }, review: { status: 'inconclusive' } } }), 'inconclusive', 'verdictFor should be inconclusive when no scenario fails but one is inconclusive');
+  assert.equal(verdictFor({ scenarios: { launch: { status: 'pass' }, review: { status: 'pass' } } }), 'pass', 'verdictFor should pass when all scenarios pass');
+  assert.equal(shouldFailProcessForVerdict({ verdict: 'fail' }, {}), true, 'strict verdict mode should fail the process for fail verdicts');
+  assert.equal(shouldFailProcessForVerdict({ verdict: 'inconclusive' }, {}), true, 'strict verdict mode should fail the process for inconclusive verdicts');
+  assert.equal(shouldFailProcessForVerdict({ verdict: 'pass' }, {}), false, 'strict verdict mode should not fail the process for pass verdicts');
+  assert.equal(shouldFailProcessForVerdict({ verdict: 'fail' }, { NIXMAC_E2E_STRICT_VERDICT: 'false' }), false, 'strict verdict env override should suppress process failure');
+  const stateHelperRunDir = path.join(os.tmpdir(), `nixmac-state-helper-${Date.now()}`);
+  await mkdir(stateHelperRunDir, { recursive: true });
+  const stateHelperState = {
+    runDir: stateHelperRunDir,
+    events: [],
+    claims: [],
+    narrative: [],
+    scenarios: {
+      sample: { label: 'Sample scenario', status: 'inconclusive', notes: [] },
+    },
+  };
+  updateScenario(stateHelperState, 'sample', 'fail', 'OPENAI_API_KEY=sk-1234567890abcdef1234567890abcdef leaked');
+  updateScenario(stateHelperState, 'sample', 'pass', 'Recovered with Bearer abcdefghijklmnopqrstuvwxyz');
+  assert.equal(stateHelperState.scenarios.sample.status, 'pass', 'updateScenario should update scenario status');
+  assert.deepEqual(
+    stateHelperState.scenarios.sample.notes,
+    ['OPENAI_API_KEY=[REDACTED] leaked', 'Recovered with Bearer [REDACTED]'],
+    'updateScenario should redact scenario notes',
+  );
+  assert.deepEqual(
+    stateHelperState.claims,
+    [{ claim: 'Sample scenario', status: 'pass', evidence: 'Recovered with Bearer [REDACTED]' }],
+    'updateScenario should upsert a redacted claim for the scenario label',
+  );
+  addNarrative(stateHelperState, 'Narrative includes OPENROUTER_API_KEY=sk-or-v1-1234567890abcdef');
+  assert.equal(stateHelperState.narrative[0].text, 'Narrative includes OPENROUTER_API_KEY=[REDACTED]', 'addNarrative should redact narrative text');
+  await addEvent(stateHelperState, 'state.self-test', { detail: 'event detail' });
+  assert.deepEqual(
+    JSON.parse(await readFile(path.join(stateHelperRunDir, 'events.json'), 'utf8')).map((event) => event.type),
+    ['state.self-test'],
+    'addEvent should persist events.json',
+  );
+  await saveState(stateHelperState);
+  assert.equal(JSON.parse(await readFile(path.join(stateHelperRunDir, 'state.json'), 'utf8')).scenarios.sample.status, 'pass', 'saveState should persist state.json');
   assert.equal(sourcePrefixExists('apps/native/src/components/widget/settings/'), true, 'coverage freshness should accept existing directory prefixes');
   assert.equal(sourcePrefixExists('apps/native/src/components/widget/settings-dialog.tsx'), true, 'coverage freshness should accept existing file prefixes');
   assert.equal(sourcePrefixExists('apps/native/src/components/widget/__missing__/'), false, 'coverage freshness should reject missing directory prefixes');

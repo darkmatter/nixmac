@@ -2,14 +2,7 @@ import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { curatedProofKeys, scenarioGroups, screenshotAnnotations } from './scenario-catalog.mjs';
 import { failureTaxonomy } from './schemas.mjs';
-
-function redact(value) {
-  return String(value)
-    .replace(/sk-or-[A-Za-z0-9_-]+/g, '[REDACTED_OPENROUTER_KEY]')
-    .replace(/sk-[A-Za-z0-9_-]+/g, '[REDACTED_API_KEY]')
-    .replace(/OPENROUTER_API_KEY=[^\s"'<>]+/g, 'OPENROUTER_API_KEY=[REDACTED]')
-    .replace(/Bearer\s+[A-Za-z0-9._-]+/g, 'Bearer [REDACTED]');
-}
+import { redact } from './redaction.mjs';
 
 function escapeHtml(value) {
   return redact(value)
