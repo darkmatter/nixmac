@@ -301,4 +301,6 @@ pub struct UiPrefs {
     pub confirm_rollback: bool,
     pub auto_summarize_on_focus: bool,
     pub scan_homebrew_on_startup: bool,
+    pub developer_mode: bool,
+    pub pinned_version: Option<String>,
 }

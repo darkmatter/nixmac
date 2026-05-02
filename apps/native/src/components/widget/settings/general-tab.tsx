@@ -10,9 +10,12 @@ import {
 import { BootstrapConfig } from "@/components/widget/bootstrap-config";
 import { DirectoryPicker } from "@/components/widget/directory-picker";
 import { getWebSiteUrl } from "@/lib/env";
+import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
+import { getVersion } from "@tauri-apps/api/app";
 import { open } from '@tauri-apps/plugin-shell';
 import type { AnyFieldApi } from "@tanstack/react-form";
+import { useEffect, useRef, useState } from "react";
 
 interface GeneralTabProps {
   configDir: string | null;
@@ -116,8 +119,97 @@ export function GeneralTab({
               }}
             />
           </div>
+
+          <VersionRow />
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Version display with a hidden 7-click toggle for developer mode.
+ * Mirrors the classic Android "tap Build number 7 times" easter egg —
+ * keeps the developer panel out of the regular UI without an env-var dance.
+ */
+function VersionRow() {
+  const developerMode = useWidgetStore((s) => s.developerMode);
+  const setDeveloperMode = useWidgetStore((s) => s.setDeveloperMode);
+  const [version, setVersion] = useState<string | null>(null);
+  const [tapHint, setTapHint] = useState<string | null>(null);
+  const tapCountRef = useRef(0);
+  const tapTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    getVersion().then(setVersion).catch(() => setVersion("unknown"));
+  }, []);
+
+  const handleVersionTap = async () => {
+    if (developerMode) return; // already on; nothing to do
+    tapCountRef.current += 1;
+    if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+    tapTimerRef.current = setTimeout(() => {
+      tapCountRef.current = 0;
+      setTapHint(null);
+    }, 1500);
+
+    const remaining = 7 - tapCountRef.current;
+    if (remaining <= 0) {
+      tapCountRef.current = 0;
+      setTapHint(null);
+      setDeveloperMode(true);
+      try {
+        await darwinAPI.ui.setPrefs({ developerMode: true });
+      } catch (err) {
+        console.error("Failed to enable developer mode:", err);
+        setDeveloperMode(false);
+      }
+      return;
+    }
+    if (remaining <= 3) {
+      setTapHint(`${remaining} more tap${remaining === 1 ? "" : "s"} to enable Developer settings`);
+    }
+  };
+
+  const handleDisable = async () => {
+    setDeveloperMode(false);
+    try {
+      await darwinAPI.ui.setPrefs({ developerMode: false });
+    } catch (err) {
+      console.error("Failed to disable developer mode:", err);
+      setDeveloperMode(true);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-border p-3 text-xs text-muted-foreground">
+      <div className="flex items-center justify-between">
+        <span>Version</span>
+        <button
+          type="button"
+          onClick={handleVersionTap}
+          className="select-none font-mono tabular-nums text-foreground hover:text-primary"
+          title={developerMode ? "Developer mode is enabled" : undefined}
+        >
+          {version ?? "…"}
+          {developerMode && <span className="ml-2 text-[10px] uppercase tracking-wide text-primary">dev</span>}
+        </button>
+      </div>
+      {tapHint && !developerMode && (
+        <div className="mt-1 text-[11px] text-primary">{tapHint}</div>
+      )}
+      {developerMode && (
+        <div className="mt-2 flex items-center justify-between text-[11px]">
+          <span>Developer settings panel is enabled.</span>
+          <button
+            type="button"
+            onClick={handleDisable}
+            className="underline hover:text-foreground"
+          >
+            Disable
+          </button>
+        </div>
+      )}
     </div>
   );
 }
