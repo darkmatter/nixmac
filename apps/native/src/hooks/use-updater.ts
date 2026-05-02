@@ -39,7 +39,6 @@ export function useUpdater() {
   const checkedRef = useRef(false);
   const isDevMode = import.meta.env.DEV;
   const pinnedVersion = useWidgetStore((s) => s.pinnedVersion);
-  const prefsLoaded = useWidgetStore((s) => s.prefsLoaded);
 
   const checkForUpdates = useCallback(async () => {
     setState((s) => ({ ...s, checking: true, error: null }));
