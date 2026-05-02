@@ -34,6 +34,15 @@ import {
 } from './visual-proof.mjs';
 import { renderReportHtml } from './report.mjs';
 import {
+  AppServerClient,
+  clickResponseIndicatesFailure,
+  contentImage,
+  contentText,
+  elementEntries,
+  findElement,
+  setValueResponseIndicatesFailure,
+} from './transport.mjs';
+import {
   captureRemoteMetadata as readRemoteMetadata,
   meaningfulBaselineDiff,
   remoteActivationPamSymlinkHang,
@@ -115,28 +124,6 @@ function redact(value) {
     .replace(/Bearer\s+[A-Za-z0-9._-]+/g, 'Bearer [REDACTED]');
 }
 
-function findElement(text, patterns) {
-  const list = Array.isArray(patterns) ? patterns : [patterns];
-  for (const line of text.split('\n')) {
-    const match = line.match(/^\s*(\d+)\s+(.+)$/);
-    if (!match) continue;
-    const [, index, label] = match;
-    if (list.some((pattern) => pattern.test(label))) return index;
-  }
-  return null;
-}
-
-function elementEntries(text) {
-  return text
-    .split('\n')
-    .map((line, lineNumber) => {
-      const match = line.match(/^\s*(\d+)\s+(.+)$/);
-      if (!match) return null;
-      return { lineNumber, index: match[1], label: match[2] };
-    })
-    .filter(Boolean);
-}
-
 function findQuestionInputEntry(text) {
   return elementEntries(text).find((entry) => /Type your answer|question-prompt-input/i.test(entry.label)) || null;
 }
@@ -205,36 +192,6 @@ function hasSettingsAPIKeysEvidence(text) {
 
 function hasSettingsPreferencesEvidence(text) {
   return hasSettingsFrameEvidence(text) && countMatches(text, [/heading Preferences/i, /Confirmation dialogs/i, /\bBuild\b/i, /Clear \/ Discard/i, /\bRollback\b/i, /Summarization/i, /switch \(settable/i]) >= 3;
-}
-
-const clickToolFailurePatterns = [
-  /^\s*(?:error|failed|failure):\s*(?:click|action|element|stale|invalid|no such|unable|could not|not found|not clickable)/im,
-  /^\s*(?:click|action)\s+(?:failed|could not|unable)/im,
-  /^\s*element(?:\s+index)?\s+\d+\s+(?:not found|not clickable|is stale|stale|invalid)/im,
-  /\b(?:stale|invalid)\s+element(?:\s+index)?\b/i,
-  /\bno such element\b/i,
-  /\belement(?:\s+index)?\s+\d+\s+(?:not found|not clickable)\b/i,
-  /\b(?:could not|unable to)\s+click\b/i,
-];
-
-const setValueToolFailurePatterns = [
-  /^\s*(?:error|failed|failure):\s*(?:set|set_value|input|value|element|stale|invalid|no such|unable|could not|not found)/im,
-  /^\s*(?:set_value|set value|input|type)\s+(?:failed|could not|unable)/im,
-  /^\s*element(?:\s+index)?\s+\d+\s+(?:not found|not settable|is stale|stale|invalid)/im,
-  /\b(?:stale|invalid)\s+element(?:\s+index)?\b/i,
-  /\bno such element\b/i,
-  /\belement(?:\s+index)?\s+\d+\s+(?:not found|not settable)\b/i,
-  /\b(?:could not|unable to)\s+(?:set|type|enter)\b/i,
-];
-
-function clickResponseIndicatesFailure(response, responseText = contentText(response)) {
-  if (response?.result?.isError === true) return true;
-  return clickToolFailurePatterns.some((pattern) => pattern.test(responseText));
-}
-
-function setValueResponseIndicatesFailure(response, responseText = contentText(response)) {
-  if (response?.result?.isError === true) return true;
-  return setValueToolFailurePatterns.some((pattern) => pattern.test(responseText));
 }
 
 function verdictFor(state) {
@@ -994,92 +951,6 @@ function updateScenario(state, key, status, note) {
 
 function addNarrative(state, text) {
   state.narrative.push({ ts: new Date().toISOString(), text: redact(text) });
-}
-
-class AppServerClient {
-  constructor(url) {
-    this.url = url;
-    this.nextId = 1;
-    this.pending = new Map();
-    this.ws = null;
-    this.threadId = null;
-  }
-
-  async connect() {
-    this.ws = new WebSocket(this.url);
-    this.ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (!message.id || !this.pending.has(message.id)) return;
-      const entry = this.pending.get(message.id);
-      this.pending.delete(message.id);
-      if (message.error) entry.reject(new Error(JSON.stringify(message.error)));
-      else entry.resolve(message);
-    };
-    await new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error(`Timed out connecting to ${this.url}`)), 10000);
-      this.ws.onopen = () => {
-        clearTimeout(timer);
-        resolve();
-      };
-      this.ws.onerror = () => {
-        clearTimeout(timer);
-        reject(new Error(`WebSocket error connecting to ${this.url}`));
-      };
-    });
-    await this.request('initialize', {
-      clientInfo: { name: 'nixmac-remote-computer-use-e2e', version: '1.0.0' },
-      capabilities: { experimentalApi: true },
-    });
-    const thread = await this.request('thread/start', {
-      cwd: '/tmp',
-      model: 'gpt-5.4-mini',
-      approvalPolicy: 'never',
-      sandbox: 'danger-full-access',
-      ephemeral: true,
-    });
-    this.threadId = thread.result.thread.id;
-  }
-
-  request(method, params = {}, timeout = 60000) {
-    const id = this.nextId++;
-    this.ws.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.pending.delete(id);
-        reject(new Error(`Timed out waiting for ${method}`));
-      }, timeout);
-      this.pending.set(id, {
-        resolve: (value) => {
-          clearTimeout(timer);
-          resolve(value);
-        },
-        reject: (error) => {
-          clearTimeout(timer);
-          reject(error);
-        },
-      });
-    });
-  }
-
-  tool(tool, args = {}, timeout = 60000) {
-    return this.request(
-      'mcpServer/tool/call',
-      { server: 'computer-use', threadId: this.threadId, tool, arguments: args },
-      timeout,
-    );
-  }
-
-  close() {
-    if (this.ws) this.ws.close();
-  }
-}
-
-function contentText(response) {
-  return response?.result?.content?.find((item) => item.type === 'text')?.text ?? '';
-}
-
-function contentImage(response) {
-  return response?.result?.content?.find((item) => item.type === 'image')?.data ?? '';
 }
 
 function containsUnmaskedSecret(text) {
@@ -2605,6 +2476,110 @@ async function runSelfTest() {
   `;
   assert.equal(findQuestionChoiceEntry(configuredChoiceWithoutMarker, [/programming font/i])?.index, '2', 'question choice lookup may use configured choice labels even when marker text is absent');
   assert.equal(hasAnsweredQuestionEvidence('12 text Answered: Add a programming font', 'Add a programming font'), true, 'answered question evidence should match the submitted answer');
+
+  const simpleElementText = '1 button Settings\n2 text entry area Prompt\n3 button Send';
+  assert.equal(findElement(simpleElementText, [/button Send/i]), '3', 'findElement should return the first matching AX element index');
+  assert.equal(findElement(simpleElementText, [/button Missing/i]), null, 'findElement should return null when no AX element matches');
+  assert.deepEqual(
+    elementEntries(simpleElementText),
+    [
+      { lineNumber: 0, index: '1', label: 'button Settings' },
+      { lineNumber: 1, index: '2', label: 'text entry area Prompt' },
+      { lineNumber: 2, index: '3', label: 'button Send' },
+    ],
+    'elementEntries should parse indexed AX text lines',
+  );
+  assert.equal(
+    contentText({ result: { content: [{ type: 'image', data: 'png' }, { type: 'text', text: 'state text' }] } }),
+    'state text',
+    'contentText should extract the first text response payload',
+  );
+  assert.equal(contentText({ result: { content: [] } }), '', 'contentText should return an empty string for missing text payloads');
+  assert.equal(
+    contentImage({ result: { content: [{ type: 'text', text: 'state text' }, { type: 'image', data: 'png' }] } }),
+    'png',
+    'contentImage should extract the first image response payload',
+  );
+  const sentMessages = [];
+  class MockWebSocket {
+    constructor(url) {
+      this.url = url;
+      setTimeout(() => this.onopen?.(), 0);
+    }
+
+    send(payload) {
+      const message = JSON.parse(payload);
+      sentMessages.push(message);
+      const result = message.method === 'thread/start' ? { thread: { id: 'thread-123' } } : {};
+      setTimeout(() => this.onmessage?.({ data: JSON.stringify({ id: message.id, result }) }), 0);
+    }
+
+    close() {
+      this.closed = true;
+    }
+  }
+  const appServerClient = new AppServerClient('ws://mock', { WebSocketImpl: MockWebSocket });
+  await appServerClient.connect();
+  assert.equal(appServerClient.threadId, 'thread-123', 'AppServerClient should store the started thread id');
+  await appServerClient.tool('click', { app: 'com.darkmatter.nixmac', element_index: '7' }, 1000);
+  assert.deepEqual(
+    sentMessages.map((message) => message.method),
+    ['initialize', 'thread/start', 'mcpServer/tool/call'],
+    'AppServerClient should preserve initialize, thread start, and tool-call request order',
+  );
+  assert.deepEqual(
+    sentMessages[1].params,
+    {
+      cwd: '/tmp',
+      model: 'gpt-5.4-mini',
+      approvalPolicy: 'never',
+      sandbox: 'danger-full-access',
+      ephemeral: true,
+    },
+    'AppServerClient should preserve Codex app-server thread policy',
+  );
+  assert.deepEqual(
+    sentMessages[2].params,
+    {
+      server: 'computer-use',
+      threadId: 'thread-123',
+      tool: 'click',
+      arguments: { app: 'com.darkmatter.nixmac', element_index: '7' },
+    },
+    'AppServerClient should preserve Computer Use tool-call shape',
+  );
+  appServerClient.close();
+  class MockToolErrorWebSocket {
+    constructor() {
+      setTimeout(() => this.onopen?.(), 0);
+    }
+
+    send(payload) {
+      const message = JSON.parse(payload);
+      const result = message.method === 'thread/start' ? { thread: { id: 'thread-456' } } : {};
+      const response =
+        message.method === 'mcpServer/tool/call'
+          ? { id: message.id, error: { message: 'synthetic tool failure' } }
+          : { id: message.id, result };
+      setTimeout(() => this.onmessage?.({ data: JSON.stringify(response) }), 0);
+    }
+
+    close() {}
+  }
+  const toolErrorClient = new AppServerClient('ws://mock-tool-error', { WebSocketImpl: MockToolErrorWebSocket });
+  await toolErrorClient.connect();
+  await assert.rejects(
+    () => toolErrorClient.tool('click', { app: 'com.darkmatter.nixmac', element_index: '7' }, 1000),
+    /synthetic tool failure/,
+    'AppServerClient should reject JSON-RPC error responses',
+  );
+  const timeoutClient = new AppServerClient('ws://mock-timeout');
+  timeoutClient.ws = { send() {} };
+  await assert.rejects(
+    () => timeoutClient.request('never/replies', {}, 1),
+    /Timed out waiting for never\/replies/,
+    'AppServerClient should reject timed-out requests',
+  );
 
   assert.equal(clickResponseIndicatesFailure({ result: { isError: true, content: [{ type: 'text', text: 'Tool returned an error.' }] } }), true, 'MCP isError should fail click');
   assert.equal(clickResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'App state includes button Report Error and Console Error logs.' }] } }), false, 'ordinary app-state Error text should not fail click');

@@ -1,0 +1,58 @@
+{
+  "chunk": "13b",
+  "title": "Extract Product Proof transport primitives",
+  "reviewDir": "/tmp/claude-review-2NsRee",
+  "reviewedAt": "2026-05-02T18:50:10.842Z",
+  "blockingIssuesRemaining": 0,
+  "convergenceScore": 80,
+  "decisions": [
+    {
+      "label": "DEFAULT_WS belongs to the CLI runner, not transport",
+      "severity": "low",
+      "reviewerRecommendation": "CONSIDER",
+      "finalDecision": "ACCEPT_IN_PLAN",
+      "rationale": "Keep DEFAULT_WS in run-remote-cua.mjs as CLI/default configuration; transport receives URL via constructor."
+    },
+    {
+      "label": "AppServerClient is not pure transport — it bakes in Codex thread policy",
+      "severity": "low",
+      "reviewerRecommendation": "CONSIDER",
+      "finalDecision": "ACCEPT_IN_PLAN",
+      "rationale": "Keep transport.mjs naming for architecture consistency, but add a header comment documenting retained Codex app-server thread policy."
+    },
+    {
+      "label": "Validation set never opens a WebSocket — AppServerClient move is unverified end-to-end",
+      "severity": "low",
+      "reviewerRecommendation": "CONSIDER",
+      "finalDecision": "ACCEPT_IN_PLAN",
+      "rationale": "Add a mocked AppServerClient request-shape self-test and still note that live WebSocket validation is deferred to the next run-mode execution."
+    }
+  ],
+  "acceptedPlan": {
+    "moveToTransport": [
+      "AppServerClient",
+      "contentText",
+      "contentImage",
+      "findElement",
+      "elementEntries",
+      "clickResponseIndicatesFailure",
+      "setValueResponseIndicatesFailure"
+    ],
+    "keepInRunner": [
+      "DEFAULT_WS",
+      "captureState",
+      "clickByPattern",
+      "clickElementIndex",
+      "setValueByPattern",
+      "setValueElementIndex",
+      "waitFor",
+      "question-flow helpers",
+      "settings evidence predicates"
+    ],
+    "additionalTests": [
+      "findElement/elementEntries",
+      "contentText/contentImage",
+      "mocked AppServerClient JSON-RPC request shapes"
+    ]
+  }
+}
