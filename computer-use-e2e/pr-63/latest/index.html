@@ -153,11 +153,6 @@
     <strong>Remote metadata</strong>
     <small>DXU machine, app, and process metadata were captured.</small>
   </div>
-      <div class="signal signal-inconclusive">
-    <span class="verdict inconclusive">inconclusive</span>
-    <strong>Model critic</strong>
-    <small>Advisory critic was not enabled.</small>
-  </div>
     </div>
     <p class="summary-links">
       <a href="#pull-request-focus">Review PR Focus</a>
@@ -176,7 +171,6 @@
     <a href="#evidence-quality">Evidence Quality <span class="nav-badge ">5</span></a>
     <a href="#visual-assertions">Visual Assertions <span class="nav-badge ">16</span></a>
     <a href="#summary-video">Evidence Video <span class="nav-badge ">available</span></a>
-    <a href="#model-critic">Model Critic <span class="nav-badge ">not-run</span></a>
     <a href="#visual-proof">Visual Proof <span class="nav-badge ">28</span></a>
     <a href="#scenario-checklist">Scenario Checklist</a>
     <a href="#main-coverage">Coverage</a>
@@ -193,13 +187,11 @@
     <ul><li><code>.github/workflows/computer-use-e2e.yml</code></li>
 <li><code>tools/computer-use-e2e/PROPOSAL.md</code></li>
 <li><code>tools/computer-use-e2e/README.md</code></li>
-<li><code>tools/computer-use-e2e/V2_OPTIONAL_PROPOSAL.md</code></li>
 <li><code>tools/computer-use-e2e/V2_PROPOSAL.md</code></li>
 <li><code>tools/computer-use-e2e/check-remote.mjs</code></li>
 <li><code>tools/computer-use-e2e/coverage-manifest.json</code></li>
 <li><code>tools/computer-use-e2e/run-adversarial.mjs</code></li>
 <li><code>tools/computer-use-e2e/run-local.mjs</code></li>
-<li><code>tools/computer-use-e2e/run-model-critics.mjs</code></li>
 <li><code>tools/computer-use-e2e/run-remote-cua.mjs</code></li></ul>
     <h3>Mapped Scenario Focus</h3>
     <ul><li>Real provider workflow reaches Review</li>
@@ -212,19 +204,17 @@
 <li>Scenario results include inspectable visual/text evidence</li>
 <li>Generated HTML report is inspected with Computer Use</li></ul>
     <details>
-      <summary>Full changed-file list (13)</summary>
+      <summary>Full changed-file list (11)</summary>
       <ul><li><code>.github/workflows/build.yaml</code></li>
 <li><code>.github/workflows/computer-use-e2e.yml</code></li>
 <li><code>.gitignore</code></li>
 <li><code>tools/computer-use-e2e/PROPOSAL.md</code></li>
 <li><code>tools/computer-use-e2e/README.md</code></li>
-<li><code>tools/computer-use-e2e/V2_OPTIONAL_PROPOSAL.md</code></li>
 <li><code>tools/computer-use-e2e/V2_PROPOSAL.md</code></li>
 <li><code>tools/computer-use-e2e/check-remote.mjs</code></li>
 <li><code>tools/computer-use-e2e/coverage-manifest.json</code></li>
 <li><code>tools/computer-use-e2e/run-adversarial.mjs</code></li>
 <li><code>tools/computer-use-e2e/run-local.mjs</code></li>
-<li><code>tools/computer-use-e2e/run-model-critics.mjs</code></li>
 <li><code>tools/computer-use-e2e/run-remote-cua.mjs</code></li></ul>
     </details>
   </section>
@@ -582,26 +572,6 @@
 <tr><td><code>harness</code></td><td>Computer Use actions, artifact generation, report rendering, or runner bookkeeping failed.</td></tr>
 <tr><td><code>coverage</code></td><td>The suite lacks a scenario, manifest mapping, PR focus, or waiver for the behavior.</td></tr>
 <tr><td><code>inconclusive</code></td><td>The runner could not prove either pass or fail.</td></tr></tbody></table>
-    </details>
-  </section>
-
-      <h2 id="model-critic">Model Critic</h2>
-  <section class="panel">
-    <p><strong>Advisory only.</strong> Deterministic pass/fail remains the source of truth; model critic output cannot override scenario status, screenshot signal checks, remote git proof, or cleanup proof.</p>
-    <p><strong>Status:</strong> <span class="grade">not-run</span></p>
-    <details >
-      <summary>Model calls</summary>
-      <div class="table-scroll"><table>
-        <thead><tr><th>Model</th><th>Advisory Status</th><th>Confidence</th><th>Latency</th><th>Summary</th></tr></thead>
-        <tbody><tr><td colspan="5">No model critic calls were recorded.</td></tr></tbody>
-      </table></div>
-    </details>
-    <details >
-      <summary>Advisory findings</summary>
-      <div class="table-scroll"><table>
-        <thead><tr><th>Model</th><th>Severity</th><th>Finding</th><th>Scenario</th><th>Rationale</th></tr></thead>
-        <tbody><tr><td colspan="5">No advisory findings.</td></tr></tbody>
-      </table></div>
     </details>
   </section>
 
