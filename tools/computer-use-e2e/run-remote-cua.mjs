@@ -838,6 +838,17 @@ function matchesAny(value, patterns = []) {
   return patterns.some((pattern) => new RegExp(pattern).test(value));
 }
 
+function sourcePrefixExists(sourcePath) {
+  const fullPath = path.join(REPO_ROOT, sourcePath);
+  if (!existsSync(fullPath)) return false;
+  if (!sourcePath.endsWith('/')) return true;
+  try {
+    return statSync(fullPath).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
 function buildCoverageFreshness(state) {
   const manifest = loadCoverageManifest();
   const surfaces = manifest.surfaces || [];
@@ -849,10 +860,10 @@ function buildCoverageFreshness(state) {
   for (const surface of surfaces) {
     const scenarioKeys = surface.scenarioKeys || [];
     const unknown = scenarioKeys.filter((key) => !state.scenarios[key]);
-    const missingSources = (surface.sourcePrefixes || []).filter((sourcePath) => !sourcePath.endsWith('/') && !existsSync(path.join(REPO_ROOT, sourcePath)));
+    const missingSources = (surface.sourcePrefixes || []).filter((sourcePath) => !sourcePrefixExists(sourcePath));
     if (surface.waiver) waivers.push({ id: surface.id, label: surface.label, reason: surface.waiver });
     if (unknown.length) drift.push(`${surface.id} maps to unknown scenarios: ${unknown.join(', ')}`);
-    if (missingSources.length) drift.push(`${surface.id} references missing source files: ${missingSources.join(', ')}`);
+    if (missingSources.length) drift.push(`${surface.id} references missing source paths: ${missingSources.join(', ')}`);
     if (!scenarioKeys.length && !surface.waiver) drift.push(`${surface.id} has no scenario mapping and no waiver.`);
     if (scenarioKeys.length) mapped += 1;
   }
@@ -3987,6 +3998,9 @@ async function runSelfTest() {
   assert.equal(containsUnmaskedSecret(`${settingsFrame}\n43 text API Key, Value: sk-or-v1-1234567890abcdef1234567890abcdef`), true, 'raw OpenRouter key should be treated as an unmasked secret');
   assert.equal(containsUnmaskedSecret(`${settingsFrame}\n43 text API Key, Value: sk-ant-api03-1234567890abcdef1234567890abcdef`), true, 'raw Anthropic-style key should be treated as an unmasked secret');
   assert.equal(containsUnmaskedSecret('OPENAI_API_KEY=sk-1234567890abcdef1234567890abcdef'), true, 'raw API key env var should be treated as an unmasked secret');
+  assert.equal(sourcePrefixExists('apps/native/src/components/widget/settings/'), true, 'coverage freshness should accept existing directory prefixes');
+  assert.equal(sourcePrefixExists('apps/native/src/components/widget/settings-dialog.tsx'), true, 'coverage freshness should accept existing file prefixes');
+  assert.equal(sourcePrefixExists('apps/native/src/components/widget/__missing__/'), false, 'coverage freshness should reject missing directory prefixes');
 
   assert.equal(clickResponseIndicatesFailure({ result: { isError: true, content: [{ type: 'text', text: 'Tool returned an error.' }] } }), true, 'MCP isError should fail click');
   assert.equal(clickResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'App state includes button Report Error and Console Error logs.' }] } }), false, 'ordinary app-state Error text should not fail click');
