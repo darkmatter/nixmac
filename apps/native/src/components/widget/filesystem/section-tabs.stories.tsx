@@ -13,23 +13,12 @@ const meta = preview.meta({
 
 export default meta;
 
-export const PlainMode = meta.story({
+export const SystemActive = meta.story({
   render: () => {
     const [active, setActive] = useState<SectionId>("darwin");
     return (
       <div className="w-[660px]">
-        <SectionTabs sections={SECTIONS} active={active} setActive={setActive} mode="plain" files={FILES} />
-      </div>
-    );
-  },
-});
-
-export const NixMode = meta.story({
-  render: () => {
-    const [active, setActive] = useState<SectionId>("darwin");
-    return (
-      <div className="w-[660px]">
-        <SectionTabs sections={SECTIONS} active={active} setActive={setActive} mode="nix" files={FILES} />
+        <SectionTabs sections={SECTIONS} active={active} setActive={setActive} files={FILES} />
       </div>
     );
   },
@@ -40,7 +29,7 @@ export const UntrackedActive = meta.story({
     const [active, setActive] = useState<SectionId>("manage");
     return (
       <div className="w-[660px]">
-        <SectionTabs sections={SECTIONS} active={active} setActive={setActive} mode="plain" files={FILES} />
+        <SectionTabs sections={SECTIONS} active={active} setActive={setActive} files={FILES} />
       </div>
     );
   },
