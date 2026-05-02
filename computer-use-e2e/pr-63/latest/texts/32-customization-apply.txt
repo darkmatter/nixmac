@@ -1,6 +1,6 @@
 Computer Use state (CUA App Version: 758)
 <app_state>
-App=com.darkmatter.nixmac (pid 9108)
+App=com.darkmatter.nixmac (pid 22568)
 Window: "nixmac", App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area

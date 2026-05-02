@@ -1,0 +1,55 @@
+Computer Use state (CUA App Version: 758)
+<app_state>
+App=com.darkmatter.nixmac (pid 27743)
+Window: "nixmac", App: nixmac.
+	0 standard window nixmac, Secondary Actions: Raise
+		1 scroll area
+			2 HTML content Description: nixmac, URL: tauri://localhost
+				3 heading nixmac, Value: 3
+					4 text nixmac
+				5 button History
+				6 button Give feedback
+				7 button Settings
+				8 content list Progress: step 2 of 3, Review
+					9 container
+						10 text Describe What to change
+					11 container
+						12 text 2 Review Check & test
+					13 container
+						14 text 3 Save Keep changes
+				15 text Ready to test-drive your changes?
+				16 button Discard
+				17 button Build & Test
+				18 heading What's changed, Value: 2
+					19 text What's changed
+				20 tab group (selectable)
+					21 tab (selected) Summary
+					22 tab (selectable) Diff
+				23 text Homebrew Brews
+				24 text Added 'bat' to Homebrew formulae.
+				25 heading What else can I change for you?, Value: 2
+					26 text What else can I change for you?
+				27 container
+					28 text entry area (settable, string) Describe additional changes or refinements...
+						29 text Describe additional changes or refinements...
+					30 button (disabled) Send
+				31 button Install vim
+				32 button Add Rectangle app
+				33 button Enable the Finder path bar and status bar
+				34 pop up button My History
+				35 button Report Issue
+				36 button Console
+				37 container Notifications alt+T
+		38 close button
+		39 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+		40 minimize button
+	41 menu bar
+		42 nixmac
+		43 File
+		44 Edit
+		45 View
+		46 Window
+		47 Help
+
+The focused UI element is 2 HTML content.
+</app_state>
