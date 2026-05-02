@@ -138,6 +138,11 @@ non-gate evidence, redacts remote identity and prompts by default, and reports
 relative artifact paths only. Required branch protection still depends on fresh
 same-SHA workflow evidence and the promotion policy below.
 
+Operational playbooks for host rotation, singleton capacity, evidence policy,
+override lifecycle, and maintenance cadence live in `OPERATIONS.md`. This README
+remains the policy contract; the operations runbook should link here rather than
+forking policy text.
+
 The scenario catalog lives in `scenario-catalog.mjs` so reviewers can inspect
 scenario labels, proof metadata, assertion hints, and optional evolved cases
 without reading the full runner. Adding a scenario usually means updating that

@@ -10,10 +10,18 @@ import process from 'node:process';
 const DEFAULT_ROOT = path.join('artifacts', 'computer-use-remote');
 const VALID_FORMATS = new Set(['json', 'markdown']);
 const VERDICTS = ['pass', 'fail', 'inconclusive'];
+const LOCAL_HEURISTIC_STATEMENT =
+  'Promotion readiness is a local heuristic over preserved artifacts. It is not branch-protection truth, not release approval, and not a substitute for fresh same-SHA workflow evidence.';
+const DEFAULT_PROMOTION_THRESHOLDS = {
+  releaseTrailingClean: 5,
+  releaseLatestShaClean: 2,
+  requiredTrailingClean: 10,
+  requiredLatestShaClean: 3,
+};
 
 function usage() {
   return `Usage:
-  node tools/computer-use-e2e/summarize-runs.mjs [--root <path>] [--format json|markdown] [--out <path>] [--limit <n>] [--include-identity] [--reveal-prompt]
+  node tools/computer-use-e2e/summarize-runs.mjs [--root <path>] [--format json|markdown] [--out <path>] [--limit <n>] [--include-identity] [--reveal-prompt] [--release-trailing-clean <n>] [--release-latest-sha-clean <n>] [--required-trailing-clean <n>] [--required-latest-sha-clean <n>]
   node tools/computer-use-e2e/summarize-runs.mjs self-test`;
 }
 
@@ -26,6 +34,7 @@ function parseArgs(argv) {
     limit: 10,
     includeIdentity: false,
     revealPrompt: false,
+    ...DEFAULT_PROMOTION_THRESHOLDS,
   };
   const args = [...argv];
   if (args[0] === 'self-test') {
@@ -37,6 +46,10 @@ function parseArgs(argv) {
     else if (arg === '--format') options.format = requireValue(arg, args.shift());
     else if (arg === '--out') options.out = requireValue(arg, args.shift());
     else if (arg === '--limit') options.limit = Number.parseInt(requireValue(arg, args.shift()), 10);
+    else if (arg === '--release-trailing-clean') options.releaseTrailingClean = Number.parseInt(requireValue(arg, args.shift()), 10);
+    else if (arg === '--release-latest-sha-clean') options.releaseLatestShaClean = Number.parseInt(requireValue(arg, args.shift()), 10);
+    else if (arg === '--required-trailing-clean') options.requiredTrailingClean = Number.parseInt(requireValue(arg, args.shift()), 10);
+    else if (arg === '--required-latest-sha-clean') options.requiredLatestShaClean = Number.parseInt(requireValue(arg, args.shift()), 10);
     else if (arg === '--include-identity') options.includeIdentity = true;
     else if (arg === '--reveal-prompt') options.revealPrompt = true;
     else if (arg === '--help' || arg === '-h') {
@@ -48,6 +61,9 @@ function parseArgs(argv) {
   }
   if (!VALID_FORMATS.has(options.format)) throw new Error(`Invalid --format ${options.format}`);
   if (!Number.isInteger(options.limit) || options.limit < 1) throw new Error('--limit must be a positive integer');
+  for (const field of Object.keys(DEFAULT_PROMOTION_THRESHOLDS)) {
+    if (!Number.isInteger(options[field]) || options[field] < 1) throw new Error(`--${field.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)} must be a positive integer`);
+  }
   return options;
 }
 
@@ -285,22 +301,8 @@ function startedAtSortValue(run) {
 }
 
 function buildGateEvidence(runs) {
-  const realRuns = runs
-    .filter((run) => run.classification.countsForGate)
-    .sort((a, b) => startedAtSortValue(a) - startedAtSortValue(b) || a.relativeRunDir.localeCompare(b.relativeRunDir));
-  const deduped = [];
-  const seen = new Set();
-  for (const run of realRuns) {
-    const key = `${run.sha || 'unknown'}|${run.startedAt || 'unknown'}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    deduped.push(run);
-  }
-  const streak = [];
-  for (let index = deduped.length - 1; index >= 0; index -= 1) {
-    if (!isCleanRun(deduped[index])) break;
-    streak.unshift(deduped[index]);
-  }
+  const deduped = realWorkflowRuns(runs);
+  const streak = cleanTrailingRuns(deduped);
   const latest = deduped[deduped.length - 1] || null;
   const latestSha = latest?.sha || null;
   const latestShaCleanRuns = latestSha ? deduped.filter((run) => run.sha === latestSha && isCleanRun(run)).length : 0;
@@ -314,6 +316,105 @@ function buildGateEvidence(runs) {
     latestRealWorkflowRun: latest ? compactRun(latest) : null,
     countedRunPaths: deduped.map((run) => run.relativeRunDir),
     cleanStreakRunPaths: streak.map((run) => run.relativeRunDir),
+  };
+}
+
+function realWorkflowRuns(runs) {
+  const realRuns = runs
+    .filter((run) => run.classification.countsForGate)
+    .sort((a, b) => startedAtSortValue(a) - startedAtSortValue(b) || a.relativeRunDir.localeCompare(b.relativeRunDir));
+  const deduped = [];
+  const seen = new Set();
+  for (const run of realRuns) {
+    const key = `${run.sha || 'unknown'}|${run.startedAt || 'unknown'}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(run);
+  }
+  return deduped;
+}
+
+function cleanTrailingRuns(runs) {
+  const streak = [];
+  for (let index = runs.length - 1; index >= 0; index -= 1) {
+    if (!isCleanRun(runs[index])) break;
+    streak.unshift(runs[index]);
+  }
+  return streak;
+}
+
+function readinessState({ trailingClean, latestShaClean, trailingThreshold, latestShaThreshold, candidateWhen = false }) {
+  if (trailingClean >= trailingThreshold && latestShaClean >= latestShaThreshold) return 'ready';
+  if (candidateWhen) return 'candidate';
+  return 'not_ready';
+}
+
+function readinessBlockers({ label, trailingClean, latestShaClean, trailingThreshold, latestShaThreshold }) {
+  const blockers = [];
+  if (trailingClean < trailingThreshold) {
+    blockers.push(`${label} needs ${trailingThreshold} trailing clean real workflow runs; current local evidence has ${trailingClean}.`);
+  }
+  if (latestShaClean < latestShaThreshold) {
+    blockers.push(`${label} needs ${latestShaThreshold} clean real workflow runs on the latest SHA; current local evidence has ${latestShaClean}.`);
+  }
+  return blockers;
+}
+
+// TODO: Move this shape into schemas.mjs with the other summary/current-head proof metadata during a future extraction chunk.
+function buildPromotionReadiness(runs, gateEvidence, thresholds) {
+  const realRuns = realWorkflowRuns(runs);
+  const trailingClean = gateEvidence.trailingCleanRealWorkflowRuns;
+  const latestShaClean = gateEvidence.latestShaCleanRuns;
+  const nonCleanRealWorkflowRuns = realRuns.filter((run) => !isCleanRun(run));
+  const noTouchUnavailableReports = runs.filter((run) => run.classification.category === 'no-touch-unavailable');
+  const advisoryReady = trailingClean >= 1 && latestShaClean >= 1;
+  const releaseBlockers = readinessBlockers({
+    label: 'release/high-risk gate candidate',
+    trailingClean,
+    latestShaClean,
+    trailingThreshold: thresholds.releaseTrailingClean,
+    latestShaThreshold: thresholds.releaseLatestShaClean,
+  });
+  const releaseState = readinessState({
+    trailingClean,
+    latestShaClean,
+    trailingThreshold: thresholds.releaseTrailingClean,
+    latestShaThreshold: thresholds.releaseLatestShaClean,
+  });
+  const requiredBlockers = readinessBlockers({
+    label: 'broad required PR gate candidate',
+    trailingClean,
+    latestShaClean,
+    trailingThreshold: thresholds.requiredTrailingClean,
+    latestShaThreshold: thresholds.requiredLatestShaClean,
+  });
+  const requiredState = readinessState({
+    trailingClean,
+    latestShaClean,
+    trailingThreshold: thresholds.requiredTrailingClean,
+    latestShaThreshold: thresholds.requiredLatestShaClean,
+    candidateWhen: releaseState === 'ready',
+  });
+  return {
+    statement: LOCAL_HEURISTIC_STATEMENT,
+    thresholds,
+    advisoryEvidence: {
+      state: advisoryReady ? 'ready' : 'not_ready',
+      blockers: advisoryReady ? [] : ['Needs at least one clean real workflow Product Proof run in local evidence.'],
+    },
+    releaseHighRisk: {
+      state: releaseState,
+      blockers: releaseBlockers,
+    },
+    requiredPrGate: {
+      state: requiredState,
+      blockers: requiredBlockers,
+    },
+    infraTelemetry: {
+      noTouchUnavailableReports: noTouchUnavailableReports.length,
+      nonCleanRealWorkflowRuns: nonCleanRealWorkflowRuns.length,
+      note: 'No-touch unavailable reports are honest infra telemetry, not automatic readiness blockers. Investigate frequency and recency separately.',
+    },
   };
 }
 
@@ -339,7 +440,14 @@ export async function summarizeRuns(options = {}) {
     includeIdentity: false,
     revealPrompt: false,
     limit: 10,
+    ...DEFAULT_PROMOTION_THRESHOLDS,
     ...options,
+  };
+  const thresholds = {
+    releaseTrailingClean: merged.releaseTrailingClean,
+    releaseLatestShaClean: merged.releaseLatestShaClean,
+    requiredTrailingClean: merged.requiredTrailingClean,
+    requiredLatestShaClean: merged.requiredLatestShaClean,
   };
   const rootAbs = path.resolve(merged.root);
   const stateFiles = await findStateFiles(rootAbs);
@@ -363,6 +471,7 @@ export async function summarizeRuns(options = {}) {
 
   const sortedRuns = [...runs].sort((a, b) => startedAtSortValue(b) - startedAtSortValue(a) || a.relativeRunDir.localeCompare(b.relativeRunDir));
   const realWorkflowRuns = runs.filter((run) => run.classification.countsForGate);
+  const gateEvidence = buildGateEvidence(runs);
   return {
     generatedAt: new Date().toISOString(),
     root: path.relative(process.cwd(), rootAbs) || '.',
@@ -390,7 +499,8 @@ export async function summarizeRuns(options = {}) {
       textSnapshots: stats(realWorkflowRuns.map((run) => run.evidence.textSnapshots)),
       videos: countBy(realWorkflowRuns, (run) => run.video.status),
     },
-    gateEvidence: buildGateEvidence(runs),
+    gateEvidence,
+    promotionReadiness: buildPromotionReadiness(runs, gateEvidence, thresholds),
     latestRuns: sortedRuns.slice(0, merged.limit).map(compactRun),
     runs: sortedRuns.map((run) => ({
       ...compactRun(run),
@@ -422,6 +532,26 @@ function renderMarkdown(summary) {
   lines.push(`- Verdicts: ${VERDICTS.map((verdict) => `${verdict} ${summary.verdictCounts[verdict] || 0}`).join(' / ')}`);
   lines.push(`- Real workflow evidence: ${summary.realWorkflowEvidence.screenshots.total} screenshots, ${summary.realWorkflowEvidence.textSnapshots.total} text snapshots, ${summary.realWorkflowEvidence.videos.available || 0} videos available`);
   lines.push(`- All Product Proof evidence: ${summary.evidence.screenshots.total} screenshots, ${summary.evidence.textSnapshots.total} text snapshots, ${summary.evidence.videos.available || 0} videos available`);
+  lines.push('');
+  lines.push('## Promotion Readiness');
+  lines.push('');
+  lines.push(`> ${summary.promotionReadiness.statement}`);
+  lines.push('');
+  lines.push(`- Advisory evidence: ${summary.promotionReadiness.advisoryEvidence.state}`);
+  lines.push(`- Release/high-risk gate candidate: ${summary.promotionReadiness.releaseHighRisk.state}`);
+  lines.push(`- Broad required PR gate candidate: ${summary.promotionReadiness.requiredPrGate.state}`);
+  lines.push(`- Thresholds: release ${summary.promotionReadiness.thresholds.releaseTrailingClean} trailing / ${summary.promotionReadiness.thresholds.releaseLatestShaClean} latest-SHA clean; required ${summary.promotionReadiness.thresholds.requiredTrailingClean} trailing / ${summary.promotionReadiness.thresholds.requiredLatestShaClean} latest-SHA clean`);
+  lines.push(`- Infra telemetry: ${summary.promotionReadiness.infraTelemetry.noTouchUnavailableReports} no-touch unavailable reports, ${summary.promotionReadiness.infraTelemetry.nonCleanRealWorkflowRuns} non-clean real workflow runs`);
+  const readinessBlockers = [
+    ...summary.promotionReadiness.advisoryEvidence.blockers,
+    ...summary.promotionReadiness.releaseHighRisk.blockers,
+    ...summary.promotionReadiness.requiredPrGate.blockers,
+  ];
+  if (readinessBlockers.length) {
+    lines.push('');
+    lines.push('Readiness blockers:');
+    for (const blocker of readinessBlockers) lines.push(`- ${blocker}`);
+  }
   lines.push('');
   lines.push('## Classification');
   lines.push('');
@@ -514,6 +644,19 @@ function fixtureState({ verdict, startedAt, sha, pass = 2, fail = 0, inconclusiv
   };
 }
 
+async function writeCleanWorkflowSeries(root, count, latestShaRepeats) {
+  for (let index = 0; index < count; index += 1) {
+    const hour = String(index + 1).padStart(2, '0');
+    const sha = index >= count - latestShaRepeats ? 'sha-latest' : `sha-${index}`;
+    await writeFixture(
+      root,
+      `live-pr42-${200 + index}-1/2026-05-03T${hour}0000000Z`,
+      fixtureState({ verdict: 'pass', startedAt: `2026-05-03T${hour}:00:00.000Z`, sha }),
+      [{ ts: `2026-05-03T${hour}:03:00.000Z`, type: 'done' }],
+    );
+  }
+}
+
 async function runSelfTest() {
   const root = await mkdtemp(path.join(os.tmpdir(), 'nixmac-summary-self-test-'));
   try {
@@ -547,13 +690,33 @@ async function runSelfTest() {
     assert.equal(summary.gateEvidence.consecutiveCleanRealWorkflowRuns, 2);
     assert.equal(summary.gateEvidence.latestShaCleanRuns, 1);
     assert.equal(summary.realWorkflowEvidence.screenshots.total, 9);
+    assert.equal(summary.promotionReadiness.advisoryEvidence.state, 'ready');
+    assert.equal(summary.promotionReadiness.releaseHighRisk.state, 'not_ready');
+    assert.equal(summary.promotionReadiness.requiredPrGate.state, 'not_ready');
+    assert.match(summary.promotionReadiness.statement, /local heuristic/i);
+    assert.equal(JSON.stringify(summary.promotionReadiness).includes('DXU97120'), false);
+    assert.equal(JSON.stringify(summary.promotionReadiness).includes('Add a package'), false);
     assert.equal(summary.runs.find((run) => run.path === 'chunk3-render-baseline').duplicateMetadataGroupSize, 2);
     assert.equal(summary.runs.some((run) => JSON.stringify(run).includes('DXU97120')), false);
     assert.equal(summary.runs.some((run) => JSON.stringify(run).includes('Add a package')), false);
     const markdown = renderMarkdown(summary);
     assert.match(markdown, /Trailing clean real workflow runs: 2/);
     assert.match(markdown, /Real workflow evidence: 9 screenshots/);
+    assert.match(markdown, /Promotion Readiness/);
+    assert.match(markdown, /local heuristic/i);
     assert.match(markdown, /render-fixture: 1/);
+
+    const candidateRoot = path.join(root, 'candidate');
+    await writeCleanWorkflowSeries(candidateRoot, 5, 2);
+    const candidateSummary = await summarizeRuns({ root: candidateRoot, limit: 20 });
+    assert.equal(candidateSummary.promotionReadiness.releaseHighRisk.state, 'ready');
+    assert.equal(candidateSummary.promotionReadiness.requiredPrGate.state, 'candidate');
+
+    const readyRoot = path.join(root, 'ready');
+    await writeCleanWorkflowSeries(readyRoot, 10, 3);
+    const readySummary = await summarizeRuns({ root: readyRoot, limit: 20 });
+    assert.equal(readySummary.promotionReadiness.releaseHighRisk.state, 'ready');
+    assert.equal(readySummary.promotionReadiness.requiredPrGate.state, 'ready');
     process.stdout.write('summarize-runs self-test passed\n');
   } finally {
     await rm(root, { recursive: true, force: true });

@@ -299,6 +299,10 @@ local files into gate truth. Summary metrics use `state.v2.scenarioContracts` as
 the primary scenario source, with a legacy fallback to `state.scenarios` only
 for older preserved runs.
 
+`OPERATIONS.md` is the operator playbook for running the lane. It should link to
+`README.md` for policy rather than duplicating promotion, override, or
+infra-class semantics.
+
 `state.v2.scenarioContracts` is a preservation-sensitive contract. The
 preservation harness must compare a normalized subset with explicit equality
 semantics:
