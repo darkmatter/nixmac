@@ -292,6 +292,13 @@ The primary run artifacts are:
 - `video/computer-use-evidence.mp4` when screenshot reel creation succeeds;
 - remote readiness and metadata JSON artifacts when supplied by workflow.
 
+`summarize-runs.mjs` is an offline consumer of these artifacts. It may read
+`state.json` and `events.json` from local artifact roots to produce operator
+rollups, but it must not mutate run state, call GitHub, contact DXU, or promote
+local files into gate truth. Summary metrics use `state.v2.scenarioContracts` as
+the primary scenario source, with a legacy fallback to `state.scenarios` only
+for older preserved runs.
+
 `state.v2.scenarioContracts` is a preservation-sensitive contract. The
 preservation harness must compare a normalized subset with explicit equality
 semantics:

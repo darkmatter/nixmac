@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
@@ -90,7 +90,7 @@ function acquireLock() {
 }
 
 function buildFixtureRun(workDir) {
-  const root = workDir ? path.resolve(REPO_ROOT, workDir) : os.mkdtempSync(path.join(os.tmpdir(), 'nixmac-preservation-'));
+  const root = workDir ? path.resolve(REPO_ROOT, workDir) : mkdtempSync(path.join(os.tmpdir(), 'nixmac-preservation-'));
   const runDir = path.join(root, 'fixture-run');
   rmSync(runDir, { recursive: true, force: true });
   mkdirSync(runDir, { recursive: true });
