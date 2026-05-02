@@ -180,16 +180,113 @@ Phase progression:
   expired reviews, and a tested override process for infra-only inconclusive
   runs.
 
+Accountability roles:
+
+- Product Proof owner: owns gate semantics, promotion policy, managed waivers,
+  and report truthfulness. Resolve the current owner from this README until a
+  dedicated operator runbook names a replacement; if unclear, the Release
+  approver must name the Product Proof owner in the override record.
+- DXU operator: owns remote Mac availability, expected host identity, pinned SSH
+  host keys, Authorization Services policy mutation/restore behavior, remote
+  cleanup, and host rotation. Default resolver: the teammate who owns the
+  MacinCloud/DXU credentials for the run.
+- Release approver: owns accepting or rejecting an infra-only override for a
+  release cut or high-risk app-facing PR. Resolve the approver from the
+  branch-protection bypass actor or required reviewer for that change, and record
+  that person in the override record.
+- PR author/reviewer: owns reading the Product Proof report and not treating
+  no-touch or infra-inconclusive results as product proof.
+
 Infra-inconclusive override is a human release policy, not a hidden CI bypass.
 Do not make the workflow green when the report says `fail` or `inconclusive`.
-For Phase B, an override must record owner, date, reason, evidence link, affected
-commit, and why the result is remote-infra-only rather than app/product risk.
+For Phase B, the Release approver applies the override outside the workflow, for
+example by admin/bypass merge after posting the override record. The workflow
+check itself stays honest.
+
+Store override records as PR comments with the fixed marker
+`<!-- nixmac-product-proof-override -->` until a durable waiver store exists.
+For release-cut overrides without a PR, store the same record in the release
+tracking issue or release PR. An override record must include:
+
+- owner and role;
+- timestamp;
+- PR or release identifier;
+- affected commit SHA;
+- Product Proof run URL;
+- report URL or artifact URL;
+- classification;
+- evidence that the issue is remote-infra-only;
+- why the result is not app/product risk;
+- retry plan or follow-up issue;
+- expiry or review-after date.
+
+Template:
+
+```markdown
+<!-- nixmac-product-proof-override -->
+- owner:
+- role:
+- timestamp:
+- PR or release:
+- affected commit:
+- Product Proof run:
+- report or artifact:
+- classification:
+- evidence:
+- why not app/product risk:
+- retry or follow-up:
+- expires or review-after:
+```
+
+Allowed infra-only override classes:
+
+- `missing-secrets`: repository or environment secrets are absent.
+- `remote-unreachable`: DXU/MacinCloud cannot be reached before app state is
+  touched.
+- `remote-identity-mismatch`: host identity does not match the configured
+  expected Mac.
+- `provider-preflight-blocked`: provider health or billing blocks proof before
+  the app path is tested.
+- `operator-disabled`: the Product Proof owner or DXU operator intentionally
+  disables the remote lane with a dated reason.
+
+These no-touch classes may legitimately have no screenshots or video because
+the workflow did not touch app state. That is different from a run that touched
+the Mac and then failed to capture required evidence; missing required evidence
+after app interaction is not an infra-only override.
+
+Do not use the infra-only override path for app scenario failures, coverage
+drift without an accepted waiver, provider failures after the product path is
+under test, secret leak risk, cleanup failure touching persistent state, or
+missing required screenshot/video evidence after touching app state.
+
+`stale-queued-run` is a no-touch workflow auto-skip, not an infra-only override
+class. The superseding PR tip must get its own Product Proof run.
+
+Operator-initiated reruns and `workflow_dispatch` runs on stale or non-tip
+commits are triage evidence, not release-gate satisfaction. A successful stale
+or triage run on an obsolete SHA does not satisfy required branch protection for
+the current PR tip SHA.
 
 Fork pull requests do not receive the secret-backed remote lane. The publish and
 PR-comment steps are intentionally limited to same-repository PRs because the
 workflow needs remote SSH credentials and provider credentials. If nixmac starts
 accepting external fork PRs, fork/no-secret runs need a separate non-blocking
-classification instead of sharing infra-inconclusive semantics.
+classification instead of sharing infra-inconclusive semantics. Fork/no-secret
+classification is not an infra-only override.
+
+Promotion checklist:
+
+- Stay advisory beta until no-touch classes are structured, stale queued runs do
+  not consume DXU time, override records are discoverable, and managed waivers
+  are reviewed.
+- Promote release/high-risk app-facing PR gate only after the team accepts the
+  screenshot-reel evidence policy or continuous recording is implemented, and
+  after the lane has enough consecutive current-head clean passes to trust
+  retry/override behavior.
+- Promote broad required PR gate only after singleton capacity, queue p95,
+  cleanup reliability, owner coverage, host rotation, and infra-only override
+  practice are measured and boring.
 
 MacinCloud/DXU ownership is part of the product, not a workflow footnote. The
 operator runbook must track the host, pinned SSH key material, host rotation
