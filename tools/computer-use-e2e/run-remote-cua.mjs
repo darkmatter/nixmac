@@ -19,6 +19,8 @@ const DEFAULT_BUILD_ATTEMPTS = 180;
 const ARTIFACT_ROOT = path.join(REPO_ROOT, 'artifacts', 'computer-use-remote');
 const COVERAGE_MANIFEST_PATH = path.join(TOOL_DIR, 'coverage-manifest.json');
 
+let activeRunDir = '';
+
 const EVOLVED_CASE_CATALOG = Object.freeze({
   'homebrew-bat': {
     id: 'homebrew-bat',
@@ -506,6 +508,11 @@ function argValue(args, flag, fallback = '') {
   const index = args.indexOf(flag);
   if (index === -1) return fallback;
   return args[index + 1] ?? fallback;
+}
+
+function withRunDirArg(args, runDir) {
+  if (!runDir || args.includes('--run-dir')) return args;
+  return [...args, '--run-dir', runDir];
 }
 
 function timestampSlug(date = new Date()) {
@@ -3407,6 +3414,7 @@ async function runSuite(args) {
     prompt: DEFAULT_PROMPT,
   };
   const runDir = argValue(args, '--run-dir', path.join(ARTIFACT_ROOT, timestampSlug()));
+  activeRunDir = runDir;
   await mkdir(path.join(runDir, 'screenshots'), { recursive: true });
   await mkdir(path.join(runDir, 'texts'), { recursive: true });
   const state = await baseState(runDir, options);
@@ -3719,6 +3727,7 @@ async function runSuite(args) {
         updateScenario(state, 'buildBoundary', 'fail', 'Review passed, but Computer Use could not click Build & Test to verify the destructive boundary.');
         updateScenario(state, 'saveFlow', 'inconclusive', 'Step 3 Save / Keep changes was not exercised because Build & Test was not available.');
         updateScenario(state, 'rollbackCleanup', 'inconclusive', 'Rollback cleanup was not exercised because Build & Test was not available.');
+        state.failures.push('Review passed, but Build & Test was not reachable.');
       }
       if (state.scenarios.saveFlow.status === 'pass') {
         if (await clickByPattern(client, state, text, 'History after commit', [/button History/i], 'Open History to restore the disposable baseline.')) {
@@ -3791,7 +3800,9 @@ async function runSuite(args) {
           updateScenario(state, 'discard', 'fail', 'Discard confirmation appeared in proven disposable state, but Computer Use could not confirm it.');
           state.failures.push('Discard confirmation was not reachable in disposable mode.');
         } else if (canConfirmDiscard) {
-          updateScenario(state, 'discard', /Progress: step 1 of 3|Get started/i.test(text) ? 'pass' : 'fail', /Progress: step 1 of 3|Get started/i.test(text) ? 'Discard was confirmed in proven disposable state and returned to the prompt/start state.' : 'Discard confirmation did not return to start.');
+          const returnedToStart = exitedDiscard && /Progress: step 1 of 3|Get started/i.test(text);
+          updateScenario(state, 'discard', returnedToStart ? 'pass' : 'fail', returnedToStart ? 'Discard was confirmed in proven disposable state and returned to the prompt/start state.' : 'Discard confirmation did not return to start.');
+          if (!returnedToStart) state.failures.push('Discard confirmation did not return to the prompt/start state.');
         } else {
           updateScenario(state, 'discard', 'inconclusive', 'Discard boundary appeared, but confirmation was skipped because disposable config mode was not proven.');
         }
@@ -3875,6 +3886,17 @@ async function renderUnavailable(args) {
   console.log(path.join(runDir, 'index.html'));
 }
 
+async function loadExistingRunState(runDir) {
+  const statePath = path.join(runDir, 'state.json');
+  if (!existsSync(statePath)) return null;
+  const original = JSON.parse(await readFile(statePath, 'utf8'));
+  return ensureCurrentSchema({
+    ...original,
+    runDir,
+    crashFallbackRenderedAt: new Date().toISOString(),
+  });
+}
+
 async function renderExisting(args) {
   const runDir = argValue(args, '--run-dir', '');
   if (!runDir) throw new Error('render-existing requires --run-dir <path>');
@@ -3912,7 +3934,27 @@ async function renderExisting(args) {
 
 async function renderErrorReport(error, args) {
   const note = `Computer Use remote runner failed before completing the suite: ${redact(error instanceof Error ? error.message : String(error))}`;
-  await renderUnavailable([...args, '--note', note]);
+  const runDir = argValue(args, '--run-dir', activeRunDir || '');
+  const fallbackArgs = withRunDirArg(args, runDir);
+  if (!runDir) {
+    await renderUnavailable([...fallbackArgs, '--note', note]);
+    return;
+  }
+
+  await mkdir(path.join(runDir, 'screenshots'), { recursive: true });
+  await mkdir(path.join(runDir, 'texts'), { recursive: true });
+  const existingState = await loadExistingRunState(runDir);
+  if (!existingState) {
+    await renderUnavailable([...fallbackArgs, '--note', note]);
+    return;
+  }
+
+  addNarrative(existingState, note);
+  existingState.failures.push(note);
+  updateScenario(existingState, 'reportInspection', 'fail', 'Runner crashed before the report inspection step; fallback report was rendered from partial run evidence.');
+  await addEvent(existingState, 'runner.crash-fallback', { note });
+  await render(existingState);
+  console.log(path.join(runDir, 'index.html'));
 }
 
 async function runSelfTest() {
@@ -4055,6 +4097,31 @@ async function runSelfTest() {
   assert.deepEqual(duplicateIds, [], 'rendered report should not include duplicate element ids');
   const screenshotAnchors = [...renderedHtml.matchAll(/href="#(screenshot-[^"]+)"/g)].map((match) => match[1]);
   assert.equal(screenshotAnchors.every((anchor) => ids.includes(anchor)), true, 'artifact screenshot links should target rendered screenshot gallery anchors');
+
+  const crashRunDir = path.join(os.tmpdir(), `nixmac-e2e-crash-fallback-${Date.now()}`);
+  await mkdir(path.join(crashRunDir, 'texts'), { recursive: true });
+  await mkdir(path.join(crashRunDir, 'screenshots'), { recursive: true });
+  const crashState = await baseState(crashRunDir, {
+    app: DEFAULT_APP,
+    prompt: DEFAULT_PROMPT,
+  });
+  updateScenario(crashState, 'launch', 'pass', 'Launch partial evidence was captured before the synthetic crash.');
+  await writeFile(path.join(crashRunDir, 'texts', '01-partial.txt'), 'partial evidence\n', 'utf8');
+  crashState.textSnapshots.push({ path: 'texts/01-partial.txt', label: 'Partial evidence' });
+  await saveState(crashState);
+  const previousActiveRunDir = activeRunDir;
+  activeRunDir = crashRunDir;
+  try {
+    await renderErrorReport(new Error('synthetic fallback crash'), []);
+  } finally {
+    activeRunDir = previousActiveRunDir;
+  }
+  const crashFallbackState = JSON.parse(await readFile(path.join(crashRunDir, 'state.json'), 'utf8'));
+  assert.equal(crashFallbackState.runDir, crashRunDir, 'crash fallback should reuse the active run directory');
+  assert.equal(crashFallbackState.scenarios.launch.status, 'pass', 'crash fallback should preserve partial scenario state');
+  assert.equal(crashFallbackState.scenarios.reportInspection.status, 'fail', 'crash fallback should fail report inspection');
+  assert.equal(crashFallbackState.textSnapshots.length, 1, 'crash fallback should preserve partial text evidence');
+  assert.equal(existsSync(path.join(crashRunDir, 'index.html')), true, 'crash fallback should render an index in the active run directory');
   console.log('Computer Use E2E runner self-test passed.');
 }
 
