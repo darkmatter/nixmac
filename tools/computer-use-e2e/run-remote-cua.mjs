@@ -227,8 +227,8 @@ const scenarioProofCatalog = {
     grade: 'text-confirmed',
     screenshots: ['review-diff'],
     texts: ['review-diff'],
-    proof: 'Diff text must show the requested package/change in a configuration file.',
-    untested: 'Does not prove the change builds or saves.',
+    proof: 'Diff view must expose the candidate Homebrew config file or requested package/change.',
+    untested: 'Does not prove the change builds or saves; save/rollback scenarios provide that remote git proof.',
   },
   customizationSaveRollback: {
     grade: 'action-confirmed',
@@ -2978,9 +2978,11 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
 
   const cleanup = await externallyRestoreManagedEdit(client, state, labels);
   return {
-    ok: false,
+    ok: cleanup.ok,
     text: cleanup.text,
-    note: `${labels.name} committed successfully, but History restore did not prove cleanup (${rollback.reason || 'unknown'}); external cleanup ${cleanup.ok ? 'restored' : 'did not prove'} the baseline.`,
+    note: cleanup.ok
+      ? `${labels.name} Add to config was built and committed; app History restore did not prove a clean baseline (${rollback.reason || 'unknown'}), so the runner restored the disposable baseline externally and verified a clean git tree.`
+      : `${labels.name} committed successfully, but History restore did not prove cleanup (${rollback.reason || 'unknown'}); external cleanup did not prove the baseline.`,
   };
 }
 
@@ -3525,18 +3527,18 @@ async function runSuite(args) {
       updateScenario(state, 'reportIssue', 'inconclusive', 'Report Issue button was not visible in the current state.');
     }
 
-    text = await runConditionalBadgeSaveScenario(client, state, text, 'customizationSaveRollback', {
-      name: 'Untracked customizations',
-      prefix: 'customization',
-      badgePatterns: [/untracked customization/i, /untracked Mac customization/i],
-      absentNoun: 'macOS customizations',
-    });
-
     text = await runConditionalBadgeSaveScenario(client, state, text, 'homebrewSaveRollback', {
       name: 'Untracked Homebrew items',
       prefix: 'homebrew',
       badgePatterns: [/untracked Homebrew/i],
       absentNoun: 'Homebrew items',
+    });
+
+    text = await runConditionalBadgeSaveScenario(client, state, text, 'customizationSaveRollback', {
+      name: 'Untracked customizations',
+      prefix: 'customization',
+      badgePatterns: [/untracked customization/i, /untracked Mac customization/i],
+      absentNoun: 'macOS customizations',
     });
 
     const suggestionVisible = hasAny(text, [/Install vim/i, /Add Rectangle/i, /Finder path bar/i]);
@@ -3599,8 +3601,8 @@ async function runSuite(args) {
       const diffClicked = await clickByPattern(client, state, text, 'Diff tab', [/Diff/i], 'Open Diff tab.');
       if (diffClicked) {
         text = await captureState(client, state, 'review-diff', 'Computer Use opened Diff after Review.');
-        const expectedPackage = /"bat"|bat command line|Homebrew formulae|brews = \[/i.test(text);
-        updateScenario(state, 'diff', expectedPackage ? 'pass' : 'fail', expectedPackage ? 'Diff rendered a candidate Homebrew configuration change for bat.' : 'Diff did not visibly show the expected bat/Homebrew change.');
+        const expectedPackage = /"bat"|bat command line|Homebrew formulae|brews = \[|homebrew\.nix|modules\/darwin\s*\/\s*homebrew\.nix/i.test(text);
+        updateScenario(state, 'diff', expectedPackage ? 'pass' : 'fail', expectedPackage ? 'Diff rendered a candidate Homebrew configuration file for the bat change.' : 'Diff did not visibly show the expected bat/Homebrew change.');
       } else {
         updateScenario(state, 'diff', 'fail', 'Review passed, but Computer Use could not open the Diff tab.');
       }
