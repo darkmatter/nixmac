@@ -1,0 +1,65 @@
+Computer Use state (CUA App Version: 758)
+<app_state>
+App=com.darkmatter.nixmac (pid 41090)
+Window: "nixmac", App: nixmac.
+	0 standard window nixmac, Secondary Actions: Raise
+		1 scroll area
+			2 HTML content Description: nixmac, URL: tauri://localhost
+				3 heading nixmac, Value: 3
+					4 text nixmac
+				5 button History
+				6 button Give feedback
+				7 button Settings
+				8 content list Progress: step 2 of 3, Review
+					9 container
+						10 text Describe What to change
+					11 container
+						12 text 2 Review Check & test
+					13 container
+						14 text 3 Save Keep changes
+				15 container
+					16 text Update available: v 0.22.41
+				17 text ## What's Changed * Add Computer Use E2E non-blocking PR report by @fkb032 in https://github.com/darkmatter/nixmac/pull/63 **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.40...v0.22.41
+				18 button (collapsed) Expand details, Secondary Actions: Expand
+				19 button Install & Restart
+				20 button Dismiss
+				21 text Ready to test-drive your changes?
+				22 button Discard
+				23 button Build & Test
+				24 heading What's changed, Value: 2
+					25 text What's changed
+				26 tab group (selectable)
+					27 tab (selectable) Summary
+					28 tab (selected) Diff
+				29 button (expanded) Secondary Actions: Collapse
+				30 text modules/darwin
+				31 text /
+				32 text homebrew.nix
+				33 button Edit file
+				34 container
+				35 heading What else can I change for you?, Value: 2
+					36 text What else can I change for you?
+				37 container
+					38 text entry area (settable, string) Describe additional changes or refinements...
+						39 text Describe additional changes or refinements...
+					40 button (disabled) Send
+				41 button Install vim
+				42 button Add Rectangle app
+				43 button Enable the Finder path bar and status bar
+				44 pop up button My History
+				45 button Report Issue
+				46 button Console
+				47 container Notifications alt+T
+		48 close button
+		49 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+		50 minimize button
+	51 menu bar
+		52 nixmac
+		53 File
+		54 Edit
+		55 View
+		56 Window
+		57 Help
+
+The focused UI element is 2 HTML content.
+</app_state>

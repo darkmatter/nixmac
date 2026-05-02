@@ -1,0 +1,1843 @@
+[
+  {
+    "ts": "2026-05-02T10:56:12.361Z",
+    "type": "remote.git.initial",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "e1f1796e36e4c67c521f3e93654074b89aed3f53",
+    "statusShort": "A flake.lock",
+    "diffNameOnly": "flake.lock",
+    "baselineDiffNameOnly": "",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T10:56:12.805Z",
+    "type": "remote.git.baseline-commit",
+    "ok": true,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "ts": "2026-05-02T10:56:13.268Z",
+    "type": "remote.git.baseline",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "28d4d58173b8ddebc5058e0db98bb7e2eebc784a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T10:56:19.869Z",
+    "type": "remote.relaunch",
+    "ok": true,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "ts": "2026-05-02T10:56:22.835Z",
+    "type": "computer-use.capture",
+    "label": "launch",
+    "note": "Computer Use observed the nixmac window at launch."
+  },
+  {
+    "ts": "2026-05-02T10:56:25.025Z",
+    "type": "computer-use.click",
+    "label": "Dismiss update banner",
+    "elementIndex": "20",
+    "response": "App=com.darkmatter.nixmac (pid 31952)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Dismiss update/error banner if present."
+  },
+  {
+    "ts": "2026-05-02T10:56:25.383Z",
+    "type": "computer-use.capture",
+    "label": "after-dismiss",
+    "note": "Computer Use clicked a visible Dismiss button."
+  },
+  {
+    "ts": "2026-05-02T10:56:27.991Z",
+    "type": "computer-use.click",
+    "label": "Settings",
+    "elementIndex": "7",
+    "response": "App=com.darkmatter.nixmac (pid 31952)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Open Settings."
+  },
+  {
+    "ts": "2026-05-02T10:56:28.424Z",
+    "type": "computer-use.capture",
+    "label": "settings-general",
+    "note": "Computer Use opened Settings."
+  },
+  {
+    "ts": "2026-05-02T10:56:31.091Z",
+    "type": "computer-use.click",
+    "label": "AI Models tab",
+    "elementIndex": "32",
+    "response": "App=com.darkmatter.nixmac (pid 31952)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Open AI Models settings."
+  },
+  {
+    "ts": "2026-05-02T10:56:31.564Z",
+    "type": "computer-use.capture",
+    "label": "settings-ai-models",
+    "note": "Computer Use opened AI Models settings."
+  },
+  {
+    "ts": "2026-05-02T10:56:34.293Z",
+    "type": "computer-use.click",
+    "label": "API Keys tab",
+    "elementIndex": "33",
+    "response": "App=com.darkmatter.nixmac (pid 31952)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Open API Keys settings."
+  },
+  {
+    "ts": "2026-05-02T10:56:35.698Z",
+    "type": "computer-use.capture",
+    "label": "settings-api-keys-01",
+    "note": "Polling settings-api-keys."
+  },
+  {
+    "ts": "2026-05-02T10:56:38.319Z",
+    "type": "computer-use.click",
+    "label": "Preferences tab",
+    "elementIndex": "34",
+    "response": "App=com.darkmatter.nixmac (pid 31952)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Open Preferences settings."
+  },
+  {
+    "ts": "2026-05-02T10:56:38.730Z",
+    "type": "computer-use.capture",
+    "label": "settings-preferences",
+    "note": "Computer Use opened Preferences settings."
+  },
+  {
+    "ts": "2026-05-02T10:56:41.252Z",
+    "type": "computer-use.click",
+    "label": "Close settings",
+    "elementIndex": "28",
+    "response": "App=com.darkmatter.nixmac (pid 31952)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Close Settings."
+  },
+  {
+    "ts": "2026-05-02T10:56:41.588Z",
+    "type": "computer-use.capture",
+    "label": "home-after-settings",
+    "note": "Computer Use returned to the main app surface after Settings coverage."
+  },
+  {
+    "ts": "2026-05-02T10:56:44.077Z",
+    "type": "computer-use.click",
+    "label": "History",
+    "elementIndex": "5",
+    "response": "App=com.darkmatter.nixmac (pid 31952)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 heading History, Value: 2\n\t\t\t\t\t9 text History\n\t\t\t\t10 text 2\n\t\t\t\t11 button Analyze recent (2)\n\t\t\t\t12 text TODAY\n\t\t\t\t13 text nixmac e2e restore baseline\n\t\t\t\t14 button Build\n\t\t\t\t15 text 28d4d58\n\t\t\t\t16 text just now\n\t\t\t\t17 text 1\n\t\t\t\t18 text file\n\t\t\t\t19 text External commit\n\t\t\t\t20 button Analyze\n\t\t\t\t21 text flake.lock\n\t\t\t\t22 text Initial disposable nixmac E2E config\n\t\t\t\t23 button Restore\n\t\t\t\t24 text e1f1796\n\t\t\t\t25 text just now\n\t\t\t\t26 text External commit\n\t\t\t\t27 button Analy",
+    "note": "Open My History."
+  },
+  {
+    "ts": "2026-05-02T10:56:44.388Z",
+    "type": "computer-use.capture",
+    "label": "history",
+    "note": "Computer Use opened History."
+  },
+  {
+    "ts": "2026-05-02T10:56:44.389Z",
+    "type": "computer-use.click.skipped",
+    "label": "Close history",
+    "note": "No element found for Close history"
+  },
+  {
+    "ts": "2026-05-02T10:56:46.881Z",
+    "type": "computer-use.click",
+    "label": "Toggle history closed",
+    "elementIndex": "5",
+    "response": "App=com.darkmatter.nixmac (pid 31952)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Toggle History closed to return to the prompt surface."
+  },
+  {
+    "ts": "2026-05-02T10:56:47.259Z",
+    "type": "computer-use.capture",
+    "label": "home-after-history",
+    "note": "Computer Use returned home after History."
+  },
+  {
+    "ts": "2026-05-02T10:56:49.790Z",
+    "type": "computer-use.click",
+    "label": "Console",
+    "elementIndex": "27",
+    "response": "App=com.darkmatter.nixmac (pid 31952)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Open Console."
+  },
+  {
+    "ts": "2026-05-02T10:56:50.172Z",
+    "type": "computer-use.screenshot-omitted",
+    "label": "console",
+    "reason": "Sensitive view image omitted from screenshot artifacts; redacted accessibility text snapshot retained."
+  },
+  {
+    "ts": "2026-05-02T10:56:50.172Z",
+    "type": "computer-use.capture",
+    "label": "console",
+    "note": "Computer Use opened Console."
+  },
+  {
+    "ts": "2026-05-02T10:56:52.688Z",
+    "type": "computer-use.click",
+    "label": "Close console",
+    "elementIndex": "33",
+    "response": "App=com.darkmatter.nixmac (pid 31952)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Close Console."
+  },
+  {
+    "ts": "2026-05-02T10:56:53.042Z",
+    "type": "computer-use.screenshot-omitted",
+    "label": "home-after-console",
+    "reason": "Sensitive view image omitted from screenshot artifacts; redacted accessibility text snapshot retained."
+  },
+  {
+    "ts": "2026-05-02T10:56:53.042Z",
+    "type": "computer-use.capture",
+    "label": "home-after-console",
+    "note": "Computer Use returned home after Console."
+  },
+  {
+    "ts": "2026-05-02T10:56:55.620Z",
+    "type": "computer-use.click",
+    "label": "Give feedback",
+    "elementIndex": "6",
+    "response": "App=com.darkmatter.nixmac (pid 31952)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 container Notifications alt+T\n\t\t\t\t4 container Give feedback\n\t\t\t\t\t5 heading Give feedback, Value: 2\n\t\t\t\t\t\t6 text Give feedback\n\t\t\t\t\t7 text Help us make nixmac better\n\t\t\t\t\t8 text TYPE\n\t\t\t\t\t10 container\n\t\t\t\t\t\t11 radio button Suggestion, Value: 1\n\t\t\t\t\t\t12 text Suggestion\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 radio button Bug, Value: 0\n\t\t\t\t\t\t15 text Bug\n\t\t\t\t\t16 container\n\t\t\t\t\t\t17 radio button General, Value: 0\n\t\t\t\t\t\t18 text General\n\t\t\t\t\t19 text WHAT WOULD YOU LIKE TO SEE\n\t\t\t\t\t20 text entry area (settable, string) WHAT WOULD YOU LIKE TO SEE, Placeholder: Tell us more...\n\t\t\t\t\t\t21 text Tell us more...\n\t\t\t\t\t",
+    "note": "Open Give Feedback."
+  },
+  {
+    "ts": "2026-05-02T10:56:56.007Z",
+    "type": "computer-use.capture",
+    "label": "feedback",
+    "note": "Computer Use opened Give Feedback."
+  },
+  {
+    "ts": "2026-05-02T10:56:58.752Z",
+    "type": "computer-use.click",
+    "label": "Cancel feedback",
+    "elementIndex": "37",
+    "response": "App=com.darkmatter.nixmac (pid 31952)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Cancel Give Feedback."
+  },
+  {
+    "ts": "2026-05-02T10:56:59.114Z",
+    "type": "computer-use.capture",
+    "label": "home-after-feedback",
+    "note": "Computer Use returned home after Feedback."
+  },
+  {
+    "ts": "2026-05-02T10:57:01.685Z",
+    "type": "computer-use.click",
+    "label": "Report Issue",
+    "elementIndex": "27",
+    "response": "App=com.darkmatter.nixmac (pid 31952)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 container Notifications alt+T\n\t\t\t\t4 container Report an issue\n\t\t\t\t\t5 heading Report an issue, Value: 2\n\t\t\t\t\t\t6 text Report an issue\n\t\t\t\t\t7 text Help us make nixmac better\n\t\t\t\t\t8 text DESCRIBE WHAT HAPPENED\n\t\t\t\t\t9 text entry area (settable, string) DESCRIBE WHAT HAPPENED, Placeholder: Tell us more...\n\t\t\t\t\t\t10 text Tell us more...\n\t\t\t\t\t11 text PROMPT (optional)\n\t\t\t\t\t12 combo box (collapsed, settable, string) Secondary Actions: Expand, Value: Select a prompt (optional)\n\n\t\t\t\t\t\t13 text Select a prompt (optional)\n\t\t\t\t\t14 text Email (optional)\n\t\t\t\t\t15 email field (settable, string) Email (option",
+    "note": "Open Report Issue."
+  },
+  {
+    "ts": "2026-05-02T10:57:02.101Z",
+    "type": "computer-use.capture",
+    "label": "report-issue",
+    "note": "Computer Use opened Report Issue."
+  },
+  {
+    "ts": "2026-05-02T10:57:04.891Z",
+    "type": "computer-use.click",
+    "label": "Cancel report issue",
+    "elementIndex": "26",
+    "response": "App=com.darkmatter.nixmac (pid 31952)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Cancel Report Issue."
+  },
+  {
+    "ts": "2026-05-02T10:57:05.258Z",
+    "type": "computer-use.capture",
+    "label": "home-after-report-issue",
+    "note": "Computer Use returned home after Report Issue."
+  },
+  {
+    "ts": "2026-05-02T10:57:07.823Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items chip",
+    "elementIndex": "25",
+    "response": "App=com.darkmatter.nixmac (pid 31952)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Open Untracked Homebrew items Add to config popover."
+  },
+  {
+    "ts": "2026-05-02T10:57:08.256Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-popover",
+    "note": "Computer Use opened Untracked Homebrew items Add to config popover."
+  },
+  {
+    "ts": "2026-05-02T10:57:10.794Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items Add to config",
+    "elementIndex": "55",
+    "response": "App=com.darkmatter.nixmac (pid 31952)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Apply Untracked Homebrew items to config."
+  },
+  {
+    "ts": "2026-05-02T10:57:12.175Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-apply-01",
+    "note": "Polling homebrew-apply."
+  },
+  {
+    "ts": "2026-05-02T10:57:13.584Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-apply-02",
+    "note": "Polling homebrew-apply."
+  },
+  {
+    "ts": "2026-05-02T10:57:14.951Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-apply-03",
+    "note": "Polling homebrew-apply."
+  },
+  {
+    "ts": "2026-05-02T10:57:16.428Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-apply-04",
+    "note": "Polling homebrew-apply."
+  },
+  {
+    "ts": "2026-05-02T10:57:16.837Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-apply",
+    "note": "Computer Use reached review/build state after applying Untracked Homebrew items to config."
+  },
+  {
+    "ts": "2026-05-02T10:57:19.398Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items Build & Test",
+    "elementIndex": "17",
+    "response": "App=com.darkmatter.nixmac (pid 31952)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 container Notifications alt+T\n\t\t\t\t4 container Confirm Action\n\t\t\t\t\t5 heading Confirm Action, Value: 2\n\t\t\t\t\t\t6 text Confirm Action\n\t\t\t\t\t7 text Rebuild with these configuration changes?\n\t\t\t\t\t8 checkbox (settable, integer) Switch this confirmation off in settings., Value: 0\n\t\t\t\t\t9 text Switch this confirmation off in settings.\n\t\t\t\t\t10 button Cancel\n\t\t\t\t\t11 button Confirm\n\t\t\t\t\t12 button Close\n\t\t13 close button\n\t\t14 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window\n\t\t15 minimize button\n\t16 menu bar\n\t\t17 nixmac\n\t\t18 File\n\t\t1",
+    "note": "Click Build & Test for Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-05-02T10:57:19.738Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-build-boundary",
+    "note": "Computer Use clicked Build & Test for Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-05-02T10:57:23.701Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items confirm build boundary",
+    "elementIndex": "11",
+    "response": "App=com.darkmatter.nixmac (pid 31952)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 text Ready to test-drive your changes?\n\t\t\t\t9 button Discard\n\t\t\t\t10 button Build & Test\n\t\t\t\t11 heading What's changed, Value: 2\n\t\t\t\t\t12 text What's changed\n\t\t\t\t13 tab group (selectable)\n\t\t\t\t\t14 tab (selected) Summary\n\t\t\t\t\t15 tab (selectable) Diff\n\t\t\t\t16 text Homebrew Taps\n\t\t\t\t17 text Added tap 'steipete/tap' for additional packages.\n\t\t\t\t18 heading What else can I change for you?, Value: 2\n\t\t\t\t\t19 text What else can I change for you?\n\t\t\t\t20 container\n\t\t\t\t\t21 text entry are",
+    "note": "Confirm Build & Test for Untracked Homebrew items in proven disposable state."
+  },
+  {
+    "ts": "2026-05-02T10:57:29.686Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-build-to-step-3-01",
+    "note": "Polling homebrew-build-to-step-3."
+  },
+  {
+    "ts": "2026-05-02T10:57:35.529Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-build-to-step-3-02",
+    "note": "Polling homebrew-build-to-step-3."
+  },
+  {
+    "ts": "2026-05-02T10:57:35.904Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-step-3-ready",
+    "note": "Computer Use reached Step 3 after Untracked Homebrew items Build & Test."
+  },
+  {
+    "ts": "2026-05-02T10:57:38.666Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items commit changes",
+    "elementIndex": "29",
+    "response": "App=com.darkmatter.nixmac (pid 31952)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 heading Get started, Value: 3\n\t\t\t\t\t16 text Get started\n\t\t\t\t17 container\n\t\t\t\t\t18 text entry area (settable, string) Describe changes to make to your configuration.\n\t\t\t\t\t\t19 text Describe changes to make to your configuration.\n\t\t\t\t\t20 button (disabled) Send\n\t\t\t\t",
+    "note": "Commit Step 3 changes for Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-05-02T10:57:40.115Z",
+    "type": "remote.git.homebrew-after-commit.01",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "c6146016d1278d6a76658463ce067f9f9d9c580e",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/homebrew.nix\nresult",
+    "containsBat": true,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T10:57:40.477Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-after-commit",
+    "note": "Computer Use committed Untracked Homebrew items changes."
+  },
+  {
+    "ts": "2026-05-02T10:57:43.008Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items History after commit",
+    "elementIndex": "5",
+    "response": "App=com.darkmatter.nixmac (pid 31952)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 heading History, Value: 2\n\t\t\t\t\t9 text History\n\t\t\t\t10 text 3\n\t\t\t\t11 button Analyze recent (3)\n\t\t\t\t12 text TODAY\n\t\t\t\t13 button chore(tap): added tap 'steipete/tap' for additional packages CURRENTc614601 just now 2 files UpdateHomebrew Taps\n\t\t\t\t14 text nixmac e2e restore baseline\n\t\t\t\t15 button Restore\n\t\t\t\t16 text 28d4d58\n\t\t\t\t17 text 1 min ago\n\t\t\t\t18 text 1\n\t\t\t\t19 text file\n\t\t\t\t20 text External commit\n\t\t\t\t21 button Analyze\n\t\t\t\t22 text flake.lock\n\t\t\t\t23 text Initial disposabl",
+    "note": "Open History to restore baseline after Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-05-02T10:57:43.404Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-history-before-restore",
+    "note": "Computer Use opened History after Untracked Homebrew items commit."
+  },
+  {
+    "ts": "2026-05-02T10:57:45.963Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items restore previous commit",
+    "elementIndex": "15",
+    "response": "App=com.darkmatter.nixmac (pid 31952)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 heading History, Value: 2\n\t\t\t\t\t9 text History\n\t\t\t\t10 text 3\n\t\t\t\t11 button Analyze recent (3)\n\t\t\t\t12 text TODAY\n\t\t\t\t13 text Restore Commit 28d4d58\n\t\t\t\t14 text nixmac e2e restore baseline\n\t\t\t\t15 button Confirm Restore\n\t\t\t\t16 button Cancel\n\t\t\t\t17 container\n\t\t\t\t\t18 text This will deactivate  1  commit .\n\t\t\t\t19 text Deactivated commits will stay in history.\n\t\t\t\t20 text You can restore them again later.\n\t\t\t\t21 text n1xm4c0\n\t\t\t\t22 text 1\n\t\t\t\t23 text file\n\t\t\t\t24 button Analyze\n\t",
+    "note": "Restore the pre-test baseline after Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-05-02T10:57:46.388Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-history-restore-preview",
+    "note": "Computer Use previewed History restore after Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-05-02T10:57:48.941Z",
+    "type": "computer-use.click",
+    "label": "Untracked Homebrew items confirm restore",
+    "elementIndex": "15",
+    "response": "App=com.darkmatter.nixmac (pid 31952)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 heading History, Value: 2\n\t\t\t\t\t9 text History\n\t\t\t\t10 text 3\n\t\t\t\t11 button Analyze recent (3)\n\t\t\t\t12 text TODAY\n\t\t\t\t13 button chore(tap): added tap 'steipete/tap' for additional packages CURRENTc614601 just now 2 files UpdateHomebrew Taps\n\t\t\t\t14 text nixmac e2e restore baseline\n\t\t\t\t15 button Restore\n\t\t\t\t16 text 28d4d58\n\t\t\t\t17 text 1 min ago\n\t\t\t\t18 text 1\n\t\t\t\t19 text file\n\t\t\t\t20 text External commit\n\t\t\t\t21 button Analyze\n\t\t\t\t22 text flake.lock\n\t\t\t\t23 text Initial disposabl",
+    "note": "Confirm History restore cleanup after Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-05-02T10:57:54.489Z",
+    "type": "remote.git.homebrew-after-history-restore.01",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "c6146016d1278d6a76658463ce067f9f9d9c580e",
+    "statusShort": "M  modules/darwin/homebrew.nix\n M result",
+    "diffNameOnly": "result",
+    "baselineDiffNameOnly": "modules/darwin/homebrew.nix\nresult",
+    "containsBat": true,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T10:57:59.929Z",
+    "type": "remote.git.homebrew-after-history-restore.02",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "97ca4ebdf43e47f005127e14ce4ba9f26f977cf4",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "result",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T10:58:00.360Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-after-history-restore",
+    "note": "Computer Use completed History restore cleanup after Untracked Homebrew items."
+  },
+  {
+    "ts": "2026-05-02T10:58:07.336Z",
+    "type": "remote.relaunch",
+    "ok": true,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "ts": "2026-05-02T10:58:07.841Z",
+    "type": "computer-use.capture",
+    "label": "homebrew-after-rollback-home",
+    "note": "Computer Use returned to the prompt surface after Untracked Homebrew items rollback cleanup."
+  },
+  {
+    "ts": "2026-05-02T10:58:09.621Z",
+    "type": "computer-use.click",
+    "label": "Untracked customizations chip",
+    "elementIndex": "30",
+    "response": "App=com.darkmatter.nixmac (pid 35959)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 container\n\t\t\t\t\t16 text Update available: v 0.22.41\n\t\t\t\t17 text ## What's Changed * Add Computer Use E2E non-blocking PR report by @fkb032 in https://github.com/darkmatter/nixmac/pull/63 **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.40.",
+    "note": "Open Untracked customizations Add to config popover."
+  },
+  {
+    "ts": "2026-05-02T10:58:10.057Z",
+    "type": "computer-use.capture",
+    "label": "customization-popover",
+    "note": "Computer Use opened Untracked customizations Add to config popover."
+  },
+  {
+    "ts": "2026-05-02T10:58:12.685Z",
+    "type": "computer-use.click",
+    "label": "Untracked customizations Add to config",
+    "elementIndex": "89",
+    "response": "App=com.darkmatter.nixmac (pid 35959)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 container\n\t\t\t\t\t16 text Update available: v 0.22.41\n\t\t\t\t17 text ## What's Changed * Add Computer Use E2E non-blocking PR report by @fkb032 in https://github.com/darkmatter/nixmac/pull/63 **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.40.",
+    "note": "Apply Untracked customizations to config."
+  },
+  {
+    "ts": "2026-05-02T10:58:14.048Z",
+    "type": "computer-use.capture",
+    "label": "customization-apply-01",
+    "note": "Polling customization-apply."
+  },
+  {
+    "ts": "2026-05-02T10:58:15.449Z",
+    "type": "computer-use.capture",
+    "label": "customization-apply-02",
+    "note": "Polling customization-apply."
+  },
+  {
+    "ts": "2026-05-02T10:58:16.889Z",
+    "type": "computer-use.capture",
+    "label": "customization-apply-03",
+    "note": "Polling customization-apply."
+  },
+  {
+    "ts": "2026-05-02T10:58:17.340Z",
+    "type": "computer-use.capture",
+    "label": "customization-apply",
+    "note": "Computer Use reached review/build state after applying Untracked customizations to config."
+  },
+  {
+    "ts": "2026-05-02T10:58:20.076Z",
+    "type": "computer-use.click",
+    "label": "Untracked customizations Build & Test",
+    "elementIndex": "23",
+    "response": "App=com.darkmatter.nixmac (pid 35959)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 container Notifications alt+T\n\t\t\t\t4 container Confirm Action\n\t\t\t\t\t5 heading Confirm Action, Value: 2\n\t\t\t\t\t\t6 text Confirm Action\n\t\t\t\t\t7 text Rebuild with these configuration changes?\n\t\t\t\t\t8 checkbox (settable, integer) Switch this confirmation off in settings., Value: 0\n\t\t\t\t\t9 text Switch this confirmation off in settings.\n\t\t\t\t\t10 button Cancel\n\t\t\t\t\t11 button Confirm\n\t\t\t\t\t12 button Close\n\t\t13 close button\n\t\t14 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window\n\t\t15 minimize button\n\t16 menu bar\n\t\t17 nixmac\n\t\t18 File\n\t\t1",
+    "note": "Click Build & Test for Untracked customizations."
+  },
+  {
+    "ts": "2026-05-02T10:58:20.480Z",
+    "type": "computer-use.capture",
+    "label": "customization-build-boundary",
+    "note": "Computer Use clicked Build & Test for Untracked customizations."
+  },
+  {
+    "ts": "2026-05-02T10:58:24.535Z",
+    "type": "computer-use.click",
+    "label": "Untracked customizations confirm build boundary",
+    "elementIndex": "11",
+    "response": "App=com.darkmatter.nixmac (pid 35959)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 container\n\t\t\t\t\t9 text Update available: v 0.22.41\n\t\t\t\t10 text ## What's Changed * Add Computer Use E2E non-blocking PR report by @fkb032 in https://github.com/darkmatter/nixmac/pull/63 **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.40...v0.22.41\n\t\t\t\t11 button (collapsed) Expand details, Secondary Actions: Expand\n\t\t\t\t12 button Install & Restart\n\t\t\t\t13 button Dismiss\n\t\t\t\t14 text Ready to test-drive your changes?\n\t\t\t\t15 button Discard\n\t\t\t\t16 button B",
+    "note": "Confirm Build & Test for Untracked customizations in proven disposable state."
+  },
+  {
+    "ts": "2026-05-02T10:58:30.541Z",
+    "type": "computer-use.capture",
+    "label": "customization-build-to-step-3-01",
+    "note": "Polling customization-build-to-step-3."
+  },
+  {
+    "ts": "2026-05-02T10:58:36.548Z",
+    "type": "computer-use.capture",
+    "label": "customization-build-to-step-3-02",
+    "note": "Polling customization-build-to-step-3."
+  },
+  {
+    "ts": "2026-05-02T10:58:36.977Z",
+    "type": "computer-use.capture",
+    "label": "customization-step-3-ready",
+    "note": "Computer Use reached Step 3 after Untracked customizations Build & Test."
+  },
+  {
+    "ts": "2026-05-02T10:58:39.626Z",
+    "type": "computer-use.click",
+    "label": "Untracked customizations commit changes",
+    "elementIndex": "41",
+    "response": "App=com.darkmatter.nixmac (pid 35959)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 container\n\t\t\t\t\t16 text Update available: v 0.22.41\n\t\t\t\t17 text ## What's Changed * Add Computer Use E2E non-blocking PR report by @fkb032 in https://github.com/darkmatter/nixmac/pull/63 **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.40.",
+    "note": "Commit Step 3 changes for Untracked customizations."
+  },
+  {
+    "ts": "2026-05-02T10:58:41.097Z",
+    "type": "remote.git.customization-after-commit.01",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "02541900c84c9c038d64e8b5e320946fedaccf0e",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "flake.nix\nmodules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T10:58:41.474Z",
+    "type": "computer-use.capture",
+    "label": "customization-after-commit",
+    "note": "Computer Use committed Untracked customizations changes."
+  },
+  {
+    "ts": "2026-05-02T10:58:44.092Z",
+    "type": "computer-use.click",
+    "label": "Untracked customizations History after commit",
+    "elementIndex": "5",
+    "response": "App=com.darkmatter.nixmac (pid 35959)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 container\n\t\t\t\t\t9 text Update available: v 0.22.41\n\t\t\t\t10 text ## What's Changed * Add Computer Use E2E non-blocking PR report by @fkb032 in https://github.com/darkmatter/nixmac/pull/63 **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.40...v0.22.41\n\t\t\t\t11 button (collapsed) Expand details, Secondary Actions: Expand\n\t\t\t\t12 button Install & Restart\n\t\t\t\t13 button Dismiss\n\t\t\t\t14 heading History, Value: 2\n\t\t\t\t\t15 text History\n\t\t\t\t16 text 5\n\t\t\t\t17 button A",
+    "note": "Open History to restore baseline after Untracked customizations."
+  },
+  {
+    "ts": "2026-05-02T10:58:44.519Z",
+    "type": "computer-use.capture",
+    "label": "customization-history-before-restore",
+    "note": "Computer Use opened History after Untracked customizations commit."
+  },
+  {
+    "ts": "2026-05-02T10:58:47.168Z",
+    "type": "computer-use.click",
+    "label": "Untracked customizations restore previous commit",
+    "elementIndex": "22",
+    "response": "App=com.darkmatter.nixmac (pid 35959)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 container\n\t\t\t\t\t9 text Update available: v 0.22.41\n\t\t\t\t10 text ## What's Changed * Add Computer Use E2E non-blocking PR report by @fkb032 in https://github.com/darkmatter/nixmac/pull/63 **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.40...v0.22.41\n\t\t\t\t11 button (collapsed) Expand details, Secondary Actions: Expand\n\t\t\t\t12 button Install & Restart\n\t\t\t\t13 button Dismiss\n\t\t\t\t14 heading History, Value: 2\n\t\t\t\t\t15 text History\n\t\t\t\t16 text 5\n\t\t\t\t17 button A",
+    "note": "Restore the pre-test baseline after Untracked customizations."
+  },
+  {
+    "ts": "2026-05-02T10:58:47.637Z",
+    "type": "computer-use.capture",
+    "label": "customization-history-restore-preview",
+    "note": "Computer Use previewed History restore after Untracked customizations."
+  },
+  {
+    "ts": "2026-05-02T10:58:50.285Z",
+    "type": "computer-use.click",
+    "label": "Untracked customizations confirm restore",
+    "elementIndex": "21",
+    "response": "App=com.darkmatter.nixmac (pid 35959)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 container\n\t\t\t\t\t9 text Update available: v 0.22.41\n\t\t\t\t10 text ## What's Changed * Add Computer Use E2E non-blocking PR report by @fkb032 in https://github.com/darkmatter/nixmac/pull/63 **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.40...v0.22.41\n\t\t\t\t11 button (collapsed) Expand details, Secondary Actions: Expand\n\t\t\t\t12 button Install & Restart\n\t\t\t\t13 button Dismiss\n\t\t\t\t14 heading History, Value: 2\n\t\t\t\t\t15 text History\n\t\t\t\t16 text 5\n\t\t\t\t17 button A",
+    "note": "Confirm History restore cleanup after Untracked customizations."
+  },
+  {
+    "ts": "2026-05-02T10:58:55.786Z",
+    "type": "remote.git.customization-after-history-restore.01",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "02541900c84c9c038d64e8b5e320946fedaccf0e",
+    "statusShort": "M  flake.nix\n M result",
+    "diffNameOnly": "result",
+    "baselineDiffNameOnly": "flake.nix\nmodules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T10:59:01.201Z",
+    "type": "remote.git.customization-after-history-restore.02",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T10:59:06.646Z",
+    "type": "remote.git.customization-after-history-restore.03",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T10:59:12.062Z",
+    "type": "remote.git.customization-after-history-restore.04",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T10:59:17.497Z",
+    "type": "remote.git.customization-after-history-restore.05",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T10:59:22.919Z",
+    "type": "remote.git.customization-after-history-restore.06",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T10:59:28.341Z",
+    "type": "remote.git.customization-after-history-restore.07",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T10:59:33.782Z",
+    "type": "remote.git.customization-after-history-restore.08",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T10:59:39.200Z",
+    "type": "remote.git.customization-after-history-restore.09",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T10:59:44.616Z",
+    "type": "remote.git.customization-after-history-restore.10",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T10:59:50.030Z",
+    "type": "remote.git.customization-after-history-restore.11",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T10:59:55.487Z",
+    "type": "remote.git.customization-after-history-restore.12",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:00:00.908Z",
+    "type": "remote.git.customization-after-history-restore.13",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:00:06.362Z",
+    "type": "remote.git.customization-after-history-restore.14",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:00:11.795Z",
+    "type": "remote.git.customization-after-history-restore.15",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:00:17.228Z",
+    "type": "remote.git.customization-after-history-restore.16",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:00:22.651Z",
+    "type": "remote.git.customization-after-history-restore.17",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:00:28.077Z",
+    "type": "remote.git.customization-after-history-restore.18",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:00:33.513Z",
+    "type": "remote.git.customization-after-history-restore.19",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:00:38.926Z",
+    "type": "remote.git.customization-after-history-restore.20",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:00:44.344Z",
+    "type": "remote.git.customization-after-history-restore.21",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:00:49.750Z",
+    "type": "remote.git.customization-after-history-restore.22",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:00:55.165Z",
+    "type": "remote.git.customization-after-history-restore.23",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:01:00.610Z",
+    "type": "remote.git.customization-after-history-restore.24",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:01:06.056Z",
+    "type": "remote.git.customization-after-history-restore.25",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:01:11.482Z",
+    "type": "remote.git.customization-after-history-restore.26",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:01:16.924Z",
+    "type": "remote.git.customization-after-history-restore.27",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:01:22.376Z",
+    "type": "remote.git.customization-after-history-restore.28",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:01:27.801Z",
+    "type": "remote.git.customization-after-history-restore.29",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:01:33.256Z",
+    "type": "remote.git.customization-after-history-restore.30",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:01:38.694Z",
+    "type": "remote.git.customization-after-history-restore.31",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:01:44.112Z",
+    "type": "remote.git.customization-after-history-restore.32",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:01:49.540Z",
+    "type": "remote.git.customization-after-history-restore.33",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:01:55.009Z",
+    "type": "remote.git.customization-after-history-restore.34",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:02:00.477Z",
+    "type": "remote.git.customization-after-history-restore.35",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:02:05.922Z",
+    "type": "remote.git.customization-after-history-restore.36",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:02:11.344Z",
+    "type": "remote.git.customization-after-history-restore.37",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:02:16.767Z",
+    "type": "remote.git.customization-after-history-restore.38",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:02:22.189Z",
+    "type": "remote.git.customization-after-history-restore.39",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:02:27.631Z",
+    "type": "remote.git.customization-after-history-restore.40",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:02:33.070Z",
+    "type": "remote.git.customization-after-history-restore.41",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:02:38.484Z",
+    "type": "remote.git.customization-after-history-restore.42",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:02:43.896Z",
+    "type": "remote.git.customization-after-history-restore.43",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:02:49.309Z",
+    "type": "remote.git.customization-after-history-restore.44",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:02:54.725Z",
+    "type": "remote.git.customization-after-history-restore.45",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:03:00.143Z",
+    "type": "remote.git.customization-after-history-restore.46",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:03:05.632Z",
+    "type": "remote.git.customization-after-history-restore.47",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:03:11.069Z",
+    "type": "remote.git.customization-after-history-restore.48",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:03:16.538Z",
+    "type": "remote.git.customization-after-history-restore.49",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:03:21.988Z",
+    "type": "remote.git.customization-after-history-restore.50",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:03:27.413Z",
+    "type": "remote.git.customization-after-history-restore.51",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:03:32.856Z",
+    "type": "remote.git.customization-after-history-restore.52",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:03:38.284Z",
+    "type": "remote.git.customization-after-history-restore.53",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:03:43.701Z",
+    "type": "remote.git.customization-after-history-restore.54",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:03:49.124Z",
+    "type": "remote.git.customization-after-history-restore.55",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:03:54.538Z",
+    "type": "remote.git.customization-after-history-restore.56",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:03:59.948Z",
+    "type": "remote.git.customization-after-history-restore.57",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:04:05.387Z",
+    "type": "remote.git.customization-after-history-restore.58",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:04:10.808Z",
+    "type": "remote.git.customization-after-history-restore.59",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:04:16.226Z",
+    "type": "remote.git.customization-after-history-restore.60",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:04:21.659Z",
+    "type": "remote.git.customization-after-history-restore.61",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:04:27.097Z",
+    "type": "remote.git.customization-after-history-restore.62",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:04:32.539Z",
+    "type": "remote.git.customization-after-history-restore.63",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:04:37.956Z",
+    "type": "remote.git.customization-after-history-restore.64",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:04:43.379Z",
+    "type": "remote.git.customization-after-history-restore.65",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:04:48.791Z",
+    "type": "remote.git.customization-after-history-restore.66",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:04:54.208Z",
+    "type": "remote.git.customization-after-history-restore.67",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:04:59.622Z",
+    "type": "remote.git.customization-after-history-restore.68",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:05:05.063Z",
+    "type": "remote.git.customization-after-history-restore.69",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:05:10.469Z",
+    "type": "remote.git.customization-after-history-restore.70",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:05:15.888Z",
+    "type": "remote.git.customization-after-history-restore.71",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:05:21.300Z",
+    "type": "remote.git.customization-after-history-restore.72",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:05:26.718Z",
+    "type": "remote.git.customization-after-history-restore.73",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:05:32.138Z",
+    "type": "remote.git.customization-after-history-restore.74",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:05:37.576Z",
+    "type": "remote.git.customization-after-history-restore.75",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:05:43.001Z",
+    "type": "remote.git.customization-after-history-restore.76",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:05:48.417Z",
+    "type": "remote.git.customization-after-history-restore.77",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:05:53.860Z",
+    "type": "remote.git.customization-after-history-restore.78",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:05:59.351Z",
+    "type": "remote.git.customization-after-history-restore.79",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:06:04.788Z",
+    "type": "remote.git.customization-after-history-restore.80",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "18cd129f767a2ffa2ebc393dd991b015a2a5869a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/system-defaults.nix\nresult",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:06:06.946Z",
+    "type": "computer-use.capture",
+    "label": "customization-after-history-restore",
+    "note": "Computer Use completed History restore cleanup after Untracked customizations."
+  },
+  {
+    "ts": "2026-05-02T11:06:07.340Z",
+    "type": "remote.git.restore-baseline",
+    "label": "customization",
+    "ok": true,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "ts": "2026-05-02T11:06:07.755Z",
+    "type": "remote.git.customization.restore-baseline",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "28d4d58173b8ddebc5058e0db98bb7e2eebc784a",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:06:14.291Z",
+    "type": "remote.relaunch",
+    "ok": true,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "ts": "2026-05-02T11:06:14.851Z",
+    "type": "computer-use.capture",
+    "label": "customization-external-restore",
+    "note": "Computer Use relaunched after external cleanup for Untracked customizations."
+  },
+  {
+    "ts": "2026-05-02T11:06:17.149Z",
+    "type": "computer-use.click",
+    "label": "Suggestion card",
+    "elementIndex": "27",
+    "response": "App=com.darkmatter.nixmac (pid 41090)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 container\n\t\t\t\t\t16 text Update available: v 0.22.41\n\t\t\t\t17 text ## What's Changed * Add Computer Use E2E non-blocking PR report by @fkb032 in https://github.com/darkmatter/nixmac/pull/63 **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.40.",
+    "note": "Click a home suggestion card."
+  },
+  {
+    "ts": "2026-05-02T11:06:17.562Z",
+    "type": "computer-use.capture",
+    "label": "suggestion-card",
+    "note": "Computer Use checked home suggestion cards."
+  },
+  {
+    "ts": "2026-05-02T11:06:20.462Z",
+    "type": "computer-use.set_value",
+    "label": "Prompt input",
+    "elementIndex": "24",
+    "response": "App=com.darkmatter.nixmac (pid 41090)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 container\n\t\t\t\t\t16 text Update available: v 0.22.41\n\t\t\t\t17 text ## What's Changed * Add Computer Use E2E non-blocking PR report by @fkb032 in https://github.com/darkmatter/nixmac/pull/63 **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.40."
+  },
+  {
+    "ts": "2026-05-02T11:06:20.899Z",
+    "type": "computer-use.capture",
+    "label": "typed-intent",
+    "note": "Computer Use set a real prompt in the app prompt field."
+  },
+  {
+    "ts": "2026-05-02T11:06:23.466Z",
+    "type": "computer-use.click",
+    "label": "Send prompt",
+    "elementIndex": "26",
+    "response": "App=com.darkmatter.nixmac (pid 41090)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 container\n\t\t\t\t\t9 text Update available: v 0.22.41\n\t\t\t\t10 text ## What's Changed * Add Computer Use E2E non-blocking PR report by @fkb032 in https://github.com/darkmatter/nixmac/pull/63 **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.40...v0.22.41\n\t\t\t\t11 button (collapsed) Expand details, Secondary Actions: Expand\n\t\t\t\t12 button Install & Restart\n\t\t\t\t13 button Dismiss\n\t\t\t\t14 heading Get started, Value: 3\n\t\t\t\t\t15 text Get started\n\t\t\t\t16 container\n\t\t\t\t",
+    "note": "Submit the real prompt."
+  },
+  {
+    "ts": "2026-05-02T11:06:29.060Z",
+    "type": "computer-use.capture",
+    "label": "provider-progress-01",
+    "note": "Polling provider-progress."
+  },
+  {
+    "ts": "2026-05-02T11:06:34.466Z",
+    "type": "computer-use.capture",
+    "label": "provider-progress-02",
+    "note": "Polling provider-progress."
+  },
+  {
+    "ts": "2026-05-02T11:06:39.908Z",
+    "type": "computer-use.capture",
+    "label": "provider-progress-03",
+    "note": "Polling provider-progress."
+  },
+  {
+    "ts": "2026-05-02T11:06:45.292Z",
+    "type": "computer-use.capture",
+    "label": "provider-progress-04",
+    "note": "Polling provider-progress."
+  },
+  {
+    "ts": "2026-05-02T11:06:50.725Z",
+    "type": "computer-use.capture",
+    "label": "provider-progress-05",
+    "note": "Polling provider-progress."
+  },
+  {
+    "ts": "2026-05-02T11:06:52.033Z",
+    "type": "computer-use.click",
+    "label": "Summary tab",
+    "elementIndex": "27",
+    "response": "App=com.darkmatter.nixmac (pid 41090)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 2 of 3, Review\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 container\n\t\t\t\t\t16 text Update available: v 0.22.41\n\t\t\t\t17 text ## What's Changed * Add Computer Use E2E non-blocking PR report by @fkb032 in https://github.com/darkmatter/nixmac/pull/63 **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.40...v0",
+    "note": "Open Summary tab."
+  },
+  {
+    "ts": "2026-05-02T11:06:52.441Z",
+    "type": "computer-use.capture",
+    "label": "review-summary",
+    "note": "Computer Use opened Summary after Review."
+  },
+  {
+    "ts": "2026-05-02T11:06:53.862Z",
+    "type": "computer-use.click",
+    "label": "Diff tab",
+    "elementIndex": "28",
+    "response": "App=com.darkmatter.nixmac (pid 41090)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 2 of 3, Review\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 container\n\t\t\t\t\t16 text Update available: v 0.22.41\n\t\t\t\t17 text ## What's Changed * Add Computer Use E2E non-blocking PR report by @fkb032 in https://github.com/darkmatter/nixmac/pull/63 **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.40...v0",
+    "note": "Open Diff tab."
+  },
+  {
+    "ts": "2026-05-02T11:06:54.340Z",
+    "type": "computer-use.capture",
+    "label": "review-diff",
+    "note": "Computer Use opened Diff after Review."
+  },
+  {
+    "ts": "2026-05-02T11:06:57.155Z",
+    "type": "computer-use.click",
+    "label": "Build & Test",
+    "elementIndex": "23",
+    "response": "App=com.darkmatter.nixmac (pid 41090)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 container Notifications alt+T\n\t\t\t\t4 container Confirm Action\n\t\t\t\t\t5 heading Confirm Action, Value: 2\n\t\t\t\t\t\t6 text Confirm Action\n\t\t\t\t\t7 text Rebuild with these configuration changes?\n\t\t\t\t\t8 checkbox (settable, integer) Switch this confirmation off in settings., Value: 0\n\t\t\t\t\t9 text Switch this confirmation off in settings.\n\t\t\t\t\t10 button Cancel\n\t\t\t\t\t11 button Confirm\n\t\t\t\t\t12 button Close\n\t\t13 close button\n\t\t14 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window\n\t\t15 minimize button\n\t16 menu bar\n\t\t17 nixmac\n\t\t18 File\n\t\t1",
+    "note": "Click Build & Test boundary."
+  },
+  {
+    "ts": "2026-05-02T11:06:57.793Z",
+    "type": "computer-use.capture",
+    "label": "build-boundary",
+    "note": "Computer Use clicked Build & Test to verify the destructive boundary."
+  },
+  {
+    "ts": "2026-05-02T11:07:01.366Z",
+    "type": "computer-use.click",
+    "label": "Confirm build boundary",
+    "elementIndex": "11",
+    "response": "App=com.darkmatter.nixmac (pid 41090)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 container\n\t\t\t\t\t9 text Update available: v 0.22.41\n\t\t\t\t10 text ## What's Changed * Add Computer Use E2E non-blocking PR report by @fkb032 in https://github.com/darkmatter/nixmac/pull/63 **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.40...v0.22.41\n\t\t\t\t11 button (collapsed) Expand details, Secondary Actions: Expand\n\t\t\t\t12 button Install & Restart\n\t\t\t\t13 button Dismiss\n\t\t\t\t14 text Ready to test-drive your changes?\n\t\t\t\t15 button Discard\n\t\t\t\t16 button B",
+    "note": "Confirm Build & Test in proven disposable state."
+  },
+  {
+    "ts": "2026-05-02T11:07:06.785Z",
+    "type": "computer-use.capture",
+    "label": "build-to-step-3-01",
+    "note": "Polling build-to-step-3."
+  },
+  {
+    "ts": "2026-05-02T11:07:07.210Z",
+    "type": "computer-use.capture",
+    "label": "step-3-ready",
+    "note": "Computer Use reached Step 3 after Build & Test."
+  },
+  {
+    "ts": "2026-05-02T11:07:10.010Z",
+    "type": "computer-use.click",
+    "label": "Commit changes",
+    "elementIndex": "35",
+    "response": "App=com.darkmatter.nixmac (pid 41090)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 content list Progress: step 1 of 3, Describe\n\t\t\t\t\t9 container\n\t\t\t\t\t\t10 text 1 Describe What to change\n\t\t\t\t\t11 container\n\t\t\t\t\t\t12 text 2 Review Check & test\n\t\t\t\t\t13 container\n\t\t\t\t\t\t14 text 3 Save Keep changes\n\t\t\t\t15 container\n\t\t\t\t\t16 text Update available: v 0.22.41\n\t\t\t\t17 text ## What's Changed * Add Computer Use E2E non-blocking PR report by @fkb032 in https://github.com/darkmatter/nixmac/pull/63 **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.40.",
+    "note": "Commit Step 3 changes."
+  },
+  {
+    "ts": "2026-05-02T11:07:11.437Z",
+    "type": "remote.git.after-commit.01",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "31ac40abb421ccd8e76ce11a501c5a23aa7eef1b",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "modules/darwin/homebrew.nix\nresult",
+    "containsBat": true,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:07:11.846Z",
+    "type": "computer-use.capture",
+    "label": "after-commit",
+    "note": "Computer Use committed Step 3 changes."
+  },
+  {
+    "ts": "2026-05-02T11:07:14.407Z",
+    "type": "computer-use.click",
+    "label": "History after commit",
+    "elementIndex": "5",
+    "response": "App=com.darkmatter.nixmac (pid 41090)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 container\n\t\t\t\t\t9 text Update available: v 0.22.41\n\t\t\t\t10 text ## What's Changed * Add Computer Use E2E non-blocking PR report by @fkb032 in https://github.com/darkmatter/nixmac/pull/63 **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.40...v0.22.41\n\t\t\t\t11 button (collapsed) Expand details, Secondary Actions: Expand\n\t\t\t\t12 button Install & Restart\n\t\t\t\t13 button Dismiss\n\t\t\t\t14 heading History, Value: 2\n\t\t\t\t\t15 text History\n\t\t\t\t16 text 3\n\t\t\t\t17 button A",
+    "note": "Open History to restore the disposable baseline."
+  },
+  {
+    "ts": "2026-05-02T11:07:14.829Z",
+    "type": "computer-use.capture",
+    "label": "history-before-restore",
+    "note": "Computer Use opened History after Step 3 commit."
+  },
+  {
+    "ts": "2026-05-02T11:07:17.443Z",
+    "type": "computer-use.click",
+    "label": "Restore previous commit",
+    "elementIndex": "21",
+    "response": "App=com.darkmatter.nixmac (pid 41090)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 container\n\t\t\t\t\t9 text Update available: v 0.22.41\n\t\t\t\t10 text ## What's Changed * Add Computer Use E2E non-blocking PR report by @fkb032 in https://github.com/darkmatter/nixmac/pull/63 **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.40...v0.22.41\n\t\t\t\t11 button (collapsed) Expand details, Secondary Actions: Expand\n\t\t\t\t12 button Install & Restart\n\t\t\t\t13 button Dismiss\n\t\t\t\t14 heading History, Value: 2\n\t\t\t\t\t15 text History\n\t\t\t\t16 text 3\n\t\t\t\t17 button A",
+    "note": "Restore the pre-test disposable baseline from History."
+  },
+  {
+    "ts": "2026-05-02T11:07:17.952Z",
+    "type": "computer-use.capture",
+    "label": "history-restore-preview",
+    "note": "Computer Use previewed History restore."
+  },
+  {
+    "ts": "2026-05-02T11:07:20.103Z",
+    "type": "computer-use.click",
+    "label": "Confirm restore",
+    "elementIndex": "21",
+    "response": "App=com.darkmatter.nixmac (pid 41090)\nWindow: \"nixmac\", App: nixmac.\n\t0 standard window nixmac, Secondary Actions: Raise\n\t\t1 scroll area\n\t\t\t2 HTML content Description: nixmac, URL: tauri://localhost\n\t\t\t\t3 heading nixmac, Value: 3\n\t\t\t\t\t4 text nixmac\n\t\t\t\t5 button History\n\t\t\t\t6 button Give feedback\n\t\t\t\t7 button Settings\n\t\t\t\t8 container\n\t\t\t\t\t9 text Update available: v 0.22.41\n\t\t\t\t10 text ## What's Changed * Add Computer Use E2E non-blocking PR report by @fkb032 in https://github.com/darkmatter/nixmac/pull/63 **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.40...v0.22.41\n\t\t\t\t11 button (collapsed) Expand details, Secondary Actions: Expand\n\t\t\t\t12 button Install & Restart\n\t\t\t\t13 button Dismiss\n\t\t\t\t14 heading History, Value: 2\n\t\t\t\t\t15 text History\n\t\t\t\t16 text 3\n\t\t\t\t17 button A",
+    "note": "Confirm History restore cleanup."
+  },
+  {
+    "ts": "2026-05-02T11:07:25.655Z",
+    "type": "remote.git.after-history-restore.01",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "31ac40abb421ccd8e76ce11a501c5a23aa7eef1b",
+    "statusShort": "M  modules/darwin/homebrew.nix\n M result",
+    "diffNameOnly": "result",
+    "baselineDiffNameOnly": "modules/darwin/homebrew.nix\nresult",
+    "containsBat": true,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:07:31.075Z",
+    "type": "remote.git.after-history-restore.02",
+    "ok": true,
+    "configDir": "/tmp/nixmac-computer-use-e2e-config-25250204538-1/config",
+    "head": "a2bf45e84e882d9ce3e0e200c33116af9d4464f8",
+    "statusShort": "",
+    "diffNameOnly": "",
+    "baselineDiffNameOnly": "result",
+    "containsBat": false,
+    "error": ""
+  },
+  {
+    "ts": "2026-05-02T11:07:31.503Z",
+    "type": "computer-use.capture",
+    "label": "after-history-restore",
+    "note": "Computer Use completed History restore cleanup."
+  },
+  {
+    "ts": "2026-05-02T11:07:37.998Z",
+    "type": "report.rendered",
+    "path": "index.html",
+    "verdict": "inconclusive"
+  },
+  {
+    "ts": "2026-05-02T11:07:47.496Z",
+    "type": "report.remote-open",
+    "ok": true,
+    "stdout": "",
+    "stderr": "Unable to find application named 'Google Chrome'",
+    "remoteIndex": "/tmp/nixmac-computer-use-reports/2026-05-02T105611536Z/index.html"
+  },
+  {
+    "ts": "2026-05-02T11:08:00.821Z",
+    "type": "report.rendered",
+    "path": "index.html",
+    "verdict": "pass"
+  }
+]
