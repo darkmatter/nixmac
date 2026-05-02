@@ -101,7 +101,27 @@ Owns current Codex app-server Computer Use transport:
 - click/set-value failure detection.
 
 This module must not grow future driver behavior. It wraps the current Codex
-app-server path.
+app-server path. The current path exposes a load-time-validated
+`codexAppServerDriverDescriptor` so capability drift breaks locally before a
+future adapter pilot depends on it.
+
+### `drivers/contract.mjs`
+
+Owns the explicit in-repo driver contract:
+
+- contract version;
+- action-shaped capability keys and required current-runner capabilities;
+- built-in element address kinds for the current runner (`codex-index` and
+  `text-pattern`);
+- descriptor and capability validators;
+- `createDriverDescriptor`, which throws on invalid descriptors.
+
+Future adapters must add their own descriptor and tests against this contract
+before they are piloted. Address kinds for Appium, AX/Peekaboo, OpenAI API
+Computer Use, or Claude Computer Use should be added with those adapters, not
+speculated ahead of implementation. Adapter-specific address kinds can be
+validated through the contract's explicit extension hook while a reviewed chunk
+promotes them to built-in only when they become shared.
 
 ### `remote-stage.mjs`
 
@@ -184,7 +204,7 @@ green through the harness:
 
 The first driver interface must model capabilities, not just method names:
 
-- launch or attach;
+- connect or attach;
 - get visible app state;
 - find element by address;
 - click;
@@ -194,9 +214,11 @@ The first driver interface must model capabilities, not just method names:
 - teardown;
 - driver metadata and capability reporting.
 
-Element addresses must support the current index/text-pattern model and future
-selector, coordinate, accessibility id/path, and text-pattern forms. Do not
-force future adapters into Codex app-server index semantics.
+Element addresses currently support the real Codex app-server index and
+text-pattern model. Future selector, coordinate, accessibility id/path, and API
+driver-native forms belong in the adapter chunks that exercise them; do not
+force future adapters into Codex app-server index semantics, and do not freeze
+unproven shapes before a driver uses them.
 
 ## Public CLI Contracts
 

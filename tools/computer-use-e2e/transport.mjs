@@ -1,3 +1,25 @@
+import { createDriverDescriptor, driverContractVersion } from './drivers/contract.mjs';
+
+export const codexAppServerDriverDescriptor = createDriverDescriptor({
+  id: 'codex-app-server-computer-use',
+  displayName: 'Codex app-server Computer Use',
+  contractVersion: driverContractVersion,
+  status: 'production',
+  addressKinds: ['codex-index', 'text-pattern'],
+  capabilities: {
+    connect: true,
+    visibleState: true,
+    findElement: true,
+    click: true,
+    setValue: true,
+    screenshotFromState: true,
+    textFromState: true,
+    close: true,
+    metadata: false,
+    wait: false,
+  },
+});
+
 // Codex app-server transport primitives. AppServerClient intentionally retains
 // the current Codex thread policy so extraction does not change runner behavior.
 export class AppServerClient {

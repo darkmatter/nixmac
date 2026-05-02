@@ -13,6 +13,16 @@ import {
   pngDimensions,
 } from './artifact-utils.mjs';
 import { dispatchRemoteCuaCommand, remoteCuaUsage } from './cli.mjs';
+import {
+  builtInElementAddressKinds,
+  createDriverDescriptor,
+  currentRunnerDriverCapabilityUse,
+  driverCapabilityKeys,
+  driverContractVersion,
+  validateDriverCapabilities,
+  validateDriverDescriptor,
+  validateElementAddress,
+} from './drivers/contract.mjs';
 import { tryRun } from './process-utils.mjs';
 import {
   DEFAULT_PROMPT,
@@ -37,6 +47,7 @@ import { renderReportHtml } from './report.mjs';
 import {
   AppServerClient,
   clickResponseIndicatesFailure,
+  codexAppServerDriverDescriptor,
   contentImage,
   contentText,
   elementEntries,
@@ -2803,6 +2814,54 @@ async function runSelfTest() {
   assert.equal(setValueResponseIndicatesFailure({ result: { isError: true, content: [{ type: 'text', text: 'Tool returned an error.' }] } }), true, 'MCP isError should fail set_value');
   assert.equal(setValueResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'App state includes Value: Add the bat command line tool.' }] } }), false, 'ordinary set_value app-state text should not fail input');
   assert.equal(setValueResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'Error: set_value element index 18 not found' }] } }), true, 'set_value element sentinel should fail input');
+  assert.deepEqual(builtInElementAddressKinds, ['codex-index', 'text-pattern'], 'driver contract should only ship address kinds exercised by the current runner');
+  assert.equal(validateElementAddress({ kind: 'codex-index', index: 7 }).normalized.index, '7', 'driver contract should normalize numeric Codex indexes');
+  assert.equal(validateElementAddress({ kind: 'codex-index', index: 'abc' }).ok, false, 'driver contract should reject invalid Codex indexes');
+  assert.deepEqual(
+    validateElementAddress({ kind: 'text-pattern', source: 'button Send', flags: 'i' }).normalized,
+    { kind: 'text-pattern', patterns: [{ source: 'button Send', flags: 'i' }] },
+    'driver contract should normalize text-pattern addresses',
+  );
+  assert.equal(validateElementAddress({ kind: 'text-pattern', source: 'button Send', flags: '[' }).ok, false, 'driver contract should reject invalid regex flags');
+  assert.equal(validateElementAddress({ kind: 'text-pattern', source: '[' }).ok, false, 'driver contract should reject invalid regex sources');
+  assert.equal(validateElementAddress({ kind: 'coordinate', x: 1, y: 2 }).ok, false, 'driver contract should reject future address kinds until an adapter registers them');
+  assert.equal(
+    validateElementAddress(
+      { kind: 'coordinate', x: 1, y: 2 },
+      {
+        additionalAddressValidators: {
+          coordinate: (address) => ({ ok: Number.isFinite(address.x) && Number.isFinite(address.y), issues: [], normalized: address }),
+        },
+      },
+    ).ok,
+    true,
+    'driver contract should support explicit future address-kind extension by adapter chunk',
+  );
+  assert.equal(validateDriverCapabilities({ ...codexAppServerDriverDescriptor.capabilities, unsupported: true }).ok, false, 'driver contract should reject unknown capabilities');
+  assert.equal(validateDriverCapabilities({ ...codexAppServerDriverDescriptor.capabilities, click: false }).ok, false, 'driver contract should reject missing required capabilities');
+  assert.equal(
+    validateDriverDescriptor({ ...codexAppServerDriverDescriptor, contractVersion: 'future' }).ok,
+    false,
+    'driver contract should reject descriptor version drift',
+  );
+  assert.equal(
+    validateDriverDescriptor({ ...codexAppServerDriverDescriptor, addressKinds: ['coordinate'] }).ok,
+    false,
+    'driver contract should reject unregistered descriptor address kinds',
+  );
+  assert.throws(
+    () => createDriverDescriptor({ ...codexAppServerDriverDescriptor, capabilities: { ...codexAppServerDriverDescriptor.capabilities, click: false } }),
+    /Invalid Computer Use driver descriptor/,
+    'driver descriptor creation should fail fast for invalid descriptors',
+  );
+  assert.deepEqual(validateDriverDescriptor(codexAppServerDriverDescriptor).issues, [], 'Codex app-server descriptor should satisfy the driver contract at load time');
+  assert.deepEqual(
+    currentRunnerDriverCapabilityUse.filter((capability) => codexAppServerDriverDescriptor.capabilities[capability] !== true),
+    [],
+    'Codex app-server descriptor should declare every capability the current runner uses',
+  );
+  assert.equal(driverCapabilityKeys.includes('metadata'), true, 'driver contract should distinguish optional metadata capability from required UI actions');
+  assert.equal(codexAppServerDriverDescriptor.contractVersion, driverContractVersion, 'Codex app-server descriptor should publish the active driver contract version');
   assert.equal(shellQuote("a'b"), "'a'\\''b'", 'shellQuote should preserve single quotes safely for remote shell commands');
   assert.equal(sshArgs('true', {}), null, 'sshArgs should be unavailable without a remote destination');
   assert.equal(scpArgs('/tmp/local', '/tmp/remote', {}), null, 'scpArgs should be unavailable without a remote destination');
