@@ -79,13 +79,6 @@ The runner:
 - does not confirm Discard unless `NIXMAC_E2E_DISPOSABLE_CONFIG=true` and
   `NIXMAC_E2E_ALLOW_DISCARD_CONFIRM=true` are both set by a setup step that has
   proven the app is using a per-run disposable config;
-
-Direct Homebrew import is revalidated at apply time. The backend intersects the
-UI-submitted diff with a fresh Homebrew/config scan and writes only items that
-are still missing, using the current config source rather than trusting a stale
-submitted source. Stale no-longer-missing items are silently dropped for this
-phase; the existing post-apply refetch refreshes the chip state.
-
 - marks provider-blocked paths bluntly, for example OpenRouter billing/credits
   failures;
 - renders coverage gaps, PR-specific focus, evidence grades, primary artifact
@@ -98,6 +91,12 @@ phase; the existing post-apply refetch refreshes the chip state.
 - exits non-zero when the final report verdict is `fail` or `inconclusive`
   unless `NIXMAC_E2E_STRICT_VERDICT=false` is set. For PRs, keep the check
   non-blocking through branch protection rather than by forcing a green result.
+
+Direct Homebrew import is revalidated at apply time. The backend intersects the
+UI-submitted diff with a fresh Homebrew/config scan and writes only items that
+are still missing, using the current config source rather than trusting a stale
+submitted source. Stale no-longer-missing items are silently dropped for this
+phase; the existing post-apply refetch refreshes the chip state.
 
 Planned next coverage feature: the suite should stay fresh with `main`. That
 means maintaining a scenario manifest for every major user-visible nixmac
