@@ -1,0 +1,48 @@
+Computer Use state (CUA App Version: 758)
+<app_state>
+App=com.darkmatter.nixmac (pid 62449)
+Window: "nixmac", App: nixmac.
+	0 standard window nixmac, Secondary Actions: Raise
+		1 scroll area
+			2 HTML content Description: nixmac, URL: tauri://localhost
+				3 heading nixmac, Value: 3
+					4 text nixmac
+				5 button History
+				6 button Give feedback
+				7 button Settings
+				8 heading History, Value: 2
+					9 text History
+				10 text 2
+				11 button Analyze recent (2)
+				12 text TODAY
+				13 text nixmac e2e restore baseline
+				14 button Build
+				15 text a6acdd3
+				16 text just now
+				17 text 1
+				18 text file
+				19 text External commit
+				20 button Analyze
+				21 text flake.lock
+				22 text Initial disposable nixmac E2E config
+				23 button Restore
+				24 text 1d11ace
+				25 text 1 min ago
+				26 text External commit
+				27 button Analyze
+				28 button Report Issue
+				29 button Console
+				30 container Notifications alt+T
+		31 close button
+		32 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+		33 minimize button
+	34 menu bar
+		35 nixmac
+		36 File
+		37 Edit
+		38 View
+		39 Window
+		40 Help
+
+The focused UI element is 5 button.
+</app_state>
