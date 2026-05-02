@@ -1,0 +1,38 @@
+{
+  "chunk": "13a",
+  "title": "Extract Product Proof remote staging primitives",
+  "reviewDir": "/tmp/claude-review-eHpaUY",
+  "reviewedAt": "2026-05-02T18:44:15.125Z",
+  "blockingIssuesRemaining": 0,
+  "convergenceScore": 92,
+  "decisions": [
+    {
+      "label": "env override does not propagate to module-internal ssh()",
+      "severity": "low",
+      "reviewerRecommendation": "CONSIDER",
+      "finalDecision": "ACCEPT_APPLIED",
+      "rationale": "Removed env params from non-pure helpers so only pure arg/path builders accept injected env, matching the planned boundary."
+    },
+    {
+      "label": "self-test coverage is asymmetric for new pure helpers",
+      "severity": "low",
+      "reviewerRecommendation": "CONSIDER",
+      "finalDecision": "ACCEPT_APPLIED",
+      "rationale": "Added scpArgs null-destination and remoteAppPathFromEnv default/override self-tests."
+    },
+    {
+      "label": "live remote SSH path not exercised in this validation pass",
+      "severity": "low",
+      "reviewerRecommendation": "NO_ACTION",
+      "finalDecision": "ACCEPT_NOTE",
+      "rationale": "Live remote SSH gap is expected for this structural chunk and remains a requirement for the next behavior-touching remote-stage slice."
+    }
+  ],
+  "validationAfterReviewFixes": [
+    "node --check tools/computer-use-e2e/remote-stage.mjs",
+    "node --check tools/computer-use-e2e/run-remote-cua.mjs",
+    "node tools/computer-use-e2e/run-remote-cua.mjs self-test",
+    "node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable --note 'remote-stage smoke after review fixes' --run-dir /tmp/nixmac-remote-stage-unavailable-smoke",
+    "node tools/computer-use-e2e/preservation-harness.mjs run --work-dir /tmp/nixmac-preservation-fixture-run"
+  ]
+}

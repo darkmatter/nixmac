@@ -1,0 +1,25 @@
+{
+  "review": "chunk-13a-plan",
+  "review_dir": "/tmp/claude-review-ZV5w4v",
+  "parsed_output": "/tmp/claude-review-ZV5w4v/parsed-output.json",
+  "artifact_type": "proposal",
+  "blocking_issues_remaining": 0,
+  "convergence_score": 78,
+  "decisions": [
+    {
+      "label": "Keep Homebrew scenario predicates out of remote-stage",
+      "decision": "ACCEPT",
+      "action": "remote-stage.mjs will export generic snapshot helpers only; changedHomebrewSourcePaths and hasExpectedHomebrewSourceDiff remain runner/scenario-owned."
+    },
+    {
+      "label": "Scope env injection to pure arg builders",
+      "decision": "ACCEPT",
+      "action": "sshArgs and scpArgs accept env for tests; ssh and scpToRemote read process.env directly."
+    },
+    {
+      "label": "Acknowledge no real SSH integration in local validation",
+      "decision": "ACCEPT",
+      "action": "Local validation will cover syntax, self-test, render-unavailable, and preservation harness; the next live remote workflow run remains the SSH integration gate."
+    }
+  ]
+}
