@@ -8,8 +8,6 @@ nixmac. It drives the app through the `computer-use` MCP, records evidence
 metadata, captures Computer Use screenshots and redacted text snapshots, records
 remote Mac/app/process metadata, and renders a standalone HTML report.
 
-![nixmac Computer Use E2E feature diagram](./computer-use-e2e-feature-diagram.svg)
-
 Computer Use is required for the actual app interaction and final report
 inspection. Shell is used for setup, launch, backup/restore, artifact movement,
 metadata capture, and HTML generation only.
