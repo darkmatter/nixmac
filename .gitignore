@@ -83,6 +83,8 @@ artifacts/computer-use-local/
 artifacts/computer-use-real/
 artifacts/computer-use-remote/
 artifacts/computer-use-adversarial/
+artifacts/computer-use-historical-validation/
+.scratch/
 
 # Misc
 *.tgz

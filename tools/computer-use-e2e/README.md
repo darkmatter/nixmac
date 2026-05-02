@@ -85,6 +85,7 @@ UI-submitted diff with a fresh Homebrew/config scan and writes only items that
 are still missing, using the current config source rather than trusting a stale
 submitted source. Stale no-longer-missing items are silently dropped for this
 phase; the existing post-apply refetch refreshes the chip state.
+
 - marks provider-blocked paths bluntly, for example OpenRouter billing/credits
   failures;
 - renders coverage gaps, PR-specific focus, evidence grades, primary artifact
