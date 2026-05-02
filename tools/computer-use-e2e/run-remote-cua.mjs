@@ -12,6 +12,7 @@ import {
   artifactForLabel,
   pngDimensions,
 } from './artifact-utils.mjs';
+import { dispatchRemoteCuaCommand, remoteCuaUsage } from './cli.mjs';
 import { tryRun } from './process-utils.mjs';
 import {
   DEFAULT_PROMPT,
@@ -81,27 +82,7 @@ const COVERAGE_MANIFEST_PATH = path.join(TOOL_DIR, 'coverage-manifest.json');
 let activeRunDir = '';
 
 function usage() {
-  console.log(`Usage:
-  node tools/computer-use-e2e/run-remote-cua.mjs run
-  node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable --note "..."
-  node tools/computer-use-e2e/run-remote-cua.mjs render-existing --run-dir artifacts/computer-use-remote/<timestamp>
-  node tools/computer-use-e2e/run-remote-cua.mjs self-test
-
-Environment:
-  NIXMAC_COMPUTER_USE_WS       WebSocket for Codex app-server (default ${DEFAULT_WS})
-  NIXMAC_COMPUTER_USE_APP      Bundle id/app name (default ${DEFAULT_APP})
-  NIXMAC_E2E_REMOTE_SSH_DEST   Optional ssh destination, e.g. admin@38.79.97.120
-  NIXMAC_E2E_SSH_KEY           Optional ssh private key path
-  NIXMAC_E2E_SSH_KNOWN_HOSTS   Optional known_hosts path for strict SSH verification
-  NIXMAC_E2E_REMOTE_REPORT_DIR Optional remote report copy dir for browser inspection
-  NIXMAC_E2E_EXTRA_EVOLVED_CASES Optional comma/newline list of calibrated non-default evolved cases, e.g. screenshots-defaults
-  NIXMAC_E2E_APP_COMMAND       App command metadata
-  NIXMAC_E2E_DISPOSABLE_CONFIG Set true only when the app is proven to use per-run disposable config
-  NIXMAC_E2E_ALLOW_BUILD_CONFIRM Set true only when Build & Test may run against disposable config
-  NIXMAC_E2E_ALLOW_DISCARD_CONFIRM Set true only when Discard may run against disposable config
-  NIXMAC_E2E_REMOTE_CONFIG_DIR Optional explicit remote disposable config path for git proof
-  NIXMAC_E2E_PR_CHANGED_FILES  Newline/comma separated PR changed files for PR-specific focus
-`);
+  console.log(remoteCuaUsage({ defaultWs: DEFAULT_WS, defaultApp: DEFAULT_APP }));
 }
 
 function argValue(args, flag, fallback = '') {
@@ -2668,6 +2649,153 @@ async function runSelfTest() {
     'AppServerClient should reject timed-out requests',
   );
 
+  const dispatched = [];
+  const dispatchExits = [];
+  let dispatchUsageCalls = 0;
+  await dispatchRemoteCuaCommand(
+    ['run', '--sample', 'value'],
+    {
+      run: async (args) => dispatched.push(['run', args]),
+      renderUnavailable: async (args) => dispatched.push(['renderUnavailable', args]),
+      renderExisting: async (args) => dispatched.push(['renderExisting', args]),
+      selfTest: async () => dispatched.push(['selfTest', []]),
+    },
+    {
+      usage: () => {
+        dispatchUsageCalls += 1;
+      },
+      exit: (code) => {
+        dispatchExits.push(code);
+      },
+    },
+  );
+  assert.deepEqual(dispatched.pop(), ['run', ['--sample', 'value']], 'CLI dispatcher should forward run args unchanged');
+  await dispatchRemoteCuaCommand(
+    ['render-existing', '--run-dir', '/tmp/run'],
+    {
+      run: async (args) => dispatched.push(['run', args]),
+      renderUnavailable: async (args) => dispatched.push(['renderUnavailable', args]),
+      renderExisting: async (args) => dispatched.push(['renderExisting', args]),
+      selfTest: async () => dispatched.push(['selfTest', []]),
+    },
+    {
+      usage: () => {
+        dispatchUsageCalls += 1;
+      },
+      exit: (code) => {
+        dispatchExits.push(code);
+      },
+    },
+  );
+  assert.deepEqual(dispatched.pop(), ['renderExisting', ['--run-dir', '/tmp/run']], 'CLI dispatcher should dispatch render-existing args');
+  await dispatchRemoteCuaCommand(
+    ['render-unavailable', '--note', 'not ready'],
+    {
+      run: async (args) => dispatched.push(['run', args]),
+      renderUnavailable: async (args) => dispatched.push(['renderUnavailable', args]),
+      renderExisting: async (args) => dispatched.push(['renderExisting', args]),
+      selfTest: async () => dispatched.push(['selfTest', []]),
+    },
+    {
+      usage: () => {
+        dispatchUsageCalls += 1;
+      },
+      exit: (code) => {
+        dispatchExits.push(code);
+      },
+    },
+  );
+  assert.deepEqual(
+    dispatched.pop(),
+    ['renderUnavailable', ['--note', 'not ready']],
+    'CLI dispatcher should dispatch render-unavailable args',
+  );
+  await dispatchRemoteCuaCommand(
+    ['self-test', '--ignored'],
+    {
+      run: async (args) => dispatched.push(['run', args]),
+      renderUnavailable: async (args) => dispatched.push(['renderUnavailable', args]),
+      renderExisting: async (args) => dispatched.push(['renderExisting', args]),
+      selfTest: async () => dispatched.push(['selfTest', []]),
+    },
+    {
+      usage: () => {
+        dispatchUsageCalls += 1;
+      },
+      exit: (code) => {
+        dispatchExits.push(code);
+      },
+    },
+  );
+  assert.deepEqual(dispatched.pop(), ['selfTest', []], 'CLI dispatcher should not pass argv through to self-test');
+  await dispatchRemoteCuaCommand(
+    ['unknown-command'],
+    {
+      run: async () => dispatched.push(['run', []]),
+      renderUnavailable: async () => dispatched.push(['renderUnavailable', []]),
+      renderExisting: async () => dispatched.push(['renderExisting', []]),
+      selfTest: async () => dispatched.push(['selfTest', []]),
+    },
+    {
+      usage: () => {
+        dispatchUsageCalls += 1;
+      },
+      exit: (code) => {
+        dispatchExits.push(code);
+      },
+    },
+  );
+  assert.equal(dispatchUsageCalls, 1, 'CLI dispatcher should print usage for unknown commands');
+  assert.equal(dispatchExits.at(-1), 1, 'CLI dispatcher should exit 1 for unknown commands');
+  await dispatchRemoteCuaCommand(
+    [],
+    {
+      run: async () => dispatched.push(['run', []]),
+      renderUnavailable: async () => dispatched.push(['renderUnavailable', []]),
+      renderExisting: async () => dispatched.push(['renderExisting', []]),
+      selfTest: async () => dispatched.push(['selfTest', []]),
+    },
+    {
+      usage: () => {
+        dispatchUsageCalls += 1;
+      },
+      exit: (code) => {
+        dispatchExits.push(code);
+      },
+    },
+  );
+  assert.equal(dispatchUsageCalls, 2, 'CLI dispatcher should print usage for missing commands');
+  assert.equal(dispatchExits.at(-1), 0, 'CLI dispatcher should exit 0 for missing commands');
+  const dispatchErrors = [];
+  await dispatchRemoteCuaCommand(
+    ['render-unavailable', '--note', 'x'],
+    {
+      run: async () => {},
+      renderUnavailable: async () => {
+        throw new Error('synthetic render-unavailable failure');
+      },
+      renderExisting: async () => {},
+      selfTest: async () => {},
+    },
+    {
+      usage: () => {
+        dispatchUsageCalls += 1;
+      },
+      exit: (code) => {
+        dispatchExits.push(code);
+      },
+      onError: (error, context) => {
+        dispatchErrors.push({ message: error.message, context });
+      },
+    },
+  );
+  assert.deepEqual(
+    dispatchErrors,
+    [{ message: 'synthetic render-unavailable failure', context: { command: 'render-unavailable', args: ['--note', 'x'] } }],
+    'CLI dispatcher should expose failing command context to wrapper error policy',
+  );
+  assert.equal(dispatchExits.at(-1), 1, 'CLI dispatcher should exit 1 after handler errors');
+
   assert.equal(clickResponseIndicatesFailure({ result: { isError: true, content: [{ type: 'text', text: 'Tool returned an error.' }] } }), true, 'MCP isError should fail click');
   assert.equal(clickResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'App state includes button Report Error and Console Error logs.' }] } }), false, 'ordinary app-state Error text should not fail click');
   assert.equal(clickResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'Error: stale element index 7' }] } }), true, 'stale element sentinel should fail click');
@@ -2866,27 +2994,29 @@ async function runSelfTest() {
 }
 
 async function main() {
-  const [command, ...args] = process.argv.slice(2);
-  try {
-    if (command === 'run') await runSuite(args);
-    else if (command === 'render-unavailable') await renderUnavailable(args);
-    else if (command === 'render-existing') await renderExisting(args);
-    else if (command === 'self-test') await runSelfTest();
-    else {
-      usage();
-      process.exit(command ? 1 : 0);
-    }
-  } catch (error) {
-    console.error(redact(error instanceof Error ? error.stack || error.message : String(error)));
-    if (command === 'run') {
-      try {
-        await renderErrorReport(error, args);
-      } catch (reportError) {
-        console.error(redact(reportError instanceof Error ? reportError.stack || reportError.message : String(reportError)));
-      }
-    }
-    process.exit(1);
-  }
+  await dispatchRemoteCuaCommand(
+    process.argv.slice(2),
+    {
+      run: runSuite,
+      renderUnavailable,
+      renderExisting,
+      selfTest: runSelfTest,
+    },
+    {
+      usage,
+      exit: (code) => process.exit(code),
+      onError: async (error, { command, args }) => {
+        console.error(redact(error instanceof Error ? error.stack || error.message : String(error)));
+        if (command === 'run') {
+          try {
+            await renderErrorReport(error, args);
+          } catch (reportError) {
+            console.error(redact(reportError instanceof Error ? reportError.stack || reportError.message : String(reportError)));
+          }
+        }
+      },
+    },
+  );
 }
 
 await main();
