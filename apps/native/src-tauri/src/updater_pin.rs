@@ -1,0 +1,172 @@
+//! Developer-mode "pin to version" install flow.
+//!
+//! Lets a developer install an arbitrary past release for bisecting regressions.
+//! Reuses the standard tauri-plugin-updater pipeline (signature verification,
+//! atomic bundle swap) but feeds it a synthetic manifest that points at a
+//! specific historic artifact in R2.
+//!
+//! Strategy:
+//!   1. Fetch the `.sig` file for the requested version directly from R2.
+//!   2. Build a synthetic Tauri updater manifest in memory. Claim a fake-newer
+//!      version so the plugin's "is this an upgrade?" check accepts the install
+//!      (the bundle inside the tarball still has its real version baked in).
+//!   3. Serve that JSON from a one-shot localhost HTTP server.
+//!   4. Build a custom `Updater` that points at the localhost URL and run
+//!      `check().download_and_install()` exactly like the production path.
+//!
+//! Gated to release builds because the updater plugin isn't registered in dev.
+
+#[cfg(not(debug_assertions))]
+async fn install_version_impl(
+    app: tauri::AppHandle,
+    version: String,
+) -> Result<(), String> {
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+    use std::sync::Arc;
+    use std::thread;
+    use std::time::{Duration, Instant};
+    use tauri_plugin_updater::UpdaterExt;
+
+    const RELEASES_BASE: &str = "https://releases.nixmac.com";
+    // We claim a sentinel-newer version so the updater plugin doesn't reject
+    // the install as a downgrade. Bisecting requires walking backwards through
+    // the release history, which the production updater would otherwise refuse.
+    const FAKE_NEWER_VERSION: &str = "9999.0.0";
+
+    if version.trim().is_empty() {
+        return Err("version cannot be empty".to_string());
+    }
+
+    log::info!("[developer] install_version requested: {version}");
+
+    // Fetch the minisign signature for this historic version from R2.
+    let sig_url = format!("{RELEASES_BASE}/{version}/nixmac.app.tar.gz.sig");
+    let resp = reqwest::get(&sig_url)
+        .await
+        .map_err(|e| format!("failed to fetch signature: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(format!(
+            "signature fetch returned HTTP {} for version {version} (does that release exist?)",
+            resp.status()
+        ));
+    }
+    let signature = resp
+        .text()
+        .await
+        .map_err(|e| format!("failed to read signature body: {e}"))?;
+
+    // Build a synthetic latest.json. `serde_json` handles the multi-line sig safely.
+    let bundle_url = format!("{RELEASES_BASE}/{version}/nixmac.app.tar.gz");
+    let manifest = serde_json::json!({
+        "version": FAKE_NEWER_VERSION,
+        "notes": format!("Pinned to v{version} (developer install)"),
+        "pub_date": "2020-01-01T00:00:00Z",
+        "platforms": {
+            "darwin-aarch64": {
+                "signature": signature,
+                "url": bundle_url,
+            }
+        }
+    })
+    .to_string();
+
+    // Spawn a one-shot localhost HTTP server that returns the manifest.
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .map_err(|e| format!("failed to bind manifest server: {e}"))?;
+    let port = listener
+        .local_addr()
+        .map_err(|e| format!("failed to read manifest server port: {e}"))?
+        .port();
+    let manifest_arc = Arc::new(manifest);
+    {
+        let manifest_arc = manifest_arc.clone();
+        thread::spawn(move || {
+            // Stay up long enough to serve the updater's manifest fetch, then exit.
+            // Each connection responds once with the JSON; we accept up to ~3 connections
+            // to absorb retries before giving up.
+            let _ = listener.set_nonblocking(true);
+            let start = Instant::now();
+            let mut served = 0u32;
+            while start.elapsed() < Duration::from_secs(60) && served < 3 {
+                match listener.accept() {
+                    Ok((mut stream, _)) => {
+                        let _ = stream.set_read_timeout(Some(Duration::from_secs(2)));
+                        let mut buf = [0u8; 4096];
+                        let _ = stream.read(&mut buf);
+
+                        let body = manifest_arc.as_bytes();
+                        let head = format!(
+                            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                            body.len()
+                        );
+                        let _ = stream.write_all(head.as_bytes());
+                        let _ = stream.write_all(body);
+                        let _ = stream.flush();
+                        served += 1;
+                    }
+                    Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                        thread::sleep(Duration::from_millis(50));
+                    }
+                    Err(e) => {
+                        log::warn!("[developer] manifest server accept error: {e}");
+                        return;
+                    }
+                }
+            }
+        });
+    }
+
+    let manifest_url: url::Url = format!("http://127.0.0.1:{port}/manifest.json")
+        .parse()
+        .map_err(|e: url::ParseError| format!("invalid manifest URL: {e}"))?;
+
+    let updater = app
+        .updater_builder()
+        .endpoints(vec![manifest_url])
+        .map_err(|e| format!("updater endpoints rejected: {e}"))?
+        .build()
+        .map_err(|e| format!("updater build failed: {e}"))?;
+
+    let update = updater
+        .check()
+        .await
+        .map_err(|e| format!("updater check failed: {e}"))?
+        .ok_or_else(|| "updater returned no update (unexpected)".to_string())?;
+
+    update
+        .download_and_install(|_, _| {}, || {})
+        .await
+        .map_err(|e| format!("download_and_install failed: {e}"))?;
+
+    // Persist the pinned version so the silent update check at next launch can be suppressed.
+    crate::store::set_string_pref(&app, crate::store::PINNED_VERSION_KEY, &version)
+        .map_err(|e| format!("failed to persist pinned version: {e}"))?;
+
+    log::info!("[developer] install_version({version}) succeeded");
+    Ok(())
+}
+
+#[cfg(debug_assertions)]
+async fn install_version_impl(
+    _app: tauri::AppHandle,
+    _version: String,
+) -> Result<(), String> {
+    Err("Developer install requires a release build (the updater plugin is not registered in dev mode).".to_string())
+}
+
+/// Install a specific past release of nixmac for bisecting.
+///
+/// The frontend should call `relaunch_after_update` after this returns successfully.
+#[tauri::command]
+pub async fn install_version(app: tauri::AppHandle, version: String) -> Result<(), String> {
+    install_version_impl(app, version).await
+}
+
+/// Clear the pinned-version preference so the silent update check resumes.
+#[tauri::command]
+pub async fn clear_pinned_version(app: tauri::AppHandle) -> Result<(), String> {
+    crate::store::delete_pref(&app, crate::store::PINNED_VERSION_KEY)
+        .map_err(|e| format!("failed to clear pinned version: {e}"))?;
+    Ok(())
+}

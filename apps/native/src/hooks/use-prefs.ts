@@ -7,6 +7,8 @@ export function usePrefs() {
     if (prefs) {
       useWidgetStore.getState().initConfirmPrefs(prefs);
       useWidgetStore.getState().setAutoSummarizeOnFocus(prefs.autoSummarizeOnFocus ?? false);
+      useWidgetStore.getState().setDeveloperMode(prefs.developerMode ?? false);
+      useWidgetStore.getState().setPinnedVersion(prefs.pinnedVersion ?? null);
     }
   };
 

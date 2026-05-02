@@ -45,6 +45,7 @@ mod store;
 mod summarize;
 mod template;
 mod types;
+mod updater_pin;
 mod utils;
 mod watcher;
 
@@ -392,6 +393,8 @@ fn run_gui_mode(
             commands::list_cli_models,
             // Updater
             commands::relaunch_after_update,
+            updater_pin::install_version,
+            updater_pin::clear_pinned_version,
             // Editor
             commands::editor_read_file,
             commands::editor_write_file,

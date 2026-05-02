@@ -30,6 +30,10 @@ pub const CONFIRM_ROLLBACK_KEY: &str = "confirmRollback";
 // Summarization preference keys
 pub const AUTO_SUMMARIZE_ON_FOCUS_KEY: &str = "autoSummarizeOnFocus";
 
+// Developer-mode preference keys
+pub const DEVELOPER_MODE_KEY: &str = "developerMode";
+pub const PINNED_VERSION_KEY: &str = "pinnedVersion";
+
 pub const DEFAULT_MAX_ITERATIONS: usize = 25;
 const KEYCHAIN_SERVICE: &str = "com.darkmatter.nixmac";
 
@@ -341,6 +345,24 @@ fn delete_pref_raw<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<()> {
     store.delete(key);
     store.save()?;
     Ok(())
+}
+
+pub fn get_string_pref_public<R: Runtime>(
+    app: &AppHandle<R>,
+    key: &str,
+) -> Result<Option<String>> {
+    get_string_pref_raw(app, key)
+}
+
+pub fn set_string_pref<R: Runtime>(app: &AppHandle<R>, key: &str, value: &str) -> Result<()> {
+    let store = get_store(app)?;
+    store.set(key, serde_json::json!(value));
+    store.save()?;
+    Ok(())
+}
+
+pub fn delete_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<()> {
+    delete_pref_raw(app, key)
 }
 
 fn resolve_secret_with_env_override<G>(

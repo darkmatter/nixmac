@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Update } from "@tauri-apps/plugin-updater";
 import { invoke } from "@tauri-apps/api/core";
+import { useWidgetStore } from "@/stores/widget-store";
 
 export interface UpdateState {
   /** Whether we're currently checking for updates */
@@ -36,6 +37,7 @@ export function useUpdater() {
   const [state, setState] = useState<UpdateState>(initialState);
   const checkedRef = useRef(false);
   const isDevMode = import.meta.env.DEV;
+  const pinnedVersion = useWidgetStore((s) => s.pinnedVersion);
 
   const checkForUpdates = useCallback(async () => {
     setState((s) => ({ ...s, checking: true, error: null }));
@@ -145,12 +147,18 @@ export function useUpdater() {
     setState(initialState);
   }, []);
 
-  // Silent check on mount
+  // Silent check on mount — skipped while a developer pin is active so the app
+  // doesn't try to jump back to latest mid-bisect.
   useEffect(() => {
     if (checkedRef.current) return;
+    if (pinnedVersion) {
+      checkedRef.current = true;
+      console.debug("[updater] silent check suppressed (pinned to", pinnedVersion, ")");
+      return;
+    }
     checkedRef.current = true;
     checkForUpdates();
-  }, [checkForUpdates]);
+  }, [checkForUpdates, pinnedVersion]);
 
   return {
     ...state,

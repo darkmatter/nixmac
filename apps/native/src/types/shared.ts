@@ -130,7 +130,7 @@ export type SummarizedChangeSet = { changeSet: ChangeSet; changes: SummarizedCha
 /**
  * User interface preferences (synced to settings.json via tauri-plugin-store).
  */
-export type UiPrefs = { openrouterApiKey: string | null; openaiApiKey: string | null; ollamaApiBaseUrl: string | null; vllmApiBaseUrl: string | null; vllmApiKey: string | null; summaryProvider: string | null; summaryModel: string | null; evolveProvider: string | null; evolveModel: string | null; maxIterations: number | null; maxBuildAttempts: number | null; sendDiagnostics: boolean; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean }
+export type UiPrefs = { openrouterApiKey: string | null; openaiApiKey: string | null; ollamaApiBaseUrl: string | null; vllmApiBaseUrl: string | null; vllmApiKey: string | null; summaryProvider: string | null; summaryModel: string | null; evolveProvider: string | null; evolveModel: string | null; maxIterations: number | null; maxBuildAttempts: number | null; sendDiagnostics: boolean; confirmBuild: boolean; confirmClear: boolean; confirmRollback: boolean; autoSummarizeOnFocus: boolean; developerMode: boolean; pinnedVersion: string | null }
 
 /**
  * Event payload emitted by the git status watcher.

@@ -819,6 +819,10 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
     let auto_summarize_on_focus =
         store::get_bool_pref(&app, store::AUTO_SUMMARIZE_ON_FOCUS_KEY, false)
             .map_err(|e| capture_err("ui_get_prefs", e))?;
+    let developer_mode = store::get_bool_pref(&app, store::DEVELOPER_MODE_KEY, false)
+        .map_err(|e| capture_err("ui_get_prefs", e))?;
+    let pinned_version = store::get_string_pref_public(&app, store::PINNED_VERSION_KEY)
+        .map_err(|e| capture_err("ui_get_prefs", e))?;
 
     Ok(types::UiPrefs {
         openrouter_api_key,
@@ -841,6 +845,8 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
         confirm_clear,
         confirm_rollback,
         auto_summarize_on_focus,
+        developer_mode,
+        pinned_version,
     })
 }
 
@@ -923,6 +929,23 @@ pub async fn ui_set_prefs(
     {
         store::set_bool_pref(&app, store::AUTO_SUMMARIZE_ON_FOCUS_KEY, auto_summarize_on_focus)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
+    }
+    if let Some(developer_mode) = prefs
+        .get(store::DEVELOPER_MODE_KEY)
+        .and_then(|v| v.as_bool())
+    {
+        store::set_bool_pref(&app, store::DEVELOPER_MODE_KEY, developer_mode)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
+    }
+    // pinnedVersion supports null to clear; otherwise stores the version string.
+    if let Some(value) = prefs.get(store::PINNED_VERSION_KEY) {
+        if value.is_null() {
+            store::delete_pref(&app, store::PINNED_VERSION_KEY)
+                .map_err(|e| capture_err("ui_set_prefs", e))?;
+        } else if let Some(s) = value.as_str() {
+            store::set_string_pref(&app, store::PINNED_VERSION_KEY, s)
+                .map_err(|e| capture_err("ui_set_prefs", e))?;
+        }
     }
 
     Ok(serde_json::json!({"ok": true}))
