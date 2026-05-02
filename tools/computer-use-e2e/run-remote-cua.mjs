@@ -46,6 +46,7 @@ import { containsUnmaskedSecret, redact } from './redaction.mjs';
 import {
   addEvent,
   addNarrative,
+  applyHistoricalRenderMigration,
   createBaseState,
   ensureCurrentSchema as ensureStateCurrentSchema,
   saveState,
@@ -2211,17 +2212,7 @@ async function renderExisting(args) {
     regeneratedAt: new Date().toISOString(),
   });
 
-  if (state.scenarios.saveFlow?.status === 'inconclusive' && state.scenarios.saveFlow.notes.length === 1 && /added after this run/.test(state.scenarios.saveFlow.notes[0])) {
-    state.scenarios.saveFlow.notes = ['Step 3 Save / Keep changes was not exercised in this historical run.'];
-  }
-  if (state.scenarios.discard?.status === 'pass' && !state.safety?.disposableConfig) {
-    state.scenarios.discard.status = 'inconclusive';
-    state.scenarios.discard.notes.push('Historical pass downgraded for regenerated report: Discard confirmation was not safe to count as pass because disposable config mode was not proven.');
-  }
-  if (state.scenarios.rollbackCleanup?.status === 'pass' && state.scenarios.discard?.status === 'inconclusive') {
-    state.scenarios.discard.status = 'pass';
-    state.scenarios.discard.notes = ['Discard was intentionally not exercised because the stronger Step 3 save plus History restore cleanup path returned the disposable config to baseline.'];
-  }
+  applyHistoricalRenderMigration(state);
   refreshVisualProofQuality(state);
   state.claims = Object.values(state.scenarios).map((scenario) => ({
     claim: scenario.label,
@@ -2421,6 +2412,77 @@ async function runSelfTest() {
   assert.deepEqual(baseLifecycleState.evolvedCaseRuns, [], 'createBaseState should initialize evolved case runs as empty');
   assert.deepEqual(baseLifecycleState.prFocus.scenarioKeys, ['launch'], 'createBaseState should derive PR focus from injected builder');
   assert.deepEqual(baseLifecycleState.evolvedCaseStrategy, { defaultCaseId: 'homebrew-bat', selectedAt: 'stubbed' }, 'createBaseState should derive evolved strategy from injected builder');
+  const historicalState = {
+    safety: { disposableConfig: false },
+    scenarios: {
+      saveFlow: { status: 'inconclusive', notes: ['Scenario was added after this run or was not exercised by this runner.'] },
+      discard: { status: 'pass', notes: ['Historical discard passed.'] },
+      rollbackCleanup: { status: 'pass', notes: ['Cleanup passed.'] },
+    },
+  };
+  applyHistoricalRenderMigration(historicalState);
+  assert.deepEqual(historicalState.scenarios.saveFlow.notes, ['Step 3 Save / Keep changes was not exercised in this historical run.'], 'historical migration should rewrite stale saveFlow note');
+  assert.equal(historicalState.scenarios.discard.status, 'pass', 'historical migration should re-promote discard when rollback cleanup proved stronger cleanup');
+  assert.deepEqual(
+    historicalState.scenarios.discard.notes,
+    ['Discard was intentionally not exercised because the stronger Step 3 save plus History restore cleanup path returned the disposable config to baseline.'],
+    'historical migration should replace discard notes with the stronger-cleanup explanation',
+  );
+  const historicalAfterFirstMigration = structuredClone(historicalState);
+  applyHistoricalRenderMigration(historicalState);
+  assert.deepEqual(historicalState, historicalAfterFirstMigration, 'historical migration should be idempotent');
+  const nativeInconclusiveDiscardState = {
+    safety: { disposableConfig: true },
+    scenarios: {
+      discard: { status: 'inconclusive', notes: ['Native historical inconclusive.'] },
+      rollbackCleanup: { status: 'pass', notes: [] },
+    },
+  };
+  applyHistoricalRenderMigration(nativeInconclusiveDiscardState);
+  assert.equal(nativeInconclusiveDiscardState.scenarios.discard.status, 'pass', 'historical migration should re-promote any inconclusive discard when rollback cleanup passed');
+  assert.deepEqual(
+    nativeInconclusiveDiscardState.scenarios.discard.notes,
+    ['Discard was intentionally not exercised because the stronger Step 3 save plus History restore cleanup path returned the disposable config to baseline.'],
+    'historical migration should replace native inconclusive discard notes during re-promotion',
+  );
+  const negativeHistoricalState = {
+    safety: { disposableConfig: true },
+    scenarios: {
+      saveFlow: { status: 'inconclusive', notes: ['Scenario was added after this run.', 'Extra note.'] },
+      discard: { status: 'pass', notes: ['Disposable config was proven.'] },
+      rollbackCleanup: { status: 'fail', notes: ['Cleanup failed.'] },
+    },
+  };
+  const negativeBeforeMigration = structuredClone(negativeHistoricalState);
+  applyHistoricalRenderMigration(negativeHistoricalState);
+  assert.deepEqual(negativeHistoricalState, negativeBeforeMigration, 'historical migration should not broaden no-op conditions');
+  const negativeSaveFlowOnly = {
+    scenarios: {
+      saveFlow: { status: 'inconclusive', notes: ['Scenario was added after this run.', 'Extra note.'] },
+    },
+  };
+  const negativeSaveFlowOnlyBefore = structuredClone(negativeSaveFlowOnly);
+  applyHistoricalRenderMigration(negativeSaveFlowOnly);
+  assert.deepEqual(negativeSaveFlowOnly, negativeSaveFlowOnlyBefore, 'historical migration should not rewrite multi-note saveFlow states');
+  const negativeDisposableDiscardOnly = {
+    safety: { disposableConfig: true },
+    scenarios: {
+      discard: { status: 'pass', notes: ['Disposable config was proven.'] },
+    },
+  };
+  const negativeDisposableDiscardOnlyBefore = structuredClone(negativeDisposableDiscardOnly);
+  applyHistoricalRenderMigration(negativeDisposableDiscardOnly);
+  assert.deepEqual(negativeDisposableDiscardOnly, negativeDisposableDiscardOnlyBefore, 'historical migration should not downgrade discard when disposable config was proven');
+  const negativeRollbackOnly = {
+    safety: { disposableConfig: true },
+    scenarios: {
+      discard: { status: 'pass', notes: ['Already passed.'] },
+      rollbackCleanup: { status: 'pass', notes: ['Cleanup passed.'] },
+    },
+  };
+  const negativeRollbackOnlyBefore = structuredClone(negativeRollbackOnly);
+  applyHistoricalRenderMigration(negativeRollbackOnly);
+  assert.deepEqual(negativeRollbackOnly, negativeRollbackOnlyBefore, 'historical migration should not re-promote discard unless discard is inconclusive');
   assert.equal(sourcePrefixExists('apps/native/src/components/widget/settings/'), true, 'coverage freshness should accept existing directory prefixes');
   assert.equal(sourcePrefixExists('apps/native/src/components/widget/settings-dialog.tsx'), true, 'coverage freshness should accept existing file prefixes');
   assert.equal(sourcePrefixExists('apps/native/src/components/widget/__missing__/'), false, 'coverage freshness should reject missing directory prefixes');

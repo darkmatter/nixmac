@@ -117,6 +117,21 @@ export async function createBaseState(
   };
 }
 
+export function applyHistoricalRenderMigration(state) {
+  if (state.scenarios.saveFlow?.status === 'inconclusive' && state.scenarios.saveFlow.notes.length === 1 && /added after this run/.test(state.scenarios.saveFlow.notes[0])) {
+    state.scenarios.saveFlow.notes = ['Step 3 Save / Keep changes was not exercised in this historical run.'];
+  }
+  if (state.scenarios.discard?.status === 'pass' && !state.safety?.disposableConfig) {
+    state.scenarios.discard.status = 'inconclusive';
+    state.scenarios.discard.notes.push('Historical pass downgraded for regenerated report: Discard confirmation was not safe to count as pass because disposable config mode was not proven.');
+  }
+  if (state.scenarios.rollbackCleanup?.status === 'pass' && state.scenarios.discard?.status === 'inconclusive') {
+    state.scenarios.discard.status = 'pass';
+    state.scenarios.discard.notes = ['Discard was intentionally not exercised because the stronger Step 3 save plus History restore cleanup path returned the disposable config to baseline.'];
+  }
+  return state;
+}
+
 export function verdictFor(state) {
   const statuses = Object.values(state.scenarios).map((item) => item.status);
   if (statuses.includes('fail')) return 'fail';
