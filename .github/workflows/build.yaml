@@ -469,6 +469,19 @@ jobs:
             --content-type "application/json"
 
           echo "✅ Uploaded to R2: v${VERSION}"
+      # Sync the shipped release to Linear so issues referenced in commits since
+      # the previous release get linked. Runs only after R2 upload succeeds, so
+      # Linear releases track what actually shipped. Skipped for `-test.N` tags
+      # to match the GitHub Release / R2 upload skip.
+      - name: Sync release to Linear
+        if: (steps.release-version.outputs.mode == 'tag' ||
+          steps.release-version.outputs.mode == 'release') &&
+          !contains(steps.release-version.outputs.tag, '-test.')
+        uses: linear/linear-release-action@v0
+        with:
+          access_key: ${{ secrets.LINEAR_ACCESS_KEY }}
+          version: ${{ steps.release-version.outputs.version }}
+          name: nixmac v${{ steps.release-version.outputs.version }}
       - name: Cleanup keychain
         if: always()
         run: |
