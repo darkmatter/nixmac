@@ -1,0 +1,56 @@
+Computer Use state (CUA App Version: 758)
+<app_state>
+App=com.darkmatter.nixmac (pid 18081)
+Window: "nixmac", App: nixmac.
+	0 standard window nixmac, Secondary Actions: Raise
+		1 scroll area
+			2 HTML content Description: nixmac, URL: tauri://localhost
+				3 heading nixmac, Value: 3
+					4 text nixmac
+				5 button History
+				6 button Give feedback
+				7 button Settings
+				8 heading Get started, Value: 3
+					9 text Get started
+				10 container
+					11 text entry area (disabled, settable, string) Placeholder: Describe changes to make to your configuration., Value: Add the bat command line tool to my Homebrew packages as the plain string "bat" only, with no inline comments.
+						12 text Add the bat command line tool to my Homebrew packages as the plain string "bat" only, with no inline comments.
+					13 button (disabled) Send
+				14 button Install vim
+				15 button Add Rectangle app
+				16 button Enable the Finder path bar and status bar
+				17 pop up button 12 untracked customizations
+				18 pop up button 7 untracked Homebrew items
+				19 pop up button (disabled) My History
+				20 button Report Issue
+				21 text Evolving...
+				22 text 9
+				23 text  event
+				24 text s
+				25 button Stop
+				26 button Starting AI evolution... 0s
+				27 text Target host: DXU97120
+				28 text 0s
+				29 button Processing iteration 1... 0s iter 1
+				30 button Querying AI model... 0s iter 1
+				31 button Received AI response 5s iter 1
+				32 button Thinking... 5s iter 1
+				33 button Planning approach... 5s iter 1
+				34 button Processing iteration 2... 5s iter 2
+				35 button Querying AI model... 5s iter 2
+				36 text Waiting for next event...
+				37 button Console
+				38 container Notifications alt+T
+		39 close button
+		40 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+		41 minimize button
+	42 menu bar
+		43 nixmac
+		44 File
+		45 Edit
+		46 View
+		47 Window
+		48 Help
+
+The focused UI element is 2 HTML content.
+</app_state>

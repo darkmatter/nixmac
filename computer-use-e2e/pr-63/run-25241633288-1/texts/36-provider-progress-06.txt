@@ -1,0 +1,88 @@
+Computer Use state (CUA App Version: 758)
+<app_state>
+App=com.darkmatter.nixmac (pid 18081)
+Window: "nixmac", App: nixmac.
+	0 standard window nixmac, Secondary Actions: Raise
+		1 scroll area
+			2 HTML content Description: nixmac, URL: tauri://localhost
+				3 heading nixmac, Value: 3
+					4 text nixmac
+				5 button History
+				6 button Give feedback
+				7 button Settings
+				8 heading Get started, Value: 3
+					9 text Get started
+				10 container
+					11 text entry area (disabled, settable, string) Placeholder: Describe changes to make to your configuration., Value: Add the bat command line tool to my Homebrew packages as the plain string "bat" only, with no inline comments.
+						12 text Add the bat command line tool to my Homebrew packages as the plain string "bat" only, with no inline comments.
+					13 button (disabled) Send
+				14 button Install vim
+				15 button Add Rectangle app
+				16 button Enable the Finder path bar and status bar
+				17 pop up button 12 untracked customizations
+				18 pop up button 7 untracked Homebrew items
+				19 pop up button (disabled) My History
+				20 button Report Issue
+				21 text Evolving...
+				22 text 41
+				23 text  event
+				24 text s
+				25 button Stop
+				26 button Starting AI evolution... 0s
+				27 text Target host: DXU97120
+				28 text 0s
+				29 button Processing iteration 1... 0s iter 1
+				30 button Querying AI model... 0s iter 1
+				31 button Received AI response 5s iter 1
+				32 button Thinking... 5s iter 1
+				33 button Planning approach... 5s iter 1
+				34 button Processing iteration 2... 5s iter 2
+				35 button Querying AI model... 5s iter 2
+				36 button Received AI response 7s iter 2
+				37 button Reading file... 7s iter 2
+				38 button Reading homebrew.nix 7s iter 2
+				39 button Processing iteration 3... 7s iter 3
+				40 button Querying AI model... 7s iter 3
+				41 button Received AI response 10s iter 3
+				42 button Thinking... 10s iter 3
+				43 button Planning approach... 10s iter 3
+				44 button Processing iteration 4... 10s iter 4
+				45 button Querying AI model... 10s iter 4
+				46 button Received AI response 12s iter 4
+				47 button Editing nix config... 12s iter 4
+				48 button Editing homebrew.nix 12s iter 4
+				49 button Processing iteration 5... 12s iter 5
+				50 button Querying AI model... 12s iter 5
+				51 button Received AI response 15s iter 5
+				52 button Running build check... 15s iter 5
+				53 button Build check failed, retrying... 15s iter 5
+				54 button Processing iteration 6... 15s iter 6
+				55 button Querying AI model... 15s iter 6
+				56 button Received AI response 17s iter 6
+				57 button Thinking... 17s iter 6
+				58 button Debugging an issue... 17s iter 6
+				59 button Processing iteration 7... 17s iter 7
+				60 button Querying AI model... 17s iter 7
+				61 button Received AI response 19s iter 7
+				62 button Editing file... 19s iter 7
+				63 button Editing homebrew.nix 19s iter 7
+				64 button Processing iteration 8... 19s iter 8
+				65 button Querying AI model... 19s iter 8
+				66 button Received AI response 20s iter 8
+				67 button Running build check... 20s iter 8
+				68 text Waiting for next event...
+				69 button Console
+				70 container Notifications alt+T
+		71 close button
+		72 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+		73 minimize button
+	74 menu bar
+		75 nixmac
+		76 File
+		77 Edit
+		78 View
+		79 Window
+		80 Help
+
+The focused UI element is 2 HTML content.
+</app_state>
