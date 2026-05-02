@@ -1,0 +1,62 @@
+Computer Use state (CUA App Version: 758)
+<app_state>
+App=com.darkmatter.nixmac (pid 87023)
+Window: "nixmac", App: nixmac.
+	0 standard window nixmac, Secondary Actions: Raise
+		1 scroll area
+			2 HTML content Description: nixmac, URL: tauri://localhost
+				3 heading nixmac, Value: 3
+					4 text nixmac
+				5 button History
+				6 button Give feedback
+				7 button Settings
+				8 heading History, Value: 2
+					9 text History
+				10 text 3
+				11 button Analyze recent (3)
+				12 text TODAY
+				13 text Restore Commit 9b8479b
+				14 text nixmac e2e restore baseline
+				15 button Confirm Restore
+				16 button Cancel
+				17 container
+					18 text This will deactivate  1  commit .
+				19 text Deactivated commits will stay in history.
+				20 text You can restore them again later.
+				21 text n1xm4c0
+				22 text 1
+				23 text file
+				24 button Analyze
+				25 text flake.lock
+				26 button feat(brews): add 'bat' to Homebrew brews list CURRENTe1c2689 just now 2 files UpdateHomebrew Brews
+				27 text nixmac e2e restore baseline
+				28 button Restore
+				29 text 9b8479b
+				30 text 13 min ago
+				31 text 1
+				32 text file
+				33 text External commit
+				34 button Analyze
+				35 text flake.lock
+				36 text Initial disposable nixmac E2E config
+				37 button Restore
+				38 text 63c6cc2
+				39 text 13 min ago
+				40 text External commit
+				41 button Analyze
+				42 button Report Issue
+				43 button Console
+				44 container Notifications alt+T
+		45 close button
+		46 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+		47 minimize button
+	48 menu bar
+		49 nixmac
+		50 File
+		51 Edit
+		52 View
+		53 Window
+		54 Help
+
+The focused UI element is 2 HTML content.
+</app_state>
