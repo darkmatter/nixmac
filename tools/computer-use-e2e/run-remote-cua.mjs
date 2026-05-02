@@ -46,6 +46,7 @@ import { containsUnmaskedSecret, redact } from './redaction.mjs';
 import {
   addEvent,
   addNarrative,
+  createBaseState,
   ensureCurrentSchema as ensureStateCurrentSchema,
   saveState,
   shouldFailProcessForVerdict,
@@ -837,52 +838,15 @@ function annotationGeometryIssues(state) {
 }
 
 async function baseState(runDir, options) {
-  const branch = tryRun('git', ['branch', '--show-current'], { cwd: REPO_ROOT }).stdout || 'unknown';
-  const sha = tryRun('git', ['rev-parse', '--short', 'HEAD'], { cwd: REPO_ROOT }).stdout || 'unknown';
-  const macosVersion =
-    process.env.NIXMAC_E2E_MACOS_VERSION ||
-    tryRun('sw_vers', ['-productVersion']).stdout ||
-    'unknown';
-  const remoteAppPath = remoteAppPathFromEnv();
-  const scenarios = Object.fromEntries(
-    Object.entries(scenarioLabels).map(([key, label]) => [
-      key,
-      { label, status: 'inconclusive', notes: [] },
-    ]),
-  );
-  return {
-    startedAt: new Date().toISOString(),
-    runDir,
-    ws: options.ws,
-    app: options.app,
-    prompt: options.prompt,
-    branch,
-    sha,
-    macosVersion,
-    appCommand: process.env.NIXMAC_E2E_APP_COMMAND || `open -n ${remoteAppPath}`,
-    provider: {
-      kind: 'real-openrouter-compatible-provider',
-      note: 'The key value is never written to this report. Failures may reflect provider billing/auth state.',
-    },
-    evolvedCaseStrategy: evolvedCaseStrategy(),
-    evolvedCaseRuns: [],
-    safety: {
-      disposableConfig: process.env.NIXMAC_E2E_DISPOSABLE_CONFIG === 'true',
-      buildConfirmEnabled: process.env.NIXMAC_E2E_ALLOW_BUILD_CONFIRM === 'true',
-      discardConfirmEnabled: process.env.NIXMAC_E2E_ALLOW_DISCARD_CONFIRM === 'true',
-      note: 'Discard/build confirmation is only allowed when disposable config mode is explicitly proven.',
-    },
-    prFocus: buildPrFocus(),
-    cleanup: { attempted: false, restored: false, note: 'Cleanup has not run yet.' },
-    screenshots: [],
-    textSnapshots: [],
-    events: [],
-    claims: [],
-    narrative: [],
-    confirmationBoundaries: [],
-    failures: [],
-    scenarios,
-  };
+  return createBaseState(runDir, options, {
+    tryRun,
+    repoRoot: REPO_ROOT,
+    remoteAppPathFromEnv,
+    scenarioLabels,
+    evolvedCaseStrategy,
+    buildPrFocus,
+    env: process.env,
+  });
 }
 
 async function captureState(client, state, label, note = '') {
@@ -2416,6 +2380,47 @@ async function runSelfTest() {
   assert.equal(schemaLifecycleState.safety, previousSafety, 'ensureCurrentSchema should not replace existing safety on a later call');
   assert.equal(schemaLifecycleState.evolvedCaseStrategy, previousEvolvedCaseStrategy, 'ensureCurrentSchema should not replace existing evolved-case strategy on a later call');
   assert.deepEqual(schemaLifecycleState.screenshots[0].imageSize, { width: 100, height: 80 }, 'ensureCurrentSchema should not replace existing screenshot dimensions on a later call');
+  const baseLifecycleState = await createBaseState(
+    stateHelperRunDir,
+    { ws: 'ws://test', app: 'com.darkmatter.test', prompt: 'Test prompt' },
+    {
+      tryRun: (command, args) => {
+        if (command === 'git' && args.join(' ') === 'branch --show-current') return { stdout: 'feature/product-proof' };
+        if (command === 'git' && args.join(' ') === 'rev-parse --short HEAD') return { stdout: 'abc1234' };
+        if (command === 'sw_vers') return { stdout: '26.2' };
+        return { stdout: '' };
+      },
+      repoRoot: '/repo',
+      remoteAppPathFromEnv: () => '/tmp/nixmac.app',
+      scenarioLabels: { launch: 'App launches', review: 'Review renders' },
+      evolvedCaseStrategy: () => ({ defaultCaseId: 'homebrew-bat', selectedAt: 'stubbed' }),
+      buildPrFocus: () => ({ changedFiles: ['apps/native/src/app.tsx'], scenarioKeys: ['launch'] }),
+      env: {
+        NIXMAC_E2E_MACOS_VERSION: 'test-macos',
+        NIXMAC_E2E_DISPOSABLE_CONFIG: 'true',
+        NIXMAC_E2E_ALLOW_BUILD_CONFIRM: 'false',
+        NIXMAC_E2E_ALLOW_DISCARD_CONFIRM: 'true',
+      },
+      now: () => '2026-05-02T00:00:00.000Z',
+    },
+  );
+  assert.equal(baseLifecycleState.startedAt, '2026-05-02T00:00:00.000Z', 'createBaseState should accept deterministic startedAt injection');
+  assert.equal(baseLifecycleState.branch, 'feature/product-proof', 'createBaseState should record branch from injected runner');
+  assert.equal(baseLifecycleState.sha, 'abc1234', 'createBaseState should record SHA from injected runner');
+  assert.equal(baseLifecycleState.macosVersion, 'test-macos', 'createBaseState should prefer macOS env override');
+  assert.equal(baseLifecycleState.appCommand, 'open -n /tmp/nixmac.app', 'createBaseState should derive app command from injected remote app path');
+  assert.equal(baseLifecycleState.scenarios.launch.status, 'inconclusive', 'createBaseState should initialize scenarios as inconclusive');
+  assert.deepEqual(baseLifecycleState.scenarios.launch.notes, [], 'createBaseState should initialize fresh-run scenario notes as empty');
+  assert.equal(baseLifecycleState.cleanup.note, 'Cleanup has not run yet.', 'createBaseState should preserve fresh-run cleanup copy');
+  assert.equal(baseLifecycleState.provider.kind, 'real-openrouter-compatible-provider', 'createBaseState should preserve provider kind copy');
+  assert.match(baseLifecycleState.provider.note, /key value is never written/, 'createBaseState should preserve provider secrecy copy');
+  assert.equal(baseLifecycleState.safety.disposableConfig, true, 'createBaseState should derive disposable safety from injected env');
+  assert.equal(baseLifecycleState.safety.buildConfirmEnabled, false, 'createBaseState should derive build-confirm safety from injected env');
+  assert.equal(baseLifecycleState.safety.discardConfirmEnabled, true, 'createBaseState should derive discard-confirm safety from injected env');
+  assert.match(baseLifecycleState.safety.note, /only allowed when disposable config mode is explicitly proven/, 'createBaseState should preserve safety note copy');
+  assert.deepEqual(baseLifecycleState.evolvedCaseRuns, [], 'createBaseState should initialize evolved case runs as empty');
+  assert.deepEqual(baseLifecycleState.prFocus.scenarioKeys, ['launch'], 'createBaseState should derive PR focus from injected builder');
+  assert.deepEqual(baseLifecycleState.evolvedCaseStrategy, { defaultCaseId: 'homebrew-bat', selectedAt: 'stubbed' }, 'createBaseState should derive evolved strategy from injected builder');
   assert.equal(sourcePrefixExists('apps/native/src/components/widget/settings/'), true, 'coverage freshness should accept existing directory prefixes');
   assert.equal(sourcePrefixExists('apps/native/src/components/widget/settings-dialog.tsx'), true, 'coverage freshness should accept existing file prefixes');
   assert.equal(sourcePrefixExists('apps/native/src/components/widget/__missing__/'), false, 'coverage freshness should reject missing directory prefixes');

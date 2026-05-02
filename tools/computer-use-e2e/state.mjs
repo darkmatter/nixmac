@@ -55,6 +55,68 @@ export function ensureCurrentSchema(
   return state;
 }
 
+export async function createBaseState(
+  runDir,
+  options = {},
+  {
+    tryRun = () => ({ stdout: '' }),
+    repoRoot = process.cwd(),
+    remoteAppPathFromEnv = () => '/Applications/nixmac.app',
+    scenarioLabels = {},
+    evolvedCaseStrategy = () => null,
+    buildPrFocus = () => null,
+    env = process.env,
+    now = () => new Date().toISOString(),
+  } = {},
+) {
+  const branch = tryRun('git', ['branch', '--show-current'], { cwd: repoRoot }).stdout || 'unknown';
+  const sha = tryRun('git', ['rev-parse', '--short', 'HEAD'], { cwd: repoRoot }).stdout || 'unknown';
+  const macosVersion =
+    env.NIXMAC_E2E_MACOS_VERSION ||
+    tryRun('sw_vers', ['-productVersion']).stdout ||
+    'unknown';
+  const remoteAppPath = remoteAppPathFromEnv();
+  const scenarios = Object.fromEntries(
+    Object.entries(scenarioLabels).map(([key, label]) => [
+      key,
+      { label, status: 'inconclusive', notes: [] },
+    ]),
+  );
+  return {
+    startedAt: now(),
+    runDir,
+    ws: options.ws,
+    app: options.app,
+    prompt: options.prompt,
+    branch,
+    sha,
+    macosVersion,
+    appCommand: env.NIXMAC_E2E_APP_COMMAND || `open -n ${remoteAppPath}`,
+    provider: {
+      kind: 'real-openrouter-compatible-provider',
+      note: 'The key value is never written to this report. Failures may reflect provider billing/auth state.',
+    },
+    evolvedCaseStrategy: evolvedCaseStrategy(),
+    evolvedCaseRuns: [],
+    safety: {
+      disposableConfig: env.NIXMAC_E2E_DISPOSABLE_CONFIG === 'true',
+      buildConfirmEnabled: env.NIXMAC_E2E_ALLOW_BUILD_CONFIRM === 'true',
+      discardConfirmEnabled: env.NIXMAC_E2E_ALLOW_DISCARD_CONFIRM === 'true',
+      note: 'Discard/build confirmation is only allowed when disposable config mode is explicitly proven.',
+    },
+    prFocus: buildPrFocus(),
+    cleanup: { attempted: false, restored: false, note: 'Cleanup has not run yet.' },
+    screenshots: [],
+    textSnapshots: [],
+    events: [],
+    claims: [],
+    narrative: [],
+    confirmationBoundaries: [],
+    failures: [],
+    scenarios,
+  };
+}
+
 export function verdictFor(state) {
   const statuses = Object.values(state.scenarios).map((item) => item.status);
   if (statuses.includes('fail')) return 'fail';
