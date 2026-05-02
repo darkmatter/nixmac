@@ -168,9 +168,10 @@ group. Do not make concurrency per PR while the suite depends on a singleton
 interactive Mac, because overlapping runs can race on app state, launchd
 environment, Authorization Services policy, and the Codex app-server port.
 Before this becomes broad required branch protection, the operator policy must
-either skip stale non-tip commits after queueing or provide a documented manual
-cancel/runbook so one noisy PR cannot burn the singleton Mac for obsolete
-commits.
+skip stale non-tip commits after queueing so one noisy PR cannot burn the
+singleton Mac for obsolete commits. The workflow does this with
+`tools/computer-use-e2e/check-stale-run.mjs` before secrets, artifact waits,
+SSH/readiness, app staging, tunnel setup, or cleanup can touch the remote Mac.
 
 ## Productization Policy
 
@@ -272,7 +273,9 @@ under test, secret leak risk, cleanup failure touching persistent state, or
 missing required screenshot/video evidence after touching app state.
 
 `stale-queued-run` is a no-touch workflow auto-skip, not an infra-only override
-class. The superseding PR tip must get its own Product Proof run.
+class. First-attempt PR runs skip when the queued event head no longer matches
+the current PR head, or when the PR closed/merged while queued. API uncertainty
+does not skip. The superseding PR tip must get its own Product Proof run.
 
 Operator-initiated reruns and `workflow_dispatch` runs on stale or non-tip
 commits are triage evidence, not release-gate satisfaction. A successful stale

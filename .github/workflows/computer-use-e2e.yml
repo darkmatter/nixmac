@@ -54,7 +54,9 @@ jobs:
         run: |
           node --check tools/computer-use-e2e/run-remote-cua.mjs
           node --check tools/computer-use-e2e/check-remote.mjs
+          node --check tools/computer-use-e2e/check-stale-run.mjs
           node tools/computer-use-e2e/run-remote-cua.mjs self-test
+          node tools/computer-use-e2e/check-stale-run.mjs self-test
           if node tools/computer-use-e2e/check-remote.mjs --host example.com --require-app-server nope >/tmp/check-remote-invalid.out 2>&1; then
             cat /tmp/check-remote-invalid.out
             echo "Expected invalid --require-app-server to fail"
@@ -104,8 +106,29 @@ jobs:
           { git diff --name-only "$PR_BASE_SHA...$PR_HEAD_SHA" || true; } |
             append_multiline_env "NIXMAC_E2E_PR_CHANGED_FILES"
 
+      - name: Check stale queued PR run
+        id: stale-run
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node tools/computer-use-e2e/check-stale-run.mjs
+
+      - name: Render stale queued report
+        if: steps.stale-run.outputs.stale == 'true'
+        shell: bash
+        env:
+          STALE_REASON: ${{ steps.stale-run.outputs.reason }}
+          STALE_PR_NUMBER: ${{ steps.stale-run.outputs.pr_number }}
+          STALE_EVENT_HEAD_SHA: ${{ steps.stale-run.outputs.event_head_sha }}
+          STALE_CURRENT_HEAD_SHA: ${{ steps.stale-run.outputs.current_head_sha }}
+        run: |
+          node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable \
+            --note "stale-queued-run: skipped before remote work because ${STALE_REASON}. PR #${STALE_PR_NUMBER}; queued head ${STALE_EVENT_HEAD_SHA}; current head ${STALE_CURRENT_HEAD_SHA}. No app state, secrets, SSH, readiness, artifact wait, or remote staging was touched."
+
       - name: Check remote Computer Use secrets
         id: remote-secrets
+        if: steps.stale-run.outputs.stale != 'true'
         shell: bash
         run: |
           missing=()
@@ -122,13 +145,13 @@ jobs:
           fi
 
       - name: Render unavailable report
-        if: steps.remote-secrets.outputs.available != 'true'
+        if: steps.stale-run.outputs.stale != 'true' && steps.remote-secrets.outputs.available != 'true'
         run: |
           node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable \
             --note "Remote Computer Use secrets are not fully configured for this repository. Missing: ${{ steps.remote-secrets.outputs.missing }}. The workflow triggered quietly and produced an inconclusive report without touching app state."
 
       - name: Prepare SSH
-        if: steps.remote-secrets.outputs.available == 'true'
+        if: steps.stale-run.outputs.stale != 'true' && steps.remote-secrets.outputs.available == 'true'
         shell: bash
         run: |
           mkdir -p ~/.ssh
@@ -140,7 +163,7 @@ jobs:
           echo "::add-mask::$OPENROUTER_API_KEY"
 
       - name: Preflight remote Mac
-        if: steps.remote-secrets.outputs.available == 'true'
+        if: steps.stale-run.outputs.stale != 'true' && steps.remote-secrets.outputs.available == 'true'
         shell: bash
         run: |
           mkdir -p artifacts/computer-use-remote/readiness
@@ -155,7 +178,7 @@ jobs:
             --json "$readiness_json"
 
       - name: Download PR-built app artifact
-        if: steps.remote-secrets.outputs.available == 'true'
+        if: steps.stale-run.outputs.stale != 'true' && steps.remote-secrets.outputs.available == 'true'
         id: pr-app
         shell: bash
         env:
@@ -205,7 +228,7 @@ jobs:
           echo "app_tar=$tar_path" >> "$GITHUB_OUTPUT"
 
       - name: Start remote Codex app-server and nixmac
-        if: steps.remote-secrets.outputs.available == 'true'
+        if: steps.stale-run.outputs.stale != 'true' && steps.remote-secrets.outputs.available == 'true'
         id: remote-start
         shell: bash
         env:
@@ -378,7 +401,7 @@ jobs:
           REMOTE
 
       - name: Tunnel remote app-server
-        if: steps.remote-secrets.outputs.available == 'true'
+        if: steps.stale-run.outputs.stale != 'true' && steps.remote-secrets.outputs.available == 'true'
         shell: bash
         env:
           SSH_DEST: ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}
@@ -405,7 +428,7 @@ jobs:
           exit 1
 
       - name: Run Computer Use E2E
-        if: steps.remote-secrets.outputs.available == 'true'
+        if: steps.stale-run.outputs.stale != 'true' && steps.remote-secrets.outputs.available == 'true'
         env:
           NIXMAC_COMPUTER_USE_WS: ws://127.0.0.1:18790
           NIXMAC_COMPUTER_USE_APP: com.darkmatter.nixmac
@@ -429,6 +452,9 @@ jobs:
             exit 0
           fi
           note="Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+          if [[ "${{ steps.stale-run.outputs.stale }}" == "true" ]]; then
+            note="stale-queued-run was detected, but the stale no-touch report failed to render before evidence was written. Reason: ${{ steps.stale-run.outputs.reason }}."
+          fi
           # Preflight writes one readiness file for this workflow attempt; sort/tail keeps this robust if a retried shell leaves more than one.
           readiness_json="$(find artifacts/computer-use-remote/readiness -name '*.json' -type f 2>/dev/null | sort | tail -1 || true)"
           if [[ -n "$readiness_json" ]]; then
@@ -441,7 +467,7 @@ jobs:
             --note "$note"
 
       - name: Restore remote app support
-        if: always() && steps.remote-secrets.outputs.available == 'true'
+        if: always() && steps.stale-run.outputs.stale != 'true' && steps.remote-secrets.outputs.available == 'true'
         shell: bash
         env:
           SSH_DEST: ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}

@@ -1,0 +1,32 @@
+{
+  "chunk": "15",
+  "title": "Stale queued PR no-touch skip",
+  "reviewDir": "/tmp/claude-review-1rHNiX",
+  "reviewedAt": "2026-05-02T19:28:26.595Z",
+  "blockingIssuesRemaining": 0,
+  "convergenceScore": 85,
+  "decisions": [
+    {
+      "label": "self-test assertion failures silently swallowed",
+      "severity": "medium",
+      "reviewerRecommendation": "CHANGE_REQUIRED",
+      "finalDecision": "ACCEPT_APPLIED",
+      "rationale": "Moved self-test outside the production catch path so assertion failures exit nonzero while runtime API uncertainty still exits 0 with stale=false outputs."
+    },
+    {
+      "label": "stale-render failure leaves no fallback report",
+      "severity": "low",
+      "reviewerRecommendation": "CONSIDER",
+      "finalDecision": "ACCEPT_APPLIED",
+      "rationale": "Allowed the setup-failure fallback to render a report if the stale no-touch render step itself fails."
+    }
+  ],
+  "validationAfterReviewFixes": [
+    "node --check tools/computer-use-e2e/check-stale-run.mjs",
+    "node tools/computer-use-e2e/check-stale-run.mjs self-test",
+    "node tools/computer-use-e2e/run-remote-cua.mjs self-test",
+    "ruby YAML parse .github/workflows/computer-use-e2e.yml",
+    "node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable --note 'stale-queued-run smoke after review fixes...' --run-dir /tmp/nixmac-stale-run-unavailable-smoke",
+    "node tools/computer-use-e2e/preservation-harness.mjs run --work-dir /tmp/nixmac-preservation-fixture-run"
+  ]
+}

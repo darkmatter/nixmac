@@ -1,0 +1,31 @@
+{
+  "chunk": "15",
+  "title": "Stale queued PR no-touch skip",
+  "reviewDir": "/tmp/claude-review-IG1R7E",
+  "reviewedAt": "2026-05-02T19:19:06.074Z",
+  "blockingIssuesRemaining": 1,
+  "convergenceScore": 82,
+  "decisions": [
+    {
+      "label": "Gate enumeration omits the Tunnel remote app-server step",
+      "severity": "medium",
+      "reviewerRecommendation": "CHANGE_REQUIRED",
+      "finalDecision": "ACCEPT_REQUIRED",
+      "rationale": "Explicitly gate Tunnel remote app-server and cleanup/restore with stale != true, not just via secret-step cascade."
+    },
+    {
+      "label": "Stale-check script exit-code behavior on API failure is not pinned down",
+      "severity": "low",
+      "reviewerRecommendation": "CONSIDER",
+      "finalDecision": "ACCEPT_IN_PLAN",
+      "rationale": "Script will always exit 0 and encode uncertainty through stale=false plus reason output."
+    },
+    {
+      "label": "Closed/merged PR is not in the staleness policy",
+      "severity": "low",
+      "reviewerRecommendation": "CONSIDER",
+      "finalDecision": "ACCEPT_IN_PLAN",
+      "rationale": "Closed or merged PRs will be treated as stale no-touch skips because the PR no longer needs singleton Mac capacity."
+    }
+  ]
+}
