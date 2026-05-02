@@ -1,10 +1,12 @@
 #!/usr/bin/env node
+import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+import { scenarioLabels as sharedScenarioLabels } from './scenario-catalog.mjs';
 import {
   access,
   cp,
@@ -70,6 +72,7 @@ const scenarioLabels = {
   buildBoundary: 'Build & Test confirmation boundary appears and is cancelled',
   discard: 'Discard confirmation and return-to-start',
 };
+const LOCAL_ONLY_SCENARIO_KEYS = new Set(['settings', 'suggestion', 'descriptor', 'buildCheck']);
 
 function usage() {
   console.log(`Usage:
@@ -83,6 +86,7 @@ function usage() {
   node tools/computer-use-e2e/run-local.mjs narrative "..."
   node tools/computer-use-e2e/run-local.mjs app-command "..."
   node tools/computer-use-e2e/run-local.mjs render
+  node tools/computer-use-e2e/run-local.mjs self-test
   node tools/computer-use-e2e/run-local.mjs cleanup`);
 }
 
@@ -876,6 +880,20 @@ async function cleanup() {
   await render();
 }
 
+function runSelfTest() {
+  // This is a one-way drift guard: run-local is a deliberate subset with a few
+  // local-only scenario names, so it should not require every shared key.
+  const unexpectedLocalKeys = Object.keys(scenarioLabels).filter((key) => !sharedScenarioLabels[key] && !LOCAL_ONLY_SCENARIO_KEYS.has(key));
+  assert.deepEqual(
+    unexpectedLocalKeys,
+    [],
+    'run-local scenario keys should either exist in shared scenarioLabels or be explicitly listed in LOCAL_ONLY_SCENARIO_KEYS',
+  );
+  const staleLocalOnlyKeys = [...LOCAL_ONLY_SCENARIO_KEYS].filter((key) => sharedScenarioLabels[key]);
+  assert.deepEqual(staleLocalOnlyKeys, [], 'LOCAL_ONLY_SCENARIO_KEYS should not include keys that now exist in shared scenarioLabels');
+  console.log('Computer Use local runner self-test passed.');
+}
+
 async function main() {
   const [command, ...args] = process.argv.slice(2);
   try {
@@ -889,6 +907,7 @@ async function main() {
     else if (command === 'narrative') await narrative(args);
     else if (command === 'app-command') await appCommand(args);
     else if (command === 'render') await render();
+    else if (command === 'self-test') runSelfTest();
     else if (command === 'cleanup') await cleanup();
     else {
       usage();

@@ -11,12 +11,15 @@ import {
   DEFAULT_PROMPT,
   EVOLVED_CASE_CATALOG,
   curatedProofKeys,
+  scenarioVisualContracts,
   scenarioAssertionTypeHints,
   scenarioGroups,
   scenarioLabels,
   scenarioProofCatalog,
+  screenshotAnnotations,
   supportedHomebrewSourcePaths,
 } from './scenario-catalog.mjs';
+import { failureTaxonomy, scenarioContractVersion, v1GradeToEvidenceStrength } from './schemas.mjs';
 
 const THIS_FILE = fileURLToPath(import.meta.url);
 const TOOL_DIR = path.dirname(THIS_FILE);
@@ -30,60 +33,6 @@ const COVERAGE_MANIFEST_PATH = path.join(TOOL_DIR, 'coverage-manifest.json');
 
 let activeRunDir = '';
 
-const scenarioContractVersion = 2;
-
-const v1GradeToEvidenceStrength = {
-  'action-confirmed': 'operational',
-  'text-confirmed': 'visual-supported',
-  'guardrail-confirmed': 'operational',
-  'manifest-confirmed': 'operational',
-  calibration: 'weak',
-  'not-run': 'not-proved',
-  insufficient: 'not-proved',
-};
-
-const failureTaxonomy = {
-  app: 'The app UI/state did not behave as expected.',
-  provider: 'The real provider returned a billing, rate-limit, timeout, or model error.',
-  credential: 'A provider key was missing, invalid, unavailable, or not injected into the launched app process.',
-  remote_infra: 'DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.',
-  harness: 'Computer Use actions, artifact generation, report rendering, or runner bookkeeping failed.',
-  coverage: 'The suite lacks a scenario, manifest mapping, PR focus, or waiver for the behavior.',
-  inconclusive: 'The runner could not prove either pass or fail.',
-};
-
-const screenshotAnnotations = {
-  launch: [
-    { label: 'Step 1 active', x: 13, y: 18, tone: 'pin' },
-    { label: 'Save step inactive', x: 72, y: 18, tone: 'pin' },
-    { label: 'Prompt field', x: 8, y: 39, w: 84, h: 14 },
-    { label: 'Send disabled', x: 88, y: 46, tone: 'pin' },
-  ],
-  'settings-general': [{ label: 'Settings content', x: 50, y: 36, tone: 'pin' }],
-  'settings-ai-models': [{ label: 'Provider/model controls', x: 50, y: 43, tone: 'pin' }],
-  'settings-preferences': [{ label: 'Confirmation controls', x: 50, y: 42, tone: 'pin' }],
-  history: [{ label: 'History surface', x: 50, y: 40, tone: 'pin' }],
-  feedback: [{ label: 'Feedback dialog', x: 50, y: 42, tone: 'pin' }],
-  'report-issue': [{ label: 'Report Issue dialog', x: 50, y: 42, tone: 'pin' }],
-  'typed-intent': [{ label: 'Typed prompt', x: 8, y: 39, w: 84, h: 14 }],
-  'review-summary': [{ label: 'Summary after Review', x: 50, y: 38, tone: 'pin' }],
-  'review-diff': [{ label: 'Diff includes requested change', x: 50, y: 45, tone: 'pin' }],
-  'build-boundary': [{ label: 'Confirm button', x: 57, y: 50, tone: 'pin' }],
-  'step-3-ready': [
-    { label: 'Step 3 active', x: 73, y: 20, tone: 'pin' },
-    { label: 'Commit controls', x: 70, y: 60, tone: 'pin' },
-  ],
-  'after-commit': [{ label: 'Saved commit state', x: 50, y: 44, tone: 'pin' }],
-  'history-before-restore': [{ label: 'History restore controls', x: 50, y: 42, tone: 'pin' }],
-  'history-restore-preview': [{ label: 'Confirm restore preview', x: 50, y: 48, tone: 'pin' }],
-  'after-history-restore': [{ label: 'Rollback cleanup result', x: 50, y: 42, tone: 'pin' }],
-  'discard-boundary': [{ label: 'Discard confirmation', x: 50, y: 48, tone: 'pin' }],
-  'evolved-screenshots-defaults-summary': [{ label: 'Screenshot defaults summary', x: 50, y: 38, tone: 'pin' }],
-  'evolved-screenshots-defaults-diff': [{ label: 'Defaults diff evidence', x: 50, y: 45, tone: 'pin' }],
-  'evolved-screenshots-defaults-after-discard': [{ label: 'Review-only cleanup', x: 50, y: 42, tone: 'pin' }],
-  'adversarial-out-of-bounds-annotation': [{ label: 'Out of bounds fixture', x: 96, y: 50, w: 12, h: 10 }],
-};
-
 const visualProbeDefaults = {
   minWidth: 500,
   minHeight: 500,
@@ -91,68 +40,6 @@ const visualProbeDefaults = {
   minYRange: 10,
   minCropYMax: 38,
   minCropYRange: 4,
-};
-
-const scenarioVisualContracts = {
-  launch: {
-    screenshots: [
-      {
-        label: 'launch',
-        probes: [
-          { label: 'workflow stepper band', x: 4, y: 7, w: 90, h: 20 },
-          { label: 'prompt and controls band', x: 5, y: 35, w: 90, h: 22 },
-        ],
-      },
-    ],
-  },
-  settingsGeneral: {
-    screenshots: [{ label: 'settings-general', probes: [{ label: 'settings content panel', x: 12, y: 16, w: 80, h: 66 }] }],
-  },
-  settingsAIModels: {
-    screenshots: [{ label: 'settings-ai-models', probes: [{ label: 'provider and model controls', x: 12, y: 16, w: 80, h: 70 }] }],
-  },
-  settingsPreferences: {
-    screenshots: [{ label: 'settings-preferences', probes: [{ label: 'preference controls', x: 12, y: 16, w: 80, h: 70 }] }],
-  },
-  history: {
-    screenshots: [{ label: 'history', probes: [{ label: 'history surface', x: 10, y: 15, w: 82, h: 70 }] }],
-  },
-  feedback: {
-    screenshots: [{ label: 'feedback', probes: [{ label: 'feedback dialog', x: 20, y: 18, w: 60, h: 60 }] }],
-  },
-  reportIssue: {
-    screenshots: [{ label: 'report-issue', probes: [{ label: 'report issue dialog', x: 20, y: 18, w: 60, h: 60 }] }],
-  },
-  suggestionCards: {
-    screenshots: [{ label: 'suggestion-card', probes: [{ label: 'prompt and suggestion area', x: 5, y: 35, w: 90, h: 34 }] }],
-  },
-  typedIntent: {
-    screenshots: [{ label: 'typed-intent', probes: [{ label: 'typed prompt area', x: 5, y: 35, w: 90, h: 24 }] }],
-  },
-  review: {
-    screenshots: [{ label: 'provider-progress-05', probes: [{ label: 'review controls area', x: 8, y: 8, w: 84, h: 82 }] }],
-  },
-  summary: {
-    screenshots: [{ label: 'review-summary', probes: [{ label: 'summary content area', x: 8, y: 15, w: 84, h: 78 }] }],
-  },
-  diff: {
-    screenshots: [{ label: 'review-diff', probes: [{ label: 'diff content area', x: 8, y: 15, w: 84, h: 78 }] }],
-  },
-  buildBoundary: {
-    screenshots: [{ label: 'build-boundary', probes: [{ label: 'build confirmation dialog', x: 20, y: 22, w: 60, h: 56 }] }],
-  },
-  saveFlow: {
-    screenshots: [{ label: 'step-3-ready', probes: [{ label: 'step 3 save surface', x: 8, y: 8, w: 84, h: 82 }] }],
-  },
-  rollbackCleanup: {
-    screenshots: [
-      { label: 'history-restore-preview', probes: [{ label: 'restore confirmation preview', x: 12, y: 14, w: 76, h: 72 }] },
-      { label: 'after-history-restore', probes: [{ label: 'post-restore app state', x: 8, y: 8, w: 84, h: 82 }] },
-    ],
-  },
-  reportInspection: {
-    screenshots: [{ label: 'HTML report inspection', probes: [{ label: 'rendered report body', x: 8, y: 8, w: 84, h: 82 }] }],
-  },
 };
 
 function usage() {
@@ -4029,6 +3916,24 @@ async function runSelfTest() {
   ]);
   const unknownCatalogKeys = [...referencedScenarioKeys].filter((key) => !catalogScenarioKeys.has(key));
   assert.deepEqual(unknownCatalogKeys, [], 'scenario catalog references should resolve to default, optional evolved, or adversarial-only scenario keys');
+  const screenshotProofLabels = new Set(Object.values(scenarioProofCatalog).flatMap((proof) => proof.screenshots || []));
+  const visualContractLabels = new Set(
+    Object.values(scenarioVisualContracts).flatMap((contract) => (contract.screenshots || []).map((shot) => shot.label)),
+  );
+  const annotationLabels = new Set(Object.keys(screenshotAnnotations));
+  const unknownAnnotationLabels = [...annotationLabels].filter((label) => !visualContractLabels.has(label) && !screenshotProofLabels.has(label));
+  assert.deepEqual(unknownAnnotationLabels, [], 'screenshot annotations should target visual contracts or proof-catalog screenshots');
+  // These labels are intentionally unannotated: suggestion/provider/report frames
+  // are visually asserted by signalstats but do not have stable callout geometry.
+  const knownUnannotatedVisualLabels = new Set(['suggestion-card', 'provider-progress-05', 'HTML report inspection']);
+  const unannotatedVisualLabels = [...visualContractLabels].filter((label) => !annotationLabels.has(label) && !knownUnannotatedVisualLabels.has(label));
+  assert.deepEqual(unannotatedVisualLabels, [], 'visual contract screenshots should be annotated or explicitly allowed as unannotated');
+  const proofGrades = new Set(Object.values(scenarioProofCatalog).map((proof) => proof.grade));
+  const unmappedProofGrades = [...proofGrades].filter((grade) => !Object.hasOwn(v1GradeToEvidenceStrength, grade));
+  assert.deepEqual(unmappedProofGrades, [], 'every proof-catalog evidence grade should map to a V2 evidence strength');
+  const emittedFailureClasses = ['app', 'provider', 'credential', 'remote_infra', 'harness', 'coverage', 'inconclusive'];
+  const missingFailureTaxonomyClasses = emittedFailureClasses.filter((key) => !Object.hasOwn(failureTaxonomy, key));
+  assert.deepEqual(missingFailureTaxonomyClasses, [], 'failure taxonomy should cover every class emitted by classifyScenarioResult');
   assert.equal(
     Object.hasOwn(ensureCurrentSchema({ scenarios: {} }).scenarios, 'inlineQuestionAnswer'),
     false,

@@ -10,6 +10,100 @@ function freezeDeep(value) {
 export const DEFAULT_PROMPT = 'Add the bat command line tool to my Homebrew packages as the plain string "bat" only, with no inline comments.';
 export const supportedHomebrewSourcePaths = freezeDeep(['modules/darwin/homebrew.nix', 'flake-modules/darwin.nix']);
 
+export const screenshotAnnotations = freezeDeep({
+  launch: [
+    { label: 'Step 1 active', x: 13, y: 18, tone: 'pin' },
+    { label: 'Save step inactive', x: 72, y: 18, tone: 'pin' },
+    { label: 'Prompt field', x: 8, y: 39, w: 84, h: 14 },
+    { label: 'Send disabled', x: 88, y: 46, tone: 'pin' },
+  ],
+  'settings-general': [{ label: 'Settings content', x: 50, y: 36, tone: 'pin' }],
+  'settings-ai-models': [{ label: 'Provider/model controls', x: 50, y: 43, tone: 'pin' }],
+  'settings-preferences': [{ label: 'Confirmation controls', x: 50, y: 42, tone: 'pin' }],
+  history: [{ label: 'History surface', x: 50, y: 40, tone: 'pin' }],
+  feedback: [{ label: 'Feedback dialog', x: 50, y: 42, tone: 'pin' }],
+  'report-issue': [{ label: 'Report Issue dialog', x: 50, y: 42, tone: 'pin' }],
+  'typed-intent': [{ label: 'Typed prompt', x: 8, y: 39, w: 84, h: 14 }],
+  'review-summary': [{ label: 'Summary after Review', x: 50, y: 38, tone: 'pin' }],
+  'review-diff': [{ label: 'Diff includes requested change', x: 50, y: 45, tone: 'pin' }],
+  'build-boundary': [{ label: 'Confirm button', x: 57, y: 50, tone: 'pin' }],
+  'step-3-ready': [
+    { label: 'Step 3 active', x: 73, y: 20, tone: 'pin' },
+    { label: 'Commit controls', x: 70, y: 60, tone: 'pin' },
+  ],
+  'after-commit': [{ label: 'Saved commit state', x: 50, y: 44, tone: 'pin' }],
+  'history-before-restore': [{ label: 'History restore controls', x: 50, y: 42, tone: 'pin' }],
+  'history-restore-preview': [{ label: 'Confirm restore preview', x: 50, y: 48, tone: 'pin' }],
+  'after-history-restore': [{ label: 'Rollback cleanup result', x: 50, y: 42, tone: 'pin' }],
+  'discard-boundary': [{ label: 'Discard confirmation', x: 50, y: 48, tone: 'pin' }],
+  'evolved-screenshots-defaults-summary': [{ label: 'Screenshot defaults summary', x: 50, y: 38, tone: 'pin' }],
+  'evolved-screenshots-defaults-diff': [{ label: 'Defaults diff evidence', x: 50, y: 45, tone: 'pin' }],
+  'evolved-screenshots-defaults-after-discard': [{ label: 'Review-only cleanup', x: 50, y: 42, tone: 'pin' }],
+  'adversarial-out-of-bounds-annotation': [{ label: 'Out of bounds fixture', x: 96, y: 50, w: 12, h: 10 }],
+});
+
+export const scenarioVisualContracts = freezeDeep({
+  launch: {
+    screenshots: [
+      {
+        label: 'launch',
+        probes: [
+          { label: 'workflow stepper band', x: 4, y: 7, w: 90, h: 20 },
+          { label: 'prompt and controls band', x: 5, y: 35, w: 90, h: 22 },
+        ],
+      },
+    ],
+  },
+  settingsGeneral: {
+    screenshots: [{ label: 'settings-general', probes: [{ label: 'settings content panel', x: 12, y: 16, w: 80, h: 66 }] }],
+  },
+  settingsAIModels: {
+    screenshots: [{ label: 'settings-ai-models', probes: [{ label: 'provider and model controls', x: 12, y: 16, w: 80, h: 70 }] }],
+  },
+  settingsPreferences: {
+    screenshots: [{ label: 'settings-preferences', probes: [{ label: 'preference controls', x: 12, y: 16, w: 80, h: 70 }] }],
+  },
+  history: {
+    screenshots: [{ label: 'history', probes: [{ label: 'history surface', x: 10, y: 15, w: 82, h: 70 }] }],
+  },
+  feedback: {
+    screenshots: [{ label: 'feedback', probes: [{ label: 'feedback dialog', x: 20, y: 18, w: 60, h: 60 }] }],
+  },
+  reportIssue: {
+    screenshots: [{ label: 'report-issue', probes: [{ label: 'report issue dialog', x: 20, y: 18, w: 60, h: 60 }] }],
+  },
+  suggestionCards: {
+    screenshots: [{ label: 'suggestion-card', probes: [{ label: 'prompt and suggestion area', x: 5, y: 35, w: 90, h: 34 }] }],
+  },
+  typedIntent: {
+    screenshots: [{ label: 'typed-intent', probes: [{ label: 'typed prompt area', x: 5, y: 35, w: 90, h: 24 }] }],
+  },
+  review: {
+    screenshots: [{ label: 'provider-progress-05', probes: [{ label: 'review controls area', x: 8, y: 8, w: 84, h: 82 }] }],
+  },
+  summary: {
+    screenshots: [{ label: 'review-summary', probes: [{ label: 'summary content area', x: 8, y: 15, w: 84, h: 78 }] }],
+  },
+  diff: {
+    screenshots: [{ label: 'review-diff', probes: [{ label: 'diff content area', x: 8, y: 15, w: 84, h: 78 }] }],
+  },
+  buildBoundary: {
+    screenshots: [{ label: 'build-boundary', probes: [{ label: 'build confirmation dialog', x: 20, y: 22, w: 60, h: 56 }] }],
+  },
+  saveFlow: {
+    screenshots: [{ label: 'step-3-ready', probes: [{ label: 'step 3 save surface', x: 8, y: 8, w: 84, h: 82 }] }],
+  },
+  rollbackCleanup: {
+    screenshots: [
+      { label: 'history-restore-preview', probes: [{ label: 'restore confirmation preview', x: 12, y: 14, w: 76, h: 72 }] },
+      { label: 'after-history-restore', probes: [{ label: 'post-restore app state', x: 8, y: 8, w: 84, h: 82 }] },
+    ],
+  },
+  reportInspection: {
+    screenshots: [{ label: 'HTML report inspection', probes: [{ label: 'rendered report body', x: 8, y: 8, w: 84, h: 82 }] }],
+  },
+});
+
 export const EVOLVED_CASE_CATALOG = freezeDeep({
   'homebrew-bat': {
     id: 'homebrew-bat',
