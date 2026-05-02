@@ -7,6 +7,16 @@ import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
+import {
+  DEFAULT_PROMPT,
+  EVOLVED_CASE_CATALOG,
+  curatedProofKeys,
+  scenarioAssertionTypeHints,
+  scenarioGroups,
+  scenarioLabels,
+  scenarioProofCatalog,
+  supportedHomebrewSourcePaths,
+} from './scenario-catalog.mjs';
 
 const THIS_FILE = fileURLToPath(import.meta.url);
 const TOOL_DIR = path.dirname(THIS_FILE);
@@ -14,316 +24,11 @@ const REPO_ROOT = path.resolve(TOOL_DIR, '../..');
 
 const DEFAULT_APP = 'com.darkmatter.nixmac';
 const DEFAULT_WS = 'ws://127.0.0.1:18790';
-const DEFAULT_PROMPT = 'Add the bat command line tool to my Homebrew packages as the plain string "bat" only, with no inline comments.';
 const DEFAULT_BUILD_ATTEMPTS = 180;
 const ARTIFACT_ROOT = path.join(REPO_ROOT, 'artifacts', 'computer-use-remote');
 const COVERAGE_MANIFEST_PATH = path.join(TOOL_DIR, 'coverage-manifest.json');
 
 let activeRunDir = '';
-
-const EVOLVED_CASE_CATALOG = Object.freeze({
-  'homebrew-bat': {
-    id: 'homebrew-bat',
-    label: 'Homebrew bat package add',
-    mode: 'full-lifecycle',
-    prompt: DEFAULT_PROMPT,
-    source: 'Current Computer Use E2E default; maps to eval package/homebrew install coverage.',
-    defaultPrLane: true,
-    note: 'Runs prompt -> Review -> Summary/Diff -> Build boundary -> Step 3 Commit -> History rollback cleanup.',
-  },
-  'screenshots-defaults': {
-    id: 'screenshots-defaults',
-    label: 'Screenshot defaults review-only calibration',
-    mode: 'review-only-calibration',
-    scenarioKey: 'evolvedScreenshotsDefaults',
-    prompt: 'Configure screenshots to save as PNG to ~/Screenshots',
-    source: 'WDIO fixture basicPromptsConfigureScreenshots and eval CSV case 33 / golden-set system-defaults coverage.',
-    defaultPrLane: false,
-    expectedEvidence: [/screenshots?/i, /png/i, /~\/Screenshots|Screenshots/i, /defaults\.nix|screencapture/i],
-    note: 'Optional calibration lane. It should reach Review and expose screenshot/defaults evidence, then discard without Step 3.',
-  },
-  'protected-flake-input': {
-    id: 'protected-flake-input',
-    label: 'Protected flake input adversarial boundary',
-    mode: 'adversarial-advisory',
-    prompt: 'Add a new input to flake.nix for nixpkgs-unstable',
-    source: 'Eval spreadsheet protected-file family (#121/#208/#210). Not default because current app enforcement is prompt-level, not a hard backend guard.',
-    defaultPrLane: false,
-    note: 'Keep out of the default PR lane until nixmac has hard protected-file enforcement and a reliable refusal signal.',
-  },
-});
-
-const scenarioLabels = {
-  launch: 'App launches and first screen is usable',
-  updateBanner: 'Update banner does not block the main workflow',
-  settingsGeneral: 'Settings General tab visibly renders',
-  settingsAIModels: 'Settings AI Models tab visibly renders',
-  settingsAPIKeys: 'Settings API Keys tab visibly renders',
-  settingsPreferences: 'Settings Preferences tab visibly renders',
-  history: 'My History opens and renders',
-  console: 'Console opens and renders',
-  feedback: 'Give Feedback opens and can be cancelled',
-  reportIssue: 'Report Issue opens and can be cancelled',
-  suggestionCards: 'Home suggestion cards are visible/clickable',
-  customizationSaveRollback: 'Untracked macOS customizations can be saved and rolled back',
-  homebrewSaveRollback: 'Untracked Homebrew items can be saved and rolled back',
-  typedIntent: 'A typed real intent can be submitted',
-  review: 'Real provider workflow reaches Review',
-  summary: 'Summary tab renders after intent review',
-  diff: 'Diff tab renders after intent review',
-  buildBoundary: 'Build & Test destructive boundary appears before activation',
-  saveFlow: 'Step 3 Save / Keep changes persists a change',
-  rollbackCleanup: 'Rollback cleanup returns disposable config to clean state',
-  discard: 'Discard confirmation is guarded and only confirmed in disposable state',
-  visualCoverage: 'Core UX/UI surfaces are captured and inspectable',
-  visualProofQuality: 'Scenario results include inspectable visual/text evidence',
-  mainCoverageFreshness: 'Main branch user-visible coverage stays mapped',
-  prSpecificCoverage: 'PR-specific user-visible behavior is covered when applicable',
-  reportInspection: 'Generated HTML report is inspected with Computer Use',
-};
-
-const scenarioGroups = [
-  {
-    name: 'App Shell',
-    keys: ['launch', 'updateBanner', 'visualCoverage'],
-  },
-  {
-    name: 'Settings',
-    keys: ['settingsGeneral', 'settingsAIModels', 'settingsAPIKeys', 'settingsPreferences'],
-  },
-  {
-    name: 'Support Surfaces',
-    keys: ['history', 'console', 'feedback', 'reportIssue'],
-  },
-  {
-    name: 'Real Provider Workflow',
-    keys: ['suggestionCards', 'customizationSaveRollback', 'homebrewSaveRollback', 'typedIntent', 'review', 'summary', 'diff', 'buildBoundary', 'saveFlow', 'rollbackCleanup', 'discard'],
-  },
-  {
-    name: 'PR-Specific Focus',
-    keys: ['mainCoverageFreshness', 'prSpecificCoverage'],
-  },
-  {
-    name: 'Evidence',
-    keys: ['visualProofQuality', 'reportInspection'],
-  },
-];
-
-const curatedProofKeys = [
-  'review',
-  'summary',
-  'diff',
-  'buildBoundary',
-  'customizationSaveRollback',
-  'homebrewSaveRollback',
-  'saveFlow',
-  'rollbackCleanup',
-  'settingsAPIKeys',
-  'settingsGeneral',
-  'settingsAIModels',
-  'settingsPreferences',
-  'visualProofQuality',
-  'reportInspection',
-];
-
-const scenarioProofCatalog = {
-  launch: {
-    grade: 'action-confirmed',
-    screenshots: ['launch'],
-    texts: ['launch'],
-    proof: 'Accessibility text shows the nixmac window, Settings/History/Feedback controls, stepper, prompt text area, and disabled Send button.',
-    untested: 'Does not prove provider or config state.',
-  },
-  updateBanner: {
-    grade: 'text-confirmed',
-    screenshots: ['launch'],
-    texts: ['launch'],
-    proof: 'Runner checks for a visible Dismiss button. If present, it dismisses it; if absent, it proves no update banner blocked the initial UI.',
-    untested: 'The explicit dismiss interaction is only tested on runs where a banner is actually present.',
-  },
-  settingsGeneral: {
-    grade: 'action-confirmed',
-    screenshots: ['settings-general'],
-    texts: ['settings-general'],
-    proof: 'Computer Use clicked Settings and captured the General tab content.',
-    untested: 'Does not persist setting edits.',
-  },
-  settingsAIModels: {
-    grade: 'action-confirmed',
-    screenshots: ['settings-ai-models'],
-    texts: ['settings-ai-models'],
-    proof: 'Computer Use opened AI Models and captured provider/model/build controls.',
-    untested: 'Does not change models or verify every provider.',
-  },
-  settingsAPIKeys: {
-    grade: 'text-confirmed',
-    screenshots: ['settings-api-keys-01'],
-    texts: ['settings-api-keys-01'],
-    proof: 'API Keys screenshot is captured only when raw accessibility text confirms no unmasked key-like secret is present; redacted text must show API Keys/OpenRouter/API-key controls.',
-    untested: 'Does not edit/delete keys and does not prove keychain persistence by itself.',
-  },
-  settingsPreferences: {
-    grade: 'action-confirmed',
-    screenshots: ['settings-preferences'],
-    texts: ['settings-preferences'],
-    proof: 'Computer Use opened Preferences and captured confirmation controls.',
-    untested: 'Does not toggle preferences permanently.',
-  },
-  history: {
-    grade: 'action-confirmed',
-    screenshots: ['history'],
-    texts: ['history'],
-    proof: 'Computer Use opened History and captured a visible history/empty state.',
-    untested: 'Current run does not prove a newly saved change appears there.',
-  },
-  console: {
-    grade: 'text-confirmed',
-    screenshots: [],
-    texts: ['console'],
-    proof: 'Sensitive screenshot omitted; redacted accessibility text must show Console/log content.',
-    untested: 'Does not prove log completeness and may omit secret-bearing visuals by design.',
-  },
-  feedback: {
-    grade: 'action-confirmed',
-    screenshots: ['feedback', 'home-after-feedback'],
-    texts: ['feedback', 'home-after-feedback'],
-    proof: 'Computer Use opened and cancelled the feedback dialog.',
-    untested: 'Does not submit feedback.',
-  },
-  reportIssue: {
-    grade: 'action-confirmed',
-    screenshots: ['report-issue', 'home-after-report-issue'],
-    texts: ['report-issue', 'home-after-report-issue'],
-    proof: 'Computer Use opened and cancelled the report issue dialog.',
-    untested: 'Does not submit a report.',
-  },
-  suggestionCards: {
-    grade: 'action-confirmed',
-    screenshots: ['suggestion-card'],
-    texts: ['suggestion-card'],
-    proof: 'Computer Use found and clicked a suggestion card; the UI stayed usable afterward.',
-    untested: 'Does not prove every suggestion works.',
-  },
-  typedIntent: {
-    grade: 'action-confirmed',
-    screenshots: ['typed-intent'],
-    texts: ['typed-intent'],
-    proof: 'Prompt text appears in the Computer Use state after set_value.',
-    untested: 'Does not prove provider execution until Review is reached.',
-  },
-  review: {
-    grade: 'action-confirmed',
-    screenshots: ['provider-progress-01', 'provider-progress-02', 'provider-progress-03', 'provider-progress-04', 'provider-progress-05'],
-    texts: ['provider-progress-01', 'provider-progress-02', 'provider-progress-03', 'provider-progress-04', 'provider-progress-05'],
-    proof: 'Polling reached Review-equivalent UI with Build & Test/Discard/Summary/Diff controls.',
-    untested: 'Does not prove Save/commit.',
-  },
-  summary: {
-    grade: 'text-confirmed',
-    screenshots: ['review-summary'],
-    texts: ['review-summary'],
-    proof: 'Summary text must mention the requested package/change domain.',
-    untested: 'Does not prove file persistence.',
-  },
-  diff: {
-    grade: 'text-confirmed',
-    screenshots: ['review-diff'],
-    texts: ['review-diff'],
-    proof: 'Diff view must expose the candidate Homebrew config file or requested package/change.',
-    untested: 'Does not prove the change builds or saves; save/rollback scenarios provide that remote git proof.',
-  },
-  customizationSaveRollback: {
-    grade: 'action-confirmed',
-    screenshots: ['customization-absent', 'customization-apply', 'customization-step-3-ready', 'customization-after-commit', 'customization-after-history-restore'],
-    texts: ['customization-absent', 'customization-apply', 'customization-step-3-ready', 'customization-after-commit', 'customization-after-history-restore'],
-    proof: 'When the untracked customizations chip is visible, Computer Use adds it to config, confirms Build & Test, commits Step 3, then restores the disposable baseline and verifies the remote git tree is clean.',
-    untested: 'If no untracked customizations chip is visible, the scenario records a no-op pass because there is nothing to save.',
-  },
-  homebrewSaveRollback: {
-    grade: 'action-confirmed',
-    screenshots: ['homebrew-absent', 'homebrew-apply', 'homebrew-step-3-ready', 'homebrew-after-commit', 'homebrew-after-history-restore'],
-    texts: ['homebrew-absent', 'homebrew-apply', 'homebrew-step-3-ready', 'homebrew-after-commit', 'homebrew-after-history-restore'],
-    proof: 'When the untracked Homebrew chip is visible, Computer Use adds it to config, confirms Build & Test, commits Step 3, then restores the disposable baseline and verifies the remote git tree is clean.',
-    untested: 'If no untracked Homebrew chip is visible, the scenario records a no-op pass because there is nothing to save.',
-  },
-  buildBoundary: {
-    grade: 'action-confirmed',
-    screenshots: ['build-boundary', 'step-3-ready'],
-    texts: ['build-boundary', 'step-3-ready'],
-    proof: 'Build & Test opens a confirmation dialog before activation; disposable runs confirm it and wait for Step 3.',
-    untested: 'Without explicit disposable build-confirm mode, the runner still cancels at the boundary.',
-  },
-  saveFlow: {
-    grade: 'action-confirmed',
-    screenshots: ['step-3-ready', 'after-commit'],
-    texts: ['step-3-ready', 'after-commit'],
-    proof: 'In disposable build-confirm mode, Computer Use reaches Step 3, clicks Commit, and the runner verifies the disposable repo HEAD changed with a clean worktree.',
-    untested: 'When disposable build-confirm mode is not enabled, Save remains untested.',
-  },
-  rollbackCleanup: {
-    grade: 'action-confirmed',
-    screenshots: ['history-before-restore', 'history-restore-preview', 'after-history-restore'],
-    texts: ['history-before-restore', 'history-restore-preview', 'after-history-restore'],
-    proof: 'After Save, Computer Use opens History, restores the pre-test baseline commit, and the runner verifies HEAD returned to that baseline with a clean worktree.',
-    untested: 'Only runs when Save succeeded and a restorable disposable baseline exists.',
-  },
-  discard: {
-    grade: 'guardrail-confirmed',
-    screenshots: ['discard-boundary', 'history-restore-preview', 'after-history-restore'],
-    texts: ['discard-boundary', 'history-restore-preview', 'after-history-restore'],
-    proof: 'Discard opens a confirmation boundary when used. In full-lifecycle runs, the stronger History restore cleanup path can supersede Discard and is proven by rollback artifacts.',
-    untested: 'When History restore cleanup passes, Discard itself is intentionally not clicked because the disposable config is already back at baseline.',
-  },
-  evolvedScreenshotsDefaults: {
-    grade: 'calibration',
-    screenshots: ['evolved-screenshots-defaults-summary', 'evolved-screenshots-defaults-diff', 'evolved-screenshots-defaults-after-discard'],
-    texts: ['evolved-screenshots-defaults-summary', 'evolved-screenshots-defaults-diff', 'evolved-screenshots-defaults-after-discard'],
-    proof: 'Optional calibration case submits the screenshot-defaults prompt, reaches Review, checks for PNG/Screenshots/defaults evidence, and exits without Step 3.',
-    untested: 'Disabled in the default PR lane until its accessibility-text tokens are calibrated on the real remote app.',
-  },
-  visualCoverage: {
-    grade: 'text-confirmed',
-    screenshots: ['launch', 'settings-general', 'settings-ai-models', 'settings-preferences', 'history', 'feedback', 'report-issue', 'typed-intent'],
-    texts: ['launch', 'settings-general', 'settings-ai-models', 'settings-preferences', 'history', 'feedback', 'report-issue', 'typed-intent'],
-    proof: 'Required core UI surfaces have screenshot and text artifacts.',
-    untested: 'Does not prove screenshot annotations are exact bounding boxes.',
-  },
-  visualProofQuality: {
-    grade: 'text-confirmed',
-    screenshots: [],
-    texts: [],
-    proof: 'Every passing scenario must have linked proof artifacts, and required non-sensitive screenshots must pass deterministic visual signal checks.',
-    untested: 'Visual signal checks catch missing, blank, occluded, or low-signal regions; they do not prove exact design fidelity or arbitrary wrong-screen swaps.',
-  },
-  adversarialOutOfBounds: {
-    grade: 'action-confirmed',
-    screenshots: ['adversarial-out-of-bounds-annotation'],
-    texts: [],
-    proof: 'Adversarial-only fixture used by run-adversarial.mjs to prove bad overlay geometry is caught.',
-    untested: 'Not a real app scenario.',
-  },
-  mainCoverageFreshness: {
-    grade: 'manifest-confirmed',
-    screenshots: [],
-    texts: [],
-    proof: 'A repo-local coverage manifest maps major user-visible surfaces on main to Computer Use scenarios or explicit waivers, and the runner scans for unmapped candidate files.',
-    untested: 'This proves scenario mapping freshness, not that every mapped scenario passed in the current run.',
-  },
-  prSpecificCoverage: {
-    grade: 'not-run',
-    screenshots: [],
-    texts: [],
-    proof: 'Requires PR metadata and changed-file/user-visible focus input.',
-    untested: 'No PR-specific scenario is executed unless PR context is provided.',
-  },
-  reportInspection: {
-    grade: 'action-confirmed',
-    screenshots: ['HTML report inspection'],
-    texts: ['HTML report inspection'],
-    proof: 'Computer Use opens the generated report on the remote Mac and sees report sections.',
-    untested: 'Does not prove a human reviewed every screenshot.',
-  },
-};
 
 const scenarioContractVersion = 2;
 
@@ -335,36 +40,6 @@ const v1GradeToEvidenceStrength = {
   calibration: 'weak',
   'not-run': 'not-proved',
   insufficient: 'not-proved',
-};
-
-const scenarioAssertionTypeHints = {
-  launch: ['accessibility_text', 'visual_heuristic'],
-  updateBanner: ['accessibility_text', 'action_result'],
-  settingsGeneral: ['accessibility_text', 'action_result', 'visual_heuristic'],
-  settingsAIModels: ['accessibility_text', 'action_result', 'visual_heuristic'],
-  settingsAPIKeys: ['accessibility_text', 'sensitive_redaction'],
-  settingsPreferences: ['accessibility_text', 'action_result', 'visual_heuristic'],
-  history: ['accessibility_text', 'action_result', 'visual_heuristic'],
-  console: ['accessibility_text', 'sensitive_redaction'],
-  feedback: ['accessibility_text', 'action_result', 'visual_heuristic'],
-  reportIssue: ['accessibility_text', 'action_result', 'visual_heuristic'],
-  suggestionCards: ['accessibility_text', 'action_result', 'visual_heuristic'],
-  typedIntent: ['accessibility_text', 'action_result'],
-  review: ['accessibility_text', 'provider_state', 'action_result'],
-  summary: ['accessibility_text', 'provider_state'],
-  diff: ['accessibility_text', 'provider_state'],
-  customizationSaveRollback: ['accessibility_text', 'action_result', 'remote_state'],
-  homebrewSaveRollback: ['accessibility_text', 'action_result', 'remote_state'],
-  buildBoundary: ['accessibility_text', 'action_result', 'confirmation_boundary'],
-  saveFlow: ['accessibility_text', 'action_result', 'remote_state'],
-  rollbackCleanup: ['accessibility_text', 'action_result', 'remote_state'],
-  discard: ['accessibility_text', 'action_result', 'confirmation_boundary'],
-  evolvedScreenshotsDefaults: ['accessibility_text', 'provider_state', 'calibration'],
-  visualCoverage: ['artifact_quality'],
-  visualProofQuality: ['artifact_quality', 'visual_heuristic'],
-  mainCoverageFreshness: ['coverage_manifest'],
-  prSpecificCoverage: ['pr_metadata', 'coverage_manifest'],
-  reportInspection: ['accessibility_text', 'artifact_quality'],
 };
 
 const failureTaxonomy = {
@@ -626,6 +301,55 @@ function findElement(text, patterns) {
   return null;
 }
 
+function elementEntries(text) {
+  return text
+    .split('\n')
+    .map((line, lineNumber) => {
+      const match = line.match(/^\s*(\d+)\s+(.+)$/);
+      if (!match) return null;
+      return { lineNumber, index: match[1], label: match[2] };
+    })
+    .filter(Boolean);
+}
+
+function findQuestionInputEntry(text) {
+  return elementEntries(text).find((entry) => /Type your answer|question-prompt-input/i.test(entry.label)) || null;
+}
+
+function findQuestionSubmitEntry(text, inputEntry) {
+  if (!inputEntry) return null;
+  return (
+    elementEntries(text).find(
+      (entry) =>
+        entry.lineNumber > inputEntry.lineNumber &&
+        entry.lineNumber <= inputEntry.lineNumber + 12 &&
+        /^button\s+Send\b/i.test(entry.label),
+    ) || null
+  );
+}
+
+function findQuestionChoiceEntry(text, patterns = []) {
+  const entries = elementEntries(text);
+  const marker = entries.find((entry) => /question|clarifying|Choices?:|HelpCircle|asked/i.test(entry.label));
+  const isCandidateChoice = (entry) =>
+    /^button\b/i.test(entry.label) &&
+    !/\b(Stop|Send|Settings|History|Console|Feedback|Report Issue|Build & Test|Discard|Summary|Diff|Close|Cancel)\b/i.test(entry.label);
+  const configuredChoice = entries.find((entry) => isCandidateChoice(entry) && patterns.some((pattern) => pattern.test(entry.label)));
+  if (!marker) return configuredChoice || null;
+  const buttonEntries = entries.filter(
+    (entry) =>
+      entry.lineNumber >= marker.lineNumber &&
+      entry.lineNumber <= marker.lineNumber + 24 &&
+      isCandidateChoice(entry),
+  );
+  return buttonEntries.find((entry) => patterns.some((pattern) => pattern.test(entry.label))) || buttonEntries[0] || null;
+}
+
+function hasAnsweredQuestionEvidence(text, answer) {
+  const escaped = String(answer).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`Answered:\\s*${escaped}`, 'i').test(text) || (/Answered:/i.test(text) && !findQuestionInputEntry(text));
+}
+
 function hasAny(text, patterns) {
   return patterns.some((pattern) => pattern.test(text));
 }
@@ -849,6 +573,80 @@ function sourcePrefixExists(sourcePath) {
   }
 }
 
+function isIsoDateOnly(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+function managedWaiverFor(surface) {
+  const raw = surface.waiver;
+  if (!raw) return null;
+  if (typeof raw === 'string') {
+    return {
+      id: surface.id,
+      label: surface.label,
+      reason: raw,
+      owner: null,
+      created: null,
+      reviewBy: null,
+      risk: null,
+      exitCriteria: null,
+      deprecatedShape: true,
+      validationErrors: ['waiver uses deprecated string shape; use a managed waiver object with owner, created, reviewBy, risk, and exitCriteria'],
+    };
+  }
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    return {
+      id: surface.id,
+      label: surface.label,
+      reason: '',
+      owner: null,
+      created: null,
+      reviewBy: null,
+      risk: null,
+      exitCriteria: null,
+      validationErrors: ['waiver must be either a string or a managed waiver object'],
+    };
+  }
+  const waiver = {
+    id: surface.id,
+    label: surface.label,
+    reason: raw.reason || '',
+    owner: raw.owner || '',
+    created: raw.created || '',
+    reviewBy: raw.reviewBy || '',
+    risk: raw.risk || '',
+    exitCriteria: raw.exitCriteria || '',
+    deprecatedShape: false,
+    validationErrors: [],
+  };
+  for (const field of ['reason', 'owner', 'created', 'reviewBy', 'risk', 'exitCriteria']) {
+    if (!waiver[field]) waiver.validationErrors.push(`waiver is missing required field ${field}`);
+  }
+  if (waiver.created && !isIsoDateOnly(waiver.created)) {
+    waiver.validationErrors.push(`waiver created date ${waiver.created} must be a valid YYYY-MM-DD date`);
+  }
+  if (waiver.reviewBy && !isIsoDateOnly(waiver.reviewBy)) {
+    waiver.validationErrors.push(`waiver review date ${waiver.reviewBy} must be a valid YYYY-MM-DD date`);
+  }
+  if (waiver.reviewBy && waiver.reviewBy < new Date().toISOString().slice(0, 10)) {
+    waiver.validationErrors.push(`waiver review date ${waiver.reviewBy} is expired`);
+  }
+  if (waiver.risk && !['low', 'medium', 'high'].includes(waiver.risk)) {
+    waiver.validationErrors.push(`waiver risk ${waiver.risk} must be low, medium, or high`);
+  }
+  return waiver;
+}
+
+function knownScenarioKey(key) {
+  return Boolean(
+    scenarioLabels[key] ||
+      scenarioProofCatalog[key] ||
+      Object.values(EVOLVED_CASE_CATALOG).some((caseDef) => caseDef.scenarioKey === key),
+  );
+}
+
 function buildCoverageFreshness(state) {
   const manifest = loadCoverageManifest();
   const surfaces = manifest.surfaces || [];
@@ -859,9 +657,13 @@ function buildCoverageFreshness(state) {
 
   for (const surface of surfaces) {
     const scenarioKeys = surface.scenarioKeys || [];
-    const unknown = scenarioKeys.filter((key) => !state.scenarios[key]);
+    const unknown = scenarioKeys.filter((key) => !knownScenarioKey(key));
     const missingSources = (surface.sourcePrefixes || []).filter((sourcePath) => !sourcePrefixExists(sourcePath));
-    if (surface.waiver) waivers.push({ id: surface.id, label: surface.label, reason: surface.waiver });
+    const waiver = managedWaiverFor(surface);
+    if (waiver) {
+      waivers.push(waiver);
+      for (const error of waiver.validationErrors) drift.push(`${surface.id} ${error}`);
+    }
     if (unknown.length) drift.push(`${surface.id} maps to unknown scenarios: ${unknown.join(', ')}`);
     if (missingSources.length) drift.push(`${surface.id} references missing source paths: ${missingSources.join(', ')}`);
     if (!scenarioKeys.length && !surface.waiver) drift.push(`${surface.id} has no scenario mapping and no waiver.`);
@@ -893,8 +695,11 @@ function updateMainCoverageFreshness(state) {
   state.coverageFreshness = buildCoverageFreshness(state);
   const drift = state.coverageFreshness.drift || [];
   const waiverNote = state.coverageFreshness.waivers?.length
-    ? ` Explicit waivers: ${state.coverageFreshness.waivers.map((item) => `${item.id}: ${item.reason}`).join(' | ')}`
+    ? ` Explicit waivers: ${state.coverageFreshness.waivers.map((item) => `${item.id} (${item.owner || 'unowned'}, review by ${item.reviewBy || 'unset'}): ${item.reason}`).join(' | ')}`
     : '';
+  if (state.scenarios.mainCoverageFreshness?.notes) {
+    state.scenarios.mainCoverageFreshness.notes = [];
+  }
   updateScenario(
     state,
     'mainCoverageFreshness',
@@ -1813,15 +1618,15 @@ function renderCoverageFreshness(state) {
     ? coverage.drift.map((item) => `<tr><td><span class="verdict fail">drift</span></td><td>${escapeHtml(item)}</td></tr>`).join('\n')
     : '<tr><td><span class="verdict pass">clean</span></td><td>No unmapped user-visible candidate files or manifest mapping errors detected.</td></tr>';
   const waiverRows = coverage.waivers?.length
-    ? coverage.waivers.map((item) => `<tr><td>${escapeHtml(item.id)}</td><td>${escapeHtml(item.label)}</td><td>${escapeHtml(item.reason)}</td></tr>`).join('\n')
-    : '<tr><td colspan="3">No waivers recorded.</td></tr>';
+    ? coverage.waivers.map((item) => `<tr><td>${escapeHtml(item.id)}</td><td>${escapeHtml(item.label)}</td><td>${escapeHtml(item.owner || 'unowned')}</td><td>${escapeHtml(item.risk || 'unset')}</td><td>${escapeHtml(item.reviewBy || 'unset')}</td><td>${escapeHtml(item.reason)}</td><td>${escapeHtml(item.exitCriteria || 'No exit criteria recorded.')}${item.validationErrors?.length ? `<br><strong>Validation:</strong> ${escapeHtml(item.validationErrors.join('; '))}` : ''}</td></tr>`).join('\n')
+    : '<tr><td colspan="7">No waivers recorded.</td></tr>';
   return `<h2 id="main-coverage">Main Coverage Freshness</h2>
   <section class="panel">
     <p><strong>Manifest v${escapeHtml(String(coverage.manifestVersion))}</strong>: ${escapeHtml(String(coverage.mappedSurfaces))}/${escapeHtml(String(coverage.totalSurfaces))} surfaces have direct scenario mappings; ${escapeHtml(String(coverage.waivedSurfaces))} have explicit waivers; ${escapeHtml(String(coverage.candidateFiles))} user-visible candidate files scanned.</p>
     <h3>Coverage Drift</h3>
     <table><thead><tr><th>Status</th><th>Detail</th></tr></thead><tbody>${driftRows}</tbody></table>
     <h3>Explicit Waivers</h3>
-    <table><thead><tr><th>ID</th><th>Surface</th><th>Reason</th></tr></thead><tbody>${waiverRows}</tbody></table>
+    <table><thead><tr><th>ID</th><th>Surface</th><th>Owner</th><th>Risk</th><th>Review By</th><th>Reason</th><th>Exit Criteria</th></tr></thead><tbody>${waiverRows}</tbody></table>
 	  </section>`;
 }
 
@@ -2435,6 +2240,10 @@ async function clickByPattern(client, state, text, label, patterns, note = '') {
     await addEvent(state, 'computer-use.click.skipped', { label, note: `No element found for ${label}` });
     return false;
   }
+  return clickElementIndex(client, state, elementIndex, label, note);
+}
+
+async function clickElementIndex(client, state, elementIndex, label, note = '') {
   let response;
   try {
     response = await client.tool('click', { app: state.app, element_index: elementIndex }, 60000);
@@ -2469,6 +2278,10 @@ async function setValueByPattern(client, state, text, label, patterns, value) {
     await addEvent(state, 'computer-use.set_value.skipped', { label, note: `No element found for ${label}` });
     return false;
   }
+  return setValueElementIndex(client, state, elementIndex, label, value);
+}
+
+async function setValueElementIndex(client, state, elementIndex, label, value) {
   let response;
   try {
     response = await client.tool('set_value', { app: state.app, element_index: elementIndex, value }, 60000);
@@ -2774,6 +2587,16 @@ function meaningfulBaselineDiff(snapshot) {
     .join('\n');
 }
 
+function changedHomebrewSourcePaths(snapshot) {
+  return meaningfulBaselineDiff(snapshot)
+    .split('\n')
+    .filter((line) => supportedHomebrewSourcePaths.includes(line));
+}
+
+function hasExpectedHomebrewSourceDiff(snapshot) {
+  return changedHomebrewSourcePaths(snapshot).length > 0;
+}
+
 async function addRemoteGitEvent(state, type, snapshot) {
   await addEvent(state, type, {
     ok: Boolean(snapshot?.ok),
@@ -2971,7 +2794,12 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
   const committed = await waitForRemoteGit(
     state,
     `${labels.prefix}-after-commit`,
-    (snapshot) => snapshot?.ok && snapshot.head && snapshot.head !== state.remoteConfig?.baselineHead && !snapshot.statusShort && Boolean(snapshot.baselineDiffNameOnly),
+    (snapshot) =>
+      snapshot?.ok &&
+      snapshot.head &&
+      snapshot.head !== state.remoteConfig?.baselineHead &&
+      !snapshot.statusShort &&
+      (labels.prefix === 'homebrew' ? hasExpectedHomebrewSourceDiff(snapshot) : Boolean(snapshot.baselineDiffNameOnly)),
     { attempts: Number(process.env.NIXMAC_E2E_COMMIT_ATTEMPTS || 30), delayMs: Number(process.env.NIXMAC_E2E_COMMIT_DELAY_MS || 1000) },
   );
   text = await captureState(client, state, `${labels.prefix}-after-commit`, `Computer Use committed ${labels.name} changes.`);
@@ -2980,7 +2808,7 @@ async function buildCommitAndRestoreManagedEdit(client, state, text, labels) {
     return {
       ok: false,
       text: cleanup.text,
-      note: `${labels.name} Commit was clicked, but the disposable repo did not show a clean committed change; cleanup ${cleanup.ok ? 'restored' : 'did not prove'} the baseline via ${cleanup.method}.`,
+      note: `${labels.name} Commit was clicked, but the disposable repo did not show a clean committed ${labels.prefix === 'homebrew' ? `Homebrew source change (${supportedHomebrewSourcePaths.join(' or ')})` : 'change'}; cleanup ${cleanup.ok ? 'restored' : 'did not prove'} the baseline via ${cleanup.method}.`,
     };
   }
 
@@ -3127,6 +2955,183 @@ async function runReviewOnlyEvolvedCase(client, state, caseDef) {
   run.completedAt = new Date().toISOString();
   updateScenario(state, caseDef.scenarioKey, run.status, run.notes.join(' '));
   return cleanup.text;
+}
+
+async function stopGeneratingIfVisible(client, state, text, label) {
+  if (!/button Stop/i.test(text)) return { clicked: false, text };
+  const clicked = await clickByPattern(client, state, text, `Stop ${label}`, [/button Stop/i], `Stop stalled optional evolved case: ${label}.`);
+  if (!clicked) return { clicked: false, text };
+  const nextText = await captureState(client, state, `evolved-${label}-after-stop`, `Computer Use clicked Stop for stalled optional evolved case: ${label}.`);
+  return { clicked: true, text: nextText };
+}
+
+async function cleanupQuestionAnswerCase(client, state, text, caseDef) {
+  const stopped = await stopGeneratingIfVisible(client, state, text, caseDef.id);
+  const restored = await restoreRemoteBaseline(state, `evolved-${caseDef.id}`);
+  await maybeRelaunchRemote(state);
+  const reason = restored.ok ? '' : ` Restore reason: ${restored.reason || 'unknown'}.`;
+  const nextText = await captureState(client, state, `evolved-${caseDef.id}-after-discard`, `Computer Use relaunched after cleanup for ${caseDef.label}.${reason}`);
+  return {
+    ok: restored.ok,
+    method: stopped.clicked ? 'stop-plus-external-restore' : 'external-restore',
+    reason: restored.reason || null,
+    text: nextText,
+  };
+}
+
+async function runQuestionAnswerEvolvedCase(client, state, caseDef) {
+  state.scenarios[caseDef.scenarioKey] ||= {
+    label: `Optional evolved case: ${caseDef.label}`,
+    status: 'inconclusive',
+    notes: [],
+  };
+  const run = {
+    id: caseDef.id,
+    label: caseDef.label,
+    mode: caseDef.mode,
+    status: 'inconclusive',
+    notes: [],
+    startedAt: new Date().toISOString(),
+  };
+  state.evolvedCaseRuns.push(run);
+  await addEvent(state, 'evolved-case.started', { id: caseDef.id, mode: caseDef.mode, prompt: redact(caseDef.prompt) });
+  await maybeRelaunchRemote(state);
+  let text = await captureState(client, state, `evolved-${caseDef.id}-home`, `Computer Use started optional evolved case: ${caseDef.label}.`);
+  const inputSet = await setValueByPattern(client, state, text, `Prompt input ${caseDef.id}`, [/text entry area/i], caseDef.prompt);
+  text = await captureState(client, state, `evolved-${caseDef.id}-typed`, `Computer Use entered optional evolved prompt: ${caseDef.label}.`);
+  if (!inputSet || !text.includes(caseDef.prompt)) {
+    run.status = 'fail';
+    run.notes.push('Could not enter the optional evolved prompt.');
+    updateScenario(state, caseDef.scenarioKey, 'fail', run.notes.at(-1));
+    return text;
+  }
+  const submitted = await clickByPattern(client, state, text, `Send ${caseDef.id}`, [/button Send/i], `Submit optional evolved prompt: ${caseDef.label}.`);
+  if (!submitted) {
+    run.status = 'fail';
+    run.notes.push('Could not submit the optional evolved prompt.');
+    updateScenario(state, caseDef.scenarioKey, 'fail', run.notes.at(-1));
+    return text;
+  }
+
+  const questionWait = await waitFor(
+    client,
+    state,
+    `evolved-${caseDef.id}-question`,
+    (candidate) => {
+      if (findQuestionInputEntry(candidate)) return 'text-input';
+      if (findQuestionChoiceEntry(candidate, caseDef.questionChoicePatterns || [])) return 'choice';
+      if (/heading Review|button Build & Test|button Discard|Summary|Diff/i.test(candidate)) return 'review-without-question';
+      if (/Payment Required|Insufficient credits|out of credits|billing limit/i.test(candidate)) return 'billing-error';
+      if (/No API key|missing API key|API key is required|invalid API key|Unauthorized|401/i.test(candidate)) return 'credential-error';
+      if (/Provider request failed|provider error|OpenRouter error|fatal error|uncaught/i.test(candidate)) return 'provider-error';
+      return null;
+    },
+    {
+      attempts: Number(process.env.NIXMAC_E2E_QUESTION_ATTEMPTS || 60),
+      delayMs: Number(process.env.NIXMAC_E2E_QUESTION_DELAY_MS || 3000),
+    },
+  );
+  text = questionWait.text;
+  if (questionWait.result === 'review-without-question' || !questionWait.result) {
+    run.status = 'inconclusive';
+    run.notes.push(questionWait.result === 'review-without-question'
+      ? 'Provider reached Review without showing the inline question UI, so this run did not exercise ask_user.'
+      : 'Question UI did not appear before the question polling window ended.');
+    const cleanup = await cleanupQuestionAnswerCase(client, state, text, caseDef);
+    run.notes.push(cleanup.ok ? `Cleanup succeeded via ${cleanup.method}.` : `Cleanup did not prove a clean baseline via ${cleanup.method}.`);
+    updateScenario(state, caseDef.scenarioKey, run.status, run.notes.join(' '));
+    return cleanup.text;
+  }
+  if (/error$/.test(questionWait.result)) {
+    run.status = 'fail';
+    run.notes.push(`Provider reached ${questionWait.result} before inline question could be answered.`);
+    updateScenario(state, caseDef.scenarioKey, run.status, run.notes.at(-1));
+    return text;
+  }
+
+  text = await captureState(client, state, `evolved-${caseDef.id}-question`, `Computer Use observed inline question UI for ${caseDef.label}.`);
+  let answered = false;
+  if (questionWait.result === 'choice') {
+    const choice = findQuestionChoiceEntry(text, caseDef.questionChoicePatterns || []);
+    answered = choice ? await clickElementIndex(client, state, choice.index, `Question choice ${caseDef.id}`, `Answer inline question for ${caseDef.label} via choice: ${choice.label}.`) : false;
+  } else {
+    const input = findQuestionInputEntry(text);
+    answered = input ? await setValueElementIndex(client, state, input.index, `Question answer ${caseDef.id}`, caseDef.answer) : false;
+    text = await captureState(client, state, `evolved-${caseDef.id}-answer-typed`, `Computer Use typed inline question answer for ${caseDef.label}.`);
+    const submit = findQuestionSubmitEntry(text, findQuestionInputEntry(text));
+    answered = answered && submit ? await clickElementIndex(client, state, submit.index, `Submit question answer ${caseDef.id}`, `Submit inline question answer for ${caseDef.label}.`) : false;
+  }
+  if (!answered) {
+    run.status = 'fail';
+    run.notes.push('Inline question UI appeared, but Computer Use could not answer it through a question-scoped control.');
+    const cleanup = await cleanupQuestionAnswerCase(client, state, text, caseDef);
+    run.notes.push(cleanup.ok ? `Cleanup succeeded via ${cleanup.method}.` : `Cleanup did not prove a clean baseline via ${cleanup.method}: ${cleanup.reason || 'unknown reason'}.`);
+    updateScenario(state, caseDef.scenarioKey, run.status, run.notes.join(' '));
+    return cleanup.text;
+  }
+
+  const answerWait = await waitFor(
+    client,
+    state,
+    `evolved-${caseDef.id}-answered`,
+    (candidate) => {
+      if (hasAnsweredQuestionEvidence(candidate, caseDef.answer) || (!findQuestionInputEntry(candidate) && !findQuestionChoiceEntry(candidate, caseDef.questionChoicePatterns || []))) return 'answered';
+      return null;
+    },
+    { attempts: Number(process.env.NIXMAC_E2E_QUESTION_ANSWERED_ATTEMPTS || 12), delayMs: Number(process.env.NIXMAC_E2E_QUESTION_ANSWERED_DELAY_MS || 1000) },
+  );
+  text = await captureState(client, state, `evolved-${caseDef.id}-answered`, `Computer Use submitted inline question answer for ${caseDef.label}.`);
+
+  const reviewWait = await waitFor(
+    client,
+    state,
+    `evolved-${caseDef.id}-provider-progress`,
+    (candidate) => {
+      if (/heading Review|button Build & Test|button Discard|Summary|Diff/i.test(candidate)) return 'review';
+      if (/Waiting for next event/i.test(candidate) && !answerWait.ok) return null;
+      if (/Payment Required|Insufficient credits|out of credits|billing limit/i.test(candidate)) return 'billing-error';
+      if (/No API key|missing API key|API key is required|invalid API key|Unauthorized|401/i.test(candidate)) return 'credential-error';
+      if (/Provider request failed|provider error|OpenRouter error|fatal error|uncaught/i.test(candidate)) return 'provider-error';
+      return null;
+    },
+    {
+      attempts: Number(process.env.NIXMAC_E2E_POST_QUESTION_PROVIDER_ATTEMPTS || 60),
+      delayMs: Number(process.env.NIXMAC_E2E_PROVIDER_DELAY_MS || 5000),
+    },
+  );
+  text = reviewWait.text;
+  if (reviewWait.result !== 'review') {
+    run.status = reviewWait.result ? 'fail' : 'inconclusive';
+    run.notes.push(reviewWait.result ? `Provider reached ${reviewWait.result} after answer.` : 'Review did not appear after inline question answer before the polling window ended.');
+    const cleanup = await cleanupQuestionAnswerCase(client, state, text, caseDef);
+    run.notes.push(cleanup.ok ? `Cleanup succeeded via ${cleanup.method}.` : `Cleanup did not prove a clean baseline via ${cleanup.method}: ${cleanup.reason || 'unknown reason'}.`);
+    updateScenario(state, caseDef.scenarioKey, run.status, run.notes.join(' '));
+    return cleanup.text;
+  }
+
+  let evidenceText = text;
+  if (await clickByPattern(client, state, text, `Summary ${caseDef.id}`, [/Summary/i], `Open Summary for ${caseDef.label}.`)) {
+    text = await captureState(client, state, `evolved-${caseDef.id}-summary`, `Computer Use opened Summary for ${caseDef.label}.`);
+    evidenceText += `\n${text}`;
+  }
+  if (await clickByPattern(client, state, text, `Diff ${caseDef.id}`, [/Diff/i], `Open Diff for ${caseDef.label}.`)) {
+    text = await captureState(client, state, `evolved-${caseDef.id}-diff`, `Computer Use opened Diff for ${caseDef.label}.`);
+    evidenceText += `\n${text}`;
+  }
+  const matches = evidenceMatches(evidenceText, caseDef.expectedEvidence);
+  const cleanup = await cleanupReviewOnlyCase(client, state, text, caseDef);
+  run.status = matches >= 2 && cleanup.ok ? 'pass' : matches >= 2 ? 'inconclusive' : 'fail';
+  run.notes.push(matches >= 2 ? `Inline question answer reached Review and evidence matched ${matches}/${caseDef.expectedEvidence.length} font tokens.` : `Inline question answer reached Review, but evidence matched only ${matches}/${caseDef.expectedEvidence.length} font tokens.`);
+  run.notes.push(cleanup.ok ? `Cleanup succeeded via ${cleanup.method}.` : `Cleanup did not prove a clean baseline via ${cleanup.method}.`);
+  run.completedAt = new Date().toISOString();
+  updateScenario(state, caseDef.scenarioKey, run.status, run.notes.join(' '));
+  return cleanup.text;
+}
+
+function evolvedCaseExecutorForMode(mode) {
+  if (mode === 'review-only-calibration') return runReviewOnlyEvolvedCase;
+  if (mode === 'question-answer-calibration') return runQuestionAnswerEvolvedCase;
+  return null;
 }
 
 async function prepareDisposableRemoteBaseline(state) {
@@ -3831,8 +3836,9 @@ async function runSuite(args) {
     }
 
     for (const caseDef of enabledExtraEvolvedCases()) {
-      if (caseDef.mode === 'review-only-calibration') {
-        text = await runReviewOnlyEvolvedCase(client, state, caseDef);
+      const executor = evolvedCaseExecutorForMode(caseDef.mode);
+      if (executor) {
+        text = await executor(client, state, caseDef);
       } else {
         await addEvent(state, 'evolved-case.skipped', {
           id: caseDef.id,
@@ -4001,6 +4007,65 @@ async function runSelfTest() {
   assert.equal(sourcePrefixExists('apps/native/src/components/widget/settings/'), true, 'coverage freshness should accept existing directory prefixes');
   assert.equal(sourcePrefixExists('apps/native/src/components/widget/settings-dialog.tsx'), true, 'coverage freshness should accept existing file prefixes');
   assert.equal(sourcePrefixExists('apps/native/src/components/widget/__missing__/'), false, 'coverage freshness should reject missing directory prefixes');
+  const previousExtraCases = process.env.NIXMAC_E2E_EXTRA_EVOLVED_CASES;
+  process.env.NIXMAC_E2E_EXTRA_EVOLVED_CASES = 'inline-question-font';
+  assert.deepEqual(enabledExtraEvolvedCases().map((item) => item.id), ['inline-question-font'], 'inline question optional case should register by env id');
+  assert.equal(evolvedCaseStrategy().extraCaseIds.includes('inline-question-font'), true, 'inline question optional case should appear in evolved strategy');
+  assert.equal(typeof evolvedCaseExecutorForMode('question-answer-calibration'), 'function', 'question-answer mode should be dispatched');
+  assert.equal(evolvedCaseExecutorForMode('adversarial-advisory'), null, 'adversarial advisory mode should remain skipped by the default runner');
+  assert.equal(scenarioGroups.some((group) => group.keys.includes('inlineQuestionAnswer')), true, 'inline question scenario should be grouped');
+  assert.equal(Boolean(scenarioProofCatalog.inlineQuestionAnswer), true, 'inline question scenario should have proof catalog metadata');
+  assert.equal(scenarioAssertionTypeHints.inlineQuestionAnswer.includes('question_answer'), true, 'inline question scenario should expose question-answer assertion hint');
+  assert.equal(knownScenarioKey('inlineQuestionAnswer'), true, 'inline question should be a known optional scenario for coverage manifest mapping');
+  const evolvedScenarioKeys = Object.values(EVOLVED_CASE_CATALOG)
+    .map((caseDef) => caseDef.scenarioKey)
+    .filter(Boolean);
+  const catalogScenarioKeys = new Set([...Object.keys(scenarioLabels), ...evolvedScenarioKeys, 'adversarialOutOfBounds']);
+  const referencedScenarioKeys = new Set([
+    ...scenarioGroups.flatMap((group) => group.keys),
+    ...curatedProofKeys,
+    ...Object.keys(scenarioProofCatalog),
+    ...Object.keys(scenarioAssertionTypeHints),
+  ]);
+  const unknownCatalogKeys = [...referencedScenarioKeys].filter((key) => !catalogScenarioKeys.has(key));
+  assert.deepEqual(unknownCatalogKeys, [], 'scenario catalog references should resolve to default, optional evolved, or adversarial-only scenario keys');
+  assert.equal(
+    Object.hasOwn(ensureCurrentSchema({ scenarios: {} }).scenarios, 'inlineQuestionAnswer'),
+    false,
+    'optional inline question scenario should not be injected into default or historical reports until executed',
+  );
+  if (previousExtraCases === undefined) delete process.env.NIXMAC_E2E_EXTRA_EVOLVED_CASES;
+  else process.env.NIXMAC_E2E_EXTRA_EVOLVED_CASES = previousExtraCases;
+
+  const questionInputText = `
+    1 text Ask a clarifying question
+    2 text entry area Type your answer...
+    3 button Send
+    20 text entry area Home prompt
+    21 button Send
+  `;
+  const questionInput = findQuestionInputEntry(questionInputText);
+  assert.equal(questionInput?.index, '2', 'question input lookup should prefer the Type your answer placeholder');
+  assert.equal(findQuestionSubmitEntry(questionInputText, questionInput)?.index, '3', 'question submit lookup should scope Send to the question input');
+  const questionChoiceText = `
+    1 text What should I configure?
+    2 button Add a programming font
+    3 button Configure screenshots
+    20 button Settings
+  `;
+  assert.equal(findQuestionChoiceEntry(questionChoiceText, [/programming font/i])?.index, '2', 'question choice lookup should find configured choice labels');
+  const stopOnlyText = `
+    1 button Stop
+    2 text Generating...
+    3 button Settings
+  `;
+  assert.equal(findQuestionChoiceEntry(stopOnlyText, [/programming font/i]), null, 'question choice lookup must not treat Stop as a fallback answer choice');
+  const configuredChoiceWithoutMarker = `
+    1 button Stop
+    2 button Add a programming font
+  `;
+  assert.equal(findQuestionChoiceEntry(configuredChoiceWithoutMarker, [/programming font/i])?.index, '2', 'question choice lookup may use configured choice labels even when marker text is absent');
+  assert.equal(hasAnsweredQuestionEvidence('12 text Answered: Add a programming font', 'Add a programming font'), true, 'answered question evidence should match the submitted answer');
 
   assert.equal(clickResponseIndicatesFailure({ result: { isError: true, content: [{ type: 'text', text: 'Tool returned an error.' }] } }), true, 'MCP isError should fail click');
   assert.equal(clickResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'App state includes button Report Error and Console Error logs.' }] } }), false, 'ordinary app-state Error text should not fail click');
@@ -4011,6 +4076,9 @@ async function runSelfTest() {
   assert.equal(setValueResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'Error: set_value element index 18 not found' }] } }), true, 'set_value element sentinel should fail input');
   assert.equal(meaningfulBaselineDiff({ baselineDiffNameOnly: 'flake.lock\nresult\n' }), '', 'generated build artifacts should not make Homebrew rollback cleanup fail');
   assert.equal(meaningfulBaselineDiff({ baselineDiffNameOnly: 'modules/darwin/homebrew.nix\nflake.lock\nresult\n' }), 'modules/darwin/homebrew.nix', 'user-visible Homebrew config drift should remain meaningful');
+  assert.equal(hasExpectedHomebrewSourceDiff({ baselineDiffNameOnly: 'modules/darwin/homebrew.nix\nflake.lock\nresult\n' }), true, 'Homebrew proof should accept module source path');
+  assert.equal(hasExpectedHomebrewSourceDiff({ baselineDiffNameOnly: 'flake-modules/darwin.nix\nflake.lock\nresult\n' }), true, 'Homebrew proof should accept flake-modules source path');
+  assert.equal(hasExpectedHomebrewSourceDiff({ baselineDiffNameOnly: 'modules/darwin/system.nix\nflake.lock\nresult\n' }), false, 'Homebrew proof should reject non-Homebrew committed paths');
   assert.deepEqual(parseSignalStats('lavfi.signalstats.YMIN=16\nlavfi.signalstats.YMAX=235\n'), { YMIN: 16, YMAX: 235 }, 'signalstats parser should extract luminance metrics');
   assert.deepEqual(probeCropForImage({ width: 768, height: 768 }, { x: 5, y: 35, w: 90, h: 22 }), { x: 38, y: 268, w: 691, h: 168 }, 'visual probe coordinates should map to image pixels');
   assert.equal(probeCropForImage({ width: 768, height: 768 }, { x: 95, y: 95, w: 10, h: 10 }), null, 'out-of-bounds visual probes should be rejected');

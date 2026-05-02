@@ -18,6 +18,7 @@ function usage() {
     '  --user <user>                       SSH user for remote identity checks',
     '  --key <path>                        SSH private key path',
     '  --known-hosts <path>                Known hosts file for strict SSH host verification',
+    '  --json <path>                       Write structured readiness evidence JSON',
     '  --port <port>                       SSH port, default 22',
     '  --expected-local-hostname <name>    Require scutil LocalHostName/hostname to match',
     '  --check-app-path <path>             Require a remote app path to exist',
@@ -41,6 +42,7 @@ function parseArgs(argv) {
     else if (arg === '--user') out.user = next;
     else if (arg === '--key') out.key = expandHome(next);
     else if (arg === '--known-hosts') out.knownHosts = expandHome(next);
+    else if (arg === '--json') out.jsonPath = expandHome(next);
     else if (arg === '--port') out.port = Number(next);
     else if (arg === '--expected-local-hostname') out.expectedLocalHostname = next;
     else if (arg === '--check-app-path') out.checkAppPath = next;
@@ -142,6 +144,27 @@ function remoteShellQuote(value) {
   return `'${String(value).replaceAll("'", "'\\''")}'`;
 }
 
+function readinessReport(options, startedAt, checks, passes, failures, remoteIdentity) {
+  return {
+    ok: failures.length === 0,
+    checkedAt: startedAt,
+    host: options.host,
+    port: options.port,
+    user: options.user || null,
+    expectedLocalHostname: options.expectedLocalHostname || null,
+    checks,
+    passes: passes.map((message) => ({ message })),
+    failures: failures.map((message) => ({ message })),
+    remoteIdentity,
+  };
+}
+
+function writeReadinessJson(options, report) {
+  if (!options.jsonPath) return;
+  fs.mkdirSync(path.dirname(options.jsonPath), { recursive: true });
+  fs.writeFileSync(options.jsonPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+}
+
 async function main() {
   let options;
   try {
@@ -154,78 +177,116 @@ async function main() {
 
   const failures = [];
   const passes = [];
+  const checks = [];
+  const startedAt = new Date().toISOString();
+  let remoteIdentity = null;
 
-  if (!isQualifiedHost(options.host)) {
-    failures.push(
-      `Remote host "${options.host}" is an unqualified local hostname. Use a MacinCloud FQDN such as dxu97120.macincloud.com or a stable IP address.`
-    );
-  }
+  const pass = (name, message, detail = {}) => {
+    passes.push(message);
+    checks.push({ name, status: 'pass', message, ...detail });
+  };
+  const fail = (name, message, detail = {}) => {
+    failures.push(message);
+    checks.push({ name, status: 'fail', message, ...detail });
+  };
 
   try {
-    const addresses = await checkDns(options.host);
-    passes.push(`DNS resolved ${options.host} -> ${addresses.map((entry) => entry.address).join(', ')}`);
-  } catch (error) {
-    failures.push(`DNS lookup failed for ${options.host}: ${error.message}`);
-  }
-
-  try {
-    await checkTcp(options.host, options.port);
-    passes.push(`TCP ${options.host}:${options.port} is reachable`);
-  } catch (error) {
-    failures.push(`TCP ${options.host}:${options.port} is not reachable: ${error.message}`);
-  }
-
-  if (options.user && failures.length === 0) {
-    try {
-      const identityOutput = runSsh(
-        options,
-        [
-          "printf 'hostname='; hostname",
-          "printf '\\nlocal_hostname='; scutil --get LocalHostName 2>/dev/null || true",
-          "printf '\\nwhoami='; whoami",
-          "printf '\\nmacos='; sw_vers -productVersion",
-        ].join('; ')
+    if (!isQualifiedHost(options.host)) {
+      fail(
+        'host-qualified',
+        `Remote host "${options.host}" is an unqualified local hostname. Use a MacinCloud FQDN such as dxu97120.macincloud.com or a stable IP address.`
       );
-      const identity = parseKeyValues(identityOutput);
-      const remoteName = identity.local_hostname || identity.hostname;
-      passes.push(`SSH identity: ${identity.whoami}@${identity.hostname}, LocalHostName=${identity.local_hostname}, macOS=${identity.macos}`);
-      if (options.expectedLocalHostname && remoteName !== options.expectedLocalHostname) {
-        failures.push(
-          `Remote identity mismatch: expected LocalHostName/hostname ${options.expectedLocalHostname}, got ${remoteName || 'unknown'}`
+    } else {
+      pass('host-qualified', `Remote host ${options.host} is qualified`);
+    }
+
+    try {
+      const addresses = await checkDns(options.host);
+      pass('dns', `DNS resolved ${options.host} -> ${addresses.map((entry) => entry.address).join(', ')}`, { addresses });
+    } catch (error) {
+      fail('dns', `DNS lookup failed for ${options.host}: ${error.message}`);
+    }
+
+    try {
+      await checkTcp(options.host, options.port);
+      pass('tcp', `TCP ${options.host}:${options.port} is reachable`);
+    } catch (error) {
+      fail('tcp', `TCP ${options.host}:${options.port} is not reachable: ${error.message}`);
+    }
+
+    if (options.user && failures.length === 0) {
+      try {
+        const identityOutput = runSsh(
+          options,
+          [
+            "printf 'hostname='; hostname",
+            "printf '\\nlocal_hostname='; scutil --get LocalHostName 2>/dev/null || true",
+            "printf '\\nwhoami='; whoami",
+            "printf '\\nmacos='; sw_vers -productVersion",
+          ].join('; ')
         );
+        const identity = parseKeyValues(identityOutput);
+        const remoteName = identity.local_hostname || identity.hostname;
+        remoteIdentity = {
+          hostname: identity.hostname || null,
+          localHostname: identity.local_hostname || null,
+          whoami: identity.whoami || null,
+          macos: identity.macos || null,
+        };
+        pass('ssh-identity', `SSH identity: ${identity.whoami}@${identity.hostname}, LocalHostName=${identity.local_hostname}, macOS=${identity.macos}`, {
+          remoteIdentity,
+        });
+        if (options.expectedLocalHostname && remoteName !== options.expectedLocalHostname) {
+          fail(
+            'remote-identity',
+            `Remote identity mismatch: expected LocalHostName/hostname ${options.expectedLocalHostname}, got ${remoteName || 'unknown'}`
+          );
+        } else if (options.expectedLocalHostname) {
+          pass('remote-identity', `Remote identity matched expected LocalHostName/hostname ${options.expectedLocalHostname}`);
+        }
+      } catch (error) {
+        fail('ssh-identity', error.message);
       }
-    } catch (error) {
-      failures.push(error.message);
     }
-  }
 
-  if (options.user && failures.length === 0 && options.checkCodexBinary) {
-    try {
-      runSsh(options, 'test -x /Applications/Codex.app/Contents/Resources/codex');
-      passes.push('Codex app-server binary exists');
-    } catch (error) {
-      failures.push(`Codex app-server binary check failed: ${error.message}`);
+    if (options.user && failures.length === 0 && options.checkCodexBinary) {
+      try {
+        runSsh(options, 'test -x /Applications/Codex.app/Contents/Resources/codex');
+        pass('codex-binary', 'Codex app-server binary exists');
+      } catch (error) {
+        fail('codex-binary', `Codex app-server binary check failed: ${error.message}`);
+      }
     }
-  }
 
-  if (options.user && failures.length === 0 && options.checkAppPath) {
-    try {
-      runSsh(options, `test -e ${remoteShellQuote(options.checkAppPath)}`);
-      passes.push(`Remote app path exists: ${options.checkAppPath}`);
-    } catch (error) {
-      failures.push(`Remote app path check failed for ${options.checkAppPath}: ${error.message}`);
+    if (options.user && failures.length === 0 && options.checkAppPath) {
+      try {
+        runSsh(options, `test -e ${remoteShellQuote(options.checkAppPath)}`);
+        pass('remote-app-path', `Remote app path exists: ${options.checkAppPath}`);
+      } catch (error) {
+        fail('remote-app-path', `Remote app path check failed for ${options.checkAppPath}: ${error.message}`);
+      }
     }
-  }
 
-  if (options.user && failures.length === 0 && options.requireAppServer) {
+    if (options.user && failures.length === 0 && options.requireAppServer) {
+      try {
+        runSsh(
+          options,
+          `nc -z 127.0.0.1 ${options.requireAppServer} >/dev/null 2>&1 || lsof -nP -iTCP:${options.requireAppServer} -sTCP:LISTEN >/dev/null 2>&1`
+        );
+        pass('app-server', `Remote app-server is listening on 127.0.0.1:${options.requireAppServer}`);
+      } catch (error) {
+        fail('app-server', `Remote app-server is not listening on 127.0.0.1:${options.requireAppServer}: ${error.message}`);
+      }
+    }
+  } catch (error) {
+    fail('unexpected', `Unexpected remote readiness error: ${error instanceof Error ? error.message : String(error)}`);
+  } finally {
+    const report = readinessReport(options, startedAt, checks, passes, failures, remoteIdentity);
     try {
-      runSsh(
-        options,
-        `nc -z 127.0.0.1 ${options.requireAppServer} >/dev/null 2>&1 || lsof -nP -iTCP:${options.requireAppServer} -sTCP:LISTEN >/dev/null 2>&1`
-      );
-      passes.push(`Remote app-server is listening on 127.0.0.1:${options.requireAppServer}`);
+      writeReadinessJson(options, report);
     } catch (error) {
-      failures.push(`Remote app-server is not listening on 127.0.0.1:${options.requireAppServer}: ${error.message}`);
+      failures.push(`Could not write readiness JSON ${options.jsonPath}: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`FAIL ${failures.at(-1)}`);
     }
   }
 

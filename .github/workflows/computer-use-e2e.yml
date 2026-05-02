@@ -67,6 +67,12 @@ jobs:
             exit 1
           fi
           grep -q "SSH-dependent checks require --user" /tmp/check-remote-missing-user.out
+          if node tools/computer-use-e2e/check-remote.mjs --host 127.0.0.1 --port 1 --json /tmp/check-remote-tcp-fail.json >/tmp/check-remote-tcp-fail.out 2>&1; then
+            cat /tmp/check-remote-tcp-fail.out
+            echo "Expected closed TCP readiness check to fail"
+            exit 1
+          fi
+          jq -e '.ok == false and ([.checks[] | select(.name == "tcp" and .status == "fail")] | length) == 1' /tmp/check-remote-tcp-fail.json
 
       - name: Capture PR focus metadata
         if: github.event_name == 'pull_request'
@@ -137,13 +143,16 @@ jobs:
         if: steps.remote-secrets.outputs.available == 'true'
         shell: bash
         run: |
+          mkdir -p artifacts/computer-use-remote/readiness
+          readiness_json="artifacts/computer-use-remote/readiness/remote-readiness-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
           node tools/computer-use-e2e/check-remote.mjs \
             --host "$REMOTE_HOST" \
             --user "$REMOTE_USER" \
             --key ~/.ssh/nixmac-e2e \
             --known-hosts ~/.ssh/known_hosts \
             --expected-local-hostname "${REMOTE_EXPECTED_LOCAL_HOSTNAME:-DXU97120}" \
-            --check-codex-binary
+            --check-codex-binary \
+            --json "$readiness_json"
 
       - name: Download PR-built app artifact
         if: steps.remote-secrets.outputs.available == 'true'
@@ -419,8 +428,17 @@ jobs:
             echo "Computer Use E2E already produced an HTML report; preserving it."
             exit 0
           fi
+          note="Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+          # Preflight writes one readiness file for this workflow attempt; sort/tail keeps this robust if a retried shell leaves more than one.
+          readiness_json="$(find artifacts/computer-use-remote/readiness -name '*.json' -type f 2>/dev/null | sort | tail -1 || true)"
+          if [[ -n "$readiness_json" ]]; then
+            readiness_failures="$(jq -r '.failures | map(.message) | join("; ")' "$readiness_json" 2>/dev/null || true)"
+            if [[ -n "$readiness_failures" ]]; then
+              note="$note Readiness failures: $readiness_failures"
+            fi
+          fi
           node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable \
-            --note "Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step."
+            --note "$note"
 
       - name: Restore remote app support
         if: always() && steps.remote-secrets.outputs.available == 'true'
@@ -530,7 +548,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          latest_report="$(find artifacts/computer-use-remote -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort | tail -1 || true)"
+          latest_report="$(find artifacts/computer-use-remote -mindepth 2 -maxdepth 2 -name state.json -type f -exec dirname {} \; 2>/dev/null | sort | tail -1 || true)"
           echo "has_report=false" >> "$GITHUB_OUTPUT"
           if [[ -z "$latest_report" || ! -f "$latest_report/state.json" ]]; then
             exit 0

@@ -12,7 +12,9 @@
     "apps/native/src/components/widget/[a-z0-9-]+\\.tsx$",
     "apps/native/src/components/widget/(settings|history|steps|summaries)/.*\\.tsx$",
     "apps/native/src/hooks/use-(apply|rollback|evolve|git-operations|history|history-restore|rebuild-stream|updater|permissions|darwin-config|error-handler)\\.ts$",
-    "apps/native/src-tauri/src/(commands|finalize_apply|finalize_restore|rollback|get_history|store|provider_errors|evolve_state)\\.rs$"
+    "apps/native/src-tauri/src/(commands|finalize_apply|finalize_restore|rollback|get_history|store|provider_errors|evolve_state)\\.rs$",
+    "apps/native/src-tauri/src/mac/homebrew\\.rs$",
+    "apps/native/src-tauri/src/evolve/(mod|tools)\\.rs$"
   ],
   "candidateExcludes": [
     "\\.stories\\.tsx$",
@@ -67,6 +69,12 @@
       "sourcePrefixes": ["apps/native/src/components/widget/action-tiles.tsx", "apps/native/src/components/widget/badge-list.tsx", "apps/native/src/components/widget/begin-evolve-warning.tsx", "apps/native/src/components/widget/conversational-response.tsx", "apps/native/src/components/widget/mac-recommendation-chip.tsx", "apps/native/src/components/widget/prompt-history-badge.tsx", "apps/native/src/components/widget/prompt-input.tsx", "apps/native/src/components/widget/prompt-input-section.tsx", "apps/native/src/components/widget/steps/begin-step.tsx", "apps/native/src/components/widget/steps/evolve-step.tsx", "apps/native/src/components/widget/steps/manual-evolve-step.tsx", "apps/native/src/components/widget/summaries/", "apps/native/src/hooks/use-evolve.ts", "apps/native/src/hooks/use-prompt-history.ts", "apps/native/src/hooks/use-recommended-prompt.ts", "apps/native/src/hooks/use-summary.ts", "apps/native/src-tauri/src/evolution.rs", "apps/native/src-tauri/src/evolve_state.rs", "apps/native/src-tauri/src/provider_errors.rs"]
     },
     {
+      "id": "inline-question-answer",
+      "label": "Inline provider question and answer progression",
+      "scenarioKeys": ["inlineQuestionAnswer"],
+      "sourcePrefixes": ["apps/native/src/components/evolve-progress.tsx", "apps/native/src-tauri/src/commands.rs", "apps/native/src-tauri/src/evolve/mod.rs", "apps/native/src-tauri/src/evolve/tools.rs"]
+    },
+    {
       "id": "homebrew-badge",
       "label": "Homebrew untracked package badge and add-to-config popover",
       "scenarioKeys": ["homebrewSaveRollback"],
@@ -95,21 +103,42 @@
       "label": "First-run permissions and nix setup/onboarding",
       "scenarioKeys": [],
       "sourcePrefixes": ["apps/native/src/components/permissions-screen.tsx", "apps/native/src/components/backup-notification-screen.tsx", "apps/native/src/components/widget/bootstrap-config.tsx", "apps/native/src/components/widget/step-content-wrapper.tsx", "apps/native/src/components/widget/steps/nix-setup-step.tsx", "apps/native/src/components/widget/steps/permissions-step.tsx", "apps/native/src/components/widget/steps/setup-step.tsx", "apps/native/src/hooks/use-permissions.ts", "apps/native/src/hooks/use-nix-install.ts", "apps/native/src-tauri/src/permissions.rs"],
-      "waiver": "Current remote lane starts from a configured app state. This must become a dedicated clean-profile Computer Use scenario before the suite can honestly claim full main coverage."
+      "waiver": {
+        "reason": "Current remote lane starts from a configured app state. This must become a dedicated clean-profile Computer Use scenario before the suite can honestly claim full main coverage.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-05-02",
+        "reviewBy": "2026-06-15",
+        "risk": "high",
+        "exitCriteria": "Add a clean-profile Computer Use scenario that starts from first launch, proves permissions/onboarding/nix setup surfaces, and records a passing report on the remote Mac."
+      }
     },
     {
       "id": "sudo-local-activation-fixture",
       "label": "nix-darwin sudo_local activation path",
       "scenarioKeys": [],
       "sourcePrefixes": ["apps/native/templates/nix-darwin-determinate/modules/darwin/security.nix"],
-      "waiver": "The DXU remote lane disables sudo_local in the disposable fixture because unattended MacinCloud AppleScript activation can hang while creating /etc/pam.d/sudo_local. This is an explicit CI fixture waiver, not proof that the production sudo_local path works."
+      "waiver": {
+        "reason": "The DXU remote lane disables sudo_local in the disposable fixture because unattended MacinCloud AppleScript activation can hang while creating /etc/pam.d/sudo_local. This is an explicit CI fixture waiver, not proof that the production sudo_local path works.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-05-02",
+        "reviewBy": "2026-06-15",
+        "risk": "medium",
+        "exitCriteria": "Add a dedicated sudo_local activation lane or an accepted manual release proof that exercises the production sudo_local path outside the DXU unattended fixture."
+      }
     },
     {
       "id": "preview-indicator",
       "label": "Preview indicator floating commit/revert UI",
       "scenarioKeys": [],
       "sourcePrefixes": ["apps/native/src/components/preview-indicator.tsx", "apps/native/src/hooks/use-preview-indicator.ts", "apps/native/src-tauri/src/commands.rs"],
-      "waiver": "Not yet in the remote major-feature lane; needs either a deterministic preview-state setup or a real workflow that activates it."
+      "waiver": {
+        "reason": "Not yet in the remote major-feature lane; needs either a deterministic preview-state setup or a real workflow that activates it.",
+        "owner": "nixmac-product-proof",
+        "created": "2026-05-02",
+        "reviewBy": "2026-06-15",
+        "risk": "medium",
+        "exitCriteria": "Add a deterministic preview-state setup or real workflow that activates the preview indicator and proves commit/revert behavior through Computer Use."
+      }
     }
   ]
 }

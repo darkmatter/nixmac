@@ -1,7 +1,7 @@
-# Computer Use Local E2E Spike
+# nixmac Product Proof Gate
 
-Local/remote harnesses for validating whether Codex Computer Use can drive the
-real nixmac macOS app like a human QA tester.
+Local and remote Product Proof harnesses for validating whether Codex Computer
+Use can drive the real nixmac macOS app like a human QA tester.
 
 The first-class lane now uses Codex app-server on a Mac that has GUI access to
 nixmac. It drives the app through the `computer-use` MCP, records evidence
@@ -11,6 +11,11 @@ remote Mac/app/process metadata, and renders a standalone HTML report.
 Computer Use is required for the actual app interaction and final report
 inspection. Shell is used for setup, launch, backup/restore, artifact movement,
 metadata capture, and HTML generation only.
+
+The product contract is reviewer evidence, not a narrow green CI run. A Product
+Proof report must make uncertainty visible: missing proof, low-signal evidence,
+stale coverage, expired waivers, remote-infra blockers, and provider failures
+must fail or downgrade the run instead of being hidden behind a passing check.
 
 ## Remote Computer Use Lane
 
@@ -59,6 +64,9 @@ The runner:
   boundary when reachable;
 - conditionally saves visible untracked macOS customization and Homebrew item
   chips, commits them through Step 3, then restores the disposable baseline;
+- requires Homebrew chip commits to touch a supported Homebrew source file
+  (`modules/darwin/homebrew.nix` or `flake-modules/darwin.nix`) rather than only
+  proving that some committed change occurred;
 - keeps the default PR lane to one calibrated full-lifecycle evolved prompt
   (`homebrew-bat`) and exposes additional eval-derived evolved cases through
   `NIXMAC_E2E_EXTRA_EVOLVED_CASES` after calibration;
@@ -71,6 +79,12 @@ The runner:
 - does not confirm Discard unless `NIXMAC_E2E_DISPOSABLE_CONFIG=true` and
   `NIXMAC_E2E_ALLOW_DISCARD_CONFIRM=true` are both set by a setup step that has
   proven the app is using a per-run disposable config;
+
+Direct Homebrew import is revalidated at apply time. The backend intersects the
+UI-submitted diff with a fresh Homebrew/config scan and writes only items that
+are still missing, using the current config source rather than trusting a stale
+submitted source. Stale no-longer-missing items are silently dropped for this
+phase; the existing post-apply refetch refreshes the chip state.
 - marks provider-blocked paths bluntly, for example OpenRouter billing/credits
   failures;
 - renders coverage gaps, PR-specific focus, evidence grades, primary artifact
@@ -90,10 +104,19 @@ surface/workflow on `main`, then reporting coverage drift when a surface has no
 Computer Use scenario or explicit waiver. PR-specific focus is additive; it does
 not replace the baseline `main` coverage check.
 
-The V2 evidence layer remains inside this feature/PR and does not modify core
-nixmac app code. Its durable contract is the runner-owned scenario catalog,
+The evidence layer remains inside this Product Proof lane and does not modify
+core nixmac app code. Its durable contract is the runner-owned scenario catalog,
 coverage manifest, derived `state.v2.scenarioContracts`, and rendered report
 sections rather than a separate proposal doc.
+
+The scenario catalog lives in `scenario-catalog.mjs` so reviewers can inspect
+scenario labels, proof metadata, assertion hints, and optional evolved cases
+without reading the full runner. Adding a scenario usually means updating that
+catalog, mapping user-visible source coverage in `coverage-manifest.json`, and
+adding runner executor logic only when the scenario needs new Computer Use
+actions. The runner self-test enforces that every catalog-referenced scenario
+key is either a default scenario, an optional evolved-case scenario, or an
+explicit adversarial-only fixture.
 
 The coverage freshness manifest lives at:
 
@@ -123,10 +146,54 @@ The workflow keeps the `latest` report plus the 20 newest immutable `run-*`
 directories for each PR/manual report prefix on `gh-pages`. GitHub Actions
 artifact backups are retained separately for 14 days.
 
+Immutable report links are not permanent archive links. Once a PR/manual prefix
+has more than 20 `run-*` directories, older published runs are pruned from
+`gh-pages`; use the Actions artifact backup during its retention window or copy
+important evidence into a durable project artifact.
+
 The workflow serializes all runs through one DXU remote-machine concurrency
 group. Do not make concurrency per PR while the suite depends on a singleton
 interactive Mac, because overlapping runs can race on app state, launchd
 environment, Authorization Services policy, and the Codex app-server port.
+Before this becomes broad required branch protection, the operator policy must
+either skip stale non-tip commits after queueing or provide a documented manual
+cancel/runbook so one noisy PR cannot burn the singleton Mac for obsolete
+commits.
+
+## Productization Policy
+
+The current Product Proof lane is advisory beta infrastructure: it should run on
+same-repository pull requests, publish the report, and keep check results honest.
+It should not be required branch protection until queue behavior, infra failure
+rate, and waiver debt are boring enough to support that responsibility.
+
+Phase progression:
+
+- Advisory beta: every same-repository PR gets either a Product Proof report or
+  an explicit no-touch inconclusive report. `fail` and `inconclusive` remain
+  honest check results.
+- Release gate: release cuts and high-risk app-facing PRs require a fresh
+  Product Proof pass or a documented infra-only inconclusive override.
+- Required PR gate: broad branch-protection adoption requires current-head
+  adversarial replay, acceptable queue/runtime metrics, managed waivers with no
+  expired reviews, and a tested override process for infra-only inconclusive
+  runs.
+
+Infra-inconclusive override is a human release policy, not a hidden CI bypass.
+Do not make the workflow green when the report says `fail` or `inconclusive`.
+For Phase B, an override must record owner, date, reason, evidence link, affected
+commit, and why the result is remote-infra-only rather than app/product risk.
+
+Fork pull requests do not receive the secret-backed remote lane. The publish and
+PR-comment steps are intentionally limited to same-repository PRs because the
+workflow needs remote SSH credentials and provider credentials. If nixmac starts
+accepting external fork PRs, fork/no-secret runs need a separate non-blocking
+classification instead of sharing infra-inconclusive semantics.
+
+MacinCloud/DXU ownership is part of the product, not a workflow footnote. The
+operator runbook must track the host, pinned SSH key material, host rotation
+procedure, Authorization Services policy mutation/restore behavior, monthly cost,
+and who owns restoring the lane when DXU is unreachable or reassigned.
 
 Before touching remote app state, the workflow waits for the matching
 `Build macOS App` run for the same commit, downloads the `nixmac-macos-app`
@@ -169,7 +236,7 @@ ssh-keyscan dxu97120.macincloud.com
 Optional evolved-case calibration:
 
 ```bash
-NIXMAC_E2E_EXTRA_EVOLVED_CASES=screenshots-defaults \
+NIXMAC_E2E_EXTRA_EVOLVED_CASES=screenshots-defaults,inline-question-font \
   node tools/computer-use-e2e/run-remote-cua.mjs run
 ```
 
@@ -177,6 +244,12 @@ The default PR lane intentionally runs only the calibrated `homebrew-bat` case
 through Step 3 and rollback. The `screenshots-defaults` case comes from the WDIO
 fixture suite and eval corpus case 33, but stays opt-in until its Review/Diff
 accessibility-text evidence is calibrated on the real remote app. The
+`inline-question-font` case targets the historical inline `ask_user`
+deadlock/race class: it waits for the question UI, answers through
+question-scoped controls, and requires progress past `Waiting for next event...`
+into Review evidence. It stays opt-in until repeated DXU runs prove the provider
+reliably takes the question path; if the provider reaches Review without asking,
+the case is inconclusive, not a Product Proof failure. The
 `protected-flake-input` eval case stays in the adversarial/advisory backlog until
 nixmac has hard backend protected-file enforcement; the current app has
 prompt-level guidance, not a reliable PR-gating refusal signal.
@@ -194,8 +267,29 @@ node tools/computer-use-e2e/check-remote.mjs \
   --key ~/.ssh/nixmac_e2e_ci \
   --known-hosts ~/.ssh/known_hosts \
   --expected-local-hostname DXU97120 \
-  --check-codex-binary
+  --check-codex-binary \
+  --json artifacts/computer-use-remote/readiness/remote-readiness.json
 ```
+
+The readiness JSON is the operator-facing health artifact for DXU. Keep it in
+the GitHub Actions artifact backup with the E2E evidence. Do not copy it into
+the public `gh-pages` report as-is: it records readiness state rather than raw
+secrets, but `host`, `user`, and remote identity fields are derived from
+repository secrets and the remote Mac. Top-level fields are:
+
+- `ok`: whether all readiness checks passed.
+- `checkedAt`, `host`, `port`, `user`, and `expectedLocalHostname`.
+- `checks`: ordered check results with `name`, `status`, and `message`.
+- `passes` and `failures`: compact message lists for report summaries.
+- `remoteIdentity`: hostname, local hostname, user, and macOS version when SSH
+  identity collection succeeds.
+
+If DXU is unavailable, do not treat local-only render checks or adversarial
+replay as a live remote pass. Continue useful local work, but the CI lane should
+render an unavailable Product Proof report with an `inconclusive` verdict and the
+readiness failure summary when available. If no readiness JSON exists because a
+non-readiness setup step failed, keep the generic setup-failure note and point
+reviewers to workflow logs.
 
 During the remote lane, the workflow also backs up the DXU macOS
 Authorization Services policy for `system.privilege.admin`, temporarily writes
@@ -292,7 +386,7 @@ open -n ../../target/debug/bundle/macos/nixmac.app
 ```
 
 The package script `bun -F native desktop:dev` currently sets `TAURI_CONFIG=dev`,
-which this spike observed being parsed as JSON by the Tauri build. Use the
+which this work observed being parsed as JSON by the Tauri build. Use the
 explicit `--config` form until that script is fixed.
 
 The raw `tauri dev` launch path is also not currently usable with Codex
