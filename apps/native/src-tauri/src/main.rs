@@ -329,7 +329,6 @@ fn run_gui_mode(
             commands::homebrew_apply_diff,
             commands::homebrew_get_state_diff,
             // Git
-            commands::git_init_repo,
             commands::git_status,
             commands::git_status_and_cache,
             commands::git_cached,
