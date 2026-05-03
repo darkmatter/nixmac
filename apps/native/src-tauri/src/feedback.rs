@@ -518,7 +518,7 @@ pub async fn submit(app: &AppHandle, payload: String) -> Result<bool> {
         }
     };
 
-    // Also flush any previously pending reports
+    // Also flush any pending reports
     if let Err(e) = retry_pending(app).await {
         log::warn!("[feedback] Failed to retry pending reports: {}", e);
     }
