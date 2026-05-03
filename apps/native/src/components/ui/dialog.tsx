@@ -137,6 +137,6 @@ export {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
   DialogTrigger,
+  DialogTitle,
 };

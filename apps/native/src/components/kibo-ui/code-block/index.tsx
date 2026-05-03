@@ -580,3 +580,17 @@ export const CodeBlockContent = ({
     />
   );
 };
+
+export {
+  CodeBlockCopyButton,
+  CodeBlockFilename,
+  CodeBlockFiles,
+  CodeBlockHeader,
+  CodeBlockSelect,
+  CodeBlockSelectContent,
+  CodeBlockSelectItem,
+  CodeBlockSelectTrigger,
+  CodeBlockSelectValue,
+};
+
+export type { BundledLanguage };
