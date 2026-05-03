@@ -410,7 +410,7 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
                 info!("[nix] Poll #{}: nix detected!", poll_count);
                 // fire-and-forget cleanup: temp pkg; benign if already removed.
                 let _ = std::fs::remove_file(&pkg_path);
-                if let Err(e) = crate::default_config::finalize_flake_lock(app) {
+                if let Err(e) = crate::bootstrap::default_config::finalize_flake_lock(app) {
                     info!("[nix] Could not finalize flake.lock: {}", e);
                 }
                 break;

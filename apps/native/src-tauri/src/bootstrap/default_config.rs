@@ -9,8 +9,8 @@ use std::path::Path;
 use std::process::Command;
 use tauri::{AppHandle, Manager};
 
-use crate::storage::store;
 use crate::git;
+use crate::storage::store;
 use crate::system::nix;
 
 /// Detects the Darwin platform architecture.

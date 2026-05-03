@@ -10,7 +10,7 @@
 mod cli;
 mod commands;
 mod db;
-mod default_config;
+mod bootstrap;
 mod editor;
 mod evolve;
 mod managed_edits;
@@ -30,7 +30,6 @@ mod statistics;
 mod storage;
 mod summarize;
 mod system;
-mod template;
 mod types;
 mod updater_pin;
 mod utils;

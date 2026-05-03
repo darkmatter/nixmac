@@ -10,10 +10,11 @@
 use crate::state::{build_state, evolve_state, watcher};
 use crate::storage::store;
 use crate::{
-    db, default_config, editor, evolve, feedback, git,
+    db, editor, evolve, feedback, git,
     managed_edits, peek, rebuild, shared_types, types,
     utils,
 };
+use crate::bootstrap::default_config;
 use crate::system::{nix, permissions, scanner};
 use std::path::Path;
 use std::process::Command;
@@ -1232,7 +1233,7 @@ pub fn relaunch_after_update(app: AppHandle) -> Result<(), String> {
 /// Returns a map of tool name → available boolean.
 #[tauri::command]
 pub async fn check_cli_tools() -> Result<shared_types::CliToolsState, String> {
-    use crate::providers::cli::augmented_path;
+    use crate::ai::providers::cli::augmented_path;
     let path = augmented_path();
     let check = |tool: &str| -> bool {
         std::process::Command::new("which")
@@ -1254,7 +1255,7 @@ pub async fn check_cli_tools() -> Result<shared_types::CliToolsState, String> {
 /// List available models for a CLI tool (currently only opencode supports this).
 #[tauri::command]
 pub async fn list_cli_models(tool: String) -> Result<Vec<String>, String> {
-    use crate::providers::cli::augmented_path;
+    use crate::ai::providers::cli::augmented_path;
     if tool != "opencode" {
         return Ok(vec![]);
     }
