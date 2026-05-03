@@ -1,6 +1,6 @@
 Computer Use state (CUA App Version: 758)
 <app_state>
-App=com.darkmatter.nixmac (pid 86607)
+App=com.darkmatter.nixmac (pid 99996)
 Window: "nixmac", App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -31,13 +31,13 @@ Window: "nixmac", App: nixmac.
 				26 tab group (selectable)
 					27 tab (selected) Summary
 					28 tab (selectable) Diff
-				29 text Nix-Darwin Config
+				29 text Darwin Configuration
 				30 button (collapsed) 2, Secondary Actions: Expand
-				31 text Configuration changes for macOS system defaults and flake integration
+				31 text Integrate system defaults and macOS settings for improved user experience.
 				32 heading Commit Changes, Value: 2
 					33 text Commit Changes
 				34 container
-					35 text field (settable, string) Value: feat(config): update Nix-Darwin configuration for macOS system defaults and flake integration, Placeholder: Loading...
+					35 text field (settable, string) Value: feat(configuration): integrate system defaults and macOS settings for improved user experience, Placeholder: Loading...
 					36 button Commit
 				37 button Report Issue
 				38 button Console
