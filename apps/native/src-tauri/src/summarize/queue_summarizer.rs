@@ -205,7 +205,7 @@ where
     Fut: std::future::Future<
         Output = Result<(
             crate::summarize::model_output_types::EvolvedGroupSummary,
-            crate::providers::TokenUsage,
+            crate::ai::providers::TokenUsage,
         )>,
     >,
 {
@@ -289,7 +289,7 @@ async fn validate_or_retry<T, Retry, Fut>(
 ) -> Result<T>
 where
     Retry: FnOnce() -> Fut,
-    Fut: std::future::Future<Output = Result<(T, crate::providers::TokenUsage)>>,
+    Fut: std::future::Future<Output = Result<(T, crate::ai::providers::TokenUsage)>>,
 {
     match validate(&result) {
         Ok(()) => Ok(result),

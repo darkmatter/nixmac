@@ -374,9 +374,9 @@ pub async fn generate_evolution<R: Runtime>(
         Arc::new(OllamaProvider::new(base_url, model))
     } else if matches!(provider_type.as_str(), "claude" | "codex" | "opencode") {
         let tool = match provider_type.as_str() {
-            "claude" => crate::providers::cli::CliTool::Claude,
-            "codex" => crate::providers::cli::CliTool::Codex,
-            _ => crate::providers::cli::CliTool::OpenCode,
+            "claude" => crate::ai::providers::cli::CliTool::Claude,
+            "codex" => crate::ai::providers::cli::CliTool::Codex,
+            _ => crate::ai::providers::cli::CliTool::OpenCode,
         };
         let model = store_model
             .or_else(|| std::env::var("EVOLVE_MODEL").ok())

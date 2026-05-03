@@ -2,7 +2,7 @@
 //!
 //! Handles AI-assisted configuration evolution and system rebuilds.
 
-use crate::log_summarizer;
+use crate::ai::log_summarizer;
 use chrono::Local;
 use log::{error, info};
 use std::fs::{self, File, OpenOptions};

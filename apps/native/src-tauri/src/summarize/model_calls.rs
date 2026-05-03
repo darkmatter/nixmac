@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tauri::{AppHandle, Runtime};
 
-use crate::providers::{create_provider, TokenUsage};
+use crate::ai::providers::{create_provider, TokenUsage};
 use crate::summarize::model_output_types::{
     EvolvedGroupSummary, HunkSummary, RawHunkPlacement, RawNewMapEntry,
 };

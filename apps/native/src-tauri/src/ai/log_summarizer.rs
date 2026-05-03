@@ -15,7 +15,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Runtime};
 
-use crate::providers::create_provider;
+use crate::ai::providers::create_provider;
 
 const MAX_TOKENS: u32 = 100;
 const TEMPERATURE: f32 = 0.2;

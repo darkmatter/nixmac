@@ -12,7 +12,7 @@ use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::sync::Mutex;
 
-use crate::providers::cli::augmented_path;
+use crate::ai::providers::cli::augmented_path;
 use crate::storage::store;
 
 /// Global LSP process state, shared across async tasks.

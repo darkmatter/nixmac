@@ -1,6 +1,6 @@
 use super::{AiProvider, ProviderError, ProviderResponse, TokenUsage};
 use crate::evolve::messages::{Message, Tool as GenericTool, ToolCall};
-use crate::provider_errors::classify_openai_error;
+use crate::ai::provider_errors::classify_openai_error;
 use anyhow::anyhow;
 use async_openai::{
     config::OpenAIConfig,

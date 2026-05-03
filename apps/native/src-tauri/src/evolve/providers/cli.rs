@@ -1,6 +1,6 @@
 use super::{AiProvider, ProviderError, ProviderResponse};
 use crate::evolve::messages::{Message, Tool as GenericTool, ToolCall};
-use crate::providers::cli::{run_cli_process, CliTool};
+use crate::ai::providers::cli::{run_cli_process, CliTool};
 use anyhow::anyhow;
 use async_trait::async_trait;
 use log::{debug, warn};
