@@ -11,7 +11,7 @@ function EditorPanelWithState({ filePath }: { filePath: string }) {
     };
   }, [filePath]);
 
-  return <EditorPanel />;
+  return <EditorPanel disableEditorRuntime />;
 }
 
 const meta: Meta<typeof EditorPanelWithState> = {
