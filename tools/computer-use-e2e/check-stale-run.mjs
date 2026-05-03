@@ -1,13 +1,21 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, appendFileSync } from 'node:fs';
+import { existsSync, readFileSync, appendFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import process from 'node:process';
 
 function writeOutput(name, value) {
-  const line = `${name}=${String(value ?? '')}\n`;
-  if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, line);
-  else process.stdout.write(line);
+  const stringValue = String(value ?? '');
+  if (!process.env.GITHUB_OUTPUT) {
+    process.stdout.write(`${name}=${stringValue}\n`);
+    return;
+  }
+
+  let delimiter = `nixmac_e2e_${name}_EOF`;
+  while (stringValue.includes(delimiter)) delimiter = `${delimiter}_`;
+  appendFileSync(process.env.GITHUB_OUTPUT, `${name}<<${delimiter}\n${stringValue}\n${delimiter}\n`);
 }
 
 function ghApi(pathname) {
@@ -119,6 +127,22 @@ function runSelfTest() {
     /^api-uncertainty/,
     'API uncertainty should continue normal workflow with a reason',
   );
+  const previousOutputPath = process.env.GITHUB_OUTPUT;
+  const outputDir = mkdtempSync(join(tmpdir(), 'nixmac-stale-run-output-'));
+  const outputPath = join(outputDir, 'github-output');
+  try {
+    process.env.GITHUB_OUTPUT = outputPath;
+    writeOutput('reason', 'api-uncertainty: first line\nsecond line');
+    assert.equal(
+      readFileSync(outputPath, 'utf8'),
+      'reason<<nixmac_e2e_reason_EOF\napi-uncertainty: first line\nsecond line\nnixmac_e2e_reason_EOF\n',
+      'GitHub step output should use heredoc syntax for newline-safe values',
+    );
+  } finally {
+    if (previousOutputPath === undefined) delete process.env.GITHUB_OUTPUT;
+    else process.env.GITHUB_OUTPUT = previousOutputPath;
+    rmSync(outputDir, { recursive: true, force: true });
+  }
   assert.equal(
     classifyStaleRun({
       eventName: 'pull_request',

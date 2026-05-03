@@ -312,7 +312,7 @@ jobs:
             local plist_path="$1"
             /usr/bin/plutil -extract authenticate-user raw -o - "$plist_path" 2>/dev/null || true
           }
-          pkill -f 'codex app-server --listen ws://127.0.0.1:18790' >/dev/null 2>&1 || true
+          pkill -f '[c]odex app-server .*--listen ws://127.0.0.1:18790' >/dev/null 2>&1 || true
           pkill -f 'nixmac-activate-temp|with administrator privileges|/nix/store/.*/activate|ln -s /etc/static/pam.d/sudo_local /etc/pam.d/sudo_local' >/dev/null 2>&1 || true
           osascript -e 'tell application id "com.darkmatter.nixmac" to quit' >/dev/null 2>&1 || true
           pkill -x nixmac >/dev/null 2>&1 || true
@@ -562,7 +562,7 @@ jobs:
           rm -rf "$REMOTE_BACKUP" "${REMOTE_BACKUP}.state" || cleanup_status=1
           rm -rf "$REMOTE_CONFIG" || cleanup_status=1
           rm -f "$REMOTE_AUTH_BACKUP" || cleanup_status=1
-          pkill -f 'codex app-server --listen ws://127.0.0.1:18790' >/dev/null 2>&1 || true
+          pkill -f '[c]odex app-server .*--listen ws://127.0.0.1:18790' >/dev/null 2>&1 || true
           exit "$cleanup_status"
           REMOTE
           cleanup_status=$?
