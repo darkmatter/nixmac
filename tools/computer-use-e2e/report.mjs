@@ -3,6 +3,7 @@ import path from 'node:path';
 import { curatedProofKeys, scenarioGroups, screenshotAnnotations } from './scenario-catalog.mjs';
 import { failureTaxonomy } from './schemas.mjs';
 import { redact } from './redaction.mjs';
+import { formatDuration, sortedTimingPhases, timingTotals } from './timing.mjs';
 
 function escapeHtml(value) {
   return redact(value)
@@ -503,6 +504,7 @@ function renderReportNav(state, counts) {
   const riskCount = Object.values(state.v2?.scenarioContracts || {}).filter((item) => item.accessibilityRisk === 'high' || item.accessibilityRisk === 'medium').length;
   return `<aside class="report-nav" aria-label="Report navigation">
     <a href="#summary">Summary</a>
+    <a href="#timing-breakdown">Timing ${navBadge('', state.timing?.phases?.length || 0)}</a>
     <a href="#pull-request-focus">PR Focus ${navBadge('', state.prFocus?.scenarioKeys?.length || 0)}</a>
     <a href="#findings-first">Findings ${navBadge('', counts.fail + counts.inconclusive, counts.fail ? 'fail' : counts.inconclusive ? 'inconclusive' : 'pass')}</a>
     <a href="#evidence-quality">Evidence Quality ${navBadge('', riskCount)}</a>
@@ -655,6 +657,32 @@ function renderRunMetadata(state, evidenceSummary) {
   </section>`;
 }
 
+function renderTimingBreakdown(state) {
+  const timing = state.timing || { phases: [] };
+  const phases = sortedTimingPhases(timing);
+  const totals = timingTotals(timing);
+  const rows = phases.length
+    ? phases
+        .map((phase) => `<tr>
+      <td>${escapeHtml(phase.label)}<br><small><code>${escapeHtml(phase.id)}</code></small></td>
+      <td><span class="timing-status timing-${escapeHtml(phase.status)}">${escapeHtml(phase.status)}</span></td>
+      <td>${escapeHtml(formatDuration(phase.durationMs))}</td>
+      <td>${escapeHtml(phase.source || 'unknown')}</td>
+      <td>${escapeHtml(phase.note || (phase.observable === false ? 'Not observable in this run.' : ''))}</td>
+    </tr>`)
+        .join('\n')
+    : '<tr><td colspan="5">No phase timing metadata was recorded for this run.</td></tr>';
+  return `<h2 id="timing-breakdown">Timing Breakdown</h2>
+  <section class="panel">
+    <p><strong>Observed total:</strong> ${escapeHtml(formatDuration(totals.totalObservedMs))} across ${escapeHtml(String(totals.observedCount))}/${escapeHtml(String(totals.phaseCount))} phases. ${escapeHtml(totals.unavailableCount ? `${totals.unavailableCount} phases were unavailable or not observable.` : 'All recorded phases had observable status.')}</p>
+    <p><small>${escapeHtml(timing.note || '')}</small></p>
+    <div class="table-scroll"><table class="timing-table">
+      <thead><tr><th>Phase</th><th>Status</th><th>Duration</th><th>Source</th><th>Note</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </section>`;
+}
+
 function renderRawEvidence(state, screenshotHtml) {
   return `<h2 id="raw-evidence">Raw Evidence</h2>
   <section class="panel">
@@ -692,6 +720,10 @@ function renderRawEvidence(state, screenshotHtml) {
     <details>
       <summary>Run metadata</summary>
       ${renderRunMetadata(state, `${state.screenshots.length} screenshots, ${state.textSnapshots.length} redacted text snapshots`)}
+    </details>
+    <details>
+      <summary>Phase timing JSON (${escapeHtml(String(state.timing?.phases?.length || 0))})</summary>
+      <pre>${escapeHtml(JSON.stringify(state.timing || { phases: [] }, null, 2))}</pre>
     </details>
   </section>`;
 }
@@ -750,6 +782,7 @@ export async function renderReportHtml(state, { proofForScenario }) {
   const evidenceQualityHtml = renderEvidenceQuality(state);
   const visualProofHtml = await renderVisualProofBoard(state, proofForScenario);
   const remoteMetadataHtml = renderRemoteMetadata(state);
+  const timingBreakdownHtml = renderTimingBreakdown(state);
   const rawEvidenceHtml = renderRawEvidence(state, screenshotHtml);
   const scenarioChecklistHtml = renderScenarioChecklist(state, groupedScenarioHtml);
 
@@ -826,6 +859,16 @@ export async function renderReportHtml(state, { proofForScenario }) {
     .strength-not-proved, .risk-medium { background: #443512; color: #ffd36e; border-color: #705c22; }
     .risk-low { background: #123d2a; color: #8bf0bb; border-color: #236b4c; }
     .failure-class { background: #20242d; color: #dce3ec; border: 1px solid #3c4654; }
+    .timing-table { min-width: 850px; table-layout: fixed; }
+    .timing-table th:nth-child(1) { width: 28%; }
+    .timing-table th:nth-child(2) { width: 112px; }
+    .timing-table th:nth-child(3) { width: 112px; }
+    .timing-table th:nth-child(4) { width: 130px; }
+    .timing-status { display: inline-flex; align-items: center; justify-content: center; border: 1px solid #3c4654; border-radius: 999px; padding: 4px 8px; font-size: 12px; line-height: 1.15; font-weight: 700; white-space: nowrap; background: #20242d; color: #dce3ec; }
+    .timing-success { background: #123d2a; color: #8bf0bb; border-color: #236b4c; }
+    .timing-failure { background: #471a1a; color: #ffb0b0; border-color: #744; }
+    .timing-skipped, .timing-unavailable, .timing-pending { background: #443512; color: #ffd36e; border-color: #705c22; }
+    .timing-in_progress { background: #173247; color: #a7d7ff; border-color: #315f82; }
     .artifact-list { max-height: 230px; overflow: auto; padding-right: 4px; }
     .priority table { margin-bottom: 18px; }
     .proof-card { margin-top: 18px; border: 1px solid #303640; border-radius: 8px; padding: 14px; background: #151922; }
@@ -878,6 +921,8 @@ export async function renderReportHtml(state, { proofForScenario }) {
     ${reportNavHtml}
     <div class="report-content">
       ${prPriorityHtml}
+
+      ${timingBreakdownHtml}
 
       <h2 id="findings-first">Findings</h2>
       <p>Failures are shown first, then inconclusive checks. Passing checks stay collapsed unless a reviewer wants the full inventory.</p>

@@ -19,6 +19,7 @@ Environment:
   NIXMAC_E2E_ALLOW_DISCARD_CONFIRM Set true only when Discard may run against disposable config
   NIXMAC_E2E_REMOTE_CONFIG_DIR Optional explicit remote disposable config path for git proof
   NIXMAC_E2E_PR_CHANGED_FILES  Newline/comma separated PR changed files for PR-specific focus
+  NIXMAC_E2E_WORKFLOW_TIMINGS  Optional workflow timing metadata JSON to merge into reports
 `;
 }
 

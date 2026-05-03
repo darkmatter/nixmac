@@ -57,6 +57,7 @@ import {
 import { containsUnmaskedSecret, redact } from './redaction.mjs';
 import {
   addEvent,
+  addTimingPhase,
   addNarrative,
   applyHistoricalRenderMigration,
   createBaseState,
@@ -66,6 +67,7 @@ import {
   updateScenario,
   verdictFor,
 } from './state.mjs';
+import { mergeTimingMetadata, nowIso } from './timing.mjs';
 import {
   captureRemoteMetadata as readRemoteMetadata,
   meaningfulBaselineDiff,
@@ -100,6 +102,26 @@ function argValue(args, flag, fallback = '') {
   const index = args.indexOf(flag);
   if (index === -1) return fallback;
   return args[index + 1] ?? fallback;
+}
+
+async function mergeWorkflowTimingsFromArgs(state, args) {
+  const workflowTimingsPath = argValue(args, '--workflow-timings', process.env.NIXMAC_E2E_WORKFLOW_TIMINGS || '');
+  if (!workflowTimingsPath) return false;
+  if (!existsSync(workflowTimingsPath)) {
+    addTimingPhase(state, {
+      id: 'workflow-timing-metadata',
+      label: 'Workflow timing metadata',
+      category: 'reporting',
+      source: 'runner',
+      status: 'unavailable',
+      observable: false,
+      note: `Workflow timing metadata file was not found at ${workflowTimingsPath}.`,
+    });
+    return false;
+  }
+  const metadata = JSON.parse(await readFile(workflowTimingsPath, 'utf8'));
+  mergeTimingMetadata(state, metadata, { source: 'github-actions' });
+  return true;
 }
 
 function withRunDirArg(args, runDir) {
@@ -1685,6 +1707,7 @@ async function prepareDisposableRemoteBaseline(state) {
 }
 
 async function render(state, { stateFileName = 'state.json', recordEvent = true } = {}) {
+  const renderStartedAt = nowIso();
   ensureCurrentSchema(state);
   const verdict = verdictFor(state);
   state.verdict = verdict;
@@ -1697,6 +1720,16 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
   await maybeGenerateEvidenceVideo(state);
   const html = await renderReportHtml(state, { proofForScenario });
   await writeFile(path.join(state.runDir, 'index.html'), html, 'utf8');
+  addTimingPhase(state, {
+    id: stateFileName === 'state.json' ? 'report-render' : `report-render-${stateFileName.replace(/[^a-zA-Z0-9._-]+/g, '-')}`,
+    label: stateFileName === 'state.json' ? 'Report render' : `Report render (${stateFileName})`,
+    category: 'reporting',
+    source: 'runner',
+    status: 'success',
+    startedAt: renderStartedAt,
+    endedAt: nowIso(),
+    note: `Rendered ${stateFileName} and index.html.`,
+  });
   if (stateFileName === 'state.json') await saveState(state);
   else await writeFile(path.join(state.runDir, stateFileName), `${JSON.stringify(state, null, 2)}\n`, 'utf8');
   if (recordEvent) await addEvent(state, 'report.rendered', { path: 'index.html', verdict });
@@ -1717,6 +1750,7 @@ async function runSuite(args) {
   await mkdir(path.join(runDir, 'texts'), { recursive: true });
   const state = await baseState(runDir, options);
   await saveState(state);
+  const computerUseStartedAt = nowIso();
 
   const client = new AppServerClient(options.ws);
   try {
@@ -2152,6 +2186,16 @@ async function runSuite(args) {
     updateMainCoverageFreshness(state);
 
     state.cleanup.note = 'Remote app state was not restored by this runner. CI wrapper is responsible for remote app-support backup/restore; local artifacts are retained.';
+    addTimingPhase(state, {
+      id: 'computer-use-run',
+      label: 'Computer Use run',
+      category: 'computer-use',
+      source: 'runner',
+      status: 'success',
+      startedAt: computerUseStartedAt,
+      endedAt: nowIso(),
+      note: 'Connected to Codex app-server, exercised the calibrated nixmac Computer Use suite, and reached report generation.',
+    });
     await render(state);
     await inspectReportWithComputerUse(client, state);
     refreshVisualProofQuality(state);
@@ -2178,6 +2222,7 @@ async function renderUnavailable(args) {
     app: process.env.NIXMAC_COMPUTER_USE_APP || DEFAULT_APP,
     prompt: DEFAULT_PROMPT,
   });
+  await mergeWorkflowTimingsFromArgs(state, args);
   addNarrative(state, note);
   for (const key of Object.keys(state.scenarios)) updateScenario(state, key, 'inconclusive', note);
   state.cleanup.note = 'No app state touched; unavailable report only.';
@@ -2207,6 +2252,7 @@ async function renderExisting(args) {
     regeneratedFrom: 'state.json',
     regeneratedAt: new Date().toISOString(),
   });
+  await mergeWorkflowTimingsFromArgs(state, args);
 
   applyHistoricalRenderMigration(state);
   refreshVisualProofQuality(state);
@@ -2238,6 +2284,7 @@ async function renderErrorReport(error, args) {
     return;
   }
 
+  await mergeWorkflowTimingsFromArgs(existingState, args);
   addNarrative(existingState, note);
   existingState.failures.push(note);
   updateScenario(existingState, 'reportInspection', 'fail', 'Runner crashed before the report inspection step; fallback report was rendered from partial run evidence.');
@@ -3036,11 +3083,22 @@ async function runSelfTest() {
     reason: 'same-head-build-artifact-ready',
     note: 'Computer Use E2E may start remote setup only after a successful Build macOS App artifact exists for this exact head SHA.',
   };
+  addTimingPhase(renderState, {
+    id: 'self-test-phase',
+    label: 'Self-test timing phase',
+    category: 'self-test',
+    source: 'runner',
+    status: 'success',
+    startedAt: '2026-05-02T00:00:00.000Z',
+    endedAt: '2026-05-02T00:00:03.500Z',
+    note: 'Synthetic phase proves timing renders in Product Proof reports.',
+  });
   renderState.confirmationBoundaries = ['Self-test confirmation boundary.'];
   await render(renderState, { stateFileName: 'state.self-test.json', recordEvent: false });
   const renderedHtml = await readFile(path.join(renderRunDir, 'index.html'), 'utf8');
   for (const anchor of [
     'id="summary"',
+    'id="timing-breakdown"',
     'id="evidence-pack"',
     'class="report-nav"',
     'id="pull-request-focus"',

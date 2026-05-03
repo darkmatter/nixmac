@@ -16,6 +16,7 @@
     "id=\"scenario-checklist\"": true,
     "id=\"screenshots\"": true,
     "id=\"summary\"": true,
+    "id=\"timing-breakdown\"": true,
     "id=\"v2-evidence-model\"": true,
     "id=\"visual-assertions\"": true,
     "id=\"visual-proof\"": true

@@ -2,6 +2,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { writeFile } from 'node:fs/promises';
 import { redact } from './redaction.mjs';
+import { ensureTimingState, recordTimingPhase } from './timing.mjs';
 
 function buildGateFromEnv(env = process.env) {
   const status = env.NIXMAC_E2E_BUILD_GATE_STATUS || '';
@@ -50,6 +51,7 @@ export function ensureCurrentSchema(
   state.video ||= null;
   state.secretMaskingViolations ||= [];
   state.visualAssertions ||= [];
+  ensureTimingState(state);
   state.evolvedCaseStrategy ||= evolvedCaseStrategy();
   state.evolvedCaseRuns ||= [];
   for (const shot of state.screenshots) {
@@ -122,6 +124,12 @@ export async function createBaseState(
     buildGate: buildGateFromEnv(env),
     prFocus: buildPrFocus(),
     cleanup: { attempted: false, restored: false, note: 'Cleanup has not run yet.' },
+    timing: {
+      version: 1,
+      generatedAt: now(),
+      note: 'Timing phases are best-effort telemetry from the GitHub workflow and Computer Use runner. Unobservable phases are reported explicitly instead of inferred.',
+      phases: [],
+    },
     screenshots: [],
     textSnapshots: [],
     events: [],
@@ -167,6 +175,10 @@ export async function saveState(state) {
 export async function addEvent(state, type, detail = {}) {
   state.events.push({ ts: new Date().toISOString(), type, ...detail });
   await writeFile(path.join(state.runDir, 'events.json'), `${JSON.stringify(state.events, null, 2)}\n`, 'utf8');
+}
+
+export function addTimingPhase(state, phase) {
+  return recordTimingPhase(state, phase);
 }
 
 export function updateScenario(state, key, status, note) {

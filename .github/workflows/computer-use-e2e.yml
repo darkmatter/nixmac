@@ -34,6 +34,7 @@ jobs:
       OPENROUTER_API_KEY: ${{ secrets.NIXMAC_E2E_OPENROUTER_API_KEY }}
       REMOTE_EXPECTED_LOCAL_HOSTNAME: ${{ vars.NIXMAC_E2E_REMOTE_LOCAL_HOSTNAME }}
       REPORT_ROOT: artifacts/computer-use-remote
+      NIXMAC_E2E_WORKFLOW_TIMINGS: artifacts/computer-use-remote/workflow-timing.json
       NIXMAC_E2E_EVOLVE_PROVIDER: openai
       NIXMAC_E2E_EVOLVE_MODEL: anthropic/claude-sonnet-4.6
       NIXMAC_E2E_SUMMARY_PROVIDER: openai
@@ -43,6 +44,65 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
+      - name: Initialize timing telemetry
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$REPORT_ROOT"
+          node tools/computer-use-e2e/workflow-timing.mjs init --file "$NIXMAC_E2E_WORKFLOW_TIMINGS"
+          run_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" 2>/dev/null || true)"
+          created_at="$(jq -r '.created_at // ""' <<<"$run_json" 2>/dev/null || true)"
+          run_started_at="$(jq -r '.run_started_at // ""' <<<"$run_json" 2>/dev/null || true)"
+          if [[ -n "$created_at" && -n "$run_started_at" ]]; then
+            queue_ms="$(jq -r '((.run_started_at | fromdateiso8601) - (.created_at | fromdateiso8601)) * 1000 | floor' <<<"$run_json")"
+            node tools/computer-use-e2e/workflow-timing.mjs record --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+              --id queue-lock-wait \
+              --label "Queue / concurrency lock wait" \
+              --category workflow \
+              --source github-actions \
+              --status success \
+              --started-at "$created_at" \
+              --ended-at "$run_started_at" \
+              --duration-ms "$queue_ms" \
+              --note "Derived from GitHub Actions workflow_run created_at and run_started_at."
+            node tools/computer-use-e2e/workflow-timing.mjs record --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+              --id hosted-runner-setup \
+              --label "Hosted runner setup" \
+              --category workflow \
+              --source github-actions \
+              --status in_progress \
+              --started-at "$run_started_at" \
+              --note "Started when GitHub marked the run as started; ends after checkout, Node setup, and media dependency install."
+          else
+            node tools/computer-use-e2e/workflow-timing.mjs record --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+              --id queue-lock-wait \
+              --label "Queue / concurrency lock wait" \
+              --category workflow \
+              --source github-actions \
+              --status unavailable \
+              --observable false \
+              --note "GitHub workflow_run timing metadata was unavailable to this run."
+            node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+              --id hosted-runner-setup \
+              --label "Hosted runner setup" \
+              --category workflow \
+              --note "Started after checkout because workflow_run run_started_at was unavailable."
+          fi
+          for phase in report-upload:"Report upload artifact" report-publish:"Report publish" report-comment:"Report PR comment"; do
+            id="${phase%%:*}"
+            label="${phase#*:}"
+            node tools/computer-use-e2e/workflow-timing.mjs record --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+              --id "$id" \
+              --label "$label" \
+              --category reporting \
+              --source github-actions \
+              --status pending \
+              --observable false \
+              --note "This phase happens after the HTML report is refreshed. Final duration is emitted in the workflow summary; the hosted HTML may show this row as pending by design."
+          done
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -54,6 +114,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
+          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id hosted-runner-setup \
+            --status success \
+            --note "Checkout, Node setup, and ffmpeg dependency install completed."
 
       - name: Validate runner syntax
         run: |
@@ -128,8 +192,16 @@ jobs:
           STALE_EVENT_HEAD_SHA: ${{ steps.stale-run.outputs.event_head_sha }}
           STALE_CURRENT_HEAD_SHA: ${{ steps.stale-run.outputs.current_head_sha }}
         run: |
+          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id report-render-stale \
+            --label "Stale queued report render" \
+            --category reporting
           node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable \
+            --workflow-timings "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --note "stale-queued-run: skipped before remote work because ${STALE_REASON}. PR #${STALE_PR_NUMBER}; queued head ${STALE_EVENT_HEAD_SHA}; current head ${STALE_CURRENT_HEAD_SHA}. No app state, secrets, SSH, readiness, artifact wait, or remote staging was touched."
+          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id report-render-stale \
+            --status success
 
       - name: Gate same-head macOS app artifact
         id: pr-app
@@ -169,6 +241,11 @@ jobs:
             echo "Invalid BUILD_ARTIFACT_SLEEP_SECONDS: $sleep_seconds" >&2
             exit 1
           fi
+          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id build-artifact-readiness-wait \
+            --label "Build/artifact readiness wait" \
+            --category workflow \
+            --note "Waiting for a successful Build macOS App run and downloadable nixmac-macos-app artifact for the PR head SHA."
           echo "Checking for successful Build macOS App artifact for exact head $BUILD_ARTIFACT_SHA before any DXU preflight."
           for ((attempt = 1; attempt <= attempts; attempt += 1)); do
             run_json="$(
@@ -202,6 +279,10 @@ jobs:
             write_output "ready" "false"
             write_output "build_gate_status" "not_ready"
             write_output "reason" "$gate_reason"
+            node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+              --id build-artifact-readiness-wait \
+              --status unavailable \
+              --note "$gate_reason"
             echo "Same-head build gate not ready: $gate_reason"
             exit 0
           fi
@@ -214,6 +295,10 @@ jobs:
             write_output "build_gate_status" "artifact_download_failed"
             write_output "build_run_id" "$build_run_id"
             write_output "reason" "$gate_reason"
+            node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+              --id build-artifact-readiness-wait \
+              --status failure \
+              --note "$gate_reason"
             echo "$gate_reason"
             exit 0
           fi
@@ -225,6 +310,10 @@ jobs:
             write_output "build_gate_status" "artifact_invalid"
             write_output "build_run_id" "$build_run_id"
             write_output "reason" "$gate_reason"
+            node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+              --id build-artifact-readiness-wait \
+              --status failure \
+              --note "$gate_reason"
             echo "$gate_reason"
             exit 0
           fi
@@ -235,6 +324,10 @@ jobs:
           write_output "build_run_id" "$build_run_id"
           write_output "reason" "same-head-build-artifact-ready"
           write_output "app_tar" "$tar_path"
+          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id build-artifact-readiness-wait \
+            --status success \
+            --note "Downloaded app artifact from build workflow run $build_run_id."
           echo "Same-head build gate ready: build run $build_run_id for $BUILD_ARTIFACT_SHA"
 
       - name: Render build gate unavailable report
@@ -247,8 +340,16 @@ jobs:
           NIXMAC_E2E_BUILD_RUN_ID: ${{ steps.pr-app.outputs.build_run_id }}
           NIXMAC_E2E_BUILD_LATEST_RUN: ${{ steps.pr-app.outputs.latest_build }}
         run: |
+          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id report-render-build-gate \
+            --label "Build gate report render" \
+            --category reporting
           node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable \
+            --workflow-timings "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --note "same-head-build-gate: skipped before DXU preflight or remote setup because no usable successful Build macOS App artifact was available for head $NIXMAC_E2E_BUILD_ARTIFACT_SHA. Reason: $NIXMAC_E2E_BUILD_GATE_REASON. Latest build: ${NIXMAC_E2E_BUILD_LATEST_RUN:-none}. No app state, secrets, SSH, readiness, remote staging, tunnel, or cleanup was touched."
+          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id report-render-build-gate \
+            --status success
 
       - name: Fail build gate before remote setup
         if: steps.stale-run.outputs.stale != 'true' && steps.pr-app.outputs.ready != 'true'
@@ -283,8 +384,16 @@ jobs:
           NIXMAC_E2E_BUILD_ARTIFACT_SHA: ${{ steps.pr-app.outputs.build_artifact_sha }}
           NIXMAC_E2E_BUILD_RUN_ID: ${{ steps.pr-app.outputs.build_run_id }}
         run: |
+          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id report-render-unavailable \
+            --label "Unavailable report render" \
+            --category reporting
           node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable \
+            --workflow-timings "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --note "Remote Computer Use secrets are not fully configured for this repository. Missing: ${{ steps.remote-secrets.outputs.missing }}. The workflow triggered quietly and produced an inconclusive report without touching app state."
+          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id report-render-unavailable \
+            --status success
 
       - name: Prepare SSH
         if: steps.stale-run.outputs.stale != 'true' && steps.pr-app.outputs.ready == 'true' && steps.remote-secrets.outputs.available == 'true'
@@ -303,6 +412,11 @@ jobs:
         shell: bash
         run: |
           mkdir -p artifacts/computer-use-remote/readiness
+          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id remote-preflight \
+            --label "Remote preflight" \
+            --category remote \
+            --note "Checking SSH, expected host identity, and remote Codex binary readiness."
           readiness_json="artifacts/computer-use-remote/readiness/remote-readiness-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
           node tools/computer-use-e2e/check-remote.mjs \
             --host "$REMOTE_HOST" \
@@ -312,6 +426,9 @@ jobs:
             --expected-local-hostname "${REMOTE_EXPECTED_LOCAL_HOSTNAME:-DXU97120}" \
             --check-codex-binary \
             --json "$readiness_json"
+          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id remote-preflight \
+            --status success
 
       - name: Start remote Codex app-server and nixmac
         if: steps.stale-run.outputs.stale != 'true' && steps.pr-app.outputs.ready == 'true' && steps.remote-secrets.outputs.available == 'true'
@@ -321,6 +438,11 @@ jobs:
           SSH_DEST: ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}
         run: |
           set -euo pipefail
+          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id remote-staging-app-launch \
+            --label "Remote staging/app launch" \
+            --category remote \
+            --note "Preparing disposable config, copying the PR app bundle, starting app-server, and launching nixmac."
           RUN_ID_SAFE="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           REMOTE_BACKUP="/tmp/nixmac-computer-use-e2e-backup-${RUN_ID_SAFE}"
           REMOTE_CONFIG="/tmp/nixmac-computer-use-e2e-config-${RUN_ID_SAFE}"
@@ -485,6 +607,9 @@ jobs:
           fi
           sleep 4
           REMOTE
+          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id remote-staging-app-launch \
+            --status success
 
       - name: Tunnel remote app-server
         if: steps.stale-run.outputs.stale != 'true' && steps.pr-app.outputs.ready == 'true' && steps.remote-secrets.outputs.available == 'true'
@@ -492,6 +617,11 @@ jobs:
         env:
           SSH_DEST: ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}
         run: |
+          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id remote-app-server-tunnel \
+            --label "Remote app-server tunnel" \
+            --category remote \
+            --note "Opening local SSH tunnel to the remote Codex app-server."
           ssh -i ~/.ssh/nixmac-e2e \
             -o BatchMode=yes \
             -o StrictHostKeyChecking=yes \
@@ -501,17 +631,29 @@ jobs:
             "$SSH_DEST" \
             >/tmp/nixmac-e2e-tunnel.log 2>&1 &
           echo $! > /tmp/nixmac-e2e-tunnel.pid
+          tunnel_ready=false
           for _ in {1..20}; do
             if command -v nc >/dev/null 2>&1 && nc -z 127.0.0.1 18790; then
-              exit 0
+              tunnel_ready=true
+              break
             fi
             if bash -c '</dev/tcp/127.0.0.1/18790' >/dev/null 2>&1; then
-              exit 0
+              tunnel_ready=true
+              break
             fi
             sleep 1
           done
-          cat /tmp/nixmac-e2e-tunnel.log
-          exit 1
+          if [[ "$tunnel_ready" != "true" ]]; then
+            node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+              --id remote-app-server-tunnel \
+              --status failure \
+              --note "Tunnel did not become reachable on localhost:18790."
+            cat /tmp/nixmac-e2e-tunnel.log
+            exit 1
+          fi
+          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id remote-app-server-tunnel \
+            --status success
 
       - name: Run Computer Use E2E
         if: steps.stale-run.outputs.stale != 'true' && steps.pr-app.outputs.ready == 'true' && steps.remote-secrets.outputs.available == 'true'
@@ -531,7 +673,21 @@ jobs:
           NIXMAC_E2E_DISPOSABLE_CONFIG: "true"
           NIXMAC_E2E_ALLOW_BUILD_CONFIRM: "true"
           NIXMAC_E2E_ALLOW_DISCARD_CONFIRM: "true"
-        run: node tools/computer-use-e2e/run-remote-cua.mjs run
+        run: |
+          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id computer-use-run \
+            --label "Computer Use run" \
+            --category computer-use \
+            --note "Running the calibrated remote Computer Use E2E suite."
+          set +e
+          node tools/computer-use-e2e/run-remote-cua.mjs run
+          status=$?
+          set -e
+          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id computer-use-run \
+            --status "$([[ "$status" -eq 0 ]] && echo success || echo failure)" \
+            --note "Computer Use runner exited with status $status."
+          exit "$status"
 
       - name: Render setup failure report
         if: failure() && steps.pr-app.outputs.ready == 'true' && steps.remote-secrets.outputs.available != 'false'
@@ -559,6 +715,7 @@ jobs:
             fi
           fi
           node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable \
+            --workflow-timings "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --note "$note"
 
       - name: Restore remote app support
@@ -573,11 +730,20 @@ jobs:
           REMOTE_APP_STAGE: ${{ steps.remote-start.outputs.remote_app_stage }}
         run: |
           set +e
+          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id cleanup \
+            --label "Remote cleanup" \
+            --category cleanup \
+            --note "Stopping tunnel/app-server, removing staged app and disposable config, restoring app support and authorization policy."
           if [[ -f /tmp/nixmac-e2e-tunnel.pid ]]; then
             kill "$(cat /tmp/nixmac-e2e-tunnel.pid)" >/dev/null 2>&1 || true
           fi
           if [[ -z "${REMOTE_BACKUP:-}" ]]; then
             echo "remote-start outputs are unset; skipping remote cleanup."
+            node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+              --id cleanup \
+              --status skipped \
+              --note "remote-start outputs were unset; cleanup was skipped."
             exit 0
           fi
           remote_backup_q=$(printf '%q' "${REMOTE_BACKUP:-}")
@@ -661,7 +827,26 @@ jobs:
           exit "$cleanup_status"
           REMOTE
           cleanup_status=$?
+          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id cleanup \
+            --status "$([[ "$cleanup_status" -eq 0 ]] && echo success || echo failure)" \
+            --note "Remote cleanup exited with status $cleanup_status."
           exit "$cleanup_status"
+
+      - name: Attach timing metadata to evidence report
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          latest_report="$(find artifacts/computer-use-remote -mindepth 2 -maxdepth 2 -name state.json -type f -exec dirname {} \; 2>/dev/null | sort | tail -1 || true)"
+          if [[ -z "$latest_report" || ! -f "$latest_report/state.json" ]]; then
+            exit 0
+          fi
+          cp "$NIXMAC_E2E_WORKFLOW_TIMINGS" "$latest_report/workflow-timing.json"
+          node tools/computer-use-e2e/run-remote-cua.mjs render-existing \
+            --run-dir "$latest_report" \
+            --workflow-timings "$NIXMAC_E2E_WORKFLOW_TIMINGS"
+          cp "$NIXMAC_E2E_WORKFLOW_TIMINGS" "$latest_report/workflow-timing.json"
 
       - name: Collect evidence report metadata
         id: report-meta
@@ -734,6 +919,16 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Start upload timing
+        if: always()
+        shell: bash
+        run: |
+          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id report-upload \
+            --label "Report upload artifact" \
+            --category reporting \
+            --note "Uploading artifacts/computer-use-remote as the workflow artifact."
+
       - name: Upload evidence report
         id: upload-report
         if: always()
@@ -743,6 +938,25 @@ jobs:
           path: artifacts/computer-use-remote/
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Finish upload timing
+        if: always()
+        shell: bash
+        run: |
+          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id report-upload \
+            --status "${{ steps.upload-report.outcome == 'success' && 'success' || 'failure' }}" \
+            --note "upload-artifact outcome: ${{ steps.upload-report.outcome }}."
+
+      - name: Start publish timing
+        if: always() && steps.report-meta.outputs.has_report == 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        shell: bash
+        run: |
+          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id report-publish \
+            --label "Report publish" \
+            --category reporting \
+            --note "Publishing the HTML report to the gh-pages report branch."
 
       - name: Publish evidence report to public report branch
         id: publish-report
@@ -798,7 +1012,27 @@ jobs:
             echo "latest_index_url=$LATEST_INDEX_URL"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Finish publish timing
+        if: always() && steps.report-meta.outputs.has_report == 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        shell: bash
+        run: |
+          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id report-publish \
+            --status "${{ steps.publish-report.outcome == 'success' && 'success' || 'failure' }}" \
+            --note "publish-report outcome: ${{ steps.publish-report.outcome }}."
+
+      - name: Start comment timing
+        if: always() && steps.report-meta.outputs.has_report == 'true' && steps.publish-report.outcome == 'success' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        shell: bash
+        run: |
+          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id report-comment \
+            --label "Report PR comment" \
+            --category reporting \
+            --note "Creating or updating the sticky PR comment with the hosted report link."
+
       - name: Comment evidence report on pull request
+        id: comment-report
         if: always() && steps.report-meta.outputs.has_report == 'true' && steps.publish-report.outcome == 'success' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         shell: bash
         env:
@@ -836,4 +1070,28 @@ jobs:
             gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" --input "$body_json" >/dev/null
           else
             gh api -X POST "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" --input "$body_json" >/dev/null
+          fi
+
+      - name: Finish comment timing
+        if: always() && steps.report-meta.outputs.has_report == 'true' && steps.publish-report.outcome == 'success' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        shell: bash
+        run: |
+          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id report-comment \
+            --status "${{ steps.comment-report.outcome == 'success' && 'success' || 'failure' }}" \
+            --note "comment-report outcome: ${{ steps.comment-report.outcome }}."
+
+      - name: Append final timing summary
+        if: always()
+        shell: bash
+        run: |
+          latest_report="$(find artifacts/computer-use-remote -mindepth 2 -maxdepth 2 -name state.json -type f -exec dirname {} \; 2>/dev/null | sort | tail -1 || true)"
+          if [[ -n "$latest_report" && -f "$latest_report/state.json" ]]; then
+            cp "$NIXMAC_E2E_WORKFLOW_TIMINGS" "$latest_report/workflow-timing.json"
+            node tools/computer-use-e2e/workflow-timing.mjs markdown \
+              --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+              --state "$latest_report/state.json" >> "$GITHUB_STEP_SUMMARY"
+          else
+            node tools/computer-use-e2e/workflow-timing.mjs markdown \
+              --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" >> "$GITHUB_STEP_SUMMARY"
           fi

@@ -120,6 +120,7 @@ function reportSignature(runDir, state) {
   const html = readFileSync(path.join(runDir, 'index.html'), 'utf8');
   const anchors = [
     'id="summary"',
+    'id="timing-breakdown"',
     'id="evidence-pack"',
     'class="report-nav"',
     'id="pull-request-focus"',
