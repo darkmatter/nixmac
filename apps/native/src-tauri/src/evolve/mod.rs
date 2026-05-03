@@ -25,7 +25,6 @@ use anyhow::{anyhow, Result};
 use chrono::Utc;
 use log::{debug, error, info, warn};
 use regex::Regex;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::fs::OpenOptions;
@@ -36,7 +35,9 @@ use std::time::Duration;
 use tauri::{AppHandle, Runtime};
 use tokio::time::sleep;
 use tools::{create_tools, execute_tool, is_editing_tool, ToolResult};
-pub use types::{Evolution, EvolutionState};
+pub use types::Evolution;
+pub use types::{EvolutionProgress, EvolutionRunError};
+use crate::shared_types::EvolutionState;
 
 use crate::{
     commands, nix, statistics, store,
@@ -269,50 +270,6 @@ const BUILD_OUTPUT_MAX_CHARS: usize = 6_000;
 const BUILD_OUTPUT_TAIL_LINES: usize = 80;
 
 const SYSTEM_PROMPT: &str = include_str!("../../prompts/system.md");
-
-/// Partial evolution telemetry captured on failed runs.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EvolutionProgress {
-    pub state: EvolutionState,
-    pub iterations: usize,
-    pub build_attempts: usize,
-    pub total_tokens: u32,
-    pub edits_count: usize,
-    pub thinking_count: usize,
-    pub tool_calls_count: usize,
-}
-
-/// Error for failed evolution generation that still carries partial progress.
-#[derive(Debug, Clone, thiserror::Error)]
-#[error("{message}")]
-pub struct EvolutionRunError {
-    pub message: String,
-    pub progress: EvolutionProgress,
-}
-
-impl EvolutionRunError {
-    fn from_state(
-        message: impl Into<String>,
-        evolution: &Evolution,
-        iterations: usize,
-        build_attempts: usize,
-        total_tokens: u32,
-    ) -> Self {
-        Self {
-            message: message.into(),
-            progress: EvolutionProgress {
-                state: EvolutionState::Failed,
-                iterations,
-                build_attempts,
-                total_tokens,
-                edits_count: evolution.edits.len(),
-                thinking_count: evolution.thinking.len(),
-                tool_calls_count: evolution.tool_calls.len(),
-            },
-        }
-    }
-}
 
 /// Build a short single-line preview from the conversation messages to help with
 /// troubleshooting.
