@@ -86,6 +86,7 @@ artifacts/computer-use-adversarial/
 artifacts/computer-use-historical-validation/
 artifacts/computer-use-summary/
 .scratch/
+.claude-review/
 
 # Misc
 *.tgz
