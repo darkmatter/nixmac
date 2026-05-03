@@ -9,7 +9,7 @@
 
 use crate::{
     darwin, db, default_config, editor, evolve, evolve_state, feedback, finalize_restore, git,
-    lsp, mac, nix, peek, permissions, rollback, scanner, shared_types, store, types, utils,
+    lsp, nix, peek, permissions, rollback, scanner, shared_types, store, types, utils,
     watcher,
 };
 use std::path::Path;
@@ -260,7 +260,7 @@ pub async fn homebrew_apply_diff(
     app: AppHandle,
     diff: shared_types::HomebrewState,
 ) -> Result<shared_types::ConfigEditApplyResult, String> {
-    crate::mac::homebrew::apply_homebrew_diff(&app, diff)
+    crate::evolve::homebrew_adopt::apply_homebrew_diff(&app, diff)
         .await
         .map_err(|e| capture_err("homebrew_apply_diff", e))
 }
@@ -272,7 +272,7 @@ pub async fn homebrew_get_state_diff(
     let dir = store::ensure_config_dir_exists(&app)
         .map_err(|e| capture_err("homebrew_get_state_diff", e))?;
 
-    mac::homebrew::get_homebrew_state_diff(Path::new(&dir))
+    evolve::homebrew_adopt::get_homebrew_state_diff(Path::new(&dir))
         .map_err(|e| capture_err("homebrew_get_state_diff", e))
 }
 

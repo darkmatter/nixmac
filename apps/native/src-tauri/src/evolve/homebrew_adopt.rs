@@ -4,7 +4,7 @@ use crate::evolve::types::{FileEditAction, SemanticFileEdit};
 use crate::nix_ast_lists::parse_string_lists_by_attrpath;
 use crate::scanner::inject_module_import;
 use crate::shared_types::HomebrewState;
-use crate::{mac, evolve::managed_edit, shared_types};
+use crate::{evolve::managed_edit, shared_types};
 use anyhow::{Context, Result};
 use tauri::AppHandle;
 
@@ -62,7 +62,7 @@ pub async fn apply_homebrew_diff(
     }
     let item_count = homebrew_item_count(&diff);
 
-    mac::homebrew::apply_homebrew_import(diff, std::path::Path::new(&dir))
+    apply_homebrew_import(diff, std::path::Path::new(&dir))
         .context("Failed to apply Homebrew diff")?;
 
     let working_tree_status =
