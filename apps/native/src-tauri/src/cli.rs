@@ -204,7 +204,7 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
 
     // DO IT!
     println!("Starting evolution with prompt: {}", prompt);
-    let outcome = crate::evolution::backup_evolve_and_record_changeset(app, &prompt).await;
+    let outcome = crate::evolve::lifecycle::backup_evolve_and_record_changeset(app, &prompt).await;
 
     let (ok, output_value, failure_message) = match outcome {
         Ok(output) => {

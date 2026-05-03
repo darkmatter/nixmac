@@ -8,7 +8,7 @@
 //! preview mode, etc.) is computed and managed entirely by the client.
 
 use crate::{
-    darwin, db, default_config, editor, evolution, evolve_state, feedback, finalize_restore, git,
+    darwin, db, default_config, editor, evolve, evolve_state, feedback, finalize_restore, git,
     lsp, mac, nix, peek, permissions, rollback, scanner, shared_types, store, types, utils,
     watcher,
 };
@@ -372,58 +372,6 @@ pub async fn git_stash(app: AppHandle, message: String) -> Result<shared_types::
 // Darwin/Nix Commands
 // =============================================================================
 
-/// Global flag to signal evolution cancellation.
-static EVOLVE_CANCELLED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-
-/// Check if evolution has been cancelled.
-pub fn is_evolve_cancelled() -> bool {
-    EVOLVE_CANCELLED.load(std::sync::atomic::Ordering::SeqCst)
-}
-
-/// Reset the cancellation flag.
-fn reset_evolve_cancelled() {
-    EVOLVE_CANCELLED.store(false, std::sync::atomic::Ordering::SeqCst);
-}
-
-/// Global holder for an in-flight question sender.
-/// We use a oneshot per-question so the evolve loop can await a response
-/// without holding a mutex across an await (which would cause a deadlock).
-static ONGOING_QUESTION: std::sync::OnceLock<
-    tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<String>>>,
-> = std::sync::OnceLock::new();
-
-fn ongoing_question_slot(
-) -> &'static tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<String>>> {
-    ONGOING_QUESTION.get_or_init(|| tokio::sync::Mutex::new(None))
-}
-
-/// Send a user's answer to the evolve loop's pending question.
-pub async fn send_question_response(answer: String) -> anyhow::Result<()> {
-    let slot = ongoing_question_slot();
-    let mut guard = slot.lock().await;
-    if let Some(tx) = guard.take() {
-        tx.send(answer)
-            .map_err(|_e| anyhow::anyhow!("Failed to send question response"))
-    } else {
-        Err(anyhow::anyhow!("No pending question to answer"))
-    }
-}
-
-/// Wait for a user response to a question (called from the evolve loop).
-pub async fn wait_for_question_response() -> Option<String> {
-    let slot = ongoing_question_slot();
-
-    // Create a oneshot for this question and register its sender globally.
-    let (tx, rx) = tokio::sync::oneshot::channel();
-    {
-        let mut guard = slot.lock().await;
-        // If there's already a pending question, replace it (dropping old sender).
-        *guard = Some(tx);
-    }
-
-    rx.await.ok()
-}
-
 /// Handles the complete evolution cycle returning the git status and summary to react
 #[tauri::command]
 pub async fn darwin_evolve(
@@ -431,12 +379,12 @@ pub async fn darwin_evolve(
     description: String,
 ) -> Result<shared_types::EvolutionResult, String> {
     // Reset cancellation flag at the start of a new evolution
-    reset_evolve_cancelled();
+    evolve::session_control::set_evolve_cancelled(false);
 
-    let result = match evolution::backup_evolve_and_record_changeset(&app, &description).await {
+    let result = match evolve::lifecycle::backup_evolve_and_record_changeset(&app, &description).await {
         Ok(result) => result,
         Err(failure) => {
-            let is_cancelled = is_evolve_cancelled()
+            let is_cancelled = evolve::session_control::is_evolve_cancelled()
                 || failure
                     .error
                     .to_ascii_lowercase()
@@ -467,7 +415,7 @@ pub async fn darwin_evolve(
 /// Cancel an in-progress evolution operation.
 #[tauri::command]
 pub async fn darwin_evolve_cancel() -> Result<shared_types::EvolveCancelResult, String> {
-    EVOLVE_CANCELLED.store(true, std::sync::atomic::Ordering::SeqCst);
+    evolve::session_control::set_evolve_cancelled(true);
     log::info!("Evolution cancellation requested");
     Ok(shared_types::EvolveCancelResult {
         ok: true,
@@ -479,7 +427,7 @@ pub async fn darwin_evolve_cancel() -> Result<shared_types::EvolveCancelResult, 
 #[tauri::command]
 pub async fn darwin_evolve_answer(answer: String) -> Result<shared_types::OkResult, String> {
     log::info!("User answered agent question: {}", answer);
-    send_question_response(answer)
+    evolve::session_control::send_question_response(answer)
         .await
         .map_err(|e| e.to_string())?;
     Ok(shared_types::OkResult::yes())

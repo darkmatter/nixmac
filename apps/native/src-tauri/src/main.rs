@@ -18,7 +18,6 @@ mod darwin;
 mod db;
 mod default_config;
 mod editor;
-mod evolution;
 mod evolve;
 mod evolve_state;
 mod feedback;
