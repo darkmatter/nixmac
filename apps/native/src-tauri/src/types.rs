@@ -21,11 +21,10 @@ pub struct Config {
     pub host_attr: Option<String>,
 }
 
-pub use crate::shared_types::{GitFileStatus, GitStatus, UiPrefs};
 
-/// Result of a darwin-rebuild operation.
+/// Result of a darwin-rebuild operation (legacy stub — active builds use `finalize_apply::ApplyResult`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ApplyResult {
+pub struct DarwinApplyLegacy {
     /// Whether the operation succeeded.
     pub ok: bool,
 

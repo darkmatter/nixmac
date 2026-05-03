@@ -277,7 +277,7 @@ pub async fn homebrew_get_state_diff(
 
 /// Returns the current git status of the config directory.
 #[tauri::command]
-pub async fn git_status(app: AppHandle) -> Result<types::GitStatus, String> {
+pub async fn git_status(app: AppHandle) -> Result<shared_types::GitStatus, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_status", e))?;
     let status = git::status(&dir).map_err(|e| capture_err("git_status", e))?;
     Ok(status)
@@ -285,7 +285,7 @@ pub async fn git_status(app: AppHandle) -> Result<types::GitStatus, String> {
 
 /// Returns the current git status and caches it for later comparison.
 #[tauri::command]
-pub async fn git_status_and_cache(app: AppHandle) -> Result<types::GitStatus, String> {
+pub async fn git_status_and_cache(app: AppHandle) -> Result<shared_types::GitStatus, String> {
     let dir = store::ensure_config_dir_exists(&app)
         .map_err(|e| capture_err("git_status_and_cache", e))?;
     let status =
@@ -295,7 +295,7 @@ pub async fn git_status_and_cache(app: AppHandle) -> Result<types::GitStatus, St
 
 /// Returns the cached git status if available.
 #[tauri::command]
-pub async fn git_cached(app: AppHandle) -> Result<Option<types::GitStatus>, String> {
+pub async fn git_cached(app: AppHandle) -> Result<Option<shared_types::GitStatus>, String> {
     git::cached(&app).map_err(|e| capture_err("git_cached", e))
 }
 
@@ -346,7 +346,7 @@ pub async fn git_commit(app: AppHandle, message: String) -> Result<CommitResult,
 
     let evolve_state = evolve_state::clear(&app).unwrap_or_else(|e| {
         log::error!("[git_commit] Failed to clear evolve state: {}", e);
-        evolve_state::EvolveState::default()
+        shared_types::EvolveState::default()
     });
 
     Ok(CommitResult {
@@ -359,7 +359,7 @@ pub async fn git_commit(app: AppHandle, message: String) -> Result<CommitResult,
 #[serde(rename_all = "camelCase")]
 pub struct CommitResult {
     pub hash: String,
-    pub evolve_state: evolve_state::EvolveState,
+    pub evolve_state: shared_types::EvolveState,
 }
 
 /// Stashes all uncommitted changes with the given message.
@@ -489,13 +489,13 @@ pub async fn darwin_evolve_answer(answer: String) -> Result<serde_json::Value, S
 pub async fn darwin_apply(
     app: AppHandle,
     host_override: Option<String>,
-) -> Result<types::ApplyResult, String> {
+) -> Result<types::DarwinApplyLegacy, String> {
     let _dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("darwin_apply", e))?;
     let _host = host_override
         .or_else(|| nix::determine_host_attr(&app))
         .ok_or_else(|| "Host attribute not found".to_string())?;
 
-    Ok(types::ApplyResult {
+    Ok(types::DarwinApplyLegacy {
         ok: true,
         code: Some(0),
         stdout: Some("Use darwin_apply_stream_start for streaming output".to_string()),
@@ -784,7 +784,7 @@ pub async fn abort_restore(app: AppHandle) -> Result<(), String> {
 pub async fn finalize_restore(
     app: AppHandle,
     target_hash: String,
-) -> Result<crate::types::GitStatus, String> {
+) -> Result<crate::shared_types::GitStatus, String> {
     finalize_restore::finalize_restore(&app, target_hash)
         .await
         .map_err(|e| capture_err("finalize_restore", e))
@@ -804,7 +804,7 @@ pub async fn generate_commit_message(app: AppHandle) -> Result<String, String> {
 
 /// Returns all UI preferences.
 #[tauri::command]
-pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
+pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, String> {
     let openrouter_api_key = store::get_effective_openrouter_api_key(&app)
         .map_err(|e| capture_err("ui_get_prefs", e))?;
     let openai_api_key =
@@ -847,7 +847,7 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
     let pinned_version = store::get_string_pref_public(&app, store::PINNED_VERSION_KEY)
         .map_err(|e| capture_err("ui_get_prefs", e))?;
 
-    Ok(types::UiPrefs {
+    Ok(shared_types::UiPrefs {
         openrouter_api_key,
         openai_api_key,
 
@@ -1211,7 +1211,7 @@ pub async fn darwin_adopt_manual_changes(app: AppHandle) -> Result<i64, String> 
 
     evolve_state::set(
         &app,
-        evolve_state::EvolveState {
+        shared_types::EvolveState {
             evolution_id: Some(evolution_id),
             current_changeset_id: None,
             ..Default::default()
@@ -1339,7 +1339,7 @@ pub async fn list_cli_models(tool: String) -> Result<Vec<String>, String> {
 // =============================================================================
 
 #[tauri::command]
-pub async fn routing_state_get(app: AppHandle) -> Result<evolve_state::EvolveState, String> {
+pub async fn routing_state_get(app: AppHandle) -> Result<shared_types::EvolveState, String> {
     let state = evolve_state::get(&app).map_err(|e| capture_err("routing_state_get", e))?;
     // Recompute step from live git status to surface manual changes
     let dir = store::get_config_dir(&app).map_err(|e| capture_err("routing_state_get", e))?;
@@ -1349,7 +1349,7 @@ pub async fn routing_state_get(app: AppHandle) -> Result<evolve_state::EvolveSta
 
 /// Clear evolve state back to idle (called after a successful git commit).
 #[tauri::command]
-pub async fn routing_state_clear(app: AppHandle) -> Result<evolve_state::EvolveState, String> {
+pub async fn routing_state_clear(app: AppHandle) -> Result<shared_types::EvolveState, String> {
     evolve_state::clear(&app).map_err(|e| capture_err("routing_state_clear", e))
 }
 
