@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { darwinAPI } from "@/tauri-api";
 import { useWidgetStore } from "@/stores/widget-store";
 
-export interface UpdateState {
+interface UpdateState {
   /** Whether we're currently checking for updates */
   checking: boolean;
   /** Available update (null if none) */

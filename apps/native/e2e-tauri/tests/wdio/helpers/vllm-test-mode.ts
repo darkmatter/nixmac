@@ -7,7 +7,7 @@ function normalizeMode(mode: string | undefined | null): string {
   return String(mode ?? '').trim().toLowerCase();
 }
 
-export function getWdioVllmMode(): string {
+function getWdioVllmMode(): string {
   const rawMode = process.env[WDIO_VLLM_MODE_ENV] ?? 'playback';
   const mode = normalizeMode(rawMode);
 
@@ -25,12 +25,12 @@ export function isPlaybackMode(): boolean {
   return getWdioVllmMode() === 'playback';
 }
 
-export interface VllmSetupOptions {
+interface VllmSetupOptions {
   initializeConfigRepo?: boolean;
   mockVllm?: { responseFiles?: string[] };
 }
 
-export function createVllmSetupOptionsForSuite({
+function createVllmSetupOptionsForSuite({
   initializeConfigRepo = true,
   playbackPreset,
 }: {

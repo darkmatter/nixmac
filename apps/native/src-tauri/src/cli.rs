@@ -209,7 +209,7 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
     let (ok, output_value, failure_message) = match outcome {
         Ok(output) => {
             let is_conversational =
-                output.telemetry.state == crate::evolve::EvolutionState::Conversational;
+                output.telemetry.state == crate::shared_types::EvolutionState::Conversational;
 
             if is_conversational {
                 println!("(conversational response — no changes made)");

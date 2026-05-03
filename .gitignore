@@ -3,7 +3,7 @@ playwright-report
 test-results
 apps/server/server
 node_modules
-
+worktrees
 # Build output
 dist/
 dist-ssr/

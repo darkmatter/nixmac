@@ -669,7 +669,7 @@ pub fn get_debug_zone_info<R: Runtime>(app: &AppHandle<R>) -> Result<DebugZoneIn
     let screen_height_logical = monitor.height / monitor.scale_factor;
 
     Ok(DebugZoneInfo {
-        enabled: false, // Disable debug overlay for now
+        enabled: false, // Disable debug overlay
         corner_zone_size: corner_zone_logical,
         screen_width: screen_width_logical,
         screen_height: screen_height_logical,

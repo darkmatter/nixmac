@@ -10,11 +10,11 @@ use log::info;
 use tauri::AppHandle;
 
 use crate::{
-    build_state, db,
-    evolve::{self, EvolutionState},
+    build_state, db, evolve,
     evolve_state, git,
     shared_types::{
-        EvolutionFailureResult, EvolutionResult, EvolutionTelemetry, SemanticChangeMap,
+        EvolveState, EvolutionFailureResult, EvolutionResult, EvolutionState, EvolutionTelemetry,
+        SemanticChangeMap,
     },
     store, summarize,
     types::{emit_evolve_event, EvolveEvent},
@@ -64,7 +64,7 @@ impl EvolutionTelemetry {
 impl EvolutionFailureResult {
     fn new(
         error: String,
-        git_status: Option<crate::types::GitStatus>,
+        git_status: Option<crate::shared_types::GitStatus>,
         telemetry: EvolutionTelemetry,
     ) -> Self {
         Self {
@@ -76,7 +76,7 @@ impl EvolutionFailureResult {
 
     fn defaults(
         error: String,
-        git_status: Option<crate::types::GitStatus>,
+        git_status: Option<crate::shared_types::GitStatus>,
         duration_ms: i64,
     ) -> Self {
         Self::new(
@@ -88,7 +88,7 @@ impl EvolutionFailureResult {
 
     fn from_evolution(
         error: String,
-        git_status: Option<crate::types::GitStatus>,
+        git_status: Option<crate::shared_types::GitStatus>,
         evolution: &evolve::Evolution,
         duration_ms: i64,
     ) -> Self {
@@ -175,13 +175,15 @@ pub async fn backup_evolve_and_record_changeset(
                     bs.as_ref().and_then(|b| b.changeset_id),
                 )
             };
-        let updated = evolve_state::EvolveState {
+        let updated = EvolveState {
             backup_branch: Some(branch.clone()),
             rollback_branch,
             rollback_store_path,
             rollback_changeset_id,
             ..pre_evolve_state.clone()
         };
+        // fire-and-forget: state cache update before the AI call. Failure is non-fatal —
+        // evolution proceeds and the final set() below will update state correctly.
         let _ = evolve_state::set(app, updated, &initial_status.changes);
     }
 
@@ -241,6 +243,8 @@ pub async fn backup_evolve_and_record_changeset(
 
     emit_evolve_event(app, EvolveEvent::analyzing(start_time_s, None));
 
+    // fire-and-forget: cache write. We hold `final_status` in memory; a store write
+    // failure here does not block the evolution result from being returned.
     let _ = store::set_cached_git_status(app, &final_status);
 
     // Insert a DB evolution record and run the appropriate summarization pipeline.
@@ -249,7 +253,7 @@ pub async fn backup_evolve_and_record_changeset(
     let current_state = evolve_state::get(app).unwrap_or_default();
     let evolve_state = evolve_state::set(
         app,
-        evolve_state::EvolveState {
+        EvolveState {
             evolution_id: db_evolution_id,
             current_changeset_id: new_changeset_id,
             backup_branch,
@@ -295,9 +299,11 @@ fn restore_after_failure(app: &AppHandle, config_dir: &str, backup_branch: &Opti
         log::error!("[evolution] restore_after_failure called without backup_branch — skipping restore");
     }
 
+    // fire-and-forget: clearing backup_branch in an error-recovery path. We are
+    // already handling a failure; a secondary store write failure is non-fatal.
     let _ = evolve_state::set(
         app,
-        evolve_state::EvolveState {
+        EvolveState {
             backup_branch: None,
             ..evolve_state::get(app).unwrap_or_default()
         },
@@ -308,7 +314,7 @@ fn restore_after_failure(app: &AppHandle, config_dir: &str, backup_branch: &Opti
 /// Insert a DB evolution (or reuse the active one), and summarize a changeset to link to it.
 pub async fn store_metadata(
     app: &AppHandle,
-    status: &crate::types::GitStatus,
+    status: &crate::shared_types::GitStatus,
 ) -> (Option<i64>, Option<i64>) {
     let db_path = match db::get_db_path(app) {
         Ok(p) => p,

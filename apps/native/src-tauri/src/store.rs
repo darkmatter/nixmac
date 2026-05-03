@@ -7,7 +7,7 @@ use crate::credential_store::{
     get_with_lazy_migration, set_with_cleanup, CredentialStoreError, KeychainStore,
     SettingsFileStore,
 };
-use crate::types;
+use crate::shared_types;
 use anyhow::Result;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -526,11 +526,11 @@ pub fn set_cached_models<R: Runtime>(
 // =============================================================================
 
 /// Gets the cached git status.
-pub fn get_cached_git_status<R: Runtime>(app: &AppHandle<R>) -> Result<Option<types::GitStatus>> {
+pub fn get_cached_git_status<R: Runtime>(app: &AppHandle<R>) -> Result<Option<shared_types::GitStatus>> {
     let store = get_store(app)?;
 
     if let Some(val) = store.get("cachedGitStatus") {
-        if let Ok(status) = serde_json::from_value::<types::GitStatus>(val.clone()) {
+        if let Ok(status) = serde_json::from_value::<shared_types::GitStatus>(val.clone()) {
             return Ok(Some(status));
         }
     }
@@ -540,7 +540,7 @@ pub fn get_cached_git_status<R: Runtime>(app: &AppHandle<R>) -> Result<Option<ty
 /// Sets the cached git status.
 pub fn set_cached_git_status<R: Runtime>(
     app: &AppHandle<R>,
-    status: &types::GitStatus,
+    status: &shared_types::GitStatus,
 ) -> Result<()> {
     let store = get_store(app)?;
     store.set("cachedGitStatus", serde_json::to_value(status)?);

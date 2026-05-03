@@ -4,19 +4,21 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 
-use crate::{build_state, evolve_state, git, store, types::GitStatus};
+use crate::{build_state, evolve_state, git, shared_types, store, shared_types::GitStatus};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ApplyResult {
     pub git_status: GitStatus,
-    pub evolve_state: evolve_state::EvolveState,
+    pub evolve_state: shared_types::EvolveState,
 }
 
-async fn prepare(app: &AppHandle) -> Result<(crate::types::GitStatus, evolve_state::EvolveState)> {
+async fn prepare(app: &AppHandle) -> Result<(crate::shared_types::GitStatus, shared_types::EvolveState)> {
     let config_dir =
         store::ensure_config_dir_exists(app).context("Failed to get config directory")?;
     let final_status = git::status(&config_dir).context("Failed to get final git status")?;
+    // fire-and-forget: best-effort cache update. `final_status` is returned directly
+    // to the caller; a store write failure here must not abort the finalization.
     let _ = store::set_cached_git_status(app, &final_status);
     let current_evolve = evolve_state::get(app).unwrap_or_default();
     Ok((final_status, current_evolve))

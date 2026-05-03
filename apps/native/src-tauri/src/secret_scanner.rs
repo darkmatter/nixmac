@@ -36,7 +36,13 @@ impl SecretScanner {
                     // Resources are at App.app/Contents/Resources/
                     std::env::current_exe()
                         .map_err(tauri::Error::Io)
-                        .map(|exe| exe.parent().unwrap().parent().unwrap().join("Resources"))
+                        .map(|exe| {
+                            exe.parent()
+                                .expect("binary has a parent directory (Contents/MacOS)")
+                                .parent()
+                                .expect("binary grandparent directory (Contents)")
+                                .join("Resources")
+                        })
                 })
                 .expect("Failed to get resource directory")
                 .join("resources/gitleaks.toml");

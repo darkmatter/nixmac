@@ -84,6 +84,8 @@ pub async fn analyze<R: Runtime>(
         let app2 = app.clone();
         let db2 = db_path.to_path_buf();
         tauri::async_runtime::spawn(async move {
+            // fire-and-forget: background summarization. Failure is logged internally by
+            // queue_summarizer; the caller has already persisted the changeset ids.
             let _ = crate::summarize::queue_summarizer::process(Some(queued_ids), app2, db2).await;
         });
     }

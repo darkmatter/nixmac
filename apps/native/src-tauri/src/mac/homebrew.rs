@@ -45,7 +45,7 @@ pub fn get_homebrew_state_diff(config_dir: &std::path::Path) -> Result<HomebrewS
 pub async fn apply_homebrew_diff(
     app: &AppHandle,
     diff: shared_types::HomebrewState,
-) -> Result<serde_json::Value> {
+) -> Result<shared_types::ConfigEditApplyResult> {
     let context = managed_edit::prepare_managed_edit(app)?;
     let dir = context.dir.clone();
 

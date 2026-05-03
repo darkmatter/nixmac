@@ -9,7 +9,7 @@ use tauri::{AppHandle, Runtime};
 use tauri_plugin_store::StoreExt;
 
 use crate::sqlite_types::Change;
-use crate::types::GitStatus;
+use crate::shared_types::GitStatus;
 
 const BUILD_STATE_PATH: &str = "build-state.json";
 const BUILD_STATE_KEY: &str = "buildState";

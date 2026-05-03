@@ -98,6 +98,8 @@ pub fn apply_stream(
         match run_darwin_rebuild(&app_handle, &config_dir_owned, &host_attr_owned) {
             Ok(payload) => {
                 info!("[darwin] darwin-rebuild completed successfully");
+                // fire-and-forget: emit returns Err only when no listeners are registered
+                // (window may be hidden/destroyed). Missing this event is non-fatal.
                 let _ = app_handle.emit("darwin:apply:end", payload);
             }
             Err(error_payload) => {
@@ -109,6 +111,7 @@ pub fn apply_stream(
                     "[darwin] darwin-rebuild completed with error_type: {}",
                     error_type
                 );
+                // fire-and-forget: same reasoning as the Ok branch above.
                 let _ = app_handle.emit("darwin:apply:end", error_payload);
             }
         }
@@ -190,6 +193,8 @@ fn run_build_step(
         let mut lines = Vec::new();
         if let Some(stdout) = stdout {
             for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+                // fire-and-forget: streaming log chunks to the frontend; missing a line
+                // is non-fatal. Emit fails only when no listeners are registered.
                 let _ = app_out.emit(
                     "darwin:apply:data",
                     serde_json::json!({"chunk": format!("{}\n", line)}),
@@ -197,6 +202,8 @@ fn run_build_step(
                 sum_out.send_line(&line);
                 // Also write stdout lines to the main log file
                 if let Ok(mut f) = log_for_out.lock() {
+                    // fire-and-forget: log write failure (e.g. disk full) cannot be
+                    // meaningfully reported from inside this streaming loop.
                     let _ = writeln!(f, "{}", line);
                     let _ = f.flush();
                 }
@@ -209,6 +216,7 @@ fn run_build_step(
         let mut lines = Vec::new();
         if let Some(stderr) = stderr {
             for line in BufReader::new(stderr).lines().map_while(Result::ok) {
+                // fire-and-forget: same reasoning as stdout thread above.
                 let _ = app_err.emit(
                     "darwin:apply:data",
                     serde_json::json!({"chunk": format!("{}\n", line)}),
@@ -216,6 +224,7 @@ fn run_build_step(
                 sum_err.send_line(&line);
                 // Also write stderr lines to the main log file
                 if let Ok(mut f) = log_for_err.lock() {
+                    // fire-and-forget: log write failure cannot be usefully reported here.
                     let _ = writeln!(f, "{}", line);
                     let _ = f.flush();
                 }
@@ -224,6 +233,8 @@ fn run_build_step(
         }
         lines
     });
+    // fire-and-forget join: stdout content is not used; we only need stderr for error reporting.
+    // A panic inside the stdout thread would surface as Err(payload) — safe to ignore.
     let _ = stdout_handle.join();
     let build_stderr = stderr_handle.join().unwrap_or_default();
 
@@ -303,10 +314,19 @@ fn classify_activate_error(result: &ActivateResult) -> (&'static str, String) {
 }
 
 /// Mimics build but less interesting
-pub fn activate_store_path_stream(app: &AppHandle, store_path: String) -> Result<(), anyhow::Error> {
-    info!("[darwin] activate_store_path_stream: store_path={}", store_path);
+pub fn activate_store_path_stream(
+    app: &AppHandle,
+    store_path: String,
+) -> Result<(), anyhow::Error> {
+    info!(
+        "[darwin] activate_store_path_stream: store_path={}",
+        store_path
+    );
     let app_handle = app.clone();
 
+    // All emit calls below are fire-and-forget: this closure runs in a background
+    // thread and the frontend window may be hidden or destroyed by the time we emit.
+    // Tauri's emit returns Err only when there are no listeners, which is non-fatal.
     std::thread::spawn(move || {
         let _ = app_handle.emit(
             "darwin:apply:data",
@@ -378,7 +398,7 @@ fn run_activate_with_path(activate_path: &str) -> Result<ActivateResult, anyhow:
         .unwrap_or_else(|_| activate_path.to_owned());
 
     // Escape a value for safe embedding inside a shell single-quoted string.
-    let sq = |s: &str| s.replace('\'', "'\\''" );
+    let sq = |s: &str| s.replace('\'', "'\\''");
 
     // Build the privileged shell script that runs as root via osascript.
     // It:
@@ -559,9 +579,12 @@ fn run_darwin_rebuild(
             let msg = $msg;
             {
                 let mut f = log_file.lock().unwrap();
+                // fire-and-forget: log write failure (disk full etc.) cannot be usefully
+                // propagated from inside the macro; we continue building regardless.
                 let _ = writeln!(f, "{}", msg);
                 let _ = f.flush();
             }
+            // fire-and-forget: emit to frontend; window may not be listening.
             let _ = app.emit(
                 "darwin:apply:data",
                 serde_json::json!({"chunk": format!("{}\n", msg)}),
@@ -570,7 +593,7 @@ fn run_darwin_rebuild(
         };
     }
 
-    // Log header
+    // Log header — fire-and-forget writes; see macro comment above.
     let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S");
     {
         let mut f = log_file.lock().unwrap();
@@ -610,6 +633,7 @@ fn run_darwin_rebuild(
 
         {
             if let Ok(mut f) = log_file.lock() {
+                // fire-and-forget: log write in error path — see macro comment above.
                 let _ = writeln!(f, "\n=== darwin-rebuild build FAILED ===");
                 let _ = writeln!(f, "Exit code: {}", build_result.code);
                 let _ = f.flush();

@@ -518,7 +518,7 @@ pub async fn submit(app: &AppHandle, payload: String) -> Result<bool> {
         }
     };
 
-    // Also flush any previously pending reports
+    // Also flush any pending reports
     if let Err(e) = retry_pending(app).await {
         log::warn!("[feedback] Failed to retry pending reports: {}", e);
     }
@@ -570,6 +570,7 @@ pub async fn retry_pending(app: &AppHandle) -> Result<usize> {
     let entries: Vec<Value> = serde_json::from_str(&content).unwrap_or_default();
 
     if entries.is_empty() {
+        // fire-and-forget: cleanup of empty report file; benign if already missing.
         let _ = fs::remove_file(&path);
         return Ok(0);
     }
@@ -616,6 +617,7 @@ pub async fn retry_pending(app: &AppHandle) -> Result<usize> {
     }
 
     if remaining.is_empty() {
+        // fire-and-forget: cleanup; all reports sent successfully. Benign if file gone.
         let _ = fs::remove_file(&path);
     } else {
         fs::write(&path, serde_json::to_string_pretty(&remaining)?)?;

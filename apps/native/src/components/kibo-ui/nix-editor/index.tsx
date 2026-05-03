@@ -3,7 +3,7 @@ import { useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useNixEditor } from "./use-nix-editor";
 
-export interface NixEditorProps {
+interface NixEditorProps {
   filePath: string;
   onSave?: (content: string) => void;
   className?: string;

@@ -29,4 +29,4 @@ export function usePrefs() {
   return { loadPrefs, setPref };
 }
 
-export type { ConfirmPrefKey, BoolPrefKey };
+;
