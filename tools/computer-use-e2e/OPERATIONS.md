@@ -44,17 +44,26 @@ in the override or release record before treating Product Proof as satisfied.
 
 ## Singleton Mac Capacity
 
-The remote GUI lane depends on one interactive Mac. Keep workflow concurrency
-serialized until the team has a real host pool and per-host state isolation.
+The remote GUI lane depends on one interactive Mac. Keep the remote job
+concurrency serialized until the team has a real host pool and per-host state
+isolation. GitHub-hosted prepare work may run outside that lane, but anything
+that performs SSH readiness, app staging, app-driving Computer Use, tunnel
+setup, or remote cleanup belongs in the serialized remote job.
 
 - Stale first-attempt PR runs should skip before secrets, SSH, app staging,
-  tunnel setup, or cleanup.
+  tunnel setup, or cleanup during prepare, and should be rechecked again at the
+  start of the remote job before remote work begins.
 - Operator reruns and manual dispatches are triage evidence when they are not
   current PR head.
 - Do not run ad hoc manual GUI sessions on DXU during a queued Product Proof
   workflow.
 - If queue time becomes the bottleneck, add hosts and host-pool routing before
   making concurrency per PR.
+- The prepared app handoff artifact is retained for 3 days. Treat queues that
+  approach that age as an operator incident; the remote job cannot safely consume
+  an expired app artifact.
+- Keep report publishing serialized separately from the DXU lane unless the
+  `gh-pages` publisher adds explicit fetch/rebase/retry safety.
 
 Track these locally or in the release issue before required-gate promotion:
 
