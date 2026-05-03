@@ -195,6 +195,8 @@ pub fn prefetch_darwin_rebuild_stream(app: &AppHandle) -> Result<()> {
 
     let app_handle = app.clone();
 
+    // All emit calls below are fire-and-forget: background thread; window may not be
+    // listening. Tauri emit returns Err only when no listeners are registered.
     std::thread::spawn(move || {
         let result = Command::new("nix")
             .args(["build", "--no-link", "nix-darwin/master#darwin-rebuild"])
@@ -375,6 +377,7 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
         );
 
         if let Err(e) = Command::new("open").arg(&pkg_path).status() {
+            // fire-and-forget cleanup: temp pkg may not exist if open() aborted early.
             let _ = std::fs::remove_file(&pkg_path);
             app.emit(
                 "nix:install:end",
@@ -405,7 +408,7 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
 
             if is_nix_installed() {
                 info!("[nix] Poll #{}: nix detected!", poll_count);
-                // Clean up the downloaded .pkg
+                // fire-and-forget cleanup: temp pkg; benign if already removed.
                 let _ = std::fs::remove_file(&pkg_path);
                 if let Err(e) = crate::default_config::finalize_flake_lock(app) {
                     info!("[nix] Could not finalize flake.lock: {}", e);
@@ -414,6 +417,7 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
             }
 
             if std::time::Instant::now() >= deadline {
+                // fire-and-forget cleanup on timeout path.
                 let _ = std::fs::remove_file(&pkg_path);
                 app.emit(
                     "nix:install:end",
@@ -432,6 +436,7 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
     // Phase 2: Prefetch darwin-rebuild directly (no Terminal needed)
     // Fresh 5-minute deadline for this phase
     deadline = std::time::Instant::now() + INSTALL_PHASE_TIMEOUT;
+    // fire-and-forget: progress event; non-fatal if no listener.
     let _ = app.emit(
         "nix:install:progress",
         serde_json::json!({ "phase": "prefetching" }),
@@ -469,6 +474,8 @@ fn run_nix_install(app: &AppHandle) -> Result<()> {
             Ok(Some(status)) => break Ok(status),
             Ok(None) => {
                 if std::time::Instant::now() >= deadline {
+                    // fire-and-forget: kill() fails only if process already exited.
+                    // wait() cleanup after kill may also fail — both are acceptable here.
                     let _ = child.kill();
                     let _ = child.wait();
                     break Err("timed out");
