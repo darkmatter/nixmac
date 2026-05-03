@@ -82,13 +82,18 @@ function visualCheckFail(name, detail) {
 }
 
 export function evaluateScreenshotVisualContract(state, screenshotRequirement) {
-  const shot = artifactForLabel(state.screenshots, screenshotRequirement.label);
+  const labels = Array.isArray(screenshotRequirement.labels) && screenshotRequirement.labels.length > 0 ? screenshotRequirement.labels : [screenshotRequirement.label];
+  const shot = labels.map((label) => artifactForLabel(state.screenshots, label)).find(Boolean);
   const checks = [];
   if (!shot) {
+    const missingDetail =
+      labels.length > 1
+        ? `Required screenshot artifact is missing from state.screenshots: ${labels.join(', ')}.`
+        : 'Required screenshot artifact is missing from state.screenshots.';
     return {
-      label: screenshotRequirement.label,
+      label: screenshotRequirement.label || labels.join(' or '),
       status: 'fail',
-      checks: [visualCheckFail('screenshot artifact', 'Required screenshot artifact is missing from state.screenshots.')],
+      checks: [visualCheckFail('screenshot artifact', missingDetail)],
     };
   }
 
@@ -168,4 +173,3 @@ export function evaluateScreenshotVisualContract(state, screenshotRequirement) {
     checks,
   };
 }
-

@@ -3001,6 +3001,35 @@ async function runSelfTest() {
     },
     'visual contract evaluation should fail with a stable shape when the required screenshot is missing',
   );
+  assert.deepEqual(
+    evaluateScreenshotVisualContract({ screenshots: [], runDir: os.tmpdir() }, { label: 'provider-progress-05', labels: ['provider-progress-05', 'provider-progress-04', 'provider-progress-01'], probes: [] }),
+    {
+      label: 'provider-progress-05',
+      status: 'fail',
+      checks: [
+        {
+          name: 'screenshot artifact',
+          status: 'fail',
+          detail: 'Required screenshot artifact is missing from state.screenshots: provider-progress-05, provider-progress-04, provider-progress-01.',
+        },
+      ],
+    },
+    'visual contract evaluation should report all fallback labels when none are available',
+  );
+  assert.equal(
+    evaluateScreenshotVisualContract(
+      {
+        runDir: os.tmpdir(),
+        screenshots: [
+          { label: 'provider-progress-01', path: 'missing-provider-progress-01.png' },
+          { label: 'provider-progress-05', path: 'missing-provider-progress-05.png' },
+        ],
+      },
+      { label: 'provider-progress-05', labels: ['provider-progress-05', 'provider-progress-01'], probes: [] },
+    ).label,
+    'provider-progress-05',
+    'visual contract evaluation should prefer earlier fallback labels when multiple screenshots are present',
+  );
 
   const previousChangedFiles = process.env.NIXMAC_E2E_PR_CHANGED_FILES;
   process.env.NIXMAC_E2E_PR_CHANGED_FILES = 'apps/native/src/components/widget/adversarial-new-visible-surface.tsx\ndocs/history.md';

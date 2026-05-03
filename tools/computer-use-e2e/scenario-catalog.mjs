@@ -79,7 +79,13 @@ export const scenarioVisualContracts = freezeDeep({
     screenshots: [{ label: 'typed-intent', probes: [{ label: 'typed prompt area', x: 5, y: 35, w: 90, h: 24 }] }],
   },
   review: {
-    screenshots: [{ label: 'provider-progress-05', probes: [{ label: 'review controls area', x: 8, y: 8, w: 84, h: 82 }] }],
+    screenshots: [
+      {
+        label: 'provider-progress-05',
+        labels: ['provider-progress-05', 'provider-progress-04', 'provider-progress-03', 'provider-progress-02', 'provider-progress-01'],
+        probes: [{ label: 'review controls area', x: 8, y: 8, w: 84, h: 82 }],
+      },
+    ],
   },
   summary: {
     screenshots: [{ label: 'review-summary', probes: [{ label: 'summary content area', x: 8, y: 15, w: 84, h: 78 }] }],
