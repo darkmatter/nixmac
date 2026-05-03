@@ -173,7 +173,7 @@ mod tests {
         let prompt = "one line";
         let input = estimate_input_tokens(prompt);
         let requested_output = 300;
-        let safety_margin = (4096 / 16).max(128);
+        let safety_margin = 4096 / 16;
         let max_ctx = input + requested_output + safety_margin + 50;
 
         let alloc = compute_token_allocation(prompt, requested_output, max_ctx);

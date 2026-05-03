@@ -49,7 +49,18 @@ pub async fn apply_homebrew_diff(
     let context = managed_edit::prepare_managed_edit(app)?;
     let dir = context.dir.clone();
 
-    let item_count = diff.casks.len() + diff.brews.len() + diff.taps.len();
+    let submitted_source = diff.source.clone();
+    let fresh_installed = scan_homebrew();
+    let fresh_config = load_nix_config_homebrew(std::path::Path::new(&dir));
+    let diff = sanitize_homebrew_diff(diff, fresh_installed, fresh_config);
+    if submitted_source != diff.source {
+        log::warn!(
+            "[apply_homebrew] corrected submitted Homebrew source from {:?} to {:?}",
+            submitted_source,
+            diff.source
+        );
+    }
+    let item_count = homebrew_item_count(&diff);
 
     mac::homebrew::apply_homebrew_import(diff, std::path::Path::new(&dir))
         .context("Failed to apply Homebrew diff")?;
@@ -113,7 +124,7 @@ pub fn scan_homebrew() -> HomebrewState {
         }
     }
 
-    return state;
+    state
 }
 
 /// Reads the homebrew state currently in nix config in the provided config dir, if it exists.
@@ -121,6 +132,7 @@ pub fn scan_homebrew() -> HomebrewState {
 /// The only supported nix config layouts for homebrew are:
 /// - modules/darwin/homebrew.nix
 /// - flake-modules/darwin.nix inline lists
+///
 /// Depending on which one exists, we'll set the source field to the full
 /// path of the file or "flake-modules/darwin.nix" respectively, which can be used to determine where to write changes.
 pub fn load_nix_config_homebrew(config_dir: &std::path::Path) -> HomebrewState {
@@ -188,6 +200,33 @@ pub fn compute_homebrew_diff(installed: HomebrewState, config: HomebrewState) ->
         .collect();
 
     state
+}
+
+fn homebrew_item_count(state: &HomebrewState) -> usize {
+    state.casks.len() + state.brews.len() + state.taps.len()
+}
+
+fn intersect_submitted_with_fresh(submitted: Vec<String>, fresh_missing: &[String]) -> Vec<String> {
+    submitted
+        .into_iter()
+        .filter(|item| fresh_missing.contains(item))
+        .collect()
+}
+
+fn sanitize_homebrew_diff(
+    submitted: HomebrewState,
+    fresh_installed: HomebrewState,
+    fresh_config: HomebrewState,
+) -> HomebrewState {
+    let fresh_missing = compute_homebrew_diff(fresh_installed, fresh_config);
+    HomebrewState {
+        is_installed: fresh_missing.is_installed,
+        casks: intersect_submitted_with_fresh(submitted.casks, &fresh_missing.casks),
+        brews: intersect_submitted_with_fresh(submitted.brews, &fresh_missing.brews),
+        taps: intersect_submitted_with_fresh(submitted.taps, &fresh_missing.taps),
+        source: fresh_missing.source,
+        last_checked: fresh_missing.last_checked,
+    }
 }
 
 /// Writes missing items in the diff to the nix config, using the source field to determine where to write.
@@ -293,6 +332,22 @@ pub fn apply_homebrew_import(diff: HomebrewState, config_dir: &std::path::Path) 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn homebrew_state(
+        casks: &[&str],
+        brews: &[&str],
+        taps: &[&str],
+        source: Option<&str>,
+    ) -> HomebrewState {
+        HomebrewState {
+            is_installed: true,
+            casks: casks.iter().map(|item| item.to_string()).collect(),
+            brews: brews.iter().map(|item| item.to_string()).collect(),
+            taps: taps.iter().map(|item| item.to_string()).collect(),
+            source: source.map(|item| item.to_string()),
+            last_checked: 0,
+        }
+    }
 
     fn write_file(path: &std::path::Path, content: &str) {
         if let Some(parent) = path.parent() {
@@ -423,6 +478,157 @@ mod tests {
     }
 
     #[test]
+    fn sanitize_homebrew_diff_drops_stale_items_already_in_config() {
+        let submitted = homebrew_state(
+            &["iterm2", "raycast"],
+            &["git", "jq"],
+            &["homebrew/cask-fonts"],
+            Some("modules/darwin/homebrew.nix"),
+        );
+        let fresh_installed = homebrew_state(
+            &["iterm2", "raycast"],
+            &["git", "jq"],
+            &["homebrew/cask-fonts"],
+            None,
+        );
+        let fresh_config = homebrew_state(
+            &["iterm2"],
+            &["git"],
+            &[],
+            Some("modules/darwin/homebrew.nix"),
+        );
+
+        let sanitized = sanitize_homebrew_diff(submitted, fresh_installed, fresh_config);
+
+        assert_eq!(sanitized.casks, vec!["raycast"]);
+        assert_eq!(sanitized.brews, vec!["jq"]);
+        assert_eq!(sanitized.taps, vec!["homebrew/cask-fonts"]);
+        assert_eq!(
+            sanitized.source.as_deref(),
+            Some("modules/darwin/homebrew.nix")
+        );
+        assert_eq!(homebrew_item_count(&sanitized), 3);
+    }
+
+    #[test]
+    fn sanitize_homebrew_diff_uses_fresh_source_over_submitted_source() {
+        let submitted = homebrew_state(&[], &["jq"], &[], Some("modules/darwin/homebrew.nix"));
+        let fresh_installed = homebrew_state(&[], &["jq"], &[], None);
+        let fresh_config = homebrew_state(&[], &[], &[], Some("flake-modules/darwin.nix"));
+
+        let sanitized = sanitize_homebrew_diff(submitted, fresh_installed, fresh_config);
+
+        assert_eq!(sanitized.brews, vec!["jq"]);
+        assert_eq!(
+            sanitized.source.as_deref(),
+            Some("flake-modules/darwin.nix")
+        );
+    }
+
+    #[test]
+    fn sanitize_homebrew_diff_noops_when_submitted_items_are_no_longer_missing() {
+        let submitted = homebrew_state(
+            &["iterm2"],
+            &["jq"],
+            &["homebrew/cask-fonts"],
+            Some("modules/darwin/homebrew.nix"),
+        );
+        let fresh_installed = homebrew_state(&["iterm2"], &["jq"], &["homebrew/cask-fonts"], None);
+        let fresh_config = homebrew_state(
+            &["iterm2"],
+            &["jq"],
+            &["homebrew/cask-fonts"],
+            Some("modules/darwin/homebrew.nix"),
+        );
+
+        let sanitized = sanitize_homebrew_diff(submitted, fresh_installed, fresh_config);
+
+        assert!(sanitized.casks.is_empty());
+        assert!(sanitized.brews.is_empty());
+        assert!(sanitized.taps.is_empty());
+        assert_eq!(
+            sanitized.source.as_deref(),
+            Some("modules/darwin/homebrew.nix")
+        );
+        assert_eq!(homebrew_item_count(&sanitized), 0);
+    }
+
+    #[test]
+    fn sanitize_homebrew_diff_noops_when_homebrew_is_no_longer_installed() {
+        let submitted = HomebrewState {
+            is_installed: true,
+            casks: vec!["iterm2".to_string()],
+            brews: vec!["jq".to_string()],
+            taps: vec!["homebrew/cask-fonts".to_string()],
+            source: Some("modules/darwin/homebrew.nix".to_string()),
+            last_checked: 0,
+        };
+        let fresh_installed = HomebrewState {
+            is_installed: false,
+            casks: vec![],
+            brews: vec![],
+            taps: vec![],
+            source: None,
+            last_checked: 0,
+        };
+        let fresh_config = homebrew_state(&[], &[], &[], Some("modules/darwin/homebrew.nix"));
+
+        let sanitized = sanitize_homebrew_diff(submitted, fresh_installed, fresh_config);
+
+        assert!(!sanitized.is_installed);
+        assert!(sanitized.casks.is_empty());
+        assert!(sanitized.brews.is_empty());
+        assert!(sanitized.taps.is_empty());
+        assert_eq!(
+            sanitized.source.as_deref(),
+            Some("modules/darwin/homebrew.nix")
+        );
+        assert_eq!(homebrew_item_count(&sanitized), 0);
+    }
+
+    #[test]
+    fn sanitized_default_source_still_creates_module_and_injects_flake_import() {
+        let temp = tempfile::tempdir().expect("tempdir should be created");
+        let flake = temp.path().join("flake.nix");
+        write_file(
+            &flake,
+            r#"{
+  outputs = { self }: {
+    darwinConfigurations.host = {
+      modules = [
+        ./modules/darwin/system.nix
+      ];
+    };
+  };
+}
+"#,
+        );
+        let submitted = homebrew_state(
+            &["iterm2"],
+            &["git"],
+            &["homebrew/cask-fonts"],
+            Some("flake-modules/darwin.nix"),
+        );
+        let fresh_installed = homebrew_state(&["iterm2"], &["git"], &["homebrew/cask-fonts"], None);
+        let fresh_config = homebrew_state(&[], &[], &[], None);
+        let sanitized = sanitize_homebrew_diff(submitted, fresh_installed, fresh_config);
+
+        assert_eq!(sanitized.source, None);
+        apply_homebrew_import(sanitized, temp.path())
+            .expect("sanitized apply should create default module");
+
+        let homebrew_file = temp.path().join("modules/darwin/homebrew.nix");
+        let homebrew_content =
+            std::fs::read_to_string(homebrew_file).expect("homebrew module should exist");
+        assert!(homebrew_content.contains("taps = [ \"homebrew/cask-fonts\" ];"));
+        assert!(homebrew_content.contains("brews = [ \"git\" ];"));
+        assert!(homebrew_content.contains("casks = [ \"iterm2\" ];"));
+
+        let flake_content = std::fs::read_to_string(flake).expect("flake should remain readable");
+        assert!(flake_content.contains("./modules/darwin/homebrew.nix"));
+    }
+
+    #[test]
     fn apply_homebrew_import_creates_module_and_injects_flake_import() {
         let temp = tempfile::tempdir().expect("tempdir should be created");
         let flake = temp.path().join("flake.nix");
@@ -530,8 +736,5 @@ mod tests {
             "scan_homebrew => brews: {:?}\ncasks: {:?}\ntaps: {:?}",
             state.brews, state.casks, state.taps
         );
-
-        // Keep this permissive because local systems vary and Homebrew may not be installed.
-        assert!(true);
     }
 }

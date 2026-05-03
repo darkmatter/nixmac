@@ -25,7 +25,7 @@ export type {
 /**
  * Widget step state - updated by useEffect based on app state.
  */
-export type SettingsTab = "general" | "api-keys" | "ai-models" | "preferences";
+export type SettingsTab = "general" | "api-keys" | "ai-models" | "preferences" | "developer";
 export type WidgetStep = "permissions" | "nix-setup" | "setup" | "begin" | "evolve" | "commit" | "manualEvolve" | "manualCommit" | "history";
 export type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
 export type ConfirmPrefKey = "confirmBuild" | "confirmClear" | "confirmRollback";
@@ -145,6 +145,10 @@ export interface WidgetState {
   // Startup scanning preferences
   scanHomebrewOnStartup: boolean;
 
+  // Developer mode (hidden settings panel for bisecting / pinning to a past release)
+  developerMode: boolean;
+  pinnedVersion: string | null;
+
   // Editor
   editingFile: string | null;
 }
@@ -197,6 +201,10 @@ export interface WidgetActions {
 
   // Summarization preferences
   setAutoSummarizeOnFocus: (value: boolean) => void;
+
+  // Developer mode
+  setDeveloperMode: (value: boolean) => void;
+  setPinnedVersion: (value: string | null) => void;
 
   // Client-side state (NOT from server)
   setSummarizing: (summarizing: boolean) => void;
@@ -322,6 +330,10 @@ export const initialWidgetState: WidgetState = {
   // Startup scanning preferences
   scanHomebrewOnStartup: true,
 
+  // Developer mode
+  developerMode: false,
+  pinnedVersion: null,
+
   // Editor
   editingFile: null,
 };
@@ -368,6 +380,8 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
         confirmRollback: prefs.confirmRollback ?? true,
       }),
     setAutoSummarizeOnFocus: (value) => set({ autoSummarizeOnFocus: value }),
+    setDeveloperMode: (value) => set({ developerMode: value }),
+    setPinnedVersion: (value) => set({ pinnedVersion: value }),
     setHistory: (history) => set({ history }),
     setHistoryLoading: (historyLoading) => set({ historyLoading }),
     addAnalyzingHistoryHash: (hash) =>

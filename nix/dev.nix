@@ -120,6 +120,8 @@ lib.mkIf (!(config.container.isBuilding or false)) {
   # Formatting
   treefmt.enable = true;
   treefmt.config = {
+    # The commit hook runs treefmt repo-wide; enabling more formatters here
+    # expands pre-commit cost and can surface unrelated formatting drift.
     programs.rustfmt.enable = false;
     programs.yamlfmt.enable = false;
     programs.mdformat.enable = true;
@@ -132,6 +134,9 @@ lib.mkIf (!(config.container.isBuilding or false)) {
 
     # Run treefmt on commit
     hooks.treefmt.enable = true;
+    # Pinned git-hooks.nix forces treefmt pass_filenames=true; override until
+    # the pinned upstream default is false.
+    hooks.treefmt.pass_filenames = lib.mkForce false;
 
     hooks.shellcheck.enable = true;
     excludes = [

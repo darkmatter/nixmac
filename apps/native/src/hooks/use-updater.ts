@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Update } from "@tauri-apps/plugin-updater";
 import { invoke } from "@tauri-apps/api/core";
+import { darwinAPI } from "@/tauri-api";
+import { useWidgetStore } from "@/stores/widget-store";
 
 export interface UpdateState {
   /** Whether we're currently checking for updates */
@@ -36,6 +38,7 @@ export function useUpdater() {
   const [state, setState] = useState<UpdateState>(initialState);
   const checkedRef = useRef(false);
   const isDevMode = import.meta.env.DEV;
+  const pinnedVersion = useWidgetStore((s) => s.pinnedVersion);
 
   const checkForUpdates = useCallback(async () => {
     setState((s) => ({ ...s, checking: true, error: null }));
@@ -145,12 +148,42 @@ export function useUpdater() {
     setState(initialState);
   }, []);
 
-  // Silent check on mount
+  // Silent check on mount — skipped while a developer pin is active so the app
+  // doesn't try to jump back to latest mid-bisect. Wait for prefs to load before
+  // deciding, otherwise pinnedVersion is still the store default (null) and the
+  // check fires before the actual pin has been hydrated from disk.
   useEffect(() => {
     if (checkedRef.current) return;
-    checkedRef.current = true;
-    checkForUpdates();
-  }, [checkForUpdates]);
+
+    if (pinnedVersion) {
+      checkedRef.current = true;
+      console.debug("[updater] silent check suppressed (pinned to", pinnedVersion, ")");
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const prefs = await darwinAPI.ui.getPrefs();
+        if (cancelled || checkedRef.current) return;
+        if (prefs?.pinnedVersion) {
+          checkedRef.current = true;
+          console.debug("[updater] silent check suppressed (pinned to", prefs.pinnedVersion, ")");
+          return;
+        }
+      } catch {
+        // If prefs can't be read here, fall back to checking for updates.
+      }
+
+      if (cancelled || checkedRef.current) return;
+      checkedRef.current = true;
+      checkForUpdates();
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [checkForUpdates, pinnedVersion]);
 
   return {
     ...state,

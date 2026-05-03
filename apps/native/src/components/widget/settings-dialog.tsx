@@ -4,10 +4,11 @@ import { cn } from "@/lib/utils";
 import { type SettingsTab, useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI, DEFAULT_MAX_ITERATIONS } from "@/tauri-api";
 import { useForm } from "@tanstack/react-form";
-import { Bot, FolderOpen, Key, Settings2, SlidersHorizontal } from "lucide-react";
+import { Bot, FolderOpen, Key, Settings2, SlidersHorizontal, Wrench } from "lucide-react";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { AiModelsTab } from "./settings/ai-models-tab";
 import { ApiKeysTab } from "./settings/api-keys-tab";
+import { DeveloperTab } from "./settings/developer-tab";
 import { GeneralTab } from "./settings/general-tab";
 import { PreferencesTab } from "./settings/preferences-tab";
 type ApiKeyStatus = "idle" | "verifying" | "valid" | "invalid";
@@ -50,6 +51,7 @@ export function SettingsDialog() {
     hosts,
     host,
     setHosts,
+    developerMode,
   } = useWidgetStore();
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
 
@@ -59,6 +61,13 @@ export function SettingsDialog() {
       setActiveTab(settingsActiveTab ?? "general");
     }
   }, [isOpen, settingsActiveTab]);
+
+  // If developer mode is turned off while the developer tab is active, fall back to General.
+  useEffect(() => {
+    if (!developerMode && activeTab === "developer") {
+      setActiveTab("general");
+    }
+  }, [developerMode, activeTab]);
   const [openrouterKeyStatus, setOpenrouterKeyStatus] = useState<ApiKeyStatus>("idle");
   const [openaiKeyStatus, setOpenaiKeyStatus] = useState<ApiKeyStatus>("idle");
   const openrouterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -239,6 +248,14 @@ export function SettingsDialog() {
                 label="Preferences"
                 onClick={() => setActiveTab("preferences")}
               />
+              {developerMode && (
+                <NavItem
+                  active={activeTab === "developer"}
+                  icon={<Wrench className="h-4 w-4" />}
+                  label="Developer"
+                  onClick={() => setActiveTab("developer")}
+                />
+              )}
             </nav>
             <div className="mt-auto">
               <Button
@@ -312,6 +329,8 @@ export function SettingsDialog() {
             )}
 
             {activeTab === "preferences" && <PreferencesTab />}
+
+            {activeTab === "developer" && developerMode && <DeveloperTab />}
 
             {activeTab === "ai-models" && (
               <form.Field name="evolveProvider">
