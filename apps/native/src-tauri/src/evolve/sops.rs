@@ -1,5 +1,5 @@
-use anyhow::{anyhow, Context, Result};
 use crate::evolve::file_ops::resolve_path_in_dir_allow_create;
+use anyhow::{anyhow, Context, Result};
 use serde_yaml::{Mapping, Sequence, Value};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -516,7 +516,10 @@ mod tests {
             "creation_rules:\n  - path_regex: {MANAGED_PATH_REGEX}\n    age:\n      - AGE_PUBLIC_KEY_PLACEHOLDER\n"
         );
         let result = merge_sops_config(&existing, KEY_A).unwrap();
-        assert!(result.contains(KEY_A), "placeholder should be replaced with actual key");
+        assert!(
+            result.contains(KEY_A),
+            "placeholder should be replaced with actual key"
+        );
         assert!(
             !result.contains("AGE_PUBLIC_KEY_PLACEHOLDER"),
             "placeholder should be completely removed"
@@ -529,7 +532,10 @@ mod tests {
             "creation_rules:\n  - path_regex: {MANAGED_PATH_REGEX}\n    age: AGE_PUBLIC_KEY_PLACEHOLDER\n"
         );
         let result = merge_sops_config(&existing, KEY_A).unwrap();
-        assert!(result.contains(KEY_A), "placeholder string should be replaced with actual key");
+        assert!(
+            result.contains(KEY_A),
+            "placeholder string should be replaced with actual key"
+        );
         assert!(
             !result.contains("AGE_PUBLIC_KEY_PLACEHOLDER"),
             "placeholder should be completely removed"
@@ -592,6 +598,7 @@ mod tests {
         );
 
         if Path::new(absolute_str).exists() {
+            // fire-and-forget: test cleanup; benign if removal fails.
             let _ = std::fs::remove_file(absolute_str);
         }
     }

@@ -84,7 +84,7 @@ fn extract_error_metadata(error: &str) -> (Option<u16>, Option<String>, Option<S
 
     // Fallback: regex for "status: 400" or "statusCode=400"
     static STATUS_RE: once_cell::sync::Lazy<Regex> = once_cell::sync::Lazy::new(|| {
-        Regex::new(r"(?i)\bstatus(?:Code|_code|:)?\s*[:=]?\s*(\d{3})\b").unwrap()
+        Regex::new(r"(?i)\bstatus(?:Code|_code|:)?\s*[:=]?\s*(\d{3})\b").expect("Failed to compile status regex")
     });
     if let Some(cap) = STATUS_RE.captures(error) {
         if let Some(m) = cap.get(1) {
@@ -186,6 +186,9 @@ fn log_api_error(
         }
     };
 
+    // Fire-and-forget writeln pattern: we don't care if this fails,
+    // the file is already open and we just want to ensure the log
+    // starts with a separator line.
     let _ = writeln!(
         file,
         "═══════════════════════════════════════════════════════════════"
