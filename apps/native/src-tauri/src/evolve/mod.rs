@@ -19,9 +19,6 @@ pub(crate) mod types;
 mod utils;
 
 pub mod lifecycle;
-pub mod managed_edit;
-pub mod apply_system_defaults;
-pub mod homebrew_adopt;
 
 /// Directories ignored by file listing and search helpers.
 pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];

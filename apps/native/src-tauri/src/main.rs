@@ -43,6 +43,9 @@ mod types;
 mod updater_pin;
 mod utils;
 
+use state::watcher;
+use storage::store;
+
 use std::env;
 use std::sync::{Arc, Mutex};
 use tauri::{

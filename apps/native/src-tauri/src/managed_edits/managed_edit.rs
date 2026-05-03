@@ -3,7 +3,9 @@
 use anyhow::{Context, Result};
 use tauri::AppHandle;
 
-use crate::{build_state, db, evolve_state, git, shared_types, store, summarize};
+use crate::state::{build_state, evolve_state};
+use crate::storage::store;
+use crate::{db, git, shared_types, summarize};
 
 pub struct ManagedEditContext {
     pub dir: String,
