@@ -6,7 +6,7 @@ use tauri::{AppHandle, Runtime};
 
 use crate::{
     evolve_state, git,
-    shared_types::RollbackResult,
+    shared_types::{EvolveState, RollbackResult},
     store,
 };
 
@@ -32,8 +32,10 @@ pub fn rollback_erase<R: Runtime>(app: &AppHandle<R>) -> Result<RollbackResult> 
     }
 
     let final_status = git::status(&config_dir).context("Failed to get final git status")?;
+    // fire-and-forget: best-effort cache update. `final_status` is returned via
+    // RollbackResult regardless; a store write failure must not abort the rollback.
     let _ = store::set_cached_git_status(app, &final_status);
-    let evolve_state = evolve_state::set(app, evolve_state::EvolveState::default(), &final_status.changes)
+    let evolve_state = evolve_state::set(app, EvolveState::default(), &final_status.changes)
         .context("Failed to clear evolve state")?;
 
     Ok(RollbackResult {

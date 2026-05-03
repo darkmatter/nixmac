@@ -3,7 +3,7 @@
 use anyhow::{Context, Result};
 use tauri::AppHandle;
 
-use crate::{build_state, db, git, store, types::GitStatus};
+use crate::{build_state, db, git, shared_types::GitStatus, store};
 
 /// Finalize a successful history restore.
 ///
@@ -43,6 +43,8 @@ pub async fn finalize_restore(app: &AppHandle, target_hash: String) -> Result<Gi
     }
 
     let git_status = git::status(&config_dir).context("Failed to get git status after restore")?;
+    // fire-and-forget: best-effort cache update. `git_status` is returned directly;
+    // a store write failure here must not abort the restore finalization.
     let _ = store::set_cached_git_status(app, &git_status);
 
     build_state::record_build(app, &git_status)
