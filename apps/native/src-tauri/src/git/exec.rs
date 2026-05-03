@@ -43,7 +43,7 @@ impl GitCommand {
 /// Identity and hooks injected so nixmac doesn't inherit user's config
 fn git_command() -> GitCommand {
     let mut cmd = Command::new("git");
-    cmd.env("PATH", crate::nix::get_nix_path());
+    cmd.env("PATH", crate::system::nix::get_nix_path());
     cmd.args([
         "-c",
         "user.name=nixmac",
@@ -312,12 +312,12 @@ pub fn status_and_cache<R: tauri::Runtime>(dir: &str, app: &AppHandle<R>) -> Res
 }
 
 pub fn cache_status<R: tauri::Runtime>(app: &AppHandle<R>, status: &GitStatus) -> Result<()> {
-    crate::store::set_cached_git_status(app, status)
+    crate::storage::store::set_cached_git_status(app, status)
 }
 
 /// Returns cached
 pub fn cached<R: tauri::Runtime>(app: &AppHandle<R>) -> Result<Option<GitStatus>> {
-    crate::store::get_cached_git_status(app)
+    crate::storage::store::get_cached_git_status(app)
 }
 
 /// Registers all untracked files as intent-to-add in the git index.

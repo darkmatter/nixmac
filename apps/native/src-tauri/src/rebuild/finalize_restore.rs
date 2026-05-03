@@ -3,7 +3,9 @@
 use anyhow::{Context, Result};
 use tauri::AppHandle;
 
-use crate::{build_state, db, git, shared_types::GitStatus, store};
+use crate::state::build_state;
+use crate::storage::store;
+use crate::{db, git, shared_types::GitStatus};
 
 /// Finalize a successful history restore.
 ///

@@ -49,7 +49,7 @@ pub fn set<R: Runtime>(
     mut state: EvolveState,
     current_changes: &[Change],
 ) -> Result<EvolveState> {
-    let is_built = crate::build_state::current_state_built(app, current_changes);
+    let is_built = crate::state::build_state::current_state_built(app, current_changes);
     let has_changes = !current_changes.is_empty();
     state.recompute_step(is_built, has_changes);
     let store = app.store(EVOLVE_STATE_PATH)?;

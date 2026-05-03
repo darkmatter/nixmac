@@ -24,7 +24,7 @@ pub async fn analyze<R: Runtime>(
         return Ok(None);
     }
 
-    let config_dir = crate::store::get_config_dir(app)?;
+    let config_dir = crate::storage::store::get_config_dir(app)?;
     let Some(base_commit_id) =
         crate::db::commits::store_head_commit(db_path, &config_dir, base_commit_id)?
     else {

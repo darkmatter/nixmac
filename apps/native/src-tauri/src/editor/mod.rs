@@ -3,13 +3,15 @@
 //! Provides safe read/write/list operations scoped to the user's config directory,
 //! reusing the path validation from `evolve::file_ops`.
 
+pub mod lsp;
+
 use std::path::Path;
 
 pub use crate::shared_types::FileEntry;
 use tauri::AppHandle;
 
 use crate::evolve::file_ops;
-use crate::store;
+use crate::storage::store;
 
 /// Read a file relative to the config directory.
 pub async fn read_file(app: &AppHandle, rel_path: &str) -> Result<String, String> {

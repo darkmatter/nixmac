@@ -9,35 +9,27 @@
 
 mod cli;
 mod commands;
-mod darwin;
 mod db;
 mod default_config;
 mod editor;
 mod evolve;
 mod managed_edits;
 mod feedback;
-mod finalize_apply;
-mod finalize_restore;
 mod git;
 mod history;
 mod log_summarizer;
-mod lsp;
-mod nix;
-mod nix_ast_lists;
 mod panic_handler;
 mod peek;
-mod permissions;
 mod provider_errors;
 mod providers;
-mod rollback;
-mod scanner;
-mod secret_scanner;
+mod rebuild;
 mod shared_types;
 mod sqlite_types;
 mod state;
 mod statistics;
 mod storage;
 mod summarize;
+mod system;
 mod template;
 mod types;
 mod updater_pin;
@@ -435,7 +427,7 @@ fn run_gui_mode(
 
             // Eagerly initialise the scanner singleton; the returned &'static ref is not
             // needed right now. fire-and-forget is intentional here.
-            let _ = secret_scanner::SecretScanner::global(handle);
+            let _ = system::secret_scanner::SecretScanner::global(handle);
 
             // Build the nix-darwin docs index once at startup for fast option-shape lookup.
             // CONSIDER: Moving this to background or do it on first search_docs call

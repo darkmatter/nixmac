@@ -3,11 +3,12 @@
 //! Settings are stored in a JSON file managed by tauri-plugin-store.
 //! This provides a simple key-value interface for preferences.
 
-use crate::credential_store::{
+use crate::shared_types;
+use crate::storage::credential_store::{
     get_with_lazy_migration, set_with_cleanup, CredentialStoreError, KeychainStore,
     SettingsFileStore,
 };
-use crate::shared_types;
+
 use anyhow::Result;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -350,10 +351,7 @@ fn delete_pref_raw<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn get_string_pref_public<R: Runtime>(
-    app: &AppHandle<R>,
-    key: &str,
-) -> Result<Option<String>> {
+pub fn get_string_pref_public<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<String>> {
     get_string_pref_raw(app, key)
 }
 
@@ -526,7 +524,9 @@ pub fn set_cached_models<R: Runtime>(
 // =============================================================================
 
 /// Gets the cached git status.
-pub fn get_cached_git_status<R: Runtime>(app: &AppHandle<R>) -> Result<Option<shared_types::GitStatus>> {
+pub fn get_cached_git_status<R: Runtime>(
+    app: &AppHandle<R>,
+) -> Result<Option<shared_types::GitStatus>> {
     let store = get_store(app)?;
 
     if let Some(val) = store.get("cachedGitStatus") {

@@ -10,10 +10,11 @@
 use crate::state::{build_state, evolve_state, watcher};
 use crate::storage::store;
 use crate::{
-    darwin, db, default_config, editor, evolve, feedback, finalize_restore, git,
-    lsp, managed_edits, nix, peek, permissions, rollback, scanner, shared_types, types,
+    db, default_config, editor, evolve, feedback, git,
+    managed_edits, peek, rebuild, shared_types, types,
     utils,
 };
+use crate::system::{nix, permissions, scanner};
 use std::path::Path;
 use std::process::Command;
 use tauri::AppHandle;
@@ -485,7 +486,7 @@ pub async fn darwin_apply_stream_start(
             "Host attribute not found. Set a host in Settings or ensure your flake defines exactly one darwinConfiguration.".to_string()
         })?;
 
-    darwin::apply_stream(&app, &dir, &host)
+    rebuild::apply_stream(&app, &dir, &host)
         .map_err(|e| capture_err("darwin_apply_stream_start", e))?;
     Ok(shared_types::OkResult::yes())
 }
@@ -496,7 +497,7 @@ pub async fn darwin_activate_store_path(
     app: AppHandle,
     store_path: String,
 ) -> Result<shared_types::OkResult, String> {
-    darwin::activate_store_path_stream(&app, store_path)
+    rebuild::activate_store_path_stream(&app, store_path)
         .map(|_| shared_types::OkResult::yes())
         .map_err(|e| capture_err("darwin_activate_store_path", e))
 }
@@ -511,7 +512,7 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<shared_types::
     let output = Command::new("git")
         .args(["add", "."])
         .current_dir(&dir)
-        .env("PATH", crate::nix::get_nix_path())
+        .env("PATH", nix::get_nix_path())
         .output()
         .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
     if !output.status.success() {
@@ -525,7 +526,7 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<shared_types::
     let output = Command::new("git")
         .args(["checkout", "-b", &format!("canceled-{}", date)])
         .current_dir(&dir)
-        .env("PATH", crate::nix::get_nix_path())
+        .env("PATH", nix::get_nix_path())
         .output()
         .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
     if !output.status.success() {
@@ -539,7 +540,7 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<shared_types::
     let output = Command::new("git")
         .args(["commit", "-m", &format!("Canceled commit: {}", commit_hash)])
         .current_dir(&dir)
-        .env("PATH", crate::nix::get_nix_path())
+        .env("PATH", nix::get_nix_path())
         .output()
         .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
     if !output.status.success() {
@@ -553,7 +554,7 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<shared_types::
     let output = Command::new("git")
         .args(["checkout", "-"])
         .current_dir(&dir)
-        .env("PATH", crate::nix::get_nix_path())
+        .env("PATH", nix::get_nix_path())
         .output()
         .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
     if !output.status.success() {
@@ -570,7 +571,7 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<shared_types::
 /// Records build state and changeset after a successful darwin-rebuild switch.
 #[tauri::command]
 pub async fn finalize_apply(app: AppHandle) -> Result<shared_types::FinalizeApplyResult, String> {
-    crate::finalize_apply::finalize_apply(&app)
+    crate::rebuild::finalize_apply(&app)
         .await
         .map_err(|e| capture_err("finalize_apply", e))
 }
@@ -582,7 +583,7 @@ pub async fn finalize_rollback(
     store_path: Option<String>,
     changeset_id: Option<i64>,
 ) -> Result<shared_types::FinalizeApplyResult, String> {
-    crate::finalize_apply::finalize_rollback(&app, store_path, changeset_id)
+    crate::rebuild::finalize_rollback(&app, store_path, changeset_id)
         .await
         .map_err(|e| capture_err("finalize_rollback", e))
 }
@@ -738,7 +739,7 @@ pub async fn finalize_restore(
     app: AppHandle,
     target_hash: String,
 ) -> Result<crate::shared_types::GitStatus, String> {
-    finalize_restore::finalize_restore(&app, target_hash)
+    rebuild::finalize_restore(&app, target_hash)
         .await
         .map_err(|e| capture_err("finalize_restore", e))
 }
@@ -1113,7 +1114,7 @@ pub async fn apply_system_defaults(
 /// Restore uncommitted changes.
 #[tauri::command]
 pub async fn rollback_erase(app: AppHandle) -> Result<shared_types::RollbackResult, String> {
-    rollback::rollback_erase(&app).map_err(|e| capture_err("rollback_erase", e))
+    rebuild::rollback_erase(&app).map_err(|e| capture_err("rollback_erase", e))
 }
 
 /// Dry-run build check against the current working tree. Returns `{ passed: bool, output: string }`.
@@ -1125,7 +1126,7 @@ pub async fn darwin_build_check(app: AppHandle) -> Result<shared_types::BuildChe
         .map_err(|e| capture_err("darwin_build_check", e))?
         .ok_or_else(|| "No host configured — cannot run build check".to_string())?;
 
-    let (passed, stdout, stderr) = darwin::dry_run_build_check(&config_dir, &host_attr, false)
+    let (passed, stdout, stderr) = rebuild::dry_run_build_check(&config_dir, &host_attr, false)
         .map_err(|e| capture_err("darwin_build_check", e))?;
 
     let output = if stderr.is_empty() { stdout } else { stderr };
@@ -1327,17 +1328,17 @@ pub async fn editor_list_files(app: AppHandle) -> Result<Vec<editor::FileEntry>,
 /// Start the nixd LSP server.
 #[tauri::command]
 pub async fn lsp_start(app: AppHandle) -> Result<(), String> {
-    lsp::start(&app).await
+    editor::lsp::start(&app).await
 }
 
 /// Send a JSON-RPC message to nixd.
 #[tauri::command]
 pub async fn lsp_send(message: String) -> Result<(), String> {
-    lsp::send(&message).await
+    editor::lsp::send(&message).await
 }
 
 /// Stop the nixd LSP server.
 #[tauri::command]
 pub async fn lsp_stop() -> Result<(), String> {
-    lsp::stop().await
+    editor::lsp::stop().await
 }

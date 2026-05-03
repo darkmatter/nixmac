@@ -6,12 +6,12 @@ use std::collections::HashSet;
 use tauri::{AppHandle, Runtime};
 
 pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::shared_types::HistoryItem>> {
-    let config_dir = crate::store::get_config_dir(app)?;
+    let config_dir = crate::storage::store::get_config_dir(app)?;
     let db_path = crate::db::get_db_path(app)?;
 
     let git_commits = crate::git::log(&config_dir, "HEAD", None)?;
 
-    let build_state = crate::build_state::get(app).unwrap_or_default();
+    let build_state = crate::state::build_state::get(app).unwrap_or_default();
     let last_built_sha = if build_state.unknown_build() {
         None
     } else {

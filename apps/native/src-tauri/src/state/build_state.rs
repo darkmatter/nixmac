@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Runtime};
 use tauri_plugin_store::StoreExt;
 
-use crate::sqlite_types::Change;
 use crate::shared_types::GitStatus;
+use crate::sqlite_types::Change;
 
 const BUILD_STATE_PATH: &str = "build-state.json";
 const BUILD_STATE_KEY: &str = "buildState";
@@ -77,10 +77,13 @@ pub fn current_state_built<R: Runtime>(app: &AppHandle<R>, current_changes: &[Ch
     match state.changeset_id {
         None => current_changes.is_empty(),
         Some(id) => {
-            let Ok(db_path) = crate::db::get_db_path(app) else { return false };
-            let Ok(conn) = rusqlite::Connection::open(&db_path) else { return false };
-            let Ok(stored_hashes) =
-                crate::db::changesets::fetch_hashes_for_changeset(&conn, id)
+            let Ok(db_path) = crate::db::get_db_path(app) else {
+                return false;
+            };
+            let Ok(conn) = rusqlite::Connection::open(&db_path) else {
+                return false;
+            };
+            let Ok(stored_hashes) = crate::db::changesets::fetch_hashes_for_changeset(&conn, id)
             else {
                 return false;
             };
@@ -115,7 +118,7 @@ pub fn set_active_build<R: Runtime>(
 /// Compute build state with a "bare" changeset to verify it
 pub fn record_build<R: Runtime>(app: &AppHandle<R>, git_status: &GitStatus) -> Result<()> {
     let db_path = crate::db::get_db_path(app)?;
-    let config_dir = crate::store::get_config_dir(app)?;
+    let config_dir = crate::storage::store::get_config_dir(app)?;
 
     let build_changeset_id = if !git_status.changes.is_empty() {
         let base_id = crate::db::commits::store_head_commit(&db_path, &config_dir, None)?

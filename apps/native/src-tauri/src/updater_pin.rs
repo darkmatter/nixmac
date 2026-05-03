@@ -155,7 +155,7 @@ async fn install_version_impl(
         .map_err(|e| format!("download_and_install failed: {e}"))?;
 
     // Persist the pinned version so the silent update check at next launch can be suppressed.
-    crate::store::set_string_pref(&app, crate::store::PINNED_VERSION_KEY, &version)
+    crate::storage::store::set_string_pref(&app, crate::storage::store::PINNED_VERSION_KEY, &version)
         .map_err(|e| format!("failed to persist pinned version: {e}"))?;
 
     log::info!("[developer] install_version({version}) succeeded");
@@ -181,7 +181,7 @@ pub async fn install_version(app: tauri::AppHandle, version: String) -> Result<(
 /// Clear the pinned-version preference so the silent update check resumes.
 #[tauri::command]
 pub async fn clear_pinned_version(app: tauri::AppHandle) -> Result<(), String> {
-    crate::store::delete_pref(&app, crate::store::PINNED_VERSION_KEY)
+    crate::storage::store::delete_pref(&app, crate::storage::store::PINNED_VERSION_KEY)
         .map_err(|e| format!("failed to clear pinned version: {e}"))?;
     Ok(())
 }

@@ -1,8 +1,8 @@
 use crate::evolve::edit_nix_file::{apply_semantic_edit, nix_quote_values};
 use crate::evolve::file_ops::resolve_path_in_dir_allow_create;
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
-use crate::nix_ast_lists::parse_string_lists_by_attrpath;
-use crate::scanner::inject_module_import;
+use crate::system::nix_ast_lists::parse_string_lists_by_attrpath;
+use crate::system::scanner::inject_module_import;
 use crate::shared_types::HomebrewState;
 use crate::{managed_edits::managed_edit, shared_types};
 use anyhow::{Context, Result};
@@ -12,7 +12,7 @@ use tauri::AppHandle;
 fn is_homebrew_installed() -> bool {
     std::process::Command::new("brew")
         .arg("--version")
-        .env("PATH", crate::nix::get_nix_path())
+        .env("PATH", crate::system::nix::get_nix_path())
         .output()
         .map(|output| output.status.success())
         .unwrap_or(false)
@@ -85,7 +85,7 @@ pub fn scan_homebrew() -> HomebrewState {
     let mut state = make_homebrew_state(is_homebrew_installed(), None);
     if let Ok(output) = std::process::Command::new("brew")
         .args(["list", "--installed-on-request", "--formula"])
-        .env("PATH", crate::nix::get_nix_path())
+        .env("PATH", crate::system::nix::get_nix_path())
         .output()
     {
         if output.status.success() {
@@ -97,7 +97,7 @@ pub fn scan_homebrew() -> HomebrewState {
     }
     if let Ok(output) = std::process::Command::new("brew")
         .args(["list", "--installed-on-request", "--cask"])
-        .env("PATH", crate::nix::get_nix_path())
+        .env("PATH", crate::system::nix::get_nix_path())
         .output()
     {
         if output.status.success() {
@@ -109,7 +109,7 @@ pub fn scan_homebrew() -> HomebrewState {
     }
     if let Ok(output) = std::process::Command::new("brew")
         .args(["tap"])
-        .env("PATH", crate::nix::get_nix_path())
+        .env("PATH", crate::system::nix::get_nix_path())
         .output()
     {
         if output.status.success() {

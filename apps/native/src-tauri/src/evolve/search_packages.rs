@@ -30,7 +30,7 @@ fn search_single_channel(
     cmd.arg(&search_query)
         .arg("--json")
         .current_dir(config_dir)
-        .env("PATH", crate::nix::get_nix_path())
+        .env("PATH", crate::system::nix::get_nix_path())
         .env("NIX_CONFIG", "experimental-features = nix-command flakes");
 
     let output = cmd.output()?;

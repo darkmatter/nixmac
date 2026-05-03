@@ -13,7 +13,7 @@ use tokio::process::{Child, Command};
 use tokio::sync::Mutex;
 
 use crate::providers::cli::augmented_path;
-use crate::store;
+use crate::storage::store;
 
 /// Global LSP process state, shared across async tasks.
 static LSP_PROCESS: std::sync::OnceLock<Arc<Mutex<Option<LspState>>>> = std::sync::OnceLock::new();

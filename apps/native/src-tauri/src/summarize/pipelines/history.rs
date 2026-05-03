@@ -8,7 +8,7 @@ pub async fn from_commit_times_number<R: Runtime>(
     commit_hash: &str,
     number: usize,
 ) -> Result<()> {
-    let config_dir = crate::store::get_config_dir(app)?;
+    let config_dir = crate::storage::store::get_config_dir(app)?;
     let db_path = crate::db::get_db_path(app)?;
 
     let all_commits = crate::git::log(&config_dir, "HEAD", None)?;

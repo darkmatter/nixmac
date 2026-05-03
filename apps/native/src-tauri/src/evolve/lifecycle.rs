@@ -9,14 +9,15 @@
 use log::info;
 use tauri::AppHandle;
 
+use crate::state::{build_state, evolve_state};
+use crate::storage::store;
 use crate::{
-    build_state, db, evolve,
-    evolve_state, git,
+    db, evolve, git,
     shared_types::{
         EvolveState, EvolutionFailureResult, EvolutionResult, EvolutionState, EvolutionTelemetry,
         SemanticChangeMap,
     },
-    store, summarize,
+    summarize,
     types::{emit_evolve_event, EvolveEvent},
 };
 

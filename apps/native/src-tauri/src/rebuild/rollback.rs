@@ -4,10 +4,11 @@ use anyhow::{Context, Result};
 use log::warn;
 use tauri::{AppHandle, Runtime};
 
+use crate::state::evolve_state;
+use crate::storage::store;
 use crate::{
-    evolve_state, git,
+    git,
     shared_types::{EvolveState, RollbackResult},
-    store,
 };
 
 pub fn rollback_erase<R: Runtime>(app: &AppHandle<R>) -> Result<RollbackResult> {

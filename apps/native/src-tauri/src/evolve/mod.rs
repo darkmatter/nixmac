@@ -41,9 +41,10 @@ use tools::{create_tools, execute_tool, is_editing_tool, ToolResult};
 pub use types::Evolution;
 pub use types::{EvolutionProgress, EvolutionRunError};
 use crate::shared_types::EvolutionState;
+use crate::system::nix;
 
 use crate::{
-    nix, statistics, store,
+    statistics, store,
     types::{emit_evolve_event, EvolveEvent},
     utils as global_utils,
 };

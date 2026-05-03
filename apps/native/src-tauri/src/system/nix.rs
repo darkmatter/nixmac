@@ -90,11 +90,11 @@ pub fn get_nix_path_with_login_shell() -> String {
 }
 
 pub fn determine_host_attr<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<String> {
-    if let Ok(Some(attr)) = crate::store::get_host_attr(app) {
+    if let Ok(Some(attr)) = crate::storage::store::get_host_attr(app) {
         return Some(attr);
     }
 
-    crate::store::read_host_attr_from_file()
+    crate::storage::store::read_host_attr_from_file()
 }
 
 pub fn evaluate_installed_apps(config_dir: &str, host_attr: &str) -> Result<Vec<Value>> {

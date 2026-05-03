@@ -5,7 +5,9 @@
 //! which is kept in sync by both this watcher and the evolution/summarize handlers.
 
 use crate::shared_types::WatcherEvent;
-use crate::{build_state, db, evolve_state, git, store, summarize};
+use crate::state::{build_state, evolve_state};
+use crate::storage::store;
+use crate::{db, git, summarize};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;

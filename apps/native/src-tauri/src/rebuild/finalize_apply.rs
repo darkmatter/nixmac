@@ -3,7 +3,9 @@
 use anyhow::{Context, Result};
 use tauri::AppHandle;
 
-use crate::{build_state, evolve_state, git, shared_types, store};
+use crate::state::{build_state, evolve_state};
+use crate::storage::store;
+use crate::{git, shared_types};
 
 async fn prepare(app: &AppHandle) -> Result<(crate::shared_types::GitStatus, shared_types::EvolveState)> {
     let config_dir =

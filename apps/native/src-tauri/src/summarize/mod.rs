@@ -23,7 +23,7 @@ pub async fn new_changeset<R: Runtime>(
     evolution_id: Option<i64>,
 ) -> Result<Option<i64>> {
     let db_path = crate::db::get_db_path(app)?;
-    let config_dir = crate::store::get_config_dir(app)?;
+    let config_dir = crate::storage::store::get_config_dir(app)?;
 
     let diff = crate::git::status(&config_dir)?.diff;
     if diff.is_empty() {

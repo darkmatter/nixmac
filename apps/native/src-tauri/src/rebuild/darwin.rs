@@ -59,7 +59,7 @@ pub fn dry_run_build_check(
 
     let output = command
         .current_dir(config_dir)
-        .env("PATH", crate::nix::get_nix_path())
+        .env("PATH", crate::system::nix::get_nix_path())
         .env("NIX_CONFIG", "experimental-features = nix-command flakes")
         .output()?;
 
@@ -149,7 +149,7 @@ fn run_build_step(
         info!("[darwin] intent_add_untracked warning: {}", e);
     }
 
-    let use_fallback = !crate::nix::is_darwin_rebuild_available();
+    let use_fallback = !crate::system::nix::is_darwin_rebuild_available();
     let flake_arg = format!(".#{}", host_attr);
 
     let mut build_cmd = if use_fallback {
@@ -173,7 +173,7 @@ fn run_build_step(
     };
 
     let mut build_child = build_cmd
-        .env("PATH", crate::nix::get_nix_path())
+        .env("PATH", crate::system::nix::get_nix_path())
         .current_dir(config_dir)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -386,7 +386,7 @@ pub fn activate_store_path_stream(
 }
 
 fn run_activate_with_path(activate_path: &str) -> Result<ActivateResult, anyhow::Error> {
-    let nix_path = crate::nix::get_nix_path();
+    let nix_path = crate::system::nix::get_nix_path();
     let home = std::env::var("HOME").unwrap_or_default();
     let ssh_sock = std::env::var("SSH_AUTH_SOCK").unwrap_or_default();
     let user = std::env::var("USER").unwrap_or_else(|_| "root".to_string());

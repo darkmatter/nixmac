@@ -9,8 +9,8 @@
 //! - Full Disk Access (FDA) - required for darwin-rebuild over SSH
 //! - Administrator privileges (sudo access)
 
-use anyhow::Result;
 pub use crate::shared_types::{Permission, PermissionStatus, PermissionsState};
+use anyhow::Result;
 use log::{debug, info, warn};
 use std::fs;
 use std::path::PathBuf;
