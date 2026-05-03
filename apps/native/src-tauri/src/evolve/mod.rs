@@ -624,7 +624,7 @@ pub async fn generate_evolution<R: Runtime>(
                         if commands::is_evolve_cancelled() {
                             break;
                         }
-                        // consider switching the cancellation mechanism to a tokio::sync::Notify or watch channel and select! directly on that signal instead of polling with sleep
+                        // TODO: Replace polling with tokio::sync::Notify or watch channel to avoid sleep.
                         sleep(Duration::from_millis(100)).await;
                     }
                 } => {
