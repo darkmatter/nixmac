@@ -652,9 +652,8 @@ pub fn execute_tool(
                     .collect()
             };
 
-            // Determine add/remove/set/set_attrs; require exactly one discriminant to avoid ambiguity
-            // TODO: We could consider allowing multiple actions in one call (e.g. add and remove together for a package rename)
-            // if we can handle the ordering correctly, but for now let's keep it simple with one action per call.
+            // Require exactly one discriminant to avoid ambiguous ordering (e.g. simultaneous add+remove).
+            // TODO: Allow multiple actions per call once ordering semantics are defined.
             let has_add = action_val.get("add").is_some();
             let has_remove = action_val.get("remove").is_some();
             let has_set = action_val.get("set").is_some();
