@@ -4,7 +4,7 @@ use crate::evolve::types::{FileEditAction, SemanticFileEdit};
 use crate::nix_ast_lists::parse_string_lists_by_attrpath;
 use crate::scanner::inject_module_import;
 use crate::shared_types::HomebrewState;
-use crate::{mac, managed_edit, shared_types};
+use crate::{mac, evolve::managed_edit, shared_types};
 use anyhow::{Context, Result};
 use tauri::AppHandle;
 

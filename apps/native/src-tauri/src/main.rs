@@ -29,7 +29,6 @@ mod historelog;
 mod log_summarizer;
 mod lsp;
 mod mac;
-mod managed_edit;
 mod nix;
 mod nix_ast_lists;
 mod panic_handler;

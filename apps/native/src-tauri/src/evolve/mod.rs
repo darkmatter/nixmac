@@ -19,6 +19,7 @@ pub(crate) mod types;
 mod utils;
 
 pub mod lifecycle;
+pub mod managed_edit;
 
 /// Directories ignored by file listing and search helpers.
 pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
