@@ -138,6 +138,11 @@ jobs:
           echo "::add-mask::$MAC_E2E_HOST_SECRET"
           echo "::add-mask::$MAC_E2E_USER_SECRET"
           echo "::add-mask::$MAC_E2E_ADMIN_PW_SECRET"
+          printf '%s\n' "$MAC_E2E_SSH_KEY_SECRET" | while IFS= read -r key_line; do
+            if [ -n "$key_line" ]; then
+              echo "::add-mask::$key_line"
+            fi
+          done
 
           {
             echo "MAC_E2E_HOST=$MAC_E2E_HOST_SECRET"
@@ -156,8 +161,7 @@ jobs:
 
           # Validate the key was written correctly
           if ! ssh-keygen -l -f ~/.ssh/e2e_key >/dev/null 2>&1; then
-            echo "::error::SSH key appears invalid. Check SOPS encryption."
-            head -1 ~/.ssh/e2e_key
+            echo "::error::SSH key appears invalid. Check MAC_E2E_SSH_KEY."
             wc -l ~/.ssh/e2e_key
             exit 1
           fi
