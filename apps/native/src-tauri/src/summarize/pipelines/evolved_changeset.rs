@@ -31,7 +31,7 @@ pub async fn analyze<R: Runtime>(
         return Ok(None);
     }
 
-    let short_hashed_changes = crate::changes_from_diff::with_short_hashes(&missed_changes);
+    let short_hashed_changes = crate::git::changes_from_diff::with_short_hashes(&missed_changes);
 
     let placement_refs: Vec<&_> = short_hashed_changes.iter().collect();
     let placement_prompt =
@@ -53,14 +53,14 @@ pub async fn analyze<R: Runtime>(
             .collect::<Vec<_>>();
         let new_refs: Vec<&Change> = a.new_changes.iter().map(|p| &p.change).collect();
         let new_hashes: Vec<String> = a.new_changes.iter()
-            .map(|p| p.change.hash[..crate::changes_from_diff::SHORT_HASH_LEN].to_string())
+            .map(|p| p.change.hash[..crate::git::changes_from_diff::SHORT_HASH_LEN].to_string())
             .collect();
         a.prompt = build_prompt::evolve_group(&existing, &new_refs, &new_hashes);
     }
     for a in &mut assignments.new_groups {
         let refs: Vec<&Change> = a.changes.iter().map(|p| &p.change).collect();
         let hashes: Vec<String> = a.changes.iter()
-            .map(|p| p.change.hash[..crate::changes_from_diff::SHORT_HASH_LEN].to_string())
+            .map(|p| p.change.hash[..crate::git::changes_from_diff::SHORT_HASH_LEN].to_string())
             .collect();
         a.prompt = build_prompt::new_group(&hashes, &refs);
     }

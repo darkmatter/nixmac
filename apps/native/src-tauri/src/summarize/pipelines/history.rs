@@ -41,10 +41,10 @@ pub async fn from_commit_times_number<R: Runtime>(
 
         let diff = crate::git::commit_diff(&config_dir, &commits[i + 1].hash, &commits[i].hash)?;
         let now = crate::utils::unix_now();
-        let all_changes = crate::changes_from_diff::changes_from_diff(&diff, now, true);
+        let all_changes = crate::git::changes_from_diff::changes_from_diff(&diff, now, true);
         let (_, changes): (Vec<_>, Vec<_>) = all_changes
             .into_iter()
-            .partition(crate::changes_from_diff::is_sensitive_or_opaque);
+            .partition(crate::git::changes_from_diff::is_sensitive_or_opaque);
 
         let diff_hashes: Vec<String> = changes.iter().map(|c| c.hash.clone()).collect();
 

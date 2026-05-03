@@ -16,7 +16,7 @@ pub async fn finalize_restore(app: &AppHandle, target_hash: String) -> Result<Gi
     let info = git::commit_all(&config_dir, &format!("Restore commit {label}"))
         .context("Failed to commit restored files")?;
 
-    crate::historelog::log_finalize(&info.hash);
+    crate::history::historelog::log_finalize(&info.hash);
 
     if let Err(e) = git::tag_commit(
         &config_dir,

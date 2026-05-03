@@ -177,7 +177,10 @@ pub const SHORT_HASH_LEN: usize = 6;
 pub fn with_short_hashes(changes: &[Change]) -> Vec<Change> {
     changes
         .iter()
-        .map(|c| Change { hash: c.hash[..SHORT_HASH_LEN].to_string(), ..c.clone() })
+        .map(|c| Change {
+            hash: c.hash[..SHORT_HASH_LEN].to_string(),
+            ..c.clone()
+        })
         .collect()
 }
 
@@ -192,7 +195,10 @@ pub fn filter_by_hashes(
         return (vec![], None);
     }
     let set: std::collections::HashSet<&str> = hashes.iter().map(String::as_str).collect();
-    let found: Vec<Change> = changes.into_iter().filter(|c| set.contains(c.hash.as_str())).collect();
+    let found: Vec<Change> = changes
+        .into_iter()
+        .filter(|c| set.contains(c.hash.as_str()))
+        .collect();
     let found_set: std::collections::HashSet<&str> =
         found.iter().map(|c| c.hash.as_str()).collect();
     let unfound: Vec<String> = hashes
@@ -200,7 +206,11 @@ pub fn filter_by_hashes(
         .filter(|h| !found_set.contains(h.as_str()))
         .cloned()
         .collect();
-    let unfound = if unfound.is_empty() { None } else { Some(unfound) };
+    let unfound = if unfound.is_empty() {
+        None
+    } else {
+        Some(unfound)
+    };
     (found, unfound)
 }
 

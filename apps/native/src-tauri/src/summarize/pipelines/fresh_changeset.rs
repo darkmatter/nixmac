@@ -31,7 +31,7 @@ pub async fn analyze<R: Runtime>(
         return Ok(None);
     };
 
-    let short_hashed_changes = crate::changes_from_diff::with_short_hashes(&changes);
+    let short_hashed_changes = crate::git::changes_from_diff::with_short_hashes(&changes);
     let refs: Vec<&Change> = short_hashed_changes.iter().collect();
     let prompt = build_prompt::new_map(&refs);
     dbg::new_log_prompt(&prompt);
@@ -47,7 +47,7 @@ pub async fn analyze<R: Runtime>(
     }
     for a in &mut assignments.new_groups {
         let short_hashes: Vec<String> = a.changes.iter()
-            .map(|c| c.change.hash[..crate::changes_from_diff::SHORT_HASH_LEN].to_string())
+            .map(|c| c.change.hash[..crate::git::changes_from_diff::SHORT_HASH_LEN].to_string())
             .collect();
         let resolved: Vec<&Change> = a.changes.iter().map(|c| &c.change).collect();
         a.prompt = build_prompt::new_group(&short_hashes, &resolved);

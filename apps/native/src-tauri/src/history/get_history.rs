@@ -34,7 +34,7 @@ pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::sh
         let raw_changes = git_commits.get(i + 1).and_then(|parent| {
             crate::git::commit_diff(&config_dir, &parent.hash, &git_commit.hash)
                 .ok()
-                .map(|diff| crate::changes_from_diff::changes_from_diff(&diff, git_commit.created_at, true))
+                .map(|diff| crate::git::changes_from_diff::changes_from_diff(&diff, git_commit.created_at, true))
         }).unwrap_or_default();
 
         let file_count = {
@@ -44,7 +44,7 @@ pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::sh
 
         let (change_map, unsummarized_hashes) = if let Some(ref parent) = parent_db {
             let diff_hashes: Vec<String> = raw_changes.iter()
-            .filter(|c| !crate::changes_from_diff::is_sensitive_or_opaque(c))
+            .filter(|c| !crate::git::changes_from_diff::is_sensitive_or_opaque(c))
             .map(|c| c.hash.clone())
             .collect();
             match crate::summarize::find_existing::by_base_with_hashes(&db_path, parent.id, &diff_hashes) {

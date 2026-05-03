@@ -7,10 +7,12 @@
 //! NOTE: The server is stateless regarding UI state. All app state (generating,
 //! preview mode, etc.) is computed and managed entirely by the client.
 
+use crate::state::{build_state, evolve_state, watcher};
+use crate::storage::store;
 use crate::{
-    darwin, db, default_config, editor, evolve, evolve_state, feedback, finalize_restore, git,
-    lsp, nix, peek, permissions, rollback, scanner, shared_types, store, types, utils,
-    watcher,
+    darwin, db, default_config, editor, evolve, feedback, finalize_restore, git,
+    lsp, managed_edits, nix, peek, permissions, rollback, scanner, shared_types, types,
+    utils,
 };
 use std::path::Path;
 use std::process::Command;
@@ -260,7 +262,7 @@ pub async fn homebrew_apply_diff(
     app: AppHandle,
     diff: shared_types::HomebrewState,
 ) -> Result<shared_types::ConfigEditApplyResult, String> {
-    crate::evolve::homebrew_adopt::apply_homebrew_diff(&app, diff)
+    crate::managed_edits::homebrew_adopt::apply_homebrew_diff(&app, diff)
         .await
         .map_err(|e| capture_err("homebrew_apply_diff", e))
 }
@@ -272,7 +274,7 @@ pub async fn homebrew_get_state_diff(
     let dir = store::ensure_config_dir_exists(&app)
         .map_err(|e| capture_err("homebrew_get_state_diff", e))?;
 
-    evolve::homebrew_adopt::get_homebrew_state_diff(Path::new(&dir))
+    managed_edits::homebrew_adopt::get_homebrew_state_diff(Path::new(&dir))
         .map_err(|e| capture_err("homebrew_get_state_diff", e))
 }
 
@@ -338,13 +340,13 @@ pub async fn git_commit(app: AppHandle, message: String) -> Result<shared_types:
     }
 
     // Update build state: new HEAD hash, no changeset (working tree is now clean).
-    if let Ok(current_build_state) = crate::build_state::get(&app) {
-        let updated = crate::build_state::BuildState {
+    if let Ok(current_build_state) = build_state::get(&app) {
+        let updated = build_state::BuildState {
             head_commit_hash: Some(commit_info.hash.clone()),
             changeset_id: None,
             ..current_build_state
         };
-        if let Err(e) = crate::build_state::set(&app, updated) {
+        if let Err(e) = build_state::set(&app, updated) {
             log::warn!("[git_commit] Failed to update build state: {}", e);
         }
     }
@@ -707,7 +709,7 @@ pub async fn summarize_current(
 /// and build/head status.
 #[tauri::command]
 pub async fn get_history(app: AppHandle) -> Result<Vec<crate::shared_types::HistoryItem>, String> {
-    crate::get_history::get_history(&app)
+    crate::history::get_history(&app)
         .await
         .map_err(|e| capture_err("get_history", e))
 }
@@ -718,7 +720,7 @@ pub async fn prepare_restore(app: AppHandle, target_hash: String) -> Result<(), 
     let config_dir = store::get_config_dir(&app).map_err(|e| capture_err("prepare_restore", e))?;
     git::checkout_files_at_commit(&config_dir, &target_hash)
         .map_err(|e| capture_err("prepare_restore", e))?;
-    crate::historelog::log_prepare(&config_dir);
+    crate::history::historelog::log_prepare(&config_dir);
     Ok(())
 }
 
@@ -726,7 +728,7 @@ pub async fn prepare_restore(app: AppHandle, target_hash: String) -> Result<(), 
 pub async fn abort_restore(app: AppHandle) -> Result<(), String> {
     let config_dir = store::get_config_dir(&app).map_err(|e| capture_err("abort_restore", e))?;
     git::restore_all(&config_dir).map_err(|e| capture_err("abort_restore", e))?;
-    crate::historelog::log_abort(&config_dir);
+    crate::history::historelog::log_abort(&config_dir);
     Ok(())
 }
 
@@ -1099,7 +1101,7 @@ pub async fn apply_system_defaults(
     app: AppHandle,
     defaults: Vec<scanner::SystemDefault>,
 ) -> Result<shared_types::ConfigEditApplyResult, String> {
-    crate::evolve::apply_system_defaults::apply_system_defaults(&app, defaults)
+    crate::managed_edits::system_defaults::apply_system_defaults(&app, defaults)
         .await
         .map_err(|e| capture_err("apply_system_defaults", e))
 }

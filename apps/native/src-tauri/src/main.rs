@@ -7,24 +7,19 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod build_state;
-mod changes_from_diff;
 mod cli;
 mod commands;
-mod completion_log;
-mod credential_store;
 mod darwin;
 mod db;
 mod default_config;
 mod editor;
 mod evolve;
-mod evolve_state;
+mod managed_edits;
 mod feedback;
 mod finalize_apply;
 mod finalize_restore;
-mod get_history;
 mod git;
-mod historelog;
+mod history;
 mod log_summarizer;
 mod lsp;
 mod nix;
@@ -39,14 +34,14 @@ mod scanner;
 mod secret_scanner;
 mod shared_types;
 mod sqlite_types;
+mod state;
 mod statistics;
-mod store;
+mod storage;
 mod summarize;
 mod template;
 mod types;
 mod updater_pin;
 mod utils;
-mod watcher;
 
 use std::env;
 use std::sync::{Arc, Mutex};

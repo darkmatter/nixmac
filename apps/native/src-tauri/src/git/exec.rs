@@ -290,7 +290,7 @@ pub fn status(dir: &str) -> Result<GitStatus> {
 
     let clean_head = diff.is_empty();
 
-    let changes = crate::changes_from_diff::changes_from_diff(&diff, 0, false);
+    let changes = crate::git::changes_from_diff::changes_from_diff(&diff, 0, false);
 
     Ok(GitStatus {
         files,
