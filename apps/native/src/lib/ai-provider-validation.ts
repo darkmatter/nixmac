@@ -15,7 +15,7 @@ export function getProviderConfigInvalidReason(
     return "CLI tool not found in PATH";
   }
 
-  if (provider === "openai") {
+  if (provider === "openai" || provider === "openrouter") {
     const hasOpenrouterKey = !!prefs.openrouterApiKey?.trim();
     const hasOpenaiKey = !!prefs.openaiApiKey?.trim();
     return hasOpenrouterKey || hasOpenaiKey ? null : "No API key set";
