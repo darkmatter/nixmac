@@ -13,9 +13,9 @@ import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 export type {
   EvolveEvent,
-  EvolveEventType, EvolveState, GitFileStatus,
+  EvolveEventType, EvolveState, 
   GitStatus,
-  PermissionsState
+  
 } from "@/tauri-api";
 
 // =============================================================================
@@ -27,7 +27,7 @@ export type {
  */
 export type SettingsTab = "general" | "api-keys" | "ai-models" | "preferences" | "developer";
 export type WidgetStep = "permissions" | "nix-setup" | "setup" | "begin" | "evolve" | "commit" | "manualEvolve" | "manualCommit" | "history";
-export type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
+type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
 export type ConfirmPrefKey = "confirmBuild" | "confirmClear" | "confirmRollback";
 export type BoolPrefKey = ConfirmPrefKey | "autoSummarizeOnFocus" | "scanHomebrewOnStartup";
 
@@ -153,7 +153,7 @@ export interface WidgetState {
   editingFile: string | null;
 }
 
-export interface WidgetActions {
+interface WidgetActions {
   // Permissions
   setPermissionsState: (state: PermissionsState | null) => void;
   setPermissionsChecked: (checked: boolean) => void;
@@ -235,7 +235,7 @@ export interface WidgetActions {
   clearRebuild: () => void;
 }
 
-export type WidgetStore = WidgetState & WidgetActions;
+type WidgetStore = WidgetState & WidgetActions;
 
 // =============================================================================
 // Initial State
@@ -252,7 +252,7 @@ export const initialRebuildState: RebuildState = {
   errorMessage: undefined,
 };
 
-export const initialWidgetState: WidgetState = {
+const initialWidgetState: WidgetState = {
   // Permissions
   permissionsState: null,
   permissionsChecked: false,

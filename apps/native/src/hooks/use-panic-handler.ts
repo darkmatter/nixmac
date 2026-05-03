@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { useWidgetStore } from "@/stores/widget-store";
 import { FeedbackType } from "@/types/feedback";
 
-export interface RustPanicEvent {
+interface RustPanicEvent {
   message: string;
   location?: string;
   backtrace?: string;

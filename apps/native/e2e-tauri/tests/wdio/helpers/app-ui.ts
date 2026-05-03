@@ -148,7 +148,7 @@ export async function clickDiscardAndCancel() {
   await clickWithRetry(cancelButtonSelector);
 }
 
-export async function assertEvolveReviewGone() {
+async function assertEvolveReviewGone() {
   await waitUntilOrFailOnError(
     async () => {
       const heading = await $('//h2[normalize-space()="What else can I change for you?"]');
@@ -233,7 +233,7 @@ export async function waitForFirstWindow(options: any = {}) {
   return handles;
 }
 
-export async function resetPromptWorkflowState() {
+async function resetPromptWorkflowState() {
   await waitForFirstWindow();
 
   if (await elementExists('[data-testid="evolve-discard-button"]')) {
@@ -435,6 +435,6 @@ export async function assertPromptFlowReachedEvolveReview() {
   );
 }
 
-export async function assertNoWidgetError() {
+async function assertNoWidgetError() {
   await failIfWidgetErrorPresent();
 }

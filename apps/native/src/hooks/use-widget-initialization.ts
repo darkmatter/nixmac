@@ -2,7 +2,7 @@ import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
 
 
-export type Config = {
+type Config = {
   configDir: string;
   hostAttr?: string;
 };

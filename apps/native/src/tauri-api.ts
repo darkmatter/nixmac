@@ -242,7 +242,6 @@ export const darwinAPI = {
     setHostAttr: (host: string) => invoke<OkResult>("config_set_host_attr", { host }),
   },
   git: {
-    initIfNeeded: () => invoke("git_init_if_needed"),
     status: () => invoke<GitStatus | null>("git_status"),
     statusAndCache: () => invoke<GitStatus | null>("git_status_and_cache"),
     cached: () => invoke<GitStatus | null>("git_cached"),

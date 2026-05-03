@@ -1,6 +1,6 @@
 //! Git operations for tracking and recording configuration changes.
 
-use crate::types::{GitFileStatus, GitStatus};
+use crate::shared_types::{GitFileStatus, GitStatus};
 use anyhow::{Context, Result};
 use std::ffi::OsStr;
 use std::path::Path;
