@@ -1,0 +1,68 @@
+Computer Use state (CUA App Version: 758)
+<app_state>
+App=com.darkmatter.nixmac (pid 49115)
+Window: "nixmac", App: nixmac.
+	0 standard window nixmac, Secondary Actions: Raise
+		1 scroll area
+			2 HTML content Description: nixmac, URL: tauri://localhost
+				3 heading nixmac, Value: 3
+					4 text nixmac
+				5 button History
+				6 button Give feedback
+				7 button Settings
+				8 container
+					9 text Update available: v 0.23.0
+				10 text ## What's Changed * Document Product Proof hook behavior by @fkb032 in https://github.com/darkmatter/nixmac/pull/69 * feat(settings): add hidden Developer panel with version-pin install by @czxtm in https://github.com/darkmatter/nixmac/pull/67 * fix(db): migrate legacy evolution branch column by @czxtm in https://github.com/darkmatter/nixmac/pull/73   **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.42...v0.23.0 ## What's Changed * Document Product Proof hook behavior by @fkb032 
+				11 button (collapsed) Expand details, Secondary Actions: Expand
+				12 button Install & Restart
+				13 button Dismiss
+				14 heading History, Value: 2
+					15 text History
+				16 text 3
+				17 button Analyze recent (3)
+				18 text TODAY
+				19 text Restore Commit 545da0e
+				20 text nixmac e2e restore baseline
+				21 button Confirm Restore
+				22 button Cancel
+				23 container
+					24 text This will deactivate  1  commit .
+				25 text Deactivated commits will stay in history.
+				26 text You can restore them again later.
+				27 text n1xm4c0
+				28 text 1
+				29 text file
+				30 button Analyze
+				31 text flake.lock
+				32 button chore(brew): configured Homebrew to include 'bat' as a formula CURRENT9230adb just now 2 files UpdateHomebrew Brews
+				33 text nixmac e2e restore baseline
+				34 button Restore
+				35 text 545da0e
+				36 text 11 min ago
+				37 text 1
+				38 text file
+				39 text External commit
+				40 button Analyze
+				41 text flake.lock
+				42 text Initial disposable nixmac E2E config
+				43 button Restore
+				44 text 3abde88
+				45 text 12 min ago
+				46 text External commit
+				47 button Analyze
+				48 button Report Issue
+				49 button Console
+				50 container Notifications alt+T
+		51 close button
+		52 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+		53 minimize button
+	54 menu bar
+		55 nixmac
+		56 File
+		57 Edit
+		58 View
+		59 Window
+		60 Help
+
+The focused UI element is 2 HTML content.
+</app_state>
