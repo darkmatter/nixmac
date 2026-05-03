@@ -200,7 +200,6 @@ pub async fn bootstrap_default_config(app: AppHandle, hostname: String) -> Resul
 // =============================================================================
 
 /// Gathers feedback metadata based on user opt-in flags.
-/// Delegates to the feedback module for comprehensive data collection.
 #[tauri::command]
 pub async fn feedback_gather_metadata(
     app: AppHandle,
@@ -219,7 +218,6 @@ pub async fn feedback_submit(app: AppHandle, payload: String) -> Result<bool, St
 
 // =============================================================================
 // TESTING / DEBUG Commands
-// TODO: Consider removing or gating behind a debug flag in production builds.
 // =============================================================================
 
 /// Test command to trigger a panic and verify the panic handler works.
@@ -277,14 +275,6 @@ pub async fn homebrew_get_state_diff(
 // Git Commands
 // =============================================================================
 
-/// Initializes a git repository in the config directory if one doesn't exist.
-#[tauri::command]
-pub async fn git_init_repo(app: AppHandle) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_init_repo", e))?;
-    git::init_repo(&dir).map_err(|e| capture_err("git_init_repo", e))?;
-    Ok(serde_json::json!({"ok": true}))
-}
-
 /// Returns the current git status of the config directory.
 #[tauri::command]
 pub async fn git_status(app: AppHandle) -> Result<types::GitStatus, String> {
@@ -324,7 +314,6 @@ pub async fn git_commit(app: AppHandle, message: String) -> Result<CommitResult,
         log::warn!("[git_commit] Failed to tag commit: {}", e);
     }
 
-    // Save commit to database
     if let Ok(db_path) = db::get_db_path(&app) {
         let now = crate::utils::unix_now();
         match db::commits::upsert_commit(
@@ -355,7 +344,6 @@ pub async fn git_commit(app: AppHandle, message: String) -> Result<CommitResult,
         }
     }
 
-    // Evolution complete — reset state back to idle.
     let evolve_state = evolve_state::clear(&app).unwrap_or_else(|e| {
         log::error!("[git_commit] Failed to clear evolve state: {}", e);
         evolve_state::EvolveState::default()
@@ -374,7 +362,7 @@ pub struct CommitResult {
     pub evolve_state: evolve_state::EvolveState,
 }
 
-/// Stash changes
+/// Stashes all uncommitted changes with the given message.
 #[tauri::command]
 pub async fn git_stash(app: AppHandle, message: String) -> Result<serde_json::Value, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_stash", e))?;
@@ -562,7 +550,8 @@ pub async fn darwin_activate_store_path(
         .map_err(|e| capture_err("darwin_activate_store_path", e))
 }
 
-/// Placeholder for canceling an in-progress apply operation.
+/// Cancels an in-progress apply by stashing changes on a new branch and returning to the previous branch.
+/// Does not kill the running darwin-rebuild process; process cancellation is not yet implemented.
 #[tauri::command]
 pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<serde_json::Value, String> {
     let dir = store::ensure_config_dir_exists(&app)
@@ -627,7 +616,7 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<serde_json::Va
     Ok(serde_json::json!({"ok": true}))
 }
 
-/// Finalize a successful build
+/// Records build state and changeset after a successful darwin-rebuild switch.
 #[tauri::command]
 pub async fn finalize_apply(app: AppHandle) -> Result<crate::finalize_apply::ApplyResult, String> {
     crate::finalize_apply::finalize_apply(&app)
@@ -652,7 +641,6 @@ pub async fn flake_installed_apps(app: AppHandle) -> Result<Vec<serde_json::Valu
     let dir = store::ensure_config_dir_exists(&app)
         .map_err(|e| capture_err("flake_installed_apps", e))?;
 
-    // Same host resolution logic as apply
     let host = nix::determine_host_attr(&app)
         .or_else(|| {
             let hosts = nix::list_darwin_hosts(&dir).ok()?;
