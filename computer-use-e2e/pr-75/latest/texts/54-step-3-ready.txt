@@ -1,6 +1,6 @@
 Computer Use state (CUA App Version: 758)
 <app_state>
-App=com.darkmatter.nixmac (pid 20760)
+App=com.darkmatter.nixmac (pid 35205)
 Window: "nixmac", App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -31,12 +31,12 @@ Window: "nixmac", App: nixmac.
 				26 tab group (selectable)
 					27 tab (selected) Summary
 					28 tab (selectable) Diff
-				29 text Homebrew Packages
-				30 text Added 'bat' to brews for enhanced syntax highlighting.
+				29 text Homebrew Formula
+				30 text Added 'bat' to brews for enhanced CLI functionality.
 				31 heading Commit Changes, Value: 2
 					32 text Commit Changes
 				33 container
-					34 text field (settable, string) Value: feat(brews): add 'bat' for enhanced syntax highlighting, Placeholder: Loading...
+					34 text field (settable, string) Value: feat(homebrew): Added 'bat' to brews for enhanced CLI functionality, Placeholder: Loading...
 					35 button Commit
 				36 button Report Issue
 				37 button Console
