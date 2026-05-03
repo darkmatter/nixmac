@@ -633,10 +633,20 @@ function renderScenarioChecklist(state, groupedScenarioHtml) {
 }
 
 function renderRunMetadata(state, evidenceSummary) {
+  const buildGate = state.buildGate || {};
+  const buildGateSummary = buildGate.status
+    ? [
+        buildGate.status,
+        buildGate.requiredHeadSha ? `head ${buildGate.requiredHeadSha}` : '',
+        buildGate.buildRunId ? `run ${buildGate.buildRunId}` : '',
+        buildGate.reason || '',
+      ].filter(Boolean).join(' - ')
+    : 'not recorded';
   return `<section class="meta run-metadata">
     <div class="panel"><strong>Timestamp</strong><br>${escapeHtml(state.startedAt)}</div>
     <div class="panel"><strong>Branch</strong><br>${escapeHtml(state.branch)}</div>
     <div class="panel"><strong>SHA</strong><br><code>${escapeHtml(state.sha)}</code></div>
+    <div class="panel"><strong>Build Gate</strong><br>${escapeHtml(buildGateSummary)}</div>
     <div class="panel"><strong>macOS</strong><br>${escapeHtml(state.remoteMachine?.macosProductVersion || state.macosVersion)}</div>
     <div class="panel"><strong>App</strong><br><code>${escapeHtml(state.app)}</code></div>
     <div class="panel"><strong>Provider</strong><br><code>${escapeHtml(state.provider.kind)}</code><br>${escapeHtml(state.provider.note)}</div>

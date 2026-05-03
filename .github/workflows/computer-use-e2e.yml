@@ -5,6 +5,11 @@ on:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
+    inputs:
+      build_artifact_attempts:
+        description: 'Same-head build artifact readiness attempts before remote setup'
+        required: false
+        default: '1'
 
 concurrency:
   group: computer-use-e2e-dxu-remote
@@ -126,9 +131,135 @@ jobs:
           node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable \
             --note "stale-queued-run: skipped before remote work because ${STALE_REASON}. PR #${STALE_PR_NUMBER}; queued head ${STALE_EVENT_HEAD_SHA}; current head ${STALE_CURRENT_HEAD_SHA}. No app state, secrets, SSH, readiness, artifact wait, or remote staging was touched."
 
+      - name: Gate same-head macOS app artifact
+        id: pr-app
+        if: steps.stale-run.outputs.stale != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_ARTIFACT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BUILD_ARTIFACT_ATTEMPTS: ${{ inputs.build_artifact_attempts || vars.NIXMAC_E2E_BUILD_ARTIFACT_ATTEMPTS || '1' }}
+          BUILD_ARTIFACT_SLEEP_SECONDS: ${{ vars.NIXMAC_E2E_BUILD_ARTIFACT_SLEEP_SECONDS || '30' }}
+        run: |
+          set -euo pipefail
+          write_output() {
+            local name="$1"
+            local value="${2:-}"
+            local delimiter="nixmac_e2e_${name}_EOF"
+            while [[ "$value" == *"$delimiter"* ]]; do
+              delimiter="${delimiter}_"
+            done
+            {
+              printf '%s<<%s\n' "$name" "$delimiter"
+              printf '%s\n' "$value"
+              printf '%s\n' "$delimiter"
+            } >> "$GITHUB_OUTPUT"
+          }
+
+          build_run_id=""
+          latest_build=""
+          gate_reason=""
+          attempts="${BUILD_ARTIFACT_ATTEMPTS:-120}"
+          sleep_seconds="${BUILD_ARTIFACT_SLEEP_SECONDS:-30}"
+          if ! [[ "$attempts" =~ ^[0-9]+$ ]] || [[ "$attempts" -lt 1 ]]; then
+            echo "Invalid BUILD_ARTIFACT_ATTEMPTS: $attempts" >&2
+            exit 1
+          fi
+          if ! [[ "$sleep_seconds" =~ ^[0-9]+$ ]]; then
+            echo "Invalid BUILD_ARTIFACT_SLEEP_SECONDS: $sleep_seconds" >&2
+            exit 1
+          fi
+          echo "Checking for successful Build macOS App artifact for exact head $BUILD_ARTIFACT_SHA before any DXU preflight."
+          for ((attempt = 1; attempt <= attempts; attempt += 1)); do
+            run_json="$(
+              gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/workflows/build.yaml/runs" \
+                -f head_sha="$BUILD_ARTIFACT_SHA" \
+                -f per_page=100
+            )"
+            build_run_id="$(jq -r '.workflow_runs | sort_by(.created_at) | reverse | map(select(.status == "completed" and .conclusion == "success")) | .[0].id // ""' <<<"$run_json")"
+            latest_build="$(jq -r '.workflow_runs | sort_by(.created_at) | reverse | .[0] | if . then "\(.id) \(.status) \(.conclusion // "")" else "" end' <<<"$run_json")"
+            if [[ -n "$build_run_id" ]]; then
+              break
+            fi
+
+            active_count="$(jq -r '[.workflow_runs[] | select(.status != "completed")] | length' <<<"$run_json")"
+            completed_count="$(jq -r '[.workflow_runs[] | select(.status == "completed")] | length' <<<"$run_json")"
+            if [[ "$active_count" == "0" && "$completed_count" != "0" ]]; then
+              gate_reason="same-head-build-completed-without-success; latest build: ${latest_build:-none}"
+              break
+            fi
+            if [[ "$attempt" -lt "$attempts" ]]; then
+              sleep "$sleep_seconds"
+            fi
+          done
+
+          write_output "build_artifact_sha" "$BUILD_ARTIFACT_SHA"
+          write_output "latest_build" "$latest_build"
+          if [[ -z "$build_run_id" ]]; then
+            if [[ -z "$gate_reason" ]]; then
+              gate_reason="same-head-build-not-ready-at-gate; latest build: ${latest_build:-none}"
+            fi
+            write_output "ready" "false"
+            write_output "build_gate_status" "not_ready"
+            write_output "reason" "$gate_reason"
+            echo "Same-head build gate not ready: $gate_reason"
+            exit 0
+          fi
+
+          rm -rf artifacts/computer-use-app
+          mkdir -p artifacts/computer-use-app
+          if ! gh run download "$build_run_id" --name nixmac-macos-app --dir artifacts/computer-use-app; then
+            gate_reason="same-head-build-artifact-download-failed; build run: $build_run_id"
+            write_output "ready" "false"
+            write_output "build_gate_status" "artifact_download_failed"
+            write_output "build_run_id" "$build_run_id"
+            write_output "reason" "$gate_reason"
+            echo "$gate_reason"
+            exit 0
+          fi
+          app_path="$(find artifacts/computer-use-app -maxdepth 2 -name "*.app" -type d | head -1)"
+          if [[ -z "$app_path" ]]; then
+            gate_reason="same-head-build-artifact-missing-app-bundle; build run: $build_run_id"
+            find artifacts/computer-use-app -maxdepth 4 -print
+            write_output "ready" "false"
+            write_output "build_gate_status" "artifact_invalid"
+            write_output "build_run_id" "$build_run_id"
+            write_output "reason" "$gate_reason"
+            echo "$gate_reason"
+            exit 0
+          fi
+          tar_path="$(mktemp -t nixmac-pr-app.XXXXXX.tar.gz)"
+          tar -C "$(dirname "$app_path")" -czf "$tar_path" "$(basename "$app_path")"
+          write_output "ready" "true"
+          write_output "build_gate_status" "ready"
+          write_output "build_run_id" "$build_run_id"
+          write_output "reason" "same-head-build-artifact-ready"
+          write_output "app_tar" "$tar_path"
+          echo "Same-head build gate ready: build run $build_run_id for $BUILD_ARTIFACT_SHA"
+
+      - name: Render build gate unavailable report
+        if: steps.stale-run.outputs.stale != 'true' && steps.pr-app.outputs.ready != 'true'
+        shell: bash
+        env:
+          NIXMAC_E2E_BUILD_GATE_STATUS: ${{ steps.pr-app.outputs.build_gate_status }}
+          NIXMAC_E2E_BUILD_GATE_REASON: ${{ steps.pr-app.outputs.reason }}
+          NIXMAC_E2E_BUILD_ARTIFACT_SHA: ${{ steps.pr-app.outputs.build_artifact_sha }}
+          NIXMAC_E2E_BUILD_RUN_ID: ${{ steps.pr-app.outputs.build_run_id }}
+          NIXMAC_E2E_BUILD_LATEST_RUN: ${{ steps.pr-app.outputs.latest_build }}
+        run: |
+          node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable \
+            --note "same-head-build-gate: skipped before DXU preflight or remote setup because no usable successful Build macOS App artifact was available for head $NIXMAC_E2E_BUILD_ARTIFACT_SHA. Reason: $NIXMAC_E2E_BUILD_GATE_REASON. Latest build: ${NIXMAC_E2E_BUILD_LATEST_RUN:-none}. No app state, secrets, SSH, readiness, remote staging, tunnel, or cleanup was touched."
+
+      - name: Fail build gate before remote setup
+        if: steps.stale-run.outputs.stale != 'true' && steps.pr-app.outputs.ready != 'true'
+        shell: bash
+        run: |
+          echo "Computer Use E2E did not start because the same-head macOS app artifact gate was not ready."
+          exit 1
+
       - name: Check remote Computer Use secrets
         id: remote-secrets
-        if: steps.stale-run.outputs.stale != 'true'
+        if: steps.stale-run.outputs.stale != 'true' && steps.pr-app.outputs.ready == 'true'
         shell: bash
         run: |
           missing=()
@@ -145,13 +276,18 @@ jobs:
           fi
 
       - name: Render unavailable report
-        if: steps.stale-run.outputs.stale != 'true' && steps.remote-secrets.outputs.available != 'true'
+        if: steps.stale-run.outputs.stale != 'true' && steps.pr-app.outputs.ready == 'true' && steps.remote-secrets.outputs.available != 'true'
+        env:
+          NIXMAC_E2E_BUILD_GATE_STATUS: ${{ steps.pr-app.outputs.build_gate_status }}
+          NIXMAC_E2E_BUILD_GATE_REASON: ${{ steps.pr-app.outputs.reason }}
+          NIXMAC_E2E_BUILD_ARTIFACT_SHA: ${{ steps.pr-app.outputs.build_artifact_sha }}
+          NIXMAC_E2E_BUILD_RUN_ID: ${{ steps.pr-app.outputs.build_run_id }}
         run: |
           node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable \
             --note "Remote Computer Use secrets are not fully configured for this repository. Missing: ${{ steps.remote-secrets.outputs.missing }}. The workflow triggered quietly and produced an inconclusive report without touching app state."
 
       - name: Prepare SSH
-        if: steps.stale-run.outputs.stale != 'true' && steps.remote-secrets.outputs.available == 'true'
+        if: steps.stale-run.outputs.stale != 'true' && steps.pr-app.outputs.ready == 'true' && steps.remote-secrets.outputs.available == 'true'
         shell: bash
         run: |
           mkdir -p ~/.ssh
@@ -163,7 +299,7 @@ jobs:
           echo "::add-mask::$OPENROUTER_API_KEY"
 
       - name: Preflight remote Mac
-        if: steps.stale-run.outputs.stale != 'true' && steps.remote-secrets.outputs.available == 'true'
+        if: steps.stale-run.outputs.stale != 'true' && steps.pr-app.outputs.ready == 'true' && steps.remote-secrets.outputs.available == 'true'
         shell: bash
         run: |
           mkdir -p artifacts/computer-use-remote/readiness
@@ -177,58 +313,8 @@ jobs:
             --check-codex-binary \
             --json "$readiness_json"
 
-      - name: Download PR-built app artifact
-        if: steps.stale-run.outputs.stale != 'true' && steps.remote-secrets.outputs.available == 'true'
-        id: pr-app
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          BUILD_ARTIFACT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: |
-          set -euo pipefail
-          build_run_id=""
-          build_conclusion=""
-          echo "Waiting for Build macOS App artifact for commit $BUILD_ARTIFACT_SHA"
-          for _ in {1..120}; do
-            run_json="$(
-              gh api -X GET "repos/${GITHUB_REPOSITORY}/actions/workflows/build.yaml/runs" \
-                -f head_sha="$BUILD_ARTIFACT_SHA" \
-                -f per_page=100
-            )"
-            build_run_id="$(jq -r '.workflow_runs | sort_by(.created_at) | reverse | map(select(.status == "completed" and .conclusion == "success")) | .[0].id // ""' <<<"$run_json")"
-            build_conclusion="success"
-            if [[ -n "$build_run_id" ]]; then
-              break
-            fi
-            active_count="$(jq -r '[.workflow_runs[] | select(.status != "completed")] | length' <<<"$run_json")"
-            completed_count="$(jq -r '[.workflow_runs[] | select(.status == "completed")] | length' <<<"$run_json")"
-            latest_build="$(jq -r '.workflow_runs | sort_by(.created_at) | reverse | .[0] | if . then "\(.id) \(.status) \(.conclusion // "")" else "" end' <<<"$run_json")"
-            if [[ "$active_count" == "0" && "$completed_count" != "0" ]]; then
-              echo "No successful Build macOS App run found for $BUILD_ARTIFACT_SHA. Latest run: ${latest_build:-none}"
-              exit 1
-            fi
-            sleep 30
-          done
-          if [[ -z "$build_run_id" || "$build_conclusion" != "success" ]]; then
-            echo "Timed out waiting for successful Build macOS App run for $BUILD_ARTIFACT_SHA"
-            exit 1
-          fi
-          rm -rf artifacts/computer-use-app
-          mkdir -p artifacts/computer-use-app
-          gh run download "$build_run_id" --name nixmac-macos-app --dir artifacts/computer-use-app
-          app_path="$(find artifacts/computer-use-app -maxdepth 2 -name "*.app" -type d | head -1)"
-          if [[ -z "$app_path" ]]; then
-            echo "Downloaded nixmac-macos-app artifact from run $build_run_id, but no .app bundle was found"
-            find artifacts/computer-use-app -maxdepth 4 -print
-            exit 1
-          fi
-          tar_path="$(mktemp -t nixmac-pr-app.XXXXXX.tar.gz)"
-          tar -C "$(dirname "$app_path")" -czf "$tar_path" "$(basename "$app_path")"
-          echo "build_run_id=$build_run_id" >> "$GITHUB_OUTPUT"
-          echo "app_tar=$tar_path" >> "$GITHUB_OUTPUT"
-
       - name: Start remote Codex app-server and nixmac
-        if: steps.stale-run.outputs.stale != 'true' && steps.remote-secrets.outputs.available == 'true'
+        if: steps.stale-run.outputs.stale != 'true' && steps.pr-app.outputs.ready == 'true' && steps.remote-secrets.outputs.available == 'true'
         id: remote-start
         shell: bash
         env:
@@ -401,7 +487,7 @@ jobs:
           REMOTE
 
       - name: Tunnel remote app-server
-        if: steps.stale-run.outputs.stale != 'true' && steps.remote-secrets.outputs.available == 'true'
+        if: steps.stale-run.outputs.stale != 'true' && steps.pr-app.outputs.ready == 'true' && steps.remote-secrets.outputs.available == 'true'
         shell: bash
         env:
           SSH_DEST: ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}
@@ -428,10 +514,14 @@ jobs:
           exit 1
 
       - name: Run Computer Use E2E
-        if: steps.stale-run.outputs.stale != 'true' && steps.remote-secrets.outputs.available == 'true'
+        if: steps.stale-run.outputs.stale != 'true' && steps.pr-app.outputs.ready == 'true' && steps.remote-secrets.outputs.available == 'true'
         env:
           NIXMAC_COMPUTER_USE_WS: ws://127.0.0.1:18790
           NIXMAC_COMPUTER_USE_APP: com.darkmatter.nixmac
+          NIXMAC_E2E_BUILD_GATE_STATUS: ${{ steps.pr-app.outputs.build_gate_status }}
+          NIXMAC_E2E_BUILD_GATE_REASON: ${{ steps.pr-app.outputs.reason }}
+          NIXMAC_E2E_BUILD_ARTIFACT_SHA: ${{ steps.pr-app.outputs.build_artifact_sha }}
+          NIXMAC_E2E_BUILD_RUN_ID: ${{ steps.pr-app.outputs.build_run_id }}
           NIXMAC_E2E_REMOTE_SSH_DEST: ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}
           NIXMAC_E2E_SSH_KEY: /home/runner/.ssh/nixmac-e2e
           NIXMAC_E2E_SSH_KNOWN_HOSTS: /home/runner/.ssh/known_hosts
@@ -444,8 +534,13 @@ jobs:
         run: node tools/computer-use-e2e/run-remote-cua.mjs run
 
       - name: Render setup failure report
-        if: failure() && steps.remote-secrets.outputs.available != 'false'
+        if: failure() && steps.pr-app.outputs.ready == 'true' && steps.remote-secrets.outputs.available != 'false'
         shell: bash
+        env:
+          NIXMAC_E2E_BUILD_GATE_STATUS: ${{ steps.pr-app.outputs.build_gate_status }}
+          NIXMAC_E2E_BUILD_GATE_REASON: ${{ steps.pr-app.outputs.reason }}
+          NIXMAC_E2E_BUILD_ARTIFACT_SHA: ${{ steps.pr-app.outputs.build_artifact_sha }}
+          NIXMAC_E2E_BUILD_RUN_ID: ${{ steps.pr-app.outputs.build_run_id }}
         run: |
           if compgen -G "${REPORT_ROOT}/*/index.html" >/dev/null; then
             echo "Computer Use E2E already produced an HTML report; preserving it."
@@ -467,7 +562,7 @@ jobs:
             --note "$note"
 
       - name: Restore remote app support
-        if: always() && steps.stale-run.outputs.stale != 'true' && steps.remote-secrets.outputs.available == 'true'
+        if: always() && steps.stale-run.outputs.stale != 'true' && steps.pr-app.outputs.ready == 'true' && steps.remote-secrets.outputs.available == 'true'
         shell: bash
         env:
           SSH_DEST: ${{ env.REMOTE_USER }}@${{ env.REMOTE_HOST }}
@@ -583,6 +678,10 @@ jobs:
           pass="$(jq -r '[.scenarios[]? | select(.status == "pass")] | length' "$latest_report/state.json")"
           fail="$(jq -r '[.scenarios[]? | select(.status == "fail")] | length' "$latest_report/state.json")"
           inconclusive="$(jq -r '[.scenarios[]? | select(.status == "inconclusive")] | length' "$latest_report/state.json")"
+          build_gate_status="$(jq -r '.buildGate.status // "not-recorded"' "$latest_report/state.json")"
+          build_gate_sha="$(jq -r '.buildGate.requiredHeadSha // ""' "$latest_report/state.json")"
+          build_gate_run_id="$(jq -r '.buildGate.buildRunId // ""' "$latest_report/state.json")"
+          build_gate_reason="$(jq -r '.buildGate.reason // ""' "$latest_report/state.json")"
           report_slug="$(basename "$latest_report")"
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             report_prefix="computer-use-e2e/pr-${{ github.event.pull_request.number }}"
@@ -600,6 +699,10 @@ jobs:
             echo "pass=$pass"
             echo "fail=$fail"
             echo "inconclusive=$inconclusive"
+            echo "build_gate_status=$build_gate_status"
+            echo "build_gate_sha=$build_gate_sha"
+            echo "build_gate_run_id=$build_gate_run_id"
+            echo "build_gate_reason=$build_gate_reason"
             echo "report_prefix=$report_prefix"
             echo "publish_path=$publish_path"
             echo "latest_path=$latest_path"
@@ -610,12 +713,20 @@ jobs:
       - name: Summarize evidence report
         if: always()
         shell: bash
+        env:
+          BUILD_GATE_STATUS: ${{ steps.report-meta.outputs.build_gate_status }}
+          BUILD_GATE_SHA: ${{ steps.report-meta.outputs.build_gate_sha }}
         run: |
           {
             echo "### nixmac Computer Use E2E"
             if [[ "${{ steps.report-meta.outputs.has_report }}" == "true" ]]; then
               echo "- Verdict: \`${{ steps.report-meta.outputs.verdict }}\`"
               echo "- Counts: \`${{ steps.report-meta.outputs.pass }} pass / ${{ steps.report-meta.outputs.fail }} fail / ${{ steps.report-meta.outputs.inconclusive }} inconclusive\`"
+              if [[ -n "$BUILD_GATE_SHA" ]]; then
+                echo "- Build gate: \`$BUILD_GATE_STATUS\` for \`$BUILD_GATE_SHA\`"
+              else
+                echo "- Build gate: \`$BUILD_GATE_STATUS\`"
+              fi
               echo "- Artifact path: \`${{ steps.report-meta.outputs.report_dir }}/index.html\`"
               echo "- Hosted HTML: ${{ steps.report-meta.outputs.index_url }}"
             else

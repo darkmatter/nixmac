@@ -2337,6 +2337,10 @@ async function runSelfTest() {
         NIXMAC_E2E_DISPOSABLE_CONFIG: 'true',
         NIXMAC_E2E_ALLOW_BUILD_CONFIRM: 'true',
         NIXMAC_E2E_ALLOW_DISCARD_CONFIRM: 'false',
+        NIXMAC_E2E_BUILD_GATE_STATUS: 'ready',
+        NIXMAC_E2E_BUILD_ARTIFACT_SHA: 'same-head-sha',
+        NIXMAC_E2E_BUILD_RUN_ID: '12345',
+        NIXMAC_E2E_BUILD_GATE_REASON: 'same-head-build-artifact-ready',
       },
     },
   );
@@ -2347,6 +2351,21 @@ async function runSelfTest() {
   assert.equal(schemaLifecycleState.safety.disposableConfig, true, 'ensureCurrentSchema should derive safety defaults from injected env');
   assert.equal(schemaLifecycleState.safety.buildConfirmEnabled, true, 'ensureCurrentSchema should derive build-confirm safety from injected env');
   assert.equal(schemaLifecycleState.safety.discardConfirmEnabled, false, 'ensureCurrentSchema should derive discard-confirm safety from injected env');
+  assert.deepEqual(
+    {
+      status: schemaLifecycleState.buildGate.status,
+      requiredHeadSha: schemaLifecycleState.buildGate.requiredHeadSha,
+      buildRunId: schemaLifecycleState.buildGate.buildRunId,
+      reason: schemaLifecycleState.buildGate.reason,
+    },
+    {
+      status: 'ready',
+      requiredHeadSha: 'same-head-sha',
+      buildRunId: '12345',
+      reason: 'same-head-build-artifact-ready',
+    },
+    'ensureCurrentSchema should derive same-head build gate metadata from injected env',
+  );
   assert.deepEqual(schemaLifecycleState.prFocus.scenarioKeys, ['sample'], 'ensureCurrentSchema should derive prFocus from injected builder');
   assert.deepEqual(schemaLifecycleState.evolvedCaseStrategy.extraCaseIds, [], 'ensureCurrentSchema should derive evolved-case strategy from injected builder');
   const previousPrFocus = schemaLifecycleState.prFocus;
@@ -2387,6 +2406,9 @@ async function runSelfTest() {
         NIXMAC_E2E_DISPOSABLE_CONFIG: 'true',
         NIXMAC_E2E_ALLOW_BUILD_CONFIRM: 'false',
         NIXMAC_E2E_ALLOW_DISCARD_CONFIRM: 'true',
+        NIXMAC_E2E_BUILD_GATE_STATUS: 'not_ready',
+        NIXMAC_E2E_BUILD_ARTIFACT_SHA: 'head-under-test',
+        NIXMAC_E2E_BUILD_GATE_REASON: 'same-head-build-not-ready-before-timeout',
       },
       now: () => '2026-05-02T00:00:00.000Z',
     },
@@ -2405,6 +2427,8 @@ async function runSelfTest() {
   assert.equal(baseLifecycleState.safety.buildConfirmEnabled, false, 'createBaseState should derive build-confirm safety from injected env');
   assert.equal(baseLifecycleState.safety.discardConfirmEnabled, true, 'createBaseState should derive discard-confirm safety from injected env');
   assert.match(baseLifecycleState.safety.note, /only allowed when disposable config mode is explicitly proven/, 'createBaseState should preserve safety note copy');
+  assert.equal(baseLifecycleState.buildGate.status, 'not_ready', 'createBaseState should record build gate status');
+  assert.equal(baseLifecycleState.buildGate.requiredHeadSha, 'head-under-test', 'createBaseState should record build gate head SHA');
   assert.deepEqual(baseLifecycleState.evolvedCaseRuns, [], 'createBaseState should initialize evolved case runs as empty');
   assert.deepEqual(baseLifecycleState.prFocus.scenarioKeys, ['launch'], 'createBaseState should derive PR focus from injected builder');
   assert.deepEqual(baseLifecycleState.evolvedCaseStrategy, { defaultCaseId: 'homebrew-bat', selectedAt: 'stubbed' }, 'createBaseState should derive evolved strategy from injected builder');
@@ -3004,6 +3028,14 @@ async function runSelfTest() {
     openrouterApiKeyInProcess: 'present-redacted',
     secretValuesRecorded: false,
   };
+  renderState.buildGate = {
+    status: 'ready',
+    requiredHeadSha: '5aa5e5ab',
+    buildRunId: '25268041985',
+    artifactName: 'nixmac-macos-app',
+    reason: 'same-head-build-artifact-ready',
+    note: 'Computer Use E2E may start remote setup only after a successful Build macOS App artifact exists for this exact head SHA.',
+  };
   renderState.confirmationBoundaries = ['Self-test confirmation boundary.'];
   await render(renderState, { stateFileName: 'state.self-test.json', recordEvent: false });
   const renderedHtml = await readFile(path.join(renderRunDir, 'index.html'), 'utf8');
@@ -3032,6 +3064,8 @@ async function runSelfTest() {
     assert.equal(renderedHtml.includes(anchor), true, `rendered report should include ${anchor}`);
   }
   assert.equal(renderedHtml.includes('id="open-issues"'), false, 'duplicate open-issues section should not be rendered');
+  assert.equal(renderedHtml.includes('Build Gate'), true, 'rendered report should include build gate metadata');
+  assert.equal(renderedHtml.includes('5aa5e5ab'), true, 'rendered report should include same-head build gate SHA');
   const ids = [...renderedHtml.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
   const duplicateIds = ids.filter((id, index) => ids.indexOf(id) !== index);
   assert.deepEqual(duplicateIds, [], 'rendered report should not include duplicate element ids');

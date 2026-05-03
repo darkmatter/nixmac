@@ -334,10 +334,23 @@ operator runbook must track the host, pinned SSH key material, host rotation
 procedure, Authorization Services policy mutation/restore behavior, monthly cost,
 and who owns restoring the lane when DXU is unreachable or reassigned.
 
-Before touching remote app state, the workflow waits for the matching
-`Build macOS App` run for the same commit, downloads the `nixmac-macos-app`
-artifact, and stages that app bundle under a per-run `/tmp` directory on DXU for
-the duration of the test.
+Before touching remote app state, the workflow checks for the matching
+successful `Build macOS App` run for the same commit, downloads the
+`nixmac-macos-app` artifact, and stages that app bundle under a per-run `/tmp`
+directory on DXU for the duration of the test.
+That same-head build gate runs after the stale-run check and before remote
+secrets, SSH preparation, DXU readiness, app staging, tunnel setup, or cleanup.
+If no usable successful app artifact exists for the exact PR head SHA at the
+gate, the workflow renders a build-gate unavailable report and fails before
+remote setup; generic setup-failure reports are reserved for failures after this
+gate passes.
+The default gate is intentionally fast (`1` attempt) while this workflow is
+serialized by the DXU remote concurrency group: a fresh PR push can therefore
+produce a build-gate unavailable report before `build.yaml` finishes. Re-run the
+workflow after the same-head build succeeds, or use workflow dispatch
+`build_artifact_attempts` / repo variable `NIXMAC_E2E_BUILD_ARTIFACT_ATTEMPTS`
+when the operator intentionally wants the gate to wait longer before remote
+setup.
 The build artifact must preserve hidden files because Tauri bundles resources
 under dot-prefixed directories; stripping those files invalidates the app
 signature and can leave LaunchServices wedged on a broken `/Applications`

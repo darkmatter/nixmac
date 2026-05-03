@@ -3,6 +3,20 @@ import process from 'node:process';
 import { writeFile } from 'node:fs/promises';
 import { redact } from './redaction.mjs';
 
+function buildGateFromEnv(env = process.env) {
+  const status = env.NIXMAC_E2E_BUILD_GATE_STATUS || '';
+  if (!status) return null;
+  return {
+    status,
+    requiredHeadSha: env.NIXMAC_E2E_BUILD_ARTIFACT_SHA || '',
+    buildRunId: env.NIXMAC_E2E_BUILD_RUN_ID || '',
+    latestRun: env.NIXMAC_E2E_BUILD_LATEST_RUN || '',
+    artifactName: env.NIXMAC_E2E_BUILD_ARTIFACT_NAME || 'nixmac-macos-app',
+    reason: redact(env.NIXMAC_E2E_BUILD_GATE_REASON || ''),
+    note: 'Computer Use E2E may start remote setup only after a successful Build macOS App artifact exists for this exact head SHA.',
+  };
+}
+
 export function ensureCurrentSchema(
   state,
   {
@@ -52,6 +66,7 @@ export function ensureCurrentSchema(
     note: 'Discard/build confirmation is only allowed when disposable config mode is explicitly proven.',
   };
   state.prFocus ||= buildPrFocus();
+  state.buildGate ||= buildGateFromEnv(env);
   return state;
 }
 
@@ -104,6 +119,7 @@ export async function createBaseState(
       discardConfirmEnabled: env.NIXMAC_E2E_ALLOW_DISCARD_CONFIRM === 'true',
       note: 'Discard/build confirmation is only allowed when disposable config mode is explicitly proven.',
     },
+    buildGate: buildGateFromEnv(env),
     prFocus: buildPrFocus(),
     cleanup: { attempted: false, restored: false, note: 'Cleanup has not run yet.' },
     screenshots: [],
