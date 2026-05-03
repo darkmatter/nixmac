@@ -1,0 +1,55 @@
+Computer Use state (CUA App Version: 758)
+<app_state>
+App=com.darkmatter.nixmac (pid 20760)
+Window: "nixmac", App: nixmac.
+	0 standard window nixmac, Secondary Actions: Raise
+		1 scroll area
+			2 HTML content Description: nixmac, URL: tauri://localhost
+				3 heading nixmac, Value: 3
+					4 text nixmac
+				5 button History
+				6 button Give feedback
+				7 button Settings
+				8 container
+					9 text Update available: v 0.23.0
+				10 text ## What's Changed * Document Product Proof hook behavior by @fkb032 in https://github.com/darkmatter/nixmac/pull/69 * feat(settings): add hidden Developer panel with version-pin install by @czxtm in https://github.com/darkmatter/nixmac/pull/67 * fix(db): migrate legacy evolution branch column by @czxtm in https://github.com/darkmatter/nixmac/pull/73   **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.42...v0.23.0 ## What's Changed * Document Product Proof hook behavior by @fkb032 
+				11 button (collapsed) Expand details, Secondary Actions: Expand
+				12 button Install & Restart
+				13 button Dismiss
+				14 heading History, Value: 2
+					15 text History
+				16 text 3
+				17 button Analyze recent (3)
+				18 text TODAY
+				19 button feat(brews): add 'bat' for enhanced syntax highlighting CURRENTed9bcae just now 2 files UpdateHomebrew Packages
+				20 text nixmac e2e restore baseline
+				21 button Restore
+				22 text 3001c6e
+				23 text 11 min ago
+				24 text 1
+				25 text file
+				26 text External commit
+				27 button Analyze
+				28 text flake.lock
+				29 text Initial disposable nixmac E2E config
+				30 button Restore
+				31 text 882a4e3
+				32 text 12 min ago
+				33 text External commit
+				34 button Analyze
+				35 button Report Issue
+				36 button Console
+				37 container Notifications alt+T
+		38 close button
+		39 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+		40 minimize button
+	41 menu bar
+		42 nixmac
+		43 File
+		44 Edit
+		45 View
+		46 Window
+		47 Help
+
+The focused UI element is 5 button.
+</app_state>

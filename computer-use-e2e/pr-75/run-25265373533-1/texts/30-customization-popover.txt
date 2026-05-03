@@ -1,0 +1,107 @@
+Computer Use state (CUA App Version: 758)
+<app_state>
+App=com.darkmatter.nixmac (pid 15528)
+Window: "nixmac", App: nixmac.
+	0 standard window nixmac, Secondary Actions: Raise
+		1 scroll area
+			2 HTML content Description: nixmac, URL: tauri://localhost
+				3 heading nixmac, Value: 3
+					4 text nixmac
+				5 button History
+				6 button Give feedback
+				7 button Settings
+				8 content list Progress: step 1 of 3, Describe
+					9 container
+						10 text 1 Describe What to change
+					11 container
+						12 text 2 Review Check & test
+					13 container
+						14 text 3 Save Keep changes
+				15 container
+					16 text Update available: v 0.23.0
+				17 text ## What's Changed * Document Product Proof hook behavior by @fkb032 in https://github.com/darkmatter/nixmac/pull/69 * feat(settings): add hidden Developer panel with version-pin install by @czxtm in https://github.com/darkmatter/nixmac/pull/67 * fix(db): migrate legacy evolution branch column by @czxtm in https://github.com/darkmatter/nixmac/pull/73   **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.42...v0.23.0 ## What's Changed * Document Product Proof hook behavior by @fkb032 
+				18 button (collapsed) Expand details, Secondary Actions: Expand
+				19 button Install & Restart
+				20 button Dismiss
+				21 heading Get started, Value: 3
+					22 text Get started
+				23 container
+					24 text entry area (settable, string) Describe changes to make to your configuration.
+						25 text Describe changes to make to your configuration.
+					26 button (disabled) Send
+				27 button Install vim
+				28 button Add Rectangle app
+				29 button Enable the Finder path bar and status bar
+				30 pop up button 12 untracked customizations
+				31 pop up button My History
+				32 button Report Issue
+				33 button Console
+				34 container Notifications alt+T
+				35 container
+					36 text 12
+					37 text  untracked Mac customization
+					38 text s
+					39 button
+					40 text Dock
+					41 text  (
+					42 text 4
+					43 text )
+					44 text Automatically hide the Dock
+					45 text on
+					46 text Enable Dock magnification
+					47 text on
+					48 text Dock icon size
+					49 text 54
+					50 text Hot corner: bottom-right
+					51 text 14
+					52 text Global
+					53 text  (
+					54 text 1
+					55 text )
+					56 text Dark Mode
+					57 text Dark
+					58 text Trackpad
+					59 text  (
+					60 text 1
+					61 text )
+					62 text Three-finger tap gesture
+					63 text 2
+					64 text Screensaver
+					65 text  (
+					66 text 2
+					67 text )
+					68 text Require password after screensaver
+					69 text off
+					70 text Seconds before password required after screensaver
+					71 text off
+					72 text Window Manager
+					73 text  (
+					74 text 3
+					75 text )
+					76 text Group windows by application (Stage Manager)
+					77 text on
+					78 text Show margins around tiled windows
+					79 text off
+					80 text Hide desktop items in Stage Manager
+					81 text on
+					82 text Mouse
+					83 text  (
+					84 text 1
+					85 text )
+					86 text Magic Mouse button mode
+					87 text OneButton
+					88 button Add to config
+					89 button Don't track
+		90 close button
+		91 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+		92 minimize button
+	93 menu bar
+		94 nixmac
+		95 File
+		96 Edit
+		97 View
+		98 Window
+		99 Help
+
+The focused UI element is 39 button.
+</app_state>

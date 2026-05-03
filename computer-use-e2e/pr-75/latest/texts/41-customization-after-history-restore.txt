@@ -1,0 +1,74 @@
+Computer Use state (CUA App Version: 758)
+<app_state>
+App=com.darkmatter.nixmac (pid 15528)
+Window: "nixmac", App: nixmac.
+	0 standard window nixmac, Secondary Actions: Raise
+		1 scroll area
+			2 HTML content Description: nixmac, URL: tauri://localhost
+				3 heading nixmac, Value: 3
+					4 text nixmac
+				5 button History
+				6 button Give feedback
+				7 button Settings
+				8 container
+					9 text Update available: v 0.23.0
+				10 text ## What's Changed * Document Product Proof hook behavior by @fkb032 in https://github.com/darkmatter/nixmac/pull/69 * feat(settings): add hidden Developer panel with version-pin install by @czxtm in https://github.com/darkmatter/nixmac/pull/67 * fix(db): migrate legacy evolution branch column by @czxtm in https://github.com/darkmatter/nixmac/pull/73   **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.42...v0.23.0 ## What's Changed * Document Product Proof hook behavior by @fkb032 
+				11 button (collapsed) Expand details, Secondary Actions: Expand
+				12 button Install & Restart
+				13 button Dismiss
+				14 heading History, Value: 2
+					15 text History
+				16 text 6
+				17 button Analyze recent (5)
+				18 text TODAY
+				19 text Restore commit 3001c6e0
+				20 text nixmac e2e restore baseline
+				21 text CURRENT
+				22 text d4b750a
+				23 text just now
+				24 text 1
+				25 text file
+				26 button Analyze
+				27 text flake.lock
+				28 button chore(nix-darwin): update system defaults and macOS specific settings Restore87347d3 just now 3 files UpdateNix-Darwin Config
+				29 text Restore commit 3001c6e0
+				30 text nixmac e2e restore baseline
+				31 button Restore
+				32 text 7085ebe
+				33 text 1 min ago
+				34 text 1
+				35 text file
+				36 button Analyze
+				37 text flake.lock
+				38 button feat(tap): add 'steipete/tap' for Homebrew Restore1321522 1 min ago 2 files UpdateHomebrew Taps
+				39 text nixmac e2e restore baseline
+				40 button Restore
+				41 text 3001c6e
+				42 text 2 min ago
+				43 text 1
+				44 text file
+				45 text External commit
+				46 button Analyze
+				47 text flake.lock
+				48 text Initial disposable nixmac E2E config
+				49 button Restore
+				50 text 882a4e3
+				51 text 3 min ago
+				52 text External commit
+				53 button Analyze
+				54 button Report Issue
+				55 button Console
+				56 container Notifications alt+T
+		57 close button
+		58 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+		59 minimize button
+	60 menu bar
+		61 nixmac
+		62 File
+		63 Edit
+		64 View
+		65 Window
+		66 Help
+
+The focused UI element is 2 HTML content.
+</app_state>
