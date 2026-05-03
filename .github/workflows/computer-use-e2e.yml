@@ -392,7 +392,7 @@ jobs:
             gui_launchctl setenv OPENROUTER_API_KEY "$(cat "$REMOTE_KEY_FILE")"
             rm -f "$REMOTE_KEY_FILE"
           fi
-          nohup /Applications/Codex.app/Contents/Resources/codex app-server --listen ws://127.0.0.1:18790 >/tmp/nixmac-codex-app-server.log 2>&1 &
+          nohup /Applications/Codex.app/Contents/Resources/codex app-server -c 'service_tier="fast"' --listen ws://127.0.0.1:18790 >/tmp/nixmac-codex-app-server.log 2>&1 &
           sleep 2
           if ! open -n "$REMOTE_APP_PATH"; then
             echo "warning: open returned non-zero while launching $REMOTE_APP_PATH; continuing so Computer Use can inspect app state" >&2
