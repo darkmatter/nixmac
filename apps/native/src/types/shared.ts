@@ -34,9 +34,24 @@ export type CliToolsState = { claude: boolean; codex: boolean; opencode: boolean
 export type Commit = { id: number; hash: string; treeHash: string; message: string | null; createdAt: number }
 
 /**
+ * Result of a successful `git_commit` command.
+ */
+export type CommitResult = { hash: string; evolveState: EvolveState }
+
+/**
+ * Application configuration returned by `config_get`.
+ */
+export type Config = { configDir: string; hostAttr: string | null }
+
+/**
  * Result of a managed-edit apply operation (homebrew, system-defaults, etc.).
  */
 export type ConfigEditApplyResult = { ok: boolean; count: number; changeMap: SemanticChangeMap; gitStatus: GitStatus; evolveState: EvolveState }
+
+/**
+ * Result of a darwin-rebuild operation from the legacy non-streaming command.
+ */
+export type DarwinApplyLegacy = { ok: boolean; code: number | null; stdout: string | null; stderr: string | null }
 
 /**
  * Response from the debug Sentry event command.
@@ -97,6 +112,16 @@ export type EvolutionTelemetry = { state: EvolutionState; iterations: number; bu
 export type EvolveCancelResult = { ok: boolean; message: string }
 
 /**
+ * Event type for streaming evolve progress updates.
+ */
+export type EvolveEvent = { raw: string; summary: string; eventType: EvolveEventType; iteration: number | null; timestampMs: number }
+
+/**
+ * Types of evolve events for UI rendering.
+ */
+export type EvolveEventType = "start" | "iteration" | "thinking" | "reading" | "editing" | "buildCheck" | "buildPass" | "buildFail" | "toolCall" | "apiRequest" | "apiResponse" | "complete" | "error" | "info" | "summarizing" | "question"
+
+/**
  * Persisted evolve state stored in `evolve-state.json`.
  */
 export type EvolveState = { evolutionId: number | null; currentChangesetId: number | null; 
@@ -117,6 +142,51 @@ rollbackBranch: string | null; rollbackStorePath: string | null; rollbackChanges
  * Widget step derived from `EvolveState` fields.
  */
 export type EvolveStep = "begin" | "evolve" | "commit" | "manualEvolve" | "manualCommit"
+
+/**
+ * AI provider/model info and usage signals.
+ */
+export type FeedbackAiProviderModelInfo = { evolveProvider: string | null; evolveModel: string | null; summaryProvider: string | null; summaryModel: string | null; totalTokens: number | null; latencyMs: number | null; iterations: number | null; buildAttempts: number | null }
+
+/**
+ * Flake input metadata captured from flake.lock.
+ */
+export type FeedbackFlakeInputEntry = { rev: string | null; lastModified: number | null; narHash: string | null }
+
+/**
+ * Snapshot of selected flake inputs.
+ */
+export type FeedbackFlakeInputsSnapshot = { nixpkgs: FeedbackFlakeInputEntry | null; "nix-darwin": FeedbackFlakeInputEntry | null; "home-manager": FeedbackFlakeInputEntry | null }
+
+/**
+ * Request payload for gathering feedback metadata.
+ */
+export type FeedbackMetadataRequest = { feedbackType: string; share: FeedbackShareOptions }
+
+/**
+ * Panic/crash information captured when a Rust panic occurs.
+ */
+export type FeedbackPanicDetails = { message: string; location: string | null; backtrace: string | null; timestamp: string }
+
+/**
+ * Options indicating which feedback artifacts the user allows sharing.
+ */
+export type FeedbackShareOptions = { currentAppState: boolean; systemInfo: boolean; usageStats: boolean; evolutionLog: boolean; changedNixFiles: boolean; aiProviderModelInfo: boolean; buildErrorOutput: boolean; flakeInputsSnapshot: boolean; appLogs: boolean }
+
+/**
+ * System information captured from the runtime.
+ */
+export type FeedbackSystemInfo = { osName: string | null; osVersion: string | null; arch: string | null; nixVersion: string | null; appVersion: string | null }
+
+/**
+ * File or directory entry returned by the editor tree.
+ */
+export type FileEntry = { path: string; name: string; isDir: boolean }
+
+/**
+ * Result of a successful `finalize_apply` or `finalize_rollback` command.
+ */
+export type FinalizeApplyResult = { gitStatus: GitStatus; evolveState: EvolveState }
 
 /**
  * Individual file status parsed from diff headers.
@@ -146,6 +216,31 @@ export type NixCheckResult = { installed: boolean; version: string | null; darwi
 export type OkResult = { ok: boolean }
 
 /**
+ * Individual permission state.
+ */
+export type Permission = { id: string; name: string; description: string; required: boolean; canRequestProgrammatically: boolean; status: PermissionStatus; instructions?: string | null }
+
+/**
+ * Permission status.
+ */
+export type PermissionStatus = "granted" | "denied" | "pending" | "unknown"
+
+/**
+ * All permissions state.
+ */
+export type PermissionsState = { permissions: Permission[]; allRequiredGranted: boolean; checkedAt: number | null }
+
+/**
+ * State sent to the preview indicator window.
+ */
+export type PreviewIndicatorState = { visible: boolean; summary: string | null; filesChanged: number; additions: number | null; deletions: number | null; isLoading: boolean }
+
+/**
+ * A recommended prompt based on the user's current macOS settings.
+ */
+export type RecommendedPrompt = { id: string; promptText: string }
+
+/**
  * Result returned from a rollback erase operation.
  */
 export type RollbackResult = { gitStatus: GitStatus; evolveState: EvolveState; rollbackStorePath: string | null; rollbackChangesetId: number | null }
@@ -163,6 +258,16 @@ export type SetDirResult = { dir: string; evolveState: EvolveState | null; hosts
 export type SummarizedChange = { change: Change; ownSummary: ChangeSummary | null; groupSummary: ChangeSummary | null }
 
 export type SummarizedChangeSet = { changeSet: ChangeSet; changes: SummarizedChange[]; missedHashes: string[] }
+
+/**
+ * A single macOS system default that differs from the factory value.
+ */
+export type SystemDefault = { nixKey: string; label: string; category: string; currentValue: string; defaultValue: string }
+
+/**
+ * Result of a full system defaults scan.
+ */
+export type SystemDefaultsScan = { defaults: SystemDefault[]; totalScanned: number }
 
 /**
  * User interface preferences (synced to settings.json via tauri-plugin-store).

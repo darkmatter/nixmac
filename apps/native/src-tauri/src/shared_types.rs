@@ -1,9 +1,142 @@
 //! Shared types exported to TypeScript via Specta — both query results and UI routing state.
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use specta::Type;
 
 use crate::sqlite_types::{Change, ChangeSet, ChangeSummary};
+
+// =============================================================================
+// App configuration
+// =============================================================================
+
+/// Application configuration returned by `config_get`.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct Config {
+    pub config_dir: String,
+    pub host_attr: Option<String>,
+}
+
+/// Result of a darwin-rebuild operation from the legacy non-streaming command.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct DarwinApplyLegacy {
+    pub ok: bool,
+    pub code: Option<i32>,
+    pub stdout: Option<String>,
+    pub stderr: Option<String>,
+}
+
+// =============================================================================
+// Feedback metadata
+// =============================================================================
+
+/// Options indicating which feedback artifacts the user allows sharing.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct FeedbackShareOptions {
+    pub current_app_state: bool,
+    pub system_info: bool,
+    pub usage_stats: bool,
+    pub evolution_log: bool,
+    pub changed_nix_files: bool,
+    pub ai_provider_model_info: bool,
+    pub build_error_output: bool,
+    pub flake_inputs_snapshot: bool,
+    pub app_logs: bool,
+}
+
+/// System information captured from the runtime.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct FeedbackSystemInfo {
+    pub os_name: Option<String>,
+    pub os_version: Option<String>,
+    pub arch: Option<String>,
+    pub nix_version: Option<String>,
+    pub app_version: Option<String>,
+}
+
+/// Aggregated usage stats for feedback.
+#[allow(dead_code)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeedbackUsageStats {
+    pub total_evolutions: Option<u64>,
+    pub success_rate: Option<f64>,
+    pub avg_iterations: Option<f64>,
+    pub last_computed_at: Option<String>,
+    pub extra: Option<Value>,
+}
+
+/// AI provider/model info and usage signals.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct FeedbackAiProviderModelInfo {
+    pub evolve_provider: Option<String>,
+    pub evolve_model: Option<String>,
+    pub summary_provider: Option<String>,
+    pub summary_model: Option<String>,
+    pub total_tokens: Option<u32>,
+    pub latency_ms: Option<i64>,
+    pub iterations: Option<usize>,
+    pub build_attempts: Option<usize>,
+}
+
+/// Flake input metadata captured from flake.lock.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct FeedbackFlakeInputEntry {
+    pub rev: Option<String>,
+    pub last_modified: Option<i64>,
+    pub nar_hash: Option<String>,
+}
+
+/// Snapshot of selected flake inputs.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct FeedbackFlakeInputsSnapshot {
+    pub nixpkgs: Option<FeedbackFlakeInputEntry>,
+    #[serde(rename = "nix-darwin")]
+    pub nix_darwin: Option<FeedbackFlakeInputEntry>,
+    #[serde(rename = "home-manager")]
+    pub home_manager: Option<FeedbackFlakeInputEntry>,
+}
+
+/// Request payload for gathering feedback metadata.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct FeedbackMetadataRequest {
+    pub feedback_type: String,
+    pub share: FeedbackShareOptions,
+}
+
+/// Metadata collected for feedback submission based on user opt-in.
+#[allow(dead_code)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeedbackMetadata {
+    pub current_app_state_snapshot: Option<Value>,
+    pub system_info: Option<FeedbackSystemInfo>,
+    pub usage_stats: Option<FeedbackUsageStats>,
+    pub evolution_log_content: Option<String>,
+    pub changed_nix_files_diff: Option<String>,
+    pub ai_provider_model_info: Option<FeedbackAiProviderModelInfo>,
+    pub build_error_output: Option<String>,
+    pub flake_inputs_snapshot: Option<FeedbackFlakeInputsSnapshot>,
+    pub app_logs_content: Option<String>,
+    pub panic_details: Option<FeedbackPanicDetails>,
+}
+
+/// Panic/crash information captured when a Rust panic occurs.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct FeedbackPanicDetails {
+    pub message: String,
+    pub location: Option<String>,
+    pub backtrace: Option<String>,
+    pub timestamp: String,
+}
 
 // =============================================================================
 // Git status types
@@ -50,6 +183,43 @@ pub struct WatcherEvent {
     pub evolve_state: Option<EvolveState>,
     pub error: Option<String>,
     pub external_build_detected: bool,
+}
+
+// =============================================================================
+// Evolve streaming events
+// =============================================================================
+
+/// Event type for streaming evolve progress updates.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct EvolveEvent {
+    pub raw: String,
+    pub summary: String,
+    pub event_type: EvolveEventType,
+    pub iteration: Option<usize>,
+    pub timestamp_ms: i64,
+}
+
+/// Types of evolve events for UI rendering.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum EvolveEventType {
+    Start,
+    Iteration,
+    Thinking,
+    Reading,
+    Editing,
+    BuildCheck,
+    BuildPass,
+    BuildFail,
+    ToolCall,
+    ApiRequest,
+    ApiResponse,
+    Complete,
+    Error,
+    Info,
+    Summarizing,
+    Question,
 }
 
 // =============================================================================
@@ -432,6 +602,103 @@ pub struct CliToolsState {
 }
 
 // =============================================================================
+// Preview indicator state
+// =============================================================================
+
+/// State sent to the preview indicator window.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PreviewIndicatorState {
+    pub visible: bool,
+    pub summary: Option<String>,
+    pub files_changed: usize,
+    pub additions: Option<usize>,
+    pub deletions: Option<usize>,
+    pub is_loading: bool,
+}
+
+// =============================================================================
+// macOS permissions
+// =============================================================================
+
+/// Permission status.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Type)]
+#[serde(rename_all = "lowercase")]
+pub enum PermissionStatus {
+    Granted,
+    Denied,
+    Pending,
+    Unknown,
+}
+
+/// Individual permission state.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct Permission {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub required: bool,
+    pub can_request_programmatically: bool,
+    pub status: PermissionStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instructions: Option<String>,
+}
+
+/// All permissions state.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PermissionsState {
+    pub permissions: Vec<Permission>,
+    pub all_required_granted: bool,
+    pub checked_at: Option<i64>,
+}
+
+// =============================================================================
+// System defaults scanner
+// =============================================================================
+
+/// A single macOS system default that differs from the factory value.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SystemDefault {
+    pub nix_key: String,
+    pub label: String,
+    pub category: String,
+    pub current_value: String,
+    pub default_value: String,
+}
+
+/// Result of a full system defaults scan.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct SystemDefaultsScan {
+    pub defaults: Vec<SystemDefault>,
+    pub total_scanned: usize,
+}
+
+/// A recommended prompt based on the user's current macOS settings.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RecommendedPrompt {
+    pub id: String,
+    pub prompt_text: String,
+}
+
+// =============================================================================
+// Editor file entries
+// =============================================================================
+
+/// File or directory entry returned by the editor tree.
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct FileEntry {
+    pub path: String,
+    pub name: String,
+    pub is_dir: bool,
+}
+
+// =============================================================================
 // Debug / test helpers
 // =============================================================================
 
@@ -451,4 +718,28 @@ pub struct DebugSentryResult {
 pub struct EvolveCancelResult {
     pub ok: bool,
     pub message: String,
+}
+
+// =============================================================================
+// Git commit result
+// =============================================================================
+
+/// Result of a successful `git_commit` command.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CommitResult {
+    pub hash: String,
+    pub evolve_state: EvolveState,
+}
+
+// =============================================================================
+// Finalize apply result
+// =============================================================================
+
+/// Result of a successful `finalize_apply` or `finalize_rollback` command.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct FinalizeApplyResult {
+    pub git_status: GitStatus,
+    pub evolve_state: EvolveState,
 }

@@ -5,19 +5,11 @@
 
 use std::path::Path;
 
-use serde::Serialize;
+pub use crate::shared_types::FileEntry;
 use tauri::AppHandle;
 
 use crate::evolve::file_ops;
 use crate::store;
-
-#[derive(Debug, Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct FileEntry {
-    pub path: String,
-    pub name: String,
-    pub is_dir: bool,
-}
 
 /// Read a file relative to the config directory.
 pub async fn read_file(app: &AppHandle, rel_path: &str) -> Result<String, String> {

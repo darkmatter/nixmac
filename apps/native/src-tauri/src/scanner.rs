@@ -5,47 +5,13 @@
 //! nix-darwin `system.defaults.*` keys. Also generates valid `.nix` module
 //! files from the detected customizations.
 
-use serde::{Deserialize, Serialize};
+pub use crate::shared_types::{RecommendedPrompt, SystemDefault, SystemDefaultsScan};
 use std::collections::BTreeMap;
 use std::process::Command;
 
 // =============================================================================
 // Types
 // =============================================================================
-
-/// A single macOS system default that differs from the factory value.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SystemDefault {
-    /// nix-darwin key path, e.g. `"system.defaults.dock.autohide"`
-    pub nix_key: String,
-    /// Human-readable label, e.g. `"Automatically hide the Dock"`
-    pub label: String,
-    /// Category for grouping in the UI
-    pub category: String,
-    /// Current value on this machine (as a string)
-    pub current_value: String,
-    /// Factory default value (as a string)
-    pub default_value: String,
-}
-
-/// Result of a full system defaults scan.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SystemDefaultsScan {
-    /// Only the settings that differ from macOS factory defaults.
-    pub defaults: Vec<SystemDefault>,
-    /// Total number of keys checked across all domains.
-    pub total_scanned: usize,
-}
-
-/// A recommended prompt based on the user's current macOS settings.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RecommendedPrompt {
-    pub id: String,
-    pub prompt_text: String,
-}
 
 // =============================================================================
 // Domain value types

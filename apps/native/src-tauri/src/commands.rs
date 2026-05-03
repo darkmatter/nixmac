@@ -306,7 +306,7 @@ pub async fn git_cached(app: AppHandle) -> Result<Option<shared_types::GitStatus
 
 /// Stages all changes and creates a commit with the given message.
 #[tauri::command]
-pub async fn git_commit(app: AppHandle, message: String) -> Result<CommitResult, String> {
+pub async fn git_commit(app: AppHandle, message: String) -> Result<shared_types::CommitResult, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_commit", e))?;
     let commit_info = git::commit_all(&dir, &message).map_err(|e| capture_err("git_commit", e))?;
 
@@ -354,17 +354,10 @@ pub async fn git_commit(app: AppHandle, message: String) -> Result<CommitResult,
         shared_types::EvolveState::default()
     });
 
-    Ok(CommitResult {
+    Ok(shared_types::CommitResult {
         hash: commit_info.hash,
         evolve_state,
     })
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CommitResult {
-    pub hash: String,
-    pub evolve_state: shared_types::EvolveState,
 }
 
 /// Stashes all uncommitted changes with the given message.
@@ -626,7 +619,7 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<shared_types::
 
 /// Records build state and changeset after a successful darwin-rebuild switch.
 #[tauri::command]
-pub async fn finalize_apply(app: AppHandle) -> Result<crate::finalize_apply::ApplyResult, String> {
+pub async fn finalize_apply(app: AppHandle) -> Result<shared_types::FinalizeApplyResult, String> {
     crate::finalize_apply::finalize_apply(&app)
         .await
         .map_err(|e| capture_err("finalize_apply", e))
@@ -638,7 +631,7 @@ pub async fn finalize_rollback(
     app: AppHandle,
     store_path: Option<String>,
     changeset_id: Option<i64>,
-) -> Result<crate::finalize_apply::ApplyResult, String> {
+) -> Result<shared_types::FinalizeApplyResult, String> {
     crate::finalize_apply::finalize_rollback(&app, store_path, changeset_id)
         .await
         .map_err(|e| capture_err("finalize_rollback", e))

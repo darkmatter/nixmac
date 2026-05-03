@@ -10,44 +10,11 @@
 //! - Administrator privileges (sudo access)
 
 use anyhow::Result;
+pub use crate::shared_types::{Permission, PermissionStatus, PermissionsState};
 use log::{debug, info, warn};
-use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
-
-/// Permission status
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum PermissionStatus {
-    Granted,
-    Denied,
-    Pending,
-    Unknown,
-}
-
-/// Individual permission state
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Permission {
-    pub id: String,
-    pub name: String,
-    pub description: String,
-    pub required: bool,
-    pub can_request_programmatically: bool,
-    pub status: PermissionStatus,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub instructions: Option<String>,
-}
-
-/// All permissions state
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PermissionsState {
-    pub permissions: Vec<Permission>,
-    pub all_required_granted: bool,
-    pub checked_at: Option<i64>,
-}
 
 impl Default for PermissionsState {
     fn default() -> Self {

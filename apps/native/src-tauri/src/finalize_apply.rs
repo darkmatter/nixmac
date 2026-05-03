@@ -1,17 +1,9 @@
 //! Post-build finalization after a successful darwin-rebuild.
 
 use anyhow::{Context, Result};
-use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 
-use crate::{build_state, evolve_state, git, shared_types, store, shared_types::GitStatus};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ApplyResult {
-    pub git_status: GitStatus,
-    pub evolve_state: shared_types::EvolveState,
-}
+use crate::{build_state, evolve_state, git, shared_types, store};
 
 async fn prepare(app: &AppHandle) -> Result<(crate::shared_types::GitStatus, shared_types::EvolveState)> {
     let config_dir =
@@ -25,7 +17,7 @@ async fn prepare(app: &AppHandle) -> Result<(crate::shared_types::GitStatus, sha
 }
 
 /// Finalize a successful darwin-rebuild.
-pub async fn finalize_apply(app: &AppHandle) -> Result<ApplyResult> {
+pub async fn finalize_apply(app: &AppHandle) -> Result<shared_types::FinalizeApplyResult> {
     let (final_status, mut current_evolve) = prepare(app).await?;
 
     if current_evolve.evolution_id.is_none() {
@@ -37,7 +29,7 @@ pub async fn finalize_apply(app: &AppHandle) -> Result<ApplyResult> {
 
     build_state::record_build(app, &final_status).context("Failed to record build state")?;
     let evolve_state = evolve_state::set(app, current_evolve, &final_status.changes)?;
-    Ok(ApplyResult { git_status: final_status, evolve_state })
+    Ok(shared_types::FinalizeApplyResult { git_status: final_status, evolve_state })
 }
 
 /// Finalize a rollback store-path activation — restores the pre-evolution build record without a new build.
@@ -45,10 +37,10 @@ pub async fn finalize_rollback(
     app: &AppHandle,
     store_path: Option<String>,
     changeset_id: Option<i64>,
-) -> Result<ApplyResult> {
+) -> Result<shared_types::FinalizeApplyResult> {
     let (final_status, current_evolve) = prepare(app).await?;
     build_state::set_active_build(app, store_path, changeset_id, final_status.head_commit_hash.clone())
         .context("Failed to restore build state")?;
     let evolve_state = evolve_state::set(app, current_evolve, &final_status.changes)?;
-    Ok(ApplyResult { git_status: final_status, evolve_state })
+    Ok(shared_types::FinalizeApplyResult { git_status: final_status, evolve_state })
 }

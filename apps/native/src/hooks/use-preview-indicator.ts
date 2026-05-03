@@ -26,8 +26,8 @@ export function usePreviewIndicator() {
           visible: shouldShow,
           summary: params.summaryText,
           filesChanged,
-          additions: params.additions,
-          deletions: params.deletions,
+          additions: params.additions ?? null,
+          deletions: params.deletions ?? null,
           isLoading: params.isLoading,
         })
         .catch(() => {
