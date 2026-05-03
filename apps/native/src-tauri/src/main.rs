@@ -7,7 +7,6 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod apply_system_defaults;
 mod build_state;
 mod changes_from_diff;
 mod cli;

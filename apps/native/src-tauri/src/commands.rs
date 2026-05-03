@@ -1099,7 +1099,7 @@ pub async fn apply_system_defaults(
     app: AppHandle,
     defaults: Vec<scanner::SystemDefault>,
 ) -> Result<shared_types::ConfigEditApplyResult, String> {
-    crate::apply_system_defaults::apply_system_defaults(&app, defaults)
+    crate::evolve::apply_system_defaults::apply_system_defaults(&app, defaults)
         .await
         .map_err(|e| capture_err("apply_system_defaults", e))
 }
