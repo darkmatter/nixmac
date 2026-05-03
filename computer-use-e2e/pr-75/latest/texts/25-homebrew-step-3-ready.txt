@@ -1,6 +1,6 @@
 Computer Use state (CUA App Version: 758)
 <app_state>
-App=com.darkmatter.nixmac (pid 91331)
+App=com.darkmatter.nixmac (pid 99335)
 Window: "nixmac", App: nixmac.
 	0 standard window nixmac, Secondary Actions: Raise
 		1 scroll area
@@ -26,11 +26,11 @@ Window: "nixmac", App: nixmac.
 					21 tab (selected) Summary
 					22 tab (selectable) Diff
 				23 text Homebrew Taps
-				24 text Added tap 'steipete/tap' for Homebrew.
+				24 text Added tap 'steipete/tap' for additional formulae.
 				25 heading Commit Changes, Value: 2
 					26 text Commit Changes
 				27 container
-					28 text field (settable, string) Value: chore(tap): added tap 'steipete/tap' for Homebrew, Placeholder: Loading...
+					28 text field (settable, string) Value: chore(tap): add 'steipete/tap' for additional formulae, Placeholder: Loading...
 					29 button Commit
 				30 button Report Issue
 				31 button Console
