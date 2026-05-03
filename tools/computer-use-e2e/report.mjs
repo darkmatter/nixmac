@@ -118,6 +118,79 @@ function knownCoverageGaps(state) {
   return gaps;
 }
 
+function coverageWaivers(state) {
+  return state.coverageFreshness?.waivers || [];
+}
+
+function knownLimitCount(state) {
+  return knownCoverageGaps(state).length + coverageWaivers(state).length;
+}
+
+function prSurfaceSummary(state) {
+  const pr = state.prFocus || { configured: false, userVisibleFiles: [], scenarioKeys: [] };
+  if (!pr.configured) {
+    return {
+      label: 'No PR context',
+      detail: 'No PR metadata was provided, so this run proves baseline product behavior without PR-specific changed-file mapping.',
+      status: 'inconclusive',
+    };
+  }
+  if (!pr.userVisibleFiles?.length) {
+    return {
+      label: 'Docs/infra or unmapped surface',
+      detail: 'Changed-file metadata did not infer a user-visible app surface; baseline regression coverage still ran.',
+      status: 'pass',
+    };
+  }
+  if (!pr.scenarioKeys?.length) {
+    return {
+      label: 'User-visible, unmapped',
+      detail: `${pr.userVisibleFiles.length} user-visible changed file(s) were inferred, but no dedicated Computer Use scenario mapping exists yet.`,
+      status: 'inconclusive',
+    };
+  }
+  return {
+    label: 'Mapped user-visible PR',
+    detail: `${pr.userVisibleFiles.length} user-visible changed file(s) mapped to ${pr.scenarioKeys.length} scenario(s).`,
+    status: state.scenarios.prSpecificCoverage?.status || 'inconclusive',
+  };
+}
+
+function mergeConfidence(state, counts) {
+  const limits = knownLimitCount(state);
+  const prSurface = prSurfaceSummary(state);
+  if (state.verdict === 'fail' || counts.fail > 0) {
+    return {
+      label: 'Not acceptable for E2E gate',
+      action: 'Inspect failures before approval.',
+      detail: 'At least one scenario or visual assertion failed.',
+      tone: 'fail',
+    };
+  }
+  if (state.verdict !== 'pass' || counts.inconclusive > 0) {
+    return {
+      label: 'Needs human review',
+      action: 'Resolve inconclusive evidence before treating the gate as clean.',
+      detail: 'The run did not produce a clean deterministic pass.',
+      tone: 'inconclusive',
+    };
+  }
+  if (prSurface.status === 'inconclusive' && state.prFocus?.configured) {
+    return {
+      label: 'Baseline pass; PR focus needs review',
+      action: 'Review PR focus and known limits before approval.',
+      detail: prSurface.detail,
+      tone: 'inconclusive',
+    };
+  }
+  return {
+    label: 'Acceptable for E2E gate',
+    action: limits ? `Review ${limits} known limit${limits === 1 ? '' : 's'}, then approve if acceptable.` : 'Approve if the linked proof matches the PR intent.',
+    detail: 'The remote run passed every recorded scenario and preserved inspectable evidence.',
+    tone: 'pass',
+  };
+}
+
 function annotationClass(item) {
   return ['annotation', item.tone ? `annotation-${item.tone}` : ''].filter(Boolean).join(' ');
 }
@@ -197,10 +270,17 @@ async function renderVisualProofBoard(state, proofForScenario) {
 }
 
 function renderCoverageGaps(state) {
-  const gaps = knownCoverageGaps(state);
-  if (!gaps.length) return '<p>No known coverage gaps recorded.</p>';
+  const gaps = [
+    ...coverageWaivers(state).map((waiver) => ({
+      label: waiver.label || waiver.id,
+      status: waiver.risk === 'high' ? 'fail' : 'inconclusive',
+      detail: `Explicit waiver ${waiver.id || 'unknown'} (${waiver.risk || 'risk unset'}, owner ${waiver.owner || 'unowned'}, review by ${waiver.reviewBy || 'unset'}): ${waiver.reason || 'No reason recorded.'} Exit criteria: ${waiver.exitCriteria || 'No exit criteria recorded.'}`,
+    })),
+    ...knownCoverageGaps(state),
+  ];
+  if (!gaps.length) return '<p>No known runtime gaps or explicit waivers recorded.</p>';
   return `<table>
-    <thead><tr><th>Gap</th><th>Status</th><th>Detail</th></tr></thead>
+    <thead><tr><th>Known Limit</th><th>Status</th><th>Detail</th></tr></thead>
     <tbody>
       ${gaps.map((gap) => `<tr><td>${escapeHtml(gap.label)}</td><td><span class="verdict ${gap.status}">${escapeHtml(gap.status)}</span></td><td>${escapeHtml(gap.detail)}</td></tr>`).join('\n')}
     </tbody>
@@ -279,6 +359,73 @@ function renderPrPriority(state, proofForScenario) {
       <thead><tr><th class="scenario-col">Scenario</th><th class="status-col">Status</th><th class="grade-col">Evidence Grade</th><th class="artifacts-col">Primary Artifacts</th><th class="proof-col">What Proved It</th></tr></thead>
       <tbody>${scenarioRows(state, evidenceRows, proofForScenario)}</tbody>
     </table></div>
+  </section>`;
+}
+
+function verificationQueueItems(state) {
+  const prKeys = new Set(state.prFocus?.scenarioKeys || []);
+  const items = [];
+  for (const [key, scenario] of Object.entries(state.scenarios || {})) {
+    if (scenario.status === 'fail') items.push({ key, priority: 10, reason: 'Blocking failure', action: 'Inspect expected vs actual evidence.' });
+    else if (scenario.status === 'inconclusive') items.push({ key, priority: 20, reason: 'Inconclusive proof', action: 'Decide whether this evidence gap blocks approval.' });
+    else if (prKeys.has(key)) items.push({ key, priority: 30, reason: 'PR-focused scenario', action: 'Verify this proof covers the changed user-visible surface.' });
+  }
+  for (const key of ['saveFlow', 'rollbackCleanup', 'visualProofQuality', 'mainCoverageFreshness', 'reportInspection']) {
+    if (state.scenarios?.[key] && !items.some((item) => item.key === key)) {
+      items.push({
+        key,
+        priority: key === 'rollbackCleanup' ? 40 : 50,
+        reason: key === 'rollbackCleanup' ? 'Cleanup proof' : 'Trust-critical proof',
+        action: key === 'mainCoverageFreshness' ? 'Review explicit waivers and drift.' : 'Spot-check the linked primary artifacts.',
+      });
+    }
+  }
+  return items
+    .sort((a, b) => a.priority - b.priority || statusRank(state.scenarios[a.key]?.status) - statusRank(state.scenarios[b.key]?.status))
+    .slice(0, 8);
+}
+
+function renderVerificationQueue(state, proofForScenario) {
+  const items = verificationQueueItems(state);
+  const rows = items.length
+    ? items
+        .map((item) => {
+          const scenario = state.scenarios[item.key];
+          const proof = proofForScenario(state, item.key);
+          return `<tr id="verify-${escapeHtml(slugify(item.key))}">
+            <td>${escapeHtml(item.reason)}<br><small>${escapeHtml(item.action)}</small></td>
+            <td>${escapeHtml(scenario.label)}<br><small>${escapeHtml(scenario.notes.join(' ') || 'No notes recorded.')}</small></td>
+            <td><span class="verdict ${escapeHtml(scenario.status)}">${escapeHtml(scenario.status)}</span></td>
+            <td>${artifactLinks(state, item.key, proofForScenario)}</td>
+            <td>${escapeHtml(proof.proof)}<br><a class="back-link" href="#summary">Return to decision</a></td>
+          </tr>`;
+        })
+        .join('\n')
+    : '<tr><td colspan="5">No prioritized verification rows generated.</td></tr>';
+  const limitRows = coverageWaivers(state)
+    .map(
+      (waiver) => `<tr>
+        <td><span class="risk risk-${escapeHtml(waiver.risk || 'medium')}">${escapeHtml(waiver.risk || 'unset')}</span></td>
+        <td>${escapeHtml(waiver.label || waiver.id)}<br><small><code>${escapeHtml(waiver.id || '')}</code></small></td>
+        <td>${escapeHtml(waiver.reason || 'No reason recorded.')}</td>
+        <td>${escapeHtml(waiver.exitCriteria || 'No exit criteria recorded.')}</td>
+      </tr>`,
+    )
+    .join('\n');
+  return `<h2 id="verification-queue">Verification Queue</h2>
+  <section class="panel">
+    <p>Review these rows first. They prioritize blockers, inconclusive checks, PR-focused scenarios, cleanup proof, known limits, and sampled core passes before the raw evidence dump.</p>
+    <div class="table-scroll"><table class="scenario-table verification-table">
+      <thead><tr><th>Why First</th><th>Scenario</th><th>Status</th><th>Primary Artifacts</th><th>What To Verify</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <details ${coverageWaivers(state).length ? 'open' : ''}>
+      <summary>Explicit waivers and known limits (${escapeHtml(String(coverageWaivers(state).length))})</summary>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Risk</th><th>Limit</th><th>Reason</th><th>Exit Criteria</th></tr></thead>
+        <tbody>${limitRows || '<tr><td colspan="4">No explicit waivers recorded.</td></tr>'}</tbody>
+      </table></div>
+    </details>
   </section>`;
 }
 
@@ -411,6 +558,44 @@ function renderEvolvedCaseStrategy(state) {
   </section>`;
 }
 
+function derivedVideoChapters(state) {
+  if (state.video?.status !== 'available' || !state.screenshots?.length) return [];
+  const frameDuration = 1.1;
+  const candidates = [
+    ['launch', 'Launch'],
+    ['settings-general', 'Settings'],
+    ['typed-intent', 'Prompt'],
+    ['provider-progress-01', 'Provider'],
+    ['review-summary', 'Review summary'],
+    ['review-diff', 'Diff'],
+    ['build-boundary', 'Build boundary'],
+    ['step-3-ready', 'Step 3'],
+    ['after-commit', 'Save'],
+    ['history-restore-preview', 'Rollback'],
+    ['after-history-restore', 'Cleanup'],
+    ['HTML report inspection', 'Report inspection'],
+  ];
+  return candidates
+    .map(([label, title]) => {
+      const index = state.screenshots.findIndex((shot) => shot.label === label);
+      if (index < 0) return null;
+      return { label, title, seconds: Math.max(0, Math.round(index * frameDuration)) };
+    })
+    .filter(Boolean);
+}
+
+function renderVideoChapters(state) {
+  const chapters = derivedVideoChapters(state);
+  if (!chapters.length) return '';
+  return `<div class="video-chapters" aria-label="Derived video chapters">
+    <strong>Derived chapters</strong>
+    <small>Chapter times are derived from the screenshot slideshow frame order, not exact user-action timestamps.</small>
+    <div class="chapter-list">
+      ${chapters.map((chapter) => `<button type="button" data-video-seek="${escapeHtml(String(chapter.seconds))}">${escapeHtml(formatDuration(chapter.seconds * 1000))} ${escapeHtml(chapter.title)}</button>`).join('\n')}
+    </div>
+  </div>`;
+}
+
 function renderSummaryVideo(state) {
   const textCount = state.textSnapshots?.length || 0;
   const eventCount = state.events?.length || 0;
@@ -432,6 +617,7 @@ function renderSummaryVideo(state) {
       <div class="summary-video-copy">
         <strong>Evidence video</strong>
         <small>Screenshot walkthrough compiled from ${escapeHtml(String(state.video.frames || state.screenshots.length))} safe-to-store frames.</small>
+        ${renderVideoChapters(state)}
       </div>
       <video controls preload="metadata" src="${escapeHtml(state.video.path)}"></video>
     </div>
@@ -448,28 +634,37 @@ function renderSummaryVideo(state) {
 
 function renderExecutiveSummary(state, counts, evidenceSummary) {
   const pr = state.prFocus || { configured: false };
+  const prSurface = prSurfaceSummary(state);
+  const confidence = mergeConfidence(state, counts);
+  const limits = knownLimitCount(state);
+  const videoStatus = state.video?.status === 'available' ? 'pass' : 'inconclusive';
+  const evidenceStatus = state.scenarios.visualProofQuality?.status || 'inconclusive';
   const prLabel = pr.configured ? `PR ${pr.number || '?'}${pr.title ? ` - ${pr.title}` : ''}` : 'No pull request metadata provided';
   const prStatus = state.scenarios.prSpecificCoverage?.status || 'inconclusive';
   const coverageStatus = state.scenarios.mainCoverageFreshness?.status || 'inconclusive';
   const saveStatus = state.scenarios.saveFlow?.status || 'inconclusive';
   const rollbackStatus = state.scenarios.rollbackCleanup?.status || 'inconclusive';
+  const remoteRestoreStatus = state.cleanup?.restored ? 'pass' : state.cleanup?.attempted ? 'fail' : 'inconclusive';
   const metadataStatus = state.remoteMachine && state.remoteApp ? 'pass' : 'inconclusive';
-  const interpretation =
-    state.verdict === 'pass'
-      ? 'The PR-head run passed on the DXU remote Mac with no failed or inconclusive scenario checks.'
-      : state.verdict === 'fail'
-        ? 'The run has failures that should be inspected before treating this PR as E2E-clean.'
-        : 'The run is inconclusive; inspect setup, provider, and coverage notes before relying on it.';
   const signal = (label, status, note) => `<div class="signal signal-${escapeHtml(status)}">
     <span class="verdict ${escapeHtml(status)}">${escapeHtml(status)}</span>
     <strong>${escapeHtml(label)}</strong>
     <small>${escapeHtml(note)}</small>
   </div>`;
   return `<section id="summary" class="executive panel">
-    <div>
-      <h2>Review Summary</h2>
-      <p>${escapeHtml(interpretation)}</p>
-      <p><strong>${escapeHtml(prLabel)}</strong><br><small>Head: <code>${escapeHtml(state.github?.headSha || state.sha || 'unknown')}</code></small></p>
+    <div class="decision-header">
+      <div>
+        <h2>Reviewer Decision</h2>
+        <p><span class="verdict ${escapeHtml(confidence.tone)}">${escapeHtml(state.verdict)}</span></p>
+        <h3>${escapeHtml(confidence.label)}</h3>
+        <p>${escapeHtml(confidence.detail)}</p>
+        <p><strong>${escapeHtml(prLabel)}</strong><br><small>Head: <code>${escapeHtml(state.github?.headSha || state.sha || 'unknown')}</code></small></p>
+      </div>
+      <aside class="next-action">
+        <strong>Next action</strong>
+        <p>${escapeHtml(confidence.action)}</p>
+        <a href="#verification-queue">Open verification queue</a>
+      </aside>
     </div>
     <div class="summary" aria-label="Run summary">
       <div class="metric"><strong>${counts.pass}</strong>Passed</div>
@@ -479,14 +674,19 @@ function renderExecutiveSummary(state, counts, evidenceSummary) {
     </div>
     ${renderSummaryVideo(state)}
     <div class="signal-grid">
-      ${signal('PR focus', prStatus, pr.configured ? 'Mapped PR-relevant scenarios were evaluated.' : 'No PR metadata was provided.')}
-      ${signal('Coverage freshness', coverageStatus, 'Main user-visible surfaces remain mapped or explicitly waived.')}
+      ${signal('PR focus', prSurface.status || prStatus, `${prSurface.label}: ${prSurface.detail}`)}
+      ${signal('Scenario health', counts.fail ? 'fail' : counts.inconclusive ? 'inconclusive' : 'pass', `${counts.pass} passed, ${counts.fail} failed, ${counts.inconclusive} inconclusive.`)}
+      ${signal('Evidence health', evidenceStatus, state.scenarios.visualProofQuality?.notes?.join(' ') || 'Visual/text proof quality not recorded.')}
+      ${signal('Video', videoStatus, state.video?.status === 'available' ? `${state.video.frames || state.screenshots.length} safe-to-store frames with derived chapters.` : state.video?.note || 'No video generated.')}
+      ${signal('Known limits', limits ? 'inconclusive' : 'pass', limits ? `${limits} runtime gap(s) or explicit waiver(s) need human acceptance.` : 'No runtime gaps or explicit waivers recorded.')}
+      ${signal('Remote restore', remoteRestoreStatus, state.cleanup?.note || 'Remote app-support restore status was not recorded.')}
       ${signal('Step 3 save', saveStatus, 'Disposable config change persisted through the save path.')}
       ${signal('Rollback cleanup', rollbackStatus, 'History rollback returned the disposable config to baseline.')}
       ${signal('Remote metadata', metadataStatus, 'DXU machine, app, and process metadata were captured.')}
     </div>
     <p class="summary-links">
       <a href="#pull-request-focus">Review PR Focus</a>
+      <a href="#verification-queue">Verify Queue</a>
       <a href="#findings-first">Inspect Findings</a>
       <a href="#visual-proof">Open Visual Proof</a>
       <a href="#remote-metadata">Check Remote Metadata</a>
@@ -504,6 +704,7 @@ function renderReportNav(state, counts) {
   const riskCount = Object.values(state.v2?.scenarioContracts || {}).filter((item) => item.accessibilityRisk === 'high' || item.accessibilityRisk === 'medium').length;
   return `<aside class="report-nav" aria-label="Report navigation">
     <a href="#summary">Summary</a>
+    <a href="#verification-queue">Verify ${navBadge('', knownLimitCount(state), knownLimitCount(state) ? 'inconclusive' : 'pass')}</a>
     <a href="#timing-breakdown">Timing ${navBadge('', state.timing?.phases?.length || 0)}</a>
     <a href="#pull-request-focus">PR Focus ${navBadge('', state.prFocus?.scenarioKeys?.length || 0)}</a>
     <a href="#findings-first">Findings ${navBadge('', counts.fail + counts.inconclusive, counts.fail ? 'fail' : counts.inconclusive ? 'inconclusive' : 'pass')}</a>
@@ -513,6 +714,7 @@ function renderReportNav(state, counts) {
     <a href="#visual-proof">Visual Proof ${navBadge('', state.screenshots.length)}</a>
     <a href="#scenario-checklist">Scenario Checklist</a>
     <a href="#main-coverage">Coverage</a>
+    <a href="#coverage-gaps">Known Limits ${navBadge('', knownLimitCount(state), knownLimitCount(state) ? 'inconclusive' : '')}</a>
     <a href="#remote-metadata">Remote Metadata</a>
     <a href="#raw-evidence">Raw Evidence</a>
     <a href="#cleanup">Cleanup</a>
@@ -728,6 +930,31 @@ function renderRawEvidence(state, screenshotHtml) {
   </section>`;
 }
 
+function renderCleanupStatus(state) {
+  const rollback = state.scenarios.rollbackCleanup || { status: 'inconclusive', notes: [] };
+  const discard = state.scenarios.discard || { status: 'inconclusive', notes: [] };
+  const remoteRestoreStatus = state.cleanup?.restored ? 'pass' : state.cleanup?.attempted ? 'fail' : 'inconclusive';
+  return `<h2 id="cleanup">Cleanup / Restore Status</h2>
+  <section class="panel cleanup-grid">
+    <div class="cleanup-card">
+      <h3>Disposable Config Rollback</h3>
+      <p><span class="verdict ${escapeHtml(rollback.status)}">${escapeHtml(rollback.status)}</span></p>
+      <p>${escapeHtml(rollback.notes.join(' ') || 'No disposable rollback note recorded.')}</p>
+      <p><a class="back-link" href="#verification-queue">Review cleanup proof</a></p>
+    </div>
+    <div class="cleanup-card">
+      <h3>Discard Boundary</h3>
+      <p><span class="verdict ${escapeHtml(discard.status)}">${escapeHtml(discard.status)}</span></p>
+      <p>${escapeHtml(discard.notes.join(' ') || 'No discard-boundary note recorded.')}</p>
+    </div>
+    <div class="cleanup-card">
+      <h3>Remote App-Support Restore</h3>
+      <p><span class="verdict ${escapeHtml(remoteRestoreStatus)}">${escapeHtml(remoteRestoreStatus)}</span></p>
+      <p>${escapeHtml(state.cleanup?.note || 'No remote cleanup status recorded.')}</p>
+    </div>
+  </section>`;
+}
+
 function renderGroupedScenarioHtml(state, proofForScenario) {
   return groupedScenarios(state)
     .map(
@@ -776,6 +1003,7 @@ export async function renderReportHtml(state, { proofForScenario }) {
   const coverageGapsHtml = renderCoverageGaps(state);
   const prPriorityHtml = renderPrPriority(state, proofForScenario);
   const priorityTriageHtml = renderPriorityTriage(state, proofForScenario);
+  const verificationQueueHtml = renderVerificationQueue(state, proofForScenario);
   if (state.video?.status === 'available') evidenceSummary += ', 1 screenshot video';
   const executiveSummaryHtml = renderExecutiveSummary(state, counts, evidenceSummary);
   const reportNavHtml = renderReportNav(state, counts);
@@ -817,6 +1045,12 @@ export async function renderReportHtml(state, { proofForScenario }) {
     .metric { border: 1px solid #303640; border-radius: 8px; padding: 14px; background: #171a21; }
     .metric strong { display: block; font-size: 28px; color: #fff; margin-bottom: 4px; }
     .executive { border-color: #3c4654; background: #151922; }
+    .decision-header { display: grid; grid-template-columns: minmax(0, 1fr) minmax(230px, 0.34fr); gap: 16px; align-items: start; }
+    .decision-header h3 { font-size: 22px; margin-top: 8px; }
+    .next-action { border: 1px solid #3c4654; border-radius: 8px; padding: 14px; background: #10131a; }
+    .next-action strong { display: block; color: #fff; margin-bottom: 6px; }
+    .next-action a, .back-link { color: #a7d7ff; text-decoration: none; font-weight: 700; }
+    .next-action a:hover, .back-link:hover { text-decoration: underline; }
     .signal-grid, .quality-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; margin: 16px 0; }
     .signal { border: 1px solid #303640; border-radius: 8px; padding: 10px; background: #111318; }
     .signal strong { display: block; margin: 8px 0 4px; }
@@ -886,6 +1120,10 @@ export async function renderReportHtml(state, { proofForScenario }) {
     .summary-video-copy small { color: #b8c0cb; line-height: 1.45; }
     .summary-video video { width: 100%; max-height: 520px; border: 1px solid #2e3541; border-radius: 6px; background: #050609; }
     .summary-video-unavailable { display: block; }
+    .video-chapters { margin-top: 14px; display: grid; gap: 8px; }
+    .chapter-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chapter-list button { border: 1px solid #3c4654; border-radius: 999px; padding: 6px 9px; background: #171a21; color: #dce3ec; cursor: pointer; font: inherit; font-size: 12px; }
+    .chapter-list button:hover { border-color: #7fbfff; color: #a7d7ff; }
     .evidence-pack { margin: -8px 0 22px; display: grid; grid-template-columns: minmax(220px, 0.42fr) minmax(360px, 1fr); gap: 18px; align-items: stretch; padding: 14px 16px; border: 1px solid #2e3541; border-radius: 8px; background: #10131a; }
     .evidence-pack-copy strong { display: block; margin-bottom: 6px; }
     .evidence-pack-copy small { color: #b8c0cb; line-height: 1.45; }
@@ -898,10 +1136,16 @@ export async function renderReportHtml(state, { proofForScenario }) {
     figure { margin: 0 0 18px; }
     figcaption { margin-top: 6px; color: #c5cbd3; font-size: 13px; }
     code { color: #a7d7ff; overflow-wrap: anywhere; }
+    .copy-anchor { margin-left: 8px; color: #7fbfff; text-decoration: none; font-size: 12px; opacity: 0.65; }
+    .copy-anchor:hover { opacity: 1; }
+    .verification-table th:nth-child(1) { width: 170px; }
+    .cleanup-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .cleanup-card { border: 1px solid #303640; border-radius: 8px; padding: 12px; background: #111318; }
     ul { padding-left: 20px; }
     @media (max-width: 860px) {
       main { padding: 24px 12px 44px; }
       .report-shell { display: block; }
+      .decision-header, .cleanup-grid { grid-template-columns: 1fr; }
       .report-nav { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: nowrap; overflow-x: auto; margin: 18px 0; }
       .report-nav a { white-space: nowrap; }
       .summary-video, .evidence-pack { grid-template-columns: 1fr; }
@@ -921,6 +1165,8 @@ export async function renderReportHtml(state, { proofForScenario }) {
     ${reportNavHtml}
     <div class="report-content">
       ${prPriorityHtml}
+
+      ${verificationQueueHtml}
 
       ${timingBreakdownHtml}
 
@@ -950,13 +1196,42 @@ export async function renderReportHtml(state, { proofForScenario }) {
 
       ${rawEvidenceHtml}
 
-      <h2 id="cleanup">Cleanup / Restore Status</h2>
-      <section class="panel">
-        <p>${escapeHtml(state.cleanup.note)}</p>
-      </section>
+      ${renderCleanupStatus(state)}
     </div>
   </div>
 </main>
+<script>
+  (() => {
+    const video = document.querySelector('#summary-video video');
+    for (const button of document.querySelectorAll('[data-video-seek]')) {
+      button.addEventListener('click', () => {
+        if (!video) return;
+        video.currentTime = Number(button.dataset.videoSeek || 0);
+        video.play?.();
+      });
+    }
+    for (const heading of document.querySelectorAll('h2[id], h3[id], figure[id]')) {
+      if (heading.querySelector?.('.copy-anchor')) continue;
+      const link = document.createElement('a');
+      link.className = 'copy-anchor';
+      link.href = '#' + heading.id;
+      link.textContent = '#';
+      link.title = 'Copy link to this section';
+      link.addEventListener('click', async (event) => {
+        event.preventDefault();
+        const url = location.href.split('#')[0] + '#' + heading.id;
+        try {
+          await navigator.clipboard.writeText(url);
+          link.textContent = 'copied';
+          setTimeout(() => { link.textContent = '#'; }, 1000);
+        } catch {
+          location.hash = heading.id;
+        }
+      });
+      heading.appendChild(link);
+    }
+  })();
+</script>
 </body>
 </html>
 `;

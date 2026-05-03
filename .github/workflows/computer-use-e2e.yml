@@ -9,7 +9,7 @@ on:
       build_artifact_attempts:
         description: 'Same-head build artifact readiness attempts before remote setup'
         required: false
-        default: '1'
+        default: '60'
 
 permissions:
   contents: write
@@ -260,7 +260,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           BUILD_ARTIFACT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          BUILD_ARTIFACT_ATTEMPTS: ${{ inputs.build_artifact_attempts || vars.NIXMAC_E2E_BUILD_ARTIFACT_ATTEMPTS || '1' }}
+          BUILD_ARTIFACT_ATTEMPTS: ${{ inputs.build_artifact_attempts || vars.NIXMAC_E2E_BUILD_ARTIFACT_ATTEMPTS || '60' }}
           BUILD_ARTIFACT_SLEEP_SECONDS: ${{ vars.NIXMAC_E2E_BUILD_ARTIFACT_SLEEP_SECONDS || '30' }}
         run: |
           set -euo pipefail
@@ -281,7 +281,7 @@ jobs:
           build_run_id=""
           latest_build=""
           gate_reason=""
-          attempts="${BUILD_ARTIFACT_ATTEMPTS:-120}"
+          attempts="${BUILD_ARTIFACT_ATTEMPTS:-60}"
           sleep_seconds="${BUILD_ARTIFACT_SLEEP_SECONDS:-30}"
           if ! [[ "$attempts" =~ ^[0-9]+$ ]] || [[ "$attempts" -lt 1 ]]; then
             echo "Invalid BUILD_ARTIFACT_ATTEMPTS: $attempts" >&2
@@ -1188,6 +1188,7 @@ jobs:
           FAIL_COUNT: ${{ needs.remote-computer-use.outputs.fail || needs.prepare.outputs.fail }}
           INCONCLUSIVE_COUNT: ${{ needs.remote-computer-use.outputs.inconclusive || needs.prepare.outputs.inconclusive }}
           INDEX_URL: ${{ steps.publish-report.outputs.index_url }}
+          REPORT_DIR: ${{ needs.remote-computer-use.outputs.report_dir || needs.prepare.outputs.report_dir }}
         run: |
           set -euo pipefail
           marker="<!-- nixmac-computer-use-e2e-report -->"
@@ -1197,12 +1198,38 @@ jobs:
             inconclusive) status_label="⚠️ INCONCLUSIVE" ;;
             *) status_label="❔ UNKNOWN" ;;
           esac
+          state_file="$REPORT_DIR/state.json"
+          known_limit_count="unknown"
+          pr_surface="unknown"
+          if [[ -f "$state_file" ]]; then
+            known_limit_count="$(
+              jq -r '((.coverageFreshness.waivers // []) | length) + ([.scenarios[]? | select(.status != "pass")] | length)' "$state_file"
+            )"
+            pr_surface="$(
+              jq -r '
+                if (.prFocus.configured | not) then "no PR metadata"
+                elif ((.prFocus.userVisibleFiles // []) | length) == 0 then "docs/infra or unmapped surface"
+                elif ((.prFocus.scenarioKeys // []) | length) == 0 then "user-visible but unmapped"
+                else "mapped user-visible PR"
+                end
+              ' "$state_file"
+            )"
+          fi
+          case "$VERDICT" in
+            pass) next_action="Open the report, review the verification queue and known limits, then approve if acceptable." ;;
+            fail) next_action="Open the report and inspect failures before approval." ;;
+            inconclusive) next_action="Open the report and resolve inconclusive evidence before relying on the gate." ;;
+            *) next_action="Open the report and inspect setup/verdict details." ;;
+          esac
           body_file="$(mktemp)"
           cat > "$body_file" <<EOF
           $marker
           ### nixmac Computer Use E2E: $status_label
 
           - Result: \`$PASS_COUNT pass / $FAIL_COUNT fail / $INCONCLUSIVE_COUNT inconclusive\`
+          - Next action: $next_action
+          - PR surface: $pr_surface
+          - Known limits / non-pass items: $known_limit_count
           - Hosted HTML report: $INDEX_URL
           EOF
           body_json="$(mktemp)"
