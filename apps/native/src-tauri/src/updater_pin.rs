@@ -94,6 +94,12 @@ async fn install_version_impl(
             // Stay up long enough to serve the updater's manifest fetch, then exit.
             // Each connection responds once with the JSON; we accept up to ~3 connections
             // to absorb retries before giving up.
+            //
+            // All socket operations below are fire-and-forget: this is a minimal local
+            // HTTP server whose only job is to serve one manifest request to the updater.
+            // - set_nonblocking failure: loop just blocks on accept() briefly instead.
+            // - set_read_timeout / read failure: we skip the request and the updater retries.
+            // - write_all / flush failure: updater will retry; we move on to the next conn.
             let _ = listener.set_nonblocking(true);
             let start = Instant::now();
             let mut served = 0u32;
