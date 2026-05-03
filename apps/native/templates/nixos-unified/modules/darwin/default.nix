@@ -1,6 +1,7 @@
 { flake, ... }:
 {
   imports = [
+    ../../.nixmac
     flake.inputs.self.nixosModules.common
   ];
 

@@ -218,7 +218,7 @@ Guidance for using `ensure_secret` correctly:
 │ │ ├── default.nix # Imports all darwin modules
 │ │ ├── core.nix # Nix config, users, security
 │ │ ├── packages.nix # System packages + scripts
-│ │ ├── homebrew.nix # Homebrew taps/brews/casks
+│ │ ├── homebrew.nix # Legacy Homebrew module; prefer .nixmac/homebrew/data.json when present
 │ │ ├── fonts.nix # Font packages
 │ │ ├── defaults.nix # macOS preferences
 │ │ ├── sops-secrets.nix # SOPS secrets declarations and consumer bindings -- DO NOT write plaintext secrets
@@ -231,6 +231,7 @@ Guidance for using `ensure_secret` correctly:
 │ └── programs/ # Individual programs as single files
 ├── secrets/ # SOPS-encrypted secrets files -- DO NOT write plaintext 
 │ ├── *.yaml|*.json|*.env # SOPS-encrypted files
+├── .nixmac/ # Nixmac official modules; edit data.json only
 ```
 
 Additional files may exist and files may be located elsewhere.
@@ -239,6 +240,14 @@ Do not edit the following files unless the user or use case explicitly requests 
 
 - `flake.nix` (at the repository root)
 - `flake-modules/*.nix` (at the repository root)
+- Any `.nixmac` file except `.nixmac/<module>/data.json`
+
+`.nixmac` is reserved for Nixmac official modules. Each module lives at
+`.nixmac/<module>/` with `default.nix`, `meta.json`, and `data.json`.
+Agents may modify `.nixmac/<module>/data.json` only. Never edit Nix files or
+metadata under `.nixmac`; those files are controlled by Nixmac so modules can be
+upgraded consistently across installs. Removing a module directory uninstalls
+that module.
 
 ### Repository Conventions
 

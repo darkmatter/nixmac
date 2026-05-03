@@ -1,12 +1,25 @@
 use crate::evolve::edit_nix_file::{apply_semantic_edit, nix_quote_values};
 use crate::evolve::file_ops::resolve_path_in_dir_allow_create;
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
+use crate::shared_types::HomebrewState;
 use crate::system::nix_ast_lists::parse_string_lists_by_attrpath;
 use crate::system::scanner::inject_module_import;
-use crate::shared_types::HomebrewState;
 use crate::{managed_edits::managed_edit, shared_types};
 use anyhow::{Context, Result};
+use serde_json::{Map, Value};
 use tauri::AppHandle;
+
+const NIXMAC_HOMEBREW_DATA_PATH: &str = ".nixmac/homebrew/data.json";
+const LEGACY_HOMEBREW_NIX_TEMPLATE: &str = r#"{ config, pkgs, ... }:
+
+{
+  homebrew = {
+    taps = [ ];
+    brews = [ ];
+    casks = [ ];
+  };
+}
+"#;
 
 /// Checks if Homebrew is installed by trying to run `brew --version`.
 fn is_homebrew_installed() -> bool {
@@ -31,6 +44,71 @@ fn make_homebrew_state(is_installed: bool, source: Option<String>) -> HomebrewSt
             .unwrap()
             .as_secs() as i64,
     }
+}
+
+fn json_string_array(value: &Value, key: &str) -> Vec<String> {
+    value
+        .get(key)
+        .and_then(Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn read_homebrew_data(path: &std::path::Path) -> Result<Value> {
+    if !path.exists() {
+        let mut data = Map::new();
+        data.insert("taps".to_string(), Value::Array(Vec::new()));
+        data.insert("brews".to_string(), Value::Array(Vec::new()));
+        data.insert("casks".to_string(), Value::Array(Vec::new()));
+        return Ok(Value::Object(data));
+    }
+
+    let contents = std::fs::read_to_string(path)
+        .with_context(|| format!("failed to read Homebrew data file '{}'", path.display()))?;
+    serde_json::from_str(&contents)
+        .with_context(|| format!("failed to parse Homebrew data file '{}'", path.display()))
+}
+
+fn merge_json_array(data: &mut Value, key: &str, values: &[String]) -> Result<()> {
+    if values.is_empty() {
+        return Ok(());
+    }
+
+    let object = data
+        .as_object_mut()
+        .ok_or_else(|| anyhow::anyhow!("Homebrew data must be a JSON object"))?;
+    let entry = object
+        .entry(key.to_string())
+        .or_insert_with(|| Value::Array(Vec::new()));
+    let array = entry
+        .as_array_mut()
+        .ok_or_else(|| anyhow::anyhow!("Homebrew data key '{}' must be an array", key))?;
+
+    for item in values {
+        if !array.iter().any(|existing| existing.as_str() == Some(item)) {
+            array.push(Value::String(item.clone()));
+        }
+    }
+
+    Ok(())
+}
+
+fn load_homebrew_data_state(path: &std::path::Path) -> Result<HomebrewState> {
+    let data = read_homebrew_data(path)?;
+    let mut state = make_homebrew_state(
+        is_homebrew_installed(),
+        Some(NIXMAC_HOMEBREW_DATA_PATH.to_string()),
+    );
+    state.casks = json_string_array(&data, "casks");
+    state.brews = json_string_array(&data, "brews");
+    state.taps = json_string_array(&data, "taps");
+    Ok(state)
 }
 
 /// Gets the current homebrew state from the system and nix config, computes the diff, and returns it.
@@ -130,6 +208,7 @@ pub fn scan_homebrew() -> HomebrewState {
 /// Reads the homebrew state currently in nix config in the provided config dir, if it exists.
 /// Otherwise returns an empty state.
 /// The only supported nix config layouts for homebrew are:
+/// - .nixmac/homebrew/data.json
 /// - modules/darwin/homebrew.nix
 /// - flake-modules/darwin.nix inline lists
 ///
@@ -137,6 +216,20 @@ pub fn scan_homebrew() -> HomebrewState {
 /// path of the file or "flake-modules/darwin.nix" respectively, which can be used to determine where to write changes.
 pub fn load_nix_config_homebrew(config_dir: &std::path::Path) -> HomebrewState {
     let mut state = make_homebrew_state(is_homebrew_installed(), None);
+
+    let nixmac_homebrew_data = config_dir.join(NIXMAC_HOMEBREW_DATA_PATH);
+    if nixmac_homebrew_data.exists() {
+        match load_homebrew_data_state(&nixmac_homebrew_data) {
+            Ok(data_state) => return data_state,
+            Err(e) => {
+                log::warn!(
+                    "failed to read Nixmac Homebrew data from '{}': {}",
+                    nixmac_homebrew_data.display(),
+                    e
+                );
+            }
+        }
+    }
 
     let homebrew_nix = config_dir.join("modules/darwin/homebrew.nix");
     if homebrew_nix.exists() {
@@ -229,10 +322,82 @@ fn sanitize_homebrew_diff(
     }
 }
 
-/// Writes missing items in the diff to the nix config, using the source field to determine where to write.
-/// If the source is empty, we'll set up a new modules/darwin/homebrew.nix file and write to that.
-/// We also need to hook up to flake.nix in that case.
-/// We will use the existing editing tool in edit_nix_file.rs.
+fn ensure_nixmac_homebrew_module(config_dir: &std::path::Path) -> Result<()> {
+    let nixmac_dir = config_dir.join(".nixmac");
+    let module_dir = nixmac_dir.join("homebrew");
+    std::fs::create_dir_all(&module_dir)
+        .with_context(|| format!("failed to create directory '{}'", module_dir.display()))?;
+
+    let root_default = nixmac_dir.join("default.nix");
+    if !root_default.exists() {
+        std::fs::write(
+            &root_default,
+            include_str!("../../../templates/nix-darwin-determinate/.nixmac/default.nix"),
+        )
+        .with_context(|| format!("failed to write '{}'", root_default.display()))?;
+    }
+
+    let module_default = module_dir.join("default.nix");
+    if !module_default.exists() {
+        std::fs::write(
+            &module_default,
+            include_str!("../../../templates/nix-darwin-determinate/.nixmac/homebrew/default.nix"),
+        )
+        .with_context(|| format!("failed to write '{}'", module_default.display()))?;
+    }
+
+    let module_meta = module_dir.join("meta.json");
+    if !module_meta.exists() {
+        std::fs::write(
+            &module_meta,
+            include_str!("../../../templates/nix-darwin-determinate/.nixmac/homebrew/meta.json"),
+        )
+        .with_context(|| format!("failed to write '{}'", module_meta.display()))?;
+    }
+
+    let module_data = module_dir.join("data.json");
+    if !module_data.exists() {
+        std::fs::write(
+            &module_data,
+            include_str!("../../../templates/nix-darwin-determinate/.nixmac/homebrew/data.json"),
+        )
+        .with_context(|| format!("failed to write '{}'", module_data.display()))?;
+    }
+
+    Ok(())
+}
+
+fn apply_homebrew_data_import(
+    diff: &HomebrewState,
+    config_dir: &std::path::Path,
+    source_rel: &str,
+) -> Result<()> {
+    if source_rel == NIXMAC_HOMEBREW_DATA_PATH {
+        ensure_nixmac_homebrew_module(config_dir)?;
+    }
+
+    let source = resolve_path_in_dir_allow_create(config_dir, source_rel)
+        .with_context(|| format!("invalid homebrew source path '{}'", source_rel))?;
+    if let Some(parent) = source.parent() {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create directory '{}'", parent.display()))?;
+    }
+
+    let mut data = read_homebrew_data(&source)?;
+    merge_json_array(&mut data, "taps", &diff.taps)?;
+    merge_json_array(&mut data, "brews", &diff.brews)?;
+    merge_json_array(&mut data, "casks", &diff.casks)?;
+
+    let rendered = serde_json::to_string_pretty(&data)?;
+    std::fs::write(&source, format!("{}\n", rendered))
+        .with_context(|| format!("failed to write '{}'", source.display()))?;
+
+    Ok(())
+}
+
+/// Writes missing items in the diff to the config, using the source field to determine where to write.
+/// If the source is empty, we'll set up the official .nixmac/homebrew module and write data.json.
+/// We also hook up .nixmac to flake.nix in that case.
 #[allow(dead_code)]
 pub fn apply_homebrew_import(diff: HomebrewState, config_dir: &std::path::Path) -> Result<()> {
     if diff.casks.is_empty() && diff.brews.is_empty() && diff.taps.is_empty() {
@@ -242,21 +407,54 @@ pub fn apply_homebrew_import(diff: HomebrewState, config_dir: &std::path::Path) 
     let source_rel = diff
         .source
         .clone()
-        .unwrap_or_else(|| "modules/darwin/homebrew.nix".to_string());
+        .unwrap_or_else(|| NIXMAC_HOMEBREW_DATA_PATH.to_string());
+
+    if source_rel.ends_with(".json") {
+        if diff.source.is_none() && !config_dir.join("flake.nix").exists() {
+            return Err(anyhow::anyhow!(
+                "cannot enable Nixmac Homebrew module because '{}' does not exist",
+                config_dir.join("flake.nix").display()
+            ));
+        }
+
+        apply_homebrew_data_import(&diff, config_dir, &source_rel)?;
+
+        if diff.source.is_none() {
+            let flake_path = config_dir.join("flake.nix");
+            let flake_content = std::fs::read_to_string(&flake_path)
+                .with_context(|| format!("failed to read flake file '{}'", flake_path.display()))?;
+
+            let updated = inject_module_import(&flake_content, "./.nixmac")
+                .map_err(anyhow::Error::msg)
+                .with_context(|| {
+                    format!(
+                        "failed to inject Nixmac module import into '{}'",
+                        flake_path.display()
+                    )
+                })?;
+
+            if updated != flake_content {
+                std::fs::write(&flake_path, updated).with_context(|| {
+                    format!("failed to write flake file '{}'", flake_path.display())
+                })?;
+            }
+        }
+
+        return Ok(());
+    }
+
     let source = resolve_path_in_dir_allow_create(config_dir, &source_rel)
         .with_context(|| format!("invalid homebrew source path '{}'", source_rel))?;
     let creating_default_module = diff.source.is_none();
 
-    // If the source doesn't exist, use the homebrew.nix template from templates/nix-darwin-determinate:
+    // Legacy path: if a .nix source doesn't exist, seed a simple nix-darwin Homebrew module.
     if !source.exists() {
         if let Some(parent) = source.parent() {
             std::fs::create_dir_all(parent)
                 .with_context(|| format!("failed to create directory '{}'", parent.display()))?;
         }
 
-        let template =
-            include_str!("../../../templates/nix-darwin-determinate/modules/darwin/homebrew.nix");
-        std::fs::write(&source, template)?;
+        std::fs::write(&source, LEGACY_HOMEBREW_NIX_TEMPLATE)?;
     }
 
     // If we created a new module because there was no existing source, ensure flake imports it.
@@ -354,6 +552,52 @@ mod tests {
             std::fs::create_dir_all(parent).expect("failed to create parent directories");
         }
         std::fs::write(path, content).expect("failed to write test file");
+    }
+
+    #[test]
+    fn load_nix_config_homebrew_reads_nixmac_data_file() {
+        let temp = tempfile::tempdir().expect("tempdir should be created");
+        let data_file = temp.path().join(NIXMAC_HOMEBREW_DATA_PATH);
+        write_file(
+            &data_file,
+            r#"{
+  "taps": ["homebrew/cask-fonts"],
+  "brews": ["git", "jq"],
+  "casks": ["iterm2", "raycast"]
+}
+"#,
+        );
+
+        let state = load_nix_config_homebrew(temp.path());
+
+        assert_eq!(state.source.as_deref(), Some(NIXMAC_HOMEBREW_DATA_PATH));
+        assert_eq!(state.casks, vec!["iterm2", "raycast"]);
+        assert_eq!(state.brews, vec!["git", "jq"]);
+        assert_eq!(state.taps, vec!["homebrew/cask-fonts"]);
+    }
+
+    #[test]
+    fn load_nix_config_homebrew_prefers_nixmac_data_file() {
+        let temp = tempfile::tempdir().expect("tempdir should be created");
+        write_file(
+            &temp.path().join(NIXMAC_HOMEBREW_DATA_PATH),
+            r#"{
+  "taps": [],
+  "brews": ["git"],
+  "casks": []
+}
+"#,
+        );
+        write_file(
+            &temp.path().join("modules/darwin/homebrew.nix"),
+            r#"{ ... }: { homebrew.brews = [ "jq" ]; }
+"#,
+        );
+
+        let state = load_nix_config_homebrew(temp.path());
+
+        assert_eq!(state.source.as_deref(), Some(NIXMAC_HOMEBREW_DATA_PATH));
+        assert_eq!(state.brews, vec!["git"]);
     }
 
     #[test]
@@ -587,7 +831,7 @@ mod tests {
     }
 
     #[test]
-    fn sanitized_default_source_still_creates_module_and_injects_flake_import() {
+    fn sanitized_default_source_still_creates_nixmac_module_and_injects_flake_import() {
         let temp = tempfile::tempdir().expect("tempdir should be created");
         let flake = temp.path().join("flake.nix");
         write_file(
@@ -617,19 +861,26 @@ mod tests {
         apply_homebrew_import(sanitized, temp.path())
             .expect("sanitized apply should create default module");
 
-        let homebrew_file = temp.path().join("modules/darwin/homebrew.nix");
-        let homebrew_content =
-            std::fs::read_to_string(homebrew_file).expect("homebrew module should exist");
-        assert!(homebrew_content.contains("taps = [ \"homebrew/cask-fonts\" ];"));
-        assert!(homebrew_content.contains("brews = [ \"git\" ];"));
-        assert!(homebrew_content.contains("casks = [ \"iterm2\" ];"));
+        let data_file = temp.path().join(NIXMAC_HOMEBREW_DATA_PATH);
+        let data: Value = serde_json::from_str(
+            &std::fs::read_to_string(data_file).expect("homebrew data should exist"),
+        )
+        .expect("homebrew data should parse");
+        assert_eq!(
+            json_string_array(&data, "taps"),
+            vec!["homebrew/cask-fonts"]
+        );
+        assert_eq!(json_string_array(&data, "brews"), vec!["git"]);
+        assert_eq!(json_string_array(&data, "casks"), vec!["iterm2"]);
+        assert!(temp.path().join(".nixmac/homebrew/default.nix").exists());
+        assert!(temp.path().join(".nixmac/homebrew/meta.json").exists());
 
         let flake_content = std::fs::read_to_string(flake).expect("flake should remain readable");
-        assert!(flake_content.contains("./modules/darwin/homebrew.nix"));
+        assert!(flake_content.contains("./.nixmac"));
     }
 
     #[test]
-    fn apply_homebrew_import_creates_module_and_injects_flake_import() {
+    fn apply_homebrew_import_creates_nixmac_module_and_injects_flake_import() {
         let temp = tempfile::tempdir().expect("tempdir should be created");
         let flake = temp.path().join("flake.nix");
         write_file(
@@ -657,26 +908,44 @@ mod tests {
 
         apply_homebrew_import(diff, temp.path()).expect("apply_homebrew_import should succeed");
 
-        let homebrew_file = temp.path().join("modules/darwin/homebrew.nix");
-        let homebrew_content =
-            std::fs::read_to_string(homebrew_file).expect("homebrew module should exist");
-        assert!(
-            homebrew_content.contains("taps = [ \"homebrew/cask-fonts\" ];"),
-            "expected taps to be inserted"
+        let data_file = temp.path().join(NIXMAC_HOMEBREW_DATA_PATH);
+        let data: Value = serde_json::from_str(
+            &std::fs::read_to_string(data_file).expect("homebrew data should exist"),
+        )
+        .expect("homebrew data should parse");
+        assert_eq!(
+            json_string_array(&data, "taps"),
+            vec!["homebrew/cask-fonts"]
         );
-        assert!(
-            homebrew_content.contains("brews = [ \"git\" ];"),
-            "expected brews to be inserted"
-        );
-        assert!(
-            homebrew_content.contains("casks = [ \"iterm2\" ];"),
-            "expected casks to be inserted"
-        );
+        assert_eq!(json_string_array(&data, "brews"), vec!["git"]);
+        assert_eq!(json_string_array(&data, "casks"), vec!["iterm2"]);
 
         let flake_content = std::fs::read_to_string(flake).expect("flake should remain readable");
         assert!(
-            flake_content.contains("./modules/darwin/homebrew.nix"),
+            flake_content.contains("./.nixmac"),
             "expected flake import to be injected"
+        );
+    }
+
+    #[test]
+    fn apply_homebrew_import_without_source_requires_flake() {
+        let temp = tempfile::tempdir().expect("tempdir should be created");
+        let diff = HomebrewState {
+            casks: vec!["iterm2".to_string()],
+            brews: vec![],
+            taps: vec![],
+            source: None,
+            is_installed: true,
+            last_checked: 0,
+        };
+
+        let err = apply_homebrew_import(diff, temp.path())
+            .expect_err("default .nixmac source should require flake.nix");
+
+        assert!(err.to_string().contains("flake.nix"));
+        assert!(
+            !temp.path().join(".nixmac").exists(),
+            ".nixmac should not be written when flake.nix is missing"
         );
     }
 
