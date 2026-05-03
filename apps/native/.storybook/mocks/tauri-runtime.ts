@@ -70,9 +70,6 @@ const prefs = {
 const baseGitStatus = () => ({
   files: [],
   branch: "main",
-  branchCommitMessages: [],
-  isMainBranch: true,
-  branchHasBuiltCommit: false,
   diff: "",
   additions: 0,
   deletions: 0,
@@ -84,11 +81,23 @@ const baseGitStatus = () => ({
 const baseEvolveState = () => ({
   evolutionId: null,
   currentChangesetId: null,
-  changesetAtBuild: null,
   committable: false,
   backupBranch: null,
+  rollbackBranch: null,
+  rollbackStorePath: null,
+  rollbackChangesetId: null,
   step: "begin" as const,
 });
+
+const baseSetDirResult = () => ({
+  dir: "/Users/demo/.darwin",
+  evolveState: baseEvolveState(),
+  hosts: [...defaultHosts],
+});
+
+const okResult = () => ({ ok: true });
+
+const baseSemanticChangeMap = () => ({ groups: [], singles: [], unsummarizedHashes: [] });
 
 const summaryResponse = {
   items: [],
@@ -198,7 +207,7 @@ async function invoke(command: string, args?: Record<string, unknown>) {
     case "plugin:darwin|read_config":
       return { configDir: "/Users/demo/.darwin", hostAttr: defaultHosts[0] };
     case "config_pick_dir":
-      return "/Users/demo/.darwin";
+      return baseSetDirResult();
     case "flake_list_hosts":
     case "plugin:darwin|list_hosts":
       return [...defaultHosts];
@@ -240,9 +249,9 @@ const tauriEvent = {
 const storybookDarwinAPI = {
   config: {
     get: async () => ({ configDir: "/Users/demo/.darwin", hostAttr: defaultHosts[0] }),
-    setDir: async () => undefined,
-    pickDir: async () => "/Users/demo/.darwin",
-    setHostAttr: async () => undefined,
+    setDir: async () => baseSetDirResult(),
+    pickDir: async () => baseSetDirResult(),
+    setHostAttr: async () => okResult(),
   },
   git: {
     status: async () => baseGitStatus(),
@@ -252,48 +261,48 @@ const storybookDarwinAPI = {
     },
     cached: async () => baseGitStatus(),
     commit: async () => ({ hash: "mock123", evolveState: baseEvolveState() }),
-    stash: async () => undefined,
-    stageAll: async () => undefined,
-    unstageAll: async () => undefined,
-    restoreAll: async () => undefined,
-    checkoutNewBranch: async (branchName: string) => ({ ok: true, branch: branchName }),
-    checkoutBranch: async () => undefined,
-    checkoutMainBranch: async () => undefined,
-    mergeBranch: async () => undefined,
+    stash: async () => okResult(),
   },
   darwin: {
     evolve: async () => ({
-      changeMap: { groups: [], singles: [], unsummarizedHashes: [] },
+      changeMap: baseSemanticChangeMap(),
       gitStatus: baseGitStatus(),
       evolveState: baseEvolveState(),
       conversationalResponse: null,
       telemetry: { state: "generated" as const, iterations: 1, buildAttempts: 1, totalTokens: 500, editsCount: 1, thinkingCount: 1, toolCallsCount: 3, durationMs: 5000 },
     }),
-    evolveAnswer: async () => undefined,
-    evolveCancel: async () => undefined,
+    evolveAnswer: async () => okResult(),
+    evolveCancel: async () => ({ ok: true, message: "Cancelled" }),
     buildCheck: async () => ({ passed: true, output: "Build check passed" }),
     evolveFromManual: async () => 0,
-    apply: async () => undefined,
+    apply: async () => ({ ok: true, code: 0, stdout: "", stderr: "" }),
     applyStreamStart: async () => {
       emit("darwin:apply:end", { ok: true, code: 0 });
-      return undefined;
+      return okResult();
     },
-    applyStreamCancel: async () => undefined,
+    activateStorePath: async () => okResult(),
+    applyStreamCancel: async () => okResult(),
     finalizeApply: async () => ({ gitStatus: baseGitStatus(), evolveState: baseEvolveState() }),
-    rollbackErase: async () => ({ gitStatus: baseGitStatus(), evolveState: baseEvolveState() }),
+    finalizeRollback: async () => ({ gitStatus: baseGitStatus(), evolveState: baseEvolveState() }),
+    rollbackErase: async () => ({
+      gitStatus: baseGitStatus(),
+      evolveState: baseEvolveState(),
+      rollbackStorePath: null,
+      rollbackChangesetId: null,
+    }),
     prepareRestore: async () => undefined,
     abortRestore: async () => undefined,
     finalizeRestore: async () => baseGitStatus(),
   },
   nix: {
-    check: async () => ({ installed: true, version: "2.20.0", darwin_rebuild_available: true }),
+    check: async () => ({ installed: true, version: "2.20.0", darwinRebuildAvailable: true }),
     installStart: async () => {
       emit("nix:install:end", { ok: true, code: 0, darwin_rebuild_available: true });
-      return undefined;
+      return okResult();
     },
     prefetchDarwinRebuild: async () => {
       emit("nix:darwin-rebuild:end", { ok: true });
-      return undefined;
+      return okResult();
     },
   },
   flake: {
@@ -302,7 +311,7 @@ const storybookDarwinAPI = {
     exists: async () => true,
     existsAt: async () => true,
     bootstrapDefault: async () => undefined,
-    finalizeFlakeLock: async () => undefined,
+    finalizeFlakeLock: async () => okResult(),
   },
   path: {
     exists: async () => true,
@@ -311,9 +320,9 @@ const storybookDarwinAPI = {
   summarizedChanges: {
     findChangeMap: async () => {
       const { useWidgetStore } = await import("../../src/stores/widget-store");
-      return useWidgetStore.getState().changeMap ?? { groups: [], singles: [], unsummarizedHashes: [] };
+      return useWidgetStore.getState().changeMap ?? baseSemanticChangeMap();
     },
-    summarizeCurrent: async () => undefined,
+    summarizeCurrent: async () => baseSemanticChangeMap(),
     generateCommitMessage: async () => {
       const { useWidgetStore } = await import("../../src/stores/widget-store");
       return useWidgetStore.getState().commitMessageSuggestion ?? "chore: mock commit message";
@@ -331,15 +340,18 @@ const storybookDarwinAPI = {
     getPrefs: async () => ({ ...prefs }),
     setPrefs: async (nextPrefs: Record<string, unknown>) => {
       Object.assign(prefs, nextPrefs);
+      return okResult();
     },
   },
   models: {
     getCached: async (provider: string) => cachedModels.get(provider) ?? [],
     setCached: async (provider: string, models: string[]) => {
       cachedModels.set(provider, [...models]);
+      return okResult();
     },
     clearCached: async (provider: string) => {
       cachedModels.delete(provider);
+      return okResult();
     },
   },
   promptHistory: {
@@ -348,24 +360,28 @@ const storybookDarwinAPI = {
       if (prompt) {
         promptHistory.unshift(prompt);
       }
+      return okResult();
     },
   },
   previewIndicator: {
     show: async () => {
       previewIndicatorState = { ...previewIndicatorState, visible: true };
+      return okResult();
     },
     hide: async () => {
       previewIndicatorState = { ...previewIndicatorState, visible: false };
+      return okResult();
     },
     update: async (state: Partial<typeof previewIndicatorState>) => {
       previewIndicatorState = { ...previewIndicatorState, ...state };
+      return okResult();
     },
     getState: async () => ({ ...previewIndicatorState }),
   },
   scanner: {
     getRecommendedPrompt: async () => null,
     scanDefaults: async () => ({ defaults: [], totalScanned: 0 }),
-    applyDefaults: async () => ({ ok: true, count: 0, changeMap: { groups: [], singles: [], unsummarizedHashes: [] }, gitStatus: baseGitStatus(), evolveState: baseEvolveState() }),
+    applyDefaults: async () => ({ ok: true, count: 0, changeMap: baseSemanticChangeMap(), gitStatus: baseGitStatus(), evolveState: baseEvolveState() }),
   },
   evolveState: {
     get: async () => {
@@ -378,7 +394,7 @@ const storybookDarwinAPI = {
     clear: async () => baseEvolveState(),
   },
   cli: {
-    checkTools: async () => ({}),
+    checkTools: async () => ({ claude: true, codex: true, opencode: true }),
     listModels: async () => [],
   },
   editor: {
@@ -409,11 +425,23 @@ const storybookDarwinAPI = {
       permissions = permissions.map((permission) =>
         permission.id === "full-disk" ? { ...permission, status: "granted" } : permission,
       );
+      return undefined;
     },
   },
   history: {
     get: async () => [],
     generateFrom: async () => undefined,
+  },
+  homebrew: {
+    getStateDiff: async () => ({
+      isInstalled: true,
+      casks: [],
+      brews: [],
+      taps: [],
+      source: null,
+      lastChecked: Date.now(),
+    }),
+    applyDiff: async () => ({ ok: true, count: 0, changeMap: baseSemanticChangeMap(), gitStatus: baseGitStatus(), evolveState: baseEvolveState() }),
   },
 };
 
@@ -435,4 +463,4 @@ if (typeof window !== "undefined") {
   };
 }
 
-export {};
+export { invoke, storybookDarwinAPI, tauriEvent };
