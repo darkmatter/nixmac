@@ -128,7 +128,7 @@ jobs:
 
       - name: Decrypt E2E secrets
         env:
-          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY_DRKMTTR_DEV }}
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
         run: |
           SECRETS_FILE="ops/secrets/e2e.enc.yaml"
           if [ ! -f "$SECRETS_FILE" ]; then
