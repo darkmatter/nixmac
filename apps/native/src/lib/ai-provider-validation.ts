@@ -1,4 +1,4 @@
-import type { DarwinPrefs } from "@/tauri-api";
+import type { CliToolsState, DarwinPrefs } from "@/tauri-api";
 
 const CLI_PROVIDER_VALUES = ["claude", "codex", "opencode"] as const;
 
@@ -9,10 +9,13 @@ export function isCliProvider(provider: string): boolean {
 export function getProviderConfigInvalidReason(
   provider: string,
   prefs: Pick<DarwinPrefs, "openrouterApiKey" | "openaiApiKey" | "vllmApiBaseUrl">,
-  cliStatus: Record<string, boolean>,
+  cliStatus: CliToolsState | null | undefined,
 ): string | null {
-  if (isCliProvider(provider) && cliStatus[provider] === false) {
-    return "CLI tool not found in PATH";
+  if (isCliProvider(provider) && cliStatus != null) {
+    const key = provider as keyof CliToolsState;
+    if (cliStatus[key] === false) {
+      return "CLI tool not found in PATH";
+    }
   }
 
   if (provider === "openai") {

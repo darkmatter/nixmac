@@ -5,19 +5,28 @@ import {
   requestFullDiskAccessPermission,
 } from "tauri-plugin-macos-permissions-api";
 import type {
+  BuildCheckResult,
+  CliToolsState,
+  ConfigEditApplyResult,
   EvolutionResult,
   EvolveState,
   GitStatus,
   HomebrewState,
   HistoryItem,
+  NixCheckResult,
+  OkResult,
   RollbackResult,
   SemanticChangeMap,
   SetDirResult,
   UiPrefs as DarwinPrefs,
+  UiPrefsUpdate as DarwinPrefsUpdate,
 } from "./types/shared";
 
 export type {
+  BuildCheckResult,
   ChangeType,
+  CliToolsState,
+  ConfigEditApplyResult,
   EvolutionFailureResult,
   EvolutionResult,
   EvolutionState,
@@ -28,10 +37,13 @@ export type {
   GitStatus,
   HomebrewState,
   HistoryItem,
+  NixCheckResult,
+  OkResult,
   SemanticChangeMap,
   SetDirResult,
   SummarizedChangeSet,
   UiPrefs as DarwinPrefs,
+  UiPrefsUpdate as DarwinPrefsUpdate,
   WatcherEvent,
 } from "./types/shared";
 export type { Change, Commit } from "./types/sqlite";
@@ -49,14 +61,6 @@ export interface DarwinConfig {
 export const DEFAULT_MAX_ITERATIONS = 25;
 
 export interface ApplyResult {
-  gitStatus: GitStatus;
-  evolveState: EvolveState;
-}
-
-export interface ConfigEditApplyResult {
-  ok: boolean;
-  count: number;
-  changeMap: SemanticChangeMap;
   gitStatus: GitStatus;
   evolveState: EvolveState;
 }
@@ -235,7 +239,7 @@ export const darwinAPI = {
     get: () => invoke<DarwinConfig | null>("config_get"),
     setDir: (dir: string) => invoke<SetDirResult>("config_set_dir", { dir }),
     pickDir: () => invoke<SetDirResult | null>("config_pick_dir"),
-    setHostAttr: (host: string) => invoke("config_set_host_attr", { host }),
+    setHostAttr: (host: string) => invoke<OkResult>("config_set_host_attr", { host }),
   },
   git: {
     initIfNeeded: () => invoke("git_init_if_needed"),
@@ -243,20 +247,20 @@ export const darwinAPI = {
     statusAndCache: () => invoke<GitStatus | null>("git_status_and_cache"),
     cached: () => invoke<GitStatus | null>("git_cached"),
     commit: (message: string) => invoke<CommitResult>("git_commit", { message }),
-    stash: (message: string) => invoke("git_stash", { message }),
+    stash: (message: string) => invoke<OkResult>("git_stash", { message }),
   },
   darwin: {
     evolve: (description: string) => invoke<EvolutionResult>("darwin_evolve", { description }),
-    evolveAnswer: (answer: string) => invoke<void>("darwin_evolve_answer", { answer }),
-    buildCheck: () => invoke<{ passed: boolean; output: string }>("darwin_build_check"),
+    evolveAnswer: (answer: string) => invoke<OkResult>("darwin_evolve_answer", { answer }),
+    buildCheck: () => invoke<BuildCheckResult>("darwin_build_check"),
     evolveFromManual: () => invoke<number>("darwin_adopt_manual_changes"),
-    evolveCancel: () => invoke("darwin_evolve_cancel"),
+    evolveCancel: () => invoke<OkResult>("darwin_evolve_cancel"),
     apply: (hostOverride?: string) => invoke("darwin_apply", { hostOverride }),
     applyStreamStart: (hostOverride?: string) =>
-      invoke("darwin_apply_stream_start", { hostOverride }),
+      invoke<OkResult>("darwin_apply_stream_start", { hostOverride }),
     activateStorePath: (storePath: string) =>
-      invoke("darwin_activate_store_path", { storePath }),
-    applyStreamCancel: () => invoke("darwin_apply_stream_cancel"),
+      invoke<OkResult>("darwin_activate_store_path", { storePath }),
+    applyStreamCancel: () => invoke<OkResult>("darwin_apply_stream_cancel"),
     finalizeApply: () => invoke<ApplyResult>("finalize_apply"),
     finalizeRollback: (storePath: string | null, changesetId: number | null) =>
       invoke<ApplyResult>("finalize_rollback", { storePath, changesetId }),
@@ -266,12 +270,9 @@ export const darwinAPI = {
     finalizeRestore: (targetHash: string) => invoke<GitStatus>("finalize_restore", { targetHash }),
   },
   nix: {
-    check: () =>
-      invoke<{ installed: boolean; version?: string; darwin_rebuild_available: boolean }>(
-        "nix_check",
-      ),
-    installStart: () => invoke("nix_install_start"),
-    prefetchDarwinRebuild: () => invoke("darwin_rebuild_prefetch"),
+    check: () => invoke<NixCheckResult>("nix_check"),
+    installStart: () => invoke<OkResult>("nix_install_start"),
+    prefetchDarwinRebuild: () => invoke<OkResult>("darwin_rebuild_prefetch"),
   },
   flake: {
     listHosts: () => invoke<string[]>("flake_list_hosts"),
@@ -279,7 +280,7 @@ export const darwinAPI = {
     exists: () => invoke<boolean>("flake_exists"),
     existsAt: (dir: string) => invoke<boolean>("flake_exists_at", { dir }),
     bootstrapDefault: (hostname: string) => invoke<void>("bootstrap_default_config", { hostname }),
-    finalizeFlakeLock: () => invoke("finalize_flake_lock"),
+    finalizeFlakeLock: () => invoke<OkResult>("finalize_flake_lock"),
   },
   path: {
     exists: (dir: string) => invoke<boolean>("path_exists", { dir }),
@@ -297,29 +298,29 @@ export const darwinAPI = {
   },
   ui: {
     getPrefs: () => invoke<DarwinPrefs | null>("ui_get_prefs"),
-    setPrefs: (prefs: Partial<DarwinPrefs>) => invoke("ui_set_prefs", { prefs }),
+    setPrefs: (prefs: Partial<DarwinPrefsUpdate>) => invoke<OkResult>("ui_set_prefs", { prefs }),
   },
   models: {
     getCached: (provider: string) => invoke<string[] | null>("get_cached_models", { provider }),
     setCached: (provider: string, models: string[]) =>
-      invoke("set_cached_models", { provider, models }),
-    clearCached: (provider: string) => invoke("clear_cached_models", { provider }),
+      invoke<OkResult>("set_cached_models", { provider, models }),
+    clearCached: (provider: string) => invoke<OkResult>("clear_cached_models", { provider }),
   },
 
   cli: {
-    checkTools: () => invoke<Record<string, boolean>>("check_cli_tools"),
+    checkTools: () => invoke<CliToolsState>("check_cli_tools"),
     listModels: (tool: string) => invoke<string[]>("list_cli_models", { tool }),
   },
 
   promptHistory: {
     get: () => invoke<string[]>("get_prompt_history"),
-    add: (prompt: string) => invoke("add_to_prompt_history", { prompt }),
+    add: (prompt: string) => invoke<OkResult>("add_to_prompt_history", { prompt }),
   },
 
   previewIndicator: {
-    show: () => invoke("preview_indicator_show"),
-    hide: () => invoke("preview_indicator_hide"),
-    update: (state: PreviewIndicatorState) => invoke("preview_indicator_update", { state }),
+    show: () => invoke<OkResult>("preview_indicator_show"),
+    hide: () => invoke<OkResult>("preview_indicator_hide"),
+    update: (state: PreviewIndicatorState) => invoke<OkResult>("preview_indicator_update", { state }),
     getState: () => invoke<PreviewIndicatorState>("preview_indicator_get_state"),
   },
 

@@ -80,7 +80,7 @@ pub async fn finalize_managed_edit(
     post_edit_status: shared_types::GitStatus,
     count: usize,
     log_tag: &str,
-) -> Result<serde_json::Value> {
+) -> Result<shared_types::ConfigEditApplyResult> {
     context.evolve_state = evolve_state::set(app, context.evolve_state, &post_edit_status.changes)
         .context("Failed to update evolve state for post-edit status")?;
 
@@ -107,11 +107,11 @@ pub async fn finalize_managed_edit(
     let git_status =
         git::status_and_cache(&context.dir, app).context("Failed to get git status")?;
 
-    Ok(serde_json::json!({
-        "ok": true,
-        "count": count,
-        "changeMap": change_map,
-        "gitStatus": git_status,
-        "evolveState": context.evolve_state,
-    }))
+    Ok(shared_types::ConfigEditApplyResult {
+        ok: true,
+        count,
+        change_map,
+        git_status,
+        evolve_state: context.evolve_state,
+    })
 }

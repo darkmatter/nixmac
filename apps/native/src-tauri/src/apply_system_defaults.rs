@@ -3,7 +3,7 @@
 use anyhow::{Context, Result};
 use tauri::AppHandle;
 
-use crate::{managed_edit, scanner};
+use crate::{managed_edit, scanner, shared_types};
 
 /// Writes detected system defaults to a .nix module file, injects the import
 /// into flake.nix, creates an evolution + summarization pipeline so the
@@ -11,7 +11,7 @@ use crate::{managed_edit, scanner};
 pub async fn apply_system_defaults(
     app: &AppHandle,
     defaults: Vec<scanner::SystemDefault>,
-) -> Result<serde_json::Value> {
+) -> Result<shared_types::ConfigEditApplyResult> {
     let context = managed_edit::prepare_managed_edit(app)?;
     let dir = context.dir.clone();
 
