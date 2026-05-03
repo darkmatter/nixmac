@@ -5,8 +5,7 @@
 //! reaching back into `commands`.
 
 /// Global flag to signal evolution cancellation.
-static EVOLVE_CANCELLED: std::sync::atomic::AtomicBool =
-    std::sync::atomic::AtomicBool::new(false);
+static EVOLVE_CANCELLED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 /// Check if evolution has been cancelled.
 pub fn is_evolve_cancelled() -> bool {

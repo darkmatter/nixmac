@@ -40,7 +40,10 @@ pub async fn finalize_restore(app: &AppHandle, target_hash: String) -> Result<Gi
         {
             Ok(Ok(())) => {}
             Ok(Err(e)) => log::warn!("[finalize_restore] Failed to record restore origin: {}", e),
-            Err(e) => log::warn!("[finalize_restore] Failed to record restore origin (panic): {}", e),
+            Err(e) => log::warn!(
+                "[finalize_restore] Failed to record restore origin (panic): {}",
+                e
+            ),
         }
     }
 

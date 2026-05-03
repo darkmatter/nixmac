@@ -39,7 +39,8 @@ pub async fn analyze<R: Runtime>(
     dbg::grouped_log_placement_prompt(&placement_prompt);
 
     let (raw_placements, _usage) =
-        crate::summarize::model_calls::map_relations_to_existing(&placement_prompt, Some(app)).await?;
+        crate::summarize::model_calls::map_relations_to_existing(&placement_prompt, Some(app))
+            .await?;
 
     dbg::grouped_log_placement_output(&raw_placements);
 
@@ -52,14 +53,18 @@ pub async fn analyze<R: Runtime>(
             .map(simplify_grouped::from_change_with_summary)
             .collect::<Vec<_>>();
         let new_refs: Vec<&Change> = a.new_changes.iter().map(|p| &p.change).collect();
-        let new_hashes: Vec<String> = a.new_changes.iter()
+        let new_hashes: Vec<String> = a
+            .new_changes
+            .iter()
             .map(|p| p.change.hash[..crate::git::changes_from_diff::SHORT_HASH_LEN].to_string())
             .collect();
         a.prompt = build_prompt::evolve_group(&existing, &new_refs, &new_hashes);
     }
     for a in &mut assignments.new_groups {
         let refs: Vec<&Change> = a.changes.iter().map(|p| &p.change).collect();
-        let hashes: Vec<String> = a.changes.iter()
+        let hashes: Vec<String> = a
+            .changes
+            .iter()
             .map(|p| p.change.hash[..crate::git::changes_from_diff::SHORT_HASH_LEN].to_string())
             .collect();
         a.prompt = build_prompt::new_group(&hashes, &refs);

@@ -5,7 +5,7 @@
 //! nix-darwin `system.defaults.*` keys. Also generates valid `.nix` module
 //! files from the detected customizations.
 
-pub use crate::shared_types::{RecommendedPrompt, SystemDefault, SystemDefaultsScan};
+pub(crate) use crate::shared_types::{RecommendedPrompt, SystemDefault, SystemDefaultsScan};
 use std::collections::BTreeMap;
 use std::process::Command;
 

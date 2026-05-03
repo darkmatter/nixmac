@@ -2,28 +2,9 @@ use super::helpers::capture_err;
 use crate::bootstrap::default_config;
 use crate::storage::store;
 use crate::system::nix;
-use crate::{rebuild, shared_types, types};
+use crate::{rebuild, shared_types};
 use std::process::Command;
 use tauri::AppHandle;
-
-/// Legacy non-streaming apply command. Returns immediately with a hint to use streaming.
-#[tauri::command]
-pub async fn darwin_apply(
-    app: AppHandle,
-    host_override: Option<String>,
-) -> Result<types::DarwinApplyLegacy, String> {
-    let _dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("darwin_apply", e))?;
-    let _host = host_override
-        .or_else(|| nix::determine_host_attr(&app))
-        .ok_or_else(|| "Host attribute not found".to_string())?;
-
-    Ok(types::DarwinApplyLegacy {
-        ok: true,
-        code: Some(0),
-        stdout: Some("Use darwin_apply_stream_start for streaming output".to_string()),
-        stderr: None,
-    })
-}
 
 /// Starts a streaming darwin-rebuild switch operation.
 /// Progress is emitted via `darwin:apply:data` events, completion via `darwin:apply:end`.

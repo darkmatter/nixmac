@@ -24,6 +24,8 @@ pub mod lifecycle;
 pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 
 // Re-export public API
+use crate::shared_types::EvolutionState;
+use crate::system::nix;
 use anyhow::{anyhow, Result};
 use chrono::Utc;
 use log::{debug, error, info, warn};
@@ -40,8 +42,6 @@ use tokio::time::sleep;
 use tools::{create_tools, execute_tool, is_editing_tool, ToolResult};
 pub use types::Evolution;
 pub use types::{EvolutionProgress, EvolutionRunError};
-use crate::shared_types::EvolutionState;
-use crate::system::nix;
 
 use crate::{
     statistics, store,
@@ -88,7 +88,8 @@ fn extract_error_metadata(error: &str) -> (Option<u16>, Option<String>, Option<S
 
     // Fallback: regex for "status: 400" or "statusCode=400"
     static STATUS_RE: once_cell::sync::Lazy<Regex> = once_cell::sync::Lazy::new(|| {
-        Regex::new(r"(?i)\bstatus(?:Code|_code|:)?\s*[:=]?\s*(\d{3})\b").expect("Failed to compile status regex")
+        Regex::new(r"(?i)\bstatus(?:Code|_code|:)?\s*[:=]?\s*(\d{3})\b")
+            .expect("Failed to compile status regex")
     });
     if let Some(cap) = STATUS_RE.captures(error) {
         if let Some(m) = cap.get(1) {

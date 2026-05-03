@@ -51,10 +51,7 @@ fn build_manifest_json(version: &str, signature: &str) -> String {
 }
 
 #[cfg(not(debug_assertions))]
-async fn install_version_impl(
-    app: tauri::AppHandle,
-    version: String,
-) -> Result<(), String> {
+async fn install_version_impl(app: tauri::AppHandle, version: String) -> Result<(), String> {
     use std::io::{Read, Write};
     use std::net::TcpListener;
     use std::sync::Arc;
@@ -161,18 +158,19 @@ async fn install_version_impl(
         .map_err(|e| format!("download_and_install failed: {e}"))?;
 
     // Persist the pinned version so the silent update check at next launch can be suppressed.
-    crate::storage::store::set_string_pref(&app, crate::storage::store::PINNED_VERSION_KEY, &version)
-        .map_err(|e| format!("failed to persist pinned version: {e}"))?;
+    crate::storage::store::set_string_pref(
+        &app,
+        crate::storage::store::PINNED_VERSION_KEY,
+        &version,
+    )
+    .map_err(|e| format!("failed to persist pinned version: {e}"))?;
 
     log::info!("[developer] install_version({version}) succeeded");
     Ok(())
 }
 
 #[cfg(debug_assertions)]
-async fn install_version_impl(
-    _app: tauri::AppHandle,
-    _version: String,
-) -> Result<(), String> {
+async fn install_version_impl(_app: tauri::AppHandle, _version: String) -> Result<(), String> {
     Err("Developer install requires a release build (the updater plugin is not registered in dev mode).".to_string())
 }
 
@@ -210,9 +208,11 @@ mod tests {
 
     #[test]
     fn manifest_includes_signature_and_versioned_bundle_url() {
-        let manifest: Value =
-            serde_json::from_str(&build_manifest_json("0.21.0", "untrusted-comment\nsig-bytes"))
-                .unwrap();
+        let manifest: Value = serde_json::from_str(&build_manifest_json(
+            "0.21.0",
+            "untrusted-comment\nsig-bytes",
+        ))
+        .unwrap();
         let platform = &manifest["platforms"]["darwin-aarch64"];
         assert_eq!(platform["signature"], "untrusted-comment\nsig-bytes");
         assert_eq!(
@@ -226,8 +226,7 @@ mod tests {
         // Mirrors how production latest.json is published — Intel is intentionally
         // not supported. If this fails, the build pipeline likely changed and the
         // synthesized manifest needs to follow.
-        let manifest: Value =
-            serde_json::from_str(&build_manifest_json("0.21.0", "sig")).unwrap();
+        let manifest: Value = serde_json::from_str(&build_manifest_json("0.21.0", "sig")).unwrap();
         let platforms = manifest["platforms"].as_object().unwrap();
         assert!(platforms.contains_key("darwin-aarch64"));
         assert_eq!(platforms.len(), 1);
@@ -241,17 +240,25 @@ mod tests {
         let multiline_sig = "untrusted comment: signature from minisign secret key\nRWTLUaCT...\ntrusted comment: timestamp\nABC123==\n";
         let json_str = build_manifest_json("0.21.0", multiline_sig);
         let parsed: Value = serde_json::from_str(&json_str).expect("manifest must round-trip");
-        assert_eq!(parsed["platforms"]["darwin-aarch64"]["signature"], multiline_sig);
+        assert_eq!(
+            parsed["platforms"]["darwin-aarch64"]["signature"],
+            multiline_sig
+        );
     }
 
     #[test]
     fn manifest_notes_reference_the_real_target_version() {
         // The user-visible "notes" field should reference the version they
         // actually requested, not the sentinel-newer marker.
-        let manifest: Value =
-            serde_json::from_str(&build_manifest_json("0.21.0", "sig")).unwrap();
+        let manifest: Value = serde_json::from_str(&build_manifest_json("0.21.0", "sig")).unwrap();
         let notes = manifest["notes"].as_str().unwrap();
-        assert!(notes.contains("0.21.0"), "notes should reference target version: {notes}");
-        assert!(!notes.contains(FAKE_NEWER_VERSION), "notes should not leak the sentinel");
+        assert!(
+            notes.contains("0.21.0"),
+            "notes should reference target version: {notes}"
+        );
+        assert!(
+            !notes.contains(FAKE_NEWER_VERSION),
+            "notes should not leak the sentinel"
+        );
     }
 }

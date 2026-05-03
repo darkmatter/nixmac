@@ -1,6 +1,5 @@
 //! Converts a `SemanticChangeMap` into a `SimplifiedMap` used by AI to extract meaning
 
-
 #![allow(dead_code)]
 
 use crate::git::changes_from_diff::SHORT_HASH_LEN;

@@ -1,3 +1,4 @@
+#[cfg(debug_assertions)]
 use crate::shared_types;
 
 /// Test command to trigger a panic and verify the panic handler works.

@@ -275,7 +275,6 @@ const storybookDarwinAPI = {
     evolveCancel: async () => ({ ok: true, message: "Cancelled" }),
     buildCheck: async () => ({ passed: true, output: "Build check passed" }),
     evolveFromManual: async () => 0,
-    apply: async () => ({ ok: true, code: 0, stdout: "", stderr: "" }),
     applyStreamStart: async () => {
       emit("darwin:apply:end", { ok: true, code: 0 });
       return okResult();

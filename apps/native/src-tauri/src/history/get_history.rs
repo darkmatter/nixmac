@@ -5,7 +5,9 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use tauri::{AppHandle, Runtime};
 
-pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::shared_types::HistoryItem>> {
+pub async fn get_history<R: Runtime>(
+    app: &AppHandle<R>,
+) -> Result<Vec<crate::shared_types::HistoryItem>> {
     let config_dir = crate::storage::store::get_config_dir(app)?;
     let db_path = crate::db::get_db_path(app)?;
 
@@ -31,11 +33,20 @@ pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::sh
                 .flatten()
         });
 
-        let raw_changes = git_commits.get(i + 1).and_then(|parent| {
-            crate::git::commit_diff(&config_dir, &parent.hash, &git_commit.hash)
-                .ok()
-                .map(|diff| crate::git::changes_from_diff::changes_from_diff(&diff, git_commit.created_at, true))
-        }).unwrap_or_default();
+        let raw_changes = git_commits
+            .get(i + 1)
+            .and_then(|parent| {
+                crate::git::commit_diff(&config_dir, &parent.hash, &git_commit.hash)
+                    .ok()
+                    .map(|diff| {
+                        crate::git::changes_from_diff::changes_from_diff(
+                            &diff,
+                            git_commit.created_at,
+                            true,
+                        )
+                    })
+            })
+            .unwrap_or_default();
 
         let file_count = {
             let unique: HashSet<&str> = raw_changes.iter().map(|c| c.filename.as_str()).collect();
@@ -43,11 +54,16 @@ pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::sh
         };
 
         let (change_map, unsummarized_hashes) = if let Some(ref parent) = parent_db {
-            let diff_hashes: Vec<String> = raw_changes.iter()
-            .filter(|c| !crate::git::changes_from_diff::is_sensitive_or_opaque(c))
-            .map(|c| c.hash.clone())
-            .collect();
-            match crate::summarize::find_existing::by_base_with_hashes(&db_path, parent.id, &diff_hashes) {
+            let diff_hashes: Vec<String> = raw_changes
+                .iter()
+                .filter(|c| !crate::git::changes_from_diff::is_sensitive_or_opaque(c))
+                .map(|c| c.hash.clone())
+                .collect();
+            match crate::summarize::find_existing::by_base_with_hashes(
+                &db_path,
+                parent.id,
+                &diff_hashes,
+            ) {
                 Ok(found) => {
                     let grouped = crate::summarize::group_existing::from_change_sets(vec![found]);
                     let unsummarized = grouped.unsummarized_hashes.clone();
@@ -79,9 +95,9 @@ pub async fn get_history<R: Runtime>(app: &AppHandle<R>) -> Result<Vec<crate::sh
 
         let tags = crate::git::read_tags(&config_dir, &git_commit.hash);
         let is_base = tags.iter().any(|t| t.starts_with("nixmac-base-"));
-        let is_external = !tags.iter().any(|t| {
-            t.starts_with("nixmac-commit-") || t.starts_with("nixmac-base-")
-        });
+        let is_external = !tags
+            .iter()
+            .any(|t| t.starts_with("nixmac-commit-") || t.starts_with("nixmac-base-"));
 
         origin_hashes.push(origin_hash);
         entries.push(crate::shared_types::HistoryItem {
@@ -112,12 +128,15 @@ fn populate_restore_history_items(
     entries: &mut [crate::shared_types::HistoryItem],
     origin_hashes: Vec<Option<String>>,
 ) {
-    let hash_to_idx: HashMap<&str, usize> =
-        entries.iter().enumerate().map(|(i, e)| (e.hash.as_str(), i)).collect();
+    let hash_to_idx: HashMap<&str, usize> = entries
+        .iter()
+        .enumerate()
+        .map(|(i, e)| (e.hash.as_str(), i))
+        .collect();
 
     type Inherited = (
         usize,
-        String,  // ultimate origin hash — always the deepest non-restore ancestor
+        String, // ultimate origin hash — always the deepest non-restore ancestor
         Option<String>,
         Option<crate::shared_types::SemanticChangeMap>,
         Vec<crate::sqlite_types::Change>,
@@ -133,7 +152,7 @@ fn populate_restore_history_items(
                 Some(ultimate_idx) => {
                     inherited.push((
                         i,
-                        entries[ultimate_idx].hash.clone(),  // ultimate, not direct
+                        entries[ultimate_idx].hash.clone(), // ultimate, not direct
                         entries[ultimate_idx].message.clone(),
                         entries[ultimate_idx].change_map.clone(),
                         entries[ultimate_idx].raw_changes.clone(),
@@ -165,7 +184,16 @@ fn populate_restore_history_items(
         entries[k].is_undone = true;
     }
 
-    for (i, origin_hash, origin_message, change_map, raw_changes, unsummarized_hashes, file_count) in inherited {
+    for (
+        i,
+        origin_hash,
+        origin_message,
+        change_map,
+        raw_changes,
+        unsummarized_hashes,
+        file_count,
+    ) in inherited
+    {
         let short_hash = &origin_hash[..origin_hash.len().min(8)];
         entries[i].message = Some(format!("Restore commit {short_hash}"));
         entries[i].origin_message = origin_message;

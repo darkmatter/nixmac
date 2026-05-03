@@ -1,6 +1,6 @@
 use super::helpers::capture_err;
-use crate::storage::store;
 use crate::shared_types;
+use crate::storage::store;
 use tauri::AppHandle;
 
 /// Returns all UI preferences.
@@ -94,8 +94,7 @@ pub async fn ui_set_prefs(
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
     if let Some(evolve_model) = prefs.evolve_model {
-        store::set_evolve_model(&app, &evolve_model)
-            .map_err(|e| capture_err("ui_set_prefs", e))?;
+        store::set_evolve_model(&app, &evolve_model).map_err(|e| capture_err("ui_set_prefs", e))?;
     }
     if let Some(summary_provider) = prefs.summary_provider {
         store::set_summary_provider(&app, &summary_provider)
@@ -122,8 +121,7 @@ pub async fn ui_set_prefs(
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
     if let Some(vllm_api_key) = prefs.vllm_api_key {
-        store::set_vllm_api_key(&app, &vllm_api_key)
-            .map_err(|e| capture_err("ui_set_prefs", e))?;
+        store::set_vllm_api_key(&app, &vllm_api_key).map_err(|e| capture_err("ui_set_prefs", e))?;
     }
     if let Some(send_diagnostics) = prefs.send_diagnostics {
         store::set_send_diagnostics(&app, send_diagnostics)

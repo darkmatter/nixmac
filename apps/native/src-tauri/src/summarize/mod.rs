@@ -41,19 +41,28 @@ pub async fn new_changeset<R: Runtime>(
             .into_iter()
             .partition(crate::git::changes_from_diff::is_sensitive_or_opaque);
         return pipelines::fresh_changeset::analyze(
-            changes, app, &db_path, None, None, None, evolution_id,
+            changes,
+            app,
+            &db_path,
+            None,
+            None,
+            None,
+            evolution_id,
         )
         .await;
     }
 
     // Extract before `from_change_sets` moves `existing`.
-    let existing_id = existing.iter()
+    let existing_id = existing
+        .iter()
         .filter_map(|e| e.change_set.as_ref().map(|cs| cs.id))
         .next();
 
     let semantic_map = group_existing::from_change_sets(existing);
-    let (missed_changes, unfound) =
-        crate::git::changes_from_diff::filter_by_hashes(all_changes, &semantic_map.unsummarized_hashes);
+    let (missed_changes, unfound) = crate::git::changes_from_diff::filter_by_hashes(
+        all_changes,
+        &semantic_map.unsummarized_hashes,
+    );
     if let Some(unfound_hashes) = unfound {
         log::warn!(
             "[new_changeset] {} missed hash(es) not found in current diff: {:?}",
@@ -68,8 +77,7 @@ pub async fn new_changeset<R: Runtime>(
         return Ok(existing_id);
     }
 
-    let Some(base_commit_id) =
-        crate::db::commits::store_head_commit(&db_path, &config_dir, None)?
+    let Some(base_commit_id) = crate::db::commits::store_head_commit(&db_path, &config_dir, None)?
     else {
         return Ok(None);
     };

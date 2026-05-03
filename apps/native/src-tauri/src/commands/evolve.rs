@@ -10,33 +10,34 @@ pub async fn darwin_evolve(
     // Reset cancellation flag at the start of a new evolution
     evolve::session_control::set_evolve_cancelled(false);
 
-    let result = match evolve::lifecycle::backup_evolve_and_record_changeset(&app, &description).await {
-        Ok(result) => result,
-        Err(failure) => {
-            let is_cancelled = evolve::session_control::is_evolve_cancelled()
-                || failure
-                    .error
-                    .to_ascii_lowercase()
-                    .contains("cancelled by user");
+    let result =
+        match evolve::lifecycle::backup_evolve_and_record_changeset(&app, &description).await {
+            Ok(result) => result,
+            Err(failure) => {
+                let is_cancelled = evolve::session_control::is_evolve_cancelled()
+                    || failure
+                        .error
+                        .to_ascii_lowercase()
+                        .contains("cancelled by user");
 
-            if is_cancelled {
-                log::info!(
-                    "[darwin_evolve] cancelled after {} iterations and {} build attempts",
+                if is_cancelled {
+                    log::info!(
+                        "[darwin_evolve] cancelled after {} iterations and {} build attempts",
+                        failure.telemetry.iterations,
+                        failure.telemetry.build_attempts
+                    );
+                    // Don't send to Sentry if it was a user-initiated cancellation
+                    return Err(failure.error);
+                }
+
+                log::warn!(
+                    "[darwin_evolve] failed after {} iterations and {} build attempts",
                     failure.telemetry.iterations,
                     failure.telemetry.build_attempts
                 );
-                // Don't send to Sentry if it was a user-initiated cancellation
-                return Err(failure.error);
+                return Err(capture_err("darwin_evolve", failure.error));
             }
-
-            log::warn!(
-                "[darwin_evolve] failed after {} iterations and {} build attempts",
-                failure.telemetry.iterations,
-                failure.telemetry.build_attempts
-            );
-            return Err(capture_err("darwin_evolve", failure.error));
-        }
-    };
+        };
 
     Ok(result)
 }

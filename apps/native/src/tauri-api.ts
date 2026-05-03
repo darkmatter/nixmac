@@ -10,7 +10,6 @@ import type {
   CommitResult,
   Config as DarwinConfig,
   ConfigEditApplyResult,
-  DarwinApplyLegacy,
   EvolveCancelResult,
   EvolutionResult,
   EvolveState,
@@ -45,8 +44,11 @@ export type {
   CliToolsState,
   CommitResult,
   Config as DarwinConfig,
+  ConfigChangedEvent,
   ConfigEditApplyResult,
-  DarwinApplyLegacy,
+  DarwinApplyDataEvent,
+  DarwinApplyEndEvent,
+  DarwinApplySummaryEvent,
   EvolveCancelResult,
   EvolveEvent,
   EvolveEventType,
@@ -70,15 +72,23 @@ export type {
   HomebrewState,
   HistoryItem,
   NixCheckResult,
+  NixDarwinRebuildEndEvent,
+  NixInstallEndEvent,
+  NixInstallErrorType,
+  NixInstallPhase,
+  NixInstallProgressEvent,
   OkResult,
   Permission,
   PermissionStatus,
   PermissionsState,
   PreviewIndicatorState,
   RecommendedPrompt,
+  RebuildErrorType,
   SemanticChangeMap,
   SetDirResult,
+  SummarizerUpdateEvent,
   SummarizedChangeSet,
+  RustPanicEvent,
   SystemDefault,
   SystemDefaultsScan,
   UiPrefs as DarwinPrefs,
@@ -88,9 +98,6 @@ export type {
 export type { Change, Commit } from "./types/sqlite";
 
 export const DEFAULT_MAX_ITERATIONS = 25;
-
-/** @deprecated Use FinalizeApplyResult from ./types/shared */
-export type ApplyResult = FinalizeApplyResult;
 
 // =============================================================================
 // Feedback Types
@@ -120,10 +127,6 @@ export interface FeedbackMetadata {
 export const EVOLVE_EVENT_CHANNEL = "darwin:evolve:event";
 export const CONFIG_CHANGED_CHANNEL = "config:changed";
 
-export interface ConfigChangedEvent {
-  hasChanges: boolean;
-}
-
 export const darwinAPI = {
   config: {
     get: () => invoke<DarwinConfig>("config_get"),
@@ -144,7 +147,6 @@ export const darwinAPI = {
     buildCheck: () => invoke<BuildCheckResult>("darwin_build_check"),
     evolveFromManual: () => invoke<number>("darwin_adopt_manual_changes"),
     evolveCancel: () => invoke<EvolveCancelResult>("darwin_evolve_cancel"),
-    apply: (hostOverride?: string) => invoke<DarwinApplyLegacy>("darwin_apply", { hostOverride }),
     applyStreamStart: (hostOverride?: string) =>
       invoke<OkResult>("darwin_apply_stream_start", { hostOverride }),
     activateStorePath: (storePath: string) =>

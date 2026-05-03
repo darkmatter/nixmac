@@ -4,16 +4,16 @@
 //! The `#[serde(rename = "...")]` attributes ensure camelCase naming
 //! for JavaScript/TypeScript consumption.
 
-use crate::utils as global_utils;
-pub use crate::shared_types::{
-    Config, DarwinApplyLegacy, EvolveEvent, EvolveEventType, FeedbackAiProviderModelInfo,
-    FeedbackFlakeInputEntry, FeedbackFlakeInputsSnapshot, FeedbackMetadata, FeedbackMetadataRequest,
-    FeedbackPanicDetails, FeedbackSystemInfo, FeedbackUsageStats,
+pub(crate) use crate::shared_types::{
+    Config, EvolveEvent, EvolveEventType, FeedbackAiProviderModelInfo, FeedbackFlakeInputEntry,
+    FeedbackFlakeInputsSnapshot, FeedbackMetadata, FeedbackMetadataRequest, FeedbackSystemInfo,
+    FeedbackUsageStats,
 };
+use crate::utils as global_utils;
 use tauri::Manager;
 
 impl EvolveEvent {
-    pub fn new(
+    pub(crate) fn new(
         event_type: EvolveEventType,
         raw: impl Into<String>,
         summary: impl Into<String>,
@@ -30,7 +30,7 @@ impl EvolveEvent {
         }
     }
 
-    pub fn start(start_time: i64, model: &str, prompt: &str) -> Self {
+    pub(crate) fn start(start_time: i64, model: &str, prompt: &str) -> Self {
         Self::new(
             EvolveEventType::Start,
             format!(
@@ -43,7 +43,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn iteration(start_time: i64, iter: usize, messages_count: usize) -> Self {
+    pub(crate) fn iteration(start_time: i64, iter: usize, messages_count: usize) -> Self {
         Self::new(
             EvolveEventType::Iteration,
             format!("Iteration {} | messages={}", iter, messages_count),
@@ -53,7 +53,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn thinking(start_time: i64, iter: usize, category: &str, thought: &str) -> Self {
+    pub(crate) fn thinking(start_time: i64, iter: usize, category: &str, thought: &str) -> Self {
         let summary = match category {
             "planning" => "Planning approach...",
             "analysis" => "Analyzing the codebase...",
@@ -70,7 +70,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn reading(start_time: i64, iter: usize, path: &str) -> Self {
+    pub(crate) fn reading(start_time: i64, iter: usize, path: &str) -> Self {
         Self::new(
             EvolveEventType::Reading,
             format!("Reading file: {}", path),
@@ -80,7 +80,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn editing(start_time: i64, iter: usize, path: &str) -> Self {
+    pub(crate) fn editing(start_time: i64, iter: usize, path: &str) -> Self {
         Self::new(
             EvolveEventType::Editing,
             format!("Editing file: {}", path),
@@ -90,7 +90,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn build_pass(start_time: i64, iter: usize) -> Self {
+    pub(crate) fn build_pass(start_time: i64, iter: usize) -> Self {
         Self::new(
             EvolveEventType::BuildPass,
             "Build check passed".to_string(),
@@ -100,7 +100,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn build_fail(start_time: i64, iter: usize, error_preview: &str) -> Self {
+    pub(crate) fn build_fail(start_time: i64, iter: usize, error_preview: &str) -> Self {
         Self::new(
             EvolveEventType::BuildFail,
             format!("Build check failed: {}", error_preview),
@@ -110,7 +110,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn tool_call(start_time: i64, iter: usize, tool: &str, args_summary: &str) -> Self {
+    pub(crate) fn tool_call(start_time: i64, iter: usize, tool: &str, args_summary: &str) -> Self {
         let summary = match tool {
             "read_file" => "Reading file...".to_string(),
             "edit_file" => "Editing file...".to_string(),
@@ -135,7 +135,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn api_request(start_time: i64, iter: usize) -> Self {
+    pub(crate) fn api_request(start_time: i64, iter: usize) -> Self {
         Self::new(
             EvolveEventType::ApiRequest,
             "Sending request to AI provider".to_string(),
@@ -145,7 +145,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn api_response(start_time: i64, iter: usize, tokens: u32) -> Self {
+    pub(crate) fn api_response(start_time: i64, iter: usize, tokens: u32) -> Self {
         Self::new(
             EvolveEventType::ApiResponse,
             format!("Received response | tokens used: {}", tokens),
@@ -155,7 +155,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn complete(start_time: i64, iter: usize, summary_text: &str) -> Self {
+    pub(crate) fn complete(start_time: i64, iter: usize, summary_text: &str) -> Self {
         Self::new(
             EvolveEventType::Complete,
             format!("Evolution complete: {}", summary_text),
@@ -165,7 +165,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn error(start_time: i64, iter: Option<usize>, summary: &str, raw: &str) -> Self {
+    pub(crate) fn error(start_time: i64, iter: Option<usize>, summary: &str, raw: &str) -> Self {
         let mut summary = summary.to_string();
         global_utils::truncate_utf8(&mut summary, 100);
         Self::new(
@@ -177,7 +177,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn info(start_time: i64, iter: Option<usize>, message: &str) -> Self {
+    pub(crate) fn info(start_time: i64, iter: Option<usize>, message: &str) -> Self {
         Self::new(
             EvolveEventType::Info,
             message.to_string(),
@@ -187,7 +187,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn question(
+    pub(crate) fn question(
         start_time: i64,
         iter: usize,
         question: &str,
@@ -206,7 +206,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn analyzing(start_time: i64, iter: Option<usize>) -> Self {
+    pub(crate) fn analyzing(start_time: i64, iter: Option<usize>) -> Self {
         Self::new(
             EvolveEventType::Summarizing,
             "Analyzing changes...".to_string(),
@@ -228,10 +228,10 @@ fn shorten_path(path: &str) -> &str {
 }
 
 /// Event channel for evolve events
-pub const EVOLVE_EVENT_CHANNEL: &str = "darwin:evolve:event";
+pub(crate) const EVOLVE_EVENT_CHANNEL: &str = "darwin:evolve:event";
 
 /// Helper to emit evolve events to the frontend
-pub fn emit_evolve_event<R: tauri::Runtime>(app: &tauri::AppHandle<R>, event: EvolveEvent) {
+pub(crate) fn emit_evolve_event<R: tauri::Runtime>(app: &tauri::AppHandle<R>, event: EvolveEvent) {
     if let Some(window) = app.get_webview_window("main") {
         if let Err(e) = tauri::Emitter::emit(&window, EVOLVE_EVENT_CHANNEL, &event) {
             log::warn!("Failed to emit evolve event: {}", e);

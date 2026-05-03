@@ -7,17 +7,19 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+// Keep top-level declarations scoped to first-level domain modules. Leaf modules
+// are declared by their parent `mod.rs` files so rust-analyzer resolves them via Cargo.
+mod ai;
+mod bootstrap;
 mod cli;
 mod commands;
 mod db;
-mod bootstrap;
 mod editor;
 mod evolve;
-mod managed_edits;
 mod feedback;
 mod git;
 mod history;
-mod ai;
+mod managed_edits;
 mod panic_handler;
 mod peek;
 mod rebuild;
@@ -323,7 +325,6 @@ fn run_gui_mode(
             commands::evolve::darwin_evolve,
             commands::evolve::darwin_evolve_cancel,
             commands::evolve::darwin_evolve_answer,
-            commands::apply::darwin_apply,
             commands::apply::darwin_apply_stream_start,
             commands::apply::darwin_activate_store_path,
             commands::apply::darwin_apply_stream_cancel,
@@ -464,8 +465,7 @@ fn run_gui_mode(
 
             let _tray = TrayIconBuilder::new()
                 .icon(
-                    Image::from_path("icons/outline@2x.png")
-                        .unwrap_or_else(|_| {
+                    Image::from_path("icons/outline@2x.png").unwrap_or_else(|_| {
                         app.default_window_icon()
                             .expect("app must have a default icon bundled")
                             .clone()

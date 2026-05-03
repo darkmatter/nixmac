@@ -30,7 +30,10 @@ pub async fn git_cached(app: AppHandle) -> Result<Option<shared_types::GitStatus
 
 /// Stages all changes and creates a commit with the given message.
 #[tauri::command]
-pub async fn git_commit(app: AppHandle, message: String) -> Result<shared_types::CommitResult, String> {
+pub async fn git_commit(
+    app: AppHandle,
+    message: String,
+) -> Result<shared_types::CommitResult, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_commit", e))?;
     let commit_info = git::commit_all(&dir, &message).map_err(|e| capture_err("git_commit", e))?;
 

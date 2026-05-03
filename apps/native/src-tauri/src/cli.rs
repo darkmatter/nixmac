@@ -164,7 +164,9 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
     // Resolve effective values: prefer CLI-provided, otherwise read from store if available
     let effective_evolve_provider: Option<String> = match &evolve_provider {
         Some(p) => Some(p.clone()),
-        None => crate::storage::store::get_evolve_provider(app).ok().flatten(),
+        None => crate::storage::store::get_evolve_provider(app)
+            .ok()
+            .flatten(),
     };
 
     let effective_evolve_model: Option<String> = match &evolve_model {
@@ -174,7 +176,9 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
 
     let effective_summary_provider: Option<String> = match &summary_provider {
         Some(p) => Some(p.clone()),
-        None => crate::storage::store::get_summary_provider(app).ok().flatten(),
+        None => crate::storage::store::get_summary_provider(app)
+            .ok()
+            .flatten(),
     };
 
     let effective_summary_model: Option<String> = match &summary_model {
@@ -185,9 +189,8 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
     // Effective max iterations: prefer CLI value, otherwise read from store (has default)
     let effective_max_iterations: usize = match max_iterations {
         Some(v) => v,
-        None => {
-            crate::storage::store::get_max_iterations(app).unwrap_or(crate::storage::store::DEFAULT_MAX_ITERATIONS)
-        }
+        None => crate::storage::store::get_max_iterations(app)
+            .unwrap_or(crate::storage::store::DEFAULT_MAX_ITERATIONS),
     };
 
     // Max iterations

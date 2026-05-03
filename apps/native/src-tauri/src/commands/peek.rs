@@ -27,7 +27,7 @@ pub async fn preview_indicator_hide(app: AppHandle) -> Result<shared_types::OkRe
 #[tauri::command]
 pub async fn preview_indicator_update(
     app: AppHandle,
-    state: peek::PreviewIndicatorState,
+    state: shared_types::PreviewIndicatorState,
 ) -> Result<shared_types::OkResult, String> {
     peek::update_preview_indicator(&app, state)
         .map_err(|e| capture_err("preview_indicator_update", e))?;
@@ -36,14 +36,16 @@ pub async fn preview_indicator_update(
 
 /// Sets whether there are uncommitted changes (used by Rust to track state).
 #[tauri::command]
-pub async fn set_has_uncommitted_changes(has_changes: bool) -> Result<shared_types::OkResult, String> {
+pub async fn set_has_uncommitted_changes(
+    has_changes: bool,
+) -> Result<shared_types::OkResult, String> {
     peek::set_has_uncommitted_changes(has_changes);
     Ok(shared_types::OkResult::yes())
 }
 
 /// Gets the current preview indicator state (for window to call on mount).
 #[tauri::command]
-pub async fn preview_indicator_get_state() -> Result<peek::PreviewIndicatorState, String> {
+pub async fn preview_indicator_get_state() -> Result<shared_types::PreviewIndicatorState, String> {
     log::debug!("preview_indicator_get_state called");
     let state = peek::get_preview_indicator_state();
     log::debug!("Current preview indicator state: {:?}", state);

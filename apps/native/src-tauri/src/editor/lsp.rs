@@ -169,7 +169,10 @@ async fn read_lsp_message<R: tokio::io::AsyncRead + Unpin>(
     }
 
     let length = content_length.ok_or_else(|| {
-        std::io::Error::new(std::io::ErrorKind::InvalidData, "Missing Content-Length header")
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "Missing Content-Length header",
+        )
     })?;
 
     // Read exactly `length` bytes for the body

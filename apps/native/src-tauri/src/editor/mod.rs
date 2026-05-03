@@ -7,7 +7,7 @@ pub mod lsp;
 
 use std::path::Path;
 
-pub use crate::shared_types::FileEntry;
+pub(crate) use crate::shared_types::FileEntry;
 use tauri::AppHandle;
 
 use crate::evolve::file_ops;
@@ -21,8 +21,7 @@ pub async fn read_file(app: &AppHandle, rel_path: &str) -> Result<String, String
     let full_path =
         file_ops::resolve_existing_path_in_dir(base, rel_path).map_err(|e| e.to_string())?;
 
-    std::fs::read_to_string(&full_path)
-        .map_err(|e| format!("Failed to read {}: {}", rel_path, e))
+    std::fs::read_to_string(&full_path).map_err(|e| format!("Failed to read {}: {}", rel_path, e))
 }
 
 /// Write a file relative to the config directory.
@@ -44,8 +43,7 @@ pub async fn write_file(app: &AppHandle, rel_path: &str, content: &str) -> Resul
         }
     }
 
-    std::fs::write(&full_path, content)
-        .map_err(|e| format!("Failed to write {}: {}", rel_path, e))
+    std::fs::write(&full_path, content).map_err(|e| format!("Failed to write {}: {}", rel_path, e))
 }
 
 /// List files in the config directory recursively.

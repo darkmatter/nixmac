@@ -1,6 +1,6 @@
 use super::{AiProvider, ProviderError, ProviderResponse};
-use crate::evolve::messages::{Message, Tool as GenericTool, ToolCall};
 use crate::ai::providers::cli::{run_cli_process, CliTool};
+use crate::evolve::messages::{Message, Tool as GenericTool, ToolCall};
 use anyhow::anyhow;
 use async_trait::async_trait;
 use log::{debug, warn};
@@ -279,11 +279,7 @@ impl AiProvider for CliProvider {
         );
 
         let mut args: Vec<String> = match &self.tool {
-            CliTool::Claude => vec![
-                "-p".into(),
-                "--output-format".into(),
-                "json".into(),
-            ],
+            CliTool::Claude => vec!["-p".into(), "--output-format".into(), "json".into()],
             CliTool::Codex => vec!["--quiet".into()],
             CliTool::OpenCode => vec!["-p".into()],
         };
@@ -298,10 +294,9 @@ impl AiProvider for CliProvider {
 
         let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
 
-        let raw =
-            run_cli_process(self.tool.binary_name(), &arg_refs, &prompt, 300)
-                .await
-                .map_err(ProviderError::Other)?;
+        let raw = run_cli_process(self.tool.binary_name(), &arg_refs, &prompt, 300)
+            .await
+            .map_err(ProviderError::Other)?;
 
         let message = parse_response(&self.tool, &raw)?;
 

@@ -6,8 +6,8 @@ use tauri::{AppHandle, Runtime};
 
 use crate::sqlite_types::Change;
 use crate::summarize::assignments;
-use crate::summarize::sumlog as dbg;
 use crate::summarize::build_prompt;
+use crate::summarize::sumlog as dbg;
 
 pub async fn analyze<R: Runtime>(
     changes: Vec<Change>,
@@ -46,7 +46,9 @@ pub async fn analyze<R: Runtime>(
         a.prompt = build_prompt::new_single(&a.pending.change);
     }
     for a in &mut assignments.new_groups {
-        let short_hashes: Vec<String> = a.changes.iter()
+        let short_hashes: Vec<String> = a
+            .changes
+            .iter()
             .map(|c| c.change.hash[..crate::git::changes_from_diff::SHORT_HASH_LEN].to_string())
             .collect();
         let resolved: Vec<&Change> = a.changes.iter().map(|c| &c.change).collect();

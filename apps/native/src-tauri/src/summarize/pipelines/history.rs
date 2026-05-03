@@ -16,7 +16,11 @@ pub async fn from_commit_times_number<R: Runtime>(
         Some(i) => i,
         None => return Ok(()),
     };
-    let commits: Vec<_> = all_commits.into_iter().skip(start).take(number + 1).collect();
+    let commits: Vec<_> = all_commits
+        .into_iter()
+        .skip(start)
+        .take(number + 1)
+        .collect();
 
     if commits.is_empty() {
         return Ok(());
@@ -64,8 +68,11 @@ pub async fn from_commit_times_number<R: Runtime>(
 
         if has_changeset {
             // partially covered — evolve with unsummarized changes
-            let unsummarized_set: std::collections::HashSet<&str> =
-                semantic_map.unsummarized_hashes.iter().map(String::as_str).collect();
+            let unsummarized_set: std::collections::HashSet<&str> = semantic_map
+                .unsummarized_hashes
+                .iter()
+                .map(String::as_str)
+                .collect();
             let missed_changes: Vec<_> = changes
                 .into_iter()
                 .filter(|c| unsummarized_set.contains(c.hash.as_str()))
@@ -101,11 +108,7 @@ pub async fn from_commit_times_number<R: Runtime>(
             )
             .await
             {
-                log::error!(
-                    "[history] pipeline failed for {}: {}",
-                    commits[i].hash,
-                    e
-                );
+                log::error!("[history] pipeline failed for {}: {}", commits[i].hash, e);
             }
         }
     }

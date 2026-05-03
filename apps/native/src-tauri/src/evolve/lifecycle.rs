@@ -14,7 +14,7 @@ use crate::storage::store;
 use crate::{
     db, evolve, git,
     shared_types::{
-        EvolveState, EvolutionFailureResult, EvolutionResult, EvolutionState, EvolutionTelemetry,
+        EvolutionFailureResult, EvolutionResult, EvolutionState, EvolutionTelemetry, EvolveState,
         SemanticChangeMap,
     },
     summarize,
@@ -164,11 +164,16 @@ pub async fn backup_evolve_and_record_changeset(
     if let Some(ref branch) = backup_branch {
         info!("[evolution] backup branch created | branch={}", branch);
         // Rollback branch saves the first evolution, so restore repo to pre-evolution state
-        let rollback_branch = pre_evolve_state.rollback_branch.clone()
+        let rollback_branch = pre_evolve_state
+            .rollback_branch
+            .clone()
             .or_else(|| Some(branch.clone()));
         let (rollback_store_path, rollback_changeset_id) =
             if pre_evolve_state.rollback_store_path.is_some() {
-                (pre_evolve_state.rollback_store_path.clone(), pre_evolve_state.rollback_changeset_id)
+                (
+                    pre_evolve_state.rollback_store_path.clone(),
+                    pre_evolve_state.rollback_changeset_id,
+                )
             } else {
                 let bs = build_state::get(app).ok();
                 (
@@ -297,7 +302,9 @@ fn restore_after_failure(app: &AppHandle, config_dir: &str, backup_branch: &Opti
             log::error!("[evolution] restore_from_branch_ref failed: {}", e);
         }
     } else {
-        log::error!("[evolution] restore_after_failure called without backup_branch — skipping restore");
+        log::error!(
+            "[evolution] restore_after_failure called without backup_branch — skipping restore"
+        );
     }
 
     // fire-and-forget: clearing backup_branch in an error-recovery path. We are

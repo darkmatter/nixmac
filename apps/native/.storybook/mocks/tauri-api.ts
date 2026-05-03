@@ -18,6 +18,10 @@ export type {
   ChangeType,
   CliToolsState,
   Config as DarwinConfig,
+  ConfigChangedEvent,
+  DarwinApplyDataEvent,
+  DarwinApplyEndEvent,
+  DarwinApplySummaryEvent,
   EvolutionFailureResult,
   EvolutionResult,
   EvolutionState,
@@ -39,15 +43,23 @@ export type {
   HomebrewState,
   HistoryItem,
   NixCheckResult,
+  NixDarwinRebuildEndEvent,
+  NixInstallEndEvent,
+  NixInstallErrorType,
+  NixInstallPhase,
+  NixInstallProgressEvent,
   OkResult,
   Permission,
   PermissionStatus,
   PermissionsState,
   PreviewIndicatorState,
   RecommendedPrompt,
+  RebuildErrorType,
   SemanticChangeMap,
   SetDirResult,
+  SummarizerUpdateEvent,
   SummarizedChangeSet,
+  RustPanicEvent,
   SystemDefault,
   SystemDefaultsScan,
   UiPrefs as DarwinPrefs,
@@ -57,16 +69,10 @@ export type {
   Commit,
   CommitResult,
   ConfigEditApplyResult,
-  DarwinApplyLegacy,
   EvolveCancelResult,
   FinalizeApplyResult,
   RollbackResult,
 } from "../../src/types/shared";
-
-// Types defined in the real tauri-api.ts (not Specta-generated)
-
-/** @deprecated Use FinalizeApplyResult from shared types. */
-export type ApplyResult = import("../../src/types/shared").FinalizeApplyResult;
 
 export interface FeedbackUsageStats {
   totalEvolutions?: number;
@@ -87,8 +93,4 @@ export interface FeedbackMetadata {
   flakeInputsSnapshot?: import("../../src/types/shared").FeedbackFlakeInputsSnapshot;
   appLogsContent?: string;
   panicDetails?: import("../../src/types/shared").FeedbackPanicDetails;
-}
-
-export interface ConfigChangedEvent {
-  hasChanges: boolean;
 }

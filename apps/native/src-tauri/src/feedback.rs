@@ -5,8 +5,8 @@
 //! All collection respects the ShareOptions flags provided by the user.
 
 use crate::storage::store;
-use crate::{git, types};
 use crate::system::{nix, secret_scanner};
+use crate::{git, types};
 use anyhow::{Context, Result};
 use chrono::Utc;
 use log::{debug, warn};

@@ -132,6 +132,15 @@ configDir: string;
 hostAttr: string | null }
 
 /**
+ * Payload for `config:changed`, when emitted by a filesystem watcher.
+ */
+export type ConfigChangedEvent = { 
+/**
+ * Whether the selected config currently has changes.
+ */
+hasChanges: boolean }
+
+/**
  * Result of a managed-edit apply operation (homebrew, system-defaults, etc.).
  */
 export type ConfigEditApplyResult = { 
@@ -157,25 +166,63 @@ gitStatus: GitStatus;
 evolveState: EvolveState }
 
 /**
- * Result of a darwin-rebuild operation from the legacy non-streaming command.
+ * Payload for `darwin:apply:data`.
  */
-export type DarwinApplyLegacy = { 
+export type DarwinApplyDataEvent = { 
 /**
- * Whether the rebuild command completed successfully.
+ * Raw output chunk from the rebuild process.
+ */
+chunk: string }
+
+/**
+ * Payload for `darwin:apply:end`.
+ */
+export type DarwinApplyEndEvent = { 
+/**
+ * Whether rebuild/apply completed successfully.
  */
 ok: boolean; 
 /**
- * Process exit code when a rebuild process was spawned.
+ * Exit/status code for the rebuild/apply operation.
  */
-code: number | null; 
+code: number; 
 /**
- * Captured stdout from the rebuild process.
+ * Error category on failure.
  */
-stdout: string | null; 
+error_type: RebuildErrorType | null; 
 /**
- * Captured stderr from the rebuild process.
+ * Human-readable failure message.
  */
-stderr: string | null }
+error: string | null; 
+/**
+ * Path to the captured rebuild log, when available.
+ */
+log_file: string | null }
+
+/**
+ * Payload for `darwin:apply:summary`.
+ */
+export type DarwinApplySummaryEvent = { 
+/**
+ * Human-readable summary text.
+ */
+text: string; 
+/**
+ * Whether this is the final summary event.
+ */
+complete: boolean | null; 
+/**
+ * Whether the rebuild succeeded.
+ */
+success: boolean | null; 
+/**
+ * Whether this event describes an error.
+ */
+error: boolean | null; 
+/**
+ * Error category when `error` or `complete && !success` is set.
+ */
+error_type: RebuildErrorType | null }
 
 /**
  * Response from the debug Sentry event command.
@@ -237,31 +284,31 @@ telemetry: EvolutionTelemetry }
  */
 export type EvolutionState = 
 /**
- * Initial state before generation starts
+ * Initial state before generation starts.
  */
 "pending" | 
 /**
- * Currently generating/processing
+ * Currently generating/processing.
  */
 "loading" | 
 /**
- * Generation complete, ready for review
+ * Generation complete, ready for review.
  */
 "generated" | 
 /**
- * Changes have been applied (darwin-rebuild ran)
+ * Changes have been applied (darwin-rebuild ran).
  */
 "applied" | 
 /**
- * Changes have been committed
+ * Changes have been committed.
  */
 "committed" | 
 /**
- * An error occurred
+ * An error occurred.
  */
 "failed" | 
 /**
- * Agent responded conversationally without making any environment changes
+ * Agent responded conversationally without making any environment changes.
  */
 "conversational"
 
@@ -787,6 +834,9 @@ isOrphanedRestore: boolean;
  */
 isUndone: boolean }
 
+/**
+ * Current Homebrew package state detected on the machine.
+ */
 export type HomebrewState = { 
 /**
  * Whether Homebrew is installed and discoverable.
@@ -829,6 +879,107 @@ version: string | null;
  * Whether `darwin-rebuild` is available.
  */
 darwinRebuildAvailable: boolean }
+
+/**
+ * Payload for `nix:darwin-rebuild:end`.
+ */
+export type NixDarwinRebuildEndEvent = { 
+/**
+ * Whether nix-darwin setup completed successfully.
+ */
+ok: boolean; 
+/**
+ * Human-readable failure message.
+ */
+error: string | null }
+
+/**
+ * Payload for `nix:install:end`.
+ */
+export type NixInstallEndEvent = { 
+/**
+ * Whether setup completed successfully.
+ */
+ok: boolean; 
+/**
+ * Exit/status code for the completed setup phase.
+ */
+code: number; 
+/**
+ * Installed Nix version on success.
+ */
+nix_version: string | null; 
+/**
+ * Whether `darwin-rebuild` is available after setup.
+ */
+darwin_rebuild_available: boolean | null; 
+/**
+ * Failure category on error.
+ */
+error_type: NixInstallErrorType | null; 
+/**
+ * Human-readable failure message.
+ */
+error: string | null }
+
+/**
+ * Known Nix installation failure categories.
+ */
+export type NixInstallErrorType = 
+/**
+ * Unexpected internal error before a specific phase failed.
+ */
+"internal" | 
+/**
+ * Failed while downloading the installer package.
+ */
+"download_failed" | 
+/**
+ * The macOS installer failed or was cancelled.
+ */
+"installer_failed" | 
+/**
+ * A setup phase timed out.
+ */
+"timeout" | 
+/**
+ * nix-darwin prefetch/setup failed.
+ */
+"darwin_rebuild"
+
+/**
+ * Phase emitted during Nix installation/setup.
+ */
+export type NixInstallPhase = 
+/**
+ * Downloading the Determinate Nix installer package.
+ */
+"downloading" | 
+/**
+ * Waiting for the macOS installer UI to complete.
+ */
+"waiting-for-installer" | 
+/**
+ * Prefetching nix-darwin's `darwin-rebuild` command.
+ */
+"prefetching"
+
+/**
+ * Payload for `nix:install:progress`.
+ */
+export type NixInstallProgressEvent = { 
+/**
+ * Current setup phase.
+ */
+phase: NixInstallPhase; 
+/**
+ * Bytes downloaded so far, for download phase progress.
+ */
+downloaded: number | null; 
+/**
+ * Total bytes expected, when known.
+ */
+total: number | null }
 
 /**
  * Generic acknowledgement returned by fire-and-forget commands.
@@ -940,6 +1091,39 @@ deletions: number | null;
 isLoading: boolean }
 
 /**
+ * Known rebuild/activation failure categories.
+ */
+export type RebuildErrorType = 
+/**
+ * Nix evaluation hit infinite recursion.
+ */
+"infinite_recursion" | 
+/**
+ * Nix evaluation failed.
+ */
+"evaluation_error" | 
+/**
+ * Build failed after evaluation.
+ */
+"build_error" | 
+/**
+ * Full Disk Access is missing for activation.
+ */
+"full_disk_access" | 
+/**
+ * User cancelled the privileged activation prompt.
+ */
+"user_cancelled" | 
+/**
+ * Administrator authorization failed.
+ */
+"authorization_denied" | 
+/**
+ * Fallback for uncategorized failures.
+ */
+"generic_error"
+
+/**
  * A recommended prompt based on the user's current macOS settings.
  */
 export type RecommendedPrompt = { 
@@ -972,6 +1156,27 @@ rollbackStorePath: string | null;
  * Changeset id associated with the rollback target.
  */
 rollbackChangesetId: number | null }
+
+/**
+ * Payload for `rust:panic`.
+ */
+export type RustPanicEvent = { 
+/**
+ * Panic message captured by the panic hook.
+ */
+message: string; 
+/**
+ * Source location reported by Rust, when available.
+ */
+location: string | null; 
+/**
+ * Captured backtrace, when available.
+ */
+backtrace: string | null; 
+/**
+ * UTC timestamp when the panic was captured.
+ */
+timestamp: string }
 
 export type SemanticChangeGroup = { 
 /**
@@ -1042,6 +1247,15 @@ changes: SummarizedChange[];
  * Change hashes expected in the set but missing from the database.
  */
 missedHashes: string[] }
+
+/**
+ * Payload for `summarizer:update`.
+ */
+export type SummarizerUpdateEvent = { 
+/**
+ * Latest semantic change map after a queued summary update.
+ */
+semanticMap: SemanticChangeMap }
 
 /**
  * A single macOS system default that differs from the factory value.
@@ -1240,7 +1454,7 @@ scanHomebrewOnStartup: boolean | null;
  */
 developerMode: boolean | null; 
 /**
- * `None` → field not sent; `Some(None)` → clear the pinned version.
+ * `None` -> field not sent; `Some(None)` -> clear the pinned version.
  */
 pinnedVersion?: string | null }
 

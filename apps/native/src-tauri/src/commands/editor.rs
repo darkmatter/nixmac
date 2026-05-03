@@ -1,4 +1,4 @@
-use crate::editor;
+use crate::{editor, shared_types};
 use tauri::AppHandle;
 
 /// Read a file relative to the config directory.
@@ -19,7 +19,7 @@ pub async fn editor_write_file(
 
 /// List files in the config directory.
 #[tauri::command]
-pub async fn editor_list_files(app: AppHandle) -> Result<Vec<editor::FileEntry>, String> {
+pub async fn editor_list_files(app: AppHandle) -> Result<Vec<shared_types::FileEntry>, String> {
     editor::list_files(&app).await
 }
 

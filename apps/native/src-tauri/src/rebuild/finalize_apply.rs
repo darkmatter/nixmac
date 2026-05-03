@@ -7,7 +7,9 @@ use crate::state::{build_state, evolve_state};
 use crate::storage::store;
 use crate::{git, shared_types};
 
-async fn prepare(app: &AppHandle) -> Result<(crate::shared_types::GitStatus, shared_types::EvolveState)> {
+async fn prepare(
+    app: &AppHandle,
+) -> Result<(crate::shared_types::GitStatus, shared_types::EvolveState)> {
     let config_dir =
         store::ensure_config_dir_exists(app).context("Failed to get config directory")?;
     let final_status = git::status(&config_dir).context("Failed to get final git status")?;
@@ -25,13 +27,17 @@ pub async fn finalize_apply(app: &AppHandle) -> Result<shared_types::FinalizeApp
     if current_evolve.evolution_id.is_none() {
         // capture pre-build state for next rollback
         let bs = build_state::get(app).ok();
-        current_evolve.rollback_store_path = bs.as_ref().and_then(|b| b.nixmac_built_store_path.clone());
+        current_evolve.rollback_store_path =
+            bs.as_ref().and_then(|b| b.nixmac_built_store_path.clone());
         current_evolve.rollback_changeset_id = bs.as_ref().and_then(|b| b.changeset_id);
     }
 
     build_state::record_build(app, &final_status).context("Failed to record build state")?;
     let evolve_state = evolve_state::set(app, current_evolve, &final_status.changes)?;
-    Ok(shared_types::FinalizeApplyResult { git_status: final_status, evolve_state })
+    Ok(shared_types::FinalizeApplyResult {
+        git_status: final_status,
+        evolve_state,
+    })
 }
 
 /// Finalize a rollback store-path activation — restores the pre-evolution build record without a new build.
@@ -41,8 +47,16 @@ pub async fn finalize_rollback(
     changeset_id: Option<i64>,
 ) -> Result<shared_types::FinalizeApplyResult> {
     let (final_status, current_evolve) = prepare(app).await?;
-    build_state::set_active_build(app, store_path, changeset_id, final_status.head_commit_hash.clone())
-        .context("Failed to restore build state")?;
+    build_state::set_active_build(
+        app,
+        store_path,
+        changeset_id,
+        final_status.head_commit_hash.clone(),
+    )
+    .context("Failed to restore build state")?;
     let evolve_state = evolve_state::set(app, current_evolve, &final_status.changes)?;
-    Ok(shared_types::FinalizeApplyResult { git_status: final_status, evolve_state })
+    Ok(shared_types::FinalizeApplyResult {
+        git_status: final_status,
+        evolve_state,
+    })
 }

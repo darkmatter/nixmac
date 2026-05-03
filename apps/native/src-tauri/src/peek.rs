@@ -6,7 +6,7 @@
 //! when Option is held and the cursor is near that corner. Clicking the icon
 //! reveals the main widget window.
 
-pub use crate::shared_types::PreviewIndicatorState;
+pub(crate) use crate::shared_types::PreviewIndicatorState;
 use once_cell::sync::Lazy;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;

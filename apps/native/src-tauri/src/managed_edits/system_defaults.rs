@@ -3,8 +3,8 @@
 use anyhow::{Context, Result};
 use tauri::AppHandle;
 
-use crate::{managed_edits::managed_edit, shared_types};
 use crate::system::scanner;
+use crate::{managed_edits::managed_edit, shared_types};
 
 /// Writes detected system defaults to a .nix module file, injects the import
 /// into flake.nix, creates an evolution + summarization pipeline so the

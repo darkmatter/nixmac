@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use log::warn;
 use std::fs;
@@ -143,7 +143,7 @@ fn build_matcher(base: &Path, gitignore_paths: &[PathBuf]) -> Result<Option<Giti
 
     match final_builder.build() {
         Ok(matcher) => Ok(Some(matcher)),
-        Err(e) => Err(anyhow::anyhow!(
+        Err(e) => Err(anyhow!(
             "Failed to build final gitignore matcher for {}: {}",
             base.display(),
             e

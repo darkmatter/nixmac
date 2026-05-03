@@ -1,18 +1,20 @@
 use super::helpers::capture_err;
+use crate::shared_types;
 use crate::storage::store;
 use crate::system::scanner;
-use crate::shared_types;
 use tauri::AppHandle;
 
 /// Returns a recommended prompt based on the user's current macOS settings.
 #[tauri::command]
-pub async fn get_recommended_prompt() -> Result<Option<scanner::RecommendedPrompt>, String> {
+pub async fn get_recommended_prompt() -> Result<Option<shared_types::RecommendedPrompt>, String> {
     Ok(scanner::recommend_prompt())
 }
 
 /// Scans macOS system defaults and returns settings that differ from factory defaults.
 #[tauri::command]
-pub async fn scan_system_defaults(app: AppHandle) -> Result<scanner::SystemDefaultsScan, String> {
+pub async fn scan_system_defaults(
+    app: AppHandle,
+) -> Result<shared_types::SystemDefaultsScan, String> {
     // Check if system-defaults.nix already exists in the config dir
     if let Ok(dir) = store::get_config_dir(&app) {
         let nix_path = std::path::Path::new(&dir)
@@ -21,7 +23,7 @@ pub async fn scan_system_defaults(app: AppHandle) -> Result<scanner::SystemDefau
             .join("system-defaults.nix");
         if nix_path.exists() {
             // Already applied — return empty scan so the CTA stays hidden
-            return Ok(scanner::SystemDefaultsScan {
+            return Ok(shared_types::SystemDefaultsScan {
                 defaults: vec![],
                 total_scanned: 0,
             });
@@ -35,7 +37,7 @@ pub async fn scan_system_defaults(app: AppHandle) -> Result<scanner::SystemDefau
 #[tauri::command]
 pub async fn apply_system_defaults(
     app: AppHandle,
-    defaults: Vec<scanner::SystemDefault>,
+    defaults: Vec<shared_types::SystemDefault>,
 ) -> Result<shared_types::ConfigEditApplyResult, String> {
     crate::managed_edits::system_defaults::apply_system_defaults(&app, defaults)
         .await
