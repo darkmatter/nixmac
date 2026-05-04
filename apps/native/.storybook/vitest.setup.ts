@@ -6,10 +6,6 @@ const annotations = setProjectAnnotations([preview as any]);
 
 beforeAll(annotations.beforeAll);
 
-/**
- * Normalize non-deterministic animation values in rendered HTML
- * so snapshots remain stable across runs.
- */
 function normalizeAnimations(html: string): string {
   return html
     .replace(/translateY\(([^)]+)\)/g, (_match, val) => {
@@ -26,6 +22,23 @@ function normalizeAnimations(html: string): string {
     });
 }
 
+/**
+ * Normalize volatile runtime-generated DOM so story snapshots cover our
+ * component chrome instead of Monaco's platform-specific implementation.
+ */
+function normalizeSnapshot(root: Element): string {
+  const clone = root.cloneNode(true) as Element;
+
+  clone.querySelectorAll(".monaco-editor").forEach((editor) => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "monaco-editor-snapshot";
+    wrapper.setAttribute("data-mode-id", editor.closest("[data-mode-id]")?.getAttribute("data-mode-id") ?? "");
+    editor.replaceWith(wrapper);
+  });
+
+  return normalizeAnimations(clone.innerHTML);
+}
+
 // Automatically snapshot every story after it renders
 afterEach(() => {
   const containers = document.body.querySelectorAll(
@@ -33,6 +46,6 @@ afterEach(() => {
   );
   const root = containers[containers.length - 1];
   if (root?.innerHTML) {
-    expect(normalizeAnimations(root.innerHTML)).toMatchSnapshot();
+    expect(normalizeSnapshot(root)).toMatchSnapshot();
   }
 });
