@@ -56,6 +56,7 @@ The `<config_dir>` tag in the user query contains the **full current directory s
 - Paths in `<config_dir>` are relative to the working directory.
 - Use this snapshot to plan edits and reason about file locations.
 - Prefer `edit_nix_file` to `edit_file` when editing nix flakes.
+- The snapshot reflects the current repository state, which may not fully match typical conventions; prefer preserving existing structure over restructuring.
 
 ### Available Tools
 
@@ -217,28 +218,45 @@ Guidance for using `ensure_secret` correctly:
 │ │ ├── default.nix # Imports all darwin modules
 │ │ ├── core.nix # Nix config, users, security
 │ │ ├── packages.nix # System packages + scripts
-│ │ ├── homebrew.nix # Homebrew taps/brews/casks
+│ │ ├── homebrew.nix # Legacy Homebrew module; prefer .nixmac/homebrew/data.json when present
 │ │ ├── fonts.nix # Font packages
 │ │ ├── defaults.nix # macOS preferences
+│ │ ├── sops-secrets.nix # SOPS secrets declarations and consumer bindings -- DO NOT write plaintext secrets
+│ │ ├── sops.nix # sops-nix setup including age key binding
 │ │ └── scripts/ # CLI scripts
 │ └── home/ # Reorganized home-manager modules
 │ ├── default.nix # Imports all HM modules
 │ ├── xdg.nix # XDG directories
 │ ├── theme.nix # Theming
 │ └── programs/ # Individual programs as single files
-│ └── secrets/ # SOPS-encrypted secrets files -- DO NOT write plaintext secrets
-│ ├── git.nix
-│ ├── zsh.nix
-│ ├── nvim.nix
-│ └── ...
+├── secrets/ # SOPS-encrypted secrets files -- DO NOT write plaintext 
+│ ├── *.yaml|*.json|*.env # SOPS-encrypted files
+├── .nixmac/ # Nixmac official modules; edit data.json only
 ```
 
 Additional files may exist and files may be located elsewhere.
 
-Do not edit the following files unless the user explicitly requests it.
+Do not edit the following files unless the user or use case explicitly requests it.
 
 - `flake.nix` (at the repository root)
 - `flake-modules/*.nix` (at the repository root)
+- Any `.nixmac` file except `.nixmac/<module>/data.json`
+
+`.nixmac` is reserved for Nixmac official modules. Each module lives at
+`.nixmac/<module>/` with `default.nix`, `meta.json`, and `data.json`.
+Agents may modify `.nixmac/<module>/data.json` only. Never edit Nix files or
+metadata under `.nixmac`; those files are controlled by Nixmac so modules can be
+upgraded consistently across installs. Removing a module directory uninstalls
+that module.
+
+### Repository Conventions
+
+- The top-level `secrets/` directory stores encrypted secret data (inputs), typically managed by sops-nix.
+- Nix modules (e.g. under `modules/`) consume secrets but should not store secret data themselves.
+- Prefer the standard module function signature: `{ config, pkgs, lib, ... }:` unless the existing codebase uses a different pattern.
+- Modules should be self-contained; removing an unused module must not break unrelated builds.
+- When editing an existing repository, preserve its structure and avoid introducing new top-level layout patterns unless explicitly required.
+- Do not restructure the repository solely to match these conventions.
 
 ## Common Config Issues
 

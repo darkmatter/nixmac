@@ -74,9 +74,10 @@ pub fn create_tools() -> Vec<Tool> {
                          unique in the file. For creating a new file or replacing an entire file, \
                          use empty search string. \
                          IMPORTANT: Always provide complete, production-ready code - never use \
-                         placeholders, TODOs, or abbreviated implementations. \
-                         NOTE: For .nix, .yaml, and .yml files, the edit will be rejected if syntax is invalid \
-                         (e.g., unmatched braces/brackets, unclosed strings). Ensure edits maintain valid syntax.".to_string(),
+                          placeholders, TODOs, or abbreviated implementations. \
+                          NOTE: For .nix, .yaml, and .yml files, the edit will be rejected if syntax is invalid \
+                          (e.g., unmatched braces/brackets, unclosed strings). Ensure edits maintain valid syntax. \
+                          IMPORTANT: Under .nixmac, only exact .nixmac/<module>/data.json files may be edited; all other files are reserved.".to_string(),
             parameters: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -101,6 +102,7 @@ pub fn create_tools() -> Vec<Tool> {
             description: r#"Edit a Nix file with semantic operations using attribute-path Add/Remove/Set/SetAttrs actions.
 Use this tool whenever you need the agent to make structured edits to Nix config. `add` and `remove` operate on list-valued attributes such as `home.packages` or `environment.systemPackages`. `set` assigns a scalar value such as a boolean, string, number, or `null` to an attribute path like `services.tailscale.enable`. `set_attrs` creates or updates a Nix attribute set (object) at a given path and sets key-value pairs inside it, including nested JSON objects/arrays that map to nested Nix attrsets/lists. Use this for options like `system.defaults.dock` that take an attrset value. The tool understands Nix syntax and will modify existing assignments when possible, or insert a new assignment into the module body if missing.
 Always: provide an `action` object with exactly one of `add`, `remove`, `set`, or `set_attrs`. After calling this tool, run `build_check` to verify changes.
+IMPORTANT: Do not use this tool for files under .nixmac. Nix implementation files there are reserved for Nixmac; only exact .nixmac/<module>/data.json files may be edited with edit_file.
 IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with syntax errors (unmatched braces/brackets, unclosed strings, etc) will be rejected. Ensure all generated code is syntactically complete and correct."#.to_string(),            parameters: serde_json::json!({
                 "type": "object",
                 "$defs": {
@@ -284,7 +286,7 @@ IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with
                          Return JSON only (no prose). \
                          Parameters: search_type controls where to search (names, descriptions, or both); \
                          use_regex enables regex patterns for advanced matching; \
-                         channel lets you search in different flakes (nixpkgs, nixpkgs-unstable, etc.)".to_string(),
+                         channels lets you search in different flakes (one or more of nixpkgs, nixpkgs-unstable, etc.), max 5".to_string(),
             parameters: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -305,9 +307,12 @@ IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with
                         "type": "boolean",
                         "description": "Whether to interpret query as a regex pattern (default: false). Use for complex patterns like 'python[0-9]+'"
                     },
-                    "channel": {
-                        "type": "string",
-                        "description": "Flake/channel to search in: 'nixpkgs' (default), 'nixpkgs-unstable', 'nixpkgs-master', etc."
+                    "channels": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Flake/channels to search in: list of 'nixpkgs' (default), 'nixpkgs-unstable', 'nixpkgs-master', etc."
                     }
                 },
                 "required": ["query"]
@@ -348,7 +353,8 @@ IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with
                          secret file under secrets/<name>.yaml, launches a blocking `sops <file>` editor session for \
                          user input, then optionally injects secret path wiring into Nix config. \
                          You can optionally provide a `scaffold` to prefill non-sensitive placeholder structure \
-                         (for example env-file keys or YAML map keys) before the editor opens.".to_string(),
+                         (for example env-file keys or YAML map keys) before the editor opens. \
+                         IMPORTANT: Injection targets under .nixmac are rejected; agents may only edit exact .nixmac/<module>/data.json files via edit_file.".to_string(),
             parameters: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -563,18 +569,18 @@ pub fn execute_tool(
             }
 
             if !escaped_matches.is_empty() {
-                let sample = escaped_matches
+                let _sample = escaped_matches
                     .iter()
                     .take(3)
                     .cloned()
                     .collect::<Vec<_>>()
                     .join(", ");
 
+                // Don't return the sample as part of the error return since it contains local paths outside config_dir.
                 return Err(anyhow!(
-                    "list_files matched one or more files outside config_dir after symlink resolution. pattern='{}' config_dir='{}'. Example match(es): {}. Fix: narrow the pattern to files under config_dir and avoid symlink targets outside config_dir.",
+                    "list_files matched one or more files outside config_dir after symlink resolution. pattern='{}' config_dir='{}'. Fix: narrow the pattern to files under config_dir and avoid symlink targets outside config_dir.",
                     pattern,
                     base.display(),
-                    sample
                 ));
             }
 
@@ -586,6 +592,7 @@ pub fn execute_tool(
             let path = args["path"]
                 .as_str()
                 .ok_or_else(|| anyhow!("edit_file: missing path"))?;
+            ensure_nixmac_edit_allowed("edit_file", path)?;
             let search = args["search"]
                 .as_str()
                 .ok_or_else(|| anyhow!("edit_file: missing search"))?;
@@ -623,6 +630,7 @@ pub fn execute_tool(
             let path = args["path"]
                 .as_str()
                 .ok_or_else(|| anyhow!("edit_nix_file: missing path"))?;
+            ensure_nixmac_edit_allowed("edit_nix_file", path)?;
 
             // Expect `action` to be an object like { "add": { "path": "a.b", "values": ["v"] } }
             let action_val = &args["action"];
@@ -649,9 +657,8 @@ pub fn execute_tool(
                     .collect()
             };
 
-            // Determine add/remove/set/set_attrs; require exactly one discriminant to avoid ambiguity
-            // TODO: We could consider allowing multiple actions in one call (e.g. add and remove together for a package rename)
-            // if we can handle the ordering correctly, but for now let's keep it simple with one action per call.
+            // Require exactly one discriminant to avoid ambiguous ordering (e.g. simultaneous add+remove).
+            // TODO: Allow multiple actions per call once ordering semantics are defined.
             let has_add = action_val.get("add").is_some();
             let has_remove = action_val.get("remove").is_some();
             let has_set = action_val.get("set").is_some();
@@ -752,7 +759,7 @@ pub fn execute_tool(
             );
 
             let (passed, stdout, stderr) =
-                crate::darwin::dry_run_build_check(config_dir, host_attr, show_trace)?;
+                crate::rebuild::dry_run_build_check(config_dir, host_attr, show_trace)?;
 
             if passed {
                 info!("Build check passed for host: {}", host_attr);
@@ -795,10 +802,34 @@ pub fn execute_tool(
             let limit = args["limit"].as_i64().unwrap_or(20).clamp(1, 50) as u64;
             let search_type = args["search_type"].as_str().unwrap_or("both");
             let use_regex = args["use_regex"].as_bool().unwrap_or(false);
-            let channel = args["channel"].as_str().unwrap_or("nixpkgs");
 
-            let result =
-                execute_search_packages(config_dir, query, limit, search_type, use_regex, channel)?;
+            // Clamp to at most 5 channels to prevent abuse since each channel adds latency
+            // and we don't want to encourage broad searches across many channels.
+            let channels = args["channels"]
+                .as_array()
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(str::to_string))
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_else(|| vec!["nixpkgs".to_string()]);
+            let channels = channels.into_iter().take(5).collect::<Vec<_>>();
+
+            // If channels is empty after filtering, default to ["nixpkgs"] to ensure we search something.
+            let channels = if channels.is_empty() {
+                vec!["nixpkgs".to_string()]
+            } else {
+                channels
+            };
+
+            let result = execute_search_packages(
+                config_dir,
+                query,
+                limit,
+                search_type,
+                use_regex,
+                &channels,
+            )?;
             Ok(ToolResult::Continue(result))
         }
 
@@ -818,6 +849,15 @@ pub fn execute_tool(
         }
 
         "ensure_secret" => {
+            // Only Nix injection targets need the .nixmac guard; secret files are written under secrets/.
+            if let Some(inject_file) = args
+                .get("inject")
+                .and_then(|inject| inject.get("file"))
+                .and_then(|file| file.as_str())
+            {
+                ensure_nixmac_edit_allowed("ensure_secret", inject_file)?;
+            }
+
             let result = execute_ensure_secret(base, args, gitignore_matcher)?;
             Ok(ToolResult::EnsureSecret(result))
         }
@@ -865,6 +905,35 @@ fn truncate_for_log(s: &str, max_len: usize) -> String {
     } else {
         format!("{}...", &s[..max_len])
     }
+}
+
+fn ensure_nixmac_edit_allowed(tool: &str, path: &str) -> Result<()> {
+    let normalized = normalize_relative_path(Path::new(path))?;
+    let components = normalized.components().collect::<Vec<_>>();
+    let is_nixmac =
+        matches!(components.first(), Some(Component::Normal(name)) if *name == ".nixmac");
+
+    if !is_nixmac {
+        return Ok(());
+    }
+
+    let is_module_data_json = matches!(
+        components.as_slice(),
+        [
+            Component::Normal(root),
+            Component::Normal(_module),
+            Component::Normal(file),
+        ] if *root == ".nixmac" && *file == "data.json"
+    );
+
+    if tool == "edit_file" && is_module_data_json {
+        return Ok(());
+    }
+
+    Err(anyhow!(
+        "{}: .nixmac is reserved for Nixmac official modules; agents may edit only .nixmac/<module>/data.json",
+        tool
+    ))
 }
 
 #[cfg(test)]
@@ -1021,6 +1090,122 @@ mod tests {
             err.to_string().contains("ignored by .gitignore"),
             "unexpected error: {err:#}"
         );
+    }
+
+    #[test]
+    fn edit_file_allows_nixmac_data_json() {
+        let tmp = tempdir().expect("tempdir");
+        let module_dir = tmp.path().join(".nixmac/homebrew");
+        fs::create_dir_all(&module_dir).expect("make module dir");
+        fs::write(module_dir.join("data.json"), "{\n  \"brews\": []\n}\n").expect("write data");
+
+        execute_tool(
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_file",
+            &json!({
+                "path": ".nixmac/homebrew/data.json",
+                "search": "[]",
+                "replace": "[\"git\"]"
+            }),
+            None,
+        )
+        .expect("data.json edits should be allowed");
+    }
+
+    #[test]
+    fn edit_file_rejects_nixmac_metadata() {
+        let tmp = tempdir().expect("tempdir");
+        let module_dir = tmp.path().join(".nixmac/homebrew");
+        fs::create_dir_all(&module_dir).expect("make module dir");
+        fs::write(module_dir.join("meta.json"), "{}\n").expect("write metadata");
+
+        let result = execute_tool(
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_file",
+            &json!({
+                "path": ".nixmac/homebrew/meta.json",
+                "search": "{}",
+                "replace": "{\"name\":\"Changed\"}"
+            }),
+            None,
+        );
+
+        let err = result.expect_err("meta.json edits should be rejected");
+        assert!(err.to_string().contains(".nixmac is reserved"));
+    }
+
+    #[test]
+    fn edit_file_rejects_stray_nixmac_data_json() {
+        let tmp = tempdir().expect("tempdir");
+        fs::create_dir_all(tmp.path().join(".nixmac")).expect("make nixmac dir");
+        fs::write(tmp.path().join(".nixmac/data.json"), "{}\n").expect("write stray data");
+
+        let result = execute_tool(
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_file",
+            &json!({
+                "path": ".nixmac/data.json",
+                "search": "{}",
+                "replace": "{\"enabled\":true}"
+            }),
+            None,
+        );
+
+        let err = result.expect_err("top-level .nixmac/data.json should be rejected");
+        assert!(err.to_string().contains(".nixmac is reserved"));
+    }
+
+    #[test]
+    fn edit_nix_file_rejects_nixmac_nix_files() {
+        let tmp = tempdir().expect("tempdir");
+        let module_dir = tmp.path().join(".nixmac/homebrew");
+        fs::create_dir_all(&module_dir).expect("make module dir");
+        fs::write(module_dir.join("default.nix"), "{ ... }: { }\n").expect("write module");
+
+        let result = execute_tool(
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "path": ".nixmac/homebrew/default.nix",
+                "action": {
+                    "set": {
+                        "path": "homebrew.enable",
+                        "value": true
+                    }
+                }
+            }),
+            None,
+        );
+
+        let err = result.expect_err(".nixmac nix edits should be rejected");
+        assert!(err.to_string().contains(".nixmac is reserved"));
+    }
+
+    #[test]
+    fn ensure_secret_rejects_nixmac_injection_targets() {
+        let tmp = tempdir().expect("tempdir");
+
+        let result = execute_tool(
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "ensure_secret",
+            &json!({
+                "name": "api-token",
+                "inject": {
+                    "type": "nix_env",
+                    "file": ".nixmac/homebrew/default.nix",
+                    "target": "environment.variables.API_TOKEN"
+                }
+            }),
+            None,
+        );
+
+        let err = result.expect_err(".nixmac ensure_secret injection should be rejected");
+        assert!(err.to_string().contains(".nixmac is reserved"));
     }
 
     #[test]

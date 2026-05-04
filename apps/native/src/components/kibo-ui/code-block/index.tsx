@@ -295,7 +295,7 @@ const CodeBlockContext = createContext<CodeBlockContextType>({
   data: [],
 });
 
-export type CodeBlockProps = HTMLAttributes<HTMLDivElement> & {
+type CodeBlockProps = HTMLAttributes<HTMLDivElement> & {
   defaultValue?: string;
   value?: string;
   onValueChange?: (value: string) => void;
@@ -323,7 +323,7 @@ export const CodeBlock = ({
   );
 };
 
-export type CodeBlockHeaderProps = HTMLAttributes<HTMLDivElement>;
+type CodeBlockHeaderProps = HTMLAttributes<HTMLDivElement>;
 
 export const CodeBlockHeader = ({ className, ...props }: CodeBlockHeaderProps) => (
   <div
@@ -332,7 +332,7 @@ export const CodeBlockHeader = ({ className, ...props }: CodeBlockHeaderProps) =
   />
 );
 
-export type CodeBlockFilesProps = Omit<HTMLAttributes<HTMLDivElement>, "children"> & {
+type CodeBlockFilesProps = Omit<HTMLAttributes<HTMLDivElement>, "children"> & {
   children: (item: CodeBlockData) => ReactNode;
 };
 
@@ -346,7 +346,7 @@ export const CodeBlockFiles = ({ className, children, ...props }: CodeBlockFiles
   );
 };
 
-export type CodeBlockFilenameProps = HTMLAttributes<HTMLDivElement> & {
+type CodeBlockFilenameProps = HTMLAttributes<HTMLDivElement> & {
   icon?: IconType;
   value?: string;
 };
@@ -382,7 +382,7 @@ export const CodeBlockFilename = ({
   );
 };
 
-export type CodeBlockSelectProps = ComponentProps<typeof Select>;
+type CodeBlockSelectProps = ComponentProps<typeof Select>;
 
 export const CodeBlockSelect = (props: CodeBlockSelectProps) => {
   const { value, onValueChange } = useContext(CodeBlockContext);
@@ -390,7 +390,7 @@ export const CodeBlockSelect = (props: CodeBlockSelectProps) => {
   return <Select onValueChange={onValueChange} value={value} {...props} />;
 };
 
-export type CodeBlockSelectTriggerProps = ComponentProps<typeof SelectTrigger>;
+type CodeBlockSelectTriggerProps = ComponentProps<typeof SelectTrigger>;
 
 export const CodeBlockSelectTrigger = ({ className, ...props }: CodeBlockSelectTriggerProps) => (
   <SelectTrigger
@@ -399,13 +399,13 @@ export const CodeBlockSelectTrigger = ({ className, ...props }: CodeBlockSelectT
   />
 );
 
-export type CodeBlockSelectValueProps = ComponentProps<typeof SelectValue>;
+type CodeBlockSelectValueProps = ComponentProps<typeof SelectValue>;
 
 export const CodeBlockSelectValue = (props: CodeBlockSelectValueProps) => (
   <SelectValue {...props} />
 );
 
-export type CodeBlockSelectContentProps = Omit<ComponentProps<typeof SelectContent>, "children"> & {
+type CodeBlockSelectContentProps = Omit<ComponentProps<typeof SelectContent>, "children"> & {
   children: (item: CodeBlockData) => ReactNode;
 };
 
@@ -415,13 +415,13 @@ export const CodeBlockSelectContent = ({ children, ...props }: CodeBlockSelectCo
   return <SelectContent {...props}>{data.map(children)}</SelectContent>;
 };
 
-export type CodeBlockSelectItemProps = ComponentProps<typeof SelectItem>;
+type CodeBlockSelectItemProps = ComponentProps<typeof SelectItem>;
 
 export const CodeBlockSelectItem = ({ className, ...props }: CodeBlockSelectItemProps) => (
   <SelectItem className={cn("text-sm", className)} {...props} />
 );
 
-export type CodeBlockCopyButtonProps = ComponentProps<typeof Button> & {
+type CodeBlockCopyButtonProps = ComponentProps<typeof Button> & {
   onCopy?: () => void;
   onError?: (error: Error) => void;
   timeout?: number;
@@ -494,7 +494,7 @@ const CodeBlockFallback = ({ children, ...props }: CodeBlockFallbackProps) => (
   </div>
 );
 
-export type CodeBlockBodyProps = Omit<HTMLAttributes<HTMLDivElement>, "children"> & {
+type CodeBlockBodyProps = Omit<HTMLAttributes<HTMLDivElement>, "children"> & {
   children: (item: CodeBlockData) => ReactNode;
 };
 
@@ -504,7 +504,7 @@ export const CodeBlockBody = ({ children, ...props }: CodeBlockBodyProps) => {
   return <div {...props}>{data.map(children)}</div>;
 };
 
-export type CodeBlockItemProps = HTMLAttributes<HTMLDivElement> & {
+type CodeBlockItemProps = HTMLAttributes<HTMLDivElement> & {
   value: string;
   lineNumbers?: boolean;
 };
@@ -541,7 +541,7 @@ export const CodeBlockItem = ({
   );
 };
 
-export type CodeBlockContentProps = HTMLAttributes<HTMLDivElement> & {
+type CodeBlockContentProps = HTMLAttributes<HTMLDivElement> & {
   themes?: CodeOptionsMultipleThemes["themes"];
   language?: BundledLanguage;
   syntaxHighlighting?: boolean;
@@ -580,3 +580,17 @@ export const CodeBlockContent = ({
     />
   );
 };
+
+export {
+  CodeBlockCopyButton,
+  CodeBlockFilename,
+  CodeBlockFiles,
+  CodeBlockHeader,
+  CodeBlockSelect,
+  CodeBlockSelectContent,
+  CodeBlockSelectItem,
+  CodeBlockSelectTrigger,
+  CodeBlockSelectValue,
+};
+
+export type { BundledLanguage };

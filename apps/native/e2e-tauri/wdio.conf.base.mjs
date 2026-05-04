@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import {
   setupNixmacTestEnvironment,
   teardownNixmacTestEnvironment,
-} from './tests/wdio/helpers/test-env.mjs';
+} from '../dist-e2e/tests/wdio/helpers/test-env.js';
 
 const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APPS_NATIVE_DIR = path.resolve(THIS_DIR, '..');

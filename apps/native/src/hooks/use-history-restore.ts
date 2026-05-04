@@ -31,7 +31,7 @@ function getDayLabel(unixSeconds: number): string {
   return date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 }
 
-export type FlatItem =
+type FlatItem =
   | { type: "commit"; item: HistoryItem }
   | { type: "day-label"; label: string };
 
@@ -53,7 +53,7 @@ function buildFlatList(items: HistoryItem[]): FlatItem[] {
 // Undone-group segmentation
 // ---------------------------------------------------------------------------
 
-export type HistorySegment = {
+type HistorySegment = {
   kind: "normal" | "undone";
   items: FlatItem[];
 };
@@ -169,7 +169,7 @@ function makePreviewItem(target: HistoryItem): HistoryItem {
 // Hook
 // ---------------------------------------------------------------------------
 
-export interface HistoryRestoreResult {
+interface HistoryRestoreResult {
   displayHistory: HistoryItem[];
   segments: HistorySegment[];
   undoneSet: Set<string>;

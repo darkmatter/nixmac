@@ -3,7 +3,7 @@
 mod age;
 mod chat_memory;
 mod config_dir_context;
-mod edit_nix_file;
+pub(crate) mod edit_nix_file;
 mod ensure_secret;
 pub(crate) mod file_ops;
 mod gitignore;
@@ -12,20 +12,24 @@ pub mod providers;
 mod search_code;
 pub mod search_docs;
 mod search_packages;
+pub mod session_control;
 mod sops;
 mod tools;
-mod types;
+pub(crate) mod types;
 mod utils;
+
+pub mod lifecycle;
 
 /// Directories ignored by file listing and search helpers.
 pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 
 // Re-export public API
+use crate::shared_types::EvolutionState;
+use crate::system::nix;
 use anyhow::{anyhow, Result};
 use chrono::Utc;
 use log::{debug, error, info, warn};
 use regex::Regex;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::fs::OpenOptions;
@@ -36,10 +40,11 @@ use std::time::Duration;
 use tauri::{AppHandle, Runtime};
 use tokio::time::sleep;
 use tools::{create_tools, execute_tool, is_editing_tool, ToolResult};
-pub use types::{Evolution, EvolutionState};
+pub use types::Evolution;
+pub use types::{EvolutionProgress, EvolutionRunError};
 
 use crate::{
-    commands, nix, statistics, store,
+    statistics, store,
     types::{emit_evolve_event, EvolveEvent},
     utils as global_utils,
 };
@@ -83,7 +88,8 @@ fn extract_error_metadata(error: &str) -> (Option<u16>, Option<String>, Option<S
 
     // Fallback: regex for "status: 400" or "statusCode=400"
     static STATUS_RE: once_cell::sync::Lazy<Regex> = once_cell::sync::Lazy::new(|| {
-        Regex::new(r"(?i)\bstatus(?:Code|_code|:)?\s*[:=]?\s*(\d{3})\b").unwrap()
+        Regex::new(r"(?i)\bstatus(?:Code|_code|:)?\s*[:=]?\s*(\d{3})\b")
+            .expect("Failed to compile status regex")
     });
     if let Some(cap) = STATUS_RE.captures(error) {
         if let Some(m) = cap.get(1) {
@@ -185,6 +191,9 @@ fn log_api_error(
         }
     };
 
+    // Fire-and-forget writeln pattern: we don't care if this fails,
+    // the file is already open and we just want to ensure the log
+    // starts with a separator line.
     let _ = writeln!(
         file,
         "═══════════════════════════════════════════════════════════════"
@@ -255,8 +264,6 @@ fn log_api_error(
 }
 
 // Use OpenRouter with Claude for evolution - better reasoning without strict content policies
-const OPENROUTER_BASE_URL: &str = "https://openrouter.ai/api/v1";
-const OPENAI_BASE_URL: &str = "https://api.openai.com/v1";
 const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
 const DEFAULT_MAX_BUILD_ATTEMPTS: usize = 5;
@@ -271,50 +278,6 @@ const BUILD_OUTPUT_MAX_CHARS: usize = 6_000;
 const BUILD_OUTPUT_TAIL_LINES: usize = 80;
 
 const SYSTEM_PROMPT: &str = include_str!("../../prompts/system.md");
-
-/// Partial evolution telemetry captured on failed runs.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EvolutionProgress {
-    pub state: EvolutionState,
-    pub iterations: usize,
-    pub build_attempts: usize,
-    pub total_tokens: u32,
-    pub edits_count: usize,
-    pub thinking_count: usize,
-    pub tool_calls_count: usize,
-}
-
-/// Error for failed evolution generation that still carries partial progress.
-#[derive(Debug, Clone, thiserror::Error)]
-#[error("{message}")]
-pub struct EvolutionRunError {
-    pub message: String,
-    pub progress: EvolutionProgress,
-}
-
-impl EvolutionRunError {
-    fn from_state(
-        message: impl Into<String>,
-        evolution: &Evolution,
-        iterations: usize,
-        build_attempts: usize,
-        total_tokens: u32,
-    ) -> Self {
-        Self {
-            message: message.into(),
-            progress: EvolutionProgress {
-                state: EvolutionState::Failed,
-                iterations,
-                build_attempts,
-                total_tokens,
-                edits_count: evolution.edits.len(),
-                thinking_count: evolution.thinking.len(),
-                tool_calls_count: evolution.tool_calls.len(),
-            },
-        }
-    }
-}
 
 /// Build a short single-line preview from the conversation messages to help with
 /// troubleshooting.
@@ -412,9 +375,9 @@ pub async fn generate_evolution<R: Runtime>(
         Arc::new(OllamaProvider::new(base_url, model))
     } else if matches!(provider_type.as_str(), "claude" | "codex" | "opencode") {
         let tool = match provider_type.as_str() {
-            "claude" => crate::providers::cli::CliTool::Claude,
-            "codex" => crate::providers::cli::CliTool::Codex,
-            _ => crate::providers::cli::CliTool::OpenCode,
+            "claude" => crate::ai::providers::cli::CliTool::Claude,
+            "codex" => crate::ai::providers::cli::CliTool::Codex,
+            _ => crate::ai::providers::cli::CliTool::OpenCode,
         };
         let model = store_model
             .or_else(|| std::env::var("EVOLVE_MODEL").ok())
@@ -430,38 +393,11 @@ pub async fn generate_evolution<R: Runtime>(
             .flatten()
             .or_else(|| std::env::var("VLLM_API_BASE").ok())
             .ok_or_else(|| anyhow!("No vLLM base URL configured. Please set it in Settings."))?;
-        let api_key = store::get_vllm_api_key(app)
-            .ok()
-            .flatten()
-            .unwrap_or_else(|| "none".to_string());
+        let api_key = store::get_effective_vllm_api_key(app)?.unwrap_or_else(|| "none".to_string());
         info!("Using vLLM provider | Model: {} | URL: {}", model, base_url);
         Arc::new(OpenAIProvider::new(api_key, base_url, model))
     } else {
-        // Resolve API key and matching base URL together.
-        // Prefer OpenRouter; fall back to direct OpenAI.
-        let (api_key, base_url) = store::get_openrouter_api_key(app)
-            .ok()
-            .flatten()
-            .map(|k| (k, OPENROUTER_BASE_URL))
-            .or_else(|| {
-                info!("OpenRouter key not found, trying OpenAI key from store");
-                store::get_openai_api_key(app)
-                    .ok()
-                    .flatten()
-                    .map(|k| (k, OPENAI_BASE_URL))
-            })
-            .or_else(|| {
-                info!("Falling back to OPENROUTER_API_KEY environment variable");
-                std::env::var("OPENROUTER_API_KEY")
-                    .ok()
-                    .map(|k| (k, OPENROUTER_BASE_URL))
-            })
-            .or_else(|| {
-                info!("Falling back to OPENAI_API_KEY environment variable");
-                std::env::var("OPENAI_API_KEY")
-                    .ok()
-                    .map(|k| (k, OPENAI_BASE_URL))
-            })
+        let (api_key, base_url) = store::get_effective_openai_compatible_credential(app)?
             .ok_or_else(|| {
                 anyhow!("No API key found. Please add your API key in Settings to get started.")
             })?;
@@ -470,12 +406,12 @@ pub async fn generate_evolution<R: Runtime>(
             .or_else(|| std::env::var("EVOLVE_MODEL").ok())
             .unwrap_or_else(|| DEFAULT_MODEL.to_string());
         // Strip OpenRouter-style "openai/" prefix for direct OpenAI usage
-        let model = if base_url == OPENAI_BASE_URL {
+        let model = if base_url == store::OPENAI_BASE_URL {
             model.strip_prefix("openai/").unwrap_or(&model).to_string()
         } else {
             model
         };
-        let provider_name = if base_url.contains("openrouter") {
+        let provider_name = if base_url == store::OPENROUTER_BASE_URL {
             "OpenRouter"
         } else {
             "OpenAI"
@@ -589,7 +525,7 @@ pub async fn generate_evolution<R: Runtime>(
     // Agentic loop - let the model use tools until done AND build passes
     loop {
         // Check for cancellation at the start of each iteration
-        if commands::is_evolve_cancelled() {
+        if session_control::is_evolve_cancelled() {
             warn!("⚠️ Evolution cancelled by user");
             evolution.state = EvolutionState::Failed;
             emit_evolve_event(
@@ -650,10 +586,10 @@ pub async fn generate_evolution<R: Runtime>(
                 res = &mut fut => res,
                 _ = async {
                     loop {
-                        if commands::is_evolve_cancelled() {
+                        if session_control::is_evolve_cancelled() {
                             break;
                         }
-                        // consider switching the cancellation mechanism to a tokio::sync::Notify or watch channel and select! directly on that signal instead of polling with sleep
+                        // TODO: Replace polling with tokio::sync::Notify or watch channel to avoid sleep.
                         sleep(Duration::from_millis(100)).await;
                     }
                 } => {
@@ -911,7 +847,7 @@ pub async fn generate_evolution<R: Runtime>(
                             {
                                 info!("⏳ Waiting for user response to: {}", question);
                                 let user_answer = tokio::select! {
-                                    answer = commands::wait_for_question_response() => {
+                                    answer = session_control::wait_for_question_response() => {
                                         match answer {
                                             Some(a) => a,
                                             None => {
@@ -922,7 +858,7 @@ pub async fn generate_evolution<R: Runtime>(
                                     }
                                     _ = async {
                                         loop {
-                                            if commands::is_evolve_cancelled() {
+                                            if session_control::is_evolve_cancelled() {
                                                 break;
                                             }
                                             sleep(Duration::from_millis(100)).await;

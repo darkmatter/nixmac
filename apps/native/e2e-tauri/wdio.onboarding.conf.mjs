@@ -1,7 +1,7 @@
 import { createWdioConfig } from './wdio.conf.base.mjs';
 
 export const config = createWdioConfig({
-  specs: ['./tests/wdio/onboarding.spec.mjs'],
+  specs: ['../dist-e2e/tests/wdio/onboarding.spec.js'],
   setupOptions: {
     initializeEmptyConfigDir: true,
   },

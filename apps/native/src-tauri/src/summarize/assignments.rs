@@ -2,7 +2,9 @@
 
 use crate::shared_types::{ChangeWithSummary, SemanticChangeMap};
 use crate::sqlite_types::Change;
-use crate::summarize::group_existing::{find_in_group_by_hash, find_in_singles_by_hash, hash_matches};
+use crate::summarize::group_existing::{
+    find_in_group_by_hash, find_in_singles_by_hash, hash_matches,
+};
 use crate::summarize::model_output_types::{RawHunkPlacement, RawNewMapEntry};
 use serde::Serialize;
 
@@ -130,7 +132,11 @@ pub fn reconcile(
         }
     });
 
-    Assignments { evolved, new_groups, new_singles }
+    Assignments {
+        evolved,
+        new_groups,
+        new_singles,
+    }
 }
 
 /// Builds assignments for new_groups and new_singles
@@ -166,13 +172,24 @@ pub fn new(entries: &[RawNewMapEntry], changes: &[Change]) -> Assignments {
     }
 
     // Unqique group id is still a single, sorry bud
-    let (new_groups, solo): (Vec<_>, Vec<_>) = new_groups.into_iter().partition(|g| g.changes.len() > 1);
-    new_singles.extend(solo.into_iter().map(|g| NewSingleAssignment {
-        pending: g.changes.into_iter().next().unwrap(),
-        prompt: String::new(),
+    let (new_groups, solo): (Vec<_>, Vec<_>) =
+        new_groups.into_iter().partition(|g| g.changes.len() > 1);
+    new_singles.extend(solo.into_iter().map(|g| {
+        NewSingleAssignment {
+            pending: g
+                .changes
+                .into_iter()
+                .next()
+                .expect("solo group has exactly one change (partitioned above)"),
+            prompt: String::new(),
+        }
     }));
 
-    Assignments { evolved: vec![], new_groups, new_singles }
+    Assignments {
+        evolved: vec![],
+        new_groups,
+        new_singles,
+    }
 }
 
 // ── Private helpers ────────────────────────────────────────────────────────────
@@ -187,9 +204,11 @@ fn reconcile_deferred(
         let gi = new_groups
             .iter()
             .position(|g| g.changes.iter().any(|p| hash_matches(&p.change.hash, hash)));
-        let pi = new_groups
-            .iter()
-            .position(|g| g.changes.iter().any(|p| hash_matches(&p.change.hash, pair_hash)));
+        let pi = new_groups.iter().position(|g| {
+            g.changes
+                .iter()
+                .any(|p| hash_matches(&p.change.hash, pair_hash))
+        });
 
         match (gi, pi) {
             (Some(i), Some(j)) if i != j => {
@@ -232,11 +251,18 @@ fn reconcile_deferred(
 }
 
 fn pending(change: Change) -> PendingChange {
-    PendingChange { change, own_summary_id: None, change_id: None }
+    PendingChange {
+        change,
+        own_summary_id: None,
+        change_id: None,
+    }
 }
 
 fn resolve_change(short_hash: &str, missed_changes: &[Change]) -> Option<Change> {
-    missed_changes.iter().find(|c| hash_matches(&c.hash, short_hash)).cloned()
+    missed_changes
+        .iter()
+        .find(|c| hash_matches(&c.hash, short_hash))
+        .cloned()
 }
 
 fn push_to_changing(
@@ -264,10 +290,9 @@ fn push_to_was_single(
     single: ChangeWithSummary,
     change: Change,
 ) {
-    if let Some(idx) = evolved
-        .iter()
-        .position(|a| a.former_group_id.is_none() && a.existing_changes.iter().any(|c| c.id == single.id))
-    {
+    if let Some(idx) = evolved.iter().position(|a| {
+        a.former_group_id.is_none() && a.existing_changes.iter().any(|c| c.id == single.id)
+    }) {
         evolved[idx].new_changes.push(pending(change));
     } else {
         evolved.push(EvolvedGroupAssignment {

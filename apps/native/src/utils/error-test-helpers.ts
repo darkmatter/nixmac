@@ -3,7 +3,7 @@
  * These work from the browser console
  */
 
-export interface ErrorTestHelpers {
+interface ErrorTestHelpers {
   // Sync errors get eaten by React error boundaries and won't trigger
   // the global error handler, so we need to throw async errors to test it.
   throwAsyncError: () => void;

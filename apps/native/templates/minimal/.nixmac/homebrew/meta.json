@@ -1,0 +1,6 @@
+{
+  "name": "Homebrew",
+  "author": "Nixmac Official",
+  "description": "Official Homebrew support for managing taps, formulae, and casks through nix-darwin.",
+  "tags": ["devtools", "app-management"]
+}

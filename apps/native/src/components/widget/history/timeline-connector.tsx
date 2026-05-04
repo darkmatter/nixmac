@@ -3,11 +3,11 @@ import { cn } from "@/lib/utils";
 
 // Vertical line style constants. LINE_LABEL is brighter — used for day-label
 // spans which sit between commits and need a stronger visual thread.
-export const LINE_NORMAL = "bg-teal-400/40 shadow-[0_0_4px_1px_rgba(45,212,191,0.15)]";
+const LINE_NORMAL = "bg-teal-400/40 shadow-[0_0_4px_1px_rgba(45,212,191,0.15)]";
 export const LINE_LABEL  = "bg-teal-400/60 shadow-[0_0_4px_1px_rgba(45,212,191,0.35)]";
 export const LINE_UNDONE = "bg-neutral-700";
 
-export type TimelineLineVariant =
+type TimelineLineVariant =
   | "normal"
   | "undone"
   | "fade-to-undone"
@@ -28,7 +28,7 @@ const SPAN_CLASSES = {
   full:   "top-0 bottom-0",
 } as const;
 
-export function TimeLineSection({
+function TimeLineSection({
   span,
   variant,
 }: {

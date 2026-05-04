@@ -2,7 +2,82 @@
 
 This folder contains Tauri end-to-end tests using WebDriverIO + [tauri-webdriver](https://github.com/danielraffel/tauri-webdriver).
 
-Current test files live in `e2e-tauri/tests`.
+WDIO test sources live under `e2e-tauri/tests/wdio` as TypeScript (`*.ts`) and compile to `apps/native/dist-e2e/tests/wdio` (`*.js`).
+
+## Test Execution Model
+
+### Process Isolation for State Management
+
+Each WDIO test suite runs in its **own isolated process** with its own `onPrepare` and `onComplete` lifecycle. This is crucial because:
+
+- WDIO launches the app binary and can only run a single app instance per process
+- Tests require specific on-disk state before the app launches (config repo, settings file, etc.)
+- Different suites have **mutually exclusive** setup requirements:
+  - **Prompt suites** (smoke, basic-prompts, discard, modify): need `initializeConfigRepo: true` (populated config git repo)
+  - **Onboarding suite**: needs `initializeEmptyConfigDir: true` (empty config directory for bootstrap)
+
+### Running the Tests
+
+- **`npm run test:wdio`** – runs all suites sequentially in separate processes:
+
+  1. `test:wdio:smoke` → fresh config repo → cleanup
+  1. `test:wdio:basic-prompts` → fresh config repo → cleanup
+  1. `test:wdio:discard` → fresh config repo → cleanup
+  1. `test:wdio:modify` → fresh config repo → cleanup
+  1. `test:wdio:onboarding` → empty config dir → cleanup
+
+  **Output format:**
+
+  ```
+  🧪 Running all WDIO test suites...
+
+  ⏳ SMOKE... ✅
+  ⏳ BASIC-PROMPTS... ✅
+  ⏳ DISCARD... ✅
+  ⏳ MODIFY... ✅
+  ⏳ ONBOARDING... ✅
+
+  ==================================================
+  📊 Test Results Summary
+  ==================================================
+    ✅ SMOKE
+    ✅ BASIC-PROMPTS
+    ✅ DISCARD
+    ✅ MODIFY
+    ✅ ONBOARDING
+  ==================================================
+
+  5/5 suites passed
+  ```
+
+  The aggregate reporting script ([scripts/run-wdio-tests.mjs](../scripts/run-wdio-tests.mjs)) runs all suites and collects their results, printing a unified summary at the end. This is useful for CI pipelines that need to see `X/Y suites passed` at a glance.
+
+- **`npm run test:wdio:smoke`** – runs just smoke tests
+
+- **`npm run test:wdio:basic-prompts`** – runs just basic-prompts tests
+
+- (etc. for discard, modify, onboarding)
+
+Each invocation is completely isolated: modifications made by one suite (e.g., basic-prompts adding fonts.nix) do not leak to subsequent suites.
+
+## Test Orchestration
+
+### Aggregate Reporting for CI
+
+The test runner uses a wrapper script ([scripts/run-wdio-tests.mjs](../scripts/run-wdio-tests.mjs)) to:
+
+1. **Run each suite in sequence** in its own isolated WDIO process
+1. **Collect results** from each suite (pass/fail)
+1. **Print a unified summary** showing `X/5 suites passed`
+1. **Exit with status 1** if any suite fails (useful for CI pipeline gates)
+
+This design gives you the best of both worlds:
+
+- **Process isolation**: Each suite gets a clean environment (prevents state leakage)
+- **Aggregate visibility**: CI systems see a single `5/5 passed` or `4/5 passed` result
+- **Independent execution**: Individual `npm run test:wdio:smoke` commands still work for quick local testing
+
+The script outputs clear pass/fail status for each suite in real-time, making it easy to spot which suite failed during a CI run without scrolling through all the test output.
 
 ## Prerequisites
 
@@ -12,86 +87,128 @@ Current test files live in `e2e-tauri/tests`.
 
 ## Adding new WDIO tests
 
-- Per-test WDIO conf: Each new E2E test suite should get its own small WDIO config file under this folder (for example `wdio.discard.conf.mjs` or `wdio.modify.conf.mjs`).
+### Why Each Suite Gets Its Own Config
 
-  - Why: WDIO launches the app binary as part of starting a test run; any environment or on-disk setup that the app relies on (for example: writing `settings.json` or creating a temporary `configDir` git repo) must happen before the app binary is launched. The easiest and most reliable way to guarantee that setup runs before the app is started is to perform it in `onPrepare` of a WDIO config.
-  - Our pattern: `wdio.conf.base.mjs` exports `createWdioConfig({ specs, setupOptions })`. Per-suite configs call that factory and pass `setupOptions` (e.g. `{ initializeConfigRepo: true }`). This ensures `setupNixmacTestEnvironment` runs in `onPrepare` before the Tauri binary starts.
-  - Clean-start variant: pass `{ initializeEmptyConfigDir: true }` for onboarding/bootstrap flows where the app should start with an empty (modulo an empty git repo) temporary config directory.
+WDIO launches the app binary as part of starting a test run. Since each process can only run a single app instance, any environment or on-disk setup that the app relies on must happen **before the app binary is launched**. This setup happens in the `onPrepare` hook of the WDIO config, which runs once per WDIO process invocation.
 
-- How to add a new test suite
+By giving each suite its own config file (and thus its own process), we ensure:
 
-  1. Create your spec file under `tests/wdio/`, e.g. `tests/wdio/my-feature.spec.mjs`.
+- ✅ Setup code (`setupNixmacTestEnvironment`) runs before the app launches
+- ✅ State is isolated: modifications made during one suite don't leak to others
+- ✅ Each suite can specify its own setup requirements (`initializeConfigRepo` vs. `initializeEmptyConfigDir`)
+- ✅ Cleanup (`teardownNixmacTestEnvironment`) runs after all tests in that suite complete
 
-  1. Add a per-suite config in this folder, e.g. `wdio.my-feature.conf.mjs`:
+### How to Add a New Test Suite
 
-     ```js
-     import { createWdioConfig } from './wdio.conf.base.mjs';
+1. Create your spec file under `tests/wdio/`, e.g. `tests/wdio/my-feature.spec.ts` (TypeScript, not JavaScript).
 
-     export const config = createWdioConfig({
-     specs: ['./tests/wdio/my-feature.spec.mjs'],
+1. Add a per-suite config in this folder, e.g. `wdio.my-feature.conf.mjs`:
+
+   ```js
+   import { createWdioConfig } from './wdio.conf.base.mjs';
+
+   export const config = createWdioConfig({
+     specs: ['../dist-e2e/tests/wdio/my-feature.spec.js'],
      setupOptions: { initializeConfigRepo: true }, // customize per-suite
-     });
-     ```
+   });
+   ```
 
-  1. Add an npm script in `apps/native/package.json` (optional convenience):
+   Choose `setupOptions` based on what your suite needs:
 
-```json
-      "test:wdio:my-feature": "wdio run e2e-tauri/wdio.my-feature.conf.mjs"
-```
+   - `{ initializeConfigRepo: true }` – for tests that assume a populated nix config repo exists
+   - `{ initializeEmptyConfigDir: true }` – for onboarding/bootstrap flows that start with an empty config directory
+   - Both options set up `mockVllm: {}` automatically (controllable via `NIXMAC_WDIO_VLLM_MODE`)
 
-- Environment and secrets
-  - WDIO vLLM mode is controlled by `NIXMAC_WDIO_VLLM_MODE`:
-    - `playback` (default): run against fixture-backed mock server.
-    - `real`: bypass mock server and call real vLLM directly.
-  - For `real`, set `VLLM_API_BASE_URL` (and `VLLM_API_KEY` if your backend requires auth) before running tests.
-  - For `playback`, no real vLLM credentials are required.
-  - Example (real mode):
+1. Add an npm script in `apps/native/package.json`:
 
-```bash
-      export NIXMAC_WDIO_VLLM_MODE="real"
-      export VLLM_API_BASE_URL="http://example.com/v1"
-      export VLLM_API_KEY="${VLLM_API_KEY}"
-      bun run test:wdio:modify
-```
+   ```json
+   "test:wdio:my-feature": "npm run build:e2e && wdio run e2e-tauri/wdio.my-feature.conf.mjs"
+   ```
 
-- Test helpers and hooks
+1. (Optional) If you want your suite to run as part of `npm run test:wdio`, add it to the aggregation script ([scripts/run-wdio-tests.mjs](../scripts/run-wdio-tests.mjs)) in the `suites` array:
 
-  - Use the existing dev-only test hook pattern when you need to drive or observe app state from WDIO: the app exposes `window.__testWidget` in DEV builds (see `src/utils/widget-test-helpers.ts`). Helpers include `setEvolvePrompt()`, `isEvolveProcessing()`, and `getPromptHistory()` — call them via `browser.execute(...)` from your WDIO helpers.
-  - Prefer using store-driven helpers (above) over DOM event hacks — they are faster and more reliable for React+Zustand apps running in Tauri webviews (noting that we cannot use React Testing Library in a Tauri app unfortunately).
-  - New prompt-suite helpers in `tests/wdio/helpers/app-ui.mjs`:
-    - `preparePromptTestCase(...)`: reset UI state + load mock responses for one test case.
-    - `registerPromptSuiteBeforeEach(...)`: suite-level per-test-case fixture mapping.
+   ```js
+   const suites = [
+     'test:wdio:smoke',
+     'test:wdio:basic-prompts',
+     'test:wdio:discard',
+     'test:wdio:modify',
+     'test:wdio:my-feature',  // ← add your new suite here
+     'test:wdio:onboarding',
+   ];
+   ```
 
-- data-testid's
+## Environment Variables and Configuration
 
-  - When adding new interactive elements you plan to target from E2E tests, add a `data-testid` attribute (or an `id`) to the element in the component source so selectors are stable and readable.
+### vLLM Mode (Playback vs. Real)
 
-## vLLM Test Modes (Playback / Real)
+Control whether tests use fixture responses or call a real vLLM backend via `NIXMAC_WDIO_VLLM_MODE`:
 
-The suite config for `modify` now supports a mode switch via `NIXMAC_WDIO_VLLM_MODE`:
+- `playback` (default) – run against fixture-backed mock HTTP server (no real backend needed)
+- `real` – bypass mock server and call a real vLLM endpoint directly
 
-- `playback`: use fixture responses only.
-- `real`: call real vLLM directly (no recording).
+For `playback` mode, no credentials are required. For `real` mode, set:
 
-The helper lives in `tests/wdio/helpers/vllm-test-mode.mjs` and is wired into `wdio.modify.conf.mjs`.
+- `VLLM_API_BASE_URL` – base URL of your real vLLM instance (e.g., `http://localhost:8000/v1`)
+- `VLLM_API_KEY` (optional) – API key if your backend requires authentication
 
-### Quick start for `modify.spec`
-
-1. Playback mode (default; no real backend required):
+Example running a single suite in real mode:
 
 ```bash
-  unset NIXMAC_WDIO_VLLM_MODE
-  bun run test:wdio:modify
+export NIXMAC_WDIO_VLLM_MODE="real"
+export VLLM_API_BASE_URL="http://localhost:8000/v1"
+npm run test:wdio:modify
 ```
 
-1. Real mode (no mock, no recording):
+### Fixture Data Directory Override
+
+By default, compiled test helpers look for fixture files at `e2e-tauri/tests/data/` (resolved from the compiled output directory). If needed, you can override this:
 
 ```bash
-  export NIXMAC_WDIO_VLLM_MODE="real"
-  export VLLM_API_BASE_URL="http://your-real-vllm.example/v1"
-  export VLLM_API_KEY="${VLLM_API_KEY}"
-  bun run test:wdio:modify
+export NIXMAC_WDIO_TEST_DATA_DIR="/path/to/custom/fixtures"
+npm run test:wdio:smoke
 ```
+
+## Test Helpers and Hooks
+
+### App State Interaction
+
+Use the dev-only test hook pattern to drive or observe app state from WDIO. The app exposes `window.__testWidget` in DEV builds (see `src/utils/widget-test-helpers.ts`). Helpers include:
+
+- `setEvolvePrompt()` – set the evolve input field
+- `isEvolveProcessing()` – check if evolution is in progress
+- `getPromptHistory()` – retrieve the list of prior prompts
+
+Call them via `browser.execute(...)` from your WDIO helpers:
+
+```js
+const isProcessing = await browser.execute(() => window.__testWidget?.isEvolveProcessing?.());
+```
+
+Prefer store-driven helpers over DOM event hacks — they are faster and more reliable for React+Zustand apps running in Tauri webviews (React Testing Library is not available in Tauri apps).
+
+### Prompt Suite Helpers
+
+Located in `tests/wdio/helpers/app-ui.ts`:
+
+- `preparePromptTestCase(...)` – reset UI state and load mock responses for one test
+- `registerPromptSuiteBeforeEach(...)` – per-test-case fixture mapping for suites with multiple tests
+
+### Stable Selectors
+
+When adding new interactive elements you plan to target from E2E tests, add a `data-testid` attribute to the component:
+
+```tsx
+<button data-testid="my-action-button">Do Something</button>
+```
+
+Then target it from WDIO:
+
+```js
+await $(('[data-testid="my-action-button"]')).click();
+```
+
+This keeps selectors stable and readable as component markup changes.
 
 ## Mocking AI Completion Responses
 
@@ -108,7 +225,7 @@ Instead of pointing tests at a real vLLM endpoint, you can start a lightweight l
 
 Fixtures live under `tests/data/`. Each file is a JSONL file where every line is a valid `CreateChatCompletionResponse` JSON object — exactly what the real vLLM/OpenAI API would return. You can capture real responses (potentially by running nixmac against a real LLM endpoint with `NIXMAC_RECORD_COMPLETIONS` turned on) and drop them in here.
 
-Named presets live in `tests/wdio/helpers/mock-vllm-presets.mjs`:
+Named presets live in `tests/wdio/helpers/mock-vllm-presets.ts`:
 
 ```js
 const MOCK_VLLM_FIXTURE_PRESETS = Object.freeze({
@@ -127,7 +244,7 @@ Enable the mock server for a suite by passing `mockVllm: {}` in `setupOptions`. 
 import { createWdioConfig } from './wdio.conf.base.mjs';
 
 export const config = createWdioConfig({
-  specs: ['./tests/wdio/my-feature.spec.mjs'],
+  specs: ['../dist-e2e/tests/wdio/my-feature.spec.js'],
   setupOptions: {
     initializeConfigRepo: true,
     mockVllm: {},
@@ -140,8 +257,8 @@ export const config = createWdioConfig({
 For single-test suites, load responses at the top of each `it` block before triggering any UI action that will cause the app to call the LLM:
 
 ```js
-import { setMockVllmResponses } from './helpers/test-env.mjs';
-import { getMockVllmFixturePreset } from './helpers/mock-vllm-presets.mjs';
+import { setMockVllmResponses } from './helpers/test-env.js';
+import { getMockVllmFixturePreset } from './helpers/mock-vllm-presets.js';
 
 it('does something with the LLM', async () => {
   await setMockVllmResponses({
@@ -166,8 +283,8 @@ Use one `describe` with a fixture map so each test gets clean state and its own 
 import {
   registerPromptSuiteBeforeEach,
   submitPromptMessage,
-} from './helpers/app-ui.mjs';
-import { getMockVllmFixturePreset } from './helpers/mock-vllm-presets.mjs';
+} from './helpers/app-ui.js';
+import { getMockVllmFixturePreset } from './helpers/mock-vllm-presets.js';
 
 describe('my prompt suite', () => {
   registerPromptSuiteBeforeEach({
@@ -196,7 +313,7 @@ Currently, the mocked completion responses are strictly linear and we have no di
 `apps/native/wdio.conf.mjs` uses:
 
 - WebDriver server port: `4444`
-- Specs: `./e2e-tauri/tests/wdio/**/*.spec.mjs`
+- Specs: `../dist-e2e/tests/wdio/**/*.spec.js`
 - Tauri binary: `../../target/debug/nixmac`
 
 Important: relative `binary` paths are resolved by `tauri-wd` using the directory where `tauri-wd` was launched.
@@ -225,6 +342,8 @@ export VLLM_API_BASE_URL=http://example.com/v1
 export VLLM_API_KEY=sk_blahblahblah
 bun run test:wdio
 ```
+
+`test:wdio` and all suite-specific WDIO scripts run `build:e2e` first, so TypeScript sources are compiled before WDIO starts.
 
 Or directly:
 
