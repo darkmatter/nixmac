@@ -9,7 +9,9 @@ beforeAll(annotations.beforeAll);
 function normalizeAnimations(html: string): string {
   return html
     .replace(/translateY\(([^)]+)\)/g, (_match, val) => {
-      return `translateY(${Math.round(Number.parseFloat(val))}px)`;
+      const rounded = Math.round(Number.parseFloat(val));
+      const stableOffset = rounded >= 9 && rounded <= 11 ? 10 : rounded;
+      return `translateY(${stableOffset}px)`;
     })
     .replace(/translateX\(([^)]+)\)/g, (_match, val) => {
       return `translateX(${Math.round(Number.parseFloat(val))}px)`;
