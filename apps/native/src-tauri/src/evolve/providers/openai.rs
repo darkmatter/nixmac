@@ -30,7 +30,7 @@ impl OpenAIProvider {
             .with_api_base(api_base);
         let client = Client::with_config(config);
         let record_completions =
-            crate::completion_log::init_recording("evolve_provider_completions", "evolve provider");
+            crate::state::completion_log::init_recording("evolve_provider_completions", "evolve provider");
         Self {
             client,
             model,
@@ -77,7 +77,7 @@ impl AiProvider for OpenAIProvider {
             .await
             .map_err(normalize_openai_error)?;
 
-        crate::completion_log::append_jsonl(
+        crate::state::completion_log::append_jsonl(
             self.record_completions,
             "evolve_provider_completions",
             &response,

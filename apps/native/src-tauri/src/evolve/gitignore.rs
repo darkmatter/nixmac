@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use log::warn;
 use std::fs;

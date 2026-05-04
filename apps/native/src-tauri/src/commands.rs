@@ -7,11 +7,14 @@
 //! NOTE: The server is stateless regarding UI state. All app state (generating,
 //! preview mode, etc.) is computed and managed entirely by the client.
 
+use crate::state::{build_state, evolve_state, watcher};
+use crate::storage::store;
 use crate::{
-    darwin, db, default_config, editor, evolution, evolve_state, feedback, finalize_restore, git,
-    lsp, mac, nix, peek, permissions, rollback, scanner, shared_types, store, types, utils,
-    watcher,
+    db, default_config, editor, evolve, feedback, git,
+    managed_edits, peek, rebuild, shared_types, types,
+    utils,
 };
+use crate::system::{nix, permissions, scanner};
 use std::path::Path;
 use std::process::Command;
 use tauri::AppHandle;
@@ -260,7 +263,7 @@ pub async fn homebrew_apply_diff(
     app: AppHandle,
     diff: shared_types::HomebrewState,
 ) -> Result<shared_types::ConfigEditApplyResult, String> {
-    crate::mac::homebrew::apply_homebrew_diff(&app, diff)
+    crate::managed_edits::homebrew_adopt::apply_homebrew_diff(&app, diff)
         .await
         .map_err(|e| capture_err("homebrew_apply_diff", e))
 }
@@ -272,7 +275,7 @@ pub async fn homebrew_get_state_diff(
     let dir = store::ensure_config_dir_exists(&app)
         .map_err(|e| capture_err("homebrew_get_state_diff", e))?;
 
-    mac::homebrew::get_homebrew_state_diff(Path::new(&dir))
+    managed_edits::homebrew_adopt::get_homebrew_state_diff(Path::new(&dir))
         .map_err(|e| capture_err("homebrew_get_state_diff", e))
 }
 
@@ -306,7 +309,7 @@ pub async fn git_cached(app: AppHandle) -> Result<Option<shared_types::GitStatus
 
 /// Stages all changes and creates a commit with the given message.
 #[tauri::command]
-pub async fn git_commit(app: AppHandle, message: String) -> Result<CommitResult, String> {
+pub async fn git_commit(app: AppHandle, message: String) -> Result<shared_types::CommitResult, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_commit", e))?;
     let commit_info = git::commit_all(&dir, &message).map_err(|e| capture_err("git_commit", e))?;
 
@@ -338,13 +341,13 @@ pub async fn git_commit(app: AppHandle, message: String) -> Result<CommitResult,
     }
 
     // Update build state: new HEAD hash, no changeset (working tree is now clean).
-    if let Ok(current_build_state) = crate::build_state::get(&app) {
-        let updated = crate::build_state::BuildState {
+    if let Ok(current_build_state) = build_state::get(&app) {
+        let updated = build_state::BuildState {
             head_commit_hash: Some(commit_info.hash.clone()),
             changeset_id: None,
             ..current_build_state
         };
-        if let Err(e) = crate::build_state::set(&app, updated) {
+        if let Err(e) = build_state::set(&app, updated) {
             log::warn!("[git_commit] Failed to update build state: {}", e);
         }
     }
@@ -354,17 +357,10 @@ pub async fn git_commit(app: AppHandle, message: String) -> Result<CommitResult,
         shared_types::EvolveState::default()
     });
 
-    Ok(CommitResult {
+    Ok(shared_types::CommitResult {
         hash: commit_info.hash,
         evolve_state,
     })
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CommitResult {
-    pub hash: String,
-    pub evolve_state: shared_types::EvolveState,
 }
 
 /// Stashes all uncommitted changes with the given message.
@@ -379,58 +375,6 @@ pub async fn git_stash(app: AppHandle, message: String) -> Result<shared_types::
 // Darwin/Nix Commands
 // =============================================================================
 
-/// Global flag to signal evolution cancellation.
-static EVOLVE_CANCELLED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-
-/// Check if evolution has been cancelled.
-pub fn is_evolve_cancelled() -> bool {
-    EVOLVE_CANCELLED.load(std::sync::atomic::Ordering::SeqCst)
-}
-
-/// Reset the cancellation flag.
-fn reset_evolve_cancelled() {
-    EVOLVE_CANCELLED.store(false, std::sync::atomic::Ordering::SeqCst);
-}
-
-/// Global holder for an in-flight question sender.
-/// We use a oneshot per-question so the evolve loop can await a response
-/// without holding a mutex across an await (which would cause a deadlock).
-static ONGOING_QUESTION: std::sync::OnceLock<
-    tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<String>>>,
-> = std::sync::OnceLock::new();
-
-fn ongoing_question_slot(
-) -> &'static tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<String>>> {
-    ONGOING_QUESTION.get_or_init(|| tokio::sync::Mutex::new(None))
-}
-
-/// Send a user's answer to the evolve loop's pending question.
-pub async fn send_question_response(answer: String) -> anyhow::Result<()> {
-    let slot = ongoing_question_slot();
-    let mut guard = slot.lock().await;
-    if let Some(tx) = guard.take() {
-        tx.send(answer)
-            .map_err(|_e| anyhow::anyhow!("Failed to send question response"))
-    } else {
-        Err(anyhow::anyhow!("No pending question to answer"))
-    }
-}
-
-/// Wait for a user response to a question (called from the evolve loop).
-pub async fn wait_for_question_response() -> Option<String> {
-    let slot = ongoing_question_slot();
-
-    // Create a oneshot for this question and register its sender globally.
-    let (tx, rx) = tokio::sync::oneshot::channel();
-    {
-        let mut guard = slot.lock().await;
-        // If there's already a pending question, replace it (dropping old sender).
-        *guard = Some(tx);
-    }
-
-    rx.await.ok()
-}
-
 /// Handles the complete evolution cycle returning the git status and summary to react
 #[tauri::command]
 pub async fn darwin_evolve(
@@ -438,12 +382,12 @@ pub async fn darwin_evolve(
     description: String,
 ) -> Result<shared_types::EvolutionResult, String> {
     // Reset cancellation flag at the start of a new evolution
-    reset_evolve_cancelled();
+    evolve::session_control::set_evolve_cancelled(false);
 
-    let result = match evolution::backup_evolve_and_record_changeset(&app, &description).await {
+    let result = match evolve::lifecycle::backup_evolve_and_record_changeset(&app, &description).await {
         Ok(result) => result,
         Err(failure) => {
-            let is_cancelled = is_evolve_cancelled()
+            let is_cancelled = evolve::session_control::is_evolve_cancelled()
                 || failure
                     .error
                     .to_ascii_lowercase()
@@ -474,7 +418,7 @@ pub async fn darwin_evolve(
 /// Cancel an in-progress evolution operation.
 #[tauri::command]
 pub async fn darwin_evolve_cancel() -> Result<shared_types::EvolveCancelResult, String> {
-    EVOLVE_CANCELLED.store(true, std::sync::atomic::Ordering::SeqCst);
+    evolve::session_control::set_evolve_cancelled(true);
     log::info!("Evolution cancellation requested");
     Ok(shared_types::EvolveCancelResult {
         ok: true,
@@ -486,7 +430,7 @@ pub async fn darwin_evolve_cancel() -> Result<shared_types::EvolveCancelResult, 
 #[tauri::command]
 pub async fn darwin_evolve_answer(answer: String) -> Result<shared_types::OkResult, String> {
     log::info!("User answered agent question: {}", answer);
-    send_question_response(answer)
+    evolve::session_control::send_question_response(answer)
         .await
         .map_err(|e| e.to_string())?;
     Ok(shared_types::OkResult::yes())
@@ -542,7 +486,7 @@ pub async fn darwin_apply_stream_start(
             "Host attribute not found. Set a host in Settings or ensure your flake defines exactly one darwinConfiguration.".to_string()
         })?;
 
-    darwin::apply_stream(&app, &dir, &host)
+    rebuild::apply_stream(&app, &dir, &host)
         .map_err(|e| capture_err("darwin_apply_stream_start", e))?;
     Ok(shared_types::OkResult::yes())
 }
@@ -553,7 +497,7 @@ pub async fn darwin_activate_store_path(
     app: AppHandle,
     store_path: String,
 ) -> Result<shared_types::OkResult, String> {
-    darwin::activate_store_path_stream(&app, store_path)
+    rebuild::activate_store_path_stream(&app, store_path)
         .map(|_| shared_types::OkResult::yes())
         .map_err(|e| capture_err("darwin_activate_store_path", e))
 }
@@ -568,7 +512,7 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<shared_types::
     let output = Command::new("git")
         .args(["add", "."])
         .current_dir(&dir)
-        .env("PATH", crate::nix::get_nix_path())
+        .env("PATH", nix::get_nix_path())
         .output()
         .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
     if !output.status.success() {
@@ -582,7 +526,7 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<shared_types::
     let output = Command::new("git")
         .args(["checkout", "-b", &format!("canceled-{}", date)])
         .current_dir(&dir)
-        .env("PATH", crate::nix::get_nix_path())
+        .env("PATH", nix::get_nix_path())
         .output()
         .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
     if !output.status.success() {
@@ -596,7 +540,7 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<shared_types::
     let output = Command::new("git")
         .args(["commit", "-m", &format!("Canceled commit: {}", commit_hash)])
         .current_dir(&dir)
-        .env("PATH", crate::nix::get_nix_path())
+        .env("PATH", nix::get_nix_path())
         .output()
         .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
     if !output.status.success() {
@@ -610,7 +554,7 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<shared_types::
     let output = Command::new("git")
         .args(["checkout", "-"])
         .current_dir(&dir)
-        .env("PATH", crate::nix::get_nix_path())
+        .env("PATH", nix::get_nix_path())
         .output()
         .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
     if !output.status.success() {
@@ -626,8 +570,8 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<shared_types::
 
 /// Records build state and changeset after a successful darwin-rebuild switch.
 #[tauri::command]
-pub async fn finalize_apply(app: AppHandle) -> Result<crate::finalize_apply::ApplyResult, String> {
-    crate::finalize_apply::finalize_apply(&app)
+pub async fn finalize_apply(app: AppHandle) -> Result<shared_types::FinalizeApplyResult, String> {
+    crate::rebuild::finalize_apply(&app)
         .await
         .map_err(|e| capture_err("finalize_apply", e))
 }
@@ -638,8 +582,8 @@ pub async fn finalize_rollback(
     app: AppHandle,
     store_path: Option<String>,
     changeset_id: Option<i64>,
-) -> Result<crate::finalize_apply::ApplyResult, String> {
-    crate::finalize_apply::finalize_rollback(&app, store_path, changeset_id)
+) -> Result<shared_types::FinalizeApplyResult, String> {
+    crate::rebuild::finalize_rollback(&app, store_path, changeset_id)
         .await
         .map_err(|e| capture_err("finalize_rollback", e))
 }
@@ -766,7 +710,7 @@ pub async fn summarize_current(
 /// and build/head status.
 #[tauri::command]
 pub async fn get_history(app: AppHandle) -> Result<Vec<crate::shared_types::HistoryItem>, String> {
-    crate::get_history::get_history(&app)
+    crate::history::get_history(&app)
         .await
         .map_err(|e| capture_err("get_history", e))
 }
@@ -777,7 +721,7 @@ pub async fn prepare_restore(app: AppHandle, target_hash: String) -> Result<(), 
     let config_dir = store::get_config_dir(&app).map_err(|e| capture_err("prepare_restore", e))?;
     git::checkout_files_at_commit(&config_dir, &target_hash)
         .map_err(|e| capture_err("prepare_restore", e))?;
-    crate::historelog::log_prepare(&config_dir);
+    crate::history::historelog::log_prepare(&config_dir);
     Ok(())
 }
 
@@ -785,7 +729,7 @@ pub async fn prepare_restore(app: AppHandle, target_hash: String) -> Result<(), 
 pub async fn abort_restore(app: AppHandle) -> Result<(), String> {
     let config_dir = store::get_config_dir(&app).map_err(|e| capture_err("abort_restore", e))?;
     git::restore_all(&config_dir).map_err(|e| capture_err("abort_restore", e))?;
-    crate::historelog::log_abort(&config_dir);
+    crate::history::historelog::log_abort(&config_dir);
     Ok(())
 }
 
@@ -795,7 +739,7 @@ pub async fn finalize_restore(
     app: AppHandle,
     target_hash: String,
 ) -> Result<crate::shared_types::GitStatus, String> {
-    finalize_restore::finalize_restore(&app, target_hash)
+    rebuild::finalize_restore(&app, target_hash)
         .await
         .map_err(|e| capture_err("finalize_restore", e))
 }
@@ -1158,7 +1102,7 @@ pub async fn apply_system_defaults(
     app: AppHandle,
     defaults: Vec<scanner::SystemDefault>,
 ) -> Result<shared_types::ConfigEditApplyResult, String> {
-    crate::apply_system_defaults::apply_system_defaults(&app, defaults)
+    crate::managed_edits::system_defaults::apply_system_defaults(&app, defaults)
         .await
         .map_err(|e| capture_err("apply_system_defaults", e))
 }
@@ -1170,7 +1114,7 @@ pub async fn apply_system_defaults(
 /// Restore uncommitted changes.
 #[tauri::command]
 pub async fn rollback_erase(app: AppHandle) -> Result<shared_types::RollbackResult, String> {
-    rollback::rollback_erase(&app).map_err(|e| capture_err("rollback_erase", e))
+    rebuild::rollback_erase(&app).map_err(|e| capture_err("rollback_erase", e))
 }
 
 /// Dry-run build check against the current working tree. Returns `{ passed: bool, output: string }`.
@@ -1182,7 +1126,7 @@ pub async fn darwin_build_check(app: AppHandle) -> Result<shared_types::BuildChe
         .map_err(|e| capture_err("darwin_build_check", e))?
         .ok_or_else(|| "No host configured — cannot run build check".to_string())?;
 
-    let (passed, stdout, stderr) = darwin::dry_run_build_check(&config_dir, &host_attr, false)
+    let (passed, stdout, stderr) = rebuild::dry_run_build_check(&config_dir, &host_attr, false)
         .map_err(|e| capture_err("darwin_build_check", e))?;
 
     let output = if stderr.is_empty() { stdout } else { stderr };
@@ -1384,17 +1328,17 @@ pub async fn editor_list_files(app: AppHandle) -> Result<Vec<editor::FileEntry>,
 /// Start the nixd LSP server.
 #[tauri::command]
 pub async fn lsp_start(app: AppHandle) -> Result<(), String> {
-    lsp::start(&app).await
+    editor::lsp::start(&app).await
 }
 
 /// Send a JSON-RPC message to nixd.
 #[tauri::command]
 pub async fn lsp_send(message: String) -> Result<(), String> {
-    lsp::send(&message).await
+    editor::lsp::send(&message).await
 }
 
 /// Stop the nixd LSP server.
 #[tauri::command]
 pub async fn lsp_stop() -> Result<(), String> {
-    lsp::stop().await
+    editor::lsp::stop().await
 }

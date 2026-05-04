@@ -67,7 +67,7 @@ pub fn create_provider<R: Runtime>(
     app_handle: Option<&AppHandle<R>>,
 ) -> Result<Box<dyn ChatCompletionProvider>> {
     let store_provider = app_handle
-        .and_then(|app| crate::store::get_summary_provider(app).ok())
+        .and_then(|app| crate::storage::store::get_summary_provider(app).ok())
         .flatten();
 
     let provider = store_provider
@@ -75,7 +75,7 @@ pub fn create_provider<R: Runtime>(
         .unwrap_or_else(|| "openai".to_string());
 
     let store_model = app_handle
-        .and_then(|app| crate::store::get_summary_model(app).ok())
+        .and_then(|app| crate::storage::store::get_summary_model(app).ok())
         .flatten();
 
     match provider.as_str() {
@@ -96,7 +96,7 @@ pub fn create_provider<R: Runtime>(
                 .unwrap_or_else(|| "llama3.1".to_string());
 
             let base_url = app_handle
-                .and_then(|app| crate::store::get_ollama_api_base_url(app).ok())
+                .and_then(|app| crate::storage::store::get_ollama_api_base_url(app).ok())
                 .flatten()
                 .or_else(|| std::env::var("OLLAMA_API_BASE").ok())
                 .unwrap_or_else(|| DEFAULT_OLLAMA_API_BASE.to_string());
@@ -108,7 +108,7 @@ pub fn create_provider<R: Runtime>(
                 .unwrap_or_else(|| "gpt-oss-120b".to_string());
 
             let base_url = app_handle
-                .and_then(|app| crate::store::get_vllm_api_base_url(app).ok())
+                .and_then(|app| crate::storage::store::get_vllm_api_base_url(app).ok())
                 .flatten()
                 .or_else(|| std::env::var("VLLM_API_BASE").ok())
                 .ok_or_else(|| {
@@ -116,7 +116,7 @@ pub fn create_provider<R: Runtime>(
                 })?;
 
             let api_key = app_handle
-                .map(crate::store::get_effective_vllm_api_key)
+                .map(crate::storage::store::get_effective_vllm_api_key)
                 .transpose()?
                 .flatten()
                 .unwrap_or_else(|| "none".to_string());
@@ -129,9 +129,9 @@ pub fn create_provider<R: Runtime>(
                 .unwrap_or_else(|| DEFAULT_SUMMARY_MODEL.to_string());
 
             let (key, base_url) = if let Some(app) = app_handle {
-                crate::store::get_effective_openai_compatible_credential(app)?
+                crate::storage::store::get_effective_openai_compatible_credential(app)?
             } else {
-                crate::store::get_env_openai_compatible_credential()
+                crate::storage::store::get_env_openai_compatible_credential()
             }
             .ok_or_else(|| {
                 anyhow::anyhow!(
@@ -140,7 +140,7 @@ pub fn create_provider<R: Runtime>(
             })?;
 
             // Strip OpenRouter-style "openai/" prefix for direct OpenAI usage
-            let model = if base_url == crate::store::OPENAI_BASE_URL {
+            let model = if base_url == crate::storage::store::OPENAI_BASE_URL {
                 model.strip_prefix("openai/").unwrap_or(&model).to_string()
             } else {
                 model

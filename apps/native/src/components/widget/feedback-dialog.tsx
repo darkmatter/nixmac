@@ -374,7 +374,7 @@ export function FeedbackDialog() {
         (feedbackType === FeedbackType.Issue || feedbackType === FeedbackType.Error) &&
         relatedPrompt
           ? relatedPrompt
-          : metadata?.lastPromptText;
+          : undefined;
       const selectedPromptText = shareOptions.lastPrompt ? relatedPromptText : undefined;
 
       const feedbackModel = new FeedbackModel({

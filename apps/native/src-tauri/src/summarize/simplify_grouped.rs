@@ -3,7 +3,7 @@
 
 #![allow(dead_code)]
 
-use crate::changes_from_diff::SHORT_HASH_LEN;
+use crate::git::changes_from_diff::SHORT_HASH_LEN;
 use crate::shared_types::{ChangeWithSummary, SemanticChangeGroup, SemanticChangeMap};
 use crate::summarize::sumlog as dbg;
 use serde::{Deserialize, Serialize};

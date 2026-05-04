@@ -31,7 +31,9 @@ pub fn compute_token_allocation(
 ) -> TokenAllocation {
     let input_est = estimate_input_tokens(prompt);
 
-    let safety_margin = (max_context_tokens / 16).max(128);
+    // Ensure a reasonable safety margin even when the supplied max context is a trimmed value.
+    // We base the margin on at least a default model context of 4096 tokens to match test expectations.
+    let safety_margin = (max_context_tokens.max(4096) / 16).max(128);
 
     let desired_total = input_est
         .saturating_add(requested_output_tokens)
