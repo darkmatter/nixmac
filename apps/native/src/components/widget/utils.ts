@@ -208,6 +208,10 @@ export type ChangeWithRichType = Change & {
   shortFilename?: string;
 };
 
+export type ChangeFileSummary = ChangeWithRichType & {
+  hunkCount: number;
+};
+
 function inferChangeType(diff: string): ChangeType {
   if (/^new file mode/m.test(diff)) return "new";
   if (/^deleted file mode/m.test(diff)) return "removed";
@@ -252,6 +256,41 @@ export function categorizeRenamed(
     (c) => !renamedChanges.includes(c) && !consumedRemovals.has(c.diff),
   );
   return [...remainingChanges, ...renamedChanges];
+}
+
+function changeFileKey(change: ChangeWithRichType): string {
+  return [change.oldFilename ?? "", change.filename].join("\0");
+}
+
+function combineChangeTypes(a: ChangeType, b: ChangeType): ChangeType {
+  if (a === b) return a;
+  if (a === "renamed" || b === "renamed") return "renamed";
+  return "edited";
+}
+
+export function summarizeChangesByFile(
+  changes: ChangeWithRichType[],
+): ChangeFileSummary[] {
+  const byFile = new Map<string, ChangeFileSummary>();
+
+  for (const change of changes) {
+    const key = changeFileKey(change);
+    const existing = byFile.get(key);
+
+    if (!existing) {
+      byFile.set(key, { ...change, hunkCount: 1 });
+      continue;
+    }
+
+    existing.hunkCount += 1;
+    existing.lineCount += change.lineCount;
+    existing.changeType = combineChangeTypes(
+      existing.changeType,
+      change.changeType,
+    );
+  }
+
+  return Array.from(byFile.values());
 }
 
 export function enrichChanges(changes: Change[]): ChangeWithRichType[] {
