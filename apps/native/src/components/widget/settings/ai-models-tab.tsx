@@ -149,6 +149,10 @@ export function AiModelsTab({
     <div className="space-y-6">
       <div>
         <h2 className="mb-4 font-semibold text-base">AI Models</h2>
+        <p className="mb-4 text-muted-foreground text-xs">
+          OpenRouter is the supported cloud provider in the main UI. Previously saved direct
+          OpenAI keys still work as a legacy fallback, but they are no longer shown in Settings.
+        </p>
         <div className="space-y-6">
           {/* Evolution Model */}
           <div className="space-y-4">

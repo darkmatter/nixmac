@@ -122,51 +122,11 @@ jobs:
 
       - name: Load E2E secrets
         env:
-          MAC_E2E_HOST_SECRET: ${{ secrets.MAC_E2E_HOST }}
-          MAC_E2E_USER_SECRET: ${{ secrets.MAC_E2E_USER }}
-          MAC_E2E_ADMIN_PW_SECRET: ${{ secrets.MAC_E2E_ADMIN_PASSWORD }}
-          MAC_E2E_SSH_KEY_SECRET: ${{ secrets.MAC_E2E_SSH_KEY }}
-        run: |
-          if [ -z "$MAC_E2E_HOST_SECRET" ] || \
-             [ -z "$MAC_E2E_USER_SECRET" ] || \
-             [ -z "$MAC_E2E_ADMIN_PW_SECRET" ] || \
-             [ -z "$MAC_E2E_SSH_KEY_SECRET" ]; then
-            echo "::error::Missing one or more required MAC_E2E_* secrets"
-            exit 1
-          fi
-
-          echo "::add-mask::$MAC_E2E_HOST_SECRET"
-          echo "::add-mask::$MAC_E2E_USER_SECRET"
-          echo "::add-mask::$MAC_E2E_ADMIN_PW_SECRET"
-          printf '%s\n' "$MAC_E2E_SSH_KEY_SECRET" | while IFS= read -r key_line; do
-            if [ -n "$key_line" ]; then
-              echo "::add-mask::$key_line"
-            fi
-          done
-
-          {
-            echo "MAC_E2E_HOST=$MAC_E2E_HOST_SECRET"
-            echo "MAC_E2E_USER=$MAC_E2E_USER_SECRET"
-            echo "MAC_E2E_ADMIN_PW=$MAC_E2E_ADMIN_PW_SECRET"
-          } >> "$GITHUB_ENV"
-
-          printf '%s\n' "$MAC_E2E_SSH_KEY_SECRET" > /tmp/e2e_ssh_key
-          chmod 600 /tmp/e2e_ssh_key
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY_DRKMTTR_DEV }}
+        run: bash ops/scripts/e2e/decrypt-secrets.sh
 
       - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          cp /tmp/e2e_ssh_key ~/.ssh/e2e_key
-          chmod 600 ~/.ssh/e2e_key
-
-          # Validate the key was written correctly
-          if ! ssh-keygen -l -f ~/.ssh/e2e_key >/dev/null 2>&1; then
-            echo "::error::SSH key appears invalid. Check MAC_E2E_SSH_KEY."
-            wc -l ~/.ssh/e2e_key
-            exit 1
-          fi
-
-          ssh-keyscan -H "$MAC_E2E_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+        run: bash ops/scripts/e2e/setup-ssh.sh
 
       - name: "Run E2E: ${{ matrix.scenario }}"
         env:
@@ -193,18 +153,7 @@ jobs:
 
       - name: Fetch test artifacts
         if: always()
-        run: |
-          SCP="scp -o StrictHostKeyChecking=no -i ~/.ssh/e2e_key"
-          HOST="${MAC_E2E_USER}@${MAC_E2E_HOST}"
-          mkdir -p artifacts
-
-          $SCP "$HOST:/tmp/e2e-recording.mp4" artifacts/ 2>/dev/null || true
-          $SCP "$HOST:/tmp/e2e-test.log" artifacts/ 2>/dev/null || true
-          $SCP "$HOST:/tmp/e2e-test-results.json" artifacts/ 2>/dev/null || true
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/e2e_key "$HOST" \
-            'ls /tmp/e2e-screenshots/*.png 2>/dev/null' | while read -r f; do
-            $SCP "$HOST:$f" artifacts/ 2>/dev/null || true
-          done
+        run: bash ops/scripts/e2e/fetch-artifacts.sh
 
       - name: Upload artifacts
         if: always()
@@ -216,42 +165,9 @@ jobs:
 
       - name: Post summary
         if: always()
-        run: |
-          SCENARIO="${{ matrix.scenario }}"
-          echo "### E2E: ${SCENARIO}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          # JSON results (preferred)
-          if [ -f artifacts/e2e-test-results.json ]; then
-            SUCCESS=$(jq -r '.success' artifacts/e2e-test-results.json)
-            PASSED=$(jq -r '.passed' artifacts/e2e-test-results.json)
-            FAILED=$(jq -r '.failed' artifacts/e2e-test-results.json)
-            DURATION=$(jq -r '.duration_seconds' artifacts/e2e-test-results.json)
-
-            echo "| Phase | Status | Name |" >> $GITHUB_STEP_SUMMARY
-            echo "|-------|--------|------|" >> $GITHUB_STEP_SUMMARY
-            jq -r '.phases[] | "| \(.phase) | \(if .status == "PASS" then "✅" else "❌" end) | \(.message) |"' \
-              artifacts/e2e-test-results.json >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Result:** $PASSED passed, $FAILED failed in ${DURATION}s" >> $GITHUB_STEP_SUMMARY
-
-          # Fallback: parse log
-          elif [ -f artifacts/e2e-test.log ]; then
-            grep -E '\[PASS\]|\[FAIL\]' artifacts/e2e-test.log | \
-              sed 's/\x1b\[[0-9;]*m//g' | \
-              while read -r line; do
-                if echo "$line" | grep -q "PASS"; then
-                  echo "✅ ${line#*PASS] }" >> $GITHUB_STEP_SUMMARY
-                else
-                  echo "❌ ${line#*FAIL] }" >> $GITHUB_STEP_SUMMARY
-                fi
-              done
-          else
-            echo "⚠️ No test results found." >> $GITHUB_STEP_SUMMARY
-          fi
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "📹 Video and screenshots in workflow artifacts." >> $GITHUB_STEP_SUMMARY
+        env:
+          SCENARIO: ${{ matrix.scenario }}
+        run: bash ops/scripts/e2e/post-summary.sh
 
       - name: Cleanup
         if: always()

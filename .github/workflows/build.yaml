@@ -51,32 +51,7 @@ jobs:
       # satisfy from the same run that's pushing).
       - name: Compute release version
         id: release-version
-        run: |
-          MODE="branch"
-          VERSION=""
-          TAG=""
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            MODE="tag"
-            VERSION="${GITHUB_REF_NAME#v}"
-            TAG="$GITHUB_REF_NAME"
-          elif [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/main" ]]; then
-            MODE="release"
-            BASE=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "")
-            if [[ -z "$BASE" ]]; then
-              BASE=$(node -p "require('./package.json').version")
-              echo "No tags found — bumping from package.json version $BASE"
-            fi
-            IFS='.' read -r MAJ MIN PAT <<< "$BASE"
-            PAT=$((PAT + 1))
-            VERSION="${MAJ}.${MIN}.${PAT}"
-            TAG="v${VERSION}"
-          fi
-          {
-            echo "mode=$MODE"
-            echo "version=$VERSION"
-            echo "tag=$TAG"
-          } >> "$GITHUB_OUTPUT"
-          echo "Computed: mode=$MODE version=$VERSION tag=$TAG"
+        run: bash ops/scripts/release/compute-version.sh
       # Sync native app version files. Tag + release modes use the computed
       # version directly; branch/PR builds fall back to the max(package.json,
       # latest-git-tag) guard so a stale package.json cannot embed a version
@@ -85,48 +60,10 @@ jobs:
       # 0.16.2).
       - name: Sync native app version
         id: sync-version
-        run: |
-          MODE="${{ steps.release-version.outputs.mode }}"
-          if [[ "$MODE" == "tag" || "$MODE" == "release" ]]; then
-            VERSION="${{ steps.release-version.outputs.version }}"
-            echo "$MODE build — syncing to version: $VERSION"
-            node scripts/sync-versions.mjs "$VERSION"
-            # sync-versions.mjs doesn't touch root package.json — do it here.
-            node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.version=process.argv[1];fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n');" "$VERSION"
-            BUILD_VERSION="$VERSION"
-          else
-            PKG_VERSION=$(node -p "require('./package.json').version")
-            # Guard against stale package.json: if the latest git tag is newer,
-            # use the tag version so branch builds never embed a lower version than
-            # what has already shipped (which would trigger a false-positive update banner).
-            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "")
-            # Portable semver compare via Node (avoids sort -V which requires GNU coreutils).
-            # Exits 0 (true) when LATEST_TAG > PKG_VERSION, 1 otherwise.
-            _tag_is_newer() {
-              node -e "
-                const a = '$PKG_VERSION'.split('.').map(s => parseInt(s, 10));
-                const b = '$LATEST_TAG'.split('.').map(s => parseInt(s, 10));
-                for (let i = 0; i < 3; i++) {
-                  if ((b[i]||0) > (a[i]||0)) process.exit(0);
-                  if ((a[i]||0) > (b[i]||0)) process.exit(1);
-                }
-                process.exit(1);
-              "
-            }
-            if [[ -n "$LATEST_TAG" ]] && _tag_is_newer; then
-              echo "⚠️  package.json version ($PKG_VERSION) lags behind latest tag ($LATEST_TAG) — using tag version to prevent false-positive update banner"
-              VERSION="$LATEST_TAG"
-            else
-              VERSION="$PKG_VERSION"
-            fi
-            echo "Branch/PR build — syncing to version: $VERSION"
-            node scripts/sync-versions.mjs "$VERSION"
-            SHORT_SHA=${GITHUB_SHA::8}
-            BUILD_VERSION="${VERSION}-${SHORT_SHA}"
-          fi
-
-          echo "VERSION=$BUILD_VERSION" >> "$GITHUB_ENV"
-          echo "build_version=$BUILD_VERSION" >> "$GITHUB_OUTPUT"
+        env:
+          RELEASE_MODE: ${{ steps.release-version.outputs.mode }}
+          RELEASE_VERSION: ${{ steps.release-version.outputs.version }}
+        run: bash ops/scripts/release/sync-version.sh
       - name: Check for code signing secrets
         id: check-secrets
         shell: "sops exec-env ops/secrets/secrets.yaml \"bash -e {0}\""
@@ -165,59 +102,13 @@ jobs:
           steps.release-version.outputs.mode == 'release') &&
           steps.check-secrets.outputs.has_certificate == 'true'
         shell: "sops exec-env ops/secrets/secrets.yaml \"bash -e {0}\""
-        run: |
-          # Create a temporary keychain
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-
-          # Import the certificate
-          echo "$APPLE_CERTIFICATE" | base64 --decode > $RUNNER_TEMP/certificate.p12
-          security import $RUNNER_TEMP/certificate.p12 -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          # Prepend our keychain but keep the existing search list so later steps
-          # that do not need the cert still have access to the default keychains.
-          security list-keychain -d user -s $KEYCHAIN_PATH $(security list-keychains -d user | tr -d '"' | xargs)
-
-          # Debug: List available signing identities
-          echo "=== Available signing identities ==="
-          security find-identity -v -p codesigning $KEYCHAIN_PATH
-          echo "=== End identities ==="
+        run: bash ops/scripts/release/import-certificate.sh
       # Sign the app bundle (required for notarization)
       - name: Sign app bundle
         if: (steps.release-version.outputs.mode == 'tag' ||
           steps.release-version.outputs.mode == 'release') &&
           steps.check-secrets.outputs.has_certificate == 'true'
-        run: |
-          APP_PATH=$(find target/release/bundle/macos -name "*.app" -type d | head -1)
-          if [ -n "$APP_PATH" ]; then
-            echo "Signing $APP_PATH..."
-            
-            # Get the signing identity from the keychain
-            KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-            IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)".*/\1/')
-            
-            if [ -z "$IDENTITY" ]; then
-              echo "ERROR: No Developer ID Application identity found in keychain"
-              security find-identity -v -p codesigning "$KEYCHAIN_PATH"
-              exit 1
-            fi
-            
-            echo "Using identity: $IDENTITY"
-            
-            # Sign with hardened runtime (required for notarization)
-            codesign --force --deep --options runtime \
-              --entitlements apps/native/src-tauri/entitlements.plist \
-              --sign "$IDENTITY" \
-              "$APP_PATH"
-            
-            echo "Verifying signature..."
-            codesign --verify --verbose "$APP_PATH"
-          else
-            echo "No .app found to sign"
-            exit 1
-          fi
+        run: bash ops/scripts/release/sign-app.sh
       # Replace unsigned app inside the Tauri-built DMG with the signed one.
       # We mount the DMG read-write, swap the .app in place, and re-compress so
       # the Finder window layout (background image, /Applications alias, icon
@@ -228,115 +119,14 @@ jobs:
         if: (steps.release-version.outputs.mode == 'tag' ||
           steps.release-version.outputs.mode == 'release') &&
           steps.check-secrets.outputs.has_certificate == 'true'
-        run: |
-          APP_PATH=$(find target/release/bundle/macos -name "*.app" -type d | head -1)
-          DMG_PATH=$(find target/release/bundle/dmg -name "*.dmg" -type f | head -1)
-
-          if [ -z "$APP_PATH" ] || [ -z "$DMG_PATH" ]; then
-            echo "ERROR: missing APP_PATH or DMG_PATH (APP_PATH=$APP_PATH DMG_PATH=$DMG_PATH)"
-            exit 1
-          fi
-
-          APP_NAME=$(basename "$APP_PATH")
-          RW_DMG="${DMG_PATH%.dmg}.rw.dmg"
-          MOUNT_POINT="$RUNNER_TEMP/dmg-mount"
-          mkdir -p "$MOUNT_POINT"
-
-          # Detach with retries. Writes may still be flushing after rsync, and
-          # CI runners occasionally hold file handles briefly after process
-          # exit. Match Tauri's generated create-dmg helper pattern instead of
-          # using -force unconditionally.
-          detach_with_retry() {
-            local mount="$1"
-            for i in 1 2 3 4 5; do
-              if hdiutil detach "$mount"; then
-                return 0
-              fi
-              if [ "$i" -lt 5 ]; then
-                echo "detach of $mount failed, retry $i/5 in 2s..."
-                sleep 2
-              fi
-            done
-            echo "WARNING: all 5 detach attempts failed for $mount, forcing..."
-            hdiutil detach "$mount" -force
-          }
-
-          echo "Converting DMG to read-write so we can swap in the signed app..."
-          hdiutil convert "$DMG_PATH" -format UDRW -o "$RW_DMG"
-
-          # Grow the RW DMG to give the signed bundle headroom, but only if
-          # needed. `hdiutil resize -size` is an exact target (not grow-only),
-          # so a fixed cap could attempt to shrink larger images in the future.
-          # Compute required size from the signed app's on-disk footprint plus
-          # a 50 MB padding buffer, and only resize if the current image is
-          # smaller than required.
-          APP_SIZE_KB=$(du -sk "$APP_PATH" | awk '{print $1}')
-          REQUIRED_KB=$((APP_SIZE_KB + 51200))
-          CURRENT_KB=$(du -k "$RW_DMG" | awk '{print $1}')
-          if [ "$REQUIRED_KB" -gt "$CURRENT_KB" ]; then
-            echo "Growing RW DMG from ${CURRENT_KB}KB to ${REQUIRED_KB}KB (app ${APP_SIZE_KB}KB + 50MB headroom)..."
-            hdiutil resize -size "${REQUIRED_KB}k" "$RW_DMG"
-          else
-            echo "RW DMG already has enough headroom (${CURRENT_KB}KB >= ${REQUIRED_KB}KB required), skipping resize."
-          fi
-
-          echo "Mounting RW DMG at $MOUNT_POINT..."
-          hdiutil attach -readwrite -nobrowse -noautoopen -mountpoint "$MOUNT_POINT" "$RW_DMG"
-
-          if [ ! -d "$MOUNT_POINT/$APP_NAME" ]; then
-            echo "ERROR: expected $APP_NAME inside the DMG, found:"
-            ls -la "$MOUNT_POINT"
-            detach_with_retry "$MOUNT_POINT" || true
-            exit 1
-          fi
-
-          echo "Replacing $APP_NAME inside the DMG with the signed bundle..."
-          # --delete prunes stale files from the old unsigned bundle (e.g. the
-          # previous _CodeSignature). The trailing slashes sync directory
-          # *contents*, keeping the existing .DS_Store and /Applications alias
-          # that define the DMG's Finder layout.
-          rsync -a --delete "$APP_PATH/" "$MOUNT_POINT/$APP_NAME/"
-
-          echo "Detaching RW DMG..."
-          detach_with_retry "$MOUNT_POINT"
-
-          echo "Re-compressing DMG back to UDZO at $DMG_PATH..."
-          rm -f "$DMG_PATH"
-          hdiutil convert "$RW_DMG" -format UDZO -imagekey zlib-level=9 -o "$DMG_PATH"
-          rm -f "$RW_DMG"
-
-          echo "Verifying signed app inside re-packed DMG..."
-          hdiutil attach -readonly -nobrowse -noautoopen -mountpoint "$MOUNT_POINT" "$DMG_PATH"
-          codesign --verify --verbose "$MOUNT_POINT/$APP_NAME"
-          detach_with_retry "$MOUNT_POINT"
-
-          echo "Done: $DMG_PATH now contains the signed app with the preserved Finder layout."
+        run: bash ops/scripts/release/swap-signed-dmg.sh
       # Notarize the app (requires Apple Developer account)
       - name: Notarize app
         if: (steps.release-version.outputs.mode == 'tag' ||
           steps.release-version.outputs.mode == 'release') &&
           steps.check-secrets.outputs.has_notarization == 'true'
         shell: "sops exec-env ops/secrets/secrets.yaml \"bash -e {0}\""
-        run: |
-          # Write the API key to a file
-          echo "$APPLE_API_KEY_CONTENT" > "$RUNNER_TEMP/AuthKey.p8"
-
-          DMG_PATH=$(find target/release/bundle/dmg -name "*.dmg" -type f | head -1)
-
-          if [ -n "$DMG_PATH" ]; then
-            echo "Notarizing $DMG_PATH..."
-            xcrun notarytool submit "$DMG_PATH" \
-              --key "$RUNNER_TEMP/AuthKey.p8" \
-              --key-id "$APPLE_API_KEY_ID" \
-              --issuer "$APPLE_API_ISSUER" \
-              --wait
-
-            # Staple the notarization ticket
-            xcrun stapler staple "$DMG_PATH"
-          fi
-
-          # Clean up the key file
-          rm -f "$RUNNER_TEMP/AuthKey.p8"
+        run: bash ops/scripts/release/notarize.sh
       - name: Get artifact paths
         id: artifacts
         run: |
@@ -409,71 +199,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_VERSION: ${{ steps.release-version.outputs.version }}
           RELEASE_TAG: ${{ steps.release-version.outputs.tag }}
-        run: |
-          # Map SOPS env vars to AWS CLI vars
-          export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
-          export AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
-
-          VERSION="$RELEASE_VERSION"
-
-          # Find the .app.tar.gz and .sig files from Tauri build output
-          TAR_GZ=$(find target/release/bundle -name "*.app.tar.gz" -not -name "*.sig" | head -1)
-          SIG_FILE=$(find target/release/bundle -name "*.app.tar.gz.sig" | head -1)
-
-          if [ -z "$TAR_GZ" ] || [ -z "$SIG_FILE" ]; then
-            echo "ERROR: Could not find .app.tar.gz or .sig file"
-            echo "Contents of target/release/bundle:"
-            find target/release/bundle -type f -name "*.tar.gz*" 2>/dev/null || true
-            exit 1
-          fi
-
-          echo "Found tar.gz: $TAR_GZ"
-          echo "Found sig: $SIG_FILE"
-
-          SIGNATURE=$(cat "$SIG_FILE" | jq -Rs .)
-
-          # Upload binary artifacts with long cache
-          aws s3 cp "$TAR_GZ" "s3://nixmac-releases/${VERSION}/nixmac.app.tar.gz" \
-            --endpoint-url "$R2_ENDPOINT" \
-            --cache-control "max-age=31536000"
-
-          aws s3 cp "$SIG_FILE" "s3://nixmac-releases/${VERSION}/nixmac.app.tar.gz.sig" \
-            --endpoint-url "$R2_ENDPOINT" \
-            --cache-control "max-age=31536000"
-
-          # Generate latest.json
-          PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
-          # Try to get release notes from the GitHub release
-          NOTES=""
-          if command -v gh &> /dev/null; then
-            NOTES=$(gh release view "$RELEASE_TAG" --json body -q .body 2>/dev/null || echo "")
-          fi
-
-          cat > /tmp/latest.json << EOF
-          {
-            "version": "${VERSION}",
-            "notes": $(echo "$NOTES" | jq -Rs .),
-            "pub_date": "${PUB_DATE}",
-            "platforms": {
-              "darwin-aarch64": {
-                "signature": ${SIGNATURE},
-                "url": "https://releases.nixmac.com/${VERSION}/nixmac.app.tar.gz"
-              }
-            }
-          }
-          EOF
-
-          # Pretty-print to validate JSON
-          cat /tmp/latest.json | jq . > /tmp/latest-formatted.json
-
-          # Upload latest.json with short cache
-          aws s3 cp /tmp/latest-formatted.json "s3://nixmac-releases/latest.json" \
-            --endpoint-url "$R2_ENDPOINT" \
-            --cache-control "max-age=300" \
-            --content-type "application/json"
-
-          echo "✅ Uploaded to R2: v${VERSION}"
+        run: bash ops/scripts/release/upload-r2.sh
       # Sync the shipped release to Linear so issues referenced in commits since
       # the previous release get linked. Runs only after R2 upload succeeds, so
       # Linear releases track what actually shipped. Skipped for `-test.N` tags
@@ -489,8 +215,4 @@ jobs:
           name: nixmac v${{ steps.release-version.outputs.version }}
       - name: Cleanup keychain
         if: always()
-        run: |
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-          if [ -f "$KEYCHAIN_PATH" ]; then
-            security delete-keychain "$KEYCHAIN_PATH" || true
-          fi
+        run: bash ops/scripts/release/cleanup-keychain.sh
