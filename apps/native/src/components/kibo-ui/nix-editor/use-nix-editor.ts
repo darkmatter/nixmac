@@ -9,11 +9,12 @@ interface UseNixEditorOptions {
   filePath: string;
   containerRef: React.RefObject<HTMLDivElement | null>;
   onSave?: (content: string) => void;
+  disabled?: boolean;
 }
 
-export function useNixEditor({ filePath, containerRef, onSave }: UseNixEditorOptions) {
+export function useNixEditor({ filePath, containerRef, onSave, disabled = false }: UseNixEditorOptions) {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!disabled);
   const [isDirty, setIsDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lspStatus, setLspStatus] = useState<"off" | "starting" | "running" | "error">("off");
@@ -34,6 +35,11 @@ export function useNixEditor({ filePath, containerRef, onSave }: UseNixEditorOpt
   }, [filePath, onSave]);
 
   useEffect(() => {
+    if (disabled) {
+      setIsLoading(false);
+      return;
+    }
+
     const container = containerRef.current;
     if (!container) return;
 
@@ -144,7 +150,7 @@ export function useNixEditor({ filePath, containerRef, onSave }: UseNixEditorOpt
       }
       // Don't stop the LSP client — keep it running for subsequent editor opens
     };
-  }, [filePath, containerRef, onSave]);
+  }, [filePath, containerRef, onSave, disabled]);
 
   return { isLoading, isDirty, error, save, editorRef, lspStatus };
 }

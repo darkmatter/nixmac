@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-pub use crate::shared_types::EvolutionState;
+use crate::shared_types::EvolutionState;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -159,5 +159,49 @@ impl Evolution {
             result_summary: result_summary.to_string(),
             success,
         });
+    }
+}
+
+/// Partial evolution telemetry captured on failed runs.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EvolutionProgress {
+    pub state: EvolutionState,
+    pub iterations: usize,
+    pub build_attempts: usize,
+    pub total_tokens: u32,
+    pub edits_count: usize,
+    pub thinking_count: usize,
+    pub tool_calls_count: usize,
+}
+
+/// Error for failed evolution generation that still carries partial progress.
+#[derive(Debug, Clone, thiserror::Error)]
+#[error("{message}")]
+pub struct EvolutionRunError {
+    pub message: String,
+    pub progress: EvolutionProgress,
+}
+
+impl EvolutionRunError {
+    pub(super) fn from_state(
+        message: impl Into<String>,
+        evolution: &Evolution,
+        iterations: usize,
+        build_attempts: usize,
+        total_tokens: u32,
+    ) -> Self {
+        Self {
+            message: message.into(),
+            progress: EvolutionProgress {
+                state: EvolutionState::Failed,
+                iterations,
+                build_attempts,
+                total_tokens,
+                edits_count: evolution.edits.len(),
+                thinking_count: evolution.thinking.len(),
+                tool_calls_count: evolution.tool_calls.len(),
+            },
+        }
     }
 }

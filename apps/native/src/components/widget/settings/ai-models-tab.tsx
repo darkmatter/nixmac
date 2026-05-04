@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/select";
 import { ModelCombobox } from "@/components/widget/model-combobox";
 import { getProviderConfigInvalidReason, isCliProvider } from "@/lib/ai-provider-validation";
-import { darwinAPI, DEFAULT_MAX_ITERATIONS } from "@/tauri-api";
+import { darwinAPI, DEFAULT_MAX_ITERATIONS, type CliToolsState } from "@/tauri-api";
 import type { AnyFieldApi, ReactFormExtendedApi } from "@tanstack/react-form";
 import { Info } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -62,7 +62,7 @@ const DEFAULT_SUMMARY_MODEL: Record<string, string> = {
 };
 
 function useCliToolStatus() {
-  const [status, setStatus] = useState<Record<string, boolean>>({});
+  const [status, setStatus] = useState<CliToolsState | null>(null);
   useEffect(() => {
     darwinAPI.cli.checkTools().then(setStatus).catch(() => {});
   }, []);

@@ -1,34 +1,8 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`Configuration Nix 1`] = `
-"<div class="h-[500px] w-[700px] overflow-hidden rounded-lg border border-border bg-background"><div class="relative flex h-full flex-1 flex-col overflow-hidden"><div class="absolute top-2 right-3 z-10 flex items-center gap-2"><div class="rounded bg-muted px-2 py-0.5 text-muted-foreground text-xs">nixd</div></div><div class="flex-1 overflow-hidden bg-neutral-950 p-4 font-mono text-[13px] text-neutral-200"><div class="mb-3 text-neutral-500 text-xs">configuration.nix</div><pre class="whitespace-pre-wrap">{ config, pkgs, ... }:
+exports[`Configuration Nix 1`] = `"<div class="h-[500px] w-[700px] overflow-hidden rounded-lg border border-border bg-background"><div class="relative flex flex-1 flex-col overflow-hidden" data-slot="nix-editor"><div data-slot="nix-editor-placeholder"></div></div></div>"`;
 
-{
-  environment.systemPackages = with pkgs; [
-    git
-    vim
-  ];
-}</pre></div></div></div>"
-`;
+exports[`Flake Nix 1`] = `"<div class="h-[500px] w-[700px] overflow-hidden rounded-lg border border-border bg-background"><div class="relative flex flex-1 flex-col overflow-hidden" data-slot="nix-editor"><div data-slot="nix-editor-placeholder"></div></div></div>"`;
 
-exports[`Flake Nix 1`] = `
-"<div class="h-[500px] w-[700px] overflow-hidden rounded-lg border border-border bg-background"><div class="relative flex h-full flex-1 flex-col overflow-hidden"><div class="absolute top-2 right-3 z-10 flex items-center gap-2"><div class="rounded bg-muted px-2 py-0.5 text-muted-foreground text-xs">nixd</div></div><div class="flex-1 overflow-hidden bg-neutral-950 p-4 font-mono text-[13px] text-neutral-200"><div class="mb-3 text-neutral-500 text-xs">flake.nix</div><pre class="whitespace-pre-wrap">{ config, pkgs, ... }:
+exports[`Unknown File 1`] = `"<div class="h-[500px] w-[700px] overflow-hidden rounded-lg border border-border bg-background"><div class="relative flex flex-1 flex-col overflow-hidden" data-slot="nix-editor"><div data-slot="nix-editor-placeholder"></div></div></div>"`;
 
-{
-  environment.systemPackages = with pkgs; [
-    git
-    vim
-  ];
-}</pre></div></div></div>"
-`;
-
-exports[`Unknown File 1`] = `
-"<div class="h-[500px] w-[700px] overflow-hidden rounded-lg border border-border bg-background"><div class="relative flex h-full flex-1 flex-col overflow-hidden"><div class="absolute top-2 right-3 z-10 flex items-center gap-2"><div class="rounded bg-muted px-2 py-0.5 text-muted-foreground text-xs">nixd</div></div><div class="flex-1 overflow-hidden bg-neutral-950 p-4 font-mono text-[13px] text-neutral-200"><div class="mb-3 text-neutral-500 text-xs">homebrew.nix</div><pre class="whitespace-pre-wrap">{ config, pkgs, ... }:
-
-{
-  environment.systemPackages = with pkgs; [
-    git
-    vim
-  ];
-}</pre></div></div></div>"
-`;

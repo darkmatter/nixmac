@@ -47,18 +47,21 @@ export default meta;
 
 export const FlakeNix: StoryObj<typeof StaticNixEditor> = {
   args: {
+    disableRuntime: true,
     filePath: "flake.nix",
   },
 };
 
 export const ConfigurationNix: StoryObj<typeof StaticNixEditor> = {
   args: {
+    disableRuntime: true,
     filePath: "configuration.nix",
   },
 };
 
 export const UnknownFile: StoryObj<typeof StaticNixEditor> = {
   args: {
+    disableRuntime: true,
     filePath: "modules/homebrew.nix",
   },
 };

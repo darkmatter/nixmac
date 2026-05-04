@@ -574,8 +574,7 @@ fn add(content: &str, attrpath: &str, values: &[String]) -> Result<String> {
         let mut patched = content.to_string();
         let byte_range = text_range_to_usize_range(range);
 
-        // TODO: This drops list formatting and comments.
-        // Supposedly there's a way to use rowan to keep track of that...
+        // TODO: This drops list formatting and inline comments; rowan can preserve them if needed.
         info!("Replacing list at {:?} with {}", byte_range, new_text);
         patched.replace_range(byte_range, &new_text);
         return Ok(patched);
@@ -586,10 +585,8 @@ fn add(content: &str, attrpath: &str, values: &[String]) -> Result<String> {
         .context("Cannot find top-level attribute set to insert new attr")?;
     let addition = format!("\n  {} = [ {} ];", attrpath, values.join(" "));
 
-    // TODO: We _may_ be requiring "with pkgs;" for list edits depending on what the
-    // agent does, but we should be more flexible about it. We could insert a new attr without "with pkgs"
-    // if the attrpath is different, but if the attrpath includes "pkgs" then we should probably
-    // require it exists to avoid confusion about where the packages are coming from.
+    // TODO: Inserted attrs that reference `pkgs.*` may need an enclosing `with pkgs;` that isn't
+    // verified here; agent-generated edits currently handle this implicitly.
     info!(
         "{} not found; inserting '{}' at {}",
         attrpath, addition, insert_pos

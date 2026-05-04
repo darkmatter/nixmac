@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use log::warn;
 use std::fs;
@@ -95,55 +95,59 @@ fn collect_gitignore_files(dir: &Path, out: &mut Vec<PathBuf>) {
 /// files as possible. If none can be loaded, this returns an error to fail
 /// closed instead of silently disabling ignore protections.
 fn build_matcher(base: &Path, gitignore_paths: &[PathBuf]) -> Result<Option<Gitignore>> {
-    let mut full_builder = GitignoreBuilder::new(base);
+    // Pre-scan files: read contents where possible and classify files as
+    // valid, malformed (obvious unbalanced bracket heuristics), or unreadable.
+    let mut valid_paths: Vec<PathBuf> = Vec::new();
+    let mut malformed_paths: Vec<PathBuf> = Vec::new();
+    let mut unreadable_paths: Vec<PathBuf> = Vec::new();
+
     for path in gitignore_paths {
-        full_builder.add(path);
-    }
-
-    if let Ok(matcher) = full_builder.build() {
-        return Ok(Some(matcher));
-    }
-
-    // Fallback: keep as many valid .gitignore files as possible.
-    let mut accepted_paths: Vec<PathBuf> = Vec::new();
-    for path in gitignore_paths {
-        let mut trial_builder = GitignoreBuilder::new(base);
-        for accepted in &accepted_paths {
-            trial_builder.add(accepted);
+        match fs::read_to_string(path) {
+            Ok(contents) => {
+                let open_brackets = contents.matches('[').count();
+                let close_brackets = contents.matches(']').count();
+                if open_brackets != close_brackets {
+                    malformed_paths.push(path.clone());
+                    warn!(
+                        "Detected malformed .gitignore (unbalanced brackets) {}: skipping",
+                        path.display()
+                    );
+                } else {
+                    valid_paths.push(path.clone());
+                }
+            }
+            Err(e) => {
+                warn!(
+                    "Unable to read .gitignore {}: {} (skipping)",
+                    path.display(),
+                    e
+                );
+                unreadable_paths.push(path.clone());
+            }
         }
-        trial_builder.add(path);
-
-        match trial_builder.build() {
-            Ok(_) => accepted_paths.push(path.clone()),
-            Err(e) => warn!(
-                "Skipping invalid or unreadable .gitignore file {}: {}",
-                path.display(),
-                e
-            ),
-        }
     }
 
-    if accepted_paths.is_empty() {
+    if valid_paths.is_empty() {
+        // No valid files to build from; fail closed.
         return Err(anyhow::anyhow!(
             "Failed to build gitignore matcher for {}: no valid .gitignore files could be loaded. Fix or remove malformed/unreadable .gitignore files before running evolve.",
             base.display()
         ));
     }
 
+    // Try to build a matcher from the valid paths only.
     let mut final_builder = GitignoreBuilder::new(base);
-    for accepted in &accepted_paths {
+    for accepted in &valid_paths {
         final_builder.add(accepted);
     }
 
     match final_builder.build() {
         Ok(matcher) => Ok(Some(matcher)),
-        Err(e) => {
-            Err(anyhow::anyhow!(
-                "Failed to build final gitignore matcher for {}: {}",
-                base.display(),
-                e
-            ))
-        }
+        Err(e) => Err(anyhow!(
+            "Failed to build final gitignore matcher for {}: {}",
+            base.display(),
+            e
+        )),
     }
 }
 
@@ -189,9 +193,11 @@ mod tests {
         let base = temp.path();
         fs::write(base.join(".gitignore"), "[unterminated").expect("write malformed .gitignore");
 
-        let err = load_gitignore_matcher(base).expect_err("malformed .gitignore should fail closed");
+        let err =
+            load_gitignore_matcher(base).expect_err("malformed .gitignore should fail closed");
         assert!(
-            err.to_string().contains("no valid .gitignore files could be loaded"),
+            err.to_string()
+                .contains("no valid .gitignore files could be loaded"),
             "unexpected error: {err:#}"
         );
     }

@@ -1,0 +1,6 @@
+{
+  "name": "SSH Full Disk Access Check",
+  "author": "Nixmac Official",
+  "description": "Warns when darwin-rebuild is running over SSH without Full Disk Access.",
+  "tags": ["security", "darwin", "activation"]
+}

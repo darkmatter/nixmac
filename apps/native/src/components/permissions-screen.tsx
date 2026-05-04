@@ -3,16 +3,9 @@ import { IconTitleDescriptionCard } from "@/components/icon-title-description-ca
 import { IconTitleSub as IconTitleSubtitle } from "@/components/icon-title-subtitle";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import type { Permission } from "@/tauri-api";
 
-export interface Permission {
-  id: string;
-  name: string;
-  description: string;
-  required: boolean;
-  canRequestProgrammatically: boolean;
-  status: "granted" | "denied" | "pending";
-  instructions?: string;
-}
+export type { Permission };
 
 export const defaultPermissions: Permission[] = [
   {
@@ -45,8 +38,8 @@ export const defaultPermissions: Permission[] = [
   {
     id: "full-disk",
     name: "Full Disk Access",
-    description: "Recommended for complete system management capabilities",
-    required: false,
+    description: "Required for darwin-rebuild to apply system changes",
+    required: true,
     canRequestProgrammatically: false,
     status: "pending",
     instructions:
@@ -54,7 +47,7 @@ export const defaultPermissions: Permission[] = [
   },
 ];
 
-export interface PermissionsScreenProps {
+interface PermissionsScreenProps {
   onComplete: () => void;
   initialPermissions?: Permission[];
   /** When true, renders a compact version suitable for embedding in a widget */
@@ -271,19 +264,21 @@ export function PermissionsScreen({
 function PermissionStatusBadge({
   status,
 }: {
-  status: "granted" | "denied" | "pending";
+  status: Permission["status"];
 }) {
   const styles = {
     granted:
       "bg-console-success/10 text-console-success border-console-success/20",
     denied: "bg-console-error/10 text-console-error border-console-error/20",
     pending: "bg-secondary text-muted-foreground border-border",
+    unknown: "bg-secondary text-muted-foreground border-border",
   };
 
   const icons = {
     granted: "✓",
     denied: "✗",
     pending: "○",
+    unknown: "?",
   };
 
   return (

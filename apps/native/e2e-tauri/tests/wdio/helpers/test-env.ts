@@ -29,12 +29,12 @@ import {
 } from './config-repo.js';
 
 export {
-  assertConfigRepoClean,
-  assertConfigRepoFileExists,
-  assertConfigRepoInitialized,
-  getConfigRepoDir,
+  
+  
+  
+  
   getConfigRepoGitDiff,
-  resetConfigRepoToInitialState,
+  
   waitForConfigRepoClean,
   waitForConfigRepoFileExists,
   waitForConfigRepoInitialized,
@@ -53,7 +53,7 @@ const NIXMAC_EVOLVE_STATE_PATH = path.join(NIXMAC_APP_SUPPORT_DIR, 'evolve-state
 const NIXMAC_BUILD_STATE_PATH = path.join(NIXMAC_APP_SUPPORT_DIR, 'build-state.json');
 const NIXMAC_DB_PATH = path.join(NIXMAC_APP_SUPPORT_DIR, 'nixmac.db');
 
-export interface NixmacTestEnvironmentContext {
+interface NixmacTestEnvironmentContext {
   backupPath: string | null;
   evolveBackupPath: string | null;
   buildBackupPath: string | null;
@@ -63,7 +63,7 @@ export interface NixmacTestEnvironmentContext {
   hostAttr: string;
 }
 
-export interface SetupOptions {
+interface SetupOptions {
   initializeConfigRepo?: boolean;
   initializeEmptyConfigDir?: boolean;
   host?: string;

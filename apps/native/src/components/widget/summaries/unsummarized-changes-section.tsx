@@ -5,6 +5,7 @@ import { UnsummarizedChangesDetected } from "@/components/widget/unsummarized-ch
 import {
   categorizeRenamed,
   ChangeWithRichType,
+  summarizeChangesByFile,
 } from "@/components/widget/utils";
 
 export function UnsummarizedChangesSection({
@@ -14,7 +15,7 @@ export function UnsummarizedChangesSection({
 }) {
   if (!changes.length) return null;
 
-  const changesWithRenamed = categorizeRenamed(changes);
+  const changesWithRenamed = summarizeChangesByFile(categorizeRenamed(changes));
 
   return (
     <>

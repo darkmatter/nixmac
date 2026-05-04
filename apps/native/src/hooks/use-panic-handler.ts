@@ -5,14 +5,8 @@ import { useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { toast } from "sonner";
 import { useWidgetStore } from "@/stores/widget-store";
+import type { RustPanicEvent } from "@/tauri-api";
 import { FeedbackType } from "@/types/feedback";
-
-export interface RustPanicEvent {
-  message: string;
-  location?: string;
-  backtrace?: string;
-  timestamp: string;
-}
 
 export function usePanicHandler() {
   const { setError, openFeedback, setPanicDetails } = useWidgetStore();
@@ -25,7 +19,12 @@ export function usePanicHandler() {
       console.error("Panic caught:", panic);
 
       // Store the full panic details for feedback submission
-      setPanicDetails(panic);
+      setPanicDetails({
+        message: panic.message,
+        location: panic.location ?? undefined,
+        backtrace: panic.backtrace ?? undefined,
+        timestamp: panic.timestamp,
+      });
 
       // Format error message for display
       const errorMessage = `Application Error: ${panic.message}${

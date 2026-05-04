@@ -6,7 +6,7 @@ import { buildColorMap } from "@/components/widget/utils";
 import type { ColorMap } from "@/components/widget/utils";
 import { useWidgetStore } from "@/stores/widget-store";
 
-export type ActionType = "current" | "base" | "build" | "restore" | "preview";
+type ActionType = "current" | "base" | "build" | "restore" | "preview";
 
 interface UseHistoryCardResult {
   expanded: boolean;

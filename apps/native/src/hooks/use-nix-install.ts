@@ -1,5 +1,11 @@
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI, ipcRenderer } from "@/tauri-api";
+import {
+  darwinAPI,
+  ipcRenderer,
+  type NixDarwinRebuildEndEvent,
+  type NixInstallEndEvent,
+  type NixInstallProgressEvent,
+} from "@/tauri-api";
 import { useCallback } from "react";
 
 export function useNixInstall() {
@@ -8,7 +14,7 @@ export function useNixInstall() {
       const result = await darwinAPI.nix.check();
       const store = useWidgetStore.getState();
       store.setNixInstalled(result.installed);
-      store.setDarwinRebuildAvailable(result.installed ? result.darwin_rebuild_available : null);
+      store.setDarwinRebuildAvailable(result.installed ? result.darwinRebuildAvailable : null);
     } catch {
       useWidgetStore.getState().setNixInstalled(false);
     }
@@ -21,11 +27,7 @@ export function useNixInstall() {
     store.setNixDownloadProgress(null);
     store.setError(null);
 
-    const unlistenProgress = await ipcRenderer.on<{
-      phase: "downloading" | "waiting-for-installer" | "prefetching";
-      downloaded?: number;
-      total?: number;
-    }>("nix:install:progress", (event) => {
+    const unlistenProgress = await ipcRenderer.on<NixInstallProgressEvent>("nix:install:progress", (event) => {
       const current = useWidgetStore.getState();
       current.setNixInstallPhase(event.payload.phase);
       if (event.payload.phase === "downloading" && event.payload.downloaded != null) {
@@ -36,14 +38,7 @@ export function useNixInstall() {
       }
     });
 
-    const unlistenEnd = await ipcRenderer.on<{
-      ok: boolean;
-      code: number;
-      nix_version?: string;
-      darwin_rebuild_available?: boolean;
-      error_type?: string;
-      error?: string;
-    }>("nix:install:end", (event) => {
+    const unlistenEnd = await ipcRenderer.on<NixInstallEndEvent>("nix:install:end", (event) => {
       const current = useWidgetStore.getState();
       current.setNixInstalling(false);
       current.setNixInstallPhase(null);
@@ -79,10 +74,7 @@ export function useNixInstall() {
     store.setDarwinRebuildPrefetching(true);
     store.setError(null);
 
-    const unlistenEnd = await ipcRenderer.on<{
-      ok: boolean;
-      error?: string;
-    }>("nix:darwin-rebuild:end", (event) => {
+    const unlistenEnd = await ipcRenderer.on<NixDarwinRebuildEndEvent>("nix:darwin-rebuild:end", (event) => {
       const current = useWidgetStore.getState();
       current.setDarwinRebuildPrefetching(false);
       current.setDarwinRebuildAvailable(event.payload.ok);

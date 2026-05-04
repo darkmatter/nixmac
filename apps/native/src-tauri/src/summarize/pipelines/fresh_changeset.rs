@@ -6,8 +6,8 @@ use tauri::{AppHandle, Runtime};
 
 use crate::sqlite_types::Change;
 use crate::summarize::assignments;
-use crate::summarize::sumlog as dbg;
 use crate::summarize::build_prompt;
+use crate::summarize::sumlog as dbg;
 
 pub async fn analyze<R: Runtime>(
     changes: Vec<Change>,
@@ -24,14 +24,14 @@ pub async fn analyze<R: Runtime>(
         return Ok(None);
     }
 
-    let config_dir = crate::store::get_config_dir(app)?;
+    let config_dir = crate::storage::store::get_config_dir(app)?;
     let Some(base_commit_id) =
         crate::db::commits::store_head_commit(db_path, &config_dir, base_commit_id)?
     else {
         return Ok(None);
     };
 
-    let short_hashed_changes = crate::changes_from_diff::with_short_hashes(&changes);
+    let short_hashed_changes = crate::git::changes_from_diff::with_short_hashes(&changes);
     let refs: Vec<&Change> = short_hashed_changes.iter().collect();
     let prompt = build_prompt::new_map(&refs);
     dbg::new_log_prompt(&prompt);
@@ -46,8 +46,10 @@ pub async fn analyze<R: Runtime>(
         a.prompt = build_prompt::new_single(&a.pending.change);
     }
     for a in &mut assignments.new_groups {
-        let short_hashes: Vec<String> = a.changes.iter()
-            .map(|c| c.change.hash[..crate::changes_from_diff::SHORT_HASH_LEN].to_string())
+        let short_hashes: Vec<String> = a
+            .changes
+            .iter()
+            .map(|c| c.change.hash[..crate::git::changes_from_diff::SHORT_HASH_LEN].to_string())
             .collect();
         let resolved: Vec<&Change> = a.changes.iter().map(|c| &c.change).collect();
         a.prompt = build_prompt::new_group(&short_hashes, &resolved);
@@ -72,6 +74,8 @@ pub async fn analyze<R: Runtime>(
         let app2 = app.clone();
         let db2 = db_path.to_path_buf();
         tauri::async_runtime::spawn(async move {
+            // fire-and-forget: background summarization. Failure is logged internally by
+            // queue_summarizer; the caller has already persisted the changeset ids.
             let _ = crate::summarize::queue_summarizer::process(Some(queued_ids), app2, db2).await;
         });
     }

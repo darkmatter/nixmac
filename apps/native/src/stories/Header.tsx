@@ -5,7 +5,7 @@ interface User {
   name: string;
 }
 
-export interface HeaderProps {
+interface HeaderProps {
   user?: User;
   onLogin?: () => void;
   onLogout?: () => void;

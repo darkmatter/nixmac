@@ -1,12 +1,7 @@
 import { useHistory } from "@/hooks/use-history";
 import { useWidgetStore } from "@/stores/widget-store";
-import type { SemanticChangeMap } from "@/types/shared";
-import { ipcRenderer } from "@/tauri-api";
+import { ipcRenderer, type SummarizerUpdateEvent } from "@/tauri-api";
 import { useCallback, useRef } from "react";
-
-interface SummarizerEvent {
-  semanticMap: SemanticChangeMap;
-}
 
 /**
  * Hook that subscribes to summarizer:update events emitted by the
@@ -21,7 +16,7 @@ export function useQueueSummarizer() {
     if (unlistenRef.current || isSubscribingRef.current) return;
     isSubscribingRef.current = true;
 
-    const sub = ipcRenderer.on<SummarizerEvent>(
+    const sub = ipcRenderer.on<SummarizerUpdateEvent>(
       "summarizer:update",
       (event) => {
         const store = useWidgetStore.getState();

@@ -98,7 +98,6 @@ const mockGitStatus: GitStatus = {
     { path: "modules/monitoring.nix", changeType: "new" },
   ],
   branch: "main",
-  headIsBuilt: false,
   diff: mockChanges.map((c) => c.diff).join("\n"),
   additions: 14,
   deletions: 0,
@@ -110,28 +109,34 @@ const mockGitStatus: GitStatus = {
 const evolveStateBegin: EvolveState = {
   evolutionId: null,
   currentChangesetId: null,
-  changesetAtBuild: null,
   committable: false,
   backupBranch: null,
+  rollbackBranch: null,
+  rollbackStorePath: null,
+  rollbackChangesetId: null,
   step: "begin",
 };
 
 const evolveStateEvolve: EvolveState = {
   evolutionId: 1,
   currentChangesetId: 1,
-  changesetAtBuild: null,
   committable: false,
   backupBranch: "backup/pre-evolve-1",
+  rollbackBranch: null,
+  rollbackStorePath: null,
+  rollbackChangesetId: null,
   step: "evolve",
 };
 
 const evolveStateMerge: EvolveState = {
   evolutionId: 1,
   currentChangesetId: 1,
-  changesetAtBuild: 1,
   committable: true,
   backupBranch: "backup/pre-evolve-1",
-  step: "merge",
+  rollbackBranch: null,
+  rollbackStorePath: null,
+  rollbackChangesetId: null,
+  step: "commit",
 };
 
 const mockEvolveEvents: EvolveEvent[] = [
