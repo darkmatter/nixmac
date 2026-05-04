@@ -754,7 +754,7 @@ pub fn execute_tool(
             );
 
             let (passed, stdout, stderr) =
-                crate::darwin::dry_run_build_check(config_dir, host_attr, show_trace)?;
+                crate::rebuild::dry_run_build_check(config_dir, host_attr, show_trace)?;
 
             if passed {
                 info!("Build check passed for host: {}", host_attr);

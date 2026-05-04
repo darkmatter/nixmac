@@ -7,50 +7,36 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod apply_system_defaults;
-mod build_state;
-mod changes_from_diff;
 mod cli;
 mod commands;
-mod completion_log;
-mod credential_store;
-mod darwin;
 mod db;
 mod default_config;
 mod editor;
-mod evolution;
 mod evolve;
-mod evolve_state;
+mod managed_edits;
 mod feedback;
-mod finalize_apply;
-mod finalize_restore;
-mod get_history;
 mod git;
-mod historelog;
+mod history;
 mod log_summarizer;
-mod lsp;
-mod mac;
-mod managed_edit;
-mod nix;
-mod nix_ast_lists;
 mod panic_handler;
 mod peek;
-mod permissions;
 mod provider_errors;
 mod providers;
-mod rollback;
-mod scanner;
-mod secret_scanner;
+mod rebuild;
 mod shared_types;
 mod sqlite_types;
+mod state;
 mod statistics;
-mod store;
+mod storage;
 mod summarize;
+mod system;
 mod template;
 mod types;
 mod updater_pin;
 mod utils;
-mod watcher;
+
+use state::watcher;
+use storage::store;
 
 use std::env;
 use std::sync::{Arc, Mutex};
@@ -441,7 +427,7 @@ fn run_gui_mode(
 
             // Eagerly initialise the scanner singleton; the returned &'static ref is not
             // needed right now. fire-and-forget is intentional here.
-            let _ = secret_scanner::SecretScanner::global(handle);
+            let _ = system::secret_scanner::SecretScanner::global(handle);
 
             // Build the nix-darwin docs index once at startup for fast option-shape lookup.
             // CONSIDER: Moving this to background or do it on first search_docs call

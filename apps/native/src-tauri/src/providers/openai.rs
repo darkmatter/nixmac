@@ -38,7 +38,7 @@ impl OpenAIClient {
             .with_api_key(api_key)
             .with_api_base(base_url);
         let client = Client::with_config(config);
-        let record_completions = crate::completion_log::init_recording(
+        let record_completions = crate::state::completion_log::init_recording(
             "summary_provider_completions",
             "summary provider",
         );
@@ -91,7 +91,7 @@ impl ChatCompletionProvider for OpenAIClient {
             .create(request)
             .await
             .map_err(normalize_completion_error)?;
-        crate::completion_log::append_jsonl(
+        crate::state::completion_log::append_jsonl(
             self.record_completions,
             "summary_provider_completions",
             &response,
@@ -152,7 +152,7 @@ impl ChatCompletionProvider for OpenAIClient {
             .create(request)
             .await
             .map_err(normalize_completion_error)?;
-        crate::completion_log::append_jsonl(
+        crate::state::completion_log::append_jsonl(
             self.record_completions,
             "summary_provider_completions",
             &response,

@@ -3,82 +3,79 @@
 
 // ── Base ───────────────────────────────────────────────────────────────────────────────────
 
-pub const BASE_PREAMBLE: &str =
-    "Your task is to write Title - Description pairs, summarizing new nix-darwin configuration changes.\n";
-
-pub const BASE_CHANGES_INTRO: &str =
-    "Below are the new changes you will write Title - Descriptions for. Hash is the key for each. Filename, lines and diff are sources of meaning.\n";
-
-pub const BASE_TITLE_RULES: &str =
-    "Titles should be 1-3 words max. Name the subject, filename is a clue. Good examples: Git Config, SSH Keys, Editor Theme. No vague/generic verbs like update/add/remove. No adjectives like new/another.\n";
-
+pub const BASE_PREAMBLE: &str = include_str!("templates/base_preamble.md");
+pub const BASE_CHANGES_INTRO: &str = include_str!("templates/base_changes_intro.md");
+pub const BASE_TITLE_RULES: &str = include_str!("templates/base_title_rules.md");
 pub const BASE_HUNK_DESCRIPTION_RULES: &str =
-    "Description are short phrases understandable at a glance; include actual values (config keys, package names). Diff is the main clue\n";
-
-pub const BASE_RESPONSE_INTRO: &str =
-    "Respond with valid JSON like below. Only fill in ALL empty title and description fields.\n";
+    include_str!("templates/base_hunk_description_rules.md");
+pub const BASE_RESPONSE_INTRO: &str = include_str!("templates/base_response_intro.md");
 
 // ── New map ───────────────────────────────────────────────────────────────────────────────
 
-pub const NEW_MAP_PREAMBLE: &str =
-    "Your task is to group new nix-darwin configuration changes by semantic intent, what the user is actually trying to accomplish.\n";
-
-pub const NEW_MAP_RULES: &str =
-    "Below are the changes to group. Hash is the key for each. Filename, lines and diff are sources of meaning. One goal touching many files is one group. Artifacts and auto-generated files (lock files, backups, generated paths) belong to the group of the change that caused them. Keep track of groups and assign a number id to each one. It is possible there are few changes, and that they have no group relation. Whether a change even belongs to any group or none at all is for you to decide. At the end you will provide shared group_id integers and a one-sentence reason for why the change belongs in that group, or is standalone.  \n";
-
-pub const NEW_MAP_RESPONSE_INTRO: &str =
-    "Fill in the JSON below Leave group_id null for standalone changes. Fill in short one-sentence reason for either providing a group_id or for leaving it null. Respond with ONLY valid JSON and do not edit the structure only fill in values.\n";
+pub const NEW_MAP_PREAMBLE: &str = include_str!("templates/new_map_preamble.md");
+pub const NEW_MAP_RULES: &str = include_str!("templates/new_map_rules.md");
+pub const NEW_MAP_RESPONSE_INTRO: &str = include_str!("templates/new_map_response_intro.md");
 
 // ── Placement ─────────────────────────────────────────────────────────────────────────────
 
-pub const PLACEMENT_PREAMBLE: &str =
-"Your task involves two steps. First you will analyze an existing set of nix-darwin configuration changes represented in JSON. Changes in groups share a topic or user intent. Singles are standalone. Second you will analyze a new set of changes, which may or may not be related to existing groups or singles. That is for you to decide. First please understand existing groups and changes: \n";
-
-pub const PLACEMENT_CHANGES_INTRO: &str =
-"Below are the new changes you will place into context. Hash is the key for each. Filename, lines and diff are sources of meaning. Keep in mind new changes may belong to a group, or form a new group with an existing single hash. We will not however, break up existing groups.\n";
-
-pub const PLACEMENT_RESPONSE_INTRO: &str =
-"Now complete placements in the JSON below. Rules: Only fill in reason, and either group_id OR pair_hash, leave the other on null. To designate a new single fill in reason and leave other fields on null. Group_id must match an existing groups integer id, never an invented value. pair_hash must match an existing single's hash or hash of a new change on a placement - never a hash from an existing group. The same pair_hash can be used on multiple placements to expand the new group. Respond ONLY with valid JSON, only filling in fields or leaving them null.\n";
+pub const PLACEMENT_PREAMBLE: &str = include_str!("templates/placement_preamble.md");
+pub const PLACEMENT_CHANGES_INTRO: &str = include_str!("templates/placement_changes_intro.md");
+pub const PLACEMENT_RESPONSE_INTRO: &str = include_str!("templates/placement_response_intro.md");
 
 // ── Evolve group  ─────────────────────────────────────────────────────────────────────────
 
-pub const EVOLVE_GROUP_PREAMBLE: &str =
-    "The changes belong in a group. Existing group-member changes already have Title - Descriptions. Read those first for context:\n";
-
+pub const EVOLVE_GROUP_PREAMBLE: &str = include_str!("templates/evolve_group_preamble.md");
 pub const EVOLVE_GROUP_DESCRIPTION_RULES: &str =
-    "Group title and description at the end should be equally short, but ideally cover both new changes added by you and existing ones specified at the top.\n";
+    include_str!("templates/evolve_group_description_rules.md");
 
-// ── JSON templates ────────────────────────────────────────────────────────────────────────
+// ── JSON builders ───────────────────────────────────────────────────────────────────────
 
-pub const SINGLE_JSON: &str = r#"{ "title": "", "description": "" }"#;
+use serde_json::{json, Value};
 
-const SINGLE_JSON_HASH: &str =
-    r#"    { "hash": "{}", "title": "", "description": "" }"#;
+/// Returns a pretty-printed JSON string for a single title/description skeleton.
+fn single_json_str() -> String {
+    serde_json::to_string_pretty(&json!({ "title": "", "description": "" })).unwrap()
+}
 
-const GROUP_JSON: &str =
-    r#"  "group": { "title": "", "description": "" }"#;
+fn single_entry_value(hash: &str) -> Value {
+    json!({ "hash": hash, "title": "", "description": "" })
+}
 
-const PLACEMENT_JSON_HASH: &str =
-    r#"    { "hash": "{}", "group_id": null, "pair_hash": null, "reason": "" }"#;
+fn placement_entry_value(hash: &str) -> Value {
+    json!({ "hash": hash, "group_id": Value::Null, "pair_hash": Value::Null, "reason": "" })
+}
 
-const NEW_MAP_JSON_HASH: &str =
-    r#"    { "hash": "{}", "group_id": null, "reason": "" }"#;
+fn new_map_entry_value(hash: &str) -> Value {
+    json!({ "hash": hash, "group_id": Value::Null, "reason": "" })
+}
+
+fn changes_with_group_json(entries: Vec<Value>) -> String {
+    let obj = json!({ "changes": entries, "group": { "title": "", "description": "" } });
+    serde_json::to_string_pretty(&obj).unwrap()
+}
+
+fn placements_json(entries: Vec<Value>) -> String {
+    let obj = json!({ "placements": entries });
+    serde_json::to_string_pretty(&obj).unwrap()
+}
+
+fn changes_json(entries: Vec<Value>) -> String {
+    let obj = json!({ "changes": entries });
+    serde_json::to_string_pretty(&obj).unwrap()
+}
 
 // ── JSON helpers ──────────────────────────────────────────────────────────────────────────
 
-/// Wraps `content` as a named JSON array key: `"<title>": [\n<content>\n  ]`
-pub fn group_title(title: &str, content: &str) -> String {
-    format!("  \"{}\": [\n{}\n  ]", title, content)
-}
-
-/// Wraps `content` in a top-level JSON object.
-pub fn groups_wrapper(content: &str) -> String {
-    format!("{{\n{}\n}}", content)
+/// Join a sequence of prompt sections into a single String.
+pub fn join_sections(sections: &[String]) -> String {
+    sections.join("")
 }
 
 // ── Prompt builders ───────────────────────────────────────────────────────────────────────
 
-pub fn existing_summary(changes: &[crate::summarize::simplify_grouped::SimplifiedChange]) -> String {
+pub fn existing_summary(
+    changes: &[crate::summarize::simplify_grouped::SimplifiedChange],
+) -> String {
     changes
         .iter()
         .map(|c| format!("{} - {}\n", c.title, c.description))
@@ -88,23 +85,25 @@ pub fn existing_summary(changes: &[crate::summarize::simplify_grouped::Simplifie
 pub fn list_changes(changes: &[&crate::sqlite_types::Change]) -> String {
     changes
         .iter()
-        .map(|c| format!(
-            "hash: {}\nfile: {}\nlines: {}\ndiff:\n{}\n\n",
-            c.hash, c.filename, c.line_count, c.diff
-        ))
+        .map(|c| {
+            format!(
+                "hash: {}\nfile: {}\nlines: {}\ndiff:\n{}\n\n",
+                c.hash, c.filename, c.line_count, c.diff
+            )
+        })
         .collect()
 }
 
 pub fn new_single(change: &crate::sqlite_types::Change) -> String {
-    let mut prompt = String::new();
-    prompt.push_str(BASE_PREAMBLE);
-    prompt.push_str(BASE_CHANGES_INTRO);
-    prompt.push_str(BASE_TITLE_RULES);
-    prompt.push_str(BASE_HUNK_DESCRIPTION_RULES);
-    prompt.push_str(&list_changes(&[change]));
-    prompt.push_str(BASE_RESPONSE_INTRO);
-    prompt.push_str(SINGLE_JSON);
-    prompt
+    join_sections(&[
+        BASE_PREAMBLE.to_string(),
+        BASE_CHANGES_INTRO.to_string(),
+        BASE_TITLE_RULES.to_string(),
+        BASE_HUNK_DESCRIPTION_RULES.to_string(),
+        list_changes(&[change]),
+        BASE_RESPONSE_INTRO.to_string(),
+        single_json_str(),
+    ])
 }
 
 pub fn evolve_group(
@@ -112,100 +111,273 @@ pub fn evolve_group(
     new_changes: &[&crate::sqlite_types::Change],
     new_hashes: &[String],
 ) -> String {
-    let mut prompt = String::new();
-    prompt.push_str(BASE_PREAMBLE);
-    prompt.push_str(EVOLVE_GROUP_PREAMBLE);
-    prompt.push_str(&existing_summary(existing_changes));
-    prompt.push('\n');
-    prompt.push_str(BASE_CHANGES_INTRO);
-    prompt.push_str(BASE_TITLE_RULES);
-    prompt.push_str(BASE_HUNK_DESCRIPTION_RULES);
-    prompt.push_str(&list_changes(new_changes));
-    prompt.push_str(EVOLVE_GROUP_DESCRIPTION_RULES);
-    prompt.push_str(BASE_RESPONSE_INTRO);
-    let entries = new_hashes
+    let existing = existing_summary(existing_changes);
+    let entries_vals = new_hashes
         .iter()
-        .map(|h| SINGLE_JSON_HASH.replace("{}", h))
-        .collect::<Vec<_>>()
-        .join(",\n");
-    prompt.push_str(&groups_wrapper(&format!(
-        "{},\n{}",
-        group_title("changes", &entries),
-        GROUP_JSON
-    )));
-    prompt
+        .map(|h| single_entry_value(h))
+        .collect::<Vec<_>>();
+    let json_block = changes_with_group_json(entries_vals);
+    join_sections(&[
+        BASE_PREAMBLE.to_string(),
+        EVOLVE_GROUP_PREAMBLE.to_string(),
+        existing,
+        "\n".to_string(),
+        BASE_CHANGES_INTRO.to_string(),
+        BASE_TITLE_RULES.to_string(),
+        BASE_HUNK_DESCRIPTION_RULES.to_string(),
+        list_changes(new_changes),
+        EVOLVE_GROUP_DESCRIPTION_RULES.to_string(),
+        BASE_RESPONSE_INTRO.to_string(),
+        json_block,
+    ])
 }
 
-pub fn new_group(
-    hashes: &[String],
-    resolved: &[&crate::sqlite_types::Change],
-) -> String {
-    let mut prompt = String::new();
-    prompt.push_str(BASE_PREAMBLE);
-    prompt.push_str(BASE_CHANGES_INTRO);
-    prompt.push_str(BASE_TITLE_RULES);
-    prompt.push_str(BASE_HUNK_DESCRIPTION_RULES);
-    prompt.push_str(&list_changes(resolved));
-    prompt.push_str(EVOLVE_GROUP_DESCRIPTION_RULES);
-    prompt.push_str(BASE_RESPONSE_INTRO);
-    let entries = hashes
+pub fn new_group(hashes: &[String], resolved: &[&crate::sqlite_types::Change]) -> String {
+    let entries_vals = hashes
         .iter()
-        .map(|h| SINGLE_JSON_HASH.replace("{}", h))
-        .collect::<Vec<_>>()
-        .join(",\n");
-    prompt.push_str(&groups_wrapper(&format!(
-        "{},\n{}",
-        group_title("changes", &entries),
-        GROUP_JSON
-    )));
-    prompt
+        .map(|h| single_entry_value(h))
+        .collect::<Vec<_>>();
+    let json_block = changes_with_group_json(entries_vals);
+    join_sections(&[
+        BASE_PREAMBLE.to_string(),
+        BASE_CHANGES_INTRO.to_string(),
+        BASE_TITLE_RULES.to_string(),
+        BASE_HUNK_DESCRIPTION_RULES.to_string(),
+        list_changes(resolved),
+        EVOLVE_GROUP_DESCRIPTION_RULES.to_string(),
+        BASE_RESPONSE_INTRO.to_string(),
+        json_block,
+    ])
 }
 
 pub fn placement(changes: &[&crate::sqlite_types::Change], simplified_json: &str) -> String {
-    let entries = changes
+    let entries_vals = changes
         .iter()
-        .map(|c| PLACEMENT_JSON_HASH.replace("{}", &c.hash))
-        .collect::<Vec<_>>()
-        .join(",\n");
-    let mut prompt = String::new();
-    prompt.push_str(PLACEMENT_PREAMBLE);
-    prompt.push_str(simplified_json);
-    prompt.push('\n');
-    prompt.push_str(PLACEMENT_CHANGES_INTRO);
-    prompt.push_str(&list_changes(changes));
-    prompt.push_str(PLACEMENT_RESPONSE_INTRO);
-    prompt.push_str(&groups_wrapper(&group_title("placements", &entries)));
-    prompt
+        .map(|c| placement_entry_value(&c.hash))
+        .collect::<Vec<_>>();
+    let json_block = placements_json(entries_vals);
+    join_sections(&[
+        PLACEMENT_PREAMBLE.to_string(),
+        simplified_json.to_string(),
+        "\n".to_string(),
+        PLACEMENT_CHANGES_INTRO.to_string(),
+        list_changes(changes),
+        PLACEMENT_RESPONSE_INTRO.to_string(),
+        json_block,
+    ])
 }
 
 pub fn new_map(changes: &[&crate::sqlite_types::Change]) -> String {
-    let entries = changes
+    let entries_vals = changes
         .iter()
-        .map(|c| NEW_MAP_JSON_HASH.replace("{}", &c.hash))
-        .collect::<Vec<_>>()
-        .join(",\n");
-    let mut prompt = String::new();
-    prompt.push_str(NEW_MAP_PREAMBLE);
-    prompt.push_str(&list_changes(changes));
-    prompt.push_str(NEW_MAP_RULES);
-    prompt.push_str(NEW_MAP_RESPONSE_INTRO);
-    prompt.push_str(&groups_wrapper(&group_title("changes", &entries)));
-    prompt
+        .map(|c| new_map_entry_value(&c.hash))
+        .collect::<Vec<_>>();
+    let json_block = changes_json(entries_vals);
+    join_sections(&[
+        NEW_MAP_PREAMBLE.to_string(),
+        list_changes(changes),
+        NEW_MAP_RULES.to_string(),
+        NEW_MAP_RESPONSE_INTRO.to_string(),
+        json_block,
+    ])
 }
 
 pub fn commit_message(map: &crate::shared_types::SemanticChangeMap) -> String {
-    let mut prompt = String::new();
+    let mut lines = Vec::new();
 
     for group in &map.groups {
-        prompt.push_str(&format!("{} — {}\n", group.summary.title, group.summary.description));
+        lines.push(format!(
+            "{} — {}\n",
+            group.summary.title, group.summary.description
+        ));
     }
     for single in &map.singles {
-        prompt.push_str(&format!("{} — {}\n", single.title, single.description));
+        lines.push(format!("{} — {}\n", single.title, single.description));
     }
 
-    prompt.push('\n');
-    prompt.push_str("Write a conventional commit message for these changes.\n");
-    prompt.push_str("Use the format: <type>(<scope>): <description> — types: feat, fix, chore, refactor, docs, style, test, perf\n");
-    prompt.push_str("Return JSON: {\"message\": \"<full commit message string>\"}\n");
-    prompt
+    lines.push("\nWrite a conventional commit message for these changes.\n".to_string());
+    lines.push("Use the format: <type>(<scope>): <description> — types: feat, fix, chore, refactor, docs, style, test, perf\n".to_string());
+    lines.push("Return JSON: {\"message\": \"<full commit message string>\"}\n".to_string());
+
+    lines.join("")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::shared_types::{ChangeWithSummary, SemanticChangeGroup, SemanticChangeMap};
+    use crate::sqlite_types::Change;
+    use crate::sqlite_types::ChangeSummary;
+    use crate::summarize::simplify_grouped::SimplifiedChange;
+    use serde_json::Value;
+
+    fn extract_json_block(s: &str) -> Option<Value> {
+        let mut results = Vec::new();
+        let bytes = s.as_bytes();
+        let len = bytes.len();
+        let mut i = 0usize;
+        while i < len {
+            if bytes[i] == b'{' {
+                let mut depth = 1usize;
+                let mut j = i + 1;
+                while j < len {
+                    match bytes[j] as char {
+                        '{' => depth += 1,
+                        '}' => {
+                            depth -= 1;
+                            if depth == 0 {
+                                // extract substring i..=j
+                                if let Ok(candidate) = std::str::from_utf8(&bytes[i..=j]) {
+                                    if let Ok(v) = serde_json::from_str::<Value>(candidate) {
+                                        results.push(v);
+                                    }
+                                }
+                                i = j; // advance
+                                break;
+                            }
+                        }
+                        _ => {}
+                    }
+                    j += 1;
+                }
+            }
+            i += 1;
+        }
+        results.pop()
+    }
+
+    #[test]
+    fn new_single_contains_hash_and_valid_json() {
+        let change = Change {
+            id: 1,
+            hash: "deadbeef".into(),
+            filename: "foo.nix".into(),
+            diff: "+x".into(),
+            line_count: 1,
+            created_at: 0,
+            own_summary_id: None,
+        };
+        let out = new_single(&change);
+        // tolerate formatting changes in the markdown preamble; ensure Title/Description guidance exists
+        assert!(out.to_lowercase().contains("title"));
+        assert!(out.contains(&change.hash));
+        let json = extract_json_block(&out).expect("should find JSON");
+        assert!(json.get("title").is_some());
+        assert!(json.get("description").is_some());
+    }
+
+    #[test]
+    fn new_group_emits_valid_changes_and_group_json() {
+        let hashes = vec!["abc123".to_string()];
+        let change = Change {
+            id: 2,
+            hash: "abc123".into(),
+            filename: "bar.nix".into(),
+            diff: "-y".into(),
+            line_count: 2,
+            created_at: 0,
+            own_summary_id: None,
+        };
+        let resolved = vec![&change];
+        let out = new_group(&hashes, &resolved);
+        let json = extract_json_block(&out).expect("should find JSON");
+        assert!(json.get("changes").is_some());
+        assert!(json.get("group").is_some());
+    }
+
+    #[test]
+    fn evolve_group_includes_existing_summary_and_json() {
+        let existing = vec![SimplifiedChange {
+            hash: "h1".into(),
+            filename: "f".into(),
+            title: "T".into(),
+            description: "D".into(),
+        }];
+        let change = Change {
+            id: 3,
+            hash: "h2".into(),
+            filename: "f2".into(),
+            diff: "z".into(),
+            line_count: 1,
+            created_at: 0,
+            own_summary_id: None,
+        };
+        let new_changes = vec![&change];
+        let new_hashes = vec!["h2".to_string()];
+        let out = evolve_group(&existing, &new_changes, &new_hashes);
+        assert!(out.contains("T - D"));
+        let json = extract_json_block(&out).expect("should find JSON");
+        assert!(json.get("changes").is_some());
+        assert!(json.get("group").is_some());
+    }
+
+    #[test]
+    fn placement_produces_placements_array() {
+        let change = Change {
+            id: 4,
+            hash: "p1".into(),
+            filename: "x".into(),
+            diff: "a".into(),
+            line_count: 1,
+            created_at: 0,
+            own_summary_id: None,
+        };
+        let changes = vec![&change];
+        let simplified_json = "{ \"groups\": [] }";
+        let out = placement(&changes, simplified_json);
+        let json = extract_json_block(&out).expect("should find JSON");
+        assert!(json.get("placements").is_some());
+    }
+
+    #[test]
+    fn new_map_produces_changes_array() {
+        let change = Change {
+            id: 5,
+            hash: "m1".into(),
+            filename: "y".into(),
+            diff: "b".into(),
+            line_count: 1,
+            created_at: 0,
+            own_summary_id: None,
+        };
+        let changes = vec![&change];
+        let out = new_map(&changes);
+        let json = extract_json_block(&out).expect("should find JSON");
+        assert!(json.get("changes").is_some());
+    }
+
+    #[test]
+    fn commit_message_includes_titles_and_instruction() {
+        let summary = ChangeSummary {
+            id: 1,
+            title: "GTitle".into(),
+            description: "GDesc".into(),
+            status: "DONE".into(),
+            created_at: 0,
+        };
+        let group = SemanticChangeGroup {
+            summary: summary.clone(),
+            changes: vec![],
+        };
+        let single = ChangeWithSummary {
+            id: 2,
+            hash: "s1".into(),
+            filename: "z".into(),
+            diff: "c".into(),
+            line_count: 1,
+            created_at: 0,
+            own_summary_id: None,
+            title: "STitle".into(),
+            description: "SDesc".into(),
+        };
+        let map = SemanticChangeMap {
+            groups: vec![group],
+            singles: vec![single],
+            unsummarized_hashes: vec![],
+        };
+        let out = commit_message(&map);
+        assert!(out.contains("GTitle"));
+        assert!(out.contains("STitle"));
+        assert!(out.contains("Write a conventional commit message"));
+    }
 }
