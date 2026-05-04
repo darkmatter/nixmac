@@ -1,0 +1,17 @@
+import{d as l,j as e}from"./iframe-C-u98npA.js";import{H as d}from"./Header-CLm1Sc1q.js";import"./preload-helper-PPVm8Dsz.js";import"./Button-Ch1WvORj.js";const i=()=>{const[a,t]=l.useState();return e.jsxs("article",{children:[e.jsx(d,{onCreateAccount:()=>t({name:"Jane Doe"}),onLogin:()=>t({name:"Jane Doe"}),onLogout:()=>t(void 0),user:a}),e.jsxs("section",{className:"storybook-page",children:[e.jsx("h2",{children:"Pages in Storybook"}),e.jsxs("p",{children:["We recommend building UIs with a"," ",e.jsx("a",{href:"https://componentdriven.org",rel:"noopener noreferrer",target:"_blank",children:e.jsx("strong",{children:"component-driven"})})," ","process starting with atomic components and ending with pages."]}),e.jsx("p",{children:"Render pages with mock data. This makes it easy to build and review page states without needing to navigate to them in your app. Here are some handy patterns for managing page data in Storybook:"}),e.jsxs("ul",{children:[e.jsx("li",{children:'Use a higher-level connected component. Storybook helps you compose such data from the "args" of child component stories'}),e.jsx("li",{children:"Assemble data in the page component from your services. You can mock these services out using Storybook."})]}),e.jsxs("p",{children:["Get a guided tutorial on component-driven development at"," ",e.jsx("a",{href:"https://storybook.js.org/tutorials/",rel:"noopener noreferrer",target:"_blank",children:"Storybook tutorials"}),". Read more in the"," ",e.jsx("a",{href:"https://storybook.js.org/docs",rel:"noopener noreferrer",target:"_blank",children:"docs"}),"."]}),e.jsxs("div",{className:"tip-wrapper",children:[e.jsx("span",{className:"tip",children:"Tip"})," Adjust the width of the canvas with the"," ",e.jsxs("svg",{height:"10",viewBox:"0 0 12 12",width:"10",xmlns:"http://www.w3.org/2000/svg",children:[e.jsx("title",{children:"Viewport sizing icon"}),e.jsx("g",{fill:"none",fillRule:"evenodd",children:e.jsx("path",{d:"M1.5 5.2h4.8c.3 0 .5.2.5.4v5.1c-.1.2-.3.3-.4.3H1.4a.5.5 0 01-.5-.4V5.7c0-.3.2-.5.5-.5zm0-2.1h6.9c.3 0 .5.2.5.4v7a.5.5 0 01-1 0V4H1.5a.5.5 0 010-1zm0-2.1h9c.3 0 .5.2.5.4v9.1a.5.5 0 01-1 0V2H1.5a.5.5 0 010-1zm4.3 5.2H2V10h3.8V6.2z",fill:"#999",id:"a"})})]}),"Viewports addon in the toolbar"]})]})]})};i.__docgenInfo={description:"",methods:[],displayName:"Page"};const{expect:r,userEvent:h,within:m}=__STORYBOOK_MODULE_TEST__,v={title:"Example/Page",component:i,parameters:{layout:"fullscreen"}},o={},n={play:async({canvasElement:a})=>{const t=m(a),s=t.getByRole("button",{name:/Log in/i});await r(s).toBeInTheDocument(),await h.click(s),await r(s).not.toBeInTheDocument();const c=t.getByRole("button",{name:/Log out/i});await r(c).toBeInTheDocument()}};o.parameters={...o.parameters,docs:{...o.parameters?.docs,source:{originalSource:"{}",...o.parameters?.docs?.source}}};n.parameters={...n.parameters,docs:{...n.parameters?.docs,source:{originalSource:`{
+  play: async ({
+    canvasElement
+  }) => {
+    const canvas = within(canvasElement);
+    const loginButton = canvas.getByRole("button", {
+      name: /Log in/i
+    });
+    await expect(loginButton).toBeInTheDocument();
+    await userEvent.click(loginButton);
+    await expect(loginButton).not.toBeInTheDocument();
+    const logoutButton = canvas.getByRole("button", {
+      name: /Log out/i
+    });
+    await expect(logoutButton).toBeInTheDocument();
+  }
+}`,...n.parameters?.docs?.source}}};const w=["LoggedOut","LoggedIn"];export{n as LoggedIn,o as LoggedOut,w as __namedExportsOrder,v as default};

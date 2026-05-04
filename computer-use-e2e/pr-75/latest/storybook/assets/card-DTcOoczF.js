@@ -1,0 +1,1 @@
+import{j as a}from"./iframe-C-u98npA.js";import{c as d}from"./utils-BQHNewu7.js";function e({className:r,...o}){return a.jsx("div",{className:d("flex flex-col gap-6 rounded-xl border bg-card py-6 text-card-foreground shadow-sm",r),"data-slot":"card",...o})}e.__docgenInfo={description:"",methods:[],displayName:"Card"};export{e as C};

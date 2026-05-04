@@ -1,0 +1,54 @@
+import{r as p,j as e}from"./iframe-C-u98npA.js";import{c as C}from"./utils-BQHNewu7.js";import{E as z,G as D}from"./git-commit-horizontal-CanBR4Du.js";import{R as F}from"./rotate-ccw-9C-exoW9.js";import"./preload-helper-PPVm8Dsz.js";function k({visible:N,onClick:j,summary:h,filesChanged:b=0,additions:l,deletions:u,commitMessage:g="",onCommit:S,onDiscard:M,isLoading:s=!1,disableExpansion:T=!1}){const[x,y]=p.useState(!1),[m,v]=p.useState(g);if(p.useEffect(()=>{v(g)},[g]),!N)return null;const _=()=>{T||y(!x),j?.()},w=()=>{m.trim()&&S?.(m.trim())},E=()=>{M?.(),y(!1)};return e.jsxs("div",{className:"fixed right-4 bottom-4 z-[100]",children:[x&&e.jsx("div",{className:"fade-in slide-in-from-bottom-2 mb-3 w-80 animate-in duration-200",children:e.jsxs("div",{className:"overflow-hidden rounded-xl border border-amber-500/30 bg-zinc-900/95 shadow-2xl backdrop-blur-xl",children:[e.jsxs("div",{className:"flex items-center gap-2 border-amber-500/20 border-b bg-amber-500/10 px-4 py-3",children:[e.jsx(z,{className:"h-4 w-4 text-amber-400"}),e.jsx("span",{className:"font-medium text-amber-200 text-sm",children:"Preview Mode"}),e.jsxs("span",{className:"ml-auto rounded-full bg-amber-500/20 px-2 py-0.5 text-amber-300 text-xs",children:[b," file",b!==1?"s":""," changed"]})]}),h&&e.jsx("div",{className:"border-zinc-700/50 border-b px-4 py-3",children:e.jsx("p",{className:"text-sm text-zinc-300 leading-relaxed",children:h})}),e.jsxs("div",{className:"space-y-2 px-4 py-3",children:[e.jsx("label",{className:"font-medium text-xs text-zinc-400",htmlFor:"commit-msg",children:"Commit message"}),e.jsx("input",{className:"w-full rounded-lg border border-zinc-700 bg-zinc-800/50 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-amber-500/50 focus:outline-none focus:ring-1 focus:ring-amber-500/30",disabled:s,id:"commit-msg",onChange:a=>v(a.target.value),onKeyDown:a=>{a.key==="Enter"&&!a.shiftKey&&(a.preventDefault(),w())},placeholder:"Describe your changes...",type:"text",value:m})]}),e.jsxs("div",{className:"flex gap-2 border-zinc-700/50 border-t bg-zinc-800/30 px-4 py-3",children:[e.jsxs("button",{className:C("flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 font-medium text-sm transition-colors","bg-amber-500/20 text-amber-200 hover:bg-amber-500/30",s&&"cursor-not-allowed opacity-50"),disabled:s||!m.trim(),onClick:w,type:"button",children:[e.jsx(D,{className:"h-4 w-4"}),"Commit"]}),e.jsxs("button",{className:C("flex items-center justify-center gap-2 rounded-lg px-3 py-2 font-medium text-sm transition-colors","bg-zinc-700/50 text-zinc-300 hover:bg-zinc-700/70",s&&"cursor-not-allowed opacity-50"),disabled:s,onClick:E,type:"button",children:[e.jsx(F,{className:"h-4 w-4"}),"Discard"]})]})]})}),e.jsxs("button",{className:"relative inline-flex h-12 overflow-hidden rounded-full p-[1px] focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:ring-offset-slate-50",onClick:_,type:"button",children:[e.jsx("span",{className:"absolute inset-[-35%] animate-[spin_3s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#E2CBFF_0%,#393BB2_50%,#E2CBFF_100%)]"}),e.jsx("span",{className:"inline-flex h-full w-full cursor-pointer items-center justify-center gap-3 rounded-full bg-slate-950 px-5 py-1 font-medium text-sm text-white backdrop-blur-3xl",children:(l!==void 0||u!==void 0)&&e.jsxs("span",{className:"flex items-center gap-1.5 font-mono text-xs",children:[l!==void 0&&e.jsxs("span",{className:"text-green-400",children:["+",l]}),u!==void 0&&e.jsxs("span",{className:"text-red-400",children:["-",u]})]})})]})]})}k.__docgenInfo={description:`A floating indicator that appears in the bottom-right corner
+when the app is in Preview mode (changes applied but not committed).
+
+Features:
+- Glowing pulse animation to draw attention
+- Expands on hover/click to show change summary
+- Quick actions to commit or discard`,methods:[],displayName:"PreviewIndicator",props:{visible:{required:!0,tsType:{name:"boolean"},description:"Whether the indicator is visible"},onClick:{required:!1,tsType:{name:"signature",type:"function",raw:"() => void",signature:{arguments:[],return:{name:"void"}}},description:"Callback when the indicator is clicked"},summary:{required:!1,tsType:{name:"string"},description:"Summary of changes (optional)"},filesChanged:{required:!1,tsType:{name:"number"},description:"Number of files changed",defaultValue:{value:"0",computed:!1}},additions:{required:!1,tsType:{name:"number"},description:"Number of lines added"},deletions:{required:!1,tsType:{name:"number"},description:"Number of lines deleted"},commitMessage:{required:!1,tsType:{name:"string"},description:"Suggested commit message",defaultValue:{value:'""',computed:!1}},onCommit:{required:!1,tsType:{name:"signature",type:"function",raw:"(message: string) => void",signature:{arguments:[{type:{name:"string"},name:"message"}],return:{name:"void"}}},description:"Callback to commit changes"},onDiscard:{required:!1,tsType:{name:"signature",type:"function",raw:"() => void",signature:{arguments:[],return:{name:"void"}}},description:"Callback to discard changes"},isLoading:{required:!1,tsType:{name:"boolean"},description:"Whether an action is in progress",defaultValue:{value:"false",computed:!1}},disableExpansion:{required:!1,tsType:{name:"boolean"},description:"Disable expansion behavior (for separate window context)",defaultValue:{value:"false",computed:!1}}}};const{fn:f}=__STORYBOOK_MODULE_TEST__,I={title:"Components/PreviewIndicator",component:k,parameters:{layout:"fullscreen"},tags:["autodocs"],argTypes:{visible:{control:"boolean",description:"Whether the indicator is visible"},summary:{control:"text",description:"Summary of the changes"},filesChanged:{control:"number",description:"Number of files changed"},commitMessage:{control:"text",description:"Suggested commit message"},isLoading:{control:"boolean",description:"Whether an action is in progress"}},args:{onClick:f(),onCommit:f(),onDiscard:f()}},t={args:{visible:!0,filesChanged:3,commitMessage:"feat(darwin): add vim and git configuration",summary:"Added vim to system packages with custom configuration. Updated git settings with user name and email."}},i={args:{visible:!1}},n={args:{visible:!0,filesChanged:1,commitMessage:"chore: update flake inputs",summary:"Updated flake.lock with latest nixpkgs revision."}},r={args:{visible:!0,filesChanged:12,commitMessage:"feat(homebrew): add development tools",summary:"Added Rectangle, iTerm2, and VS Code to homebrew casks. Configured Rectangle for window management. Added development CLI tools including ripgrep, fd, and bat."}},o={args:{visible:!0,filesChanged:5,commitMessage:"feat: comprehensive system setup",summary:"Multiple configuration changes pending commit.",isLoading:!0}},d={args:{visible:!0,filesChanged:2,commitMessage:"",summary:"Changes detected but no commit message suggested."}},c={args:{visible:!0,filesChanged:8,commitMessage:"feat(darwin): comprehensive system configuration update",summary:"This update includes significant changes to the nix-darwin configuration. Added several new packages including vim, neovim, git, and ripgrep. Configured homebrew with Rectangle for window management and iTerm2 as the terminal emulator. Updated user home-manager configuration with custom shell aliases and environment variables. Modified system defaults for Dock and Finder preferences. Added SSH key generation and GPG signing configuration for git commits."}};t.parameters={...t.parameters,docs:{...t.parameters?.docs,source:{originalSource:`{
+  args: {
+    visible: true,
+    filesChanged: 3,
+    commitMessage: "feat(darwin): add vim and git configuration",
+    summary: "Added vim to system packages with custom configuration. Updated git settings with user name and email."
+  }
+}`,...t.parameters?.docs?.source},description:{story:"Default state - indicator visible with glowing effect",...t.parameters?.docs?.description}}};i.parameters={...i.parameters,docs:{...i.parameters?.docs,source:{originalSource:`{
+  args: {
+    visible: false
+  }
+}`,...i.parameters?.docs?.source},description:{story:"Hidden state - indicator not visible",...i.parameters?.docs?.description}}};n.parameters={...n.parameters,docs:{...n.parameters?.docs,source:{originalSource:`{
+  args: {
+    visible: true,
+    filesChanged: 1,
+    commitMessage: "chore: update flake inputs",
+    summary: "Updated flake.lock with latest nixpkgs revision."
+  }
+}`,...n.parameters?.docs?.source},description:{story:"Single file changed",...n.parameters?.docs?.description}}};r.parameters={...r.parameters,docs:{...r.parameters?.docs,source:{originalSource:`{
+  args: {
+    visible: true,
+    filesChanged: 12,
+    commitMessage: "feat(homebrew): add development tools",
+    summary: "Added Rectangle, iTerm2, and VS Code to homebrew casks. Configured Rectangle for window management. Added development CLI tools including ripgrep, fd, and bat."
+  }
+}`,...r.parameters?.docs?.source},description:{story:"Many files changed",...r.parameters?.docs?.description}}};o.parameters={...o.parameters,docs:{...o.parameters?.docs,source:{originalSource:`{
+  args: {
+    visible: true,
+    filesChanged: 5,
+    commitMessage: "feat: comprehensive system setup",
+    summary: "Multiple configuration changes pending commit.",
+    isLoading: true
+  }
+}`,...o.parameters?.docs?.source},description:{story:"Loading state - while committing or discarding",...o.parameters?.docs?.description}}};d.parameters={...d.parameters,docs:{...d.parameters?.docs,source:{originalSource:`{
+  args: {
+    visible: true,
+    filesChanged: 2,
+    commitMessage: "",
+    summary: "Changes detected but no commit message suggested."
+  }
+}`,...d.parameters?.docs?.source},description:{story:"No commit message provided yet",...d.parameters?.docs?.description}}};c.parameters={...c.parameters,docs:{...c.parameters?.docs,source:{originalSource:`{
+  args: {
+    visible: true,
+    filesChanged: 8,
+    commitMessage: "feat(darwin): comprehensive system configuration update",
+    summary: "This update includes significant changes to the nix-darwin configuration. Added several new packages including vim, neovim, git, and ripgrep. Configured homebrew with Rectangle for window management and iTerm2 as the terminal emulator. Updated user home-manager configuration with custom shell aliases and environment variables. Modified system defaults for Dock and Finder preferences. Added SSH key generation and GPG signing configuration for git commits."
+  }
+}`,...c.parameters?.docs?.source},description:{story:"Long summary text",...c.parameters?.docs?.description}}};const P=["Default","Hidden","SingleFile","ManyFiles","Loading","EmptyMessage","LongSummary"];export{t as Default,d as EmptyMessage,i as Hidden,o as Loading,c as LongSummary,r as ManyFiles,n as SingleFile,P as __namedExportsOrder,I as default};
