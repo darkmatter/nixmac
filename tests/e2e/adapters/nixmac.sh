@@ -100,7 +100,7 @@ nixmac_launch() {
     dismiss_dialogs 10
     
     # Tauri apps may start without a visible window. Bring to front.
-    $PEEKABOO app switch --to "$NIXMAC_APP_NAME" 2>/dev/null || true
+    peekaboo_run app switch --to "$NIXMAC_APP_NAME" 2>/dev/null || true
     sleep 1
     
     # Verify we can see the window
@@ -126,7 +126,7 @@ nixmac_launch() {
             return 0
         fi
         debug "Window not visible yet, retrying... ($retries)"
-        $PEEKABOO app switch --to "$NIXMAC_APP_NAME" 2>/dev/null || true
+        peekaboo_run app switch --to "$NIXMAC_APP_NAME" 2>/dev/null || true
         sleep 3
         retries=$((retries + 1))
     done

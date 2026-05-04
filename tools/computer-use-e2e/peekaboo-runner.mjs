@@ -170,7 +170,9 @@ function runPreflight(plan) {
 	fi
 	if command -v peekaboo >/dev/null 2>&1; then
 	  peekaboo permissions || status=1
-	  if peekaboo bridge status; then
+	  bridge_status="$(peekaboo bridge status --verbose 2>&1)"
+	  printf '%s\n' "$bridge_status"
+	  if printf '%s\n' "$bridge_status" | grep -qE "Selected: remote (gui|onDemand)"; then
 	    echo "Peekaboo Bridge: Connected"
 	  else
 	    echo "Peekaboo Bridge: Not Connected" >&2
