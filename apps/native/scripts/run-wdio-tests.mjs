@@ -13,6 +13,14 @@ const suites = [
 const results = [];
 let failed = false;
 
+function cleanupAppProcess() {
+  try {
+    execSync('pkill -x nixmac || true', { stdio: 'ignore' });
+  } catch {
+    // Best-effort cleanup only.
+  }
+}
+
 console.log('🧪 Running all WDIO test suites...\n');
 
 for (const suite of suites) {
@@ -20,18 +28,33 @@ for (const suite of suites) {
   process.stdout.write(`⏳ ${displayName}... `);
 
   try {
+    cleanupAppProcess();
     execSync(`npm run ${suite}`, {
       stdio: 'pipe',
       cwd: process.cwd(),
     });
+    cleanupAppProcess();
     console.log('✅');
     results.push({ suite: displayName, passed: true });
-  } catch  {
+  } catch (error) {
+    cleanupAppProcess();
     console.log('❌');
+    if (error && typeof error === 'object') {
+      const stdout = 'stdout' in error && error.stdout ? String(error.stdout) : '';
+      const stderr = 'stderr' in error && error.stderr ? String(error.stderr) : '';
+      if (stdout.trim()) {
+        console.log(stdout.trimEnd());
+      }
+      if (stderr.trim()) {
+        console.error(stderr.trimEnd());
+      }
+    }
     results.push({ suite: displayName, passed: false });
     failed = true;
   }
 }
+
+cleanupAppProcess();
 
 console.log('\n' + '='.repeat(50));
 console.log('📊 Test Results Summary');
