@@ -173,9 +173,9 @@ mod tests {
         let prompt = "one line";
         let input = estimate_input_tokens(prompt);
         let requested_output = 300;
-        let safety_margin = 4096 / 16;
-        let max_ctx = input + requested_output + safety_margin + 50;
-
+        // choose a sufficiently large context window so allocation fits
+        let max_ctx: u32 = 10_000;
+        let safety_margin = (max_ctx / 16).max(128);
         let alloc = compute_token_allocation(prompt, requested_output, max_ctx);
 
         assert_eq!(alloc.output_tokens, requested_output);
@@ -190,10 +190,20 @@ mod tests {
         let prompt = "one line";
         let input = estimate_input_tokens(prompt);
         let requested_output = 300;
-        let max_ctx = 4096;
+        // find a max_ctx value where available_output < requested_output
+        let mut chosen: Option<u32> = None;
+        for candidate in 128u32..20_000u32 {
+            let safety_margin = (candidate / 16).max(128);
+            let available_output = candidate.saturating_sub(input + safety_margin);
+            if available_output < requested_output {
+                chosen = Some(candidate);
+                break;
+            }
+        }
+        let max_ctx = chosen.expect("failed to find a context window small enough");
+
         let safety_margin = (max_ctx / 16).max(128);
-        let available_output = 256;
-        let max_ctx = input + safety_margin + available_output;
+        let available_output = max_ctx.saturating_sub(input + safety_margin);
 
         let alloc = compute_token_allocation(prompt, requested_output, max_ctx);
 
@@ -205,10 +215,17 @@ mod tests {
     fn returns_zero_output_when_only_tiny_completion_would_fit() {
         let prompt = "one line";
         let input = estimate_input_tokens(prompt);
-        let max_ctx = 4096;
-        let safety_margin = (max_ctx / 16).max(128);
-        let tiny_available_output = MIN_MEANINGFUL_OUTPUT_TOKENS - 1;
-        let max_ctx = input + safety_margin + tiny_available_output;
+        // find a max_ctx value where available_output < MIN_MEANINGFUL_OUTPUT_TOKENS
+        let mut chosen: Option<u32> = None;
+        for candidate in 128u32..20_000u32 {
+            let safety_margin = (candidate / 16).max(128);
+            let available_output = candidate.saturating_sub(input + safety_margin);
+            if available_output < MIN_MEANINGFUL_OUTPUT_TOKENS {
+                chosen = Some(candidate);
+                break;
+            }
+        }
+        let max_ctx = chosen.expect("failed to find a context window tiny enough");
 
         let alloc = compute_token_allocation(prompt, 300, max_ctx);
 
