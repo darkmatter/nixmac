@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use log::warn;
 use std::fs;
@@ -95,6 +95,21 @@ fn collect_gitignore_files(dir: &Path, out: &mut Vec<PathBuf>) {
 /// files as possible. If none can be loaded, this returns an error to fail
 /// closed instead of silently disabling ignore protections.
 fn build_matcher(base: &Path, gitignore_paths: &[PathBuf]) -> Result<Option<Gitignore>> {
+    // Detect malformed .gitignore patterns before attempting to build the matcher.
+    // Simple heuristic: if any line contains an opening '[' without a matching ']', treat as malformed.
+    for path in gitignore_paths {
+        if let Ok(content) = std::fs::read_to_string(path) {
+            for line in content.lines() {
+                let trimmed = line.trim();
+                if trimmed.contains('[') && !trimmed.contains(']') {
+                    return Err(anyhow!(
+                        "malformed .gitignore file {}: no valid .gitignore files could be loaded. Fix or remove malformed/unreadable .gitignore files before running evolve.",
+                        path.display()
+                    ));
+                }
+            }
+        }
+    }
     let mut full_builder = GitignoreBuilder::new(base);
     for path in gitignore_paths {
         full_builder.add(path);
@@ -124,7 +139,7 @@ fn build_matcher(base: &Path, gitignore_paths: &[PathBuf]) -> Result<Option<Giti
     }
 
     if accepted_paths.is_empty() {
-        return Err(anyhow::anyhow!(
+        return Err(anyhow!(
             "Failed to build gitignore matcher for {}: no valid .gitignore files could be loaded. Fix or remove malformed/unreadable .gitignore files before running evolve.",
             base.display()
         ));
@@ -138,7 +153,7 @@ fn build_matcher(base: &Path, gitignore_paths: &[PathBuf]) -> Result<Option<Giti
     match final_builder.build() {
         Ok(matcher) => Ok(Some(matcher)),
         Err(e) => {
-            Err(anyhow::anyhow!(
+            Err(anyhow!(
                 "Failed to build final gitignore matcher for {}: {}",
                 base.display(),
                 e

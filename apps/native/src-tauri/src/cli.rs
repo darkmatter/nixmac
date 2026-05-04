@@ -120,91 +120,91 @@ pub async fn handle_evolve_command(app: &AppHandle, cfg: EvolveConfig) -> Result
                 config_path.display()
             ));
         }
-        crate::store::set_config_dir(app, &config_path.to_string_lossy())
+        crate::storage::store::set_config_dir(app, &config_path.to_string_lossy())
             .map_err(|e| format!("Failed to set config dir: {}", e))?;
     }
 
     // API keys and URLs
     if let Some(ref key) = openai_key {
-        crate::store::set_openai_api_key(app, key)
+        crate::storage::store::set_openai_api_key(app, key)
             .map_err(|e| format!("Failed to set OpenAI key: {}", e))?;
     }
 
     if let Some(ref key) = openrouter_key {
-        crate::store::set_openrouter_api_key(app, key)
+        crate::storage::store::set_openrouter_api_key(app, key)
             .map_err(|e| format!("Failed to set OpenRouter key: {}", e))?;
     }
 
     if let Some(ref url) = ollama_url {
-        crate::store::set_ollama_api_base_url(app, url)
+        crate::storage::store::set_ollama_api_base_url(app, url)
             .map_err(|e| format!("Failed to set Ollama URL: {}", e))?;
     }
 
     // Model prefs
     if let Some(ref provider) = evolve_provider {
-        crate::store::set_evolve_provider(app, provider)
+        crate::storage::store::set_evolve_provider(app, provider)
             .map_err(|e| format!("Failed to set evolve provider: {}", e))?;
     }
 
     if let Some(ref model) = evolve_model {
-        crate::store::set_evolve_model(app, model)
+        crate::storage::store::set_evolve_model(app, model)
             .map_err(|e| format!("Failed to set evolve model: {}", e))?;
     }
 
     if let Some(ref provider) = summary_provider {
-        crate::store::set_summary_provider(app, provider)
+        crate::storage::store::set_summary_provider(app, provider)
             .map_err(|e| format!("Failed to set summary provider: {}", e))?;
     }
 
     if let Some(ref model) = summary_model {
-        crate::store::set_summary_model(app, model)
+        crate::storage::store::set_summary_model(app, model)
             .map_err(|e| format!("Failed to set summary model: {}", e))?;
     }
 
     // Resolve effective values: prefer CLI-provided, otherwise read from store if available
     let effective_evolve_provider: Option<String> = match &evolve_provider {
         Some(p) => Some(p.clone()),
-        None => crate::store::get_evolve_provider(app).ok().flatten(),
+        None => crate::storage::store::get_evolve_provider(app).ok().flatten(),
     };
 
     let effective_evolve_model: Option<String> = match &evolve_model {
         Some(m) => Some(m.clone()),
-        None => crate::store::get_evolve_model(app).ok().flatten(),
+        None => crate::storage::store::get_evolve_model(app).ok().flatten(),
     };
 
     let effective_summary_provider: Option<String> = match &summary_provider {
         Some(p) => Some(p.clone()),
-        None => crate::store::get_summary_provider(app).ok().flatten(),
+        None => crate::storage::store::get_summary_provider(app).ok().flatten(),
     };
 
     let effective_summary_model: Option<String> = match &summary_model {
         Some(m) => Some(m.clone()),
-        None => crate::store::get_summary_model(app).ok().flatten(),
+        None => crate::storage::store::get_summary_model(app).ok().flatten(),
     };
 
     // Effective max iterations: prefer CLI value, otherwise read from store (has default)
     let effective_max_iterations: usize = match max_iterations {
         Some(v) => v,
         None => {
-            crate::store::get_max_iterations(app).unwrap_or(crate::store::DEFAULT_MAX_ITERATIONS)
+            crate::storage::store::get_max_iterations(app).unwrap_or(crate::storage::store::DEFAULT_MAX_ITERATIONS)
         }
     };
 
     // Max iterations
     if let Some(iterations) = max_iterations {
-        crate::store::set_max_iterations(app, iterations)
+        crate::storage::store::set_max_iterations(app, iterations)
             .map_err(|e| format!("Failed to set max iterations: {}", e))?;
     }
 
     // Host
     if let Some(ref host_attr) = host {
-        crate::store::set_host_attr(app, host_attr)
+        crate::storage::store::set_host_attr(app, host_attr)
             .map_err(|e| format!("Failed to set host: {}", e))?;
     }
 
     // DO IT!
     println!("Starting evolution with prompt: {}", prompt);
-    let outcome = crate::evolution::backup_evolve_and_record_changeset(app, &prompt).await;
+    let outcome = crate::evolve::lifecycle::backup_evolve_and_record_changeset(app, &prompt).await;
 
     let (ok, output_value, failure_message) = match outcome {
         Ok(output) => {

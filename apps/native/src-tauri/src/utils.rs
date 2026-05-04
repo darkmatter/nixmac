@@ -196,6 +196,6 @@ mod tests {
         );
 
         // restore BEFORE tempdir is dropped so the directory still exists
-        std::env::set_current_dir(&orig_cwd).expect("restore cwd");
+        let _ = std::env::set_current_dir(&orig_cwd);
     }
 }

@@ -12,10 +12,13 @@ pub mod providers;
 mod search_code;
 pub mod search_docs;
 mod search_packages;
+pub mod session_control;
 mod sops;
 mod tools;
 pub(crate) mod types;
 mod utils;
+
+pub mod lifecycle;
 
 /// Directories ignored by file listing and search helpers.
 pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
@@ -38,9 +41,10 @@ use tools::{create_tools, execute_tool, is_editing_tool, ToolResult};
 pub use types::Evolution;
 pub use types::{EvolutionProgress, EvolutionRunError};
 use crate::shared_types::EvolutionState;
+use crate::system::nix;
 
 use crate::{
-    commands, nix, statistics, store,
+    statistics, store,
     types::{emit_evolve_event, EvolveEvent},
     utils as global_utils,
 };
@@ -520,7 +524,7 @@ pub async fn generate_evolution<R: Runtime>(
     // Agentic loop - let the model use tools until done AND build passes
     loop {
         // Check for cancellation at the start of each iteration
-        if commands::is_evolve_cancelled() {
+        if session_control::is_evolve_cancelled() {
             warn!("⚠️ Evolution cancelled by user");
             evolution.state = EvolutionState::Failed;
             emit_evolve_event(
@@ -581,7 +585,7 @@ pub async fn generate_evolution<R: Runtime>(
                 res = &mut fut => res,
                 _ = async {
                     loop {
-                        if commands::is_evolve_cancelled() {
+                        if session_control::is_evolve_cancelled() {
                             break;
                         }
                         // TODO: Replace polling with tokio::sync::Notify or watch channel to avoid sleep.
@@ -842,7 +846,7 @@ pub async fn generate_evolution<R: Runtime>(
                             {
                                 info!("⏳ Waiting for user response to: {}", question);
                                 let user_answer = tokio::select! {
-                                    answer = commands::wait_for_question_response() => {
+                                    answer = session_control::wait_for_question_response() => {
                                         match answer {
                                             Some(a) => a,
                                             None => {
@@ -853,7 +857,7 @@ pub async fn generate_evolution<R: Runtime>(
                                     }
                                     _ = async {
                                         loop {
-                                            if commands::is_evolve_cancelled() {
+                                            if session_control::is_evolve_cancelled() {
                                                 break;
                                             }
                                             sleep(Duration::from_millis(100)).await;

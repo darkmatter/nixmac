@@ -9,7 +9,9 @@ use std::path::Path;
 use std::process::Command;
 use tauri::{AppHandle, Manager};
 
-use crate::{git, nix, store};
+use crate::storage::store;
+use crate::git;
+use crate::system::nix;
 
 /// Detects the Darwin platform architecture.
 pub fn detect_darwin_platform() -> &'static str {

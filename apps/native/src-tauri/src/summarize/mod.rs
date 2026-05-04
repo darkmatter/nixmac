@@ -23,7 +23,7 @@ pub async fn new_changeset<R: Runtime>(
     evolution_id: Option<i64>,
 ) -> Result<Option<i64>> {
     let db_path = crate::db::get_db_path(app)?;
-    let config_dir = crate::store::get_config_dir(app)?;
+    let config_dir = crate::storage::store::get_config_dir(app)?;
 
     let diff = crate::git::status(&config_dir)?.diff;
     if diff.is_empty() {
@@ -32,14 +32,14 @@ pub async fn new_changeset<R: Runtime>(
 
     let now = crate::utils::unix_now();
     // Truncated diffs — content capped at DIFF_EXCERPT_LINES, sufficient for placement
-    let all_changes = crate::changes_from_diff::changes_from_diff(&diff, now, true);
+    let all_changes = crate::git::changes_from_diff::changes_from_diff(&diff, now, true);
 
     let existing = find_existing::for_current_state(&db_path, &config_dir)?;
 
     if !existing.iter().any(|e| e.change_set.is_some()) {
         let (_, changes): (Vec<_>, Vec<_>) = all_changes
             .into_iter()
-            .partition(crate::changes_from_diff::is_sensitive_or_opaque);
+            .partition(crate::git::changes_from_diff::is_sensitive_or_opaque);
         return pipelines::fresh_changeset::analyze(
             changes, app, &db_path, None, None, None, evolution_id,
         )
@@ -53,7 +53,7 @@ pub async fn new_changeset<R: Runtime>(
 
     let semantic_map = group_existing::from_change_sets(existing);
     let (missed_changes, unfound) =
-        crate::changes_from_diff::filter_by_hashes(all_changes, &semantic_map.unsummarized_hashes);
+        crate::git::changes_from_diff::filter_by_hashes(all_changes, &semantic_map.unsummarized_hashes);
     if let Some(unfound_hashes) = unfound {
         log::warn!(
             "[new_changeset] {} missed hash(es) not found in current diff: {:?}",

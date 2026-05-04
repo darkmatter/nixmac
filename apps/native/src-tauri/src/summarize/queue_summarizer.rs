@@ -398,7 +398,7 @@ fn serialize_group_response(
 
 fn emit_update<R: Runtime>(app: &AppHandle<R>, db_path: &Path) {
     let result = (|| -> Result<()> {
-        let config_dir = crate::store::get_config_dir(app)?;
+        let config_dir = crate::storage::store::get_config_dir(app)?;
         let change_sets =
             crate::summarize::find_existing::for_current_state(db_path, &config_dir)?;
         let semantic_map = crate::summarize::group_existing::from_change_sets(change_sets);
