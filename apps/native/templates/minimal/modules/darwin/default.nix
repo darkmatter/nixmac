@@ -3,11 +3,10 @@
 
 {
   imports = [
+    ../../.nixmac
     ./core.nix
     ./packages.nix
-    ./homebrew.nix
     ./fonts.nix
     ./defaults.nix
   ];
 }
-

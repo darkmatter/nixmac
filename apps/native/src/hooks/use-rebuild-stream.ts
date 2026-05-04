@@ -1,5 +1,11 @@
-import { useWidgetStore, type RebuildContext, type RebuildErrorType } from "@/stores/widget-store";
-import { darwinAPI, ipcRenderer } from "@/tauri-api";
+import { useWidgetStore, type RebuildContext } from "@/stores/widget-store";
+import {
+  darwinAPI,
+  ipcRenderer,
+  type DarwinApplyDataEvent,
+  type DarwinApplyEndEvent,
+  type DarwinApplySummaryEvent,
+} from "@/tauri-api";
 import { useCallback, useRef } from "react";
 import { useGitOperations } from "./use-git-operations";
 
@@ -26,7 +32,7 @@ export function useRebuildStream() {
       rebuildLineIdRef.current = 1;
 
       // For store-path activation (no log summarizer), also populate summary lines.
-      const unlistenData = await ipcRenderer.on<{ chunk: string }>("darwin:apply:data", (event) => {
+      const unlistenData = await ipcRenderer.on<DarwinApplyDataEvent>("darwin:apply:data", (event) => {
         const { chunk } = event.payload;
         const newLines = chunk.split("\n").filter((line) => line.trim() !== "");
         const currentStore = useWidgetStore.getState();
@@ -39,13 +45,7 @@ export function useRebuildStream() {
       });
 
       // Listen to AI-summarized log events
-      const unlistenSummary = await ipcRenderer.on<{
-        text: string;
-        complete?: boolean;
-        success?: boolean;
-        error?: boolean;
-        error_type?: "infinite_recursion" | "evaluation_error" | "build_error" | "generic_error";
-      }>("darwin:apply:summary", (event) => {
+      const unlistenSummary = await ipcRenderer.on<DarwinApplySummaryEvent>("darwin:apply:summary", (event) => {
         const { text, complete, success, error, error_type } = event.payload;
         const currentStore = useWidgetStore.getState();
 
@@ -73,12 +73,7 @@ export function useRebuildStream() {
       });
 
       // Listen for rebuild end event
-      const unlistenEnd = await ipcRenderer.on<{
-        ok: boolean;
-        code: number;
-        error_type?: RebuildErrorType;
-        error?: string;
-      }>("darwin:apply:end", async (event) => {
+      const unlistenEnd = await ipcRenderer.on<DarwinApplyEndEvent>("darwin:apply:end", async (event) => {
         const currentStore = useWidgetStore.getState();
         currentStore.setRebuildComplete(event.payload.ok, event.payload.code);
 

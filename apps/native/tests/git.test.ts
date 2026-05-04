@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { commitAll, initIfNeeded, isRepo, status } from "../electron/git";
+import { commitAll, status } from "../electron/git";
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "darwinian-git-"));
 const repoDir = path.join(tmpRoot, "repo");
@@ -18,12 +18,6 @@ describe("git helpers (integration with real git)", () => {
     } catch {
       // Cleanup best effort
     }
-  });
-
-  it("initIfNeeded initializes repository and creates .gitignore", async () => {
-    await initIfNeeded(repoDir);
-    expect(await isRepo(repoDir)).toBe(true);
-    expect(fs.existsSync(path.join(repoDir, ".gitignore"))).toBe(true);
   });
 
   it("status reflects changes", async () => {

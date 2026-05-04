@@ -10,7 +10,7 @@ use anyhow::{Context, Result};
 use std::path::Path;
 use tauri::{AppHandle, Emitter, Runtime};
 
-use crate::shared_types::SemanticChangeMap;
+use crate::shared_types::SummarizerUpdateEvent;
 use crate::sqlite_types::QueuedSummary;
 use crate::summarize::model_output_types::HunkSummary;
 
@@ -20,12 +20,6 @@ const FAILED_AFTER_TRIES: i64 = 4;
 struct HashSummaryPair {
     hash: String,
     summary_id: i64,
-}
-
-#[derive(Clone, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SummarizerEvent {
-    pub semantic_map: SemanticChangeMap,
 }
 
 // ── Public entry point ────────────────────────────────────────────────────────
@@ -45,10 +39,7 @@ pub async fn process<R: Runtime>(
             if first_pass {
                 match &ids {
                     Some(specific_ids) => {
-                        crate::db::changesets::fetch_queued_summaries_by_ids(
-                            &conn,
-                            specific_ids,
-                        )?
+                        crate::db::changesets::fetch_queued_summaries_by_ids(&conn, specific_ids)?
                     }
                     None => crate::db::changesets::fetch_all_queued_summaries(&conn)?,
                 }
@@ -108,28 +99,20 @@ async fn try_process_item<R: Runtime>(
     match item.summary_type.as_str() {
         "NEW_SINGLE" => handle_new_single(item, app, db_path, new_count).await?,
         "NEW_GROUP" => {
-            handle_group(
-                item,
-                db_path,
-                new_count,
-                || crate::summarize::model_calls::summarize_new_group(&item.prompt, Some(app)),
-            )
+            handle_group(item, db_path, new_count, || {
+                crate::summarize::model_calls::summarize_new_group(&item.prompt, Some(app))
+            })
             .await?
         }
         "EVOLVED_GROUP" => {
             let group_summary_id = item.group_summary_id.unwrap_or(0);
-            handle_group(
-                item,
-                db_path,
-                new_count,
-                || {
-                    crate::summarize::model_calls::summarize_evolved_group(
-                        &item.prompt,
-                        group_summary_id,
-                        Some(app),
-                    )
-                },
-            )
+            handle_group(item, db_path, new_count, || {
+                crate::summarize::model_calls::summarize_evolved_group(
+                    &item.prompt,
+                    group_summary_id,
+                    Some(app),
+                )
+            })
             .await?
         }
         other => log::warn!("[queue_summarizer] unknown summary_type: {}", other),
@@ -205,7 +188,7 @@ where
     Fut: std::future::Future<
         Output = Result<(
             crate::summarize::model_output_types::EvolvedGroupSummary,
-            crate::providers::TokenUsage,
+            crate::ai::providers::TokenUsage,
         )>,
     >,
 {
@@ -239,10 +222,9 @@ where
                 &summary.group.description,
             )?;
             for pair in &pairs {
-                let own = summary
-                    .own_summaries
-                    .get(&pair.hash)
-                    .ok_or_else(|| anyhow::anyhow!("hash {} missing after validation", pair.hash))?;
+                let own = summary.own_summaries.get(&pair.hash).ok_or_else(|| {
+                    anyhow::anyhow!("hash {} missing after validation", pair.hash)
+                })?;
                 crate::db::changesets::update_change_summary_content(
                     &tx,
                     pair.summary_id,
@@ -289,7 +271,7 @@ async fn validate_or_retry<T, Retry, Fut>(
 ) -> Result<T>
 where
     Retry: FnOnce() -> Fut,
-    Fut: std::future::Future<Output = Result<(T, crate::providers::TokenUsage)>>,
+    Fut: std::future::Future<Output = Result<(T, crate::ai::providers::TokenUsage)>>,
 {
     match validate(&result) {
         Ok(()) => Ok(result),
@@ -301,7 +283,10 @@ where
             );
             increment_attempts_now(db_path, item_id)?;
             let (result2, _) = retry().await.with_context(|| {
-                format!("failed to summarize queued item {}, retry model call failed", item_id)
+                format!(
+                    "failed to summarize queued item {}, retry model call failed",
+                    item_id
+                )
             })?;
             if let Err(e2) = validate(&result2) {
                 increment_attempts_now(db_path, item_id)?;
@@ -398,11 +383,10 @@ fn serialize_group_response(
 
 fn emit_update<R: Runtime>(app: &AppHandle<R>, db_path: &Path) {
     let result = (|| -> Result<()> {
-        let config_dir = crate::store::get_config_dir(app)?;
-        let change_sets =
-            crate::summarize::find_existing::for_current_state(db_path, &config_dir)?;
+        let config_dir = crate::storage::store::get_config_dir(app)?;
+        let change_sets = crate::summarize::find_existing::for_current_state(db_path, &config_dir)?;
         let semantic_map = crate::summarize::group_existing::from_change_sets(change_sets);
-        app.emit("summarizer:update", SummarizerEvent { semantic_map })?;
+        app.emit("summarizer:update", SummarizerUpdateEvent { semantic_map })?;
         Ok(())
     })();
     if let Err(e) = result {
@@ -417,15 +401,25 @@ mod tests {
     use std::collections::HashMap;
 
     fn hunk(title: &str, description: &str) -> HunkSummary {
-        HunkSummary { title: title.into(), description: description.into() }
+        HunkSummary {
+            title: title.into(),
+            description: description.into(),
+        }
     }
 
     fn pair(hash: &str, summary_id: i64) -> HashSummaryPair {
-        HashSummaryPair { hash: hash.into(), summary_id }
+        HashSummaryPair {
+            hash: hash.into(),
+            summary_id,
+        }
     }
 
     fn group_summary(group: HunkSummary, own: HashMap<String, HunkSummary>) -> EvolvedGroupSummary {
-        EvolvedGroupSummary { former_group_id: 0, group, own_summaries: own }
+        EvolvedGroupSummary {
+            former_group_id: 0,
+            group,
+            own_summaries: own,
+        }
     }
 
     // ── validate_hunk_summary ─────────────────────────────────────────────────
@@ -463,7 +457,10 @@ mod tests {
     fn group_empty_changes_array_fails() {
         // Reproduces the exact bug: group present, changes: []
         let summary = group_summary(
-            hunk("MyApp Integration", "SOPS key, LaunchAgent, encrypted secret"),
+            hunk(
+                "MyApp Integration",
+                "SOPS key, LaunchAgent, encrypted secret",
+            ),
             HashMap::new(),
         );
         let pairs = vec![pair("a3a0d3", 38), pair("37c4ac", 39), pair("f0d85a", 40)];
@@ -491,10 +488,19 @@ mod tests {
     #[test]
     fn group_valid_passes() {
         let mut own = HashMap::new();
-        own.insert("a3a0d3".into(), hunk("SOPS Key", "Replaced placeholder with real age key"));
-        own.insert("37c4ac".into(), hunk("LaunchAgent", "Adds myapp user launchd service"));
+        own.insert(
+            "a3a0d3".into(),
+            hunk("SOPS Key", "Replaced placeholder with real age key"),
+        );
+        own.insert(
+            "37c4ac".into(),
+            hunk("LaunchAgent", "Adds myapp user launchd service"),
+        );
         let summary = group_summary(
-            hunk("MyApp Integration", "SOPS key, LaunchAgent, encrypted secret"),
+            hunk(
+                "MyApp Integration",
+                "SOPS key, LaunchAgent, encrypted secret",
+            ),
             own,
         );
         let pairs = vec![pair("a3a0d3", 38), pair("37c4ac", 39)];

@@ -5,100 +5,103 @@ import {
   requestFullDiskAccessPermission,
 } from "tauri-plugin-macos-permissions-api";
 import type {
+  BuildCheckResult,
+  CliToolsState,
+  CommitResult,
+  Config as DarwinConfig,
+  ConfigEditApplyResult,
+  EvolveCancelResult,
   EvolutionResult,
   EvolveState,
+  FeedbackAiProviderModelInfo,
+  FeedbackFlakeInputsSnapshot,
+  FeedbackPanicDetails,
+  FeedbackShareOptions,
+  FeedbackSystemInfo,
+  FileEntry,
+  FinalizeApplyResult,
   GitStatus,
   HomebrewState,
   HistoryItem,
+  NixCheckResult,
+  OkResult,
+  Permission,
+  PermissionsState,
+  PreviewIndicatorState,
+  RecommendedPrompt,
   RollbackResult,
   SemanticChangeMap,
   SetDirResult,
+  SystemDefault,
+  SystemDefaultsScan,
   UiPrefs as DarwinPrefs,
+  UiPrefsUpdate as DarwinPrefsUpdate,
 } from "./types/shared";
 
 export type {
+  BuildCheckResult,
   ChangeType,
+  CliToolsState,
+  CommitResult,
+  Config as DarwinConfig,
+  ConfigChangedEvent,
+  ConfigEditApplyResult,
+  DarwinApplyDataEvent,
+  DarwinApplyEndEvent,
+  DarwinApplySummaryEvent,
+  EvolveCancelResult,
+  EvolveEvent,
+  EvolveEventType,
   EvolutionFailureResult,
   EvolutionResult,
   EvolutionState,
   EvolutionTelemetry,
   EvolveState,
   EvolveStep,
+  FeedbackAiProviderModelInfo,
+  FeedbackFlakeInputEntry,
+  FeedbackFlakeInputsSnapshot,
+  FeedbackMetadataRequest,
+  FeedbackPanicDetails,
+  FeedbackShareOptions,
+  FeedbackSystemInfo,
+  FileEntry,
+  FinalizeApplyResult,
   GitFileStatus,
   GitStatus,
   HomebrewState,
   HistoryItem,
+  NixCheckResult,
+  NixDarwinRebuildEndEvent,
+  NixInstallEndEvent,
+  NixInstallErrorType,
+  NixInstallPhase,
+  NixInstallProgressEvent,
+  OkResult,
+  Permission,
+  PermissionStatus,
+  PermissionsState,
+  PreviewIndicatorState,
+  RecommendedPrompt,
+  RebuildErrorType,
   SemanticChangeMap,
   SetDirResult,
+  SummarizerUpdateEvent,
   SummarizedChangeSet,
+  RustPanicEvent,
+  SystemDefault,
+  SystemDefaultsScan,
   UiPrefs as DarwinPrefs,
+  UiPrefsUpdate as DarwinPrefsUpdate,
   WatcherEvent,
 } from "./types/shared";
 export type { Change, Commit } from "./types/sqlite";
 
-export interface UnknownRecord {
-  [key: string]: unknown;
-}
-
-export interface DarwinConfig {
-  configDir: string;
-  hostAttr?: string | null;
-}
-
-
 export const DEFAULT_MAX_ITERATIONS = 25;
-
-export interface ApplyResult {
-  gitStatus: GitStatus;
-  evolveState: EvolveState;
-}
-
-export interface ConfigEditApplyResult {
-  ok: boolean;
-  count: number;
-  changeMap: SemanticChangeMap;
-  gitStatus: GitStatus;
-  evolveState: EvolveState;
-}
-
-export interface CommitResult {
-  hash: string;
-  evolveState: EvolveState;
-}
-
-
-export interface PreviewIndicatorState {
-  visible: boolean;
-  summary: string | null;
-  filesChanged: number;
-  additions?: number;
-  deletions?: number;
-  isLoading: boolean;
-}
 
 // =============================================================================
 // Feedback Types
 // =============================================================================
-
-export interface FeedbackShareOptions {
-  currentAppState: boolean;
-  systemInfo: boolean;
-  usageStats: boolean;
-  evolutionLog: boolean;
-  changedNixFiles: boolean;
-  aiProviderModelInfo: boolean;
-  buildErrorOutput: boolean;
-  flakeInputsSnapshot: boolean;
-  appLogs: boolean;
-}
-
-export interface FeedbackSystemInfo {
-  osName?: string;
-  osVersion?: string;
-  arch?: string;
-  nixVersion?: string;
-  appVersion?: string;
-}
 
 export interface FeedbackUsageStats {
   totalEvolutions?: number;
@@ -106,29 +109,6 @@ export interface FeedbackUsageStats {
   avgIterations?: number;
   lastComputedAt?: string;
   extra?: Record<string, unknown>;
-}
-
-export interface FeedbackAiProviderModelInfo {
-  evolveProvider?: string;
-  evolveModel?: string;
-  summaryProvider?: string;
-  summaryModel?: string;
-  totalTokens?: number;
-  latencyMs?: number;
-  iterations?: number;
-  buildAttempts?: number;
-}
-
-export interface FeedbackFlakeInputEntry {
-  rev?: string;
-  lastModified?: number;
-  narHash?: string;
-}
-
-export interface FeedbackFlakeInputsSnapshot {
-  nixpkgs?: FeedbackFlakeInputEntry;
-  "nix-darwin"?: FeedbackFlakeInputEntry;
-  "home-manager"?: FeedbackFlakeInputEntry;
 }
 
 export interface FeedbackMetadata {
@@ -141,137 +121,49 @@ export interface FeedbackMetadata {
   buildErrorOutput?: string;
   flakeInputsSnapshot?: FeedbackFlakeInputsSnapshot;
   appLogsContent?: string;
-  lastPromptText?: string;
-}
-
-// =============================================================================
-// Permissions Types
-// =============================================================================
-
-export type PermissionStatus = "granted" | "denied" | "pending" | "unknown";
-
-export interface Permission {
-  id: string;
-  name: string;
-  description: string;
-  required: boolean;
-  canRequestProgrammatically: boolean;
-  status: PermissionStatus;
-  instructions?: string;
-}
-
-export interface PermissionsState {
-  permissions: Permission[];
-  allRequiredGranted: boolean;
-  checkedAt: number | null;
-}
-
-// =============================================================================
-// System Defaults Scanner Types
-// =============================================================================
-
-export interface SystemDefault {
-  nixKey: string;
-  label: string;
-  category: string;
-  currentValue: string;
-  defaultValue: string;
-}
-
-export interface SystemDefaultsScan {
-  defaults: SystemDefault[];
-  totalScanned: number;
-}
-
-export interface RecommendedPrompt {
-  id: string;
-  promptText: string;
-}
-
-// =============================================================================
-// Evolve Streaming Events
-// =============================================================================
-
-export type EvolveEventType =
-  | "start"
-  | "iteration"
-  | "thinking"
-  | "reading"
-  | "editing"
-  | "buildCheck"
-  | "buildPass"
-  | "buildFail"
-  | "toolCall"
-  | "apiRequest"
-  | "apiResponse"
-  | "question"
-  | "complete"
-  | "error"
-  | "info"
-  | "summarizing";
-
-export interface EvolveEvent {
-  /** Raw log output (detailed technical information) */
-  raw: string;
-  /** Human-readable summary of what's happening */
-  summary: string;
-  /** Event type for categorization in the UI */
-  eventType: EvolveEventType;
-  /** Current iteration number (if applicable) */
-  iteration: number | null;
-  /** Timestamp in milliseconds since evolution started */
-  timestampMs: number;
+  panicDetails?: FeedbackPanicDetails;
 }
 
 export const EVOLVE_EVENT_CHANNEL = "darwin:evolve:event";
 export const CONFIG_CHANGED_CHANNEL = "config:changed";
 
-export interface ConfigChangedEvent {
-  hasChanges: boolean;
-}
-
 export const darwinAPI = {
   config: {
-    get: () => invoke<DarwinConfig | null>("config_get"),
+    get: () => invoke<DarwinConfig>("config_get"),
     setDir: (dir: string) => invoke<SetDirResult>("config_set_dir", { dir }),
     pickDir: () => invoke<SetDirResult | null>("config_pick_dir"),
-    setHostAttr: (host: string) => invoke("config_set_host_attr", { host }),
+    setHostAttr: (host: string) => invoke<OkResult>("config_set_host_attr", { host }),
   },
   git: {
-    initIfNeeded: () => invoke("git_init_if_needed"),
-    status: () => invoke<GitStatus | null>("git_status"),
-    statusAndCache: () => invoke<GitStatus | null>("git_status_and_cache"),
+    status: () => invoke<GitStatus>("git_status"),
+    statusAndCache: () => invoke<GitStatus>("git_status_and_cache"),
     cached: () => invoke<GitStatus | null>("git_cached"),
     commit: (message: string) => invoke<CommitResult>("git_commit", { message }),
-    stash: (message: string) => invoke("git_stash", { message }),
+    stash: (message: string) => invoke<OkResult>("git_stash", { message }),
   },
   darwin: {
     evolve: (description: string) => invoke<EvolutionResult>("darwin_evolve", { description }),
-    evolveAnswer: (answer: string) => invoke<void>("darwin_evolve_answer", { answer }),
-    buildCheck: () => invoke<{ passed: boolean; output: string }>("darwin_build_check"),
+    evolveAnswer: (answer: string) => invoke<OkResult>("darwin_evolve_answer", { answer }),
+    buildCheck: () => invoke<BuildCheckResult>("darwin_build_check"),
     evolveFromManual: () => invoke<number>("darwin_adopt_manual_changes"),
-    evolveCancel: () => invoke("darwin_evolve_cancel"),
-    apply: (hostOverride?: string) => invoke("darwin_apply", { hostOverride }),
+    evolveCancel: () => invoke<EvolveCancelResult>("darwin_evolve_cancel"),
     applyStreamStart: (hostOverride?: string) =>
-      invoke("darwin_apply_stream_start", { hostOverride }),
+      invoke<OkResult>("darwin_apply_stream_start", { hostOverride }),
     activateStorePath: (storePath: string) =>
-      invoke("darwin_activate_store_path", { storePath }),
-    applyStreamCancel: () => invoke("darwin_apply_stream_cancel"),
-    finalizeApply: () => invoke<ApplyResult>("finalize_apply"),
+      invoke<OkResult>("darwin_activate_store_path", { storePath }),
+    applyStreamCancel: () => invoke<OkResult>("darwin_apply_stream_cancel"),
+    finalizeApply: () => invoke<FinalizeApplyResult>("finalize_apply"),
     finalizeRollback: (storePath: string | null, changesetId: number | null) =>
-      invoke<ApplyResult>("finalize_rollback", { storePath, changesetId }),
+      invoke<FinalizeApplyResult>("finalize_rollback", { storePath, changesetId }),
     rollbackErase: () => invoke<RollbackResult>("rollback_erase"),
     prepareRestore: (targetHash: string) => invoke<void>("prepare_restore", { targetHash }),
     abortRestore: () => invoke<void>("abort_restore"),
     finalizeRestore: (targetHash: string) => invoke<GitStatus>("finalize_restore", { targetHash }),
   },
   nix: {
-    check: () =>
-      invoke<{ installed: boolean; version?: string; darwin_rebuild_available: boolean }>(
-        "nix_check",
-      ),
-    installStart: () => invoke("nix_install_start"),
-    prefetchDarwinRebuild: () => invoke("darwin_rebuild_prefetch"),
+    check: () => invoke<NixCheckResult>("nix_check"),
+    installStart: () => invoke<OkResult>("nix_install_start"),
+    prefetchDarwinRebuild: () => invoke<OkResult>("darwin_rebuild_prefetch"),
   },
   flake: {
     listHosts: () => invoke<string[]>("flake_list_hosts"),
@@ -279,7 +171,7 @@ export const darwinAPI = {
     exists: () => invoke<boolean>("flake_exists"),
     existsAt: (dir: string) => invoke<boolean>("flake_exists_at", { dir }),
     bootstrapDefault: (hostname: string) => invoke<void>("bootstrap_default_config", { hostname }),
-    finalizeFlakeLock: () => invoke("finalize_flake_lock"),
+    finalizeFlakeLock: () => invoke<OkResult>("finalize_flake_lock"),
   },
   path: {
     exists: (dir: string) => invoke<boolean>("path_exists", { dir }),
@@ -296,30 +188,30 @@ export const darwinAPI = {
     submit: (payload: string) => invoke<boolean>("feedback_submit", { payload }),
   },
   ui: {
-    getPrefs: () => invoke<DarwinPrefs | null>("ui_get_prefs"),
-    setPrefs: (prefs: Partial<DarwinPrefs>) => invoke("ui_set_prefs", { prefs }),
+    getPrefs: () => invoke<DarwinPrefs>("ui_get_prefs"),
+    setPrefs: (prefs: Partial<DarwinPrefsUpdate>) => invoke<OkResult>("ui_set_prefs", { prefs }),
   },
   models: {
     getCached: (provider: string) => invoke<string[] | null>("get_cached_models", { provider }),
     setCached: (provider: string, models: string[]) =>
-      invoke("set_cached_models", { provider, models }),
-    clearCached: (provider: string) => invoke("clear_cached_models", { provider }),
+      invoke<OkResult>("set_cached_models", { provider, models }),
+    clearCached: (provider: string) => invoke<OkResult>("clear_cached_models", { provider }),
   },
 
   cli: {
-    checkTools: () => invoke<Record<string, boolean>>("check_cli_tools"),
+    checkTools: () => invoke<CliToolsState>("check_cli_tools"),
     listModels: (tool: string) => invoke<string[]>("list_cli_models", { tool }),
   },
 
   promptHistory: {
     get: () => invoke<string[]>("get_prompt_history"),
-    add: (prompt: string) => invoke("add_to_prompt_history", { prompt }),
+    add: (prompt: string) => invoke<OkResult>("add_to_prompt_history", { prompt }),
   },
 
   previewIndicator: {
-    show: () => invoke("preview_indicator_show"),
-    hide: () => invoke("preview_indicator_hide"),
-    update: (state: PreviewIndicatorState) => invoke("preview_indicator_update", { state }),
+    show: () => invoke<OkResult>("preview_indicator_show"),
+    hide: () => invoke<OkResult>("preview_indicator_hide"),
+    update: (state: PreviewIndicatorState) => invoke<OkResult>("preview_indicator_update", { state }),
     getState: () => invoke<PreviewIndicatorState>("preview_indicator_get_state"),
   },
 
@@ -353,8 +245,7 @@ export const darwinAPI = {
     readFile: (relPath: string) => invoke<string>("editor_read_file", { relPath }),
     writeFile: (relPath: string, content: string) =>
       invoke<void>("editor_write_file", { relPath, content }),
-    listFiles: () =>
-      invoke<{ path: string; name: string; isDir: boolean }[]>("editor_list_files"),
+    listFiles: () => invoke<FileEntry[]>("editor_list_files"),
   },
 
   lsp: {

@@ -191,4 +191,4 @@ export function PreviewIndicator({
 }
 
 // Export for Storybook
-export type { PreviewIndicatorProps };
+;

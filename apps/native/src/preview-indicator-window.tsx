@@ -3,22 +3,16 @@ import { listen } from "@tauri-apps/api/event";
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { PreviewIndicator } from "@/components/preview-indicator";
+import type { PreviewIndicatorState } from "@/tauri-api";
 import "./index.css";
 
-interface PreviewState {
-  visible: boolean;
-  summary: string | null;
-  filesChanged: number;
-  additions?: number;
-  deletions?: number;
-  isLoading: boolean;
-}
-
 function PreviewIndicatorWindow() {
-  const [state, setState] = useState<PreviewState>({
+  const [state, setState] = useState<PreviewIndicatorState>({
     visible: false,
     summary: null,
     filesChanged: 0,
+    additions: null,
+    deletions: null,
     isLoading: false,
   });
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +21,7 @@ function PreviewIndicatorWindow() {
   useEffect(() => {
     setMounted(true);
 
-    invoke<PreviewState>("preview_indicator_get_state")
+    invoke<PreviewIndicatorState>("preview_indicator_get_state")
       .then((initialState) => {
         setState(initialState);
       })
@@ -36,7 +30,7 @@ function PreviewIndicatorWindow() {
         setError(String(err));
       });
 
-    const unsubscribe = listen<PreviewState>(
+    const unsubscribe = listen<PreviewIndicatorState>(
       "preview-indicator:update",
       (event) => {
         setState(event.payload);
@@ -81,8 +75,8 @@ function PreviewIndicatorWindow() {
 
   return (
     <PreviewIndicator
-      additions={state.additions}
-      deletions={state.deletions}
+      additions={state.additions ?? undefined}
+      deletions={state.deletions ?? undefined}
       disableExpansion
       filesChanged={state.filesChanged}
       isLoading={state.isLoading}

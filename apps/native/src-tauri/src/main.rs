@@ -7,49 +7,35 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod apply_system_defaults;
-mod build_state;
-mod changes_from_diff;
+// Keep top-level declarations scoped to first-level domain modules. Leaf modules
+// are declared by their parent `mod.rs` files so rust-analyzer resolves them via Cargo.
+mod ai;
+mod bootstrap;
 mod cli;
 mod commands;
-mod completion_log;
-mod credential_store;
-mod darwin;
 mod db;
-mod default_config;
 mod editor;
-mod evolution;
 mod evolve;
-mod evolve_state;
 mod feedback;
-mod finalize_apply;
-mod finalize_restore;
-mod get_history;
 mod git;
-mod historelog;
-mod log_summarizer;
-mod lsp;
-mod mac;
-mod managed_edit;
-mod nix;
-mod nix_ast_lists;
+mod history;
+mod managed_edits;
 mod panic_handler;
 mod peek;
-mod permissions;
-mod provider_errors;
-mod providers;
-mod rollback;
-mod scanner;
-mod secret_scanner;
+mod rebuild;
 mod shared_types;
 mod sqlite_types;
+mod state;
 mod statistics;
-mod store;
+mod storage;
 mod summarize;
-mod template;
+mod system;
 mod types;
+mod updater_pin;
 mod utils;
-mod watcher;
+
+use state::watcher;
+use storage::store;
 
 use std::env;
 use std::sync::{Arc, Mutex};
@@ -116,7 +102,9 @@ fn main() {
             .init();
     }
 
-    // Bridge log crate to tracing (for compatibility with existing log:: calls)
+    // Bridge log crate to tracing (for compatibility with existing log:: calls).
+    // fire-and-forget: LogTracer::init() returns Err if called more than once
+    // (double-init is benign). Ignoring is correct.
     let _ = tracing_log::LogTracer::init();
 
     let context = tauri::generate_context!();
@@ -310,102 +298,102 @@ fn run_gui_mode(
         .plugin(tauri_plugin_macos_permissions::init())
         .invoke_handler(tauri::generate_handler![
             // Configuration
-            commands::config_get,
-            commands::config_set_host_attr,
-            commands::config_set_dir,
-            commands::config_pick_dir,
-            commands::flake_exists_at,
-            commands::path_exists,
-            commands::path_normalize,
+            commands::config::config_get,
+            commands::config::config_set_host_attr,
+            commands::config::config_set_dir,
+            commands::config::config_pick_dir,
+            commands::config::flake_exists_at,
+            commands::config::path_exists,
+            commands::config::path_normalize,
             // Feedback
-            commands::feedback_gather_metadata,
-            commands::feedback_submit,
+            commands::feedback::feedback_gather_metadata,
+            commands::feedback::feedback_submit,
             #[cfg(debug_assertions)]
-            commands::trigger_test_panic,
+            commands::debug::trigger_test_panic,
             #[cfg(debug_assertions)]
-            commands::debug_sentry_event,
+            commands::debug::debug_sentry_event,
             // Homebrew
-            commands::homebrew_apply_diff,
-            commands::homebrew_get_state_diff,
+            commands::homebrew::homebrew_apply_diff,
+            commands::homebrew::homebrew_get_state_diff,
             // Git
-            commands::git_init_repo,
-            commands::git_status,
-            commands::git_status_and_cache,
-            commands::git_cached,
-            commands::git_commit,
-            commands::git_stash,
+            commands::git::git_status,
+            commands::git::git_status_and_cache,
+            commands::git::git_cached,
+            commands::git::git_commit,
+            commands::git::git_stash,
             // Darwin/Nix
-            commands::darwin_evolve,
-            commands::darwin_evolve_cancel,
-            commands::darwin_evolve_answer,
-            commands::darwin_apply,
-            commands::darwin_apply_stream_start,
-            commands::darwin_activate_store_path,
-            commands::darwin_apply_stream_cancel,
-            commands::finalize_apply,
-            commands::finalize_rollback,
-            commands::rollback_erase,
-            commands::darwin_build_check,
-            commands::darwin_adopt_manual_changes,
-            commands::prepare_restore,
-            commands::abort_restore,
-            commands::finalize_restore,
+            commands::evolve::darwin_evolve,
+            commands::evolve::darwin_evolve_cancel,
+            commands::evolve::darwin_evolve_answer,
+            commands::apply::darwin_apply_stream_start,
+            commands::apply::darwin_activate_store_path,
+            commands::apply::darwin_apply_stream_cancel,
+            commands::apply::finalize_apply,
+            commands::apply::finalize_rollback,
+            commands::rollback::rollback_erase,
+            commands::rollback::darwin_build_check,
+            commands::rollback::darwin_adopt_manual_changes,
+            commands::summarize::prepare_restore,
+            commands::summarize::abort_restore,
+            commands::summarize::finalize_restore,
             // Routing state
-            commands::routing_state_get,
-            commands::routing_state_clear,
-            commands::nix_check,
-            commands::nix_install_start,
-            commands::darwin_rebuild_prefetch,
-            commands::finalize_flake_lock,
-            commands::flake_installed_apps,
-            commands::flake_list_hosts,
-            commands::flake_exists,
-            commands::bootstrap_default_config,
+            commands::evolve_state::routing_state_get,
+            commands::evolve_state::routing_state_clear,
+            commands::apply::nix_check,
+            commands::apply::nix_install_start,
+            commands::apply::darwin_rebuild_prefetch,
+            commands::apply::finalize_flake_lock,
+            commands::apply::flake_installed_apps,
+            commands::apply::flake_list_hosts,
+            commands::config::flake_exists,
+            commands::config::bootstrap_default_config,
             // Summarization
-            commands::find_change_map,
-            commands::get_history,
-            commands::generate_history_from,
-            commands::summarize_current,
-            commands::generate_commit_message,
+            commands::summarize::find_change_map,
+            commands::summarize::get_history,
+            commands::summarize::generate_history_from,
+            commands::summarize::summarize_current,
+            commands::summarize::generate_commit_message,
             // UI preferences
-            commands::ui_get_prefs,
-            commands::ui_set_prefs,
+            commands::ui_prefs::ui_get_prefs,
+            commands::ui_prefs::ui_set_prefs,
             // Model cache
-            commands::get_cached_models,
-            commands::set_cached_models,
-            commands::clear_cached_models,
+            commands::ui_prefs::get_cached_models,
+            commands::ui_prefs::set_cached_models,
+            commands::ui_prefs::clear_cached_models,
             // Prompt history
-            commands::get_prompt_history,
-            commands::add_to_prompt_history,
+            commands::ui_prefs::get_prompt_history,
+            commands::ui_prefs::add_to_prompt_history,
             // Window
-            commands::show_main_window,
+            commands::peek::show_main_window,
             // Preview indicator
-            commands::preview_indicator_show,
-            commands::preview_indicator_hide,
-            commands::preview_indicator_update,
-            commands::preview_indicator_get_state,
-            commands::set_has_uncommitted_changes,
+            commands::peek::preview_indicator_show,
+            commands::peek::preview_indicator_hide,
+            commands::peek::preview_indicator_update,
+            commands::peek::preview_indicator_get_state,
+            commands::peek::set_has_uncommitted_changes,
             // Permissions
-            commands::permissions_check_all,
-            commands::permissions_request,
-            commands::permissions_all_required_granted,
+            commands::permissions::permissions_check_all,
+            commands::permissions::permissions_request,
+            commands::permissions::permissions_all_required_granted,
             // System defaults scanner
-            commands::get_recommended_prompt,
-            commands::scan_system_defaults,
-            commands::apply_system_defaults,
+            commands::system_defaults::get_recommended_prompt,
+            commands::system_defaults::scan_system_defaults,
+            commands::system_defaults::apply_system_defaults,
             // CLI tool detection
-            commands::check_cli_tools,
-            commands::list_cli_models,
+            commands::cli_tool::check_cli_tools,
+            commands::cli_tool::list_cli_models,
             // Updater
-            commands::relaunch_after_update,
+            commands::updater::relaunch_after_update,
+            updater_pin::install_version,
+            updater_pin::clear_pinned_version,
             // Editor
-            commands::editor_read_file,
-            commands::editor_write_file,
-            commands::editor_list_files,
+            commands::editor::editor_read_file,
+            commands::editor::editor_write_file,
+            commands::editor::editor_list_files,
             // LSP
-            commands::lsp_start,
-            commands::lsp_send,
-            commands::lsp_stop,
+            commands::editor::lsp_start,
+            commands::editor::lsp_send,
+            commands::editor::lsp_stop,
         ])
         .setup(move |app| {
             let handle = app.handle();
@@ -435,7 +423,9 @@ fn run_gui_mode(
                 }
             });
 
-            let _ = secret_scanner::SecretScanner::global(handle);
+            // Eagerly initialise the scanner singleton; the returned &'static ref is not
+            // needed right now. fire-and-forget is intentional here.
+            let _ = system::secret_scanner::SecretScanner::global(handle);
 
             // Build the nix-darwin docs index once at startup for fast option-shape lookup.
             // CONSIDER: Moving this to background or do it on first search_docs call
@@ -475,8 +465,11 @@ fn run_gui_mode(
 
             let _tray = TrayIconBuilder::new()
                 .icon(
-                    Image::from_path("icons/outline@2x.png")
-                        .unwrap_or_else(|_| app.default_window_icon().unwrap().clone()),
+                    Image::from_path("icons/outline@2x.png").unwrap_or_else(|_| {
+                        app.default_window_icon()
+                            .expect("app must have a default icon bundled")
+                            .clone()
+                    }),
                 )
                 .icon_as_template(true)
                 .menu(&menu)
@@ -484,6 +477,10 @@ fn run_gui_mode(
                 .on_tray_icon_event(|tray_handle, event| {
                     tauri_plugin_positioner::on_tray_event(tray_handle.app_handle(), &event);
                 })
+                // All window calls below are fire-and-forget: tray menu callbacks run
+                // asynchronously and the window may be hidden or in a transitional state.
+                // show/set_focus/emit only fail when the window is destroyed, which is
+                // acceptable — the app is still running, just with no visible window.
                 .on_menu_event(move |app, event| match event.id().as_ref() {
                     "open" => {
                         if let Some(window) = app.get_webview_window("main") {
@@ -590,6 +587,7 @@ fn run_gui_mode(
                     // Prevent the window from being destroyed
                     api.prevent_close();
                     if let Some(window) = app_handle.get_webview_window("main") {
+                        // fire-and-forget: hide() can fail if window is already hidden.
                         let _ = window.hide();
                         // Update peek state
                         peek::unlock_and_hide();
@@ -600,6 +598,7 @@ fn run_gui_mode(
             // Click Nixmac icon to show
             if let RunEvent::Reopen { .. } = &event {
                 if let Some(window) = app_handle.get_webview_window("main") {
+                    // fire-and-forget: show/set_focus fail only on destroyed window.
                     let _ = window.show();
                     let _ = window.set_focus();
                 }

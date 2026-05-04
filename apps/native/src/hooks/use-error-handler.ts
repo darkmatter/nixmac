@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useWidgetStore } from "@/stores/widget-store";
 import { FeedbackType } from "@/types/feedback";
 
-export interface JavaScriptErrorDetails {
+interface JavaScriptErrorDetails {
   message: string;
   stack?: string;
   filename?: string;

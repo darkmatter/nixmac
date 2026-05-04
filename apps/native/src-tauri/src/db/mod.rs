@@ -25,6 +25,8 @@ pub fn get_db_path<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf> {
     let app_data = app.path().app_data_dir()?;
     std::fs::create_dir_all(&app_data)?;
     let path = app_data.join("nixmac.db");
+    // fire-and-forget: OnceLock::set returns Err if already initialised (race on first call).
+    // The first writer wins; the value is the same path, so ignoring the Err is correct.
     let _ = DB_PATH.set(path.clone());
     Ok(path)
 }

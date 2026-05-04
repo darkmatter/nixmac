@@ -1,6 +1,6 @@
 use super::{AiProvider, ProviderError, ProviderResponse, TokenUsage};
+use crate::ai::provider_errors::classify_openai_error;
 use crate::evolve::messages::{Message, Tool as GenericTool, ToolCall};
-use crate::provider_errors::classify_openai_error;
 use anyhow::anyhow;
 use async_openai::{
     config::OpenAIConfig,
@@ -29,8 +29,10 @@ impl OpenAIProvider {
             .with_api_key(api_key)
             .with_api_base(api_base);
         let client = Client::with_config(config);
-        let record_completions =
-            crate::completion_log::init_recording("evolve_provider_completions", "evolve provider");
+        let record_completions = crate::state::completion_log::init_recording(
+            "evolve_provider_completions",
+            "evolve provider",
+        );
         Self {
             client,
             model,
@@ -77,7 +79,7 @@ impl AiProvider for OpenAIProvider {
             .await
             .map_err(normalize_openai_error)?;
 
-        crate::completion_log::append_jsonl(
+        crate::state::completion_log::append_jsonl(
             self.record_completions,
             "evolve_provider_completions",
             &response,
@@ -113,10 +115,10 @@ fn convert_to_openai_tools(tools: &[GenericTool]) -> Vec<ChatCompletionTool> {
                         .description(&t.description)
                         .parameters(t.parameters.clone())
                         .build()
-                        .unwrap(),
+                        .expect("FunctionObject: all required fields set"),
                 )
                 .build()
-                .unwrap()
+                .expect("ChatCompletionTool: all required fields set")
         })
         .collect()
 }
@@ -128,12 +130,12 @@ fn convert_to_openai_messages(messages: &[Message]) -> Vec<ChatCompletionRequest
             Message::System { content } => ChatCompletionRequestSystemMessageArgs::default()
                 .content(content.clone())
                 .build()
-                .unwrap()
+                .expect("SystemMessage: content set")
                 .into(),
             Message::User { content } => ChatCompletionRequestUserMessageArgs::default()
                 .content(content.clone())
                 .build()
-                .unwrap()
+                .expect("UserMessage: content set")
                 .into(),
             Message::Assistant {
                 content,
@@ -158,7 +160,10 @@ fn convert_to_openai_messages(messages: &[Message]) -> Vec<ChatCompletionRequest
                         .collect();
                     builder.tool_calls(openai_calls);
                 }
-                builder.build().unwrap().into()
+                builder
+                    .build()
+                    .expect("AssistantMessage: optional fields only")
+                    .into()
             }
             Message::Tool {
                 tool_call_id,
@@ -167,7 +172,7 @@ fn convert_to_openai_messages(messages: &[Message]) -> Vec<ChatCompletionRequest
                 .tool_call_id(tool_call_id.clone())
                 .content(content.clone())
                 .build()
-                .unwrap()
+                .expect("ToolMessage: all required fields set")
                 .into(),
         })
         .collect()

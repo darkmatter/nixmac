@@ -1,4 +1,4 @@
-import { useWidgetStore, type BoolPrefKey, type ConfirmPrefKey } from "@/stores/widget-store";
+import { useWidgetStore, type BoolPrefKey } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
 
 export function usePrefs() {
@@ -10,6 +10,8 @@ export function usePrefs() {
       useWidgetStore
         .getState()
         .setBoolPref("scanHomebrewOnStartup", prefs.scanHomebrewOnStartup ?? true);
+      useWidgetStore.getState().setDeveloperMode(prefs.developerMode ?? false);
+      useWidgetStore.getState().setPinnedVersion(prefs.pinnedVersion ?? null);
     }
     useWidgetStore.getState().setPrefsLoaded(true);
   };
@@ -27,4 +29,4 @@ export function usePrefs() {
   return { loadPrefs, setPref };
 }
 
-export type { ConfirmPrefKey, BoolPrefKey };
+;
