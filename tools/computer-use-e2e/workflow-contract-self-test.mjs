@@ -38,10 +38,18 @@ assert.equal(/\n\s+ssh\s/.test(prepare), false, 'prepare must not open SSH sessi
 assert.equal(/\n\s+scp\s/.test(prepare), false, 'prepare must not copy to the remote Mac');
 
 const staleRecheckIndex = remote.indexOf('Check stale queued PR run before remote work');
+const remotePrFocusIndex = remote.indexOf('Capture PR focus metadata for remote run');
 const prepareSshIndex = remote.indexOf('Prepare SSH');
 assert.ok(staleRecheckIndex >= 0, 'remote job must recheck stale queued PR runs');
+assert.ok(remotePrFocusIndex >= 0, 'remote job must export PR focus metadata for run-remote-cua');
 assert.ok(prepareSshIndex >= 0, 'remote job must prepare SSH after stale recheck');
+assert.ok(remotePrFocusIndex < staleRecheckIndex, 'remote PR focus metadata must be available before remote work');
 assert.ok(staleRecheckIndex < prepareSshIndex, 'stale recheck must happen before SSH or remote work');
+assert.match(
+  remote,
+  /append_multiline_env "NIXMAC_E2E_PR_CHANGED_FILES"/,
+  'remote job must export multiline changed-file metadata into the Computer Use runner environment',
+);
 assert.match(
   remote,
   /printf '%s\\n' \/flake\.lock \/result > "\$config_tmp\/config\/\.gitignore"/,
