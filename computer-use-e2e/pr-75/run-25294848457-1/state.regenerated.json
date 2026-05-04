@@ -1,6 +1,6 @@
 {
   "startedAt": "2026-05-04T00:21:18.216Z",
-  "runDir": "/home/runner/work/nixmac/nixmac/artifacts/computer-use-remote/2026-05-04T002118207Z",
+  "runDir": "artifacts/computer-use-remote/2026-05-04T002118207Z",
   "ws": "ws://127.0.0.1:18790",
   "app": "com.darkmatter.nixmac",
   "prompt": "Add the bat command line tool to my Homebrew packages as the plain string \"bat\" only, with no inline comments.",
@@ -88,20 +88,20 @@
   },
   "timing": {
     "version": 1,
-    "generatedAt": "2026-05-04T00:23:19.220Z",
+    "generatedAt": "2026-05-04T00:23:27.465Z",
     "note": "Timing phases are best-effort telemetry from the GitHub workflow and Computer Use runner. Unobservable phases are reported explicitly instead of inferred.",
     "phases": [
       {
         "id": "computer-use-run",
         "label": "Computer Use run",
         "category": "computer-use",
-        "status": "success",
+        "status": "failure",
         "observable": true,
-        "source": "runner",
-        "startedAt": "2026-05-04T00:21:18.217Z",
-        "endedAt": "2026-05-04T00:23:01.215Z",
-        "durationMs": 102998,
-        "note": "Connected to Codex app-server, exercised the calibrated nixmac Computer Use suite, and reached report generation."
+        "source": "github-actions",
+        "startedAt": "2026-05-04T00:21:18.162Z",
+        "endedAt": "2026-05-04T00:23:19.272Z",
+        "durationMs": 121110,
+        "note": "Computer Use runner exited with status 1."
       },
       {
         "id": "report-render",
@@ -114,6 +114,140 @@
         "endedAt": "2026-05-04T00:23:19.220Z",
         "durationMs": 2934,
         "note": "Rendered state.json and index.html."
+      },
+      {
+        "id": "queue-lock-wait",
+        "label": "Queue / concurrency lock wait",
+        "category": "workflow",
+        "status": "success",
+        "observable": true,
+        "source": "github-actions",
+        "startedAt": "2026-05-04T00:12:12Z",
+        "endedAt": "2026-05-04T00:12:12Z",
+        "durationMs": 0,
+        "note": "Derived from GitHub Actions workflow_run created_at and run_started_at."
+      },
+      {
+        "id": "hosted-runner-setup",
+        "label": "Hosted runner setup",
+        "category": "workflow",
+        "status": "success",
+        "observable": true,
+        "source": "github-actions",
+        "startedAt": "2026-05-04T00:12:12Z",
+        "endedAt": "2026-05-04T00:12:59.183Z",
+        "durationMs": 47183,
+        "note": "Checkout, Node setup, and ffmpeg dependency install completed."
+      },
+      {
+        "id": "report-upload",
+        "label": "Report upload artifact",
+        "category": "reporting",
+        "status": "pending",
+        "observable": false,
+        "source": "github-actions",
+        "note": "This phase happens after the HTML report is refreshed. Final duration is emitted in the workflow summary; the hosted HTML may show this row as pending by design."
+      },
+      {
+        "id": "report-publish",
+        "label": "Report publish",
+        "category": "reporting",
+        "status": "pending",
+        "observable": false,
+        "source": "github-actions",
+        "note": "This phase happens after the HTML report is refreshed. Final duration is emitted in the workflow summary; the hosted HTML may show this row as pending by design."
+      },
+      {
+        "id": "report-comment",
+        "label": "Report PR comment",
+        "category": "reporting",
+        "status": "pending",
+        "observable": false,
+        "source": "github-actions",
+        "note": "This phase happens after the HTML report is refreshed. Final duration is emitted in the workflow summary; the hosted HTML may show this row as pending by design."
+      },
+      {
+        "id": "build-artifact-readiness-wait",
+        "label": "Build/artifact readiness wait",
+        "category": "workflow",
+        "status": "success",
+        "observable": true,
+        "source": "github-actions",
+        "startedAt": "2026-05-04T00:13:00.463Z",
+        "endedAt": "2026-05-04T00:20:10.966Z",
+        "durationMs": 430503,
+        "note": "Downloaded app artifact from build workflow run 25294848454."
+      },
+      {
+        "id": "remote-preflight",
+        "label": "Remote preflight",
+        "category": "remote",
+        "status": "success",
+        "observable": true,
+        "source": "github-actions",
+        "startedAt": "2026-05-04T00:20:59.655Z",
+        "endedAt": "2026-05-04T00:21:00.653Z",
+        "durationMs": 998,
+        "note": "Checking SSH, expected host identity, and remote Codex binary readiness."
+      },
+      {
+        "id": "remote-staging-app-launch",
+        "label": "Remote staging/app launch",
+        "category": "remote",
+        "status": "success",
+        "observable": true,
+        "source": "github-actions",
+        "startedAt": "2026-05-04T00:21:00.711Z",
+        "endedAt": "2026-05-04T00:21:17.031Z",
+        "durationMs": 16320,
+        "note": "Preparing disposable config, copying the PR app bundle, starting app-server, and launching nixmac."
+      },
+      {
+        "id": "remote-app-server-tunnel",
+        "label": "Remote app-server tunnel",
+        "category": "remote",
+        "status": "success",
+        "observable": true,
+        "source": "github-actions",
+        "startedAt": "2026-05-04T00:21:17.076Z",
+        "endedAt": "2026-05-04T00:21:18.117Z",
+        "durationMs": 1041,
+        "note": "Opening local SSH tunnel to the remote Codex app-server."
+      },
+      {
+        "id": "cleanup",
+        "label": "Cleanup",
+        "category": "cleanup",
+        "status": "success",
+        "observable": true,
+        "source": "github-actions",
+        "startedAt": "2026-05-04T00:23:19.336Z",
+        "endedAt": "2026-05-04T00:23:20.304Z",
+        "durationMs": 968,
+        "note": "Remote cleanup exited with status 0."
+      },
+      {
+        "id": "timing-report-refresh",
+        "label": "Timing report refresh",
+        "category": "reporting",
+        "status": "success",
+        "observable": true,
+        "source": "github-actions",
+        "startedAt": "2026-05-04T00:23:20.351Z",
+        "endedAt": "2026-05-04T00:23:20.385Z",
+        "durationMs": 34
+      },
+      {
+        "id": "report-render-state.regenerated.json",
+        "label": "Report render (state.regenerated.json)",
+        "category": "reporting",
+        "status": "success",
+        "observable": true,
+        "source": "runner",
+        "startedAt": "2026-05-04T00:23:24.511Z",
+        "endedAt": "2026-05-04T00:23:27.465Z",
+        "durationMs": 2954,
+        "note": "Rendered state.regenerated.json and index.html."
       }
     ]
   },
@@ -1118,7 +1252,7 @@
     {
       "claim": "Scenario results include inspectable visual/text evidence",
       "status": "pass",
-      "evidence": "Every passing scenario has linked text proof, and required non-sensitive screenshots passed binding visual signal checks."
+      "evidence": "Every passing scenario has linked text proof, and required non-sensitive screenshots passed binding visual signal checks. Every passing scenario has linked text proof, and required non-sensitive screenshots passed binding visual signal checks."
     },
     {
       "claim": "Main branch user-visible coverage stays mapped",
@@ -1128,7 +1262,7 @@
     {
       "claim": "PR-specific user-visible behavior is covered when applicable",
       "status": "inconclusive",
-      "evidence": "PR metadata was provided, but changed-file metadata was not available."
+      "evidence": "PR metadata was provided, but changed-file metadata was not available. PR metadata was provided, but changed-file metadata was not available."
     },
     {
       "claim": "Generated HTML report is inspected with Computer Use",
@@ -1679,6 +1813,7 @@
       "label": "Scenario results include inspectable visual/text evidence",
       "status": "pass",
       "notes": [
+        "Every passing scenario has linked text proof, and required non-sensitive screenshots passed binding visual signal checks.",
         "Every passing scenario has linked text proof, and required non-sensitive screenshots passed binding visual signal checks."
       ],
       "evidenceStrength": "weak",
@@ -1712,6 +1847,7 @@
       "label": "PR-specific user-visible behavior is covered when applicable",
       "status": "inconclusive",
       "notes": [
+        "PR metadata was provided, but changed-file metadata was not available.",
         "PR metadata was provided, but changed-file metadata was not available."
       ],
       "evidenceStrength": "not-proved",
@@ -1876,7 +2012,7 @@
   "remoteMacosVersion": "26.2",
   "coverageFreshness": {
     "manifestVersion": 1,
-    "checkedAt": "2026-05-04T00:23:01.215Z",
+    "checkedAt": "2026-05-04T00:23:24.511Z",
     "totalSurfaces": 15,
     "mappedSurfaces": 12,
     "waivedSurfaces": 3,
@@ -2903,5 +3039,7 @@
         "limitation": "Does not prove a human reviewed every screenshot."
       }
     }
-  }
+  },
+  "regeneratedFrom": "state.json",
+  "regeneratedAt": "2026-05-04T00:23:20.430Z"
 }

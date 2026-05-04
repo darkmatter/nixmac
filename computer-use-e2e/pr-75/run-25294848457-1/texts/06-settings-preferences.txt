@@ -1,0 +1,83 @@
+Computer Use state (CUA App Version: 758)
+<app_state>
+App=com.darkmatter.nixmac (pid 42190)
+Window: "nixmac", App: nixmac.
+	0 standard window nixmac, Secondary Actions: Raise
+		1 scroll area
+			2 HTML content Description: nixmac, URL: tauri://localhost
+				3 heading nixmac, Value: 3
+					4 text nixmac
+				5 button History
+				6 button Give feedback
+				7 button Settings
+				8 content list Progress: step 2 of 3, Review
+					9 container
+						10 text Describe What to change
+					11 container
+						12 text 2 Review Check & test
+					13 container
+						14 text 3 Save Keep changes
+				15 text Uncommitted changes
+				16 button Build & Test
+				17 heading What's changed, Value: 2
+					18 text What's changed
+				19 tab group (selectable)
+					20 tab (selected) Summary
+					21 tab (selectable) Diff
+				22 text Manual Changes found in
+				23 text config
+				24 text :
+				25 button Analyze
+				26 text flake.lock
+				27 container
+					28 text entry area (settable, string) Describe changes to make to your configuration.
+						29 text Describe changes to make to your configuration.
+					30 button (disabled) Send
+				31 button Install vim
+				32 button Add Rectangle app
+				33 button Enable the Finder path bar and status bar
+				34 pop up button My History
+				35 button Report Issue
+				36 button Close settings
+				37 text Settings
+				38 container
+					39 button General
+					40 button AI Models
+					41 button API Keys
+					42 button Preferences
+				43 button Close
+				44 heading Preferences, Value: 2
+					45 text Preferences
+				46 text Confirmation dialogs
+				47 text Build
+				48 text Ask before rebuilding with changes
+				49 switch (settable, boolean) on
+				50 text Clear / Discard
+				51 text Ask before discarding changes
+				52 switch (settable, boolean) on
+				53 text Rollback
+				54 text Ask before rolling back to a previous commit
+				55 switch (settable, boolean) on
+				56 text Summarization
+				57 text Auto-summarize on focus
+				58 text Summarize unsummarized changes when the window is focused
+				59 switch (settable, boolean) off
+				60 text Startup scans
+				61 text Scan Homebrew
+				62 text Detect Homebrew drift and offer to resolve
+				63 switch (settable, boolean) on
+				64 button Console
+				65 container Notifications alt+T
+		66 close button
+		67 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+		68 minimize button
+	69 menu bar
+		70 nixmac
+		71 File
+		72 Edit
+		73 View
+		74 Window
+		75 Help
+
+The focused UI element is 7 button.
+</app_state>
