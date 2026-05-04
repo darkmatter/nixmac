@@ -437,6 +437,7 @@ pub struct CliToolsState {
 
 /// Response from the debug Sentry event command.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[cfg_attr(not(debug_assertions), allow(dead_code))]
 pub struct DebugSentryResult {
     pub ok: bool,
     pub message: String,
