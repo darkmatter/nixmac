@@ -30,11 +30,38 @@ function applyRegex(segs: Seg[], re: RegExp, color: string): Seg[] {
   return out;
 }
 
+/**
+ * Splits a line into (body, comment) at the first `#` that isn't inside
+ * a `"..."` string literal. The naive `^(.*?)(#.*)$` regex breaks on
+ * common Nix forms like `"github:NixOS/nixpkgs#main"`.
+ */
+function splitAtComment(line: string): [string, string | null] {
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (c === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (c === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (c === "#" && !inString) {
+      return [line.slice(0, i), line.slice(i)];
+    }
+  }
+  return [line, null];
+}
+
 export function highlightNix(src: string): ReactNode {
   return src.split("\n").map((line, i) => {
-    const cm = line.match(/^(.*?)(#.*)$/);
-    const body = cm ? cm[1] : line;
-    const comment = cm ? cm[2] : null;
+    const [body, comment] = splitAtComment(line);
 
     let segs: Seg[] = [{ text: body, color: null }];
     segs = applyRegex(segs, new RegExp(STR.source, "g"), "text-emerald-300");

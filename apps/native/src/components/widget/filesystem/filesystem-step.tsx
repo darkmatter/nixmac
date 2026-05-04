@@ -22,15 +22,29 @@ interface FilesystemStepProps {
 export function FilesystemStep({ onSeedPrompt }: FilesystemStepProps = {}) {
   const setEvolvePrompt = useWidgetStore((s) => s.setEvolvePrompt);
   const setShowFilesystem = useWidgetStore((s) => s.setShowFilesystem);
+  const targetSection = useWidgetStore((s) => s.filesystemTargetSection);
 
-  const [activeSection, setActiveSection] = useState<SectionId>("darwin");
+  // Honor an upstream "open at section X" intent (e.g. the Untracked
+  // banner's View button passes "manage"). Default to System.
+  const initialSection: SectionId =
+    targetSection && SECTIONS.some((s) => s.id === targetSection)
+      ? (targetSection as SectionId)
+      : "darwin";
+
+  const [activeSection, setActiveSection] = useState<SectionId>(initialSection);
+
+  // Clear the target on mount so a subsequent toggle from the header
+  // (which passes no section) returns to the user's last view.
+  useEffect(() => {
+    if (targetSection) {
+      useWidgetStore.setState({ filesystemTargetSection: null });
+    }
+    // Run only on mount — see effect of targetSection changing handled
+    // by the lifecycle below (the view is unmounted between openings).
+    // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only
+  }, []);
 
   const files = FILES[activeSection] ?? [];
-
-  useEffect(() => {
-    // Reset peek state by virtue of remounting list when section changes.
-    // FileList is keyed by section below.
-  }, [activeSection]);
 
   const seed = (text: string) => {
     if (onSeedPrompt) {

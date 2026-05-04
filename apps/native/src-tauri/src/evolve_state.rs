@@ -5,19 +5,18 @@ use tauri::{AppHandle, Runtime};
 use tauri_plugin_store::StoreExt;
 
 use crate::evolve::session_chat_memory_store;
+use crate::shared_types::{EvolveState, EvolveStep};
 use crate::sqlite_types::Change;
-
-pub use crate::shared_types::{EvolveState, EvolveStep};
 
 impl EvolveState {
     pub fn recompute_step(&mut self, is_built: bool, has_changes: bool) {
         self.committable = is_built;
         self.step = match (self.evolution_id, is_built, has_changes) {
-            (Some(_), true, _)  => EvolveStep::Commit,
+            (Some(_), true, _) => EvolveStep::Commit,
             (Some(_), false, _) => EvolveStep::Evolve,
-            (None, true, true)  => EvolveStep::ManualCommit,
+            (None, true, true) => EvolveStep::ManualCommit,
             (None, false, true) => EvolveStep::ManualEvolve,
-            _                   => EvolveStep::Begin,
+            _ => EvolveStep::Begin,
         };
     }
 }

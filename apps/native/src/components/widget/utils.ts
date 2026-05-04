@@ -52,7 +52,7 @@ export function getDirectory(path: string): string {
 /**
  * Infer change type from diff chunk content.
  */
-export function getChangeTypeFromChunks(
+function getChangeTypeFromChunks(
   chunks: string,
 ): "new" | "edited" | "removed" {
   const contentLines = chunks
@@ -194,7 +194,7 @@ export function formatRelativeTime(unixSeconds: number): string {
 // CHANGE CATEGORY COLORS
 // =============================================================================
 
-export type ChangeTypeStyle = {
+type ChangeTypeStyle = {
   icon: LucideIcon;
   bg: string;
   iconColor: string;
@@ -213,18 +213,18 @@ export type ChangeWithRichType = Change & {
   shortFilename?: string;
 };
 
-export function inferChangeType(diff: string): ChangeType {
+function inferChangeType(diff: string): ChangeType {
   if (/^new file mode/m.test(diff)) return "new";
   if (/^deleted file mode/m.test(diff)) return "removed";
   return getChangeTypeFromChunks(diff) as ChangeType;
 }
 
-export type RenamePair = {
+type RenamePair = {
   oldChange: ChangeWithRichType;
   newChange: ChangeWithRichType;
 };
 
-export function findRenamePairs(changes: ChangeWithRichType[]): RenamePair[] {
+function findRenamePairs(changes: ChangeWithRichType[]): RenamePair[] {
   const pairs: RenamePair[] = [];
   const newFiles = changes.filter((c) => c.changeType === "new");
   for (const newFile of newFiles) {

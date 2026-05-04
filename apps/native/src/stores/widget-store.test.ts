@@ -33,6 +33,7 @@ describe("createWidgetStore — initial state", () => {
     expect(s.confirmBuild).toBe(true);
     expect(s.confirmClear).toBe(true);
     expect(s.confirmRollback).toBe(true);
+    expect(s.scanHomebrewOnStartup).toBe(true);
     // analyzing-hash set starts empty but is an actual Set.
     expect(s.analyzingHistoryForHashes).toBeInstanceOf(Set);
     expect(s.analyzingHistoryForHashes.size).toBe(0);
@@ -152,6 +153,14 @@ describe("confirmation preferences", () => {
     // missing keys -> default true
     expect(s.confirmClear).toBe(true);
     expect(s.confirmRollback).toBe(true);
+  });
+
+  it("setBoolPref toggles scanHomebrewOnStartup", () => {
+    const store = createWidgetStore();
+    store.getState().setBoolPref("scanHomebrewOnStartup", false);
+    const s = store.getState();
+    expect(s.scanHomebrewOnStartup).toBe(false);
+    expect(s.confirmBuild).toBe(true);
   });
 });
 

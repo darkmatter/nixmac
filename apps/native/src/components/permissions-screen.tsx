@@ -54,7 +54,7 @@ export const defaultPermissions: Permission[] = [
   },
 ];
 
-export interface PermissionsScreenProps {
+interface PermissionsScreenProps {
   onComplete: () => void;
   initialPermissions?: Permission[];
   /** When true, renders a compact version suitable for embedding in a widget */

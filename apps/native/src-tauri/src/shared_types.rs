@@ -53,6 +53,20 @@ pub struct WatcherEvent {
 }
 
 // =============================================================================
+// Homebrew types
+// =============================================================================
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct HomebrewState {
+    pub is_installed: bool,
+    pub casks: Vec<String>,
+    pub brews: Vec<String>,
+    pub taps: Vec<String>,
+    pub source: Option<String>,
+    pub last_checked: i64,
+}
+
+// =============================================================================
 // Query return types
 // =============================================================================
 
@@ -176,7 +190,6 @@ impl Default for EvolveState {
     }
 }
 
-
 // =============================================================================
 // Config dir result types
 // =============================================================================
@@ -287,4 +300,155 @@ pub struct UiPrefs {
     pub confirm_clear: bool,
     pub confirm_rollback: bool,
     pub auto_summarize_on_focus: bool,
+    pub scan_homebrew_on_startup: bool,
+    pub developer_mode: bool,
+    pub pinned_version: Option<String>,
+}
+
+// =============================================================================
+// Partial UI preferences update (used by ui_set_prefs command)
+// =============================================================================
+
+/// Partial update to UI preferences — every field is optional so the caller
+/// can send only the fields they wish to change.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct UiPrefsUpdate {
+    pub openrouter_api_key: Option<String>,
+    pub openai_api_key: Option<String>,
+    pub evolve_provider: Option<String>,
+    pub evolve_model: Option<String>,
+    pub summary_provider: Option<String>,
+    pub summary_model: Option<String>,
+    pub max_iterations: Option<usize>,
+    pub max_build_attempts: Option<usize>,
+    pub ollama_api_base_url: Option<String>,
+    pub vllm_api_base_url: Option<String>,
+    pub vllm_api_key: Option<String>,
+    pub send_diagnostics: Option<bool>,
+    pub confirm_build: Option<bool>,
+    pub confirm_clear: Option<bool>,
+    pub confirm_rollback: Option<bool>,
+    pub auto_summarize_on_focus: Option<bool>,
+    pub scan_homebrew_on_startup: Option<bool>,
+    pub developer_mode: Option<bool>,
+    /// `None` → field not sent; `Some(None)` → clear the pinned version.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "double_option"
+    )]
+    pub pinned_version: Option<Option<String>>,
+}
+
+#[allow(dead_code)]
+mod double_option {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    pub fn serialize<T: Serialize, S: Serializer>(
+        val: &Option<Option<T>>,
+        s: S,
+    ) -> Result<S::Ok, S::Error> {
+        match val {
+            Some(inner) => inner.serialize(s),
+            None => s.serialize_none(),
+        }
+    }
+
+    pub fn deserialize<'de, T: Deserialize<'de>, D: Deserializer<'de>>(
+        d: D,
+    ) -> Result<Option<Option<T>>, D::Error> {
+        Ok(Some(Option::deserialize(d)?))
+    }
+}
+
+// =============================================================================
+// Simple acknowledgement
+// =============================================================================
+
+/// Generic acknowledgement returned by fire-and-forget commands.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct OkResult {
+    pub ok: bool,
+}
+
+impl OkResult {
+    #[allow(dead_code)]
+    pub fn yes() -> Self {
+        Self { ok: true }
+    }
+}
+
+// =============================================================================
+// Nix check result
+// =============================================================================
+
+/// Result of `nix_check` — reports whether Nix and darwin-rebuild are available.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NixCheckResult {
+    pub installed: bool,
+    pub version: Option<String>,
+    pub darwin_rebuild_available: bool,
+}
+
+// =============================================================================
+// Build check result
+// =============================================================================
+
+/// Result of `darwin_build_check` — dry-run build outcome.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct BuildCheckResult {
+    pub passed: bool,
+    pub output: String,
+}
+
+// =============================================================================
+// Config-edit apply result
+// =============================================================================
+
+/// Result of a managed-edit apply operation (homebrew, system-defaults, etc.).
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ConfigEditApplyResult {
+    pub ok: bool,
+    pub count: usize,
+    pub change_map: SemanticChangeMap,
+    pub git_status: GitStatus,
+    pub evolve_state: EvolveState,
+}
+
+// =============================================================================
+// CLI tools availability
+// =============================================================================
+
+/// Availability of known AI CLI tools.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CliToolsState {
+    pub claude: bool,
+    pub codex: bool,
+    pub opencode: bool,
+}
+
+// =============================================================================
+// Debug / test helpers
+// =============================================================================
+
+/// Response from the debug Sentry event command.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct DebugSentryResult {
+    pub ok: bool,
+    pub message: String,
+}
+
+// =============================================================================
+// Evolve cancel / answer acknowledgements
+// =============================================================================
+
+/// Acknowledgement from `darwin_evolve_cancel`.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct EvolveCancelResult {
+    pub ok: bool,
+    pub message: String,
 }

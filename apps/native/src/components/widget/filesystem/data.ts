@@ -343,8 +343,3 @@ export const TONE_CLASSES: Record<FileTone, { fg: string; bg: string }> = {
   blue: { fg: "text-sky-400", bg: "bg-sky-500/15" },
   muted: { fg: "text-muted-foreground", bg: "bg-muted/40" },
 };
-
-/** Total count of untracked items across all candidate sections — used by the BeginStep banner. */
-export function countUntrackedItems(): number {
-  return FILES.manage.reduce((acc, f) => acc + (f.items?.length ?? 0), 0);
-}

@@ -15,19 +15,7 @@ use log::error;
 use std::panic;
 use tauri::{AppHandle, Emitter, Manager};
 
-/// Panic information sent to the frontend
-#[derive(Debug, Clone, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PanicInfo {
-    /// The panic message
-    pub message: String,
-    /// The location of the panic (file:line:column)
-    pub location: Option<String>,
-    /// Optional backtrace (if RUST_BACKTRACE is enabled)
-    pub backtrace: Option<String>,
-    /// Timestamp when the panic occurred
-    pub timestamp: String,
-}
+use crate::types::FeedbackPanicDetails;
 
 /// Sets up the custom panic hook for the application.
 pub fn setup_panic_hook(app_handle: AppHandle) {
@@ -84,7 +72,7 @@ pub fn setup_panic_hook(app_handle: AppHandle) {
         );
 
         // Create panic info payload
-        let panic_payload = PanicInfo {
+        let panic_payload = FeedbackPanicDetails {
             message: message.clone(),
             location: location.clone(),
             backtrace: backtrace.clone(),

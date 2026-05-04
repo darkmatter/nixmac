@@ -113,10 +113,10 @@ fn convert_to_openai_tools(tools: &[GenericTool]) -> Vec<ChatCompletionTool> {
                         .description(&t.description)
                         .parameters(t.parameters.clone())
                         .build()
-                        .unwrap(),
+                        .expect("FunctionObject: all required fields set"),
                 )
                 .build()
-                .unwrap()
+                .expect("ChatCompletionTool: all required fields set")
         })
         .collect()
 }
@@ -128,12 +128,12 @@ fn convert_to_openai_messages(messages: &[Message]) -> Vec<ChatCompletionRequest
             Message::System { content } => ChatCompletionRequestSystemMessageArgs::default()
                 .content(content.clone())
                 .build()
-                .unwrap()
+                .expect("SystemMessage: content set")
                 .into(),
             Message::User { content } => ChatCompletionRequestUserMessageArgs::default()
                 .content(content.clone())
                 .build()
-                .unwrap()
+                .expect("UserMessage: content set")
                 .into(),
             Message::Assistant {
                 content,
@@ -158,7 +158,10 @@ fn convert_to_openai_messages(messages: &[Message]) -> Vec<ChatCompletionRequest
                         .collect();
                     builder.tool_calls(openai_calls);
                 }
-                builder.build().unwrap().into()
+                builder
+                    .build()
+                    .expect("AssistantMessage: optional fields only")
+                    .into()
             }
             Message::Tool {
                 tool_call_id,
@@ -167,7 +170,7 @@ fn convert_to_openai_messages(messages: &[Message]) -> Vec<ChatCompletionRequest
                 .tool_call_id(tool_call_id.clone())
                 .content(content.clone())
                 .build()
-                .unwrap()
+                .expect("ToolMessage: all required fields set")
                 .into(),
         })
         .collect()

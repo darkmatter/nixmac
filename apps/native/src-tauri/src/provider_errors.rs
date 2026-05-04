@@ -35,7 +35,7 @@ fn normalize_provider_status(status: u16, message: &str) -> u16 {
 /// Map an OpenAI/OpenRouter symbolic error code to an HTTP status code.
 ///
 /// Returns `None` for unrecognised codes — callers should treat those as 500.
-pub fn openai_error_code_to_status(code: &str) -> Option<u16> {
+pub(crate) fn openai_error_code_to_status(code: &str) -> Option<u16> {
     match code {
         "invalid_api_key" => Some(401),
         "insufficient_quota" | "billing_hard_limit_reached" => Some(402),

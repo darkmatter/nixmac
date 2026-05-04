@@ -3,7 +3,7 @@ playwright-report
 test-results
 apps/server/server
 node_modules
-
+worktrees
 # Build output
 dist/
 dist-ssr/
@@ -79,6 +79,12 @@ build
 # Testing
 coverage
 .nyc_output
+artifacts/computer-use-local/
+artifacts/computer-use-real/
+artifacts/computer-use-remote/
+artifacts/computer-use-adversarial/
+artifacts/computer-use-historical-validation/
+.scratch/
 
 # Misc
 *.tgz

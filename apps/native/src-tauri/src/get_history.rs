@@ -177,7 +177,9 @@ fn populate_restore_history_items(
     }
 
     for i in orphaned_indices {
-        let origin_hash = origin_hashes[i].as_ref().unwrap();
+        let origin_hash = origin_hashes[i]
+            .as_ref()
+            .expect("orphaned_indices only contains indices where origin_hash is Some");
         let short_hash = &origin_hash[..origin_hash.len().min(8)];
         entries[i].message = Some(format!("Restore commit {short_hash}"));
         entries[i].origin_hash = Some(origin_hash.clone());

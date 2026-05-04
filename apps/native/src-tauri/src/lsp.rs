@@ -127,7 +127,9 @@ pub async fn stop() -> Result<(), String> {
     let mut guard = lsp_state().lock().await;
     if let Some(mut state) = guard.take() {
         info!("[lsp] Stopping nixd");
-        // Try graceful shutdown first
+        // fire-and-forget: kill() fails only if the process has already exited,
+        // which is fine — we're stopping regardless. Propagating this error would
+        // mask the fact that the server is effectively stopped.
         let _ = state.child.kill().await;
         Ok(())
     } else {

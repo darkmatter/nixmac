@@ -20,7 +20,6 @@ static WATCH_DIR: Mutex<Option<String>> = Mutex::new(None);
 /// Holds handle to current watcher so we can wait for it to stop on restart.
 static WATCHER_THREAD: Mutex<Option<std::thread::JoinHandle<()>>> = Mutex::new(None);
 
-
 /// Starts the git status watcher for the given directory.
 ///
 /// ## Parameters
@@ -36,6 +35,8 @@ where
         let mut thread_guard = WATCHER_THREAD.lock().unwrap();
         if let Some(old_thread) = thread_guard.take() {
             WATCHER_ACTIVE.store(false, Ordering::SeqCst);
+            // fire-and-forget join: join() only fails if the thread panicked.
+            // We are replacing it regardless; ignoring the panic payload is correct.
             let _ = old_thread.join();
         }
     }
@@ -75,6 +76,9 @@ where
                 // Persist so the next app start initialises correctly.
                 if let Ok(mut bs) = build_state::get(&app_handle) {
                     bs.current_nix_store_path = live_store_path.clone();
+                    // fire-and-forget: persisting the updated store path to cache.
+                    // The in-memory value is already updated above; a write failure
+                    // means the next app start will re-detect the path from the filesystem.
                     let _ = build_state::set(&app_handle, bs);
                 }
                 // If the new path differs from what nixmac built, it's an external build.
@@ -105,11 +109,12 @@ where
                                 })
                                 .map(summarize::group_existing::from_change_sets)
                                 .unwrap_or_default();
-                            let evolve_state_updated = evolve_state::get(&app_handle)
-                                .ok()
-                                .and_then(|es| {
+                            let evolve_state_updated =
+                                evolve_state::get(&app_handle).ok().and_then(|es| {
+                                    // fire-and-forget: cache update in polling loop.
                                     evolve_state::set(&app_handle, es, &status.changes).ok()
                                 });
+                            // fire-and-forget: frontend event delivery; window may not be connected.
                             let _ = app_handle.emit(
                                 "git:status-changed",
                                 WatcherEvent {
@@ -120,10 +125,12 @@ where
                                     external_build_detected,
                                 },
                             );
+                            // fire-and-forget: git status cache write; watcher holds the live value.
                             let _ = store::set_cached_git_status(&app_handle, &status);
                         }
                     }
                     Err(e) => {
+                        // fire-and-forget: error event delivery to frontend.
                         let _ = app_handle.emit(
                             "git:status-changed",
                             WatcherEvent {

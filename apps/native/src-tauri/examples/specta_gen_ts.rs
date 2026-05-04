@@ -36,6 +36,7 @@ fn main() {
 
     let mut shared_collection = TypeCollection::default();
     let shared_types_reg = shared_collection
+        .register::<shared_types::HomebrewState>()
         .register::<shared_types::SummarizedChange>()
         .register::<shared_types::SummarizedChangeSet>()
         .register::<shared_types::ChangeWithSummary>()
@@ -54,7 +55,15 @@ fn main() {
         .register::<shared_types::EvolutionFailureResult>()
         .register::<shared_types::RollbackResult>()
         .register::<shared_types::SetDirResult>()
-        .register::<shared_types::UiPrefs>();
+        .register::<shared_types::UiPrefs>()
+        .register::<shared_types::UiPrefsUpdate>()
+        .register::<shared_types::OkResult>()
+        .register::<shared_types::NixCheckResult>()
+        .register::<shared_types::BuildCheckResult>()
+        .register::<shared_types::ConfigEditApplyResult>()
+        .register::<shared_types::CliToolsState>()
+        .register::<shared_types::DebugSentryResult>()
+        .register::<shared_types::EvolveCancelResult>();
 
     let shared_output_path = "../src/types/shared.ts";
 

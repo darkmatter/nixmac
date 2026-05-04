@@ -1,6 +1,6 @@
 //! Git operations for tracking and recording configuration changes.
 
-use crate::types::{GitFileStatus, GitStatus};
+use crate::shared_types::{GitFileStatus, GitStatus};
 use anyhow::{Context, Result};
 use std::ffi::OsStr;
 use std::path::Path;
@@ -85,7 +85,7 @@ pub fn init_repo(dir: &str) -> Result<()> {
 }
 
 /// Errors if `dir` is not a git repository. Use at the top of functions that require a repo.
-pub fn require_repo(dir: &str) -> Result<()> {
+fn require_repo(dir: &str) -> Result<()> {
     if !is_repo(dir) {
         anyhow::bail!("'{}' is not a git repository", dir);
     }
@@ -180,7 +180,7 @@ fn append_untracked_diffs(diff: &mut String, dir: &str, path_filter: Option<&str
 }
 
 /// Counts additions and deletions from a diff string.
-pub fn count_diff_changes(diff: &str) -> (usize, usize) {
+fn count_diff_changes(diff: &str) -> (usize, usize) {
     let mut additions = 0;
     let mut deletions = 0;
 
@@ -199,7 +199,7 @@ pub fn count_diff_changes(diff: &str) -> (usize, usize) {
 }
 
 /// Parses file info from diffs. Filename and path from diff headers.
-pub fn parse_files_from_diff(diff: &str) -> Vec<GitFileStatus> {
+fn parse_files_from_diff(diff: &str) -> Vec<GitFileStatus> {
     let mut files = Vec::new();
     let mut current_file: Option<String> = None;
     let mut current_change_type = crate::shared_types::ChangeType::Edited;

@@ -7,7 +7,7 @@ use crate::credential_store::{
     get_with_lazy_migration, set_with_cleanup, CredentialStoreError, KeychainStore,
     SettingsFileStore,
 };
-use crate::types;
+use crate::shared_types;
 use anyhow::Result;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -29,6 +29,13 @@ pub const CONFIRM_ROLLBACK_KEY: &str = "confirmRollback";
 
 // Summarization preference keys
 pub const AUTO_SUMMARIZE_ON_FOCUS_KEY: &str = "autoSummarizeOnFocus";
+
+// Startup scan preference keys
+pub const SCAN_HOMEBREW_ON_STARTUP_KEY: &str = "scanHomebrewOnStartup";
+
+// Developer-mode preference keys
+pub const DEVELOPER_MODE_KEY: &str = "developerMode";
+pub const PINNED_VERSION_KEY: &str = "pinnedVersion";
 
 pub const DEFAULT_MAX_ITERATIONS: usize = 25;
 const KEYCHAIN_SERVICE: &str = "com.darkmatter.nixmac";
@@ -343,6 +350,24 @@ fn delete_pref_raw<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<()> {
     Ok(())
 }
 
+pub fn get_string_pref_public<R: Runtime>(
+    app: &AppHandle<R>,
+    key: &str,
+) -> Result<Option<String>> {
+    get_string_pref_raw(app, key)
+}
+
+pub fn set_string_pref<R: Runtime>(app: &AppHandle<R>, key: &str, value: &str) -> Result<()> {
+    let store = get_store(app)?;
+    store.set(key, serde_json::json!(value));
+    store.save()?;
+    Ok(())
+}
+
+pub fn delete_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<()> {
+    delete_pref_raw(app, key)
+}
+
 fn resolve_secret_with_env_override<G>(
     env_value: Option<String>,
     fallback: G,
@@ -501,11 +526,11 @@ pub fn set_cached_models<R: Runtime>(
 // =============================================================================
 
 /// Gets the cached git status.
-pub fn get_cached_git_status<R: Runtime>(app: &AppHandle<R>) -> Result<Option<types::GitStatus>> {
+pub fn get_cached_git_status<R: Runtime>(app: &AppHandle<R>) -> Result<Option<shared_types::GitStatus>> {
     let store = get_store(app)?;
 
     if let Some(val) = store.get("cachedGitStatus") {
-        if let Ok(status) = serde_json::from_value::<types::GitStatus>(val.clone()) {
+        if let Ok(status) = serde_json::from_value::<shared_types::GitStatus>(val.clone()) {
             return Ok(Some(status));
         }
     }
@@ -515,7 +540,7 @@ pub fn get_cached_git_status<R: Runtime>(app: &AppHandle<R>) -> Result<Option<ty
 /// Sets the cached git status.
 pub fn set_cached_git_status<R: Runtime>(
     app: &AppHandle<R>,
-    status: &types::GitStatus,
+    status: &shared_types::GitStatus,
 ) -> Result<()> {
     let store = get_store(app)?;
     store.set("cachedGitStatus", serde_json::to_value(status)?);

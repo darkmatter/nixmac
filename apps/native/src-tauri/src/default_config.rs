@@ -122,7 +122,13 @@ fn resolve_template_path(app: &AppHandle) -> Result<std::path::PathBuf, String> 
             // Resources are at App.app/Contents/Resources/
             std::env::current_exe()
                 .map_err(tauri::Error::Io)
-                .map(|exe| exe.parent().unwrap().parent().unwrap().join("Resources"))
+                .map(|exe| {
+                    exe.parent()
+                        .expect("binary has a parent directory (Contents/MacOS)")
+                        .parent()
+                        .expect("binary grandparent directory (Contents)")
+                        .join("Resources")
+                })
         })
         .map_err(|e| format!("Failed to get resource directory: {}", e))?;
 
@@ -185,7 +191,12 @@ pub fn bootstrap(app: &AppHandle, hostname: &str) -> Result<(), String> {
         git::init_repo(&dir).map_err(|e| format!("Failed to init git: {}", e))?;
         let info = git::commit_all(&dir, "chore: initial nix-darwin configuration")
             .map_err(|e| format!("Failed to commit: {}", e))?;
-        if let Err(e) = git::tag_commit(&dir, &format!("nixmac-base-{}", &info.hash[..8]), &info.hash, false) {
+        if let Err(e) = git::tag_commit(
+            &dir,
+            &format!("nixmac-base-{}", &info.hash[..8]),
+            &info.hash,
+            false,
+        ) {
             log::warn!("Failed to tag initial commit as base: {}", e);
         }
         return Ok(());
@@ -212,7 +223,12 @@ pub fn bootstrap(app: &AppHandle, hostname: &str) -> Result<(), String> {
     git::init_repo(&dir).map_err(|e| format!("Failed to init git: {}", e))?;
     let info = git::commit_all(&dir, "chore: initial nix-darwin configuration")
         .map_err(|e| format!("Failed to commit: {}", e))?;
-    if let Err(e) = git::tag_commit(&dir, &format!("nixmac-base-{}", &info.hash[..8]), &info.hash, false) {
+    if let Err(e) = git::tag_commit(
+        &dir,
+        &format!("nixmac-base-{}", &info.hash[..8]),
+        &info.hash,
+        false,
+    ) {
         log::warn!("Failed to tag initial commit as base: {}", e);
     }
 
@@ -252,7 +268,12 @@ pub fn finalize_flake_lock(app: &AppHandle) -> Result<(), String> {
     // Stage lock file and commit
     let info = git::commit_all(&dir, "chore: add flake.lock")
         .map_err(|e| format!("Failed to commit flake.lock: {}", e))?;
-    if let Err(e) = git::tag_commit(&dir, &format!("nixmac-base-{}", &info.hash[..8]), &info.hash, false) {
+    if let Err(e) = git::tag_commit(
+        &dir,
+        &format!("nixmac-base-{}", &info.hash[..8]),
+        &info.hash,
+        false,
+    ) {
         log::warn!("Failed to tag flake.lock commit as base: {}", e);
     }
 

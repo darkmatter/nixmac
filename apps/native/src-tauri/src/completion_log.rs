@@ -10,7 +10,7 @@ use tokio::task::spawn_blocking;
 ///
 /// Files land in `~/Library/Application Support/nixmac/logs/{prefix}_YYYY-MM-DD.jsonl`
 /// on a Mac.
-pub fn log_path_for_today(prefix: &str) -> PathBuf {
+fn log_path_for_today(prefix: &str) -> PathBuf {
     let date = Local::now().format("%Y-%m-%d");
     dirs::data_local_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."))

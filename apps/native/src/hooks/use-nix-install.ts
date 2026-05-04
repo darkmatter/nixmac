@@ -8,7 +8,7 @@ export function useNixInstall() {
       const result = await darwinAPI.nix.check();
       const store = useWidgetStore.getState();
       store.setNixInstalled(result.installed);
-      store.setDarwinRebuildAvailable(result.installed ? result.darwin_rebuild_available : null);
+      store.setDarwinRebuildAvailable(result.installed ? result.darwinRebuildAvailable : null);
     } catch {
       useWidgetStore.getState().setNixInstalled(false);
     }

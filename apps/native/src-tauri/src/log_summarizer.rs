@@ -41,11 +41,14 @@ enum LogMessage {
 impl LogSummarizerHandle {
     /// Send a raw log line to the summarizer
     pub fn send_line(&self, line: &str) {
+        // fire-and-forget: the receiver may be gone if the summarizer thread exited
+        // early (e.g. runtime torn down). Dropping a log line is acceptable.
         let _ = self.tx.send(LogMessage::Line(line.to_string()));
     }
 
     /// Signal that the rebuild is complete
     pub fn complete(&self, success: bool) {
+        // fire-and-forget: same reasoning as send_line.
         let _ = self.tx.send(LogMessage::Complete { success });
     }
 }
@@ -231,7 +234,8 @@ fn summarizer_thread(app: AppHandle, rx: Receiver<LogMessage>) {
 
     let state = Arc::new(Mutex::new(SummarizerState::new()));
 
-    // Emit initial "starting" message
+    // fire-and-forget: all emit calls in this background thread may fail when
+    // no listeners are registered (window hidden/not yet attached). Non-fatal.
     let _ = app.emit(
         "darwin:apply:summary",
         serde_json::json!({"text": "🚀 Starting system rebuild..."}),

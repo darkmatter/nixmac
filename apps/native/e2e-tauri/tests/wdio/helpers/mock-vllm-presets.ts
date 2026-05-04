@@ -5,7 +5,7 @@ const MOCK_VLLM_FIXTURE_PRESETS: Record<string, string[]> = Object.freeze({
   askQuestionPrompts: ['ask-question.jsonl', 'add-font.jsonl'],
 });
 
-export function listMockVllmFixturePresetNames(): string[] {
+function listMockVllmFixturePresetNames(): string[] {
   return Object.keys(MOCK_VLLM_FIXTURE_PRESETS);
 }
 
@@ -21,7 +21,7 @@ export function getMockVllmFixturePreset(presetName: string): string[] {
   return [...files];
 }
 
-export function createMockVllmSetupOptions({
+function createMockVllmSetupOptions({
   preset,
   initializeConfigRepo = true,
   mockVllm = {},

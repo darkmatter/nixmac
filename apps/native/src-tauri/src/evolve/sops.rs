@@ -1,5 +1,5 @@
-use anyhow::{anyhow, Context, Result};
 use crate::evolve::file_ops::resolve_path_in_dir_allow_create;
+use anyhow::{anyhow, Context, Result};
 use serde_yaml::{Mapping, Sequence, Value};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -174,7 +174,7 @@ fn ensure_age_recipient(rule: &mut Mapping, public_key: &str) -> Result<bool> {
     }
 
     let age = rule
-        .get_mut(&Value::String("age".to_string()))
+        .get_mut(Value::String("age".to_string()))
         .ok_or_else(|| anyhow!("Failed to access `age` in managed SOPS creation rule"))?;
 
     match age {
@@ -516,7 +516,10 @@ mod tests {
             "creation_rules:\n  - path_regex: {MANAGED_PATH_REGEX}\n    age:\n      - AGE_PUBLIC_KEY_PLACEHOLDER\n"
         );
         let result = merge_sops_config(&existing, KEY_A).unwrap();
-        assert!(result.contains(KEY_A), "placeholder should be replaced with actual key");
+        assert!(
+            result.contains(KEY_A),
+            "placeholder should be replaced with actual key"
+        );
         assert!(
             !result.contains("AGE_PUBLIC_KEY_PLACEHOLDER"),
             "placeholder should be completely removed"
@@ -529,7 +532,10 @@ mod tests {
             "creation_rules:\n  - path_regex: {MANAGED_PATH_REGEX}\n    age: AGE_PUBLIC_KEY_PLACEHOLDER\n"
         );
         let result = merge_sops_config(&existing, KEY_A).unwrap();
-        assert!(result.contains(KEY_A), "placeholder string should be replaced with actual key");
+        assert!(
+            result.contains(KEY_A),
+            "placeholder string should be replaced with actual key"
+        );
         assert!(
             !result.contains("AGE_PUBLIC_KEY_PLACEHOLDER"),
             "placeholder should be completely removed"
@@ -540,9 +546,7 @@ mod tests {
     fn matches_template_regex_format() -> Result<()> {
         let dir = TempDir::new()?;
         // Simulate the template format with anchors (old style)
-        let template_with_anchors = format!(
-            "creation_rules:\n  - path_regex: ^secrets/.*\\.yaml$\n    age:\n      - AGE_PUBLIC_KEY_PLACEHOLDER\n"
-        );
+        let template_with_anchors = "creation_rules:\n  - path_regex: ^secrets/.*\\.yaml$\n    age:\n      - AGE_PUBLIC_KEY_PLACEHOLDER\n".to_string();
         let config_path = dir.path().join(".sops.yaml");
         std::fs::write(&config_path, &template_with_anchors)?;
 
@@ -594,6 +598,7 @@ mod tests {
         );
 
         if Path::new(absolute_str).exists() {
+            // fire-and-forget: test cleanup; benign if removal fails.
             let _ = std::fs::remove_file(absolute_str);
         }
     }

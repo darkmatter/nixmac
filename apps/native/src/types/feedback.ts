@@ -36,7 +36,7 @@ export interface ShareOptions {
  * System information captured from the runtime. Fields are optional so
  * collectors can populate what is available on the platform.
  */
-export interface SystemInfo {
+interface SystemInfo {
   osName?: string; // e.g. "macOS"
   osVersion?: string; // e.g. "15.3"
   arch?: string; // e.g. "aarch64-darwin"
@@ -49,7 +49,7 @@ export interface SystemInfo {
  * Fields are optional and may be filled by the runtime when
  * the user opts-in to sharing usage stats.
  */
-export interface UsageStats {
+interface UsageStats {
   /** Total number of evolutions the user has run */
   totalEvolutions?: number;
   /** Success rate as a percentage (0.0 - 100.0) of evolutions */
@@ -65,7 +65,7 @@ export interface UsageStats {
  * AI provider/model details and usage signals captured from the app.
  * Fields are optional and may be partially populated.
  */
-export interface AiProviderModelInfo {
+interface AiProviderModelInfo {
   evolveProvider?: string;
   evolveModel?: string;
   summaryProvider?: string;
@@ -79,13 +79,13 @@ export interface AiProviderModelInfo {
 /**
  * Flake.lock input metadata (subset) captured from the user's configuration.
  */
-export interface FlakeInputEntry {
+interface FlakeInputEntry {
   rev?: string;
   lastModified?: number;
   narHash?: string;
 }
 
-export interface FlakeInputsSnapshot {
+interface FlakeInputsSnapshot {
   nixpkgs?: FlakeInputEntry;
   "nix-darwin"?: FlakeInputEntry;
   "home-manager"?: FlakeInputEntry;
@@ -96,7 +96,7 @@ export interface FlakeInputsSnapshot {
  * This intentionally keeps collected artifacts as optional
  * so they can be attached later when the runtime gathers logs / snapshots.
  */
-export interface FeedbackPayload {
+interface FeedbackPayload {
   id?: string;
   type: FeedbackType;
 

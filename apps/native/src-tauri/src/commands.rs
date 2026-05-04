@@ -9,7 +9,8 @@
 
 use crate::{
     darwin, db, default_config, editor, evolution, evolve_state, feedback, finalize_restore, git,
-    lsp, nix, peek, permissions, rollback, scanner, shared_types, store, types, utils, watcher,
+    lsp, mac, nix, peek, permissions, rollback, scanner, shared_types, store, types, utils,
+    watcher,
 };
 use std::path::Path;
 use std::process::Command;
@@ -32,8 +33,13 @@ fn handle_new_config_dir(
     dir: &str,
 ) -> Result<(shared_types::EvolveState, Option<Vec<String>>), String> {
     let git_status = git::status(dir).ok();
-    let changes = git_status.as_ref().map(|s| s.changes.clone()).unwrap_or_default();
+    let changes = git_status
+        .as_ref()
+        .map(|s| s.changes.clone())
+        .unwrap_or_default();
     if let Some(ref s) = git_status {
+        // fire-and-forget: cache is a best-effort perf optimization; watcher and evolution
+        // will re-populate it. A store write failure here must not block dir switch.
         let _ = store::set_cached_git_status(app, s);
     }
     watcher::start_watching(app.clone(), dir.to_string(), 2500);
@@ -66,9 +72,9 @@ pub async fn config_get(app: AppHandle) -> Result<types::Config, String> {
 pub async fn config_set_host_attr(
     app: AppHandle,
     host: String,
-) -> Result<serde_json::Value, String> {
+) -> Result<shared_types::OkResult, String> {
     store::set_host_attr(&app, &host).map_err(|e| capture_err("config_set_host_attr", e))?;
-    Ok(serde_json::json!({"ok": true}))
+    Ok(shared_types::OkResult::yes())
 }
 
 /// Sets the flake configuration directory path.
@@ -94,25 +100,26 @@ pub async fn config_set_dir(
 
     let prev_dir = store::get_config_dir(&app).ok();
     let new_dir = normalized_dir.to_string_lossy().to_string();
-    store::set_config_dir(&app, &new_dir)
-        .map_err(|e| capture_err("config_set_dir", e))?;
+    store::set_config_dir(&app, &new_dir).map_err(|e| capture_err("config_set_dir", e))?;
 
     let (evolve_state, hosts) = if prev_dir.as_deref() != Some(&new_dir) {
-        let (es, hosts) = handle_new_config_dir(&app, &new_dir)
-            .map_err(|e| capture_err("config_set_dir", e))?;
+        let (es, hosts) =
+            handle_new_config_dir(&app, &new_dir).map_err(|e| capture_err("config_set_dir", e))?;
         (Some(es), hosts)
     } else {
         (None, None)
     };
 
-    Ok(shared_types::SetDirResult { dir: new_dir, evolve_state, hosts })
+    Ok(shared_types::SetDirResult {
+        dir: new_dir,
+        evolve_state,
+        hosts,
+    })
 }
 
 /// Opens a native folder picker dialog to select the flake directory.
 #[tauri::command]
-pub async fn config_pick_dir(
-    app: AppHandle,
-) -> Result<Option<shared_types::SetDirResult>, String> {
+pub async fn config_pick_dir(app: AppHandle) -> Result<Option<shared_types::SetDirResult>, String> {
     let dialog = app.dialog();
     // Try to open the picker at the currently configured directory
     let prev_dir = store::get_config_dir(&app).map_err(|e| capture_err("config_pick_dir", e))?;
@@ -132,13 +139,17 @@ pub async fn config_pick_dir(
         store::set_config_dir(&app, &dir).map_err(|e| capture_err("config_pick_dir", e))?;
         store::ensure_config_dir_exists(&app).map_err(|e| capture_err("config_pick_dir", e))?;
         let (evolve_state, hosts) = if dir != prev_dir {
-            let (es, hosts) = handle_new_config_dir(&app, &dir)
-                .map_err(|e| capture_err("config_pick_dir", e))?;
+            let (es, hosts) =
+                handle_new_config_dir(&app, &dir).map_err(|e| capture_err("config_pick_dir", e))?;
             (Some(es), hosts)
         } else {
             (None, None)
         };
-        return Ok(Some(shared_types::SetDirResult { dir, evolve_state, hosts }));
+        return Ok(Some(shared_types::SetDirResult {
+            dir,
+            evolve_state,
+            hosts,
+        }));
     }
 
     Ok(None)
@@ -191,7 +202,6 @@ pub async fn bootstrap_default_config(app: AppHandle, hostname: String) -> Resul
 // =============================================================================
 
 /// Gathers feedback metadata based on user opt-in flags.
-/// Delegates to the feedback module for comprehensive data collection.
 #[tauri::command]
 pub async fn feedback_gather_metadata(
     app: AppHandle,
@@ -210,7 +220,6 @@ pub async fn feedback_submit(app: AppHandle, payload: String) -> Result<bool, St
 
 // =============================================================================
 // TESTING / DEBUG Commands
-// TODO: Consider removing or gating behind a debug flag in production builds.
 // =============================================================================
 
 /// Test command to trigger a panic and verify the panic handler works.
@@ -232,29 +241,48 @@ pub async fn trigger_test_panic() -> Result<(), String> {
 /// Used to test end-to-end Sentry integration.
 #[cfg(debug_assertions)]
 #[tauri::command]
-pub async fn debug_sentry_event() -> Result<serde_json::Value, String> {
+pub async fn debug_sentry_event() -> Result<shared_types::DebugSentryResult, String> {
     log::info!("[debug_sentry_event] Capturing debug event from Rust backend");
 
     sentry::capture_message("Debug Sentry event from Rust backend", sentry::Level::Error);
 
-    Ok(serde_json::json!({"ok": true, "message": "Debug event captured from Rust"}))
+    Ok(shared_types::DebugSentryResult {
+        ok: true,
+        message: "Debug event captured from Rust".to_string(),
+    })
+}
+
+// =============================================================================
+// Homebrew Commands
+// =============================================================================
+#[tauri::command]
+pub async fn homebrew_apply_diff(
+    app: AppHandle,
+    diff: shared_types::HomebrewState,
+) -> Result<shared_types::ConfigEditApplyResult, String> {
+    crate::mac::homebrew::apply_homebrew_diff(&app, diff)
+        .await
+        .map_err(|e| capture_err("homebrew_apply_diff", e))
+}
+
+#[tauri::command]
+pub async fn homebrew_get_state_diff(
+    app: AppHandle,
+) -> Result<shared_types::HomebrewState, String> {
+    let dir = store::ensure_config_dir_exists(&app)
+        .map_err(|e| capture_err("homebrew_get_state_diff", e))?;
+
+    mac::homebrew::get_homebrew_state_diff(Path::new(&dir))
+        .map_err(|e| capture_err("homebrew_get_state_diff", e))
 }
 
 // =============================================================================
 // Git Commands
 // =============================================================================
 
-/// Initializes a git repository in the config directory if one doesn't exist.
-#[tauri::command]
-pub async fn git_init_repo(app: AppHandle) -> Result<serde_json::Value, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_init_repo", e))?;
-    git::init_repo(&dir).map_err(|e| capture_err("git_init_repo", e))?;
-    Ok(serde_json::json!({"ok": true}))
-}
-
 /// Returns the current git status of the config directory.
 #[tauri::command]
-pub async fn git_status(app: AppHandle) -> Result<types::GitStatus, String> {
+pub async fn git_status(app: AppHandle) -> Result<shared_types::GitStatus, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_status", e))?;
     let status = git::status(&dir).map_err(|e| capture_err("git_status", e))?;
     Ok(status)
@@ -262,7 +290,7 @@ pub async fn git_status(app: AppHandle) -> Result<types::GitStatus, String> {
 
 /// Returns the current git status and caches it for later comparison.
 #[tauri::command]
-pub async fn git_status_and_cache(app: AppHandle) -> Result<types::GitStatus, String> {
+pub async fn git_status_and_cache(app: AppHandle) -> Result<shared_types::GitStatus, String> {
     let dir = store::ensure_config_dir_exists(&app)
         .map_err(|e| capture_err("git_status_and_cache", e))?;
     let status =
@@ -272,7 +300,7 @@ pub async fn git_status_and_cache(app: AppHandle) -> Result<types::GitStatus, St
 
 /// Returns the cached git status if available.
 #[tauri::command]
-pub async fn git_cached(app: AppHandle) -> Result<Option<types::GitStatus>, String> {
+pub async fn git_cached(app: AppHandle) -> Result<Option<shared_types::GitStatus>, String> {
     git::cached(&app).map_err(|e| capture_err("git_cached", e))
 }
 
@@ -291,7 +319,6 @@ pub async fn git_commit(app: AppHandle, message: String) -> Result<CommitResult,
         log::warn!("[git_commit] Failed to tag commit: {}", e);
     }
 
-    // Save commit to database
     if let Ok(db_path) = db::get_db_path(&app) {
         let now = crate::utils::unix_now();
         match db::commits::upsert_commit(
@@ -322,10 +349,9 @@ pub async fn git_commit(app: AppHandle, message: String) -> Result<CommitResult,
         }
     }
 
-    // Evolution complete — reset state back to idle.
     let evolve_state = evolve_state::clear(&app).unwrap_or_else(|e| {
         log::error!("[git_commit] Failed to clear evolve state: {}", e);
-        evolve_state::EvolveState::default()
+        shared_types::EvolveState::default()
     });
 
     Ok(CommitResult {
@@ -338,15 +364,15 @@ pub async fn git_commit(app: AppHandle, message: String) -> Result<CommitResult,
 #[serde(rename_all = "camelCase")]
 pub struct CommitResult {
     pub hash: String,
-    pub evolve_state: evolve_state::EvolveState,
+    pub evolve_state: shared_types::EvolveState,
 }
 
-/// Stash changes
+/// Stashes all uncommitted changes with the given message.
 #[tauri::command]
-pub async fn git_stash(app: AppHandle, message: String) -> Result<serde_json::Value, String> {
+pub async fn git_stash(app: AppHandle, message: String) -> Result<shared_types::OkResult, String> {
     let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_stash", e))?;
     git::stash(&dir, &message).map_err(|e| capture_err("git_stash", e))?;
-    Ok(serde_json::json!({"ok": true}))
+    Ok(shared_types::OkResult::yes())
 }
 
 // =============================================================================
@@ -402,10 +428,7 @@ pub async fn wait_for_question_response() -> Option<String> {
         *guard = Some(tx);
     }
 
-    match rx.await {
-        Ok(ans) => Some(ans),
-        Err(_) => None,
-    }
+    rx.await.ok()
 }
 
 /// Handles the complete evolution cycle returning the git status and summary to react
@@ -413,7 +436,7 @@ pub async fn wait_for_question_response() -> Option<String> {
 pub async fn darwin_evolve(
     app: AppHandle,
     description: String,
-) -> Result<serde_json::Value, String> {
+) -> Result<shared_types::EvolutionResult, String> {
     // Reset cancellation flag at the start of a new evolution
     reset_evolve_cancelled();
 
@@ -445,25 +468,28 @@ pub async fn darwin_evolve(
         }
     };
 
-    Ok(serde_json::to_value(result).unwrap_or_default())
+    Ok(result)
 }
 
 /// Cancel an in-progress evolution operation.
 #[tauri::command]
-pub async fn darwin_evolve_cancel() -> Result<serde_json::Value, String> {
+pub async fn darwin_evolve_cancel() -> Result<shared_types::EvolveCancelResult, String> {
     EVOLVE_CANCELLED.store(true, std::sync::atomic::Ordering::SeqCst);
     log::info!("Evolution cancellation requested");
-    Ok(serde_json::json!({"ok": true, "message": "Cancellation requested"}))
+    Ok(shared_types::EvolveCancelResult {
+        ok: true,
+        message: "Cancellation requested".to_string(),
+    })
 }
 
 /// Respond to an agent question during evolution.
 #[tauri::command]
-pub async fn darwin_evolve_answer(answer: String) -> Result<serde_json::Value, String> {
+pub async fn darwin_evolve_answer(answer: String) -> Result<shared_types::OkResult, String> {
     log::info!("User answered agent question: {}", answer);
     send_question_response(answer)
         .await
         .map_err(|e| e.to_string())?;
-    Ok(serde_json::json!({"ok": true}))
+    Ok(shared_types::OkResult::yes())
 }
 
 /// Legacy non-streaming apply command. Returns immediately with a hint to use streaming.
@@ -471,13 +497,13 @@ pub async fn darwin_evolve_answer(answer: String) -> Result<serde_json::Value, S
 pub async fn darwin_apply(
     app: AppHandle,
     host_override: Option<String>,
-) -> Result<types::ApplyResult, String> {
+) -> Result<types::DarwinApplyLegacy, String> {
     let _dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("darwin_apply", e))?;
     let _host = host_override
         .or_else(|| nix::determine_host_attr(&app))
         .ok_or_else(|| "Host attribute not found".to_string())?;
 
-    Ok(types::ApplyResult {
+    Ok(types::DarwinApplyLegacy {
         ok: true,
         code: Some(0),
         stdout: Some("Use darwin_apply_stream_start for streaming output".to_string()),
@@ -491,7 +517,7 @@ pub async fn darwin_apply(
 pub async fn darwin_apply_stream_start(
     app: AppHandle,
     host_override: Option<String>,
-) -> Result<serde_json::Value, String> {
+) -> Result<shared_types::OkResult, String> {
     let dir = store::ensure_config_dir_exists(&app)
         .map_err(|e| capture_err("darwin_apply_stream_start", e))?;
 
@@ -518,7 +544,7 @@ pub async fn darwin_apply_stream_start(
 
     darwin::apply_stream(&app, &dir, &host)
         .map_err(|e| capture_err("darwin_apply_stream_start", e))?;
-    Ok(serde_json::json!({"ok": true}))
+    Ok(shared_types::OkResult::yes())
 }
 
 /// Used by rollback to restore a previous nix store without a full rebuild.
@@ -526,15 +552,16 @@ pub async fn darwin_apply_stream_start(
 pub async fn darwin_activate_store_path(
     app: AppHandle,
     store_path: String,
-) -> Result<serde_json::Value, String> {
+) -> Result<shared_types::OkResult, String> {
     darwin::activate_store_path_stream(&app, store_path)
-        .map(|_| serde_json::json!({"ok": true}))
+        .map(|_| shared_types::OkResult::yes())
         .map_err(|e| capture_err("darwin_activate_store_path", e))
 }
 
-/// Placeholder for canceling an in-progress apply operation.
+/// Cancels an in-progress apply by stashing changes on a new branch and returning to the previous branch.
+/// Does not kill the running darwin-rebuild process; process cancellation is not yet implemented.
 #[tauri::command]
-pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<serde_json::Value, String> {
+pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<shared_types::OkResult, String> {
     let dir = store::ensure_config_dir_exists(&app)
         .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
 
@@ -594,10 +621,10 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<serde_json::Va
     }
 
     // TODO: Implement actual cancellation by tracking the child process
-    Ok(serde_json::json!({"ok": true}))
+    Ok(shared_types::OkResult::yes())
 }
 
-/// Finalize a successful build
+/// Records build state and changeset after a successful darwin-rebuild switch.
 #[tauri::command]
 pub async fn finalize_apply(app: AppHandle) -> Result<crate::finalize_apply::ApplyResult, String> {
     crate::finalize_apply::finalize_apply(&app)
@@ -622,7 +649,6 @@ pub async fn flake_installed_apps(app: AppHandle) -> Result<Vec<serde_json::Valu
     let dir = store::ensure_config_dir_exists(&app)
         .map_err(|e| capture_err("flake_installed_apps", e))?;
 
-    // Same host resolution logic as apply
     let host = nix::determine_host_attr(&app)
         .or_else(|| {
             let hosts = nix::list_darwin_hosts(&dir).ok()?;
@@ -640,7 +666,7 @@ pub async fn flake_installed_apps(app: AppHandle) -> Result<Vec<serde_json::Valu
 }
 
 #[tauri::command]
-pub async fn nix_check() -> Result<serde_json::Value, String> {
+pub async fn nix_check() -> Result<shared_types::NixCheckResult, String> {
     let installed = nix::is_nix_installed();
     let version = if installed {
         nix::get_nix_version()
@@ -652,28 +678,30 @@ pub async fn nix_check() -> Result<serde_json::Value, String> {
     } else {
         false
     };
-    Ok(
-        serde_json::json!({ "installed": installed, "version": version, "darwin_rebuild_available": darwin_rebuild_available }),
-    )
+    Ok(shared_types::NixCheckResult {
+        installed,
+        version,
+        darwin_rebuild_available,
+    })
 }
 
 #[tauri::command]
-pub async fn darwin_rebuild_prefetch(app: AppHandle) -> Result<serde_json::Value, String> {
+pub async fn darwin_rebuild_prefetch(app: AppHandle) -> Result<shared_types::OkResult, String> {
     nix::prefetch_darwin_rebuild_stream(&app)
         .map_err(|e| capture_err("darwin_rebuild_prefetch", e))?;
-    Ok(serde_json::json!({"ok": true}))
+    Ok(shared_types::OkResult::yes())
 }
 
 #[tauri::command]
-pub async fn nix_install_start(app: AppHandle) -> Result<serde_json::Value, String> {
+pub async fn nix_install_start(app: AppHandle) -> Result<shared_types::OkResult, String> {
     nix::install_nix_stream(&app).map_err(|e| capture_err("nix_install_start", e))?;
-    Ok(serde_json::json!({"ok": true}))
+    Ok(shared_types::OkResult::yes())
 }
 
 #[tauri::command]
-pub async fn finalize_flake_lock(app: AppHandle) -> Result<serde_json::Value, String> {
+pub async fn finalize_flake_lock(app: AppHandle) -> Result<shared_types::OkResult, String> {
     default_config::finalize_flake_lock(&app)?;
-    Ok(serde_json::json!({"ok": true}))
+    Ok(shared_types::OkResult::yes())
 }
 
 /// Lists all darwinConfigurations defined in the flake.
@@ -729,7 +757,9 @@ pub async fn summarize_current(
     let dir = store::get_config_dir(&app).map_err(|e| capture_err("summarize_current", e))?;
     let change_sets = crate::summarize::find_existing::for_current_state(&db_path, &dir)
         .map_err(|e| capture_err("summarize_current", e))?;
-    Ok(crate::summarize::group_existing::from_change_sets(change_sets))
+    Ok(crate::summarize::group_existing::from_change_sets(
+        change_sets,
+    ))
 }
 
 /// Returns all commits on the main branch, each paired with optional DB metadata, summary,
@@ -764,7 +794,7 @@ pub async fn abort_restore(app: AppHandle) -> Result<(), String> {
 pub async fn finalize_restore(
     app: AppHandle,
     target_hash: String,
-) -> Result<crate::types::GitStatus, String> {
+) -> Result<crate::shared_types::GitStatus, String> {
     finalize_restore::finalize_restore(&app, target_hash)
         .await
         .map_err(|e| capture_err("finalize_restore", e))
@@ -784,9 +814,9 @@ pub async fn generate_commit_message(app: AppHandle) -> Result<String, String> {
 
 /// Returns all UI preferences.
 #[tauri::command]
-pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
-    let openrouter_api_key =
-        store::get_effective_openrouter_api_key(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, String> {
+    let openrouter_api_key = store::get_effective_openrouter_api_key(&app)
+        .map_err(|e| capture_err("ui_get_prefs", e))?;
     let openai_api_key =
         store::get_effective_openai_api_key(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
     let send_diagnostics =
@@ -819,8 +849,15 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
     let auto_summarize_on_focus =
         store::get_bool_pref(&app, store::AUTO_SUMMARIZE_ON_FOCUS_KEY, false)
             .map_err(|e| capture_err("ui_get_prefs", e))?;
+    let scan_homebrew_on_startup =
+        store::get_bool_pref(&app, store::SCAN_HOMEBREW_ON_STARTUP_KEY, true)
+            .map_err(|e| capture_err("ui_get_prefs", e))?;
+    let developer_mode = store::get_bool_pref(&app, store::DEVELOPER_MODE_KEY, false)
+        .map_err(|e| capture_err("ui_get_prefs", e))?;
+    let pinned_version = store::get_string_pref_public(&app, store::PINNED_VERSION_KEY)
+        .map_err(|e| capture_err("ui_get_prefs", e))?;
 
-    Ok(types::UiPrefs {
+    Ok(shared_types::UiPrefs {
         openrouter_api_key,
         openai_api_key,
 
@@ -841,91 +878,113 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<types::UiPrefs, String> {
         confirm_clear,
         confirm_rollback,
         auto_summarize_on_focus,
+        scan_homebrew_on_startup,
+        developer_mode,
+        pinned_version,
     })
 }
 
-/// Updates UI preferences from a partial JSON object.
+/// Updates UI preferences from a typed partial update object.
 #[tauri::command]
 pub async fn ui_set_prefs(
     app: AppHandle,
-    prefs: serde_json::Value,
-) -> Result<serde_json::Value, String> {
-    if let Some(openrouter_api_key) = prefs.get("openrouterApiKey").and_then(|v| v.as_str()) {
-        store::set_openrouter_api_key(&app, openrouter_api_key)
+    prefs: shared_types::UiPrefsUpdate,
+) -> Result<shared_types::OkResult, String> {
+    if let Some(openrouter_api_key) = prefs.openrouter_api_key {
+        store::set_openrouter_api_key(&app, &openrouter_api_key)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
-    if let Some(openai_api_key) = prefs.get("openaiApiKey").and_then(|v| v.as_str()) {
-        store::set_openai_api_key(&app, openai_api_key)
+    if let Some(openai_api_key) = prefs.openai_api_key {
+        store::set_openai_api_key(&app, &openai_api_key)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
-    if let Some(evolve_provider) = prefs.get("evolveProvider").and_then(|v| v.as_str()) {
-        store::set_evolve_provider(&app, evolve_provider)
+    if let Some(evolve_provider) = prefs.evolve_provider {
+        store::set_evolve_provider(&app, &evolve_provider)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
-    if let Some(evolve_model) = prefs.get("evolveModel").and_then(|v| v.as_str()) {
-        store::set_evolve_model(&app, evolve_model).map_err(|e| capture_err("ui_set_prefs", e))?;
-    }
-    if let Some(summary_provider) = prefs.get("summaryProvider").and_then(|v| v.as_str()) {
-        store::set_summary_provider(&app, summary_provider)
+    if let Some(evolve_model) = prefs.evolve_model {
+        store::set_evolve_model(&app, &evolve_model)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
-    if let Some(summary_model) = prefs.get("summaryModel").and_then(|v| v.as_str()) {
-        store::set_summary_model(&app, summary_model)
+    if let Some(summary_provider) = prefs.summary_provider {
+        store::set_summary_provider(&app, &summary_provider)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
-    if let Some(max_iterations) = prefs.get("maxIterations").and_then(|v| v.as_u64()) {
-        store::set_max_iterations(&app, max_iterations as usize)
+    if let Some(summary_model) = prefs.summary_model {
+        store::set_summary_model(&app, &summary_model)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
-    if let Some(max_build_attempts) = prefs.get("maxBuildAttempts").and_then(|v| v.as_u64()) {
-        store::set_max_build_attempts(&app, max_build_attempts as usize)
+    if let Some(max_iterations) = prefs.max_iterations {
+        store::set_max_iterations(&app, max_iterations)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
-    if let Some(ollama_api_base_url) = prefs.get("ollamaApiBaseUrl").and_then(|v| v.as_str()) {
-        store::set_ollama_api_base_url(&app, ollama_api_base_url)
+    if let Some(max_build_attempts) = prefs.max_build_attempts {
+        store::set_max_build_attempts(&app, max_build_attempts)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
-    if let Some(vllm_api_base_url) = prefs.get("vllmApiBaseUrl").and_then(|v| v.as_str()) {
-        store::set_vllm_api_base_url(&app, vllm_api_base_url)
+    if let Some(ollama_api_base_url) = prefs.ollama_api_base_url {
+        store::set_ollama_api_base_url(&app, &ollama_api_base_url)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
-    if let Some(vllm_api_key) = prefs.get("vllmApiKey").and_then(|v| v.as_str()) {
-        store::set_vllm_api_key(&app, vllm_api_key).map_err(|e| capture_err("ui_set_prefs", e))?;
+    if let Some(vllm_api_base_url) = prefs.vllm_api_base_url {
+        store::set_vllm_api_base_url(&app, &vllm_api_base_url)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
-    if let Some(send_diagnostics) = prefs.get("sendDiagnostics").and_then(|v| v.as_bool()) {
+    if let Some(vllm_api_key) = prefs.vllm_api_key {
+        store::set_vllm_api_key(&app, &vllm_api_key)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
+    }
+    if let Some(send_diagnostics) = prefs.send_diagnostics {
         store::set_send_diagnostics(&app, send_diagnostics)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
-    if let Some(confirm_build) = prefs
-        .get(store::CONFIRM_BUILD_KEY)
-        .and_then(|v| v.as_bool())
-    {
+    if let Some(confirm_build) = prefs.confirm_build {
         store::set_bool_pref(&app, store::CONFIRM_BUILD_KEY, confirm_build)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
-    if let Some(confirm_clear) = prefs
-        .get(store::CONFIRM_CLEAR_KEY)
-        .and_then(|v| v.as_bool())
-    {
+    if let Some(confirm_clear) = prefs.confirm_clear {
         store::set_bool_pref(&app, store::CONFIRM_CLEAR_KEY, confirm_clear)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
-    if let Some(confirm_rollback) = prefs
-        .get(store::CONFIRM_ROLLBACK_KEY)
-        .and_then(|v| v.as_bool())
-    {
+    if let Some(confirm_rollback) = prefs.confirm_rollback {
         store::set_bool_pref(&app, store::CONFIRM_ROLLBACK_KEY, confirm_rollback)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
-    if let Some(auto_summarize_on_focus) = prefs
-        .get(store::AUTO_SUMMARIZE_ON_FOCUS_KEY)
-        .and_then(|v| v.as_bool())
-    {
-        store::set_bool_pref(&app, store::AUTO_SUMMARIZE_ON_FOCUS_KEY, auto_summarize_on_focus)
+    if let Some(auto_summarize_on_focus) = prefs.auto_summarize_on_focus {
+        store::set_bool_pref(
+            &app,
+            store::AUTO_SUMMARIZE_ON_FOCUS_KEY,
+            auto_summarize_on_focus,
+        )
+        .map_err(|e| capture_err("ui_set_prefs", e))?;
+    }
+    if let Some(scan_homebrew_on_startup) = prefs.scan_homebrew_on_startup {
+        store::set_bool_pref(
+            &app,
+            store::SCAN_HOMEBREW_ON_STARTUP_KEY,
+            scan_homebrew_on_startup,
+        )
+        .map_err(|e| capture_err("ui_set_prefs", e))?;
+    }
+    if let Some(developer_mode) = prefs.developer_mode {
+        store::set_bool_pref(&app, store::DEVELOPER_MODE_KEY, developer_mode)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
+    // pinnedVersion: None → not sent; Some(None) → clear; Some(Some(s)) → set.
+    if let Some(pinned_version_opt) = prefs.pinned_version {
+        match pinned_version_opt {
+            None => {
+                store::delete_pref(&app, store::PINNED_VERSION_KEY)
+                    .map_err(|e| capture_err("ui_set_prefs", e))?;
+            }
+            Some(s) => {
+                store::set_string_pref(&app, store::PINNED_VERSION_KEY, &s)
+                    .map_err(|e| capture_err("ui_set_prefs", e))?;
+            }
+        }
+    }
 
-    Ok(serde_json::json!({"ok": true}))
+    Ok(shared_types::OkResult::yes())
 }
 
 /// Gets the cached list of models for a provider.
@@ -942,10 +1001,10 @@ pub async fn get_cached_models(
 pub async fn clear_cached_models(
     app: AppHandle,
     provider: String,
-) -> Result<serde_json::Value, String> {
+) -> Result<shared_types::OkResult, String> {
     store::clear_cached_models(&app, &provider)
         .map_err(|e| capture_err("clear_cached_models", e))?;
-    Ok(serde_json::json!({"ok": true}))
+    Ok(shared_types::OkResult::yes())
 }
 
 /// Sets the cached list of models for a provider.
@@ -954,10 +1013,10 @@ pub async fn set_cached_models(
     app: AppHandle,
     provider: String,
     models: Vec<String>,
-) -> Result<serde_json::Value, String> {
+) -> Result<shared_types::OkResult, String> {
     store::set_cached_models(&app, &provider, &models)
         .map_err(|e| capture_err("set_cached_models", e))?;
-    Ok(serde_json::json!({"ok": true}))
+    Ok(shared_types::OkResult::yes())
 }
 
 // =============================================================================
@@ -975,10 +1034,10 @@ pub async fn get_prompt_history(app: AppHandle) -> Result<Vec<String>, String> {
 pub async fn add_to_prompt_history(
     app: AppHandle,
     prompt: String,
-) -> Result<serde_json::Value, String> {
+) -> Result<shared_types::OkResult, String> {
     store::add_to_prompt_history(&app, &prompt)
         .map_err(|e| capture_err("add_to_prompt_history", e))?;
-    Ok(serde_json::json!({"ok": true}))
+    Ok(shared_types::OkResult::yes())
 }
 
 // =============================================================================
@@ -987,9 +1046,9 @@ pub async fn add_to_prompt_history(
 
 /// Shows and focuses the main window (used by preview indicator).
 #[tauri::command]
-pub async fn show_main_window(app: AppHandle) -> Result<serde_json::Value, String> {
+pub async fn show_main_window(app: AppHandle) -> Result<shared_types::OkResult, String> {
     peek::show_main_window(&app).map_err(|e| capture_err("show_main_window", e))?;
-    Ok(serde_json::json!({"ok": true}))
+    Ok(shared_types::OkResult::yes())
 }
 
 // =============================================================================
@@ -998,16 +1057,16 @@ pub async fn show_main_window(app: AppHandle) -> Result<serde_json::Value, Strin
 
 /// Shows the preview indicator window.
 #[tauri::command]
-pub async fn preview_indicator_show(app: AppHandle) -> Result<serde_json::Value, String> {
+pub async fn preview_indicator_show(app: AppHandle) -> Result<shared_types::OkResult, String> {
     peek::show_preview_indicator(&app).map_err(|e| capture_err("preview_indicator_show", e))?;
-    Ok(serde_json::json!({"ok": true}))
+    Ok(shared_types::OkResult::yes())
 }
 
 /// Hides the preview indicator window.
 #[tauri::command]
-pub async fn preview_indicator_hide(app: AppHandle) -> Result<serde_json::Value, String> {
+pub async fn preview_indicator_hide(app: AppHandle) -> Result<shared_types::OkResult, String> {
     peek::hide_preview_indicator(&app).map_err(|e| capture_err("preview_indicator_hide", e))?;
-    Ok(serde_json::json!({"ok": true}))
+    Ok(shared_types::OkResult::yes())
 }
 
 /// Updates the preview indicator state.
@@ -1015,17 +1074,17 @@ pub async fn preview_indicator_hide(app: AppHandle) -> Result<serde_json::Value,
 pub async fn preview_indicator_update(
     app: AppHandle,
     state: peek::PreviewIndicatorState,
-) -> Result<serde_json::Value, String> {
+) -> Result<shared_types::OkResult, String> {
     peek::update_preview_indicator(&app, state)
         .map_err(|e| capture_err("preview_indicator_update", e))?;
-    Ok(serde_json::json!({"ok": true}))
+    Ok(shared_types::OkResult::yes())
 }
 
 /// Sets whether there are uncommitted changes (used by Rust to track state).
 #[tauri::command]
-pub async fn set_has_uncommitted_changes(has_changes: bool) -> Result<serde_json::Value, String> {
+pub async fn set_has_uncommitted_changes(has_changes: bool) -> Result<shared_types::OkResult, String> {
     peek::set_has_uncommitted_changes(has_changes);
-    Ok(serde_json::json!({"ok": true}))
+    Ok(shared_types::OkResult::yes())
 }
 
 /// Gets the current preview indicator state (for window to call on mount).
@@ -1098,7 +1157,7 @@ pub async fn scan_system_defaults(app: AppHandle) -> Result<scanner::SystemDefau
 pub async fn apply_system_defaults(
     app: AppHandle,
     defaults: Vec<scanner::SystemDefault>,
-) -> Result<serde_json::Value, String> {
+) -> Result<shared_types::ConfigEditApplyResult, String> {
     crate::apply_system_defaults::apply_system_defaults(&app, defaults)
         .await
         .map_err(|e| capture_err("apply_system_defaults", e))
@@ -1116,7 +1175,7 @@ pub async fn rollback_erase(app: AppHandle) -> Result<shared_types::RollbackResu
 
 /// Dry-run build check against the current working tree. Returns `{ passed: bool, output: string }`.
 #[tauri::command]
-pub async fn darwin_build_check(app: AppHandle) -> Result<serde_json::Value, String> {
+pub async fn darwin_build_check(app: AppHandle) -> Result<shared_types::BuildCheckResult, String> {
     let config_dir =
         store::ensure_config_dir_exists(&app).map_err(|e| capture_err("darwin_build_check", e))?;
     let host_attr = store::get_host_attr(&app)
@@ -1127,7 +1186,7 @@ pub async fn darwin_build_check(app: AppHandle) -> Result<serde_json::Value, Str
         .map_err(|e| capture_err("darwin_build_check", e))?;
 
     let output = if stderr.is_empty() { stdout } else { stderr };
-    Ok(serde_json::json!({ "passed": passed, "output": output }))
+    Ok(shared_types::BuildCheckResult { passed, output })
 }
 
 /// Adopt pre-existing uncommitted changes as a nixmac evolution without AI.
@@ -1149,7 +1208,7 @@ pub async fn darwin_adopt_manual_changes(app: AppHandle) -> Result<i64, String> 
 
     evolve_state::set(
         &app,
-        evolve_state::EvolveState {
+        shared_types::EvolveState {
             evolution_id: Some(evolution_id),
             current_changeset_id: None,
             ..Default::default()
@@ -1228,23 +1287,24 @@ pub fn relaunch_after_update(app: AppHandle) -> Result<(), String> {
 /// Check which CLI tools (claude, codex, opencode) are available in PATH.
 /// Returns a map of tool name → available boolean.
 #[tauri::command]
-pub async fn check_cli_tools() -> Result<std::collections::HashMap<String, bool>, String> {
+pub async fn check_cli_tools() -> Result<shared_types::CliToolsState, String> {
     use crate::providers::cli::augmented_path;
     let path = augmented_path();
-    let tools = ["claude", "codex", "opencode"];
-    let mut result = std::collections::HashMap::new();
-    for tool in &tools {
-        let found = std::process::Command::new("which")
+    let check = |tool: &str| -> bool {
+        std::process::Command::new("which")
             .arg(tool)
             .env("PATH", &path)
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())
             .status()
             .map(|s| s.success())
-            .unwrap_or(false);
-        result.insert(tool.to_string(), found);
-    }
-    Ok(result)
+            .unwrap_or(false)
+    };
+    Ok(shared_types::CliToolsState {
+        claude: check("claude"),
+        codex: check("codex"),
+        opencode: check("opencode"),
+    })
 }
 
 /// List available models for a CLI tool (currently only opencode supports this).
@@ -1277,7 +1337,7 @@ pub async fn list_cli_models(tool: String) -> Result<Vec<String>, String> {
 // =============================================================================
 
 #[tauri::command]
-pub async fn routing_state_get(app: AppHandle) -> Result<evolve_state::EvolveState, String> {
+pub async fn routing_state_get(app: AppHandle) -> Result<shared_types::EvolveState, String> {
     let state = evolve_state::get(&app).map_err(|e| capture_err("routing_state_get", e))?;
     // Recompute step from live git status to surface manual changes
     let dir = store::get_config_dir(&app).map_err(|e| capture_err("routing_state_get", e))?;
@@ -1287,7 +1347,7 @@ pub async fn routing_state_get(app: AppHandle) -> Result<evolve_state::EvolveSta
 
 /// Clear evolve state back to idle (called after a successful git commit).
 #[tauri::command]
-pub async fn routing_state_clear(app: AppHandle) -> Result<evolve_state::EvolveState, String> {
+pub async fn routing_state_clear(app: AppHandle) -> Result<shared_types::EvolveState, String> {
     evolve_state::clear(&app).map_err(|e| capture_err("routing_state_clear", e))
 }
 

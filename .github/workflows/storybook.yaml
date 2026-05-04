@@ -1,0 +1,171 @@
+name: Storybook Snapshots
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: storybook-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  storybook-tests:
+    name: Storybook Snapshot Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.2
+
+      - name: Install sops
+        run: |
+          case "$(uname -m)" in
+            x86_64) SOPS_ARCH="amd64" ;;
+            aarch64|arm64) SOPS_ARCH="arm64" ;;
+            *)
+              echo "::error::Unsupported architecture: $(uname -m)"
+              exit 1
+              ;;
+          esac
+
+          curl -fsSL "https://github.com/getsops/sops/releases/download/v3.12.1/sops-v3.12.1.linux.${SOPS_ARCH}" -o /tmp/sops
+          sudo install -m 0755 /tmp/sops /usr/local/bin/sops
+          sops --version
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Resolve secrets
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          SECRETS_FILE="ops/secrets/secrets.yaml"
+          if [ ! -f "$SECRETS_FILE" ]; then
+            echo "::error::SOPS secrets file not found at $SECRETS_FILE"
+            exit 1
+          fi
+          CLOUDFLARE_API_TOKEN=$(sops -d --extract '["CLOUDFLARE_API_TOKEN"]' "$SECRETS_FILE")
+          CLOUDFLARE_ACCOUNT_ID=$(sops -d --extract '["CLOUDFLARE_ACCOUNT_ID"]' "$SECRETS_FILE")
+
+          echo "::add-mask::$CLOUDFLARE_API_TOKEN"
+          echo "::add-mask::$CLOUDFLARE_ACCOUNT_ID"
+
+          {
+            echo "CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN"
+            echo "CLOUDFLARE_ACCOUNT_ID=$CLOUDFLARE_ACCOUNT_ID"
+          } >> "$GITHUB_ENV"
+
+      - name: Install Playwright browsers
+        working-directory: apps/native
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run Storybook snapshot tests
+        working-directory: apps/native
+        run: bun run test:storybook
+
+      - name: Check for snapshot staleness
+        if: always() && steps.*.outcome != 'cancelled'
+        working-directory: apps/native
+        run: |
+          if git diff --name-only | grep -q '__snapshots__'; then
+            echo "::error::Storybook snapshots are out of date. Run 'bun run test:update-snapshots' locally and commit the changes."
+            git diff --stat -- '*/__snapshots__/*'
+            exit 1
+          fi
+
+      - name: Build Storybook
+        working-directory: apps/native
+        run: bun run build-storybook
+
+      - name: Create Cloudflare Pages project (if needed)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
+        run: bunx wrangler pages project create nixmac-storybook --production-branch=main 2>/dev/null || true
+
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          BRANCH="${{ github.head_ref || github.ref_name }}"
+          output=$(bunx wrangler pages deploy apps/native/storybook-static \
+            --project-name=nixmac-storybook \
+            --commit-dirty=true \
+            --branch="$BRANCH" 2>&1 | tee /dev/stderr)
+          url=$(echo "$output" | grep -oE 'https://[a-zA-Z0-9.-]+\.pages\.dev' | head -n1 || true)
+          echo "deployment-url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Comment Storybook preview URL on PR
+        if: github.event_name == 'pull_request' && steps.deploy.outputs.deployment-url != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          MARKER='<!-- nixmac-storybook-preview -->'
+          BODY=$(cat <<EOF
+          ${MARKER}
+          ### 🎨 Storybook preview
+
+          ${DEPLOY_URL}
+
+          Updated for ${SHA}
+          EOF
+          )
+
+          # Find existing sticky comment (if any) and update; otherwise create.
+          EXISTING_ID=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --paginate --jq ".[] | select(.body | startswith(\"${MARKER}\")) | .id" \
+            | head -n1 || true)
+
+          if [ -n "${EXISTING_ID}" ]; then
+            gh api --method PATCH "repos/${REPO}/issues/comments/${EXISTING_ID}" \
+              -f body="${BODY}" >/dev/null
+            echo "Updated sticky comment ${EXISTING_ID}"
+          else
+            gh pr comment "${PR_NUMBER}" --repo "${REPO}" --body "${BODY}"
+            echo "Created sticky comment"
+          fi
+
+      - name: Upload snapshot diffs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: storybook-snapshot-diffs
+          path: |
+            apps/native/src/**/__snapshots__/__diff_output__/
+            apps/native/test-results/
+          retention-days: 7
+
+      - name: Post summary
+        if: always()
+        run: |
+          echo "### Storybook Snapshot Tests" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "All Storybook snapshot tests passed" >> $GITHUB_STEP_SUMMARY
+            DEPLOY_URL="${{ steps.deploy.outputs.deployment-url }}"
+            if [ -n "$DEPLOY_URL" ]; then
+              echo "Storybook: $DEPLOY_URL" >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "Storybook snapshot tests failed" >> $GITHUB_STEP_SUMMARY
+            echo "Check the 'storybook-snapshot-diffs' artifact for visual diffs." >> $GITHUB_STEP_SUMMARY
+          fi

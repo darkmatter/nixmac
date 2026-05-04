@@ -29,7 +29,10 @@ mod git;
 mod historelog;
 mod log_summarizer;
 mod lsp;
+mod mac;
+mod managed_edit;
 mod nix;
+mod nix_ast_lists;
 mod panic_handler;
 mod peek;
 mod permissions;
@@ -45,6 +48,7 @@ mod store;
 mod summarize;
 mod template;
 mod types;
+mod updater_pin;
 mod utils;
 mod watcher;
 
@@ -113,7 +117,9 @@ fn main() {
             .init();
     }
 
-    // Bridge log crate to tracing (for compatibility with existing log:: calls)
+    // Bridge log crate to tracing (for compatibility with existing log:: calls).
+    // fire-and-forget: LogTracer::init() returns Err if called more than once
+    // (double-init is benign). Ignoring is correct.
     let _ = tracing_log::LogTracer::init();
 
     let context = tauri::generate_context!();
@@ -321,8 +327,10 @@ fn run_gui_mode(
             commands::trigger_test_panic,
             #[cfg(debug_assertions)]
             commands::debug_sentry_event,
+            // Homebrew
+            commands::homebrew_apply_diff,
+            commands::homebrew_get_state_diff,
             // Git
-            commands::git_init_repo,
             commands::git_status,
             commands::git_status_and_cache,
             commands::git_cached,
@@ -392,6 +400,8 @@ fn run_gui_mode(
             commands::list_cli_models,
             // Updater
             commands::relaunch_after_update,
+            updater_pin::install_version,
+            updater_pin::clear_pinned_version,
             // Editor
             commands::editor_read_file,
             commands::editor_write_file,
@@ -429,6 +439,8 @@ fn run_gui_mode(
                 }
             });
 
+            // Eagerly initialise the scanner singleton; the returned &'static ref is not
+            // needed right now. fire-and-forget is intentional here.
             let _ = secret_scanner::SecretScanner::global(handle);
 
             // Build the nix-darwin docs index once at startup for fast option-shape lookup.
@@ -470,7 +482,11 @@ fn run_gui_mode(
             let _tray = TrayIconBuilder::new()
                 .icon(
                     Image::from_path("icons/outline@2x.png")
-                        .unwrap_or_else(|_| app.default_window_icon().unwrap().clone()),
+                        .unwrap_or_else(|_| {
+                        app.default_window_icon()
+                            .expect("app must have a default icon bundled")
+                            .clone()
+                    }),
                 )
                 .icon_as_template(true)
                 .menu(&menu)
@@ -478,6 +494,10 @@ fn run_gui_mode(
                 .on_tray_icon_event(|tray_handle, event| {
                     tauri_plugin_positioner::on_tray_event(tray_handle.app_handle(), &event);
                 })
+                // All window calls below are fire-and-forget: tray menu callbacks run
+                // asynchronously and the window may be hidden or in a transitional state.
+                // show/set_focus/emit only fail when the window is destroyed, which is
+                // acceptable — the app is still running, just with no visible window.
                 .on_menu_event(move |app, event| match event.id().as_ref() {
                     "open" => {
                         if let Some(window) = app.get_webview_window("main") {
@@ -584,6 +604,7 @@ fn run_gui_mode(
                     // Prevent the window from being destroyed
                     api.prevent_close();
                     if let Some(window) = app_handle.get_webview_window("main") {
+                        // fire-and-forget: hide() can fail if window is already hidden.
                         let _ = window.hide();
                         // Update peek state
                         peek::unlock_and_hide();
@@ -594,6 +615,7 @@ fn run_gui_mode(
             // Click Nixmac icon to show
             if let RunEvent::Reopen { .. } = &event {
                 if let Some(window) = app_handle.get_webview_window("main") {
+                    // fire-and-forget: show/set_focus fail only on destroyed window.
                     let _ = window.show();
                     let _ = window.set_focus();
                 }

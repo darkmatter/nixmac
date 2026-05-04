@@ -3,7 +3,7 @@ import { IconTitleDescriptionCard } from "@/components/icon-title-description-ca
 import { IconTitleSub } from "@/components/icon-title-subtitle";
 import { Button } from "@/components/ui/button";
 
-export interface BackupNotificationScreenProps {
+interface BackupNotificationScreenProps {
   onComplete: () => void;
   compact?: boolean;
 }

@@ -304,6 +304,7 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
             // Try to create and immediately delete a test file
             match fs::write(&test_file, "test") {
                 Ok(_) => {
+                    // fire-and-forget: cleanup of the permission-probe temp file; benign if gone.
                     let _ = fs::remove_file(&test_file);
                     Ok(Permission {
                         id: "desktop".to_string(),
@@ -337,6 +338,7 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
             // Try to create and immediately delete a test file
             match fs::write(&test_file, "test") {
                 Ok(_) => {
+                    // fire-and-forget: cleanup of permission-probe temp file; benign if gone.
                     let _ = fs::remove_file(&test_file);
                     Ok(Permission {
                         id: "documents".to_string(),
@@ -379,7 +381,9 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
             })
         }
         "full-disk" => {
-            // Open System Settings to FDA page
+            // Open System Settings to FDA page.
+            // fire-and-forget: `open` spawn; failure (e.g. open not in PATH) is not
+            // actionable here — we fall through and re-check the status below.
             let _ = Command::new("open")
                 .args(["x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"])
                 .spawn();

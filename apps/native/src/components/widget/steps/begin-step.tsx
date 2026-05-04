@@ -18,7 +18,7 @@ export function BeginStep() {
         <UntrackedBanner
           candidates={FILES.manage}
           onTrackAll={(seed) => setEvolvePrompt(seed)}
-          onView={() => setShowFilesystem(true)}
+          onView={() => setShowFilesystem(true, "manage")}
         />
       )}
       <PromptInputSection />
