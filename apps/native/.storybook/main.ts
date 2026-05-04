@@ -5,6 +5,29 @@ import { mergeConfig } from "vite";
 
 const storybookDir = fileURLToPath(new URL(".", import.meta.url));
 
+function withoutMonacoEditorPlugin(plugins: unknown): unknown {
+  if (!Array.isArray(plugins)) return plugins;
+
+  return plugins.flatMap((plugin) => {
+    if (Array.isArray(plugin)) {
+      return withoutMonacoEditorPlugin(plugin) as unknown[];
+    }
+
+    if (
+      plugin &&
+      typeof plugin === "object" &&
+      "name" in plugin &&
+      /monaco-editor|moncao-editor/.test(
+        String((plugin as { name?: unknown }).name),
+      )
+    ) {
+      return [];
+    }
+
+    return [plugin];
+  });
+}
+
 const config: StorybookConfig = {
   stories: ["../src/**/*.mdx", "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
   addons: [
@@ -33,6 +56,7 @@ const config: StorybookConfig = {
         },
       },
     });
+    merged.plugins = withoutMonacoEditorPlugin(merged.plugins) as typeof merged.plugins;
     merged.build ??= {};
     merged.build.target = "esnext";
     return merged;
