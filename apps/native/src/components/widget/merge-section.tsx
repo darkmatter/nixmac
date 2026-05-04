@@ -54,7 +54,7 @@ export function MergeSection() {
           disabled={isProcessing}
           type="submit"
         >
-          {processingAction === "merge" ? (
+          {processingAction === "commit" ? (
             <Loader2 className="mx-1 h-4 w-4 animate-spin" />
           ) : (
             <GitMerge className="mx-1 h-4 w-4" />

@@ -62,6 +62,16 @@ const withRenameChanges: ChangeWithRichType[] = [
   makeChange(3, "home.nix", "new"),
 ];
 
+const repeatedHunkChanges: ChangeWithRichType[] = [
+  ...Array.from({ length: 18 }, (_, i) =>
+    makeChange(i + 1, "flake.lock", i % 5 === 0 ? "removed" : "edited"),
+  ),
+  makeChange(19, "hosts/common/home.nix", "edited"),
+  makeChange(20, "flake.nix", "new"),
+  makeChange(21, "lib/mkHost.nix", "new"),
+  makeChange(22, "files/config/zed/settings.json", "edited"),
+];
+
 const emptyChangeMap: SemanticChangeMap = {
   groups: [],
   singles: [],
@@ -72,6 +82,12 @@ const partialChangeMap: SemanticChangeMap = {
   groups: [{ summary: { id: 1, title: "Add fonts", description: "", status: "DONE", createdAt: 0 }, changes: [] as any }],
   singles: [],
   unsummarizedHashes: ["hash1"],
+};
+
+const repeatedHunkChangeMap: SemanticChangeMap = {
+  groups: [],
+  singles: [],
+  unsummarizedHashes: repeatedHunkChanges.map((change) => change.hash),
 };
 
 // =============================================================================
@@ -123,6 +139,19 @@ export const AlsoUnsummarized = meta.story({
  */
 export const WithRename = meta.story({
   render: () => setup({ changes: withRenameChanges, changeMap: emptyChangeMap }),
+});
+
+/**
+ * Regression case for Review screens where one file has many diff hunks.
+ * The file should render once with an x18 badge, not flood the panel.
+ */
+export const RepeatedFileHunks = meta.story({
+  render: () =>
+    setup({
+      changes: repeatedHunkChanges,
+      changeMap: repeatedHunkChangeMap,
+      configDir: "/Users/user/darwin",
+    }),
 });
 
 /**

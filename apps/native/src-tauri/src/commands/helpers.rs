@@ -1,0 +1,34 @@
+use crate::state::{evolve_state, watcher};
+use crate::storage::store;
+use crate::system::nix;
+use crate::{git, shared_types};
+use tauri::AppHandle;
+
+pub(super) fn capture_err<E: std::fmt::Display>(cmd: &str, e: E) -> String {
+    // Only send the command name to Sentry to avoid leaking chat or user data.
+    sentry::capture_message(cmd, sentry::Level::Error);
+    e.to_string()
+}
+
+/// Initializes app state after switching to a new config directory:
+/// caches git status, starts the file watcher, resets evolve state, and lists hosts.
+pub(super) fn handle_new_config_dir(
+    app: &AppHandle,
+    dir: &str,
+) -> Result<(shared_types::EvolveState, Option<Vec<String>>), String> {
+    let git_status = git::status(dir).ok();
+    let changes = git_status
+        .as_ref()
+        .map(|s| s.changes.clone())
+        .unwrap_or_default();
+    if let Some(ref s) = git_status {
+        // fire-and-forget: cache is a best-effort perf optimization; watcher and evolution
+        // will re-populate it. A store write failure here must not block dir switch.
+        let _ = store::set_cached_git_status(app, s);
+    }
+    watcher::start_watching(app.clone(), dir.to_string(), 2500);
+    let evolve_state = evolve_state::set(app, shared_types::EvolveState::default(), &changes)
+        .map_err(|e| e.to_string())?;
+    let hosts = nix::list_darwin_hosts(dir).ok();
+    Ok((evolve_state, hosts))
+}

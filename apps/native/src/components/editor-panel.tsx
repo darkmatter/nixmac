@@ -3,7 +3,7 @@ import { NixEditor } from "@/components/kibo-ui/nix-editor";
 import { Button } from "@/components/ui/button";
 import { useWidgetStore } from "@/stores/widget-store";
 
-export function EditorPanel() {
+export function EditorPanel({ disableEditorRuntime = false }: { disableEditorRuntime?: boolean }) {
   const editingFile = useWidgetStore((s) => s.editingFile);
 
   if (!editingFile) return null;
@@ -27,6 +27,7 @@ export function EditorPanel() {
       <NixEditor
         filePath={editingFile}
         className="flex-1"
+        disableRuntime={disableEditorRuntime}
         onSave={() => {
           // Could trigger a git status refresh here in the future
         }}

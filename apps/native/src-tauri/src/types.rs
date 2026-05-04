@@ -4,212 +4,16 @@
 //! The `#[serde(rename = "...")]` attributes ensure camelCase naming
 //! for JavaScript/TypeScript consumption.
 
+pub(crate) use crate::shared_types::{
+    Config, EvolveEvent, EvolveEventType, FeedbackAiProviderModelInfo, FeedbackFlakeInputEntry,
+    FeedbackFlakeInputsSnapshot, FeedbackMetadata, FeedbackMetadataRequest, FeedbackSystemInfo,
+    FeedbackUsageStats,
+};
 use crate::utils as global_utils;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use tauri::Manager;
 
-/// Application configuration returned by `config_get`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Config {
-    /// Path to the nix-darwin flake directory.
-    #[serde(rename = "configDir")]
-    pub config_dir: String,
-
-    /// The darwinConfiguration attribute name (e.g., "Coopers-MacBook-Pro").
-    #[serde(rename = "hostAttr")]
-    pub host_attr: Option<String>,
-}
-
-
-/// Result of a darwin-rebuild operation (legacy stub — active builds use `finalize_apply::ApplyResult`).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DarwinApplyLegacy {
-    /// Whether the operation succeeded.
-    pub ok: bool,
-
-    /// Process exit code.
-    pub code: Option<i32>,
-
-    /// Captured stdout output.
-    pub stdout: Option<String>,
-
-    /// Captured stderr output.
-    pub stderr: Option<String>,
-}
-
-// =============================================================================
-// Feedback Metadata
-// =============================================================================
-
-/// Options indicating which feedback artifacts the user allows sharing.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FeedbackShareOptions {
-    pub current_app_state: bool,
-    pub system_info: bool,
-    pub usage_stats: bool,
-    pub evolution_log: bool,
-    pub changed_nix_files: bool,
-    pub ai_provider_model_info: bool,
-    pub build_error_output: bool,
-    pub flake_inputs_snapshot: bool,
-    pub app_logs: bool,
-}
-
-/// System information captured from the runtime.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FeedbackSystemInfo {
-    pub os_name: Option<String>,
-    pub os_version: Option<String>,
-    pub arch: Option<String>,
-    pub nix_version: Option<String>,
-    pub app_version: Option<String>,
-}
-
-/// Aggregated usage stats for feedback.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FeedbackUsageStats {
-    pub total_evolutions: Option<u64>,
-    pub success_rate: Option<f64>,
-    pub avg_iterations: Option<f64>,
-    pub last_computed_at: Option<String>,
-    pub extra: Option<Value>,
-}
-
-/// AI provider/model info and usage signals.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FeedbackAiProviderModelInfo {
-    pub evolve_provider: Option<String>,
-    pub evolve_model: Option<String>,
-    pub summary_provider: Option<String>,
-    pub summary_model: Option<String>,
-    pub total_tokens: Option<u32>,
-    pub latency_ms: Option<i64>,
-    pub iterations: Option<usize>,
-    pub build_attempts: Option<usize>,
-}
-
-/// Flake input metadata captured from flake.lock.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FeedbackFlakeInputEntry {
-    pub rev: Option<String>,
-    pub last_modified: Option<i64>,
-    pub nar_hash: Option<String>,
-}
-
-/// Snapshot of selected flake inputs.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FeedbackFlakeInputsSnapshot {
-    pub nixpkgs: Option<FeedbackFlakeInputEntry>,
-    #[serde(rename = "nix-darwin")]
-    pub nix_darwin: Option<FeedbackFlakeInputEntry>,
-    #[serde(rename = "home-manager")]
-    pub home_manager: Option<FeedbackFlakeInputEntry>,
-}
-
-/// Request payload for gathering feedback metadata.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FeedbackMetadataRequest {
-    pub feedback_type: String,
-    pub share: FeedbackShareOptions,
-}
-
-/// Metadata collected for feedback submission based on user opt-in.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FeedbackMetadata {
-    pub current_app_state_snapshot: Option<Value>,
-    pub system_info: Option<FeedbackSystemInfo>,
-    pub usage_stats: Option<FeedbackUsageStats>,
-    pub evolution_log_content: Option<String>,
-    pub changed_nix_files_diff: Option<String>,
-    pub ai_provider_model_info: Option<FeedbackAiProviderModelInfo>,
-    pub build_error_output: Option<String>,
-    pub flake_inputs_snapshot: Option<FeedbackFlakeInputsSnapshot>,
-    pub app_logs_content: Option<String>,
-    pub panic_details: Option<FeedbackPanicDetails>,
-}
-
-/// Panic/crash information captured when a Rust panic occurs
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FeedbackPanicDetails {
-    pub message: String,
-    pub location: Option<String>,
-    pub backtrace: Option<String>,
-    pub timestamp: String,
-}
-
-// =============================================================================
-// Evolve Streaming Events
-// =============================================================================
-
-/// Event type for streaming evolve progress updates.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct EvolveEvent {
-    /// Raw log output (detailed technical information)
-    pub raw: String,
-
-    /// Human-readable summary of what's happening
-    pub summary: String,
-
-    /// Event type for categorization in the UI
-    pub event_type: EvolveEventType,
-
-    /// Current iteration number (if applicable)
-    pub iteration: Option<usize>,
-
-    /// Timestamp in milliseconds since evolution started
-    pub timestamp_ms: i64,
-}
-
-/// Types of evolve events for UI rendering.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum EvolveEventType {
-    /// Evolution is starting
-    Start,
-    /// New iteration in the agentic loop
-    Iteration,
-    /// Model is thinking/reasoning
-    Thinking,
-    /// Model is reading a file
-    Reading,
-    /// Model is editing a file
-    Editing,
-    /// Model is running a build check
-    BuildCheck,
-    /// Build check passed
-    BuildPass,
-    /// Build check failed
-    BuildFail,
-    /// A tool call is being made
-    ToolCall,
-    /// API request to OpenAI
-    ApiRequest,
-    /// API response received
-    ApiResponse,
-    /// Evolution completed successfully
-    Complete,
-    /// Evolution failed with error
-    Error,
-    /// Generic info message
-    Info,
-    /// Generating summary
-    Summarizing,
-    /// Agent is asking the user a question
-    Question,
-}
-
 impl EvolveEvent {
-    pub fn new(
+    pub(crate) fn new(
         event_type: EvolveEventType,
         raw: impl Into<String>,
         summary: impl Into<String>,
@@ -226,7 +30,7 @@ impl EvolveEvent {
         }
     }
 
-    pub fn start(start_time: i64, model: &str, prompt: &str) -> Self {
+    pub(crate) fn start(start_time: i64, model: &str, prompt: &str) -> Self {
         Self::new(
             EvolveEventType::Start,
             format!(
@@ -239,7 +43,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn iteration(start_time: i64, iter: usize, messages_count: usize) -> Self {
+    pub(crate) fn iteration(start_time: i64, iter: usize, messages_count: usize) -> Self {
         Self::new(
             EvolveEventType::Iteration,
             format!("Iteration {} | messages={}", iter, messages_count),
@@ -249,7 +53,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn thinking(start_time: i64, iter: usize, category: &str, thought: &str) -> Self {
+    pub(crate) fn thinking(start_time: i64, iter: usize, category: &str, thought: &str) -> Self {
         let summary = match category {
             "planning" => "Planning approach...",
             "analysis" => "Analyzing the codebase...",
@@ -266,7 +70,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn reading(start_time: i64, iter: usize, path: &str) -> Self {
+    pub(crate) fn reading(start_time: i64, iter: usize, path: &str) -> Self {
         Self::new(
             EvolveEventType::Reading,
             format!("Reading file: {}", path),
@@ -276,7 +80,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn editing(start_time: i64, iter: usize, path: &str) -> Self {
+    pub(crate) fn editing(start_time: i64, iter: usize, path: &str) -> Self {
         Self::new(
             EvolveEventType::Editing,
             format!("Editing file: {}", path),
@@ -286,7 +90,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn build_pass(start_time: i64, iter: usize) -> Self {
+    pub(crate) fn build_pass(start_time: i64, iter: usize) -> Self {
         Self::new(
             EvolveEventType::BuildPass,
             "Build check passed".to_string(),
@@ -296,7 +100,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn build_fail(start_time: i64, iter: usize, error_preview: &str) -> Self {
+    pub(crate) fn build_fail(start_time: i64, iter: usize, error_preview: &str) -> Self {
         Self::new(
             EvolveEventType::BuildFail,
             format!("Build check failed: {}", error_preview),
@@ -306,7 +110,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn tool_call(start_time: i64, iter: usize, tool: &str, args_summary: &str) -> Self {
+    pub(crate) fn tool_call(start_time: i64, iter: usize, tool: &str, args_summary: &str) -> Self {
         let summary = match tool {
             "read_file" => "Reading file...".to_string(),
             "edit_file" => "Editing file...".to_string(),
@@ -331,7 +135,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn api_request(start_time: i64, iter: usize) -> Self {
+    pub(crate) fn api_request(start_time: i64, iter: usize) -> Self {
         Self::new(
             EvolveEventType::ApiRequest,
             "Sending request to AI provider".to_string(),
@@ -341,7 +145,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn api_response(start_time: i64, iter: usize, tokens: u32) -> Self {
+    pub(crate) fn api_response(start_time: i64, iter: usize, tokens: u32) -> Self {
         Self::new(
             EvolveEventType::ApiResponse,
             format!("Received response | tokens used: {}", tokens),
@@ -351,7 +155,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn complete(start_time: i64, iter: usize, summary_text: &str) -> Self {
+    pub(crate) fn complete(start_time: i64, iter: usize, summary_text: &str) -> Self {
         Self::new(
             EvolveEventType::Complete,
             format!("Evolution complete: {}", summary_text),
@@ -361,7 +165,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn error(start_time: i64, iter: Option<usize>, summary: &str, raw: &str) -> Self {
+    pub(crate) fn error(start_time: i64, iter: Option<usize>, summary: &str, raw: &str) -> Self {
         let mut summary = summary.to_string();
         global_utils::truncate_utf8(&mut summary, 100);
         Self::new(
@@ -373,7 +177,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn info(start_time: i64, iter: Option<usize>, message: &str) -> Self {
+    pub(crate) fn info(start_time: i64, iter: Option<usize>, message: &str) -> Self {
         Self::new(
             EvolveEventType::Info,
             message.to_string(),
@@ -383,7 +187,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn question(
+    pub(crate) fn question(
         start_time: i64,
         iter: usize,
         question: &str,
@@ -402,7 +206,7 @@ impl EvolveEvent {
         )
     }
 
-    pub fn analyzing(start_time: i64, iter: Option<usize>) -> Self {
+    pub(crate) fn analyzing(start_time: i64, iter: Option<usize>) -> Self {
         Self::new(
             EvolveEventType::Summarizing,
             "Analyzing changes...".to_string(),
@@ -424,10 +228,10 @@ fn shorten_path(path: &str) -> &str {
 }
 
 /// Event channel for evolve events
-pub const EVOLVE_EVENT_CHANNEL: &str = "darwin:evolve:event";
+pub(crate) const EVOLVE_EVENT_CHANNEL: &str = "darwin:evolve:event";
 
 /// Helper to emit evolve events to the frontend
-pub fn emit_evolve_event<R: tauri::Runtime>(app: &tauri::AppHandle<R>, event: EvolveEvent) {
+pub(crate) fn emit_evolve_event<R: tauri::Runtime>(app: &tauri::AppHandle<R>, event: EvolveEvent) {
     if let Some(window) = app.get_webview_window("main") {
         if let Err(e) = tauri::Emitter::emit(&window, EVOLVE_EVENT_CHANNEL, &event) {
             log::warn!("Failed to emit evolve event: {}", e);

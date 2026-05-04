@@ -1,6 +1,6 @@
 use super::{AiProvider, ProviderError, ProviderResponse, TokenUsage};
+use crate::ai::provider_errors::classify_openai_error;
 use crate::evolve::messages::{Message, Tool as GenericTool, ToolCall};
-use crate::provider_errors::classify_openai_error;
 use anyhow::anyhow;
 use async_openai::{
     config::OpenAIConfig,
@@ -29,8 +29,10 @@ impl OpenAIProvider {
             .with_api_key(api_key)
             .with_api_base(api_base);
         let client = Client::with_config(config);
-        let record_completions =
-            crate::completion_log::init_recording("evolve_provider_completions", "evolve provider");
+        let record_completions = crate::state::completion_log::init_recording(
+            "evolve_provider_completions",
+            "evolve provider",
+        );
         Self {
             client,
             model,
@@ -77,7 +79,7 @@ impl AiProvider for OpenAIProvider {
             .await
             .map_err(normalize_openai_error)?;
 
-        crate::completion_log::append_jsonl(
+        crate::state::completion_log::append_jsonl(
             self.record_completions,
             "evolve_provider_completions",
             &response,

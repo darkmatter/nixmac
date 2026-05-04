@@ -24,19 +24,15 @@ function normalizeAnimations(html: string): string {
     });
 }
 
-/**
- * Normalize volatile runtime-generated DOM so story snapshots cover our
- * component chrome instead of Monaco's platform-specific implementation.
- */
-function normalizeSnapshot(root: Element): string {
+function normalizeSnapshotRoot(root: Element): string {
   const clone = root.cloneNode(true) as Element;
 
-  clone.querySelectorAll(".monaco-editor").forEach((editor) => {
-    const wrapper = document.createElement("div");
-    wrapper.className = "monaco-editor-snapshot";
-    wrapper.setAttribute("data-mode-id", editor.closest("[data-mode-id]")?.getAttribute("data-mode-id") ?? "");
-    editor.replaceWith(wrapper);
-  });
+  for (const editor of clone.querySelectorAll('[data-slot="nix-editor"]')) {
+    editor.replaceChildren();
+    const placeholder = document.createElement("div");
+    placeholder.setAttribute("data-slot", "nix-editor-placeholder");
+    editor.appendChild(placeholder);
+  }
 
   return normalizeAnimations(clone.innerHTML);
 }
@@ -48,6 +44,6 @@ afterEach(() => {
   );
   const root = containers[containers.length - 1];
   if (root?.innerHTML) {
-    expect(normalizeSnapshot(root)).toMatchSnapshot();
+    expect(normalizeSnapshotRoot(root)).toMatchSnapshot();
   }
 });
