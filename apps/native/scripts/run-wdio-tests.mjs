@@ -1,13 +1,20 @@
 #!/usr/bin/env node
 
 import { execSync } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { Launcher } from '@wdio/cli';
+
+const THIS_DIR = path.dirname(fileURLToPath(import.meta.url));
+const APPS_NATIVE_DIR = path.resolve(THIS_DIR, '..');
+const E2E_DIR = path.resolve(APPS_NATIVE_DIR, 'e2e-tauri');
 
 const suites = [
-  'test:wdio:smoke',
-  'test:wdio:basic-prompts',
-  'test:wdio:discard',
-  'test:wdio:modify',
-  'test:wdio:onboarding',
+  { name: 'smoke', config: path.resolve(E2E_DIR, 'wdio.smoke.conf.mjs') },
+  { name: 'basic-prompts', config: path.resolve(E2E_DIR, 'wdio.basic-prompts.conf.mjs') },
+  { name: 'discard', config: path.resolve(E2E_DIR, 'wdio.discard.conf.mjs') },
+  { name: 'modify', config: path.resolve(E2E_DIR, 'wdio.modify.conf.mjs') },
+  { name: 'onboarding', config: path.resolve(E2E_DIR, 'wdio.onboarding.conf.mjs') },
 ];
 
 const results = [];
@@ -15,40 +22,45 @@ let failed = false;
 
 function cleanupAppProcess() {
   try {
+    console.log('killing nixmac process...');
     execSync('pkill -x nixmac || true', { stdio: 'ignore' });
   } catch {
     // Best-effort cleanup only.
+  } finally {
+    console.log('nixmac process killed.');
   }
 }
 
-console.log('🧪 Running all WDIO test suites...\n');
+console.log('🧪 Building e2e tests...\n');
+execSync('tsc -p e2e-tauri/tsconfig.json', {
+  stdio: 'inherit',
+  cwd: APPS_NATIVE_DIR,
+});
+
+console.log('\n🧪 Running all WDIO test suites...\n');
 
 for (const suite of suites) {
-  const displayName = suite.replace('test:wdio:', '').toUpperCase();
+  const displayName = suite.name.toUpperCase();
   process.stdout.write(`⏳ ${displayName}... `);
 
   try {
     cleanupAppProcess();
-    execSync(`npm run ${suite}`, {
-      stdio: 'pipe',
-      cwd: process.cwd(),
-    });
+    const launcher = new Launcher(suite.config);
+    const exitCode = await launcher.run();
     cleanupAppProcess();
-    console.log('✅');
-    results.push({ suite: displayName, passed: true });
+
+    if (exitCode === 0) {
+      console.log('✅');
+      results.push({ suite: displayName, passed: true });
+    } else {
+      console.log('❌');
+      results.push({ suite: displayName, passed: false });
+      failed = true;
+    }
   } catch (error) {
     cleanupAppProcess();
     console.log('❌');
-    if (error && typeof error === 'object') {
-      const stdout = 'stdout' in error && error.stdout ? String(error.stdout) : '';
-      const stderr = 'stderr' in error && error.stderr ? String(error.stderr) : '';
-      if (stdout.trim()) {
-        console.log(stdout.trimEnd());
-      }
-      if (stderr.trim()) {
-        console.error(stderr.trimEnd());
-      }
-    }
+    console.error(error);
     results.push({ suite: displayName, passed: false });
     failed = true;
   }
