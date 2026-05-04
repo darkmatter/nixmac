@@ -1,57 +1,0 @@
-Computer Use state (CUA App Version: 758)
-<app_state>
-App=com.darkmatter.nixmac (pid 51736)
-Window: "nixmac", App: nixmac.
-	0 standard window nixmac, Secondary Actions: Raise
-		1 scroll area
-			2 HTML content Description: nixmac, URL: tauri://localhost
-				3 heading nixmac, Value: 3
-					4 text nixmac
-				5 button History
-				6 button Give feedback
-				7 button Settings
-				8 content list Progress: step 3 of 3, Save
-					9 container
-						10 text Describe What to change
-					11 container
-						12 text Review Check & test
-					13 container
-						14 text 3 Save Keep changes
-				15 container
-					16 text Update available: v 0.23.0
-				17 text ## What's Changed * Document Product Proof hook behavior by @fkb032 in https://github.com/darkmatter/nixmac/pull/69 * feat(settings): add hidden Developer panel with version-pin install by @czxtm in https://github.com/darkmatter/nixmac/pull/67 * fix(db): migrate legacy evolution branch column by @czxtm in https://github.com/darkmatter/nixmac/pull/73   **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.42...v0.23.0 ## What's Changed * Document Product Proof hook behavior by @fkb032 
-				18 button (collapsed) Expand details, Secondary Actions: Expand
-				19 button Install & Restart
-				20 button Dismiss
-				21 text All changes active!
-				22 button Undo All
-				23 button Continue editing
-				24 heading Active Changes, Value: 2
-					25 text Active Changes
-				26 tab group (selectable)
-					27 tab (selected) Summary
-					28 tab (selectable) Diff
-				29 text Darwin Configuration
-				30 button (collapsed) 2, Secondary Actions: Expand
-				31 text Includes system defaults and macOS settings for user experience.
-				32 heading Commit Changes, Value: 2
-					33 text Commit Changes
-				34 container
-					35 text field (settable, string) Value: chore(darwin): update system defaults and macOS settings for improved user experience, Placeholder: Loading...
-					36 button Commit
-				37 button Report Issue
-				38 button Console
-				39 container Notifications alt+T
-		40 close button
-		41 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
-		42 minimize button
-	43 menu bar
-		44 nixmac
-		45 File
-		46 Edit
-		47 View
-		48 Window
-		49 Help
-
-The focused UI element is 2 HTML content.
-</app_state>
