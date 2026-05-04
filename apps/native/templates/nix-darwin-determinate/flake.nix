@@ -84,12 +84,12 @@
       darwinConfigurations."HOSTNAME_PLACEHOLDER" = nix-darwin.lib.darwinSystem {
         modules = [
           configuration
+          ./.nixmac
           inputs.sops-nix.darwinModules.sops
           # home-manager.darwinModules.home-manager
           ./modules/darwin/fonts.nix
           ./modules/darwin/defaults.nix
           ./modules/darwin/home.nix
-          ./modules/darwin/homebrew.nix
           ./modules/darwin/environment.nix
           ./modules/darwin/networking.nix
           ./modules/darwin/packages.nix

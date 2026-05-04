@@ -12,15 +12,20 @@ pub mod providers;
 mod search_code;
 pub mod search_docs;
 mod search_packages;
+pub mod session_control;
 mod sops;
 mod tools;
 pub(crate) mod types;
 mod utils;
 
+pub mod lifecycle;
+
 /// Directories ignored by file listing and search helpers.
 pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 
 // Re-export public API
+use crate::shared_types::EvolutionState;
+use crate::system::nix;
 use anyhow::{anyhow, Result};
 use chrono::Utc;
 use log::{debug, error, info, warn};
@@ -37,10 +42,9 @@ use tokio::time::sleep;
 use tools::{create_tools, execute_tool, is_editing_tool, ToolResult};
 pub use types::Evolution;
 pub use types::{EvolutionProgress, EvolutionRunError};
-use crate::shared_types::EvolutionState;
 
 use crate::{
-    commands, nix, statistics, store,
+    statistics, store,
     types::{emit_evolve_event, EvolveEvent},
     utils as global_utils,
 };
@@ -84,7 +88,8 @@ fn extract_error_metadata(error: &str) -> (Option<u16>, Option<String>, Option<S
 
     // Fallback: regex for "status: 400" or "statusCode=400"
     static STATUS_RE: once_cell::sync::Lazy<Regex> = once_cell::sync::Lazy::new(|| {
-        Regex::new(r"(?i)\bstatus(?:Code|_code|:)?\s*[:=]?\s*(\d{3})\b").expect("Failed to compile status regex")
+        Regex::new(r"(?i)\bstatus(?:Code|_code|:)?\s*[:=]?\s*(\d{3})\b")
+            .expect("Failed to compile status regex")
     });
     if let Some(cap) = STATUS_RE.captures(error) {
         if let Some(m) = cap.get(1) {
@@ -370,9 +375,9 @@ pub async fn generate_evolution<R: Runtime>(
         Arc::new(OllamaProvider::new(base_url, model))
     } else if matches!(provider_type.as_str(), "claude" | "codex" | "opencode") {
         let tool = match provider_type.as_str() {
-            "claude" => crate::providers::cli::CliTool::Claude,
-            "codex" => crate::providers::cli::CliTool::Codex,
-            _ => crate::providers::cli::CliTool::OpenCode,
+            "claude" => crate::ai::providers::cli::CliTool::Claude,
+            "codex" => crate::ai::providers::cli::CliTool::Codex,
+            _ => crate::ai::providers::cli::CliTool::OpenCode,
         };
         let model = store_model
             .or_else(|| std::env::var("EVOLVE_MODEL").ok())
@@ -520,7 +525,7 @@ pub async fn generate_evolution<R: Runtime>(
     // Agentic loop - let the model use tools until done AND build passes
     loop {
         // Check for cancellation at the start of each iteration
-        if commands::is_evolve_cancelled() {
+        if session_control::is_evolve_cancelled() {
             warn!("⚠️ Evolution cancelled by user");
             evolution.state = EvolutionState::Failed;
             emit_evolve_event(
@@ -581,7 +586,7 @@ pub async fn generate_evolution<R: Runtime>(
                 res = &mut fut => res,
                 _ = async {
                     loop {
-                        if commands::is_evolve_cancelled() {
+                        if session_control::is_evolve_cancelled() {
                             break;
                         }
                         // TODO: Replace polling with tokio::sync::Notify or watch channel to avoid sleep.
@@ -842,7 +847,7 @@ pub async fn generate_evolution<R: Runtime>(
                             {
                                 info!("⏳ Waiting for user response to: {}", question);
                                 let user_answer = tokio::select! {
-                                    answer = commands::wait_for_question_response() => {
+                                    answer = session_control::wait_for_question_response() => {
                                         match answer {
                                             Some(a) => a,
                                             None => {
@@ -853,7 +858,7 @@ pub async fn generate_evolution<R: Runtime>(
                                     }
                                     _ = async {
                                         loop {
-                                            if commands::is_evolve_cancelled() {
+                                            if session_control::is_evolve_cancelled() {
                                                 break;
                                             }
                                             sleep(Duration::from_millis(100)).await;

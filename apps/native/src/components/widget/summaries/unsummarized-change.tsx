@@ -1,6 +1,6 @@
 "use client";
 
-import type { ChangeWithRichType } from "@/components/widget/utils";
+import type { ChangeFileSummary } from "@/components/widget/utils";
 import {
   CHANGE_TYPE_STYLES,
   getDirectory,
@@ -32,8 +32,9 @@ function FilePath({ path, role }: { path: string; role?: "old" | "new" }) {
 export function UnsummarizedChange({
   changeType,
   filename,
+  hunkCount,
   oldFilename,
-}: ChangeWithRichType) {
+}: ChangeFileSummary) {
   const { icon: Icon, iconColor } = CHANGE_TYPE_STYLES[changeType];
   return (
     <div className={cn("flex items-center gap-2 rounded-md px-2.5 py-1.5")}>
@@ -46,6 +47,11 @@ export function UnsummarizedChange({
         </span>
       ) : (
         <FilePath path={filename} />
+      )}
+      {hunkCount > 1 && (
+        <span className="shrink-0 rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[10px] text-neutral-500">
+          x{hunkCount}
+        </span>
       )}
     </div>
   );

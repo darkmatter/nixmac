@@ -15,7 +15,7 @@ use log::error;
 use std::panic;
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::types::FeedbackPanicDetails;
+use crate::shared_types::RustPanicEvent;
 
 /// Sets up the custom panic hook for the application.
 pub fn setup_panic_hook(app_handle: AppHandle) {
@@ -72,7 +72,7 @@ pub fn setup_panic_hook(app_handle: AppHandle) {
         );
 
         // Create panic info payload
-        let panic_payload = FeedbackPanicDetails {
+        let panic_payload = RustPanicEvent {
             message: message.clone(),
             location: location.clone(),
             backtrace: backtrace.clone(),

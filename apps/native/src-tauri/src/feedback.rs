@@ -4,7 +4,9 @@
 //! from the frontend.
 //! All collection respects the ShareOptions flags provided by the user.
 
-use crate::{git, nix, secret_scanner, store, types};
+use crate::storage::store;
+use crate::system::{nix, secret_scanner};
+use crate::{git, types};
 use anyhow::{Context, Result};
 use chrono::Utc;
 use log::{debug, warn};
@@ -700,7 +702,7 @@ pub fn gather_metadata(
 #[cfg(test)]
 mod tests {
     use super::{redact_metadata_with_scanner, types};
-    use crate::secret_scanner::SecretScanner;
+    use crate::system::secret_scanner::SecretScanner;
     use serde_json::json;
 
     fn test_scanner() -> SecretScanner {

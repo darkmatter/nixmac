@@ -1,5 +1,5 @@
 use super::messages::{Message, Tool};
-use crate::provider_errors::friendly_provider_error;
+use crate::ai::provider_errors::friendly_provider_error;
 use anyhow::Error as AnyhowError;
 use async_trait::async_trait;
 use reqwest::StatusCode;

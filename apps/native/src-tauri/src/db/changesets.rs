@@ -24,17 +24,17 @@ pub fn insert_change_summary(
     Ok(tx.last_insert_rowid())
 }
 
-pub fn upsert_change(
-    tx: &Transaction,
-    change: &Change,
-    own_summary_id: Option<i64>,
-) -> Result<()> {
+pub fn upsert_change(tx: &Transaction, change: &Change, own_summary_id: Option<i64>) -> Result<()> {
     tx.execute(
         "INSERT OR IGNORE INTO changes \
          (hash, filename, diff, line_count, created_at, own_summary_id) \
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         rusqlite::params![
-            &change.hash, &change.filename, &change.diff, change.line_count, change.created_at,
+            &change.hash,
+            &change.filename,
+            &change.diff,
+            change.line_count,
+            change.created_at,
             own_summary_id,
         ],
     )?;
@@ -55,7 +55,11 @@ pub fn insert_change_or_ignore(
          (hash, filename, diff, line_count, created_at, own_summary_id) \
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         rusqlite::params![
-            &change.hash, &change.filename, &change.diff, change.line_count, change.created_at,
+            &change.hash,
+            &change.filename,
+            &change.diff,
+            change.line_count,
+            change.created_at,
             own_summary_id,
         ],
     )?;
@@ -100,11 +104,11 @@ pub fn insert_change_set(
 }
 
 pub fn get_change_id_by_hash(tx: &Transaction, hash: &str) -> Result<i64> {
-    Ok(tx.query_row(
-        "SELECT id FROM changes WHERE hash = ?1",
-        [hash],
-        |row| row.get("id"),
-    )?)
+    Ok(
+        tx.query_row("SELECT id FROM changes WHERE hash = ?1", [hash], |row| {
+            row.get("id")
+        })?,
+    )
 }
 
 pub fn link_change_to_set(tx: &Transaction, change_set_id: i64, change_id: i64) -> Result<()> {
@@ -126,7 +130,12 @@ pub fn insert_queued_summary(
         "INSERT INTO queued_summaries \
          (status, prompt, type, group_summary_id, hash_own_summary_id_pairs) \
          VALUES ('QUEUED', ?1, ?2, ?3, ?4)",
-        rusqlite::params![prompt, summary_type, group_summary_id, hash_own_summary_id_pairs],
+        rusqlite::params![
+            prompt,
+            summary_type,
+            group_summary_id,
+            hash_own_summary_id_pairs
+        ],
     )?;
     Ok(tx.last_insert_rowid())
 }
@@ -163,7 +172,11 @@ fn map_summarized_change(row: &rusqlite::Row) -> rusqlite::Result<SummarizedChan
     } else {
         None
     };
-    Ok(SummarizedChange { change, own_summary, group_summary })
+    Ok(SummarizedChange {
+        change,
+        own_summary,
+        group_summary,
+    })
 }
 
 const CHANGE_SELECT: &str = "SELECT \
@@ -232,7 +245,11 @@ pub fn query_change_set_for_commit_pair(
         .query_map([change_set_id], map_summarized_change)?
         .collect::<rusqlite::Result<_>>()?;
 
-    Ok(Some(SummarizedChangeSet { change_set, changes, missed_hashes: vec![] }))
+    Ok(Some(SummarizedChangeSet {
+        change_set,
+        changes,
+        missed_hashes: vec![],
+    }))
 }
 
 pub fn query_change_set_for_base_with_hashes(
@@ -267,10 +284,17 @@ pub fn query_change_set_for_base_with_hashes(
     let matched = query_changes_by_hashes_for_base(conn, base_commit_id, hashes)?;
     let matched_set: std::collections::HashSet<&str> =
         matched.iter().map(|sc| sc.change.hash.as_str()).collect();
-    let missed_hashes =
-        hashes.iter().filter(|h| !matched_set.contains(h.as_str())).cloned().collect();
+    let missed_hashes = hashes
+        .iter()
+        .filter(|h| !matched_set.contains(h.as_str()))
+        .cloned()
+        .collect();
 
-    Ok(Some(SummarizedChangeSet { change_set, changes: matched, missed_hashes }))
+    Ok(Some(SummarizedChangeSet {
+        change_set,
+        changes: matched,
+        missed_hashes,
+    }))
 }
 
 fn query_changes_by_hashes_for_base(
@@ -316,7 +340,10 @@ fn query_changes_by_hashes_for_base(
         .collect();
     let mut stmt = conn.prepare(&sql)?;
     let result = stmt
-        .query_map(rusqlite::params_from_iter(params.iter()), map_summarized_change)?
+        .query_map(
+            rusqlite::params_from_iter(params.iter()),
+            map_summarized_change,
+        )?
         .collect::<rusqlite::Result<Vec<_>>>()?;
     Ok(result)
 }
@@ -336,28 +363,30 @@ fn map_queued_summary(row: &rusqlite::Row) -> rusqlite::Result<QueuedSummary> {
     })
 }
 
-const QUEUED_SUMMARY_SELECT: &str =
-    "SELECT id, status, attempted_count, prompt, model_response, \
+const QUEUED_SUMMARY_SELECT: &str = "SELECT id, status, attempted_count, prompt, model_response, \
      group_summary_id, hash_own_summary_id_pairs, type FROM queued_summaries";
 
 /// Fetch specific QUEUED rows by ID, preserving the order of the `ids` slice.
-pub fn fetch_queued_summaries_by_ids(
-    conn: &Connection,
-    ids: &[i64],
-) -> Result<Vec<QueuedSummary>> {
+pub fn fetch_queued_summaries_by_ids(conn: &Connection, ids: &[i64]) -> Result<Vec<QueuedSummary>> {
     if ids.is_empty() {
         return Ok(vec![]);
     }
-    let placeholders = (1..=ids.len()).map(|i| format!("?{i}")).collect::<Vec<_>>().join(", ");
-    let sql = format!(
-        "{QUEUED_SUMMARY_SELECT} WHERE status = 'QUEUED' AND id IN ({placeholders})"
-    );
+    let placeholders = (1..=ids.len())
+        .map(|i| format!("?{i}"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let sql = format!("{QUEUED_SUMMARY_SELECT} WHERE status = 'QUEUED' AND id IN ({placeholders})");
     use rusqlite::types::ToSql;
-    let params: Vec<Box<dyn ToSql>> =
-        ids.iter().map(|&id| Box::new(id) as Box<dyn ToSql>).collect();
+    let params: Vec<Box<dyn ToSql>> = ids
+        .iter()
+        .map(|&id| Box::new(id) as Box<dyn ToSql>)
+        .collect();
     let mut stmt = conn.prepare(&sql)?;
     let mut rows: Vec<QueuedSummary> = stmt
-        .query_map(rusqlite::params_from_iter(params.iter()), map_queued_summary)?
+        .query_map(
+            rusqlite::params_from_iter(params.iter()),
+            map_queued_summary,
+        )?
         .collect::<rusqlite::Result<_>>()?;
     let id_order: std::collections::HashMap<i64, usize> =
         ids.iter().enumerate().map(|(i, &id)| (id, i)).collect();
@@ -445,7 +474,7 @@ pub fn build_pairs_json(changes: &[PendingChange]) -> String {
         .iter()
         .filter_map(|c| {
             Some(serde_json::json!({
-                "hash": &c.change.hash[..crate::changes_from_diff::SHORT_HASH_LEN],
+                "hash": &c.change.hash[..crate::git::changes_from_diff::SHORT_HASH_LEN],
                 "summary_id": c.own_summary_id?
             }))
         })

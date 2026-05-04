@@ -270,7 +270,11 @@ pub fn queue_log_started(ids: &[i64]) {
     if !QUEUE_SUMMARIZER {
         return;
     }
-    emit_json("QUEUE_SUMMARIZER", "started", &serde_json::json!({ "ids": ids }));
+    emit_json(
+        "QUEUE_SUMMARIZER",
+        "started",
+        &serde_json::json!({ "ids": ids }),
+    );
 }
 
 pub fn queue_log_prompt(queued_id: i64, prompt: &str) {

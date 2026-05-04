@@ -6,6 +6,7 @@
 //! when Option is held and the cursor is near that corner. Clicking the icon
 //! reveals the main widget window.
 
+pub(crate) use crate::shared_types::PreviewIndicatorState;
 use once_cell::sync::Lazy;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
@@ -437,18 +438,6 @@ pub fn stop_monitoring() {
 const PREVIEW_INDICATOR_WIDTH: f64 = 300.0;
 const PREVIEW_INDICATOR_HEIGHT: f64 = 80.0;
 const PREVIEW_INDICATOR_MARGIN: f64 = 20.0; // Large margin to ensure it's visible on screen
-
-/// State sent to the preview indicator window
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PreviewIndicatorState {
-    pub visible: bool,
-    pub summary: Option<String>,
-    pub files_changed: usize,
-    pub additions: Option<usize>,
-    pub deletions: Option<usize>,
-    pub is_loading: bool,
-}
 
 /// Cache of the current preview indicator state (for late-mounting windows)
 static PREVIEW_INDICATOR_STATE: Lazy<Mutex<PreviewIndicatorState>> = Lazy::new(|| {

@@ -27,7 +27,7 @@ export type {
  */
 export type SettingsTab = "general" | "api-keys" | "ai-models" | "preferences" | "developer";
 export type WidgetStep = "permissions" | "nix-setup" | "setup" | "begin" | "evolve" | "commit" | "manualEvolve" | "manualCommit" | "history";
-type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
+type ProcessingAction = "evolve" | "apply" | "commit" | "cancel" | null;
 export type ConfirmPrefKey = "confirmBuild" | "confirmClear" | "confirmRollback";
 export type BoolPrefKey = ConfirmPrefKey | "autoSummarizeOnFocus" | "scanHomebrewOnStartup";
 
