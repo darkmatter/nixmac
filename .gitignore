@@ -44,6 +44,7 @@ lerna-debug.log*
 
 # Devenv (Nix development environment)
 .devenv*
+.test.sh
 devenv.local.nix
 devenv.local.yaml
 
