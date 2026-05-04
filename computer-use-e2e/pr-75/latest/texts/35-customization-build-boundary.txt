@@ -1,0 +1,30 @@
+Computer Use state (CUA App Version: 758)
+<app_state>
+App=com.darkmatter.nixmac (pid 51736)
+Window: "nixmac", App: nixmac.
+	0 standard window nixmac, Secondary Actions: Raise
+		1 scroll area
+			2 HTML content Description: nixmac, URL: tauri://localhost
+				3 container Notifications alt+T
+				4 container Confirm Action
+					5 heading Confirm Action, Value: 2
+						6 text Confirm Action
+					7 text Rebuild with these configuration changes?
+					8 checkbox (settable, integer) Switch this confirmation off in settings., Value: 0
+					9 text Switch this confirmation off in settings.
+					10 button Cancel
+					11 button Confirm
+					12 button Close
+		13 close button
+		14 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+		15 minimize button
+	16 menu bar
+		17 nixmac
+		18 File
+		19 Edit
+		20 View
+		21 Window
+		22 Help
+
+The focused UI element is 8 checkbox.
+</app_state>
