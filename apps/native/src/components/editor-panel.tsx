@@ -24,7 +24,7 @@ class EditorErrorBoundary extends Component<
   }
 }
 
-export function EditorPanel() {
+export function EditorPanel({ disableEditorRuntime = false }: { disableEditorRuntime?: boolean }) {
   const editingFile = useWidgetStore((s) => s.editingFile);
 
   if (!editingFile) return null;
@@ -49,6 +49,7 @@ export function EditorPanel() {
         <NixEditor
           filePath={editingFile}
           className="flex-1"
+          disableRuntime={disableEditorRuntime}
           onSave={() => {
             // Could trigger a git status refresh here in the future
           }}

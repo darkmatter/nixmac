@@ -30,8 +30,15 @@ pub fn store(
         queued_ids.push(store_new_single(&tx, a, now)?);
     }
 
-    let change_set_id =
-        insert_change_set(&tx, commit_id, base_commit_id, commit_message, None, now, evolution_id)?;
+    let change_set_id = insert_change_set(
+        &tx,
+        commit_id,
+        base_commit_id,
+        commit_message,
+        None,
+        now,
+        evolution_id,
+    )?;
 
     let mut all_ids: std::collections::HashSet<i64> = std::collections::HashSet::new();
     for a in &assignments.new_groups {
@@ -72,8 +79,13 @@ fn store_new_group(tx: &Transaction, a: &mut NewGroupAssignment, now: i64) -> Re
     }
 
     let pairs = build_pairs_json(&a.changes);
-    let queued_id =
-        insert_queued_summary(tx, &a.prompt, "NEW_GROUP", Some(group_summary_id), Some(&pairs))?;
+    let queued_id = insert_queued_summary(
+        tx,
+        &a.prompt,
+        "NEW_GROUP",
+        Some(group_summary_id),
+        Some(&pairs),
+    )?;
 
     Ok(queued_id)
 }
@@ -86,11 +98,10 @@ fn store_new_single(tx: &Transaction, a: &mut NewSingleAssignment, now: i64) -> 
 
     let pairs = serde_json::to_string(&[serde_json::json!({
         "hash": a.pending.change.hash,
-        "summary_id": a.pending.own_summary_id.unwrap()
+        "summary_id": a.pending.own_summary_id.expect("own_summary_id set on line above")
     })])
     .unwrap_or_default();
     let queued_id = insert_queued_summary(tx, &a.prompt, "NEW_SINGLE", None, Some(&pairs))?;
 
     Ok(queued_id)
 }
-

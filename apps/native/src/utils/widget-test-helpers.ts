@@ -5,7 +5,7 @@
 
 import { useWidgetStore } from "@/stores/widget-store";
 
-export interface WidgetTestHelpers {
+interface WidgetTestHelpers {
   /**
    * Set the evolve prompt input value directly via the store,
    * bypassing the React event system.

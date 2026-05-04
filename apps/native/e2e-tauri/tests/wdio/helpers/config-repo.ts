@@ -26,7 +26,7 @@ const NIXMAC_APP_SUPPORT_DIR = path.join(
 );
 const NIXMAC_SETTINGS_PATH = path.join(NIXMAC_APP_SUPPORT_DIR, 'settings.json');
 
-export interface GitDiffResult {
+interface GitDiffResult {
   repoDir: string;
   raw: string;
   files: Array<{ status: string; path: string }>;

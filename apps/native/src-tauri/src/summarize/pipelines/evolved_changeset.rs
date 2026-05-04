@@ -31,7 +31,7 @@ pub async fn analyze<R: Runtime>(
         return Ok(None);
     }
 
-    let short_hashed_changes = crate::changes_from_diff::with_short_hashes(&missed_changes);
+    let short_hashed_changes = crate::git::changes_from_diff::with_short_hashes(&missed_changes);
 
     let placement_refs: Vec<&_> = short_hashed_changes.iter().collect();
     let placement_prompt =
@@ -39,7 +39,8 @@ pub async fn analyze<R: Runtime>(
     dbg::grouped_log_placement_prompt(&placement_prompt);
 
     let (raw_placements, _usage) =
-        crate::summarize::model_calls::map_relations_to_existing(&placement_prompt, Some(app)).await?;
+        crate::summarize::model_calls::map_relations_to_existing(&placement_prompt, Some(app))
+            .await?;
 
     dbg::grouped_log_placement_output(&raw_placements);
 
@@ -52,15 +53,19 @@ pub async fn analyze<R: Runtime>(
             .map(simplify_grouped::from_change_with_summary)
             .collect::<Vec<_>>();
         let new_refs: Vec<&Change> = a.new_changes.iter().map(|p| &p.change).collect();
-        let new_hashes: Vec<String> = a.new_changes.iter()
-            .map(|p| p.change.hash[..crate::changes_from_diff::SHORT_HASH_LEN].to_string())
+        let new_hashes: Vec<String> = a
+            .new_changes
+            .iter()
+            .map(|p| p.change.hash[..crate::git::changes_from_diff::SHORT_HASH_LEN].to_string())
             .collect();
         a.prompt = build_prompt::evolve_group(&existing, &new_refs, &new_hashes);
     }
     for a in &mut assignments.new_groups {
         let refs: Vec<&Change> = a.changes.iter().map(|p| &p.change).collect();
-        let hashes: Vec<String> = a.changes.iter()
-            .map(|p| p.change.hash[..crate::changes_from_diff::SHORT_HASH_LEN].to_string())
+        let hashes: Vec<String> = a
+            .changes
+            .iter()
+            .map(|p| p.change.hash[..crate::git::changes_from_diff::SHORT_HASH_LEN].to_string())
             .collect();
         a.prompt = build_prompt::new_group(&hashes, &refs);
     }
@@ -84,6 +89,8 @@ pub async fn analyze<R: Runtime>(
         let app2 = app.clone();
         let db2 = db_path.to_path_buf();
         tauri::async_runtime::spawn(async move {
+            // fire-and-forget: background summarization. Failure is logged internally by
+            // queue_summarizer; the caller has already persisted the changeset ids.
             let _ = crate::summarize::queue_summarizer::process(Some(queued_ids), app2, db2).await;
         });
     }

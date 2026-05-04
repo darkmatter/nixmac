@@ -108,7 +108,7 @@ mod tests {
     #[test]
     fn test_relative_path_resolves_against_cwd() {
         let tmp = tempfile::tempdir().expect("create tempdir");
-        let orig_cwd = std::env::current_dir().expect("cwd");
+        let orig_cwd = std::env::current_dir().ok();
         std::env::set_current_dir(tmp.path()).expect("chdir");
 
         let got = normalize_dir_input("foo/bar").expect("normalize relative");
@@ -122,8 +122,12 @@ mod tests {
             got.display()
         );
 
-        // restore
-        std::env::set_current_dir(orig_cwd).expect("restore cwd");
+        // restore (best-effort; ignore failure to restore current dir)
+        if let Some(orig) = orig_cwd {
+            if let Err(e) = std::env::set_current_dir(orig) {
+                eprintln!("restore cwd failed: {}", e);
+            }
+        }
     }
 
     #[test]
@@ -139,7 +143,7 @@ mod tests {
     #[test]
     fn test_whitespace_trimming() {
         let tmp = tempfile::tempdir().expect("create tempdir");
-        let orig_cwd = std::env::current_dir().expect("cwd");
+        let orig_cwd = std::env::current_dir().ok();
         std::env::set_current_dir(tmp.path()).expect("chdir");
 
         let got = normalize_dir_input("  my_config  ").expect("normalize with whitespace");
@@ -149,28 +153,36 @@ mod tests {
             got.display()
         );
 
-        // restore
-        std::env::set_current_dir(orig_cwd).expect("restore cwd");
+        // restore (best-effort; ignore failure to restore current dir)
+        if let Some(orig) = orig_cwd {
+            if let Err(e) = std::env::set_current_dir(orig) {
+                eprintln!("restore cwd failed: {}", e);
+            }
+        }
     }
 
     #[test]
     fn test_multiple_slashes_normalized() {
         let tmp = tempfile::tempdir().expect("create tempdir");
-        let orig_cwd = std::env::current_dir().expect("cwd");
+        let orig_cwd = std::env::current_dir().ok();
         std::env::set_current_dir(tmp.path()).expect("chdir");
 
         let got = normalize_dir_input("foo//bar///baz").expect("normalize multiple slashes");
         // PathBuf normalizes consecutive slashes, so the result should contain the path
         assert!(got.is_absolute(), "should resolve to absolute path");
 
-        // restore
-        std::env::set_current_dir(orig_cwd).expect("restore cwd");
+        // restore (best-effort; ignore failure to restore current dir)
+        if let Some(orig) = orig_cwd {
+            if let Err(e) = std::env::set_current_dir(orig) {
+                eprintln!("restore cwd failed: {}", e);
+            }
+        }
     }
 
     #[test]
     fn test_dot_and_dotdot_in_paths() {
         let tmp = tempfile::tempdir().expect("create tempdir");
-        let orig_cwd = std::env::current_dir().expect("cwd");
+        let orig_cwd = std::env::current_dir().ok();
 
         // Create a subdirectory to test relative path resolution
         std::fs::create_dir_all(tmp.path().join("subdir")).expect("mkdir subdir");
@@ -196,6 +208,10 @@ mod tests {
         );
 
         // restore BEFORE tempdir is dropped so the directory still exists
-        std::env::set_current_dir(&orig_cwd).expect("restore cwd");
+        if let Some(orig) = orig_cwd {
+            if let Err(e) = std::env::set_current_dir(orig) {
+                eprintln!("restore cwd failed: {}", e);
+            }
+        }
     }
 }

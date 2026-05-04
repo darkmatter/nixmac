@@ -14,13 +14,22 @@ if (typeof window !== "undefined") {
   (window as any).__TAURI_INTERNALS__ = {
     invoke: async (cmd: string) => {
       console.log("Mock Tauri invoke:", cmd);
-      if (cmd === "plugin:darwin|git_status") {
-        return { files: [], diff: "" };
+      if (cmd === "git_status") {
+        return {
+          files: [],
+          branch: "main",
+          diff: "",
+          additions: 0,
+          deletions: 0,
+          headCommitHash: null,
+          cleanHead: true,
+          changes: [],
+        };
       }
-      if (cmd === "plugin:darwin|read_config") {
+      if (cmd === "config_get") {
         return { configDir: "/Users/demo/.darwin" };
       }
-      if (cmd === "plugin:darwin|list_hosts") {
+      if (cmd === "flake_list_hosts") {
         return ["Demo-MacBook-Pro", "Work-MacBook"];
       }
       return null;
@@ -65,6 +74,10 @@ const mockGitStatus: GitStatus = {
   diff: "diff --git a/modules/darwin/default.nix b/modules/darwin/default.nix\n...",
   additions: 25,
   deletions: 3,
+  branch: "main",
+  headCommitHash: null,
+  cleanHead: false,
+  changes: [],
 };
 
 // All changes staged (ready for commit after preview)
@@ -77,6 +90,10 @@ const mockGitStatusAllStaged: GitStatus = {
   diff: "diff --git a/modules/darwin/default.nix b/modules/darwin/default.nix\n...",
   additions: 25,
   deletions: 3,
+  branch: "main",
+  headCommitHash: null,
+  cleanHead: false,
+  changes: [],
 };
 
 const mockEvolveEvents: EvolveEvent[] = [

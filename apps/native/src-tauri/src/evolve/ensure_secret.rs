@@ -91,11 +91,11 @@ pub fn execute_ensure_secret(
     validate_secret_name(&parsed.name)?;
 
     let age = ensure_age_key()?;
-    let _ = ensure_sops_config(base, &age.public_key)?;
+    ensure_sops_config(base, &age.public_key)?;
 
     let secret_path = format!("secrets/{}.yaml", parsed.name);
     let initial_content = render_initial_secret_content(parsed.scaffold.as_ref());
-    let _ = ensure_secret_file(base, &secret_path, Some(&initial_content))?;
+    ensure_secret_file(base, &secret_path, Some(&initial_content))?;
 
     // Handle a possible sops error message.
     if let Err(error) = encrypt_in_place(base, &secret_path, &age.key_path) {

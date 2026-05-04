@@ -36,12 +36,12 @@ export interface ShareOptions {
  * System information captured from the runtime. Fields are optional so
  * collectors can populate what is available on the platform.
  */
-export interface SystemInfo {
-  osName?: string; // e.g. "macOS"
-  osVersion?: string; // e.g. "15.3"
-  arch?: string; // e.g. "aarch64-darwin"
-  nixVersion?: string; // e.g. "2.24.1"
-  appVersion?: string; // app build/version string
+interface SystemInfo {
+  osName?: string | null; // e.g. "macOS"
+  osVersion?: string | null; // e.g. "15.3"
+  arch?: string | null; // e.g. "aarch64-darwin"
+  nixVersion?: string | null; // e.g. "2.24.1"
+  appVersion?: string | null; // app build/version string
 }
 
 /**
@@ -49,7 +49,7 @@ export interface SystemInfo {
  * Fields are optional and may be filled by the runtime when
  * the user opts-in to sharing usage stats.
  */
-export interface UsageStats {
+interface UsageStats {
   /** Total number of evolutions the user has run */
   totalEvolutions?: number;
   /** Success rate as a percentage (0.0 - 100.0) of evolutions */
@@ -65,30 +65,30 @@ export interface UsageStats {
  * AI provider/model details and usage signals captured from the app.
  * Fields are optional and may be partially populated.
  */
-export interface AiProviderModelInfo {
-  evolveProvider?: string;
-  evolveModel?: string;
-  summaryProvider?: string;
-  summaryModel?: string;
-  totalTokens?: number;
-  latencyMs?: number;
-  iterations?: number;
-  buildAttempts?: number;
+interface AiProviderModelInfo {
+  evolveProvider?: string | null;
+  evolveModel?: string | null;
+  summaryProvider?: string | null;
+  summaryModel?: string | null;
+  totalTokens?: number | null;
+  latencyMs?: number | null;
+  iterations?: number | null;
+  buildAttempts?: number | null;
 }
 
 /**
  * Flake.lock input metadata (subset) captured from the user's configuration.
  */
-export interface FlakeInputEntry {
-  rev?: string;
-  lastModified?: number;
-  narHash?: string;
+interface FlakeInputEntry {
+  rev?: string | null;
+  lastModified?: number | null;
+  narHash?: string | null;
 }
 
-export interface FlakeInputsSnapshot {
-  nixpkgs?: FlakeInputEntry;
-  "nix-darwin"?: FlakeInputEntry;
-  "home-manager"?: FlakeInputEntry;
+interface FlakeInputsSnapshot {
+  nixpkgs?: FlakeInputEntry | null;
+  "nix-darwin"?: FlakeInputEntry | null;
+  "home-manager"?: FlakeInputEntry | null;
 }
 
 /**
@@ -96,7 +96,7 @@ export interface FlakeInputsSnapshot {
  * This intentionally keeps collected artifacts as optional
  * so they can be attached later when the runtime gathers logs / snapshots.
  */
-export interface FeedbackPayload {
+interface FeedbackPayload {
   id?: string;
   type: FeedbackType;
 

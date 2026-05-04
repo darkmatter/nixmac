@@ -21,3 +21,11 @@ all installs.
 
 The base modules should never have any other code put into them, and their integrity must be tracked
 using a checksum in order to verify that an installation has the expected base files.
+
+## .nixmac Modules
+
+Every template includes a `.nixmac` directory for official Nixmac modules. Each
+module uses `.nixmac/<module>/{default.nix,meta.json,data.json}` so Nix
+implementation stays separate from user-controlled data. Agents must only edit
+`data.json`; `default.nix` and `meta.json` are reserved for Nixmac-managed
+upgrades and future extension metadata.

@@ -3,7 +3,8 @@
 //! This module provides functions to track evolution outcomes and compute
 //! success rates. All stats are stored persistently using tauri-plugin-store.
 
-use crate::{store, types};
+use crate::storage::store;
+use crate::types;
 use anyhow::Result;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};

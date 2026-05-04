@@ -9,7 +9,11 @@ pub fn upsert(db_path: &Path, existing_id: Option<i64>, origin_branch: &str) -> 
     let conn = rusqlite::Connection::open(db_path)?;
     if let Some(id) = existing_id {
         let exists = conn
-            .query_row("SELECT 1 FROM evolutions WHERE id = ?1", rusqlite::params![id], |_| Ok(()))
+            .query_row(
+                "SELECT 1 FROM evolutions WHERE id = ?1",
+                rusqlite::params![id],
+                |_| Ok(()),
+            )
             .is_ok();
         if exists {
             return Ok(id);

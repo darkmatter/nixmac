@@ -26,7 +26,6 @@ pub struct Evolution {
     pub builds: i64,
 }
 
-
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
