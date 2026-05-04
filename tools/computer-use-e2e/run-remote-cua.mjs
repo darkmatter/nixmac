@@ -509,6 +509,36 @@ function updatePrSpecificCoverage(state) {
   }
 }
 
+function updateStorybookPreviewCoverage(state) {
+  const preview = state.storybookPreview || {};
+  if (state.scenarios.storybookPreview?.notes) state.scenarios.storybookPreview.notes = [];
+  if (!preview.uiFiles?.length) {
+    updateScenario(state, 'storybookPreview', 'pass', 'No changed frontend UI source files were detected, so a Storybook preview was not required.');
+    return;
+  }
+  if (preview.status === 'ready' || preview.status === 'ready_with_advisories') {
+    updateScenario(
+      state,
+      'storybookPreview',
+      'pass',
+      `Storybook preview resolved ${preview.affectedStories?.length || 0} changed UI file(s) to direct story URLs.${preview.advisoryStoryFiles?.length ? ` ${preview.advisoryStoryFiles.length} advisory story gap(s) are listed for follow-up.` : ''}${preview.uiOnly ? ' Native Computer Use was skipped by UI-only policy.' : ''}`,
+    );
+  } else if (preview.status === 'missing_story') {
+    updateScenario(
+      state,
+      'storybookPreview',
+      'fail',
+      `Changed UI files are missing Storybook story mappings: ${(preview.missingStoryFiles || []).map((item) => item.file).join(', ')}`,
+    );
+  } else if (preview.status === 'build_failed') {
+    updateScenario(state, 'storybookPreview', 'fail', 'Storybook preview build failed, so affected UI cannot be reviewed through the preview artifact.');
+  } else if (preview.status === 'index_unavailable' || preview.status === 'invalid_metadata') {
+    updateScenario(state, 'storybookPreview', 'fail', `Storybook preview metadata was not usable: ${preview.status}.`);
+  } else {
+    updateScenario(state, 'storybookPreview', 'inconclusive', `Storybook preview metadata was not reviewer-ready: ${preview.status || 'unknown'}.`);
+  }
+}
+
 function ensureCurrentSchema(state) {
   return ensureStateCurrentSchema(state, {
     scenarioLabels,
@@ -696,7 +726,7 @@ function proofQualityIssues(state) {
   issues.push(...annotationGeometryIssues(state));
   for (const [key, scenario] of Object.entries(state.scenarios)) {
     if (scenario.status !== 'pass') continue;
-    if (['visualProofQuality', 'mainCoverageFreshness', 'prSpecificCoverage'].includes(key)) continue;
+    if (['visualProofQuality', 'mainCoverageFreshness', 'prSpecificCoverage', 'storybookPreview'].includes(key)) continue;
     const proof = proofForScenario(state, key);
     if (proof.screenshotArtifacts.length === 0 && proof.textArtifacts.length === 0) {
       issues.push(`${scenario.label} has no linked screenshot or text artifact.`);
@@ -1709,6 +1739,7 @@ async function prepareDisposableRemoteBaseline(state) {
 async function render(state, { stateFileName = 'state.json', recordEvent = true } = {}) {
   const renderStartedAt = nowIso();
   ensureCurrentSchema(state);
+  updateStorybookPreviewCoverage(state);
   const verdict = verdictFor(state);
   state.verdict = verdict;
   updateV2Contracts(state);
@@ -2230,6 +2261,32 @@ async function renderUnavailable(args) {
   console.log(path.join(runDir, 'index.html'));
 }
 
+async function renderStorybookOnly(args) {
+  const note = argValue(args, '--note', 'Native Computer Use skipped because the PR is UI-only and has Storybook preview evidence.');
+  const runDir = argValue(args, '--run-dir', path.join(ARTIFACT_ROOT, timestampSlug()));
+  await mkdir(path.join(runDir, 'screenshots'), { recursive: true });
+  await mkdir(path.join(runDir, 'texts'), { recursive: true });
+  const state = await baseState(runDir, {
+    ws: process.env.NIXMAC_COMPUTER_USE_WS || DEFAULT_WS,
+    app: process.env.NIXMAC_COMPUTER_USE_APP || DEFAULT_APP,
+    prompt: DEFAULT_PROMPT,
+  });
+  await mergeWorkflowTimingsFromArgs(state, args);
+  state.nativeComputerUse = {
+    skipped: true,
+    reason: note,
+    policy: 'storybook-ui-only',
+    skippedAt: new Date().toISOString(),
+  };
+  addNarrative(state, note);
+  for (const key of Object.keys(state.scenarios)) {
+    updateScenario(state, key, 'not_required', 'Native Computer Use was intentionally skipped for this UI-only PR; Storybook preview is the required proof lane.');
+  }
+  state.cleanup.note = 'No app state touched; native Computer Use skipped for UI-only Storybook proof.';
+  await render(state);
+  console.log(path.join(runDir, 'index.html'));
+}
+
 async function loadExistingRunState(runDir) {
   const statePath = path.join(runDir, 'state.json');
   if (!existsSync(statePath)) return null;
@@ -2328,6 +2385,7 @@ async function runSelfTest() {
   assert.equal(verdictFor({ scenarios: { launch: { status: 'pass' }, review: { status: 'fail' } } }), 'fail', 'verdictFor should fail when any scenario fails');
   assert.equal(verdictFor({ scenarios: { launch: { status: 'pass' }, review: { status: 'inconclusive' } } }), 'inconclusive', 'verdictFor should be inconclusive when no scenario fails but one is inconclusive');
   assert.equal(verdictFor({ scenarios: { launch: { status: 'pass' }, review: { status: 'pass' } } }), 'pass', 'verdictFor should pass when all scenarios pass');
+  assert.equal(verdictFor({ scenarios: { storybookPreview: { status: 'pass' }, launch: { status: 'not_required' } } }), 'pass', 'verdictFor should ignore explicitly not-required scenarios');
   assert.equal(shouldFailProcessForVerdict({ verdict: 'fail' }, {}), true, 'strict verdict mode should fail the process for fail verdicts');
   assert.equal(shouldFailProcessForVerdict({ verdict: 'inconclusive' }, {}), true, 'strict verdict mode should fail the process for inconclusive verdicts');
   assert.equal(shouldFailProcessForVerdict({ verdict: 'pass' }, {}), false, 'strict verdict mode should not fail the process for pass verdicts');
@@ -3130,6 +3188,7 @@ async function runSelfTest() {
     'id="timing-breakdown"',
     'id="evidence-pack"',
     'class="report-nav"',
+    'id="storybook-preview"',
     'id="pull-request-focus"',
     'id="findings-first"',
     'id="evidence-quality"',
@@ -3192,6 +3251,7 @@ async function main() {
     {
       run: runSuite,
       renderUnavailable,
+      renderStorybookOnly,
       renderExisting,
       selfTest: runSelfTest,
     },

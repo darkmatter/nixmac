@@ -15,6 +15,7 @@
     "id=\"remote-metadata\"": true,
     "id=\"scenario-checklist\"": true,
     "id=\"screenshots\"": true,
+    "id=\"storybook-preview\"": true,
     "id=\"summary\"": true,
     "id=\"timing-breakdown\"": true,
     "id=\"v2-evidence-model\"": true,
@@ -23,13 +24,13 @@
   },
   "duplicateIds": [],
   "evidenceStrengthCounts": {
-    "operational": 13,
+    "operational": 14,
     "strong": 4,
     "visual-supported": 4,
     "weak": 3
   },
   "nonDynamicScenarioCounts": {
-    "pass": 24
+    "pass": 25
   },
   "order": {
     "failuresBeforeInconclusive": true,

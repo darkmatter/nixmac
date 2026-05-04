@@ -181,6 +181,7 @@ export const scenarioLabels = freezeDeep({
   visualProofQuality: 'Scenario results include inspectable visual/text evidence',
   mainCoverageFreshness: 'Main branch user-visible coverage stays mapped',
   prSpecificCoverage: 'PR-specific user-visible behavior is covered when applicable',
+  storybookPreview: 'Changed UI has a direct Storybook preview when applicable',
   reportInspection: 'Generated HTML report is inspected with Computer Use',
 });
 
@@ -203,7 +204,7 @@ export const scenarioGroups = freezeDeep([
   },
   {
     name: 'PR-Specific Focus',
-    keys: ['mainCoverageFreshness', 'prSpecificCoverage'],
+    keys: ['mainCoverageFreshness', 'prSpecificCoverage', 'storybookPreview'],
   },
   {
     name: 'Evidence',
@@ -426,6 +427,13 @@ export const scenarioProofCatalog = freezeDeep({
     proof: 'Requires PR metadata and changed-file/user-visible focus input.',
     untested: 'No PR-specific scenario is executed unless PR context is provided.',
   },
+  storybookPreview: {
+    grade: 'manifest-confirmed',
+    screenshots: [],
+    texts: [],
+    proof: 'Changed frontend UI files are mapped to built Storybook stories and direct reviewer URLs where applicable.',
+    untested: 'Storybook preview proves inspectable isolated UI states; it does not prove native app integration by itself.',
+  },
   reportInspection: {
     grade: 'action-confirmed',
     screenshots: ['HTML report inspection'],
@@ -464,5 +472,6 @@ export const scenarioAssertionTypeHints = freezeDeep({
   visualProofQuality: ['artifact_quality', 'visual_heuristic'],
   mainCoverageFreshness: ['coverage_manifest'],
   prSpecificCoverage: ['pr_metadata', 'coverage_manifest'],
+  storybookPreview: ['pr_metadata', 'coverage_manifest'],
   reportInspection: ['accessibility_text', 'artifact_quality'],
 });

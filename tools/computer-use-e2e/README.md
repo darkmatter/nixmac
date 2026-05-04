@@ -45,6 +45,10 @@ node tools/computer-use-e2e/run-remote-cua.mjs self-test
 
 The runner:
 
+- builds and publishes a per-run Storybook preview for PRs that touch frontend
+  UI files, then links changed files to direct Storybook story URLs in the
+  report so reviewers can inspect affected UI states before reading native
+  evidence;
 - captures screenshots from `get_app_state`, not Screen Sharing;
 - captures API Keys screenshots only when raw accessibility text confirms no
   unmasked key-like secret is present; Console image artifacts are still
@@ -168,6 +172,19 @@ report to the `gh-pages` report branch and upserts one sticky PR comment with
 the verdict, counts, public hosted `index.html`, Actions run, and artifact
 backup. The workflow does not send Slack or other team
 notifications.
+
+For PRs that touch component/story files under `apps/native/src/components/**`,
+the prepare job also builds Storybook, uploads the static preview, and publishes
+it next to the Product Proof report under `storybook/`. The report's Storybook
+Preview section maps changed UI files to direct `?path=/story/...` URLs when a
+matching story exists, and the sticky PR comment includes compact Storybook
+quick links for the changed files. When the changed-file set is UI-only and has
+no native/runtime or unknown files, native Computer Use is skipped by policy and
+Storybook becomes the required proof lane. Runtime/native or unknown file
+changes still run native Computer Use. Missing stories fail only when the
+planner can confidently identify a changed UI file with no inspectable nearby
+story; helper/style advisory gaps are listed without creating noisy false-red
+native gates.
 
 The V1 public report URL uses `htmlpreview.github.io` to render the HTML stored
 on the public `gh-pages` report branch. The repository Pages API currently

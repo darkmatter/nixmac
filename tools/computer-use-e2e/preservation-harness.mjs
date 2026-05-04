@@ -123,6 +123,7 @@ function reportSignature(runDir, state) {
     'id="timing-breakdown"',
     'id="evidence-pack"',
     'class="report-nav"',
+    'id="storybook-preview"',
     'id="pull-request-focus"',
     'id="findings-first"',
     'id="evidence-quality"',

@@ -387,6 +387,25 @@
     "status": "pass",
     "visualAssertionStatus": "pass"
   },
+  "storybookPreview": {
+    "accessibilityRisk": "low",
+    "accessibilityRiskReason": "The claim has non-UI state or manifest proof in addition to UI evidence.",
+    "assertionTypes": [
+      "pr_metadata",
+      "coverage_manifest"
+    ],
+    "evidenceStrength": "operational",
+    "evidenceStrengthReason": "Computer Use interacted with the real UI and matched expected state.",
+    "failureClass": "",
+    "failureClassReason": "",
+    "id": "storybookPreview",
+    "label": "Changed UI has a direct Storybook preview when applicable",
+    "legacyEvidenceGrade": "manifest-confirmed",
+    "limitation": "Storybook preview proves inspectable isolated UI states; it does not prove native app integration by itself.",
+    "proof": "Changed frontend UI files are mapped to built Storybook stories and direct reviewer URLs where applicable.",
+    "status": "pass",
+    "visualAssertionStatus": "not-applicable"
+  },
   "suggestionCards": {
     "accessibilityRisk": "low",
     "accessibilityRiskReason": "Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.",

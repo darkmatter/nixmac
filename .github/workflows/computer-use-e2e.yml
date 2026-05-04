@@ -44,6 +44,7 @@ jobs:
       pass: ${{ steps.prepare-report-meta.outputs.pass }}
       fail: ${{ steps.prepare-report-meta.outputs.fail }}
       inconclusive: ${{ steps.prepare-report-meta.outputs.inconclusive }}
+      not_required: ${{ steps.prepare-report-meta.outputs.not_required }}
       report_prefix: ${{ steps.prepare-report-meta.outputs.report_prefix }}
       publish_path: ${{ steps.prepare-report-meta.outputs.publish_path }}
       latest_path: ${{ steps.prepare-report-meta.outputs.latest_path }}
@@ -54,6 +55,11 @@ jobs:
       build_artifact_sha: ${{ steps.pr-app.outputs.build_artifact_sha }}
       build_run_id: ${{ steps.pr-app.outputs.build_run_id }}
       build_latest_run: ${{ steps.pr-app.outputs.latest_build }}
+      storybook_ready: ${{ steps.storybook-preview.outputs.storybook_ready }}
+      storybook_has_ui: ${{ steps.storybook-preview.outputs.storybook_has_ui }}
+      storybook_ui_only: ${{ steps.storybook-preview.outputs.storybook_ui_only }}
+      storybook_artifact_ready: ${{ steps.storybook-preview.outputs.storybook_artifact_ready }}
+      storybook_status: ${{ steps.storybook-preview.outputs.storybook_status }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -139,6 +145,8 @@ jobs:
           node --check tools/computer-use-e2e/run-remote-cua.mjs
           node --check tools/computer-use-e2e/check-remote.mjs
           node --check tools/computer-use-e2e/check-stale-run.mjs
+          node --check tools/computer-use-e2e/storybook-preview.mjs
+          node tools/computer-use-e2e/storybook-preview.mjs self-test
           node --check tools/computer-use-e2e/workflow-contract-self-test.mjs
           node tools/computer-use-e2e/run-remote-cua.mjs self-test
           node tools/computer-use-e2e/check-stale-run.mjs self-test
@@ -192,6 +200,77 @@ jobs:
           { git diff --name-only "$PR_BASE_SHA...$PR_HEAD_SHA" || true; } |
             append_multiline_env "NIXMAC_E2E_PR_CHANGED_FILES"
 
+      - name: Plan Storybook preview
+        id: storybook-preview-initial
+        shell: bash
+        run: |
+          mkdir -p artifacts/computer-use-storybook
+          node tools/computer-use-e2e/storybook-preview.mjs plan \
+            --static-dir apps/native/storybook-static \
+            --base-url storybook/ \
+            --workflow-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --out artifacts/computer-use-storybook/storybook-preview.initial.json \
+            --github-output
+
+      - name: Setup Bun for Storybook preview
+        if: steps.storybook-preview-initial.outputs.storybook_has_ui == 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.2
+
+      - name: Install frontend dependencies for Storybook preview
+        if: steps.storybook-preview-initial.outputs.storybook_has_ui == 'true'
+        run: bun install --frozen-lockfile
+
+      - name: Build Storybook preview
+        id: build-storybook-preview
+        if: steps.storybook-preview-initial.outputs.storybook_has_ui == 'true'
+        continue-on-error: true
+        working-directory: apps/native
+        run: bun run build-storybook
+
+      - name: Finalize Storybook preview metadata
+        id: storybook-preview
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/computer-use-storybook
+          build_status=""
+          if [[ "${{ steps.storybook-preview-initial.outputs.storybook_has_ui }}" == "true" ]]; then
+            build_status="${{ steps.build-storybook-preview.outcome }}"
+            if [[ "$build_status" == "success" && -d apps/native/storybook-static ]]; then
+              rm -rf artifacts/computer-use-storybook/storybook-static
+              cp -a apps/native/storybook-static artifacts/computer-use-storybook/storybook-static
+            fi
+          fi
+          node tools/computer-use-e2e/storybook-preview.mjs plan \
+            --static-dir apps/native/storybook-static \
+            --base-url storybook/ \
+            --build-status "$build_status" \
+            --workflow-url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --out artifacts/computer-use-storybook/storybook-preview.json \
+            --github-output
+          echo "NIXMAC_E2E_STORYBOOK_PREVIEW_JSON_PATH=artifacts/computer-use-storybook/storybook-preview.json" >> "$GITHUB_ENV"
+
+      - name: Upload Storybook plan artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: computer-use-e2e-storybook-plan
+          path: artifacts/computer-use-storybook/storybook-preview.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Storybook preview artifact
+        if: always() && steps.storybook-preview.outputs.storybook_artifact_ready == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: computer-use-e2e-storybook
+          path: artifacts/computer-use-storybook/
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Check stale queued PR run
         id: stale-run
         if: github.event_name == 'pull_request'
@@ -199,6 +278,29 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: node tools/computer-use-e2e/check-stale-run.mjs
+
+      - name: Render UI-only Storybook report
+        if: steps.stale-run.outputs.stale != 'true' && steps.storybook-preview.outputs.storybook_ui_only == 'true'
+        shell: bash
+        run: |
+          if [[ "${{ steps.storybook-preview.outputs.storybook_ready }}" == "true" ]]; then
+            storybook_note="storybook-ui-only: skipped native Computer Use because changed files are UI-only and Storybook is reviewer-ready. Review the Storybook quick links and advisory rows instead."
+            timing_note="Native Computer Use skipped because Storybook classified the PR as UI-only and reviewer-ready."
+          else
+            storybook_note="storybook-ui-only-unhealthy: native Computer Use was not required because changed files are UI-only, but Storybook status is ${{ steps.storybook-preview.outputs.storybook_status }}. Fix missing coverage or build/index metadata before relying on this gate."
+            timing_note="UI-only Storybook report rendered an unhealthy preview state; native Computer Use remained not required."
+          fi
+          node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id report-render-storybook-ui-only \
+            --label "UI-only Storybook report render" \
+            --category reporting \
+            --note "$timing_note"
+          node tools/computer-use-e2e/run-remote-cua.mjs render-storybook-only \
+            --workflow-timings "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --note "$storybook_note"
+          node tools/computer-use-e2e/workflow-timing.mjs end --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
+            --id report-render-storybook-ui-only \
+            --status success
 
       - name: Render stale queued report
         if: steps.stale-run.outputs.stale == 'true'
@@ -222,7 +324,7 @@ jobs:
 
       - name: Check remote Computer Use secrets
         id: remote-secrets
-        if: steps.stale-run.outputs.stale != 'true'
+        if: steps.stale-run.outputs.stale != 'true' && steps.storybook-preview.outputs.storybook_ui_only != 'true'
         shell: bash
         run: |
           missing=()
@@ -239,7 +341,7 @@ jobs:
           fi
 
       - name: Render unavailable report
-        if: steps.stale-run.outputs.stale != 'true' && steps.remote-secrets.outputs.available != 'true'
+        if: steps.stale-run.outputs.stale != 'true' && steps.storybook-preview.outputs.storybook_ui_only != 'true' && steps.remote-secrets.outputs.available != 'true'
         run: |
           node tools/computer-use-e2e/workflow-timing.mjs start --file "$NIXMAC_E2E_WORKFLOW_TIMINGS" \
             --id report-render-unavailable \
@@ -254,7 +356,7 @@ jobs:
 
       - name: Download PR-built app artifact
         id: pr-app
-        if: steps.stale-run.outputs.stale != 'true' && steps.remote-secrets.outputs.available == 'true'
+        if: steps.stale-run.outputs.stale != 'true' && steps.storybook-preview.outputs.storybook_ui_only != 'true' && steps.remote-secrets.outputs.available == 'true'
         continue-on-error: true
         shell: bash
         env:
@@ -379,7 +481,7 @@ jobs:
           cp "$NIXMAC_E2E_WORKFLOW_TIMINGS" artifacts/computer-use-app/workflow-timing.json
 
       - name: Render app artifact setup failure report
-        if: steps.stale-run.outputs.stale != 'true' && steps.remote-secrets.outputs.available == 'true' && steps.pr-app.outcome == 'failure'
+        if: steps.stale-run.outputs.stale != 'true' && steps.storybook-preview.outputs.storybook_ui_only != 'true' && steps.remote-secrets.outputs.available == 'true' && steps.pr-app.outcome == 'failure'
         shell: bash
         env:
           NIXMAC_E2E_BUILD_GATE_STATUS: ${{ steps.pr-app.outputs.build_gate_status }}
@@ -407,6 +509,8 @@ jobs:
           remote_ready=false
           setup_failed=false
           if [[ "${{ steps.stale-run.outputs.stale }}" == "true" ]]; then
+            remote_ready=false
+          elif [[ "${{ steps.storybook-preview.outputs.storybook_ui_only }}" == "true" ]]; then
             remote_ready=false
           elif [[ "${{ steps.remote-secrets.outputs.available }}" != "true" ]]; then
             remote_ready=false
@@ -446,6 +550,7 @@ jobs:
           pass="$(jq -r '[.scenarios[]? | select(.status == "pass")] | length' "$latest_report/state.json")"
           fail="$(jq -r '[.scenarios[]? | select(.status == "fail")] | length' "$latest_report/state.json")"
           inconclusive="$(jq -r '[.scenarios[]? | select(.status == "inconclusive")] | length' "$latest_report/state.json")"
+          not_required="$(jq -r '[.scenarios[]? | select(.status == "not_required")] | length' "$latest_report/state.json")"
           report_slug="$(basename "$latest_report")"
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             report_prefix="computer-use-e2e/pr-${{ github.event.pull_request.number }}"
@@ -463,6 +568,7 @@ jobs:
             echo "pass=$pass"
             echo "fail=$fail"
             echo "inconclusive=$inconclusive"
+            echo "not_required=$not_required"
             echo "report_prefix=$report_prefix"
             echo "publish_path=$publish_path"
             echo "latest_path=$latest_path"
@@ -482,7 +588,7 @@ jobs:
   remote-computer-use:
     name: Remote Computer Use E2E
     needs: prepare
-    if: needs.prepare.outputs.remote_ready == 'true'
+    if: needs.prepare.outputs.remote_ready == 'true' && needs.prepare.outputs.storybook_ui_only != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     concurrency:
@@ -501,6 +607,7 @@ jobs:
       NIXMAC_E2E_EVOLVE_MODEL: anthropic/claude-sonnet-4.6
       NIXMAC_E2E_SUMMARY_PROVIDER: openai
       NIXMAC_E2E_SUMMARY_MODEL: openai/gpt-4o-mini
+      NIXMAC_E2E_STORYBOOK_PREVIEW_JSON_PATH: artifacts/computer-use-storybook-plan/storybook-preview.json
     outputs:
       has_report: ${{ steps.report-meta.outputs.has_report }}
       report_dir: ${{ steps.report-meta.outputs.report_dir }}
@@ -509,6 +616,7 @@ jobs:
       pass: ${{ steps.report-meta.outputs.pass }}
       fail: ${{ steps.report-meta.outputs.fail }}
       inconclusive: ${{ steps.report-meta.outputs.inconclusive }}
+      not_required: ${{ steps.report-meta.outputs.not_required }}
       report_prefix: ${{ steps.report-meta.outputs.report_prefix }}
       publish_path: ${{ steps.report-meta.outputs.publish_path }}
       latest_path: ${{ steps.report-meta.outputs.latest_path }}
@@ -524,6 +632,12 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
+
+      - name: Download Storybook plan
+        uses: actions/download-artifact@v7
+        with:
+          name: computer-use-e2e-storybook-plan
+          path: artifacts/computer-use-storybook-plan
 
       - name: Capture PR focus metadata for remote run
         if: github.event_name == 'pull_request'
@@ -1084,6 +1198,7 @@ jobs:
           pass="$(jq -r '[.scenarios[]? | select(.status == "pass")] | length' "$latest_report/state.json")"
           fail="$(jq -r '[.scenarios[]? | select(.status == "fail")] | length' "$latest_report/state.json")"
           inconclusive="$(jq -r '[.scenarios[]? | select(.status == "inconclusive")] | length' "$latest_report/state.json")"
+          not_required="$(jq -r '[.scenarios[]? | select(.status == "not_required")] | length' "$latest_report/state.json")"
           report_slug="$(basename "$latest_report")"
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             report_prefix="computer-use-e2e/pr-${{ github.event.pull_request.number }}"
@@ -1101,6 +1216,7 @@ jobs:
             echo "pass=$pass"
             echo "fail=$fail"
             echo "inconclusive=$inconclusive"
+            echo "not_required=$not_required"
             echo "report_prefix=$report_prefix"
             echo "publish_path=$publish_path"
             echo "latest_path=$latest_path"
@@ -1116,7 +1232,7 @@ jobs:
             echo "### nixmac Computer Use E2E"
             if [[ "${{ steps.report-meta.outputs.has_report }}" == "true" ]]; then
               echo "- Verdict: \`${{ steps.report-meta.outputs.verdict }}\`"
-              echo "- Counts: \`${{ steps.report-meta.outputs.pass }} pass / ${{ steps.report-meta.outputs.fail }} fail / ${{ steps.report-meta.outputs.inconclusive }} inconclusive\`"
+              echo "- Counts: \`${{ steps.report-meta.outputs.pass }} pass / ${{ steps.report-meta.outputs.fail }} fail / ${{ steps.report-meta.outputs.inconclusive }} inconclusive / ${{ steps.report-meta.outputs.not_required }} not required\`"
               echo "- Artifact path: \`${{ steps.report-meta.outputs.report_dir }}/index.html\`"
               echo "- Hosted HTML: ${{ steps.report-meta.outputs.index_url }}"
             else
@@ -1148,11 +1264,27 @@ jobs:
       group: computer-use-e2e-gh-pages-publish
       cancel-in-progress: false
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
       - name: Download evidence report
         uses: actions/download-artifact@v7
         with:
           name: computer-use-e2e-report
           path: artifacts/computer-use-remote
+
+      - name: Download Storybook plan
+        uses: actions/download-artifact@v7
+        with:
+          name: computer-use-e2e-storybook-plan
+          path: artifacts/computer-use-storybook-plan
+
+      - name: Download Storybook preview
+        if: needs.prepare.outputs.storybook_artifact_ready == 'true'
+        uses: actions/download-artifact@v7
+        with:
+          name: computer-use-e2e-storybook
+          path: artifacts/computer-use-storybook
 
       - name: Publish evidence report to public report branch
         id: publish-report
@@ -1185,6 +1317,12 @@ jobs:
           mkdir -p "$site_dir/${PUBLISH_PATH:?}" "$site_dir/${LATEST_PATH:?}"
           cp -a "$REPORT_DIR"/. "$site_dir/${PUBLISH_PATH:?}"/
           cp -a "$REPORT_DIR"/. "$site_dir/${LATEST_PATH:?}"/
+          if [[ -d artifacts/computer-use-storybook/storybook-static ]]; then
+            rm -rf "$site_dir/${PUBLISH_PATH:?}/storybook" "$site_dir/${LATEST_PATH:?}/storybook"
+            cp -a artifacts/computer-use-storybook/storybook-static "$site_dir/${PUBLISH_PATH:?}/storybook"
+            cp -a artifacts/computer-use-storybook/storybook-static "$site_dir/${LATEST_PATH:?}/storybook"
+            echo "storybook_index_url=${RUN_ASSET_BASE_URL}storybook/index.html" >> "$GITHUB_OUTPUT"
+          fi
           RUN_ASSET_BASE_URL="$RUN_ASSET_BASE_URL" perl -0pi -e 's#<head>#<head>\n<base href="$ENV{RUN_ASSET_BASE_URL}">#' "$site_dir/${PUBLISH_PATH:?}/index.html"
           RUN_ASSET_BASE_URL="$RUN_ASSET_BASE_URL" perl -0pi -e 's#<head>#<head>\n<base href="$ENV{RUN_ASSET_BASE_URL}">#' "$site_dir/${LATEST_PATH:?}/index.html"
           if [[ -n "${REPORT_PREFIX:-}" && -d "$site_dir/$REPORT_PREFIX" ]]; then
@@ -1218,8 +1356,12 @@ jobs:
           PASS_COUNT: ${{ needs.remote-computer-use.outputs.pass || needs.prepare.outputs.pass }}
           FAIL_COUNT: ${{ needs.remote-computer-use.outputs.fail || needs.prepare.outputs.fail }}
           INCONCLUSIVE_COUNT: ${{ needs.remote-computer-use.outputs.inconclusive || needs.prepare.outputs.inconclusive }}
+          NOT_REQUIRED_COUNT: ${{ needs.remote-computer-use.outputs.not_required || needs.prepare.outputs.not_required }}
           INDEX_URL: ${{ steps.publish-report.outputs.index_url }}
           REPORT_DIR: ${{ needs.remote-computer-use.outputs.report_dir || needs.prepare.outputs.report_dir }}
+          STORYBOOK_READY: ${{ needs.prepare.outputs.storybook_ready }}
+          STORYBOOK_URL: ${{ steps.publish-report.outputs.storybook_index_url }}
+          STORYBOOK_PLAN_PATH: artifacts/computer-use-storybook-plan/storybook-preview.json
         run: |
           set -euo pipefail
           marker="<!-- nixmac-computer-use-e2e-report -->"
@@ -1234,7 +1376,7 @@ jobs:
           pr_surface="unknown"
           if [[ -f "$state_file" ]]; then
             known_limit_count="$(
-              jq -r '((.coverageFreshness.waivers // []) | length) + ([.scenarios[]? | select(.status != "pass")] | length)' "$state_file"
+              jq -r '((.coverageFreshness.waivers // []) | length) + ([.scenarios[]? | select(.status != "pass" and .status != "not_required")] | length)' "$state_file"
             )"
             pr_surface="$(
               jq -r '
@@ -1252,16 +1394,22 @@ jobs:
             inconclusive) next_action="Open the report and resolve inconclusive evidence before relying on the gate." ;;
             *) next_action="Open the report and inspect setup/verdict details." ;;
           esac
+          storybook_block=""
+          if [[ -f "$STORYBOOK_PLAN_PATH" ]]; then
+            storybook_block="$(node tools/computer-use-e2e/storybook-preview.mjs comment --plan "$STORYBOOK_PLAN_PATH" --base-url "$STORYBOOK_URL" || true)"
+          fi
           body_file="$(mktemp)"
           cat > "$body_file" <<EOF
           $marker
           ### nixmac Computer Use E2E: $status_label
 
-          - Result: \`$PASS_COUNT pass / $FAIL_COUNT fail / $INCONCLUSIVE_COUNT inconclusive\`
+          - Result: \`$PASS_COUNT pass / $FAIL_COUNT fail / $INCONCLUSIVE_COUNT inconclusive / $NOT_REQUIRED_COUNT not required\`
           - Next action: $next_action
           - PR surface: $pr_surface
           - Known limits / non-pass items: $known_limit_count
           - Hosted HTML report: $INDEX_URL
+          $([[ "$STORYBOOK_READY" == "true" && -n "$STORYBOOK_URL" ]] && echo "- Storybook preview: $STORYBOOK_URL" || true)
+          ${storybook_block}
           EOF
           body_json="$(mktemp)"
           jq -Rs '{body: .}' "$body_file" > "$body_json"
@@ -1289,6 +1437,8 @@ jobs:
           remote_result="${{ needs.remote-computer-use.result }}"
           publish_result="${{ needs.publish-report.result }}"
           setup_failed="${{ needs.prepare.outputs.setup_failed }}"
+          prepare_verdict="${{ needs.prepare.outputs.verdict }}"
+          storybook_ui_only="${{ needs.prepare.outputs.storybook_ui_only }}"
 
           if [[ "$prepare_result" == "failure" || "$prepare_result" == "cancelled" ]]; then
             echo "Prepare job ended with $prepare_result"
@@ -1298,7 +1448,15 @@ jobs:
             echo "Prepare produced a setup-failure report; failing the result job to keep the check honest."
             exit 1
           fi
-          if [[ "$remote_result" == "failure" || "$remote_result" == "cancelled" ]]; then
+          if [[ "$remote_result" == "skipped" && "$storybook_ui_only" == "true" ]]; then
+            if [[ "$prepare_verdict" != "pass" ]]; then
+              echo "UI-only Storybook report verdict was $prepare_verdict; failing the result job."
+              exit 1
+            fi
+            echo "Remote Computer Use skipped by UI-only Storybook policy with passing prepare report."
+          elif [[ "$remote_result" == "skipped" ]]; then
+            echo "Remote Computer Use skipped after prepare produced a non-remote report or no remote lane was required."
+          elif [[ "$remote_result" == "failure" || "$remote_result" == "cancelled" ]]; then
             echo "Remote Computer Use job ended with $remote_result"
             exit 1
           fi

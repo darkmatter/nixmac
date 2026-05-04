@@ -1,7 +1,9 @@
 import path from 'node:path';
 import process from 'node:process';
+import { existsSync, readFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { redact } from './redaction.mjs';
+import { buildStorybookPreviewPlan } from './storybook-preview.mjs';
 import { ensureTimingState, recordTimingPhase } from './timing.mjs';
 
 function buildGateFromEnv(env = process.env) {
@@ -15,6 +17,51 @@ function buildGateFromEnv(env = process.env) {
     artifactName: env.NIXMAC_E2E_BUILD_ARTIFACT_NAME || 'nixmac-macos-app',
     reason: redact(env.NIXMAC_E2E_BUILD_GATE_REASON || ''),
     note: 'Computer Use E2E may start remote setup only after a successful Build macOS App artifact exists for this exact head SHA.',
+  };
+}
+
+function storybookPreviewFromEnv(env = process.env) {
+  if (env.NIXMAC_E2E_STORYBOOK_PREVIEW_JSON_PATH) {
+    const metadataPath = path.resolve(env.NIXMAC_E2E_STORYBOOK_PREVIEW_JSON_PATH);
+    try {
+      if (!existsSync(metadataPath)) throw new Error(`file not found: ${metadataPath}`);
+      return JSON.parse(readFileSync(metadataPath, 'utf8'));
+    } catch (error) {
+      return invalidStorybookPreviewMetadata(
+        env,
+        `Storybook preview metadata path was set but could not be read as valid JSON: ${redact(error.message || String(error))}.`,
+      );
+    }
+  }
+  if (env.NIXMAC_E2E_STORYBOOK_PREVIEW_JSON) {
+    try {
+      return JSON.parse(env.NIXMAC_E2E_STORYBOOK_PREVIEW_JSON);
+    } catch {
+      return invalidStorybookPreviewMetadata(env, 'Storybook preview metadata was present but not valid JSON.');
+    }
+  }
+  return buildStorybookPreviewPlan({ env });
+}
+
+function invalidStorybookPreviewMetadata(env, recommendation) {
+  return {
+    version: 1,
+    generatedAt: new Date().toISOString(),
+    status: 'invalid_metadata',
+    baseUrl: env.NIXMAC_E2E_STORYBOOK_BASE_URL || 'storybook/',
+    workflowUrl: env.NIXMAC_E2E_STORYBOOK_WORKFLOW_URL || '',
+    changedFiles: [],
+    uiFiles: [],
+    nativeRuntimeFiles: [],
+    reviewOnlyFiles: [],
+    unknownFiles: [],
+    uiOnly: false,
+    affectedStories: [],
+    missingStoryFiles: [],
+    advisoryStoryFiles: [],
+    coverage: [],
+    storyIndex: null,
+    recommendation,
   };
 }
 
@@ -68,6 +115,7 @@ export function ensureCurrentSchema(
     note: 'Discard/build confirmation is only allowed when disposable config mode is explicitly proven.',
   };
   state.prFocus ||= buildPrFocus();
+  state.storybookPreview ||= storybookPreviewFromEnv(env);
   state.buildGate ||= buildGateFromEnv(env);
   return state;
 }
@@ -123,6 +171,7 @@ export async function createBaseState(
     },
     buildGate: buildGateFromEnv(env),
     prFocus: buildPrFocus(),
+    storybookPreview: storybookPreviewFromEnv(env),
     cleanup: { attempted: false, restored: false, note: 'Cleanup has not run yet.' },
     timing: {
       version: 1,
@@ -157,7 +206,9 @@ export function applyHistoricalRenderMigration(state) {
 }
 
 export function verdictFor(state) {
-  const statuses = Object.values(state.scenarios).map((item) => item.status);
+  const statuses = Object.values(state.scenarios)
+    .map((item) => item.status)
+    .filter((status) => status !== 'not_required');
   if (statuses.includes('fail')) return 'fail';
   if (statuses.includes('inconclusive')) return 'inconclusive';
   return 'pass';

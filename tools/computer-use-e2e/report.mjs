@@ -31,11 +31,11 @@ async function pathExists(filePath) {
 }
 
 function statusRank(status) {
-  return { fail: 0, inconclusive: 1, pass: 2 }[status] ?? 3;
+  return { fail: 0, inconclusive: 1, pass: 2, not_required: 3 }[status] ?? 4;
 }
 
 function statusCounts(state) {
-  const counts = { pass: 0, fail: 0, inconclusive: 0 };
+  const counts = { pass: 0, fail: 0, inconclusive: 0, not_required: 0 };
   for (const scenario of Object.values(state.scenarios)) {
     counts[scenario.status] = (counts[scenario.status] ?? 0) + 1;
   }
@@ -86,7 +86,7 @@ async function readTextExcerpt(state, artifact, maxLines = 10) {
 function knownCoverageGaps(state) {
   const gaps = [];
   for (const [key, scenario] of Object.entries(state.scenarios)) {
-    if (scenario.status !== 'pass') {
+    if (scenario.status !== 'pass' && scenario.status !== 'not_required') {
       gaps.push({
         label: scenario.label,
         status: scenario.status,
@@ -368,10 +368,10 @@ function verificationQueueItems(state) {
   for (const [key, scenario] of Object.entries(state.scenarios || {})) {
     if (scenario.status === 'fail') items.push({ key, priority: 10, reason: 'Blocking failure', action: 'Inspect expected vs actual evidence.' });
     else if (scenario.status === 'inconclusive') items.push({ key, priority: 20, reason: 'Inconclusive proof', action: 'Decide whether this evidence gap blocks approval.' });
-    else if (prKeys.has(key)) items.push({ key, priority: 30, reason: 'PR-focused scenario', action: 'Verify this proof covers the changed user-visible surface.' });
+    else if (scenario.status !== 'not_required' && prKeys.has(key)) items.push({ key, priority: 30, reason: 'PR-focused scenario', action: 'Verify this proof covers the changed user-visible surface.' });
   }
   for (const key of ['saveFlow', 'rollbackCleanup', 'visualProofQuality', 'mainCoverageFreshness', 'reportInspection']) {
-    if (state.scenarios?.[key] && !items.some((item) => item.key === key)) {
+    if (state.scenarios?.[key] && state.scenarios[key].status !== 'not_required' && !items.some((item) => item.key === key)) {
       items.push({
         key,
         priority: key === 'rollbackCleanup' ? 40 : 50,
@@ -646,6 +646,11 @@ function renderExecutiveSummary(state, counts, evidenceSummary) {
   const rollbackStatus = state.scenarios.rollbackCleanup?.status || 'inconclusive';
   const remoteRestoreStatus = state.cleanup?.restored ? 'pass' : state.cleanup?.attempted ? 'fail' : 'inconclusive';
   const metadataStatus = state.remoteMachine && state.remoteApp ? 'pass' : 'inconclusive';
+  const storybook = state.storybookPreview || { status: 'not_applicable', uiFiles: [], affectedStories: [], missingStoryFiles: [] };
+  const storybookStatus = storybook.status === 'ready' || storybook.status === 'ready_with_advisories' ? 'pass' : storybook.status === 'not_applicable' ? 'pass' : storybook.status === 'missing_story' || storybook.status === 'build_failed' || storybook.status === 'index_unavailable' || storybook.status === 'invalid_metadata' ? 'fail' : 'inconclusive';
+  const nativeSkip = state.nativeComputerUse?.skipped ? 'Native Computer Use skipped by UI-only Storybook policy.' : 'Native Computer Use required for this change set or not skipped.';
+  const scenarioHealth = counts.fail ? 'fail' : counts.inconclusive ? 'inconclusive' : 'pass';
+  const scenarioHealthNote = `${counts.pass} passed, ${counts.fail} failed, ${counts.inconclusive} inconclusive${counts.not_required ? `, ${counts.not_required} not required` : ''}.`;
   const signal = (label, status, note) => `<div class="signal signal-${escapeHtml(status)}">
     <span class="verdict ${escapeHtml(status)}">${escapeHtml(status)}</span>
     <strong>${escapeHtml(label)}</strong>
@@ -670,12 +675,15 @@ function renderExecutiveSummary(state, counts, evidenceSummary) {
       <div class="metric"><strong>${counts.pass}</strong>Passed</div>
       <div class="metric"><strong>${counts.fail}</strong>Failed</div>
       <div class="metric"><strong>${counts.inconclusive}</strong>Inconclusive</div>
+      <div class="metric"><strong>${counts.not_required}</strong>Not Required</div>
       <div class="metric"><strong>${escapeHtml(String(state.screenshots.length))}</strong>Screenshots</div>
     </div>
     ${renderSummaryVideo(state)}
     <div class="signal-grid">
       ${signal('PR focus', prSurface.status || prStatus, `${prSurface.label}: ${prSurface.detail}`)}
-      ${signal('Scenario health', counts.fail ? 'fail' : counts.inconclusive ? 'inconclusive' : 'pass', `${counts.pass} passed, ${counts.fail} failed, ${counts.inconclusive} inconclusive.`)}
+      ${signal('Storybook preview', storybookStatus, storybook.uiFiles?.length ? `${storybook.status}: ${storybook.affectedStories?.length || 0} changed file(s) have story links; ${storybook.missingStoryFiles?.length || 0} missing story mapping(s).` : 'No changed UI source files require a Storybook preview.')}
+      ${signal('Native lane', state.nativeComputerUse?.skipped ? 'pass' : metadataStatus, nativeSkip)}
+      ${signal('Scenario health', scenarioHealth, scenarioHealthNote)}
       ${signal('Evidence health', evidenceStatus, state.scenarios.visualProofQuality?.notes?.join(' ') || 'Visual/text proof quality not recorded.')}
       ${signal('Video', videoStatus, state.video?.status === 'available' ? `${state.video.frames || state.screenshots.length} safe-to-store frames with derived chapters.` : state.video?.note || 'No video generated.')}
       ${signal('Known limits', limits ? 'inconclusive' : 'pass', limits ? `${limits} runtime gap(s) or explicit waiver(s) need human acceptance.` : 'No runtime gaps or explicit waivers recorded.')}
@@ -686,6 +694,7 @@ function renderExecutiveSummary(state, counts, evidenceSummary) {
     </div>
     <p class="summary-links">
       <a href="#pull-request-focus">Review PR Focus</a>
+      <a href="#storybook-preview">Open Storybook Preview</a>
       <a href="#verification-queue">Verify Queue</a>
       <a href="#findings-first">Inspect Findings</a>
       <a href="#visual-proof">Open Visual Proof</a>
@@ -701,11 +710,14 @@ function navBadge(label, value, tone = '') {
 }
 
 function renderReportNav(state, counts) {
-  const riskCount = Object.values(state.v2?.scenarioContracts || {}).filter((item) => item.accessibilityRisk === 'high' || item.accessibilityRisk === 'medium').length;
+  const riskCount = Object.values(state.v2?.scenarioContracts || {}).filter((item) => item.status !== 'not_required' && (item.accessibilityRisk === 'high' || item.accessibilityRisk === 'medium')).length;
+  const storybook = state.storybookPreview || { status: 'not_applicable', affectedStories: [], missingStoryFiles: [] };
+  const storybookTone = storybook.status === 'ready' || storybook.status === 'ready_with_advisories' ? 'pass' : storybook.status === 'not_applicable' ? '' : storybook.status === 'missing_story' || storybook.status === 'build_failed' || storybook.status === 'index_unavailable' || storybook.status === 'invalid_metadata' ? 'fail' : 'inconclusive';
   return `<aside class="report-nav" aria-label="Report navigation">
     <a href="#summary">Summary</a>
     <a href="#verification-queue">Verify ${navBadge('', knownLimitCount(state), knownLimitCount(state) ? 'inconclusive' : 'pass')}</a>
     <a href="#timing-breakdown">Timing ${navBadge('', state.timing?.phases?.length || 0)}</a>
+    <a href="#storybook-preview">Storybook ${navBadge('', storybook.status === 'ready' ? storybook.affectedStories?.length || 0 : storybook.status, storybookTone)}</a>
     <a href="#pull-request-focus">PR Focus ${navBadge('', state.prFocus?.scenarioKeys?.length || 0)}</a>
     <a href="#findings-first">Findings ${navBadge('', counts.fail + counts.inconclusive, counts.fail ? 'fail' : counts.inconclusive ? 'inconclusive' : 'pass')}</a>
     <a href="#evidence-quality">Evidence Quality ${navBadge('', riskCount)}</a>
@@ -719,6 +731,77 @@ function renderReportNav(state, counts) {
     <a href="#raw-evidence">Raw Evidence</a>
     <a href="#cleanup">Cleanup</a>
   </aside>`;
+}
+
+function renderStorybookPreview(state) {
+  const preview = state.storybookPreview || {
+    status: 'not_applicable',
+    baseUrl: '',
+    workflowUrl: '',
+    uiFiles: [],
+    nativeRuntimeFiles: [],
+    affectedStories: [],
+    missingStoryFiles: [],
+    recommendation: 'No Storybook preview metadata was recorded.',
+  };
+  const statusTone = preview.status === 'ready' || preview.status === 'ready_with_advisories' ? 'pass' : preview.status === 'not_applicable' ? 'inconclusive' : preview.status === 'missing_story' || preview.status === 'build_failed' || preview.status === 'index_unavailable' || preview.status === 'invalid_metadata' ? 'fail' : 'inconclusive';
+  const affectedRows = preview.affectedStories?.length
+    ? preview.affectedStories
+        .map((item) => {
+          const visibleStories = item.stories.slice(0, 8);
+          const hiddenCount = Math.max(0, item.stories.length - visibleStories.length);
+          const links = visibleStories
+            .map((story) => `<a href="${escapeHtml(story.url || preview.baseUrl || '#')}" target="_blank" rel="noopener">${escapeHtml(story.title || story.id)} - ${escapeHtml(story.name || story.id)}</a>`)
+            .join('<br>');
+          return `<tr><td><code>${escapeHtml(item.file)}</code></td><td>${links}${hiddenCount ? `<br><small>${escapeHtml(String(hiddenCount))} more story state(s) in Storybook.</small>` : ''}</td></tr>`;
+        })
+        .join('\n')
+    : '<tr><td colspan="2">No affected Storybook story links were resolved.</td></tr>';
+  const missingRows = preview.missingStoryFiles?.length
+    ? preview.missingStoryFiles
+        .map((item) => `<tr><td><code>${escapeHtml(item.file)}</code></td><td>${escapeHtml((item.expectedStories || []).join(', '))}</td></tr>`)
+        .join('\n')
+    : '<tr><td colspan="2">No missing story mappings recorded.</td></tr>';
+  const advisoryRows = preview.advisoryStoryFiles?.length
+    ? preview.advisoryStoryFiles
+        .map((item) => `<tr><td><code>${escapeHtml(item.file)}</code></td><td>${escapeHtml((item.expectedStories || []).join(', '))}</td></tr>`)
+        .join('\n')
+    : '<tr><td colspan="2">No advisory story gaps recorded.</td></tr>';
+  const uiFileRows = preview.uiFiles?.length
+    ? preview.uiFiles.map((file) => `<li><code>${escapeHtml(file)}</code></li>`).join('\n')
+    : '<li>No changed frontend UI source files detected.</li>';
+  const nativeRows = preview.nativeRuntimeFiles?.length
+    ? preview.nativeRuntimeFiles.map((file) => `<li><code>${escapeHtml(file)}</code></li>`).join('\n')
+    : '<li>No native/runtime files detected in the changed-file set.</li>';
+  return `<h2 id="storybook-preview">Storybook Preview</h2>
+  <section class="panel">
+    <p><span class="verdict ${statusTone}">${escapeHtml(preview.status || 'unknown')}</span></p>
+    <p>${escapeHtml(preview.recommendation || '')}</p>
+    ${state.nativeComputerUse?.skipped ? `<p><strong>Native Computer Use:</strong> ${escapeHtml(state.nativeComputerUse.reason || 'Skipped by UI-only Storybook policy.')}</p>` : ''}
+    <p><strong>Preview base:</strong> ${preview.baseUrl ? `<a href="${escapeHtml(preview.baseUrl)}" target="_blank" rel="noopener">${escapeHtml(preview.baseUrl)}</a>` : 'not recorded'}${preview.workflowUrl ? `<br><strong>Workflow:</strong> <a href="${escapeHtml(preview.workflowUrl)}" target="_blank" rel="noopener">${escapeHtml(preview.workflowUrl)}</a>` : ''}</p>
+    <div class="quality-grid">
+      <div>
+        <h3>Affected Story URLs</h3>
+        <div class="table-scroll"><table><thead><tr><th>Changed file</th><th>Storybook URL</th></tr></thead><tbody>${affectedRows}</tbody></table></div>
+      </div>
+      <div>
+        <h3>Missing Story Mappings</h3>
+        <div class="table-scroll"><table><thead><tr><th>Changed file</th><th>Expected story</th></tr></thead><tbody>${missingRows}</tbody></table></div>
+      </div>
+      <div>
+        <h3>Advisory Story Gaps</h3>
+        <div class="table-scroll"><table><thead><tr><th>Changed file</th><th>Nearby expected story</th></tr></thead><tbody>${advisoryRows}</tbody></table></div>
+      </div>
+    </div>
+    <details>
+      <summary>Changed UI files (${escapeHtml(String(preview.uiFiles?.length || 0))})</summary>
+      <ul>${uiFileRows}</ul>
+    </details>
+    <details>
+      <summary>Native/runtime files (${escapeHtml(String(preview.nativeRuntimeFiles?.length || 0))})</summary>
+      <ul>${nativeRows}</ul>
+    </details>
+  </section>`;
 }
 
 function renderVisualAssertionResults(state) {
@@ -743,7 +826,7 @@ function renderVisualAssertionResults(state) {
 }
 
 function renderEvidenceQuality(state) {
-  const contracts = Object.values(state.v2?.scenarioContracts || {});
+  const contracts = Object.values(state.v2?.scenarioContracts || {}).filter((item) => item.status !== 'not_required');
   const strengthCounts = contracts.reduce((counts, item) => {
     counts[item.evidenceStrength] = (counts[item.evidenceStrength] || 0) + 1;
     return counts;
@@ -963,9 +1046,10 @@ function renderGroupedScenarioHtml(state, proofForScenario) {
           pass: group.items.filter((item) => item.status === 'pass').length,
           fail: group.items.filter((item) => item.status === 'fail').length,
           inconclusive: group.items.filter((item) => item.status === 'inconclusive').length,
+          notRequired: group.items.filter((item) => item.status === 'not_required').length,
         };
         return `<details class="group">
-  <summary>${escapeHtml(group.name)} <span class="nav-badge pass">${groupCounts.pass} pass</span>${groupCounts.fail ? ` <span class="nav-badge fail">${groupCounts.fail} fail</span>` : ''}${groupCounts.inconclusive ? ` <span class="nav-badge inconclusive">${groupCounts.inconclusive} inconclusive</span>` : ''}</summary>
+  <summary>${escapeHtml(group.name)} <span class="nav-badge pass">${groupCounts.pass} pass</span>${groupCounts.fail ? ` <span class="nav-badge fail">${groupCounts.fail} fail</span>` : ''}${groupCounts.inconclusive ? ` <span class="nav-badge inconclusive">${groupCounts.inconclusive} inconclusive</span>` : ''}${groupCounts.notRequired ? ` <span class="nav-badge not_required">${groupCounts.notRequired} not required</span>` : ''}</summary>
   <div class="table-scroll"><table class="scenario-table">
     <thead><tr><th class="scenario-col">Scenario</th><th class="status-col">Status</th><th class="grade-col">Evidence Grade</th><th class="artifacts-col">Primary Artifacts</th><th class="proof-col">What Proved It</th><th class="untested-col">Still Untested</th></tr></thead>
     <tbody>
@@ -1007,6 +1091,7 @@ export async function renderReportHtml(state, { proofForScenario }) {
   if (state.video?.status === 'available') evidenceSummary += ', 1 screenshot video';
   const executiveSummaryHtml = renderExecutiveSummary(state, counts, evidenceSummary);
   const reportNavHtml = renderReportNav(state, counts);
+  const storybookPreviewHtml = renderStorybookPreview(state);
   const evidenceQualityHtml = renderEvidenceQuality(state);
   const visualProofHtml = await renderVisualProofBoard(state, proofForScenario);
   const remoteMetadataHtml = renderRemoteMetadata(state);
@@ -1060,6 +1145,7 @@ export async function renderReportHtml(state, { proofForScenario }) {
     .pass { background: #123d2a; color: #8bf0bb; }
     .fail { background: #471a1a; color: #ff9e9e; }
     .inconclusive { background: #443512; color: #ffd36e; }
+    .not_required { background: #222936; color: #b8c3d1; }
     .group { margin-top: 18px; }
     table { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 8px; }
     .table-scroll { width: 100%; overflow-x: auto; border-radius: 8px; }
@@ -1164,6 +1250,8 @@ export async function renderReportHtml(state, { proofForScenario }) {
   <div class="report-shell">
     ${reportNavHtml}
     <div class="report-content">
+      ${storybookPreviewHtml}
+
       ${prPriorityHtml}
 
       ${verificationQueueHtml}
