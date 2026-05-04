@@ -15,6 +15,12 @@
 //!      `check().download_and_install()` exactly like the production path.
 //!
 //! Gated to release builds because the updater plugin isn't registered in dev.
+//!
+//! NOTE: requires `plugins.updater.dangerousInsecureTransportProtocol: true`
+//! in `tauri.conf.json`. Without it, `endpoints(...)` rejects `http://` URLs —
+//! including the loopback manifest URL we serve here. The production endpoint
+//! is still HTTPS and minisign-verified; this flag only relaxes the *scheme*
+//! check at the URL-validation layer.
 
 #[allow(dead_code)]
 const RELEASES_BASE: &str = "https://releases.nixmac.com";
