@@ -676,6 +676,7 @@ jobs:
 
           config_tmp="$(mktemp -d)"
           cp -R apps/native/templates/nix-darwin-determinate "$config_tmp/config"
+          printf '%s\n' /flake.lock /result > "$config_tmp/config/.gitignore"
           if [[ -f "$config_tmp/config/modules/darwin/security.nix" ]]; then
             perl -0pi -e 's/security\.pam\.services\.sudo_local\.touchIdAuth = true;/# Disabled in remote E2E: AppleScript GUI activation on MacinCloud can hang creating sudo_local.\n  security.pam.services.sudo_local.enable = false;\n  security.pam.services.sudo_local.touchIdAuth = false;/' "$config_tmp/config/modules/darwin/security.nix"
           fi

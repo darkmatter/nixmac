@@ -42,6 +42,11 @@ const prepareSshIndex = remote.indexOf('Prepare SSH');
 assert.ok(staleRecheckIndex >= 0, 'remote job must recheck stale queued PR runs');
 assert.ok(prepareSshIndex >= 0, 'remote job must prepare SSH after stale recheck');
 assert.ok(staleRecheckIndex < prepareSshIndex, 'stale recheck must happen before SSH or remote work');
+assert.match(
+  remote,
+  /printf '%s\\n' \/flake\.lock \/result > "\$config_tmp\/config\/\.gitignore"/,
+  'remote disposable config must ignore generated flake.lock and result artifacts before launch',
+);
 
 assert.match(prepare, /Render app artifact setup failure report/, 'prepare must render a setup-failure report when app artifact packaging fails');
 assert.match(result, /setup_failed="\$\{\{ needs\.prepare\.outputs\.setup_failed \}\}"/, 'final result job must observe prepare setup failures');
