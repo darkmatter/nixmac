@@ -99,6 +99,36 @@ e2e_report_write() {
         done < <(find "$E2E_SCREENSHOT_DIR" -type f -name "*.png" | sort)
     fi
 
+    if [ -d "$E2E_DIAGNOSTIC_DIR" ]; then
+        local diagnostics_dest
+        diagnostics_dest="$scenario_dir/diagnostics"
+        mkdir -p "$diagnostics_dest"
+        while IFS= read -r diagnostic; do
+            [ -f "$diagnostic" ] || continue
+            local rel_path dest rel caption
+            rel_path="${diagnostic#$E2E_DIAGNOSTIC_DIR/}"
+            dest="$diagnostics_dest/$rel_path"
+            mkdir -p "$(dirname "$dest")"
+            cp "$diagnostic" "$dest"
+            rel="$scenario/diagnostics/$rel_path"
+            caption="diagnostics/$rel_path"
+            proof_json=$(echo "$proof_json" | jq \
+                --arg path "$rel" \
+                --arg caption "$caption" \
+                '. + [{
+                    kind: "diagnostic",
+                    path: $path,
+                    url: null,
+                    thumbnailUrl: null,
+                    timestampMs: null,
+                    phase: "macos-e2e",
+                    caption: $caption,
+                    isPrimary: false,
+                    isFailureProof: false
+                }]')
+        done < <(find "$E2E_DIAGNOSTIC_DIR" -type f | sort)
+    fi
+
     if [ -f "$E2E_VIDEO_FILE" ]; then
         local video_dest video_rel
         video_dest="$scenario_dir/$(basename "$E2E_VIDEO_FILE")"

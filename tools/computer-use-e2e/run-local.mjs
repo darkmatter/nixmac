@@ -471,6 +471,7 @@ function createInitialState({
       ]),
     ),
     screenshots: [],
+    diagnostics: [],
     narrative: [],
     failures: [],
     claims: [],
@@ -1090,6 +1091,7 @@ function runSelfTest() {
   const missingLocalOnlyKeys = [...LOCAL_ONLY_SCENARIO_KEYS].filter((key) => !scenarioLabels[key]);
   assert.deepEqual(missingLocalOnlyKeys, [], 'LOCAL_ONLY_SCENARIO_KEYS should all be declared in run-local scenarioLabels');
   peekabooRunnerSelfTest({ repoRoot: REPO_ROOT });
+  run('bash', ['tests/e2e/lib/peekaboo.test.sh'], { cwd: REPO_ROOT });
   console.log('Computer Use local runner self-test passed.');
 }
 

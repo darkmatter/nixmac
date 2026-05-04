@@ -9,11 +9,47 @@
 # Resolve peekaboo binary
 PEEKABOO="${PEEKABOO:-$(command -v peekaboo 2>/dev/null || echo "peekaboo")}"
 PEEKABOO_COMMAND_TIMEOUT="${PEEKABOO_COMMAND_TIMEOUT:-15}"
+PEEKABOO_BRIDGE_TIMEOUT="${PEEKABOO_BRIDGE_TIMEOUT:-6}"
 
 # --- Low-level helpers ---
 
 peekaboo_run() {
     run_with_timeout "$PEEKABOO_COMMAND_TIMEOUT" "$PEEKABOO" "$@"
+}
+
+peekaboo_bridge_status_text() {
+    local PEEKABOO_COMMAND_TIMEOUT="$PEEKABOO_BRIDGE_TIMEOUT"
+    peekaboo_run bridge status --verbose 2>&1 || true
+}
+
+peekaboo_bridge_is_remote() {
+    peekaboo_bridge_status_text | grep -qE "Selected: remote (gui|onDemand)"
+}
+
+peekaboo_recover_bridge() {
+    [ "${E2E_PEEKABOO_RECOVER_BRIDGE:-1}" = "1" ] || return 1
+
+    warn "Peekaboo Bridge is not selected remote; restarting Peekaboo.app..."
+    pkill -f "Peekaboo.app/Contents/MacOS/Peekaboo" 2>/dev/null || true
+    sleep 2
+    open -a Peekaboo 2>/dev/null || true
+
+    local retries=0
+    while [ "$retries" -lt 8 ]; do
+        sleep 2
+        if peekaboo_bridge_is_remote; then
+            pass "Peekaboo Bridge recovered"
+            return 0
+        fi
+        retries=$((retries + 1))
+    done
+
+    warn "Peekaboo Bridge recovery did not restore remote mode"
+    return 1
+}
+
+peekaboo_ensure_bridge_remote() {
+    peekaboo_bridge_is_remote || peekaboo_recover_bridge
 }
 
 peekaboo_desktop_dir() {
@@ -72,18 +108,107 @@ peekaboo_latest_desktop_artifact_since() {
         | cut -d' ' -f2-
 }
 
+peekaboo_empty_elements_json() {
+    echo '{"data":{"ui_elements":[],"snapshot_id":""}}'
+}
+
+peekaboo_element_count() {
+    local json="$1"
+    local count
+    count=$(echo "$json" | jq -r '.data.ui_elements | length' 2>/dev/null || echo "0")
+    count="${count//[^0-9]/}"
+    [ -n "$count" ] || count=0
+    echo "$count"
+}
+
+peekaboo_diagnostic_dir() {
+    local root="${E2E_DIAGNOSTIC_DIR:-}"
+    if [ -z "$root" ]; then
+        root="${E2E_ARTIFACT_ROOT:-${E2E_SCREENSHOT_DIR:-/tmp}}/${E2E_SCENARIO_NAME:-unknown}/diagnostics"
+    fi
+    mkdir -p "$root"
+    echo "$root"
+}
+
+peekaboo_capture_app_diagnostics() {
+    local app="$1"
+    local reason="${2:-empty-elements}"
+    [ "${E2E_PEEKABOO_DIAGNOSTICS:-1}" = "1" ] || return 0
+
+    local dir stamp prefix
+    dir=$(peekaboo_diagnostic_dir)
+    stamp=$(date -u +"%Y%m%dT%H%M%SZ")
+    prefix="$dir/${stamp}-${app//[^a-zA-Z0-9._-]/_}-${reason//[^a-zA-Z0-9._-]/_}"
+
+    peekaboo_run bridge status --verbose > "${prefix}-bridge.txt" 2>&1 || true
+    peekaboo_run permissions > "${prefix}-permissions.txt" 2>&1 || true
+    peekaboo_run app list --json > "${prefix}-app-list.json" 2>&1 || true
+    peekaboo_run window list --app "$app" --json > "${prefix}-window-list.json" 2>&1 || true
+    peekaboo_run image --mode screen --path "${prefix}-screen.png" > "${prefix}-screen.txt" 2>&1 || true
+    echo "[diagnostic] Captured Peekaboo diagnostics for $app ($reason): $prefix-*" >> "$E2E_LOG_FILE"
+}
+
+peekaboo_app_pid() {
+    local app="$1"
+    local bundle="${NIXMAC_BUNDLE_ID:-}"
+    local json pid
+    json=$(peekaboo_run app list --json 2>/dev/null || echo '{}')
+    pid=$(echo "$json" | jq -r --arg app "$app" --arg bundle "$bundle" '
+        [
+            .. | objects |
+            select(
+                (.pid? != null) and (
+                    ((.name? // "") == $app) or
+                    ($bundle != "" and ((.bundle_id? // .bundleId? // "") == $bundle))
+                )
+            ) |
+            .pid
+        ][0] // ""
+    ' 2>/dev/null | head -1)
+    echo "$pid"
+}
+
 # Get all UI elements as JSON. Returns fallback JSON on failure.
 peek_elements() {
     local app="${1:-}"
-    local args=""
-    [ -n "$app" ] && args="--app $app"
-    if [ -n "${E2E_PEEKABOO_CAPTURE_DIR:-}" ]; then
+    local args=()
+    [ -n "$app" ] && args=(--app "$app")
+    if [ "${E2E_PEEKABOO_CAPTURE_EVERY_SEE:-0}" = "1" ] && [ -n "${E2E_PEEKABOO_CAPTURE_DIR:-}" ]; then
         mkdir -p "$E2E_PEEKABOO_CAPTURE_DIR"
-        args="$args --path $E2E_PEEKABOO_CAPTURE_DIR/see-$(date +%s)-$$-$RANDOM.png"
+        args+=("--path" "$E2E_PEEKABOO_CAPTURE_DIR/see-$(date +%s)-$$-$RANDOM.png")
     fi
-    # shellcheck disable=SC2086
-    peekaboo_run see $args --json 2>/dev/null \
-        || echo '{"data":{"ui_elements":[],"snapshot_id":""}}'
+
+    local json count pid pid_json pid_count
+    json=$(peekaboo_run see "${args[@]}" --json 2>/dev/null || peekaboo_empty_elements_json)
+
+    if [ -n "$app" ]; then
+        count=$(peekaboo_element_count "$json")
+        if [ "$count" -le 1 ]; then
+            if ! peekaboo_bridge_is_remote && ! peekaboo_recover_bridge >/dev/null; then
+                echo "[diagnostic] E2E_INFRA: Peekaboo Bridge is not selected remote while reading $app" >> "$E2E_LOG_FILE"
+                echo "$json"
+                return 0
+            fi
+            peekaboo_capture_app_diagnostics "$app" "empty-app-scope"
+            pid=$(peekaboo_app_pid "$app")
+            if [ -n "$pid" ]; then
+                local pid_args=(--pid "$pid")
+                if [ "${E2E_PEEKABOO_CAPTURE_EVERY_SEE:-0}" = "1" ] && [ -n "${E2E_PEEKABOO_CAPTURE_DIR:-}" ]; then
+                    mkdir -p "$E2E_PEEKABOO_CAPTURE_DIR"
+                    pid_args+=("--path" "$E2E_PEEKABOO_CAPTURE_DIR/see-pid-$pid-$(date +%s)-$$-$RANDOM.png")
+                fi
+                pid_json=$(peekaboo_run see "${pid_args[@]}" --json 2>/dev/null || peekaboo_empty_elements_json)
+                pid_count=$(peekaboo_element_count "$pid_json")
+                if [ "$pid_count" -gt "$count" ]; then
+                    debug "Peekaboo app-scoped read for $app returned $count element(s); pid $pid returned $pid_count"
+                    echo "$pid_json"
+                    return 0
+                fi
+            fi
+        fi
+    fi
+
+    echo "$json"
 }
 
 # Get snapshot ID from a peek_elements JSON blob
@@ -299,6 +424,8 @@ click_button() {
 # Cancel). Repeats up to max_attempts times with a short pause between
 # each to catch sequential dialogs (e.g. Desktop then Documents access).
 dismiss_dialogs() {
+    [ "${E2E_DIALOG_AUTOMATION:-1}" = "1" ] || return 0
+
     local max_attempts="${1:-5}"
     local i=0
     while [ "$i" -lt "$max_attempts" ]; do
@@ -415,9 +542,9 @@ screen_prevent_lock() {
 # --- Peekaboo preflight ---
 
 peekaboo_check() {
-    if ! peekaboo_run bridge status 2>&1 | grep -qE "remote (gui|onDemand)"; then
+    if ! peekaboo_ensure_bridge_remote; then
         warn "Peekaboo bridge status:"
-        peekaboo_run bridge status 2>&1 || true
+        peekaboo_bridge_status_text || true
         die "Peekaboo Bridge not connected. Ensure Peekaboo.app is running."
     fi
     pass "Peekaboo Bridge connected"

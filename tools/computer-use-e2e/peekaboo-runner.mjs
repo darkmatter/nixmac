@@ -38,6 +38,7 @@ export function buildPeekabooRunPlan({
   const scenarioFile = path.join(e2eRoot, 'scenarios', `${scenario}.sh`);
   const screenshotDir = path.join(runDir, 'screenshots');
   const videoDir = path.join(runDir, 'video');
+  const diagnosticDir = path.join(runDir, 'diagnostics');
   const reportRoot = path.join(runDir, 'e2e-report');
   const logFile = path.join(runDir, 'peekaboo-e2e.log');
   const videoFile = path.join(videoDir, 'peekaboo-e2e.mp4');
@@ -68,6 +69,7 @@ export function buildPeekabooRunPlan({
     scenarioFile,
     screenshotDir,
     videoDir,
+    diagnosticDir,
     reportRoot,
     logFile,
     videoFile,
@@ -78,9 +80,12 @@ export function buildPeekabooRunPlan({
       PATH: `/opt/homebrew/bin:${env.PATH ?? ''}`,
       E2E_SCREENSHOT_DIR: screenshotDir,
       E2E_PEEKABOO_CAPTURE_DIR: path.join(runDir, 'peekaboo-captures'),
+      E2E_DIAGNOSTIC_DIR: diagnosticDir,
       E2E_ARTIFACT_ROOT: reportRoot,
       E2E_LANE: 'peekaboo-local',
       E2E_RUNNER_KIND: 'peekaboo-local',
+      E2E_DIALOG_AUTOMATION: env.E2E_DIALOG_AUTOMATION ?? '1',
+      E2E_PEEKABOO_RECOVER_BRIDGE: env.E2E_PEEKABOO_RECOVER_BRIDGE ?? '1',
       E2E_LOG_FILE: logFile,
       E2E_VIDEO_FILE: videoFile,
       E2E_JSON: '1',
@@ -113,6 +118,30 @@ function artifactEntries(dirPath, runDir) {
     });
 }
 
+function fileEntries(dirPath, runDir, { note = 'Captured by Peekaboo runner.' } = {}) {
+  if (!existsSync(dirPath)) return [];
+  const entries = [];
+  const walk = (current) => {
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const fullPath = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+      } else if (entry.isFile()) {
+        const fileStat = statSync(fullPath);
+        entries.push({
+          label: path.relative(dirPath, fullPath),
+          path: path.relative(runDir, fullPath),
+          capturedAt: new Date(fileStat.mtimeMs).toISOString(),
+          note,
+          bytes: fileStat.size,
+        });
+      }
+    }
+  };
+  walk(dirPath);
+  return entries.sort((a, b) => a.path.localeCompare(b.path));
+}
+
 function reportProofEntries(report, runDir) {
   const proofRoot = path.join(runDir, 'e2e-report');
   return (report?.proof ?? [])
@@ -130,11 +159,59 @@ function reportProofEntries(report, runDir) {
     });
 }
 
+function reportDiagnosticEntries(report, runDir) {
+  const proofRoot = path.join(runDir, 'e2e-report');
+  return (report?.proof ?? [])
+    .filter((entry) => entry.kind === 'diagnostic' && entry.path)
+    .map((entry) => {
+      const fullPath = path.join(proofRoot, entry.path);
+      const fileStat = existsSync(fullPath) ? statSync(fullPath) : null;
+      return {
+        label: entry.caption ?? path.basename(entry.path),
+        path: path.relative(runDir, fullPath),
+        capturedAt: new Date(fileStat?.mtimeMs ?? Date.now()).toISOString(),
+        note: 'Diagnostic artifact from Peekaboo report.',
+        bytes: fileStat?.size ?? 0,
+      };
+    });
+}
+
+export function classifyCodesignOutput(output) {
+  if (!output) return { fatal: false, note: 'codesign did not return output' };
+  const allowed =
+    /code object is not signed at all/i.test(output) ||
+    /valid on disk/i.test(output) ||
+    /satisfies its Designated Requirement/i.test(output) ||
+    /Signature=adhoc/i.test(output) ||
+    /Authority=adhoc/i.test(output);
+  const fatal =
+    /a sealed resource is missing or invalid/i.test(output) ||
+    /invalid signature/i.test(output) ||
+    /code has no resources but signature indicates they must be present/i.test(output) ||
+    /unsealed contents present in the root directory of an embedded framework/i.test(output) ||
+    /resource envelope is obsolete/i.test(output) ||
+    /bundle format unrecognized, invalid, or unsuitable/i.test(output);
+  return {
+    fatal: fatal && !allowed,
+    note: allowed ? 'codesign output is acceptable for a dev/debug bundle' : fatal ? 'codesign output indicates a corrupted app bundle' : 'codesign output is non-fatal but unrecognized',
+  };
+}
+
+function stripAnsi(value) {
+  return String(value ?? '').replace(/\x1B\[[0-9;]*m/g, '');
+}
+
+export function hasInfraFailureMarker(...values) {
+  return values
+    .flatMap((value) => stripAnsi(value).split(/\r?\n/))
+    .some((line) => /^(?:\[[A-Z]+\]\s*)?E2E_INFRA:/.test(line.trim()));
+}
+
 function runPreflight(plan) {
-  const appPath = plan.env.NIXMAC_APP_PATH ?? '/Applications/nixmac.app';
   const script = `
 	set -uo pipefail
 	export PATH="/opt/homebrew/bin:$PATH"
+	app_path="\${NIXMAC_APP_PATH:-/Applications/nixmac.app}"
 	status=0
 	if command -v peekaboo; then
 	  echo "Peekaboo CLI: Found"
@@ -162,11 +239,41 @@ function runPreflight(plan) {
 	    status=1
 	  fi
 	fi
-	if [ -d "${appPath}" ]; then
-	  echo "nixmac app: Found at ${appPath}"
+	if [ -d "$app_path" ]; then
+	  echo "nixmac app: Found at $app_path"
 	else
-	  echo "nixmac app: Missing at ${appPath}" >&2
+	  echo "nixmac app: Missing at $app_path" >&2
 	  status=1
+	fi
+	exec_name=""
+	if [ -f "$app_path/Contents/Info.plist" ]; then
+	  exec_name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app_path/Contents/Info.plist" 2>/dev/null || true)"
+	fi
+	if [ -z "$exec_name" ]; then
+	  exec_name="$(basename "$app_path" .app)"
+	fi
+	if [ -x "$app_path/Contents/MacOS/$exec_name" ]; then
+	  echo "nixmac executable: Found at $app_path/Contents/MacOS/$exec_name"
+	else
+	  echo "nixmac executable: Missing at $app_path/Contents/MacOS/$exec_name" >&2
+	  status=1
+	fi
+	if command -v codesign >/dev/null 2>&1 && [ -d "$app_path" ]; then
+	  codesign_output="$(codesign --verify --deep --strict --verbose=2 "$app_path" 2>&1)"
+	  codesign_status=$?
+	  if [ "$codesign_status" -eq 0 ]; then
+	    echo "nixmac codesign: OK"
+	  else
+	    printf '%s\\n' "$codesign_output"
+	    if printf '%s\\n' "$codesign_output" | grep -qiE 'a sealed resource is missing or invalid|invalid signature|code has no resources but signature indicates they must be present|unsealed contents present in the root directory of an embedded framework|resource envelope is obsolete|bundle format unrecognized, invalid, or unsuitable'; then
+	      echo "nixmac codesign: Fatal"
+	      status=1
+	    elif printf '%s\\n' "$codesign_output" | grep -qiE 'code object is not signed at all|valid on disk|satisfies its Designated Requirement|Signature=adhoc|Authority=adhoc'; then
+	      echo "nixmac codesign: Informational"
+	    else
+	      echo "nixmac codesign: Unrecognized non-fatal output"
+	    fi
+	  fi
 	fi
 	if command -v peekaboo >/dev/null 2>&1; then
 	  peekaboo permissions || status=1
@@ -193,11 +300,22 @@ function runPreflight(plan) {
   const hasPeekaboo = /Peekaboo CLI:\s*Found/i.test(output);
   const hasJq = /jq:\s*Found/i.test(output);
   const hasApp = /nixmac app:\s*Found/i.test(output);
+  const hasExecutable = /nixmac executable:\s*Found/i.test(output);
+  const hasCodesignFatal = /nixmac codesign:\s*Fatal/i.test(output);
   const hasBridge = /Peekaboo Bridge:\s*Connected/i.test(output);
   const hasRecordingTools =
     plan.env.E2E_RECORD !== '1' || (/ffmpeg:\s*Found/i.test(output) && /ffprobe:\s*Found/i.test(output));
   const ok =
-    result.status === 0 && hasPeekaboo && hasJq && hasApp && hasRecordingTools && hasScreenRecording && hasAccessibility && hasBridge;
+    result.status === 0 &&
+    hasPeekaboo &&
+    hasJq &&
+    hasApp &&
+    hasExecutable &&
+    !hasCodesignFatal &&
+    hasRecordingTools &&
+    hasScreenRecording &&
+    hasAccessibility &&
+    hasBridge;
   return {
     ok,
     status: result.status ?? 1,
@@ -211,6 +329,8 @@ function runPreflight(plan) {
       hasJq ? null : 'jq',
       hasRecordingTools ? null : 'ffmpeg/ffprobe',
       hasApp ? null : 'nixmac app',
+      hasExecutable ? null : 'nixmac executable',
+      hasCodesignFatal ? 'nixmac app signature' : null,
       hasBridge ? null : 'Peekaboo Bridge',
     ].filter(Boolean),
   };
@@ -219,6 +339,7 @@ function runPreflight(plan) {
 export async function runPeekabooScenario(plan) {
   await mkdir(plan.screenshotDir, { recursive: true });
   await mkdir(plan.videoDir, { recursive: true });
+  await mkdir(plan.diagnosticDir, { recursive: true });
   await mkdir(plan.reportRoot, { recursive: true });
 
   const stdoutPath = path.join(path.dirname(plan.logFile), 'peekaboo-e2e.stdout.txt');
@@ -248,6 +369,7 @@ export async function runPeekabooScenario(plan) {
         reportFile: null,
         videoFile: null,
         screenshots: [],
+        diagnostics: [],
       },
     };
   }
@@ -268,23 +390,33 @@ export async function runPeekabooScenario(plan) {
     ...artifactEntries(plan.screenshotDir, path.dirname(plan.logFile)),
     ...reportProofEntries(report, path.dirname(plan.logFile)),
   ];
+  const reportDiagnostics = reportDiagnosticEntries(report, path.dirname(plan.logFile));
+  const diagnostics =
+    reportDiagnostics.length > 0
+      ? reportDiagnostics
+      : fileEntries(plan.diagnosticDir, path.dirname(plan.logFile), { note: 'Peekaboo diagnostic artifact.' });
   const videoExists = existsSync(plan.videoFile);
   const reportVideoPath = report?.proof?.find((entry) => entry.kind === 'video' && entry.path)?.path;
   const reportVideoFile = reportVideoPath ? path.join(plan.reportRoot, reportVideoPath) : null;
   const hasEvidence = Boolean(results || report);
+  const logOutput = existsSync(plan.logFile) ? readFileSync(plan.logFile, 'utf8') : '';
+  const phaseErrors = (report?.phases ?? []).map((phase) => phase.error ?? '').join('\n');
+  const infraFailure =
+    report?.status === 'infra_failed' || hasInfraFailureMarker(result.stdout, result.stderr, logOutput, phaseErrors);
 
   return {
     scenario: plan.scenario,
     success:
       result.status === 0 &&
       hasEvidence &&
+      !infraFailure &&
       results?.success !== false &&
       report?.status !== 'failed' &&
       report?.status !== 'infra_failed',
     status: result.status ?? 1,
     signal: result.signal ?? null,
     error: result.error ? String(result.error) : '',
-    infraFailure: report?.status === 'infra_failed',
+    infraFailure,
     results,
     report,
     artifacts: {
@@ -300,6 +432,7 @@ export async function runPeekabooScenario(plan) {
           ? path.relative(path.dirname(plan.logFile), reportVideoFile)
           : null,
       screenshots,
+      diagnostics,
     },
   };
 }
@@ -375,6 +508,8 @@ export function applyPeekabooResultToState(state, peekabooResult) {
   }
 
   state.screenshots.push(...peekabooResult.artifacts.screenshots);
+  state.diagnostics ??= [];
+  state.diagnostics.push(...(peekabooResult.artifacts.diagnostics ?? []));
   state.video = peekabooResult.artifacts.videoFile
     ? { path: peekabooResult.artifacts.videoFile, label: 'Peekaboo screen recording' }
     : state.video;
@@ -412,7 +547,23 @@ export function peekabooRunnerSelfTest({ repoRoot }) {
   assert.equal(plan.reportFile.endsWith(`${DEFAULT_PEEKABOO_SCENARIO}/e2e-report.json`), true, 'report path lives under runDir');
   assert.equal(plan.env.E2E_CLEANUP_NIX, '0', 'Peekaboo local Product Proof runs should not uninstall Nix by default');
   assert.equal(plan.env.E2E_ARTIFACT_ROOT.endsWith('/e2e-report'), true, 'report root is scoped to runDir');
+  assert.equal(plan.env.E2E_DIAGNOSTIC_DIR.endsWith('/diagnostics'), true, 'diagnostics should survive runner cleanup outside transient capture dir');
+  assert.equal(plan.env.E2E_DIALOG_AUTOMATION, '1', 'Peekaboo local lane preserves first-launch dialog automation by default');
+  assert.equal(plan.env.E2E_PEEKABOO_RECOVER_BRIDGE, '1', 'Peekaboo local lane should recover a degraded bridge by default');
   assert.deepEqual(plan.args.slice(1), [DEFAULT_PEEKABOO_SCENARIO, '--json', '--no-record', '--no-cleanup']);
+
+  assert.equal(
+    classifyCodesignOutput('nixmac.app: code object is not signed at all').fatal,
+    false,
+    'unsigned debug bundles should not be rejected by preflight',
+  );
+  assert.equal(
+    classifyCodesignOutput('nixmac.app: a sealed resource is missing or invalid').fatal,
+    true,
+    'corrupted sealed-resource bundles should fail preflight',
+  );
+  assert.equal(hasInfraFailureMarker('[FAIL] E2E_INFRA: AX tree unavailable'), true, 'infra marker should be recognized from runner logs');
+  assert.equal(hasInfraFailureMarker('App text mentions E2E_INFRA: inside a sentence'), false, 'infra marker should be line anchored');
 
   assert.throws(
     () =>
@@ -453,6 +604,7 @@ export function peekabooRunnerSelfTest({ repoRoot }) {
       resultsFile: null,
       reportFile: `e2e-report/${DEFAULT_PEEKABOO_SCENARIO}/e2e-report.json`,
       screenshots: [],
+      diagnostics: [],
       videoFile: null,
     },
   });
@@ -484,6 +636,7 @@ export function peekabooRunnerSelfTest({ repoRoot }) {
       resultsFile: null,
       reportFile: null,
       screenshots: [],
+      diagnostics: [],
       videoFile: null,
     },
   });

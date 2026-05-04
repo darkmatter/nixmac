@@ -175,7 +175,7 @@ scenario_test() {
         nixmac_screenshot "missing-descriptor-prompt"
         die "Descriptor prompt screen did not become visible"
     fi
-    scenario_click_element "evolve-prompt-input|Configuration change descriptor" "textField" \
+    scenario_click_element "evolve-prompt-input|Configuration change descriptor|Describe changes to make to your configuration" "textField" \
         || die "Descriptor prompt input was not reachable by accessibility metadata"
     phase_pass "Descriptor prompt input reached"
 
@@ -194,7 +194,7 @@ scenario_test() {
         nixmac_screenshot "provider-validation-missing"
         die "Expected local provider-validation message was not visible"
     fi
-    if ! scenario_find_element "evolve-prompt-send|Submit configuration change descriptor" "" 10 >/dev/null; then
+    if ! scenario_find_element "evolve-prompt-send|Submit configuration change descriptor|Send" "button" 10 >/dev/null; then
         nixmac_screenshot "submit-target-missing"
         die "Submit target was not reachable by accessibility metadata"
     fi

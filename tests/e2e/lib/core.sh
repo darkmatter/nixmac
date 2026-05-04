@@ -11,6 +11,7 @@ export E2E_ROOT="${E2E_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 export E2E_LIB="$E2E_ROOT/lib"
 export E2E_SCREENSHOT_DIR="${E2E_SCREENSHOT_DIR:-/tmp/e2e-screenshots}"
 export E2E_PEEKABOO_CAPTURE_DIR="${E2E_PEEKABOO_CAPTURE_DIR:-/tmp/e2e-peekaboo-captures}"
+export E2E_DIAGNOSTIC_DIR="${E2E_DIAGNOSTIC_DIR:-/tmp/e2e-diagnostics}"
 export E2E_LOG_FILE="${E2E_LOG_FILE:-/tmp/e2e-test.log}"
 export E2E_VIDEO_FILE="${E2E_VIDEO_FILE:-/tmp/e2e-recording.mp4}"
 
@@ -44,8 +45,10 @@ run_with_timeout() {
     (
         sleep "$seconds"
         if kill -0 "$command_pid" 2>/dev/null; then
+            pkill -TERM -P "$command_pid" 2>/dev/null || true
             kill "$command_pid" 2>/dev/null || true
             sleep 2
+            pkill -KILL -P "$command_pid" 2>/dev/null || true
             kill -9 "$command_pid" 2>/dev/null || true
         fi
     ) &
@@ -57,6 +60,7 @@ run_with_timeout() {
         status=$?
     fi
 
+    pkill -TERM -P "$watchdog_pid" 2>/dev/null || true
     kill "$watchdog_pid" 2>/dev/null || true
     wait "$watchdog_pid" 2>/dev/null || true
 
@@ -110,7 +114,9 @@ die() {
         _E2E_PHASE_RESULTS+=("FAIL|$_E2E_PHASE_NUM|$msg")
     fi
     fail "$msg"
-    screenshot "failure-$(date +%s)" 2>/dev/null || true
+    if ! echo "$msg" | grep -q '^E2E_INFRA:'; then
+        screenshot "failure-$(date +%s)" 2>/dev/null || true
+    fi
     # Let the runner's trap handle cleanup
     exit 1
 }
@@ -278,8 +284,10 @@ results_json() {
 _e2e_init() {
     _E2E_START_TIME=$(date +%s)
     rm -rf "$E2E_PEEKABOO_CAPTURE_DIR"
+    rm -rf "$E2E_DIAGNOSTIC_DIR"
     mkdir -p "$E2E_SCREENSHOT_DIR"
     mkdir -p "$E2E_PEEKABOO_CAPTURE_DIR"
+    mkdir -p "$E2E_DIAGNOSTIC_DIR"
     echo "" > "$E2E_LOG_FILE"
     log "=== macos-e2e test runner ==="
     log "Started at $(date)"

@@ -103,9 +103,11 @@ nixmac_launch() {
     peekaboo_run app switch --to "$NIXMAC_APP_NAME" 2>/dev/null || true
     sleep 1
     
-    # Verify we can see the window
+    # Verify we can see the window. AX trees can lag app launch on remote
+    # runners, so keep process liveness separate from UI observability.
     local retries=0
-    while [ $retries -lt 5 ]; do
+    local max_retries="${NIXMAC_LAUNCH_VISIBILITY_RETRIES:-20}"
+    while [ $retries -lt "$max_retries" ]; do
         # Re-check process is alive (may have crashed after initial launch)
         if ! app_is_running "$NIXMAC_APP_NAME"; then
             die "nixmac process died during window wait (crash after launch)"
@@ -125,13 +127,22 @@ nixmac_launch() {
             debug "nixmac window visible ($count elements)"
             return 0
         fi
-        debug "Window not visible yet, retrying... ($retries)"
+        if ! peekaboo_bridge_is_remote; then
+            if peekaboo_recover_bridge; then
+                peekaboo_run app switch --to "$NIXMAC_APP_NAME" 2>/dev/null || true
+                sleep 1
+                retries=$((retries + 1))
+                continue
+            fi
+            die "E2E_INFRA: Peekaboo Bridge degraded before nixmac UI was observable"
+        fi
+        debug "Window not observable yet, retrying... ($retries)"
         peekaboo_run app switch --to "$NIXMAC_APP_NAME" 2>/dev/null || true
         sleep 3
         retries=$((retries + 1))
     done
     
-    die "nixmac window not visible after 15s (app is running but UI did not render)"
+    die "E2E_INFRA: nixmac process is running but Peekaboo could not observe app UI after $((max_retries * 3))s"
 }
 
 nixmac_quit() {
