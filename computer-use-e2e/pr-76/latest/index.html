@@ -1,0 +1,934 @@
+<!doctype html>
+<html lang="en">
+<head>
+<base href="https://cdn.jsdelivr.net/gh/darkmatter/nixmac@gh-pages/computer-use-e2e/pr-76/run-25299523542-1/">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>nixmac Computer Use E2E Evidence</title>
+  <style>
+    :root { color-scheme: light dark; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; background: #111318; color: #eef1f5; }
+    main { max-width: 1460px; margin: 0 auto; padding: 32px 20px 56px; }
+    h1, h2, h3 { margin: 0 0 12px; }
+    h1 { font-size: 28px; letter-spacing: 0; }
+    html { scroll-behavior: smooth; }
+    h2 { font-size: 18px; margin-top: 30px; letter-spacing: 0; }
+    h2[id], .anchor-alias { scroll-margin-top: 18px; }
+    h3 { font-size: 15px; margin-top: 18px; color: #f6f8fb; letter-spacing: 0; }
+    p, li { color: #c5cbd3; line-height: 1.5; }
+    .lede { max-width: 850px; color: #d9dee6; }
+    .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+    .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 18px 0; }
+    .panel { border: 1px solid #303640; border-radius: 8px; padding: 14px; background: #171a21; overflow-wrap: anywhere; }
+    .metadata-grid .panel { overflow-x: auto; }
+    .report-shell { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 22px; align-items: start; margin-top: 22px; }
+    .report-nav { position: sticky; top: 14px; display: grid; gap: 8px; padding: 12px; border: 1px solid #303640; border-radius: 8px; background: rgba(17, 19, 24, 0.96); backdrop-filter: blur(8px); }
+    .report-nav a, .summary-links a { border: 1px solid #3c4654; border-radius: 999px; padding: 7px 10px; color: #dce3ec; text-decoration: none; font-size: 13px; line-height: 1.15; background: #171a21; }
+    .report-nav a:hover, .summary-links a:hover { border-color: #7fbfff; color: #a7d7ff; }
+    .report-content { min-width: 0; }
+    .warning { color: #ffd36e; }
+    .metric { border: 1px solid #303640; border-radius: 8px; padding: 14px; background: #171a21; }
+    .metric strong { display: block; font-size: 28px; color: #fff; margin-bottom: 4px; }
+    .executive { border-color: #3c4654; background: #151922; }
+    .signal-grid, .quality-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; margin: 16px 0; }
+    .signal { border: 1px solid #303640; border-radius: 8px; padding: 10px; background: #111318; }
+    .signal strong { display: block; margin: 8px 0 4px; }
+    .summary-links { display: flex; flex-wrap: wrap; gap: 8px; }
+    .nav-badge { display: inline-flex; align-items: center; justify-content: center; border: 1px solid #3c4654; border-radius: 999px; padding: 2px 6px; margin-left: 4px; font-size: 11px; color: #dce3ec; background: #20242d; }
+    .verdict { display: inline-block; border-radius: 999px; padding: 5px 10px; font-weight: 700; text-transform: uppercase; }
+    .pass { background: #123d2a; color: #8bf0bb; }
+    .fail { background: #471a1a; color: #ff9e9e; }
+    .inconclusive { background: #443512; color: #ffd36e; }
+    .group { margin-top: 18px; }
+    table { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 8px; }
+    .table-scroll { width: 100%; overflow-x: auto; border-radius: 8px; }
+    .scenario-table { min-width: 1050px; table-layout: fixed; }
+    th, td { border: 1px solid #303640; padding: 10px; text-align: left; vertical-align: top; }
+    th { background: #20242d; }
+    .scenario-table th { white-space: nowrap; }
+    .scenario-table .scenario-col { width: 30%; }
+    .scenario-table .status-col { width: 92px; }
+    .scenario-table .grade-col { width: 138px; }
+    .scenario-table .artifacts-col { width: 190px; }
+    .scenario-table .proof-col { width: 29%; }
+    .scenario-table .untested-col { width: 20%; }
+    img { width: 100%; max-width: 100%; border: 1px solid #303640; border-radius: 8px; background: #000; }
+    small { color: #9ba3ae; }
+    pre { max-height: 280px; overflow: auto; white-space: pre-wrap; border: 1px solid #303640; border-radius: 8px; padding: 10px; background: #0d0f14; color: #dce3ec; }
+    details { margin: 10px 0; }
+    summary { cursor: pointer; color: #a7d7ff; }
+    details > summary { font-weight: 700; margin: 12px 0; }
+    .grade { display: inline-flex; align-items: center; justify-content: center; border: 1px solid #3c4654; border-radius: 999px; padding: 4px 8px; color: #dce3ec; background: #20242d; font-size: 12px; line-height: 1.15; white-space: nowrap; }
+    .verdict { white-space: nowrap; text-align: center; }
+    .scenario-table .status-cell { width: 92px; min-width: 92px; text-align: center; }
+    .scenario-table .grade-cell { width: 138px; min-width: 138px; text-align: center; }
+    .scenario-table .status-cell .verdict { min-width: 54px; padding-left: 8px; padding-right: 8px; }
+    .strength, .risk, .failure-class { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; padding: 4px 8px; font-size: 12px; line-height: 1.15; font-weight: 700; white-space: nowrap; }
+    .strength { margin-top: 6px; border: 1px solid #3c4654; background: #20242d; color: #dce3ec; }
+    .strength-strong { background: #103829; color: #8bf0bb; border-color: #236b4c; }
+    .strength-operational { background: #173247; color: #a7d7ff; border-color: #315f82; }
+    .strength-visual-supported { background: #342f18; color: #ffe08a; border-color: #66592a; }
+    .strength-weak, .risk-high { background: #471a1a; color: #ffb0b0; border-color: #744; }
+    .strength-not-proved, .risk-medium { background: #443512; color: #ffd36e; border-color: #705c22; }
+    .risk-low { background: #123d2a; color: #8bf0bb; border-color: #236b4c; }
+    .failure-class { background: #20242d; color: #dce3ec; border: 1px solid #3c4654; }
+    .artifact-list { max-height: 230px; overflow: auto; padding-right: 4px; }
+    .priority table { margin-bottom: 18px; }
+    .proof-card { margin-top: 18px; border: 1px solid #303640; border-radius: 8px; padding: 14px; background: #151922; }
+    .annotated-shot { position: relative; overflow: hidden; border: 1px solid #303640; border-radius: 8px; background: #000; }
+    .annotated-shot img { display: block; border: 0; border-radius: 0; }
+    .annotation { position: absolute; box-sizing: border-box; border: 1.5px solid rgba(255, 214, 94, 0.95); border-radius: 5px; background: rgba(255, 214, 94, 0.10); box-shadow: inset 0 0 0 1px rgba(20, 19, 13, 0.35), 0 8px 24px rgba(0,0,0,0.28); pointer-events: none; }
+    .annotation::after { content: ""; position: absolute; inset: -4px; border: 1px solid rgba(255, 214, 94, 0.28); border-radius: 8px; }
+    .annotation span { position: absolute; left: 6px; top: 6px; max-width: min(260px, calc(100% - 12px)); border-radius: 4px; padding: 3px 6px; background: rgba(255, 214, 94, 0.95); color: #111318; font-size: 12px; line-height: 1.15; font-weight: 700; white-space: normal; box-shadow: 0 2px 8px rgba(0,0,0,0.22); }
+    .annotation-pin { border-radius: 999px; }
+    .annotation-pin::after { border-radius: 999px; inset: -5px; }
+    .annotation-pin span { left: 50%; top: -28px; transform: translateX(-50%); white-space: nowrap; max-width: none; }
+    .anchor-alias { display: block; height: 0; overflow: hidden; }
+    .summary-video { margin: 24px 0; display: grid; grid-template-columns: minmax(220px, 0.42fr) minmax(360px, 1fr); gap: 18px; align-items: start; padding: 16px; border: 1px solid #2e3541; border-radius: 8px; background: #10131a; }
+    .summary-video-copy strong { display: block; margin-bottom: 6px; }
+    .summary-video-copy small { color: #b8c0cb; line-height: 1.45; }
+    .summary-video video { width: 100%; max-height: 520px; border: 1px solid #2e3541; border-radius: 6px; background: #050609; }
+    .summary-video-unavailable { display: block; }
+    .evidence-pack { margin: -8px 0 22px; display: grid; grid-template-columns: minmax(220px, 0.42fr) minmax(360px, 1fr); gap: 18px; align-items: stretch; padding: 14px 16px; border: 1px solid #2e3541; border-radius: 8px; background: #10131a; }
+    .evidence-pack-copy strong { display: block; margin-bottom: 6px; }
+    .evidence-pack-copy small { color: #b8c0cb; line-height: 1.45; }
+    .evidence-pack-grid { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 10px; }
+    .evidence-pack-grid a { display: block; min-height: 86px; border: 1px solid #303640; border-radius: 8px; padding: 10px; background: #151922; color: #dce3ec; text-decoration: none; }
+    .evidence-pack-grid a:hover { border-color: #7fbfff; }
+    .evidence-pack-grid strong { display: block; color: #fff; font-size: 20px; line-height: 1.1; margin-bottom: 6px; }
+    .evidence-pack-grid span { display: block; color: #f6f8fb; font-weight: 700; margin-bottom: 4px; }
+    .evidence-pack-grid small { display: block; color: #9ba3ae; line-height: 1.35; }
+    figure { margin: 0 0 18px; }
+    figcaption { margin-top: 6px; color: #c5cbd3; font-size: 13px; }
+    code { color: #a7d7ff; overflow-wrap: anywhere; }
+    ul { padding-left: 20px; }
+    @media (max-width: 860px) {
+      main { padding: 24px 12px 44px; }
+      .report-shell { display: block; }
+      .report-nav { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: nowrap; overflow-x: auto; margin: 18px 0; }
+      .report-nav a { white-space: nowrap; }
+      .summary-video, .evidence-pack { grid-template-columns: 1fr; }
+      .evidence-pack-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>nixmac Computer Use E2E Evidence</h1>
+  <p class="lede">Remote desktop QA driven through Codex Computer Use against the real macOS app. The report summarizes major feature coverage, functional UX/UI checks, screenshots, redacted text evidence, and remote machine metadata.</p>
+  <p><span class="verdict inconclusive">Verdict: inconclusive</span></p>
+
+  <section id="summary" class="executive panel">
+    <div>
+      <h2>Review Summary</h2>
+      <p>The run is inconclusive; inspect setup, provider, and coverage notes before relying on it.</p>
+      <p><strong>PR 76 - fix(updater): allow non https url</strong><br><small>Head: <code>4e9faa7e</code></small></p>
+    </div>
+    <div class="summary" aria-label="Run summary">
+      <div class="metric"><strong>0</strong>Passed</div>
+      <div class="metric"><strong>0</strong>Failed</div>
+      <div class="metric"><strong>26</strong>Inconclusive</div>
+      <div class="metric"><strong>0</strong>Screenshots</div>
+    </div>
+    <div id="summary-video" class="summary-video summary-video-unavailable">
+    <div class="summary-video-copy">
+      <strong>Evidence video unavailable</strong>
+      <small>No safe-to-store screenshot frames were available for the evidence video.</small>
+    </div>
+  </div>
+  <div id="evidence-pack" class="evidence-pack" aria-label="Evidence pack">
+    <div class="evidence-pack-copy">
+      <strong>Evidence pack</strong>
+      <small>Concise proof bundle behind the verdict: redacted text, action events, remote state, and screenshot assertions.</small>
+    </div>
+    <div class="evidence-pack-grid">
+      <a href="#raw-evidence"><strong>0</strong><span>Text snapshots</span><small>Redacted accessibility state for each major action.</small></a>
+      <a href="#scenario-checklist"><strong>0</strong><span>Action events</span><small>Click, type, polling, save, and cleanup trail.</small></a>
+      <a href="#visual-assertions"><strong>0</strong><span>Visual assertions</span><small>Binding screenshot signal checks.</small></a>
+      <a href="#remote-metadata"><strong>DXU</strong><span>Remote state</span><small>Machine, app, process, and git metadata.</small></a>
+    </div>
+  </div>
+    <div class="signal-grid">
+      <div class="signal signal-inconclusive">
+    <span class="verdict inconclusive">inconclusive</span>
+    <strong>PR focus</strong>
+    <small>Mapped PR-relevant scenarios were evaluated.</small>
+  </div>
+      <div class="signal signal-inconclusive">
+    <span class="verdict inconclusive">inconclusive</span>
+    <strong>Coverage freshness</strong>
+    <small>Main user-visible surfaces remain mapped or explicitly waived.</small>
+  </div>
+      <div class="signal signal-inconclusive">
+    <span class="verdict inconclusive">inconclusive</span>
+    <strong>Step 3 save</strong>
+    <small>Disposable config change persisted through the save path.</small>
+  </div>
+      <div class="signal signal-inconclusive">
+    <span class="verdict inconclusive">inconclusive</span>
+    <strong>Rollback cleanup</strong>
+    <small>History rollback returned the disposable config to baseline.</small>
+  </div>
+      <div class="signal signal-inconclusive">
+    <span class="verdict inconclusive">inconclusive</span>
+    <strong>Remote metadata</strong>
+    <small>DXU machine, app, and process metadata were captured.</small>
+  </div>
+    </div>
+    <p class="summary-links">
+      <a href="#pull-request-focus">Review PR Focus</a>
+      <a href="#findings-first">Inspect Findings</a>
+      <a href="#visual-proof">Open Visual Proof</a>
+      <a href="#remote-metadata">Check Remote Metadata</a>
+    </p>
+    <p><small>Evidence footprint: 0 screenshots, 0 redacted text snapshots.</small></p>
+  </section>
+
+  <div class="report-shell">
+    <aside class="report-nav" aria-label="Report navigation">
+    <a href="#summary">Summary</a>
+    <a href="#pull-request-focus">PR Focus <span class="nav-badge ">0</span></a>
+    <a href="#findings-first">Findings <span class="nav-badge inconclusive">26</span></a>
+    <a href="#evidence-quality">Evidence Quality <span class="nav-badge ">11</span></a>
+    <a href="#visual-assertions">Visual Assertions <span class="nav-badge ">0</span></a>
+    <a href="#summary-video">Evidence Video <span class="nav-badge ">off</span></a>
+    <a href="#visual-proof">Visual Proof <span class="nav-badge ">0</span></a>
+    <a href="#scenario-checklist">Scenario Checklist</a>
+    <a href="#main-coverage">Coverage</a>
+    <a href="#remote-metadata">Remote Metadata</a>
+    <a href="#raw-evidence">Raw Evidence</a>
+    <a href="#cleanup">Cleanup</a>
+  </aside>
+    <div class="report-content">
+      <h2 id="pull-request-focus">Pull Request Focus</h2>
+  <section class="panel">
+    <p><strong>PR:</strong> 76 - fix(updater): allow non https url</p>
+    <p><strong>Refs:</strong> main ← fix/updater-pin-localhost-https</p>
+    <h3>User-Visible Focus Candidates</h3>
+    <ul><li><code>apps/native/src-tauri/src/updater_pin.rs</code></li>
+<li><code>apps/native/src-tauri/tauri.conf.json</code></li></ul>
+    <h3>Mapped Scenario Focus</h3>
+    <ul><li>No dedicated scenario mapping inferred from changed files.</li></ul>
+    <details>
+      <summary>Full changed-file list (2)</summary>
+      <ul><li><code>apps/native/src-tauri/src/updater_pin.rs</code></li>
+<li><code>apps/native/src-tauri/tauri.conf.json</code></li></ul>
+    </details>
+  </section>
+  <section class="panel">
+    <h3>PR-Relevant Evidence</h3>
+    <div class="table-scroll"><table class="scenario-table">
+      <thead><tr><th class="scenario-col">Scenario</th><th class="status-col">Status</th><th class="grade-col">Evidence Grade</th><th class="artifacts-col">Primary Artifacts</th><th class="proof-col">What Proved It</th></tr></thead>
+      <tbody><tr><td class="scenario-cell">PR-specific user-visible behavior is covered when applicable<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">not-run</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Requires PR metadata and changed-file/user-visible focus input.<br><small>Failure class: remote_infra</small></td></tr></tbody>
+    </table></div>
+  </section>
+
+      <h2 id="findings-first">Findings</h2>
+      <p>Failures are shown first, then inconclusive checks. Passing checks stay collapsed unless a reviewer wants the full inventory.</p>
+      <section class="priority">
+    <h3>Failures</h3>
+    <div class="table-scroll"><table class="scenario-table">
+    <thead><tr><th class="scenario-col">Scenario</th><th class="status-col">Status</th><th class="grade-col">Evidence Grade</th><th class="artifacts-col">Primary Artifacts</th><th class="proof-col">What Proved It / Why It Matters</th></tr></thead>
+    <tbody><tr><td colspan="5">None.</td></tr></tbody>
+  </table></div>
+    <h3>Inconclusive</h3>
+    <div class="table-scroll"><table class="scenario-table">
+    <thead><tr><th class="scenario-col">Scenario</th><th class="status-col">Status</th><th class="grade-col">Evidence Grade</th><th class="artifacts-col">Primary Artifacts</th><th class="proof-col">What Proved It / Why It Matters</th></tr></thead>
+    <tbody><tr><td class="scenario-cell">App launches and first screen is usable<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Accessibility text shows the nixmac window, Settings/History/Feedback controls, stepper, prompt text area, and disabled Send button.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">Update banner does not block the main workflow<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">text-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Runner checks for a visible Dismiss button. If present, it dismisses it; if absent, it proves no update banner blocked the initial UI.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">Settings General tab visibly renders<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Computer Use clicked Settings and captured the General tab content.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">Settings AI Models tab visibly renders<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Computer Use opened AI Models and captured provider/model/build controls.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">Settings API Keys tab visibly renders<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">text-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">API Keys screenshot is captured only when raw accessibility text confirms no unmasked key-like secret is present; redacted text must show API Keys/OpenRouter/API-key controls.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">Settings Preferences tab visibly renders<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Computer Use opened Preferences and captured confirmation controls.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">My History opens and renders<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Computer Use opened History and captured a visible history/empty state.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">Console opens and renders<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">text-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Sensitive screenshot omitted; redacted accessibility text must show Console/log content.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">Give Feedback opens and can be cancelled<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Computer Use opened and cancelled the feedback dialog.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">Report Issue opens and can be cancelled<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Computer Use opened and cancelled the report issue dialog.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">Home suggestion cards are visible/clickable<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Computer Use found and clicked a suggestion card; the UI stayed usable afterward.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">Untracked macOS customizations can be saved and rolled back<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">When the untracked customizations chip is visible, Computer Use adds it to config, confirms Build &amp; Test, commits Step 3, then restores the disposable baseline and verifies the remote git tree is clean.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">Untracked Homebrew items can be saved and rolled back<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">When the untracked Homebrew chip is visible, Computer Use adds it to config, confirms Build &amp; Test, commits Step 3, then restores the disposable baseline and verifies the remote git tree is clean.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">A typed real intent can be submitted<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Prompt text appears in the Computer Use state after set_value.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">Real provider workflow reaches Review<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Polling reached Review-equivalent UI with Build &amp; Test/Discard/Summary/Diff controls.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">Summary tab renders after intent review<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">text-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Summary text must mention the requested package/change domain.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">Diff tab renders after intent review<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">text-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Diff view must expose the candidate Homebrew config file or requested package/change.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">Build &amp; Test destructive boundary appears before activation<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Build &amp; Test opens a confirmation dialog before activation; disposable runs confirm it and wait for Step 3.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">Step 3 Save / Keep changes persists a change<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">In disposable build-confirm mode, Computer Use reaches Step 3, clicks Commit, and the runner verifies the disposable repo HEAD changed with a clean worktree.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">Rollback cleanup returns disposable config to clean state<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">After Save, Computer Use opens History, restores the pre-test baseline commit, and the runner verifies HEAD returned to that baseline with a clean worktree.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">Discard confirmation is guarded and only confirmed in disposable state<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">guardrail-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Discard opens a confirmation boundary when used. In full-lifecycle runs, the stronger History restore cleanup path can supersede Discard and is proven by rollback artifacts.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">Core UX/UI surfaces are captured and inspectable<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">text-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Required core UI surfaces have screenshot and text artifacts.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">Scenario results include inspectable visual/text evidence<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">text-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Every passing scenario must have linked proof artifacts, and required non-sensitive screenshots must pass deterministic visual signal checks.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">Main branch user-visible coverage stays mapped<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">manifest-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">A repo-local coverage manifest maps major user-visible surfaces on main to Computer Use scenarios or explicit waivers, and the runner scans for unmapped candidate files.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">PR-specific user-visible behavior is covered when applicable<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">not-run</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Requires PR metadata and changed-file/user-visible focus input.<br><small>Failure class: remote_infra</small></td></tr>
+<tr><td class="scenario-cell">Generated HTML report is inspected with Computer Use<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Computer Use opens the generated report on the remote Mac and sees report sections.<br><small>Failure class: remote_infra</small></td></tr></tbody>
+  </table></div>
+    <details>
+      <summary>Passing Checks (0)</summary>
+      <div class="table-scroll"><table class="scenario-table">
+    <thead><tr><th class="scenario-col">Scenario</th><th class="status-col">Status</th><th class="grade-col">Evidence Grade</th><th class="artifacts-col">Primary Artifacts</th><th class="proof-col">What Proved It / Why It Matters</th></tr></thead>
+    <tbody><tr><td colspan="5">None.</td></tr></tbody>
+  </table></div>
+    </details>
+  </section>
+
+      <h2 id="evidence-quality">Evidence Quality</h2>
+  <section class="panel">
+    <span id="v2-evidence-model" class="anchor-alias"></span>
+    <span id="accessibility-risk" class="anchor-alias"></span>
+    <span id="failure-taxonomy" class="anchor-alias"></span>
+    <span id="confirmation-boundaries" class="anchor-alias"></span>
+    <p><strong>Deterministic verdict remains source of truth.</strong> Evidence strength and assertion risk explain how much independent proof backs each scenario. Safe-to-store screenshots are binding corroborating evidence: missing, blank, occluded, or low-signal required screenshots can fail their owning scenario.</p>
+    <h3 id="visual-assertions">Visual Assertion Results</h3>
+    <p>No binding screenshot visual assertions were evaluated for this run.</p>
+    <div class="quality-grid">
+      <div>
+        <h3>Evidence Strength</h3>
+        <table><thead><tr><th>Strength</th><th>Count</th></tr></thead><tbody><tr><td><span class="strength strength-strong">strong</span></td><td>0</td></tr>
+<tr><td><span class="strength strength-operational">operational</span></td><td>0</td></tr>
+<tr><td><span class="strength strength-visual-supported">visual-supported</span></td><td>0</td></tr>
+<tr><td><span class="strength strength-weak">weak</span></td><td>0</td></tr>
+<tr><td><span class="strength strength-not-proved">not-proved</span></td><td>26</td></tr></tbody></table>
+      </div>
+      <div>
+        <h3>Elevated Assertion Risk</h3>
+        <table><thead><tr><th>Scenario</th><th>Risk</th><th>Why</th></tr></thead><tbody><tr>
+              <td>Update banner does not block the main workflow<br><small>accessibility_text, action_result, visual_heuristic</small></td>
+              <td><span class="risk risk-medium">medium</span></td>
+              <td>Accessibility text is the semantic assertion source without binding screenshot checks.</td>
+            </tr>
+<tr>
+              <td>Settings API Keys tab visibly renders<br><small>accessibility_text, sensitive_redaction, visual_heuristic</small></td>
+              <td><span class="risk risk-medium">medium</span></td>
+              <td>Accessibility text is the semantic assertion source without binding screenshot checks.</td>
+            </tr>
+<tr>
+              <td>Console opens and renders<br><small>accessibility_text, sensitive_redaction</small></td>
+              <td><span class="risk risk-medium">medium</span></td>
+              <td>Accessibility text is the semantic assertion source without binding screenshot checks.</td>
+            </tr>
+<tr>
+              <td>Untracked macOS customizations can be saved and rolled back<br><small>accessibility_text, action_result, remote_state, visual_heuristic</small></td>
+              <td><span class="risk risk-medium">medium</span></td>
+              <td>The claim has non-UI state or manifest proof in addition to UI evidence.</td>
+            </tr>
+<tr>
+              <td>Untracked Homebrew items can be saved and rolled back<br><small>accessibility_text, action_result, remote_state, visual_heuristic</small></td>
+              <td><span class="risk risk-medium">medium</span></td>
+              <td>The claim has non-UI state or manifest proof in addition to UI evidence.</td>
+            </tr>
+<tr>
+              <td>Step 3 Save / Keep changes persists a change<br><small>accessibility_text, action_result, remote_state, visual_heuristic, visual_signalstats</small></td>
+              <td><span class="risk risk-medium">medium</span></td>
+              <td>The claim has non-UI state or manifest proof in addition to UI evidence.</td>
+            </tr>
+<tr>
+              <td>Rollback cleanup returns disposable config to clean state<br><small>accessibility_text, action_result, remote_state, visual_heuristic, visual_signalstats</small></td>
+              <td><span class="risk risk-medium">medium</span></td>
+              <td>The claim has non-UI state or manifest proof in addition to UI evidence.</td>
+            </tr>
+<tr>
+              <td>Discard confirmation is guarded and only confirmed in disposable state<br><small>accessibility_text, action_result, confirmation_boundary, visual_heuristic</small></td>
+              <td><span class="risk risk-medium">medium</span></td>
+              <td>Accessibility text is the semantic assertion source without binding screenshot checks.</td>
+            </tr>
+<tr>
+              <td>Core UX/UI surfaces are captured and inspectable<br><small>artifact_quality, accessibility_text, visual_heuristic</small></td>
+              <td><span class="risk risk-medium">medium</span></td>
+              <td>Accessibility text is the semantic assertion source without binding screenshot checks.</td>
+            </tr>
+<tr>
+              <td>Main branch user-visible coverage stays mapped<br><small>coverage_manifest</small></td>
+              <td><span class="risk risk-medium">medium</span></td>
+              <td>The claim has non-UI state or manifest proof in addition to UI evidence.</td>
+            </tr>
+<tr>
+              <td>PR-specific user-visible behavior is covered when applicable<br><small>pr_metadata, coverage_manifest</small></td>
+              <td><span class="risk risk-medium">medium</span></td>
+              <td>The claim has non-UI state or manifest proof in addition to UI evidence.</td>
+            </tr></tbody></table>
+      </div>
+    </div>
+    <h3>Failure Classification</h3>
+    <div class="table-scroll"><table><thead><tr><th>Scenario</th><th>Status</th><th>Class</th><th>Meaning</th></tr></thead><tbody><tr>
+        <td>App launches and first screen is usable</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>Update banner does not block the main workflow</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>Settings General tab visibly renders</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>Settings AI Models tab visibly renders</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>Settings API Keys tab visibly renders</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>Settings Preferences tab visibly renders</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>My History opens and renders</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>Console opens and renders</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>Give Feedback opens and can be cancelled</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>Report Issue opens and can be cancelled</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>Home suggestion cards are visible/clickable</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>Untracked macOS customizations can be saved and rolled back</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>Untracked Homebrew items can be saved and rolled back</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>A typed real intent can be submitted</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>Real provider workflow reaches Review</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>Summary tab renders after intent review</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>Diff tab renders after intent review</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>Build &amp; Test destructive boundary appears before activation</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>Step 3 Save / Keep changes persists a change</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>Rollback cleanup returns disposable config to clean state</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>Discard confirmation is guarded and only confirmed in disposable state</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>Core UX/UI surfaces are captured and inspectable</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>Scenario results include inspectable visual/text evidence</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>Main branch user-visible coverage stays mapped</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>PR-specific user-visible behavior is covered when applicable</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr>
+<tr>
+        <td>Generated HTML report is inspected with Computer Use</td>
+        <td><span class="verdict inconclusive">inconclusive</span></td>
+        <td><span class="failure-class">remote_infra</span></td>
+        <td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td>
+      </tr></tbody></table></div>
+    <details>
+      <summary>Confirmation boundaries</summary>
+      <ul><li>No confirmation boundaries recorded.</li></ul>
+    </details>
+    <details>
+      <summary>Full assertion-risk table</summary>
+      <div class="table-scroll"><table><thead><tr><th>Scenario</th><th>Risk</th><th>Why</th></tr></thead><tbody><tr>
+              <td>App launches and first screen is usable<br><small>accessibility_text, visual_heuristic, visual_signalstats</small></td>
+              <td><span class="risk risk-low">low</span></td>
+              <td>Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.</td>
+            </tr>
+<tr>
+              <td>Update banner does not block the main workflow<br><small>accessibility_text, action_result, visual_heuristic</small></td>
+              <td><span class="risk risk-medium">medium</span></td>
+              <td>Accessibility text is the semantic assertion source without binding screenshot checks.</td>
+            </tr>
+<tr>
+              <td>Settings General tab visibly renders<br><small>accessibility_text, action_result, visual_heuristic, visual_signalstats</small></td>
+              <td><span class="risk risk-low">low</span></td>
+              <td>Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.</td>
+            </tr>
+<tr>
+              <td>Settings AI Models tab visibly renders<br><small>accessibility_text, action_result, visual_heuristic, visual_signalstats</small></td>
+              <td><span class="risk risk-low">low</span></td>
+              <td>Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.</td>
+            </tr>
+<tr>
+              <td>Settings API Keys tab visibly renders<br><small>accessibility_text, sensitive_redaction, visual_heuristic</small></td>
+              <td><span class="risk risk-medium">medium</span></td>
+              <td>Accessibility text is the semantic assertion source without binding screenshot checks.</td>
+            </tr>
+<tr>
+              <td>Settings Preferences tab visibly renders<br><small>accessibility_text, action_result, visual_heuristic, visual_signalstats</small></td>
+              <td><span class="risk risk-low">low</span></td>
+              <td>Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.</td>
+            </tr>
+<tr>
+              <td>My History opens and renders<br><small>accessibility_text, action_result, visual_heuristic, visual_signalstats</small></td>
+              <td><span class="risk risk-low">low</span></td>
+              <td>Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.</td>
+            </tr>
+<tr>
+              <td>Console opens and renders<br><small>accessibility_text, sensitive_redaction</small></td>
+              <td><span class="risk risk-medium">medium</span></td>
+              <td>Accessibility text is the semantic assertion source without binding screenshot checks.</td>
+            </tr>
+<tr>
+              <td>Give Feedback opens and can be cancelled<br><small>accessibility_text, action_result, visual_heuristic, visual_signalstats</small></td>
+              <td><span class="risk risk-low">low</span></td>
+              <td>Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.</td>
+            </tr>
+<tr>
+              <td>Report Issue opens and can be cancelled<br><small>accessibility_text, action_result, visual_heuristic, visual_signalstats</small></td>
+              <td><span class="risk risk-low">low</span></td>
+              <td>Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.</td>
+            </tr>
+<tr>
+              <td>Home suggestion cards are visible/clickable<br><small>accessibility_text, action_result, visual_heuristic, visual_signalstats</small></td>
+              <td><span class="risk risk-low">low</span></td>
+              <td>Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.</td>
+            </tr>
+<tr>
+              <td>Untracked macOS customizations can be saved and rolled back<br><small>accessibility_text, action_result, remote_state, visual_heuristic</small></td>
+              <td><span class="risk risk-medium">medium</span></td>
+              <td>The claim has non-UI state or manifest proof in addition to UI evidence.</td>
+            </tr>
+<tr>
+              <td>Untracked Homebrew items can be saved and rolled back<br><small>accessibility_text, action_result, remote_state, visual_heuristic</small></td>
+              <td><span class="risk risk-medium">medium</span></td>
+              <td>The claim has non-UI state or manifest proof in addition to UI evidence.</td>
+            </tr>
+<tr>
+              <td>A typed real intent can be submitted<br><small>accessibility_text, action_result, visual_heuristic, visual_signalstats</small></td>
+              <td><span class="risk risk-low">low</span></td>
+              <td>Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.</td>
+            </tr>
+<tr>
+              <td>Real provider workflow reaches Review<br><small>accessibility_text, provider_state, action_result, visual_heuristic, visual_signalstats</small></td>
+              <td><span class="risk risk-low">low</span></td>
+              <td>Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.</td>
+            </tr>
+<tr>
+              <td>Summary tab renders after intent review<br><small>accessibility_text, provider_state, visual_heuristic, visual_signalstats</small></td>
+              <td><span class="risk risk-low">low</span></td>
+              <td>Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.</td>
+            </tr>
+<tr>
+              <td>Diff tab renders after intent review<br><small>accessibility_text, provider_state, visual_heuristic, visual_signalstats</small></td>
+              <td><span class="risk risk-low">low</span></td>
+              <td>Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.</td>
+            </tr>
+<tr>
+              <td>Build &amp; Test destructive boundary appears before activation<br><small>accessibility_text, action_result, confirmation_boundary, visual_heuristic, visual_signalstats</small></td>
+              <td><span class="risk risk-low">low</span></td>
+              <td>Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.</td>
+            </tr>
+<tr>
+              <td>Step 3 Save / Keep changes persists a change<br><small>accessibility_text, action_result, remote_state, visual_heuristic, visual_signalstats</small></td>
+              <td><span class="risk risk-medium">medium</span></td>
+              <td>The claim has non-UI state or manifest proof in addition to UI evidence.</td>
+            </tr>
+<tr>
+              <td>Rollback cleanup returns disposable config to clean state<br><small>accessibility_text, action_result, remote_state, visual_heuristic, visual_signalstats</small></td>
+              <td><span class="risk risk-medium">medium</span></td>
+              <td>The claim has non-UI state or manifest proof in addition to UI evidence.</td>
+            </tr>
+<tr>
+              <td>Discard confirmation is guarded and only confirmed in disposable state<br><small>accessibility_text, action_result, confirmation_boundary, visual_heuristic</small></td>
+              <td><span class="risk risk-medium">medium</span></td>
+              <td>Accessibility text is the semantic assertion source without binding screenshot checks.</td>
+            </tr>
+<tr>
+              <td>Core UX/UI surfaces are captured and inspectable<br><small>artifact_quality, accessibility_text, visual_heuristic</small></td>
+              <td><span class="risk risk-medium">medium</span></td>
+              <td>Accessibility text is the semantic assertion source without binding screenshot checks.</td>
+            </tr>
+<tr>
+              <td>Scenario results include inspectable visual/text evidence<br><small>artifact_quality, visual_heuristic</small></td>
+              <td><span class="risk risk-low">low</span></td>
+              <td>The scenario is not primarily an accessibility-text assertion.</td>
+            </tr>
+<tr>
+              <td>Main branch user-visible coverage stays mapped<br><small>coverage_manifest</small></td>
+              <td><span class="risk risk-medium">medium</span></td>
+              <td>The claim has non-UI state or manifest proof in addition to UI evidence.</td>
+            </tr>
+<tr>
+              <td>PR-specific user-visible behavior is covered when applicable<br><small>pr_metadata, coverage_manifest</small></td>
+              <td><span class="risk risk-medium">medium</span></td>
+              <td>The claim has non-UI state or manifest proof in addition to UI evidence.</td>
+            </tr>
+<tr>
+              <td>Generated HTML report is inspected with Computer Use<br><small>accessibility_text, artifact_quality, visual_heuristic, visual_signalstats</small></td>
+              <td><span class="risk risk-low">low</span></td>
+              <td>Accessibility text is the semantic assertion source and screenshot signal checks corroborate safe-to-store visual evidence.</td>
+            </tr></tbody></table></div>
+    </details>
+    <details>
+      <summary>Legacy grade mapping</summary>
+      <table><thead><tr><th>V1 Grade</th><th>V2 Strength</th></tr></thead><tbody><tr><td><code>action-confirmed</code></td><td><span class="strength strength-operational">operational</span></td></tr>
+<tr><td><code>text-confirmed</code></td><td><span class="strength strength-visual-supported">visual-supported</span></td></tr>
+<tr><td><code>guardrail-confirmed</code></td><td><span class="strength strength-operational">operational</span></td></tr>
+<tr><td><code>manifest-confirmed</code></td><td><span class="strength strength-operational">operational</span></td></tr>
+<tr><td><code>calibration</code></td><td><span class="strength strength-weak">weak</span></td></tr>
+<tr><td><code>not-run</code></td><td><span class="strength strength-not-proved">not-proved</span></td></tr>
+<tr><td><code>insufficient</code></td><td><span class="strength strength-not-proved">not-proved</span></td></tr></tbody></table>
+    </details>
+    <details>
+      <summary>Taxonomy definitions</summary>
+      <table><thead><tr><th>Class</th><th>Definition</th></tr></thead><tbody><tr><td><code>app</code></td><td>The app UI/state did not behave as expected.</td></tr>
+<tr><td><code>provider</code></td><td>The real provider returned a billing, rate-limit, timeout, or model error.</td></tr>
+<tr><td><code>credential</code></td><td>A provider key was missing, invalid, unavailable, or not injected into the launched app process.</td></tr>
+<tr><td><code>remote_infra</code></td><td>DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.</td></tr>
+<tr><td><code>harness</code></td><td>Computer Use actions, artifact generation, report rendering, or runner bookkeeping failed.</td></tr>
+<tr><td><code>coverage</code></td><td>The suite lacks a scenario, manifest mapping, PR focus, or waiver for the behavior.</td></tr>
+<tr><td><code>inconclusive</code></td><td>The runner could not prove either pass or fail.</td></tr></tbody></table>
+    </details>
+  </section>
+
+      <h2 id="visual-proof">Visual Proof</h2>
+      <p>Screenshots are binding corroborating assertions for safe-to-store visual scenarios. Accessibility text, action events, provider state, and remote git state remain the semantic proof; screenshot signal checks catch missing, blank, occluded, or low-signal visual evidence.</p>
+      <section class="proof-priority">
+    <p>No visual proof cards generated.</p>
+    <details>
+      <summary>Additional passing visual/text proof (0)</summary>
+      <p>No visual proof cards generated.</p>
+    </details>
+  </section>
+
+      <h2 id="scenario-checklist">Scenario Checklist</h2>
+  <p>Grouped scenario tables are collapsed by default so reviewers can drill into a specific surface without reading the whole suite linearly.</p>
+  <details class="group">
+  <summary>App Shell <span class="nav-badge pass">0 pass</span> <span class="nav-badge inconclusive">3 inconclusive</span></summary>
+  <div class="table-scroll"><table class="scenario-table">
+    <thead><tr><th class="scenario-col">Scenario</th><th class="status-col">Status</th><th class="grade-col">Evidence Grade</th><th class="artifacts-col">Primary Artifacts</th><th class="proof-col">What Proved It</th><th class="untested-col">Still Untested</th></tr></thead>
+    <tbody>
+      <tr><td class="scenario-cell">App launches and first screen is usable<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Accessibility text shows the nixmac window, Settings/History/Feedback controls, stepper, prompt text area, and disabled Send button.<br><small>Failure class: remote_infra</small></td><td>Does not prove provider or config state.</td></tr>
+<tr><td class="scenario-cell">Update banner does not block the main workflow<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">text-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Runner checks for a visible Dismiss button. If present, it dismisses it; if absent, it proves no update banner blocked the initial UI.<br><small>Failure class: remote_infra</small></td><td>The explicit dismiss interaction is only tested on runs where a banner is actually present.</td></tr>
+<tr><td class="scenario-cell">Core UX/UI surfaces are captured and inspectable<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">text-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Required core UI surfaces have screenshot and text artifacts.<br><small>Failure class: remote_infra</small></td><td>Does not prove screenshot annotations are exact bounding boxes.</td></tr>
+    </tbody>
+  </table></div>
+  </details>
+<details class="group">
+  <summary>Settings <span class="nav-badge pass">0 pass</span> <span class="nav-badge inconclusive">4 inconclusive</span></summary>
+  <div class="table-scroll"><table class="scenario-table">
+    <thead><tr><th class="scenario-col">Scenario</th><th class="status-col">Status</th><th class="grade-col">Evidence Grade</th><th class="artifacts-col">Primary Artifacts</th><th class="proof-col">What Proved It</th><th class="untested-col">Still Untested</th></tr></thead>
+    <tbody>
+      <tr><td class="scenario-cell">Settings General tab visibly renders<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Computer Use clicked Settings and captured the General tab content.<br><small>Failure class: remote_infra</small></td><td>Does not persist setting edits.</td></tr>
+<tr><td class="scenario-cell">Settings AI Models tab visibly renders<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Computer Use opened AI Models and captured provider/model/build controls.<br><small>Failure class: remote_infra</small></td><td>Does not change models or verify every provider.</td></tr>
+<tr><td class="scenario-cell">Settings API Keys tab visibly renders<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">text-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">API Keys screenshot is captured only when raw accessibility text confirms no unmasked key-like secret is present; redacted text must show API Keys/OpenRouter/API-key controls.<br><small>Failure class: remote_infra</small></td><td>Does not edit/delete keys and does not prove keychain persistence by itself.</td></tr>
+<tr><td class="scenario-cell">Settings Preferences tab visibly renders<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Computer Use opened Preferences and captured confirmation controls.<br><small>Failure class: remote_infra</small></td><td>Does not toggle preferences permanently.</td></tr>
+    </tbody>
+  </table></div>
+  </details>
+<details class="group">
+  <summary>Support Surfaces <span class="nav-badge pass">0 pass</span> <span class="nav-badge inconclusive">4 inconclusive</span></summary>
+  <div class="table-scroll"><table class="scenario-table">
+    <thead><tr><th class="scenario-col">Scenario</th><th class="status-col">Status</th><th class="grade-col">Evidence Grade</th><th class="artifacts-col">Primary Artifacts</th><th class="proof-col">What Proved It</th><th class="untested-col">Still Untested</th></tr></thead>
+    <tbody>
+      <tr><td class="scenario-cell">My History opens and renders<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Computer Use opened History and captured a visible history/empty state.<br><small>Failure class: remote_infra</small></td><td>Current run does not prove a newly saved change appears there.</td></tr>
+<tr><td class="scenario-cell">Console opens and renders<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">text-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Sensitive screenshot omitted; redacted accessibility text must show Console/log content.<br><small>Failure class: remote_infra</small></td><td>Does not prove log completeness and may omit secret-bearing visuals by design.</td></tr>
+<tr><td class="scenario-cell">Give Feedback opens and can be cancelled<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Computer Use opened and cancelled the feedback dialog.<br><small>Failure class: remote_infra</small></td><td>Does not submit feedback.</td></tr>
+<tr><td class="scenario-cell">Report Issue opens and can be cancelled<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Computer Use opened and cancelled the report issue dialog.<br><small>Failure class: remote_infra</small></td><td>Does not submit a report.</td></tr>
+    </tbody>
+  </table></div>
+  </details>
+<details class="group">
+  <summary>Real Provider Workflow <span class="nav-badge pass">0 pass</span> <span class="nav-badge inconclusive">11 inconclusive</span></summary>
+  <div class="table-scroll"><table class="scenario-table">
+    <thead><tr><th class="scenario-col">Scenario</th><th class="status-col">Status</th><th class="grade-col">Evidence Grade</th><th class="artifacts-col">Primary Artifacts</th><th class="proof-col">What Proved It</th><th class="untested-col">Still Untested</th></tr></thead>
+    <tbody>
+      <tr><td class="scenario-cell">Home suggestion cards are visible/clickable<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Computer Use found and clicked a suggestion card; the UI stayed usable afterward.<br><small>Failure class: remote_infra</small></td><td>Does not prove every suggestion works.</td></tr>
+<tr><td class="scenario-cell">Untracked macOS customizations can be saved and rolled back<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">When the untracked customizations chip is visible, Computer Use adds it to config, confirms Build &amp; Test, commits Step 3, then restores the disposable baseline and verifies the remote git tree is clean.<br><small>Failure class: remote_infra</small></td><td>If no untracked customizations chip is visible, the scenario records a no-op pass because there is nothing to save.</td></tr>
+<tr><td class="scenario-cell">Untracked Homebrew items can be saved and rolled back<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">When the untracked Homebrew chip is visible, Computer Use adds it to config, confirms Build &amp; Test, commits Step 3, then restores the disposable baseline and verifies the remote git tree is clean.<br><small>Failure class: remote_infra</small></td><td>If no untracked Homebrew chip is visible, the scenario records a no-op pass because there is nothing to save.</td></tr>
+<tr><td class="scenario-cell">A typed real intent can be submitted<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Prompt text appears in the Computer Use state after set_value.<br><small>Failure class: remote_infra</small></td><td>Does not prove provider execution until Review is reached.</td></tr>
+<tr><td class="scenario-cell">Real provider workflow reaches Review<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Polling reached Review-equivalent UI with Build &amp; Test/Discard/Summary/Diff controls.<br><small>Failure class: remote_infra</small></td><td>Does not prove Save/commit.</td></tr>
+<tr><td class="scenario-cell">Summary tab renders after intent review<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">text-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Summary text must mention the requested package/change domain.<br><small>Failure class: remote_infra</small></td><td>Does not prove file persistence.</td></tr>
+<tr><td class="scenario-cell">Diff tab renders after intent review<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">text-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Diff view must expose the candidate Homebrew config file or requested package/change.<br><small>Failure class: remote_infra</small></td><td>Does not prove the change builds or saves; save/rollback scenarios provide that remote git proof.</td></tr>
+<tr><td class="scenario-cell">Build &amp; Test destructive boundary appears before activation<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Build &amp; Test opens a confirmation dialog before activation; disposable runs confirm it and wait for Step 3.<br><small>Failure class: remote_infra</small></td><td>Without explicit disposable build-confirm mode, the runner still cancels at the boundary.</td></tr>
+<tr><td class="scenario-cell">Step 3 Save / Keep changes persists a change<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">In disposable build-confirm mode, Computer Use reaches Step 3, clicks Commit, and the runner verifies the disposable repo HEAD changed with a clean worktree.<br><small>Failure class: remote_infra</small></td><td>When disposable build-confirm mode is not enabled, Save remains untested.</td></tr>
+<tr><td class="scenario-cell">Rollback cleanup returns disposable config to clean state<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">After Save, Computer Use opens History, restores the pre-test baseline commit, and the runner verifies HEAD returned to that baseline with a clean worktree.<br><small>Failure class: remote_infra</small></td><td>Only runs when Save succeeded and a restorable disposable baseline exists.</td></tr>
+<tr><td class="scenario-cell">Discard confirmation is guarded and only confirmed in disposable state<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">guardrail-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Discard opens a confirmation boundary when used. In full-lifecycle runs, the stronger History restore cleanup path can supersede Discard and is proven by rollback artifacts.<br><small>Failure class: remote_infra</small></td><td>When History restore cleanup passes, Discard itself is intentionally not clicked because the disposable config is already back at baseline.</td></tr>
+    </tbody>
+  </table></div>
+  </details>
+<details class="group">
+  <summary>PR-Specific Focus <span class="nav-badge pass">0 pass</span> <span class="nav-badge inconclusive">2 inconclusive</span></summary>
+  <div class="table-scroll"><table class="scenario-table">
+    <thead><tr><th class="scenario-col">Scenario</th><th class="status-col">Status</th><th class="grade-col">Evidence Grade</th><th class="artifacts-col">Primary Artifacts</th><th class="proof-col">What Proved It</th><th class="untested-col">Still Untested</th></tr></thead>
+    <tbody>
+      <tr><td class="scenario-cell">Main branch user-visible coverage stays mapped<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">manifest-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">A repo-local coverage manifest maps major user-visible surfaces on main to Computer Use scenarios or explicit waivers, and the runner scans for unmapped candidate files.<br><small>Failure class: remote_infra</small></td><td>This proves scenario mapping freshness, not that every mapped scenario passed in the current run.</td></tr>
+<tr><td class="scenario-cell">PR-specific user-visible behavior is covered when applicable<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">not-run</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Requires PR metadata and changed-file/user-visible focus input.<br><small>Failure class: remote_infra</small></td><td>No PR-specific scenario is executed unless PR context is provided.</td></tr>
+    </tbody>
+  </table></div>
+  </details>
+<details class="group">
+  <summary>Evidence <span class="nav-badge pass">0 pass</span> <span class="nav-badge inconclusive">2 inconclusive</span></summary>
+  <div class="table-scroll"><table class="scenario-table">
+    <thead><tr><th class="scenario-col">Scenario</th><th class="status-col">Status</th><th class="grade-col">Evidence Grade</th><th class="artifacts-col">Primary Artifacts</th><th class="proof-col">What Proved It</th><th class="untested-col">Still Untested</th></tr></thead>
+    <tbody>
+      <tr><td class="scenario-cell">Scenario results include inspectable visual/text evidence<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">text-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Every passing scenario must have linked proof artifacts, and required non-sensitive screenshots must pass deterministic visual signal checks.<br><small>Failure class: remote_infra</small></td><td>Visual signal checks catch missing, blank, occluded, or low-signal regions; they do not prove exact design fidelity or arbitrary wrong-screen swaps.</td></tr>
+<tr><td class="scenario-cell">Generated HTML report is inspected with Computer Use<br><small>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</small></td><td class="status-cell"><span class="verdict inconclusive">inconclusive</span></td><td class="grade-cell"><span class="grade">action-confirmed</span><br><span class="strength strength-not-proved">not-proved</span></td><td class="artifact-cell">No primary artifact linked.</td><td class="proof-cell">Computer Use opens the generated report on the remote Mac and sees report sections.<br><small>Failure class: remote_infra</small></td><td>Does not prove a human reviewed every screenshot.</td></tr>
+    </tbody>
+  </table></div>
+  </details>
+
+      
+
+      <h2 id="coverage-gaps">Coverage Gaps / Not Proved</h2>
+      <table>
+    <thead><tr><th>Gap</th><th>Status</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td>App launches and first screen is usable</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Update banner does not block the main workflow</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Settings General tab visibly renders</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Settings AI Models tab visibly renders</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Settings API Keys tab visibly renders</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Settings Preferences tab visibly renders</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>My History opens and renders</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Console opens and renders</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Give Feedback opens and can be cancelled</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Report Issue opens and can be cancelled</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Home suggestion cards are visible/clickable</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Untracked macOS customizations can be saved and rolled back</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Untracked Homebrew items can be saved and rolled back</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>A typed real intent can be submitted</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Real provider workflow reaches Review</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Summary tab renders after intent review</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Diff tab renders after intent review</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Build &amp; Test destructive boundary appears before activation</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Step 3 Save / Keep changes persists a change</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Rollback cleanup returns disposable config to clean state</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Discard confirmation is guarded and only confirmed in disposable state</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Core UX/UI surfaces are captured and inspectable</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Scenario results include inspectable visual/text evidence</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Main branch user-visible coverage stays mapped</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>PR-specific user-visible behavior is covered when applicable</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Generated HTML report is inspected with Computer Use</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Remote Mac/app metadata</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote machine identity, OS, hardware, staged app path, bundle version, and signing metadata were not captured.</td></tr>
+<tr><td>Credential process-env verification</td><td><span class="verdict inconclusive">inconclusive</span></td><td>The nixmac process and GUI launchd credential environment were not checked with redacted values.</td></tr>
+<tr><td>Disposable config proof</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote run has not proven nixmac is pointed at a per-run disposable config.</td></tr>
+    </tbody>
+  </table>
+
+      <h2 id="remote-metadata">Remote Mac / App Metadata</h2>
+  <section class="summary metadata-summary" aria-label="Remote metadata summary">
+    <div class="metric"><strong>Machine</strong>unknown host</div>
+    <div class="metric"><strong>App</strong>nixmac · codesign not verified</div>
+    <div class="metric"><strong>Process</strong>process not found · OpenRouter key unknown · secret recording unknown</div>
+  </section>
+  <details class="panel">
+    <summary>Full remote metadata tables</summary>
+    <section class="meta metadata-grid">
+    <div class="panel">
+      <h3>Remote Mac</h3>
+      <table><tr><td colspan="2">No metadata recorded.</td></tr></table>
+    </div>
+    <div class="panel">
+      <h3>Staged App</h3>
+      <table><tr><td colspan="2">No metadata recorded.</td></tr></table>
+    </div>
+    <div class="panel">
+      <h3>Credential Environment Verification</h3>
+      <table><tr><td colspan="2">No metadata recorded.</td></tr></table>
+    </div>
+    </section>
+  </details>
+  
+
+      <details class="panel" id="evolved-flow">
+        <summary>Evolved Flow Case Strategy</summary>
+        <section>
+    <h3>Evolved Flow Case Strategy</h3>
+    <p>Claude review kept homebrew-bat as the only default full-lifecycle PR case, moved screenshots-defaults to optional calibration, and moved protected-flake-input to an adversarial advisory lane until hard backend enforcement exists.</p>
+    <p><strong>Default case:</strong> homebrew-bat<br>
+    <strong>Enabled extra cases:</strong> none</p>
+    <h3>Case Catalog</h3>
+    <div class="table-scroll"><table class="scenario-table">
+      <thead><tr><th>Case</th><th>Mode</th><th>PR Lane</th><th>Source</th><th>Notes</th></tr></thead>
+      <tbody><tr>
+        <td><code>homebrew-bat</code><br><small>Homebrew bat package add</small></td>
+        <td>full-lifecycle</td>
+        <td><span class="verdict pass">default</span></td>
+        <td>Current Computer Use E2E default; maps to eval package/homebrew install coverage.</td>
+        <td>Runs prompt -&gt; Review -&gt; Summary/Diff -&gt; Build boundary -&gt; Step 3 Commit -&gt; History rollback cleanup.</td>
+      </tr>
+<tr>
+        <td><code>screenshots-defaults</code><br><small>Screenshot defaults review-only calibration</small></td>
+        <td>review-only-calibration</td>
+        <td><span class="grade">optional</span></td>
+        <td>WDIO fixture basicPromptsConfigureScreenshots and eval CSV case 33 / golden-set system-defaults coverage.</td>
+        <td>Optional calibration lane. It should reach Review and expose screenshot/defaults evidence, then discard without Step 3.</td>
+      </tr>
+<tr>
+        <td><code>inline-question-font</code><br><small>Inline question answer to font change</small></td>
+        <td>question-answer-calibration</td>
+        <td><span class="grade">optional</span></td>
+        <td>Historical inline-question deadlock/race gap from PR #50/#53 plus WDIO a[REDACTED_API_KEY] fixture coverage.</td>
+        <td>Optional P0 calibration lane. It proves the question UI accepts an answer and the provider workflow progresses past Waiting for next event into Review evidence.</td>
+      </tr>
+<tr>
+        <td><code>protected-flake-input</code><br><small>Protected flake input adversarial boundary</small></td>
+        <td>adversarial-advisory</td>
+        <td><span class="grade">optional</span></td>
+        <td>Eval spreadsheet protected-file family (#121/#208/#210). Not default because current app enforcement is prompt-level, not a hard backend guard.</td>
+        <td>Keep out of the default PR lane until nixmac has hard protected-file enforcement and a reliable refusal signal.</td>
+      </tr></tbody>
+    </table></div>
+    <h3>Optional Case Runs</h3>
+    <div class="table-scroll"><table class="scenario-table">
+      <thead><tr><th>Case</th><th>Mode</th><th>Status</th><th>Evidence</th></tr></thead>
+      <tbody><tr><td colspan="4">No optional evolved review-only cases were enabled for this run.</td></tr></tbody>
+    </table></div>
+  </section>
+      </details>
+
+      <h2 id="raw-evidence">Raw Evidence</h2>
+  <section class="panel">
+    <span id="screenshots" class="anchor-alias"></span>
+    <span id="narrative" class="anchor-alias"></span>
+    <span id="claims" class="anchor-alias"></span>
+    <span id="pr-specific-focus" class="anchor-alias"></span>
+    <details>
+      <summary>Full screenshot gallery (0)</summary>
+      <p>No screenshots captured.</p>
+    </details>
+    <details>
+      <summary>Human QA narrative (1)</summary>
+      <ul><li>2026-05-04T03:28:42.329Z - Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</li></ul>
+    </details>
+    <details>
+      <summary>Claims vs evidence (26)</summary>
+      <table>
+        <thead><tr><th>Claim</th><th>Status</th><th>Evidence</th></tr></thead>
+        <tbody>
+          <tr><td>App launches and first screen is usable</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Update banner does not block the main workflow</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Settings General tab visibly renders</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Settings AI Models tab visibly renders</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Settings API Keys tab visibly renders</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Settings Preferences tab visibly renders</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>My History opens and renders</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Console opens and renders</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Give Feedback opens and can be cancelled</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Report Issue opens and can be cancelled</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Home suggestion cards are visible/clickable</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Untracked macOS customizations can be saved and rolled back</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Untracked Homebrew items can be saved and rolled back</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>A typed real intent can be submitted</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Real provider workflow reaches Review</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Summary tab renders after intent review</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Diff tab renders after intent review</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Build &amp; Test destructive boundary appears before activation</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Step 3 Save / Keep changes persists a change</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Rollback cleanup returns disposable config to clean state</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Discard confirmation is guarded and only confirmed in disposable state</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Core UX/UI surfaces are captured and inspectable</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Scenario results include inspectable visual/text evidence</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Main branch user-visible coverage stays mapped</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>PR-specific user-visible behavior is covered when applicable</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+<tr><td>Generated HTML report is inspected with Computer Use</td><td><span class="verdict inconclusive">inconclusive</span></td><td>Remote Computer Use setup/preflight failed before the suite produced evidence. See workflow logs for the failing setup step.</td></tr>
+        </tbody>
+      </table>
+    </details>
+    <details>
+      <summary>Run metadata</summary>
+      <section class="meta run-metadata">
+    <div class="panel"><strong>Timestamp</strong><br>2026-05-04T03:28:42.328Z</div>
+    <div class="panel"><strong>Branch</strong><br>unknown</div>
+    <div class="panel"><strong>SHA</strong><br><code>4e9faa7e</code></div>
+    <div class="panel"><strong>macOS</strong><br>unknown</div>
+    <div class="panel"><strong>App</strong><br><code>com.darkmatter.nixmac</code></div>
+    <div class="panel"><strong>Provider</strong><br><code>real-openrouter-compatible-provider</code><br>The key value is never written to this report. Failures may reflect provider billing/auth state.</div>
+    <div class="panel"><strong>Prompt</strong><br>Add the bat command line tool to my Homebrew packages as the plain string &quot;bat&quot; only, with no inline comments.</div>
+    <div class="panel"><strong>Evidence</strong><br>0 screenshots, 0 redacted text snapshots</div>
+  </section>
+    </details>
+  </section>
+
+      <h2 id="cleanup">Cleanup / Restore Status</h2>
+      <section class="panel">
+        <p>No app state touched; unavailable report only.</p>
+      </section>
+    </div>
+  </div>
+</main>
+</body>
+</html>
