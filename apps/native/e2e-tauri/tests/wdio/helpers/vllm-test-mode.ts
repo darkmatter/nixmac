@@ -30,7 +30,7 @@ interface VllmSetupOptions {
   mockVllm?: { responseFiles?: string[] };
 }
 
-function createVllmSetupOptionsForSuite({
+export function createVllmSetupOptionsForSuite({
   initializeConfigRepo = true,
   playbackPreset,
 }: {

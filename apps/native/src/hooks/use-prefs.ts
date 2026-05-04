@@ -1,4 +1,4 @@
-import { useWidgetStore, type BoolPrefKey, type ConfirmPrefKey } from "@/stores/widget-store";
+import { useWidgetStore, type BoolPrefKey } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
 
 export function usePrefs() {

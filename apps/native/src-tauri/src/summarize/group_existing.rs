@@ -2,12 +2,10 @@
 
 use std::collections::HashMap;
 
+use crate::shared_types::{ChangeWithSummary, SemanticChangeGroup, SemanticChangeMap};
+use crate::sqlite_types::ChangeSummary;
 use crate::summarize::find_existing::FoundSetForCurrent;
 use crate::summarize::sumlog as dbg;
-use crate::shared_types::{
-    ChangeWithSummary, SemanticChangeGroup, SemanticChangeMap,
-};
-use crate::sqlite_types::ChangeSummary;
 
 pub fn from_change_sets(change_sets: Vec<FoundSetForCurrent>) -> SemanticChangeMap {
     let mut groups: HashMap<i64, (ChangeSummary, Vec<ChangeWithSummary>)> = HashMap::new();
@@ -35,7 +33,11 @@ pub fn from_change_sets(change_sets: Vec<FoundSetForCurrent>) -> SemanticChangeM
                         if !is_invalid(&gs) {
                             singles.retain(|c| c.id != change_id);
                             let cws = to_change_with_summary(&sc.change, sc.own_summary.as_ref());
-                            groups.entry(gs.id).or_insert_with(|| (gs, vec![])).1.push(cws);
+                            groups
+                                .entry(gs.id)
+                                .or_insert_with(|| (gs, vec![]))
+                                .1
+                                .push(cws);
                             seen.insert(change_id, true);
                         }
                     }
@@ -44,7 +46,11 @@ pub fn from_change_sets(change_sets: Vec<FoundSetForCurrent>) -> SemanticChangeM
                     let cws = to_change_with_summary(&sc.change, sc.own_summary.as_ref());
                     match sc.group_summary {
                         Some(gs) if !is_invalid(&gs) => {
-                            groups.entry(gs.id).or_insert_with(|| (gs, vec![])).1.push(cws);
+                            groups
+                                .entry(gs.id)
+                                .or_insert_with(|| (gs, vec![]))
+                                .1
+                                .push(cws);
                             seen.insert(change_id, true);
                         }
                         _ => {
@@ -85,12 +91,20 @@ pub fn find_group_by_id(map: &SemanticChangeMap, id: i64) -> Option<&SemanticCha
 }
 
 #[allow(dead_code)]
-pub fn find_in_group_by_hash<'a>(map: &'a SemanticChangeMap, hash: &str) -> Option<&'a SemanticChangeGroup> {
-    map.groups.iter().find(|g| g.changes.iter().any(|c| hash_matches(&c.hash, hash)))
+pub fn find_in_group_by_hash<'a>(
+    map: &'a SemanticChangeMap,
+    hash: &str,
+) -> Option<&'a SemanticChangeGroup> {
+    map.groups
+        .iter()
+        .find(|g| g.changes.iter().any(|c| hash_matches(&c.hash, hash)))
 }
 
 #[allow(dead_code)]
-pub fn find_in_singles_by_hash<'a>(map: &'a SemanticChangeMap, hash: &str) -> Option<&'a ChangeWithSummary> {
+pub fn find_in_singles_by_hash<'a>(
+    map: &'a SemanticChangeMap,
+    hash: &str,
+) -> Option<&'a ChangeWithSummary> {
     map.singles.iter().find(|c| hash_matches(&c.hash, hash))
 }
 
@@ -138,17 +152,31 @@ mod tests {
     }
 
     fn make_summary(status: &str) -> ChangeSummary {
-        ChangeSummary { id: 1, title: "t".to_string(), description: "d".to_string(), status: status.to_string(), created_at: 0 }
+        ChangeSummary {
+            id: 1,
+            title: "t".to_string(),
+            description: "d".to_string(),
+            status: status.to_string(),
+            created_at: 0,
+        }
     }
 
     fn found(change: Change, own_summary: Option<ChangeSummary>) -> FoundSetForCurrent {
         found_grouped(change, own_summary, None)
     }
 
-    fn found_grouped(change: Change, own_summary: Option<ChangeSummary>, group_summary: Option<ChangeSummary>) -> FoundSetForCurrent {
+    fn found_grouped(
+        change: Change,
+        own_summary: Option<ChangeSummary>,
+        group_summary: Option<ChangeSummary>,
+    ) -> FoundSetForCurrent {
         FoundSetForCurrent {
             change_set: None,
-            changes: vec![SummarizedChange { change, own_summary, group_summary }],
+            changes: vec![SummarizedChange {
+                change,
+                own_summary,
+                group_summary,
+            }],
             missed_hashes: vec![],
         }
     }

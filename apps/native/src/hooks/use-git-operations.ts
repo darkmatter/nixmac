@@ -67,7 +67,7 @@ export function useGitOperations() {
   const handleCommit = useCallback(
     async ({ message }: { message: string }) => {
       const store = useWidgetStore.getState();
-      store.setProcessing(true, "merge");
+      store.setProcessing(true, "commit");
       store.appendLog(`\n> Committing changes...\n`);
 
       try {

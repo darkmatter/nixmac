@@ -26,6 +26,19 @@ function normalizeAnimations(html: string): string {
     });
 }
 
+function normalizeSnapshotRoot(root: Element): string {
+  const clone = root.cloneNode(true) as Element;
+
+  for (const editor of clone.querySelectorAll('[data-slot="nix-editor"]')) {
+    editor.replaceChildren();
+    const placeholder = document.createElement("div");
+    placeholder.setAttribute("data-slot", "nix-editor-placeholder");
+    editor.appendChild(placeholder);
+  }
+
+  return normalizeAnimations(clone.innerHTML);
+}
+
 // Automatically snapshot every story after it renders
 afterEach(() => {
   const containers = document.body.querySelectorAll(
@@ -33,6 +46,6 @@ afterEach(() => {
   );
   const root = containers[containers.length - 1];
   if (root?.innerHTML) {
-    expect(normalizeAnimations(root.innerHTML)).toMatchSnapshot();
+    expect(normalizeSnapshotRoot(root)).toMatchSnapshot();
   }
 });
