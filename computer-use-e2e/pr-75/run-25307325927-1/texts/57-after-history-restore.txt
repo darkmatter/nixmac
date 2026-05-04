@@ -1,0 +1,72 @@
+Computer Use state (CUA App Version: 758)
+<app_state>
+App=com.darkmatter.nixmac (pid 82163)
+Window: "nixmac", App: nixmac.
+	0 standard window nixmac, Secondary Actions: Raise
+		1 scroll area
+			2 HTML content Description: nixmac, URL: tauri://localhost
+				3 heading nixmac, Value: 3
+					4 text nixmac
+				5 button History
+				6 button Give feedback
+				7 button Settings
+				8 container
+					9 text Update available: v 0.23.0
+				10 text ## What's Changed * Document Product Proof hook behavior by @fkb032 in https://github.com/darkmatter/nixmac/pull/69 * feat(settings): add hidden Developer panel with version-pin install by @czxtm in https://github.com/darkmatter/nixmac/pull/67 * fix(db): migrate legacy evolution branch column by @czxtm in https://github.com/darkmatter/nixmac/pull/73   **Full Changelog**: https://github.com/darkmatter/nixmac/compare/v0.22.42...v0.23.0 ## What's Changed * Document Product Proof hook behavior by @fkb032 
+				11 button (collapsed) Expand details, Secondary Actions: Expand
+				12 button Install & Restart
+				13 button Dismiss
+				14 heading History, Value: 2
+					15 text History
+				16 text 8
+				17 button Analyze recent (3)
+				18 text TODAY
+				19 text Restore commit 256954b0
+				20 text nixmac e2e restore baseline
+				21 text CURRENT
+				22 text e713a10
+				23 text just now
+				24 button Analyze
+				25 button feat(homebrew): add 'bat' to Homebrew formulae Restore6a797e9 just now 1 fileHomebrew Brews
+				26 text Restore commit 256954b0
+				27 text nixmac e2e restore baseline
+				28 button Restore
+				29 text bff84b9
+				30 text 1 min ago
+				31 button Analyze
+				32 button feat(nix-darwin): enhance system defaults and macOS settings Restore1af3db5 1 min ago 2 filesNix-Darwin Config
+				33 text Restore commit 256954b0
+				34 text nixmac e2e restore baseline
+				35 button Restore
+				36 text d157363
+				37 text 2 min ago
+				38 button Analyze
+				39 button chore(tap): added tap 'steipete/tap' for Homebrew Restore06b9d8f 2 min ago 1 fileHomebrew Taps
+				40 text nixmac e2e restore baseline
+				41 button Restore
+				42 text 256954b
+				43 text 4 min ago
+				44 text External commit
+				45 button Analyze
+				46 text Initial disposable nixmac E2E config
+				47 button Restore
+				48 text 15bda19
+				49 text 4 min ago
+				50 text External commit
+				51 button Analyze
+				52 button Report Issue
+				53 button Console
+				54 container Notifications alt+T
+		55 close button
+		56 full screen button (disabled) Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+		57 minimize button
+	58 menu bar
+		59 nixmac
+		60 File
+		61 Edit
+		62 View
+		63 Window
+		64 Help
+
+The focused UI element is 2 HTML content.
+</app_state>

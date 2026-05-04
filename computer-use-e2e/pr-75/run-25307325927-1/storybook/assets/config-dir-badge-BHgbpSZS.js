@@ -1,0 +1,1 @@
+import{e as r,j as o}from"./iframe-C-u98npA.js";import{F as n}from"./file-badge-CdNrAozR.js";import{F as t}from"./folder-open-CRy-m6sE.js";function s({configDir:e}){const i=r(e)||"config";return o.jsx(n,{icon:t,children:i})}s.__docgenInfo={description:"",methods:[],displayName:"ConfigDirBadge",props:{configDir:{required:!0,tsType:{name:"string"},description:""}}};export{s as C};

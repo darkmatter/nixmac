@@ -1,0 +1,1 @@
+import{j as i}from"./iframe-C-u98npA.js";import{F as o}from"./file-badge-CdNrAozR.js";import{F as e}from"./file-BdSOSu91.js";function r(){return i.jsx(o,{icon:e,children:".gitignore"})}r.__docgenInfo={description:"",methods:[],displayName:"GitignoreBadge"};export{r as G};
