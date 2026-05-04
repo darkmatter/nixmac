@@ -93,7 +93,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
-;
+export type { BundledLanguage } from "shiki";
 
 const filenameIconMap = {
   ".env": SiDotenv,
@@ -325,7 +325,7 @@ export const CodeBlock = ({
 
 type CodeBlockHeaderProps = HTMLAttributes<HTMLDivElement>;
 
-const CodeBlockHeader = ({ className, ...props }: CodeBlockHeaderProps) => (
+export const CodeBlockHeader = ({ className, ...props }: CodeBlockHeaderProps) => (
   <div
     className={cn("flex flex-row items-center border-b bg-secondary p-1", className)}
     {...props}
@@ -336,7 +336,7 @@ type CodeBlockFilesProps = Omit<HTMLAttributes<HTMLDivElement>, "children"> & {
   children: (item: CodeBlockData) => ReactNode;
 };
 
-const CodeBlockFiles = ({ className, children, ...props }: CodeBlockFilesProps) => {
+export const CodeBlockFiles = ({ className, children, ...props }: CodeBlockFilesProps) => {
   const { data } = useContext(CodeBlockContext);
 
   return (
@@ -351,7 +351,7 @@ type CodeBlockFilenameProps = HTMLAttributes<HTMLDivElement> & {
   value?: string;
 };
 
-const CodeBlockFilename = ({
+export const CodeBlockFilename = ({
   className,
   icon,
   value,
@@ -384,7 +384,7 @@ const CodeBlockFilename = ({
 
 type CodeBlockSelectProps = ComponentProps<typeof Select>;
 
-const CodeBlockSelect = (props: CodeBlockSelectProps) => {
+export const CodeBlockSelect = (props: CodeBlockSelectProps) => {
   const { value, onValueChange } = useContext(CodeBlockContext);
 
   return <Select onValueChange={onValueChange} value={value} {...props} />;
@@ -392,7 +392,7 @@ const CodeBlockSelect = (props: CodeBlockSelectProps) => {
 
 type CodeBlockSelectTriggerProps = ComponentProps<typeof SelectTrigger>;
 
-const CodeBlockSelectTrigger = ({ className, ...props }: CodeBlockSelectTriggerProps) => (
+export const CodeBlockSelectTrigger = ({ className, ...props }: CodeBlockSelectTriggerProps) => (
   <SelectTrigger
     className={cn("w-fit border-none text-muted-foreground text-xs shadow-none", className)}
     {...props}
@@ -401,7 +401,7 @@ const CodeBlockSelectTrigger = ({ className, ...props }: CodeBlockSelectTriggerP
 
 type CodeBlockSelectValueProps = ComponentProps<typeof SelectValue>;
 
-const CodeBlockSelectValue = (props: CodeBlockSelectValueProps) => (
+export const CodeBlockSelectValue = (props: CodeBlockSelectValueProps) => (
   <SelectValue {...props} />
 );
 
@@ -409,7 +409,7 @@ type CodeBlockSelectContentProps = Omit<ComponentProps<typeof SelectContent>, "c
   children: (item: CodeBlockData) => ReactNode;
 };
 
-const CodeBlockSelectContent = ({ children, ...props }: CodeBlockSelectContentProps) => {
+export const CodeBlockSelectContent = ({ children, ...props }: CodeBlockSelectContentProps) => {
   const { data } = useContext(CodeBlockContext);
 
   return <SelectContent {...props}>{data.map(children)}</SelectContent>;
@@ -417,7 +417,7 @@ const CodeBlockSelectContent = ({ children, ...props }: CodeBlockSelectContentPr
 
 type CodeBlockSelectItemProps = ComponentProps<typeof SelectItem>;
 
-const CodeBlockSelectItem = ({ className, ...props }: CodeBlockSelectItemProps) => (
+export const CodeBlockSelectItem = ({ className, ...props }: CodeBlockSelectItemProps) => (
   <SelectItem className={cn("text-sm", className)} {...props} />
 );
 
@@ -427,7 +427,7 @@ type CodeBlockCopyButtonProps = ComponentProps<typeof Button> & {
   timeout?: number;
 };
 
-const CodeBlockCopyButton = ({
+export const CodeBlockCopyButton = ({
   asChild,
   onCopy,
   onError,

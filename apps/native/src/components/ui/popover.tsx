@@ -46,4 +46,4 @@ function PopoverAnchor({
   return <PopoverPrimitive.Anchor data-slot="popover-anchor" {...props} />;
 }
 
-export { Popover, PopoverTrigger, PopoverContent,  };
+export { Popover, PopoverAnchor, PopoverContent, PopoverTrigger };

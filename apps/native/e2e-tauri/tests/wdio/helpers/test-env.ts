@@ -257,7 +257,7 @@ export async function setMockVllmResponses({
   return response.json();
 }
 
-async function setupNixmacTestEnvironment(options: SetupOptions = {}): Promise<NixmacTestEnvironmentContext> {
+export async function setupNixmacTestEnvironment(options: SetupOptions = {}): Promise<NixmacTestEnvironmentContext> {
   const {
     initializeConfigRepo = false,
     initializeEmptyConfigDir = false,
@@ -328,7 +328,7 @@ async function setupNixmacTestEnvironment(options: SetupOptions = {}): Promise<N
   };
 }
 
-async function teardownNixmacTestEnvironment(context: NixmacTestEnvironmentContext | null | undefined): Promise<void> {
+export async function teardownNixmacTestEnvironment(context: NixmacTestEnvironmentContext | null | undefined): Promise<void> {
   if (context?.configDir) {
     console.log(`[wdio:test-env] Removing temporary config repo: ${context.configDir}`);
     await rm(context.configDir, { recursive: true, force: true });

@@ -436,6 +436,10 @@ pub struct CliToolsState {
 // =============================================================================
 
 /// Response from the debug Sentry event command.
+/// `dead_code` is allowed because the only constructor (`debug_sentry_event`)
+/// is gated to `#[cfg(debug_assertions)]`; the type still needs to be present
+/// in release builds for tauri-specta TS type generation.
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct DebugSentryResult {
     pub ok: bool,
