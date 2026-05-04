@@ -518,7 +518,57 @@ without touching app state.
 
 ### Real Provider Lane
 
-This is the first-class local lane. It uses the real app and the app's existing
+### Peekaboo Local Lane
+
+This is the fast local comparison lane for development. It reuses the
+`tests/e2e` Peekaboo runner and renders the result into the local Product Proof
+evidence report. The bridge backs up nixmac Application Support before running
+because the macOS scenarios intentionally seed settings for deterministic app
+state.
+
+```bash
+node tools/computer-use-e2e/run-local.mjs run-peekaboo
+```
+
+By default this runs `tests/e2e/scenarios/macos_descriptor_prompt_smoke.sh`, a
+non-destructive smoke scenario that launches the app, reaches the descriptor
+prompt through accessibility metadata, types an intent, and verifies the
+expected local provider-validation block. It writes:
+
+- `artifacts/computer-use-local/<timestamp>/index.html`;
+- `state.json` and `events.json`;
+- `peekaboo-e2e.log`, `peekaboo-e2e-results.json`, stdout/stderr captures;
+- `e2e-report/<scenario>/e2e-report.json`;
+- Peekaboo screenshots under `screenshots/`;
+- `video/peekaboo-e2e.mp4` when recording is enabled and ffmpeg/Terminal screen
+  recording are available.
+
+Useful variants:
+
+```bash
+node tools/computer-use-e2e/run-local.mjs run-peekaboo macos_descriptor_prompt_smoke --no-record
+node tools/computer-use-e2e/run-local.mjs run-peekaboo macos_provider_evolve_full_smoke --no-record
+NIXMAC_APP_PATH=/path/to/nixmac.app node tools/computer-use-e2e/run-local.mjs run-peekaboo
+```
+
+The historical `nix-install` scenario is intentionally not the default. It can
+uninstall/reinstall system Nix and should only run on a disposable runner:
+
+```bash
+node tools/computer-use-e2e/run-local.mjs run-peekaboo nix-install --allow-destructive
+```
+
+The bridge fails fast before GUI driving if Peekaboo, jq, `/Applications/nixmac.app`,
+or required TCC permissions are missing. On DXU, grant Screen Recording and
+Accessibility through the remote console before expecting a full run to pass.
+
+The remote Codex app-server lane remains the PR/Product Proof production lane.
+The Peekaboo lane is isolated local evidence so the team can compare driver
+approaches without changing the remote workflow contract.
+
+### Real Provider Local Lane
+
+This lane uses the real app and the app's existing
 OpenRouter-compatible credential, but points nixmac at a disposable config
 created from `apps/native/templates/nix-darwin-determinate`.
 

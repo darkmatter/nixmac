@@ -18,6 +18,14 @@ import {
   stat,
   writeFile,
 } from 'node:fs/promises';
+import {
+  DEFAULT_PEEKABOO_SCENARIO,
+  applyPeekabooResultToState,
+  buildPeekabooRunPlan,
+  isDestructivePeekabooScenario,
+  peekabooRunnerSelfTest,
+  runPeekabooScenario,
+} from './peekaboo-runner.mjs';
 
 const THIS_FILE = fileURLToPath(import.meta.url);
 const TOOL_DIR = path.dirname(THIS_FILE);
@@ -43,6 +51,13 @@ const REAL_BACKUP_ROOT = path.join(
   'Caches',
   'com.darkmatter.nixmac',
   'computer-use-real-backups',
+);
+const PEEKABOO_BACKUP_ROOT = path.join(
+  os.homedir(),
+  'Library',
+  'Caches',
+  'com.darkmatter.nixmac',
+  'peekaboo-e2e-backups',
 );
 const TEMPLATE_DIR = path.join(REPO_ROOT, 'apps/native/templates/nix-darwin-determinate');
 const TEST_DATA_DIR = path.join(REPO_ROOT, 'apps/native/e2e-tauri/tests/data');
@@ -71,14 +86,26 @@ const scenarioLabels = {
   buildCheck: 'Build check completes or fails visibly',
   buildBoundary: 'Build & Test confirmation boundary appears and is cancelled',
   discard: 'Discard confirmation and return-to-start',
+  peekabooDescriptorPromptSmoke: 'Peekaboo descriptor prompt smoke',
+  peekabooProviderEvolveFullSmoke: 'Peekaboo provider-backed evolve smoke',
+  peekabooNixInstall: 'Peekaboo Nix install flow',
 };
-const LOCAL_ONLY_SCENARIO_KEYS = new Set(['settings', 'suggestion', 'descriptor', 'buildCheck']);
+const LOCAL_ONLY_SCENARIO_KEYS = new Set([
+  'settings',
+  'suggestion',
+  'descriptor',
+  'buildCheck',
+  'peekabooDescriptorPromptSmoke',
+  'peekabooProviderEvolveFullSmoke',
+  'peekabooNixInstall',
+]);
 
 function usage() {
   console.log(`Usage:
   node tools/computer-use-e2e/run-local.mjs setup
   node tools/computer-use-e2e/run-local.mjs setup-deterministic
   node tools/computer-use-e2e/run-local.mjs setup-real
+  node tools/computer-use-e2e/run-local.mjs run-peekaboo [macos_descriptor_prompt_smoke] [--no-record] [--allow-destructive]
   node tools/computer-use-e2e/run-local.mjs serve-mock <run-dir>
   node tools/computer-use-e2e/run-local.mjs capture <label> [--note "..."]
   node tools/computer-use-e2e/run-local.mjs scenario <key> <pass|fail|inconclusive> [--note "..."]
@@ -132,6 +159,15 @@ function tryRun(command, args, options = {}) {
     stdout: result.stdout?.trim() ?? '',
     stderr: result.stderr?.trim() ?? '',
     error: result.error ? String(result.error) : '',
+  };
+}
+
+function gitMetadata() {
+  const branch = tryRun('git', ['branch', '--show-current'], { cwd: REPO_ROOT });
+  const sha = tryRun('git', ['rev-parse', 'HEAD'], { cwd: REPO_ROOT });
+  return {
+    branch: branch.ok && branch.stdout ? branch.stdout : 'unknown',
+    sha: sha.ok && sha.stdout ? sha.stdout : 'unknown',
   };
 }
 
@@ -436,6 +472,7 @@ function createInitialState({
     ),
     screenshots: [],
     narrative: [],
+    failures: [],
     claims: [],
     confirmationBoundaries: [],
     cleanup: {
@@ -460,8 +497,7 @@ async function setup({ mode = 'deterministic' } = {}) {
   const runDir = path.join(artifactRoot, runSlug);
   await mkdir(path.join(runDir, 'screenshots'), { recursive: true });
 
-  const branch = run('git', ['branch', '--show-current'], { cwd: REPO_ROOT });
-  const sha = run('git', ['rev-parse', 'HEAD'], { cwd: REPO_ROOT });
+  const { branch, sha } = gitMetadata();
   const macosVersion = tryRun('sw_vers', ['-productVersion']).stdout || 'unknown';
   const appSupportExisted = await pathExists(APP_SUPPORT_DIR);
   const backupPath = path.join(backupRoot, runSlug, 'app-support-backup');
@@ -562,6 +598,116 @@ async function setup({ mode = 'deterministic' } = {}) {
   await saveState(state);
   await appendEvent(state, 'setup.completed', { mode, configDir });
   console.log(runDir);
+}
+
+async function createPeekabooRunState({ scenario, noRecord, noCleanup, allowDestructive }) {
+  await mkdir(ARTIFACT_ROOT, { recursive: true });
+  await assertNoUnrestoredRun();
+  const startedAt = new Date();
+  const runSlug = timestampSlug(startedAt);
+  const runDir = path.join(ARTIFACT_ROOT, runSlug);
+  await mkdir(path.join(runDir, 'screenshots'), { recursive: true });
+  await mkdir(path.join(runDir, 'video'), { recursive: true });
+  const appSupportExisted = await pathExists(APP_SUPPORT_DIR);
+  const backupPath = path.join(PEEKABOO_BACKUP_ROOT, runSlug, 'app-support-backup');
+  const quitResult = await quitNixmac();
+  if (appSupportExisted) {
+    await mkdir(path.dirname(backupPath), { recursive: true });
+    await cp(APP_SUPPORT_DIR, backupPath, { recursive: true, preserveTimestamps: true });
+  }
+
+  const { branch, sha } = gitMetadata();
+  const macosVersion = tryRun('sw_vers', ['-productVersion']).stdout || 'unknown';
+  const state = createInitialState({
+    runDir,
+    startedAt: startedAt.toISOString(),
+    branch,
+    sha,
+    macosVersion,
+    appSupportExisted,
+    backupPath,
+    quitResult,
+    mode: 'peekaboo',
+    appCommand: `bash tests/e2e/run.sh ${scenario}`,
+    artifactRoot: ARTIFACT_ROOT,
+  });
+
+  state.provider = {
+    kind: 'not-required',
+    note:
+      scenario === 'macos_provider_evolve_full_smoke'
+        ? 'Scenario owns its local provider stub.'
+        : 'This Peekaboo scenario does not require an external LLM provider.',
+  };
+  state.setup = {
+    configDir: null,
+    mockProvider: null,
+    note: appSupportExisted
+      ? `Backed up nixmac Application Support before running Peekaboo scenario: ${backupPath}.`
+      : 'No existing nixmac Application Support directory was present before the Peekaboo run.',
+  };
+  state.cleanup = {
+    attempted: false,
+    restored: false,
+    note: 'Cleanup has not run yet. Peekaboo scenarios may write nixmac settings and must restore app support after the run.',
+  };
+  state.peekaboo = {
+    scenario,
+    noRecord,
+    noCleanup,
+    allowDestructive,
+    destructive: isDestructivePeekabooScenario(scenario),
+  };
+
+  await saveState(state);
+  await writeFile(CURRENT_RUN_FILE, `${runDir}\n`, 'utf8');
+  await appendEvent(state, 'peekaboo.setup.completed', {
+    scenario,
+    noRecord,
+    noCleanup,
+    allowDestructive,
+  });
+  return state;
+}
+
+async function runPeekaboo(args) {
+  const scenario = args.find((arg) => !arg.startsWith('-')) || DEFAULT_PEEKABOO_SCENARIO;
+  const noRecord = args.includes('--no-record');
+  const noCleanup = args.includes('--no-cleanup') || !args.includes('--allow-cleanup');
+  const allowDestructive = args.includes('--allow-destructive');
+  const state = await createPeekabooRunState({ scenario, noRecord, noCleanup, allowDestructive });
+  const plan = buildPeekabooRunPlan({
+    repoRoot: REPO_ROOT,
+    runDir: state.runDir,
+    scenario,
+    noRecord,
+    noCleanup,
+    allowDestructive,
+  });
+  await appendEvent(state, 'peekaboo.run.started', {
+    command: plan.command,
+    args: plan.args,
+    resultsFile: path.relative(state.runDir, plan.resultsFile),
+    reportFile: path.relative(state.runDir, plan.reportFile),
+  });
+  let peekabooResult = null;
+  try {
+    peekabooResult = await runPeekabooScenario(plan);
+    const updatedState = applyPeekabooResultToState(await loadState(state.runDir), peekabooResult);
+    updatedState.peekaboo.result = peekabooResult;
+    await saveState(updatedState);
+    await appendEvent(updatedState, 'peekaboo.run.completed', {
+      scenario,
+      status: peekabooResult.status,
+      success: peekabooResult.success,
+    });
+  } finally {
+    await cleanup();
+  }
+  if (!peekabooResult?.success) {
+    const outcome = peekabooResult?.infraFailure ? 'infra blocked' : 'failed';
+    throw new Error(`Peekaboo scenario ${scenario} ${outcome}; report rendered at ${path.join(state.runDir, 'index.html')}`);
+  }
 }
 
 function getNixmacWindowRegion() {
@@ -680,12 +826,33 @@ function verdictFor(state) {
   return 'pass';
 }
 
+function linkArtifact(pathValue) {
+  if (!pathValue) return '';
+  const label = escapeHtml(pathValue);
+  return `<a href="${label}"><code>${label}</code></a>`;
+}
+
+function artifactRows(state) {
+  const artifacts = state.peekaboo?.result?.artifacts;
+  if (!artifacts) return [];
+  return [
+    ['Preflight', artifacts.preflight],
+    ['Log', artifacts.logFile],
+    ['stdout', artifacts.stdout],
+    ['stderr', artifacts.stderr],
+    ['Legacy JSON', artifacts.resultsFile],
+    ['Structured report', artifacts.reportFile],
+    ['Video', artifacts.videoFile],
+  ].filter(([, artifactPath]) => artifactPath);
+}
+
 async function render() {
   const state = await loadState();
   const verdict = verdictFor(state);
   const failures = Object.entries(state.scenarios)
-    .filter(([, scenarioState]) => scenarioState.status !== 'pass')
+    .filter(([, scenarioState]) => !['pass', 'not_required'].includes(scenarioState.status))
     .map(([key, scenarioState]) => ({ key, ...scenarioState }));
+  const artifacts = artifactRows(state);
 
   const html = `<!doctype html>
 <html lang="en">
@@ -707,6 +874,7 @@ async function render() {
     .pass { background: #123d2a; color: #8bf0bb; }
     .fail { background: #471a1a; color: #ff9e9e; }
     .inconclusive { background: #443512; color: #ffd36e; }
+    .not_required { background: #29303a; color: #a8b0bc; }
     table { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 8px; }
     th, td { border: 1px solid #303640; padding: 10px; text-align: left; vertical-align: top; }
     th { background: #20242d; }
@@ -714,6 +882,7 @@ async function render() {
     figure { margin: 0 0 18px; }
     figcaption { margin-top: 6px; color: #c5cbd3; font-size: 13px; }
     code { color: #a7d7ff; }
+    a { color: #a7d7ff; }
     ul { padding-left: 20px; }
   </style>
 </head>
@@ -746,6 +915,14 @@ async function render() {
     </tbody>
   </table>
 
+  <h2>Video</h2>
+  ${
+    state.video?.path
+      ? `<video controls src="${escapeHtml(state.video.path)}" style="width:100%;border:1px solid #303640;border-radius:8px;background:#000"></video>
+        <p>${escapeHtml(state.video.label || 'Screen recording')}</p>`
+      : '<p>No video recorded.</p>'
+  }
+
   <h2>Screenshots</h2>
   ${
     state.screenshots.length
@@ -756,6 +933,25 @@ async function render() {
             </figure>`)
           .join('\n')
       : '<p>No screenshots captured.</p>'
+  }
+
+  <h2>Artifacts</h2>
+  ${
+    artifacts.length
+      ? `<table>
+          <thead><tr><th>Artifact</th><th>Path</th></tr></thead>
+          <tbody>
+            ${artifacts
+              .map(
+                ([label, artifactPath]) => `<tr>
+                  <td>${escapeHtml(label)}</td>
+                  <td>${linkArtifact(artifactPath)}</td>
+                </tr>`,
+              )
+              .join('\n')}
+          </tbody>
+        </table>`
+      : '<p>No runner artifacts recorded.</p>'
   }
 
   <h2>Human QA Narrative</h2>
@@ -891,6 +1087,9 @@ function runSelfTest() {
   );
   const staleLocalOnlyKeys = [...LOCAL_ONLY_SCENARIO_KEYS].filter((key) => sharedScenarioLabels[key]);
   assert.deepEqual(staleLocalOnlyKeys, [], 'LOCAL_ONLY_SCENARIO_KEYS should not include keys that now exist in shared scenarioLabels');
+  const missingLocalOnlyKeys = [...LOCAL_ONLY_SCENARIO_KEYS].filter((key) => !scenarioLabels[key]);
+  assert.deepEqual(missingLocalOnlyKeys, [], 'LOCAL_ONLY_SCENARIO_KEYS should all be declared in run-local scenarioLabels');
+  peekabooRunnerSelfTest({ repoRoot: REPO_ROOT });
   console.log('Computer Use local runner self-test passed.');
 }
 
@@ -900,6 +1099,7 @@ async function main() {
     if (command === 'setup') await setup();
     else if (command === 'setup-deterministic') await setup();
     else if (command === 'setup-real') await setup({ mode: 'real' });
+    else if (command === 'run-peekaboo') await runPeekaboo(args);
     else if (command === 'serve-mock') await serveMock(args[0]);
     else if (command === 'capture') await capture(args);
     else if (command === 'scenario') await scenario(args);

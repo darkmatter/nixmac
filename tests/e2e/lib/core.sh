@@ -10,6 +10,7 @@
 export E2E_ROOT="${E2E_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 export E2E_LIB="$E2E_ROOT/lib"
 export E2E_SCREENSHOT_DIR="${E2E_SCREENSHOT_DIR:-/tmp/e2e-screenshots}"
+export E2E_PEEKABOO_CAPTURE_DIR="${E2E_PEEKABOO_CAPTURE_DIR:-/tmp/e2e-peekaboo-captures}"
 export E2E_LOG_FILE="${E2E_LOG_FILE:-/tmp/e2e-test.log}"
 export E2E_VIDEO_FILE="${E2E_VIDEO_FILE:-/tmp/e2e-recording.mp4}"
 
@@ -20,6 +21,54 @@ _E2E_PASS_COUNT=0
 _E2E_FAIL_COUNT=0
 _E2E_START_TIME=""
 _E2E_PHASE_RESULTS=()
+
+# --- Portable command timeout ---
+#
+# macOS does not ship GNU timeout. Keep this dependency-free so the runner
+# behaves the same on a freshly provisioned remote macOS host.
+run_with_timeout() {
+    local seconds="$1"
+    shift
+
+    if [ -z "$seconds" ] || [ "$seconds" -le 0 ] 2>/dev/null; then
+        "$@"
+        return $?
+    fi
+
+    local output_file status command_pid watchdog_pid
+    output_file=$(mktemp "${TMPDIR:-/tmp}/e2e-timeout-output.XXXXXX") || return 1
+
+    "$@" >"$output_file" 2>&1 &
+    command_pid=$!
+
+    (
+        sleep "$seconds"
+        if kill -0 "$command_pid" 2>/dev/null; then
+            kill "$command_pid" 2>/dev/null || true
+            sleep 2
+            kill -9 "$command_pid" 2>/dev/null || true
+        fi
+    ) &
+    watchdog_pid=$!
+
+    if wait "$command_pid"; then
+        status=0
+    else
+        status=$?
+    fi
+
+    kill "$watchdog_pid" 2>/dev/null || true
+    wait "$watchdog_pid" 2>/dev/null || true
+
+    cat "$output_file"
+    rm -f "$output_file"
+
+    if [ "$status" -eq 137 ] || [ "$status" -eq 143 ]; then
+        return 124
+    fi
+
+    return "$status"
+}
 
 # --- Colors ---
 _RED='\033[0;31m'
@@ -56,7 +105,11 @@ fail() {
 }
 
 die() {
-    fail "$1"
+    local msg="$1"
+    if [ -n "$_E2E_PHASE_NAME" ]; then
+        _E2E_PHASE_RESULTS+=("FAIL|$_E2E_PHASE_NUM|$msg")
+    fi
+    fail "$msg"
     screenshot "failure-$(date +%s)" 2>/dev/null || true
     # Let the runner's trap handle cleanup
     exit 1
@@ -173,10 +226,9 @@ print_results() {
     local total=$((_E2E_PASS_COUNT + _E2E_FAIL_COUNT))
     
     for result in "${_E2E_PHASE_RESULTS[@]}"; do
-        local status num msg
-        status=$(echo "$result" | cut -d'|' -f1)
-        num=$(echo "$result" | cut -d'|' -f2)
-        msg=$(echo "$result" | cut -d'|' -f3-)
+        local status=$(echo "$result" | cut -d'|' -f1)
+        local num=$(echo "$result" | cut -d'|' -f2)
+        local msg=$(echo "$result" | cut -d'|' -f3-)
         if [ "$status" = "PASS" ]; then
             echo -e "  ${_GREEN}✅${_NC} Phase $num: $msg" | tee -a "$E2E_LOG_FILE"
         else
@@ -198,10 +250,9 @@ print_results() {
 results_json() {
     local phases="[]"
     for result in "${_E2E_PHASE_RESULTS[@]}"; do
-        local status num msg
-        status=$(echo "$result" | cut -d'|' -f1)
-        num=$(echo "$result" | cut -d'|' -f2)
-        msg=$(echo "$result" | cut -d'|' -f3-)
+        local status=$(echo "$result" | cut -d'|' -f1)
+        local num=$(echo "$result" | cut -d'|' -f2)
+        local msg=$(echo "$result" | cut -d'|' -f3-)
         phases=$(echo "$phases" | jq --arg s "$status" --arg n "$num" --arg m "$msg" \
             '. + [{"phase": ($n | tonumber), "status": $s, "message": $m}]')
     done
@@ -226,7 +277,9 @@ results_json() {
 
 _e2e_init() {
     _E2E_START_TIME=$(date +%s)
+    rm -rf "$E2E_PEEKABOO_CAPTURE_DIR"
     mkdir -p "$E2E_SCREENSHOT_DIR"
+    mkdir -p "$E2E_PEEKABOO_CAPTURE_DIR"
     echo "" > "$E2E_LOG_FILE"
     log "=== macos-e2e test runner ==="
     log "Started at $(date)"
