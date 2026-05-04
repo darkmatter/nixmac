@@ -163,6 +163,6 @@ export {
   InputGroupAddon,
   InputGroupButton,
   InputGroupText,
-  
+  InputGroupInput,
   InputGroupTextarea,
 };

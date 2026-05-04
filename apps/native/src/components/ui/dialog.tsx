@@ -132,13 +132,11 @@ function DialogDescription({
 
 export {
   Dialog,
-  
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  
-  
+  DialogTrigger,
   DialogTitle,
-  
 };
