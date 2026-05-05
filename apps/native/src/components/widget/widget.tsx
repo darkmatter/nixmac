@@ -23,7 +23,6 @@ import {
     PermissionsStep,
     SetupStep,
 } from "@/components/widget/steps";
-import { useErrorHandler } from "@/hooks/use-error-handler";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useNixInstall } from "@/hooks/use-nix-install";
 import { usePanicHandler } from "@/hooks/use-panic-handler";
@@ -61,9 +60,6 @@ export function DarwinWidget() {
 
   // Listen for tray menu events (Send Feedback, Settings)
   useTrayEvents();
-
-  // Set up error handler to catch unhandled JavaScript errors and promise rejections
-  useErrorHandler();
 
   // Set up test helpers for error handlers and widget store (development only)
   useEffect(() => {
