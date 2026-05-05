@@ -115,6 +115,7 @@ export function AiModelsTab({
     <>
       {([
         { value: "openrouter", label: "OpenRouter" },
+        { value: "openai", label: "OpenAI" },
         { value: "ollama", label: "Ollama" },
         { value: "vllm", label: "vLLM / LiteLLM" },
       ] as const).map(({ value, label }) => {
