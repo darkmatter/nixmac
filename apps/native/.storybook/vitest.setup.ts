@@ -36,7 +36,12 @@ function normalizeSnapshotRoot(root: Element): string {
     editor.appendChild(placeholder);
   }
 
-  return normalizeAnimations(clone.innerHTML);
+  let html = normalizeAnimations(clone.innerHTML);
+  // Monaco assigns auto-incrementing model IDs that vary by test-suite order.
+  html = html.replace(/inmemory:\/\/model\/\d+/g, "inmemory://model/N");
+  // data-keybinding-context values are similarly auto-incremented.
+  html = html.replace(/data-keybinding-context="\d+"/g, 'data-keybinding-context="N"');
+  return html;
 }
 
 // Automatically snapshot every story after it renders

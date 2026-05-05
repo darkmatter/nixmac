@@ -38,7 +38,7 @@ export function DiffSection({ changes }: DiffSectionProps) {
     }
     darwinAPI.git
       .fileDiffContents(filenames)
-      .then(setFileContents)
+      .then((result) => setFileContents(result ?? {}))
       .catch(() => setFileContents({}));
   }, [filenamesKey]);
 

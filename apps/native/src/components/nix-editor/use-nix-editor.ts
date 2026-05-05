@@ -4,7 +4,7 @@ import { initNixGrammar } from "@/lib/nix-grammar";
 import { lspClient } from "@/lib/lsp-client";
 import { bridgeMonacoToLsp } from "@/lib/lsp-monaco-bridge";
 import { darwinAPI } from "@/tauri-api";
-import { NIXMAC_THEME } from "@/components/widget/summaries/monaco-setup";
+import { NIXMAC_THEME, NIXMAC_THEME_DATA } from "@/components/widget/summaries/monaco-theme";
 
 interface UseNixEditorOptions {
   filePath: string;
@@ -70,6 +70,8 @@ export function useNixEditor({ filePath, containerRef, onSave, disabled = false 
         }
 
         if (disposed) return;
+
+        monaco.editor.defineTheme(NIXMAC_THEME, NIXMAC_THEME_DATA);
 
         // Create editor
         editor = monaco.editor.create(container!, {
