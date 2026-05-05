@@ -553,6 +553,10 @@ node tools/computer-use-e2e/run-local.mjs run-peekaboo-suite --no-record
 NIXMAC_APP_PATH=/path/to/nixmac.app node tools/computer-use-e2e/run-local.mjs run-peekaboo
 ```
 
+Use a debug/dev nixmac build for the mocked-system and opaque-window E2E flags;
+release builds ignore those Rust debug-only gates and will take the slower real
+system-check path.
+
 Developers can run the same Peekaboo suite on a MacInCloud host from their own
 machine when the host already has this checkout, Peekaboo, TCC permissions, and
 a runnable nixmac app:
