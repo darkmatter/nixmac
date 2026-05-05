@@ -1,0 +1,1022 @@
+<!doctype html>
+<html lang="en">
+<head>
+<base href="https://cdn.jsdelivr.net/gh/darkmatter/nixmac@gh-pages/peekaboo-e2e/pr-90/run-25404734922-1/">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>nixmac Peekaboo Local E2E Evidence</title>
+  <style>
+    :root { color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif; background: #050607; color: #f4f5f5; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: radial-gradient(circle at 20% 0%, #15191a 0, #050607 42rem); color: #f4f5f5; }
+    main { max-width: 1180px; margin: 0 auto; padding: 28px 18px 56px; }
+    header { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(320px, .9fr); gap: 18px; align-items: stretch; margin-bottom: 18px; }
+    h1, h2, h3 { margin: 0; letter-spacing: 0; }
+    h1 { font-size: 28px; line-height: 1.1; }
+    h2 { font-size: 17px; margin: 28px 0 12px; }
+    h3 { font-size: 14px; margin-bottom: 8px; }
+    p, small, figcaption { color: #a9b0b5; line-height: 1.45; }
+    a { color: #9fe8c6; text-decoration: none; }
+    code { color: #b7d7ff; word-break: break-word; }
+    .hero, .panel, .metric, .proof-card { border: 1px solid #23282b; border-radius: 8px; background: rgba(16, 18, 20, .92); }
+    .hero { padding: 18px; min-height: 210px; display: flex; flex-direction: column; justify-content: space-between; }
+    .hero p { max-width: 820px; margin: 10px 0 0; }
+    .summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    header .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    header .summary .metric:first-child { grid-column: 1 / -1; }
+    .metric { padding: 12px; min-height: 68px; min-width: 0; }
+    .metric strong { display: block; font-size: 11px; color: #7f878d; text-transform: uppercase; margin-bottom: 7px; }
+    .metric span { display: block; font-size: 20px; line-height: 1.15; font-weight: 700; color: #f4f5f5; overflow-wrap: anywhere; }
+    .metric small { display: block; margin-top: 4px; overflow-wrap: anywhere; }
+    .verdict { display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 9px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+    .pass, .passed { background: #0d3c28; color: #8cf2bc; }
+    .fail, .failed { background: #4c1515; color: #ffb0aa; }
+    .inconclusive { background: #453612; color: #ffd983; }
+    .not_required { background: #252b31; color: #aab2bb; }
+    .warning { border-color: #4d3b18; background: #191409; }
+    .warning strong { color: #ffd983; }
+    nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; }
+    nav a { border: 1px solid #252b31; border-radius: 999px; padding: 7px 10px; color: #dce2e2; background: #111417; font-size: 12px; }
+    .panel { padding: 14px; margin: 12px 0; }
+    .table-scroll { overflow-x: auto; border: 1px solid #23282b; border-radius: 8px; }
+    table { width: 100%; min-width: 760px; border-collapse: collapse; background: #0b0d0f; }
+    th, td { border-bottom: 1px solid #23282b; padding: 10px; text-align: left; vertical-align: top; }
+    th { color: #8a9298; font-size: 11px; text-transform: uppercase; background: #13171a; }
+    td { font-size: 13px; }
+    tr:last-child td { border-bottom: 0; }
+    .proof-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+    .summary-video { margin: 18px 0; display: grid; grid-template-columns: minmax(240px, 0.42fr) minmax(360px, 1fr); gap: 18px; align-items: start; padding: 16px; border: 1px solid #23282b; border-radius: 8px; background: #101418; }
+    .summary-video-copy strong { display: block; margin-bottom: 6px; color: #f4f5f5; }
+    .summary-video-copy small { display: block; color: #a9b0b5; line-height: 1.45; }
+    .summary-video video { width: 100%; max-height: 520px; border: 1px solid #23282b; border-radius: 8px; background: #000; }
+    .summary-video-unavailable { margin: 0 0 10px; }
+    .video-chapters { margin-top: 14px; display: grid; gap: 8px; }
+    .chapter-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chapter-list button { border: 1px solid #2f373c; border-radius: 999px; padding: 6px 9px; background: #151a1e; color: #dce2e2; cursor: pointer; font: inherit; font-size: 12px; }
+    .chapter-list button:hover { border-color: #9fe8c6; color: #9fe8c6; }
+    .storyboard-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; margin-top: 10px; }
+    .storyboard-strip a { display: block; border: 1px solid #23282b; border-radius: 8px; padding: 6px; background: #0b0d0f; color: #dce2e2; text-decoration: none; }
+    .storyboard-strip img { aspect-ratio: 16 / 10; object-fit: cover; border-radius: 6px; }
+    .storyboard-strip span { display: block; margin-top: 4px; font-size: 11px; color: #a9b0b5; }
+    figure { margin: 0; }
+    img, video { width: 100%; border: 1px solid #23282b; border-radius: 8px; background: #000; display: block; }
+    figcaption { padding-top: 8px; font-size: 12px; }
+    figcaption strong, figcaption span { display: block; }
+    details { border: 1px solid #23282b; border-radius: 8px; padding: 10px 12px; background: #0b0d0f; margin-top: 10px; }
+    summary { cursor: pointer; color: #dce2e2; font-weight: 700; }
+    ul { padding-left: 18px; }
+    .claim-list { columns: 2; }
+    .muted { color: #8a9298; }
+    @media (max-width: 860px) { header { grid-template-columns: 1fr; } .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .summary-video { grid-template-columns: 1fr; } .claim-list { columns: 1; } }
+  </style>
+</head>
+<body>
+<main>
+  <header id="summary">
+    <section class="hero">
+      <div>
+        <span class="verdict inconclusive">Verdict: inconclusive</span>
+        <h1>nixmac Peekaboo Local E2E Evidence</h1>
+        <p>Peekaboo drove the actual nixmac macOS app through Scott's shell driver and preserved inspectable screenshots, structured report data, runner logs, and artifact quality gates.</p>
+      </div>
+      <nav aria-label="Report navigation">
+        <a href="#executed-proof">Executed Proof</a>
+        <a href="#parity-map">Parity Map</a>
+        <a href="#baseline-coverage">Baseline</a>
+        <a href="#summary-video">Evidence Video</a>
+        <a href="#visual-proof">Visual Proof</a>
+        <a href="#artifacts">Artifacts</a>
+        <a href="#out-of-scope">Out of Scope</a>
+      </nav>
+    </section>
+    <section class="summary" aria-label="Run summary">
+      <div class="metric"><strong>Scenario</strong><span>Peekaboo core Product Proof wrapper</span><small>macos_core_product_proof · 74s</small></div>
+      <div class="metric"><strong>Executed checks</strong><span>13</span><small>0 fail / 0 inconclusive</small></div>
+      <div class="metric"><strong>CU keys mapped</strong><span>11/24</span><small>PR #75 also has 3 meta/PR checks.</small></div>
+      <div class="metric"><strong>Screenshots</strong><span>10</span><small>passed</small></div>
+      <div class="metric"><strong>Secret scan</strong><span>passed</span><small>21 text artifacts scanned</small></div>
+      <div class="metric"><strong>Provider</strong><span>No LLM provider required</span><small>No provider required for this scenario.</small></div>
+    </section>
+  </header>
+
+  <section class="panel warning">
+    <strong>Parity note</strong>
+    This single Peekaboo report maps 11 of 24 required Computer Use Product Proof key(s), leaving 13 required breadth gap(s). The PR #75 baseline recorded 27 raw passing claim(s), including 3 meta/PR check(s); currently applicable known limits are listed explicitly below.
+    <br><strong>Single-scenario boundary</strong> This report is evidence for one focused Peekaboo scenario, not a full parity claim; use the Peekaboo suite report for Computer Use breadth parity.
+  </section>
+
+  <section id="summary-video" class="summary-video">
+    <div class="summary-video-copy">
+      <strong>Evidence storyboard</strong>
+      <small>Timestamped screenshot storyboard compiled from 10 captured frame(s).</small>
+      <div class="video-chapters" aria-label="Derived video chapters">
+        <strong>Screenshot chapters</strong>
+        <small>Times are derived from screenshot capture metadata; chapter buttons scroll to the matching proof frame.</small>
+        <div class="chapter-list">
+          <button type="button" data-screenshot-target="screenshot-01-core-launch-1778011165">0ms 01 core launch 1778011165</button>
+<button type="button" data-screenshot-target="screenshot-02-update-non-blocking-1778011173">8.3s 02 update non blocking 1778011173</button>
+<button type="button" data-screenshot-target="screenshot-03-suggestion-card-1778011177">11.7s 03 suggestion card 1778011177</button>
+<button type="button" data-screenshot-target="screenshot-04-descriptor-typed-1778011180">14.5s 04 descriptor typed 1778011180</button>
+<button type="button" data-screenshot-target="screenshot-05-provider-validation-block-1778011180">15.2s 05 provider validation block 1778011180</button>
+<button type="button" data-screenshot-target="screenshot-08-settings-general-1778011201">35.7s 08 settings general 1778011201</button>
+<button type="button" data-screenshot-target="screenshot-09-settings-ai-models-1778011205">39.8s 09 settings ai models 1778011205</button>
+<button type="button" data-screenshot-target="screenshot-10-settings-api-keys-1778011208">42.6s 10 settings api keys 1778011208</button>
+<button type="button" data-screenshot-target="screenshot-11-settings-preferences-1778011211">45.6s 11 settings preferences 1778011211</button>
+<button type="button" data-screenshot-target="screenshot-12-history-1778011216">50.6s 12 history 1778011216</button>
+        </div>
+      </div>
+    </div>
+    <div>
+      <p class="summary-video-unavailable">No MP4 was recorded for this run; the storyboard below preserves the same skim path with derived timestamps.</p>
+      <div class="storyboard-strip" aria-label="Screenshot storyboard">
+        <a href="#screenshot-01-core-launch-1778011165">
+              <img src="screenshots/01-core-launch-1778011165.png" alt="01-core-launch-1778011165">
+              <span>0ms</span>
+            </a>
+<a href="#screenshot-02-update-non-blocking-1778011173">
+              <img src="screenshots/02-update-non-blocking-1778011173.png" alt="02-update-non-blocking-1778011173">
+              <span>8.3s</span>
+            </a>
+<a href="#screenshot-03-suggestion-card-1778011177">
+              <img src="screenshots/03-suggestion-card-1778011177.png" alt="03-suggestion-card-1778011177">
+              <span>11.7s</span>
+            </a>
+<a href="#screenshot-04-descriptor-typed-1778011180">
+              <img src="screenshots/04-descriptor-typed-1778011180.png" alt="04-descriptor-typed-1778011180">
+              <span>14.5s</span>
+            </a>
+<a href="#screenshot-05-provider-validation-block-1778011180">
+              <img src="screenshots/05-provider-validation-block-1778011180.png" alt="05-provider-validation-block-1778011180">
+              <span>15.2s</span>
+            </a>
+<a href="#screenshot-08-settings-general-1778011201">
+              <img src="screenshots/08-settings-general-1778011201.png" alt="08-settings-general-1778011201">
+              <span>35.7s</span>
+            </a>
+<a href="#screenshot-09-settings-ai-models-1778011205">
+              <img src="screenshots/09-settings-ai-models-1778011205.png" alt="09-settings-ai-models-1778011205">
+              <span>39.8s</span>
+            </a>
+<a href="#screenshot-10-settings-api-keys-1778011208">
+              <img src="screenshots/10-settings-api-keys-1778011208.png" alt="10-settings-api-keys-1778011208">
+              <span>42.6s</span>
+            </a>
+<a href="#screenshot-11-settings-preferences-1778011211">
+              <img src="screenshots/11-settings-preferences-1778011211.png" alt="11-settings-preferences-1778011211">
+              <span>45.6s</span>
+            </a>
+<a href="#screenshot-12-history-1778011216">
+              <img src="screenshots/12-history-1778011216.png" alt="12-history-1778011216">
+              <span>50.6s</span>
+            </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Run Metadata</h2>
+    <div class="summary">
+      <div class="metric"><strong>Timestamp</strong>2026-05-05T19:59:02.522Z</div>
+      <div class="metric"><strong>Branch</strong>main</div>
+      <div class="metric"><strong>SHA</strong><code>481f43471d123bbdbb73d8a4c2aef3a471819237</code></div>
+      <div class="metric"><strong>macOS</strong>26.2</div>
+      <div class="metric"><strong>Mode</strong>peekaboo</div>
+      <div class="metric"><strong>App command</strong><code>bash tests/e2e/run.sh macos_core_product_proof</code></div>
+    </div>
+  </section>
+
+  <h2 id="executed-proof">Executed Proof</h2>
+  <p>These are the checks this run actually exercised. Failures and inconclusive rows stay visible here; skipped scope is collapsed later.</p>
+  
+  <div class="table-scroll"><table>
+    <thead><tr><th>Proof</th><th>Status</th><th>Grade</th><th>CU keys</th><th>Evidence</th></tr></thead>
+    <tbody><tr>
+        <td><strong>Peekaboo core Product Proof wrapper</strong><br><small><code>peekabooCoreProductProof</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>scenario</td>
+        <td>none</td>
+        <td>Peekaboo runner exited 0; parsed 12 legacy phase result(s).<br>Parsed structured report e2e-report/macos_core_product_proof/e2e-report.json with status passed.<br>Scanned 21 text artifact(s) for unmasked provider secrets: passed.<br>Checked 20 screenshot artifact(s) for visual signal: passed.<br>Wrote additive Peekaboo coverage map for 12 phase key(s).</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo core fixture setup</strong><br><small><code>peekabooCoreFixture</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>fixture</td>
+        <td>none</td>
+        <td>Prepared deterministic config, local validation settings, and mock system flag Corresponds to Computer Use key(s): none; Peekaboo evidence grade: fixture.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo core app shell</strong><br><small><code>peekabooCoreLaunch</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>action-confirmed</td>
+        <td>launch</td>
+        <td>App shell, header controls, and initial prompt surface rendered Corresponds to Computer Use key(s): launch; Peekaboo evidence grade: action-confirmed.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo update banner non-blocking state</strong><br><small><code>peekabooCoreUpdateBanner</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>action-confirmed</td>
+        <td>updateBanner</td>
+        <td>Update banner state did not block the prompt workflow Corresponds to Computer Use key(s): updateBanner; Peekaboo evidence grade: action-confirmed.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo Settings General</strong><br><small><code>peekabooCoreSettingsGeneral</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>action-confirmed</td>
+        <td>settingsGeneral</td>
+        <td>Settings General tab rendered with config and host controls Corresponds to Computer Use key(s): settingsGeneral; Peekaboo evidence grade: action-confirmed.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo Settings AI Models</strong><br><small><code>peekabooCoreSettingsAIModels</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>action-confirmed</td>
+        <td>settingsAIModels</td>
+        <td>Settings AI Models tab rendered provider/model controls Corresponds to Computer Use key(s): settingsAIModels; Peekaboo evidence grade: action-confirmed.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo Settings API Keys redaction proof</strong><br><small><code>peekabooCoreSettingsAPIKeys</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>sensitive-redaction</td>
+        <td>settingsAPIKeys</td>
+        <td>Settings API Keys tab rendered and shared redaction gate found no unmasked secrets Corresponds to Computer Use key(s): settingsAPIKeys; Peekaboo evidence grade: sensitive-redaction.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo Settings Preferences</strong><br><small><code>peekabooCoreSettingsPreferences</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>action-confirmed</td>
+        <td>settingsPreferences</td>
+        <td>Settings Preferences tab rendered confirmation controls Corresponds to Computer Use key(s): settingsPreferences; Peekaboo evidence grade: action-confirmed.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo History surface</strong><br><small><code>peekabooCoreHistory</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>action-confirmed</td>
+        <td>history</td>
+        <td>History surface rendered a visible state Corresponds to Computer Use key(s): history; Peekaboo evidence grade: action-confirmed.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo suggestion card prompt fill</strong><br><small><code>peekabooCoreSuggestionCards</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>action-confirmed</td>
+        <td>suggestionCards</td>
+        <td>Suggestion card was clicked and the prompt surface remained usable Corresponds to Computer Use key(s): suggestionCards; Peekaboo evidence grade: action-confirmed.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo typed intent</strong><br><small><code>peekabooCoreTypedIntent</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>action-confirmed</td>
+        <td>typedIntent</td>
+        <td>Typed descriptor appeared in the prompt input Corresponds to Computer Use key(s): typedIntent; Peekaboo evidence grade: action-confirmed.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo local provider-validation boundary</strong><br><small><code>peekabooCoreProviderValidation</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>guardrail-confirmed</td>
+        <td>typedIntent</td>
+        <td>Submit path reached expected local provider-validation boundary Corresponds to Computer Use key(s): typedIntent; Peekaboo evidence grade: guardrail-confirmed.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo core visual/text proof quality</strong><br><small><code>peekabooCoreVisualProofQuality</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>artifact-quality</td>
+        <td>visualCoverage, visualProofQuality</td>
+        <td>Core proof captured 20 screenshots and 6 redacted text snapshots Corresponds to Computer Use key(s): visualCoverage, visualProofQuality; Peekaboo evidence grade: artifact-quality.</td>
+      </tr></tbody>
+  </table></div>
+
+  <h2 id="parity-map">Computer Use Parity Map</h2>
+  <p>This map is additive and explicit: it lists which Computer Use keys are covered by Peekaboo evidence in this run, and keeps remaining breadth visible.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Computer Use Key</th><th>Status</th><th>Peekaboo Evidence</th><th>Grade</th><th>Notes</th></tr></thead>
+    <tbody><tr>
+        <td><code>none</code></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td><code>peekabooCoreFixture</code><br><small>Peekaboo core fixture</small></td>
+        <td>fixture</td>
+        <td>Peekaboo-only fixture or audit evidence; no direct Computer Use key.</td>
+      </tr>
+<tr>
+        <td><code>launch</code></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td><code>peekabooCoreLaunch</code><br><small>Peekaboo core launch</small></td>
+        <td>action-confirmed</td>
+        <td>Covered by passed Peekaboo phase(s): peekabooCoreLaunch.</td>
+      </tr>
+<tr>
+        <td><code>updateBanner</code></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td><code>peekabooCoreUpdateBanner</code><br><small>Peekaboo update banner non-blocking</small></td>
+        <td>action-confirmed</td>
+        <td>Covered by passed Peekaboo phase(s): peekabooCoreUpdateBanner.</td>
+      </tr>
+<tr>
+        <td><code>suggestionCards</code></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td><code>peekabooCoreSuggestionCards</code><br><small>Peekaboo suggestion cards</small></td>
+        <td>action-confirmed</td>
+        <td>Covered by passed Peekaboo phase(s): peekabooCoreSuggestionCards.</td>
+      </tr>
+<tr>
+        <td><code>typedIntent</code></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td><code>peekabooCoreTypedIntent</code><br><small>Peekaboo typed intent</small><br><code>peekabooCoreProviderValidation</code><br><small>Peekaboo local provider validation</small></td>
+        <td>action-confirmed, guardrail-confirmed</td>
+        <td>Covered by passed Peekaboo phase(s): peekabooCoreTypedIntent, peekabooCoreProviderValidation.</td>
+      </tr>
+<tr>
+        <td><code>settingsGeneral</code></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td><code>peekabooCoreSettingsGeneral</code><br><small>Peekaboo Settings General</small></td>
+        <td>action-confirmed</td>
+        <td>Covered by passed Peekaboo phase(s): peekabooCoreSettingsGeneral.</td>
+      </tr>
+<tr>
+        <td><code>settingsAIModels</code></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td><code>peekabooCoreSettingsAIModels</code><br><small>Peekaboo Settings AI Models</small></td>
+        <td>action-confirmed</td>
+        <td>Covered by passed Peekaboo phase(s): peekabooCoreSettingsAIModels.</td>
+      </tr>
+<tr>
+        <td><code>settingsAPIKeys</code></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td><code>peekabooCoreSettingsAPIKeys</code><br><small>Peekaboo Settings API Keys</small></td>
+        <td>sensitive-redaction</td>
+        <td>Covered by passed Peekaboo phase(s): peekabooCoreSettingsAPIKeys.</td>
+      </tr>
+<tr>
+        <td><code>settingsPreferences</code></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td><code>peekabooCoreSettingsPreferences</code><br><small>Peekaboo Settings Preferences</small></td>
+        <td>action-confirmed</td>
+        <td>Covered by passed Peekaboo phase(s): peekabooCoreSettingsPreferences.</td>
+      </tr>
+<tr>
+        <td><code>history</code></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td><code>peekabooCoreHistory</code><br><small>Peekaboo History</small></td>
+        <td>action-confirmed</td>
+        <td>Covered by passed Peekaboo phase(s): peekabooCoreHistory.</td>
+      </tr>
+<tr>
+        <td><code>visualCoverage</code></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td><code>peekabooCoreVisualProofQuality</code><br><small>Peekaboo core visual/text proof quality</small></td>
+        <td>artifact-quality</td>
+        <td>Covered by passed Peekaboo phase(s): peekabooCoreVisualProofQuality.</td>
+      </tr>
+<tr>
+        <td><code>visualProofQuality</code></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td><code>peekabooCoreVisualProofQuality</code><br><small>Peekaboo core visual/text proof quality</small></td>
+        <td>artifact-quality</td>
+        <td>Covered by passed Peekaboo phase(s): peekabooCoreVisualProofQuality.</td>
+      </tr></tbody>
+  </table></div>
+  <details open><summary>Transitive Computer Use coverage (11)</summary><div class="table-scroll"><table><thead><tr><th>CU Scenario</th><th>Status</th><th>Grade</th><th>Peekaboo Phase</th><th>Evidence</th></tr></thead><tbody><tr>
+        <td><strong>App launches and first screen is usable</strong><br><small><code>launch</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>action-confirmed</td>
+        <td><code>peekabooCoreLaunch</code></td>
+        <td>Covered transitively by peekabooCoreLaunch; Peekaboo evidence grade: action-confirmed.</td>
+      </tr>
+<tr>
+        <td><strong>My History opens and renders</strong><br><small><code>history</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>action-confirmed</td>
+        <td><code>peekabooCoreHistory</code></td>
+        <td>Covered transitively by peekabooCoreHistory; Peekaboo evidence grade: action-confirmed.</td>
+      </tr>
+<tr>
+        <td><strong>Home suggestion cards are visible/clickable</strong><br><small><code>suggestionCards</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>action-confirmed</td>
+        <td><code>peekabooCoreSuggestionCards</code></td>
+        <td>Covered transitively by peekabooCoreSuggestionCards; Peekaboo evidence grade: action-confirmed.</td>
+      </tr>
+<tr>
+        <td><strong>Update banner does not block the main workflow</strong><br><small><code>updateBanner</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>action-confirmed</td>
+        <td><code>peekabooCoreUpdateBanner</code></td>
+        <td>Covered transitively by peekabooCoreUpdateBanner; Peekaboo evidence grade: action-confirmed.</td>
+      </tr>
+<tr>
+        <td><strong>Settings General tab visibly renders</strong><br><small><code>settingsGeneral</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>action-confirmed</td>
+        <td><code>peekabooCoreSettingsGeneral</code></td>
+        <td>Covered transitively by peekabooCoreSettingsGeneral; Peekaboo evidence grade: action-confirmed.</td>
+      </tr>
+<tr>
+        <td><strong>Settings AI Models tab visibly renders</strong><br><small><code>settingsAIModels</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>action-confirmed</td>
+        <td><code>peekabooCoreSettingsAIModels</code></td>
+        <td>Covered transitively by peekabooCoreSettingsAIModels; Peekaboo evidence grade: action-confirmed.</td>
+      </tr>
+<tr>
+        <td><strong>Settings API Keys tab visibly renders</strong><br><small><code>settingsAPIKeys</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>sensitive-redaction</td>
+        <td><code>peekabooCoreSettingsAPIKeys</code></td>
+        <td>Covered transitively by peekabooCoreSettingsAPIKeys; Peekaboo evidence grade: sensitive-redaction.</td>
+      </tr>
+<tr>
+        <td><strong>Settings Preferences tab visibly renders</strong><br><small><code>settingsPreferences</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>action-confirmed</td>
+        <td><code>peekabooCoreSettingsPreferences</code></td>
+        <td>Covered transitively by peekabooCoreSettingsPreferences; Peekaboo evidence grade: action-confirmed.</td>
+      </tr>
+<tr>
+        <td><strong>A typed real intent can be submitted</strong><br><small><code>typedIntent</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>action-confirmed</td>
+        <td><code>peekabooCoreTypedIntent</code></td>
+        <td>Covered transitively by peekabooCoreTypedIntent; Peekaboo evidence grade: action-confirmed.</td>
+      </tr>
+<tr>
+        <td><strong>Core UX/UI surfaces are captured and inspectable</strong><br><small><code>visualCoverage</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>artifact-quality</td>
+        <td><code>peekabooCoreVisualProofQuality</code></td>
+        <td>Covered transitively by peekabooCoreVisualProofQuality; Peekaboo evidence grade: artifact-quality.</td>
+      </tr>
+<tr>
+        <td><strong>Scenario results include inspectable visual/text evidence</strong><br><small><code>visualProofQuality</code></small></td>
+        <td><span class="verdict pass">pass</span></td>
+        <td>artifact-quality</td>
+        <td><code>peekabooCoreVisualProofQuality</code></td>
+        <td>Covered transitively by peekabooCoreVisualProofQuality; Peekaboo evidence grade: artifact-quality.</td>
+      </tr></tbody></table></div></details>
+
+  <h2 id="baseline-coverage">PR #75 Baseline Coverage</h2>
+  <p>Required parity keys are separated from PR/meta checks and explicit waivers so this report does not inflate or hide the remaining gap.</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Required Key</th><th>Peekaboo Status</th><th>Computer Use Scenario</th><th>Notes</th></tr></thead>
+    <tbody><tr>
+        <td><code>launch</code></td>
+        <td><span class="verdict pass">covered</span></td>
+        <td>App launches and first screen is usable</td>
+        <td>Covered by passed Peekaboo evidence in this report.</td>
+      </tr>
+<tr>
+        <td><code>updateBanner</code></td>
+        <td><span class="verdict pass">covered</span></td>
+        <td>Update banner does not block the main workflow</td>
+        <td>Covered by passed Peekaboo evidence in this report.</td>
+      </tr>
+<tr>
+        <td><code>settingsGeneral</code></td>
+        <td><span class="verdict pass">covered</span></td>
+        <td>Settings General tab visibly renders</td>
+        <td>Covered by passed Peekaboo evidence in this report.</td>
+      </tr>
+<tr>
+        <td><code>settingsAIModels</code></td>
+        <td><span class="verdict pass">covered</span></td>
+        <td>Settings AI Models tab visibly renders</td>
+        <td>Covered by passed Peekaboo evidence in this report.</td>
+      </tr>
+<tr>
+        <td><code>settingsAPIKeys</code></td>
+        <td><span class="verdict pass">covered</span></td>
+        <td>Settings API Keys tab visibly renders</td>
+        <td>Covered by passed Peekaboo evidence in this report.</td>
+      </tr>
+<tr>
+        <td><code>settingsPreferences</code></td>
+        <td><span class="verdict pass">covered</span></td>
+        <td>Settings Preferences tab visibly renders</td>
+        <td>Covered by passed Peekaboo evidence in this report.</td>
+      </tr>
+<tr>
+        <td><code>history</code></td>
+        <td><span class="verdict pass">covered</span></td>
+        <td>My History opens and renders</td>
+        <td>Covered by passed Peekaboo evidence in this report.</td>
+      </tr>
+<tr>
+        <td><code>console</code></td>
+        <td><span class="verdict not_required">gap</span></td>
+        <td>Console opens and closes</td>
+        <td>Remaining required breadth gap for Peekaboo parity.</td>
+      </tr>
+<tr>
+        <td><code>feedback</code></td>
+        <td><span class="verdict not_required">gap</span></td>
+        <td>Feedback / report dialogs open and cancel without submission</td>
+        <td>Remaining required breadth gap for Peekaboo parity.</td>
+      </tr>
+<tr>
+        <td><code>reportIssue</code></td>
+        <td><span class="verdict not_required">gap</span></td>
+        <td>Report Issue opens and can be cancelled</td>
+        <td>Remaining required breadth gap for Peekaboo parity.</td>
+      </tr>
+<tr>
+        <td><code>suggestionCards</code></td>
+        <td><span class="verdict pass">covered</span></td>
+        <td>Home suggestion cards are visible/clickable</td>
+        <td>Covered by passed Peekaboo evidence in this report.</td>
+      </tr>
+<tr>
+        <td><code>customizationSaveRollback</code></td>
+        <td><span class="verdict not_required">gap</span></td>
+        <td>Untracked macOS customizations can be saved and rolled back</td>
+        <td>Remaining required breadth gap for Peekaboo parity.</td>
+      </tr>
+<tr>
+        <td><code>homebrewSaveRollback</code></td>
+        <td><span class="verdict not_required">gap</span></td>
+        <td>Untracked Homebrew items can be saved and rolled back</td>
+        <td>Remaining required breadth gap for Peekaboo parity.</td>
+      </tr>
+<tr>
+        <td><code>typedIntent</code></td>
+        <td><span class="verdict pass">covered</span></td>
+        <td>A typed real intent can be submitted</td>
+        <td>Covered by passed Peekaboo evidence in this report.</td>
+      </tr>
+<tr>
+        <td><code>review</code></td>
+        <td><span class="verdict not_required">gap</span></td>
+        <td>Real provider workflow reaches Review</td>
+        <td>Remaining required breadth gap for Peekaboo parity.</td>
+      </tr>
+<tr>
+        <td><code>summary</code></td>
+        <td><span class="verdict not_required">gap</span></td>
+        <td>Summary describes the typed intent</td>
+        <td>Remaining required breadth gap for Peekaboo parity.</td>
+      </tr>
+<tr>
+        <td><code>diff</code></td>
+        <td><span class="verdict not_required">gap</span></td>
+        <td>Diff shows an acceptable config change</td>
+        <td>Remaining required breadth gap for Peekaboo parity.</td>
+      </tr>
+<tr>
+        <td><code>buildBoundary</code></td>
+        <td><span class="verdict not_required">gap</span></td>
+        <td>Build &amp; Test confirmation boundary appears and is cancelled</td>
+        <td>Remaining required breadth gap for Peekaboo parity.</td>
+      </tr>
+<tr>
+        <td><code>saveFlow</code></td>
+        <td><span class="verdict not_required">gap</span></td>
+        <td>Step 3 Save / Keep changes persists a change</td>
+        <td>Remaining required breadth gap for Peekaboo parity.</td>
+      </tr>
+<tr>
+        <td><code>rollbackCleanup</code></td>
+        <td><span class="verdict not_required">gap</span></td>
+        <td>Rollback cleanup returns disposable config to clean state</td>
+        <td>Remaining required breadth gap for Peekaboo parity.</td>
+      </tr>
+<tr>
+        <td><code>discard</code></td>
+        <td><span class="verdict not_required">gap</span></td>
+        <td>Discard confirmation and return-to-start</td>
+        <td>Remaining required breadth gap for Peekaboo parity.</td>
+      </tr>
+<tr>
+        <td><code>visualCoverage</code></td>
+        <td><span class="verdict pass">covered</span></td>
+        <td>Core UX/UI surfaces are captured and inspectable</td>
+        <td>Covered by passed Peekaboo evidence in this report.</td>
+      </tr>
+<tr>
+        <td><code>visualProofQuality</code></td>
+        <td><span class="verdict pass">covered</span></td>
+        <td>Scenario results include inspectable visual/text evidence</td>
+        <td>Covered by passed Peekaboo evidence in this report.</td>
+      </tr>
+<tr>
+        <td><code>reportInspection</code></td>
+        <td><span class="verdict not_required">gap</span></td>
+        <td>Generated HTML report is inspected with Computer Use</td>
+        <td>Remaining required breadth gap for Peekaboo parity.</td>
+      </tr></tbody>
+  </table></div>
+  <details>
+    <summary>Meta checks and explicit waivers</summary>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Key</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>mainCoverageFreshness</code></td><td>PR/meta</td><td>Main branch user-visible coverage stays mapped</td></tr>
+<tr><td><code>prSpecificCoverage</code></td><td>PR/meta</td><td>PR-specific user-visible behavior is covered when applicable</td></tr>
+<tr><td><code>storybookPreview</code></td><td>PR/meta</td><td>Changed UI has a direct Storybook preview when applicable</td></tr>
+        <tr><td><code>customizationSaveRollback</code></td><td>known limit</td><td><strong>Untracked customizations save + rollback</strong><br>Visibility alone is not parity. Peekaboo should only claim this after a deterministic chip add, Save, and rollback scenario proves the disposable repo returns clean.</td></tr>
+<tr><td><code>homebrewSaveRollback</code></td><td>known limit</td><td><strong>Untracked Homebrew save + rollback</strong><br>Visibility alone is not parity. Peekaboo should only claim this after a deterministic Homebrew chip add, Save, and rollback scenario proves the disposable repo returns clean.</td></tr>
+<tr><td><code>onboardingPermissions</code></td><td>known limit</td><td><strong>Clean-profile onboarding permissions</strong><br>PR #75 tracks this as a known limit; Peekaboo parity should add a clean-profile scenario before claiming full main coverage.</td></tr>
+<tr><td><code>sudoLocalActivation</code></td><td>known limit</td><td><strong>Production sudo_local activation path</strong><br>PR #75 uses a CI fixture waiver. Peekaboo should keep this as a separate release/manual proof unless unattended activation is made deterministic.</td></tr>
+<tr><td><code>previewIndicator</code></td><td>known limit</td><td><strong>Preview indicator commit/revert UI</strong><br>Needs deterministic preview-state setup or a real workflow that activates the indicator.</td></tr>
+      </tbody>
+    </table></div>
+  </details>
+
+  <h2 id="visual-proof">Visual Proof</h2>
+  <div class="proof-grid">
+    <figure class="proof-card" id="screenshot-01-core-launch-1778011165">
+          <img src="screenshots/01-core-launch-1778011165.png" alt="01-core-launch-1778011165">
+          <figcaption>
+            <strong>01-core-launch-1778011165</strong>
+            <span>Captured by Peekaboo runner.</span>
+            <details><summary>Annotated overlay</summary><img src="screenshots/01-core-launch-1778011165_annotated.png" alt="01-core-launch-1778011165_annotated"></details>
+          </figcaption>
+        </figure>
+<figure class="proof-card" id="screenshot-02-update-non-blocking-1778011173">
+          <img src="screenshots/02-update-non-blocking-1778011173.png" alt="02-update-non-blocking-1778011173">
+          <figcaption>
+            <strong>02-update-non-blocking-1778011173</strong>
+            <span>Captured by Peekaboo runner.</span>
+            <details><summary>Annotated overlay</summary><img src="screenshots/02-update-non-blocking-1778011173_annotated.png" alt="02-update-non-blocking-1778011173_annotated"></details>
+          </figcaption>
+        </figure>
+<figure class="proof-card" id="screenshot-03-suggestion-card-1778011177">
+          <img src="screenshots/03-suggestion-card-1778011177.png" alt="03-suggestion-card-1778011177">
+          <figcaption>
+            <strong>03-suggestion-card-1778011177</strong>
+            <span>Captured by Peekaboo runner.</span>
+            <details><summary>Annotated overlay</summary><img src="screenshots/03-suggestion-card-1778011177_annotated.png" alt="03-suggestion-card-1778011177_annotated"></details>
+          </figcaption>
+        </figure>
+<figure class="proof-card" id="screenshot-04-descriptor-typed-1778011180">
+          <img src="screenshots/04-descriptor-typed-1778011180.png" alt="04-descriptor-typed-1778011180">
+          <figcaption>
+            <strong>04-descriptor-typed-1778011180</strong>
+            <span>Captured by Peekaboo runner.</span>
+            <details><summary>Annotated overlay</summary><img src="screenshots/04-descriptor-typed-1778011180_annotated.png" alt="04-descriptor-typed-1778011180_annotated"></details>
+          </figcaption>
+        </figure>
+<figure class="proof-card" id="screenshot-05-provider-validation-block-1778011180">
+          <img src="screenshots/05-provider-validation-block-1778011180.png" alt="05-provider-validation-block-1778011180">
+          <figcaption>
+            <strong>05-provider-validation-block-1778011180</strong>
+            <span>Captured by Peekaboo runner.</span>
+            <details><summary>Annotated overlay</summary><img src="screenshots/05-provider-validation-block-1778011180_annotated.png" alt="05-provider-validation-block-1778011180_annotated"></details>
+          </figcaption>
+        </figure>
+<figure class="proof-card" id="screenshot-08-settings-general-1778011201">
+          <img src="screenshots/08-settings-general-1778011201.png" alt="08-settings-general-1778011201">
+          <figcaption>
+            <strong>08-settings-general-1778011201</strong>
+            <span>Captured by Peekaboo runner.</span>
+            <details><summary>Annotated overlay</summary><img src="screenshots/08-settings-general-1778011201_annotated.png" alt="08-settings-general-1778011201_annotated"></details>
+          </figcaption>
+        </figure>
+<figure class="proof-card" id="screenshot-09-settings-ai-models-1778011205">
+          <img src="screenshots/09-settings-ai-models-1778011205.png" alt="09-settings-ai-models-1778011205">
+          <figcaption>
+            <strong>09-settings-ai-models-1778011205</strong>
+            <span>Captured by Peekaboo runner.</span>
+            <details><summary>Annotated overlay</summary><img src="screenshots/09-settings-ai-models-1778011205_annotated.png" alt="09-settings-ai-models-1778011205_annotated"></details>
+          </figcaption>
+        </figure>
+<figure class="proof-card" id="screenshot-10-settings-api-keys-1778011208">
+          <img src="screenshots/10-settings-api-keys-1778011208.png" alt="10-settings-api-keys-1778011208">
+          <figcaption>
+            <strong>10-settings-api-keys-1778011208</strong>
+            <span>Captured by Peekaboo runner.</span>
+            <details><summary>Annotated overlay</summary><img src="screenshots/10-settings-api-keys-1778011208_annotated.png" alt="10-settings-api-keys-1778011208_annotated"></details>
+          </figcaption>
+        </figure>
+<figure class="proof-card" id="screenshot-11-settings-preferences-1778011211">
+          <img src="screenshots/11-settings-preferences-1778011211.png" alt="11-settings-preferences-1778011211">
+          <figcaption>
+            <strong>11-settings-preferences-1778011211</strong>
+            <span>Captured by Peekaboo runner.</span>
+            <details><summary>Annotated overlay</summary><img src="screenshots/11-settings-preferences-1778011211_annotated.png" alt="11-settings-preferences-1778011211_annotated"></details>
+          </figcaption>
+        </figure>
+<figure class="proof-card" id="screenshot-12-history-1778011216">
+          <img src="screenshots/12-history-1778011216.png" alt="12-history-1778011216">
+          <figcaption>
+            <strong>12-history-1778011216</strong>
+            <span>Captured by Peekaboo runner.</span>
+            <details><summary>Annotated overlay</summary><img src="screenshots/12-history-1778011216_annotated.png" alt="12-history-1778011216_annotated"></details>
+          </figcaption>
+        </figure>
+  </div>
+
+  <h2 id="artifacts">Artifacts</h2>
+  <div class="table-scroll"><table>
+    <thead><tr><th>Artifact</th><th>Path</th></tr></thead>
+    <tbody>
+      <tr>
+            <td>Preflight</td>
+            <td><a href="peekaboo-preflight.txt"><code>peekaboo-preflight.txt</code></a></td>
+          </tr>
+<tr>
+            <td>Log</td>
+            <td><a href="peekaboo-e2e.log"><code>peekaboo-e2e.log</code></a></td>
+          </tr>
+<tr>
+            <td>stdout</td>
+            <td><a href="peekaboo-e2e.stdout.txt"><code>peekaboo-e2e.stdout.txt</code></a></td>
+          </tr>
+<tr>
+            <td>stderr</td>
+            <td><a href="peekaboo-e2e.stderr.txt"><code>peekaboo-e2e.stderr.txt</code></a></td>
+          </tr>
+<tr>
+            <td>Legacy JSON</td>
+            <td><a href="peekaboo-e2e-results.json"><code>peekaboo-e2e-results.json</code></a></td>
+          </tr>
+<tr>
+            <td>Structured report</td>
+            <td><a href="e2e-report/macos_core_product_proof/e2e-report.json"><code>e2e-report/macos_core_product_proof/e2e-report.json</code></a></td>
+          </tr>
+<tr>
+            <td>diagnostics/text/history-text.txt</td>
+            <td><a href="e2e-report/macos_core_product_proof/diagnostics/text/history-text.txt"><code>e2e-report/macos_core_product_proof/diagnostics/text/history-text.txt</code></a></td>
+          </tr>
+<tr>
+            <td>diagnostics/text/settings-ai-models-text.txt</td>
+            <td><a href="e2e-report/macos_core_product_proof/diagnostics/text/settings-ai-models-text.txt"><code>e2e-report/macos_core_product_proof/diagnostics/text/settings-ai-models-text.txt</code></a></td>
+          </tr>
+<tr>
+            <td>diagnostics/text/settings-api-keys-text.txt</td>
+            <td><a href="e2e-report/macos_core_product_proof/diagnostics/text/settings-api-keys-text.txt"><code>e2e-report/macos_core_product_proof/diagnostics/text/settings-api-keys-text.txt</code></a></td>
+          </tr>
+<tr>
+            <td>diagnostics/text/settings-general-text.txt</td>
+            <td><a href="e2e-report/macos_core_product_proof/diagnostics/text/settings-general-text.txt"><code>e2e-report/macos_core_product_proof/diagnostics/text/settings-general-text.txt</code></a></td>
+          </tr>
+<tr>
+            <td>diagnostics/text/settings-preferences-text.txt</td>
+            <td><a href="e2e-report/macos_core_product_proof/diagnostics/text/settings-preferences-text.txt"><code>e2e-report/macos_core_product_proof/diagnostics/text/settings-preferences-text.txt</code></a></td>
+          </tr>
+<tr>
+            <td>diagnostics/text/suggestion-card-text.txt</td>
+            <td><a href="e2e-report/macos_core_product_proof/diagnostics/text/suggestion-card-text.txt"><code>e2e-report/macos_core_product_proof/diagnostics/text/suggestion-card-text.txt</code></a></td>
+          </tr>
+<tr>
+            <td>peekaboo-coverage-map.json</td>
+            <td><a href="peekaboo-coverage-map.json"><code>peekaboo-coverage-map.json</code></a></td>
+          </tr>
+<tr>
+            <td>secret-scan.json</td>
+            <td><a href="secret-scan.json"><code>secret-scan.json</code></a></td>
+          </tr>
+<tr>
+            <td>screenshot-signal.json</td>
+            <td><a href="screenshot-signal.json"><code>screenshot-signal.json</code></a></td>
+          </tr>
+    </tbody>
+  </table></div>
+
+  <h2>Human QA Narrative</h2>
+  <ul><li>2026-05-05T20:00:28.509Z - Ran Peekaboo scenario macos_core_product_proof. Results: e2e-report/macos_core_product_proof/e2e-report.json.</li></ul>
+
+  <h2>Claims vs Evidence</h2>
+  <details>
+    <summary>Claims vs evidence (12)</summary>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Claim</th><th>Status</th><th>Evidence</th></tr></thead>
+      <tbody>
+      <tr>
+                <td>Peekaboo macos_core_product_proof: Prepared deterministic config, local validation settings, and mock system flag</td>
+                <td><span class="verdict pass">pass</span></td>
+                <td>Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json.</td>
+              </tr>
+<tr>
+                <td>Peekaboo macos_core_product_proof: App shell, header controls, and initial prompt surface rendered</td>
+                <td><span class="verdict pass">pass</span></td>
+                <td>Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json.</td>
+              </tr>
+<tr>
+                <td>Peekaboo macos_core_product_proof: Update banner state did not block the prompt workflow</td>
+                <td><span class="verdict pass">pass</span></td>
+                <td>Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json.</td>
+              </tr>
+<tr>
+                <td>Peekaboo macos_core_product_proof: Suggestion card was clicked and the prompt surface remained usable</td>
+                <td><span class="verdict pass">pass</span></td>
+                <td>Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json.</td>
+              </tr>
+<tr>
+                <td>Peekaboo macos_core_product_proof: Typed descriptor appeared in the prompt input</td>
+                <td><span class="verdict pass">pass</span></td>
+                <td>Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json.</td>
+              </tr>
+<tr>
+                <td>Peekaboo macos_core_product_proof: Submit path reached expected local provider-validation boundary</td>
+                <td><span class="verdict pass">pass</span></td>
+                <td>Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json.</td>
+              </tr>
+<tr>
+                <td>Peekaboo macos_core_product_proof: Settings General tab rendered with config and host controls</td>
+                <td><span class="verdict pass">pass</span></td>
+                <td>Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json.</td>
+              </tr>
+<tr>
+                <td>Peekaboo macos_core_product_proof: Settings AI Models tab rendered provider/model controls</td>
+                <td><span class="verdict pass">pass</span></td>
+                <td>Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json.</td>
+              </tr>
+<tr>
+                <td>Peekaboo macos_core_product_proof: Settings API Keys tab rendered and shared redaction gate found no unmasked secrets</td>
+                <td><span class="verdict pass">pass</span></td>
+                <td>Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json.</td>
+              </tr>
+<tr>
+                <td>Peekaboo macos_core_product_proof: Settings Preferences tab rendered confirmation controls</td>
+                <td><span class="verdict pass">pass</span></td>
+                <td>Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json.</td>
+              </tr>
+<tr>
+                <td>Peekaboo macos_core_product_proof: History surface rendered a visible state</td>
+                <td><span class="verdict pass">pass</span></td>
+                <td>Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json.</td>
+              </tr>
+<tr>
+                <td>Peekaboo macos_core_product_proof: Core proof captured 20 screenshots and 6 redacted text snapshots</td>
+                <td><span class="verdict pass">pass</span></td>
+                <td>Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json.</td>
+              </tr>
+      </tbody>
+    </table></div>
+  </details>
+
+  <h2>Confirmation Boundaries</h2>
+  <p>None recorded.</p>
+
+  <h2>Cleanup / Restore Status</h2>
+  <p>Restored original app support directory from off-repo backup and removed that backup: /Users/admin/Library/Caches/com.darkmatter.nixmac-e2e/peekaboo-e2e-backups/2026-05-05_19-59-02-522Z/app-support-backup.</p>
+
+  <h2 id="out-of-scope">Out of Scope for This Scenario</h2>
+  <details>
+    <summary>30 not-required row(s), collapsed to keep executed proof readable</summary>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Scenario</th><th>Status</th><th>Notes</th></tr></thead>
+      <tbody><tr>
+        <td><strong>Settings safe tabs render: General, AI Models, Preferences</strong><br><small><code>settings</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Home suggestion card is clickable</strong><br><small><code>suggestion</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Typed intent reaches review</strong><br><small><code>descriptor</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Build check completes or fails visibly</strong><br><small><code>buildCheck</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Main branch user-visible coverage stays mapped</strong><br><small><code>mainCoverageFreshness</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>PR-specific user-visible behavior is covered when applicable</strong><br><small><code>prSpecificCoverage</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Changed UI has a direct Storybook preview when applicable</strong><br><small><code>storybookPreview</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo descriptor prompt smoke</strong><br><small><code>peekabooDescriptorPromptSmoke</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo support dialogs smoke</strong><br><small><code>peekabooSupportDialogsSmoke</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo Console smoke</strong><br><small><code>peekabooConsoleSmoke</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo Homebrew save/rollback smoke</strong><br><small><code>peekabooHomebrewSaveRollbackSmoke</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo customization save/rollback smoke</strong><br><small><code>peekabooCustomizationSaveRollbackSmoke</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo Console text surface</strong><br><small><code>peekabooCoreConsole</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo Feedback dialog</strong><br><small><code>peekabooCoreFeedback</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo Report Issue classification</strong><br><small><code>peekabooCoreReportIssue</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo Homebrew save + rollback</strong><br><small><code>peekabooHomebrewSaveRollback</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo customization save + rollback</strong><br><small><code>peekabooCustomizationSaveRollback</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo provider-backed evolve smoke</strong><br><small><code>peekabooProviderEvolveFullSmoke</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo provider discard smoke</strong><br><small><code>peekabooProviderDiscardSmoke</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo provider fixture setup</strong><br><small><code>peekabooProviderFixture</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo provider app shell</strong><br><small><code>peekabooProviderLaunch</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo provider typed intent</strong><br><small><code>peekabooProviderTypedIntent</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo provider Review proof</strong><br><small><code>peekabooProviderReview</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo provider Build &amp; Test boundary</strong><br><small><code>peekabooProviderBuildBoundary</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo provider Save flow</strong><br><small><code>peekabooProviderSaveFlow</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo provider rollback cleanup</strong><br><small><code>peekabooProviderRollbackCleanup</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo provider request audit</strong><br><small><code>peekabooProviderAudit</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo provider Discard proof</strong><br><small><code>peekabooProviderDiscard</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo report visual inspection</strong><br><small><code>peekabooReportInspection</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr>
+<tr>
+        <td><strong>Peekaboo Nix install flow</strong><br><small><code>peekabooNixInstall</code></small></td>
+        <td><span class="verdict not_required">not_required</span></td>
+        <td>Not required for Peekaboo macos_core_product_proof run.</td>
+      </tr></tbody>
+    </table></div>
+  </details>
+</main>
+<script>
+	  for (const button of document.querySelectorAll('[data-video-seek], [data-screenshot-target]')) {
+    button.addEventListener('click', () => {
+      const video = document.querySelector('#summary-video video');
+      if (video && button.dataset.videoSeek) {
+        video.currentTime = Number(button.dataset.videoSeek || 0);
+        video.play().catch(() => {});
+        return;
+      }
+      const target = button.dataset.screenshotTarget;
+      if (target) document.getElementById(target)?.scrollIntoView({ block: 'center' });
+    });
+  }
+</script>
+</body>
+</html>

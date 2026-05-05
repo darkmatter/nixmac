@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "lane": "peekaboo-local",
+  "scenario": "macos_core_product_proof",
+  "note": "Peekaboo coverage is intentionally additive. correspondsTo lists related Computer Use Product Proof keys, but Peekaboo keys remain separate unless the lane satisfies the same evidence grade.",
+  "phaseCoverage": [
+    {
+      "key": "peekabooCoreFixture",
+      "label": "Peekaboo core fixture",
+      "correspondsTo": [],
+      "grade": "fixture"
+    },
+    {
+      "key": "peekabooCoreLaunch",
+      "label": "Peekaboo core launch",
+      "correspondsTo": [
+        "launch"
+      ],
+      "grade": "action-confirmed"
+    },
+    {
+      "key": "peekabooCoreUpdateBanner",
+      "label": "Peekaboo update banner non-blocking",
+      "correspondsTo": [
+        "updateBanner"
+      ],
+      "grade": "action-confirmed"
+    },
+    {
+      "key": "peekabooCoreSuggestionCards",
+      "label": "Peekaboo suggestion cards",
+      "correspondsTo": [
+        "suggestionCards"
+      ],
+      "grade": "action-confirmed"
+    },
+    {
+      "key": "peekabooCoreTypedIntent",
+      "label": "Peekaboo typed intent",
+      "correspondsTo": [
+        "typedIntent"
+      ],
+      "grade": "action-confirmed"
+    },
+    {
+      "key": "peekabooCoreProviderValidation",
+      "label": "Peekaboo local provider validation",
+      "correspondsTo": [
+        "typedIntent"
+      ],
+      "grade": "guardrail-confirmed"
+    },
+    {
+      "key": "peekabooCoreSettingsGeneral",
+      "label": "Peekaboo Settings General",
+      "correspondsTo": [
+        "settingsGeneral"
+      ],
+      "grade": "action-confirmed"
+    },
+    {
+      "key": "peekabooCoreSettingsAIModels",
+      "label": "Peekaboo Settings AI Models",
+      "correspondsTo": [
+        "settingsAIModels"
+      ],
+      "grade": "action-confirmed"
+    },
+    {
+      "key": "peekabooCoreSettingsAPIKeys",
+      "label": "Peekaboo Settings API Keys",
+      "correspondsTo": [
+        "settingsAPIKeys"
+      ],
+      "grade": "sensitive-redaction"
+    },
+    {
+      "key": "peekabooCoreSettingsPreferences",
+      "label": "Peekaboo Settings Preferences",
+      "correspondsTo": [
+        "settingsPreferences"
+      ],
+      "grade": "action-confirmed"
+    },
+    {
+      "key": "peekabooCoreHistory",
+      "label": "Peekaboo History",
+      "correspondsTo": [
+        "history"
+      ],
+      "grade": "action-confirmed"
+    },
+    {
+      "key": "peekabooCoreVisualProofQuality",
+      "label": "Peekaboo core visual/text proof quality",
+      "correspondsTo": [
+        "visualCoverage",
+        "visualProofQuality"
+      ],
+      "grade": "artifact-quality"
+    }
+  ]
+}
