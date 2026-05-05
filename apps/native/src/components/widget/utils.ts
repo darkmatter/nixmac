@@ -44,23 +44,6 @@ export function getDirectory(path: string): string {
   return parts.slice(0, -1).join("/");
 }
 
-/**
- * Infer change type from diff chunk content.
- */
-function getChangeTypeFromChunks(
-  chunks: string,
-): "new" | "edited" | "removed" {
-  const contentLines = chunks
-    .split("\n")
-    .filter((l) => l.startsWith("+") || l.startsWith("-"));
-  if (contentLines.length === 0) return "edited";
-  const hasAdditions = contentLines.some((l) => l.startsWith("+"));
-  const hasDeletions = contentLines.some((l) => l.startsWith("-"));
-  if (hasAdditions && !hasDeletions) return "new";
-  if (!hasAdditions && hasDeletions) return "removed";
-  return "edited";
-}
-
 
 // =============================================================================
 // SUMMARY CATEGORY COLORS
