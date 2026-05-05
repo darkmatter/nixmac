@@ -547,9 +547,41 @@ Useful variants:
 
 ```bash
 node tools/computer-use-e2e/run-local.mjs run-peekaboo macos_descriptor_prompt_smoke --no-record
+node tools/computer-use-e2e/run-local.mjs run-peekaboo macos_core_product_proof --no-record
 node tools/computer-use-e2e/run-local.mjs run-peekaboo macos_provider_evolve_full_smoke --no-record
+node tools/computer-use-e2e/run-local.mjs run-peekaboo-suite --no-record
 NIXMAC_APP_PATH=/path/to/nixmac.app node tools/computer-use-e2e/run-local.mjs run-peekaboo
 ```
+
+Developers can run the same Peekaboo suite on a MacInCloud host from their own
+machine when the host already has this checkout, Peekaboo, TCC permissions, and
+a runnable nixmac app:
+
+```bash
+node tools/computer-use-e2e/run-local.mjs run-peekaboo-macincloud \
+  --ssh-dest admin@dxu97120.macincloud.com \
+  --identity-file ~/.ssh/nixmac_e2e_ci \
+  --repo-dir /Users/admin/nixmac-peekaboo-local-e2e \
+  --app-path /Users/admin/nixmac-e2e-current.app \
+  --no-record \
+  --allow-cleanup
+```
+
+For a focused remote scenario, add `--scenario macos_core_product_proof`.
+Equivalent environment variables are `NIXMAC_E2E_MACINCLOUD_SSH_DEST`,
+`NIXMAC_E2E_MACINCLOUD_SSH_KEY`, `NIXMAC_E2E_MACINCLOUD_REPO_DIR`, and
+`NIXMAC_E2E_MACINCLOUD_APP_PATH`. Omitting `--scenario` runs the full suite;
+running `run-peekaboo-suite` directly executes on the developer's current Mac.
+
+`macos_core_product_proof` expands the local lane beyond the descriptor smoke:
+it covers launch, settings tabs, API-key redaction, history, console text,
+feedback/report surfaces, typed intent, provider-validation guardrails, and
+artifact-quality checks. `macos_provider_evolve_full_smoke` covers the
+provider-backed Review, Build & Test, Save, and History restore path against a
+local OpenAI-compatible HTTP stub. The suite command runs both, writes a
+Peekaboo-specific coverage map, and keeps those `peekaboo*` results separate
+from the shared Computer Use scenario keys unless a lane satisfies the same
+evidence contract.
 
 The historical `nix-install` scenario is intentionally not the default. It can
 uninstall/reinstall system Nix and should only run on a disposable runner:
@@ -561,6 +593,41 @@ node tools/computer-use-e2e/run-local.mjs run-peekaboo nix-install --allow-destr
 The bridge fails fast before GUI driving if Peekaboo, jq, `/Applications/nixmac.app`,
 or required TCC permissions are missing. On DXU, grant Screen Recording and
 Accessibility through the remote console before expecting a full run to pass.
+Each Peekaboo run also clears stale launchctl E2E flags and removes leftover
+`nixmac-e2e-system-mock-bin` PATH segments before preflight so a killed prior
+run cannot keep the mock activation shim alive for the next login-session app.
+If a run is killed hard and you want to recover the session manually, run:
+
+```bash
+launchctl unsetenv NIXMAC_E2E_MOCK_SYSTEM
+launchctl unsetenv NIXMAC_E2E_OPAQUE_WINDOW
+launchctl unsetenv NIXMAC_RECORD_COMPLETIONS
+launchctl unsetenv NIXMAC_COMPLETION_LOG_DIR
+launchctl unsetenv OPENAI_API_KEY
+launchctl unsetenv OPENROUTER_API_KEY
+launchctl unsetenv VLLM_API_KEY
+launchctl unsetenv ANTHROPIC_API_KEY
+launchctl getenv PATH | tr ':' '\n' | grep -v nixmac-e2e-system-mock-bin | paste -sd ':' -
+```
+
+If the final command prints a cleaned PATH, apply it with
+`launchctl setenv PATH "<cleaned-path>"`; if it prints nothing, use
+`launchctl unsetenv PATH`.
+
+MacInCloud operator notes:
+
+- Keep an active Screen Sharing session attached for the duration of the run.
+  Without an attached display session, WebKit can remain accessible to AX while
+  screenshots capture as black or white; the `screenshot-signal.json` gate will
+  fail those runs instead of accepting hollow visual proof.
+- Allow the nixmac Documents-folder consent prompt once on the host when it
+  appears.
+- The Peekaboo scenarios set `NIXMAC_E2E_OPAQUE_WINDOW=1` automatically so the
+  app uses an opaque, visible-titlebar window that is more reliable for remote
+  host capture. In debug builds, that same capture mode also forces a dark
+  WebView backing color so the screenshots stay visually close to nixmac's
+  black app chrome instead of showing WebView/macOS light gray through
+  translucent app surfaces.
 
 The remote Codex app-server lane remains the PR/Product Proof production lane.
 The Peekaboo lane is isolated local evidence so the team can compare driver

@@ -179,7 +179,11 @@ peek_elements() {
     fi
 
     local json count pid pid_json pid_count
-    json=$(peekaboo_run see "${args[@]}" --json 2>/dev/null || peekaboo_empty_elements_json)
+    if [ "${#args[@]}" -gt 0 ]; then
+        json=$(peekaboo_run see "${args[@]}" --json 2>/dev/null || peekaboo_empty_elements_json)
+    else
+        json=$(peekaboo_run see --json 2>/dev/null || peekaboo_empty_elements_json)
+    fi
 
     if [ -n "$app" ]; then
         count=$(peekaboo_element_count "$json")

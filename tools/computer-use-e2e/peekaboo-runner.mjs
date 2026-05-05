@@ -1,14 +1,75 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { pngDimensions } from './artifact-utils.mjs';
+import { containsUnmaskedSecret } from './redaction.mjs';
+import { imageArtifactIssue, pngSignalStats, probeCropForImage } from './visual-proof.mjs';
 
 export const PEEKABOO_E2E_SCENARIO_KEYS = Object.freeze({
   macos_descriptor_prompt_smoke: 'peekabooDescriptorPromptSmoke',
+  macos_core_product_proof: 'peekabooCoreProductProof',
+  macos_support_dialogs_smoke: 'peekabooSupportDialogsSmoke',
+  macos_console_smoke: 'peekabooConsoleSmoke',
+  macos_homebrew_save_rollback_smoke: 'peekabooHomebrewSaveRollbackSmoke',
+  macos_customization_save_rollback_smoke: 'peekabooCustomizationSaveRollbackSmoke',
   macos_provider_evolve_full_smoke: 'peekabooProviderEvolveFullSmoke',
+  macos_provider_discard_smoke: 'peekabooProviderDiscardSmoke',
   'nix-install': 'peekabooNixInstall',
 });
+
+export const PEEKABOO_PHASE_COVERAGE = Object.freeze({
+  peekabooCoreFixture: { label: 'Peekaboo core fixture', correspondsTo: [], grade: 'fixture' },
+  peekabooCoreLaunch: { label: 'Peekaboo core launch', correspondsTo: ['launch'], grade: 'action-confirmed' },
+  peekabooCoreUpdateBanner: { label: 'Peekaboo update banner non-blocking', correspondsTo: ['updateBanner'], grade: 'action-confirmed' },
+  peekabooCoreSettingsGeneral: { label: 'Peekaboo Settings General', correspondsTo: ['settingsGeneral'], grade: 'action-confirmed' },
+  peekabooCoreSettingsAIModels: { label: 'Peekaboo Settings AI Models', correspondsTo: ['settingsAIModels'], grade: 'action-confirmed' },
+  peekabooCoreSettingsAPIKeys: { label: 'Peekaboo Settings API Keys', correspondsTo: ['settingsAPIKeys'], grade: 'sensitive-redaction' },
+  peekabooCoreSettingsPreferences: { label: 'Peekaboo Settings Preferences', correspondsTo: ['settingsPreferences'], grade: 'action-confirmed' },
+  peekabooCoreHistory: { label: 'Peekaboo History', correspondsTo: ['history'], grade: 'action-confirmed' },
+  peekabooCoreConsole: { label: 'Peekaboo Console text', correspondsTo: ['console'], grade: 'sensitive-redaction-text' },
+  peekabooCoreFeedback: { label: 'Peekaboo Feedback dialog', correspondsTo: ['feedback'], grade: 'action-confirmed' },
+  peekabooCoreReportIssue: { label: 'Peekaboo Report Issue classification', correspondsTo: ['reportIssue'], grade: 'action-confirmed-or-classified-absent' },
+  peekabooCoreSuggestionCards: { label: 'Peekaboo suggestion cards', correspondsTo: ['suggestionCards'], grade: 'action-confirmed' },
+  peekabooCoreTypedIntent: { label: 'Peekaboo typed intent', correspondsTo: ['typedIntent'], grade: 'action-confirmed' },
+  peekabooCoreProviderValidation: { label: 'Peekaboo local provider validation', correspondsTo: ['typedIntent'], grade: 'guardrail-confirmed' },
+  peekabooCoreVisualProofQuality: { label: 'Peekaboo core visual/text proof quality', correspondsTo: ['visualCoverage', 'visualProofQuality'], grade: 'artifact-quality' },
+  peekabooHomebrewSaveRollback: { label: 'Peekaboo Homebrew save + rollback', correspondsTo: ['homebrewSaveRollback'], grade: 'remote-state' },
+  peekabooCustomizationSaveRollback: { label: 'Peekaboo customization save + rollback', correspondsTo: ['customizationSaveRollback'], grade: 'remote-state' },
+  peekabooProviderFixture: { label: 'Peekaboo provider fixture', correspondsTo: [], grade: 'fixture' },
+  peekabooProviderLaunch: { label: 'Peekaboo provider launch', correspondsTo: ['launch'], grade: 'action-confirmed' },
+  peekabooProviderTypedIntent: { label: 'Peekaboo provider typed intent', correspondsTo: ['typedIntent'], grade: 'action-confirmed' },
+  peekabooProviderReview: { label: 'Peekaboo provider Review', correspondsTo: ['review', 'summary', 'diff'], grade: 'provider-state' },
+  peekabooProviderBuildBoundary: { label: 'Peekaboo Build & Test boundary', correspondsTo: ['buildBoundary'], grade: 'action-confirmed' },
+  peekabooProviderSaveFlow: { label: 'Peekaboo Save flow', correspondsTo: ['saveFlow'], grade: 'remote-state' },
+  peekabooProviderRollbackCleanup: { label: 'Peekaboo rollback cleanup', correspondsTo: ['rollbackCleanup'], grade: 'remote-state' },
+  peekabooProviderAudit: { label: 'Peekaboo provider audit', correspondsTo: ['review', 'summary'], grade: 'provider-audit' },
+  peekabooProviderDiscard: { label: 'Peekaboo provider Discard proof', correspondsTo: ['discard'], grade: 'action-confirmed' },
+  peekabooReportInspection: { label: 'Peekaboo report inspection', correspondsTo: ['reportInspection'], grade: 'manual-visual-artifact-inspection' },
+});
+
+const ABSENT_NO_COVERAGE_PHASE_KEYS = new Set([
+  'peekabooCoreReportIssue',
+  'peekabooHomebrewSaveRollback',
+  'peekabooCustomizationSaveRollback',
+]);
+const ABSENT_NO_COVERAGE_SENTINEL = 'ABSENT_NO_COVERAGE';
+const ABSENT_NO_COVERAGE_PATTERN = new RegExp(`\\b${ABSENT_NO_COVERAGE_SENTINEL}\\b`);
+
+function phaseCoverageForReportPhase(key, phase) {
+  const coverage = PEEKABOO_PHASE_COVERAGE[key];
+  if (!coverage) return null;
+  if (ABSENT_NO_COVERAGE_PHASE_KEYS.has(key) && ABSENT_NO_COVERAGE_PATTERN.test(phase?.name ?? '')) {
+    return {
+      ...coverage,
+      label: `${coverage.label} absent classification`,
+      correspondsTo: [],
+      grade: 'classified-absent-no-coverage',
+    };
+  }
+  return coverage;
+}
 
 export const DEFAULT_PEEKABOO_SCENARIO = 'macos_descriptor_prompt_smoke';
 
@@ -159,6 +220,31 @@ function reportProofEntries(report, runDir) {
     });
 }
 
+function screenshotFamilyKey(artifact) {
+  const basename = path.basename(artifact.path ?? artifact.label ?? '').replace(/\.[^.]+$/, '');
+  const family = basename.replace(/_annotated$/, '');
+  const variant = /_annotated(?:\.[^.]+)?$/i.test(path.basename(artifact.path ?? artifact.label ?? ''))
+    ? 'annotated'
+    : 'primary';
+  return `${family}:${variant}:${artifact.bytes ?? 0}`;
+}
+
+function dedupeScreenshotArtifacts(artifacts) {
+  const byKey = new Map();
+  for (const artifact of artifacts) {
+    const key = screenshotFamilyKey(artifact);
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, artifact);
+      continue;
+    }
+    const existingScore = existing.path?.startsWith('screenshots/') ? 2 : existing.path?.includes('_annotated') ? 0 : 1;
+    const nextScore = artifact.path?.startsWith('screenshots/') ? 2 : artifact.path?.includes('_annotated') ? 0 : 1;
+    if (nextScore > existingScore) byKey.set(key, artifact);
+  }
+  return [...byKey.values()].sort((a, b) => a.path.localeCompare(b.path));
+}
+
 function reportDiagnosticEntries(report, runDir) {
   const proofRoot = path.join(runDir, 'e2e-report');
   return (report?.proof ?? [])
@@ -174,6 +260,215 @@ function reportDiagnosticEntries(report, runDir) {
         bytes: fileStat?.size ?? 0,
       };
     });
+}
+
+function walkTextArtifactFiles(root) {
+  if (!existsSync(root)) return [];
+  const files = [];
+  const visit = (current) => {
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const fullPath = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        visit(fullPath);
+      } else if (entry.isFile() && /\.(?:json|txt|log|html|md|csv)$/i.test(entry.name)) {
+        files.push(fullPath);
+      }
+    }
+  };
+  visit(root);
+  return files.sort();
+}
+
+function scanRunDirForUnmaskedSecrets(runDir) {
+  const violations = [];
+  const files = walkTextArtifactFiles(runDir);
+  for (const filePath of files) {
+    let text = '';
+    try {
+      text = readFileSync(filePath, 'utf8');
+    } catch {
+      continue;
+    }
+    if (containsUnmaskedSecret(text)) {
+      violations.push(path.relative(runDir, filePath));
+    }
+  }
+  return {
+    status: violations.length === 0 ? 'passed' : 'failed',
+    scannedFiles: files.length,
+    violations,
+  };
+}
+
+const PEEKABOO_SCREENSHOT_CONTENT_PROBE = Object.freeze({
+  label: 'central app content',
+  x: 8,
+  y: 18,
+  w: 84,
+  h: 70,
+  minYAvg: 6,
+  minYMax: 35,
+  minYRange: 8,
+  maxDarkChromeYAvg: 42,
+});
+
+function screenshotRequiresDarkChromeProbe(screenshot) {
+  const text = `${screenshot?.label ?? ''} ${screenshot?.path ?? ''}`.toLowerCase();
+  return /\b(?:launch|app shell|suggestion|descriptor|settings|history|console)\b/.test(text);
+}
+
+function peekabooScreenshotSignalIssue(runDir, screenshot) {
+  const baseIssue = imageArtifactIssue({ runDir }, screenshot.path);
+  if (baseIssue) return baseIssue;
+
+  const fullPath = path.join(runDir, screenshot.path);
+  const imageSize = pngDimensions(fullPath);
+  if (!imageSize) return 'could not read PNG dimensions';
+  if (imageSize.width < 500 || imageSize.height < 350) {
+    return `the screenshot is too small for app-level visual proof (${imageSize.width}x${imageSize.height})`;
+  }
+
+  const crop = probeCropForImage(imageSize, PEEKABOO_SCREENSHOT_CONTENT_PROBE);
+  if (!crop) return 'central app content probe could not be mapped into image pixels';
+  const cropStats = pngSignalStats(fullPath, crop);
+  if (!cropStats.ok) return `ffmpeg could not inspect central app content (${cropStats.error})`;
+
+  const yMin = cropStats.stats.YMIN;
+  const yMax = cropStats.stats.YMAX;
+  const yAvg = cropStats.stats.YAVG;
+  const yRange = Number.isFinite(yMin) && Number.isFinite(yMax) ? yMax - yMin : NaN;
+  if (!Number.isFinite(yAvg) || yAvg < PEEKABOO_SCREENSHOT_CONTENT_PROBE.minYAvg) {
+    return `central app content is too dark (YAVG ${Number.isFinite(yAvg) ? yAvg : 'unknown'} below ${PEEKABOO_SCREENSHOT_CONTENT_PROBE.minYAvg})`;
+  }
+  if (!Number.isFinite(yMax) || yMax < PEEKABOO_SCREENSHOT_CONTENT_PROBE.minYMax) {
+    return `central app content appears blank or occluded (YMAX ${Number.isFinite(yMax) ? yMax : 'unknown'} below ${PEEKABOO_SCREENSHOT_CONTENT_PROBE.minYMax})`;
+  }
+  if (!Number.isFinite(yRange) || yRange < PEEKABOO_SCREENSHOT_CONTENT_PROBE.minYRange) {
+    return `central app content has too little visual contrast (Y range ${Number.isFinite(yRange) ? yRange : 'unknown'} below ${PEEKABOO_SCREENSHOT_CONTENT_PROBE.minYRange})`;
+  }
+  if (
+    screenshotRequiresDarkChromeProbe(screenshot) &&
+    Number.isFinite(yAvg) &&
+    yAvg > PEEKABOO_SCREENSHOT_CONTENT_PROBE.maxDarkChromeYAvg
+  ) {
+    return `base app chrome is too light for nixmac dark capture proof (YAVG ${yAvg} above ${PEEKABOO_SCREENSHOT_CONTENT_PROBE.maxDarkChromeYAvg})`;
+  }
+  return '';
+}
+
+function scanPeekabooScreenshotSignal(runDir, screenshots) {
+  const violations = [];
+  const pngScreenshots = screenshots.filter((screenshot) => /\.png$/i.test(screenshot?.path ?? ''));
+  for (const screenshot of pngScreenshots) {
+    if (!screenshot?.path || !/\.png$/i.test(screenshot.path)) continue;
+    const issue = peekabooScreenshotSignalIssue(runDir, screenshot);
+    if (issue) {
+      violations.push({
+        path: screenshot.path,
+        label: screenshot.label ?? path.basename(screenshot.path),
+        issue,
+      });
+    }
+  }
+  if (pngScreenshots.length === 0) {
+    violations.push({
+      path: null,
+      label: 'screenshot artifact',
+      issue: 'no PNG screenshot artifacts were captured',
+    });
+  }
+  return {
+    status: violations.length === 0 ? 'passed' : 'failed',
+    scannedFiles: pngScreenshots.length,
+    violations,
+  };
+}
+
+function writeSignalFixture(filePath, { color, filter = null }) {
+  const args = [
+    '-hide_banner',
+    '-loglevel',
+    'error',
+    '-y',
+    '-f',
+    'lavfi',
+    '-i',
+    `color=c=${color}:s=640x480`,
+    '-frames:v',
+    '1',
+  ];
+  if (filter) args.splice(args.length - 2, 0, '-vf', filter);
+  const result = spawnSync('ffmpeg', args.concat(filePath), { encoding: 'utf8' });
+  if (result.status !== 0) {
+    throw new Error(`failed to create screenshot-signal fixture: ${result.stderr || result.error || result.status}`);
+  }
+}
+
+function runScreenshotSignalSelfTest() {
+  if (spawnSync('ffmpeg', ['-version'], { encoding: 'utf8' }).status !== 0) return;
+
+  const fixtureDir = mkdtempSync(path.join(process.env.TMPDIR ?? '/tmp', 'peekaboo-signal-'));
+  try {
+    writeSignalFixture(path.join(fixtureDir, 'dark-launch.png'), {
+      color: '0x0a0a0a',
+      filter: 'drawbox=x=280:y=220:w=80:h=40:color=white:t=fill',
+    });
+    writeSignalFixture(path.join(fixtureDir, 'light-launch.png'), {
+      color: '0x808080',
+      filter: 'drawbox=x=280:y=220:w=80:h=40:color=white:t=fill',
+    });
+    writeSignalFixture(path.join(fixtureDir, 'blank-launch.png'), {
+      color: '0x000000',
+    });
+
+    assert.equal(
+      scanPeekabooScreenshotSignal(fixtureDir, [{ path: 'dark-launch.png', label: 'launch' }]).status,
+      'passed',
+      'dark nixmac chrome with visible foreground should pass screenshot signal',
+    );
+
+    const lightResult = scanPeekabooScreenshotSignal(fixtureDir, [{ path: 'light-launch.png', label: 'launch' }]);
+    assert.equal(lightResult.status, 'failed', 'light gray base chrome should fail screenshot fidelity');
+    assert.match(lightResult.violations[0].issue, /too light/i);
+
+    const blankResult = scanPeekabooScreenshotSignal(fixtureDir, [{ path: 'blank-launch.png', label: 'launch' }]);
+    assert.equal(blankResult.status, 'failed', 'blank dark capture should still fail screenshot signal');
+    assert.match(blankResult.violations[0].issue, /blank|occluded|contrast|too dark/i);
+  } finally {
+    rmSync(fixtureDir, { recursive: true, force: true });
+  }
+}
+
+function phaseCoverageKey(phaseName = '') {
+  const match = String(phaseName).match(/^([A-Za-z][A-Za-z0-9]*):\s*(.+)$/);
+  if (!match) return null;
+  return PEEKABOO_PHASE_COVERAGE[match[1]] ? match[1] : null;
+}
+
+function cleanPhaseName(phaseName = '') {
+  const match = String(phaseName).match(/^([A-Za-z][A-Za-z0-9]*):\s*(.+)$/);
+  return match && PEEKABOO_PHASE_COVERAGE[match[1]] ? match[2] : phaseName;
+}
+
+function coverageMapForScenario(scenario, report) {
+  const phaseCoverage = [];
+  const seenKeys = new Set();
+  for (const phase of report?.phases ?? []) {
+    const key = phaseCoverageKey(phase.name);
+    if (!key || seenKeys.has(key)) continue;
+    const coverage = phaseCoverageForReportPhase(key, phase);
+    if (!coverage) continue;
+    seenKeys.add(key);
+    phaseCoverage.push({ key, ...coverage });
+  }
+  if (!phaseCoverage.length) return null;
+  return {
+    schemaVersion: 1,
+    lane: 'peekaboo-local',
+    scenario,
+    note: 'Peekaboo coverage is intentionally additive. correspondsTo lists related Computer Use Product Proof keys, but Peekaboo keys remain separate unless the lane satisfies the same evidence grade.',
+    phaseCoverage,
+  };
 }
 
 export function classifyCodesignOutput(output) {
@@ -209,9 +504,26 @@ export function hasInfraFailureMarker(...values) {
 
 function runPreflight(plan) {
   const script = `
-	set -uo pipefail
-	export PATH="/opt/homebrew/bin:$PATH"
-	app_path="\${NIXMAC_APP_PATH:-/Applications/nixmac.app}"
+		set -uo pipefail
+		export PATH="/opt/homebrew/bin:$PATH"
+		for key in NIXMAC_E2E_MOCK_SYSTEM NIXMAC_E2E_OPAQUE_WINDOW NIXMAC_RECORD_COMPLETIONS NIXMAC_COMPLETION_LOG_DIR OPENAI_API_KEY OPENROUTER_API_KEY VLLM_API_KEY ANTHROPIC_API_KEY; do
+		  launchctl unsetenv "$key" >/dev/null 2>&1 || true
+		done
+		current_launchctl_path="$(launchctl getenv PATH 2>/dev/null || true)"
+		if printf '%s\n' "$current_launchctl_path" | grep -q 'nixmac-e2e-system-mock-bin'; then
+		  cleaned_launchctl_path="$(
+		    printf '%s' "$current_launchctl_path" |
+		      awk -v RS=: -v ORS=: '$0 !~ /nixmac-e2e-system-mock-bin/ { print }' |
+		      sed 's/:$//'
+		  )"
+		  if [ -n "$cleaned_launchctl_path" ]; then
+		    launchctl setenv PATH "$cleaned_launchctl_path" >/dev/null 2>&1 || true
+		  else
+		    launchctl unsetenv PATH >/dev/null 2>&1 || true
+		  fi
+		  echo "E2E stale launchctl PATH shim: cleared"
+		fi
+		app_path="\${NIXMAC_APP_PATH:-/Applications/nixmac.app}"
 	status=0
 	if command -v peekaboo; then
 	  echo "Peekaboo CLI: Found"
@@ -276,8 +588,18 @@ function runPreflight(plan) {
 	  fi
 	fi
 	if command -v peekaboo >/dev/null 2>&1; then
-	  peekaboo permissions || status=1
 	  bridge_status="$(peekaboo bridge status --verbose 2>&1)"
+	  if ! printf '%s\n' "$bridge_status" | grep -qE "Selected: remote (gui|onDemand)" && [ "${plan.env.E2E_PEEKABOO_RECOVER_BRIDGE}" = "1" ]; then
+	    pkill -f "Peekaboo.app/Contents/MacOS/Peekaboo" >/dev/null 2>&1 || true
+	    sleep 2
+	    open -a Peekaboo >/dev/null 2>&1 || true
+	    for i in 1 2 3 4 5 6 7 8; do
+	      sleep 2
+	      bridge_status="$(peekaboo bridge status --verbose 2>&1)"
+	      printf '%s\n' "$bridge_status" | grep -qE "Selected: remote (gui|onDemand)" && break
+	    done
+	  fi
+	  peekaboo permissions || status=1
 	  printf '%s\n' "$bridge_status"
 	  if printf '%s\n' "$bridge_status" | grep -qE "Selected: remote (gui|onDemand)"; then
 	    echo "Peekaboo Bridge: Connected"
@@ -386,10 +708,10 @@ export async function runPeekabooScenario(plan) {
 
   const results = parseJsonIfExists(plan.resultsFile);
   const report = parseJsonIfExists(plan.reportFile);
-  const screenshots = [
+  const screenshots = dedupeScreenshotArtifacts([
     ...artifactEntries(plan.screenshotDir, path.dirname(plan.logFile)),
     ...reportProofEntries(report, path.dirname(plan.logFile)),
-  ];
+  ]);
   const reportDiagnostics = reportDiagnosticEntries(report, path.dirname(plan.logFile));
   const diagnostics =
     reportDiagnostics.length > 0
@@ -403,6 +725,44 @@ export async function runPeekabooScenario(plan) {
   const phaseErrors = (report?.phases ?? []).map((phase) => phase.error ?? '').join('\n');
   const infraFailure =
     report?.status === 'infra_failed' || hasInfraFailureMarker(result.stdout, result.stderr, logOutput, phaseErrors);
+  const coverageMap = coverageMapForScenario(plan.scenario, report);
+  const coverageMapPath = coverageMap ? path.join(path.dirname(plan.logFile), 'peekaboo-coverage-map.json') : null;
+  if (coverageMapPath) {
+    await writeFile(coverageMapPath, `${JSON.stringify(coverageMap, null, 2)}\n`, 'utf8');
+  }
+  const secretScan = scanRunDirForUnmaskedSecrets(path.dirname(plan.logFile));
+  const secretScanPath = path.join(path.dirname(plan.logFile), 'secret-scan.json');
+  await writeFile(secretScanPath, `${JSON.stringify(secretScan, null, 2)}\n`, 'utf8');
+  const screenshotSignal = scanPeekabooScreenshotSignal(path.dirname(plan.logFile), screenshots);
+  const screenshotSignalPath = path.join(path.dirname(plan.logFile), 'screenshot-signal.json');
+  await writeFile(screenshotSignalPath, `${JSON.stringify(screenshotSignal, null, 2)}\n`, 'utf8');
+  const supplementalDiagnostics = [
+    ...(coverageMapPath
+      ? [
+          {
+            label: 'peekaboo-coverage-map.json',
+            path: path.relative(path.dirname(plan.logFile), coverageMapPath),
+            capturedAt: new Date().toISOString(),
+            note: 'Peekaboo-to-Product-Proof additive coverage map.',
+            bytes: statSync(coverageMapPath).size,
+          },
+        ]
+      : []),
+    {
+      label: 'secret-scan.json',
+      path: path.relative(path.dirname(plan.logFile), secretScanPath),
+      capturedAt: new Date().toISOString(),
+      note: 'Unmasked provider-secret artifact scan.',
+      bytes: statSync(secretScanPath).size,
+    },
+    {
+      label: 'screenshot-signal.json',
+      path: path.relative(path.dirname(plan.logFile), screenshotSignalPath),
+      capturedAt: new Date().toISOString(),
+      note: 'Peekaboo screenshot visual-signal scan.',
+      bytes: statSync(screenshotSignalPath).size,
+    },
+  ];
 
   return {
     scenario: plan.scenario,
@@ -412,11 +772,16 @@ export async function runPeekabooScenario(plan) {
       !infraFailure &&
       results?.success !== false &&
       report?.status !== 'failed' &&
-      report?.status !== 'infra_failed',
+      report?.status !== 'infra_failed' &&
+      secretScan.status === 'passed' &&
+      screenshotSignal.status === 'passed',
     status: result.status ?? 1,
     signal: result.signal ?? null,
     error: result.error ? String(result.error) : '',
     infraFailure,
+    secretScan,
+    screenshotSignal,
+    coverageMap,
     results,
     report,
     artifacts: {
@@ -432,7 +797,7 @@ export async function runPeekabooScenario(plan) {
           ? path.relative(path.dirname(plan.logFile), reportVideoFile)
           : null,
       screenshots,
-      diagnostics,
+      diagnostics: [...diagnostics, ...supplementalDiagnostics],
     },
   };
 }
@@ -451,6 +816,9 @@ function reportPhaseStatusToClaimStatus(status) {
 
 export function applyPeekabooResultToState(state, peekabooResult) {
   const scenarioKey = PEEKABOO_E2E_SCENARIO_KEYS[peekabooResult.scenario] ?? 'peekabooDescriptorPromptSmoke';
+  const reportPhases = peekabooResult.report?.phases ?? [];
+  const mappedPhaseKeys = new Set(reportPhases.map((phase) => phaseCoverageKey(phase.name)).filter(Boolean));
+  const transitivelyCoveredKeys = new Set();
   const scenarioState = state.scenarios[scenarioKey] ?? {
     label: `Peekaboo scenario: ${peekabooResult.scenario}`,
     status: 'inconclusive',
@@ -471,19 +839,87 @@ export function applyPeekabooResultToState(state, peekabooResult) {
       `Parsed structured report ${peekabooResult.artifacts.reportFile} with status ${peekabooResult.report.status}.`,
     );
   }
+  if (peekabooResult.secretScan) {
+    scenarioState.notes.push(
+      `Scanned ${peekabooResult.secretScan.scannedFiles} text artifact(s) for unmasked provider secrets: ${peekabooResult.secretScan.status}.`,
+    );
+    if (peekabooResult.secretScan.violations?.length) {
+      scenarioState.notes.push(`Secret scan violations: ${peekabooResult.secretScan.violations.join(', ')}`);
+    }
+  }
+  if (peekabooResult.screenshotSignal) {
+    scenarioState.notes.push(
+      `Checked ${peekabooResult.screenshotSignal.scannedFiles} screenshot artifact(s) for visual signal: ${peekabooResult.screenshotSignal.status}.`,
+    );
+    if (peekabooResult.screenshotSignal.violations?.length) {
+      scenarioState.notes.push(
+        `Screenshot signal violations: ${peekabooResult.screenshotSignal.violations
+          .map((violation) => `${violation.path} (${violation.issue})`)
+          .join(', ')}`,
+      );
+    }
+  }
+  if (peekabooResult.coverageMap) {
+    scenarioState.notes.push(`Wrote additive Peekaboo coverage map for ${peekabooResult.coverageMap.phaseCoverage.length} phase key(s).`);
+  }
+  scenarioState.executedByPeekaboo = true;
+  scenarioState.peekabooEvidence = {
+    phaseKey: scenarioKey,
+    grade: 'scenario',
+    correspondsTo: [],
+  };
   state.scenarios[scenarioKey] = scenarioState;
 
+  for (const phase of reportPhases) {
+    const key = phaseCoverageKey(phase.name);
+    if (!key) continue;
+    const coverage = phaseCoverageForReportPhase(key, phase);
+    if (!coverage) continue;
+    const phaseState = state.scenarios[key] ?? {
+      label: coverage.label,
+      status: 'inconclusive',
+      notes: [],
+    };
+    phaseState.status = peekabooResult.infraFailure ? 'inconclusive' : reportPhaseStatusToClaimStatus(phase.status);
+    phaseState.executedByPeekaboo = true;
+    phaseState.peekabooEvidence = {
+      phaseKey: key,
+      grade: coverage.grade,
+      correspondsTo: coverage.correspondsTo,
+    };
+    phaseState.notes.push(
+      `${cleanPhaseName(phase.name)} Corresponds to Computer Use key(s): ${coverage.correspondsTo.length ? coverage.correspondsTo.join(', ') : 'none'}; Peekaboo evidence grade: ${coverage.grade}.`,
+    );
+    if (phase.error) phaseState.notes.push(String(phase.error));
+    state.scenarios[key] = phaseState;
+
+    for (const computerUseKey of coverage.correspondsTo) {
+      transitivelyCoveredKeys.add(computerUseKey);
+      const cuState = state.scenarios[computerUseKey];
+      if (!cuState || peekabooResult.infraFailure || reportPhaseStatusToClaimStatus(phase.status) !== 'pass') continue;
+      if (cuState.status === 'inconclusive' || cuState.status === 'not_required') {
+        cuState.status = 'pass';
+        cuState.notes.push(
+          `Covered transitively by ${key}; Peekaboo evidence grade: ${coverage.grade}.`,
+        );
+      }
+      cuState.peekabooTransitiveCoverage ??= {
+        phaseKey: key,
+        grade: coverage.grade,
+      };
+    }
+  }
+
   for (const [key, item] of Object.entries(state.scenarios)) {
-    if (key !== scenarioKey && item.status === 'inconclusive') {
+    if (key !== scenarioKey && !mappedPhaseKeys.has(key) && !transitivelyCoveredKeys.has(key) && item.status === 'inconclusive') {
       item.status = 'not_required';
       item.notes.push(`Not required for Peekaboo ${peekabooResult.scenario} run.`);
     }
   }
 
-  const reportPhases = peekabooResult.report?.phases ?? [];
   for (const phase of reportPhases) {
     state.claims.push({
-      claim: `Peekaboo ${peekabooResult.scenario}: ${phase.name}`,
+      claim: `Peekaboo ${peekabooResult.scenario}: ${cleanPhaseName(phase.name)}`,
       status: reportPhaseStatusToClaimStatus(phase.status),
       evidence: `Recorded by tests/e2e/run.sh; see ${peekabooResult.artifacts.reportFile}.`,
     });
@@ -520,6 +956,20 @@ export function applyPeekabooResultToState(state, peekabooResult) {
   if (peekabooResult.error) {
     state.failures.push(`Peekaboo runner error: ${peekabooResult.error}`);
   }
+  if (peekabooResult.secretScan?.status === 'failed') {
+    state.failures.push(`Unmasked secret artifact scan failed: ${peekabooResult.secretScan.violations.join(', ')}`);
+  }
+  if (peekabooResult.screenshotSignal?.status === 'failed') {
+    state.failures.push(
+      `Peekaboo screenshot signal scan failed: ${peekabooResult.screenshotSignal.violations
+        .map((violation) => `${violation.path} (${violation.issue})`)
+        .join(', ')}`,
+    );
+  }
+  state.peekaboo ??= {};
+  if (peekabooResult.coverageMap) state.peekaboo.coverageMap = peekabooResult.coverageMap;
+  if (peekabooResult.secretScan) state.peekaboo.secretScan = peekabooResult.secretScan;
+  if (peekabooResult.screenshotSignal) state.peekaboo.screenshotSignal = peekabooResult.screenshotSignal;
   return state;
 }
 
@@ -534,6 +984,26 @@ export function peekabooRunnerSelfTest({ repoRoot }) {
   assert.ok(
     scenarios.includes('macos_provider_evolve_full_smoke'),
     'Peekaboo scenario discovery should find provider evolve smoke',
+  );
+  assert.ok(
+    scenarios.includes('macos_core_product_proof'),
+    'Peekaboo scenario discovery should find core Product Proof',
+  );
+  assert.ok(
+    scenarios.includes('macos_support_dialogs_smoke'),
+    'Peekaboo scenario discovery should find support dialogs smoke',
+  );
+  assert.ok(
+    scenarios.includes('macos_console_smoke'),
+    'Peekaboo scenario discovery should find Console smoke',
+  );
+  assert.ok(
+    scenarios.includes('macos_homebrew_save_rollback_smoke'),
+    'Peekaboo scenario discovery should find Homebrew save/rollback smoke',
+  );
+  assert.ok(
+    scenarios.includes('macos_customization_save_rollback_smoke'),
+    'Peekaboo scenario discovery should find customization save/rollback smoke',
   );
 
   const plan = buildPeekabooRunPlan({
@@ -551,6 +1021,7 @@ export function peekabooRunnerSelfTest({ repoRoot }) {
   assert.equal(plan.env.E2E_DIALOG_AUTOMATION, '1', 'Peekaboo local lane preserves first-launch dialog automation by default');
   assert.equal(plan.env.E2E_PEEKABOO_RECOVER_BRIDGE, '1', 'Peekaboo local lane should recover a degraded bridge by default');
   assert.deepEqual(plan.args.slice(1), [DEFAULT_PEEKABOO_SCENARIO, '--json', '--no-record', '--no-cleanup']);
+  runScreenshotSignalSelfTest();
 
   assert.equal(
     classifyCodesignOutput('nixmac.app: code object is not signed at all').fatal,
@@ -588,29 +1059,173 @@ export function peekabooRunnerSelfTest({ repoRoot }) {
     failures: [],
   };
   applyPeekabooResultToState(state, {
-    scenario: DEFAULT_PEEKABOO_SCENARIO,
+    scenario: 'macos_core_product_proof',
     success: true,
     status: 0,
     error: '',
+    infraFailure: false,
+    secretScan: { status: 'passed', scannedFiles: 3, violations: [] },
+    screenshotSignal: { status: 'passed', scannedFiles: 1, violations: [] },
+    coverageMap: {
+      schemaVersion: 1,
+      lane: 'peekaboo-local',
+      scenario: 'macos_core_product_proof',
+      phaseCoverage: [{ key: 'peekabooCoreLaunch', ...PEEKABOO_PHASE_COVERAGE.peekabooCoreLaunch }],
+    },
     results: null,
     report: {
       status: 'passed',
-      phases: [{ name: 'Launch nixmac app', status: 'passed' }],
+      phases: [{ name: 'peekabooCoreLaunch: Launch nixmac app', status: 'passed' }],
       proof: [],
     },
     artifacts: {
       logFile: 'peekaboo-e2e.log',
       preflight: 'peekaboo-preflight.txt',
       resultsFile: null,
-      reportFile: `e2e-report/${DEFAULT_PEEKABOO_SCENARIO}/e2e-report.json`,
+      reportFile: 'e2e-report/macos_core_product_proof/e2e-report.json',
       screenshots: [],
       diagnostics: [],
       videoFile: null,
     },
   });
-  assert.equal(state.scenarios.peekabooDescriptorPromptSmoke.status, 'pass');
-  assert.equal(state.scenarios.launch.status, 'not_required');
+  assert.equal(state.scenarios.peekabooCoreProductProof.status, 'pass');
+  assert.equal(state.scenarios.peekabooCoreLaunch.status, 'pass');
+  assert.equal(state.scenarios.launch.status, 'pass');
   assert.equal(state.claims.length, 1);
+  assert.match(state.scenarios.peekabooCoreLaunch.notes.at(-1), /Corresponds to Computer Use key\(s\): launch/);
+  assert.match(state.scenarios.launch.notes.at(-1), /Covered transitively by peekabooCoreLaunch/);
+  assert.equal(state.peekaboo.secretScan.status, 'passed');
+  assert.equal(state.peekaboo.screenshotSignal.status, 'passed');
+  assert.equal(state.peekaboo.coverageMap.phaseCoverage[0].key, 'peekabooCoreLaunch');
+
+  for (const absentKey of ['peekabooHomebrewSaveRollback', 'peekabooCustomizationSaveRollback']) {
+    const absentCoverage = phaseCoverageForReportPhase(absentKey, {
+      name: `${absentKey}: ${ABSENT_NO_COVERAGE_SENTINEL} chip was not visible, so there was nothing to save or roll back in this run`,
+      status: 'passed',
+    });
+    assert.deepEqual(absentCoverage.correspondsTo, [], `${absentKey} absent path must not claim Computer Use parity`);
+    assert.equal(absentCoverage.grade, 'classified-absent-no-coverage');
+  }
+
+  const duplicateCoverageState = {
+    scenarios: {
+      review: { label: 'Review', status: 'inconclusive', notes: [] },
+      peekabooProviderEvolveFullSmoke: { label: 'Peekaboo provider', status: 'inconclusive', notes: [] },
+    },
+    claims: [],
+    screenshots: [],
+    narrative: [],
+    failures: [],
+  };
+  applyPeekabooResultToState(duplicateCoverageState, {
+    scenario: 'macos_provider_evolve_full_smoke',
+    success: true,
+    status: 0,
+    error: '',
+    infraFailure: false,
+    secretScan: { status: 'passed', scannedFiles: 0, violations: [] },
+    screenshotSignal: { status: 'passed', scannedFiles: 0, violations: [] },
+    results: null,
+    report: {
+      status: 'passed',
+      phases: [
+        { name: 'peekabooProviderReview: Review reached', status: 'passed' },
+        { name: 'peekabooProviderAudit: Provider audit passed', status: 'passed' },
+      ],
+      proof: [],
+    },
+    artifacts: {
+      logFile: 'peekaboo-e2e.log',
+      preflight: 'peekaboo-preflight.txt',
+      resultsFile: null,
+      reportFile: 'e2e-report/macos_provider_evolve_full_smoke/e2e-report.json',
+      screenshots: [],
+      diagnostics: [],
+      videoFile: null,
+    },
+  });
+  assert.deepEqual(duplicateCoverageState.scenarios.review.peekabooTransitiveCoverage, {
+    phaseKey: 'peekabooProviderReview',
+    grade: 'provider-state',
+  });
+  assert.match(duplicateCoverageState.scenarios.review.notes.at(-1), /peekabooProviderReview/);
+
+  const secretScanState = {
+    scenarios: {
+      peekabooCoreProductProof: { label: 'Peekaboo core', status: 'inconclusive', notes: [] },
+    },
+    claims: [],
+    screenshots: [],
+    narrative: [],
+    failures: [],
+  };
+  applyPeekabooResultToState(secretScanState, {
+    scenario: 'macos_core_product_proof',
+    success: false,
+    status: 0,
+    error: '',
+    infraFailure: false,
+    secretScan: { status: 'failed', scannedFiles: 4, violations: ['diagnostics/api-keys.txt'] },
+    screenshotSignal: { status: 'passed', scannedFiles: 0, violations: [] },
+    results: null,
+    report: {
+      status: 'passed',
+      phases: [{ name: 'peekabooCoreSettingsAPIKeys: API Keys tab redaction proof', status: 'passed' }],
+      proof: [],
+    },
+    artifacts: {
+      logFile: 'peekaboo-e2e.log',
+      preflight: 'peekaboo-preflight.txt',
+      resultsFile: null,
+      reportFile: 'e2e-report/macos_core_product_proof/e2e-report.json',
+      screenshots: [],
+      diagnostics: [],
+      videoFile: null,
+    },
+  });
+  assert.equal(secretScanState.scenarios.peekabooCoreProductProof.status, 'fail');
+  assert.equal(secretScanState.scenarios.peekabooCoreSettingsAPIKeys.status, 'pass');
+  assert.deepEqual(secretScanState.failures, ['Unmasked secret artifact scan failed: diagnostics/api-keys.txt']);
+
+  const screenshotSignalState = {
+    scenarios: {
+      peekabooCoreProductProof: { label: 'Peekaboo core', status: 'inconclusive', notes: [] },
+    },
+    claims: [],
+    screenshots: [],
+    narrative: [],
+    failures: [],
+  };
+  applyPeekabooResultToState(screenshotSignalState, {
+    scenario: 'macos_core_product_proof',
+    success: false,
+    status: 0,
+    error: '',
+    infraFailure: false,
+    secretScan: { status: 'passed', scannedFiles: 4, violations: [] },
+    screenshotSignal: {
+      status: 'failed',
+      scannedFiles: 1,
+      violations: [{ path: 'screenshots/black.png', label: 'black', issue: 'the screenshot appears blank or visually occluded' }],
+    },
+    results: null,
+    report: {
+      status: 'passed',
+      phases: [{ name: 'peekabooCoreLaunch: Launch nixmac app', status: 'passed' }],
+      proof: [],
+    },
+    artifacts: {
+      logFile: 'peekaboo-e2e.log',
+      preflight: 'peekaboo-preflight.txt',
+      resultsFile: null,
+      reportFile: 'e2e-report/macos_core_product_proof/e2e-report.json',
+      screenshots: [],
+      diagnostics: [],
+      videoFile: null,
+    },
+  });
+  assert.equal(screenshotSignalState.scenarios.peekabooCoreProductProof.status, 'fail');
+  assert.match(screenshotSignalState.failures.join('\n'), /screenshot signal scan failed/i);
 
   const infraState = {
     scenarios: {

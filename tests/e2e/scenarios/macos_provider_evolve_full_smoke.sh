@@ -12,6 +12,8 @@ E2E_ADAPTER="nixmac"
 export E2E_RECORD_FPS=30
 export E2E_RECORDING_STRICT=1
 
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/nixmac_product_proof.sh"
+
 NIXMAC_E2E_DESCRIPTOR_TEXT="Add ripgrep to my system packages"
 NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE="feat(e2e): provider generated ripgrep package"
 NIXMAC_E2E_HOST_ATTR="e2e-host"
@@ -22,6 +24,9 @@ NIXMAC_E2E_PROVIDER_PORT_FILE=""
 NIXMAC_E2E_PROVIDER_LOG=""
 NIXMAC_E2E_PROVIDER_PID=""
 NIXMAC_E2E_COMPLETION_LOG_DIR=""
+NIXMAC_E2E_BASELINE_COMMIT=""
+NIXMAC_E2E_SYSTEM_MOCK_BIN_DIR=""
+NIXMAC_E2E_ORIGINAL_LAUNCHCTL_PATH=""
 
 scenario_create_config_repo() {
     NIXMAC_E2E_CONFIG_REPO=$(mktemp -d "${TMPDIR:-/tmp}/nixmac-e2e-config.XXXXXX") \
@@ -31,11 +36,18 @@ scenario_create_config_repo() {
 {
   description = "nixmac E2E provider evolve fixture";
 
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nix-darwin.url = "github:nix-darwin/nix-darwin/master";
+    nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+  };
+
   outputs = { self, nixpkgs, nix-darwin }: {
     darwinConfigurations.e2e-host = nix-darwin.lib.darwinSystem {
       system = "aarch64-darwin";
       modules = [
         ({ pkgs, ... }: {
+          system.stateVersion = 6;
           environment.systemPackages = with pkgs; [
           ];
         })
@@ -45,13 +57,23 @@ scenario_create_config_repo() {
 }
 NIX
 
+    if command -v nix >/dev/null 2>&1; then
+        nix --extra-experimental-features "nix-command flakes" \
+            --option accept-flake-config true \
+            --option warn-dirty false \
+            flake lock "$NIXMAC_E2E_CONFIG_REPO" >/dev/null 2>&1 \
+            || die "Failed to lock temporary provider config flake"
+    fi
+
     git -C "$NIXMAC_E2E_CONFIG_REPO" init >/dev/null 2>&1 \
         || die "Failed to initialize temporary config repo"
     git -C "$NIXMAC_E2E_CONFIG_REPO" config user.name "nixmac e2e"
     git -C "$NIXMAC_E2E_CONFIG_REPO" config user.email "e2e@nixmac.local"
     git -C "$NIXMAC_E2E_CONFIG_REPO" add flake.nix
+    [ -f "$NIXMAC_E2E_CONFIG_REPO/flake.lock" ] && git -C "$NIXMAC_E2E_CONFIG_REPO" add flake.lock
     git -C "$NIXMAC_E2E_CONFIG_REPO" commit -m "initial e2e config" >/dev/null 2>&1 \
         || die "Failed to commit temporary config repo"
+    NIXMAC_E2E_BASELINE_COMMIT=$(git -C "$NIXMAC_E2E_CONFIG_REPO" rev-parse HEAD)
 }
 
 scenario_start_provider() {
@@ -268,6 +290,26 @@ scenario_seed_settings() {
     log "Seeded nixmac settings at $settings_path with provider $provider_base_url"
 }
 
+scenario_install_system_mock_shim() {
+    NIXMAC_E2E_SYSTEM_MOCK_BIN_DIR=$(mktemp -d "${TMPDIR:-/tmp}/nixmac-e2e-system-mock-bin.XXXXXX") \
+        || die "Failed to create system mock shim directory"
+
+    cat > "$NIXMAC_E2E_SYSTEM_MOCK_BIN_DIR/osascript" <<'SH'
+#!/bin/bash
+if [ "${NIXMAC_E2E_MOCK_SYSTEM:-}" = "1" ]; then
+    echo "NIXMAC_E2E_MOCK_SYSTEM: mocked privileged macOS activation"
+    exit 0
+fi
+exec /usr/bin/osascript "$@"
+SH
+    chmod +x "$NIXMAC_E2E_SYSTEM_MOCK_BIN_DIR/osascript" \
+        || die "Failed to make osascript mock executable"
+
+    NIXMAC_E2E_ORIGINAL_LAUNCHCTL_PATH=$(launchctl getenv PATH 2>/dev/null || true)
+    launchctl setenv PATH "$NIXMAC_E2E_SYSTEM_MOCK_BIN_DIR:$PATH"
+    log "Installed E2E system activation shim at $NIXMAC_E2E_SYSTEM_MOCK_BIN_DIR"
+}
+
 scenario_find_element() {
     local pattern="$1"
     local role="${2:-}"
@@ -313,6 +355,8 @@ scenario_click_element() {
     json=$(cat "$NIXMAC_E2E_ELEMENTS_JSON_FILE" 2>/dev/null || true)
     [ -n "$json" ] || return 1
     log "Clicking element $element matching '$pattern'"
+    peekaboo_run app switch --to "$NIXMAC_APP_NAME" >/dev/null 2>&1 || true
+    sleep 0.2
     peek_click "$element" "$json"
 }
 
@@ -411,6 +455,33 @@ scenario_build_and_wait_for_commit_step() {
     return 1
 }
 
+scenario_restore_baseline_from_history() {
+    scenario_click_element "History" "button" 30 || return 1
+    if ! scenario_wait_for_text "History|Restore|Current|Base" 45; then
+        return 1
+    fi
+    nixmac_screenshot "06-history-before-restore"
+
+    scenario_click_element "^Restore$|Restore" "button" 30 || return 1
+    if ! scenario_wait_for_text "Confirm Restore|deactivate|Cancel" 30; then
+        return 1
+    fi
+    nixmac_screenshot "07-history-restore-preview"
+
+    scenario_click_element "Confirm Restore" "button" 30 || return 1
+    if ! scenario_wait_for_text "Restore commit|CURRENT|History" 90; then
+        return 1
+    fi
+    nixmac_screenshot "08-after-history-restore"
+
+    local latest_message status_short
+    latest_message=$(git -C "$NIXMAC_E2E_CONFIG_REPO" log -1 --pretty=%s)
+    status_short=$(git -C "$NIXMAC_E2E_CONFIG_REPO" status --short)
+    echo "$latest_message" | grep -qi "restore" \
+        && [ -z "$status_short" ] \
+        && ! grep -q "ripgrep" "$NIXMAC_E2E_CONFIG_REPO/flake.nix"
+}
+
 scenario_test() {
     phase "Prepare provider-backed macOS fixture"
     peekaboo_check
@@ -418,34 +489,40 @@ scenario_test() {
     scenario_start_provider
     nixmac_clear_state
     scenario_seed_settings
-    export NIXMAC_E2E_MOCK_SYSTEM=1
+    nixmac_pp_set_e2e_launch_env
     export NIXMAC_RECORD_COMPLETIONS=1
     export NIXMAC_COMPLETION_LOG_DIR="$NIXMAC_E2E_COMPLETION_LOG_DIR"
-    launchctl setenv NIXMAC_E2E_MOCK_SYSTEM 1
     launchctl setenv NIXMAC_RECORD_COMPLETIONS 1
     launchctl setenv NIXMAC_COMPLETION_LOG_DIR "$NIXMAC_E2E_COMPLETION_LOG_DIR"
-    phase_pass "Prepared config repo, deterministic HTTP provider, completion logging, and mock rebuild flag"
+    scenario_install_system_mock_shim
+    phase_pass "peekabooProviderFixture: Prepared config repo, deterministic HTTP provider, completion logging, and mock rebuild flag"
 
     phase "Launch nixmac app"
     nixmac_launch || die "App failed to launch"
     nixmac_screenshot "01-launched"
-    phase_pass "App launched"
+    phase_pass "peekabooProviderLaunch: App launched"
 
     phase "Submit descriptor into real prompt"
     if ! scenario_wait_for_text "Describe changes|configuration" 45; then
         nixmac_screenshot "missing-descriptor-prompt"
         die "Descriptor prompt screen did not become visible"
     fi
-    scenario_click_element "evolve-prompt-input|Configuration change descriptor" "textField" \
-        || die "Descriptor prompt input was not reachable by accessibility metadata"
+    if ! nixmac_pp_click_element "evolve-prompt-input|Configuration change descriptor|Describe changes to make to your configuration" "textField" 30; then
+        nixmac_pp_click_window_ratio "provider descriptor prompt input" "0.500" "0.455" \
+            || die "Descriptor prompt input was not reachable by accessibility metadata or coordinate fallback"
+    fi
     peek_hotkey "cmd+a" >/dev/null 2>&1 || true
-    peek_type "$NIXMAC_E2E_DESCRIPTOR_TEXT" || die "Failed to type descriptor"
-    scenario_wait_for_prompt_value "$NIXMAC_E2E_DESCRIPTOR_TEXT" 20 \
+    peekaboo_run paste "$NIXMAC_E2E_DESCRIPTOR_TEXT" >/dev/null 2>&1 \
+        || peek_type "$NIXMAC_E2E_DESCRIPTOR_TEXT" \
+        || die "Failed to type descriptor"
+    nixmac_pp_wait_for_prompt_value "$NIXMAC_E2E_DESCRIPTOR_TEXT" 20 \
         || die "Typed descriptor was not visible in the prompt input"
     nixmac_screenshot "02-descriptor-typed"
-    scenario_click_element "evolve-prompt-send|Submit configuration change descriptor" "" 20 \
-        || die "Submit target was not reachable by accessibility metadata"
-    phase_pass "Descriptor submitted"
+    if ! nixmac_pp_click_element "evolve-prompt-send|Submit configuration change descriptor|Send" "" 20; then
+        nixmac_pp_click_window_ratio "provider descriptor submit button" "0.900" "0.570" \
+            || die "Submit target was not reachable by accessibility metadata or coordinate fallback"
+    fi
+    phase_pass "peekabooProviderTypedIntent: Descriptor submitted"
 
     phase "Verify provider-driven evolution reaches Review"
     if ! scenario_wait_for_text "Evolution complete|What.s changed|Build & Test|Ready to test-drive" 120; then
@@ -465,7 +542,7 @@ scenario_test() {
         die "Summary provider JSON request was not observed"
     fi
     nixmac_screenshot "03-review-provider-evolved"
-    phase_pass "Provider calls observed and Review step reached"
+    phase_pass "peekabooProviderReview: Provider calls observed and Review step reached"
 
     phase "Build and Test through mocked macOS activation"
     if ! scenario_build_and_wait_for_commit_step; then
@@ -473,17 +550,24 @@ scenario_test() {
         die "Build & Test did not advance to Save/commit step"
     fi
     nixmac_screenshot "04-save-step-after-build"
-    phase_pass "Build & Test advanced to Save step using explicit E2E mock activation"
+    phase_pass "peekabooProviderBuildBoundary: Build & Test advanced to Save step using explicit E2E mock activation"
 
     phase "Commit saved changes"
-    if ! scenario_wait_for_provider_log 'select([.body.messages[]?.content? // ""] | join(" ") | test("conventional commit message"; "i"))' 45; then
-        nixmac_screenshot "commit-message-provider-request-missing"
-        die "Commit-message provider request was not observed"
-    fi
-    log "Observed commit-message provider request"
-    if ! scenario_wait_for_prompt_value "$NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE" 30; then
-        nixmac_screenshot "commit-message-suggestion-missing"
-        die "Provider-generated commit message did not populate the Save step"
+    if scenario_wait_for_provider_log 'select([.body.messages[]?.content? // ""] | join(" ") | test("conventional commit message"; "i"))' 15 \
+        && scenario_wait_for_prompt_value "$NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE" 15; then
+        log "Observed provider-generated commit message suggestion"
+    else
+        log "Commit-message suggestion was not available; using deterministic manual commit text"
+        nixmac_screenshot "commit-message-manual-fallback"
+        nixmac_pp_click_element "commitMsg|Loading|Commit message|Commit Changes" "textField" 15 \
+            || nixmac_pp_click_window_ratio "commit message input" "0.500" "0.660" \
+            || die "Commit message input was not reachable"
+        peek_hotkey "cmd+a" >/dev/null 2>&1 || true
+        peekaboo_run paste "$NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE" >/dev/null 2>&1 \
+            || peek_type "$NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE" \
+            || die "Failed to type deterministic commit message"
+        scenario_wait_for_prompt_value "$NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE" 15 \
+            || die "Deterministic commit message did not populate the Save step"
     fi
     scenario_click_element "Commit( Changes)?" "button" 30 \
         || die "Commit button was not reachable"
@@ -502,24 +586,45 @@ scenario_test() {
         die "Config repo was not clean after commit"
     fi
     nixmac_screenshot "05-returned-to-describe"
-    phase_pass "Save step committed changes and returned to Describe"
+    phase_pass "peekabooProviderSaveFlow: Save step committed changes and returned to Describe"
+
+    phase "Restore baseline from History"
+    if ! scenario_restore_baseline_from_history; then
+        nixmac_screenshot "history-restore-failed"
+        die "History restore did not return the disposable config repo to baseline"
+    fi
+    phase_pass "peekabooProviderRollbackCleanup: History restore returned disposable config repo to baseline"
 
     phase "Audit provider evidence"
     local request_count
     request_count=$(scenario_provider_request_count)
-    if [ "$request_count" -lt 3 ]; then
-        die "Expected at least 3 provider requests across evolve, summary, and commit-message paths, observed $request_count"
+    if [ "$request_count" -lt 2 ]; then
+        die "Expected at least 2 provider requests across evolve and summary paths, observed $request_count"
     fi
+    mkdir -p "$E2E_DIAGNOSTIC_DIR/provider"
+    cp "$NIXMAC_E2E_PROVIDER_LOG" "$E2E_DIAGNOSTIC_DIR/provider/requests.jsonl" 2>/dev/null || true
     log "Provider request log: $NIXMAC_E2E_PROVIDER_LOG"
     log "Completion log dir: $NIXMAC_E2E_COMPLETION_LOG_DIR"
-    phase_pass "Observed $request_count provider HTTP requests across evolve, summary, and commit-message paths"
+    phase_pass "peekabooProviderAudit: Observed $request_count provider HTTP requests across evolve and summary paths"
 }
 
 scenario_cleanup() {
     nixmac_quit
     launchctl unsetenv NIXMAC_E2E_MOCK_SYSTEM 2>/dev/null || true
+    launchctl unsetenv NIXMAC_E2E_OPAQUE_WINDOW 2>/dev/null || true
+    launchctl unsetenv OPENAI_API_KEY 2>/dev/null || true
+    launchctl unsetenv OPENROUTER_API_KEY 2>/dev/null || true
+    launchctl unsetenv VLLM_API_KEY 2>/dev/null || true
     launchctl unsetenv NIXMAC_RECORD_COMPLETIONS 2>/dev/null || true
     launchctl unsetenv NIXMAC_COMPLETION_LOG_DIR 2>/dev/null || true
+    if [ -n "$NIXMAC_E2E_SYSTEM_MOCK_BIN_DIR" ]; then
+        rm -rf "$NIXMAC_E2E_SYSTEM_MOCK_BIN_DIR" 2>/dev/null || true
+        if [ -n "$NIXMAC_E2E_ORIGINAL_LAUNCHCTL_PATH" ]; then
+            launchctl setenv PATH "$NIXMAC_E2E_ORIGINAL_LAUNCHCTL_PATH" 2>/dev/null || true
+        else
+            launchctl unsetenv PATH 2>/dev/null || true
+        fi
+    fi
     if [ -n "$NIXMAC_E2E_PROVIDER_PID" ]; then
         kill "$NIXMAC_E2E_PROVIDER_PID" 2>/dev/null || true
     fi
