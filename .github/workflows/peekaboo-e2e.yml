@@ -1,0 +1,623 @@
+name: Peekaboo E2E
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'apps/native/**'
+      - 'tests/e2e/**'
+      - 'tools/computer-use-e2e/**'
+      - '.github/workflows/build.yaml'
+      - '.github/workflows/peekaboo-e2e.yml'
+  workflow_dispatch:
+    inputs:
+      build_attempts:
+        description: 'Remote debug build attempts before running Peekaboo'
+        required: false
+        default: '1'
+
+permissions:
+  contents: write
+  actions: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: peekaboo-e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  peekaboo-product-proof:
+    name: Peekaboo Product Proof
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    outputs:
+      has_report: ${{ steps.report-meta.outputs.has_report }}
+      setup_failed: ${{ steps.report-meta.outputs.setup_failed }}
+      report_dir: ${{ steps.report-meta.outputs.report_dir }}
+      report_slug: ${{ steps.report-meta.outputs.report_slug }}
+      verdict: ${{ steps.report-meta.outputs.verdict }}
+      pass: ${{ steps.report-meta.outputs.pass }}
+      fail: ${{ steps.report-meta.outputs.fail }}
+      inconclusive: ${{ steps.report-meta.outputs.inconclusive }}
+      not_required: ${{ steps.report-meta.outputs.not_required }}
+      cu_covered: ${{ steps.report-meta.outputs.cu_covered }}
+      cu_required: ${{ steps.report-meta.outputs.cu_required }}
+      screenshots: ${{ steps.report-meta.outputs.screenshots }}
+      video_frames: ${{ steps.report-meta.outputs.video_frames }}
+      secret_scan_passed: ${{ steps.report-meta.outputs.secret_scan_passed }}
+      report_prefix: ${{ steps.report-meta.outputs.report_prefix }}
+      publish_path: ${{ steps.report-meta.outputs.publish_path }}
+      latest_path: ${{ steps.report-meta.outputs.latest_path }}
+      index_url: ${{ steps.report-meta.outputs.index_url }}
+      latest_index_url: ${{ steps.report-meta.outputs.latest_index_url }}
+      run_exit_status: ${{ steps.run-peekaboo.outputs.run_exit_status }}
+      remote_app_path: ${{ steps.remote-build.outputs.remote_app_path }}
+    env:
+      NIXMAC_REMOTE_HOST_SECRET: ${{ secrets.NIXMAC_E2E_REMOTE_HOST }}
+      NIXMAC_REMOTE_USER_SECRET: ${{ secrets.NIXMAC_E2E_REMOTE_USER }}
+      NIXMAC_REMOTE_SSH_KEY_SECRET: ${{ secrets.NIXMAC_E2E_REMOTE_SSH_KEY }}
+      NIXMAC_REMOTE_KNOWN_HOSTS_SECRET: ${{ secrets.NIXMAC_E2E_REMOTE_KNOWN_HOSTS }}
+      MAC_E2E_HOST_SECRET: ${{ secrets.MAC_E2E_HOST }}
+      MAC_E2E_USER_SECRET: ${{ secrets.MAC_E2E_USER }}
+      MAC_E2E_SSH_KEY_SECRET: ${{ secrets.MAC_E2E_SSH_KEY }}
+      PEEKABOO_REPO_DIR: ${{ vars.NIXMAC_E2E_MACINCLOUD_REPO_DIR || '/Users/admin/nixmac-peekaboo-local-e2e' }}
+      PEEKABOO_NODE: ${{ vars.NIXMAC_E2E_MACINCLOUD_NODE || '/opt/homebrew/bin/node' }}
+      BUILD_ATTEMPTS: ${{ inputs.build_attempts || '1' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Check report transport dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v rsync
+          command -v ffmpeg || echo "ffmpeg is not installed on the hosted runner; local self-test will skip video encoding checks."
+
+      - name: Validate Peekaboo workflow contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check tools/computer-use-e2e/run-local.mjs
+          node --check tools/computer-use-e2e/peekaboo-runner.mjs
+          node --check tools/computer-use-e2e/peekaboo-workflow-contract-self-test.mjs
+          node tools/computer-use-e2e/peekaboo-workflow-contract-self-test.mjs
+          node tools/computer-use-e2e/run-local.mjs self-test
+
+      - name: Capture PR focus metadata
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          append_multiline_env() {
+            local name="$1"
+            local delimiter
+            delimiter="NIXMAC_E2E_${name}_$(openssl rand -hex 16)"
+            {
+              printf '%s<<%s\n' "$name" "$delimiter"
+              cat
+              printf '%s\n' "$delimiter"
+            } >> "$GITHUB_ENV"
+          }
+
+          {
+            echo "NIXMAC_E2E_PR_NUMBER=${{ github.event.pull_request.number }}"
+            echo "NIXMAC_E2E_PR_HEAD_REF=$PR_HEAD_REF"
+            echo "NIXMAC_E2E_PR_BASE_REF=$PR_BASE_REF"
+          } >> "$GITHUB_ENV"
+          printf '%s\n' "$PR_TITLE" | append_multiline_env "NIXMAC_E2E_PR_TITLE"
+          { git diff --name-only "$PR_BASE_SHA...$PR_HEAD_SHA" || true; } |
+            append_multiline_env "NIXMAC_E2E_PR_CHANGED_FILES"
+
+      - name: Prepare SSH for MacInCloud
+        id: ssh
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote_host="${NIXMAC_REMOTE_HOST_SECRET:-$MAC_E2E_HOST_SECRET}"
+          remote_user="${NIXMAC_REMOTE_USER_SECRET:-$MAC_E2E_USER_SECRET}"
+          remote_key="${NIXMAC_REMOTE_SSH_KEY_SECRET:-$MAC_E2E_SSH_KEY_SECRET}"
+          missing=()
+          [[ -n "$remote_host" ]] || missing+=("NIXMAC_E2E_REMOTE_HOST or MAC_E2E_HOST")
+          [[ -n "$remote_user" ]] || missing+=("NIXMAC_E2E_REMOTE_USER or MAC_E2E_USER")
+          [[ -n "$remote_key" ]] || missing+=("NIXMAC_E2E_REMOTE_SSH_KEY or MAC_E2E_SSH_KEY")
+          if (( ${#missing[@]} )); then
+            printf 'Missing required Peekaboo E2E secret(s): %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
+          echo "::add-mask::$remote_host"
+          echo "::add-mask::$remote_user"
+          while IFS= read -r key_line || [[ -n "$key_line" ]]; do
+            [[ -n "$key_line" ]] && echo "::add-mask::$key_line"
+          done <<<"$remote_key"
+          mkdir -p ~/.ssh
+          printf '%s\n' "$remote_key" > ~/.ssh/nixmac-peekaboo-e2e
+          chmod 600 ~/.ssh/nixmac-peekaboo-e2e
+          if [[ -n "$NIXMAC_REMOTE_KNOWN_HOSTS_SECRET" ]]; then
+            printf '%s\n' "$NIXMAC_REMOTE_KNOWN_HOSTS_SECRET" > ~/.ssh/known_hosts
+          else
+            ssh-keyscan -H "$remote_host" > ~/.ssh/known_hosts 2>/dev/null
+          fi
+          ssh-keygen -F "$remote_host" -f ~/.ssh/known_hosts >/dev/null
+          {
+            echo "remote_host=$remote_host"
+            echo "remote_user=$remote_user"
+            echo "ssh_dest=$remote_user@$remote_host"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout PR head and build debug app on MacInCloud
+        id: remote-build
+        shell: bash
+        env:
+          SSH_DEST: ${{ steps.ssh.outputs.ssh_dest }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref || github.ref_name }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! [[ "${BUILD_ATTEMPTS:-1}" =~ ^[0-9]+$ ]] || [[ "${BUILD_ATTEMPTS:-1}" -lt 1 ]]; then
+            echo "Invalid build_attempts value: ${BUILD_ATTEMPTS:-}" >&2
+            exit 1
+          fi
+          run_id_safe="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          remote_app_stage="/tmp/nixmac-peekaboo-e2e-app-${run_id_safe}"
+          remote_app_path="${remote_app_stage}/nixmac.app"
+          ssh_common=(-i ~/.ssh/nixmac-peekaboo-e2e -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
+          repo_dir_q="$(printf '%q' "$PEEKABOO_REPO_DIR")"
+          head_ref_q="$(printf '%q' "$PR_HEAD_REF")"
+          head_sha_q="$(printf '%q' "$PR_HEAD_SHA")"
+          remote_app_stage_q="$(printf '%q' "$remote_app_stage")"
+          remote_app_path_q="$(printf '%q' "$remote_app_path")"
+          build_attempts_q="$(printf '%q' "$BUILD_ATTEMPTS")"
+          repo_url_q="$(printf '%q' "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git")"
+          public_repo_url_q="$(printf '%q' "https://github.com/${GITHUB_REPOSITORY}.git")"
+          # shellcheck disable=SC2029
+          ssh "${ssh_common[@]}" "$SSH_DEST" "REPO_DIR=$repo_dir_q PR_HEAD_REF=$head_ref_q PR_HEAD_SHA=$head_sha_q REMOTE_APP_STAGE=$remote_app_stage_q REMOTE_APP_PATH=$remote_app_path_q BUILD_ATTEMPTS=$build_attempts_q REPO_URL=$repo_url_q PUBLIC_REPO_URL=$public_repo_url_q bash -s" <<'REMOTE'
+          set -euo pipefail
+          export PATH="$HOME/.cargo/bin:$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+          mkdir -p "$REPO_DIR/artifacts/computer-use-local"
+          stale_run="$(cat "$REPO_DIR/artifacts/computer-use-local/.current-run" 2>/dev/null || true)"
+          pkill -TERM -f 'tools/computer-use-e2e/run-local\.mjs run-peekaboo-suite|tests/e2e/run\.sh|nixmac-e2e-provider|nixmac\.app/Contents/MacOS/nixmac|ffmpeg .*peekaboo-e2e' >/dev/null 2>&1 || true
+          sleep 2
+          pkill -KILL -f 'tools/computer-use-e2e/run-local\.mjs run-peekaboo-suite|tests/e2e/run\.sh|nixmac-e2e-provider|nixmac\.app/Contents/MacOS/nixmac|ffmpeg .*peekaboo-e2e' >/dev/null 2>&1 || true
+          if [[ -n "$stale_run" && -d "$stale_run" && -f tools/computer-use-e2e/run-local.mjs ]]; then
+            NIXMAC_COMPUTER_USE_RUN_DIR="$stale_run" node tools/computer-use-e2e/run-local.mjs cleanup >/dev/null 2>&1 || true
+          fi
+          rm -f "$REPO_DIR/artifacts/computer-use-local/.current-run"
+          cd "$REPO_DIR"
+          if git remote get-url origin >/dev/null 2>&1; then
+            git remote set-url origin "$REPO_URL"
+          else
+            git remote add origin "$REPO_URL"
+          fi
+          git reset --hard
+          git clean -fd -e artifacts -e node_modules -e apps/native/node_modules -e target
+          git fetch origin "$PR_HEAD_REF"
+          git remote set-url origin "$PUBLIC_REPO_URL"
+          unset REPO_URL
+          git checkout -B "$PR_HEAD_REF" FETCH_HEAD
+          git reset --hard "$PR_HEAD_SHA"
+          git clean -fd -e artifacts -e node_modules -e apps/native/node_modules -e target
+          if ! command -v bun >/dev/null 2>&1; then
+            curl -fsSL https://bun.sh/install | bash -s -- bun-v1.3.2
+            export PATH="$HOME/.bun/bin:$PATH"
+          fi
+          bun --version
+          if ! command -v cargo >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
+            export PATH="$HOME/.cargo/bin:$PATH"
+          fi
+          cargo --version
+          for ((attempt = 1; attempt <= BUILD_ATTEMPTS; attempt += 1)); do
+            if bun install --frozen-lockfile && \
+              cd apps/native && \
+              VITE_NIXMAC_SKIP_PERMISSIONS=true ./node_modules/.bin/tauri build \
+                --debug \
+                --bundles app \
+                --no-sign \
+                --config src-tauri/tauri.conf.dev.json; then
+              break
+            fi
+            cd "$REPO_DIR"
+            if [[ "$attempt" -eq "$BUILD_ATTEMPTS" ]]; then
+              echo "error: remote debug build failed after $BUILD_ATTEMPTS attempt(s)" >&2
+              exit 1
+            fi
+            sleep 10
+          done
+          cd "$REPO_DIR/apps/native"
+          built_app="../../target/debug/bundle/macos/nixmac.app"
+          if [[ ! -d "$built_app" ]]; then
+            echo "error: expected debug app bundle at $built_app" >&2
+            exit 1
+          fi
+          osascript -e 'tell application id "com.darkmatter.nixmac" to quit' >/dev/null 2>&1 || true
+          pkill -x nixmac >/dev/null 2>&1 || true
+          rm -rf "$REMOTE_APP_STAGE"
+          mkdir -p "$REMOTE_APP_STAGE"
+          cp -pR "$built_app" "$REMOTE_APP_PATH"
+          codesign --force --deep --sign - "$REMOTE_APP_PATH"
+          xattr -dr com.apple.quarantine "$REMOTE_APP_PATH" >/dev/null 2>&1 || true
+          codesign --verify --deep --strict --verbose=2 "$REMOTE_APP_PATH"
+          test -d "$REMOTE_APP_PATH"
+          REMOTE
+          echo "remote_app_path=$remote_app_path" >> "$GITHUB_OUTPUT"
+
+      - name: Run Peekaboo suite on MacInCloud
+        id: run-peekaboo
+        shell: bash
+        env:
+          SSH_DEST: ${{ steps.ssh.outputs.ssh_dest }}
+          REMOTE_APP_PATH: ${{ steps.remote-build.outputs.remote_app_path }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/peekaboo-e2e-report
+          set +e
+          node tools/computer-use-e2e/run-local.mjs run-peekaboo-macincloud \
+            --ssh-dest "$SSH_DEST" \
+            --identity-file ~/.ssh/nixmac-peekaboo-e2e \
+            --known-hosts ~/.ssh/known_hosts \
+            --repo-dir "$PEEKABOO_REPO_DIR" \
+            --node "$PEEKABOO_NODE" \
+            --app-path "$REMOTE_APP_PATH" \
+            --allow-cleanup 2>&1 | tee artifacts/peekaboo-e2e-report/peekaboo-run.log
+          run_status="${PIPESTATUS[0]}"
+          set -e
+          echo "run_exit_status=$run_status" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch Peekaboo report from MacInCloud
+        id: fetch-report
+        if: always()
+        shell: bash
+        env:
+          SSH_DEST: ${{ steps.ssh.outputs.ssh_dest }}
+        run: |
+          set -euo pipefail
+          ssh_common=(-i ~/.ssh/nixmac-peekaboo-e2e -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts)
+          current_run_file="${PEEKABOO_REPO_DIR}/artifacts/computer-use-local/.current-run"
+          # shellcheck disable=SC2029
+          remote_run_dir="$(ssh "${ssh_common[@]}" "$SSH_DEST" "cat $(printf '%q' "$current_run_file")" 2>/dev/null || true)"
+          if [[ -z "$remote_run_dir" ]]; then
+            echo "has_report=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          report_slug="$(basename "$remote_run_dir")"
+          report_dir="artifacts/peekaboo-e2e-report/${report_slug}"
+          mkdir -p "$report_dir"
+          rsync -az -e "ssh -i ~/.ssh/nixmac-peekaboo-e2e -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts" \
+            "$SSH_DEST:$remote_run_dir/" "$report_dir/"
+          {
+            echo "has_report=true"
+            echo "report_slug=$report_slug"
+            echo "report_dir=$report_dir"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Record CI report inspection proof
+        if: always() && steps.fetch-report.outputs.has_report == 'true'
+        shell: bash
+        env:
+          FETCH_REPORT_DIR: ${{ steps.fetch-report.outputs.report_dir }}
+        run: |
+          set -euo pipefail
+          node tools/computer-use-e2e/run-local.mjs verify-report "$FETCH_REPORT_DIR" \
+            --method ci-static \
+            --notes "CI workflow inspected the rendered Peekaboo HTML report with static integrity checks and verified the summary, PR #75 baseline parity coverage, evidence video/storyboard, screenshots, visual proof, and artifact sections before publishing."
+
+      - name: Collect report metadata
+        id: report-meta
+        if: always()
+        shell: bash
+        env:
+          RUN_EXIT_STATUS: ${{ steps.run-peekaboo.outputs.run_exit_status || '1' }}
+          FETCH_HAS_REPORT: ${{ steps.fetch-report.outputs.has_report || 'false' }}
+          FETCH_REPORT_DIR: ${{ steps.fetch-report.outputs.report_dir }}
+          FETCH_REPORT_SLUG: ${{ steps.fetch-report.outputs.report_slug }}
+        run: |
+          set -euo pipefail
+          html_preview_base="https://htmlpreview.github.io/?https://github.com/${GITHUB_REPOSITORY}/blob/gh-pages"
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            report_prefix="peekaboo-e2e/pr-${{ github.event.pull_request.number }}"
+            index_url="${html_preview_base}/${report_prefix}/run-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}/index.html"
+            latest_index_url="${html_preview_base}/${report_prefix}/latest/index.html"
+          else
+            safe_ref="$(printf '%s' "${GITHUB_REF_NAME:-manual}" | tr -c '[:alnum:]._-' '-')"
+            report_prefix="peekaboo-e2e/manual/${safe_ref}"
+            index_url=""
+            latest_index_url=""
+          fi
+          publish_path="${report_prefix}/run-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          latest_path="${report_prefix}/latest"
+          {
+            echo "report_prefix=$report_prefix"
+            echo "publish_path=$publish_path"
+            echo "latest_path=$latest_path"
+            echo "index_url=$index_url"
+            echo "latest_index_url=$latest_index_url"
+          } >> "$GITHUB_OUTPUT"
+          if [[ "$FETCH_HAS_REPORT" != "true" || ! -f "$FETCH_REPORT_DIR/state.json" ]]; then
+            {
+              echo "has_report=false"
+              echo "setup_failed=true"
+              echo "report_dir="
+              echo "report_slug="
+              echo "verdict=fail"
+              echo "pass=0"
+              echo "fail=0"
+              echo "inconclusive=0"
+              echo "not_required=0"
+              echo "cu_covered=0"
+              echo "cu_required=24"
+              echo "screenshots=0"
+              echo "video_frames=0"
+              echo "secret_scan_passed=false"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          state_file="$FETCH_REPORT_DIR/state.json"
+          pass_count="$(jq -r '[.scenarios[]? | select(.status == "pass")] | length' "$state_file")"
+          fail_count="$(jq -r '[.scenarios[]? | select(.status == "fail")] | length' "$state_file")"
+          inconclusive_count="$(jq -r '[.scenarios[]? | select(.status == "inconclusive")] | length' "$state_file")"
+          not_required_count="$(jq -r '[.scenarios[]? | select(.status == "not_required")] | length' "$state_file")"
+          verdict="$(jq -r '([.scenarios[]?.status] // []) as $statuses | if any($statuses[]; . == "fail") then "fail" elif any($statuses[]; . == "inconclusive") then "inconclusive" else "pass" end' "$state_file")"
+          cu_covered="$(jq -r '[.peekaboo.coverageMap.phaseCoverage[]? as $coverage | select((.scenarios[$coverage.key].status // "") == "pass") | $coverage.correspondsTo[]?] | unique | length' "$state_file")"
+          cu_required=24
+          if [[ "$verdict" == "pass" && "$cu_covered" != "$cu_required" ]]; then
+            verdict="inconclusive"
+          fi
+          screenshots="$(jq -r '(.screenshots // []) | length' "$state_file")"
+          video_frames="$(jq -r '(.video.frames // 0) | if type == "number" then . elif type == "array" then length else 0 end' "$state_file")"
+          secret_scan_passed="$(jq -r '(.peekaboo.secretScan.status // "missing") == "passed"' "$state_file")"
+          {
+            echo "has_report=true"
+            echo "setup_failed=false"
+            echo "report_dir=$FETCH_REPORT_DIR"
+            echo "report_slug=$FETCH_REPORT_SLUG"
+            echo "verdict=$verdict"
+            echo "pass=$pass_count"
+            echo "fail=$fail_count"
+            echo "inconclusive=$inconclusive_count"
+            echo "not_required=$not_required_count"
+            echo "cu_covered=$cu_covered"
+            echo "cu_required=$cu_required"
+            echo "screenshots=$screenshots"
+            echo "video_frames=$video_frames"
+            echo "secret_scan_passed=$secret_scan_passed"
+          } >> "$GITHUB_OUTPUT"
+          if [[ "$RUN_EXIT_STATUS" != "0" ]]; then
+            echo "Peekaboo runner exited with status $RUN_EXIT_STATUS after producing a report." >&2
+          fi
+
+      - name: Summarize Peekaboo report
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### nixmac Peekaboo E2E"
+            if [[ "${{ steps.report-meta.outputs.has_report }}" == "true" ]]; then
+              echo "- Verdict: \`${{ steps.report-meta.outputs.verdict }}\`"
+              echo "- Counts: \`${{ steps.report-meta.outputs.pass }} pass / ${{ steps.report-meta.outputs.fail }} fail / ${{ steps.report-meta.outputs.inconclusive }} inconclusive / ${{ steps.report-meta.outputs.not_required }} not required\`"
+              echo "- CU coverage: \`${{ steps.report-meta.outputs.cu_covered }}/${{ steps.report-meta.outputs.cu_required }}\`"
+              echo "- Evidence: \`${{ steps.report-meta.outputs.screenshots }} screenshots / ${{ steps.report-meta.outputs.video_frames }} video frames\`"
+              echo "- Artifact path: \`${{ steps.report-meta.outputs.report_dir }}/index.html\`"
+              if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+                echo "- Hosted HTML: ${{ steps.report-meta.outputs.index_url }}"
+              else
+                echo "- Hosted HTML: not published for manual dispatch runs"
+              fi
+            else
+              echo "- No report artifact was generated."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Peekaboo report artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: peekaboo-e2e-report
+          path: artifacts/peekaboo-e2e-report/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Cleanup SSH key
+        if: always()
+        shell: bash
+        run: rm -f ~/.ssh/nixmac-peekaboo-e2e
+
+  publish-peekaboo-report:
+    name: Publish Peekaboo E2E Report
+    needs: peekaboo-product-proof
+    if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && needs.peekaboo-product-proof.outputs.has_report == 'true' && needs.peekaboo-product-proof.outputs.secret_scan_passed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: peekaboo-e2e-gh-pages-publish
+      cancel-in-progress: false
+    outputs:
+      index_url: ${{ steps.publish-report.outputs.index_url }}
+      latest_index_url: ${{ steps.publish-report.outputs.latest_index_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Download Peekaboo report
+        uses: actions/download-artifact@v7
+        with:
+          name: peekaboo-e2e-report
+          path: artifacts/peekaboo-e2e-report
+
+      - name: Publish Peekaboo report to public report branch
+        id: publish-report
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPORT_DIR: ${{ needs.peekaboo-product-proof.outputs.report_dir }}
+          REPORT_PREFIX: ${{ needs.peekaboo-product-proof.outputs.report_prefix }}
+          PUBLISH_PATH: ${{ needs.peekaboo-product-proof.outputs.publish_path }}
+          LATEST_PATH: ${{ needs.peekaboo-product-proof.outputs.latest_path }}
+          INDEX_URL: ${{ needs.peekaboo-product-proof.outputs.index_url }}
+          LATEST_INDEX_URL: ${{ needs.peekaboo-product-proof.outputs.latest_index_url }}
+          RUN_ASSET_BASE_URL: https://cdn.jsdelivr.net/gh/${{ github.repository }}@gh-pages/${{ needs.peekaboo-product-proof.outputs.publish_path }}/
+          RETENTION_KEEP_RUNS: "20"
+        run: |
+          set -euo pipefail
+          site_dir="$(mktemp -d)"
+          git -C "$site_dir" init -q
+          git -C "$site_dir" config user.name "github-actions[bot]"
+          git -C "$site_dir" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$site_dir" remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git -C "$site_dir" fetch --depth=1 origin gh-pages; then
+            git -C "$site_dir" checkout -q -B gh-pages FETCH_HEAD
+          else
+            git -C "$site_dir" checkout -q --orphan gh-pages
+          fi
+          rm -rf "$site_dir/${PUBLISH_PATH:?}" "$site_dir/${LATEST_PATH:?}"
+          mkdir -p "$site_dir/${PUBLISH_PATH:?}" "$site_dir/${LATEST_PATH:?}"
+          cp -a "$REPORT_DIR"/. "$site_dir/${PUBLISH_PATH:?}"/
+          cp -a "$REPORT_DIR"/. "$site_dir/${LATEST_PATH:?}"/
+          RUN_ASSET_BASE_URL="$RUN_ASSET_BASE_URL" perl -0pi -e 's#<head>#<head>\n<base href="$ENV{RUN_ASSET_BASE_URL}">#' "$site_dir/${PUBLISH_PATH:?}/index.html"
+          RUN_ASSET_BASE_URL="$RUN_ASSET_BASE_URL" perl -0pi -e 's#<head>#<head>\n<base href="$ENV{RUN_ASSET_BASE_URL}">#' "$site_dir/${LATEST_PATH:?}/index.html"
+          if [[ -n "${REPORT_PREFIX:-}" && -d "$site_dir/$REPORT_PREFIX" ]]; then
+            find "$site_dir/$REPORT_PREFIX" -mindepth 1 -maxdepth 1 -type d -name 'run-*' \
+              | sort -V -r \
+              | tail -n +"$((RETENTION_KEEP_RUNS + 1))" \
+              | while IFS= read -r old_report; do
+                  rm -rf "$old_report"
+                done
+          fi
+          touch "$site_dir/.nojekyll"
+          git -C "$site_dir" add -A .nojekyll "$REPORT_PREFIX"
+          if git -C "$site_dir" diff --cached --quiet; then
+            echo "No GitHub Pages report changes to publish."
+          else
+            git -C "$site_dir" commit -q -m "Publish Peekaboo E2E report for PR #${{ github.event.pull_request.number }} run ${GITHUB_RUN_ID}"
+            git -C "$site_dir" push -q origin gh-pages
+          fi
+          {
+            echo "index_url=$INDEX_URL"
+            echo "latest_index_url=$LATEST_INDEX_URL"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Comment Peekaboo report on pull request
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          VERDICT: ${{ needs.peekaboo-product-proof.outputs.verdict }}
+          PASS_COUNT: ${{ needs.peekaboo-product-proof.outputs.pass }}
+          FAIL_COUNT: ${{ needs.peekaboo-product-proof.outputs.fail }}
+          INCONCLUSIVE_COUNT: ${{ needs.peekaboo-product-proof.outputs.inconclusive }}
+          NOT_REQUIRED_COUNT: ${{ needs.peekaboo-product-proof.outputs.not_required }}
+          CU_COVERED: ${{ needs.peekaboo-product-proof.outputs.cu_covered }}
+          CU_REQUIRED: ${{ needs.peekaboo-product-proof.outputs.cu_required }}
+          SCREENSHOTS: ${{ needs.peekaboo-product-proof.outputs.screenshots }}
+          VIDEO_FRAMES: ${{ needs.peekaboo-product-proof.outputs.video_frames }}
+          SECRET_SCAN_PASSED: ${{ needs.peekaboo-product-proof.outputs.secret_scan_passed }}
+          INDEX_URL: ${{ steps.publish-report.outputs.index_url }}
+          LATEST_INDEX_URL: ${{ steps.publish-report.outputs.latest_index_url }}
+        run: |
+          set -euo pipefail
+          marker="<!-- nixmac-peekaboo-e2e-report -->"
+          case "$VERDICT" in
+            pass) status_label="✅ PASS" ;;
+            fail) status_label="❌ FAIL" ;;
+            inconclusive) status_label="⚠️ INCONCLUSIVE" ;;
+            *) status_label="❔ UNKNOWN" ;;
+          esac
+          case "$VERDICT" in
+            pass) next_action="Open the report, review the video/storyboard, then approve if the evidence matches the PR." ;;
+            fail) next_action="Open the report and inspect failures before approval." ;;
+            inconclusive) next_action="Open the report and resolve missing or inconclusive evidence before relying on the gate." ;;
+            *) next_action="Open the report and inspect setup/verdict details." ;;
+          esac
+          body_file="$(mktemp)"
+          cat > "$body_file" <<EOF
+          $marker
+          ### nixmac Peekaboo E2E: $status_label
+
+          - Result: \`$PASS_COUNT pass / $FAIL_COUNT fail / $INCONCLUSIVE_COUNT inconclusive / $NOT_REQUIRED_COUNT not required\`
+          - CU parity coverage: \`$CU_COVERED/$CU_REQUIRED\`
+          - Evidence: \`$SCREENSHOTS screenshots / $VIDEO_FRAMES timestamped video frames\`
+          - Secret scan: \`$SECRET_SCAN_PASSED\`
+          - Next action: $next_action
+          - Hosted HTML report: $INDEX_URL
+          - Latest report for this PR: $LATEST_INDEX_URL
+          EOF
+          body_json="$(mktemp)"
+          jq -Rs '{body: .}' "$body_file" > "$body_json"
+          comment_id="$(
+            gh api "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" --paginate \
+              --jq ".[] | select(.body | contains(\"$marker\")) | .id" | tail -1
+          )"
+          if [[ -n "$comment_id" ]]; then
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" --input "$body_json" >/dev/null
+          else
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" --input "$body_json" >/dev/null
+          fi
+
+  peekaboo-result:
+    name: Peekaboo E2E Result
+    needs: [peekaboo-product-proof, publish-peekaboo-report]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce final workflow result
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_result="${{ needs.peekaboo-product-proof.result }}"
+          publish_result="${{ needs.publish-peekaboo-report.result }}"
+          has_report="${{ needs.peekaboo-product-proof.outputs.has_report }}"
+          setup_failed="${{ needs.peekaboo-product-proof.outputs.setup_failed }}"
+          verdict="${{ needs.peekaboo-product-proof.outputs.verdict }}"
+          run_exit_status="${{ needs.peekaboo-product-proof.outputs.run_exit_status }}"
+          secret_scan_passed="${{ needs.peekaboo-product-proof.outputs.secret_scan_passed }}"
+          cu_covered="${{ needs.peekaboo-product-proof.outputs.cu_covered }}"
+          cu_required="${{ needs.peekaboo-product-proof.outputs.cu_required }}"
+          if [[ "$run_result" == "skipped" && "${{ github.event_name }}" == "pull_request" && "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]]; then
+            echo "Peekaboo E2E skipped for fork PR because reporting requires write-scoped same-repo permissions."
+            exit 0
+          fi
+          if [[ "$run_result" != "success" ]]; then
+            echo "Peekaboo Product Proof job result was $run_result."
+            exit 1
+          fi
+          if [[ "$setup_failed" == "true" || "$has_report" != "true" ]]; then
+            echo "Peekaboo E2E did not produce a usable HTML report."
+            exit 1
+          fi
+          if [[ "${run_exit_status:-1}" != "0" ]]; then
+            echo "Peekaboo runner exited with status $run_exit_status."
+            exit 1
+          fi
+          if [[ "$secret_scan_passed" != "true" ]]; then
+            echo "Peekaboo report secret scan did not pass; hosted publishing is intentionally blocked."
+            exit 1
+          fi
+          if [[ "$cu_covered" != "$cu_required" ]]; then
+            echo "Peekaboo E2E covered $cu_covered/$cu_required required Computer Use parity keys."
+            exit 1
+          fi
+          if [[ "$verdict" != "pass" ]]; then
+            echo "Peekaboo E2E verdict was $verdict."
+            exit 1
+          fi
+          if [[ "${{ github.event_name }}" == "pull_request" && "$publish_result" != "success" ]]; then
+            echo "Peekaboo report publish job result was $publish_result."
+            exit 1
+          fi
+          echo "Peekaboo E2E passed and the hosted HTML report was published."

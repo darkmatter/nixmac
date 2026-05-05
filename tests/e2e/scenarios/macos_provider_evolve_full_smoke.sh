@@ -537,10 +537,6 @@ scenario_test() {
         nixmac_screenshot "provider-tool-call-missing"
         die "Provider did not receive a tool-enabled evolve completion request"
     fi
-    if ! scenario_provider_log_has 'select(.body.response_format.type == "json_object")'; then
-        nixmac_screenshot "summary-provider-call-missing"
-        die "Summary provider JSON request was not observed"
-    fi
     nixmac_screenshot "03-review-provider-evolved"
     phase_pass "peekabooProviderReview: Provider calls observed and Review step reached"
 
@@ -553,6 +549,10 @@ scenario_test() {
     phase_pass "peekabooProviderBuildBoundary: Build & Test advanced to Save step using explicit E2E mock activation"
 
     phase "Commit saved changes"
+    if ! scenario_wait_for_provider_log 'select(.body.response_format.type == "json_object")' 30; then
+        nixmac_screenshot "summary-provider-call-missing-at-save"
+        die "Summary provider JSON request was not observed by the Save phase"
+    fi
     if scenario_wait_for_provider_log 'select([.body.messages[]?.content? // ""] | join(" ") | test("conventional commit message"; "i"))' 15 \
         && scenario_wait_for_prompt_value "$NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE" 15; then
         log "Observed provider-generated commit message suggestion"
@@ -612,6 +612,7 @@ scenario_cleanup() {
     nixmac_quit
     launchctl unsetenv NIXMAC_E2E_MOCK_SYSTEM 2>/dev/null || true
     launchctl unsetenv NIXMAC_E2E_OPAQUE_WINDOW 2>/dev/null || true
+    launchctl unsetenv NIXMAC_SKIP_PERMISSIONS 2>/dev/null || true
     launchctl unsetenv OPENAI_API_KEY 2>/dev/null || true
     launchctl unsetenv OPENROUTER_API_KEY 2>/dev/null || true
     launchctl unsetenv VLLM_API_KEY 2>/dev/null || true

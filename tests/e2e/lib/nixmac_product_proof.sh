@@ -243,26 +243,58 @@ process.stdin.on("end", async () => {
 }
 
 nixmac_pp_cleanup_common() {
-    launchctl unsetenv NIXMAC_E2E_MOCK_SYSTEM 2>/dev/null || true
-    launchctl unsetenv NIXMAC_E2E_OPAQUE_WINDOW 2>/dev/null || true
-    launchctl unsetenv OPENAI_API_KEY 2>/dev/null || true
-    launchctl unsetenv OPENROUTER_API_KEY 2>/dev/null || true
-    launchctl unsetenv VLLM_API_KEY 2>/dev/null || true
+    nixmac_pp_unset_launch_env NIXMAC_E2E_MOCK_SYSTEM
+    nixmac_pp_unset_launch_env NIXMAC_E2E_OPAQUE_WINDOW
+    nixmac_pp_unset_launch_env NIXMAC_SKIP_PERMISSIONS
+    nixmac_pp_unset_launch_env NIXMAC_E2E_CONFIG_DIR
+    nixmac_pp_unset_launch_env NIXMAC_E2E_HOST_ATTR
+    nixmac_pp_unset_launch_env OPENAI_API_KEY
+    nixmac_pp_unset_launch_env OPENROUTER_API_KEY
+    nixmac_pp_unset_launch_env VLLM_API_KEY
     rm -f "$NIXMAC_PP_ELEMENTS_JSON_FILE" 2>/dev/null || true
     if [ -n "${NIXMAC_E2E_CONFIG_REPO:-}" ]; then
         rm -rf "$NIXMAC_E2E_CONFIG_REPO" 2>/dev/null || true
     fi
 }
 
+nixmac_pp_set_launch_env() {
+    local key="$1"
+    local value="$2"
+    local uid
+
+    launchctl setenv "$key" "$value" 2>/dev/null || true
+    uid=$(id -u 2>/dev/null || echo "")
+    if [ -n "$uid" ]; then
+        launchctl asuser "$uid" launchctl setenv "$key" "$value" 2>/dev/null || true
+    fi
+}
+
+nixmac_pp_unset_launch_env() {
+    local key="$1"
+    local uid
+
+    launchctl unsetenv "$key" 2>/dev/null || true
+    uid=$(id -u 2>/dev/null || echo "")
+    if [ -n "$uid" ]; then
+        launchctl asuser "$uid" launchctl unsetenv "$key" 2>/dev/null || true
+    fi
+}
+
 nixmac_pp_set_e2e_launch_env() {
     export NIXMAC_E2E_MOCK_SYSTEM=1
     export NIXMAC_E2E_OPAQUE_WINDOW=1
+    export NIXMAC_SKIP_PERMISSIONS=1
+    export NIXMAC_E2E_CONFIG_DIR="${NIXMAC_E2E_CONFIG_REPO:-}"
+    export NIXMAC_E2E_HOST_ATTR="${NIXMAC_E2E_HOST_ATTR:-e2e-host}"
     export OPENAI_API_KEY="[REDACTED]"
     export OPENROUTER_API_KEY="[REDACTED]"
     export VLLM_API_KEY=e2e
-    launchctl setenv NIXMAC_E2E_MOCK_SYSTEM 1
-    launchctl setenv NIXMAC_E2E_OPAQUE_WINDOW 1
-    launchctl setenv OPENAI_API_KEY "$OPENAI_API_KEY"
-    launchctl setenv OPENROUTER_API_KEY "$OPENROUTER_API_KEY"
-    launchctl setenv VLLM_API_KEY "$VLLM_API_KEY"
+    nixmac_pp_set_launch_env NIXMAC_E2E_MOCK_SYSTEM "$NIXMAC_E2E_MOCK_SYSTEM"
+    nixmac_pp_set_launch_env NIXMAC_E2E_OPAQUE_WINDOW "$NIXMAC_E2E_OPAQUE_WINDOW"
+    nixmac_pp_set_launch_env NIXMAC_SKIP_PERMISSIONS "$NIXMAC_SKIP_PERMISSIONS"
+    nixmac_pp_set_launch_env NIXMAC_E2E_CONFIG_DIR "$NIXMAC_E2E_CONFIG_DIR"
+    nixmac_pp_set_launch_env NIXMAC_E2E_HOST_ATTR "$NIXMAC_E2E_HOST_ATTR"
+    nixmac_pp_set_launch_env OPENAI_API_KEY "$OPENAI_API_KEY"
+    nixmac_pp_set_launch_env OPENROUTER_API_KEY "$OPENROUTER_API_KEY"
+    nixmac_pp_set_launch_env VLLM_API_KEY "$VLLM_API_KEY"
 }

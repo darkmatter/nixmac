@@ -41,6 +41,13 @@ pub const PINNED_VERSION_KEY: &str = "pinnedVersion";
 pub const DEFAULT_MAX_ITERATIONS: usize = 25;
 const KEYCHAIN_SERVICE: &str = "com.darkmatter.nixmac";
 
+fn e2e_env_value(name: &str) -> Option<String> {
+    if std::env::var("NIXMAC_E2E_MOCK_SYSTEM").ok().as_deref() != Some("1") {
+        return None;
+    }
+    std::env::var(name).ok().filter(|value| !value.trim().is_empty())
+}
+
 /// Gets a handle to the settings store.
 pub fn get_store<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<Store<R>>> {
     let store = app.store(STORE_PATH)?;
@@ -53,6 +60,10 @@ pub fn get_store<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<Store<R>>> {
 
 /// Gets the flake configuration directory, defaulting to ~/.darwin.
 pub fn get_config_dir<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
+    if let Some(dir) = e2e_env_value("NIXMAC_E2E_CONFIG_DIR") {
+        return Ok(dir);
+    }
+
     let store = get_store(app)?;
 
     if let Some(dir) = store.get("configDir") {
@@ -85,6 +96,10 @@ pub fn ensure_config_dir_exists<R: Runtime>(app: &AppHandle<R>) -> Result<String
 
 /// Gets the stored nix-darwin host attribute name.
 pub fn get_host_attr<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
+    if let Some(attr) = e2e_env_value("NIXMAC_E2E_HOST_ATTR") {
+        return Ok(Some(attr));
+    }
+
     let store = get_store(app)?;
 
     if let Some(attr) = store.get("hostAttr") {
@@ -653,5 +668,21 @@ mod tests {
 
         assert_eq!(result.as_deref(), Some("store-secret"));
         assert!(fallback_called.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn e2e_env_value_requires_mock_system_gate() {
+        std::env::remove_var("NIXMAC_E2E_MOCK_SYSTEM");
+        std::env::set_var("NIXMAC_E2E_CONFIG_DIR", "/tmp/nixmac-e2e-config");
+        assert_eq!(e2e_env_value("NIXMAC_E2E_CONFIG_DIR"), None);
+
+        std::env::set_var("NIXMAC_E2E_MOCK_SYSTEM", "1");
+        assert_eq!(
+            e2e_env_value("NIXMAC_E2E_CONFIG_DIR").as_deref(),
+            Some("/tmp/nixmac-e2e-config")
+        );
+
+        std::env::remove_var("NIXMAC_E2E_MOCK_SYSTEM");
+        std::env::remove_var("NIXMAC_E2E_CONFIG_DIR");
     }
 }

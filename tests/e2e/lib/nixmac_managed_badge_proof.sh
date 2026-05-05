@@ -61,9 +61,9 @@ scenario_expected_managed_badge_path_pattern() {
     local prefix="$1"
 
     if [ "$prefix" = "homebrew" ]; then
-        printf '%s\n' '^(modules/darwin/homebrew\.nix|flake-modules/darwin\.nix)$'
+        printf '%s\n' '^(\.nixmac/default\.nix|\.nixmac/homebrew/(data\.json|default\.nix|meta\.json)|flake\.nix|modules/darwin/homebrew\.nix|flake-modules/darwin\.nix)$'
     elif [ "$prefix" = "customization" ]; then
-        printf '%s\n' '(^|/)system-defaults\.nix$|^flake-modules/darwin\.nix$'
+        printf '%s\n' '(^|/)system-defaults\.nix$|^flake-modules/darwin\.nix$|^flake\.nix$'
     else
         printf '%s\n' '.+'
     fi
@@ -80,6 +80,10 @@ scenario_assert_expected_managed_badge_paths() {
     if ! printf '%s\n' "$changed_paths" | grep -Eq "$expected_pattern"; then
         nixmac_screenshot "$prefix-$stage-unexpected-paths"
         die "$badge_label $stage did not touch an expected config surface; changed paths: ${changed_paths:-<none>}"
+    fi
+    if [ "$prefix" = "homebrew" ] && ! printf '%s\n' "$changed_paths" | grep -Eq '^\.nixmac/homebrew/(data\.json|default\.nix|meta\.json)$'; then
+        nixmac_screenshot "$prefix-$stage-missing-homebrew-managed-files"
+        die "$badge_label $stage did not write the managed Homebrew module files; changed paths: ${changed_paths:-<none>}"
     fi
 }
 

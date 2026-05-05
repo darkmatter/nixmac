@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
@@ -73,6 +74,19 @@ const REAL_APP_COMMAND = `open -n ${REAL_APP_PATH}`;
 const SETTINGS_FILE = path.join(APP_SUPPORT_DIR, 'settings.json');
 const CURRENT_RUN_FILE = path.join(ARTIFACT_ROOT, '.current-run');
 const REAL_CURRENT_RUN_FILE = path.join(REAL_ARTIFACT_ROOT, '.current-run');
+const COVERAGE_MANIFEST_PATH = path.join(TOOL_DIR, 'coverage-manifest.json');
+const PEEKABOO_PR_ENV_KEYS = [
+  'GITHUB_EVENT_NAME',
+  'GITHUB_PR_NUMBER',
+  'GITHUB_HEAD_REF',
+  'GITHUB_BASE_REF',
+  'NIXMAC_E2E_PR_EVENT',
+  'NIXMAC_E2E_PR_NUMBER',
+  'NIXMAC_E2E_PR_TITLE',
+  'NIXMAC_E2E_PR_HEAD_REF',
+  'NIXMAC_E2E_PR_BASE_REF',
+  'NIXMAC_E2E_PR_CHANGED_FILES',
+];
 
 const scenarioLabels = {
   launch: 'App launches and first screen is usable',
@@ -140,7 +154,7 @@ const scenarioLabels = {
   peekabooProviderRollbackCleanup: 'Peekaboo provider rollback cleanup',
   peekabooProviderAudit: 'Peekaboo provider request audit',
   peekabooProviderDiscard: 'Peekaboo provider Discard proof',
-  peekabooReportInspection: 'Peekaboo report visual inspection',
+  peekabooReportInspection: 'Peekaboo report inspection',
   peekabooNixInstall: 'Peekaboo Nix install flow',
 };
 const PEEKABOO_SCENARIO_TO_REPORT_KEY = Object.freeze({
@@ -196,6 +210,119 @@ const LOCAL_ONLY_SCENARIO_KEYS = new Set([
   'peekabooReportInspection',
   'peekabooNixInstall',
 ]);
+
+function splitPrEnvList(value = '') {
+  return String(value)
+    .split('\n')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function loadCoverageManifest() {
+  try {
+    return JSON.parse(readFileSync(COVERAGE_MANIFEST_PATH, 'utf8'));
+  } catch (error) {
+    return {
+      surfaces: [],
+      candidateIncludes: [],
+      candidateExcludes: [],
+      loadError: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+function matchesAnyPattern(value, patterns = []) {
+  return patterns.some((pattern) => new RegExp(pattern).test(value));
+}
+
+function sourcePrefixMatches(file, sourcePrefix) {
+  const normalizedPrefix = String(sourcePrefix ?? '').replaceAll(path.sep, '/');
+  if (!normalizedPrefix) return false;
+  if (normalizedPrefix.endsWith('/')) return file.startsWith(normalizedPrefix);
+  return file === normalizedPrefix || file.startsWith(`${normalizedPrefix}/`);
+}
+
+function changedFileMatchesSurface(file, surface) {
+  return (surface.sourcePrefixes ?? []).some((sourcePrefix) => sourcePrefixMatches(file, sourcePrefix));
+}
+
+function isLikelyUserVisiblePrFile(file, manifest) {
+  if (matchesAnyPattern(file, manifest.candidateExcludes ?? [])) return false;
+  if (matchesAnyPattern(file, manifest.candidateIncludes ?? [])) return true;
+  if (manifest.surfaces?.some((surface) => changedFileMatchesSurface(file, surface))) return true;
+  return /^(apps\/native\/src\/(?:App|main|index|style|.*\.css)|apps\/native\/src\/components\/|apps\/native\/src\/hooks\/|apps\/native\/src-tauri\/src\/|apps\/native\/templates\/|tools\/computer-use-e2e\/|tests\/e2e\/|\.github\/workflows\/peekaboo-e2e\.yml)/.test(
+    file,
+  );
+}
+
+function scenarioSuggestionForFile(file, matchedSurfaces = []) {
+  const waiver = matchedSurfaces.find((surface) => surface.waiver)?.waiver;
+  if (waiver?.exitCriteria) return `Add a dedicated Peekaboo scenario for ${file}: ${waiver.exitCriteria}`;
+  if (/^tools\/computer-use-e2e\/|^tests\/e2e\/|^\.github\/workflows\/peekaboo-e2e\.yml/.test(file)) {
+    return `Map ${file} to reportInspection or visualProofQuality and keep the workflow/report contract self-test covering the changed behavior.`;
+  }
+  return `Add or extend a Peekaboo scenario that exercises ${file}, then map it in coverage-manifest.json.`;
+}
+
+function buildPeekabooPrFocus(env = process.env) {
+  const manifest = loadCoverageManifest();
+  const changedFiles = splitPrEnvList(env.NIXMAC_E2E_PR_CHANGED_FILES || '');
+  const scenarioKeys = new Set();
+  const userVisibleFiles = [];
+  const unmappedUserVisibleFiles = [];
+  const scenarioSuggestions = [];
+  const matchedSurfaceRows = [];
+
+  for (const file of changedFiles) {
+    const matchedSurfaces = (manifest.surfaces ?? []).filter((surface) => changedFileMatchesSurface(file, surface));
+    const mappedKeys = matchedSurfaces.flatMap((surface) => surface.scenarioKeys ?? []).filter(Boolean);
+    for (const key of mappedKeys) scenarioKeys.add(key);
+    if (/^tools\/computer-use-e2e\/|^tests\/e2e\/|^\.github\/workflows\/peekaboo-e2e\.yml/.test(file)) {
+      scenarioKeys.add('visualProofQuality');
+      scenarioKeys.add('reportInspection');
+    }
+    if (/^apps\/native\/src\/[^/]+\.(?:css|ts|tsx)$/i.test(file)) {
+      scenarioKeys.add('launch');
+      scenarioKeys.add('visualCoverage');
+    }
+    if (!isLikelyUserVisiblePrFile(file, manifest)) continue;
+    userVisibleFiles.push(file);
+    if (matchedSurfaces.length) {
+      matchedSurfaceRows.push(
+        ...matchedSurfaces.map((surface) => ({
+          file,
+          id: surface.id,
+          label: surface.label,
+          scenarioKeys: surface.scenarioKeys ?? [],
+          waiver: surface.waiver ?? null,
+          coverageDisposition: surface.coverageDisposition ?? null,
+          coverageNote: surface.coverageNote ?? null,
+        })),
+      );
+    }
+    const nonClaimingOnly = matchedSurfaces.some((surface) => surface.coverageDisposition === 'non-claiming');
+    if (!mappedKeys.length && !nonClaimingOnly && !/^tools\/computer-use-e2e\/|^tests\/e2e\/|^\.github\/workflows\/peekaboo-e2e\.yml/.test(file)) {
+      unmappedUserVisibleFiles.push(file);
+      scenarioSuggestions.push(scenarioSuggestionForFile(file, matchedSurfaces));
+    }
+  }
+
+  return {
+    eventName: env.GITHUB_EVENT_NAME || env.NIXMAC_E2E_PR_EVENT || '',
+    number: env.NIXMAC_E2E_PR_NUMBER || env.GITHUB_PR_NUMBER || '',
+    title: env.NIXMAC_E2E_PR_TITLE || '',
+    headRef: env.NIXMAC_E2E_PR_HEAD_REF || env.GITHUB_HEAD_REF || '',
+    baseRef: env.NIXMAC_E2E_PR_BASE_REF || env.GITHUB_BASE_REF || '',
+    changedFiles,
+    userVisibleFiles,
+    scenarioKeys: [...scenarioKeys],
+    matchedSurfaces: matchedSurfaceRows,
+    unmappedUserVisibleFiles,
+    scenarioSuggestions: [...new Set(scenarioSuggestions)],
+    manifestLoadError: manifest.loadError ?? null,
+    configured: Boolean(env.NIXMAC_E2E_PR_NUMBER || env.GITHUB_PR_NUMBER || env.GITHUB_EVENT_NAME === 'pull_request'),
+  };
+}
 const PR75_COMPUTER_USE_BASELINE = Object.freeze({
   source: 'artifacts/pr-75-computer-use-baseline/index.html',
   rawPassedClaimCount: 27,
@@ -264,7 +391,7 @@ function usage() {
   node tools/computer-use-e2e/run-local.mjs run-peekaboo [macos_descriptor_prompt_smoke|macos_core_product_proof|macos_support_dialogs_smoke|macos_console_smoke|macos_homebrew_save_rollback_smoke|macos_customization_save_rollback_smoke|macos_provider_evolve_full_smoke|macos_provider_discard_smoke] [--no-record] [--allow-destructive]
   node tools/computer-use-e2e/run-local.mjs run-peekaboo-suite [--no-record] [--allow-cleanup] [macos_core_product_proof macos_support_dialogs_smoke macos_console_smoke macos_homebrew_save_rollback_smoke macos_customization_save_rollback_smoke macos_provider_evolve_full_smoke macos_provider_discard_smoke]
   node tools/computer-use-e2e/run-local.mjs run-peekaboo-macincloud [--suite|--scenario <name>] [--ssh-dest admin@host] [--identity-file ~/.ssh/key] [--repo-dir /Users/admin/nixmac-peekaboo-local-e2e] [--app-path /Users/admin/nixmac.app] [--no-record] [--allow-cleanup]
-  node tools/computer-use-e2e/run-local.mjs verify-report <run-dir> --method computer-use --notes "<visual inspection notes>"
+  node tools/computer-use-e2e/run-local.mjs verify-report <run-dir> --method computer-use|ci-static --notes "<inspection notes>"
   node tools/computer-use-e2e/run-local.mjs serve-mock <run-dir>
   node tools/computer-use-e2e/run-local.mjs capture <label> [--note "..."]
   node tools/computer-use-e2e/run-local.mjs scenario <key> <pass|fail|inconclusive> [--note "..."]
@@ -629,6 +756,7 @@ function createInitialState({
         { label, status: 'inconclusive', notes: [] },
       ]),
     ),
+    prFocus: buildPeekabooPrFocus(),
     screenshots: [],
     diagnostics: [],
     narrative: [],
@@ -977,7 +1105,14 @@ function buildPeekabooMacInCloudCommand(args, env = process.env) {
   if (args.includes('--allow-destructive')) remoteArgs.push('--allow-destructive');
   if (mode === 'run-peekaboo') remoteArgs.push(scenario || DEFAULT_PEEKABOO_SCENARIO);
 
-  const remoteEnv = ['PATH=/opt/homebrew/bin:$PATH', appPath ? `NIXMAC_APP_PATH=${shellQuote(appPath)}` : ''].filter(Boolean);
+  const forwardedPrEnv = PEEKABOO_PR_ENV_KEYS
+    .filter((key) => env[key])
+    .map((key) => `${key}=${shellQuote(env[key])}`);
+  const remoteEnv = [
+    'PATH=/opt/homebrew/bin:$PATH',
+    appPath ? `NIXMAC_APP_PATH=${shellQuote(appPath)}` : '',
+    ...forwardedPrEnv,
+  ].filter(Boolean);
   const remoteCommand = [
     `cd ${shellQuote(repoDir)}`,
     `${remoteEnv.join(' ')} ${shellQuote(nodeBin)} tools/computer-use-e2e/run-local.mjs ${remoteArgs.map(shellQuote).join(' ')}`,
@@ -1638,6 +1773,71 @@ function renderBaselineCoverageRows(state) {
     .join('\n');
 }
 
+function renderListItems(items = [], fallback) {
+  if (!items.length) return `<li>${escapeHtml(fallback)}</li>`;
+  return items.map((item) => `<li>${escapeHtml(item)}</li>`).join('\n');
+}
+
+function renderCodeListItems(items = [], fallback) {
+  if (!items.length) return `<li>${escapeHtml(fallback)}</li>`;
+  return items.map((item) => `<li><code>${escapeHtml(item)}</code></li>`).join('\n');
+}
+
+function renderPrSurfaceRows(state) {
+  const rows = state.prFocus?.matchedSurfaces ?? [];
+  if (!rows.length) return '<tr><td colspan="4">No manifest surface mappings inferred.</td></tr>';
+  return rows
+    .map((row) => {
+      const coverageNote = row.waiver
+        ? escapeHtml(row.waiver.exitCriteria ?? row.waiver.reason ?? 'waived')
+        : row.coverageNote
+          ? escapeHtml(row.coverageNote)
+          : row.coverageDisposition === 'non-claiming'
+            ? 'Tracked without claiming scenario coverage'
+            : 'Mapped';
+      return `<tr>
+        <td><code>${escapeHtml(row.file)}</code></td>
+        <td>${escapeHtml(row.label ?? row.id ?? 'unknown')}</td>
+        <td>${escapeHtml((row.scenarioKeys ?? []).map((key) => scenarioLabels[key] ?? sharedScenarioLabels[key] ?? key).join(', ') || 'explicit waiver / unmapped')}</td>
+        <td>${coverageNote}</td>
+      </tr>`;
+    })
+    .join('\n');
+}
+
+function renderPeekabooPrFocus(state) {
+  const pr = state.prFocus ?? { configured: false, changedFiles: [], userVisibleFiles: [], scenarioKeys: [], scenarioSuggestions: [] };
+  const mappedScenarioLabels = (pr.scenarioKeys ?? []).map((key) => scenarioLabels[key] ?? sharedScenarioLabels[key] ?? key);
+  return `<h2 id="pull-request-focus">Pull Request Focus</h2>
+  <section class="panel">
+    <p><strong>PR:</strong> ${escapeHtml(pr.number || 'not provided')}${pr.title ? ` - ${escapeHtml(pr.title)}` : ''}</p>
+    <p><strong>Refs:</strong> ${escapeHtml(pr.baseRef || 'base ?')} ← ${escapeHtml(pr.headRef || 'head ?')}</p>
+    <div class="summary">
+      <div class="metric"><strong>Changed files</strong><span>${escapeHtml(String(pr.changedFiles?.length ?? 0))}</span><small>${pr.configured ? 'Forwarded from GitHub PR metadata.' : 'No PR metadata was configured for this run.'}</small></div>
+      <div class="metric"><strong>User-visible files</strong><span>${escapeHtml(String(pr.userVisibleFiles?.length ?? 0))}</span><small>Inferred from coverage-manifest.json plus app/test/workflow heuristics.</small></div>
+      <div class="metric"><strong>Mapped scenarios</strong><span>${escapeHtml(String(pr.scenarioKeys?.length ?? 0))}</span><small>Used to focus reviewer attention on changed surfaces.</small></div>
+    </div>
+    ${pr.manifestLoadError ? `<p class="warning"><strong>Manifest load error:</strong> ${escapeHtml(pr.manifestLoadError)}</p>` : ''}
+    <h3>Mapped PR Surfaces</h3>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Changed File</th><th>Surface</th><th>Scenario Focus</th><th>Coverage Note</th></tr></thead>
+      <tbody>${renderPrSurfaceRows(state)}</tbody>
+    </table></div>
+    <h3>Scenario Focus</h3>
+    <ul>${renderListItems(mappedScenarioLabels, 'No dedicated scenario mapping inferred from changed files.')}</ul>
+    <h3>Suggested Coverage Updates</h3>
+    <ul>${renderListItems(pr.scenarioSuggestions ?? [], 'No unmapped user-visible changed files detected.')}</ul>
+    <details>
+      <summary>Changed files (${escapeHtml(String(pr.changedFiles?.length ?? 0))})</summary>
+      <ul>${renderCodeListItems(pr.changedFiles ?? [], 'No changed-file metadata provided.')}</ul>
+    </details>
+    <details>
+      <summary>Unmapped user-visible files (${escapeHtml(String(pr.unmappedUserVisibleFiles?.length ?? 0))})</summary>
+      <ul>${renderCodeListItems(pr.unmappedUserVisibleFiles ?? [], 'No unmapped user-visible files detected.')}</ul>
+    </details>
+  </section>`;
+}
+
 function screenshotFamily(labelOrPath) {
   return path
     .basename(String(labelOrPath ?? 'screenshot'))
@@ -2013,6 +2213,7 @@ async function render() {
       </div>
       <nav aria-label="Report navigation">
         <a href="#executed-proof">Executed Proof</a>
+        <a href="#pull-request-focus">PR Focus</a>
         <a href="#parity-map">Parity Map</a>
         <a href="#baseline-coverage">Baseline</a>
         <a href="#summary-video">Evidence Video</a>
@@ -2036,6 +2237,8 @@ async function render() {
     ${state.mode === 'peekaboo-suite' ? 'This Peekaboo suite' : 'This single Peekaboo report'} maps ${escapeHtml(String(requiredCoverage.coveredRequiredKeys.length))} of ${escapeHtml(String(requiredCoverage.requiredKeys.length))} required Computer Use Product Proof key(s), leaving ${escapeHtml(String(requiredCoverage.missingRequiredKeys.length))} required breadth gap(s). The PR #75 baseline recorded ${escapeHtml(String(PR75_COMPUTER_USE_BASELINE.rawPassedClaimCount))} raw passing claim(s), including ${escapeHtml(String(PR75_COMPUTER_USE_BASELINE.metaKeys.length))} meta/PR check(s); currently applicable known limits are listed explicitly below.
     ${state.mode === 'peekaboo' && requiredCoverage.missingRequiredKeys.length > 0 ? '<br><strong>Single-scenario boundary</strong> This report is evidence for one focused Peekaboo scenario, not a full parity claim; use the Peekaboo suite report for Computer Use breadth parity.' : ''}
   </section>
+
+  ${renderPeekabooPrFocus(state)}
 
   ${renderEvidenceVideo(state, artifacts)}
 
@@ -2161,16 +2364,19 @@ async function render() {
   console.log(reportPath);
 }
 
-function requireSubstantiveInspectionNotes(notes) {
+function requireSubstantiveInspectionNotes(notes, method = 'computer-use') {
   const trimmed = notes.trim();
   if (trimmed.length < 80) {
-    throw new Error('verify-report --notes must be at least 80 characters and describe the visual inspection performed.');
+    throw new Error('verify-report --notes must be at least 80 characters and describe the inspection performed.');
   }
-  if (!/computer use/i.test(trimmed)) {
+  if (method === 'computer-use' && !/computer use/i.test(trimmed)) {
     throw new Error('verify-report --notes must explicitly attest that Computer Use performed the visual inspection.');
   }
+  if (method === 'ci-static' && !/(ci|workflow|static|automated)/i.test(trimmed)) {
+    throw new Error('verify-report --notes must explicitly attest that CI performed the static report inspection.');
+  }
   if (!/(opened|loaded|rendered|inspected|clicked|scrolled|verified|confirmed)/i.test(trimmed)) {
-    throw new Error('verify-report --notes must describe at least one concrete visual inspection action.');
+    throw new Error('verify-report --notes must describe at least one concrete inspection action.');
   }
   const sectionHits = [
     /first[- ]viewport|summary/i,
@@ -2221,10 +2427,10 @@ async function verifyReport(args) {
   if (!runDirArg) throw new Error('verify-report requires <run-dir>');
   const runDir = path.resolve(runDirArg);
   const method = argValue(args, '--method');
-  if (method !== 'computer-use') {
-    throw new Error('verify-report currently only records reportInspection coverage with --method computer-use.');
+  if (!['computer-use', 'ci-static'].includes(method)) {
+    throw new Error('verify-report records reportInspection coverage only with --method computer-use or --method ci-static.');
   }
-  const notes = requireSubstantiveInspectionNotes(argValue(args, '--notes'));
+  const notes = requireSubstantiveInspectionNotes(argValue(args, '--notes'), method);
   const reportPath = path.join(runDir, 'index.html');
   const stateFile = path.join(runDir, 'state.json');
   if (!(await pathExists(reportPath))) throw new Error(`Report not found: ${reportPath}`);
@@ -2232,6 +2438,7 @@ async function verifyReport(args) {
 
   const state = await loadState(runDir);
   state.runDir = runDir;
+  await mkdir(ARTIFACT_ROOT, { recursive: true });
   await writeFile(CURRENT_RUN_FILE, `${runDir}\n`, 'utf8');
   await render();
   const html = await readFile(reportPath, 'utf8');
@@ -2255,6 +2462,8 @@ async function verifyReport(args) {
     staticChecks,
   };
   await writeJson(path.join(runDir, 'report-inspection.json'), inspection);
+  const inspectionGrade = method === 'computer-use' ? 'manual-visual-artifact-inspection' : 'automated-report-integrity';
+  const inspectionLabel = method === 'computer-use' ? 'Peekaboo report visual inspection' : 'Peekaboo report CI integrity inspection';
 
   state.peekaboo ??= {};
   state.peekaboo.coverageMap ??= {
@@ -2267,9 +2476,9 @@ async function verifyReport(args) {
   if (!state.peekaboo.coverageMap.phaseCoverage.some((item) => item.key === 'peekabooReportInspection')) {
     state.peekaboo.coverageMap.phaseCoverage.push({
       key: 'peekabooReportInspection',
-      label: 'Peekaboo report inspection',
+      label: inspectionLabel,
       correspondsTo: ['reportInspection'],
-      grade: 'manual-visual-artifact-inspection',
+      grade: inspectionGrade,
     });
   }
   state.scenarios.peekabooReportInspection = {
@@ -2278,11 +2487,11 @@ async function verifyReport(args) {
     executedByPeekaboo: true,
     peekabooEvidence: {
       phaseKey: 'peekabooReportInspection',
-      grade: 'manual-visual-artifact-inspection',
+      grade: inspectionGrade,
       correspondsTo: ['reportInspection'],
     },
     notes: [
-      `Report visually inspected with ${method} by ${inspector}.`,
+      `Report inspected with ${method} by ${inspector}.`,
       notes,
       `Static checks passed: ${staticChecks.checks.map((check) => check.name).join(', ')}.`,
     ],
@@ -2295,13 +2504,13 @@ async function verifyReport(args) {
   state.scenarios.reportInspection.status = 'pass';
   state.scenarios.reportInspection.peekabooTransitiveCoverage = {
     phaseKey: 'peekabooReportInspection',
-    grade: 'manual-visual-artifact-inspection',
+    grade: inspectionGrade,
   };
   state.scenarios.reportInspection.notes = (state.scenarios.reportInspection.notes ?? []).filter(
     (note) => !note.includes('Covered transitively by peekabooReportInspection') && note !== notes,
   );
   state.scenarios.reportInspection.notes.push(
-    'Covered transitively by peekabooReportInspection; Peekaboo evidence grade: manual-visual-artifact-inspection.',
+    `Covered transitively by peekabooReportInspection; Peekaboo evidence grade: ${inspectionGrade}.`,
     notes,
   );
   if (!state.diagnostics.some((item) => item.path === 'report-inspection.json')) {
@@ -2313,7 +2522,7 @@ async function verifyReport(args) {
   }
   if (!state.claims.some((item) => item.evidence === 'report-inspection.json')) {
     state.claims.push({
-      claim: 'Peekaboo report was inspected visually and passed static report integrity checks',
+      claim: 'Peekaboo report was inspected and passed static report integrity checks',
       status: 'pass',
       evidence: 'report-inspection.json',
     });
@@ -2517,6 +2726,43 @@ async function runSelfTest() {
     'passed',
     'Report static checks should accept an honest inconclusive parity report',
   );
+  const prFocus = buildPeekabooPrFocus({
+    GITHUB_EVENT_NAME: 'pull_request',
+    NIXMAC_E2E_PR_NUMBER: '90',
+    NIXMAC_E2E_PR_TITLE: 'Peekaboo proof',
+    NIXMAC_E2E_PR_HEAD_REF: 'fkb/scott-peekaboo-local-e2e',
+    NIXMAC_E2E_PR_BASE_REF: 'fkb/e2e-required-gate-policy',
+    NIXMAC_E2E_PR_CHANGED_FILES: [
+      'apps/native/src/components/widget/settings-dialog.tsx',
+      'apps/native/src-tauri/src/main.rs',
+      'apps/native/src-tauri/src/rebuild/darwin.rs',
+      'apps/native/src-tauri/src/storage/store.rs',
+      'apps/native/src-tauri/src/summarize/build_prompt.rs',
+      'apps/native/src/components/widget/new-visible-surface.tsx',
+      'tools/computer-use-e2e/run-local.mjs',
+    ].join('\n'),
+  });
+  assert.equal(prFocus.configured, true, 'Peekaboo PR focus should mark pull_request metadata as configured');
+  assert(prFocus.scenarioKeys.includes('settingsGeneral'), 'Peekaboo PR focus should map manifest files to scenario keys');
+  assert(prFocus.scenarioKeys.includes('summary'), 'Peekaboo PR focus should map summary prompt files to summary coverage');
+  assert(prFocus.scenarioKeys.includes('saveFlow'), 'Peekaboo PR focus should map summary prompt files to Save-flow coverage');
+  assert(prFocus.scenarioKeys.includes('reportInspection'), 'Peekaboo PR focus should map runner/report changes to report inspection');
+  assert(
+    prFocus.matchedSurfaces.some((surface) => surface.id === 'e2e-harness-rust' && surface.coverageDisposition === 'non-claiming'),
+    'Peekaboo PR focus should identify E2E-gated harness files without claiming user-facing scenario coverage',
+  );
+  assert.deepEqual(
+    prFocus.unmappedUserVisibleFiles,
+    ['apps/native/src/components/widget/new-visible-surface.tsx'],
+    'Peekaboo PR focus should surface unmapped user-visible files for scenario suggestions',
+  );
+  assert(
+    renderPeekabooPrFocus({
+      prFocus,
+      scenarios: Object.fromEntries(Object.entries(scenarioLabels).map(([key, label]) => [key, { label, status: 'inconclusive', notes: [] }])),
+    }).includes('Suggested Coverage Updates'),
+    'Peekaboo report should render PR-focused scenario suggestions',
+  );
   const macInCloudCommand = buildPeekabooMacInCloudCommand(
     [
       '--ssh-dest',
@@ -2532,11 +2778,18 @@ async function runSelfTest() {
       '--no-record',
       '--allow-cleanup',
     ],
-    {},
+    {
+      NIXMAC_E2E_PR_CHANGED_FILES: 'apps/native/src/components/widget/settings-dialog.tsx',
+      NIXMAC_E2E_PR_NUMBER: '90',
+    },
   );
   assert.equal(macInCloudCommand.mode, 'run-peekaboo', 'MacInCloud command should support single-scenario dispatch');
   assert(macInCloudCommand.sshArgs.includes('admin@example.test'), 'MacInCloud command should include the SSH destination');
   assert(macInCloudCommand.remoteCommand.includes('run-peekaboo'), 'MacInCloud command should run the remote Peekaboo command');
+  assert(
+    macInCloudCommand.remoteCommand.includes('NIXMAC_E2E_PR_CHANGED_FILES='),
+    'MacInCloud command should forward PR changed-file metadata to the remote Peekaboo run',
+  );
   assert(
     macInCloudCommand.remoteCommand.includes('macos_core_product_proof'),
     'MacInCloud command should include the requested scenario',

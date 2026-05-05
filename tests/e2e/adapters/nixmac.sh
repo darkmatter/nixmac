@@ -118,7 +118,11 @@ nixmac_launch() {
         dismiss_dialogs 3
         
         local json
-        json=$(peek_elements "$NIXMAC_APP_NAME") || true
+        if [ "$retries" -lt $((max_retries - 1)) ]; then
+            json=$(E2E_PEEKABOO_SUPPRESS_EMPTY_DIAG=1 peek_elements "$NIXMAC_APP_NAME") || true
+        else
+            json=$(peek_elements "$NIXMAC_APP_NAME") || true
+        fi
         local count
         count=$(echo "$json" | jq -r '.data.ui_elements | length' 2>/dev/null || echo "0")
         count="${count//[^0-9]/}"  # strip non-numeric chars

@@ -193,7 +193,9 @@ peek_elements() {
                 echo "$json"
                 return 0
             fi
-            peekaboo_capture_app_diagnostics "$app" "empty-app-scope"
+            if [ "${E2E_PEEKABOO_SUPPRESS_EMPTY_DIAG:-0}" != "1" ]; then
+                peekaboo_capture_app_diagnostics "$app" "empty-app-scope"
+            fi
             pid=$(peekaboo_app_pid "$app")
             if [ -n "$pid" ]; then
                 local pid_args=(--pid "$pid")
