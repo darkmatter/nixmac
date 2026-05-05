@@ -1,0 +1,92 @@
+[0;34m[15:58:30][0m === macos-e2e test runner ===
+[0;34m[15:58:30][0m Started at Tue May  5 15:58:30 PDT 2026
+[0;34m[15:58:30][0m Machine: DXU97120 | macOS 26.2
+[0;34m[15:58:30][0m Working directory: /Users/admin/nixmac-peekaboo-local-e2e/tests/e2e
+[0;34m[15:58:35][0m Scenario: macos_provider_discard_smoke
+[0;34m[15:58:35][0m Starting screen recording: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-58-29-295Z/video/peekaboo-e2e.mp4
+[0;34m[15:58:38][0m Recorder started (PID: 59804)
+[0;34m[15:58:38][0m === Phase 1: Prepare provider-backed discard fixture ===
+[0;32m[PASS][0m Peekaboo Bridge connected
+[0;32m[PASS][0m Peekaboo permissions OK
+[1;33m[WARN][0m No ADMIN_PASSWORD set, cannot unlock screen
+[0;34m[15:58:40][0m Clearing nixmac app state...
+[0;32m[PASS][0m App state cleared
+[0;34m[15:58:40][0m Seeded nixmac settings at /Users/admin/Library/Application Support/com.darkmatter.nixmac/settings.json with provider http://127.0.0.1:61376/v1
+[0;34m[15:58:40][0m Installed E2E system activation shim at /var/folders/lw/q3m765kd17z3h2g36tw6qk000000gp/T//nixmac-e2e-system-mock-bin.xFdcWZ
+[0;32m[PASS][0m peekabooProviderFixture: Prepared discard config repo, deterministic HTTP provider, completion logging, and mock rebuild flag
+[0;34m[15:58:40][0m === Phase 2: Launch nixmac app for discard proof ===
+[0;34m[15:58:40][0m Launching nixmac...
+[0;32m[PASS][0m App launched: nixmac
+✓ Switched to nixmac
+📝 Created annotated screenshot with 128 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-58-29-295Z/screenshots/01-discard-launched-1778021937.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-58-29-295Z/screenshots/01-discard-launched-1778021937_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 154
+⚙️  Interactable elements: 128
+⏱️  Execution time: 0.30s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_19 (button) - Browse
+• elem_20 (button) - Report Issue
+• elem_21 (button) - Console
+• elem_23 (button) - close button
+• elem_24 (button) - full screen button
+• elem_27 (button) - minimize button
+• elem_2 (textField) - group
+  ...and 144 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 15C20DCC-056E-4F23-8E5D-58A93FACAF02
+Agent: Use a tool like view_image to inspect it.
+[0;34m[15:58:58][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-58-29-295Z/screenshots/01-discard-launched-1778021937.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-58-29-295Z/screenshots/01-discard-launched-1778021937.png
+[0;32m[PASS][0m peekabooProviderLaunch: App launched for discard proof
+[0;34m[15:58:58][0m === Phase 3: Submit descriptor into real prompt for discard proof ===
+[0;34m[15:59:28][0m Coordinate fallback click for discard descriptor prompt input at 960,457
+[0;31m[FAIL][0m Typed descriptor was not visible in the prompt input
+📝 Created annotated screenshot with 128 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-58-29-295Z/screenshots/failure-1778021989-1778021989.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-58-29-295Z/screenshots/failure-1778021989-1778021989_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist
+📊 UI elements detected: 154
+⚙️  Interactable elements: 128
+⏱️  Execution time: 0.46s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_19 (button) - Browse
+• elem_20 (button) - Report Issue
+• elem_21 (button) - Console
+• elem_23 (button) - close button
+• elem_24 (button) - full screen button
+• elem_27 (button) - minimize button
+• elem_2 (textField) - group
+  ...and 144 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 739C372A-D58A-418A-8679-1B7D3FBC53B0
+Agent: Use a tool like view_image to inspect it.
+[0;34m[15:59:49][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-58-29-295Z/screenshots/failure-1778021989-1778021989.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-58-29-295Z/screenshots/failure-1778021989-1778021989.png
+[0;34m[15:59:49][0m Stopping recorder (PID: 59804)...
+[0;34m[15:59:57][0m Video saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-58-29-295Z/video/peekaboo-e2e.mp4 (388K)
+✓ Quit nixmac
+Error: The operation couldn’t be completed. (PeekabooBridge.PeekabooBridgeErrorEnvelope error 1.)
+[0;34m[16:00:01][0m Uninstalling Nix...
+ INFO nix-installer v3.19.0
+ INFO nix-installer v3.19.0
+[31m`nix-darwin` installation detected, it must be removed before uninstalling Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.[39m
+[0;32m[PASS][0m Nix uninstalled
+[0;34m[16:00:03][0m E2E report written: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-58-29-295Z/e2e-report/macos_provider_discard_smoke/e2e-report.json

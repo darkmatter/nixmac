@@ -1,0 +1,86 @@
+[
+  {
+    "timeSeconds": 0,
+    "label": "01 core launch 1778021445",
+    "screenshot": "scenarios/macos_core_product_proof-2026-05-05_22-50-17-053Z/screenshots/01-core-launch-1778021445.png",
+    "capturedAt": "2026-05-05T22:50:45.610Z"
+  },
+  {
+    "timeSeconds": 1.1,
+    "label": "update banner blocked prompt 1778021471",
+    "screenshot": "scenarios/macos_core_product_proof-2026-05-05_22-50-17-053Z/screenshots/update-banner-blocked-prompt-1778021471.png",
+    "capturedAt": "2026-05-05T22:51:11.343Z"
+  },
+  {
+    "timeSeconds": 2.2,
+    "label": "failure 1778021471 1778021471",
+    "screenshot": "scenarios/macos_core_product_proof-2026-05-05_22-50-17-053Z/screenshots/failure-1778021471-1778021471.png",
+    "capturedAt": "2026-05-05T22:51:11.706Z"
+  },
+  {
+    "timeSeconds": 3.3,
+    "label": "01 support launch 1778021515",
+    "screenshot": "scenarios/macos_support_dialogs_smoke-2026-05-05_22-51-30-065Z/screenshots/01-support-launch-1778021515.png",
+    "capturedAt": "2026-05-05T22:51:55.154Z"
+  },
+  {
+    "timeSeconds": 4.4,
+    "label": "02 report issue 1778021528",
+    "screenshot": "scenarios/macos_support_dialogs_smoke-2026-05-05_22-51-30-065Z/screenshots/02-report-issue-1778021528.png",
+    "capturedAt": "2026-05-05T22:52:08.577Z"
+  },
+  {
+    "timeSeconds": 5.5,
+    "label": "03 feedback 1778021542",
+    "screenshot": "scenarios/macos_support_dialogs_smoke-2026-05-05_22-51-30-065Z/screenshots/03-feedback-1778021542.png",
+    "capturedAt": "2026-05-05T22:52:22.359Z"
+  },
+  {
+    "timeSeconds": 6.6,
+    "label": "01 console launch 1778021594",
+    "screenshot": "scenarios/macos_console_smoke-2026-05-05_22-52-49-111Z/screenshots/01-console-launch-1778021594.png",
+    "capturedAt": "2026-05-05T22:53:14.404Z"
+  },
+  {
+    "timeSeconds": 7.7,
+    "label": "02 console expanded 1778021606",
+    "screenshot": "scenarios/macos_console_smoke-2026-05-05_22-52-49-111Z/screenshots/02-console-expanded-1778021606.png",
+    "capturedAt": "2026-05-05T22:53:26.848Z"
+  },
+  {
+    "timeSeconds": 8.8,
+    "label": "failure 1778021699 1778021699",
+    "screenshot": "scenarios/macos_homebrew_save_rollback_smoke-2026-05-05_22-53-44-751Z/screenshots/failure-1778021699-1778021699.png",
+    "capturedAt": "2026-05-05T22:54:59.467Z"
+  },
+  {
+    "timeSeconds": 9.9,
+    "label": "failure 1778021789 1778021789",
+    "screenshot": "scenarios/macos_customization_save_rollback_smoke-2026-05-05_22-55-17-639Z/screenshots/failure-1778021789-1778021789.png",
+    "capturedAt": "2026-05-05T22:56:29.781Z"
+  },
+  {
+    "timeSeconds": 11,
+    "label": "01 launched 1778021836",
+    "screenshot": "scenarios/macos_provider_evolve_full_smoke-2026-05-05_22-56-48-346Z/screenshots/01-launched-1778021836.png",
+    "capturedAt": "2026-05-05T22:57:16.452Z"
+  },
+  {
+    "timeSeconds": 12.1,
+    "label": "failure 1778021890 1778021890",
+    "screenshot": "scenarios/macos_provider_evolve_full_smoke-2026-05-05_22-56-48-346Z/screenshots/failure-1778021890-1778021890.png",
+    "capturedAt": "2026-05-05T22:58:10.857Z"
+  },
+  {
+    "timeSeconds": 13.2,
+    "label": "01 discard launched 1778021937",
+    "screenshot": "scenarios/macos_provider_discard_smoke-2026-05-05_22-58-29-295Z/screenshots/01-discard-launched-1778021937.png",
+    "capturedAt": "2026-05-05T22:58:57.967Z"
+  },
+  {
+    "timeSeconds": 14.3,
+    "label": "failure 1778021989 1778021989",
+    "screenshot": "scenarios/macos_provider_discard_smoke-2026-05-05_22-58-29-295Z/screenshots/failure-1778021989-1778021989.png",
+    "capturedAt": "2026-05-05T22:59:49.518Z"
+  }
+]

@@ -1,0 +1,2 @@
+Terminated: 15             sleep "$seconds"
+📸 screen0 → /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-53-44-751Z/diagnostics/20260505T225408Z-nixmac-empty-app-scope-screen.png

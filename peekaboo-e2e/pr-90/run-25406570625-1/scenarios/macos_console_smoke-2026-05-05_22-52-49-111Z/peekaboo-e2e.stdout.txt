@@ -1,0 +1,106 @@
+[0;34m[15:52:50][0m === macos-e2e test runner ===
+[0;34m[15:52:50][0m Started at Tue May  5 15:52:50 PDT 2026
+[0;34m[15:52:50][0m Machine: DXU97120 | macOS 26.2
+[0;34m[15:52:50][0m Working directory: /Users/admin/nixmac-peekaboo-local-e2e/tests/e2e
+[0;34m[15:52:54][0m Scenario: macos_console_smoke
+[0;34m[15:52:54][0m Starting screen recording: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-52-49-111Z/video/peekaboo-e2e.mp4
+[0;34m[15:52:57][0m Recorder started (PID: 54937)
+[0;34m[15:52:58][0m === Phase 1: Prepare Console fixture ===
+[0;32m[PASS][0m Peekaboo Bridge connected
+[0;32m[PASS][0m Peekaboo permissions OK
+[1;33m[WARN][0m No ADMIN_PASSWORD set, cannot unlock screen
+[0;34m[15:52:58][0m Clearing nixmac app state...
+[0;32m[PASS][0m App state cleared
+[0;34m[15:52:58][0m Seeded nixmac settings at /Users/admin/Library/Application Support/com.darkmatter.nixmac/settings.json
+[0;32m[PASS][0m peekabooCoreFixture: Prepared deterministic config and local provider-validation settings
+[0;34m[15:52:58][0m === Phase 2: Launch nixmac app ===
+[0;34m[15:52:58][0m Launching nixmac...
+[0;32m[PASS][0m App launched: nixmac
+✓ Switched to nixmac
+📝 Created annotated screenshot with 128 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-52-49-111Z/screenshots/01-console-launch-1778021594.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-52-49-111Z/screenshots/01-console-launch-1778021594_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 154
+⚙️  Interactable elements: 128
+⏱️  Execution time: 0.26s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_19 (button) - Browse
+• elem_20 (button) - Report Issue
+• elem_21 (button) - Console
+• elem_23 (button) - close button
+• elem_24 (button) - full screen button
+• elem_27 (button) - minimize button
+• elem_2 (textField) - group
+  ...and 144 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 2E5672F3-0F45-4CC0-905C-334640A12AB9
+Agent: Use a tool like view_image to inspect it.
+[0;34m[15:53:14][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-52-49-111Z/screenshots/01-console-launch-1778021594.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-52-49-111Z/screenshots/01-console-launch-1778021594.png
+[0;32m[PASS][0m peekabooCoreLaunch: App shell rendered before Console proof
+[0;34m[15:53:14][0m === Phase 3: Prove Console text surface ===
+[0;34m[15:53:24][0m Coordinate fallback click for Console footer button at 608,877
+[0;34m[15:53:26][0m Redacted text snapshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-52-49-111Z/diagnostics/text/console-text.txt
+📝 Created annotated screenshot with 130 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-52-49-111Z/screenshots/02-console-expanded-1778021606.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-52-49-111Z/screenshots/02-console-expanded-1778021606_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 156
+⚙️  Interactable elements: 130
+⏱️  Execution time: 0.23s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_19 (button) - Browse
+• elem_20 (button) - Report Issue
+• elem_21 (button) - Console
+• elem_25 (button) - close button
+• elem_26 (button) - full screen button
+• elem_29 (button) - minimize button
+• elem_2 (textField) - group
+  ...and 146 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: CD58ACD7-4082-49AE-A270-FEEB04E88C34
+Agent: Use a tool like view_image to inspect it.
+[0;34m[15:53:27][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-52-49-111Z/screenshots/02-console-expanded-1778021606.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-52-49-111Z/screenshots/02-console-expanded-1778021606.png
+[0;32m[PASS][0m peekabooCoreConsole: Console rendered text evidence with screenshot proof
+[0;34m[15:53:27][0m Stopping recorder (PID: 54937)...
+[0;34m[15:53:34][0m Video saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-52-49-111Z/video/peekaboo-e2e.mp4 (220K)
+
+[0;34m[15:53:34][0m ==========================================
+[0;34m[15:53:34][0m   Test Results
+[0;34m[15:53:34][0m ==========================================
+  [0;32m✅[0m Phase 1: peekabooCoreFixture: Prepared deterministic config and local provider-validation settings
+  [0;32m✅[0m Phase 2: peekabooCoreLaunch: App shell rendered before Console proof
+  [0;32m✅[0m Phase 3: peekabooCoreConsole: Console rendered text evidence with screenshot proof
+
+  [0;32mAll 7 checks passed[0m
+[0;34m[15:53:34][0m ==========================================
+[0;34m[15:53:34][0m E2E report written: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-52-49-111Z/e2e-report/macos_console_smoke/e2e-report.json
+[0;34m[15:53:34][0m 
+[0;34m[15:53:34][0m Screenshots: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-52-49-111Z/screenshots
+[0;34m[15:53:34][0m Video: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-52-49-111Z/video/peekaboo-e2e.mp4
+[0;34m[15:53:34][0m Log: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-05_22-52-49-111Z/peekaboo-e2e.log
+✓ Quit nixmac
+Error: The operation couldn’t be completed. (PeekabooBridge.PeekabooBridgeErrorEnvelope error 1.)
+[0;34m[15:53:38][0m Uninstalling Nix...
+ INFO nix-installer v3.19.0
+ INFO nix-installer v3.19.0
+[31m`nix-darwin` installation detected, it must be removed before uninstalling Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.[39m
+[0;32m[PASS][0m Nix uninstalled
