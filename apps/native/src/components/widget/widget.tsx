@@ -61,9 +61,6 @@ export function DarwinWidget() {
   // Listen for tray menu events (Send Feedback, Settings)
   useTrayEvents();
 
-  // Set up error handler to catch unhandled JavaScript errors and promise rejections
-  // useErrorHandler(); // disabled: produces "Script error." noise from Monaco workers with no actionable info
-
   // Set up test helpers for error handlers and widget store (development only)
   useEffect(() => {
     if (import.meta.env.DEV) {
