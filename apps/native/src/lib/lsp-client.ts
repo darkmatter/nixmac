@@ -30,6 +30,7 @@ export class NixdLspClient {
     { resolve: (value: unknown) => void; reject: (reason: unknown) => void }
   >();
   private unlisten: UnlistenFn | null = null;
+  private unlistenExit: UnlistenFn | null = null;
   private notificationHandlers: NotificationHandler[] = [];
   private _running = false;
 
@@ -45,6 +46,10 @@ export class NixdLspClient {
     // Listen for messages from nixd via Tauri events
     this.unlisten = await listen<string>("lsp:message", (event) => {
       this.handleMessage(event.payload);
+    });
+
+    this.unlistenExit = await listen("lsp:exit", () => {
+      this.markDead();
     });
 
     this._running = true;
@@ -89,6 +94,8 @@ export class NixdLspClient {
 
     this.unlisten?.();
     this.unlisten = null;
+    this.unlistenExit?.();
+    this.unlistenExit = null;
     this._running = false;
     this.pending.clear();
   }
@@ -101,7 +108,11 @@ export class NixdLspClient {
       this.pending.set(id, { resolve, reject });
     });
 
-    await invoke("lsp_send", { message: JSON.stringify(request) });
+    await invoke("lsp_send", { message: JSON.stringify(request) }).catch((e) => {
+      this.pending.delete(id);
+      if (String(e).includes("Broken pipe")) this.markDead();
+      throw e;
+    });
     return promise;
   }
 
@@ -109,7 +120,17 @@ export class NixdLspClient {
     const notification: JsonRpcNotification = { jsonrpc: "2.0", method, params };
     invoke("lsp_send", { message: JSON.stringify(notification) }).catch((e) => {
       console.warn("[lsp-client] Failed to send notification:", e);
+      if (String(e).includes("Broken pipe")) this.markDead();
     });
+  }
+
+  private markDead(): void {
+    this._running = false;
+    this.unlisten?.();
+    this.unlisten = null;
+    this.unlistenExit?.();
+    this.unlistenExit = null;
+    this.pending.clear();
   }
 
   onNotification(handler: NotificationHandler): () => void {

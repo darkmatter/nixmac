@@ -59,17 +59,19 @@ export function CollapsibleDiff({
             <div className="ml-2 flex shrink-0 items-center gap-1">{headerExtra}</div>
           )}
         </div>
-        <button
-          type="button"
-          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          onClick={(e) => {
-            e.stopPropagation();
-            useWidgetStore.setState({ editingFile: change.filename });
-          }}
-          title="Edit file"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-        </button>
+        {change.changeType !== "removed" && (
+          <button
+            type="button"
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            onClick={(e) => {
+              e.stopPropagation();
+              useWidgetStore.setState({ editingFile: change.filename });
+            }}
+            title="Edit file"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
       <CollapsibleContent className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
         <div className="overflow-hidden border-border border-t">{children}</div>

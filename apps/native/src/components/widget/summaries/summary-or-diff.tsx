@@ -25,7 +25,6 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   const evolveState = useWidgetStore((s) => s.evolveState);
   const { summarizeOnFocus } = useSummary();
   const [activeTab, setActiveTab] = useState("summary");
-  const [diffMounted, setDiffMounted] = useState(false);
 
   useEffect(() => {
     window.addEventListener("focus", summarizeOnFocus);
@@ -35,18 +34,6 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   if (!gitStatus || !evolveState || evolveState.step === "begin") {
     return null;
   }
-  const handleTabChange = (tab: string) => {
-    if (tab !== "diff") {
-      // Unmount editors first, then switch tab next frame
-      requestAnimationFrame(() => {
-        setActiveTab(tab);
-        if (tab === "summary") summarizeOnFocus();
-      });
-    } else {
-      setActiveTab(tab);
-      if (!diffMounted) setDiffMounted(true);
-    }
-  };
 
   const hashSet = new Set(changeMap?.unsummarizedHashes);
   const unsummarized = (gitStatus?.changes.filter((c) => hashSet.has(c.hash)) ||
@@ -56,7 +43,7 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   return (
     <Tabs
       value={activeTab}
-      onValueChange={handleTabChange}
+      onValueChange={setActiveTab}
       className={cn(
         "flex max-w-full flex-col rounded-lg gap-0",
         variant === "outline" && "border border-border",
@@ -89,11 +76,8 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
             />
           )}
         </Activity>
-        {diffMounted && (
-          // Monaco crashes on unmount, so we just hide it
-          <div className={activeTab !== "diff" ? "hidden" : undefined}>
-            <DiffSection changes={gitStatus.changes} />
-          </div>
+        {activeTab === "diff" && (
+          <DiffSection changes={gitStatus.changes} />
         )}
       </>
     </Tabs>

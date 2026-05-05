@@ -215,8 +215,8 @@ export type ChangeFileSummary = ChangeWithRichType & {
 };
 
 function inferChangeType(diff: string): ChangeType {
-  if (/^new file mode/m.test(diff)) return "new";
-  if (/^deleted file mode/m.test(diff)) return "removed";
+  if (/^@@ -0(?:,0)? \+/.test(diff)) return "new";
+  if (/^@@ -\d+(?:,\d+)? \+0(?:,0)? @@/.test(diff)) return "removed";
   return "edited";
 }
 

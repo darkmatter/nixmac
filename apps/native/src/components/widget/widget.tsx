@@ -23,7 +23,6 @@ import {
     PermissionsStep,
     SetupStep,
 } from "@/components/widget/steps";
-import { useErrorHandler } from "@/hooks/use-error-handler";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useNixInstall } from "@/hooks/use-nix-install";
 import { usePanicHandler } from "@/hooks/use-panic-handler";
@@ -63,7 +62,7 @@ export function DarwinWidget() {
   useTrayEvents();
 
   // Set up error handler to catch unhandled JavaScript errors and promise rejections
-  useErrorHandler();
+  // useErrorHandler(); // disabled: produces "Script error." noise from Monaco workers with no actionable info
 
   // Set up test helpers for error handlers and widget store (development only)
   useEffect(() => {

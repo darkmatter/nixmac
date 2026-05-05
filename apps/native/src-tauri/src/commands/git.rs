@@ -23,7 +23,7 @@ pub async fn git_file_diff_contents(
     Ok(filenames
         .into_iter()
         .map(|f| {
-            let (original, modified) = git::file_diff_contents(&dir, &f);
+            let (original, modified) = git::exec::file_diff_contents(&dir, &f);
             (f, shared_types::FileDiffContents { original, modified })
         })
         .collect())

@@ -40,9 +40,11 @@ export function HunkPill({ change, onClick }: HunkPillProps) {
   }
 
   const { added, removed } = countAddedRemoved(change.diff);
-
+  const showCounts = change.changeType === "edited" || change.changeType === "renamed";
   const label = summaryTitle
-    ?? [added && `+${added}`, removed && `-${removed}`].filter(Boolean).join(" ");
+    ?? (showCounts ? [added && `+${added}`, removed && `-${removed}`].filter(Boolean).join(" ") : null);
+
+  if (!label) return null;
 
   return (
     <Badge
