@@ -1,0 +1,347 @@
+[0;34m[18:06:51][0m === macos-e2e test runner ===
+[0;34m[18:06:51][0m Started at Tue May  5 18:06:51 PDT 2026
+[0;34m[18:06:51][0m Machine: DXU97120 | macOS 26.2
+[0;34m[18:06:51][0m Working directory: /Users/admin/nixmac-peekaboo-local-e2e/tests/e2e
+[0;34m[18:06:59][0m Scenario: macos_homebrew_save_rollback_smoke
+[0;34m[18:06:59][0m Starting screen recording: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/video/peekaboo-e2e.mp4
+[0;34m[18:07:02][0m Recorder started (PID: 14909)
+[0;34m[18:07:02][0m === Phase 1: Prepare Homebrew managed-badge fixture ===
+[0;32m[PASS][0m Peekaboo Bridge connected
+[0;32m[PASS][0m Peekaboo permissions OK
+[1;33m[WARN][0m No ADMIN_PASSWORD set, cannot unlock screen
+[0;34m[18:07:04][0m Clearing nixmac app state...
+[0;32m[PASS][0m App state cleared
+[0;34m[18:07:04][0m Seeded nixmac settings at /Users/admin/Library/Application Support/com.darkmatter.nixmac/settings.json with provider http://127.0.0.1:61691/v1
+[0;34m[18:07:05][0m Installed E2E system activation shim at /var/folders/lw/q3m765kd17z3h2g36tw6qk000000gp/T//nixmac-e2e-system-mock-bin.FoucR3
+[0;32m[PASS][0m peekabooProviderFixture: Prepared Homebrew managed-badge fixture, deterministic HTTP provider, completion logging, and mock rebuild flag
+[0;34m[18:07:05][0m === Phase 2: Launch nixmac for Untracked Homebrew items proof ===
+[0;34m[18:07:05][0m Launching nixmac...
+[0;32m[PASS][0m App launched: nixmac
+✓ Switched to nixmac
+📝 Created annotated screenshot with 150 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/01-homebrew-launched-1778029641.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/01-homebrew-launched-1778029641_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 177
+⚙️  Interactable elements: 150
+⏱️  Execution time: 0.27s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_38 (button) - Install vim
+• elem_39 (button) - Add Rectangle app
+• elem_40 (button) - Enable the Finder path bar and status bar
+• elem_41 (button) - 12 untracked customizations
+• elem_43 (button) - Report Issue
+• elem_44 (button) - Console
+  ...and 167 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: B0A1C4F7-B6C1-46C0-9FC0-CC21EAABE157
+Agent: Use a tool like view_image to inspect it.
+[0;34m[18:07:22][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/01-homebrew-launched-1778029641.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/01-homebrew-launched-1778029641.png
+[0;32m[PASS][0m peekabooProviderLaunch: App launched for Untracked Homebrew items proof
+[0;34m[18:07:25][0m === Phase 3: Apply Untracked Homebrew items to config ===
+[0;34m[18:07:25][0m Clicking element elem_42 matching '[0-9]+ untracked Homebrew'
+Terminated: 15             sleep "$seconds"
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: 8 untracked Homebrew items
+📍 Location: (715, 600)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.49s
+📝 Created annotated screenshot with 192 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/02-homebrew-popover-1778029647.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/02-homebrew-popover-1778029647_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 220
+⚙️  Interactable elements: 192
+⏱️  Execution time: 0.72s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_38 (button) - Install vim
+• elem_39 (button) - Add Rectangle app
+• elem_40 (button) - Enable the Finder path bar and status bar
+• elem_41 (button) - 12 untracked customizations
+• elem_42 (button) - 8 untracked Homebrew items
+• elem_44 (button) - Report Issue
+  ...and 210 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 83A78038-DC6C-4FAA-AC9E-0496A1FDBB8C
+Agent: Use a tool like view_image to inspect it.
+[0;34m[18:07:28][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/02-homebrew-popover-1778029647.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/02-homebrew-popover-1778029647.png
+[0;34m[18:07:30][0m Untracked Homebrew items Add to config was already accepted and is applying
+📝 Created annotated screenshot with 174 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/03-homebrew-review-1778029653.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/03-homebrew-review-1778029653_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 201
+⚙️  Interactable elements: 174
+⏱️  Execution time: 0.34s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_31 (button) - Discard
+• elem_32 (button) - Build & Test
+• elem_41 (button) - Analyze
+• elem_62 (button) - Send
+• elem_63 (button) - Install vim
+• elem_64 (button) - Add Rectangle app
+• elem_65 (button) - Enable the Finder path bar and status bar
+  ...and 191 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 19CE8F29-B533-4CB2-91F7-A430F946DB75
+Agent: Use a tool like view_image to inspect it.
+[0;34m[18:07:33][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/03-homebrew-review-1778029653.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/03-homebrew-review-1778029653.png
+[0;34m[18:07:33][0m === Phase 4: Build and Test Untracked Homebrew items managed change ===
+[0;34m[18:07:34][0m Clicking element elem_32 matching 'Build & Test'
+Terminated: 15             sleep "$seconds"
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: Build & Test
+📍 Location: (1243, 297)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.50s
+[0;34m[18:07:50][0m No build confirmation prompt observed
+📝 Created annotated screenshot with 169 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/04-homebrew-save-step-after-build-1778029671.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/04-homebrew-save-step-after-build-1778029671_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 195
+⚙️  Interactable elements: 169
+⏱️  Execution time: 0.30s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_30 (button) - Undo All
+• elem_31 (button) - Continue editing
+• elem_40 (button) - Analyze
+• elem_60 (button) - Commit
+• elem_61 (button) - Report Issue
+• elem_62 (button) - Console
+• elem_64 (button) - close button
+  ...and 185 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: C094502F-7833-46E5-A22B-B2552613F700
+Agent: Use a tool like view_image to inspect it.
+[0;34m[18:07:51][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/04-homebrew-save-step-after-build-1778029671.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/04-homebrew-save-step-after-build-1778029671.png
+[0;32m[PASS][0m peekabooProviderBuildBoundary: Build & Test advanced to Save step for Untracked Homebrew items
+[0;34m[18:07:51][0m === Phase 5: Commit Untracked Homebrew items managed change ===
+[0;34m[18:07:51][0m Using deterministic commit message for homebrew managed-badge change
+[0;34m[18:07:52][0m Clicking element elem_58 matching 'commitMsg|Loading|Commit message|Commit Changes'
+Terminated: 15             sleep "$seconds"
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Textfield: Loading...
+📍 Location: (956, 587)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.27s
+[0;34m[18:07:54][0m Clicking element elem_59 matching 'Commit( Changes)?'
+Terminated: 15             sleep "$seconds"
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: Commit
+📍 Location: (662, 647)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.50s
+📝 Created annotated screenshot with 154 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/05-homebrew-returned-to-describe-1778029676.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/05-homebrew-returned-to-describe-1778029676_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 181
+⚙️  Interactable elements: 154
+⏱️  Execution time: 0.32s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_38 (button) - Install vim
+• elem_39 (button) - Add Rectangle app
+• elem_40 (button) - Enable the Finder path bar and status bar
+• elem_41 (button) - 12 untracked customizations
+• elem_43 (button) - Report Issue
+• elem_44 (button) - Console
+  ...and 171 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 3EE4D886-A042-44E5-9B58-37F0CCAB1A3E
+Agent: Use a tool like view_image to inspect it.
+[0;34m[18:07:56][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/05-homebrew-returned-to-describe-1778029676.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/05-homebrew-returned-to-describe-1778029676.png
+[0;32m[PASS][0m peekabooProviderSaveFlow: Untracked Homebrew items Save step committed changes and returned to Describe
+[0;34m[18:07:56][0m === Phase 6: Restore Untracked Homebrew items baseline from History ===
+[0;34m[18:07:57][0m Clicking element elem_8 matching 'History'
+Terminated: 15             sleep "$seconds"
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: History
+📍 Location: (1278, 145)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.48s
+📝 Created annotated screenshot with 152 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/06-history-before-restore-1778029679.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/06-history-before-restore-1778029679_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 178
+⚙️  Interactable elements: 152
+⏱️  Execution time: 0.28s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_14 (button) - Analyze recent (2)
+• elem_26 (button) - Analyze
+• elem_35 (button) - Restore
+• elem_39 (button) - Analyze
+• elem_40 (button) - Report Issue
+• elem_41 (button) - Console
+• elem_47 (button) - close button
+  ...and 168 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: B95CA759-0BEB-4AAA-B03B-D0B8D8C9ADBB
+Agent: Use a tool like view_image to inspect it.
+[0;34m[18:08:00][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/06-history-before-restore-1778029679.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/06-history-before-restore-1778029679.png
+[0;34m[18:08:00][0m Clicking element elem_35 matching '^Restore$|Restore'
+Terminated: 15             sleep "$seconds"
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: Restore
+📍 Location: (1231, 419)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.55s
+📝 Created annotated screenshot with 164 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/07-history-restore-preview-1778029683.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/07-history-restore-preview-1778029683_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 190
+⚙️  Interactable elements: 164
+⏱️  Execution time: 0.34s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_14 (button) - Analyze recent (2)
+• elem_22 (button) - Confirm Restore
+• elem_23 (button) - Cancel
+• elem_33 (button) - Analyze
+• elem_42 (button) - Analyze
+• elem_51 (button) - Restore
+• elem_55 (button) - Analyze
+  ...and 180 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 25086354-D8A0-47AF-9E6E-17140622ABEF
+Agent: Use a tool like view_image to inspect it.
+[0;34m[18:08:03][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/07-history-restore-preview-1778029683.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/07-history-restore-preview-1778029683.png
+[0;34m[18:08:03][0m Clicking element elem_22 matching 'Confirm Restore'
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: Confirm Restore
+📍 Location: (1126, 307)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.50s
+📝 Created annotated screenshot with 156 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/08-after-history-restore-1778029686.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/08-after-history-restore-1778029686_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 182
+⚙️  Interactable elements: 156
+⏱️  Execution time: 0.29s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_14 (button) - Analyze recent (3)
+• elem_25 (button) - Analyze
+• elem_29 (button) - Restore
+• elem_34 (button) - Analyze
+• elem_43 (button) - Restore
+• elem_47 (button) - Analyze
+• elem_48 (button) - Report Issue
+  ...and 172 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 9D6D32AC-2F0C-4213-8CED-E3BB02AD8470
+Agent: Use a tool like view_image to inspect it.
+[0;34m[18:08:06][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/08-after-history-restore-1778029686.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots/08-after-history-restore-1778029686.png
+[0;32m[PASS][0m peekabooHomebrewSaveRollback: Untracked Homebrew items Add to config was built, committed, and rolled back to the disposable baseline
+[0;34m[18:08:06][0m === Phase 7: Audit Untracked Homebrew items managed-badge evidence ===
+[0;32m[PASS][0m peekabooProviderAudit: Preserved provider/request evidence for Untracked Homebrew items managed-badge proof
+[0;34m[18:08:06][0m Stopping recorder (PID: 14909)...
+[0;34m[18:08:18][0m Video saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/video/peekaboo-e2e.mp4 (448K)
+
+[0;34m[18:08:18][0m ==========================================
+[0;34m[18:08:18][0m   Test Results
+[0;34m[18:08:18][0m ==========================================
+  [0;32m✅[0m Phase 1: peekabooProviderFixture: Prepared Homebrew managed-badge fixture, deterministic HTTP provider, completion logging, and mock rebuild flag
+  [0;32m✅[0m Phase 2: peekabooProviderLaunch: App launched for Untracked Homebrew items proof
+  [0;32m✅[0m Phase 4: peekabooProviderBuildBoundary: Build & Test advanced to Save step for Untracked Homebrew items
+  [0;32m✅[0m Phase 5: peekabooProviderSaveFlow: Untracked Homebrew items Save step committed changes and returned to Describe
+  [0;32m✅[0m Phase 6: peekabooHomebrewSaveRollback: Untracked Homebrew items Add to config was built, committed, and rolled back to the disposable baseline
+  [0;32m✅[0m Phase 7: peekabooProviderAudit: Preserved provider/request evidence for Untracked Homebrew items managed-badge proof
+
+  [0;32mAll 10 checks passed[0m
+[0;34m[18:08:18][0m ==========================================
+[0;34m[18:08:18][0m E2E report written: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/e2e-report/macos_homebrew_save_rollback_smoke/e2e-report.json
+[0;34m[18:08:18][0m 
+[0;34m[18:08:18][0m Screenshots: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/screenshots
+[0;34m[18:08:18][0m Video: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/video/peekaboo-e2e.mp4
+[0;34m[18:08:18][0m Log: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_01-06-50-187Z/peekaboo-e2e.log
+✓ Quit nixmac
+Error: The operation couldn’t be completed. (PeekabooBridge.PeekabooBridgeErrorEnvelope error 1.)
+[0;34m[18:08:22][0m Uninstalling Nix...
+ INFO nix-installer v3.19.0
+ INFO nix-installer v3.19.0
+[31m`nix-darwin` installation detected, it must be removed before uninstalling Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.[39m
+[0;32m[PASS][0m Nix uninstalled
