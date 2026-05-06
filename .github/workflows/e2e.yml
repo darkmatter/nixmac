@@ -118,6 +118,11 @@ jobs:
     needs: resolve-scenarios
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # The MacInCloud host is a single shared mutable desktop. Serialize remote
+    # E2E jobs across workflows; keep stale-run cancellation at workflow level.
+    concurrency:
+      group: nixmac-macincloud-e2e-remote
+      cancel-in-progress: false
     strategy:
       fail-fast: false
       matrix:

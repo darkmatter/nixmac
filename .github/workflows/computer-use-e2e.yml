@@ -591,8 +591,10 @@ jobs:
     if: needs.prepare.outputs.remote_ready == 'true' && needs.prepare.outputs.storybook_ui_only != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    # The MacInCloud host is a single shared mutable desktop. Serialize remote
+    # E2E jobs across workflows; keep stale-run cancellation at workflow level.
     concurrency:
-      group: computer-use-e2e-dxu-remote
+      group: nixmac-macincloud-e2e-remote
       cancel-in-progress: false
     env:
       REMOTE_HOST: ${{ secrets.NIXMAC_E2E_REMOTE_HOST }}
