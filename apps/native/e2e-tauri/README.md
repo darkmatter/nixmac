@@ -22,6 +22,7 @@ Each WDIO test suite runs in its **own isolated process** with its own `onPrepar
 
   1. `test:wdio:smoke` → fresh config repo → cleanup
   1. `test:wdio:basic-prompts` → fresh config repo → cleanup
+  1. `test:wdio:conversational` → fresh config repo → cleanup
   1. `test:wdio:discard` → fresh config repo → cleanup
   1. `test:wdio:modify` → fresh config repo → cleanup
   1. `test:wdio:onboarding` → empty config dir → cleanup
@@ -33,6 +34,7 @@ Each WDIO test suite runs in its **own isolated process** with its own `onPrepar
 
   ⏳ SMOKE... ✅
   ⏳ BASIC-PROMPTS... ✅
+  ⏳ CONVERSATIONAL... ✅
   ⏳ DISCARD... ✅
   ⏳ MODIFY... ✅
   ⏳ ONBOARDING... ✅
@@ -42,6 +44,7 @@ Each WDIO test suite runs in its **own isolated process** with its own `onPrepar
   ==================================================
     ✅ SMOKE
     ✅ BASIC-PROMPTS
+    ✅ CONVERSATIONAL
     ✅ DISCARD
     ✅ MODIFY
     ✅ ONBOARDING
@@ -131,6 +134,7 @@ By giving each suite its own config file (and thus its own process), we ensure:
    const suites = [
      'test:wdio:smoke',
      'test:wdio:basic-prompts',
+     'test:wdio:conversational',
      'test:wdio:discard',
      'test:wdio:modify',
      'test:wdio:my-feature',  // ← add your new suite here

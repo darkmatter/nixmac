@@ -408,6 +408,42 @@ export async function assertPromptHistoryContains(promptText: string) {
   );
 }
 
+export async function assertConversationalPromptContains(expectedText: string) {
+  const conversationalResponseSelector = '[data-testid="conversational-response"]';
+  const conversationalResponseBodySelector = '[data-testid="conversational-response-body"]';
+
+  // Wait for the conversational response container to appear
+  await waitForSelector(conversationalResponseSelector, { timeout: 60000, interval: 250 });
+
+  // Then check the body for the expected text, which may take some time to appear as the response streams in
+  await waitUntilOrFailOnError(
+    async () => {
+      try {
+        const body = await $(conversationalResponseBodySelector);
+        if (!(await body.isExisting())) {
+          return false;
+        }
+        const text = (await body.getText()).trim();
+        return text.includes(expectedText);
+      } catch {
+        return false;
+      }
+    },
+    {
+      timeout: 120000,
+      interval: 500,
+      timeoutMsg: `Timed out waiting for conversational response to include: ${expectedText}`,
+    },
+  );
+}
+
+export async function assertPromptFlowReachedBegin() {
+  await waitForSelector('//h3[normalize-space()="Get started"]', {
+    timeout: 120000,
+    interval: 500,
+  });
+}
+
 export async function assertPromptFlowReachedEvolveReview() {
   await waitForSelector('//h2[normalize-space()="What else can I change for you?"]', {
     timeout: 120000,

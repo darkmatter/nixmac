@@ -12,6 +12,7 @@ const E2E_DIR = path.resolve(APPS_NATIVE_DIR, 'e2e-tauri');
 const suites = [
   { name: 'smoke', config: path.resolve(E2E_DIR, 'wdio.smoke.conf.mjs') },
   { name: 'basic-prompts', config: path.resolve(E2E_DIR, 'wdio.basic-prompts.conf.mjs') },
+  { name: 'conversational', config: path.resolve(E2E_DIR, 'wdio.conversational.conf.mjs') },
   { name: 'discard', config: path.resolve(E2E_DIR, 'wdio.discard.conf.mjs') },
   { name: 'modify', config: path.resolve(E2E_DIR, 'wdio.modify.conf.mjs') },
   { name: 'onboarding', config: path.resolve(E2E_DIR, 'wdio.onboarding.conf.mjs') },
