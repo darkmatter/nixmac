@@ -70,6 +70,7 @@ assert.match(proof, /secret_scan_passed: \$\{\{ steps\.report-meta\.outputs\.sec
 assert.match(proof, /state_secret_scan_passed="\$\(jq -r '\(\.peekaboo\.secretScan\.status \/\/ "missing"\) == "passed"' "\$state_file"\)"/, 'report metadata must read the Peekaboo secret scan result from state.json');
 assert.match(proof, /ServerAliveInterval=15[\s\S]*run-peekaboo-suite --allow-cleanup/, 'long-running Peekaboo SSH run must use keepalives');
 assert.match(proof, /trusted-secret-scan\.json[\s\S]*mktemp[\s\S]*secretPattern[\s\S]*github_pat_[\s\S]*lstatSync[\s\S]*isSymbolicLink\(\)[\s\S]*trusted_secret_scan_passed/, 'workflow must independently re-scan fetched report text artifacts before public publishing without following symlinks');
+assert.match(proof, /scannedPaths[\s\S]*path\.relative\(root, full\)\.split\(path\.sep\)\.join\('\/'\)[\s\S]*secretPattern\.test\(relativePath\)[\s\S]*path:\$\{relativePath\}[\s\S]*isSymbolicLink\(\)/, 'trusted report scan must inspect artifact paths, including symlink names, before refusing to follow symlinks');
 assert.match(proof, /NIXMAC_APP_PATH=\$\(printf '%q' "\$REMOTE_APP_PATH"\)[\s\S]*run-peekaboo-suite --allow-cleanup/, 'Peekaboo run must use the freshly built PR app bundle');
 assert.doesNotMatch(proof, /Run Peekaboo suite on MacInCloud[\s\S]*node tools\/computer-use-e2e\/run-local\.mjs run-peekaboo-macincloud/, 'proof job must not run PR-controlled local orchestration while the MacInCloud SSH key is present');
 assert.match(proof, /--allow-cleanup/, 'Peekaboo suite must restore local app support state after the run');
@@ -78,6 +79,12 @@ assert.match(proof, /remote_artifact_root="\$\{PEEKABOO_REPO_DIR%\/\}\/artifacts
 assert.match(proof, /remote_run_dir" != "\$remote_artifact_root"\/\*/, 'workflow must reject current-run paths outside the artifact root before rsync');
 assert.match(proof, /remote_run_dir_physical="\$\(ssh[\s\S]*pwd -P/, 'workflow must verify the physical remote report path before rsyncing');
 assert.match(proof, /name: Record CI report inspection proof[\s\S]*run-local\.mjs verify-report "\$FETCH_REPORT_DIR"[\s\S]*--method ci-static/, 'workflow must record reportInspection parity proof before metadata is collected');
+{
+  const dropKeyIndex = proof.indexOf('name: Drop MacInCloud SSH key before local report processing');
+  const verifyReportIndex = proof.indexOf('run-local.mjs verify-report "$FETCH_REPORT_DIR"');
+  assert.notEqual(dropKeyIndex, -1, 'workflow must explicitly remove the MacInCloud SSH key before local report processing');
+  assert.ok(dropKeyIndex < verifyReportIndex, 'workflow must remove the MacInCloud SSH key before running local report verification code');
+}
 assert.match(proof, /CI workflow inspected the rendered Peekaboo HTML report[\s\S]*PR #75 baseline parity coverage[\s\S]*evidence video\/storyboard/, 'CI report inspection notes must describe concrete report sections');
 assert.match(proof, /name: Upload Peekaboo report artifact[\s\S]*name: peekaboo-e2e-report/, 'proof job must upload the HTML report artifact');
 assert.doesNotMatch(proof, /sudo apt-get install/, 'proof job must not spend PR time installing media packages on the hosted runner');

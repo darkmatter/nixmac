@@ -34,18 +34,54 @@ mod types;
 mod updater_pin;
 mod utils;
 
+#[cfg(test)]
+mod test_support {
+    use std::env;
+    use std::sync::{Mutex, MutexGuard, OnceLock};
+
+    pub(crate) fn e2e_env_lock() -> MutexGuard<'static, ()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    pub(crate) struct EnvVarRestore {
+        saved: Vec<(&'static str, Option<String>)>,
+    }
+
+    impl EnvVarRestore {
+        pub(crate) fn capture(keys: &[&'static str]) -> Self {
+            Self {
+                saved: keys.iter().map(|key| (*key, env::var(key).ok())).collect(),
+            }
+        }
+    }
+
+    impl Drop for EnvVarRestore {
+        fn drop(&mut self) {
+            for (key, value) in &self.saved {
+                match value {
+                    Some(value) => env::set_var(key, value),
+                    None => env::remove_var(key),
+                }
+            }
+        }
+    }
+}
+
 use state::watcher;
 use storage::store;
 
 use std::env;
 use std::sync::{Arc, Mutex};
 use tauri::{
-    Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent,
     image::Image,
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
+    Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
-use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 fn e2e_opaque_window_enabled() -> bool {
     cfg!(debug_assertions)

@@ -343,6 +343,11 @@ jobs:
             echo "report_dir=$report_dir"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Drop MacInCloud SSH key before local report processing
+        if: always()
+        shell: bash
+        run: rm -f ~/.ssh/nixmac-peekaboo-e2e
+
       - name: Record CI report inspection proof
         if: always() && steps.fetch-report.outputs.has_report == 'true'
         shell: bash
@@ -427,23 +432,27 @@ jobs:
           const secretPattern = /(?:sk-[A-Za-z0-9_-]{16,}|xai-[A-Za-z0-9_-]{16,}|gh[opsu]_[A-Za-z0-9_]{16,}|github_pat_[A-Za-z0-9_]{22,}|xox[abprs]-[A-Za-z0-9-]{16,}|AKIA[0-9A-Z]{16}|Bearer\s+[A-Za-z0-9._-]{16,}|(?:OPENROUTER|OPENAI|ANTHROPIC|GROQ|XAI|MISTRAL|COHERE|GITHUB|SLACK|AWS)_API_KEY=(?!\[REDACTED\])[^\s"'<>]+)/i;
           const textExtPattern = /\.(jsonl?|txt|log|html|md|csv)$/i;
           const violations = [];
+          let scannedPaths = 0;
           let scannedFiles = 0;
           function walk(dir) {
             for (const entry of readdirSync(dir)) {
               const full = path.join(dir, entry);
               const stat = lstatSync(full);
+              const relativePath = path.relative(root, full).split(path.sep).join('/');
+              scannedPaths += 1;
+              if (secretPattern.test(relativePath)) violations.push(`path:${relativePath}`);
               if (stat.isSymbolicLink()) continue;
               if (stat.isDirectory()) {
                 walk(full);
               } else if (stat.isFile() && textExtPattern.test(entry)) {
                 scannedFiles += 1;
                 const text = readFileSync(full, 'utf8');
-                if (secretPattern.test(text)) violations.push(path.relative(root, full));
+                if (secretPattern.test(text)) violations.push(`content:${relativePath}`);
               }
             }
           }
           walk(root);
-          process.stdout.write(JSON.stringify({ status: violations.length ? 'failed' : 'passed', scannedFiles, violations }, null, 2));
+          process.stdout.write(JSON.stringify({ status: violations.length ? 'failed' : 'passed', scannedFiles, scannedPaths, violations }, null, 2));
           NODE
           mv "$trusted_secret_scan_tmp" "$trusted_secret_scan_file"
           trusted_secret_scan_passed="$(jq -r '.status == "passed"' "$trusted_secret_scan_file")"
@@ -501,11 +510,6 @@ jobs:
           path: artifacts/peekaboo-e2e-report/
           if-no-files-found: warn
           retention-days: 14
-
-      - name: Cleanup SSH key
-        if: always()
-        shell: bash
-        run: rm -f ~/.ssh/nixmac-peekaboo-e2e
 
   publish-peekaboo-report:
     name: Publish Peekaboo E2E Report

@@ -1843,9 +1843,12 @@ mod tests {
 
     #[test]
     fn test_e2e_system_defaults_fixture_returns_customization() {
-        let old_mock = std::env::var("NIXMAC_E2E_MOCK_SYSTEM").ok();
-        let old_fixture = std::env::var("NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE").ok();
-        let old_json = std::env::var("NIXMAC_E2E_SYSTEM_DEFAULTS_JSON").ok();
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore = crate::test_support::EnvVarRestore::capture(&[
+            "NIXMAC_E2E_MOCK_SYSTEM",
+            "NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE",
+            "NIXMAC_E2E_SYSTEM_DEFAULTS_JSON",
+        ]);
 
         std::env::set_var("NIXMAC_E2E_MOCK_SYSTEM", "1");
         std::env::set_var("NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE", "1");
@@ -1857,19 +1860,6 @@ mod tests {
             scan.defaults[0].nix_key,
             "system.defaults.finder.ShowPathbar"
         );
-
-        match old_mock {
-            Some(value) => std::env::set_var("NIXMAC_E2E_MOCK_SYSTEM", value),
-            None => std::env::remove_var("NIXMAC_E2E_MOCK_SYSTEM"),
-        }
-        match old_fixture {
-            Some(value) => std::env::set_var("NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE", value),
-            None => std::env::remove_var("NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE"),
-        }
-        match old_json {
-            Some(value) => std::env::set_var("NIXMAC_E2E_SYSTEM_DEFAULTS_JSON", value),
-            None => std::env::remove_var("NIXMAC_E2E_SYSTEM_DEFAULTS_JSON"),
-        }
     }
 
     #[test]

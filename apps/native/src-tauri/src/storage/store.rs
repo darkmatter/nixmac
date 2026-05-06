@@ -686,6 +686,12 @@ mod tests {
 
     #[test]
     fn e2e_env_value_requires_debug_mock_system_gate() {
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore = crate::test_support::EnvVarRestore::capture(&[
+            "NIXMAC_E2E_MOCK_SYSTEM",
+            "NIXMAC_E2E_CONFIG_DIR",
+        ]);
+
         std::env::remove_var("NIXMAC_E2E_MOCK_SYSTEM");
         std::env::set_var("NIXMAC_E2E_CONFIG_DIR", "/tmp/nixmac-e2e-config");
         assert_eq!(e2e_env_value("NIXMAC_E2E_CONFIG_DIR"), None);
@@ -699,8 +705,5 @@ mod tests {
         } else {
             assert_eq!(e2e_env_value("NIXMAC_E2E_CONFIG_DIR"), None);
         }
-
-        std::env::remove_var("NIXMAC_E2E_MOCK_SYSTEM");
-        std::env::remove_var("NIXMAC_E2E_CONFIG_DIR");
     }
 }
