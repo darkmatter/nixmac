@@ -1,0 +1,21 @@
+{
+  "status": "failed",
+  "scannedFiles": 6,
+  "violations": [
+    {
+      "path": "screenshots/failure-1778093495-1778093495_annotated.png",
+      "label": "failure-1778093495-1778093495_annotated",
+      "issue": "the screenshot is too small for app-level visual proof (1920x30)"
+    },
+    {
+      "path": "screenshots/failure-1778093495-1778093495.png",
+      "label": "failure-1778093495-1778093495",
+      "issue": "the screenshot is too small for app-level visual proof (1920x30)"
+    },
+    {
+      "path": "screenshots/update-banner-blocked-prompt-1778093495.png",
+      "label": "update-banner-blocked-prompt-1778093495",
+      "issue": "central app content appears blank or occluded (YMAX 25 below 35)"
+    }
+  ]
+}

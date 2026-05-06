@@ -1,0 +1,21 @@
+{
+  "status": "failed",
+  "scannedFiles": 6,
+  "violations": [
+    {
+      "path": "screenshots/discard-missing-descriptor-prompt-1778094270.png",
+      "label": "discard-missing-descriptor-prompt-1778094270",
+      "issue": "central app content appears blank or occluded (YMAX 25 below 35)"
+    },
+    {
+      "path": "screenshots/failure-1778094270-1778094270_annotated.png",
+      "label": "failure-1778094270-1778094270_annotated",
+      "issue": "the screenshot is too small for app-level visual proof (1920x30)"
+    },
+    {
+      "path": "screenshots/failure-1778094270-1778094270.png",
+      "label": "failure-1778094270-1778094270",
+      "issue": "the screenshot is too small for app-level visual proof (1920x30)"
+    }
+  ]
+}
