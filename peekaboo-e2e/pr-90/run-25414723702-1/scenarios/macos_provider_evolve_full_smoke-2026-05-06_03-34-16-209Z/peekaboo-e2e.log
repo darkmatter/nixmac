@@ -1,0 +1,65 @@
+
+[0;34m[20:34:17][0m === macos-e2e test runner ===
+[0;34m[20:34:17][0m Started at Tue May  5 20:34:17 PDT 2026
+[0;34m[20:34:17][0m Machine: DXU97120 | macOS 26.2
+[0;34m[20:34:17][0m Working directory: /Users/admin/nixmac-peekaboo-local-e2e/tests/e2e
+[0;34m[20:34:27][0m Scenario: macos_provider_evolve_full_smoke
+[0;34m[20:34:27][0m Starting screen recording: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_03-34-16-209Z/video/peekaboo-e2e.mp4
+[0;34m[20:34:30][0m Recorder started (PID: 99967)
+[0;34m[20:34:30][0m === Phase 1: Prepare provider-backed macOS fixture ===
+[0;32m[PASS][0m Peekaboo Bridge connected
+[0;32m[PASS][0m Peekaboo permissions OK
+[1;33m[WARN][0m No ADMIN_PASSWORD set, cannot unlock screen
+[0;34m[20:34:32][0m Clearing nixmac app state...
+[0;32m[PASS][0m App state cleared
+[0;34m[20:34:32][0m Seeded nixmac settings at /Users/admin/Library/Application Support/com.darkmatter.nixmac/settings.json with provider http://127.0.0.1:61912/v1
+[0;34m[20:34:32][0m Installed E2E system activation shim at /var/folders/lw/q3m765kd17z3h2g36tw6qk000000gp/T//nixmac-e2e-system-mock-bin.hJuCnm
+[0;32m[PASS][0m peekabooProviderFixture: Prepared config repo, deterministic HTTP provider, completion logging, and mock rebuild flag
+[0;34m[20:34:32][0m === Phase 2: Launch nixmac app ===
+[0;34m[20:34:32][0m Launching nixmac...
+[0;32m[PASS][0m App launched: nixmac
+[0;34m[20:34:47][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_03-34-16-209Z/screenshots/01-launched-1778038487.png
+[0;32m[PASS][0m peekabooProviderLaunch: App launched
+[0;34m[20:34:47][0m === Phase 3: Submit descriptor into real prompt ===
+[0;34m[20:34:51][0m Clicking element elem_33 matching 'evolve-prompt-input|Configuration change descriptor|Describe changes to make to your configuration'
+[0;34m[20:34:53][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_03-34-16-209Z/screenshots/02-descriptor-typed-1778038493.png
+[0;34m[20:34:53][0m Clicking element elem_37 matching 'evolve-prompt-send|Submit configuration change descriptor|Send'
+[0;32m[PASS][0m peekabooProviderTypedIntent: Descriptor submitted
+[0;34m[20:34:54][0m === Phase 4: Verify provider-driven evolution reaches Review ===
+[0;34m[20:34:57][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_03-34-16-209Z/screenshots/03-review-provider-evolved-1778038496.png
+[0;32m[PASS][0m peekabooProviderReview: Provider calls observed and Review step reached
+[0;34m[20:34:57][0m === Phase 5: Build and Test through mocked macOS activation ===
+[0;34m[20:35:00][0m Clicking element elem_32 matching 'Build & Test'
+[0;34m[20:35:17][0m No build confirmation prompt observed
+[0;34m[20:35:18][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_03-34-16-209Z/screenshots/04-save-step-after-build-1778038517.png
+[0;32m[PASS][0m peekabooProviderBuildBoundary: Build & Test advanced to Save step using explicit E2E mock activation
+[0;34m[20:35:18][0m === Phase 6: Commit saved changes ===
+[0;34m[20:35:34][0m Commit-message suggestion was not available; using deterministic manual commit text
+[0;34m[20:35:35][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_03-34-16-209Z/screenshots/commit-message-manual-fallback-1778038534.png
+[0;34m[20:35:35][0m Clicking element elem_46 matching 'commitMsg|Loading|Commit message|Commit Changes'
+[0;34m[20:35:37][0m Clicking element elem_47 matching 'Commit( Changes)?'
+[0;34m[20:35:39][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_03-34-16-209Z/screenshots/05-returned-to-describe-1778038539.png
+[0;32m[PASS][0m peekabooProviderSaveFlow: Save step committed changes and returned to Describe
+[0;34m[20:35:39][0m === Phase 7: Restore baseline from History ===
+[0;34m[20:35:40][0m Clicking element elem_8 matching 'History'
+[0;34m[20:35:43][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_03-34-16-209Z/screenshots/06-history-before-restore-1778038542.png
+[0;34m[20:35:43][0m Clicking element elem_31 matching '^Restore$|Restore'
+[0;34m[20:35:46][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_03-34-16-209Z/screenshots/07-history-restore-preview-1778038545.png
+[0;34m[20:35:46][0m Clicking element elem_22 matching 'Confirm Restore|confirm Restore'
+[0;34m[20:35:48][0m Coordinate fallback click for history confirm restore retry at 1148,307
+[0;34m[20:36:34][0m history restore unresolved: HEAD=9773ac9
+[0;34m[20:36:34][0m history restore unresolved: latest=feat(e2e): provider generated ripgrep package
+[0;34m[20:36:34][0m history restore unresolved: status=
+[0;34m[20:36:34][0m history restore unresolved: baseline-diff=flake.nix
+[0;34m[20:36:34][0m history restore unresolved: ripgrep still present in flake.nix
+[0;34m[20:36:35][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_03-34-16-209Z/screenshots/history-restore-failed-1778038594.png
+[0;31m[FAIL][0m History restore did not return the disposable config repo to baseline
+[0;34m[20:36:36][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_03-34-16-209Z/screenshots/failure-1778038595-1778038595.png
+[0;34m[20:36:36][0m Stopping recorder (PID: 99967)...
+[0;34m[20:36:49][0m Video saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_03-34-16-209Z/video/peekaboo-e2e.mp4 (808K)
+[0;34m[20:36:52][0m Uninstalling Nix...
+ INFO nix-installer v3.19.0
+ INFO nix-installer v3.19.0
+[31m`nix-darwin` installation detected, it must be removed before uninstalling Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.[39m
+[0;32m[PASS][0m Nix uninstalled
+[0;34m[20:36:54][0m E2E report written: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_03-34-16-209Z/e2e-report/macos_provider_evolve_full_smoke/e2e-report.json
