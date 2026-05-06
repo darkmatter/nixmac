@@ -14,7 +14,7 @@ on:
       build_attempts:
         description: 'Remote debug build attempts before running Peekaboo'
         required: false
-        default: '1'
+        default: '2'
 
 permissions:
   contents: read
@@ -58,7 +58,7 @@ jobs:
     env:
       PEEKABOO_REPO_DIR: ${{ vars.NIXMAC_E2E_MACINCLOUD_REPO_DIR || '/Users/admin/nixmac-peekaboo-local-e2e' }}
       PEEKABOO_NODE: ${{ vars.NIXMAC_E2E_MACINCLOUD_NODE || '/opt/homebrew/bin/node' }}
-      BUILD_ATTEMPTS: ${{ inputs.build_attempts || '1' }}
+      BUILD_ATTEMPTS: ${{ inputs.build_attempts || '2' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6

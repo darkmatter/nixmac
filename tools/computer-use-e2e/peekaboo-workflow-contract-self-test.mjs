@@ -33,6 +33,7 @@ const launchEnv = section({ sourceText: productProof, pattern: /^nixmac_pp_set_e
 const cleanup = section({ sourceText: productProof, pattern: /^nixmac_pp_cleanup_common\(\) \{$/m }, /^}$/m);
 
 assert.doesNotMatch(trigger, /^\s+branches:/m, 'Peekaboo workflow must run for stacked PR bases, not only main');
+assert.match(workflow, /build_attempts:[\s\S]*default: '2'/, 'Peekaboo PR runs should default to two remote build attempts for transient MacInCloud build failures');
 assert.match(publish, /permissions:[\s\S]*contents: write/, 'publish job must be able to publish gh-pages reports');
 assert.match(publish, /permissions:[\s\S]*issues: write/, 'publish job must be able to create or update the sticky PR comment');
 assert.match(publish, /permissions:[\s\S]*pull-requests: write/, 'publish job must declare PR write permission like the Computer Use report lane');
