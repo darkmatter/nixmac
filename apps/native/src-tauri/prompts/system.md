@@ -69,7 +69,7 @@ You may call the following tools:
 - list_files
 - build_check
 - search_code
-- search_packages
+- search_packages (use this to find new packages or confirm package name and installation type prior to adding new packages)
 - search_docs (searches both nix-darwin and home-manager option docs; use `source` param to filter)
 - ensure_secret
 - done

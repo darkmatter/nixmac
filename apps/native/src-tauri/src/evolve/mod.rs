@@ -811,6 +811,19 @@ pub async fn generate_evolution<R: Runtime>(
                                         );
                                     }
                                 }
+                                ToolResult::SearchPackages(results) => {
+                                    let packages = results
+                                        .iter()
+                                        .map(|r| r.name.as_str())
+                                        .collect::<Vec<_>>()
+                                        .join(", ");
+                                    emit_evolve_event(
+                                        app,
+                                        EvolveEvent::search_packages(
+                                            start_time, iteration, &packages,
+                                        ),
+                                    );
+                                }
                                 ToolResult::Continue(_content) => {
                                     if tool_name == "read_file" {
                                         if let Some(path) =
@@ -1248,6 +1261,7 @@ fn summarize_result(result: &ToolResult) -> (String, bool) {
         ToolResult::Think { category, thought } => {
             (format!("[{}] {} chars", category, thought.len()), true)
         }
+        ToolResult::SearchPackages(results) => (format!("found {} packages", results.len()), true),
         ToolResult::Continue(s) => (format!("{} chars", s.len()), true),
         ToolResult::Edit(e) => (format!("edited {}", e.path), true),
         ToolResult::EditSemantic(e) => (format!("semantic edit {} ({:?})", e.path, e.action), true),
@@ -1309,6 +1323,27 @@ fn process_tool_result(
             let msg = Message::Tool {
                 tool_call_id: tool_call_id.to_string(),
                 content: content.clone(),
+            };
+            (msg, Some(false))
+        }
+
+        ToolResult::SearchPackages(search_packages) => {
+            info!(
+                "🔍 Search Packages | found {} packages",
+                search_packages.len()
+            );
+            for pkg in search_packages.iter().take(5) {
+                info!("   │ {}: {:?}", pkg.name, pkg.install_type);
+            }
+            if search_packages.len() > 5 {
+                info!("   │ ... and {} more", search_packages.len() - 5);
+            }
+
+            // Return the packages as JSON
+            let msg = Message::Tool {
+                tool_call_id: tool_call_id.to_string(),
+                content: serde_json::to_string(search_packages)
+                    .unwrap_or_else(|_| "[]".to_string()),
             };
             (msg, Some(false))
         }

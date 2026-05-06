@@ -2,6 +2,7 @@
 
 use crate::evolve::edit_nix_file::apply_semantic_edit;
 use crate::evolve::ensure_secret::{execute_ensure_secret, EnsureSecretResult};
+use crate::evolve::search_packages::SearchPackageResult;
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
 
 use super::file_ops::{
@@ -279,12 +280,14 @@ IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with
         Tool {
             name: "search_packages".to_string(),
             description: "Search for Nix packages by name or description. This is a convenient \
-                         wrapper around 'nix search' that returns compact structured JSON results. \
-                         Output format: JSON object keyed by package name. Each value must include \
-                         {\"attr_path\": string, \"version\": string, \"description\": string, \"channel\": string}. \
-                         Example: {\"wget\": {\"attr_path\": \"wget\", \"version\": \"1.21.3\", \"description\": \"retrieves files from the web\", \"channel\": \"nixpkgs-unstable\"}}. \
-                         Return JSON only (no prose). \
-                         Parameters: search_type controls where to search (names, descriptions, or both); \
+                         wrapper around 'nix search' that returns a list of structured JSON results. \
+                         Output format: Array of SearchPackageResult objects, each containing \
+                         {\"name\": string, \"attr_path\": string, \"version\": string, \"description\": string, \"channel\": string, \"packageType\": SearchResultPackageType}. \
+                         The packageType field indicates whether a package should be installed via Homebrew (HomebrewCaskLike), \
+                         Nix (NixNative), or either (Either). IMPORTANT: When making nix package edits later, try to respect \
+                         1) any expressed user preference, followed by 2) the packageType value to guide installation method recommendations. \
+                         Example: [{\"name\": \"wget\", \"attr_path\": \"wget\", \"version\": \"1.21.3\", \"description\": \"retrieves files from the web\", \"channel\": \"nixpkgs-unstable\", \"packageType\": \"NixNative\"}]. \
+                         Parameters: \
                          use_regex enables regex patterns for advanced matching; \
                          channels lets you search in different flakes (one or more of nixpkgs, nixpkgs-unstable, etc.), max 5".to_string(),
             parameters: serde_json::json!({
@@ -297,11 +300,6 @@ IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with
                     "limit": {
                         "type": "integer",
                         "description": "Maximum number of results to return (default: 20)"
-                    },
-                    "search_type": {
-                        "type": "string",
-                        "enum": ["name", "description", "both"],
-                        "description": "What to search in: 'name' for package names only, 'description' for descriptions only, 'both' for all fields (default: 'both')"
                     },
                     "use_regex": {
                         "type": "boolean",
@@ -472,6 +470,8 @@ pub enum ToolResult {
     EditSemantic(SemanticFileEdit),
     /// A SOPS secret was created/updated (and possibly injected into a Nix file).
     EnsureSecret(EnsureSecretResult),
+    // Results from package search operations
+    SearchPackages(Vec<SearchPackageResult>),
     /// Agent wants to ask the user a question
     Question {
         question: String,
@@ -800,7 +800,6 @@ pub fn execute_tool(
             // Clamp `limit` between 1 and 50 (default 20). Use as_i64 so negative
             // and crazy-large values provided by callers are handled gracefully.
             let limit = args["limit"].as_i64().unwrap_or(20).clamp(1, 50) as u64;
-            let search_type = args["search_type"].as_str().unwrap_or("both");
             let use_regex = args["use_regex"].as_bool().unwrap_or(false);
 
             // Clamp to at most 5 channels to prevent abuse since each channel adds latency
@@ -822,15 +821,8 @@ pub fn execute_tool(
                 channels
             };
 
-            let result = execute_search_packages(
-                config_dir,
-                query,
-                limit,
-                search_type,
-                use_regex,
-                &channels,
-            )?;
-            Ok(ToolResult::Continue(result))
+            let result = execute_search_packages(config_dir, query, limit, use_regex, &channels)?;
+            Ok(ToolResult::SearchPackages(result))
         }
 
         "search_docs" => {

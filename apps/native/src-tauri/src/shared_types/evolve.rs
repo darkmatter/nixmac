@@ -31,6 +31,8 @@ pub enum EvolveEventType {
     Thinking,
     /// Agent is reading a file.
     Reading,
+    // Agent is searching for nix packages
+    SearchPackages,
     /// Agent is editing a file.
     Editing,
     /// Agent is running a build check.
