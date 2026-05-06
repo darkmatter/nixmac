@@ -387,6 +387,15 @@ scenario_wait_for_text() {
     return 1
 }
 
+scenario_wait_for_describe_prompt() {
+    local timeout="${1:-45}"
+
+    scenario_find_element \
+        "evolve-prompt-input|Configuration change descriptor|Describe changes to make to your configuration" \
+        "textField" \
+        "$timeout" >/dev/null
+}
+
 scenario_wait_for_prompt_value() {
     local expected="$1"
     local timeout="${2:-20}"
@@ -509,7 +518,7 @@ scenario_confirm_history_restore() {
 
     for attempt in 1 2 3; do
         scenario_click_query "Confirm Restore" 10000 || true
-        scenario_click_element "Confirm Restore|confirm Restore" "" 10 || true
+        scenario_click_element "Confirm Restore|confirm Restore" "button" 10 || true
         nixmac_pp_click_window_ratio "history confirm restore" "0.735" "0.268" || true
         nixmac_pp_cgevent_click_window_ratio "history confirm restore" "0.735" "0.268" || true
 
@@ -635,7 +644,7 @@ scenario_test() {
     fi
     scenario_click_element "Commit( Changes)?" "button" 30 \
         || die "Commit button was not reachable"
-    if ! scenario_wait_for_text "Describe changes|What to change" 45; then
+    if ! scenario_wait_for_describe_prompt 45; then
         nixmac_screenshot "begin-step-not-restored"
         die "Commit did not return to begin step"
     fi

@@ -36,7 +36,7 @@ scenario_commit_managed_badge_change() {
 
     scenario_click_element "Commit( Changes)?" "button" 30 \
         || die "Commit button was not reachable for $prefix"
-    scenario_wait_for_text "Describe changes|What to change" 45 \
+    scenario_wait_for_describe_prompt 45 \
         || die "Commit did not return to begin step for $prefix"
 }
 
