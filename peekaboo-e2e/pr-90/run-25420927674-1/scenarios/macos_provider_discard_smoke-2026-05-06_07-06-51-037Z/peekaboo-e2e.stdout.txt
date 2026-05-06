@@ -1,0 +1,190 @@
+[0;34m[00:06:52][0m === macos-e2e test runner ===
+[0;34m[00:06:52][0m Started at Wed May  6 00:06:52 PDT 2026
+[0;34m[00:06:52][0m Machine: DXU97120 | macOS 26.2
+[0;34m[00:06:52][0m Working directory: /Users/admin/nixmac-peekaboo-local-e2e/tests/e2e
+[0;34m[00:07:05][0m Scenario: macos_provider_discard_smoke
+[0;34m[00:07:05][0m Starting screen recording: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-06-51-037Z/video/peekaboo-e2e.mp4
+[0;34m[00:07:09][0m Recorder started (PID: 95565)
+[0;34m[00:07:09][0m === Phase 1: Prepare provider-backed discard fixture ===
+[0;32m[PASS][0m Peekaboo Bridge connected
+[0;32m[PASS][0m Peekaboo permissions OK
+[1;33m[WARN][0m No ADMIN_PASSWORD set, cannot unlock screen
+[0;34m[00:07:11][0m Clearing nixmac app state...
+[0;32m[PASS][0m App state cleared
+[0;34m[00:07:11][0m Seeded nixmac settings at /Users/admin/Library/Application Support/com.darkmatter.nixmac/settings.json with provider http://127.0.0.1:62273/v1
+[0;34m[00:07:11][0m Installed E2E system activation shim at /var/folders/lw/q3m765kd17z3h2g36tw6qk000000gp/T//nixmac-e2e-system-mock-bin.c36VwZ
+[0;32m[PASS][0m peekabooProviderFixture: Prepared discard config repo, deterministic HTTP provider, completion logging, and mock rebuild flag
+[0;34m[00:07:11][0m === Phase 2: Launch nixmac app for discard proof ===
+[0;34m[00:07:11][0m Launching nixmac...
+[0;32m[PASS][0m App launched: nixmac
+✓ Switched to nixmac
+📝 Created annotated screenshot with 108 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-06-51-037Z/screenshots/01-discard-launched-1778051245.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-06-51-037Z/screenshots/01-discard-launched-1778051245_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 132
+⚙️  Interactable elements: 108
+⏱️  Execution time: 0.30s
+
+🔍 Element Summary
+• elem_2 (button) - close button
+• elem_3 (button) - full screen button
+• elem_5 (button) - minimize button
+• elem_1 (group) - group
+• elem_4 (group) - group
+• menu_7 (menu) - Apple
+• menu_79 (menu) - nixmac
+• menu_100 (menu) - File
+• menu_104 (menu) - Edit
+• menu_121 (menu) - View
+  ...and 122 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: F0140268-B6C4-4BCA-97BC-A4448037958D
+Agent: Use a tool like view_image to inspect it.
+[0;34m[00:07:26][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-06-51-037Z/screenshots/01-discard-launched-1778051245.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-06-51-037Z/screenshots/01-discard-launched-1778051245.png
+[0;32m[PASS][0m peekabooProviderLaunch: App launched for discard proof
+[0;34m[00:07:26][0m === Phase 3: Submit descriptor into real prompt for discard proof ===
+[0;34m[00:07:29][0m Clicking element id=elem_33 role=textField identifier= label=Describe changes to make to your configuration. title= value= desc= bounds=none matching 'evolve-prompt-input|Configuration change descriptor|Describe changes to make to your configuration'
+[0;34m[00:07:29][0m Candidate for 'evolve-prompt-input|Configuration change descriptor|Describe changes to make to your configuration': score=10 match=label id=elem_33 role=textField identifier= label=Describe changes to make to your configuration. title= bounds=none
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Textfield: Describe changes to make to your configuration.
+📍 Location: (956, 470)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.18s
+📝 Created annotated screenshot with 152 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-06-51-037Z/screenshots/discard-descriptor-type-retry-1-1778051261.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-06-51-037Z/screenshots/discard-descriptor-type-retry-1-1778051261_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist
+📊 UI elements detected: 178
+⚙️  Interactable elements: 152
+⏱️  Execution time: 0.61s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_38 (button) - Install vim
+• elem_39 (button) - Add Rectangle app
+• elem_40 (button) - Enable the Finder path bar and status bar
+• elem_41 (button) - 12 untracked customizations
+• elem_42 (button) - 8 untracked Homebrew items
+• elem_44 (button) - Report Issue
+  ...and 168 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: F37138A0-72AA-4CAD-886A-ABEE9411423A
+Agent: Use a tool like view_image to inspect it.
+[0;34m[00:07:42][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-06-51-037Z/screenshots/discard-descriptor-type-retry-1-1778051261.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-06-51-037Z/screenshots/discard-descriptor-type-retry-1-1778051261.png
+[0;34m[00:07:42][0m Descriptor value was not visible after attempt 1; refocusing and retrying
+[0;34m[00:08:00][0m Coordinate fallback click for discard descriptor prompt input at 960,457
+📝 Created annotated screenshot with 152 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-06-51-037Z/screenshots/discard-descriptor-type-retry-2-1778051289.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-06-51-037Z/screenshots/discard-descriptor-type-retry-2-1778051289_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist
+📊 UI elements detected: 178
+⚙️  Interactable elements: 152
+⏱️  Execution time: 0.65s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_38 (button) - Install vim
+• elem_39 (button) - Add Rectangle app
+• elem_40 (button) - Enable the Finder path bar and status bar
+• elem_41 (button) - 12 untracked customizations
+• elem_42 (button) - 8 untracked Homebrew items
+• elem_44 (button) - Report Issue
+  ...and 168 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 2E0C9B85-B45B-40DB-8D5F-C0F0730DABA2
+Agent: Use a tool like view_image to inspect it.
+[0;34m[00:08:10][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-06-51-037Z/screenshots/discard-descriptor-type-retry-2-1778051289.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-06-51-037Z/screenshots/discard-descriptor-type-retry-2-1778051289.png
+[0;34m[00:08:10][0m Descriptor value was not visible after attempt 2; refocusing and retrying
+[0;34m[00:08:28][0m Coordinate fallback click for discard descriptor prompt input at 960,457
+📝 Created annotated screenshot with 152 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-06-51-037Z/screenshots/discard-descriptor-type-retry-3-1778051317.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-06-51-037Z/screenshots/discard-descriptor-type-retry-3-1778051317_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist
+📊 UI elements detected: 178
+⚙️  Interactable elements: 152
+⏱️  Execution time: 0.62s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_38 (button) - Install vim
+• elem_39 (button) - Add Rectangle app
+• elem_40 (button) - Enable the Finder path bar and status bar
+• elem_41 (button) - 12 untracked customizations
+• elem_42 (button) - 8 untracked Homebrew items
+• elem_44 (button) - Report Issue
+  ...and 168 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: DCEDCCF0-68CF-4359-8B77-0AAAA5280C20
+Agent: Use a tool like view_image to inspect it.
+[0;34m[00:08:37][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-06-51-037Z/screenshots/discard-descriptor-type-retry-3-1778051317.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-06-51-037Z/screenshots/discard-descriptor-type-retry-3-1778051317.png
+[0;34m[00:08:37][0m Descriptor value was not visible after attempt 3; refocusing and retrying
+[0;31m[FAIL][0m Typed descriptor was not visible in the prompt input
+📝 Created annotated screenshot with 152 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-06-51-037Z/screenshots/failure-1778051320-1778051320.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-06-51-037Z/screenshots/failure-1778051320-1778051320_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist
+📊 UI elements detected: 178
+⚙️  Interactable elements: 152
+⏱️  Execution time: 0.58s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_38 (button) - Install vim
+• elem_39 (button) - Add Rectangle app
+• elem_40 (button) - Enable the Finder path bar and status bar
+• elem_41 (button) - 12 untracked customizations
+• elem_42 (button) - 8 untracked Homebrew items
+• elem_44 (button) - Report Issue
+  ...and 168 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 38482D5D-FABA-422F-B014-BC87AB36F393
+Agent: Use a tool like view_image to inspect it.
+[0;34m[00:08:40][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-06-51-037Z/screenshots/failure-1778051320-1778051320.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-06-51-037Z/screenshots/failure-1778051320-1778051320.png
+[0;34m[00:08:40][0m Stopping recorder (PID: 95565)...
+[0;34m[00:08:57][0m Video saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-06-51-037Z/video/peekaboo-e2e.mp4 (644K)
+✓ Quit nixmac
+[0;34m[00:09:01][0m Uninstalling Nix...
+ INFO nix-installer v3.19.0
+ INFO nix-installer v3.19.0
+[31m`nix-darwin` installation detected, it must be removed before uninstalling Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.[39m
+[0;32m[PASS][0m Nix uninstalled
+[0;34m[00:09:02][0m E2E report written: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-06-51-037Z/e2e-report/macos_provider_discard_smoke/e2e-report.json

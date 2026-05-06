@@ -1,0 +1,90 @@
+[0;34m[00:00:06][0m === macos-e2e test runner ===
+[0;34m[00:00:06][0m Started at Wed May  6 00:00:06 PDT 2026
+[0;34m[00:00:06][0m Machine: DXU97120 | macOS 26.2
+[0;34m[00:00:06][0m Working directory: /Users/admin/nixmac-peekaboo-local-e2e/tests/e2e
+[0;34m[00:00:19][0m Scenario: macos_homebrew_save_rollback_smoke
+[0;34m[00:00:19][0m Starting screen recording: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-00-05-114Z/video/peekaboo-e2e.mp4
+[0;34m[00:00:23][0m Recorder started (PID: 86599)
+[0;34m[00:00:23][0m === Phase 1: Prepare Homebrew managed-badge fixture ===
+[0;32m[PASS][0m Peekaboo Bridge connected
+[0;32m[PASS][0m Peekaboo permissions OK
+[1;33m[WARN][0m No ADMIN_PASSWORD set, cannot unlock screen
+[0;34m[00:00:25][0m Clearing nixmac app state...
+[0;32m[PASS][0m App state cleared
+[0;34m[00:00:25][0m Seeded nixmac settings at /Users/admin/Library/Application Support/com.darkmatter.nixmac/settings.json with provider http://127.0.0.1:62259/v1
+[0;34m[00:00:25][0m Installed E2E system activation shim at /var/folders/lw/q3m765kd17z3h2g36tw6qk000000gp/T//nixmac-e2e-system-mock-bin.UT5LLM
+[0;32m[PASS][0m peekabooProviderFixture: Prepared Homebrew managed-badge fixture, deterministic HTTP provider, completion logging, and mock rebuild flag
+[0;34m[00:00:25][0m === Phase 2: Launch nixmac for Untracked Homebrew items proof ===
+[0;34m[00:00:25][0m Launching nixmac...
+[0;32m[PASS][0m App launched: nixmac
+✓ Switched to nixmac
+📝 Created annotated screenshot with 149 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-00-05-114Z/screenshots/01-homebrew-launched-1778050841.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-00-05-114Z/screenshots/01-homebrew-launched-1778050841_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 176
+⚙️  Interactable elements: 149
+⏱️  Execution time: 0.35s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_38 (button) - Install vim
+• elem_39 (button) - Add Rectangle app
+• elem_40 (button) - Enable the Finder path bar and status bar
+• elem_42 (button) - Report Issue
+• elem_43 (button) - Console
+• elem_45 (button) - close button
+  ...and 166 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 9B94CF99-82CB-412D-BE86-26B5717BB891
+Agent: Use a tool like view_image to inspect it.
+[0;34m[00:00:41][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-00-05-114Z/screenshots/01-homebrew-launched-1778050841.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-00-05-114Z/screenshots/01-homebrew-launched-1778050841.png
+[0;32m[PASS][0m peekabooProviderLaunch: App launched for Untracked Homebrew items proof
+[0;34m[00:00:44][0m === Phase 3: Apply Untracked Homebrew items to config ===
+[0;31m[FAIL][0m Untracked Homebrew items badge was not reachable
+📝 Created annotated screenshot with 152 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-00-05-114Z/screenshots/failure-1778050893-1778050893.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-00-05-114Z/screenshots/failure-1778050893-1778050893_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist
+📊 UI elements detected: 178
+⚙️  Interactable elements: 152
+⏱️  Execution time: 0.58s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_38 (button) - Install vim
+• elem_39 (button) - Add Rectangle app
+• elem_40 (button) - Enable the Finder path bar and status bar
+• elem_41 (button) - 1 untracked customization
+• elem_42 (button) - 1 untracked Homebrew item
+• elem_44 (button) - Report Issue
+  ...and 168 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 5DC69DFB-6737-44FF-A1BC-DF83FD316836
+Agent: Use a tool like view_image to inspect it.
+[0;34m[00:01:33][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-00-05-114Z/screenshots/failure-1778050893-1778050893.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-00-05-114Z/screenshots/failure-1778050893-1778050893.png
+[0;34m[00:01:33][0m Stopping recorder (PID: 86599)...
+[0;34m[00:01:50][0m Video saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-00-05-114Z/video/peekaboo-e2e.mp4 (468K)
+✓ Quit nixmac
+[0;34m[00:01:53][0m Uninstalling Nix...
+ INFO nix-installer v3.19.0
+ INFO nix-installer v3.19.0
+[31m`nix-darwin` installation detected, it must be removed before uninstalling Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.[39m
+[0;32m[PASS][0m Nix uninstalled
+[0;34m[00:01:54][0m E2E report written: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_07-00-05-114Z/e2e-report/macos_homebrew_save_rollback_smoke/e2e-report.json
