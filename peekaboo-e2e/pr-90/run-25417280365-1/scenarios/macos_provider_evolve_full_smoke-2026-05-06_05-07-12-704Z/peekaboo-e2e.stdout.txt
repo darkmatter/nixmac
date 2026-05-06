@@ -1,0 +1,352 @@
+[0;34m[22:07:14][0m === macos-e2e test runner ===
+[0;34m[22:07:14][0m Started at Tue May  5 22:07:14 PDT 2026
+[0;34m[22:07:14][0m Machine: DXU97120 | macOS 26.2
+[0;34m[22:07:14][0m Working directory: /Users/admin/nixmac-peekaboo-local-e2e/tests/e2e
+[0;34m[22:07:25][0m Scenario: macos_provider_evolve_full_smoke
+[0;34m[22:07:25][0m Starting screen recording: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/video/peekaboo-e2e.mp4
+[0;34m[22:07:28][0m Recorder started (PID: 4634)
+[0;34m[22:07:28][0m === Phase 1: Prepare provider-backed macOS fixture ===
+[0;32m[PASS][0m Peekaboo Bridge connected
+[0;32m[PASS][0m Peekaboo permissions OK
+[1;33m[WARN][0m No ADMIN_PASSWORD set, cannot unlock screen
+[0;34m[22:07:30][0m Clearing nixmac app state...
+[0;32m[PASS][0m App state cleared
+[0;34m[22:07:30][0m Seeded nixmac settings at /Users/admin/Library/Application Support/com.darkmatter.nixmac/settings.json with provider http://127.0.0.1:62095/v1
+[0;34m[22:07:30][0m Installed E2E system activation shim at /var/folders/lw/q3m765kd17z3h2g36tw6qk000000gp/T//nixmac-e2e-system-mock-bin.wRt5o4
+[0;32m[PASS][0m peekabooProviderFixture: Prepared config repo, deterministic HTTP provider, completion logging, and mock rebuild flag
+[0;34m[22:07:30][0m === Phase 2: Launch nixmac app ===
+[0;34m[22:07:30][0m Launching nixmac...
+[0;32m[PASS][0m App launched: nixmac
+✓ Switched to nixmac
+📝 Created annotated screenshot with 108 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/01-launched-1778044065.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/01-launched-1778044065_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 132
+⚙️  Interactable elements: 108
+⏱️  Execution time: 0.28s
+
+🔍 Element Summary
+• elem_2 (button) - close button
+• elem_3 (button) - full screen button
+• elem_5 (button) - minimize button
+• elem_1 (group) - group
+• elem_4 (group) - group
+• menu_7 (menu) - Apple
+• menu_79 (menu) - nixmac
+• menu_100 (menu) - File
+• menu_104 (menu) - Edit
+• menu_121 (menu) - View
+  ...and 122 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 4F4D86A3-DC71-423A-B10D-E8A28D381B64
+Agent: Use a tool like view_image to inspect it.
+[0;34m[22:07:45][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/01-launched-1778044065.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/01-launched-1778044065.png
+[0;32m[PASS][0m peekabooProviderLaunch: App launched
+[0;34m[22:07:45][0m === Phase 3: Submit descriptor into real prompt ===
+[0;34m[22:07:49][0m Clicking element id=elem_33 role=textField identifier= label=Describe changes to make to your configuration. title= value= desc= bounds=none matching 'evolve-prompt-input|Configuration change descriptor|Describe changes to make to your configuration'
+[0;34m[22:07:49][0m Candidate for 'evolve-prompt-input|Configuration change descriptor|Describe changes to make to your configuration': score=10 match=label id=elem_33 role=textField identifier= label=Describe changes to make to your configuration. title= bounds=none
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Textfield: Describe changes to make to your configuration.
+📍 Location: (956, 470)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.19s
+📝 Created annotated screenshot with 152 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/02-descriptor-typed-1778044071.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/02-descriptor-typed-1778044071_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 178
+⚙️  Interactable elements: 152
+⏱️  Execution time: 0.32s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_38 (button) - Install vim
+• elem_39 (button) - Add Rectangle app
+• elem_40 (button) - Enable the Finder path bar and status bar
+• elem_41 (button) - 12 untracked customizations
+• elem_42 (button) - 8 untracked Homebrew items
+• elem_44 (button) - Report Issue
+  ...and 168 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: EA9523BD-29CD-4D27-9A37-7E7996D14B7A
+Agent: Use a tool like view_image to inspect it.
+[0;34m[22:07:51][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/02-descriptor-typed-1778044071.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/02-descriptor-typed-1778044071.png
+[0;34m[22:07:51][0m Clicking element id=elem_37 role=button identifier= label=Send title=Send value= desc= bounds=none matching 'evolve-prompt-send|Submit configuration change descriptor|Send'
+[0;34m[22:07:52][0m Candidate for 'evolve-prompt-send|Submit configuration change descriptor|Send': score=10 match=label id=elem_37 role=button identifier= label=Send title=Send bounds=none
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: Send
+📍 Location: (1279, 520)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.49s
+[0;32m[PASS][0m peekabooProviderTypedIntent: Descriptor submitted
+[0;34m[22:07:52][0m === Phase 4: Verify provider-driven evolution reaches Review ===
+📝 Created annotated screenshot with 153 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/03-review-provider-evolved-1778044074.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/03-review-provider-evolved-1778044074_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 182
+⚙️  Interactable elements: 153
+⏱️  Execution time: 0.43s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_18 (button) - Send
+• elem_19 (button) - Install vim
+• elem_20 (button) - Add Rectangle app
+• elem_21 (button) - Enable the Finder path bar and status bar
+• elem_22 (button) - 12 untracked customizations
+• elem_23 (button) - 8 untracked Homebrew items
+• elem_25 (button) - My History
+  ...and 172 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 8195122F-EC05-4280-994D-4414267484DD
+Agent: Use a tool like view_image to inspect it.
+[0;34m[22:07:54][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/03-review-provider-evolved-1778044074.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/03-review-provider-evolved-1778044074.png
+[0;32m[PASS][0m peekabooProviderReview: Provider calls observed and Review step reached
+[0;34m[22:07:54][0m === Phase 5: Build and Test through mocked macOS activation ===
+[0;34m[22:07:57][0m Clicking element id=elem_32 role=button identifier= label=Build & Test title=Build & Test value= desc= bounds=none matching 'Build & Test'
+[0;34m[22:07:57][0m Candidate for 'Build & Test': score=10 match=label id=elem_32 role=button identifier= label=Build & Test title=Build & Test bounds=none
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: Build & Test
+📍 Location: (1243, 297)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.48s
+[0;34m[22:08:14][0m No build confirmation prompt observed
+📝 Created annotated screenshot with 157 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/04-save-step-after-build-1778044094.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/04-save-step-after-build-1778044094_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 183
+⚙️  Interactable elements: 157
+⏱️  Execution time: 0.31s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_30 (button) - Undo All
+• elem_31 (button) - Continue editing
+• elem_40 (button) - Analyze
+• elem_48 (button) - Commit
+• elem_49 (button) - Report Issue
+• elem_50 (button) - Console
+• elem_52 (button) - close button
+  ...and 173 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 4B15E0D7-DE9E-4859-915B-B3C929D0DE1E
+Agent: Use a tool like view_image to inspect it.
+[0;34m[22:08:15][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/04-save-step-after-build-1778044094.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/04-save-step-after-build-1778044094.png
+[0;32m[PASS][0m peekabooProviderBuildBoundary: Build & Test advanced to Save step using explicit E2E mock activation
+[0;34m[22:08:15][0m === Phase 6: Commit saved changes ===
+[0;34m[22:08:31][0m Commit-message suggestion was not available; using deterministic manual commit text
+📝 Created annotated screenshot with 157 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/commit-message-manual-fallback-1778044111.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/commit-message-manual-fallback-1778044111_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist
+📊 UI elements detected: 183
+⚙️  Interactable elements: 157
+⏱️  Execution time: 0.71s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_30 (button) - Undo All
+• elem_31 (button) - Continue editing
+• elem_40 (button) - Analyze
+• elem_48 (button) - Commit
+• elem_49 (button) - Report Issue
+• elem_50 (button) - Console
+• elem_52 (button) - close button
+  ...and 173 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 9F240010-3C60-44CB-94A8-1839B4E2E3B3
+Agent: Use a tool like view_image to inspect it.
+[0;34m[22:08:31][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/commit-message-manual-fallback-1778044111.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/commit-message-manual-fallback-1778044111.png
+[0;34m[22:08:32][0m Clicking element id=elem_46 role=textField identifier= label=Loading... title= value= desc= bounds=none matching 'commitMsg|Loading|Commit message|Commit Changes'
+[0;34m[22:08:32][0m Candidate for 'commitMsg|Loading|Commit message|Commit Changes': score=10 match=label id=elem_46 role=textField identifier= label=Loading... title= bounds=none
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Textfield: Loading...
+📍 Location: (956, 553)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.18s
+[0;34m[22:08:34][0m Clicking element id=elem_47 role=button identifier= label=Commit title=Commit value= desc= bounds=none matching 'Commit( Changes)?'
+[0;34m[22:08:34][0m Candidate for 'Commit( Changes)?': score=10 match=label id=elem_47 role=button identifier= label=Commit title=Commit bounds=none
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: Commit
+📍 Location: (662, 613)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.50s
+📝 Created annotated screenshot with 155 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/05-returned-to-describe-1778044116.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/05-returned-to-describe-1778044116_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 182
+⚙️  Interactable elements: 155
+⏱️  Execution time: 0.32s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_38 (button) - Install vim
+• elem_39 (button) - Add Rectangle app
+• elem_40 (button) - Enable the Finder path bar and status bar
+• elem_41 (button) - 12 untracked customizations
+• elem_43 (button) - My History
+• elem_44 (button) - Report Issue
+  ...and 172 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 45AE1C60-1A36-484D-9674-94FD50DED417
+Agent: Use a tool like view_image to inspect it.
+[0;34m[22:08:36][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/05-returned-to-describe-1778044116.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/05-returned-to-describe-1778044116.png
+[0;32m[PASS][0m peekabooProviderSaveFlow: Save step committed changes and returned to Describe
+[0;34m[22:08:36][0m === Phase 7: Restore baseline from History ===
+[0;34m[22:08:36][0m Clicking element id=elem_43 role=button identifier= label=My History title=My History value= desc= bounds=none matching 'History'
+[0;34m[22:08:36][0m Candidate for 'History': score=10 match=label id=elem_43 role=button identifier= label=My History title=My History bounds=none
+[0;34m[22:08:36][0m Candidate for 'History': score=10 match=label id=elem_8 role=button identifier= label=History title=History bounds=none
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: My History
+📍 Location: (1251, 570)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.48s
+📝 Created annotated screenshot with 156 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/06-history-before-restore-1778044118.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/06-history-before-restore-1778044118_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 183
+⚙️  Interactable elements: 156
+⏱️  Execution time: 0.30s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_38 (button) - Install vim
+• elem_39 (button) - Add Rectangle app
+• elem_40 (button) - Enable the Finder path bar and status bar
+• elem_41 (button) - 12 untracked customizations
+• elem_42 (button) - 8 untracked Homebrew items
+• elem_44 (button) - My History
+  ...and 173 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: FEC135DF-5CA1-40EA-955D-1F97F631BE16
+Agent: Use a tool like view_image to inspect it.
+[0;34m[22:08:38][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/06-history-before-restore-1778044118.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/06-history-before-restore-1778044118.png
+📝 Created annotated screenshot with 152 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/history-restore-failed-1778044149.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/history-restore-failed-1778044149_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist
+📊 UI elements detected: 179
+⚙️  Interactable elements: 152
+⏱️  Execution time: 0.59s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_38 (button) - Install vim
+• elem_39 (button) - Add Rectangle app
+• elem_40 (button) - Enable the Finder path bar and status bar
+• elem_41 (button) - 12 untracked customizations
+• elem_42 (button) - 8 untracked Homebrew items
+• elem_44 (button) - My History
+  ...and 169 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 47C66EE2-5E5C-453C-8287-7D2584871A65
+Agent: Use a tool like view_image to inspect it.
+[0;34m[22:09:10][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/history-restore-failed-1778044149.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/history-restore-failed-1778044149.png
+[0;31m[FAIL][0m History restore did not return the disposable config repo to baseline
+📝 Created annotated screenshot with 152 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/failure-1778044150-1778044150.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/failure-1778044150-1778044150_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 179
+⚙️  Interactable elements: 152
+⏱️  Execution time: 0.27s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_38 (button) - Install vim
+• elem_39 (button) - Add Rectangle app
+• elem_40 (button) - Enable the Finder path bar and status bar
+• elem_41 (button) - 12 untracked customizations
+• elem_42 (button) - 8 untracked Homebrew items
+• elem_44 (button) - My History
+  ...and 169 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: E3E9ABED-9623-4A2B-9DBC-8EC97F34E141
+Agent: Use a tool like view_image to inspect it.
+[0;34m[22:09:10][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/failure-1778044150-1778044150.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/screenshots/failure-1778044150-1778044150.png
+[0;34m[22:09:10][0m Stopping recorder (PID: 4634)...
+[0;34m[22:09:25][0m Video saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/video/peekaboo-e2e.mp4 (672K)
+✓ Quit nixmac
+[0;34m[22:09:29][0m Uninstalling Nix...
+ INFO nix-installer v3.19.0
+ INFO nix-installer v3.19.0
+[31m`nix-darwin` installation detected, it must be removed before uninstalling Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.[39m
+[0;32m[PASS][0m Nix uninstalled
+[0;34m[22:09:30][0m E2E report written: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-07-12-704Z/e2e-report/macos_provider_evolve_full_smoke/e2e-report.json

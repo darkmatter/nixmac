@@ -1,0 +1,29 @@
+{
+  "scenario": "macos_support_dialogs_smoke",
+  "passed": 8,
+  "failed": 0,
+  "duration_seconds": 67,
+  "success": true,
+  "phases": [
+    {
+      "phase": 1,
+      "status": "PASS",
+      "message": "peekabooCoreFixture: Prepared deterministic config and local provider-validation settings"
+    },
+    {
+      "phase": 2,
+      "status": "PASS",
+      "message": "peekabooCoreLaunch: App shell rendered before support dialog proof"
+    },
+    {
+      "phase": 3,
+      "status": "PASS",
+      "message": "peekabooCoreReportIssue: Report Issue dialog opened and was cancelled without submission"
+    },
+    {
+      "phase": 4,
+      "status": "PASS",
+      "message": "peekabooCoreFeedback: Feedback dialog opened and was cancelled without submission"
+    }
+  ]
+}

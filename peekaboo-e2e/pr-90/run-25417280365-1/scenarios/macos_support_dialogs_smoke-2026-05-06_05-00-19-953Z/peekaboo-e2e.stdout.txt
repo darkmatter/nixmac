@@ -1,0 +1,172 @@
+[0;34m[22:00:21][0m === macos-e2e test runner ===
+[0;34m[22:00:21][0m Started at Tue May  5 22:00:21 PDT 2026
+[0;34m[22:00:21][0m Machine: DXU97120 | macOS 26.2
+[0;34m[22:00:21][0m Working directory: /Users/admin/nixmac-peekaboo-local-e2e/tests/e2e
+[0;34m[22:00:32][0m Scenario: macos_support_dialogs_smoke
+[0;34m[22:00:32][0m Starting screen recording: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-00-19-953Z/video/peekaboo-e2e.mp4
+[0;34m[22:00:35][0m Recorder started (PID: 89993)
+[0;34m[22:00:36][0m === Phase 1: Prepare support dialog fixture ===
+[0;32m[PASS][0m Peekaboo Bridge connected
+[0;32m[PASS][0m Peekaboo permissions OK
+[1;33m[WARN][0m No ADMIN_PASSWORD set, cannot unlock screen
+[0;34m[22:00:36][0m Clearing nixmac app state...
+[0;32m[PASS][0m App state cleared
+[0;34m[22:00:36][0m Seeded nixmac settings at /Users/admin/Library/Application Support/com.darkmatter.nixmac/settings.json
+[0;32m[PASS][0m peekabooCoreFixture: Prepared deterministic config and local provider-validation settings
+[0;34m[22:00:36][0m === Phase 2: Launch nixmac app ===
+[0;34m[22:00:36][0m Launching nixmac...
+[0;32m[PASS][0m App launched: nixmac
+✓ Switched to nixmac
+📝 Created annotated screenshot with 153 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-00-19-953Z/screenshots/01-support-launch-1778043653.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-00-19-953Z/screenshots/01-support-launch-1778043653_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 180
+⚙️  Interactable elements: 153
+⏱️  Execution time: 0.36s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_40 (button) - Open AI Models settings
+• elem_41 (button) - Install vim
+• elem_42 (button) - Add Rectangle app
+• elem_43 (button) - Enable the Finder path bar and status bar
+• elem_44 (button) - 12 untracked customizations
+• elem_46 (button) - Report Issue
+  ...and 170 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 76E7919E-C24B-420B-ADF8-03A91B6E47B2
+Agent: Use a tool like view_image to inspect it.
+[0;34m[22:00:54][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-00-19-953Z/screenshots/01-support-launch-1778043653.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-00-19-953Z/screenshots/01-support-launch-1778043653.png
+[0;32m[PASS][0m peekabooCoreLaunch: App shell rendered before support dialog proof
+[0;34m[22:00:54][0m === Phase 3: Prove Report Issue dialog ===
+[0;34m[22:00:54][0m Clicking element id=elem_46 role=button identifier= label=Report Issue title=Report Issue value= desc= bounds=none matching 'Report Issue'
+[0;34m[22:00:54][0m Candidate for 'Report Issue': score=10 match=label id=elem_46 role=button identifier= label=Report Issue title=Report Issue bounds=none
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: Report Issue
+📍 Location: (956, 836)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.49s
+[0;34m[22:00:56][0m Redacted text snapshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-00-19-953Z/diagnostics/text/report-issue-text.txt
+[0;34m[22:00:56][0m Redacted text snapshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-00-19-953Z/diagnostics/text/report-issue-text.txt
+📝 Created annotated screenshot with 146 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-00-19-953Z/screenshots/02-report-issue-1778043657.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-00-19-953Z/screenshots/02-report-issue-1778043657_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 172
+⚙️  Interactable elements: 146
+⏱️  Execution time: 0.31s
+
+🔍 Element Summary
+• elem_29 (button) - More information
+• elem_33 (button) - More information
+• elem_37 (button) - More information
+• elem_38 (button) - Cancel
+• elem_39 (button) - Send feedback
+• elem_40 (button) - Close
+• elem_41 (button) - close button
+• elem_42 (button) - full screen button
+• elem_45 (button) - minimize button
+• elem_6 (textField) - Report an issue
+  ...and 162 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: DDCBE72E-5A31-4BF3-BED8-2402DDC654EF
+Agent: Use a tool like view_image to inspect it.
+[0;34m[22:00:57][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-00-19-953Z/screenshots/02-report-issue-1778043657.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-00-19-953Z/screenshots/02-report-issue-1778043657.png
+[0;34m[22:00:58][0m Clicking element id=elem_38 role=button identifier= label=Cancel title=Cancel value= desc= bounds=none matching '^Cancel$'
+[0;34m[22:00:58][0m Candidate for '^Cancel$': score=10 match=label id=elem_38 role=button identifier= label=Cancel title=Cancel bounds=none
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: Cancel
+📍 Location: (1029, 792)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.49s
+[0;32m[PASS][0m peekabooCoreReportIssue: Report Issue dialog opened and was cancelled without submission
+[0;34m[22:00:59][0m === Phase 4: Prove Feedback dialog ===
+[0;34m[22:01:00][0m Clicking element id=elem_9 role=button identifier= label=Give feedback title=Give feedback value= desc=Give feedback bounds=none matching '^Give feedback$|Give feedback'
+[0;34m[22:01:00][0m Candidate for '^Give feedback$|Give feedback': score=10 match=label id=elem_9 role=button identifier= label=Give feedback title=Give feedback bounds=none
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: Give feedback
+📍 Location: (1308, 145)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.50s
+[0;34m[22:01:01][0m Redacted text snapshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-00-19-953Z/diagnostics/text/feedback-text.txt
+[0;34m[22:01:09][0m Coordinate fallback click for Give feedback header button retry at 1308,141
+[0;34m[22:01:11][0m Redacted text snapshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-00-19-953Z/diagnostics/text/feedback-text.txt
+📝 Created annotated screenshot with 158 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-00-19-953Z/screenshots/03-feedback-1778043671.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-00-19-953Z/screenshots/03-feedback-1778043671_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 184
+⚙️  Interactable elements: 158
+⏱️  Execution time: 0.35s
+
+🔍 Element Summary
+• elem_41 (button) - More information
+• elem_45 (button) - More information
+• elem_49 (button) - More information
+• elem_50 (button) - Cancel
+• elem_51 (button) - Send feedback
+• elem_52 (button) - Close
+• elem_53 (button) - close button
+• elem_54 (button) - full screen button
+• elem_57 (button) - minimize button
+• elem_6 (textField) - Give feedback
+  ...and 174 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 7B4FACDC-CDB8-4181-B645-7F22B2B1D918
+Agent: Use a tool like view_image to inspect it.
+[0;34m[22:01:11][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-00-19-953Z/screenshots/03-feedback-1778043671.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-00-19-953Z/screenshots/03-feedback-1778043671.png
+[0;34m[22:01:12][0m Clicking element id=elem_50 role=button identifier= label=Cancel title=Cancel value= desc= bounds=none matching '^Cancel$'
+[0;34m[22:01:12][0m Candidate for '^Cancel$': score=10 match=label id=elem_50 role=button identifier= label=Cancel title=Cancel bounds=none
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: Cancel
+📍 Location: (1009, 792)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.48s
+[0;32m[PASS][0m peekabooCoreFeedback: Feedback dialog opened and was cancelled without submission
+[0;34m[22:01:14][0m Stopping recorder (PID: 89993)...
+[0;34m[22:01:28][0m Video saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-00-19-953Z/video/peekaboo-e2e.mp4 (324K)
+
+[0;34m[22:01:28][0m ==========================================
+[0;34m[22:01:28][0m   Test Results
+[0;34m[22:01:28][0m ==========================================
+  [0;32m✅[0m Phase 1: peekabooCoreFixture: Prepared deterministic config and local provider-validation settings
+  [0;32m✅[0m Phase 2: peekabooCoreLaunch: App shell rendered before support dialog proof
+  [0;32m✅[0m Phase 3: peekabooCoreReportIssue: Report Issue dialog opened and was cancelled without submission
+  [0;32m✅[0m Phase 4: peekabooCoreFeedback: Feedback dialog opened and was cancelled without submission
+
+  [0;32mAll 8 checks passed[0m
+[0;34m[22:01:28][0m ==========================================
+[0;34m[22:01:28][0m E2E report written: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-00-19-953Z/e2e-report/macos_support_dialogs_smoke/e2e-report.json
+[0;34m[22:01:28][0m 
+[0;34m[22:01:28][0m Screenshots: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-00-19-953Z/screenshots
+[0;34m[22:01:28][0m Video: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-00-19-953Z/video/peekaboo-e2e.mp4
+[0;34m[22:01:28][0m Log: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_05-00-19-953Z/peekaboo-e2e.log
+✓ Quit nixmac
+[0;34m[22:01:32][0m Uninstalling Nix...
+ INFO nix-installer v3.19.0
+ INFO nix-installer v3.19.0
+[31m`nix-darwin` installation detected, it must be removed before uninstalling Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.[39m
+[0;32m[PASS][0m Nix uninstalled
