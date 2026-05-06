@@ -1,0 +1,24 @@
+{
+  "scenario": "macos_console_smoke",
+  "passed": 7,
+  "failed": 0,
+  "duration_seconds": 56,
+  "success": true,
+  "phases": [
+    {
+      "phase": 1,
+      "status": "PASS",
+      "message": "peekabooCoreFixture: Prepared deterministic config and local provider-validation settings"
+    },
+    {
+      "phase": 2,
+      "status": "PASS",
+      "message": "peekabooCoreLaunch: App shell rendered before Console proof"
+    },
+    {
+      "phase": 3,
+      "status": "PASS",
+      "message": "peekabooCoreConsole: Console rendered text evidence with screenshot proof"
+    }
+  ]
+}
