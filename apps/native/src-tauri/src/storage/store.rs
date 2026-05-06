@@ -42,7 +42,9 @@ pub const DEFAULT_MAX_ITERATIONS: usize = 25;
 const KEYCHAIN_SERVICE: &str = "com.darkmatter.nixmac";
 
 fn e2e_env_value(name: &str) -> Option<String> {
-    if std::env::var("NIXMAC_E2E_MOCK_SYSTEM").ok().as_deref() != Some("1") {
+    if !cfg!(debug_assertions)
+        || std::env::var("NIXMAC_E2E_MOCK_SYSTEM").ok().as_deref() != Some("1")
+    {
         return None;
     }
     std::env::var(name).ok().filter(|value| !value.trim().is_empty())
@@ -671,16 +673,20 @@ mod tests {
     }
 
     #[test]
-    fn e2e_env_value_requires_mock_system_gate() {
+    fn e2e_env_value_requires_debug_mock_system_gate() {
         std::env::remove_var("NIXMAC_E2E_MOCK_SYSTEM");
         std::env::set_var("NIXMAC_E2E_CONFIG_DIR", "/tmp/nixmac-e2e-config");
         assert_eq!(e2e_env_value("NIXMAC_E2E_CONFIG_DIR"), None);
 
         std::env::set_var("NIXMAC_E2E_MOCK_SYSTEM", "1");
-        assert_eq!(
-            e2e_env_value("NIXMAC_E2E_CONFIG_DIR").as_deref(),
-            Some("/tmp/nixmac-e2e-config")
-        );
+        if cfg!(debug_assertions) {
+            assert_eq!(
+                e2e_env_value("NIXMAC_E2E_CONFIG_DIR").as_deref(),
+                Some("/tmp/nixmac-e2e-config")
+            );
+        } else {
+            assert_eq!(e2e_env_value("NIXMAC_E2E_CONFIG_DIR"), None);
+        }
 
         std::env::remove_var("NIXMAC_E2E_MOCK_SYSTEM");
         std::env::remove_var("NIXMAC_E2E_CONFIG_DIR");
