@@ -1264,10 +1264,16 @@ fn e2e_system_defaults_scan() -> Option<SystemDefaultsScan> {
     }
 
     let raw = std::env::var("NIXMAC_E2E_SYSTEM_DEFAULTS_JSON").ok()?;
-    let defaults: Vec<SystemDefault> = serde_json::from_str(&raw).ok()?;
-    if defaults.is_empty() {
-        return None;
-    }
+    let defaults: Vec<SystemDefault> = match serde_json::from_str(&raw) {
+        Ok(defaults) => defaults,
+        Err(error) => {
+            log::error!(
+                "NIXMAC_E2E_SYSTEM_DEFAULTS_JSON was set but could not be parsed: {}",
+                error
+            );
+            Vec::new()
+        }
+    };
 
     Some(SystemDefaultsScan {
         defaults,

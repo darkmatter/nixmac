@@ -70,12 +70,20 @@ fn e2e_homebrew_state() -> Option<HomebrewState> {
         return None;
     }
 
+    let fixture_is_configured = [
+        "NIXMAC_E2E_HOMEBREW_BREWS",
+        "NIXMAC_E2E_HOMEBREW_CASKS",
+        "NIXMAC_E2E_HOMEBREW_TAPS",
+    ]
+    .iter()
+    .any(|name| std::env::var(name).is_ok());
+    if !fixture_is_configured {
+        return None;
+    }
+
     let brews = e2e_list_env("NIXMAC_E2E_HOMEBREW_BREWS");
     let casks = e2e_list_env("NIXMAC_E2E_HOMEBREW_CASKS");
     let taps = e2e_list_env("NIXMAC_E2E_HOMEBREW_TAPS");
-    if brews.is_empty() && casks.is_empty() && taps.is_empty() {
-        return None;
-    }
 
     let mut state = make_homebrew_state(true, None);
     state.brews = brews;

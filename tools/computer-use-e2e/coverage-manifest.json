@@ -49,7 +49,7 @@
       "id": "settings",
       "label": "Settings dialog and all settings tabs",
       "scenarioKeys": ["settingsGeneral", "settingsAIModels", "settingsAPIKeys", "settingsPreferences"],
-      "coverageNote": "Storage files are mapped here because settings persistence, API-key storage, and debug-only E2E settings bypasses are exercised through the settings/product-proof scenarios.",
+      "coverageNote": "Storage files are mapped here because settings persistence, API-key settings, and debug-only E2E settings bypasses are exercised through the settings/product-proof scenarios. The OS keychain path is intentionally bypassed in E2E mode and still needs release/manual verification.",
       "sourcePrefixes": ["apps/native/src/components/widget/settings-dialog.tsx", "apps/native/src/components/widget/settings/", "apps/native/src/components/widget/directory-picker.tsx", "apps/native/src/components/widget/gitignore-badge.tsx", "apps/native/src/components/widget/model-combobox.tsx", "apps/native/src/hooks/use-darwin-config.ts", "apps/native/src-tauri/src/storage/store.rs", "apps/native/src-tauri/src/storage/credential_store.rs", "apps/native/src-tauri/src/storage/mod.rs"]
     },
     {

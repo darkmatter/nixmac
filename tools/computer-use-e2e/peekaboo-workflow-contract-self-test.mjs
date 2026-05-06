@@ -68,7 +68,8 @@ assert.match(proof, /cp -pR "\$built_app" "\$REMOTE_APP_PATH"[\s\S]*codesign --f
 assert.match(proof, /name: Capture PR focus metadata[\s\S]*append_multiline_env "NIXMAC_E2E_PR_CHANGED_FILES"/, 'proof job must capture PR changed files for Peekaboo report focus');
 assert.match(proof, /secret_scan_passed: \$\{\{ steps\.report-meta\.outputs\.secret_scan_passed \}\}/, 'proof job must expose whether the report secret scan passed');
 assert.match(proof, /state_secret_scan_passed="\$\(jq -r '\(\.peekaboo\.secretScan\.status \/\/ "missing"\) == "passed"' "\$state_file"\)"/, 'report metadata must read the Peekaboo secret scan result from state.json');
-assert.match(proof, /trusted-secret-scan\.json[\s\S]*secretPattern[\s\S]*trusted_secret_scan_passed/, 'workflow must independently re-scan the fetched report before public publishing');
+assert.match(proof, /ServerAliveInterval=15[\s\S]*run-peekaboo-suite --allow-cleanup/, 'long-running Peekaboo SSH run must use keepalives');
+assert.match(proof, /trusted-secret-scan\.json[\s\S]*mktemp[\s\S]*secretPattern[\s\S]*github_pat_[\s\S]*lstatSync[\s\S]*isSymbolicLink\(\)[\s\S]*trusted_secret_scan_passed/, 'workflow must independently re-scan fetched report text artifacts before public publishing without following symlinks');
 assert.match(proof, /NIXMAC_APP_PATH=\$\(printf '%q' "\$REMOTE_APP_PATH"\)[\s\S]*run-peekaboo-suite --allow-cleanup/, 'Peekaboo run must use the freshly built PR app bundle');
 assert.doesNotMatch(proof, /Run Peekaboo suite on MacInCloud[\s\S]*node tools\/computer-use-e2e\/run-local\.mjs run-peekaboo-macincloud/, 'proof job must not run PR-controlled local orchestration while the MacInCloud SSH key is present');
 assert.match(proof, /--allow-cleanup/, 'Peekaboo suite must restore local app support state after the run');
