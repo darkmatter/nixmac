@@ -115,12 +115,22 @@ fail() {
 
 die() {
     local msg="$1"
+    local failure_stamp failure_diag_dir system_path
     if [ -n "$_E2E_PHASE_NAME" ]; then
         _E2E_PHASE_RESULTS+=("FAIL|$_E2E_PHASE_NUM|$msg")
     fi
     fail "$msg"
     if ! echo "$msg" | grep -q '^E2E_INFRA:'; then
-        screenshot "failure-$(date +%s)" 2>/dev/null || true
+        failure_stamp="$(date +%s)"
+        if [ -n "${E2E_FAILURE_SCREENSHOT_APP:-}" ]; then
+            screenshot "failure-$failure_stamp" "$E2E_FAILURE_SCREENSHOT_APP" 2>/dev/null || true
+            failure_diag_dir="${E2E_DIAGNOSTIC_DIR:-${E2E_ARTIFACT_ROOT:-${E2E_SCREENSHOT_DIR:-/tmp}}/${E2E_SCENARIO_NAME:-unknown}/diagnostics}"
+            mkdir -p "$failure_diag_dir/system-screenshots" 2>/dev/null || true
+            system_path="$failure_diag_dir/system-screenshots/failure-$failure_stamp-system.png"
+            peekaboo_run image --mode screen --path "$system_path" >/dev/null 2>&1 || true
+        else
+            screenshot "failure-$failure_stamp" 2>/dev/null || true
+        fi
     fi
     # Let the runner's trap handle cleanup
     exit 1

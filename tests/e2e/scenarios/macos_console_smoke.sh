@@ -33,8 +33,8 @@ scenario_test() {
 
     phase "Launch nixmac app"
     nixmac_launch || die "App failed to launch"
-    nixmac_pp_wait_for_text "Console|Describe changes|No base URL set" 45 \
-        || die "App shell did not expose Console footer"
+    nixmac_pp_wait_for_ready_app_shell 60 \
+        || die "App shell did not expose Console footer with visible screenshot signal"
     nixmac_screenshot "01-console-launch"
     phase_pass "peekabooCoreLaunch: App shell rendered before Console proof"
 

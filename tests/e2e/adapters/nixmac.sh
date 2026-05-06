@@ -10,6 +10,9 @@
 NIXMAC_APP_NAME="nixmac"
 NIXMAC_APP_PATH="${NIXMAC_APP_PATH:-/Applications/nixmac.app}"
 NIXMAC_BUNDLE_ID="com.darkmatter.nixmac"
+E2E_ACTIVE_APP_NAME="$NIXMAC_APP_NAME"
+E2E_ACTIVE_BUNDLE_ID="$NIXMAC_BUNDLE_ID"
+E2E_FAILURE_SCREENSHOT_APP="$NIXMAC_APP_NAME"
 NIX_INSTALLER="/nix/nix-installer"
 NIX_BINARY="/nix/var/nix/profiles/default/bin/nix"
 
@@ -105,7 +108,7 @@ nixmac_launch() {
     dismiss_dialogs 10
     
     # Tauri apps may start without a visible window. Bring to front.
-    peekaboo_run app switch --to "$NIXMAC_APP_NAME" 2>/dev/null || true
+    peekaboo_restore_active_app "$NIXMAC_APP_NAME" 2 10 2>/dev/null || true
     sleep 1
     
     # Verify we can see the window. AX trees can lag app launch on remote
@@ -138,7 +141,7 @@ nixmac_launch() {
         fi
         if ! peekaboo_bridge_is_remote; then
             if peekaboo_recover_bridge; then
-                peekaboo_run app switch --to "$NIXMAC_APP_NAME" 2>/dev/null || true
+                peekaboo_restore_active_app "$NIXMAC_APP_NAME" 2 10 2>/dev/null || true
                 sleep 1
                 retries=$((retries + 1))
                 continue
@@ -146,7 +149,7 @@ nixmac_launch() {
             die "E2E_INFRA: Peekaboo Bridge degraded before nixmac UI was observable"
         fi
         debug "Window not observable yet, retrying... ($retries)"
-        peekaboo_run app switch --to "$NIXMAC_APP_NAME" 2>/dev/null || true
+        peekaboo_restore_active_app "$NIXMAC_APP_NAME" 2 5 2>/dev/null || true
         sleep 3
         retries=$((retries + 1))
     done

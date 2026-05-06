@@ -2,6 +2,8 @@
 # Shared helpers for nixmac Peekaboo Product Proof scenarios.
 
 NIXMAC_PP_ELEMENTS_JSON_FILE="${NIXMAC_PP_ELEMENTS_JSON_FILE:-${TMPDIR:-/tmp}/nixmac-e2e-elements-$$.json}"
+NIXMAC_PP_READY_SHELL_PATTERN="evolve-prompt-input|Configuration change descriptor|Describe changes|Submit configuration change descriptor|evolve-prompt-send|Settings|History|Report Issue|Give feedback|Console|No base URL set"
+NIXMAC_PP_READY_SHELL_MIN_ELEMENTS="${NIXMAC_PP_READY_SHELL_MIN_ELEMENTS:-20}"
 
 nixmac_pp_repo_root() {
     cd "$E2E_ROOT/../.." && pwd
@@ -224,6 +226,142 @@ nixmac_pp_click_window_ratio() {
     peekaboo_run app switch --to "$NIXMAC_APP_NAME" >/dev/null 2>&1 || true
     sleep 0.2
     peekaboo_run click --coords "$coords" >/dev/null 2>&1
+}
+
+nixmac_pp_elements_show_ready_shell() {
+    local json="$1"
+    local min_elements="${2:-$NIXMAC_PP_READY_SHELL_MIN_ELEMENTS}"
+    local pattern="${3:-$NIXMAC_PP_READY_SHELL_PATTERN}"
+
+    echo "$json" | jq -e --argjson min "$min_elements" --arg pattern "$pattern" '
+        (.data.ui_elements | length) >= $min
+        and (
+            .data.ui_elements[]? |
+            [
+                .identifier? // "",
+                .label? // "",
+                .title? // "",
+                .value? // "",
+                .description? // ""
+            ] |
+            join(" ") |
+            test($pattern; "i")
+        )
+    ' >/dev/null 2>&1
+}
+
+nixmac_pp_screenshot_has_visual_signal() {
+    local path="$1"
+    local repo_root
+    repo_root="$(nixmac_pp_repo_root)"
+
+    node --input-type=module - "$repo_root" "$path" <<'NODE'
+import { pathToFileURL } from 'node:url';
+import path from 'node:path';
+
+const [repoRoot, screenshotPath] = process.argv.slice(2);
+const visualProofUrl = pathToFileURL(path.join(repoRoot, 'tools/computer-use-e2e/visual-proof.mjs')).href;
+const artifactUtilsUrl = pathToFileURL(path.join(repoRoot, 'tools/computer-use-e2e/artifact-utils.mjs')).href;
+const { pngSignalStats, probeCropForImage } = await import(visualProofUrl);
+const { pngDimensions } = await import(artifactUtilsUrl);
+
+const probe = {
+  label: 'central app content',
+  x: 8,
+  y: 18,
+  w: 84,
+  h: 70,
+  minYAvg: 6,
+  minYMax: 35,
+  minYRange: 8,
+  maxDarkChromeYAvg: 42,
+};
+
+const imageSize = pngDimensions(screenshotPath);
+if (!imageSize || imageSize.width < 500 || imageSize.height < 350) {
+  console.error(`image dimensions are not ready: ${imageSize ? `${imageSize.width}x${imageSize.height}` : 'unknown'}`);
+  process.exit(1);
+}
+
+const crop = probeCropForImage(imageSize, probe);
+if (!crop) {
+  console.error('central app content probe could not be mapped into image pixels');
+  process.exit(1);
+}
+
+const cropStats = pngSignalStats(screenshotPath, crop);
+if (!cropStats.ok) {
+  console.error(`ffmpeg could not inspect central app content (${cropStats.error})`);
+  process.exit(1);
+}
+
+const yMin = cropStats.stats.YMIN;
+const yMax = cropStats.stats.YMAX;
+const yAvg = cropStats.stats.YAVG;
+const yRange = Number.isFinite(yMin) && Number.isFinite(yMax) ? yMax - yMin : NaN;
+if (!Number.isFinite(yAvg) || yAvg < probe.minYAvg) {
+  console.error(`central app content is too dark (YAVG ${Number.isFinite(yAvg) ? yAvg : 'unknown'} below ${probe.minYAvg})`);
+  process.exit(1);
+}
+if (!Number.isFinite(yMax) || yMax < probe.minYMax) {
+  console.error(`central app content appears blank or occluded (YMAX ${Number.isFinite(yMax) ? yMax : 'unknown'} below ${probe.minYMax})`);
+  process.exit(1);
+}
+if (!Number.isFinite(yRange) || yRange < probe.minYRange) {
+  console.error(`central app content has too little visual contrast (Y range ${Number.isFinite(yRange) ? yRange : 'unknown'} below ${probe.minYRange})`);
+  process.exit(1);
+}
+if (Number.isFinite(yAvg) && yAvg > probe.maxDarkChromeYAvg) {
+  console.error(`base app chrome is too light for nixmac dark capture proof (YAVG ${yAvg} above ${probe.maxDarkChromeYAvg})`);
+  process.exit(1);
+}
+
+console.log(`central app content visual signal ready: YAVG ${yAvg}, Y range ${yMin}-${yMax}`);
+NODE
+}
+
+nixmac_pp_capture_ready_visual_signal() {
+    local label="${1:-ready-shell}"
+    local dir path result
+
+    dir="$E2E_DIAGNOSTIC_DIR/visual-readiness"
+    mkdir -p "$dir"
+    path="$dir/${label//[^a-zA-Z0-9._-]/_}.png"
+    peekaboo_run see --app "$NIXMAC_APP_NAME" --path "$path" >/dev/null 2>&1 \
+        || peekaboo_run image --mode screen --path "$path" >/dev/null 2>&1 \
+        || return 1
+    [ -s "$path" ] || return 1
+    result=$(nixmac_pp_screenshot_has_visual_signal "$path" 2>&1) || {
+        debug "Ready-shell visual signal not established for $path: $result"
+        return 1
+    }
+    debug "$result"
+}
+
+nixmac_pp_wait_for_ready_app_shell() {
+    local timeout="${1:-45}"
+    local deadline json count
+
+    deadline=$(($(date +%s) + timeout))
+    while [ "$(date +%s)" -lt "$deadline" ]; do
+        peekaboo_restore_active_app "$NIXMAC_APP_NAME" "$NIXMAC_PP_READY_SHELL_MIN_ELEMENTS" 6 >/dev/null 2>&1 || true
+        dismiss_dialogs 2
+        nixmac_pp_deny_keychain_prompt_if_visible >/dev/null 2>&1 || true
+        json=$(E2E_PEEKABOO_SUPPRESS_EMPTY_DIAG=1 peek_elements "$NIXMAC_APP_NAME") || true
+        count=$(peekaboo_element_count "$json")
+        if nixmac_pp_elements_show_ready_shell "$json" "$NIXMAC_PP_READY_SHELL_MIN_ELEMENTS" "$NIXMAC_PP_READY_SHELL_PATTERN"; then
+            if nixmac_pp_capture_ready_visual_signal "ready-shell"; then
+                debug "nixmac Product Proof shell ready ($count element(s))"
+                return 0
+            fi
+        else
+            debug "nixmac Product Proof shell not ready yet ($count element(s))"
+        fi
+        sleep 2
+    done
+
+    peekaboo_capture_app_diagnostics "$NIXMAC_APP_NAME" "ready-shell-timeout"
+    return 1
 }
 
 nixmac_pp_cgevent_click_window_ratio() {

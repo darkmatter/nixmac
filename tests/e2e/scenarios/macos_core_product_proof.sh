@@ -64,9 +64,9 @@ scenario_test() {
 
     phase "Launch and prove app shell"
     nixmac_launch || die "App failed to launch"
-    if ! nixmac_pp_wait_for_text "nixmac|Welcome to nixmac|Describe changes|Settings|History|feedback" 45; then
+    if ! nixmac_pp_wait_for_ready_app_shell 60; then
         nixmac_screenshot "core-launch-missing"
-        die "App shell did not expose expected controls"
+        die "App shell did not expose expected interactive controls with visible screenshot signal"
     fi
     nixmac_screenshot "01-core-launch"
     phase_pass "peekabooCoreLaunch: App shell, header controls, and initial prompt surface rendered"

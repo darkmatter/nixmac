@@ -8,9 +8,13 @@ const thisFile = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(thisFile), '../..');
 const workflowPath = path.join(repoRoot, '.github/workflows/peekaboo-e2e.yml');
 const productProofPath = path.join(repoRoot, 'tests/e2e/lib/nixmac_product_proof.sh');
+const peekabooShellPath = path.join(repoRoot, 'tests/e2e/lib/peekaboo.sh');
+const nixmacAdapterPath = path.join(repoRoot, 'tests/e2e/adapters/nixmac.sh');
 const peekabooRunnerPath = path.join(repoRoot, 'tools/computer-use-e2e/peekaboo-runner.mjs');
 const workflow = readFileSync(workflowPath, 'utf8');
 const productProof = readFileSync(productProofPath, 'utf8');
+const peekabooShell = readFileSync(peekabooShellPath, 'utf8');
+const nixmacAdapter = readFileSync(nixmacAdapterPath, 'utf8');
 const peekabooRunner = readFileSync(peekabooRunnerPath, 'utf8');
 
 function section(startPattern, endPattern = null) {
@@ -123,6 +127,17 @@ assert.match(launchEnv, /nixmac_pp_set_launch_env NIXMAC_SKIP_PERMISSIONS "\$NIX
 assert.match(cleanup, /nixmac_pp_unset_launch_env NIXMAC_SKIP_PERMISSIONS/, 'Product Proof cleanup must remove permission skipping from launchctl');
 assert.match(peekabooRunner, /for key in [^\n]*NIXMAC_SKIP_PERMISSIONS/, 'runner preflight must clear stale permission-skip launchctl state');
 assert.match(peekabooRunner, /launchctl asuser "\$uid" launchctl unsetenv "\$key"/, 'runner preflight must clear stale launchctl state in the GUI user domain');
+assert.match(peekabooShell, /peekaboo_restore_active_app\(\)/, 'Peekaboo shell library must expose a generic active-app restoration helper');
+assert.doesNotMatch(peekabooShell, /NIXMAC_(?:APP_NAME|BUNDLE_ID)/, 'Generic Peekaboo shell library must not depend on nixmac-specific app names or bundle IDs');
+assert.match(peekabooShell, /peekaboo_recover_bridge\(\)[\s\S]*peekaboo_restore_active_app/, 'Peekaboo bridge recovery must restore the configured active app after remote bridge recovery');
+assert.match(nixmacAdapter, /E2E_ACTIVE_APP_NAME="\$NIXMAC_APP_NAME"/, 'nixmac adapter must configure the generic active app target');
+assert.match(nixmacAdapter, /E2E_ACTIVE_BUNDLE_ID="\$NIXMAC_BUNDLE_ID"/, 'nixmac adapter must configure the generic active bundle target');
+assert.match(nixmacAdapter, /E2E_FAILURE_SCREENSHOT_APP="\$NIXMAC_APP_NAME"/, 'nixmac adapter must configure app-scoped failure screenshots');
+assert.match(productProof, /nixmac_pp_wait_for_ready_app_shell\(\)/, 'Product Proof must provide a shared ready-shell gate');
+assert.match(productProof, /nixmac_pp_elements_show_ready_shell\(\)[\s\S]*NIXMAC_PP_READY_SHELL_MIN_ELEMENTS[\s\S]*NIXMAC_PP_READY_SHELL_PATTERN/, 'ready-shell gate must require both element breadth and product markers');
+assert.match(productProof, /nixmac_pp_screenshot_has_visual_signal\(\)[\s\S]*visual-proof\.mjs[\s\S]*pngSignalStats[\s\S]*probeCropForImage/, 'ready-shell gate must use the same screenshot signal helpers as the report scanner');
+assert.match(productProof, /maxDarkChromeYAvg: 42/, 'ready-shell visual gate must enforce the same nixmac dark-capture upper bound as the report scanner');
+assert.match(productProof, /nixmac_pp_wait_for_ready_app_shell\(\)[\s\S]*nixmac_pp_capture_ready_visual_signal/, 'ready-shell gate must require screenshot visual signal before launch passes');
 
 const setKeys = [...launchEnv.matchAll(/nixmac_pp_set_launch_env ([A-Z0-9_]+)/g)].map((match) => match[1]);
 const unsetKeys = new Set([...cleanup.matchAll(/nixmac_pp_unset_launch_env ([A-Z0-9_]+)/g)].map((match) => match[1]));

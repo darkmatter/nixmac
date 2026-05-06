@@ -26,6 +26,29 @@ peekaboo_bridge_is_remote() {
     peekaboo_bridge_status_text | grep -qE "Selected: remote (gui|onDemand)"
 }
 
+peekaboo_restore_active_app() {
+    local app="${1:-${E2E_ACTIVE_APP_NAME:-}}"
+    local min_elements="${2:-2}"
+    local timeout="${3:-10}"
+    local deadline json count
+
+    [ -n "$app" ] || return 0
+    deadline=$(($(date +%s) + timeout))
+    while [ "$(date +%s)" -lt "$deadline" ]; do
+        peekaboo_run app switch --to "$app" >/dev/null 2>&1 || true
+        json=$(peekaboo_run see --app "$app" --json 2>/dev/null || peekaboo_empty_elements_json)
+        count=$(peekaboo_element_count "$json")
+        if [ "$count" -ge "$min_elements" ]; then
+            debug "Restored active app $app ($count element(s))"
+            return 0
+        fi
+        sleep 1
+    done
+
+    warn "Timed out restoring active app $app"
+    return 1
+}
+
 peekaboo_recover_bridge() {
     [ "${E2E_PEEKABOO_RECOVER_BRIDGE:-1}" = "1" ] || return 1
 
@@ -38,6 +61,7 @@ peekaboo_recover_bridge() {
     while [ "$retries" -lt 8 ]; do
         sleep 2
         if peekaboo_bridge_is_remote; then
+            peekaboo_restore_active_app "" 2 10 >/dev/null 2>&1 || true
             pass "Peekaboo Bridge recovered"
             return 0
         fi
@@ -150,7 +174,7 @@ peekaboo_capture_app_diagnostics() {
 
 peekaboo_app_pid() {
     local app="$1"
-    local bundle="${NIXMAC_BUNDLE_ID:-}"
+    local bundle="${E2E_ACTIVE_BUNDLE_ID:-}"
     local json pid
     json=$(peekaboo_run app list --json 2>/dev/null || echo '{}')
     pid=$(echo "$json" | jq -r --arg app "$app" --arg bundle "$bundle" '
@@ -178,7 +202,7 @@ peek_elements() {
         args+=("--path" "$E2E_PEEKABOO_CAPTURE_DIR/see-$(date +%s)-$$-$RANDOM.png")
     fi
 
-    local json count pid pid_json pid_count
+    local json count recovered pid pid_json pid_count
     if [ "${#args[@]}" -gt 0 ]; then
         json=$(peekaboo_run see "${args[@]}" --json 2>/dev/null || peekaboo_empty_elements_json)
     else
@@ -188,10 +212,23 @@ peek_elements() {
     if [ -n "$app" ]; then
         count=$(peekaboo_element_count "$json")
         if [ "$count" -le 1 ]; then
-            if ! peekaboo_bridge_is_remote && ! peekaboo_recover_bridge >/dev/null; then
-                echo "[diagnostic] E2E_INFRA: Peekaboo Bridge is not selected remote while reading $app" >> "$E2E_LOG_FILE"
-                echo "$json"
-                return 0
+            recovered=0
+            if ! peekaboo_bridge_is_remote; then
+                if ! peekaboo_recover_bridge >/dev/null; then
+                    echo "[diagnostic] E2E_INFRA: Peekaboo Bridge is not selected remote while reading $app" >> "$E2E_LOG_FILE"
+                    echo "$json"
+                    return 0
+                fi
+                recovered=1
+            fi
+            if [ "$recovered" -eq 1 ]; then
+                peekaboo_restore_active_app "$app" 2 10 >/dev/null 2>&1 || true
+                if [ "${#args[@]}" -gt 0 ]; then
+                    json=$(peekaboo_run see "${args[@]}" --json 2>/dev/null || peekaboo_empty_elements_json)
+                else
+                    json=$(peekaboo_run see --json 2>/dev/null || peekaboo_empty_elements_json)
+                fi
+                count=$(peekaboo_element_count "$json")
             fi
             if [ "${E2E_PEEKABOO_SUPPRESS_EMPTY_DIAG:-0}" != "1" ]; then
                 peekaboo_capture_app_diagnostics "$app" "empty-app-scope"

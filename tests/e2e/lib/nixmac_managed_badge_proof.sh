@@ -244,8 +244,8 @@ scenario_managed_badge_save_rollback() {
 
     phase "Launch nixmac for $badge_label proof"
     nixmac_launch || die "App failed to launch"
-    scenario_wait_for_text "Describe changes|No base URL set" 45 \
-        || die "App shell did not expose prompt for $badge_label proof"
+    nixmac_pp_wait_for_ready_app_shell 60 \
+        || die "App shell did not expose prompt for $badge_label proof with visible screenshot signal"
     nixmac_screenshot "01-$prefix-launched"
     phase_pass "peekabooProviderLaunch: App launched for $badge_label proof"
 
