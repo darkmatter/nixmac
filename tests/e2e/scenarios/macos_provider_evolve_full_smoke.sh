@@ -320,18 +320,7 @@ scenario_find_element() {
     deadline=$(($(date +%s) + timeout))
     while [ "$(date +%s)" -lt "$deadline" ]; do
         json=$(peek_elements "$NIXMAC_APP_NAME")
-        element=$(echo "$json" | jq -r --arg pattern "$pattern" --arg role "$role" '
-            .data.ui_elements[]? |
-            select($role == "" or .role == $role) |
-            select([
-                .identifier? // "",
-                .label? // "",
-                .title? // "",
-                .value? // "",
-                .description? // ""
-            ] | join(" ") | test($pattern; "i")) |
-            .id
-        ' 2>/dev/null | head -1)
+        element=$(peek_ranked_element_id "$json" "$pattern" "$role")
 
         if [ -n "$element" ]; then
             printf '%s' "$json" > "$NIXMAC_E2E_ELEMENTS_JSON_FILE"
@@ -354,20 +343,56 @@ scenario_click_element() {
     element=$(scenario_find_element "$pattern" "$role" "$timeout") || return 1
     json=$(cat "$NIXMAC_E2E_ELEMENTS_JSON_FILE" 2>/dev/null || true)
     [ -n "$json" ] || return 1
-    log "Clicking element $element matching '$pattern'"
+    log "Clicking element $(peek_element_summary "$json" "$element") matching '$pattern'"
+    peek_log_ranked_candidates "$json" "$pattern" "$role" 3
     peekaboo_run app switch --to "$NIXMAC_APP_NAME" >/dev/null 2>&1 || true
     sleep 0.2
     peek_click "$element" "$json"
 }
 
+scenario_click_element_center() {
+    local pattern="$1"
+    local role="${2:-}"
+    local timeout="${3:-30}"
+    local label="${4:-$pattern}"
+    local element json
+
+    element=$(scenario_find_element "$pattern" "$role" "$timeout") || return 1
+    json=$(cat "$NIXMAC_E2E_ELEMENTS_JSON_FILE" 2>/dev/null || true)
+    [ -n "$json" ] || return 1
+    peek_click_element_center "$element" "$json" "$label" "$NIXMAC_APP_NAME"
+}
+
+scenario_cgevent_click_element_center() {
+    local pattern="$1"
+    local role="${2:-}"
+    local timeout="${3:-30}"
+    local label="${4:-$pattern}"
+    local element json
+
+    element=$(scenario_find_element "$pattern" "$role" "$timeout") || return 1
+    json=$(cat "$NIXMAC_E2E_ELEMENTS_JSON_FILE" 2>/dev/null || true)
+    [ -n "$json" ] || return 1
+    peek_cgevent_click_element_center "$element" "$json" "$label" "$NIXMAC_APP_NAME"
+}
+
 scenario_click_query() {
     local query="$1"
     local timeout_ms="${2:-10000}"
+    local output status
 
     log "Clicking query '$query'"
     peekaboo_run app switch --to "$NIXMAC_APP_NAME" >/dev/null 2>&1 || true
     sleep 0.2
-    peekaboo_run click "$query" --app "$NIXMAC_APP_NAME" --wait-for "$timeout_ms" >/dev/null 2>&1
+    if output=$(peekaboo_run click "$query" --app "$NIXMAC_APP_NAME" --wait-for "$timeout_ms" 2>&1); then
+        status=0
+    else
+        status=$?
+    fi
+    if [ -n "$output" ]; then
+        log "Click query '$query' output: $(printf '%s' "$output" | tr '\n' ' ' | cut -c1-240)"
+    fi
+    return "$status"
 }
 
 scenario_wait_for_text() {
@@ -515,12 +540,17 @@ scenario_wait_for_provider_repo_restore() {
 
 scenario_confirm_history_restore() {
     local attempt
+    local confirm_pattern="history-confirm-restore-button|^Confirm Restore$"
 
     for attempt in 1 2 3; do
-        scenario_click_query "Confirm Restore" 10000 || true
-        scenario_click_element "Confirm Restore|confirm Restore" "button" 10 || true
+        scenario_click_element "$confirm_pattern" "button" 10 || true
+        scenario_click_element_center "$confirm_pattern" "button" 3 "history confirm restore" || true
+        scenario_cgevent_click_element_center "$confirm_pattern" "button" 3 "history confirm restore" || true
+        scenario_click_query "Confirm Restore" 5000 || true
         nixmac_pp_click_window_ratio "history confirm restore" "0.735" "0.268" || true
         nixmac_pp_cgevent_click_window_ratio "history confirm restore" "0.735" "0.268" || true
+        peek_press "tab" >/dev/null 2>&1 || true
+        peek_press "return" >/dev/null 2>&1 || true
 
         if ! scenario_wait_for_text "Confirm Restore" 3; then
             return 0
@@ -539,7 +569,7 @@ scenario_restore_baseline_from_history() {
     fi
     nixmac_screenshot "06-history-before-restore"
 
-    scenario_click_element "^Restore$|Restore" "button" 30 || return 1
+    scenario_click_element "^Restore$" "button" 30 || return 1
     if ! scenario_wait_for_text "Confirm Restore|deactivate|Cancel" 30; then
         return 1
     fi

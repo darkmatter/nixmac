@@ -248,6 +248,168 @@ peek_find_element() {
     " 2>/dev/null | head -1
 }
 
+peek_ranked_elements() {
+    local json="$1"
+    local pattern="$2"
+    local role="${3:-}"
+    local limit="${4:-1}"
+
+    echo "$json" | jq -c --arg pattern "$pattern" --arg role "$role" --argjson limit "$limit" '
+        def text($value): ($value // "" | tostring);
+        def role_ok:
+            ($role == "") or (text(.role) | test($role; "i"));
+        def bounds:
+            (.bounds? // .frame? // .rect? // {});
+        def area:
+            bounds as $bounds |
+            (($bounds.width // 999999) * ($bounds.height // 999999));
+        def clip($value):
+            (text($value) | gsub("[\r\n\t]+"; " ") | if length > 96 then .[0:93] + "..." else . end);
+        def field_hits:
+            [
+                if (text(.identifier) | test($pattern; "i")) then { field: "identifier", score: 0, value: clip(.identifier) } else empty end,
+                if (text(.label) | test($pattern; "i")) then { field: "label", score: 10, value: clip(.label) } else empty end,
+                if (text(.title) | test($pattern; "i")) then { field: "title", score: 12, value: clip(.title) } else empty end,
+                if (text(.value) | test($pattern; "i")) then { field: "value", score: 30, value: clip(.value) } else empty end,
+                if (text(.description) | test($pattern; "i")) then { field: "description", score: 40, value: clip(.description) } else empty end
+            ];
+
+        [
+            .data.ui_elements[]?
+            | select(role_ok)
+            | field_hits as $hits
+            | select(($hits | length) > 0)
+            | ($hits | sort_by(.score) | .[0]) as $best
+            | . + {
+                _score: $best.score,
+                _match_field: $best.field,
+                _match_value: $best.value,
+                _area: area
+            }
+        ]
+        | sort_by(._score, ._area, (.id // ""))
+        | .[:$limit][]
+    ' 2>/dev/null
+}
+
+peek_ranked_element_id() {
+    local json="$1"
+    local pattern="$2"
+    local role="${3:-}"
+
+    peek_ranked_elements "$json" "$pattern" "$role" 1 \
+        | jq -r '.id // empty' 2>/dev/null \
+        | head -1
+}
+
+peek_element_summary() {
+    local json="$1"
+    local element_id="$2"
+
+    echo "$json" | jq -r --arg id "$element_id" '
+        def text($value): ($value // "" | tostring);
+        def clip($value):
+            (text($value) | gsub("[\r\n\t]+"; " ") | if length > 80 then .[0:77] + "..." else . end);
+        .data.ui_elements[]?
+        | select(.id == $id)
+        | (.bounds? // .frame? // .rect? // {}) as $bounds
+        | [
+            "id=" + clip(.id),
+            "role=" + clip(.role),
+            "identifier=" + clip(.identifier),
+            "label=" + clip(.label),
+            "title=" + clip(.title),
+            "value=" + clip(.value),
+            "desc=" + clip(.description),
+            "bounds=" + (if $bounds.x != null and $bounds.y != null and $bounds.width != null and $bounds.height != null then
+                "x=\($bounds.x),y=\($bounds.y),w=\($bounds.width),h=\($bounds.height)"
+            else
+                "none"
+            end)
+        ]
+        | join(" ")
+    ' 2>/dev/null | head -1
+}
+
+peek_log_ranked_candidates() {
+    local json="$1"
+    local pattern="$2"
+    local role="${3:-}"
+    local limit="${4:-5}"
+    local candidate
+
+    while IFS= read -r candidate; do
+        [ -n "$candidate" ] || continue
+        log "Candidate for '$pattern': $(echo "$candidate" | jq -r '
+            def text($value): ($value // "" | tostring);
+            def clip($value):
+                (text($value) | gsub("[\r\n\t]+"; " ") | if length > 80 then .[0:77] + "..." else . end);
+            (.bounds? // .frame? // .rect? // {}) as $bounds
+            | [
+                "score=" + text(._score),
+                "match=" + text(._match_field),
+                "id=" + clip(.id),
+                "role=" + clip(.role),
+                "identifier=" + clip(.identifier),
+                "label=" + clip(.label),
+                "title=" + clip(.title),
+                "bounds=" + (if $bounds.x != null and $bounds.y != null and $bounds.width != null and $bounds.height != null then
+                    "x=\($bounds.x),y=\($bounds.y),w=\($bounds.width),h=\($bounds.height)"
+                else
+                    "none"
+                end)
+            ]
+            | join(" ")
+        ' 2>/dev/null)"
+    done < <(peek_ranked_elements "$json" "$pattern" "$role" "$limit")
+}
+
+peek_element_center_coords() {
+    local json="$1"
+    local element_id="$2"
+
+    echo "$json" | jq -r --arg id "$element_id" '
+        .data.ui_elements[]?
+        | select(.id == $id)
+        | (.bounds? // .frame? // .rect? // empty)
+        | select(.x != null and .y != null and .width != null and .height != null)
+        | "\((.x + (.width / 2)) | floor),\((.y + (.height / 2)) | floor)"
+    ' 2>/dev/null | head -1
+}
+
+peek_click_element_center() {
+    local element_id="$1"
+    local json="$2"
+    local label="${3:-element center}"
+    local app="${4:-}"
+    local coords
+
+    coords=$(peek_element_center_coords "$json" "$element_id")
+    [ -n "$coords" ] || return 1
+    log "Coordinate fallback click for $label on $element_id at $coords"
+    [ -n "$app" ] && peekaboo_run app switch --to "$app" >/dev/null 2>&1 || true
+    sleep 0.2
+    peekaboo_run click --coords "$coords" >/dev/null 2>&1
+}
+
+peek_cgevent_click_element_center() {
+    local element_id="$1"
+    local json="$2"
+    local label="${3:-element center}"
+    local app="${4:-}"
+    local coords x y
+
+    command -v /usr/bin/swift >/dev/null 2>&1 || return 1
+    coords=$(peek_element_center_coords "$json" "$element_id")
+    [ -n "$coords" ] || return 1
+    x="${coords%,*}"
+    y="${coords#*,}"
+    log "CGEvent fallback click for $label on $element_id at $coords"
+    [ -n "$app" ] && peekaboo_run app switch --to "$app" >/dev/null 2>&1 || true
+    sleep 0.2
+    /usr/bin/swift -e "import CoreGraphics; import Foundation; let p = CGPoint(x: Double($x), y: Double($y)); CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: p, mouseButton: .left)?.post(tap: .cghidEventTap); usleep(100000); CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: p, mouseButton: .left)?.post(tap: .cghidEventTap); usleep(120000); CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: p, mouseButton: .left)?.post(tap: .cghidEventTap); usleep(100000)" >/dev/null 2>&1
+}
+
 # Click an element using its ID and a snapshot
 peek_click() {
     local element_id="$1"

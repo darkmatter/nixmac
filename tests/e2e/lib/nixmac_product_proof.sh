@@ -68,18 +68,7 @@ nixmac_pp_find_element() {
     deadline=$(($(date +%s) + timeout))
     while [ "$(date +%s)" -lt "$deadline" ]; do
         json=$(peek_elements "$NIXMAC_APP_NAME")
-        element=$(echo "$json" | jq -r --arg pattern "$pattern" --arg role "$role" '
-            .data.ui_elements[]? |
-            select($role == "" or .role == $role) |
-            select([
-                .identifier? // "",
-                .label? // "",
-                .title? // "",
-                .value? // "",
-                .description? // ""
-            ] | join(" ") | test($pattern; "i")) |
-            .id
-        ' 2>/dev/null | head -1)
+        element=$(peek_ranked_element_id "$json" "$pattern" "$role")
 
         if [ -n "$element" ]; then
             printf '%s' "$json" > "$NIXMAC_PP_ELEMENTS_JSON_FILE"
@@ -101,10 +90,37 @@ nixmac_pp_click_element() {
     element=$(nixmac_pp_find_element "$pattern" "$role" "$timeout") || return 1
     json=$(cat "$NIXMAC_PP_ELEMENTS_JSON_FILE" 2>/dev/null || true)
     [ -n "$json" ] || return 1
-    log "Clicking element $element matching '$pattern'"
+    log "Clicking element $(peek_element_summary "$json" "$element") matching '$pattern'"
+    peek_log_ranked_candidates "$json" "$pattern" "$role" 3
     peekaboo_run app switch --to "$NIXMAC_APP_NAME" >/dev/null 2>&1 || true
     sleep 0.2
     peek_click "$element" "$json"
+}
+
+nixmac_pp_click_element_center() {
+    local pattern="$1"
+    local role="${2:-}"
+    local timeout="${3:-30}"
+    local label="${4:-$pattern}"
+    local element json
+
+    element=$(nixmac_pp_find_element "$pattern" "$role" "$timeout") || return 1
+    json=$(cat "$NIXMAC_PP_ELEMENTS_JSON_FILE" 2>/dev/null || true)
+    [ -n "$json" ] || return 1
+    peek_click_element_center "$element" "$json" "$label" "$NIXMAC_APP_NAME"
+}
+
+nixmac_pp_cgevent_click_element_center() {
+    local pattern="$1"
+    local role="${2:-}"
+    local timeout="${3:-30}"
+    local label="${4:-$pattern}"
+    local element json
+
+    element=$(nixmac_pp_find_element "$pattern" "$role" "$timeout") || return 1
+    json=$(cat "$NIXMAC_PP_ELEMENTS_JSON_FILE" 2>/dev/null || true)
+    [ -n "$json" ] || return 1
+    peek_cgevent_click_element_center "$element" "$json" "$label" "$NIXMAC_APP_NAME"
 }
 
 nixmac_pp_click_window_ratio() {
