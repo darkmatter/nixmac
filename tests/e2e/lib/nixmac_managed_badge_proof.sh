@@ -131,16 +131,22 @@ scenario_open_managed_badge_popover() {
     local prefix="$1"
     local badge_label="$2"
     local visible_badge_pattern="$3"
-    local ratio_x="0.760"
-    local ratio_y="0.560"
+    local ratio_x="0.185"
+    local ratio_y="0.635"
     local click_query_text="untracked Homebrew"
+    local button_label="1 untracked Homebrew item"
 
     if [ "$prefix" = "customization" ]; then
-        ratio_x="0.710"
+        ratio_x="0.775"
+        ratio_y="0.595"
         click_query_text="untracked customization"
+        button_label="1 untracked customization"
     fi
 
     scenario_wait_for_managed_popover "$prefix" 1 && return 0
+
+    nixmac_pp_system_events_click_button "$button_label" >/dev/null 2>&1 || true
+    scenario_wait_for_managed_popover "$prefix" 3 && return 0
 
     scenario_click_element "$visible_badge_pattern" "button" 5 >/dev/null 2>&1 || true
     scenario_wait_for_managed_popover "$prefix" 3 && return 0

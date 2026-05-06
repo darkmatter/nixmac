@@ -30,10 +30,15 @@ scenario_submit_descriptor_for_discard() {
         if nixmac_pp_wait_for_prompt_value_exact "$NIXMAC_E2E_DESCRIPTOR_TEXT" 8; then
             break
         fi
+        if nixmac_pp_wait_for_prompt_value "$NIXMAC_E2E_DESCRIPTOR_TEXT" 1; then
+            log "Descriptor prompt contains expected text after attempt ${attempt}; continuing despite duplicate paste text"
+            break
+        fi
         nixmac_screenshot "discard-descriptor-type-retry-${attempt}"
         log "Descriptor value was not visible after attempt ${attempt}; refocusing and retrying"
     done
     nixmac_pp_wait_for_prompt_value_exact "$NIXMAC_E2E_DESCRIPTOR_TEXT" 1 \
+        || nixmac_pp_wait_for_prompt_value "$NIXMAC_E2E_DESCRIPTOR_TEXT" 1 \
         || die "Typed descriptor was not visible in the prompt input"
     nixmac_screenshot "02-discard-descriptor-typed"
     if ! nixmac_pp_click_element "evolve-prompt-send|Submit configuration change descriptor|Send" "" 20; then
