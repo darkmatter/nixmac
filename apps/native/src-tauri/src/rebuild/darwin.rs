@@ -12,6 +12,10 @@ use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter};
 
+fn e2e_mock_system_enabled() -> bool {
+    cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_MOCK_SYSTEM")
+}
+
 /// Get the log directory path, creating it if needed.
 fn get_log_dir() -> anyhow::Result<PathBuf> {
     let home = std::env::var("HOME").map_err(|_| anyhow::anyhow!("HOME not set"))?;
@@ -42,6 +46,18 @@ pub fn dry_run_build_check(
     host_attr: &str,
     show_trace: bool,
 ) -> Result<(bool, String, String), anyhow::Error> {
+    if e2e_mock_system_enabled() {
+        info!(
+            "[darwin] NIXMAC_E2E_MOCK_SYSTEM enabled; dry-run build check bypassed for config_dir={}, host_attr={}",
+            config_dir, host_attr
+        );
+        return Ok((
+            true,
+            "NIXMAC_E2E_MOCK_SYSTEM dry-run build check passed\n".to_string(),
+            String::new(),
+        ));
+    }
+
     // Ensure untracked files are visible to flake evaluation.
     // Hard-fail: if this fails, untracked .nix files won't be seen and the
     // build result would be misleading.
@@ -89,6 +105,54 @@ pub fn apply_stream(
         "[darwin] apply_stream: config_dir={}, host_attr={}",
         config_dir, host_attr
     );
+
+    if e2e_mock_system_enabled() {
+        let app_handle = app.clone();
+        let config_dir_owned = config_dir.to_owned();
+        let host_attr_owned = host_attr.to_owned();
+        std::thread::spawn(move || {
+            let log_path = create_log_file()
+                .map(|(mut file, path)| {
+                    let _ = writeln!(
+                        file,
+                        "NIXMAC_E2E_MOCK_SYSTEM mocked darwin-rebuild for config_dir={}, host_attr={}",
+                        config_dir_owned, host_attr_owned
+                    );
+                    let _ = file.flush();
+                    path
+                })
+                .ok();
+
+            let emit_line = |line: &str| {
+                let _ = app_handle.emit(
+                    "darwin:apply:data",
+                    serde_json::json!({"chunk": format!("{}\n", line)}),
+                );
+                let _ = app_handle.emit("darwin:apply:summary", serde_json::json!({"text": line}));
+            };
+
+            emit_line("NIXMAC_E2E_MOCK_SYSTEM: mocked darwin-rebuild build passed.");
+            emit_line("NIXMAC_E2E_MOCK_SYSTEM: mocked activation passed.");
+            let _ = app_handle.emit(
+                "darwin:apply:summary",
+                serde_json::json!({
+                    "text": "NIXMAC_E2E_MOCK_SYSTEM: mocked system rebuild complete.",
+                    "complete": true,
+                    "success": true,
+                }),
+            );
+            let _ = app_handle.emit(
+                "darwin:apply:end",
+                serde_json::json!({
+                    "ok": true,
+                    "code": 0,
+                    "log_file": log_path.map(|path| path.to_string_lossy().to_string()),
+                    "e2e_mock_system": true,
+                }),
+            );
+        });
+        return Ok(());
+    }
 
     let config_dir_owned = config_dir.to_owned();
     let host_attr_owned = host_attr.to_owned();

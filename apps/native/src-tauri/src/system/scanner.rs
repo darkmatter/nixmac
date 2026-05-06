@@ -1254,6 +1254,56 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
     ),
 ];
 
+fn e2e_mock_system_enabled() -> bool {
+    cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_MOCK_SYSTEM")
+}
+
+fn e2e_default_system_defaults_fixture() -> SystemDefaultsScan {
+    SystemDefaultsScan {
+        defaults: vec![SystemDefault {
+            nix_key: "system.defaults.finder.ShowPathbar".to_string(),
+            label: "Show Finder path bar".to_string(),
+            category: "Finder".to_string(),
+            current_value: "true".to_string(),
+            default_value: "false".to_string(),
+        }],
+        total_scanned: KEY_DEFS.iter().map(|(_, defs)| defs.len()).sum(),
+    }
+}
+
+fn e2e_system_defaults_scan() -> Option<SystemDefaultsScan> {
+    if !e2e_mock_system_enabled() {
+        return None;
+    }
+
+    if crate::e2e_runtime::enabled("NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE") {
+        log::info!("Using deterministic NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE scan");
+        return Some(e2e_default_system_defaults_fixture());
+    }
+
+    let raw = crate::e2e_runtime::value("NIXMAC_E2E_SYSTEM_DEFAULTS_JSON")?;
+    log::info!(
+        "Using NIXMAC_E2E_SYSTEM_DEFAULTS_JSON fixture, len={}, prefix={:?}",
+        raw.len(),
+        raw.chars().take(400).collect::<String>()
+    );
+    let defaults: Vec<SystemDefault> = match serde_json::from_str(&raw) {
+        Ok(defaults) => defaults,
+        Err(error) => {
+            log::error!(
+                "NIXMAC_E2E_SYSTEM_DEFAULTS_JSON was set but could not be parsed: {}",
+                error
+            );
+            Vec::new()
+        }
+    };
+
+    Some(SystemDefaultsScan {
+        defaults,
+        total_scanned: KEY_DEFS.iter().map(|(_, defs)| defs.len()).sum(),
+    })
+}
+
 // =============================================================================
 // Domain reading
 // =============================================================================
@@ -1368,6 +1418,10 @@ fn normalize_bool(val: &str) -> &'static str {
 /// Scan all supported macOS defaults domains and return settings that differ
 /// from the factory defaults.
 pub fn scan_system_defaults() -> SystemDefaultsScan {
+    if let Some(scan) = e2e_system_defaults_scan() {
+        return scan;
+    }
+
     let mut defaults = Vec::new();
     let mut total_scanned: usize = 0;
 
@@ -1781,6 +1835,27 @@ mod tests {
         assert_eq!(normalize_bool("0"), "false");
         assert_eq!(normalize_bool("no"), "false");
         assert_eq!(normalize_bool(""), "false");
+    }
+
+    #[test]
+    fn test_e2e_system_defaults_fixture_returns_customization() {
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore = crate::test_support::EnvVarRestore::capture(&[
+            "NIXMAC_E2E_MOCK_SYSTEM",
+            "NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE",
+            "NIXMAC_E2E_SYSTEM_DEFAULTS_JSON",
+        ]);
+
+        std::env::set_var("NIXMAC_E2E_MOCK_SYSTEM", "1");
+        std::env::set_var("NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE", "1");
+        std::env::remove_var("NIXMAC_E2E_SYSTEM_DEFAULTS_JSON");
+
+        let scan = e2e_system_defaults_scan().expect("fixture scan");
+        assert_eq!(scan.defaults.len(), 1);
+        assert_eq!(
+            scan.defaults[0].nix_key,
+            "system.defaults.finder.ShowPathbar"
+        );
     }
 
     #[test]

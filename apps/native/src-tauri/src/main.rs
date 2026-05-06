@@ -14,6 +14,7 @@ mod bootstrap;
 mod cli;
 mod commands;
 mod db;
+mod e2e_runtime;
 mod editor;
 mod evolve;
 mod feedback;
@@ -47,15 +48,52 @@ use tauri::{
 };
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
+fn e2e_opaque_window_enabled() -> bool {
+    cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_OPAQUE_WINDOW")
+}
+
+const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
+(() => {
+  const styleId = "nixmac-e2e-capture-background";
+  const applyCaptureBackground = () => {
+    document.documentElement.classList.add("dark");
+    document.documentElement.dataset.nixmacE2eCapture = "opaque";
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement("style");
+      style.id = styleId;
+      style.textContent = `
+        html, body, #root {
+          background: hsl(0 0% 3.9%) !important;
+        }
+        html[data-nixmac-e2e-capture="opaque"] .bg-background\\/90,
+        html[data-nixmac-e2e-capture="opaque"] .bg-background\\/95 {
+          background-color: hsl(0 0% 3.9%) !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  };
+  if (document.head) {
+    applyCaptureBackground();
+  } else {
+    document.addEventListener("DOMContentLoaded", applyCaptureBackground, { once: true });
+  }
+})();
+"#;
+
 fn main() {
     // Initialize tracing subscriber with optional file logging
-    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    let env_filter = crate::e2e_runtime::value("RUST_LOG")
+        .map(EnvFilter::new)
+        .unwrap_or_else(|| {
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"))
+        });
 
     // Keep the WorkerGuard alive for the lifetime of `main()` so drops flush buffered logs
     let log_guard: Arc<Mutex<Option<tracing_appender::non_blocking::WorkerGuard>>> =
         Arc::new(Mutex::new(None));
 
-    if let Ok(log_path) = env::var("NIXMAC_LOGFILE") {
+    if let Some(log_path) = crate::e2e_runtime::value("NIXMAC_LOGFILE") {
         // Set up dual logging: console + file
         match std::fs::OpenOptions::new()
             .create(true)
@@ -84,6 +122,7 @@ fn main() {
                     "[nixmac] Logging to both console and {}",
                     full_path.display()
                 );
+                log::info!("NIXMAC_LOGFILE active at {}", full_path.display());
             }
             Err(e) => {
                 eprintln!("[nixmac] Failed to open NIXMAC_LOGFILE {}: {}", log_path, e);
@@ -108,6 +147,7 @@ fn main() {
     let _ = tracing_log::LogTracer::init();
 
     let context = tauri::generate_context!();
+    log::debug!("nixmac process booted");
 
     // Check if running in CLI mode
     if cli::should_run_cli() {
@@ -312,6 +352,8 @@ fn run_gui_mode(
             commands::debug::trigger_test_panic,
             #[cfg(debug_assertions)]
             commands::debug::debug_sentry_event,
+            #[cfg(debug_assertions)]
+            commands::debug::e2e_log_breadcrumb,
             // Homebrew
             commands::homebrew::homebrew_apply_diff,
             commands::homebrew::homebrew_get_state_diff,
@@ -397,6 +439,7 @@ fn run_gui_mode(
         ])
         .setup(move |app| {
             let handle = app.handle();
+            log::debug!("Tauri setup started");
 
             // Set up panic handler to catch crashes and show feedback dialog
             panic_handler::setup_panic_hook(handle.clone());
@@ -520,8 +563,12 @@ fn run_gui_mode(
             let max_width = 1000.0;
             let min_height = 400.0;
             let max_height = 900.0;
+            let e2e_opaque_window = e2e_opaque_window_enabled();
+            if e2e_opaque_window {
+                log::info!("NIXMAC_E2E_OPAQUE_WINDOW enabled; using an opaque visible-titlebar window with dark WebView backing for host visual capture");
+            }
 
-            let main_window =
+            let mut main_window_builder =
                 WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                     .title("nixmac")
                     .inner_size(initial_width, initial_height)
@@ -532,19 +579,30 @@ fn run_gui_mode(
                     .minimizable(true)
                     .closable(true)
                     .decorations(true)
-                    .transparent(true)
+                    .transparent(!e2e_opaque_window)
                     .visible(true)
                     .always_on_top(false)
                     .visible_on_all_workspaces(true)
-                    .hidden_title(true)
-                    .title_bar_style(tauri::TitleBarStyle::Overlay)
-                    .build()
-                    .map_err(|e| {
-                        let msg = format!("Failed to create main window: {}", e);
-                        log::error!("{}", msg);
-                        sentry::capture_message(&msg, sentry::Level::Error);
-                        msg
-                    })?;
+                    .hidden_title(!e2e_opaque_window)
+                    .title_bar_style(if e2e_opaque_window {
+                        tauri::TitleBarStyle::Visible
+                    } else {
+                        tauri::TitleBarStyle::Overlay
+                    });
+
+            if e2e_opaque_window {
+                main_window_builder = main_window_builder
+                    .background_color(tauri::utils::config::Color(10, 10, 10, 255))
+                    .initialization_script(E2E_CAPTURE_DARK_BACKGROUND_SCRIPT);
+            }
+
+            let main_window = main_window_builder.build().map_err(|e| {
+                let msg = format!("Failed to create main window: {}", e);
+                log::error!("{}", msg);
+                sentry::capture_message(&msg, sentry::Level::Error);
+                msg
+            })?;
+            log::debug!("Main nixmac window created");
 
             // set up watcher with interval based on focus
             let handle_for_focus = handle.clone();
@@ -604,4 +662,40 @@ fn run_gui_mode(
                 }
             }
         });
+}
+
+#[cfg(test)]
+mod test_support {
+    use std::env;
+    use std::sync::{Mutex, MutexGuard, OnceLock};
+
+    pub(crate) fn e2e_env_lock() -> MutexGuard<'static, ()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    pub(crate) struct EnvVarRestore {
+        saved: Vec<(&'static str, Option<String>)>,
+    }
+
+    impl EnvVarRestore {
+        pub(crate) fn capture(keys: &[&'static str]) -> Self {
+            Self {
+                saved: keys.iter().map(|key| (*key, env::var(key).ok())).collect(),
+            }
+        }
+    }
+
+    impl Drop for EnvVarRestore {
+        fn drop(&mut self) {
+            for (key, value) in &self.saved {
+                match value {
+                    Some(value) => env::set_var(key, value),
+                    None => env::remove_var(key),
+                }
+            }
+        }
+    }
 }

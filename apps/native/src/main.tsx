@@ -4,6 +4,8 @@ import * as Sentry from "@sentry/react";
 import App from "./App";
 import "./index.css";
 import { darwinAPI } from "@/tauri-api";
+import type { UiPrefs as DarwinPrefs } from "@/types/shared";
+import { bootBreadcrumb } from "@/lib/e2e-boot-diagnostics";
 
 function FallbackComponent() {
   return <div>Something went wrong.</div>;
@@ -11,9 +13,21 @@ function FallbackComponent() {
 
 const rootElement = document.getElementById("root");
 
+bootBreadcrumb("main.tsx loaded");
+
 if (!rootElement) {
+  bootBreadcrumb("root element missing");
   throw new Error("Root element not found");
 }
+bootBreadcrumb("root element found");
+
+window.addEventListener("error", (event) => {
+  bootBreadcrumb("window error", event.error ?? event.message);
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  bootBreadcrumb("window unhandled rejection", event.reason);
+});
 
 const REDACTED = "[REDACTED]";
 const REDACTED_APP_CONTENT = "[REDACTED_APP_CONTENT]";
@@ -123,10 +137,50 @@ const sanitizeSentryEvent = (event: unknown): unknown => {
   return sanitizedRecord;
 };
 
-const initializeApp = async () => {
-  const prefs = await darwinAPI.ui.getPrefs().catch(() => null);
-  const sendDiagnostics = prefs?.sendDiagnostics ?? false;
+const PREFS_BOOT_TIMEOUT_MS = 8000;
 
+const loadPrefsForBoot = async (): Promise<DarwinPrefs | null> => {
+  bootBreadcrumb("ui_get_prefs invoke start");
+  let settled = false;
+  let timedOut = false;
+
+  const prefsPromise = darwinAPI.ui
+    .getPrefs()
+    .then((prefs) => {
+      settled = true;
+      bootBreadcrumb(
+        timedOut ? "ui_get_prefs invoke success after timeout" : "ui_get_prefs invoke success",
+        {
+          sendDiagnostics: prefs.sendDiagnostics,
+        },
+      );
+      return prefs;
+    })
+    .catch((error) => {
+      settled = true;
+      bootBreadcrumb(
+        timedOut ? "ui_get_prefs invoke error after timeout" : "ui_get_prefs invoke error",
+        error,
+      );
+      return null;
+    });
+
+  const timeoutPromise = new Promise<null>((resolve) => {
+    window.setTimeout(() => {
+      if (!settled) {
+        timedOut = true;
+        bootBreadcrumb("ui_get_prefs invoke timeout", `${PREFS_BOOT_TIMEOUT_MS}ms`);
+      }
+      resolve(null);
+    }, PREFS_BOOT_TIMEOUT_MS);
+  });
+
+  return Promise.race([prefsPromise, timeoutPromise]);
+};
+
+const initializeSentryAfterRenderScheduled = async () => {
+  const prefs = await loadPrefsForBoot();
+  const sendDiagnostics = prefs?.sendDiagnostics ?? false;
   // Vite exposes environment variables at build time, so read the Sentry DSN and other config from there.
   const sentryDsn = (import.meta.env.VITE_SENTRY_DSN || "").toString().trim();
   const sentryEnabled = sendDiagnostics && sentryDsn.length > 0;
@@ -138,6 +192,7 @@ const initializeApp = async () => {
     "prod"
   ).toString();
   if (sentryEnabled) {
+    bootBreadcrumb("Sentry init enabled", { environment, release });
     Sentry.init({
       dsn: sentryDsn,
       environment: environment,
@@ -158,25 +213,40 @@ const initializeApp = async () => {
       release: release,
     });
   } else {
+    bootBreadcrumb("Sentry init skipped", {
+      sendDiagnostics,
+      hasDsn: sentryDsn.length > 0,
+    });
     console.info("Sentry not enabled.");
   }
-
-  ReactDOM.createRoot(rootElement).render(
-    <React.StrictMode>
-      {sentryEnabled ? (
-        <Sentry.ErrorBoundary
-          fallback={<FallbackComponent />}
-          onError={(error, componentStack) => {
-            console.error("ErrorBoundary caught:", error, componentStack);
-          }}
-        >
-          <App />
-        </Sentry.ErrorBoundary>
-      ) : (
-        <App />
-      )}
-    </React.StrictMode>,
-  );
 };
 
-void initializeApp();
+const root = ReactDOM.createRoot(rootElement);
+
+const renderApp = () => {
+  bootBreadcrumb("React render start");
+  root.render(
+    <React.StrictMode>
+      <Sentry.ErrorBoundary
+        fallback={<FallbackComponent />}
+        onError={(error, componentStack) => {
+          console.error("ErrorBoundary caught:", error, componentStack);
+        }}
+      >
+        <App />
+      </Sentry.ErrorBoundary>
+    </React.StrictMode>,
+  );
+  bootBreadcrumb("React render scheduled");
+};
+
+try {
+  renderApp();
+} catch (error) {
+  bootBreadcrumb("React render fatal error", error);
+  root.render(<App />);
+}
+
+void initializeSentryAfterRenderScheduled().catch((error) => {
+  bootBreadcrumb("post-render Sentry init error", error);
+});

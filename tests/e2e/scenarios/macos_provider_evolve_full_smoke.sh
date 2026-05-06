@@ -1,0 +1,811 @@
+#!/bin/bash
+# =============================================================================
+# Scenario: macos_provider_evolve_full_smoke
+#
+# Full macOS-first provider proof: launch the real app, type a descriptor, call
+# an OpenAI-compatible provider over HTTP, apply the provider's tool-driven Nix
+# edit, mock only the host system rebuild/activation, and continue through the
+# Save step with 30 fps video proof.
+# =============================================================================
+
+E2E_ADAPTER="nixmac"
+export E2E_RECORD_FPS=30
+export E2E_RECORDING_STRICT=1
+
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/nixmac_product_proof.sh"
+
+NIXMAC_E2E_DESCRIPTOR_TEXT="Add ripgrep to my system packages"
+NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE="feat(e2e): provider generated ripgrep package"
+NIXMAC_E2E_HOST_ATTR="e2e-host"
+NIXMAC_E2E_CONFIG_REPO=""
+NIXMAC_E2E_ELEMENTS_JSON_FILE="${TMPDIR:-/tmp}/nixmac-e2e-elements-$$.json"
+NIXMAC_E2E_PROVIDER_SCRIPT=""
+NIXMAC_E2E_PROVIDER_PORT_FILE=""
+NIXMAC_E2E_PROVIDER_LOG=""
+NIXMAC_E2E_PROVIDER_PID=""
+NIXMAC_E2E_COMPLETION_LOG_DIR=""
+NIXMAC_E2E_BASELINE_COMMIT=""
+NIXMAC_E2E_SYSTEM_MOCK_BIN_DIR=""
+NIXMAC_E2E_ORIGINAL_LAUNCHCTL_PATH=""
+
+scenario_create_config_repo() {
+    NIXMAC_E2E_CONFIG_REPO=$(mktemp -d "${TMPDIR:-/tmp}/nixmac-e2e-config.XXXXXX") \
+        || die "Failed to create temporary config repo"
+
+    cat > "$NIXMAC_E2E_CONFIG_REPO/flake.nix" <<'NIX'
+{
+  description = "nixmac E2E provider evolve fixture";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nix-darwin.url = "github:nix-darwin/nix-darwin/master";
+    nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  outputs = { self, nixpkgs, nix-darwin }: {
+    darwinConfigurations.e2e-host = nix-darwin.lib.darwinSystem {
+      system = "aarch64-darwin";
+      modules = [
+        ({ pkgs, ... }: {
+          system.stateVersion = 6;
+          environment.systemPackages = with pkgs; [
+          ];
+        })
+      ];
+    };
+  };
+}
+NIX
+
+    if command -v nix >/dev/null 2>&1; then
+        nix --extra-experimental-features "nix-command flakes" \
+            --option accept-flake-config true \
+            --option warn-dirty false \
+            flake lock "$NIXMAC_E2E_CONFIG_REPO" >/dev/null 2>&1 \
+            || die "Failed to lock temporary provider config flake"
+    fi
+
+    git -C "$NIXMAC_E2E_CONFIG_REPO" init >/dev/null 2>&1 \
+        || die "Failed to initialize temporary config repo"
+    git -C "$NIXMAC_E2E_CONFIG_REPO" config user.name "nixmac e2e"
+    git -C "$NIXMAC_E2E_CONFIG_REPO" config user.email "e2e@nixmac.local"
+    git -C "$NIXMAC_E2E_CONFIG_REPO" add flake.nix
+    [ -f "$NIXMAC_E2E_CONFIG_REPO/flake.lock" ] && git -C "$NIXMAC_E2E_CONFIG_REPO" add flake.lock
+    git -C "$NIXMAC_E2E_CONFIG_REPO" commit -m "initial e2e config" >/dev/null 2>&1 \
+        || die "Failed to commit temporary config repo"
+    NIXMAC_E2E_BASELINE_COMMIT=$(git -C "$NIXMAC_E2E_CONFIG_REPO" rev-parse HEAD)
+}
+
+scenario_start_provider() {
+    command -v python3 >/dev/null 2>&1 || die "python3 is required for provider smoke"
+
+    NIXMAC_E2E_PROVIDER_SCRIPT=$(mktemp "${TMPDIR:-/tmp}/nixmac-e2e-provider.XXXXXX") \
+        || die "Failed to create provider script"
+    NIXMAC_E2E_PROVIDER_PORT_FILE=$(mktemp "${TMPDIR:-/tmp}/nixmac-e2e-provider-port.XXXXXX") \
+        || die "Failed to create provider port file"
+    NIXMAC_E2E_PROVIDER_LOG=$(mktemp "${TMPDIR:-/tmp}/nixmac-e2e-provider-calls.XXXXXX") \
+        || die "Failed to create provider log"
+
+    cat > "$NIXMAC_E2E_PROVIDER_SCRIPT" <<'PY'
+#!/usr/bin/env python3
+import json
+import os
+import re
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+PORT_FILE = os.environ["NIXMAC_E2E_PROVIDER_PORT_FILE"]
+CALL_LOG = os.environ["NIXMAC_E2E_PROVIDER_LOG"]
+
+
+def completion(content=None, tool_calls=None):
+    message = {"role": "assistant"}
+    if content is not None:
+        message["content"] = content
+    if tool_calls:
+        message["tool_calls"] = tool_calls
+        finish_reason = "tool_calls"
+    else:
+        finish_reason = "stop"
+    return {
+        "id": "chatcmpl-nixmac-e2e",
+        "object": "chat.completion",
+        "created": int(time.time()),
+        "model": "nixmac-e2e-provider",
+        "choices": [{"index": 0, "message": message, "finish_reason": finish_reason}],
+        "usage": {"prompt_tokens": 10, "completion_tokens": 10, "total_tokens": 20},
+    }
+
+
+def tool_call(call_id, name, args):
+    return {
+        "id": call_id,
+        "type": "function",
+        "function": {"name": name, "arguments": json.dumps(args)},
+    }
+
+
+def hashes_from_prompt(prompt):
+    seen = []
+    for value in re.findall(r"hash:\s*([a-f0-9]{8,64})", prompt, re.I):
+        if value not in seen:
+            seen.append(value)
+    return seen
+
+
+def content_for(body):
+    messages = body.get("messages") or []
+    prompt = "\n".join(str((message.get("content") or "")) for message in messages)
+
+    if "conventional commit message" in prompt:
+        return json.dumps({"message": "feat(e2e): provider generated ripgrep package"})
+
+    if "group new nix-darwin configuration changes" in prompt:
+        hashes = hashes_from_prompt(prompt)
+        return json.dumps({
+            "changes": [
+                {"hash": h, "group_id": None, "reason": "Standalone ripgrep package addition."}
+                for h in hashes
+            ]
+        })
+
+    if '"group":' in prompt and '"changes":' in prompt:
+        hashes = hashes_from_prompt(prompt)
+        return json.dumps({
+            "changes": [
+                {
+                    "hash": h,
+                    "title": "System Packages",
+                    "description": "Adds ripgrep to environment.systemPackages.",
+                }
+                for h in hashes
+            ],
+            "group": {
+                "title": "System Packages",
+                "description": "Adds ripgrep to environment.systemPackages.",
+            },
+        })
+
+    return json.dumps({
+        "title": "System Packages",
+        "description": "Adds ripgrep to environment.systemPackages.",
+    })
+
+
+def response_for(body):
+    if body.get("tools"):
+        calls = [
+            tool_call(
+                "call_think",
+                "think",
+                {
+                    "category": "planning",
+                    "thought": "Add ripgrep to the existing system packages list and verify with build_check.",
+                },
+            ),
+            tool_call(
+                "call_edit",
+                "edit_file",
+                {
+                    "path": "flake.nix",
+                    "search": "environment.systemPackages = with pkgs; [\n          ];",
+                    "replace": "environment.systemPackages = with pkgs; [\n            ripgrep\n          ];",
+                },
+            ),
+            tool_call("call_build", "build_check", {"show_trace": False}),
+            tool_call(
+                "call_done",
+                "done",
+                {"summary": "Added ripgrep to environment.systemPackages."},
+            ),
+        ]
+        return completion("Calling tools to update and validate the config.", calls)
+
+    return completion(content_for(body))
+
+
+class Handler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        length = int(self.headers.get("content-length", "0"))
+        raw = self.rfile.read(length)
+        try:
+            body = json.loads(raw.decode("utf-8"))
+        except Exception:
+            body = {}
+
+        with open(CALL_LOG, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps({
+                "ts": time.time(),
+                "path": self.path,
+                "body": body,
+            }) + "\n")
+
+        payload = json.dumps(response_for(body)).encode("utf-8")
+        self.send_response(200)
+        self.send_header("content-type", "application/json")
+        self.send_header("content-length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
+    def log_message(self, *_args):
+        return
+
+
+server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+with open(PORT_FILE, "w", encoding="utf-8") as fh:
+    fh.write(str(server.server_address[1]))
+server.serve_forever()
+PY
+    chmod +x "$NIXMAC_E2E_PROVIDER_SCRIPT"
+
+    NIXMAC_E2E_PROVIDER_PORT_FILE="$NIXMAC_E2E_PROVIDER_PORT_FILE" \
+    NIXMAC_E2E_PROVIDER_LOG="$NIXMAC_E2E_PROVIDER_LOG" \
+        python3 "$NIXMAC_E2E_PROVIDER_SCRIPT" &
+    NIXMAC_E2E_PROVIDER_PID=$!
+
+    local elapsed=0
+    while [ "$elapsed" -lt 20 ]; do
+        if [ -s "$NIXMAC_E2E_PROVIDER_PORT_FILE" ]; then
+            return 0
+        fi
+        sleep 1
+        elapsed=$((elapsed + 1))
+    done
+
+    die "Provider stub did not start"
+}
+
+scenario_seed_settings() {
+    local settings_dir="$HOME/Library/Application Support/${NIXMAC_BUNDLE_ID}"
+    local settings_path="$settings_dir/settings.json"
+    local provider_port provider_base_url
+
+    provider_port=$(cat "$NIXMAC_E2E_PROVIDER_PORT_FILE")
+    provider_base_url="http://127.0.0.1:${provider_port}/v1"
+    NIXMAC_E2E_COMPLETION_LOG_DIR=$(mktemp -d "${TMPDIR:-/tmp}/nixmac-e2e-completions.XXXXXX") \
+        || die "Failed to create completion log dir"
+
+    mkdir -p "$settings_dir" || die "Failed to create nixmac settings directory"
+    jq -n \
+        --arg configDir "$NIXMAC_E2E_CONFIG_REPO" \
+        --arg hostAttr "$NIXMAC_E2E_HOST_ATTR" \
+        --arg providerBaseUrl "$provider_base_url" \
+        '{
+            configDir: $configDir,
+            hostAttr: $hostAttr,
+            evolveProvider: "vllm",
+            summaryProvider: "vllm",
+            evolveModel: "nixmac-e2e-provider",
+            summaryModel: "nixmac-e2e-provider",
+            vllmApiBaseUrl: $providerBaseUrl,
+            vllmApiKey: "e2e",
+            maxIterations: 3,
+            maxBuildAttempts: 1,
+            sendDiagnostics: false,
+            confirmBuild: false,
+            confirmClear: true,
+            confirmRollback: true
+        }' > "$settings_path" || die "Failed to write nixmac settings"
+
+    log "Seeded nixmac settings at $settings_path with provider $provider_base_url"
+}
+
+scenario_install_system_mock_shim() {
+    NIXMAC_E2E_SYSTEM_MOCK_BIN_DIR=$(mktemp -d "${TMPDIR:-/tmp}/nixmac-e2e-system-mock-bin.XXXXXX") \
+        || die "Failed to create system mock shim directory"
+
+    cat > "$NIXMAC_E2E_SYSTEM_MOCK_BIN_DIR/osascript" <<'SH'
+#!/bin/bash
+if [ "${NIXMAC_E2E_MOCK_SYSTEM:-}" = "1" ]; then
+    echo "NIXMAC_E2E_MOCK_SYSTEM: mocked privileged macOS activation"
+    exit 0
+fi
+exec /usr/bin/osascript "$@"
+SH
+    chmod +x "$NIXMAC_E2E_SYSTEM_MOCK_BIN_DIR/osascript" \
+        || die "Failed to make osascript mock executable"
+
+    NIXMAC_E2E_ORIGINAL_LAUNCHCTL_PATH=$(launchctl getenv PATH 2>/dev/null || true)
+    launchctl setenv PATH "$NIXMAC_E2E_SYSTEM_MOCK_BIN_DIR:$PATH"
+    log "Installed E2E system activation shim at $NIXMAC_E2E_SYSTEM_MOCK_BIN_DIR"
+}
+
+scenario_find_element() {
+    local pattern="$1"
+    local role="${2:-}"
+    local timeout="${3:-30}"
+    local deadline
+    local json element
+
+    deadline=$(($(date +%s) + timeout))
+    while [ "$(date +%s)" -lt "$deadline" ]; do
+        json=$(peek_elements "$NIXMAC_APP_NAME")
+        element=$(peek_ranked_element_id "$json" "$pattern" "$role")
+
+        if [ -n "$element" ]; then
+            printf '%s' "$json" > "$NIXMAC_E2E_ELEMENTS_JSON_FILE"
+            printf '%s\n' "$element"
+            return 0
+        fi
+
+        sleep 2
+    done
+
+    return 1
+}
+
+scenario_click_element() {
+    local pattern="$1"
+    local role="${2:-}"
+    local timeout="${3:-30}"
+    local element json
+
+    element=$(scenario_find_element "$pattern" "$role" "$timeout") || return 1
+    json=$(cat "$NIXMAC_E2E_ELEMENTS_JSON_FILE" 2>/dev/null || true)
+    [ -n "$json" ] || return 1
+    log "Clicking element $(peek_element_summary "$json" "$element") matching '$pattern'"
+    peek_log_ranked_candidates "$json" "$pattern" "$role" 3
+    peekaboo_run app switch --to "$NIXMAC_APP_NAME" >/dev/null 2>&1 || true
+    sleep 0.2
+    peek_click "$element" "$json"
+}
+
+scenario_click_element_center() {
+    local pattern="$1"
+    local role="${2:-}"
+    local timeout="${3:-30}"
+    local label="${4:-$pattern}"
+    local element json
+
+    element=$(scenario_find_element "$pattern" "$role" "$timeout") || return 1
+    json=$(cat "$NIXMAC_E2E_ELEMENTS_JSON_FILE" 2>/dev/null || true)
+    [ -n "$json" ] || return 1
+    peek_click_element_center "$element" "$json" "$label" "$NIXMAC_APP_NAME"
+}
+
+scenario_cgevent_click_element_center() {
+    local pattern="$1"
+    local role="${2:-}"
+    local timeout="${3:-30}"
+    local label="${4:-$pattern}"
+    local element json
+
+    element=$(scenario_find_element "$pattern" "$role" "$timeout") || return 1
+    json=$(cat "$NIXMAC_E2E_ELEMENTS_JSON_FILE" 2>/dev/null || true)
+    [ -n "$json" ] || return 1
+    peek_cgevent_click_element_center "$element" "$json" "$label" "$NIXMAC_APP_NAME"
+}
+
+scenario_click_query() {
+    local query="$1"
+    local timeout_ms="${2:-10000}"
+    local output status
+
+    log "Clicking query '$query'"
+    peekaboo_run app switch --to "$NIXMAC_APP_NAME" >/dev/null 2>&1 || true
+    sleep 0.2
+    if output=$(peekaboo_run click "$query" --app "$NIXMAC_APP_NAME" --wait-for "$timeout_ms" 2>&1); then
+        status=0
+    else
+        status=$?
+    fi
+    if [ -n "$output" ]; then
+        log "Click query '$query' output: $(printf '%s' "$output" | tr '\n' ' ' | cut -c1-240)"
+    fi
+    return "$status"
+}
+
+scenario_wait_for_text() {
+    local pattern="$1"
+    local timeout="${2:-30}"
+    local deadline text
+
+    deadline=$(($(date +%s) + timeout))
+    while [ "$(date +%s)" -lt "$deadline" ]; do
+        text=$(nixmac_text)
+        if echo "$text" | grep -qiE "$pattern"; then
+            return 0
+        fi
+        sleep 2
+    done
+
+    return 1
+}
+
+scenario_wait_for_describe_prompt() {
+    local timeout="${1:-45}"
+
+    scenario_find_element \
+        "evolve-prompt-input|Configuration change descriptor|Describe changes to make to your configuration" \
+        "textField" \
+        "$timeout" >/dev/null
+}
+
+scenario_wait_for_prompt_value() {
+    local expected="$1"
+    local timeout="${2:-20}"
+    local deadline json
+
+    deadline=$(($(date +%s) + timeout))
+    while [ "$(date +%s)" -lt "$deadline" ]; do
+        json=$(peek_elements "$NIXMAC_APP_NAME")
+        if echo "$json" | jq -e --arg expected "$expected" '
+            .data.ui_elements[]? |
+            select([
+                .identifier? // "",
+                .label? // "",
+                .title? // "",
+                .value? // "",
+                .description? // ""
+            ] | join(" ") | contains($expected))
+        ' >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 2
+    done
+
+    return 1
+}
+
+scenario_provider_log_has() {
+    local filter="$1"
+    jq -e "$filter" "$NIXMAC_E2E_PROVIDER_LOG" >/dev/null 2>&1
+}
+
+scenario_wait_for_provider_log() {
+    local filter="$1"
+    local timeout="${2:-30}"
+    local deadline
+
+    deadline=$(($(date +%s) + timeout))
+    while [ "$(date +%s)" -lt "$deadline" ]; do
+        if scenario_provider_log_has "$filter"; then
+            return 0
+        fi
+        sleep 2
+    done
+
+    return 1
+}
+
+scenario_provider_request_count() {
+    jq -s 'length' "$NIXMAC_E2E_PROVIDER_LOG" 2>/dev/null || echo 0
+}
+
+scenario_confirm_if_prompted() {
+    if scenario_click_element "^Confirm$" "button" 15; then
+        log "Confirmed build prompt"
+    else
+        log "No build confirmation prompt observed"
+    fi
+}
+
+scenario_build_and_wait_for_commit_step() {
+    local attempt
+
+    for attempt in 1 2 3; do
+        scenario_click_element "Build & Test" "button" 30 \
+            || die "Build & Test button was not reachable"
+        scenario_confirm_if_prompted
+
+        if scenario_wait_for_text "All changes active|Commit Changes" 90; then
+            return 0
+        fi
+
+        nixmac_screenshot "build-test-did-not-reach-commit-attempt-${attempt}"
+        log "Build & Test attempt ${attempt} did not expose the Commit button; retrying if possible"
+    done
+
+    return 1
+}
+
+scenario_commit_changes_and_assert_return() {
+    if ! scenario_wait_for_provider_log 'select(.body.response_format.type == "json_object")' 30; then
+        nixmac_screenshot "summary-provider-call-missing-at-save"
+        die "Summary provider JSON request was not observed by the Save phase"
+    fi
+    if scenario_wait_for_provider_log 'select([.body.messages[]?.content? // ""] | join(" ") | test("conventional commit message"; "i"))' 15 \
+        && scenario_wait_for_prompt_value "$NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE" 15; then
+        log "Observed provider-generated commit message suggestion"
+    else
+        log "Commit-message suggestion was not available; using deterministic manual commit text"
+        nixmac_screenshot "commit-message-manual-fallback"
+        nixmac_pp_click_element "commitMsg|Loading|Commit message|Commit Changes" "textField" 15 \
+            || nixmac_pp_click_window_ratio "commit message input" "0.500" "0.660" \
+            || die "Commit message input was not reachable"
+        peek_hotkey "cmd+a" >/dev/null 2>&1 || true
+        peekaboo_run paste "$NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE" >/dev/null 2>&1 \
+            || peek_type "$NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE" \
+            || die "Failed to type deterministic commit message"
+        scenario_wait_for_prompt_value "$NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE" 15 \
+            || die "Deterministic commit message did not populate the Save step"
+    fi
+    scenario_click_element "Commit( Changes)?" "button" 30 \
+        || die "Commit button was not reachable"
+    scenario_wait_for_describe_prompt 45 \
+        || die "Commit did not return to begin step"
+    local latest_message
+    latest_message=$(git -C "$NIXMAC_E2E_CONFIG_REPO" log -1 --pretty=%s)
+    if [ "$latest_message" != "$NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE" ]; then
+        nixmac_screenshot "unexpected-commit-message"
+        die "Expected provider-generated commit message, got: $latest_message"
+    fi
+    if [ -n "$(git -C "$NIXMAC_E2E_CONFIG_REPO" status --short)" ]; then
+        nixmac_screenshot "repo-not-clean-after-commit"
+        die "Config repo was not clean after commit"
+    fi
+}
+
+scenario_log_config_repo_state() {
+    local label="${1:-repo state}"
+
+    log "$label: HEAD=$(git -C "$NIXMAC_E2E_CONFIG_REPO" rev-parse --short HEAD 2>/dev/null || printf unknown)"
+    log "$label: latest=$(git -C "$NIXMAC_E2E_CONFIG_REPO" log -1 --pretty=%s 2>/dev/null || printf unknown)"
+    log "$label: status=$(git -C "$NIXMAC_E2E_CONFIG_REPO" status --short 2>/dev/null | paste -sd ';' - || true)"
+    log "$label: baseline-diff=$(git -C "$NIXMAC_E2E_CONFIG_REPO" diff --name-only "$NIXMAC_E2E_BASELINE_COMMIT"..HEAD 2>/dev/null | paste -sd ',' - || true)"
+    if grep -q "ripgrep" "$NIXMAC_E2E_CONFIG_REPO/flake.nix" 2>/dev/null; then
+        log "$label: ripgrep still present in flake.nix"
+    else
+        log "$label: ripgrep absent from flake.nix"
+    fi
+}
+
+scenario_provider_repo_restored_to_baseline() {
+    local status_short
+
+    status_short=$(git -C "$NIXMAC_E2E_CONFIG_REPO" status --short)
+    [ -z "$status_short" ] \
+        && ! grep -q "ripgrep" "$NIXMAC_E2E_CONFIG_REPO/flake.nix" \
+        && git -C "$NIXMAC_E2E_CONFIG_REPO" diff --quiet "$NIXMAC_E2E_BASELINE_COMMIT" HEAD
+}
+
+scenario_wait_for_provider_repo_restore() {
+    local timeout="${1:-45}"
+    local deadline
+
+    deadline=$(($(date +%s) + timeout))
+    while [ "$(date +%s)" -lt "$deadline" ]; do
+        if scenario_provider_repo_restored_to_baseline; then
+            return 0
+        fi
+        sleep 2
+    done
+
+    scenario_log_config_repo_state "history restore unresolved"
+    return 1
+}
+
+scenario_confirm_history_restore() {
+    local attempt json
+    local confirm_pattern="history-confirm-restore-button|^Confirm Restore$"
+
+    for attempt in 1 2 3; do
+        nixmac_pp_system_events_click_button "Confirm Restore" || true
+        if ! scenario_wait_for_text "Confirm Restore" 3; then
+            return 0
+        fi
+
+        scenario_click_element "$confirm_pattern" "button" 10 || true
+        json=$(cat "$NIXMAC_E2E_ELEMENTS_JSON_FILE" 2>/dev/null || true)
+        [ -n "$json" ] && peek_log_ranked_candidates "$json" "$confirm_pattern" "" 6
+        scenario_click_element_center "$confirm_pattern" "button" 3 "history confirm restore" || true
+        scenario_cgevent_click_element_center "$confirm_pattern" "button" 3 "history confirm restore" || true
+        scenario_click_query "Confirm Restore" 5000 || true
+        nixmac_pp_click_window_ratio "history confirm restore primary action" "0.705" "0.268" || true
+        nixmac_pp_cgevent_click_window_ratio "history confirm restore primary action" "0.705" "0.268" || true
+        nixmac_pp_click_window_ratio "history confirm restore" "0.735" "0.268" || true
+        nixmac_pp_cgevent_click_window_ratio "history confirm restore" "0.735" "0.268" || true
+        nixmac_pp_deny_keychain_prompt_if_visible || true
+        peek_hotkey "shift+tab" >/dev/null 2>&1 || true
+        peek_press "space" >/dev/null 2>&1 || true
+        peek_press "return" >/dev/null 2>&1 || true
+        nixmac_pp_deny_keychain_prompt_if_visible || true
+
+        if ! scenario_wait_for_text "Confirm Restore" 3; then
+            return 0
+        fi
+
+        log "Confirm Restore still visible after attempt ${attempt}; retrying"
+    done
+
+    return 1
+}
+
+scenario_restore_baseline_from_history() {
+    scenario_click_element "^History( |\\(|$)" "button" 30 || return 1
+    if ! scenario_wait_for_text "History|Restore|Current|Base" 45; then
+        return 1
+    fi
+    nixmac_screenshot "06-history-before-restore"
+
+    scenario_click_element "^Restore$" "button" 30 || return 1
+    if ! scenario_wait_for_text "Confirm Restore|deactivate|Cancel" 30; then
+        return 1
+    fi
+    nixmac_screenshot "07-history-restore-preview"
+
+    scenario_confirm_history_restore || return 1
+    if ! scenario_wait_for_text "Restore commit|CURRENT|History" 90; then
+        return 1
+    fi
+    scenario_wait_for_provider_repo_restore 45 || return 1
+    nixmac_screenshot "08-after-history-restore"
+    scenario_log_config_repo_state "history restore complete"
+    scenario_provider_repo_restored_to_baseline
+}
+
+scenario_test() {
+    local descriptor_attempt
+
+    phase "Prepare provider-backed macOS fixture"
+    peekaboo_check
+    scenario_create_config_repo
+    scenario_start_provider
+    nixmac_clear_state
+    scenario_seed_settings
+    export NIXMAC_RECORD_COMPLETIONS=1
+    export NIXMAC_COMPLETION_LOG_DIR="$NIXMAC_E2E_COMPLETION_LOG_DIR"
+    nixmac_pp_set_e2e_launch_env
+    launchctl setenv NIXMAC_RECORD_COMPLETIONS 1
+    launchctl setenv NIXMAC_COMPLETION_LOG_DIR "$NIXMAC_E2E_COMPLETION_LOG_DIR"
+    scenario_install_system_mock_shim
+    phase_pass "peekabooProviderFixture: Prepared config repo, deterministic HTTP provider, completion logging, and mock rebuild flag"
+
+    phase "Launch nixmac app"
+    nixmac_launch || die "App failed to launch"
+    nixmac_pp_wait_for_ready_app_shell 60 \
+        || die "App shell did not expose provider prompt with visible screenshot signal"
+    nixmac_screenshot "01-launched"
+    phase_pass "peekabooProviderLaunch: App launched"
+
+    phase "Submit descriptor into real prompt"
+    if ! scenario_wait_for_text "Describe changes|configuration" 45; then
+        nixmac_screenshot "missing-descriptor-prompt"
+        die "Descriptor prompt screen did not become visible"
+    fi
+    for descriptor_attempt in 1 2 3; do
+        nixmac_pp_click_element "evolve-prompt-input|Configuration change descriptor|Describe changes to make to your configuration" "textField" 10 \
+            || nixmac_pp_click_element_center "evolve-prompt-input|Configuration change descriptor|Describe changes to make to your configuration" "textField" 3 "provider descriptor prompt input" \
+            || nixmac_pp_cgevent_click_element_center "evolve-prompt-input|Configuration change descriptor|Describe changes to make to your configuration" "textField" 3 "provider descriptor prompt input" \
+            || nixmac_pp_click_window_ratio "provider descriptor prompt input" "0.500" "0.455" \
+            || die "Descriptor prompt input was not reachable by accessibility metadata or coordinate fallback"
+        peek_hotkey "cmd+a" >/dev/null 2>&1 || true
+        peekaboo_run paste "$NIXMAC_E2E_DESCRIPTOR_TEXT" >/dev/null 2>&1 \
+            || peek_type "$NIXMAC_E2E_DESCRIPTOR_TEXT" \
+            || die "Failed to type descriptor"
+        if nixmac_pp_wait_for_prompt_value_exact "$NIXMAC_E2E_DESCRIPTOR_TEXT" 8 \
+            || nixmac_pp_wait_for_prompt_value "$NIXMAC_E2E_DESCRIPTOR_TEXT" 1; then
+            break
+        fi
+        nixmac_screenshot "descriptor-type-retry-${descriptor_attempt}"
+        log "Descriptor value was not visible after attempt ${descriptor_attempt}; refocusing and retrying"
+    done
+    nixmac_pp_wait_for_prompt_value_exact "$NIXMAC_E2E_DESCRIPTOR_TEXT" 1 \
+        || nixmac_pp_wait_for_prompt_value "$NIXMAC_E2E_DESCRIPTOR_TEXT" 1 \
+        || die "Typed descriptor was not visible in the prompt input"
+    nixmac_screenshot "02-descriptor-typed"
+    if ! nixmac_pp_click_element "evolve-prompt-send|Submit configuration change descriptor|Send" "" 20; then
+        nixmac_pp_click_window_ratio "provider descriptor submit button" "0.900" "0.570" \
+            || die "Submit target was not reachable by accessibility metadata or coordinate fallback"
+    fi
+    phase_pass "peekabooProviderTypedIntent: Descriptor submitted"
+
+    phase "Verify provider-driven evolution reaches Review"
+    if ! scenario_wait_for_text "Evolution complete|What.s changed|Build & Test|Ready to test-drive" 120; then
+        nixmac_screenshot "provider-evolution-did-not-complete"
+        die "Provider-backed evolution did not reach review"
+    fi
+    if ! grep -q "ripgrep" "$NIXMAC_E2E_CONFIG_REPO/flake.nix"; then
+        nixmac_screenshot "ripgrep-edit-missing"
+        die "Provider tool call did not edit flake.nix"
+    fi
+    if ! scenario_provider_log_has 'select(.body.tools and (.body.tools | length > 0))'; then
+        nixmac_screenshot "provider-tool-call-missing"
+        die "Provider did not receive a tool-enabled evolve completion request"
+    fi
+    nixmac_screenshot "03-review-provider-evolved"
+    phase_pass "peekabooProviderReview: Provider calls observed and Review step reached"
+
+    phase "Build and Test through mocked macOS activation"
+    if ! scenario_build_and_wait_for_commit_step; then
+        nixmac_screenshot "commit-step-not-reached"
+        die "Build & Test did not advance to Save/commit step"
+    fi
+    nixmac_screenshot "04-save-step-after-build"
+    phase_pass "peekabooProviderBuildBoundary: Build & Test advanced to Save step using explicit E2E mock activation"
+
+    phase "Commit saved changes"
+    if ! scenario_wait_for_provider_log 'select(.body.response_format.type == "json_object")' 30; then
+        nixmac_screenshot "summary-provider-call-missing-at-save"
+        die "Summary provider JSON request was not observed by the Save phase"
+    fi
+    if scenario_wait_for_provider_log 'select([.body.messages[]?.content? // ""] | join(" ") | test("conventional commit message"; "i"))' 15 \
+        && scenario_wait_for_prompt_value "$NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE" 15; then
+        log "Observed provider-generated commit message suggestion"
+    else
+        log "Commit-message suggestion was not available; using deterministic manual commit text"
+        nixmac_screenshot "commit-message-manual-fallback"
+        nixmac_pp_click_element "commitMsg|Loading|Commit message|Commit Changes" "textField" 15 \
+            || nixmac_pp_click_window_ratio "commit message input" "0.500" "0.660" \
+            || die "Commit message input was not reachable"
+        peek_hotkey "cmd+a" >/dev/null 2>&1 || true
+        peekaboo_run paste "$NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE" >/dev/null 2>&1 \
+            || peek_type "$NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE" \
+            || die "Failed to type deterministic commit message"
+        scenario_wait_for_prompt_value "$NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE" 15 \
+            || die "Deterministic commit message did not populate the Save step"
+    fi
+    scenario_click_element "Commit( Changes)?" "button" 30 \
+        || die "Commit button was not reachable"
+    if ! scenario_wait_for_describe_prompt 45; then
+        nixmac_screenshot "begin-step-not-restored"
+        die "Commit did not return to begin step"
+    fi
+    local latest_message
+    latest_message=$(git -C "$NIXMAC_E2E_CONFIG_REPO" log -1 --pretty=%s)
+    if [ "$latest_message" != "$NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE" ]; then
+        nixmac_screenshot "unexpected-commit-message"
+        die "Expected provider-generated commit message, got: $latest_message"
+    fi
+    if [ -n "$(git -C "$NIXMAC_E2E_CONFIG_REPO" status --short)" ]; then
+        nixmac_screenshot "repo-not-clean-after-commit"
+        die "Config repo was not clean after commit"
+    fi
+    nixmac_screenshot "05-returned-to-describe"
+    phase_pass "peekabooProviderSaveFlow: Save step committed changes and returned to Describe"
+
+    phase "Restore baseline from History"
+    if ! scenario_restore_baseline_from_history; then
+        nixmac_screenshot "history-restore-failed"
+        die "History restore did not return the disposable config repo to baseline"
+    fi
+    phase_pass "peekabooProviderRollbackCleanup: History restore returned disposable config repo to baseline"
+
+    phase "Audit provider evidence"
+    local request_count
+    request_count=$(scenario_provider_request_count)
+    if [ "$request_count" -lt 2 ]; then
+        die "Expected at least 2 provider requests across evolve and summary paths, observed $request_count"
+    fi
+    mkdir -p "$E2E_DIAGNOSTIC_DIR/provider"
+    cp "$NIXMAC_E2E_PROVIDER_LOG" "$E2E_DIAGNOSTIC_DIR/provider/requests.jsonl" 2>/dev/null || true
+    log "Provider request log: $NIXMAC_E2E_PROVIDER_LOG"
+    log "Completion log dir: $NIXMAC_E2E_COMPLETION_LOG_DIR"
+    phase_pass "peekabooProviderAudit: Observed $request_count provider HTTP requests across evolve and summary paths"
+}
+
+scenario_provider_cleanup() {
+    nixmac_quit
+    nixmac_pp_cleanup_common
+    launchctl unsetenv NIXMAC_E2E_MOCK_SYSTEM 2>/dev/null || true
+    launchctl unsetenv NIXMAC_E2E_OPAQUE_WINDOW 2>/dev/null || true
+    launchctl unsetenv NIXMAC_SKIP_PERMISSIONS 2>/dev/null || true
+    launchctl unsetenv OPENAI_API_KEY 2>/dev/null || true
+    launchctl unsetenv OPENROUTER_API_KEY 2>/dev/null || true
+    launchctl unsetenv VLLM_API_KEY 2>/dev/null || true
+    launchctl unsetenv NIXMAC_RECORD_COMPLETIONS 2>/dev/null || true
+    launchctl unsetenv NIXMAC_COMPLETION_LOG_DIR 2>/dev/null || true
+    if [ -n "$NIXMAC_E2E_SYSTEM_MOCK_BIN_DIR" ]; then
+        rm -rf "$NIXMAC_E2E_SYSTEM_MOCK_BIN_DIR" 2>/dev/null || true
+        if [ -n "$NIXMAC_E2E_ORIGINAL_LAUNCHCTL_PATH" ]; then
+            launchctl setenv PATH "$NIXMAC_E2E_ORIGINAL_LAUNCHCTL_PATH" 2>/dev/null || true
+        else
+            launchctl unsetenv PATH 2>/dev/null || true
+        fi
+    fi
+    if [ -n "$NIXMAC_E2E_PROVIDER_PID" ]; then
+        kill "$NIXMAC_E2E_PROVIDER_PID" 2>/dev/null || true
+    fi
+    if [ -n "$NIXMAC_E2E_CONFIG_REPO" ]; then
+        rm -rf "$NIXMAC_E2E_CONFIG_REPO" 2>/dev/null || true
+    fi
+    rm -f "$NIXMAC_E2E_ELEMENTS_JSON_FILE" "$NIXMAC_E2E_PROVIDER_SCRIPT" \
+        "$NIXMAC_E2E_PROVIDER_PORT_FILE" "$NIXMAC_E2E_PROVIDER_LOG" 2>/dev/null || true
+    if [ -n "$NIXMAC_E2E_COMPLETION_LOG_DIR" ]; then
+        rm -rf "$NIXMAC_E2E_COMPLETION_LOG_DIR" 2>/dev/null || true
+    fi
+}
+
+scenario_cleanup() {
+    scenario_provider_cleanup
+}

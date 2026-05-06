@@ -182,7 +182,7 @@ export const scenarioLabels = freezeDeep({
   mainCoverageFreshness: 'Main branch user-visible coverage stays mapped',
   prSpecificCoverage: 'PR-specific user-visible behavior is covered when applicable',
   storybookPreview: 'Changed UI has a direct Storybook preview when applicable',
-  reportInspection: 'Generated HTML report is inspected with Computer Use',
+  reportInspection: 'Generated HTML report is inspected or integrity-verified',
 });
 
 export const scenarioGroups = freezeDeep([
@@ -438,7 +438,7 @@ export const scenarioProofCatalog = freezeDeep({
     grade: 'action-confirmed',
     screenshots: ['HTML report inspection'],
     texts: ['HTML report inspection'],
-    proof: 'Computer Use opens the generated report on the remote Mac and sees report sections.',
+    proof: 'Computer Use opens the generated report or the Peekaboo CI lane verifies required report sections before publishing.',
     untested: 'Does not prove a human reviewed every screenshot.',
   },
 });

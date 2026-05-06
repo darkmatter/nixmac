@@ -187,6 +187,14 @@ export const darwinAPI = {
       invoke<FeedbackMetadata>("feedback_gather_metadata", { request: { feedbackType, share } }),
     submit: (payload: string) => invoke<boolean>("feedback_submit", { payload }),
   },
+  debug: {
+    logBreadcrumb: (label: string, detail?: string, clientTimestampUnixMs?: number) =>
+      invoke<OkResult>("e2e_log_breadcrumb", {
+        label,
+        detail: detail ?? null,
+        clientTimestampUnixMs: clientTimestampUnixMs ?? null,
+      }),
+  },
   ui: {
     getPrefs: () => invoke<DarwinPrefs>("ui_get_prefs"),
     setPrefs: (prefs: Partial<DarwinPrefsUpdate>) => invoke<OkResult>("ui_set_prefs", { prefs }),

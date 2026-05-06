@@ -117,11 +117,19 @@ export function SystemDefaultsCTA() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <BadgeButton icon={Monitor} badgeVariant="default">
+        <BadgeButton
+          icon={Monitor}
+          badgeVariant="default"
+          data-testid="managed-system-defaults-badge"
+        >
           {count} untracked customization{count === 1 ? "" : "s"}
         </BadgeButton>
       </PopoverTrigger>
-      <PopoverContent className="w-[340px] p-0" align="start">
+      <PopoverContent
+        className="w-[340px] p-0"
+        align="start"
+        data-testid="managed-system-defaults-popover"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-2.5">
           <span className="font-medium text-sm">
@@ -166,6 +174,7 @@ export function SystemDefaultsCTA() {
         <div className="flex flex-col gap-1.5 border-border/50 border-t px-3 py-2">
           <button
             type="button"
+            data-testid="managed-system-defaults-add-to-config"
             disabled={applying}
             onClick={() => handleApply(scan.defaults)}
             className="w-full rounded-md bg-primary/10 py-1.5 font-medium text-primary text-sm transition-colors hover:bg-primary/20 disabled:opacity-50"

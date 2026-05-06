@@ -10,6 +10,9 @@
 NIXMAC_APP_NAME="nixmac"
 NIXMAC_APP_PATH="${NIXMAC_APP_PATH:-/Applications/nixmac.app}"
 NIXMAC_BUNDLE_ID="com.darkmatter.nixmac"
+E2E_ACTIVE_APP_NAME="$NIXMAC_APP_NAME"
+E2E_ACTIVE_BUNDLE_ID="$NIXMAC_BUNDLE_ID"
+E2E_FAILURE_SCREENSHOT_APP="$NIXMAC_APP_NAME"
 NIX_INSTALLER="/nix/nix-installer"
 NIX_BINARY="/nix/var/nix/profiles/default/bin/nix"
 
@@ -17,6 +20,11 @@ NIX_BINARY="/nix/var/nix/profiles/default/bin/nix"
 # Required between runs so the app shows the install screen fresh
 nixmac_clear_state() {
     log "Clearing nixmac app state..."
+    # Drain service-scoped app secrets so a leftover keychain prompt cannot
+    # interrupt first-launch E2E flows.
+    while security delete-generic-password -s "$NIXMAC_BUNDLE_ID" >/dev/null 2>&1; do
+        :
+    done
     rm -rf ~/Library/Application\ Support/${NIXMAC_BUNDLE_ID} 2>/dev/null || true
     rm -rf ~/Library/WebKit/${NIXMAC_BUNDLE_ID} 2>/dev/null || true
     rm -rf ~/Library/Caches/${NIXMAC_BUNDLE_ID} 2>/dev/null || true
@@ -100,12 +108,14 @@ nixmac_launch() {
     dismiss_dialogs 10
     
     # Tauri apps may start without a visible window. Bring to front.
-    $PEEKABOO app switch --to "$NIXMAC_APP_NAME" 2>/dev/null || true
+    peekaboo_restore_active_app "$NIXMAC_APP_NAME" 2 10 2>/dev/null || true
     sleep 1
     
-    # Verify we can see the window
+    # Verify we can see the window. AX trees can lag app launch on remote
+    # runners, so keep process liveness separate from UI observability.
     local retries=0
-    while [ $retries -lt 5 ]; do
+    local max_retries="${NIXMAC_LAUNCH_VISIBILITY_RETRIES:-20}"
+    while [ $retries -lt "$max_retries" ]; do
         # Re-check process is alive (may have crashed after initial launch)
         if ! app_is_running "$NIXMAC_APP_NAME"; then
             die "nixmac process died during window wait (crash after launch)"
@@ -116,7 +126,11 @@ nixmac_launch() {
         dismiss_dialogs 3
         
         local json
-        json=$(peek_elements "$NIXMAC_APP_NAME") || true
+        if [ "$retries" -lt $((max_retries - 1)) ]; then
+            json=$(E2E_PEEKABOO_SUPPRESS_EMPTY_DIAG=1 peek_elements "$NIXMAC_APP_NAME") || true
+        else
+            json=$(peek_elements "$NIXMAC_APP_NAME") || true
+        fi
         local count
         count=$(echo "$json" | jq -r '.data.ui_elements | length' 2>/dev/null || echo "0")
         count="${count//[^0-9]/}"  # strip non-numeric chars
@@ -125,13 +139,22 @@ nixmac_launch() {
             debug "nixmac window visible ($count elements)"
             return 0
         fi
-        debug "Window not visible yet, retrying... ($retries)"
-        $PEEKABOO app switch --to "$NIXMAC_APP_NAME" 2>/dev/null || true
+        if ! peekaboo_bridge_is_remote; then
+            if peekaboo_recover_bridge; then
+                peekaboo_restore_active_app "$NIXMAC_APP_NAME" 2 10 2>/dev/null || true
+                sleep 1
+                retries=$((retries + 1))
+                continue
+            fi
+            die "E2E_INFRA: Peekaboo Bridge degraded before nixmac UI was observable"
+        fi
+        debug "Window not observable yet, retrying... ($retries)"
+        peekaboo_restore_active_app "$NIXMAC_APP_NAME" 2 5 2>/dev/null || true
         sleep 3
         retries=$((retries + 1))
     done
     
-    die "nixmac window not visible after 15s (app is running but UI did not render)"
+    die "E2E_INFRA: nixmac process is running but Peekaboo could not observe app UI after $((max_retries * 3))s"
 }
 
 nixmac_quit() {

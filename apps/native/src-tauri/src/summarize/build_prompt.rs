@@ -32,15 +32,37 @@ pub const EVOLVE_GROUP_DESCRIPTION_RULES: &str =
 
 use serde_json::{json, Value};
 
-const SINGLE_JSON_HASH: &str = r#"    { "hash": "{}", "title": "", "description": "" }"#;
+/// Returns a pretty-printed JSON string for a single title/description skeleton.
+fn single_json_str() -> String {
+    serde_json::to_string_pretty(&json!({ "title": "", "description": "" })).unwrap()
+}
 
-const GROUP_JSON: &str = r#"  "group": { "title": "", "description": "" }"#;
+fn single_entry_value(hash: &str) -> Value {
+    json!({ "hash": hash, "title": "", "description": "" })
+}
 
 fn placement_entry_value(hash: &str) -> Value {
     json!({ "hash": hash, "group_id": Value::Null, "pair_hash": Value::Null, "reason": "" })
 }
 
-const NEW_MAP_JSON_HASH: &str = r#"    { "hash": "{}", "group_id": null, "reason": "" }"#;
+fn new_map_entry_value(hash: &str) -> Value {
+    json!({ "hash": hash, "group_id": Value::Null, "reason": "" })
+}
+
+fn changes_with_group_json(entries: Vec<Value>) -> String {
+    let obj = json!({ "changes": entries, "group": { "title": "", "description": "" } });
+    serde_json::to_string_pretty(&obj).unwrap()
+}
+
+fn placements_json(entries: Vec<Value>) -> String {
+    let obj = json!({ "placements": entries });
+    serde_json::to_string_pretty(&obj).unwrap()
+}
+
+fn changes_json(entries: Vec<Value>) -> String {
+    let obj = json!({ "changes": entries });
+    serde_json::to_string_pretty(&obj).unwrap()
+}
 
 // ── JSON helpers ──────────────────────────────────────────────────────────────────────────
 
@@ -111,15 +133,7 @@ pub fn evolve_group(
 }
 
 pub fn new_group(hashes: &[String], resolved: &[&crate::sqlite_types::Change]) -> String {
-    let mut prompt = String::new();
-    prompt.push_str(BASE_PREAMBLE);
-    prompt.push_str(BASE_CHANGES_INTRO);
-    prompt.push_str(BASE_TITLE_RULES);
-    prompt.push_str(BASE_HUNK_DESCRIPTION_RULES);
-    prompt.push_str(&list_changes(resolved));
-    prompt.push_str(EVOLVE_GROUP_DESCRIPTION_RULES);
-    prompt.push_str(BASE_RESPONSE_INTRO);
-    let entries = hashes
+    let entries_vals = hashes
         .iter()
         .map(|h| single_entry_value(h))
         .collect::<Vec<_>>();
@@ -172,7 +186,7 @@ pub fn commit_message(map: &crate::shared_types::SemanticChangeMap) -> String {
     let mut lines = Vec::new();
 
     for group in &map.groups {
-        prompt.push_str(&format!(
+        lines.push(format!(
             "{} — {}\n",
             group.summary.title, group.summary.description
         ));
@@ -181,9 +195,9 @@ pub fn commit_message(map: &crate::shared_types::SemanticChangeMap) -> String {
         lines.push(format!("{} — {}\n", single.title, single.description));
     }
 
-    prompt.push('\n');
-    prompt.push_str("Write a conventional commit message for these changes.\n");
-    prompt.push_str("Use the format: <type>(<scope>): <description> — types: feat, fix, chore, refactor, docs, style, test, perf\n");
-    prompt.push_str("Return JSON: {\"message\": \"<full commit message string>\"}\n");
-    prompt
+    lines.push("\nWrite a conventional commit message for these changes.\n".to_string());
+    lines.push("Use the format: <type>(<scope>): <description> — types: feat, fix, chore, refactor, docs, style, test, perf\n".to_string());
+    lines.push("Return JSON: {\"message\": \"<full commit message string>\"}\n".to_string());
+
+    lines.join("")
 }
