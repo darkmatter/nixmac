@@ -22,9 +22,6 @@ export function useQueueSummarizer() {
         const store = useWidgetStore.getState();
         const map = event.payload.semanticMap;
         store.setChangeMap(map);
-        store.setSummaryAvailable(
-          map.groups.length > 0 || map.singles.length > 0,
-        );
         if (store.showHistory) {
           loadHistory();
         }

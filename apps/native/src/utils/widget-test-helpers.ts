@@ -52,7 +52,6 @@ export function setupWidgetTestHelpers() {
       const state = useWidgetStore.getState();
       state.setEvolvePrompt("");
       state.setPromptHistory([]);
-      state.clearPreview();
       state.clearLogs();
       state.clearEvolveEvents();
       state.setConversationalResponse(null);
