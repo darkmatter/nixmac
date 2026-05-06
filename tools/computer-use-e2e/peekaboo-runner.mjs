@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pngDimensions } from './artifact-utils.mjs';
@@ -1191,7 +1191,9 @@ export function peekabooRunnerSelfTest({ repoRoot }) {
   assert.equal(secretScanState.scenarios.peekabooCoreSettingsAPIKeys.status, 'pass');
   assert.deepEqual(secretScanState.failures, ['Unmasked secret artifact scan failed: diagnostics/api-keys.txt']);
 
-  const secretScanDir = mkdtempSync(path.join(repoRoot, 'artifacts/computer-use-local/secret-scan-self-test-'));
+  const secretScanRoot = path.join(repoRoot, 'artifacts/computer-use-local');
+  mkdirSync(secretScanRoot, { recursive: true });
+  const secretScanDir = mkdtempSync(path.join(secretScanRoot, 'secret-scan-self-test-'));
   try {
     writeFileSync(path.join(secretScanDir, 'requests.jsonl'), '{"authorization":"Bearer sk-self-test-secret"}\n', 'utf8');
     const jsonlScan = scanRunDirForUnmaskedSecrets(secretScanDir);
