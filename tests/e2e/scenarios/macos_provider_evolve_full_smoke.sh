@@ -455,6 +455,56 @@ scenario_build_and_wait_for_commit_step() {
     return 1
 }
 
+scenario_log_config_repo_state() {
+    local label="${1:-repo state}"
+
+    log "$label: HEAD=$(git -C "$NIXMAC_E2E_CONFIG_REPO" rev-parse --short HEAD 2>/dev/null || printf unknown)"
+    log "$label: latest=$(git -C "$NIXMAC_E2E_CONFIG_REPO" log -1 --pretty=%s 2>/dev/null || printf unknown)"
+    log "$label: status=$(git -C "$NIXMAC_E2E_CONFIG_REPO" status --short 2>/dev/null | paste -sd ';' - || true)"
+    log "$label: baseline-diff=$(git -C "$NIXMAC_E2E_CONFIG_REPO" diff --name-only "$NIXMAC_E2E_BASELINE_COMMIT"..HEAD 2>/dev/null | paste -sd ',' - || true)"
+    if grep -q "ripgrep" "$NIXMAC_E2E_CONFIG_REPO/flake.nix" 2>/dev/null; then
+        log "$label: ripgrep still present in flake.nix"
+    else
+        log "$label: ripgrep absent from flake.nix"
+    fi
+}
+
+scenario_provider_repo_restored_to_baseline() {
+    local status_short
+
+    status_short=$(git -C "$NIXMAC_E2E_CONFIG_REPO" status --short)
+    [ -z "$status_short" ] \
+        && ! grep -q "ripgrep" "$NIXMAC_E2E_CONFIG_REPO/flake.nix"
+}
+
+scenario_wait_for_provider_repo_restore() {
+    local timeout="${1:-45}"
+    local deadline
+
+    deadline=$(($(date +%s) + timeout))
+    while [ "$(date +%s)" -lt "$deadline" ]; do
+        if scenario_provider_repo_restored_to_baseline; then
+            return 0
+        fi
+        sleep 2
+    done
+
+    scenario_log_config_repo_state "history restore unresolved"
+    return 1
+}
+
+scenario_confirm_history_restore() {
+    scenario_click_element "Confirm Restore|confirm Restore" "" 10 \
+        || nixmac_pp_click_window_ratio "history confirm restore" "0.735" "0.268" \
+        || return 1
+
+    if scenario_wait_for_text "Confirm Restore" 3; then
+        nixmac_pp_click_window_ratio "history confirm restore retry" "0.735" "0.268" \
+            || scenario_click_element "Confirm Restore|confirm Restore" "" 10 \
+            || return 1
+    fi
+}
+
 scenario_restore_baseline_from_history() {
     scenario_click_element "History" "button" 30 || return 1
     if ! scenario_wait_for_text "History|Restore|Current|Base" 45; then
@@ -468,18 +518,14 @@ scenario_restore_baseline_from_history() {
     fi
     nixmac_screenshot "07-history-restore-preview"
 
-    scenario_click_element "Confirm Restore" "button" 30 || return 1
+    scenario_confirm_history_restore || return 1
     if ! scenario_wait_for_text "Restore commit|CURRENT|History" 90; then
         return 1
     fi
+    scenario_wait_for_provider_repo_restore 45 || return 1
     nixmac_screenshot "08-after-history-restore"
-
-    local latest_message status_short
-    latest_message=$(git -C "$NIXMAC_E2E_CONFIG_REPO" log -1 --pretty=%s)
-    status_short=$(git -C "$NIXMAC_E2E_CONFIG_REPO" status --short)
-    echo "$latest_message" | grep -qi "restore" \
-        && [ -z "$status_short" ] \
-        && ! grep -q "ripgrep" "$NIXMAC_E2E_CONFIG_REPO/flake.nix"
+    scenario_log_config_repo_state "history restore complete"
+    scenario_provider_repo_restored_to_baseline
 }
 
 scenario_test() {

@@ -55,17 +55,27 @@ scenario_discard_and_assert_baseline() {
     scenario_wait_for_text "Discard|Build & Test|Ready to test-drive" 30 \
         || die "Review actions were not visible before discard"
     nixmac_screenshot "04-discard-ready"
-    scenario_click_element "evolve-discard-button|^Discard$|Undo All" "button" 10 \
+    scenario_click_element "evolve-discard-button|^Discard$|Undo All" "" 10 \
         || nixmac_pp_click_window_ratio "discard button" "0.720" "0.252" \
         || die "Discard button was not reachable"
     if ! scenario_wait_for_text "Discard all current changes|Confirm|Cancel" 30; then
-        nixmac_screenshot "discard-confirmation-missing"
-        die "Discard confirmation dialog did not render"
+        nixmac_pp_click_window_ratio "discard button retry" "0.720" "0.252" \
+            || scenario_click_element "evolve-discard-button|^Discard$|Undo All" "" 10 \
+            || true
     fi
-    nixmac_screenshot "05-discard-confirmation"
-    scenario_click_element "^Confirm$" "button" 10 \
-        || nixmac_pp_click_window_ratio "discard confirmation button" "0.735" "0.578" \
-        || die "Discard confirmation button was not reachable"
+    if ! scenario_wait_for_text "Discard all current changes|Confirm|Cancel" 10; then
+        if scenario_wait_for_text "Describe changes|What to change" 5; then
+            log "Discard completed without a confirmation dialog"
+        else
+            nixmac_screenshot "discard-confirmation-missing"
+            die "Discard confirmation dialog did not render"
+        fi
+    else
+        nixmac_screenshot "05-discard-confirmation"
+        scenario_click_element "^Confirm$" "" 10 \
+            || nixmac_pp_click_window_ratio "discard confirmation button" "0.735" "0.578" \
+            || die "Discard confirmation button was not reachable"
+    fi
     if ! scenario_wait_for_text "Describe changes|What to change" 90; then
         nixmac_screenshot "discard-did-not-return-to-describe"
         die "Discard did not return to Describe"

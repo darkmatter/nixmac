@@ -96,12 +96,21 @@ scenario_changed_paths_including_untracked() {
 
 scenario_restore_managed_badge_baseline() {
     local prefix="$1"
+    local deadline
 
     scenario_restore_baseline_from_history \
         || return 1
-    git -C "$NIXMAC_E2E_CONFIG_REPO" diff --quiet "$NIXMAC_E2E_BASELINE_COMMIT" HEAD -- flake.nix flake.lock \
-        || return 1
-    [ -z "$(git -C "$NIXMAC_E2E_CONFIG_REPO" status --short)" ]
+    deadline=$(($(date +%s) + 45))
+    while [ "$(date +%s)" -lt "$deadline" ]; do
+        if git -C "$NIXMAC_E2E_CONFIG_REPO" diff --quiet "$NIXMAC_E2E_BASELINE_COMMIT" HEAD -- flake.nix flake.lock \
+            && [ -z "$(git -C "$NIXMAC_E2E_CONFIG_REPO" status --short)" ]; then
+            return 0
+        fi
+        sleep 2
+    done
+
+    scenario_log_config_repo_state "$prefix managed restore unresolved"
+    return 1
 }
 
 scenario_managed_badge_save_rollback() {

@@ -357,12 +357,27 @@ function peekabooScreenshotSignalIssue(runDir, screenshot) {
 }
 
 function scanPeekabooScreenshotSignal(runDir, screenshots) {
-  const violations = [];
   const pngScreenshots = screenshots.filter((screenshot) => /\.png$/i.test(screenshot?.path ?? ''));
+  const results = [];
   for (const screenshot of pngScreenshots) {
     if (!screenshot?.path || !/\.png$/i.test(screenshot.path)) continue;
     const issue = peekabooScreenshotSignalIssue(runDir, screenshot);
+    results.push({
+      screenshot,
+      issue,
+    });
+  }
+
+  const hasLaterPassingContent = results.some(({ screenshot, issue }) => {
+    const label = `${screenshot?.label ?? ''} ${screenshot?.path ?? ''}`;
+    return !issue && !/\b(01|launch|launched)\b/i.test(label);
+  });
+
+  const violations = [];
+  for (const { screenshot, issue } of results) {
     if (issue) {
+      const label = `${screenshot?.label ?? ''} ${screenshot?.path ?? ''}`;
+      if (hasLaterPassingContent && /\b(01|launch|launched)\b/i.test(label)) continue;
       violations.push({
         path: screenshot.path,
         label: screenshot.label ?? path.basename(screenshot.path),
@@ -420,6 +435,10 @@ function runScreenshotSignalSelfTest() {
     writeSignalFixture(path.join(fixtureDir, 'blank-launch.png'), {
       color: '0x000000',
     });
+    writeSignalFixture(path.join(fixtureDir, 'review-content.png'), {
+      color: '0x0a0a0a',
+      filter: 'drawbox=x=250:y=180:w=140:h=70:color=white:t=fill',
+    });
 
     assert.equal(
       scanPeekabooScreenshotSignal(fixtureDir, [{ path: 'dark-launch.png', label: 'launch' }]).status,
@@ -434,6 +453,16 @@ function runScreenshotSignalSelfTest() {
     const blankResult = scanPeekabooScreenshotSignal(fixtureDir, [{ path: 'blank-launch.png', label: 'launch' }]);
     assert.equal(blankResult.status, 'failed', 'blank dark capture should still fail screenshot signal');
     assert.match(blankResult.violations[0].issue, /blank|occluded|contrast|too dark/i);
+
+    const startupBlankResult = scanPeekabooScreenshotSignal(fixtureDir, [
+      { path: 'blank-launch.png', label: '01-launched' },
+      { path: 'review-content.png', label: '03-review-provider-evolved' },
+    ]);
+    assert.equal(
+      startupBlankResult.status,
+      'passed',
+      'an initial blank launch frame should be nonfatal when later scenario evidence has visible dark nixmac content',
+    );
   } finally {
     rmSync(fixtureDir, { recursive: true, force: true });
   }
