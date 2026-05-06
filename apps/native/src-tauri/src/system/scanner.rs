@@ -1254,6 +1254,27 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
     ),
 ];
 
+fn e2e_mock_system_enabled() -> bool {
+    cfg!(debug_assertions) && std::env::var("NIXMAC_E2E_MOCK_SYSTEM").ok().as_deref() == Some("1")
+}
+
+fn e2e_system_defaults_scan() -> Option<SystemDefaultsScan> {
+    if !e2e_mock_system_enabled() {
+        return None;
+    }
+
+    let raw = std::env::var("NIXMAC_E2E_SYSTEM_DEFAULTS_JSON").ok()?;
+    let defaults: Vec<SystemDefault> = serde_json::from_str(&raw).ok()?;
+    if defaults.is_empty() {
+        return None;
+    }
+
+    Some(SystemDefaultsScan {
+        defaults,
+        total_scanned: KEY_DEFS.iter().map(|(_, defs)| defs.len()).sum(),
+    })
+}
+
 // =============================================================================
 // Domain reading
 // =============================================================================
@@ -1368,6 +1389,10 @@ fn normalize_bool(val: &str) -> &'static str {
 /// Scan all supported macOS defaults domains and return settings that differ
 /// from the factory defaults.
 pub fn scan_system_defaults() -> SystemDefaultsScan {
+    if let Some(scan) = e2e_system_defaults_scan() {
+        return scan;
+    }
+
     let mut defaults = Vec::new();
     let mut total_scanned: usize = 0;
 

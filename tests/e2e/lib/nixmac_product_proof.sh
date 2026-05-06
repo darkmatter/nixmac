@@ -300,6 +300,10 @@ nixmac_pp_cleanup_common() {
     nixmac_pp_unset_launch_env NIXMAC_SKIP_PERMISSIONS
     nixmac_pp_unset_launch_env NIXMAC_E2E_CONFIG_DIR
     nixmac_pp_unset_launch_env NIXMAC_E2E_HOST_ATTR
+    nixmac_pp_unset_launch_env NIXMAC_E2E_HOMEBREW_BREWS
+    nixmac_pp_unset_launch_env NIXMAC_E2E_HOMEBREW_CASKS
+    nixmac_pp_unset_launch_env NIXMAC_E2E_HOMEBREW_TAPS
+    nixmac_pp_unset_launch_env NIXMAC_E2E_SYSTEM_DEFAULTS_JSON
     nixmac_pp_unset_launch_env OPENAI_API_KEY
     nixmac_pp_unset_launch_env OPENROUTER_API_KEY
     nixmac_pp_unset_launch_env VLLM_API_KEY
@@ -346,6 +350,26 @@ nixmac_pp_set_e2e_launch_env() {
     nixmac_pp_set_launch_env NIXMAC_SKIP_PERMISSIONS "$NIXMAC_SKIP_PERMISSIONS"
     nixmac_pp_set_launch_env NIXMAC_E2E_CONFIG_DIR "$NIXMAC_E2E_CONFIG_DIR"
     nixmac_pp_set_launch_env NIXMAC_E2E_HOST_ATTR "$NIXMAC_E2E_HOST_ATTR"
+    if [ -n "${NIXMAC_E2E_HOMEBREW_BREWS:-}" ]; then
+        nixmac_pp_set_launch_env NIXMAC_E2E_HOMEBREW_BREWS "$NIXMAC_E2E_HOMEBREW_BREWS"
+    else
+        nixmac_pp_unset_launch_env NIXMAC_E2E_HOMEBREW_BREWS
+    fi
+    if [ -n "${NIXMAC_E2E_HOMEBREW_CASKS:-}" ]; then
+        nixmac_pp_set_launch_env NIXMAC_E2E_HOMEBREW_CASKS "$NIXMAC_E2E_HOMEBREW_CASKS"
+    else
+        nixmac_pp_unset_launch_env NIXMAC_E2E_HOMEBREW_CASKS
+    fi
+    if [ -n "${NIXMAC_E2E_HOMEBREW_TAPS:-}" ]; then
+        nixmac_pp_set_launch_env NIXMAC_E2E_HOMEBREW_TAPS "$NIXMAC_E2E_HOMEBREW_TAPS"
+    else
+        nixmac_pp_unset_launch_env NIXMAC_E2E_HOMEBREW_TAPS
+    fi
+    if [ -n "${NIXMAC_E2E_SYSTEM_DEFAULTS_JSON:-}" ]; then
+        nixmac_pp_set_launch_env NIXMAC_E2E_SYSTEM_DEFAULTS_JSON "$NIXMAC_E2E_SYSTEM_DEFAULTS_JSON"
+    else
+        nixmac_pp_unset_launch_env NIXMAC_E2E_SYSTEM_DEFAULTS_JSON
+    fi
     nixmac_pp_set_launch_env OPENAI_API_KEY "$OPENAI_API_KEY"
     nixmac_pp_set_launch_env OPENROUTER_API_KEY "$OPENROUTER_API_KEY"
     nixmac_pp_set_launch_env VLLM_API_KEY "$VLLM_API_KEY"

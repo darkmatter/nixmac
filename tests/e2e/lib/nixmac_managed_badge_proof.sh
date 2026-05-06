@@ -10,6 +10,8 @@ scenario_managed_badge_prepare() {
     scenario_start_provider
     nixmac_clear_state
     scenario_seed_settings
+    export NIXMAC_E2E_HOMEBREW_BREWS="${NIXMAC_E2E_HOMEBREW_BREWS:-ripgrep}"
+    export NIXMAC_E2E_SYSTEM_DEFAULTS_JSON="${NIXMAC_E2E_SYSTEM_DEFAULTS_JSON:-[{\"nixKey\":\"system.defaults.finder.ShowPathbar\",\"label\":\"Show Finder path bar\",\"category\":\"Finder\",\"currentValue\":\"true\",\"defaultValue\":\"false\"}]}"
     nixmac_pp_set_e2e_launch_env
     export NIXMAC_RECORD_COMPLETIONS=1
     export NIXMAC_COMPLETION_LOG_DIR="$NIXMAC_E2E_COMPLETION_LOG_DIR"
@@ -135,10 +137,9 @@ scenario_managed_badge_save_rollback() {
     nixmac_screenshot "01-$prefix-launched"
     phase_pass "peekabooProviderLaunch: App launched for $badge_label proof"
 
-    if ! scenario_wait_for_text "$visible_badge_pattern" 8; then
+    if ! scenario_wait_for_text "$visible_badge_pattern" 20; then
         nixmac_screenshot "02-$prefix-badge-absent"
-        phase_pass "$phase_key: ABSENT_NO_COVERAGE $badge_label chip was not visible, so there was nothing to save or roll back in this run"
-        return 0
+        die "$badge_label chip was not visible after deterministic E2E fixture seeding; the suite cannot claim $phase_key coverage from this run"
     fi
 
     phase "Apply $badge_label to config"

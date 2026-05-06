@@ -41,13 +41,17 @@ pub const PINNED_VERSION_KEY: &str = "pinnedVersion";
 pub const DEFAULT_MAX_ITERATIONS: usize = 25;
 const KEYCHAIN_SERVICE: &str = "com.darkmatter.nixmac";
 
+fn e2e_mock_system_enabled() -> bool {
+    cfg!(debug_assertions) && std::env::var("NIXMAC_E2E_MOCK_SYSTEM").ok().as_deref() == Some("1")
+}
+
 fn e2e_env_value(name: &str) -> Option<String> {
-    if !cfg!(debug_assertions)
-        || std::env::var("NIXMAC_E2E_MOCK_SYSTEM").ok().as_deref() != Some("1")
-    {
+    if !e2e_mock_system_enabled() {
         return None;
     }
-    std::env::var(name).ok().filter(|value| !value.trim().is_empty())
+    std::env::var(name)
+        .ok()
+        .filter(|value| !value.trim().is_empty())
 }
 
 /// Gets a handle to the settings store.
@@ -422,12 +426,20 @@ fn legacy_settings_store<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> S
 }
 
 fn get_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> Result<Option<String>> {
+    if e2e_mock_system_enabled() {
+        return get_string_pref_raw(app, key);
+    }
+
     let keychain = keychain_store_for(app, key);
     let legacy = legacy_settings_store(app, key);
     get_with_lazy_migration(&keychain, &legacy).map_err(anyhow::Error::from)
 }
 
 fn set_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str, value: &str) -> Result<()> {
+    if e2e_mock_system_enabled() {
+        return set_string_pref(app, key, value);
+    }
+
     let keychain = keychain_store_for(app, key);
     let legacy = legacy_settings_store(app, key);
     set_with_cleanup(&keychain, &legacy, value).map_err(anyhow::Error::from)

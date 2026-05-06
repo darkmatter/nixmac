@@ -198,8 +198,8 @@ jobs:
           pkill -TERM -f 'tools/computer-use-e2e/run-local\.mjs run-peekaboo-suite|tests/e2e/run\.sh|nixmac-e2e-provider|nixmac\.app/Contents/MacOS/nixmac|ffmpeg .*peekaboo-e2e' >/dev/null 2>&1 || true
           sleep 2
           pkill -KILL -f 'tools/computer-use-e2e/run-local\.mjs run-peekaboo-suite|tests/e2e/run\.sh|nixmac-e2e-provider|nixmac\.app/Contents/MacOS/nixmac|ffmpeg .*peekaboo-e2e' >/dev/null 2>&1 || true
-          if [[ -n "$stale_run" && -d "$stale_run" && -f tools/computer-use-e2e/run-local.mjs ]]; then
-            NIXMAC_COMPUTER_USE_RUN_DIR="$stale_run" node tools/computer-use-e2e/run-local.mjs cleanup >/dev/null 2>&1 || true
+          if [[ -n "$stale_run" && -d "$stale_run" && -f "$REPO_DIR/tools/computer-use-e2e/run-local.mjs" ]]; then
+            (cd "$REPO_DIR" && NIXMAC_COMPUTER_USE_RUN_DIR="$stale_run" node tools/computer-use-e2e/run-local.mjs cleanup) >/dev/null 2>&1 || true
           fi
           rm -f "$REPO_DIR/artifacts/computer-use-local/.current-run"
           cd "$REPO_DIR"
