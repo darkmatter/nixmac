@@ -1,0 +1,248 @@
+[0;34m[17:44:13][0m === macos-e2e test runner ===
+[0;34m[17:44:13][0m Started at Tue May  5 17:44:13 PDT 2026
+[0;34m[17:44:13][0m Machine: DXU97120 | macOS 26.2
+[0;34m[17:44:13][0m Working directory: /Users/admin/nixmac-peekaboo-local-e2e/tests/e2e
+[0;34m[17:44:20][0m Scenario: macos_provider_discard_smoke
+[0;34m[17:44:20][0m Starting screen recording: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/video/peekaboo-e2e.mp4
+[0;34m[17:44:24][0m Recorder started (PID: 3234)
+[0;34m[17:44:24][0m === Phase 1: Prepare provider-backed discard fixture ===
+[0;32m[PASS][0m Peekaboo Bridge connected
+[0;32m[PASS][0m Peekaboo permissions OK
+[1;33m[WARN][0m No ADMIN_PASSWORD set, cannot unlock screen
+[0;34m[17:44:26][0m Clearing nixmac app state...
+[0;32m[PASS][0m App state cleared
+[0;34m[17:44:26][0m Seeded nixmac settings at /Users/admin/Library/Application Support/com.darkmatter.nixmac/settings.json with provider http://127.0.0.1:61665/v1
+[0;34m[17:44:26][0m Installed E2E system activation shim at /var/folders/lw/q3m765kd17z3h2g36tw6qk000000gp/T//nixmac-e2e-system-mock-bin.YINr0O
+[0;32m[PASS][0m peekabooProviderFixture: Prepared discard config repo, deterministic HTTP provider, completion logging, and mock rebuild flag
+[0;34m[17:44:26][0m === Phase 2: Launch nixmac app for discard proof ===
+[0;34m[17:44:26][0m Launching nixmac...
+[0;32m[PASS][0m App launched: nixmac
+✓ Switched to nixmac
+✓ Switched to nixmac
+📝 Created annotated screenshot with 150 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/01-discard-launched-1778028284.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/01-discard-launched-1778028284_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 177
+⚙️  Interactable elements: 150
+⏱️  Execution time: 0.34s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_38 (button) - Install vim
+• elem_39 (button) - Add Rectangle app
+• elem_40 (button) - Enable the Finder path bar and status bar
+• elem_41 (button) - 12 untracked customizations
+• elem_43 (button) - Report Issue
+• elem_44 (button) - Console
+  ...and 167 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 651187C5-75BF-4CC0-BE06-BC1744CBD4A2
+Agent: Use a tool like view_image to inspect it.
+[0;34m[17:44:45][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/01-discard-launched-1778028284.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/01-discard-launched-1778028284.png
+[0;32m[PASS][0m peekabooProviderLaunch: App launched for discard proof
+[0;34m[17:44:45][0m === Phase 3: Submit descriptor into real prompt for discard proof ===
+[0;34m[17:44:45][0m Clicking element elem_33 matching 'evolve-prompt-input|Configuration change descriptor|Describe changes to make to your configuration'
+Terminated: 15             sleep "$seconds"
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Textfield: Describe changes to make to your configuration.
+📍 Location: (956, 470)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.19s
+📝 Created annotated screenshot with 152 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/02-discard-descriptor-typed-1778028287.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/02-discard-descriptor-typed-1778028287_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 178
+⚙️  Interactable elements: 152
+⏱️  Execution time: 0.33s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_38 (button) - Install vim
+• elem_39 (button) - Add Rectangle app
+• elem_40 (button) - Enable the Finder path bar and status bar
+• elem_41 (button) - 12 untracked customizations
+• elem_42 (button) - 8 untracked Homebrew items
+• elem_44 (button) - Report Issue
+  ...and 168 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 3CDEB1AC-5C94-4145-ABF4-15220A3187A1
+Agent: Use a tool like view_image to inspect it.
+[0;34m[17:44:47][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/02-discard-descriptor-typed-1778028287.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/02-discard-descriptor-typed-1778028287.png
+[0;34m[17:44:48][0m Clicking element elem_37 matching 'evolve-prompt-send|Submit configuration change descriptor|Send'
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: Send
+📍 Location: (1279, 520)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.48s
+[0;32m[PASS][0m peekabooProviderTypedIntent: Descriptor submitted for discard proof
+[0;34m[17:44:49][0m === Phase 4: Verify provider-driven evolution reaches Review for discard proof ===
+📝 Created annotated screenshot with 153 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/03-discard-review-provider-evolved-1778028290.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/03-discard-review-provider-evolved-1778028290_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 182
+⚙️  Interactable elements: 153
+⏱️  Execution time: 0.57s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_18 (button) - Send
+• elem_19 (button) - Install vim
+• elem_20 (button) - Add Rectangle app
+• elem_21 (button) - Enable the Finder path bar and status bar
+• elem_22 (button) - 12 untracked customizations
+• elem_23 (button) - 8 untracked Homebrew items
+• elem_25 (button) - My History
+  ...and 172 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 664A94F4-511D-43E5-9878-DE1E1719A670
+Agent: Use a tool like view_image to inspect it.
+[0;34m[17:44:51][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/03-discard-review-provider-evolved-1778028290.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/03-discard-review-provider-evolved-1778028290.png
+[0;32m[PASS][0m peekabooProviderReview: Provider calls observed and Review step reached for discard proof
+[0;34m[17:44:51][0m === Phase 5: Discard generated provider changes ===
+📝 Created annotated screenshot with 163 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/04-discard-ready-1778028294.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/04-discard-ready-1778028294_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 190
+⚙️  Interactable elements: 163
+⏱️  Execution time: 0.31s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_31 (button) - Discard
+• elem_32 (button) - Build & Test
+• elem_41 (button) - Analyze
+• elem_50 (button) - Send
+• elem_51 (button) - Install vim
+• elem_52 (button) - Add Rectangle app
+• elem_53 (button) - Enable the Finder path bar and status bar
+  ...and 180 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 4D1E04C1-3D77-4406-9026-00461C7EC3A2
+Agent: Use a tool like view_image to inspect it.
+[0;34m[17:44:54][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/04-discard-ready-1778028294.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/04-discard-ready-1778028294.png
+[0;34m[17:45:05][0m Coordinate fallback click for discard button at 1136,294
+📝 Created annotated screenshot with 120 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/05-discard-confirmation-1778028307.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/05-discard-confirmation-1778028307_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 146
+⚙️  Interactable elements: 120
+⏱️  Execution time: 0.39s
+
+🔍 Element Summary
+• elem_12 (button) - Cancel
+• elem_13 (button) - Confirm
+• elem_14 (button) - Close
+• elem_15 (button) - close button
+• elem_16 (button) - full screen button
+• elem_19 (button) - minimize button
+• elem_1 (group) - group
+• elem_2 (group) - group
+• elem_5 (group) - Notifications alt+T
+• elem_6 (group) - Confirm Action
+  ...and 136 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: EC27A2B6-2377-4388-B34B-EA6BADEBE2A0
+Agent: Use a tool like view_image to inspect it.
+[0;34m[17:45:07][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/05-discard-confirmation-1778028307.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/05-discard-confirmation-1778028307.png
+[0;34m[17:45:19][0m Coordinate fallback click for discard confirmation button at 1148,555
+📝 Created annotated screenshot with 151 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/06-discard-returned-to-describe-1778028321.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/06-discard-returned-to-describe-1778028321_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 178
+⚙️  Interactable elements: 151
+⏱️  Execution time: 0.31s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_38 (button) - Install vim
+• elem_39 (button) - Add Rectangle app
+• elem_40 (button) - Enable the Finder path bar and status bar
+• elem_41 (button) - 12 untracked customizations
+• elem_43 (button) - My History
+• elem_44 (button) - Report Issue
+  ...and 168 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: A1ED2B72-089A-4DE1-91D3-9339A64422EF
+Agent: Use a tool like view_image to inspect it.
+[0;34m[17:45:21][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/06-discard-returned-to-describe-1778028321.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots/06-discard-returned-to-describe-1778028321.png
+[0;32m[PASS][0m peekabooProviderDiscard: Discard confirmed and disposable repo returned to baseline
+[0;34m[17:45:21][0m === Phase 6: Audit discard provider evidence ===
+[0;32m[PASS][0m peekabooProviderAudit: Observed 2 provider HTTP request(s) for discard path
+[0;34m[17:45:21][0m Stopping recorder (PID: 3234)...
+[0;34m[17:45:32][0m Video saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/video/peekaboo-e2e.mp4 (420K)
+
+[0;34m[17:45:32][0m ==========================================
+[0;34m[17:45:32][0m   Test Results
+[0;34m[17:45:32][0m ==========================================
+  [0;32m✅[0m Phase 1: peekabooProviderFixture: Prepared discard config repo, deterministic HTTP provider, completion logging, and mock rebuild flag
+  [0;32m✅[0m Phase 2: peekabooProviderLaunch: App launched for discard proof
+  [0;32m✅[0m Phase 3: peekabooProviderTypedIntent: Descriptor submitted for discard proof
+  [0;32m✅[0m Phase 4: peekabooProviderReview: Provider calls observed and Review step reached for discard proof
+  [0;32m✅[0m Phase 5: peekabooProviderDiscard: Discard confirmed and disposable repo returned to baseline
+  [0;32m✅[0m Phase 6: peekabooProviderAudit: Observed 2 provider HTTP request(s) for discard path
+
+  [0;32mAll 10 checks passed[0m
+[0;34m[17:45:32][0m ==========================================
+[0;34m[17:45:33][0m E2E report written: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/e2e-report/macos_provider_discard_smoke/e2e-report.json
+[0;34m[17:45:33][0m 
+[0;34m[17:45:33][0m Screenshots: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/screenshots
+[0;34m[17:45:33][0m Video: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/video/peekaboo-e2e.mp4
+[0;34m[17:45:33][0m Log: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-44-11-716Z/peekaboo-e2e.log
+✓ Quit nixmac
+Error: The operation couldn’t be completed. (PeekabooBridge.PeekabooBridgeErrorEnvelope error 1.)
+[0;34m[17:45:36][0m Uninstalling Nix...
+ INFO nix-installer v3.19.0
+ INFO nix-installer v3.19.0
+[31m`nix-darwin` installation detected, it must be removed before uninstalling Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.[39m
+[0;32m[PASS][0m Nix uninstalled

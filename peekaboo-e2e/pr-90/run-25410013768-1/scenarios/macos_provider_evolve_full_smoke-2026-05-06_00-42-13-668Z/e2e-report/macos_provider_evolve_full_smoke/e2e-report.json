@@ -1,0 +1,346 @@
+{
+  "schemaVersion": 1,
+  "repo": "darkmatter/nixmac",
+  "prNumber": null,
+  "headSha": "unknown",
+  "baseSha": null,
+  "workflowRunId": null,
+  "attempt": null,
+  "lane": "peekaboo-local",
+  "scenario": "macos_provider_evolve_full_smoke",
+  "runnerId": "macos-e2e",
+  "runnerKind": "peekaboo-local",
+  "startedAt": "2026-05-06T00:42:15Z",
+  "finishedAt": "2026-05-06T00:43:56Z",
+  "durationMs": 101000,
+  "status": "passed",
+  "htmlReportUrl": null,
+  "primaryProofUrl": "macos_provider_evolve_full_smoke/peekaboo-e2e.mp4",
+  "failureProofUrl": null,
+  "failureScreenshotUrl": null,
+  "failureVideoUrl": null,
+  "failureTimestampMs": null,
+  "replayCommand": "tests/e2e/run.sh macos_provider_evolve_full_smoke",
+  "localReproCommand": "tests/e2e/run.sh macos_provider_evolve_full_smoke",
+  "phases": [
+    {
+      "name": "peekabooProviderFixture: Prepared config repo, deterministic HTTP provider, completion logging, and mock rebuild flag",
+      "status": "passed",
+      "startedAt": null,
+      "finishedAt": null,
+      "durationMs": 0,
+      "assertions": [
+        "peekabooProviderFixture: Prepared config repo, deterministic HTTP provider, completion logging, and mock rebuild flag"
+      ],
+      "proof": [],
+      "error": null
+    },
+    {
+      "name": "peekabooProviderLaunch: App launched",
+      "status": "passed",
+      "startedAt": null,
+      "finishedAt": null,
+      "durationMs": 0,
+      "assertions": [
+        "peekabooProviderLaunch: App launched"
+      ],
+      "proof": [],
+      "error": null
+    },
+    {
+      "name": "peekabooProviderTypedIntent: Descriptor submitted",
+      "status": "passed",
+      "startedAt": null,
+      "finishedAt": null,
+      "durationMs": 0,
+      "assertions": [
+        "peekabooProviderTypedIntent: Descriptor submitted"
+      ],
+      "proof": [],
+      "error": null
+    },
+    {
+      "name": "peekabooProviderReview: Provider calls observed and Review step reached",
+      "status": "passed",
+      "startedAt": null,
+      "finishedAt": null,
+      "durationMs": 0,
+      "assertions": [
+        "peekabooProviderReview: Provider calls observed and Review step reached"
+      ],
+      "proof": [],
+      "error": null
+    },
+    {
+      "name": "peekabooProviderBuildBoundary: Build & Test advanced to Save step using explicit E2E mock activation",
+      "status": "passed",
+      "startedAt": null,
+      "finishedAt": null,
+      "durationMs": 0,
+      "assertions": [
+        "peekabooProviderBuildBoundary: Build & Test advanced to Save step using explicit E2E mock activation"
+      ],
+      "proof": [],
+      "error": null
+    },
+    {
+      "name": "peekabooProviderSaveFlow: Save step committed changes and returned to Describe",
+      "status": "passed",
+      "startedAt": null,
+      "finishedAt": null,
+      "durationMs": 0,
+      "assertions": [
+        "peekabooProviderSaveFlow: Save step committed changes and returned to Describe"
+      ],
+      "proof": [],
+      "error": null
+    },
+    {
+      "name": "peekabooProviderRollbackCleanup: History restore returned disposable config repo to baseline",
+      "status": "passed",
+      "startedAt": null,
+      "finishedAt": null,
+      "durationMs": 0,
+      "assertions": [
+        "peekabooProviderRollbackCleanup: History restore returned disposable config repo to baseline"
+      ],
+      "proof": [],
+      "error": null
+    },
+    {
+      "name": "peekabooProviderAudit: Observed 2 provider HTTP requests across evolve and summary paths",
+      "status": "passed",
+      "startedAt": null,
+      "finishedAt": null,
+      "durationMs": 0,
+      "assertions": [
+        "peekabooProviderAudit: Observed 2 provider HTTP requests across evolve and summary paths"
+      ],
+      "proof": [],
+      "error": null
+    }
+  ],
+  "captureLimitations": [],
+  "proof": [
+    {
+      "kind": "screenshot",
+      "path": "macos_provider_evolve_full_smoke/01-launched-1778028166.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "01-launched-1778028166.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "screenshot",
+      "path": "macos_provider_evolve_full_smoke/01-launched-1778028166_annotated.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "01-launched-1778028166_annotated.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "screenshot",
+      "path": "macos_provider_evolve_full_smoke/02-descriptor-typed-1778028169.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "02-descriptor-typed-1778028169.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "screenshot",
+      "path": "macos_provider_evolve_full_smoke/02-descriptor-typed-1778028169_annotated.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "02-descriptor-typed-1778028169_annotated.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "screenshot",
+      "path": "macos_provider_evolve_full_smoke/03-review-provider-evolved-1778028172.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "03-review-provider-evolved-1778028172.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "screenshot",
+      "path": "macos_provider_evolve_full_smoke/03-review-provider-evolved-1778028172_annotated.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "03-review-provider-evolved-1778028172_annotated.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "screenshot",
+      "path": "macos_provider_evolve_full_smoke/04-save-step-after-build-1778028193.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "04-save-step-after-build-1778028193.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "screenshot",
+      "path": "macos_provider_evolve_full_smoke/04-save-step-after-build-1778028193_annotated.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "04-save-step-after-build-1778028193_annotated.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "screenshot",
+      "path": "macos_provider_evolve_full_smoke/05-returned-to-describe-1778028215.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "05-returned-to-describe-1778028215.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "screenshot",
+      "path": "macos_provider_evolve_full_smoke/05-returned-to-describe-1778028215_annotated.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "05-returned-to-describe-1778028215_annotated.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "screenshot",
+      "path": "macos_provider_evolve_full_smoke/06-history-before-restore-1778028218.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "06-history-before-restore-1778028218.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "screenshot",
+      "path": "macos_provider_evolve_full_smoke/06-history-before-restore-1778028218_annotated.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "06-history-before-restore-1778028218_annotated.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "screenshot",
+      "path": "macos_provider_evolve_full_smoke/07-history-restore-preview-1778028221.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "07-history-restore-preview-1778028221.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "screenshot",
+      "path": "macos_provider_evolve_full_smoke/07-history-restore-preview-1778028221_annotated.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "07-history-restore-preview-1778028221_annotated.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "screenshot",
+      "path": "macos_provider_evolve_full_smoke/08-after-history-restore-1778028224.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "08-after-history-restore-1778028224.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "screenshot",
+      "path": "macos_provider_evolve_full_smoke/08-after-history-restore-1778028224_annotated.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "08-after-history-restore-1778028224_annotated.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "screenshot",
+      "path": "macos_provider_evolve_full_smoke/commit-message-manual-fallback-1778028210.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "commit-message-manual-fallback-1778028210.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "screenshot",
+      "path": "macos_provider_evolve_full_smoke/commit-message-manual-fallback-1778028210_annotated.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "commit-message-manual-fallback-1778028210_annotated.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_provider_evolve_full_smoke/diagnostics/provider/requests.jsonl",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/provider/requests.jsonl",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "video",
+      "path": "macos_provider_evolve_full_smoke/peekaboo-e2e.mp4",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "Full screen recording",
+      "isPrimary": true,
+      "isFailureProof": false
+    }
+  ]
+}

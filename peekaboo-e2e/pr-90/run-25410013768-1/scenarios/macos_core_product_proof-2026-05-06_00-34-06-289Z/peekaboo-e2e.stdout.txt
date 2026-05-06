@@ -1,0 +1,455 @@
+[0;34m[17:34:08][0m === macos-e2e test runner ===
+[0;34m[17:34:08][0m Started at Tue May  5 17:34:08 PDT 2026
+[0;34m[17:34:08][0m Machine: DXU97120 | macOS 26.2
+[0;34m[17:34:08][0m Working directory: /Users/admin/nixmac-peekaboo-local-e2e/tests/e2e
+[0;34m[17:34:15][0m Scenario: macos_core_product_proof
+[0;34m[17:34:15][0m Starting screen recording: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/video/peekaboo-e2e.mp4
+[0;34m[17:34:18][0m Recorder started (PID: 82352)
+[0;34m[17:34:18][0m === Phase 1: Prepare broad local Product Proof fixture ===
+[0;32m[PASS][0m Peekaboo Bridge connected
+[0;32m[PASS][0m Peekaboo permissions OK
+[1;33m[WARN][0m No ADMIN_PASSWORD set, cannot unlock screen
+[0;34m[17:34:18][0m Clearing nixmac app state...
+[0;32m[PASS][0m App state cleared
+[0;34m[17:34:19][0m Seeded nixmac settings at /Users/admin/Library/Application Support/com.darkmatter.nixmac/settings.json
+[0;32m[PASS][0m peekabooCoreFixture: Prepared deterministic config, local validation settings, and mock system flag
+[0;34m[17:34:19][0m === Phase 2: Launch and prove app shell ===
+[0;34m[17:34:19][0m Launching nixmac...
+[0;32m[PASS][0m App launched: nixmac
+✓ Switched to nixmac
+✓ Switched to nixmac
+📝 Created annotated screenshot with 119 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/01-core-launch-1778027677.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/01-core-launch-1778027677_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 145
+⚙️  Interactable elements: 119
+⏱️  Execution time: 0.32s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_11 (button) - Report Issue
+• elem_12 (button) - Console
+• elem_14 (button) - close button
+• elem_15 (button) - full screen button
+• elem_18 (button) - minimize button
+• elem_2 (textField) - group
+• elem_1 (group) - group
+  ...and 135 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: E9A3FC96-48D2-4A0B-82E1-E8C8177BFC0E
+Agent: Use a tool like view_image to inspect it.
+[0;34m[17:34:38][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/01-core-launch-1778027677.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/01-core-launch-1778027677.png
+[0;32m[PASS][0m peekabooCoreLaunch: App shell, header controls, and initial prompt surface rendered
+[0;34m[17:34:38][0m === Phase 3: Verify update banner is not blocking ===
+📝 Created annotated screenshot with 154 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/02-update-non-blocking-1778027683.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/02-update-non-blocking-1778027683_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 181
+⚙️  Interactable elements: 154
+⏱️  Execution time: 0.30s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_40 (button) - Open AI Models settings
+• elem_41 (button) - Install vim
+• elem_42 (button) - Add Rectangle app
+• elem_43 (button) - Enable the Finder path bar and status bar
+• elem_44 (button) - 12 untracked customizations
+• elem_45 (button) - 8 untracked Homebrew items
+  ...and 171 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 024B50EC-A825-48D7-B875-59D5852588A8
+Agent: Use a tool like view_image to inspect it.
+[0;34m[17:34:44][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/02-update-non-blocking-1778027683.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/02-update-non-blocking-1778027683.png
+[0;32m[PASS][0m peekabooCoreUpdateBanner: Update banner state did not block the prompt workflow
+[0;34m[17:34:44][0m === Phase 4: Prove suggestion cards ===
+[0;34m[17:34:44][0m Clicking element elem_41 matching '^Install vim$|Install vim'
+Terminated: 15             sleep "$seconds"
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: Install vim
+📍 Location: (646, 598)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.49s
+[0;34m[17:34:46][0m Redacted text snapshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/diagnostics/text/suggestion-card-text.txt
+📝 Created annotated screenshot with 154 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/03-suggestion-card-1778027687.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/03-suggestion-card-1778027687_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 181
+⚙️  Interactable elements: 154
+⏱️  Execution time: 0.32s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_40 (button) - Open AI Models settings
+• elem_41 (button) - Install vim
+• elem_42 (button) - Add Rectangle app
+• elem_43 (button) - Enable the Finder path bar and status bar
+• elem_44 (button) - 12 untracked customizations
+• elem_45 (button) - 8 untracked Homebrew items
+  ...and 171 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 9652F5FA-3191-4AD6-AB1A-65019B541F1C
+Agent: Use a tool like view_image to inspect it.
+[0;34m[17:34:47][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/03-suggestion-card-1778027687.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/03-suggestion-card-1778027687.png
+[0;32m[PASS][0m peekabooCoreSuggestionCards: Suggestion card was clicked and the prompt surface remained usable
+[0;34m[17:34:47][0m === Phase 5: Prove descriptor prompt typing ===
+[0;34m[17:34:48][0m Clicking element elem_33 matching 'evolve-prompt-input|Configuration change descriptor|Describe changes to make to your configuration|Install vim'
+Terminated: 15             sleep "$seconds"
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Textfield: Install vim
+📍 Location: (956, 470)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.23s
+📝 Created annotated screenshot with 154 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/04-descriptor-typed-1778027690.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/04-descriptor-typed-1778027690_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 181
+⚙️  Interactable elements: 154
+⏱️  Execution time: 0.33s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_40 (button) - Open AI Models settings
+• elem_41 (button) - Install vim
+• elem_42 (button) - Add Rectangle app
+• elem_43 (button) - Enable the Finder path bar and status bar
+• elem_44 (button) - 12 untracked customizations
+• elem_45 (button) - 8 untracked Homebrew items
+  ...and 171 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 13B265AF-C28E-4FC2-AC77-F75272F18E36
+Agent: Use a tool like view_image to inspect it.
+[0;34m[17:34:50][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/04-descriptor-typed-1778027690.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/04-descriptor-typed-1778027690.png
+[0;32m[PASS][0m peekabooCoreTypedIntent: Typed descriptor appeared in the prompt input
+[0;34m[17:34:50][0m === Phase 6: Verify local provider-validation boundary ===
+📝 Created annotated screenshot with 154 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/05-provider-validation-block-1778027690.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/05-provider-validation-block-1778027690_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 181
+⚙️  Interactable elements: 154
+⏱️  Execution time: 0.33s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_40 (button) - Open AI Models settings
+• elem_41 (button) - Install vim
+• elem_42 (button) - Add Rectangle app
+• elem_43 (button) - Enable the Finder path bar and status bar
+• elem_44 (button) - 12 untracked customizations
+• elem_45 (button) - 8 untracked Homebrew items
+  ...and 171 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 0A2609DE-DBB4-46E9-BA21-9400F575ADA3
+Agent: Use a tool like view_image to inspect it.
+[0;34m[17:34:51][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/05-provider-validation-block-1778027690.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/05-provider-validation-block-1778027690.png
+[0;32m[PASS][0m peekabooCoreProviderValidation: Submit path reached expected local provider-validation boundary
+[0;34m[17:34:51][0m === Phase 7: Prove Settings General ===
+[0;34m[17:34:51][0m Clicking element elem_10 matching '^Settings$|Settings'
+Terminated: 15             sleep "$seconds"
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: Settings
+📍 Location: (1336, 145)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.49s
+[0;34m[17:34:57][0m Coordinate fallback click for Settings header button at 1336,113
+[0;34m[17:35:04][0m Clicking element elem_40 matching 'Open AI Models settings'
+Terminated: 15             sleep "$seconds"
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: Open AI Models settings
+📍 Location: (976, 565)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.60s
+[0;34m[17:35:08][0m Clicking element elem_51 matching 'General'
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: General
+📍 Location: (740, 344)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.50s
+[0;34m[17:35:10][0m Redacted text snapshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/diagnostics/text/settings-general-text.txt
+📝 Created annotated screenshot with 190 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/08-settings-general-1778027710.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/08-settings-general-1778027710_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 217
+⚙️  Interactable elements: 190
+⏱️  Execution time: 0.55s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_40 (button) - Open AI Models settings
+• elem_41 (button) - Install vim
+• elem_42 (button) - Add Rectangle app
+• elem_43 (button) - Enable the Finder path bar and status bar
+• elem_44 (button) - 12 untracked customizations
+• elem_45 (button) - 8 untracked Homebrew items
+  ...and 207 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 9C8418BE-8F18-4D38-95B3-0C56410598F3
+Agent: Use a tool like view_image to inspect it.
+[0;34m[17:35:11][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/08-settings-general-1778027710.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/08-settings-general-1778027710.png
+[0;32m[PASS][0m peekabooCoreSettingsGeneral: Settings General tab rendered with config and host controls
+[0;34m[17:35:11][0m === Phase 8: Prove Settings AI Models ===
+[0;34m[17:35:12][0m Clicking element elem_40 matching 'AI Models'
+Terminated: 15             sleep "$seconds"
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: Open AI Models settings
+📍 Location: (976, 565)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.50s
+[0;34m[17:35:14][0m Redacted text snapshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/diagnostics/text/settings-ai-models-text.txt
+📝 Created annotated screenshot with 190 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/09-settings-ai-models-1778027714.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/09-settings-ai-models-1778027714_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 217
+⚙️  Interactable elements: 190
+⏱️  Execution time: 0.42s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_40 (button) - Open AI Models settings
+• elem_41 (button) - Install vim
+• elem_42 (button) - Add Rectangle app
+• elem_43 (button) - Enable the Finder path bar and status bar
+• elem_44 (button) - 12 untracked customizations
+• elem_45 (button) - 8 untracked Homebrew items
+  ...and 207 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 45FD98F5-6C6F-4FF6-B5F3-9B124A539F12
+Agent: Use a tool like view_image to inspect it.
+[0;34m[17:35:15][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/09-settings-ai-models-1778027714.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/09-settings-ai-models-1778027714.png
+[0;32m[PASS][0m peekabooCoreSettingsAIModels: Settings AI Models tab rendered provider/model controls
+[0;34m[17:35:15][0m === Phase 9: Prove Settings API Keys with shared redaction gate ===
+[0;34m[17:35:15][0m Clicking element elem_53 matching 'API Keys'
+Terminated: 15             sleep "$seconds"
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: API Keys
+📍 Location: (740, 416)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.47s
+[0;34m[17:35:17][0m Redacted text snapshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/diagnostics/text/settings-api-keys-text.txt
+📝 Created annotated screenshot with 215 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/10-settings-api-keys-1778027717.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/10-settings-api-keys-1778027717_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 242
+⚙️  Interactable elements: 215
+⏱️  Execution time: 0.47s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_40 (button) - Open AI Models settings
+• elem_41 (button) - Install vim
+• elem_42 (button) - Add Rectangle app
+• elem_43 (button) - Enable the Finder path bar and status bar
+• elem_44 (button) - 12 untracked customizations
+• elem_45 (button) - 8 untracked Homebrew items
+  ...and 232 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 467805A4-915E-4318-BEEB-EC0A6B5B259A
+Agent: Use a tool like view_image to inspect it.
+[0;34m[17:35:18][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/10-settings-api-keys-1778027717.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/10-settings-api-keys-1778027717.png
+[0;32m[PASS][0m peekabooCoreSettingsAPIKeys: Settings API Keys tab rendered and shared redaction gate found no unmasked secrets
+[0;34m[17:35:18][0m === Phase 10: Prove Settings Preferences ===
+[0;34m[17:35:18][0m Clicking element elem_54 matching 'Preferences'
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: Preferences
+📍 Location: (740, 452)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.48s
+[0;34m[17:35:20][0m Redacted text snapshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/diagnostics/text/settings-preferences-text.txt
+📝 Created annotated screenshot with 227 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/11-settings-preferences-1778027720.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/11-settings-preferences-1778027720_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 254
+⚙️  Interactable elements: 227
+⏱️  Execution time: 0.42s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_40 (button) - Open AI Models settings
+• elem_41 (button) - Install vim
+• elem_42 (button) - Add Rectangle app
+• elem_43 (button) - Enable the Finder path bar and status bar
+• elem_44 (button) - 12 untracked customizations
+• elem_45 (button) - 8 untracked Homebrew items
+  ...and 244 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 9F407E96-E224-4836-AA63-DEB3DE49B73A
+Agent: Use a tool like view_image to inspect it.
+[0;34m[17:35:21][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/11-settings-preferences-1778027720.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/11-settings-preferences-1778027720.png
+[0;34m[17:35:21][0m Clicking element elem_48 matching 'Close settings|^Close$'
+Terminated: 15             sleep "$seconds"
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: Close settings
+📍 Location: (960, 509)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.49s
+[0;32m[PASS][0m peekabooCoreSettingsPreferences: Settings Preferences tab rendered confirmation controls
+[0;34m[17:35:23][0m === Phase 11: Prove History surface ===
+[0;34m[17:35:24][0m Clicking element elem_8 matching 'History'
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: History
+📍 Location: (1278, 145)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.49s
+[0;34m[17:35:25][0m Redacted text snapshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/diagnostics/text/history-text.txt
+📝 Created annotated screenshot with 154 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/12-history-1778027725.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/12-history-1778027725_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist
+📊 UI elements detected: 181
+⚙️  Interactable elements: 154
+⏱️  Execution time: 0.63s
+
+🔍 Element Summary
+• elem_8 (button) - History
+• elem_9 (button) - Give feedback
+• elem_10 (button) - Settings
+• elem_37 (button) - Send
+• elem_40 (button) - Open AI Models settings
+• elem_41 (button) - Install vim
+• elem_42 (button) - Add Rectangle app
+• elem_43 (button) - Enable the Finder path bar and status bar
+• elem_44 (button) - 12 untracked customizations
+• elem_45 (button) - 8 untracked Homebrew items
+  ...and 171 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: DD9D3A51-0B27-4039-BB77-AEBF2AB26A8D
+Agent: Use a tool like view_image to inspect it.
+[0;34m[17:35:26][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/12-history-1778027725.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots/12-history-1778027725.png
+[0;34m[17:35:26][0m Clicking element elem_50 matching 'Close|^×$|^X$'
+✅ Click successful
+🎯 App: nixmac
+📱 Clicked: Button: close button
+📍 Location: (576, 109)
+⏳ Waited: 0.0s
+⏱️  Completed in 0.49s
+[0;32m[PASS][0m peekabooCoreHistory: History surface rendered a visible state
+[0;34m[17:35:27][0m === Phase 12: Verify visual and text proof coverage ===
+[0;32m[PASS][0m peekabooCoreVisualProofQuality: Core proof captured 20 screenshots and 6 redacted text snapshots
+[0;34m[17:35:27][0m Stopping recorder (PID: 82352)...
+[0;34m[17:35:38][0m Video saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/video/peekaboo-e2e.mp4 (484K)
+
+[0;34m[17:35:38][0m ==========================================
+[0;34m[17:35:38][0m   Test Results
+[0;34m[17:35:38][0m ==========================================
+  [0;32m✅[0m Phase 1: peekabooCoreFixture: Prepared deterministic config, local validation settings, and mock system flag
+  [0;32m✅[0m Phase 2: peekabooCoreLaunch: App shell, header controls, and initial prompt surface rendered
+  [0;32m✅[0m Phase 3: peekabooCoreUpdateBanner: Update banner state did not block the prompt workflow
+  [0;32m✅[0m Phase 4: peekabooCoreSuggestionCards: Suggestion card was clicked and the prompt surface remained usable
+  [0;32m✅[0m Phase 5: peekabooCoreTypedIntent: Typed descriptor appeared in the prompt input
+  [0;32m✅[0m Phase 6: peekabooCoreProviderValidation: Submit path reached expected local provider-validation boundary
+  [0;32m✅[0m Phase 7: peekabooCoreSettingsGeneral: Settings General tab rendered with config and host controls
+  [0;32m✅[0m Phase 8: peekabooCoreSettingsAIModels: Settings AI Models tab rendered provider/model controls
+  [0;32m✅[0m Phase 9: peekabooCoreSettingsAPIKeys: Settings API Keys tab rendered and shared redaction gate found no unmasked secrets
+  [0;32m✅[0m Phase 10: peekabooCoreSettingsPreferences: Settings Preferences tab rendered confirmation controls
+  [0;32m✅[0m Phase 11: peekabooCoreHistory: History surface rendered a visible state
+  [0;32m✅[0m Phase 12: peekabooCoreVisualProofQuality: Core proof captured 20 screenshots and 6 redacted text snapshots
+
+  [0;32mAll 16 checks passed[0m
+[0;34m[17:35:38][0m ==========================================
+[0;34m[17:35:38][0m E2E report written: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/e2e-report/macos_core_product_proof/e2e-report.json
+[0;34m[17:35:38][0m 
+[0;34m[17:35:38][0m Screenshots: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/screenshots
+[0;34m[17:35:38][0m Video: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/video/peekaboo-e2e.mp4
+[0;34m[17:35:38][0m Log: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-34-06-289Z/peekaboo-e2e.log
+✓ Quit nixmac
+Error: The operation couldn’t be completed. (PeekabooBridge.PeekabooBridgeErrorEnvelope error 1.)
+[0;34m[17:35:42][0m Uninstalling Nix...
+ INFO nix-installer v3.19.0
+ INFO nix-installer v3.19.0
+[31m`nix-darwin` installation detected, it must be removed before uninstalling Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.[39m
+[0;32m[PASS][0m Nix uninstalled
