@@ -1,0 +1,16 @@
+{
+  "status": "failed",
+  "scannedFiles": 16,
+  "violations": [
+    {
+      "path": "screenshots/failure-1778052303-1778052303_annotated.png",
+      "label": "failure-1778052303-1778052303_annotated",
+      "issue": "the screenshot is too small for app-level visual proof (434x186)"
+    },
+    {
+      "path": "screenshots/failure-1778052303-1778052303.png",
+      "label": "failure-1778052303-1778052303",
+      "issue": "the screenshot is too small for app-level visual proof (434x186)"
+    }
+  ]
+}

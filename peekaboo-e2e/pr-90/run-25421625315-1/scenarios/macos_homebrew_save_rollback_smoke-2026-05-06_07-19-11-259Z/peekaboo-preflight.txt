@@ -1,0 +1,31 @@
+/opt/homebrew/bin/peekaboo
+Peekaboo CLI: Found
+/usr/bin/jq
+jq: Found
+/opt/homebrew/bin/ffmpeg
+ffmpeg: Found
+/opt/homebrew/bin/ffprobe
+ffprobe: Found
+nixmac app: Found at /tmp/nixmac-peekaboo-e2e-app-25421625315-1/nixmac.app
+nixmac executable: Found at /tmp/nixmac-peekaboo-e2e-app-25421625315-1/nixmac.app/Contents/MacOS/nixmac
+nixmac codesign: OK
+Source: Peekaboo Bridge
+Screen Recording (Required): Granted
+Accessibility (Required): Granted
+[2026-05-06T07:19:12.621Z] DEBUG: Runtime host: remote gui via /Users/admin/Library/Application Support/Peekaboo/bridge.sock (build 3.0.0-beta3 (1))
+[2026-05-06T07:19:12.633Z] DEBUG [Bridge]: Bridge status: handshake OK gui via /Users/admin/Library/Application Support/Peekaboo/bridge.sock
+[2026-05-06T07:19:12.634Z] DEBUG [Bridge]: Bridge status: handshake error via /Users/admin/Library/Application Support/Claude/bridge.sock: Error Domain=NSPOSIXErrorDomain Code=2 "No such file or directory"
+[2026-05-06T07:19:12.641Z] DEBUG [Bridge]: Bridge status: handshake error via /Users/admin/Library/Application Support/clawdis/bridge.sock: Error Domain=NSPOSIXErrorDomain Code=2 "No such file or directory"
+Peekaboo Bridge
+===============
+
+Selected: remote gui via /Users/admin/Library/Application Support/Peekaboo/bridge.sock (build 3.0.0-beta3 (1))
+
+Client: pid=7290 bundle=boo.peekaboo.peekaboo team=Y5PE65HELJ
+
+Candidates:
+- /Users/admin/Library/Application Support/Peekaboo/bridge.sock — OK (gui, ops: 62/69 enabled, perm: SR=Y AX=Y AS=N)
+- /Users/admin/Library/Application Support/Claude/bridge.sock — The operation couldn’t be completed. No such file or directory
+- /Users/admin/Library/Application Support/clawdis/bridge.sock — The operation couldn’t be completed. No such file or directory
+Peekaboo Bridge: Connected
+

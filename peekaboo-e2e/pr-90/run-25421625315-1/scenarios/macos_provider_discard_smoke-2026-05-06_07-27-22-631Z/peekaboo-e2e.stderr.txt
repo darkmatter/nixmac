@@ -1,0 +1,1 @@
+/Users/admin/nixmac-peekaboo-local-e2e/tests/e2e/scenarios/macos_provider_discard_smoke.sh: line 72: scenario_commit_changes_and_assert_return: command not found
