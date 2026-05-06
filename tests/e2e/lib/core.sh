@@ -36,10 +36,14 @@ run_with_timeout() {
         return $?
     fi
 
-    local output_file status command_pid watchdog_pid
+    local output_file error_file status command_pid watchdog_pid
     output_file=$(mktemp "${TMPDIR:-/tmp}/e2e-timeout-output.XXXXXX") || return 1
+    error_file=$(mktemp "${TMPDIR:-/tmp}/e2e-timeout-error.XXXXXX") || {
+        rm -f "$output_file"
+        return 1
+    }
 
-    "$@" >"$output_file" 2>&1 &
+    "$@" >"$output_file" 2>"$error_file" &
     command_pid=$!
 
     (
@@ -51,7 +55,7 @@ run_with_timeout() {
             pkill -KILL -P "$command_pid" 2>/dev/null || true
             kill -9 "$command_pid" 2>/dev/null || true
         fi
-    ) &
+    ) >/dev/null 2>&1 &
     watchdog_pid=$!
 
     if wait "$command_pid"; then
@@ -65,7 +69,8 @@ run_with_timeout() {
     wait "$watchdog_pid" 2>/dev/null || true
 
     cat "$output_file"
-    rm -f "$output_file"
+    cat "$error_file" >&2
+    rm -f "$output_file" "$error_file"
 
     if [ "$status" -eq 137 ] || [ "$status" -eq 143 ]; then
         return 124

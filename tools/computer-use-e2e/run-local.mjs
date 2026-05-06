@@ -15,6 +15,7 @@ import {
   mkdtemp,
   readFile,
   readdir,
+  realpath,
   rm,
   stat,
   writeFile,
@@ -416,6 +417,14 @@ async function pathExists(filePath) {
   } catch {
     return false;
   }
+}
+
+function assertContainedPath(root, candidate, label) {
+  const relative = path.relative(root, candidate);
+  assert(
+    relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative)),
+    `${label} must stay under ${root}`,
+  );
 }
 
 function run(command, args, options = {}) {
@@ -1188,11 +1197,22 @@ function mergeQualityScan(rollup, scan, sourceScenario, kind) {
 
 async function copySuiteArtifact({ sourceState, relativePath, suiteDir, suiteScenarioDir }) {
   if (!relativePath) return null;
-  const sourcePath = path.join(sourceState.runDir, relativePath);
+  assert(!path.isAbsolute(relativePath), `Suite artifact path must be relative: ${relativePath}`);
+  const normalizedRelativePath = path.normalize(relativePath);
+  assert(
+    normalizedRelativePath !== '..' && !normalizedRelativePath.startsWith(`..${path.sep}`),
+    `Suite artifact path must not escape the source run directory: ${relativePath}`,
+  );
+  const sourceRoot = await realpath(sourceState.runDir);
+  const sourcePath = path.resolve(sourceRoot, normalizedRelativePath);
   if (!(await pathExists(sourcePath))) return null;
-  const destination = path.join(suiteDir, 'scenarios', suiteScenarioDir, relativePath);
+  const resolvedSource = await realpath(sourcePath);
+  assertContainedPath(sourceRoot, resolvedSource, 'Suite artifact source');
+  const destinationRoot = path.resolve(suiteDir, 'scenarios', suiteScenarioDir);
+  const destination = path.resolve(destinationRoot, normalizedRelativePath);
+  assertContainedPath(destinationRoot, destination, 'Suite artifact destination');
   await mkdir(path.dirname(destination), { recursive: true });
-  await cp(sourcePath, destination, { recursive: true, preserveTimestamps: true });
+  await cp(resolvedSource, destination, { recursive: true, preserveTimestamps: true });
   return path.relative(suiteDir, destination);
 }
 
@@ -2825,6 +2845,53 @@ async function runPeekabooEvidenceVideoSelfTest() {
   }
 }
 
+async function runSuiteArtifactCopySelfTest() {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'nixmac-suite-copy-self-test-'));
+  try {
+    const sourceRunDir = path.join(root, 'source');
+    const suiteDir = path.join(root, 'suite');
+    await mkdir(path.join(sourceRunDir, 'screenshots'), { recursive: true });
+    await writeFile(path.join(sourceRunDir, 'screenshots', 'proof.png'), 'proof', 'utf8');
+
+    const copied = await copySuiteArtifact({
+      sourceState: { runDir: sourceRunDir },
+      relativePath: 'screenshots/proof.png',
+      suiteDir,
+      suiteScenarioDir: 'macos_core_product_proof',
+    });
+    assert.equal(
+      copied,
+      path.join('scenarios', 'macos_core_product_proof', 'screenshots', 'proof.png'),
+      'Suite artifact copy should preserve valid relative paths',
+    );
+
+    await assert.rejects(
+      () =>
+        copySuiteArtifact({
+          sourceState: { runDir: sourceRunDir },
+          relativePath: '../outside.txt',
+          suiteDir,
+          suiteScenarioDir: 'macos_core_product_proof',
+        }),
+      /must not escape/,
+      'Suite artifact copy should reject source path traversal',
+    );
+    await assert.rejects(
+      () =>
+        copySuiteArtifact({
+          sourceState: { runDir: sourceRunDir },
+          relativePath: path.join(sourceRunDir, 'screenshots', 'proof.png'),
+          suiteDir,
+          suiteScenarioDir: 'macos_core_product_proof',
+        }),
+      /must be relative/,
+      'Suite artifact copy should reject absolute source paths',
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+}
+
 function runVisualAnnotationGallerySelfTest() {
   const buildState = (suiteScenario) => ({
     mode: 'peekaboo-suite',
@@ -2987,6 +3054,7 @@ async function runSelfTest() {
     'MacInCloud command should include the requested scenario',
   );
   runVisualAnnotationGallerySelfTest();
+  await runSuiteArtifactCopySelfTest();
   await runPeekabooEvidenceVideoSelfTest();
   peekabooRunnerSelfTest({ repoRoot: REPO_ROOT });
   run('bash', ['tests/e2e/lib/peekaboo.test.sh'], { cwd: REPO_ROOT });

@@ -17,10 +17,8 @@ on:
         default: '1'
 
 permissions:
-  contents: write
+  contents: read
   actions: read
-  issues: write
-  pull-requests: write
 
 concurrency:
   group: peekaboo-e2e-${{ github.event.pull_request.number || github.ref }}
@@ -32,6 +30,9 @@ jobs:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 150
+    permissions:
+      contents: read
+      actions: read
     outputs:
       has_report: ${{ steps.report-meta.outputs.has_report }}
       setup_failed: ${{ steps.report-meta.outputs.setup_failed }}
@@ -55,13 +56,6 @@ jobs:
       run_exit_status: ${{ steps.run-peekaboo.outputs.run_exit_status }}
       remote_app_path: ${{ steps.remote-build.outputs.remote_app_path }}
     env:
-      NIXMAC_REMOTE_HOST_SECRET: ${{ secrets.NIXMAC_E2E_REMOTE_HOST }}
-      NIXMAC_REMOTE_USER_SECRET: ${{ secrets.NIXMAC_E2E_REMOTE_USER }}
-      NIXMAC_REMOTE_SSH_KEY_SECRET: ${{ secrets.NIXMAC_E2E_REMOTE_SSH_KEY }}
-      NIXMAC_REMOTE_KNOWN_HOSTS_SECRET: ${{ secrets.NIXMAC_E2E_REMOTE_KNOWN_HOSTS }}
-      MAC_E2E_HOST_SECRET: ${{ secrets.MAC_E2E_HOST }}
-      MAC_E2E_USER_SECRET: ${{ secrets.MAC_E2E_USER }}
-      MAC_E2E_SSH_KEY_SECRET: ${{ secrets.MAC_E2E_SSH_KEY }}
       PEEKABOO_REPO_DIR: ${{ vars.NIXMAC_E2E_MACINCLOUD_REPO_DIR || '/Users/admin/nixmac-peekaboo-local-e2e' }}
       PEEKABOO_NODE: ${{ vars.NIXMAC_E2E_MACINCLOUD_NODE || '/opt/homebrew/bin/node' }}
       BUILD_ATTEMPTS: ${{ inputs.build_attempts || '1' }}
@@ -70,6 +64,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -127,6 +122,14 @@ jobs:
       - name: Prepare SSH for MacInCloud
         id: ssh
         shell: bash
+        env:
+          NIXMAC_REMOTE_HOST_SECRET: ${{ secrets.NIXMAC_E2E_REMOTE_HOST }}
+          NIXMAC_REMOTE_USER_SECRET: ${{ secrets.NIXMAC_E2E_REMOTE_USER }}
+          NIXMAC_REMOTE_SSH_KEY_SECRET: ${{ secrets.NIXMAC_E2E_REMOTE_SSH_KEY }}
+          NIXMAC_REMOTE_KNOWN_HOSTS_SECRET: ${{ secrets.NIXMAC_E2E_REMOTE_KNOWN_HOSTS }}
+          MAC_E2E_HOST_SECRET: ${{ secrets.MAC_E2E_HOST }}
+          MAC_E2E_USER_SECRET: ${{ secrets.MAC_E2E_USER }}
+          MAC_E2E_SSH_KEY_SECRET: ${{ secrets.MAC_E2E_SSH_KEY }}
         run: |
           set -euo pipefail
           remote_host="${NIXMAC_REMOTE_HOST_SECRET:-$MAC_E2E_HOST_SECRET}"
@@ -206,13 +209,13 @@ jobs:
             git remote add origin "$REPO_URL"
           fi
           git reset --hard
-          git clean -fd -e artifacts -e node_modules -e apps/native/node_modules -e target
+          git clean -fdx -e artifacts -e node_modules -e apps/native/node_modules -e target
           git fetch origin "$PR_HEAD_REF"
           git remote set-url origin "$PUBLIC_REPO_URL"
           unset REPO_URL
           git checkout -B "$PR_HEAD_REF" FETCH_HEAD
           git reset --hard "$PR_HEAD_SHA"
-          git clean -fd -e artifacts -e node_modules -e apps/native/node_modules -e target
+          git clean -fdx -e artifacts -e node_modules -e apps/native/node_modules -e target
           if ! command -v bun >/dev/null 2>&1; then
             curl -fsSL https://bun.sh/install | bash -s -- bun-v1.3.2
             export PATH="$HOME/.bun/bin:$PATH"
@@ -296,6 +299,25 @@ jobs:
             echo "has_report=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          remote_artifact_root="${PEEKABOO_REPO_DIR%/}/artifacts/computer-use-local"
+          if [[ "$remote_run_dir" == *$'\n'* || "$remote_run_dir" == *$'\r'* || "$remote_run_dir" == *'/../'* || "$remote_run_dir" == */.. ]]; then
+            echo "Remote report path is malformed: $remote_run_dir" >&2
+            echo "has_report=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          if [[ "$remote_run_dir" != "$remote_artifact_root"/* ]]; then
+            echo "Remote report path is outside the artifact root: $remote_run_dir" >&2
+            echo "has_report=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          # shellcheck disable=SC2029
+          remote_run_dir_physical="$(ssh "${ssh_common[@]}" "$SSH_DEST" "cd $(printf '%q' "$remote_run_dir") && pwd -P" 2>/dev/null || true)"
+          if [[ "$remote_run_dir_physical" != "$remote_artifact_root"/* ]]; then
+            echo "Remote report physical path is outside the artifact root: $remote_run_dir_physical" >&2
+            echo "has_report=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          remote_run_dir="$remote_run_dir_physical"
           report_slug="$(basename "$remote_run_dir")"
           report_dir="artifacts/peekaboo-e2e-report/${report_slug}"
           mkdir -p "$report_dir"
@@ -444,6 +466,11 @@ jobs:
     if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && needs.peekaboo-product-proof.outputs.has_report == 'true' && needs.peekaboo-product-proof.outputs.secret_scan_passed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: write
+      actions: read
+      issues: write
+      pull-requests: write
     concurrency:
       group: peekaboo-e2e-gh-pages-publish
       cancel-in-progress: false

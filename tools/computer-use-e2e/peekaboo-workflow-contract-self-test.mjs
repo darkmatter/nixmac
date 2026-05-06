@@ -33,17 +33,20 @@ const launchEnv = section({ sourceText: productProof, pattern: /^nixmac_pp_set_e
 const cleanup = section({ sourceText: productProof, pattern: /^nixmac_pp_cleanup_common\(\) \{$/m }, /^}$/m);
 
 assert.doesNotMatch(trigger, /^\s+branches:/m, 'Peekaboo workflow must run for stacked PR bases, not only main');
-assert.match(workflow, /contents: write/, 'workflow must be able to publish gh-pages reports');
-assert.match(workflow, /issues: write/, 'workflow must be able to create or update the sticky PR comment');
-assert.match(workflow, /pull-requests: write/, 'workflow must declare PR write permission like the Computer Use report lane');
+assert.match(publish, /permissions:[\s\S]*contents: write/, 'publish job must be able to publish gh-pages reports');
+assert.match(publish, /permissions:[\s\S]*issues: write/, 'publish job must be able to create or update the sticky PR comment');
+assert.match(publish, /permissions:[\s\S]*pull-requests: write/, 'publish job must declare PR write permission like the Computer Use report lane');
+assert.match(proof, /permissions:\n\s+contents: read\n\s+actions: read/, 'proof job must run PR-controlled validation without write-scoped token permissions');
 assert.match(
   workflow,
   /concurrency:\n\s+group: peekaboo-e2e-\$\{\{ github\.event\.pull_request\.number \|\| github\.ref \}\}\n\s+cancel-in-progress: true/,
   'workflow must cancel stale same-PR Peekaboo runs before taking the remote lane',
 );
 
-assert.match(proof, /NIXMAC_REMOTE_HOST_SECRET:[\s\S]*secrets\.NIXMAC_E2E_REMOTE_HOST/, 'proof job must support NIXMAC_E2E_REMOTE_HOST');
-assert.match(proof, /MAC_E2E_HOST_SECRET:[\s\S]*secrets\.MAC_E2E_HOST/, 'proof job must support legacy MAC_E2E_HOST fallback');
+assert.match(proof, /name: Checkout repository[\s\S]*persist-credentials: false/, 'proof job checkout must not persist the workflow token before running PR-controlled scripts');
+assert.doesNotMatch(proof, /^    env:\n(?:      .+\n)*      NIXMAC_REMOTE_HOST_SECRET:/m, 'proof job must not expose remote secrets at job scope');
+assert.match(proof, /name: Prepare SSH for MacInCloud[\s\S]*NIXMAC_REMOTE_HOST_SECRET:[\s\S]*secrets\.NIXMAC_E2E_REMOTE_HOST/, 'Prepare SSH step must support NIXMAC_E2E_REMOTE_HOST');
+assert.match(proof, /name: Prepare SSH for MacInCloud[\s\S]*MAC_E2E_HOST_SECRET:[\s\S]*secrets\.MAC_E2E_HOST/, 'Prepare SSH step must support legacy MAC_E2E_HOST fallback');
 assert.match(proof, /remote_host="\$\{NIXMAC_REMOTE_HOST_SECRET:-\$MAC_E2E_HOST_SECRET\}"/, 'proof job must adapt both remote secret families');
 assert.match(proof, /ssh-keyscan -H "\$remote_host"/, 'proof job must generate known_hosts when a pinned known_hosts secret is absent');
 assert.match(proof, /REPO_URL=\$repo_url_q/, 'remote checkout must fetch with the workflow token when the remote origin is missing or unauthenticated');
@@ -56,7 +59,7 @@ assert.match(proof, /git remote set-url origin "\$PUBLIC_REPO_URL"/, 'remote che
 assert.match(proof, /git remote set-url origin "\$PUBLIC_REPO_URL"\n\s+unset REPO_URL\n\s+git checkout -B "\$PR_HEAD_REF"/, 'remote build must unset the tokenized repo URL before running PR-controlled code');
 assert.match(proof, /git reset --hard[\s\S]*git fetch origin "\$PR_HEAD_REF"/, 'remote checkout must discard local edits before switching to the PR head');
 assert.match(proof, /git fetch origin "\$PR_HEAD_REF"[\s\S]*git reset --hard "\$PR_HEAD_SHA"/, 'remote Mac must check out the exact PR head SHA');
-assert.match(proof, /git clean -fd[\s\S]*-e target/, 'remote cleanup must retain the cargo workspace target directory');
+assert.match(proof, /git clean -fdx[\s\S]*-e target/, 'remote cleanup must remove ignored stale env inputs while retaining the cargo workspace target directory');
 assert.match(proof, /command -v bun[\s\S]*bun-v1\.3\.2[\s\S]*bun --version/, 'remote build must bootstrap the pinned Bun version when MacInCloud does not have bun on PATH');
 assert.match(proof, /command -v cargo[\s\S]*sh\.rustup\.rs[\s\S]*cargo --version/, 'remote build must bootstrap Rust when MacInCloud does not have cargo on PATH');
 assert.match(proof, /tauri build[\s\S]*--debug[\s\S]*--bundles app[\s\S]*--config src-tauri\/tauri\.conf\.dev\.json/, 'remote Mac must build the debug app bundle used by Peekaboo');
@@ -67,6 +70,9 @@ assert.match(proof, /secret_scan_passed="\$\(jq -r '\(\.peekaboo\.secretScan\.st
 assert.match(proof, /REMOTE_APP_PATH[\s\S]*run-peekaboo-macincloud[\s\S]*--app-path "\$REMOTE_APP_PATH"/, 'Peekaboo run must use the freshly built PR app bundle');
 assert.match(proof, /--allow-cleanup/, 'Peekaboo suite must restore local app support state after the run');
 assert.match(proof, /artifacts\/computer-use-local\/\.current-run/, 'workflow must fetch the suite report using the runner current-run contract');
+assert.match(proof, /remote_artifact_root="\$\{PEEKABOO_REPO_DIR%\/\}\/artifacts\/computer-use-local"/, 'workflow must anchor fetched reports to the expected remote artifact root');
+assert.match(proof, /remote_run_dir" != "\$remote_artifact_root"\/\*/, 'workflow must reject current-run paths outside the artifact root before rsync');
+assert.match(proof, /remote_run_dir_physical="\$\(ssh[\s\S]*pwd -P/, 'workflow must verify the physical remote report path before rsyncing');
 assert.match(proof, /name: Record CI report inspection proof[\s\S]*run-local\.mjs verify-report "\$FETCH_REPORT_DIR"[\s\S]*--method ci-static/, 'workflow must record reportInspection parity proof before metadata is collected');
 assert.match(proof, /CI workflow inspected the rendered Peekaboo HTML report[\s\S]*PR #75 baseline parity coverage[\s\S]*evidence video\/storyboard/, 'CI report inspection notes must describe concrete report sections');
 assert.match(proof, /name: Upload Peekaboo report artifact[\s\S]*name: peekaboo-e2e-report/, 'proof job must upload the HTML report artifact');
