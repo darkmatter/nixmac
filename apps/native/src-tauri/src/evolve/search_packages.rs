@@ -10,13 +10,13 @@ use std::process::Command;
 /// GUI apps via Nix when they might be better off with Homebrew Cask, etc.
 #[derive(Debug, serde::Serialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub enum SearchResultInstallType {
+pub enum SearchResultInstallTarget {
     // Should be installed as a Homebrew package (e.g. GUI apps, language servers, etc.)
-    HomebrewCaskLike,
+    Homebrew,
     // May be installed either as Homebrew or nix-native package.
     Either,
-    // Should be installed as a nix-native package (e.g. CLI tools, libraries, etc.)
-    NixNative,
+    // Should be installed as a nix-native system package (e.g. CLI tools, libraries, etc.)
+    System,
     // Package is not available on the host platform (e.g. no Darwin support, etc.)
     UnavailableOnHostPlatform,
 }
@@ -29,7 +29,7 @@ pub struct SearchPackageResult {
     pub channel: String,
     pub version: String,
     pub description: String,
-    pub install_type: SearchResultInstallType,
+    pub install_via: SearchResultInstallTarget,
 }
 
 /// Search a single channel and return a list of SearchPackageResult
@@ -79,7 +79,7 @@ fn search_single_channel(
 fn process_search_output(
     search_cmd_output: &str,
     channel: &str,
-    package_classifier: Option<&dyn Fn(&str) -> SearchResultInstallType>,
+    package_classifier: Option<&dyn Fn(&str) -> SearchResultInstallTarget>,
 ) -> Result<Vec<SearchPackageResult>> {
     let parsed = serde_json::from_str::<serde_json::Value>(search_cmd_output)
         .map_err(|e| anyhow::anyhow!("Failed to parse JSON output from nix search: {}", e))?;
@@ -92,18 +92,18 @@ fn process_search_output(
             let package_type = if let Some(classifier) = package_classifier {
                 classifier(&name)
             } else {
-                classify_package(channel, &name)
+                classify_package(channel, attr_path)
             };
 
             // If the package is unavailable on the host platform, skip it.
-            if package_type == SearchResultInstallType::UnavailableOnHostPlatform {
+            if package_type == SearchResultInstallTarget::UnavailableOnHostPlatform {
                 continue;
             }
 
             results.push(SearchPackageResult {
                 name,
                 attr_path: attr_path.clone(),
-                install_type: package_type,
+                install_via: package_type,
                 channel: channel.to_string(),
                 version: pkg
                     .get("version")
@@ -122,6 +122,29 @@ fn process_search_output(
     Ok(results)
 }
 
+/// Adds the search results from a single channel to the structured results list, ensuring uniqueness by attr_path and respecting the limit.
+fn process_channel_results(
+    structured: &mut Vec<SearchPackageResult>,
+    channel_results: Vec<SearchPackageResult>,
+    limit: u64,
+) -> Result<bool> {
+    for result in channel_results {
+        if structured.len() >= limit as usize {
+            return Ok(true);
+        };
+
+        let _map_key = result
+            .attr_path
+            .split('.')
+            .next_back()
+            .unwrap_or(&result.attr_path);
+        if !structured.iter().any(|item| item.attr_path == result.attr_path) {
+            structured.push(result);
+        }
+    }
+    Ok(structured.len() >= limit as usize)
+}
+
 /// Search channels in order for a given query/type and append unique results up to `limit`.
 fn collect_from_channels(
     config_dir: &str,
@@ -137,20 +160,9 @@ fn collect_from_channels(
         }
 
         let channel_results = search_single_channel(config_dir, query_term, use_regex, channel)?;
-
-        for result in channel_results {
-            if structured.len() >= limit as usize {
-                return Ok(true);
-            };
-
-            let map_key = result
-                .attr_path
-                .split('.')
-                .next_back()
-                .unwrap_or(&result.attr_path);
-            if !structured.iter().any(|item| item.attr_path == map_key) {
-                structured.push(result);
-            }
+        let complete = process_channel_results(structured, channel_results, limit)?;
+        if complete {
+            return Ok(true);
         }
     }
 
@@ -188,7 +200,7 @@ pub fn execute_search_packages(
 
 /// Heuristically classify a nix derivation to determine if it looks like a GUI app (Homebrew Cask-like)
 /// or a CLI / nix-native package. This is based on the presence of certain keywords in the derivation output.
-fn classify_derivation(drv: &str) -> SearchResultInstallType {
+fn classify_derivation(drv: &str) -> SearchResultInstallTarget {
     // Explicit GUI packaging
     if drv.contains(".app")
         || drv.contains(".desktop")
@@ -196,7 +208,7 @@ fn classify_derivation(drv: &str) -> SearchResultInstallType {
         || drv.contains("wrap-gapps-hook")
         || drv.contains("desktop-to-darwin-bundle-hook")
     {
-        return SearchResultInstallType::HomebrewCaskLike;
+        return SearchResultInstallTarget::Homebrew;
     }
 
     // GUI ecosystem signals
@@ -208,7 +220,7 @@ fn classify_derivation(drv: &str) -> SearchResultInstallType {
         || drv.contains("cairo")
         || drv.contains("pango")
     {
-        return SearchResultInstallType::HomebrewCaskLike;
+        return SearchResultInstallTarget::Homebrew;
     }
 
     // No signals of GUI packaging or ecosystem, likely nix-native CLI tool or library
@@ -219,28 +231,28 @@ fn classify_derivation(drv: &str) -> SearchResultInstallType {
         && !drv.contains(".app")
         && !drv.contains(".desktop")
     {
-        return SearchResultInstallType::NixNative;
+        return SearchResultInstallTarget::System;
     }
 
     // Unclear or doesn't match any heuristics, could be either
-    SearchResultInstallType::Either
+    SearchResultInstallTarget::Either
 }
 
 /// Heuristically classify whether a nix package behaves like a GUI app
 /// (Homebrew Cask-like) or a CLI / nix-native package.
-fn classify_package(channel: &str, package_name: &str) -> SearchResultInstallType {
+fn classify_package(channel: &str, attr_path: &str) -> SearchResultInstallTarget {
     let mut cmd = Command::new("nix");
     cmd.args(&[
         "derivation",
         "show",
-        &format!("{}#{}", channel, package_name),
+        &format!("{}#{}", channel, attr_path),
     ]);
 
     let output = match cmd.output() {
         Ok(output) => output,
         Err(e) => {
-            eprintln!("Failed to execute nix derivation show: {}", e);
-            return SearchResultInstallType::Either;
+            log::error!("Failed to execute nix derivation show: {}", e);
+            return SearchResultInstallTarget::Either;
         }
     };
 
@@ -250,18 +262,18 @@ fn classify_package(channel: &str, package_name: &str) -> SearchResultInstallTyp
         // If the error message contains "not available on the requested hostPlatform",
         // set to "unavailable".
         if stderr.contains("not available on the requested hostPlatform") {
-            return SearchResultInstallType::UnavailableOnHostPlatform;
+            return SearchResultInstallTarget::UnavailableOnHostPlatform;
         }
 
         // Else assume the error is on our side and let the agent decide what to
         // do with the package.
         let truncated = truncate_error(&stderr, 8000);
-        eprintln!(
+        log::error!(
             "nix derivation show failed with status {:?}: {}",
             output.status.code(),
             truncated
         );
-        return SearchResultInstallType::Either;
+        return SearchResultInstallTarget::Either;
     }
 
     let drv = String::from_utf8_lossy(&output.stdout);
@@ -295,11 +307,10 @@ mod tests {
     #[test]
     fn classifier_fixtures() {
         let cases = vec![
-            ("firefox", SearchResultInstallType::HomebrewCaskLike),
-            ("inkscape", SearchResultInstallType::HomebrewCaskLike),
-            ("ripgrep", SearchResultInstallType::NixNative),
-            ("emacs", SearchResultInstallType::HomebrewCaskLike),
-            ("gimp-err", SearchResultInstallType::UnavailableOnHostPlatform),
+            ("firefox", SearchResultInstallTarget::Homebrew),
+            ("inkscape", SearchResultInstallTarget::Homebrew),
+            ("ripgrep", SearchResultInstallTarget::System),
+            ("emacs", SearchResultInstallTarget::Homebrew),
         ];
 
         for (name, expected) in cases {
@@ -317,16 +328,16 @@ mod tests {
             channel: "test-channel".to_string(),
             version: "30.2".to_string(),
             description: "Extensible, customizable GNU text editor".to_string(),
-            install_type: SearchResultInstallType::Either,
+            install_via: SearchResultInstallTarget::Either,
         })), ("emacs-fulltext", 55, Some(SearchPackageResult{
             name: "auctex".to_string(),
             attr_path: "legacyPackages.aarch64-darwin.auctex".to_string(),
             channel: "test-channel".to_string(),
             version: "13.2".to_string(),
             description: "Extensible package for writing and formatting TeX files in GNU Emacs and XEmacs".to_string(),
-            install_type: SearchResultInstallType::Either,  
+            install_via: SearchResultInstallTarget::Either,  
         })), ("empty", 0, None )];
-        let fake_package_classifier = |_package_name: &str| SearchResultInstallType::Either;
+        let fake_package_classifier = |_package_name: &str| SearchResultInstallTarget::Either;
 
         for (name, expected_count, first_result) in cases {
             let output = load_search_fixture(name);
@@ -348,5 +359,43 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn multiple_channels_are_deduped() {
+        let mut structured = Vec::new();
+        let channel1_results = vec![
+            SearchPackageResult {
+                name: "emacs".to_string(),
+                attr_path: "legacyPackages.aarch64-darwin.emacs".to_string(),
+                channel: "channel1".to_string(),
+                version: "30.2".to_string(),
+                description: "Extensible, customizable GNU text editor".to_string(),
+                install_via: SearchResultInstallTarget::Either,
+            },
+            SearchPackageResult {
+                name: "auctex".to_string(),
+                attr_path: "legacyPackages.aarch64-darwin.auctex".to_string(),
+                channel: "channel1".to_string(),
+                version: "13.2".to_string(),
+                description:
+                    "Extensible package for writing and formatting TeX files in GNU Emacs and XEmacs"
+                        .to_string(),
+                install_via: SearchResultInstallTarget::Either,
+            },
+        ];
+        let channel2_results = vec![SearchPackageResult {
+            name: "emacs".to_string(),
+            attr_path: "legacyPackages.aarch64-darwin.emacs".to_string(),
+            channel: "channel2".to_string(),
+            version: "30.2".to_string(),
+            description: "Extensible, customizable GNU text editor".to_string(),
+            install_via: SearchResultInstallTarget::Either,
+        }];
+
+        process_channel_results(&mut structured, channel1_results, 10).unwrap();
+        process_channel_results(&mut structured, channel2_results, 10).unwrap();
+
+        assert_eq!(structured.len(), 2, "expected deduplication by attr_path");
     }
 }

@@ -282,11 +282,11 @@ IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with
             description: "Search for Nix packages by name or description. This is a convenient \
                          wrapper around 'nix search' that returns a list of structured JSON results. \
                          Output format: Array of SearchPackageResult objects, each containing \
-                         {\"name\": string, \"attr_path\": string, \"version\": string, \"description\": string, \"channel\": string, \"packageType\": SearchResultPackageType}. \
-                         The packageType field indicates whether a package should be installed via Homebrew (HomebrewCaskLike), \
-                         Nix (NixNative), or either (Either). IMPORTANT: When making nix package edits later, try to respect \
-                         1) any expressed user preference, followed by 2) the packageType value to guide installation method recommendations. \
-                         Example: [{\"name\": \"wget\", \"attr_path\": \"wget\", \"version\": \"1.21.3\", \"description\": \"retrieves files from the web\", \"channel\": \"nixpkgs-unstable\", \"packageType\": \"NixNative\"}]. \
+                         {\"name\": string, \"attr_path\": string, \"version\": string, \"description\": string, \"channel\": string, \"installTarget\": SearchResultInstallTarget}. \
+                         The installTarget field indicates whether a package should be installed via Homebrew (Homebrew), \
+                         Nix (System), or either (Either). IMPORTANT: When making nix package edits later, try to respect \
+                         1) any expressed user preference, followed by 2) the installTarget value to guide installation method recommendations. \
+                         Example: [{\"name\": \"wget\", \"attr_path\": \"wget\", \"version\": \"1.21.3\", \"description\": \"retrieves files from the web\", \"channel\": \"nixpkgs-unstable\", \"installTarget\": \"System\"}]. \
                          Parameters: \
                          use_regex enables regex patterns for advanced matching; \
                          channels lets you search in different flakes (one or more of nixpkgs, nixpkgs-unstable, etc.), max 5".to_string(),

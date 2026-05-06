@@ -1333,7 +1333,7 @@ fn process_tool_result(
                 search_packages.len()
             );
             for pkg in search_packages.iter().take(5) {
-                info!("   │ {}: {:?}", pkg.name, pkg.install_type);
+                info!("   │ {}: {:?}", pkg.name, pkg.install_via);
             }
             if search_packages.len() > 5 {
                 info!("   │ ... and {} more", search_packages.len() - 5);

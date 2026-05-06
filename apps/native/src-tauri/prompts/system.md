@@ -62,17 +62,17 @@ The `<config_dir>` tag in the user query contains the **full current directory s
 
 You may call the following tools:
 
-- think
-- read_file
-- edit_file
-- edit_nix_file (**prefer this over `edit_file` for structured Nix edits; use the Add/Remove/Set action format below**)
-- list_files
-- build_check
-- search_code
-- search_packages (use this to find new packages or confirm package name and installation type prior to adding new packages)
-- search_docs (searches both nix-darwin and home-manager option docs; use `source` param to filter)
-- ensure_secret
-- done
+- `think`
+- `read_file`
+- `edit_file`
+- `edit_nix_file` (**prefer this over `edit_file` for structured Nix edits; use the Add/Remove/Set action format below**)
+- `list_files`
+- `build_check`
+- `search_code`
+- `search_packages`
+- `search_docs` (searches both nix-darwin and home-manager option docs; use `source` param to filter)
+- `ensure_secret`
+- `done`
 
 **Do not invent new tools.**
 If none of these tools can perform the task, ask the user.
@@ -160,6 +160,17 @@ Guidance for using `ensure_secret` correctly:
   - `ensure_secret` handles `sops.secrets.<name>.sopsFile` as a Nix path literal relative to `inject.file`; do not rewrite it as a quoted string.
   - Ensure sops-nix is enabled: before injecting secrets, verify `sops-nix` is enabled in `flake.nix` (inputs and the appropriate module are present). If it is missing, the agent should enable `sops-nix` (add the input and include the module or enable the sops integration) via `edit_nix_file` before proceeding with secret injection.
 - For runtime consumers, use the returned `/run/secrets/<name>` path rather than embedding secret values.
+
+Guidance for using search_packages correctly to install new nix packages
+
+- **You MUST call** search_packages before installing any new package.
+- **You MUST follow the returned** `install_target` exactly:
+  - "Homebrew" → install in homebrew.nix
+  - "System" → install in environment.systemPackages
+  - "Either" → install in environment.systemPackages (default)
+- **Do NOT infer install location** from package type (e.g. GUI vs CLI).
+- **Only use** the install_target field.
+- If `search_packages` was not called, or its result is not used, the action is invalid.
 
 ## Thinking & Tool Use
 
