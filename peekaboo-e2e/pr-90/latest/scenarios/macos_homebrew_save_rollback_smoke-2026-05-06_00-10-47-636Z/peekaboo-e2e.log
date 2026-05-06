@@ -1,0 +1,72 @@
+
+[0;34m[17:10:49][0m === macos-e2e test runner ===
+[0;34m[17:10:49][0m Started at Tue May  5 17:10:49 PDT 2026
+[0;34m[17:10:49][0m Machine: DXU97120 | macOS 26.2
+[0;34m[17:10:49][0m Working directory: /Users/admin/nixmac-peekaboo-local-e2e/tests/e2e
+[0;34m[17:10:55][0m Scenario: macos_homebrew_save_rollback_smoke
+[0;34m[17:10:55][0m Starting screen recording: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-10-47-636Z/video/peekaboo-e2e.mp4
+[0;34m[17:10:58][0m Recorder started (PID: 42038)
+[0;34m[17:10:59][0m === Phase 1: Prepare Homebrew managed-badge fixture ===
+[0;32m[PASS][0m Peekaboo Bridge connected
+[0;32m[PASS][0m Peekaboo permissions OK
+[1;33m[WARN][0m No ADMIN_PASSWORD set, cannot unlock screen
+[0;34m[17:11:00][0m Clearing nixmac app state...
+[0;32m[PASS][0m App state cleared
+[0;34m[17:11:00][0m Seeded nixmac settings at /Users/admin/Library/Application Support/com.darkmatter.nixmac/settings.json with provider http://127.0.0.1:61545/v1
+[0;34m[17:11:01][0m Installed E2E system activation shim at /var/folders/lw/q3m765kd17z3h2g36tw6qk000000gp/T//nixmac-e2e-system-mock-bin.BTAhPs
+[0;32m[PASS][0m peekabooProviderFixture: Prepared Homebrew managed-badge fixture, deterministic HTTP provider, completion logging, and mock rebuild flag
+[0;34m[17:11:01][0m === Phase 2: Launch nixmac for Untracked Homebrew items proof ===
+[0;34m[17:11:01][0m Launching nixmac...
+[0;32m[PASS][0m App launched: nixmac
+[0;34m[17:11:18][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-10-47-636Z/screenshots/01-homebrew-launched-1778026278.png
+[0;32m[PASS][0m peekabooProviderLaunch: App launched for Untracked Homebrew items proof
+[0;34m[17:11:21][0m === Phase 3: Apply Untracked Homebrew items to config ===
+[0;34m[17:11:21][0m Clicking element elem_42 matching '[0-9]+ untracked Homebrew'
+[0;34m[17:11:25][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-10-47-636Z/screenshots/02-homebrew-popover-1778026284.png
+[0;34m[17:11:26][0m Untracked Homebrew items Add to config was already accepted and is applying
+[0;34m[17:11:30][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-10-47-636Z/screenshots/03-homebrew-review-1778026290.png
+[0;34m[17:11:30][0m === Phase 4: Build and Test Untracked Homebrew items managed change ===
+[0;34m[17:11:30][0m Clicking element elem_32 matching 'Build & Test'
+[0;34m[17:11:47][0m No build confirmation prompt observed
+[0;34m[17:11:48][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-10-47-636Z/screenshots/04-homebrew-save-step-after-build-1778026308.png
+[0;32m[PASS][0m peekabooProviderBuildBoundary: Build & Test advanced to Save step for Untracked Homebrew items
+[0;34m[17:11:48][0m === Phase 5: Commit Untracked Homebrew items managed change ===
+[0;34m[17:11:48][0m Using deterministic commit message for homebrew managed-badge change
+[0;34m[17:11:49][0m Clicking element elem_58 matching 'commitMsg|Loading|Commit message|Commit Changes'
+[0;34m[17:11:51][0m Clicking element elem_59 matching 'Commit( Changes)?'
+[0;34m[17:11:53][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-10-47-636Z/screenshots/05-homebrew-returned-to-describe-1778026313.png
+[0;32m[PASS][0m peekabooProviderSaveFlow: Untracked Homebrew items Save step committed changes and returned to Describe
+[0;34m[17:11:53][0m === Phase 6: Restore Untracked Homebrew items baseline from History ===
+[0;34m[17:11:53][0m Clicking element elem_8 matching 'History'
+[0;34m[17:11:56][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-10-47-636Z/screenshots/06-history-before-restore-1778026316.png
+[0;34m[17:11:57][0m Clicking element elem_35 matching '^Restore$|Restore'
+[0;34m[17:11:59][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-10-47-636Z/screenshots/07-history-restore-preview-1778026319.png
+[0;34m[17:12:00][0m Clicking element elem_22 matching 'Confirm Restore'
+[0;34m[17:12:03][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-10-47-636Z/screenshots/08-after-history-restore-1778026323.png
+[0;32m[PASS][0m peekabooHomebrewSaveRollback: Untracked Homebrew items Add to config was built, committed, and rolled back to the disposable baseline
+[0;34m[17:12:03][0m === Phase 7: Audit Untracked Homebrew items managed-badge evidence ===
+[0;32m[PASS][0m peekabooProviderAudit: Preserved provider/request evidence for Untracked Homebrew items managed-badge proof
+[0;34m[17:12:03][0m Stopping recorder (PID: 42038)...
+[0;34m[17:12:13][0m Video saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-10-47-636Z/video/peekaboo-e2e.mp4 (432K)
+[0;34m[17:12:13][0m ==========================================
+[0;34m[17:12:13][0m   Test Results
+[0;34m[17:12:13][0m ==========================================
+  [0;32m✅[0m Phase 1: peekabooProviderFixture: Prepared Homebrew managed-badge fixture, deterministic HTTP provider, completion logging, and mock rebuild flag
+  [0;32m✅[0m Phase 2: peekabooProviderLaunch: App launched for Untracked Homebrew items proof
+  [0;32m✅[0m Phase 4: peekabooProviderBuildBoundary: Build & Test advanced to Save step for Untracked Homebrew items
+  [0;32m✅[0m Phase 5: peekabooProviderSaveFlow: Untracked Homebrew items Save step committed changes and returned to Describe
+  [0;32m✅[0m Phase 6: peekabooHomebrewSaveRollback: Untracked Homebrew items Add to config was built, committed, and rolled back to the disposable baseline
+  [0;32m✅[0m Phase 7: peekabooProviderAudit: Preserved provider/request evidence for Untracked Homebrew items managed-badge proof
+
+  [0;32mAll 10 checks passed[0m
+[0;34m[17:12:13][0m ==========================================
+[0;34m[17:12:14][0m E2E report written: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-10-47-636Z/e2e-report/macos_homebrew_save_rollback_smoke/e2e-report.json
+[0;34m[17:12:14][0m 
+[0;34m[17:12:14][0m Screenshots: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-10-47-636Z/screenshots
+[0;34m[17:12:14][0m Video: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-10-47-636Z/video/peekaboo-e2e.mp4
+[0;34m[17:12:14][0m Log: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-10-47-636Z/peekaboo-e2e.log
+[0;34m[17:12:18][0m Uninstalling Nix...
+ INFO nix-installer v3.19.0
+ INFO nix-installer v3.19.0
+[31m`nix-darwin` installation detected, it must be removed before uninstalling Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.[39m
+[0;32m[PASS][0m Nix uninstalled

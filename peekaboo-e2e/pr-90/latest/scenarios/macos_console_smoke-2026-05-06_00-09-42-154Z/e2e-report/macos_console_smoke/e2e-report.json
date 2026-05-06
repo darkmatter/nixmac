@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "repo": "darkmatter/nixmac",
+  "prNumber": null,
+  "headSha": "unknown",
+  "baseSha": null,
+  "workflowRunId": null,
+  "attempt": null,
+  "lane": "peekaboo-local",
+  "scenario": "macos_console_smoke",
+  "runnerId": "macos-e2e",
+  "runnerKind": "peekaboo-local",
+  "startedAt": "2026-05-06T00:09:43Z",
+  "finishedAt": "2026-05-06T00:10:35Z",
+  "durationMs": 52000,
+  "status": "passed",
+  "htmlReportUrl": null,
+  "primaryProofUrl": "macos_console_smoke/peekaboo-e2e.mp4",
+  "failureProofUrl": null,
+  "failureScreenshotUrl": null,
+  "failureVideoUrl": null,
+  "failureTimestampMs": null,
+  "replayCommand": "tests/e2e/run.sh macos_console_smoke",
+  "localReproCommand": "tests/e2e/run.sh macos_console_smoke",
+  "phases": [
+    {
+      "name": "peekabooCoreFixture: Prepared deterministic config and local provider-validation settings",
+      "status": "passed",
+      "startedAt": null,
+      "finishedAt": null,
+      "durationMs": 0,
+      "assertions": [
+        "peekabooCoreFixture: Prepared deterministic config and local provider-validation settings"
+      ],
+      "proof": [],
+      "error": null
+    },
+    {
+      "name": "peekabooCoreLaunch: App shell rendered before Console proof",
+      "status": "passed",
+      "startedAt": null,
+      "finishedAt": null,
+      "durationMs": 0,
+      "assertions": [
+        "peekabooCoreLaunch: App shell rendered before Console proof"
+      ],
+      "proof": [],
+      "error": null
+    },
+    {
+      "name": "peekabooCoreConsole: Console rendered text evidence with screenshot proof",
+      "status": "passed",
+      "startedAt": null,
+      "finishedAt": null,
+      "durationMs": 0,
+      "assertions": [
+        "peekabooCoreConsole: Console rendered text evidence with screenshot proof"
+      ],
+      "proof": [],
+      "error": null
+    }
+  ],
+  "captureLimitations": [],
+  "proof": [
+    {
+      "kind": "screenshot",
+      "path": "macos_console_smoke/01-console-launch-1778026211.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "01-console-launch-1778026211.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "screenshot",
+      "path": "macos_console_smoke/01-console-launch-1778026211_annotated.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "01-console-launch-1778026211_annotated.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "screenshot",
+      "path": "macos_console_smoke/02-console-expanded-1778026224.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "02-console-expanded-1778026224.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "screenshot",
+      "path": "macos_console_smoke/02-console-expanded-1778026224_annotated.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "02-console-expanded-1778026224_annotated.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/text/console-text.txt",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/text/console-text.txt",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "video",
+      "path": "macos_console_smoke/peekaboo-e2e.mp4",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "Full screen recording",
+      "isPrimary": true,
+      "isFailureProof": false
+    }
+  ]
+}
