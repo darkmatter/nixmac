@@ -22,6 +22,42 @@ useWidgetStore.setState({
   host: "Demo-MacBook-Pro",
 });
 
+// Stories render the same `DarwinWidget` whose mount effect re-runs
+// `checkNix`, `checkPermissions`, and `loadConfig` against the
+// Storybook mocks. If a mock throws (or a story sets `nixInstalled`
+// back to null/false to test that surface), the user falls into the
+// nix-setup or permissions screens — not what most stories want.
+//
+// This subscriber pins the bypass invariants whenever they drift, so
+// the default state is "pretend Nix and permissions are good." Stories
+// that want to *exercise* those screens can still flip the values
+// momentarily — the subscriber re-asserts after the next microtask,
+// which is fine for static visual review, and stories that need the
+// screen long enough to inspect can opt out via story-level state
+// that re-applies their override on a timer (or be moved to
+// `permissions-step.stories.tsx` / `nix-setup-step.stories.tsx`,
+// which test the components directly without the full widget shell).
+useWidgetStore.subscribe((state) => {
+  const drifted =
+    state.nixInstalled !== true ||
+    state.darwinRebuildAvailable !== true ||
+    !state.permissionsChecked ||
+    !state.permissionsState?.allRequiredGranted;
+  if (!drifted) return;
+  queueMicrotask(() => {
+    useWidgetStore.setState({
+      nixInstalled: true,
+      darwinRebuildAvailable: true,
+      permissionsChecked: true,
+      permissionsState: {
+        permissions: [],
+        allRequiredGranted: true,
+        checkedAt: Date.now(),
+      },
+    });
+  });
+});
+
 /**
  * Decorator that applies the dark theme class to the document.
  * This ensures CSS custom properties from .dark {} are active.
