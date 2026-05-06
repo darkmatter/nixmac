@@ -1899,6 +1899,97 @@ function proofTimelineItems(state) {
   });
 }
 
+function splitScreenshotLabel(label) {
+  const raw = String(label ?? '');
+  const match = raw.match(/^([^:]+):\s*(.+)$/);
+  return match ? { scenario: match[1], label: match[2] } : { scenario: null, label: raw };
+}
+
+function humanizeScreenshotLabel(label) {
+  return String(label ?? 'Screenshot proof')
+    .replace(/\.(png|jpg|jpeg|webp)$/i, '')
+    .replace(/-\d{9,}$/, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function galleryScenarioStatus(state, item) {
+  const scenarioName = splitScreenshotLabel(item.primary?.label).scenario;
+  if (!scenarioName) return verdictFor(state);
+  const suiteScenario = state.peekaboo?.scenarios?.find((scenario) => scenario.scenario === scenarioName);
+  if (suiteScenario?.failed) return 'fail';
+  if (['pass', 'fail', 'inconclusive'].includes(suiteScenario?.verdict)) return suiteScenario.verdict;
+  return verdictFor(state);
+}
+
+function galleryScenarioLabel(item) {
+  const scenarioName = splitScreenshotLabel(item.primary?.label).scenario;
+  return scenarioName ? humanizeScreenshotLabel(scenarioName) : 'Focused run';
+}
+
+const galleryCalloutRules = [
+  {
+    pattern: /settings|api-keys|ai-models|preferences/i,
+    callouts: [{ label: 'Settings surface under test', x: 12, y: 14, w: 76, h: 72 }],
+  },
+  {
+    pattern: /descriptor|typed|prompt/i,
+    callouts: [{ label: 'Typed intent captured', x: 7, y: 34, w: 86, h: 22 }],
+  },
+  {
+    pattern: /review|provider|summary|diff/i,
+    callouts: [{ label: 'Generated review evidence visible', x: 8, y: 13, w: 84, h: 76 }],
+  },
+  {
+    pattern: /save-step|ready|after-build|commit/i,
+    callouts: [{ label: 'Save boundary evidence', x: 12, y: 20, w: 76, h: 60 }],
+  },
+  {
+    pattern: /history|restore|rollback/i,
+    callouts: [{ label: 'History / restore proof', x: 8, y: 13, w: 84, h: 74 }],
+  },
+  {
+    pattern: /discard|confirmation/i,
+    callouts: [{ label: 'Discard confirmation boundary', x: 18, y: 18, w: 64, h: 64 }],
+  },
+  {
+    pattern: /feedback|report-issue|support/i,
+    callouts: [{ label: 'Support dialog evidence', x: 18, y: 15, w: 64, h: 68 }],
+  },
+  {
+    pattern: /console/i,
+    callouts: [{ label: 'Console surface visible', x: 8, y: 12, w: 84, h: 76 }],
+  },
+  {
+    pattern: /popover|customization|homebrew/i,
+    callouts: [{ label: 'Configuration surface proof', x: 12, y: 16, w: 76, h: 68 }],
+  },
+  {
+    pattern: /launch|launched|core/i,
+    callouts: [
+      { label: 'App shell visible', x: 6, y: 8, w: 88, h: 26 },
+      { label: 'Workflow area ready', x: 7, y: 36, w: 86, h: 38 },
+    ],
+  },
+];
+
+function galleryCallouts(item) {
+  const { label } = splitScreenshotLabel(item.primary?.label);
+  const searchTarget = `${item.family} ${label} ${item.primary?.path ?? ''}`;
+  const rule = galleryCalloutRules.find((candidate) => candidate.pattern.test(searchTarget));
+  return rule?.callouts ?? [{ label: 'Screenshot evidence for this check', x: 8, y: 10, w: 84, h: 78 }];
+}
+
+function renderGalleryCallouts(callouts) {
+  return callouts
+    .map(
+      (callout) =>
+        `<span class="visual-callout" style="left:${escapeHtml(String(callout.x))}%;top:${escapeHtml(String(callout.y))}%;width:${escapeHtml(String(callout.w))}%;height:${escapeHtml(String(callout.h))}%"><span>${escapeHtml(callout.label)}</span></span>`,
+    )
+    .join('\n');
+}
+
 function videoArtifactPath(state, artifactRowsForState = artifactRows(state)) {
   if (state.video?.path) return state.video.path;
   const row = artifactRowsForState.find(([label, artifactPath]) => /video/i.test(label) && /\.mp4(?:$|\?)/i.test(artifactPath ?? ''));
@@ -2078,20 +2169,35 @@ function renderGallery(state) {
   if (!items.length) return '<p>No screenshots captured.</p>';
   return `<div class="proof-grid">
     ${items
-      .map(
-        (item) => `<figure class="proof-card" id="screenshot-${escapeHtml(item.family)}">
-          <img src="${escapeHtml(item.primary.path)}" alt="${escapeHtml(item.primary.label)}">
+      .map((item) => {
+        const status = galleryScenarioStatus(state, item);
+        const { label } = splitScreenshotLabel(item.primary.label);
+        const displayLabel = humanizeScreenshotLabel(label);
+        const callouts = galleryCallouts(item);
+        return `<figure class="proof-card proof-card-${escapeHtml(status)}" id="screenshot-${escapeHtml(item.family)}">
+          <div class="screenshot-proof-frame" data-visual-annotation="report-callouts">
+            <img src="${escapeHtml(item.primary.path)}" alt="${escapeHtml(item.primary.label)}">
+            <div class="visual-annotation-layer" aria-hidden="true">
+              <span class="visual-status ${escapeHtml(status)}">${escapeHtml(status)}</span>
+              ${renderGalleryCallouts(callouts)}
+            </div>
+          </div>
           <figcaption>
-            <strong>${escapeHtml(item.primary.label)}</strong>
-            <span>${escapeHtml(item.primary.note || 'Screenshot proof')}</span>
+            <span class="proof-caption-head">
+              <strong>${escapeHtml(displayLabel || item.primary.label)}</strong>
+              <span class="proof-mode">review highlight</span>
+            </span>
+            <span>${escapeHtml(galleryScenarioLabel(item))} - ${escapeHtml(item.primary.note || 'Screenshot proof')}</span>
+            <span class="proof-meta">Captured ${escapeHtml(item.primary.capturedAt || 'time unavailable')} from the raw screenshot; video/storyboard frames remain raw.</span>
+            <a class="proof-link" href="${escapeHtml(item.primary.path)}" target="_blank" rel="noopener">Open raw screenshot</a>
             ${
               item.annotated && item.annotated.path !== item.primary.path
-                ? `<details><summary>Annotated overlay</summary><img src="${escapeHtml(item.annotated.path)}" alt="${escapeHtml(item.annotated.label)}"></details>`
+                ? `<details><summary>Peekaboo AX overlay</summary><p>Auto-generated accessibility-tree boxes from Peekaboo, kept for debugging but not treated as the curated pass/fail callout layer.</p><img src="${escapeHtml(item.annotated.path)}" alt="${escapeHtml(item.annotated.label)}"></details>`
                 : ''
             }
           </figcaption>
-        </figure>`,
-      )
+        </figure>`;
+      })
       .join('\n')}
   </div>`;
 }
@@ -2177,6 +2283,22 @@ async function render() {
     td { font-size: 13px; }
     tr:last-child td { border-bottom: 0; }
     .proof-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+    .proof-card-pass { border-color: #214934; }
+    .proof-card-fail { border-color: #6b2525; }
+    .proof-card-inconclusive { border-color: #5f4a18; }
+    .screenshot-proof-frame { position: relative; overflow: hidden; border: 1px solid #23282b; border-radius: 8px; background: #000; }
+    .screenshot-proof-frame img { border: 0; border-radius: 0; }
+    .visual-annotation-layer { position: absolute; inset: 0; pointer-events: none; }
+    .visual-status { position: absolute; left: 10px; top: 10px; z-index: 2; display: inline-flex; align-items: center; justify-content: center; min-width: 58px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; padding: 5px 9px; font-size: 11px; line-height: 1; font-weight: 900; letter-spacing: 0; text-transform: uppercase; box-shadow: 0 8px 22px rgba(0,0,0,.34); }
+    .visual-callout { position: absolute; box-sizing: border-box; border: 2px solid rgba(159, 232, 198, .92); border-radius: 6px; background: rgba(159, 232, 198, .08); box-shadow: inset 0 0 0 1px rgba(3, 16, 12, .42), 0 10px 28px rgba(0,0,0,.28); }
+    .proof-card-fail .visual-callout { border-color: rgba(255, 176, 170, .95); background: rgba(255, 176, 170, .10); }
+    .proof-card-inconclusive .visual-callout { border-color: rgba(255, 217, 131, .95); background: rgba(255, 217, 131, .10); }
+    .visual-callout::after { content: ""; position: absolute; inset: -5px; border: 1px solid rgba(159, 232, 198, .24); border-radius: 10px; }
+    .proof-card-fail .visual-callout::after { border-color: rgba(255, 176, 170, .26); }
+    .proof-card-inconclusive .visual-callout::after { border-color: rgba(255, 217, 131, .26); }
+    .visual-callout span { position: absolute; left: 8px; top: 8px; max-width: min(260px, calc(100% - 16px)); border: 1px solid rgba(0,0,0,.16); border-radius: 5px; padding: 4px 7px; background: rgba(159, 232, 198, .96); color: #07110d; font-size: 12px; line-height: 1.15; font-weight: 850; box-shadow: 0 6px 18px rgba(0,0,0,.28); }
+    .proof-card-fail .visual-callout span { background: rgba(255, 176, 170, .96); color: #180707; }
+    .proof-card-inconclusive .visual-callout span { background: rgba(255, 217, 131, .96); color: #171005; }
     .summary-video { margin: 18px 0; display: grid; grid-template-columns: minmax(240px, 0.42fr) minmax(360px, 1fr); gap: 18px; align-items: start; padding: 16px; border: 1px solid #23282b; border-radius: 8px; background: #101418; }
     .summary-video-copy strong { display: block; margin-bottom: 6px; color: #f4f5f5; }
     .summary-video-copy small { display: block; color: #a9b0b5; line-height: 1.45; }
@@ -2194,6 +2316,11 @@ async function render() {
     img, video { width: 100%; border: 1px solid #23282b; border-radius: 8px; background: #000; display: block; }
     figcaption { padding-top: 8px; font-size: 12px; }
     figcaption strong, figcaption span { display: block; }
+    .proof-caption-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .proof-caption-head strong { min-width: 0; color: #f4f5f5; overflow-wrap: anywhere; }
+    .proof-mode { flex: none; border: 1px solid #2f373c; border-radius: 999px; padding: 3px 7px; color: #9fe8c6; background: #111417; font-size: 11px; line-height: 1.1; font-weight: 800; text-transform: uppercase; }
+    .proof-meta { margin-top: 4px; color: #7f878d; }
+    .proof-link { display: inline-flex; margin-top: 7px; font-weight: 800; }
     details { border: 1px solid #23282b; border-radius: 8px; padding: 10px 12px; background: #0b0d0f; margin-top: 10px; }
     summary { cursor: pointer; color: #dce2e2; font-weight: 700; }
     ul { padding-left: 18px; }
@@ -2288,6 +2415,7 @@ async function render() {
   </details>
 
   <h2 id="visual-proof">Visual Proof</h2>
+  <p class="muted">Screenshot cards use raw frames with reviewer-facing highlights. These highlights are visual signposts for inspecting the captured proof; scenario status comes from the recorded run verdict, and semantic pass/fail proof remains in the scenario tables and artifacts.</p>
   ${renderGallery(state)}
 
   <h2 id="artifacts">Artifacts</h2>
@@ -2398,6 +2526,9 @@ function htmlRowsContainingCode(html, key) {
 }
 
 function reportStaticChecks({ state, html }) {
+  const galleryItems = proofGalleryItems(state);
+  const hasScreenshots = galleryItems.length > 0;
+  const hasPeekabooAxOverlays = galleryItems.some((item) => item.annotated && item.annotated.path !== item.primary.path);
   const checks = [
     ['title', /nixmac Peekaboo .*E2E Evidence/i.test(html)],
     ['verdict', /Verdict:\s*(pass|fail|inconclusive)/i.test(html)],
@@ -2405,6 +2536,9 @@ function reportStaticChecks({ state, html }) {
     ['baseline table', /PR #75 Baseline Coverage/i.test(html)],
     ['evidence video/storyboard', /Evidence (video|storyboard)/i.test(html)],
     ['visual proof', /id="visual-proof"/i.test(html)],
+    ['visual report callouts', !hasScreenshots || /data-visual-annotation="report-callouts"/i.test(html)],
+    ['raw screenshot fallback', !hasScreenshots || /Open raw screenshot/i.test(html)],
+    ['peekaboo ax overlay labeled', !hasPeekabooAxOverlays || /Peekaboo AX overlay/i.test(html)],
   ];
   const failed = checks.filter(([, ok]) => !ok).map(([name]) => name);
   const requiredCoverage = requiredComputerUseCoverage(state);
@@ -2691,6 +2825,64 @@ async function runPeekabooEvidenceVideoSelfTest() {
   }
 }
 
+function runVisualAnnotationGallerySelfTest() {
+  const buildState = (suiteScenario) => ({
+    mode: 'peekaboo-suite',
+    scenarios: { launch: { status: 'pass', notes: [] } },
+    diagnostics: [],
+    screenshots: [
+      {
+        label: 'macos_core_product_proof: 01-core-launch-1234567890',
+        path: 'screenshots/01-core-launch-1234567890.png',
+        capturedAt: '2026-05-05T00:00:00.000Z',
+        note: 'Captured by Peekaboo runner.',
+      },
+      {
+        label: 'macos_core_product_proof: 01-core-launch-1234567890_annotated',
+        path: 'screenshots/01-core-launch-1234567890_annotated.png',
+        capturedAt: '2026-05-05T00:00:00.100Z',
+        note: 'Captured by Peekaboo runner.',
+      },
+    ],
+    peekaboo: {
+      scenarios: [suiteScenario],
+      coverageMap: { phaseCoverage: [] },
+    },
+  });
+  const state = buildState({ scenario: 'macos_core_product_proof', verdict: 'pass' });
+  const html = renderGallery(state);
+  assert(html.includes('data-visual-annotation="report-callouts"'), 'Visual gallery should render deterministic report callouts');
+  assert(html.includes('visual-status pass'), 'Visual gallery should show the owning scenario status on the screenshot');
+  assert(html.includes('proof-card-pass'), 'Visual gallery should apply pass card styling');
+  assert(html.includes('Workflow area ready'), 'Visual gallery should include a launch-specific curated callout');
+  assert(html.includes('Open raw screenshot'), 'Visual gallery should keep a direct raw screenshot fallback link');
+  assert(html.includes('Peekaboo AX overlay'), 'Visual gallery should label Peekaboo element overlays as AX debug evidence');
+  assert(
+    html.indexOf('screenshots/01-core-launch-1234567890.png') < html.indexOf('screenshots/01-core-launch-1234567890_annotated.png'),
+    'Visual gallery should keep the raw screenshot as the primary card image',
+  );
+
+  const inconclusiveHtml = renderGallery(buildState({ scenario: 'macos_core_product_proof', verdict: 'inconclusive' }));
+  assert(inconclusiveHtml.includes('visual-status inconclusive'), 'Visual gallery should preserve inconclusive scenario verdicts');
+  assert(inconclusiveHtml.includes('proof-card-inconclusive'), 'Visual gallery should apply inconclusive card styling');
+
+  const failHtml = renderGallery(buildState({ scenario: 'macos_core_product_proof', verdict: 'pass', failed: true }));
+  assert(failHtml.includes('visual-status fail'), 'Visual gallery should render failed suite scenarios as fail');
+  assert(failHtml.includes('proof-card-fail'), 'Visual gallery should apply fail card styling');
+
+  const videoHtml = renderEvidenceVideo(state, []);
+  assert(!videoHtml.includes('data-visual-annotation="report-callouts"'), 'Evidence video/storyboard should not receive screenshot-card overlays');
+  assert(videoHtml.includes('screenshots/01-core-launch-1234567890.png'), 'Evidence storyboard should use the raw screenshot frame');
+  assert(!videoHtml.includes('screenshots/01-core-launch-1234567890_annotated.png'), 'Evidence storyboard should not use Peekaboo AX overlay frames');
+
+  const staticHtml = `<title>nixmac Peekaboo Suite E2E Evidence</title>Verdict: pass CU keys mapped PR #75 Baseline Coverage Evidence video id="visual-proof"${html}`;
+  assert.equal(
+    reportStaticChecks({ state, html: staticHtml }).status,
+    'passed',
+    'Report static checks should require screenshot callouts, raw fallback links, and labeled AX overlays',
+  );
+}
+
 async function runSelfTest() {
   // This is a one-way drift guard: run-local is a deliberate subset with a few
   // local-only scenario names, so it should not require every shared key.
@@ -2794,6 +2986,7 @@ async function runSelfTest() {
     macInCloudCommand.remoteCommand.includes('macos_core_product_proof'),
     'MacInCloud command should include the requested scenario',
   );
+  runVisualAnnotationGallerySelfTest();
   await runPeekabooEvidenceVideoSelfTest();
   peekabooRunnerSelfTest({ repoRoot: REPO_ROOT });
   run('bash', ['tests/e2e/lib/peekaboo.test.sh'], { cwd: REPO_ROOT });
