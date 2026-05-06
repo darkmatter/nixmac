@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 export default function App() {
   useEffect(() => {
     bootBreadcrumb("App mounted");
+    window.dispatchEvent(new Event("nixmac:app-mounted"));
   }, []);
 
   return (

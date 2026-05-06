@@ -39,11 +39,16 @@ use state::watcher;
 use storage::store;
 
 use std::env;
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
+};
+use std::time::Duration;
 use tauri::{
     image::Image,
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
+    webview::PageLoadEvent,
     Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
@@ -567,6 +572,8 @@ fn run_gui_mode(
             if e2e_opaque_window {
                 log::info!("NIXMAC_E2E_OPAQUE_WINDOW enabled; using an opaque visible-titlebar window with dark WebView backing for host visual capture");
             }
+            let main_webview_loaded = Arc::new(AtomicBool::new(false));
+            let main_webview_loaded_for_page_load = Arc::clone(&main_webview_loaded);
 
             let mut main_window_builder =
                 WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
@@ -588,6 +595,16 @@ fn run_gui_mode(
                         tauri::TitleBarStyle::Visible
                     } else {
                         tauri::TitleBarStyle::Overlay
+                    })
+                    .on_page_load(move |_window, payload| {
+                        log::debug!(
+                            "main webview page load {:?}: {}",
+                            payload.event(),
+                            payload.url()
+                        );
+                        if payload.event() == PageLoadEvent::Finished {
+                            main_webview_loaded_for_page_load.store(true, Ordering::SeqCst);
+                        }
                     });
 
             if e2e_opaque_window {
@@ -603,6 +620,43 @@ fn run_gui_mode(
                 msg
             })?;
             log::debug!("Main nixmac window created");
+
+            if e2e_opaque_window {
+                let watchdog_window = main_window.clone();
+                let watchdog_loaded = Arc::clone(&main_webview_loaded);
+                let watchdog_secs =
+                    crate::e2e_runtime::value("NIXMAC_E2E_WEBVIEW_WATCHDOG_SECS")
+                        .and_then(|value| value.parse::<u64>().ok())
+                        .filter(|value| (1..=60).contains(value))
+                        .unwrap_or(12);
+                std::thread::spawn(move || {
+                    std::thread::sleep(Duration::from_secs(watchdog_secs));
+                    if watchdog_loaded.load(Ordering::SeqCst) {
+                        log::debug!("main webview E2E load watchdog satisfied before reload");
+                        return;
+                    }
+
+                    log::warn!(
+                        "main webview E2E load watchdog did not observe PageLoadEvent::Finished; reloading main webview"
+                    );
+                    let reload_window = watchdog_window.clone();
+                    if let Err(err) = watchdog_window.run_on_main_thread(move || {
+                        if let Err(reload_err) = reload_window.reload() {
+                            log::error!(
+                                "main webview E2E load watchdog reload failed: {}",
+                                reload_err
+                            );
+                        } else {
+                            log::warn!("main webview E2E load watchdog reload requested");
+                        }
+                    }) {
+                        log::error!(
+                            "main webview E2E load watchdog could not schedule reload: {}",
+                            err
+                        );
+                    }
+                });
+            }
 
             // set up watcher with interval based on focus
             let handle_for_focus = handle.clone();
