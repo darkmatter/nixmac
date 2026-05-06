@@ -95,6 +95,9 @@ nixmac_pp_write_e2e_runtime() {
         --arg defaultsJson "${NIXMAC_E2E_SYSTEM_DEFAULTS_JSON:-}" \
         --arg recordCompletions "${NIXMAC_RECORD_COMPLETIONS:-}" \
         --arg completionLogDir "${NIXMAC_COMPLETION_LOG_DIR:-}" \
+        --arg diagnosticsDir "${NIXMAC_E2E_DIAGNOSTICS_DIR:-}" \
+        --arg logFile "${NIXMAC_LOGFILE:-}" \
+        --arg rustLog "${RUST_LOG:-}" \
         --arg openai "${OPENAI_API_KEY:-}" \
         --arg openrouter "${OPENROUTER_API_KEY:-}" \
         --arg vllm "${VLLM_API_KEY:-}" \
@@ -116,6 +119,9 @@ nixmac_pp_write_e2e_runtime() {
                 NIXMAC_E2E_SYSTEM_DEFAULTS_JSON: $defaultsJson,
                 NIXMAC_RECORD_COMPLETIONS: $recordCompletions,
                 NIXMAC_COMPLETION_LOG_DIR: $completionLogDir,
+                NIXMAC_E2E_DIAGNOSTICS_DIR: $diagnosticsDir,
+                NIXMAC_LOGFILE: $logFile,
+                RUST_LOG: $rustLog,
                 OPENAI_API_KEY: $openai,
                 OPENROUTER_API_KEY: $openrouter,
                 VLLM_API_KEY: $vllm
@@ -578,6 +584,9 @@ nixmac_pp_cleanup_common() {
     nixmac_pp_unset_launch_env NIXMAC_E2E_HOMEBREW_TAPS
     nixmac_pp_unset_launch_env NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE
     nixmac_pp_unset_launch_env NIXMAC_E2E_SYSTEM_DEFAULTS_JSON
+    nixmac_pp_unset_launch_env NIXMAC_E2E_DIAGNOSTICS_DIR
+    nixmac_pp_unset_launch_env NIXMAC_LOGFILE
+    nixmac_pp_unset_launch_env RUST_LOG
     nixmac_pp_unset_launch_env OPENAI_API_KEY
     nixmac_pp_unset_launch_env OPENROUTER_API_KEY
     nixmac_pp_unset_launch_env VLLM_API_KEY
@@ -618,6 +627,9 @@ nixmac_pp_set_e2e_launch_env() {
     export NIXMAC_SKIP_PERMISSIONS=1
     export NIXMAC_E2E_CONFIG_DIR="${NIXMAC_E2E_CONFIG_REPO:-}"
     export NIXMAC_E2E_HOST_ATTR="${NIXMAC_E2E_HOST_ATTR:-e2e-host}"
+    export NIXMAC_E2E_DIAGNOSTICS_DIR="${E2E_DIAGNOSTIC_DIR:-${E2E_ARTIFACT_ROOT:-${E2E_SCREENSHOT_DIR:-/tmp}}/${E2E_SCENARIO_NAME:-unknown}/diagnostics}"
+    export NIXMAC_LOGFILE="${NIXMAC_E2E_DIAGNOSTICS_DIR}/nixmac-app.log"
+    export RUST_LOG="${RUST_LOG:-debug}"
     export OPENAI_API_KEY="[REDACTED]"
     export OPENROUTER_API_KEY="[REDACTED]"
     export VLLM_API_KEY=e2e
@@ -626,6 +638,11 @@ nixmac_pp_set_e2e_launch_env() {
     nixmac_pp_set_launch_env NIXMAC_SKIP_PERMISSIONS "$NIXMAC_SKIP_PERMISSIONS"
     nixmac_pp_set_launch_env NIXMAC_E2E_CONFIG_DIR "$NIXMAC_E2E_CONFIG_DIR"
     nixmac_pp_set_launch_env NIXMAC_E2E_HOST_ATTR "$NIXMAC_E2E_HOST_ATTR"
+    mkdir -p "$NIXMAC_E2E_DIAGNOSTICS_DIR" 2>/dev/null || true
+    rm -f "$NIXMAC_LOGFILE" "$NIXMAC_E2E_DIAGNOSTICS_DIR/nixmac-frontend-breadcrumbs.jsonl" 2>/dev/null || true
+    nixmac_pp_set_launch_env NIXMAC_E2E_DIAGNOSTICS_DIR "$NIXMAC_E2E_DIAGNOSTICS_DIR"
+    nixmac_pp_set_launch_env NIXMAC_LOGFILE "$NIXMAC_LOGFILE"
+    nixmac_pp_set_launch_env RUST_LOG "$RUST_LOG"
     if [ -n "${NIXMAC_E2E_HOMEBREW_BREWS:-}" ]; then
         nixmac_pp_set_launch_env NIXMAC_E2E_HOMEBREW_BREWS "$NIXMAC_E2E_HOMEBREW_BREWS"
     else

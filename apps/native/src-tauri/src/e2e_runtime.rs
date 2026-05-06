@@ -37,7 +37,10 @@ fn runtime_file_path() -> Option<PathBuf> {
 }
 
 fn now_unix() -> Option<u64> {
-    SystemTime::now().duration_since(UNIX_EPOCH).ok().map(|d| d.as_secs())
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .ok()
+        .map(|d| d.as_secs())
 }
 
 #[cfg(debug_assertions)]
@@ -150,7 +153,9 @@ mod tests {
                 r#"{{"schemaVersion":1,"sessionId":" ","expiresAtUnix":{expires},"values":{{"NIXMAC_E2E_SAMPLE":"file-value"}}}}"#
             ),
         ] {
-            let path = temp.path().join(format!("e2e-runtime-{}.json", uuid::Uuid::new_v4()));
+            let path = temp
+                .path()
+                .join(format!("e2e-runtime-{}.json", uuid::Uuid::new_v4()));
             let mut file = fs::File::create(&path).unwrap();
             writeln!(file, "{raw}").unwrap();
             assert_eq!(file_value_from_path(path, "NIXMAC_E2E_SAMPLE"), None);

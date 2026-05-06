@@ -112,14 +112,14 @@ pub fn apply_stream(
         let host_attr_owned = host_attr.to_owned();
         std::thread::spawn(move || {
             let log_path = create_log_file()
-                .and_then(|(mut file, path)| {
+                .map(|(mut file, path)| {
                     let _ = writeln!(
                         file,
                         "NIXMAC_E2E_MOCK_SYSTEM mocked darwin-rebuild for config_dir={}, host_attr={}",
                         config_dir_owned, host_attr_owned
                     );
                     let _ = file.flush();
-                    Ok(path)
+                    path
                 })
                 .ok();
 

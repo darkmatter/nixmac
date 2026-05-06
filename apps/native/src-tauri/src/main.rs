@@ -14,8 +14,8 @@ mod bootstrap;
 mod cli;
 mod commands;
 mod db;
-mod editor;
 mod e2e_runtime;
+mod editor;
 mod evolve;
 mod feedback;
 mod git;
@@ -34,42 +34,6 @@ mod system;
 mod types;
 mod updater_pin;
 mod utils;
-
-#[cfg(test)]
-mod test_support {
-    use std::env;
-    use std::sync::{Mutex, MutexGuard, OnceLock};
-
-    pub(crate) fn e2e_env_lock() -> MutexGuard<'static, ()> {
-        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        LOCK.get_or_init(|| Mutex::new(()))
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-    }
-
-    pub(crate) struct EnvVarRestore {
-        saved: Vec<(&'static str, Option<String>)>,
-    }
-
-    impl EnvVarRestore {
-        pub(crate) fn capture(keys: &[&'static str]) -> Self {
-            Self {
-                saved: keys.iter().map(|key| (*key, env::var(key).ok())).collect(),
-            }
-        }
-    }
-
-    impl Drop for EnvVarRestore {
-        fn drop(&mut self) {
-            for (key, value) in &self.saved {
-                match value {
-                    Some(value) => env::set_var(key, value),
-                    None => env::remove_var(key),
-                }
-            }
-        }
-    }
-}
 
 use state::watcher;
 use storage::store;
@@ -119,13 +83,17 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
 
 fn main() {
     // Initialize tracing subscriber with optional file logging
-    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    let env_filter = crate::e2e_runtime::value("RUST_LOG")
+        .map(EnvFilter::new)
+        .unwrap_or_else(|| {
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"))
+        });
 
     // Keep the WorkerGuard alive for the lifetime of `main()` so drops flush buffered logs
     let log_guard: Arc<Mutex<Option<tracing_appender::non_blocking::WorkerGuard>>> =
         Arc::new(Mutex::new(None));
 
-    if let Ok(log_path) = env::var("NIXMAC_LOGFILE") {
+    if let Some(log_path) = crate::e2e_runtime::value("NIXMAC_LOGFILE") {
         // Set up dual logging: console + file
         match std::fs::OpenOptions::new()
             .create(true)
@@ -154,6 +122,7 @@ fn main() {
                     "[nixmac] Logging to both console and {}",
                     full_path.display()
                 );
+                log::info!("NIXMAC_LOGFILE active at {}", full_path.display());
             }
             Err(e) => {
                 eprintln!("[nixmac] Failed to open NIXMAC_LOGFILE {}: {}", log_path, e);
@@ -178,6 +147,7 @@ fn main() {
     let _ = tracing_log::LogTracer::init();
 
     let context = tauri::generate_context!();
+    log::debug!("nixmac process booted");
 
     // Check if running in CLI mode
     if cli::should_run_cli() {
@@ -382,6 +352,8 @@ fn run_gui_mode(
             commands::debug::trigger_test_panic,
             #[cfg(debug_assertions)]
             commands::debug::debug_sentry_event,
+            #[cfg(debug_assertions)]
+            commands::debug::e2e_log_breadcrumb,
             // Homebrew
             commands::homebrew::homebrew_apply_diff,
             commands::homebrew::homebrew_get_state_diff,
@@ -467,6 +439,7 @@ fn run_gui_mode(
         ])
         .setup(move |app| {
             let handle = app.handle();
+            log::debug!("Tauri setup started");
 
             // Set up panic handler to catch crashes and show feedback dialog
             panic_handler::setup_panic_hook(handle.clone());
@@ -629,6 +602,7 @@ fn run_gui_mode(
                 sentry::capture_message(&msg, sentry::Level::Error);
                 msg
             })?;
+            log::debug!("Main nixmac window created");
 
             // set up watcher with interval based on focus
             let handle_for_focus = handle.clone();
@@ -688,4 +662,40 @@ fn run_gui_mode(
                 }
             }
         });
+}
+
+#[cfg(test)]
+mod test_support {
+    use std::env;
+    use std::sync::{Mutex, MutexGuard, OnceLock};
+
+    pub(crate) fn e2e_env_lock() -> MutexGuard<'static, ()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    pub(crate) struct EnvVarRestore {
+        saved: Vec<(&'static str, Option<String>)>,
+    }
+
+    impl EnvVarRestore {
+        pub(crate) fn capture(keys: &[&'static str]) -> Self {
+            Self {
+                saved: keys.iter().map(|key| (*key, env::var(key).ok())).collect(),
+            }
+        }
+    }
+
+    impl Drop for EnvVarRestore {
+        fn drop(&mut self) {
+            for (key, value) in &self.saved {
+                match value {
+                    Some(value) => env::set_var(key, value),
+                    None => env::remove_var(key),
+                }
+            }
+        }
+    }
 }

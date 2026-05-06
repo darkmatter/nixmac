@@ -1,7 +1,13 @@
 import { DarwinWidget } from "@/components/widget/widget";
+import { bootBreadcrumb } from "@/lib/e2e-boot-diagnostics";
+import { useEffect } from "react";
 import { Toaster } from "sonner";
 
 export default function App() {
+  useEffect(() => {
+    bootBreadcrumb("App mounted");
+  }, []);
+
   return (
     <>
       <DarwinWidget />
