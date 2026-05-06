@@ -1,14 +1,30 @@
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
 import { defineConfig } from "vitest/config";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(__dirname, "../..");
+const uiPackageRoot = path.resolve(repoRoot, "packages/ui/src");
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "src"),
-    },
+    alias: [
+      {
+        find: "@/components/ui",
+        replacement: path.resolve(uiPackageRoot, "components/ui"),
+      },
+      {
+        find: "@nixmac/ui",
+        replacement: uiPackageRoot,
+      },
+      {
+        find: "@",
+        replacement: path.resolve(__dirname, "src"),
+      },
+    ],
   },
   test: {
     coverage: {

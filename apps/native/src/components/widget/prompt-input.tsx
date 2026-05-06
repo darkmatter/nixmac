@@ -18,7 +18,7 @@ import { getProviderConfigInvalidReason } from "@/lib/ai-provider-validation";
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
 import { ArrowUpIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 const MAX_CONTEXT_LENGTH = 1000;
 
@@ -80,7 +80,7 @@ export function PromptInput() {
 
   const needsResolution = !evolveState?.evolutionId && gitStatus && !gitStatus.cleanHead;
 
-  const promptValidationError = useMemo(() => {
+  const promptValidationError = (() => {
     const evolveError = providerErrors.evolve;
     const summaryError = providerErrors.summary;
 
@@ -100,7 +100,7 @@ export function PromptInput() {
     }
 
     return null;
-  }, [providerErrors.evolve, providerErrors.summary]);
+  })();
 
   const handleSubmit = () => {
     if (!evolvePrompt.trim()) return;

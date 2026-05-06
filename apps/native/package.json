@@ -76,7 +76,8 @@
     "tailwindcss-animate": "^1.0.7",
     "tauri-plugin-macos-permissions-api": "^2.3.0",
     "vscode-oniguruma": "^2.0.1",
-    "zustand": "^5.0.8"
+    "zustand": "^5.0.8",
+    "@nixmac/ui": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
@@ -113,6 +114,7 @@
     "typescript": "^5.2.2",
     "vite": "^7.2.4",
     "vite-plugin-monaco-editor": "^1.1.0",
-    "vitest": "^3.0.0"
+    "vitest": "^3.0.0",
+    "babel-plugin-react-compiler": "^1.0.0"
   }
 }

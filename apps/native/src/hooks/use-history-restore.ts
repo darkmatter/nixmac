@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useState } from "react";
 import { useWidgetStore } from "@/stores/widget-store";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useHistory } from "@/hooks/use-history";
@@ -203,12 +203,12 @@ export function useHistoryRestore(
   // target. originHash points to the target so buildUndoneSet spans the correct
   // zone. previewTargetHash is always the resolved ultimate origin (never a
   // restore-of-a-restore), so doRestore avoids creating restore chains.
-  const displayHistory = useMemo<HistoryItem[]>(() => {
+  const displayHistory: HistoryItem[] = (() => {
     if (!previewTargetHash) return history;
     const target = history.find((h) => h.hash === previewTargetHash);
     if (!target) return history;
     return [makePreviewItem(target), ...history];
-  }, [history, previewTargetHash]);
+  })();
 
   // Segmentation — derived from displayHistory so preview zones are included.
   const undoneSet = buildUndoneSet(displayHistory, PREVIEW_ITEM_HASH);
@@ -237,54 +237,48 @@ export function useHistoryRestore(
     }
   }
 
-  const doRestore = useCallback(
-    async (hash: string) => {
-      setRestoringHash(hash);
-      setProcessing(true);
-      try {
-        await darwinAPI.darwin.prepareRestore(hash);
-        await triggerRebuild({
-          context: "rollback",
-          onSuccess: async () => {
-            const result = await darwinAPI.darwin.finalizeRestore(hash);
-            setGitStatus(result);
-            await loadHistory();
-          },
-          onFailure: async () => {
-            await darwinAPI.darwin.abortRestore();
-          },
-        });
-      } catch {
-        setProcessing(false);
-      } finally {
-        setRestoringHash(null);
-      }
-    },
-    [loadHistory, setProcessing, setGitStatus, triggerRebuild],
-  );
+  const doRestore = async (hash: string) => {
+    setRestoringHash(hash);
+    setProcessing(true);
+    try {
+      await darwinAPI.darwin.prepareRestore(hash);
+      await triggerRebuild({
+        context: "rollback",
+        onSuccess: async () => {
+          const result = await darwinAPI.darwin.finalizeRestore(hash);
+          setGitStatus(result);
+          await loadHistory();
+        },
+        onFailure: async () => {
+          await darwinAPI.darwin.abortRestore();
+        },
+      });
+    } catch {
+      setProcessing(false);
+    } finally {
+      setRestoringHash(null);
+    }
+  };
 
-  const handleRequestRestore = useCallback(
-    (hash: string) => {
-      if ((gitStatus?.files?.length ?? 0) > 0) {
-        onUncommittedChanges();
-        return;
-      }
-      const item = history.find((h) => h.hash === hash);
-      setPreviewTargetHash(item?.originHash ?? hash);
-    },
-    [gitStatus, history, onUncommittedChanges],
-  );
+  const handleRequestRestore = (hash: string) => {
+    if ((gitStatus?.files?.length ?? 0) > 0) {
+      onUncommittedChanges();
+      return;
+    }
+    const item = history.find((h) => h.hash === hash);
+    setPreviewTargetHash(item?.originHash ?? hash);
+  };
 
-  const handleConfirmRestore = useCallback(() => {
+  const handleConfirmRestore = () => {
     if (!previewTargetHash) return;
     const hash = previewTargetHash;
     setPreviewTargetHash(null);
     doRestore(hash);
-  }, [previewTargetHash, doRestore]);
+  };
 
-  const handleCancelPreview = useCallback(() => {
+  const handleCancelPreview = () => {
     setPreviewTargetHash(null);
-  }, []);
+  };
 
   return {
     displayHistory,

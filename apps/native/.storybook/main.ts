@@ -4,6 +4,9 @@ import type { StorybookConfig } from "@storybook/react-vite";
 import { mergeConfig } from "vite";
 
 const storybookDir = fileURLToPath(new URL(".", import.meta.url));
+const appRoot = path.resolve(storybookDir, "..");
+const repoRoot = path.resolve(appRoot, "../..");
+const uiPackageRoot = path.resolve(repoRoot, "packages/ui/src");
 
 function withoutMonacoEditorPlugin(plugins: unknown): unknown {
   if (!Array.isArray(plugins)) return plugins;
@@ -29,7 +32,11 @@ function withoutMonacoEditorPlugin(plugins: unknown): unknown {
 }
 
 const config: StorybookConfig = {
-  stories: ["../src/**/*.mdx", "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
+  stories: [
+    "../src/**/*.mdx",
+    "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)",
+    "../../../packages/ui/src/**/*.stories.@(js|jsx|mjs|ts|tsx)",
+  ],
   addons: [
     "@storybook/addon-essentials",
     "@storybook/addon-a11y",
@@ -45,6 +52,8 @@ const config: StorybookConfig = {
       resolve: {
         alias: {
           "@/tauri-api": path.resolve(storybookDir, "mocks/tauri-api.ts"),
+          "@/components/ui": path.resolve(uiPackageRoot, "components/ui"),
+          "@nixmac/ui": uiPackageRoot,
           "@tauri-apps/api/core": path.resolve(storybookDir, "mocks/tauri-core.ts"),
           "@tauri-apps/api/app": path.resolve(storybookDir, "mocks/tauri-app.ts"),
           "@tauri-apps/api/event": path.resolve(storybookDir, "mocks/tauri-event.ts"),

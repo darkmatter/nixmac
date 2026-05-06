@@ -1,5 +1,5 @@
 import * as monaco from "monaco-editor";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { initNixGrammar } from "@/lib/nix-grammar";
 import { lspClient } from "@/lib/lsp-client";
 import { bridgeMonacoToLsp } from "@/lib/lsp-monaco-bridge";
@@ -20,7 +20,7 @@ export function useNixEditor({ filePath, containerRef, onSave, disabled = false 
   const [lspStatus, setLspStatus] = useState<"off" | "starting" | "running" | "error">("off");
   const originalContentRef = useRef<string>("");
 
-  const save = useCallback(async () => {
+  const save = async () => {
     const editor = editorRef.current;
     if (!editor) return;
     const content = editor.getValue();
@@ -32,7 +32,7 @@ export function useNixEditor({ filePath, containerRef, onSave, disabled = false 
     } catch (e) {
       setError(String(e));
     }
-  }, [filePath, onSave]);
+  };
 
   useEffect(() => {
     if (disabled) {

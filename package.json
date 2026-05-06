@@ -2,7 +2,8 @@
   "name": "nixmac",
   "private": true,
   "workspaces": [
-    "apps/native"
+    "apps/native",
+    "packages/*"
   ],
   "type": "module",
   "scripts": {

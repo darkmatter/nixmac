@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Search } from "lucide-react";
 
 import type { FsFile } from "./data";
@@ -16,17 +16,16 @@ interface FileListProps {
 export function FileList({ files, onEditWithPrompt, onTrack }: FileListProps) {
   const [query, setQuery] = useState("");
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return files;
-    return files.filter((f) => {
-      return (
-        f.path.toLowerCase().includes(q) ||
-        f.title.toLowerCase().includes(q) ||
-        f.description.toLowerCase().includes(q)
-      );
-    });
-  }, [files, query]);
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? files.filter((f) => {
+        return (
+          f.path.toLowerCase().includes(q) ||
+          f.title.toLowerCase().includes(q) ||
+          f.description.toLowerCase().includes(q)
+        );
+      })
+    : files;
 
   return (
     <div className="flex min-h-0 flex-col">
