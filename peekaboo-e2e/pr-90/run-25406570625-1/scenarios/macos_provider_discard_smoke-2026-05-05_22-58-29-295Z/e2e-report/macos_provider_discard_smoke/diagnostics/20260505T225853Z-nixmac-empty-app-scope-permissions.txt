@@ -1,3 +1,0 @@
-Source: Peekaboo Bridge
-Screen Recording (Required): Granted
-Accessibility (Required): Granted

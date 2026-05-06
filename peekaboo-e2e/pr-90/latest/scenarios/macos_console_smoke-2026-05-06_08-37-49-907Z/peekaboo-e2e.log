@@ -1,0 +1,48 @@
+
+[0;34m[01:37:51][0m === macos-e2e test runner ===
+[0;34m[01:37:51][0m Started at Wed May  6 01:37:51 PDT 2026
+[0;34m[01:37:51][0m Machine: DXU97120 | macOS 26.2
+[0;34m[01:37:51][0m Working directory: /Users/admin/nixmac-peekaboo-local-e2e/tests/e2e
+[0;34m[01:38:06][0m Scenario: macos_console_smoke
+[0;34m[01:38:06][0m Starting screen recording: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_08-37-49-907Z/video/peekaboo-e2e.mp4
+[0;34m[01:38:10][0m Recorder started (PID: 83128)
+[0;34m[01:38:10][0m === Phase 1: Prepare Console fixture ===
+[0;32m[PASS][0m Peekaboo Bridge connected
+[0;32m[PASS][0m Peekaboo permissions OK
+[1;33m[WARN][0m No ADMIN_PASSWORD set, cannot unlock screen
+[0;34m[01:38:10][0m Clearing nixmac app state...
+[0;32m[PASS][0m App state cleared
+[0;34m[01:38:10][0m Seeded nixmac settings at /Users/admin/Library/Application Support/com.darkmatter.nixmac/settings.json
+[0;32m[PASS][0m peekabooCoreFixture: Prepared deterministic config and local provider-validation settings
+[0;34m[01:38:10][0m === Phase 2: Launch nixmac app ===
+[0;34m[01:38:10][0m Launching nixmac...
+[0;32m[PASS][0m App launched: nixmac
+[0;34m[01:38:27][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_08-37-49-907Z/screenshots/01-console-launch-1778056706.png
+[0;32m[PASS][0m peekabooCoreLaunch: App shell rendered before Console proof
+[0;34m[01:38:27][0m === Phase 3: Prove Console text surface ===
+[0;34m[01:38:27][0m Clicking element id=elem_47 role=button identifier= label=Console title=Console value= desc= bounds=none matching '^Console$'
+[0;34m[01:38:27][0m Candidate for '^Console$': score=10 match=label id=elem_47 role=button identifier= label=Console title=Console bounds=none
+[0;34m[01:38:30][0m Redacted text snapshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_08-37-49-907Z/diagnostics/text/console-text.txt
+[0;34m[01:38:30][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_08-37-49-907Z/screenshots/02-console-expanded-1778056710.png
+[0;32m[PASS][0m peekabooCoreConsole: Console rendered text evidence with screenshot proof
+[0;34m[01:38:30][0m Stopping recorder (PID: 83128)...
+[0;34m[01:38:49][0m Video saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_08-37-49-907Z/video/peekaboo-e2e.mp4 (224K)
+[0;34m[01:38:49][0m ==========================================
+[0;34m[01:38:49][0m   Test Results
+[0;34m[01:38:49][0m ==========================================
+  [0;32m✅[0m Phase 1: peekabooCoreFixture: Prepared deterministic config and local provider-validation settings
+  [0;32m✅[0m Phase 2: peekabooCoreLaunch: App shell rendered before Console proof
+  [0;32m✅[0m Phase 3: peekabooCoreConsole: Console rendered text evidence with screenshot proof
+
+  [0;32mAll 7 checks passed[0m
+[0;34m[01:38:49][0m ==========================================
+[0;34m[01:38:49][0m E2E report written: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_08-37-49-907Z/e2e-report/macos_console_smoke/e2e-report.json
+[0;34m[01:38:49][0m 
+[0;34m[01:38:49][0m Screenshots: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_08-37-49-907Z/screenshots
+[0;34m[01:38:49][0m Video: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_08-37-49-907Z/video/peekaboo-e2e.mp4
+[0;34m[01:38:49][0m Log: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_08-37-49-907Z/peekaboo-e2e.log
+[0;34m[01:38:53][0m Uninstalling Nix...
+ INFO nix-installer v3.19.0
+ INFO nix-installer v3.19.0
+[31m`nix-darwin` installation detected, it must be removed before uninstalling Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.[39m
+[0;32m[PASS][0m Nix uninstalled
