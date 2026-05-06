@@ -50,8 +50,8 @@ export function PromptInput() {
           darwinAPI.cli.checkTools(),
         ]);
 
-        const evolveProvider = prefs?.evolveProvider ?? "openai";
-        const summaryProvider = prefs?.summaryProvider ?? "openai";
+        const evolveProvider = prefs?.evolveProvider ?? "openrouter";
+        const summaryProvider = prefs?.summaryProvider ?? "openrouter";
         const normalizedPrefs = {
           openrouterApiKey: prefs?.openrouterApiKey ?? "",
           openaiApiKey: prefs?.openaiApiKey ?? "",
