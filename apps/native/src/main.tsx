@@ -178,10 +178,9 @@ const loadPrefsForBoot = async (): Promise<DarwinPrefs | null> => {
   return Promise.race([prefsPromise, timeoutPromise]);
 };
 
-const initializeApp = async () => {
+const initializeSentryAfterRenderScheduled = async () => {
   const prefs = await loadPrefsForBoot();
   const sendDiagnostics = prefs?.sendDiagnostics ?? false;
-
   // Vite exposes environment variables at build time, so read the Sentry DSN and other config from there.
   const sentryDsn = (import.meta.env.VITE_SENTRY_DSN || "").toString().trim();
   const sentryEnabled = sendDiagnostics && sentryDsn.length > 0;
@@ -220,28 +219,34 @@ const initializeApp = async () => {
     });
     console.info("Sentry not enabled.");
   }
+};
 
+const root = ReactDOM.createRoot(rootElement);
+
+const renderApp = () => {
   bootBreadcrumb("React render start");
-  ReactDOM.createRoot(rootElement).render(
+  root.render(
     <React.StrictMode>
-      {sentryEnabled ? (
-        <Sentry.ErrorBoundary
-          fallback={<FallbackComponent />}
-          onError={(error, componentStack) => {
-            console.error("ErrorBoundary caught:", error, componentStack);
-          }}
-        >
-          <App />
-        </Sentry.ErrorBoundary>
-      ) : (
+      <Sentry.ErrorBoundary
+        fallback={<FallbackComponent />}
+        onError={(error, componentStack) => {
+          console.error("ErrorBoundary caught:", error, componentStack);
+        }}
+      >
         <App />
-      )}
+      </Sentry.ErrorBoundary>
     </React.StrictMode>,
   );
   bootBreadcrumb("React render scheduled");
 };
 
-void initializeApp().catch((error) => {
-  bootBreadcrumb("initializeApp fatal error", error);
-  ReactDOM.createRoot(rootElement).render(<App />);
+try {
+  renderApp();
+} catch (error) {
+  bootBreadcrumb("React render fatal error", error);
+  root.render(<App />);
+}
+
+void initializeSentryAfterRenderScheduled().catch((error) => {
+  bootBreadcrumb("post-render Sentry init error", error);
 });

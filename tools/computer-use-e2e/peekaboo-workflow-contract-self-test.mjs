@@ -16,6 +16,7 @@ const permissionsPath = path.join(repoRoot, 'apps/native/src-tauri/src/system/pe
 const e2eRuntimePath = path.join(repoRoot, 'apps/native/src-tauri/src/e2e_runtime.rs');
 const nativeMainPath = path.join(repoRoot, 'apps/native/src-tauri/src/main.rs');
 const debugCommandsPath = path.join(repoRoot, 'apps/native/src-tauri/src/commands/debug.rs');
+const nativeStorePath = path.join(repoRoot, 'apps/native/src-tauri/src/storage/store.rs');
 const frontendMainPath = path.join(repoRoot, 'apps/native/src/main.tsx');
 const tauriApiPath = path.join(repoRoot, 'apps/native/src/tauri-api.ts');
 const workflow = readFileSync(workflowPath, 'utf8');
@@ -28,6 +29,7 @@ const permissions = readFileSync(permissionsPath, 'utf8');
 const e2eRuntime = readFileSync(e2eRuntimePath, 'utf8');
 const nativeMain = readFileSync(nativeMainPath, 'utf8');
 const debugCommands = readFileSync(debugCommandsPath, 'utf8');
+const nativeStore = readFileSync(nativeStorePath, 'utf8');
 const frontendMain = readFileSync(frontendMainPath, 'utf8');
 const tauriApi = readFileSync(tauriApiPath, 'utf8');
 
@@ -43,12 +45,21 @@ function section(startPattern, endPattern = null) {
   return source.slice(start, start + 1 + relativeEnd);
 }
 
+function assertOrder(source, first, second, message) {
+  const firstIndex = source.indexOf(first);
+  const secondIndex = source.indexOf(second);
+  assert.notEqual(firstIndex, -1, `missing "${first}" while checking ${message}`);
+  assert.notEqual(secondIndex, -1, `missing "${second}" while checking ${message}`);
+  assert.ok(firstIndex < secondIndex, message);
+}
+
 const trigger = section(/^on:$/m, /^permissions:$/m);
 const proof = section(/^  peekaboo-product-proof:$/m, /^  publish-peekaboo-report:$/m);
 const publish = section(/^  publish-peekaboo-report:$/m, /^  peekaboo-result:$/m);
 const result = section(/^  peekaboo-result:$/m);
 const launchEnv = section({ sourceText: productProof, pattern: /^nixmac_pp_set_e2e_launch_env\(\) \{$/m }, /^}$/m);
 const cleanup = section({ sourceText: productProof, pattern: /^nixmac_pp_cleanup_common\(\) \{$/m }, /^}$/m);
+const frontendRenderApp = section({ sourceText: frontendMain, pattern: /^const renderApp = \(\) => \{$/m }, /^};$/m);
 
 assert.doesNotMatch(trigger, /^\s+branches:/m, 'Peekaboo workflow must run for stacked PR bases, not only main');
 assert.match(workflow, /build_attempts:[\s\S]*default: '2'/, 'Peekaboo PR runs should default to two remote build attempts for transient MacInCloud build failures');
@@ -155,9 +166,14 @@ assert.match(productProof, /nixmac_pp_runtime_path\(\)[\s\S]*e2e-runtime\.json/,
 assert.match(productProof, /nixmac_pp_write_e2e_runtime\(\)[\s\S]*expiresAtUnix[\s\S]*NIXMAC_SKIP_PERMISSIONS[\s\S]*NIXMAC_E2E_CONFIG_DIR[\s\S]*NIXMAC_E2E_DIAGNOSTICS_DIR[\s\S]*NIXMAC_LOGFILE[\s\S]*RUST_LOG[\s\S]*OPENAI_API_KEY/, 'Product Proof must write an expiring debug runtime override with launch, diagnostics, fixture, and provider keys');
 assert.match(nativeMain, /crate::e2e_runtime::value\("NIXMAC_LOGFILE"\)/, 'Native app logging must read NIXMAC_LOGFILE through the E2E runtime file when launched via LaunchServices');
 assert.match(nativeMain, /crate::e2e_runtime::value\("RUST_LOG"\)[\s\S]*EnvFilter::try_from_default_env/, 'Native app logging must read RUST_LOG through the E2E runtime file before falling back to process env/default filters');
+assert.match(nativeStore, /fn get_secret_pref[\s\S]*if e2e_mock_system_enabled\(\) \{[\s\S]*return get_string_pref_raw\(app, key\);[\s\S]*get_with_lazy_migration/, 'E2E mock-system mode must bypass keychain reads in UI preference secret lookups');
 assert.match(debugCommands, /pub async fn e2e_log_breadcrumb[\s\S]*client_timestamp_unix_ms[\s\S]*NIXMAC_E2E_DIAGNOSTICS_DIR[\s\S]*nixmac-frontend-breadcrumbs\.jsonl/, 'Debug command must persist client-timestamped frontend boot breadcrumbs into E2E diagnostics');
 assert.match(tauriApi, /logBreadcrumb:[\s\S]*clientTimestampUnixMs[\s\S]*invoke<OkResult>\("e2e_log_breadcrumb"/, 'Frontend API must expose timestamped debug breadcrumb logging through Tauri IPC');
-assert.match(frontendMain, /PREFS_BOOT_TIMEOUT_MS = 8000[\s\S]*ui_get_prefs invoke start[\s\S]*success after timeout[\s\S]*Promise\.race\(\[prefsPromise, timeoutPromise\]\)[\s\S]*React render start/, 'Frontend boot must log prefs IPC progress and render after a bounded prefs wait with clear after-timeout labels');
+assert.match(frontendMain, /PREFS_BOOT_TIMEOUT_MS = 8000[\s\S]*ui_get_prefs invoke start[\s\S]*success after timeout[\s\S]*Promise\.race\(\[prefsPromise, timeoutPromise\]\)/, 'Frontend boot must log prefs IPC progress with clear after-timeout labels');
+assert.match(frontendMain, /const renderApp = \(\) => \{[\s\S]*React render start[\s\S]*Sentry\.ErrorBoundary[\s\S]*<App \/>[\s\S]*React render scheduled/, 'Frontend boot must render the app immediately with an error boundary');
+assert.match(frontendMain, /renderApp\(\);[\s\S]*initializeSentryAfterRenderScheduled\(\)/, 'Frontend boot must start preference-backed Sentry initialization only after first render is scheduled');
+assertOrder(frontendMain, 'renderApp();', 'initializeSentryAfterRenderScheduled()', 'Frontend boot must not await preferences before first render');
+assert.doesNotMatch(frontendRenderApp, /\bawait\b/, 'Frontend renderApp must stay synchronous and never await prefs IPC before first render');
 assert.match(frontendMain, /window\.addEventListener\("unhandledrejection"[\s\S]*window unhandled rejection/, 'Frontend boot diagnostics must capture top-level unhandled rejections');
 assert.match(runnerShell, /E2E_TERMINAL_CLEANUP_MODE=kill recording_close_terminal_windows/, 'Runner preflight must kill stale recorder Terminal windows before each scenario');
 assert.match(e2eRuntime, /#\[cfg\(debug_assertions\)\][\s\S]*fn file_value[\s\S]*runtime\.schema_version != 1[\s\S]*runtime\.session_id\.trim\(\)\.is_empty\(\)[\s\S]*now_unix\(\)\? > runtime\.expires_at_unix/, 'Rust E2E runtime file reader must be debug-only and reject stale, malformed, or expired runtime files');
