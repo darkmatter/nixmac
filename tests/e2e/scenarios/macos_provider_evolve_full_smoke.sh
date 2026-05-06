@@ -556,7 +556,7 @@ scenario_provider_repo_restored_to_baseline() {
     status_short=$(git -C "$NIXMAC_E2E_CONFIG_REPO" status --short)
     [ -z "$status_short" ] \
         && ! grep -q "ripgrep" "$NIXMAC_E2E_CONFIG_REPO/flake.nix" \
-        && git -C "$NIXMAC_E2E_CONFIG_REPO" diff --quiet "$NIXMAC_E2E_BASELINE_COMMIT" HEAD -- flake.nix flake.lock
+        && git -C "$NIXMAC_E2E_CONFIG_REPO" diff --quiet "$NIXMAC_E2E_BASELINE_COMMIT" HEAD
 }
 
 scenario_wait_for_provider_repo_restore() {

@@ -216,7 +216,7 @@ scenario_restore_managed_badge_baseline() {
         || return 1
     deadline=$(($(date +%s) + 45))
     while [ "$(date +%s)" -lt "$deadline" ]; do
-        if git -C "$NIXMAC_E2E_CONFIG_REPO" diff --quiet "$NIXMAC_E2E_BASELINE_COMMIT" HEAD -- flake.nix flake.lock \
+        if git -C "$NIXMAC_E2E_CONFIG_REPO" diff --quiet "$NIXMAC_E2E_BASELINE_COMMIT" HEAD \
             && [ -z "$(git -C "$NIXMAC_E2E_CONFIG_REPO" status --short)" ]; then
             return 0
         fi
