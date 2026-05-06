@@ -1,0 +1,2104 @@
+{
+  "runDir": "/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_00-20-16-333Z",
+  "startedAt": "2026-05-06T00:20:16.333Z",
+  "mode": "peekaboo",
+  "branch": "fkb/scott-peekaboo-local-e2e",
+  "sha": "d14af13bae7ef4f07d01ccb35c6632937a805b90",
+  "macosVersion": "26.2",
+  "appCommand": "bash tests/e2e/run.sh macos_core_product_proof",
+  "appBundleId": "com.darkmatter.nixmac",
+  "artifactRoot": "/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local",
+  "appSupportDir": "/Users/admin/Library/Application Support/com.darkmatter.nixmac",
+  "appSupportExisted": false,
+  "appSupportBackupPath": null,
+  "setup": {
+    "configDir": null,
+    "mockProvider": null,
+    "note": "No existing nixmac Application Support directory was present before the Peekaboo run."
+  },
+  "scenarios": {
+    "launch": {
+      "label": "App launches and first screen is usable",
+      "status": "pass",
+      "notes": [
+        "Covered transitively by peekabooCoreLaunch; Peekaboo evidence grade: action-confirmed."
+      ],
+      "peekabooTransitiveCoverage": {
+        "phaseKey": "peekabooCoreLaunch",
+        "grade": "action-confirmed"
+      }
+    },
+    "settings": {
+      "label": "Settings safe tabs render: General, AI Models, Preferences",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "history": {
+      "label": "My History opens and renders",
+      "status": "pass",
+      "notes": [
+        "Covered transitively by peekabooCoreHistory; Peekaboo evidence grade: action-confirmed."
+      ],
+      "peekabooTransitiveCoverage": {
+        "phaseKey": "peekabooCoreHistory",
+        "grade": "action-confirmed"
+      }
+    },
+    "console": {
+      "label": "Console opens and closes",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "feedback": {
+      "label": "Feedback / report dialogs open and cancel without submission",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "suggestion": {
+      "label": "Home suggestion card is clickable",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "suggestionCards": {
+      "label": "Home suggestion cards are visible/clickable",
+      "status": "pass",
+      "notes": [
+        "Covered transitively by peekabooCoreSuggestionCards; Peekaboo evidence grade: action-confirmed."
+      ],
+      "peekabooTransitiveCoverage": {
+        "phaseKey": "peekabooCoreSuggestionCards",
+        "grade": "action-confirmed"
+      }
+    },
+    "descriptor": {
+      "label": "Typed intent reaches review",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "updateBanner": {
+      "label": "Update banner does not block the main workflow",
+      "status": "pass",
+      "notes": [
+        "Covered transitively by peekabooCoreUpdateBanner; Peekaboo evidence grade: action-confirmed."
+      ],
+      "peekabooTransitiveCoverage": {
+        "phaseKey": "peekabooCoreUpdateBanner",
+        "grade": "action-confirmed"
+      }
+    },
+    "settingsGeneral": {
+      "label": "Settings General tab visibly renders",
+      "status": "pass",
+      "notes": [
+        "Covered transitively by peekabooCoreSettingsGeneral; Peekaboo evidence grade: action-confirmed."
+      ],
+      "peekabooTransitiveCoverage": {
+        "phaseKey": "peekabooCoreSettingsGeneral",
+        "grade": "action-confirmed"
+      }
+    },
+    "settingsAIModels": {
+      "label": "Settings AI Models tab visibly renders",
+      "status": "pass",
+      "notes": [
+        "Covered transitively by peekabooCoreSettingsAIModels; Peekaboo evidence grade: action-confirmed."
+      ],
+      "peekabooTransitiveCoverage": {
+        "phaseKey": "peekabooCoreSettingsAIModels",
+        "grade": "action-confirmed"
+      }
+    },
+    "settingsAPIKeys": {
+      "label": "Settings API Keys tab visibly renders",
+      "status": "pass",
+      "notes": [
+        "Covered transitively by peekabooCoreSettingsAPIKeys; Peekaboo evidence grade: sensitive-redaction."
+      ],
+      "peekabooTransitiveCoverage": {
+        "phaseKey": "peekabooCoreSettingsAPIKeys",
+        "grade": "sensitive-redaction"
+      }
+    },
+    "settingsPreferences": {
+      "label": "Settings Preferences tab visibly renders",
+      "status": "pass",
+      "notes": [
+        "Covered transitively by peekabooCoreSettingsPreferences; Peekaboo evidence grade: action-confirmed."
+      ],
+      "peekabooTransitiveCoverage": {
+        "phaseKey": "peekabooCoreSettingsPreferences",
+        "grade": "action-confirmed"
+      }
+    },
+    "reportIssue": {
+      "label": "Report Issue opens and can be cancelled",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "typedIntent": {
+      "label": "A typed real intent can be submitted",
+      "status": "pass",
+      "notes": [
+        "Covered transitively by peekabooCoreTypedIntent; Peekaboo evidence grade: action-confirmed."
+      ],
+      "peekabooTransitiveCoverage": {
+        "phaseKey": "peekabooCoreTypedIntent",
+        "grade": "action-confirmed"
+      }
+    },
+    "review": {
+      "label": "Real provider workflow reaches Review",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "summary": {
+      "label": "Summary describes the typed intent",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "diff": {
+      "label": "Diff shows an acceptable config change",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "buildCheck": {
+      "label": "Build check completes or fails visibly",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "buildBoundary": {
+      "label": "Build & Test confirmation boundary appears and is cancelled",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "customizationSaveRollback": {
+      "label": "Untracked macOS customizations can be saved and rolled back",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "homebrewSaveRollback": {
+      "label": "Untracked Homebrew items can be saved and rolled back",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "saveFlow": {
+      "label": "Step 3 Save / Keep changes persists a change",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "rollbackCleanup": {
+      "label": "Rollback cleanup returns disposable config to clean state",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "discard": {
+      "label": "Discard confirmation and return-to-start",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "visualCoverage": {
+      "label": "Core UX/UI surfaces are captured and inspectable",
+      "status": "pass",
+      "notes": [
+        "Covered transitively by peekabooCoreVisualProofQuality; Peekaboo evidence grade: artifact-quality."
+      ],
+      "peekabooTransitiveCoverage": {
+        "phaseKey": "peekabooCoreVisualProofQuality",
+        "grade": "artifact-quality"
+      }
+    },
+    "visualProofQuality": {
+      "label": "Scenario results include inspectable visual/text evidence",
+      "status": "pass",
+      "notes": [
+        "Covered transitively by peekabooCoreVisualProofQuality; Peekaboo evidence grade: artifact-quality."
+      ],
+      "peekabooTransitiveCoverage": {
+        "phaseKey": "peekabooCoreVisualProofQuality",
+        "grade": "artifact-quality"
+      }
+    },
+    "mainCoverageFreshness": {
+      "label": "Main branch user-visible coverage stays mapped",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "prSpecificCoverage": {
+      "label": "PR-specific user-visible behavior is covered when applicable",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "storybookPreview": {
+      "label": "Changed UI has a direct Storybook preview when applicable",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "reportInspection": {
+      "label": "Generated HTML report is inspected or integrity-verified",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "peekabooDescriptorPromptSmoke": {
+      "label": "Peekaboo descriptor prompt smoke",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "peekabooCoreProductProof": {
+      "label": "Peekaboo core Product Proof wrapper",
+      "status": "pass",
+      "notes": [
+        "Peekaboo runner exited 0; parsed 12 legacy phase result(s).",
+        "Parsed structured report e2e-report/macos_core_product_proof/e2e-report.json with status passed.",
+        "Scanned 21 text artifact(s) for unmasked provider secrets: passed.",
+        "Checked 20 screenshot artifact(s) for visual signal: passed.",
+        "Wrote additive Peekaboo coverage map for 12 phase key(s)."
+      ],
+      "executedByPeekaboo": true,
+      "peekabooEvidence": {
+        "phaseKey": "peekabooCoreProductProof",
+        "grade": "scenario",
+        "correspondsTo": []
+      }
+    },
+    "peekabooSupportDialogsSmoke": {
+      "label": "Peekaboo support dialogs smoke",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "peekabooConsoleSmoke": {
+      "label": "Peekaboo Console smoke",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "peekabooHomebrewSaveRollbackSmoke": {
+      "label": "Peekaboo Homebrew save/rollback smoke",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "peekabooCustomizationSaveRollbackSmoke": {
+      "label": "Peekaboo customization save/rollback smoke",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "peekabooCoreFixture": {
+      "label": "Peekaboo core fixture setup",
+      "status": "pass",
+      "notes": [
+        "Prepared deterministic config, local validation settings, and mock system flag Corresponds to Computer Use key(s): none; Peekaboo evidence grade: fixture."
+      ],
+      "executedByPeekaboo": true,
+      "peekabooEvidence": {
+        "phaseKey": "peekabooCoreFixture",
+        "grade": "fixture",
+        "correspondsTo": []
+      }
+    },
+    "peekabooCoreLaunch": {
+      "label": "Peekaboo core app shell",
+      "status": "pass",
+      "notes": [
+        "App shell, header controls, and initial prompt surface rendered Corresponds to Computer Use key(s): launch; Peekaboo evidence grade: action-confirmed."
+      ],
+      "executedByPeekaboo": true,
+      "peekabooEvidence": {
+        "phaseKey": "peekabooCoreLaunch",
+        "grade": "action-confirmed",
+        "correspondsTo": [
+          "launch"
+        ]
+      }
+    },
+    "peekabooCoreUpdateBanner": {
+      "label": "Peekaboo update banner non-blocking state",
+      "status": "pass",
+      "notes": [
+        "Update banner state did not block the prompt workflow Corresponds to Computer Use key(s): updateBanner; Peekaboo evidence grade: action-confirmed."
+      ],
+      "executedByPeekaboo": true,
+      "peekabooEvidence": {
+        "phaseKey": "peekabooCoreUpdateBanner",
+        "grade": "action-confirmed",
+        "correspondsTo": [
+          "updateBanner"
+        ]
+      }
+    },
+    "peekabooCoreSettingsGeneral": {
+      "label": "Peekaboo Settings General",
+      "status": "pass",
+      "notes": [
+        "Settings General tab rendered with config and host controls Corresponds to Computer Use key(s): settingsGeneral; Peekaboo evidence grade: action-confirmed."
+      ],
+      "executedByPeekaboo": true,
+      "peekabooEvidence": {
+        "phaseKey": "peekabooCoreSettingsGeneral",
+        "grade": "action-confirmed",
+        "correspondsTo": [
+          "settingsGeneral"
+        ]
+      }
+    },
+    "peekabooCoreSettingsAIModels": {
+      "label": "Peekaboo Settings AI Models",
+      "status": "pass",
+      "notes": [
+        "Settings AI Models tab rendered provider/model controls Corresponds to Computer Use key(s): settingsAIModels; Peekaboo evidence grade: action-confirmed."
+      ],
+      "executedByPeekaboo": true,
+      "peekabooEvidence": {
+        "phaseKey": "peekabooCoreSettingsAIModels",
+        "grade": "action-confirmed",
+        "correspondsTo": [
+          "settingsAIModels"
+        ]
+      }
+    },
+    "peekabooCoreSettingsAPIKeys": {
+      "label": "Peekaboo Settings API Keys redaction proof",
+      "status": "pass",
+      "notes": [
+        "Settings API Keys tab rendered and shared redaction gate found no unmasked secrets Corresponds to Computer Use key(s): settingsAPIKeys; Peekaboo evidence grade: sensitive-redaction."
+      ],
+      "executedByPeekaboo": true,
+      "peekabooEvidence": {
+        "phaseKey": "peekabooCoreSettingsAPIKeys",
+        "grade": "sensitive-redaction",
+        "correspondsTo": [
+          "settingsAPIKeys"
+        ]
+      }
+    },
+    "peekabooCoreSettingsPreferences": {
+      "label": "Peekaboo Settings Preferences",
+      "status": "pass",
+      "notes": [
+        "Settings Preferences tab rendered confirmation controls Corresponds to Computer Use key(s): settingsPreferences; Peekaboo evidence grade: action-confirmed."
+      ],
+      "executedByPeekaboo": true,
+      "peekabooEvidence": {
+        "phaseKey": "peekabooCoreSettingsPreferences",
+        "grade": "action-confirmed",
+        "correspondsTo": [
+          "settingsPreferences"
+        ]
+      }
+    },
+    "peekabooCoreHistory": {
+      "label": "Peekaboo History surface",
+      "status": "pass",
+      "notes": [
+        "History surface rendered a visible state Corresponds to Computer Use key(s): history; Peekaboo evidence grade: action-confirmed."
+      ],
+      "executedByPeekaboo": true,
+      "peekabooEvidence": {
+        "phaseKey": "peekabooCoreHistory",
+        "grade": "action-confirmed",
+        "correspondsTo": [
+          "history"
+        ]
+      }
+    },
+    "peekabooCoreConsole": {
+      "label": "Peekaboo Console text surface",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "peekabooCoreFeedback": {
+      "label": "Peekaboo Feedback dialog",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "peekabooCoreReportIssue": {
+      "label": "Peekaboo Report Issue classification",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "peekabooCoreSuggestionCards": {
+      "label": "Peekaboo suggestion card prompt fill",
+      "status": "pass",
+      "notes": [
+        "Suggestion card was clicked and the prompt surface remained usable Corresponds to Computer Use key(s): suggestionCards; Peekaboo evidence grade: action-confirmed."
+      ],
+      "executedByPeekaboo": true,
+      "peekabooEvidence": {
+        "phaseKey": "peekabooCoreSuggestionCards",
+        "grade": "action-confirmed",
+        "correspondsTo": [
+          "suggestionCards"
+        ]
+      }
+    },
+    "peekabooCoreTypedIntent": {
+      "label": "Peekaboo typed intent",
+      "status": "pass",
+      "notes": [
+        "Typed descriptor appeared in the prompt input Corresponds to Computer Use key(s): typedIntent; Peekaboo evidence grade: action-confirmed."
+      ],
+      "executedByPeekaboo": true,
+      "peekabooEvidence": {
+        "phaseKey": "peekabooCoreTypedIntent",
+        "grade": "action-confirmed",
+        "correspondsTo": [
+          "typedIntent"
+        ]
+      }
+    },
+    "peekabooCoreProviderValidation": {
+      "label": "Peekaboo local provider-validation boundary",
+      "status": "pass",
+      "notes": [
+        "Submit path reached expected local provider-validation boundary Corresponds to Computer Use key(s): typedIntent; Peekaboo evidence grade: guardrail-confirmed."
+      ],
+      "executedByPeekaboo": true,
+      "peekabooEvidence": {
+        "phaseKey": "peekabooCoreProviderValidation",
+        "grade": "guardrail-confirmed",
+        "correspondsTo": [
+          "typedIntent"
+        ]
+      }
+    },
+    "peekabooCoreVisualProofQuality": {
+      "label": "Peekaboo core visual/text proof quality",
+      "status": "pass",
+      "notes": [
+        "Core proof captured 20 screenshots and 6 redacted text snapshots Corresponds to Computer Use key(s): visualCoverage, visualProofQuality; Peekaboo evidence grade: artifact-quality."
+      ],
+      "executedByPeekaboo": true,
+      "peekabooEvidence": {
+        "phaseKey": "peekabooCoreVisualProofQuality",
+        "grade": "artifact-quality",
+        "correspondsTo": [
+          "visualCoverage",
+          "visualProofQuality"
+        ]
+      }
+    },
+    "peekabooHomebrewSaveRollback": {
+      "label": "Peekaboo Homebrew save + rollback",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "peekabooCustomizationSaveRollback": {
+      "label": "Peekaboo customization save + rollback",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "peekabooProviderEvolveFullSmoke": {
+      "label": "Peekaboo provider-backed evolve smoke",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "peekabooProviderDiscardSmoke": {
+      "label": "Peekaboo provider discard smoke",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "peekabooProviderFixture": {
+      "label": "Peekaboo provider fixture setup",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "peekabooProviderLaunch": {
+      "label": "Peekaboo provider app shell",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "peekabooProviderTypedIntent": {
+      "label": "Peekaboo provider typed intent",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "peekabooProviderReview": {
+      "label": "Peekaboo provider Review proof",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "peekabooProviderBuildBoundary": {
+      "label": "Peekaboo provider Build & Test boundary",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "peekabooProviderSaveFlow": {
+      "label": "Peekaboo provider Save flow",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "peekabooProviderRollbackCleanup": {
+      "label": "Peekaboo provider rollback cleanup",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "peekabooProviderAudit": {
+      "label": "Peekaboo provider request audit",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "peekabooProviderDiscard": {
+      "label": "Peekaboo provider Discard proof",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "peekabooReportInspection": {
+      "label": "Peekaboo report inspection",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    },
+    "peekabooNixInstall": {
+      "label": "Peekaboo Nix install flow",
+      "status": "not_required",
+      "notes": [
+        "Not required for Peekaboo macos_core_product_proof run."
+      ]
+    }
+  },
+  "prFocus": {
+    "eventName": "pull_request",
+    "number": "90",
+    "title": "Add Peekaboo local Product Proof lane",
+    "headRef": "fkb/scott-peekaboo-local-e2e",
+    "baseRef": "fkb/e2e-required-gate-policy",
+    "changedFiles": [
+      ".github/workflows/peekaboo-e2e.yml",
+      "apps/native/src-tauri/src/main.rs",
+      "apps/native/src-tauri/src/rebuild/darwin.rs",
+      "apps/native/src-tauri/src/storage/store.rs",
+      "apps/native/src-tauri/src/summarize/build_prompt.rs",
+      "apps/native/src/components/kibo-ui/code-block/index.tsx",
+      "tests/e2e/README.md",
+      "tests/e2e/adapters/nixmac.sh",
+      "tests/e2e/lib/app.sh",
+      "tests/e2e/lib/core.sh",
+      "tests/e2e/lib/nixmac_managed_badge_proof.sh",
+      "tests/e2e/lib/nixmac_product_proof.sh",
+      "tests/e2e/lib/peekaboo.sh",
+      "tests/e2e/lib/peekaboo.test.sh",
+      "tests/e2e/lib/recording.sh",
+      "tests/e2e/lib/report.sh",
+      "tests/e2e/lib/runner.sh",
+      "tests/e2e/run.sh",
+      "tests/e2e/scenarios/macos_console_smoke.sh",
+      "tests/e2e/scenarios/macos_core_product_proof.sh",
+      "tests/e2e/scenarios/macos_customization_save_rollback_smoke.sh",
+      "tests/e2e/scenarios/macos_descriptor_prompt_smoke.sh",
+      "tests/e2e/scenarios/macos_homebrew_save_rollback_smoke.sh",
+      "tests/e2e/scenarios/macos_provider_discard_smoke.sh",
+      "tests/e2e/scenarios/macos_provider_evolve_full_smoke.sh",
+      "tests/e2e/scenarios/macos_support_dialogs_smoke.sh",
+      "tools/computer-use-e2e/README.md",
+      "tools/computer-use-e2e/coverage-manifest.json",
+      "tools/computer-use-e2e/peekaboo-runner.mjs",
+      "tools/computer-use-e2e/peekaboo-workflow-contract-self-test.mjs",
+      "tools/computer-use-e2e/run-local.mjs",
+      "tools/computer-use-e2e/scenario-catalog.mjs"
+    ],
+    "userVisibleFiles": [
+      ".github/workflows/peekaboo-e2e.yml",
+      "apps/native/src-tauri/src/main.rs",
+      "apps/native/src-tauri/src/rebuild/darwin.rs",
+      "apps/native/src-tauri/src/storage/store.rs",
+      "apps/native/src-tauri/src/summarize/build_prompt.rs",
+      "tests/e2e/README.md",
+      "tests/e2e/adapters/nixmac.sh",
+      "tests/e2e/lib/app.sh",
+      "tests/e2e/lib/core.sh",
+      "tests/e2e/lib/nixmac_managed_badge_proof.sh",
+      "tests/e2e/lib/nixmac_product_proof.sh",
+      "tests/e2e/lib/peekaboo.sh",
+      "tests/e2e/lib/peekaboo.test.sh",
+      "tests/e2e/lib/recording.sh",
+      "tests/e2e/lib/report.sh",
+      "tests/e2e/lib/runner.sh",
+      "tests/e2e/run.sh",
+      "tests/e2e/scenarios/macos_console_smoke.sh",
+      "tests/e2e/scenarios/macos_core_product_proof.sh",
+      "tests/e2e/scenarios/macos_customization_save_rollback_smoke.sh",
+      "tests/e2e/scenarios/macos_descriptor_prompt_smoke.sh",
+      "tests/e2e/scenarios/macos_homebrew_save_rollback_smoke.sh",
+      "tests/e2e/scenarios/macos_provider_discard_smoke.sh",
+      "tests/e2e/scenarios/macos_provider_evolve_full_smoke.sh",
+      "tests/e2e/scenarios/macos_support_dialogs_smoke.sh",
+      "tools/computer-use-e2e/README.md",
+      "tools/computer-use-e2e/coverage-manifest.json",
+      "tools/computer-use-e2e/peekaboo-runner.mjs",
+      "tools/computer-use-e2e/peekaboo-workflow-contract-self-test.mjs",
+      "tools/computer-use-e2e/run-local.mjs",
+      "tools/computer-use-e2e/scenario-catalog.mjs"
+    ],
+    "scenarioKeys": [
+      "visualProofQuality",
+      "reportInspection",
+      "settingsGeneral",
+      "settingsAIModels",
+      "settingsAPIKeys",
+      "settingsPreferences",
+      "suggestionCards",
+      "typedIntent",
+      "review",
+      "summary",
+      "diff",
+      "saveFlow"
+    ],
+    "matchedSurfaces": [
+      {
+        "file": "apps/native/src-tauri/src/main.rs",
+        "id": "e2e-harness-rust",
+        "label": "Debug-only E2E harness hooks",
+        "scenarioKeys": [],
+        "waiver": null,
+        "coverageDisposition": "non-claiming",
+        "coverageNote": "Changed file is tracked for PR visibility, but this surface does not claim user-facing scenario coverage for NIXMAC_E2E_* debug harness branches."
+      },
+      {
+        "file": "apps/native/src-tauri/src/rebuild/darwin.rs",
+        "id": "e2e-harness-rust",
+        "label": "Debug-only E2E harness hooks",
+        "scenarioKeys": [],
+        "waiver": null,
+        "coverageDisposition": "non-claiming",
+        "coverageNote": "Changed file is tracked for PR visibility, but this surface does not claim user-facing scenario coverage for NIXMAC_E2E_* debug harness branches."
+      },
+      {
+        "file": "apps/native/src-tauri/src/storage/store.rs",
+        "id": "e2e-harness-rust",
+        "label": "Debug-only E2E harness hooks",
+        "scenarioKeys": [],
+        "waiver": null,
+        "coverageDisposition": "non-claiming",
+        "coverageNote": "Changed file is tracked for PR visibility, but this surface does not claim user-facing scenario coverage for NIXMAC_E2E_* debug harness branches."
+      },
+      {
+        "file": "apps/native/src-tauri/src/storage/store.rs",
+        "id": "settings",
+        "label": "Settings dialog and all settings tabs",
+        "scenarioKeys": [
+          "settingsGeneral",
+          "settingsAIModels",
+          "settingsAPIKeys",
+          "settingsPreferences"
+        ],
+        "waiver": null,
+        "coverageDisposition": null,
+        "coverageNote": null
+      },
+      {
+        "file": "apps/native/src-tauri/src/summarize/build_prompt.rs",
+        "id": "provider-review",
+        "label": "Prompt submission, provider progress, Review, Summary, and Diff",
+        "scenarioKeys": [
+          "suggestionCards",
+          "typedIntent",
+          "review",
+          "summary",
+          "diff"
+        ],
+        "waiver": null,
+        "coverageDisposition": null,
+        "coverageNote": null
+      },
+      {
+        "file": "apps/native/src-tauri/src/summarize/build_prompt.rs",
+        "id": "step-3-save",
+        "label": "Step 3 Save / Commit",
+        "scenarioKeys": [
+          "saveFlow"
+        ],
+        "waiver": null,
+        "coverageDisposition": null,
+        "coverageNote": null
+      }
+    ],
+    "unmappedUserVisibleFiles": [],
+    "scenarioSuggestions": [],
+    "manifestLoadError": null,
+    "configured": true
+  },
+  "screenshots": [
+    {
+      "label": "01-core-launch-1778026847_annotated",
+      "path": "screenshots/01-core-launch-1778026847_annotated.png",
+      "capturedAt": "2026-05-06T00:20:48.168Z",
+      "note": "Captured by Peekaboo runner.",
+      "bytes": 66721
+    },
+    {
+      "label": "01-core-launch-1778026847",
+      "path": "screenshots/01-core-launch-1778026847.png",
+      "capturedAt": "2026-05-06T00:20:47.891Z",
+      "note": "Captured by Peekaboo runner.",
+      "bytes": 55352
+    },
+    {
+      "label": "02-update-non-blocking-1778026853_annotated",
+      "path": "screenshots/02-update-non-blocking-1778026853_annotated.png",
+      "capturedAt": "2026-05-06T00:20:53.989Z",
+      "note": "Captured by Peekaboo runner.",
+      "bytes": 75929
+    },
+    {
+      "label": "02-update-non-blocking-1778026853",
+      "path": "screenshots/02-update-non-blocking-1778026853.png",
+      "capturedAt": "2026-05-06T00:20:53.815Z",
+      "note": "Captured by Peekaboo runner.",
+      "bytes": 58655
+    },
+    {
+      "label": "03-suggestion-card-1778026857_annotated",
+      "path": "screenshots/03-suggestion-card-1778026857_annotated.png",
+      "capturedAt": "2026-05-06T00:20:57.428Z",
+      "note": "Captured by Peekaboo runner.",
+      "bytes": 73217
+    },
+    {
+      "label": "03-suggestion-card-1778026857",
+      "path": "screenshots/03-suggestion-card-1778026857.png",
+      "capturedAt": "2026-05-06T00:20:57.235Z",
+      "note": "Captured by Peekaboo runner.",
+      "bytes": 55826
+    },
+    {
+      "label": "04-descriptor-typed-1778026860_annotated",
+      "path": "screenshots/04-descriptor-typed-1778026860_annotated.png",
+      "capturedAt": "2026-05-06T00:21:00.805Z",
+      "note": "Captured by Peekaboo runner.",
+      "bytes": 76297
+    },
+    {
+      "label": "04-descriptor-typed-1778026860",
+      "path": "screenshots/04-descriptor-typed-1778026860.png",
+      "capturedAt": "2026-05-06T00:21:00.328Z",
+      "note": "Captured by Peekaboo runner.",
+      "bytes": 58945
+    },
+    {
+      "label": "05-provider-validation-block-1778026861_annotated",
+      "path": "screenshots/05-provider-validation-block-1778026861_annotated.png",
+      "capturedAt": "2026-05-06T00:21:01.539Z",
+      "note": "Captured by Peekaboo runner.",
+      "bytes": 76297
+    },
+    {
+      "label": "05-provider-validation-block-1778026861",
+      "path": "screenshots/05-provider-validation-block-1778026861.png",
+      "capturedAt": "2026-05-06T00:21:01.360Z",
+      "note": "Captured by Peekaboo runner.",
+      "bytes": 58945
+    },
+    {
+      "label": "08-settings-general-1778026881_annotated",
+      "path": "screenshots/08-settings-general-1778026881_annotated.png",
+      "capturedAt": "2026-05-06T00:21:22.292Z",
+      "note": "Captured by Peekaboo runner.",
+      "bytes": 104595
+    },
+    {
+      "label": "08-settings-general-1778026881",
+      "path": "screenshots/08-settings-general-1778026881.png",
+      "capturedAt": "2026-05-06T00:21:21.993Z",
+      "note": "Captured by Peekaboo runner.",
+      "bytes": 85425
+    },
+    {
+      "label": "09-settings-ai-models-1778026884_annotated",
+      "path": "screenshots/09-settings-ai-models-1778026884_annotated.png",
+      "capturedAt": "2026-05-06T00:21:25.134Z",
+      "note": "Captured by Peekaboo runner.",
+      "bytes": 104595
+    },
+    {
+      "label": "09-settings-ai-models-1778026884",
+      "path": "screenshots/09-settings-ai-models-1778026884.png",
+      "capturedAt": "2026-05-06T00:21:24.899Z",
+      "note": "Captured by Peekaboo runner.",
+      "bytes": 85425
+    },
+    {
+      "label": "10-settings-api-keys-1778026887_annotated",
+      "path": "screenshots/10-settings-api-keys-1778026887_annotated.png",
+      "capturedAt": "2026-05-06T00:21:28.142Z",
+      "note": "Captured by Peekaboo runner.",
+      "bytes": 91154
+    },
+    {
+      "label": "10-settings-api-keys-1778026887",
+      "path": "screenshots/10-settings-api-keys-1778026887.png",
+      "capturedAt": "2026-05-06T00:21:27.800Z",
+      "note": "Captured by Peekaboo runner.",
+      "bytes": 70496
+    },
+    {
+      "label": "11-settings-preferences-1778026890_annotated",
+      "path": "screenshots/11-settings-preferences-1778026890_annotated.png",
+      "capturedAt": "2026-05-06T00:21:31.136Z",
+      "note": "Captured by Peekaboo runner.",
+      "bytes": 98741
+    },
+    {
+      "label": "11-settings-preferences-1778026890",
+      "path": "screenshots/11-settings-preferences-1778026890.png",
+      "capturedAt": "2026-05-06T00:21:30.829Z",
+      "note": "Captured by Peekaboo runner.",
+      "bytes": 79462
+    },
+    {
+      "label": "12-history-1778026895_annotated",
+      "path": "screenshots/12-history-1778026895_annotated.png",
+      "capturedAt": "2026-05-06T00:21:36.288Z",
+      "note": "Captured by Peekaboo runner.",
+      "bytes": 75799
+    },
+    {
+      "label": "12-history-1778026895",
+      "path": "screenshots/12-history-1778026895.png",
+      "capturedAt": "2026-05-06T00:21:36.092Z",
+      "note": "Captured by Peekaboo runner.",
+      "bytes": 58544
+    }
+  ],
+  "diagnostics": [
+    {
+      "label": "diagnostics/text/history-text.txt",
+      "path": "e2e-report/macos_core_product_proof/diagnostics/text/history-text.txt",
+      "capturedAt": "2026-05-06T00:21:48.131Z",
+      "note": "Diagnostic artifact from Peekaboo report.",
+      "bytes": 3366
+    },
+    {
+      "label": "diagnostics/text/settings-ai-models-text.txt",
+      "path": "e2e-report/macos_core_product_proof/diagnostics/text/settings-ai-models-text.txt",
+      "capturedAt": "2026-05-06T00:21:48.138Z",
+      "note": "Diagnostic artifact from Peekaboo report.",
+      "bytes": 2959
+    },
+    {
+      "label": "diagnostics/text/settings-api-keys-text.txt",
+      "path": "e2e-report/macos_core_product_proof/diagnostics/text/settings-api-keys-text.txt",
+      "capturedAt": "2026-05-06T00:21:48.147Z",
+      "note": "Diagnostic artifact from Peekaboo report.",
+      "bytes": 3188
+    },
+    {
+      "label": "diagnostics/text/settings-general-text.txt",
+      "path": "e2e-report/macos_core_product_proof/diagnostics/text/settings-general-text.txt",
+      "capturedAt": "2026-05-06T00:21:48.155Z",
+      "note": "Diagnostic artifact from Peekaboo report.",
+      "bytes": 2959
+    },
+    {
+      "label": "diagnostics/text/settings-preferences-text.txt",
+      "path": "e2e-report/macos_core_product_proof/diagnostics/text/settings-preferences-text.txt",
+      "capturedAt": "2026-05-06T00:21:48.163Z",
+      "note": "Diagnostic artifact from Peekaboo report.",
+      "bytes": 3366
+    },
+    {
+      "label": "diagnostics/text/suggestion-card-text.txt",
+      "path": "e2e-report/macos_core_product_proof/diagnostics/text/suggestion-card-text.txt",
+      "capturedAt": "2026-05-06T00:21:48.171Z",
+      "note": "Diagnostic artifact from Peekaboo report.",
+      "bytes": 2324
+    },
+    {
+      "label": "peekaboo-coverage-map.json",
+      "path": "peekaboo-coverage-map.json",
+      "capturedAt": "2026-05-06T00:22:01.559Z",
+      "note": "Peekaboo-to-Product-Proof additive coverage map.",
+      "bytes": 2631
+    },
+    {
+      "label": "secret-scan.json",
+      "path": "secret-scan.json",
+      "capturedAt": "2026-05-06T00:22:01.559Z",
+      "note": "Unmasked provider-secret artifact scan.",
+      "bytes": 67
+    },
+    {
+      "label": "screenshot-signal.json",
+      "path": "screenshot-signal.json",
+      "capturedAt": "2026-05-06T00:22:01.559Z",
+      "note": "Peekaboo screenshot visual-signal scan.",
+      "bytes": 67
+    }
+  ],
+  "narrative": [
+    {
+      "ts": "2026-05-06T00:22:01.560Z",
+      "text": "Ran Peekaboo scenario macos_core_product_proof. Results: e2e-report/macos_core_product_proof/e2e-report.json."
+    }
+  ],
+  "failures": [],
+  "claims": [
+    {
+      "claim": "Peekaboo macos_core_product_proof: Prepared deterministic config, local validation settings, and mock system flag",
+      "status": "pass",
+      "evidence": "Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json."
+    },
+    {
+      "claim": "Peekaboo macos_core_product_proof: App shell, header controls, and initial prompt surface rendered",
+      "status": "pass",
+      "evidence": "Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json."
+    },
+    {
+      "claim": "Peekaboo macos_core_product_proof: Update banner state did not block the prompt workflow",
+      "status": "pass",
+      "evidence": "Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json."
+    },
+    {
+      "claim": "Peekaboo macos_core_product_proof: Suggestion card was clicked and the prompt surface remained usable",
+      "status": "pass",
+      "evidence": "Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json."
+    },
+    {
+      "claim": "Peekaboo macos_core_product_proof: Typed descriptor appeared in the prompt input",
+      "status": "pass",
+      "evidence": "Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json."
+    },
+    {
+      "claim": "Peekaboo macos_core_product_proof: Submit path reached expected local provider-validation boundary",
+      "status": "pass",
+      "evidence": "Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json."
+    },
+    {
+      "claim": "Peekaboo macos_core_product_proof: Settings General tab rendered with config and host controls",
+      "status": "pass",
+      "evidence": "Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json."
+    },
+    {
+      "claim": "Peekaboo macos_core_product_proof: Settings AI Models tab rendered provider/model controls",
+      "status": "pass",
+      "evidence": "Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json."
+    },
+    {
+      "claim": "Peekaboo macos_core_product_proof: Settings API Keys tab rendered and shared redaction gate found no unmasked secrets",
+      "status": "pass",
+      "evidence": "Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json."
+    },
+    {
+      "claim": "Peekaboo macos_core_product_proof: Settings Preferences tab rendered confirmation controls",
+      "status": "pass",
+      "evidence": "Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json."
+    },
+    {
+      "claim": "Peekaboo macos_core_product_proof: History surface rendered a visible state",
+      "status": "pass",
+      "evidence": "Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json."
+    },
+    {
+      "claim": "Peekaboo macos_core_product_proof: Core proof captured 20 screenshots and 6 redacted text snapshots",
+      "status": "pass",
+      "evidence": "Recorded by tests/e2e/run.sh; see e2e-report/macos_core_product_proof/e2e-report.json."
+    }
+  ],
+  "confirmationBoundaries": [],
+  "cleanup": {
+    "attempted": true,
+    "restored": true,
+    "note": "No original app support directory existed; removed disposable app support state.",
+    "quitResult": {
+      "osascript": {
+        "ok": true,
+        "status": 0,
+        "stdout": "",
+        "stderr": "",
+        "error": ""
+      },
+      "pkill": {
+        "ok": false,
+        "status": 1,
+        "stdout": "",
+        "stderr": "",
+        "error": ""
+      }
+    },
+    "liveStateRemoved": true
+  },
+  "provider": {
+    "kind": "no-llm-provider-required",
+    "note": "This Peekaboo scenario does not require an LLM provider."
+  },
+  "peekaboo": {
+    "scenario": "macos_core_product_proof",
+    "noRecord": false,
+    "noCleanup": false,
+    "allowDestructive": false,
+    "destructive": false,
+    "coverageMap": {
+      "schemaVersion": 1,
+      "lane": "peekaboo-local",
+      "scenario": "macos_core_product_proof",
+      "note": "Peekaboo coverage is intentionally additive. correspondsTo lists related Computer Use Product Proof keys, but Peekaboo keys remain separate unless the lane satisfies the same evidence grade.",
+      "phaseCoverage": [
+        {
+          "key": "peekabooCoreFixture",
+          "label": "Peekaboo core fixture",
+          "correspondsTo": [],
+          "grade": "fixture"
+        },
+        {
+          "key": "peekabooCoreLaunch",
+          "label": "Peekaboo core launch",
+          "correspondsTo": [
+            "launch"
+          ],
+          "grade": "action-confirmed"
+        },
+        {
+          "key": "peekabooCoreUpdateBanner",
+          "label": "Peekaboo update banner non-blocking",
+          "correspondsTo": [
+            "updateBanner"
+          ],
+          "grade": "action-confirmed"
+        },
+        {
+          "key": "peekabooCoreSuggestionCards",
+          "label": "Peekaboo suggestion cards",
+          "correspondsTo": [
+            "suggestionCards"
+          ],
+          "grade": "action-confirmed"
+        },
+        {
+          "key": "peekabooCoreTypedIntent",
+          "label": "Peekaboo typed intent",
+          "correspondsTo": [
+            "typedIntent"
+          ],
+          "grade": "action-confirmed"
+        },
+        {
+          "key": "peekabooCoreProviderValidation",
+          "label": "Peekaboo local provider validation",
+          "correspondsTo": [
+            "typedIntent"
+          ],
+          "grade": "guardrail-confirmed"
+        },
+        {
+          "key": "peekabooCoreSettingsGeneral",
+          "label": "Peekaboo Settings General",
+          "correspondsTo": [
+            "settingsGeneral"
+          ],
+          "grade": "action-confirmed"
+        },
+        {
+          "key": "peekabooCoreSettingsAIModels",
+          "label": "Peekaboo Settings AI Models",
+          "correspondsTo": [
+            "settingsAIModels"
+          ],
+          "grade": "action-confirmed"
+        },
+        {
+          "key": "peekabooCoreSettingsAPIKeys",
+          "label": "Peekaboo Settings API Keys",
+          "correspondsTo": [
+            "settingsAPIKeys"
+          ],
+          "grade": "sensitive-redaction"
+        },
+        {
+          "key": "peekabooCoreSettingsPreferences",
+          "label": "Peekaboo Settings Preferences",
+          "correspondsTo": [
+            "settingsPreferences"
+          ],
+          "grade": "action-confirmed"
+        },
+        {
+          "key": "peekabooCoreHistory",
+          "label": "Peekaboo History",
+          "correspondsTo": [
+            "history"
+          ],
+          "grade": "action-confirmed"
+        },
+        {
+          "key": "peekabooCoreVisualProofQuality",
+          "label": "Peekaboo core visual/text proof quality",
+          "correspondsTo": [
+            "visualCoverage",
+            "visualProofQuality"
+          ],
+          "grade": "artifact-quality"
+        }
+      ]
+    },
+    "secretScan": {
+      "status": "passed",
+      "scannedFiles": 21,
+      "violations": []
+    },
+    "screenshotSignal": {
+      "status": "passed",
+      "scannedFiles": 20,
+      "violations": []
+    },
+    "result": {
+      "scenario": "macos_core_product_proof",
+      "success": true,
+      "status": 0,
+      "signal": null,
+      "error": "",
+      "infraFailure": false,
+      "secretScan": {
+        "status": "passed",
+        "scannedFiles": 21,
+        "violations": []
+      },
+      "screenshotSignal": {
+        "status": "passed",
+        "scannedFiles": 20,
+        "violations": []
+      },
+      "coverageMap": {
+        "schemaVersion": 1,
+        "lane": "peekaboo-local",
+        "scenario": "macos_core_product_proof",
+        "note": "Peekaboo coverage is intentionally additive. correspondsTo lists related Computer Use Product Proof keys, but Peekaboo keys remain separate unless the lane satisfies the same evidence grade.",
+        "phaseCoverage": [
+          {
+            "key": "peekabooCoreFixture",
+            "label": "Peekaboo core fixture",
+            "correspondsTo": [],
+            "grade": "fixture"
+          },
+          {
+            "key": "peekabooCoreLaunch",
+            "label": "Peekaboo core launch",
+            "correspondsTo": [
+              "launch"
+            ],
+            "grade": "action-confirmed"
+          },
+          {
+            "key": "peekabooCoreUpdateBanner",
+            "label": "Peekaboo update banner non-blocking",
+            "correspondsTo": [
+              "updateBanner"
+            ],
+            "grade": "action-confirmed"
+          },
+          {
+            "key": "peekabooCoreSuggestionCards",
+            "label": "Peekaboo suggestion cards",
+            "correspondsTo": [
+              "suggestionCards"
+            ],
+            "grade": "action-confirmed"
+          },
+          {
+            "key": "peekabooCoreTypedIntent",
+            "label": "Peekaboo typed intent",
+            "correspondsTo": [
+              "typedIntent"
+            ],
+            "grade": "action-confirmed"
+          },
+          {
+            "key": "peekabooCoreProviderValidation",
+            "label": "Peekaboo local provider validation",
+            "correspondsTo": [
+              "typedIntent"
+            ],
+            "grade": "guardrail-confirmed"
+          },
+          {
+            "key": "peekabooCoreSettingsGeneral",
+            "label": "Peekaboo Settings General",
+            "correspondsTo": [
+              "settingsGeneral"
+            ],
+            "grade": "action-confirmed"
+          },
+          {
+            "key": "peekabooCoreSettingsAIModels",
+            "label": "Peekaboo Settings AI Models",
+            "correspondsTo": [
+              "settingsAIModels"
+            ],
+            "grade": "action-confirmed"
+          },
+          {
+            "key": "peekabooCoreSettingsAPIKeys",
+            "label": "Peekaboo Settings API Keys",
+            "correspondsTo": [
+              "settingsAPIKeys"
+            ],
+            "grade": "sensitive-redaction"
+          },
+          {
+            "key": "peekabooCoreSettingsPreferences",
+            "label": "Peekaboo Settings Preferences",
+            "correspondsTo": [
+              "settingsPreferences"
+            ],
+            "grade": "action-confirmed"
+          },
+          {
+            "key": "peekabooCoreHistory",
+            "label": "Peekaboo History",
+            "correspondsTo": [
+              "history"
+            ],
+            "grade": "action-confirmed"
+          },
+          {
+            "key": "peekabooCoreVisualProofQuality",
+            "label": "Peekaboo core visual/text proof quality",
+            "correspondsTo": [
+              "visualCoverage",
+              "visualProofQuality"
+            ],
+            "grade": "artifact-quality"
+          }
+        ]
+      },
+      "results": {
+        "scenario": "macos_core_product_proof",
+        "passed": 16,
+        "failed": 0,
+        "duration_seconds": 90,
+        "success": true,
+        "phases": [
+          {
+            "phase": 1,
+            "status": "PASS",
+            "message": "peekabooCoreFixture: Prepared deterministic config, local validation settings, and mock system flag"
+          },
+          {
+            "phase": 2,
+            "status": "PASS",
+            "message": "peekabooCoreLaunch: App shell, header controls, and initial prompt surface rendered"
+          },
+          {
+            "phase": 3,
+            "status": "PASS",
+            "message": "peekabooCoreUpdateBanner: Update banner state did not block the prompt workflow"
+          },
+          {
+            "phase": 4,
+            "status": "PASS",
+            "message": "peekabooCoreSuggestionCards: Suggestion card was clicked and the prompt surface remained usable"
+          },
+          {
+            "phase": 5,
+            "status": "PASS",
+            "message": "peekabooCoreTypedIntent: Typed descriptor appeared in the prompt input"
+          },
+          {
+            "phase": 6,
+            "status": "PASS",
+            "message": "peekabooCoreProviderValidation: Submit path reached expected local provider-validation boundary"
+          },
+          {
+            "phase": 7,
+            "status": "PASS",
+            "message": "peekabooCoreSettingsGeneral: Settings General tab rendered with config and host controls"
+          },
+          {
+            "phase": 8,
+            "status": "PASS",
+            "message": "peekabooCoreSettingsAIModels: Settings AI Models tab rendered provider/model controls"
+          },
+          {
+            "phase": 9,
+            "status": "PASS",
+            "message": "peekabooCoreSettingsAPIKeys: Settings API Keys tab rendered and shared redaction gate found no unmasked secrets"
+          },
+          {
+            "phase": 10,
+            "status": "PASS",
+            "message": "peekabooCoreSettingsPreferences: Settings Preferences tab rendered confirmation controls"
+          },
+          {
+            "phase": 11,
+            "status": "PASS",
+            "message": "peekabooCoreHistory: History surface rendered a visible state"
+          },
+          {
+            "phase": 12,
+            "status": "PASS",
+            "message": "peekabooCoreVisualProofQuality: Core proof captured 20 screenshots and 6 redacted text snapshots"
+          }
+        ]
+      },
+      "report": {
+        "schemaVersion": 1,
+        "repo": "darkmatter/nixmac",
+        "prNumber": null,
+        "headSha": "unknown",
+        "baseSha": null,
+        "workflowRunId": null,
+        "attempt": null,
+        "lane": "peekaboo-local",
+        "scenario": "macos_core_product_proof",
+        "runnerId": "macos-e2e",
+        "runnerKind": "peekaboo-local",
+        "startedAt": "2026-05-06T00:20:17Z",
+        "finishedAt": "2026-05-06T00:21:48Z",
+        "durationMs": 91000,
+        "status": "passed",
+        "htmlReportUrl": null,
+        "primaryProofUrl": "macos_core_product_proof/peekaboo-e2e.mp4",
+        "failureProofUrl": null,
+        "failureScreenshotUrl": null,
+        "failureVideoUrl": null,
+        "failureTimestampMs": null,
+        "replayCommand": "tests/e2e/run.sh macos_core_product_proof",
+        "localReproCommand": "tests/e2e/run.sh macos_core_product_proof",
+        "phases": [
+          {
+            "name": "peekabooCoreFixture: Prepared deterministic config, local validation settings, and mock system flag",
+            "status": "passed",
+            "startedAt": null,
+            "finishedAt": null,
+            "durationMs": 0,
+            "assertions": [
+              "peekabooCoreFixture: Prepared deterministic config, local validation settings, and mock system flag"
+            ],
+            "proof": [],
+            "error": null
+          },
+          {
+            "name": "peekabooCoreLaunch: App shell, header controls, and initial prompt surface rendered",
+            "status": "passed",
+            "startedAt": null,
+            "finishedAt": null,
+            "durationMs": 0,
+            "assertions": [
+              "peekabooCoreLaunch: App shell, header controls, and initial prompt surface rendered"
+            ],
+            "proof": [],
+            "error": null
+          },
+          {
+            "name": "peekabooCoreUpdateBanner: Update banner state did not block the prompt workflow",
+            "status": "passed",
+            "startedAt": null,
+            "finishedAt": null,
+            "durationMs": 0,
+            "assertions": [
+              "peekabooCoreUpdateBanner: Update banner state did not block the prompt workflow"
+            ],
+            "proof": [],
+            "error": null
+          },
+          {
+            "name": "peekabooCoreSuggestionCards: Suggestion card was clicked and the prompt surface remained usable",
+            "status": "passed",
+            "startedAt": null,
+            "finishedAt": null,
+            "durationMs": 0,
+            "assertions": [
+              "peekabooCoreSuggestionCards: Suggestion card was clicked and the prompt surface remained usable"
+            ],
+            "proof": [],
+            "error": null
+          },
+          {
+            "name": "peekabooCoreTypedIntent: Typed descriptor appeared in the prompt input",
+            "status": "passed",
+            "startedAt": null,
+            "finishedAt": null,
+            "durationMs": 0,
+            "assertions": [
+              "peekabooCoreTypedIntent: Typed descriptor appeared in the prompt input"
+            ],
+            "proof": [],
+            "error": null
+          },
+          {
+            "name": "peekabooCoreProviderValidation: Submit path reached expected local provider-validation boundary",
+            "status": "passed",
+            "startedAt": null,
+            "finishedAt": null,
+            "durationMs": 0,
+            "assertions": [
+              "peekabooCoreProviderValidation: Submit path reached expected local provider-validation boundary"
+            ],
+            "proof": [],
+            "error": null
+          },
+          {
+            "name": "peekabooCoreSettingsGeneral: Settings General tab rendered with config and host controls",
+            "status": "passed",
+            "startedAt": null,
+            "finishedAt": null,
+            "durationMs": 0,
+            "assertions": [
+              "peekabooCoreSettingsGeneral: Settings General tab rendered with config and host controls"
+            ],
+            "proof": [],
+            "error": null
+          },
+          {
+            "name": "peekabooCoreSettingsAIModels: Settings AI Models tab rendered provider/model controls",
+            "status": "passed",
+            "startedAt": null,
+            "finishedAt": null,
+            "durationMs": 0,
+            "assertions": [
+              "peekabooCoreSettingsAIModels: Settings AI Models tab rendered provider/model controls"
+            ],
+            "proof": [],
+            "error": null
+          },
+          {
+            "name": "peekabooCoreSettingsAPIKeys: Settings API Keys tab rendered and shared redaction gate found no unmasked secrets",
+            "status": "passed",
+            "startedAt": null,
+            "finishedAt": null,
+            "durationMs": 0,
+            "assertions": [
+              "peekabooCoreSettingsAPIKeys: Settings API Keys tab rendered and shared redaction gate found no unmasked secrets"
+            ],
+            "proof": [],
+            "error": null
+          },
+          {
+            "name": "peekabooCoreSettingsPreferences: Settings Preferences tab rendered confirmation controls",
+            "status": "passed",
+            "startedAt": null,
+            "finishedAt": null,
+            "durationMs": 0,
+            "assertions": [
+              "peekabooCoreSettingsPreferences: Settings Preferences tab rendered confirmation controls"
+            ],
+            "proof": [],
+            "error": null
+          },
+          {
+            "name": "peekabooCoreHistory: History surface rendered a visible state",
+            "status": "passed",
+            "startedAt": null,
+            "finishedAt": null,
+            "durationMs": 0,
+            "assertions": [
+              "peekabooCoreHistory: History surface rendered a visible state"
+            ],
+            "proof": [],
+            "error": null
+          },
+          {
+            "name": "peekabooCoreVisualProofQuality: Core proof captured 20 screenshots and 6 redacted text snapshots",
+            "status": "passed",
+            "startedAt": null,
+            "finishedAt": null,
+            "durationMs": 0,
+            "assertions": [
+              "peekabooCoreVisualProofQuality: Core proof captured 20 screenshots and 6 redacted text snapshots"
+            ],
+            "proof": [],
+            "error": null
+          }
+        ],
+        "captureLimitations": [],
+        "proof": [
+          {
+            "kind": "screenshot",
+            "path": "macos_core_product_proof/01-core-launch-1778026847.png",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "01-core-launch-1778026847.png",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "screenshot",
+            "path": "macos_core_product_proof/01-core-launch-1778026847_annotated.png",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "01-core-launch-1778026847_annotated.png",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "screenshot",
+            "path": "macos_core_product_proof/02-update-non-blocking-1778026853.png",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "02-update-non-blocking-1778026853.png",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "screenshot",
+            "path": "macos_core_product_proof/02-update-non-blocking-1778026853_annotated.png",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "02-update-non-blocking-1778026853_annotated.png",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "screenshot",
+            "path": "macos_core_product_proof/03-suggestion-card-1778026857.png",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "03-suggestion-card-1778026857.png",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "screenshot",
+            "path": "macos_core_product_proof/03-suggestion-card-1778026857_annotated.png",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "03-suggestion-card-1778026857_annotated.png",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "screenshot",
+            "path": "macos_core_product_proof/04-descriptor-typed-1778026860.png",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "04-descriptor-typed-1778026860.png",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "screenshot",
+            "path": "macos_core_product_proof/04-descriptor-typed-1778026860_annotated.png",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "04-descriptor-typed-1778026860_annotated.png",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "screenshot",
+            "path": "macos_core_product_proof/05-provider-validation-block-1778026861.png",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "05-provider-validation-block-1778026861.png",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "screenshot",
+            "path": "macos_core_product_proof/05-provider-validation-block-1778026861_annotated.png",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "05-provider-validation-block-1778026861_annotated.png",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "screenshot",
+            "path": "macos_core_product_proof/08-settings-general-1778026881.png",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "08-settings-general-1778026881.png",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "screenshot",
+            "path": "macos_core_product_proof/08-settings-general-1778026881_annotated.png",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "08-settings-general-1778026881_annotated.png",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "screenshot",
+            "path": "macos_core_product_proof/09-settings-ai-models-1778026884.png",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "09-settings-ai-models-1778026884.png",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "screenshot",
+            "path": "macos_core_product_proof/09-settings-ai-models-1778026884_annotated.png",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "09-settings-ai-models-1778026884_annotated.png",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "screenshot",
+            "path": "macos_core_product_proof/10-settings-api-keys-1778026887.png",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "10-settings-api-keys-1778026887.png",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "screenshot",
+            "path": "macos_core_product_proof/10-settings-api-keys-1778026887_annotated.png",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "10-settings-api-keys-1778026887_annotated.png",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "screenshot",
+            "path": "macos_core_product_proof/11-settings-preferences-1778026890.png",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "11-settings-preferences-1778026890.png",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "screenshot",
+            "path": "macos_core_product_proof/11-settings-preferences-1778026890_annotated.png",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "11-settings-preferences-1778026890_annotated.png",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "screenshot",
+            "path": "macos_core_product_proof/12-history-1778026895.png",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "12-history-1778026895.png",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "screenshot",
+            "path": "macos_core_product_proof/12-history-1778026895_annotated.png",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "12-history-1778026895_annotated.png",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "diagnostic",
+            "path": "macos_core_product_proof/diagnostics/text/history-text.txt",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "diagnostics/text/history-text.txt",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "diagnostic",
+            "path": "macos_core_product_proof/diagnostics/text/settings-ai-models-text.txt",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "diagnostics/text/settings-ai-models-text.txt",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "diagnostic",
+            "path": "macos_core_product_proof/diagnostics/text/settings-api-keys-text.txt",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "diagnostics/text/settings-api-keys-text.txt",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "diagnostic",
+            "path": "macos_core_product_proof/diagnostics/text/settings-general-text.txt",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "diagnostics/text/settings-general-text.txt",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "diagnostic",
+            "path": "macos_core_product_proof/diagnostics/text/settings-preferences-text.txt",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "diagnostics/text/settings-preferences-text.txt",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "diagnostic",
+            "path": "macos_core_product_proof/diagnostics/text/suggestion-card-text.txt",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "diagnostics/text/suggestion-card-text.txt",
+            "isPrimary": false,
+            "isFailureProof": false
+          },
+          {
+            "kind": "video",
+            "path": "macos_core_product_proof/peekaboo-e2e.mp4",
+            "url": null,
+            "thumbnailUrl": null,
+            "timestampMs": null,
+            "phase": "macos-e2e",
+            "caption": "Full screen recording",
+            "isPrimary": true,
+            "isFailureProof": false
+          }
+        ]
+      },
+      "artifacts": {
+        "logFile": "peekaboo-e2e.log",
+        "stdout": "peekaboo-e2e.stdout.txt",
+        "stderr": "peekaboo-e2e.stderr.txt",
+        "preflight": "peekaboo-preflight.txt",
+        "resultsFile": "peekaboo-e2e-results.json",
+        "reportFile": "e2e-report/macos_core_product_proof/e2e-report.json",
+        "videoFile": "video/peekaboo-e2e.mp4",
+        "screenshots": [
+          {
+            "label": "01-core-launch-1778026847_annotated",
+            "path": "screenshots/01-core-launch-1778026847_annotated.png",
+            "capturedAt": "2026-05-06T00:20:48.168Z",
+            "note": "Captured by Peekaboo runner.",
+            "bytes": 66721
+          },
+          {
+            "label": "01-core-launch-1778026847",
+            "path": "screenshots/01-core-launch-1778026847.png",
+            "capturedAt": "2026-05-06T00:20:47.891Z",
+            "note": "Captured by Peekaboo runner.",
+            "bytes": 55352
+          },
+          {
+            "label": "02-update-non-blocking-1778026853_annotated",
+            "path": "screenshots/02-update-non-blocking-1778026853_annotated.png",
+            "capturedAt": "2026-05-06T00:20:53.989Z",
+            "note": "Captured by Peekaboo runner.",
+            "bytes": 75929
+          },
+          {
+            "label": "02-update-non-blocking-1778026853",
+            "path": "screenshots/02-update-non-blocking-1778026853.png",
+            "capturedAt": "2026-05-06T00:20:53.815Z",
+            "note": "Captured by Peekaboo runner.",
+            "bytes": 58655
+          },
+          {
+            "label": "03-suggestion-card-1778026857_annotated",
+            "path": "screenshots/03-suggestion-card-1778026857_annotated.png",
+            "capturedAt": "2026-05-06T00:20:57.428Z",
+            "note": "Captured by Peekaboo runner.",
+            "bytes": 73217
+          },
+          {
+            "label": "03-suggestion-card-1778026857",
+            "path": "screenshots/03-suggestion-card-1778026857.png",
+            "capturedAt": "2026-05-06T00:20:57.235Z",
+            "note": "Captured by Peekaboo runner.",
+            "bytes": 55826
+          },
+          {
+            "label": "04-descriptor-typed-1778026860_annotated",
+            "path": "screenshots/04-descriptor-typed-1778026860_annotated.png",
+            "capturedAt": "2026-05-06T00:21:00.805Z",
+            "note": "Captured by Peekaboo runner.",
+            "bytes": 76297
+          },
+          {
+            "label": "04-descriptor-typed-1778026860",
+            "path": "screenshots/04-descriptor-typed-1778026860.png",
+            "capturedAt": "2026-05-06T00:21:00.328Z",
+            "note": "Captured by Peekaboo runner.",
+            "bytes": 58945
+          },
+          {
+            "label": "05-provider-validation-block-1778026861_annotated",
+            "path": "screenshots/05-provider-validation-block-1778026861_annotated.png",
+            "capturedAt": "2026-05-06T00:21:01.539Z",
+            "note": "Captured by Peekaboo runner.",
+            "bytes": 76297
+          },
+          {
+            "label": "05-provider-validation-block-1778026861",
+            "path": "screenshots/05-provider-validation-block-1778026861.png",
+            "capturedAt": "2026-05-06T00:21:01.360Z",
+            "note": "Captured by Peekaboo runner.",
+            "bytes": 58945
+          },
+          {
+            "label": "08-settings-general-1778026881_annotated",
+            "path": "screenshots/08-settings-general-1778026881_annotated.png",
+            "capturedAt": "2026-05-06T00:21:22.292Z",
+            "note": "Captured by Peekaboo runner.",
+            "bytes": 104595
+          },
+          {
+            "label": "08-settings-general-1778026881",
+            "path": "screenshots/08-settings-general-1778026881.png",
+            "capturedAt": "2026-05-06T00:21:21.993Z",
+            "note": "Captured by Peekaboo runner.",
+            "bytes": 85425
+          },
+          {
+            "label": "09-settings-ai-models-1778026884_annotated",
+            "path": "screenshots/09-settings-ai-models-1778026884_annotated.png",
+            "capturedAt": "2026-05-06T00:21:25.134Z",
+            "note": "Captured by Peekaboo runner.",
+            "bytes": 104595
+          },
+          {
+            "label": "09-settings-ai-models-1778026884",
+            "path": "screenshots/09-settings-ai-models-1778026884.png",
+            "capturedAt": "2026-05-06T00:21:24.899Z",
+            "note": "Captured by Peekaboo runner.",
+            "bytes": 85425
+          },
+          {
+            "label": "10-settings-api-keys-1778026887_annotated",
+            "path": "screenshots/10-settings-api-keys-1778026887_annotated.png",
+            "capturedAt": "2026-05-06T00:21:28.142Z",
+            "note": "Captured by Peekaboo runner.",
+            "bytes": 91154
+          },
+          {
+            "label": "10-settings-api-keys-1778026887",
+            "path": "screenshots/10-settings-api-keys-1778026887.png",
+            "capturedAt": "2026-05-06T00:21:27.800Z",
+            "note": "Captured by Peekaboo runner.",
+            "bytes": 70496
+          },
+          {
+            "label": "11-settings-preferences-1778026890_annotated",
+            "path": "screenshots/11-settings-preferences-1778026890_annotated.png",
+            "capturedAt": "2026-05-06T00:21:31.136Z",
+            "note": "Captured by Peekaboo runner.",
+            "bytes": 98741
+          },
+          {
+            "label": "11-settings-preferences-1778026890",
+            "path": "screenshots/11-settings-preferences-1778026890.png",
+            "capturedAt": "2026-05-06T00:21:30.829Z",
+            "note": "Captured by Peekaboo runner.",
+            "bytes": 79462
+          },
+          {
+            "label": "12-history-1778026895_annotated",
+            "path": "screenshots/12-history-1778026895_annotated.png",
+            "capturedAt": "2026-05-06T00:21:36.288Z",
+            "note": "Captured by Peekaboo runner.",
+            "bytes": 75799
+          },
+          {
+            "label": "12-history-1778026895",
+            "path": "screenshots/12-history-1778026895.png",
+            "capturedAt": "2026-05-06T00:21:36.092Z",
+            "note": "Captured by Peekaboo runner.",
+            "bytes": 58544
+          }
+        ],
+        "diagnostics": [
+          {
+            "label": "diagnostics/text/history-text.txt",
+            "path": "e2e-report/macos_core_product_proof/diagnostics/text/history-text.txt",
+            "capturedAt": "2026-05-06T00:21:48.131Z",
+            "note": "Diagnostic artifact from Peekaboo report.",
+            "bytes": 3366
+          },
+          {
+            "label": "diagnostics/text/settings-ai-models-text.txt",
+            "path": "e2e-report/macos_core_product_proof/diagnostics/text/settings-ai-models-text.txt",
+            "capturedAt": "2026-05-06T00:21:48.138Z",
+            "note": "Diagnostic artifact from Peekaboo report.",
+            "bytes": 2959
+          },
+          {
+            "label": "diagnostics/text/settings-api-keys-text.txt",
+            "path": "e2e-report/macos_core_product_proof/diagnostics/text/settings-api-keys-text.txt",
+            "capturedAt": "2026-05-06T00:21:48.147Z",
+            "note": "Diagnostic artifact from Peekaboo report.",
+            "bytes": 3188
+          },
+          {
+            "label": "diagnostics/text/settings-general-text.txt",
+            "path": "e2e-report/macos_core_product_proof/diagnostics/text/settings-general-text.txt",
+            "capturedAt": "2026-05-06T00:21:48.155Z",
+            "note": "Diagnostic artifact from Peekaboo report.",
+            "bytes": 2959
+          },
+          {
+            "label": "diagnostics/text/settings-preferences-text.txt",
+            "path": "e2e-report/macos_core_product_proof/diagnostics/text/settings-preferences-text.txt",
+            "capturedAt": "2026-05-06T00:21:48.163Z",
+            "note": "Diagnostic artifact from Peekaboo report.",
+            "bytes": 3366
+          },
+          {
+            "label": "diagnostics/text/suggestion-card-text.txt",
+            "path": "e2e-report/macos_core_product_proof/diagnostics/text/suggestion-card-text.txt",
+            "capturedAt": "2026-05-06T00:21:48.171Z",
+            "note": "Diagnostic artifact from Peekaboo report.",
+            "bytes": 2324
+          },
+          {
+            "label": "peekaboo-coverage-map.json",
+            "path": "peekaboo-coverage-map.json",
+            "capturedAt": "2026-05-06T00:22:01.559Z",
+            "note": "Peekaboo-to-Product-Proof additive coverage map.",
+            "bytes": 2631
+          },
+          {
+            "label": "secret-scan.json",
+            "path": "secret-scan.json",
+            "capturedAt": "2026-05-06T00:22:01.559Z",
+            "note": "Unmasked provider-secret artifact scan.",
+            "bytes": 67
+          },
+          {
+            "label": "screenshot-signal.json",
+            "path": "screenshot-signal.json",
+            "capturedAt": "2026-05-06T00:22:01.559Z",
+            "note": "Peekaboo screenshot visual-signal scan.",
+            "bytes": 67
+          }
+        ]
+      }
+    }
+  },
+  "video": {
+    "path": "video/peekaboo-e2e.mp4",
+    "label": "Peekaboo screen recording"
+  }
+}
