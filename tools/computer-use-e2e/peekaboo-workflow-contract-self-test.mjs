@@ -67,8 +67,10 @@ assert.match(proof, /tauri build[\s\S]*--debug[\s\S]*--bundles app[\s\S]*--confi
 assert.match(proof, /cp -pR "\$built_app" "\$REMOTE_APP_PATH"[\s\S]*codesign --force --deep --sign - "\$REMOTE_APP_PATH"[\s\S]*codesign --verify --deep --strict --verbose=2 "\$REMOTE_APP_PATH"/, 'remote Mac must ad-hoc sign and verify the staged debug app bundle');
 assert.match(proof, /name: Capture PR focus metadata[\s\S]*append_multiline_env "NIXMAC_E2E_PR_CHANGED_FILES"/, 'proof job must capture PR changed files for Peekaboo report focus');
 assert.match(proof, /secret_scan_passed: \$\{\{ steps\.report-meta\.outputs\.secret_scan_passed \}\}/, 'proof job must expose whether the report secret scan passed');
-assert.match(proof, /secret_scan_passed="\$\(jq -r '\(\.peekaboo\.secretScan\.status \/\/ "missing"\) == "passed"' "\$state_file"\)"/, 'report metadata must read the Peekaboo secret scan result from state.json');
-assert.match(proof, /REMOTE_APP_PATH[\s\S]*run-peekaboo-macincloud[\s\S]*--app-path "\$REMOTE_APP_PATH"/, 'Peekaboo run must use the freshly built PR app bundle');
+assert.match(proof, /state_secret_scan_passed="\$\(jq -r '\(\.peekaboo\.secretScan\.status \/\/ "missing"\) == "passed"' "\$state_file"\)"/, 'report metadata must read the Peekaboo secret scan result from state.json');
+assert.match(proof, /trusted-secret-scan\.json[\s\S]*secretPattern[\s\S]*trusted_secret_scan_passed/, 'workflow must independently re-scan the fetched report before public publishing');
+assert.match(proof, /NIXMAC_APP_PATH=\$\(printf '%q' "\$REMOTE_APP_PATH"\)[\s\S]*run-peekaboo-suite --allow-cleanup/, 'Peekaboo run must use the freshly built PR app bundle');
+assert.doesNotMatch(proof, /Run Peekaboo suite on MacInCloud[\s\S]*node tools\/computer-use-e2e\/run-local\.mjs run-peekaboo-macincloud/, 'proof job must not run PR-controlled local orchestration while the MacInCloud SSH key is present');
 assert.match(proof, /--allow-cleanup/, 'Peekaboo suite must restore local app support state after the run');
 assert.match(proof, /artifacts\/computer-use-local\/\.current-run/, 'workflow must fetch the suite report using the runner current-run contract');
 assert.match(proof, /remote_artifact_root="\$\{PEEKABOO_REPO_DIR%\/\}\/artifacts\/computer-use-local"/, 'workflow must anchor fetched reports to the expected remote artifact root');

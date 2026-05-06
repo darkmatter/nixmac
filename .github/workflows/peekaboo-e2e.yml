@@ -270,15 +270,24 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/peekaboo-e2e-report
+          ssh_common=(-i ~/.ssh/nixmac-peekaboo-e2e -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts)
+          remote_env_parts=(
+            "PATH=/opt/homebrew/bin:\$PATH"
+            "NIXMAC_APP_PATH=$(printf '%q' "$REMOTE_APP_PATH")"
+            "GITHUB_EVENT_NAME=$(printf '%q' "${GITHUB_EVENT_NAME:-}")"
+            "GITHUB_PR_NUMBER=$(printf '%q' "${GITHUB_PR_NUMBER:-}")"
+            "GITHUB_HEAD_REF=$(printf '%q' "${GITHUB_HEAD_REF:-}")"
+            "GITHUB_BASE_REF=$(printf '%q' "${GITHUB_BASE_REF:-}")"
+            "NIXMAC_E2E_PR_EVENT=$(printf '%q' "${NIXMAC_E2E_PR_EVENT:-}")"
+            "NIXMAC_E2E_PR_NUMBER=$(printf '%q' "${NIXMAC_E2E_PR_NUMBER:-}")"
+            "NIXMAC_E2E_PR_TITLE=$(printf '%q' "${NIXMAC_E2E_PR_TITLE:-}")"
+            "NIXMAC_E2E_PR_HEAD_REF=$(printf '%q' "${NIXMAC_E2E_PR_HEAD_REF:-}")"
+            "NIXMAC_E2E_PR_BASE_REF=$(printf '%q' "${NIXMAC_E2E_PR_BASE_REF:-}")"
+            "NIXMAC_E2E_PR_CHANGED_FILES=$(printf '%q' "${NIXMAC_E2E_PR_CHANGED_FILES:-}")"
+          )
+          remote_cmd="cd $(printf '%q' "$PEEKABOO_REPO_DIR") && ${remote_env_parts[*]} $(printf '%q' "$PEEKABOO_NODE") tools/computer-use-e2e/run-local.mjs run-peekaboo-suite --allow-cleanup"
           set +e
-          node tools/computer-use-e2e/run-local.mjs run-peekaboo-macincloud \
-            --ssh-dest "$SSH_DEST" \
-            --identity-file ~/.ssh/nixmac-peekaboo-e2e \
-            --known-hosts ~/.ssh/known_hosts \
-            --repo-dir "$PEEKABOO_REPO_DIR" \
-            --node "$PEEKABOO_NODE" \
-            --app-path "$REMOTE_APP_PATH" \
-            --allow-cleanup 2>&1 | tee artifacts/peekaboo-e2e-report/peekaboo-run.log
+          ssh "${ssh_common[@]}" "$SSH_DEST" "$remote_cmd" 2>&1 | tee artifacts/peekaboo-e2e-report/peekaboo-run.log
           run_status="${PIPESTATUS[0]}"
           set -e
           echo "run_exit_status=$run_status" >> "$GITHUB_OUTPUT"
@@ -403,7 +412,37 @@ jobs:
           fi
           screenshots="$(jq -r '(.screenshots // []) | length' "$state_file")"
           video_frames="$(jq -r '(.video.frames // 0) | if type == "number" then . elif type == "array" then length else 0 end' "$state_file")"
-          secret_scan_passed="$(jq -r '(.peekaboo.secretScan.status // "missing") == "passed"' "$state_file")"
+          state_secret_scan_passed="$(jq -r '(.peekaboo.secretScan.status // "missing") == "passed"' "$state_file")"
+          trusted_secret_scan_file="$FETCH_REPORT_DIR/trusted-secret-scan.json"
+          node --input-type=module - "$FETCH_REPORT_DIR" > "$trusted_secret_scan_file" <<'NODE'
+          import { readdirSync, readFileSync, statSync } from 'node:fs';
+          import path from 'node:path';
+          const root = process.argv[2];
+          const secretPattern = /(?:sk-[A-Za-z0-9_-]{16,}|Bearer\s+[A-Za-z0-9._-]{16,}|(?:OPENROUTER|OPENAI|ANTHROPIC|GROQ|XAI|MISTRAL|COHERE)_API_KEY=(?!\[REDACTED\])[^\s"'<>]+)/i;
+          const textExtPattern = /\.(jsonl?|txt|log|html|md|csv)$/i;
+          const violations = [];
+          let scannedFiles = 0;
+          function walk(dir) {
+            for (const entry of readdirSync(dir)) {
+              const full = path.join(dir, entry);
+              const stat = statSync(full);
+              if (stat.isDirectory()) {
+                walk(full);
+              } else if (stat.isFile() && textExtPattern.test(entry)) {
+                scannedFiles += 1;
+                const text = readFileSync(full, 'utf8');
+                if (secretPattern.test(text)) violations.push(path.relative(root, full));
+              }
+            }
+          }
+          walk(root);
+          process.stdout.write(JSON.stringify({ status: violations.length ? 'failed' : 'passed', scannedFiles, violations }, null, 2));
+          NODE
+          trusted_secret_scan_passed="$(jq -r '.status == "passed"' "$trusted_secret_scan_file")"
+          secret_scan_passed=false
+          if [[ "$state_secret_scan_passed" == "true" && "$trusted_secret_scan_passed" == "true" ]]; then
+            secret_scan_passed=true
+          fi
           {
             echo "has_report=true"
             echo "setup_failed=false"
