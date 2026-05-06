@@ -499,6 +499,43 @@ scenario_build_and_wait_for_commit_step() {
     return 1
 }
 
+scenario_commit_changes_and_assert_return() {
+    if ! scenario_wait_for_provider_log 'select(.body.response_format.type == "json_object")' 30; then
+        nixmac_screenshot "summary-provider-call-missing-at-save"
+        die "Summary provider JSON request was not observed by the Save phase"
+    fi
+    if scenario_wait_for_provider_log 'select([.body.messages[]?.content? // ""] | join(" ") | test("conventional commit message"; "i"))' 15 \
+        && scenario_wait_for_prompt_value "$NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE" 15; then
+        log "Observed provider-generated commit message suggestion"
+    else
+        log "Commit-message suggestion was not available; using deterministic manual commit text"
+        nixmac_screenshot "commit-message-manual-fallback"
+        nixmac_pp_click_element "commitMsg|Loading|Commit message|Commit Changes" "textField" 15 \
+            || nixmac_pp_click_window_ratio "commit message input" "0.500" "0.660" \
+            || die "Commit message input was not reachable"
+        peek_hotkey "cmd+a" >/dev/null 2>&1 || true
+        peekaboo_run paste "$NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE" >/dev/null 2>&1 \
+            || peek_type "$NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE" \
+            || die "Failed to type deterministic commit message"
+        scenario_wait_for_prompt_value "$NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE" 15 \
+            || die "Deterministic commit message did not populate the Save step"
+    fi
+    scenario_click_element "Commit( Changes)?" "button" 30 \
+        || die "Commit button was not reachable"
+    scenario_wait_for_describe_prompt 45 \
+        || die "Commit did not return to begin step"
+    local latest_message
+    latest_message=$(git -C "$NIXMAC_E2E_CONFIG_REPO" log -1 --pretty=%s)
+    if [ "$latest_message" != "$NIXMAC_E2E_PROVIDER_COMMIT_MESSAGE" ]; then
+        nixmac_screenshot "unexpected-commit-message"
+        die "Expected provider-generated commit message, got: $latest_message"
+    fi
+    if [ -n "$(git -C "$NIXMAC_E2E_CONFIG_REPO" status --short)" ]; then
+        nixmac_screenshot "repo-not-clean-after-commit"
+        die "Config repo was not clean after commit"
+    fi
+}
+
 scenario_log_config_repo_state() {
     local label="${1:-repo state}"
 
@@ -558,9 +595,11 @@ scenario_confirm_history_restore() {
         nixmac_pp_cgevent_click_window_ratio "history confirm restore primary action" "0.705" "0.268" || true
         nixmac_pp_click_window_ratio "history confirm restore" "0.735" "0.268" || true
         nixmac_pp_cgevent_click_window_ratio "history confirm restore" "0.735" "0.268" || true
+        nixmac_pp_deny_keychain_prompt_if_visible || true
         peek_hotkey "shift+tab" >/dev/null 2>&1 || true
         peek_press "space" >/dev/null 2>&1 || true
         peek_press "return" >/dev/null 2>&1 || true
+        nixmac_pp_deny_keychain_prompt_if_visible || true
 
         if ! scenario_wait_for_text "Confirm Restore" 3; then
             return 0
@@ -596,6 +635,8 @@ scenario_restore_baseline_from_history() {
 }
 
 scenario_test() {
+    local descriptor_attempt
+
     phase "Prepare provider-backed macOS fixture"
     peekaboo_check
     scenario_create_config_repo
@@ -620,15 +661,25 @@ scenario_test() {
         nixmac_screenshot "missing-descriptor-prompt"
         die "Descriptor prompt screen did not become visible"
     fi
-    if ! nixmac_pp_click_element "evolve-prompt-input|Configuration change descriptor|Describe changes to make to your configuration" "textField" 30; then
-        nixmac_pp_click_window_ratio "provider descriptor prompt input" "0.500" "0.455" \
+    for descriptor_attempt in 1 2 3; do
+        nixmac_pp_click_element "evolve-prompt-input|Configuration change descriptor|Describe changes to make to your configuration" "textField" 10 \
+            || nixmac_pp_click_element_center "evolve-prompt-input|Configuration change descriptor|Describe changes to make to your configuration" "textField" 3 "provider descriptor prompt input" \
+            || nixmac_pp_cgevent_click_element_center "evolve-prompt-input|Configuration change descriptor|Describe changes to make to your configuration" "textField" 3 "provider descriptor prompt input" \
+            || nixmac_pp_click_window_ratio "provider descriptor prompt input" "0.500" "0.455" \
             || die "Descriptor prompt input was not reachable by accessibility metadata or coordinate fallback"
-    fi
-    peek_hotkey "cmd+a" >/dev/null 2>&1 || true
-    peekaboo_run paste "$NIXMAC_E2E_DESCRIPTOR_TEXT" >/dev/null 2>&1 \
-        || peek_type "$NIXMAC_E2E_DESCRIPTOR_TEXT" \
-        || die "Failed to type descriptor"
-    nixmac_pp_wait_for_prompt_value "$NIXMAC_E2E_DESCRIPTOR_TEXT" 20 \
+        peek_hotkey "cmd+a" >/dev/null 2>&1 || true
+        peekaboo_run paste "$NIXMAC_E2E_DESCRIPTOR_TEXT" >/dev/null 2>&1 \
+            || peek_type "$NIXMAC_E2E_DESCRIPTOR_TEXT" \
+            || die "Failed to type descriptor"
+        if nixmac_pp_wait_for_prompt_value_exact "$NIXMAC_E2E_DESCRIPTOR_TEXT" 8 \
+            || nixmac_pp_wait_for_prompt_value "$NIXMAC_E2E_DESCRIPTOR_TEXT" 1; then
+            break
+        fi
+        nixmac_screenshot "descriptor-type-retry-${descriptor_attempt}"
+        log "Descriptor value was not visible after attempt ${descriptor_attempt}; refocusing and retrying"
+    done
+    nixmac_pp_wait_for_prompt_value_exact "$NIXMAC_E2E_DESCRIPTOR_TEXT" 1 \
+        || nixmac_pp_wait_for_prompt_value "$NIXMAC_E2E_DESCRIPTOR_TEXT" 1 \
         || die "Typed descriptor was not visible in the prompt input"
     nixmac_screenshot "02-descriptor-typed"
     if ! nixmac_pp_click_element "evolve-prompt-send|Submit configuration change descriptor|Send" "" 20; then

@@ -17,6 +17,9 @@ NIX_BINARY="/nix/var/nix/profiles/default/bin/nix"
 # Required between runs so the app shows the install screen fresh
 nixmac_clear_state() {
     log "Clearing nixmac app state..."
+    while security delete-generic-password -s "$NIXMAC_BUNDLE_ID" >/dev/null 2>&1; do
+        :
+    done
     for secret_account in openrouterApiKey openaiApiKey vllmApiKey; do
         security delete-generic-password -s "$NIXMAC_BUNDLE_ID" -a "$secret_account" >/dev/null 2>&1 || true
     done

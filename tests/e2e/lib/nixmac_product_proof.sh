@@ -156,6 +156,31 @@ end run
 OSA
 }
 
+nixmac_pp_deny_keychain_prompt_if_visible() {
+    local json button
+
+    json=$(peek_elements)
+    if ! echo "$json" | jq -e '
+        [.data.ui_elements[]? | (.label? // .title? // .value? // .description? // "")] |
+        join(" ") |
+        test("keychain|confidential information stored in"; "i")
+    ' >/dev/null 2>&1; then
+        return 1
+    fi
+
+    button=$(echo "$json" | jq -r '
+        .data.ui_elements[]? |
+        select(.role == "button") |
+        select((.label? // .title? // "") | test("^Deny$|^Don.t Allow$|^Cancel$"; "i")) |
+        .id
+    ' 2>/dev/null | head -1)
+    [ -n "$button" ] || return 1
+    log "Denying stale nixmac keychain prompt ($button)"
+    peek_click "$button" "$json" >/dev/null 2>&1 || true
+    sleep 1
+    peekaboo_run app switch --to "$NIXMAC_APP_NAME" >/dev/null 2>&1 || true
+}
+
 nixmac_pp_click_window_ratio() {
     local label="$1"
     local x_ratio="$2"
