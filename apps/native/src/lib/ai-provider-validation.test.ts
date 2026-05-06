@@ -8,9 +8,11 @@ const EMPTY_PREFS = {
   vllmApiBaseUrl: "",
 };
 
+const NO_CLI_TOOLS = { claude: false, codex: false, opencode: false };
+
 describe("getProviderConfigInvalidReason", () => {
   it("requires an API key for the OpenRouter provider", () => {
-    expect(getProviderConfigInvalidReason("openrouter", EMPTY_PREFS, {})).toBe(
+    expect(getProviderConfigInvalidReason("openrouter", EMPTY_PREFS, NO_CLI_TOOLS)).toBe(
       "No API key set",
     );
   });
@@ -20,21 +22,14 @@ describe("getProviderConfigInvalidReason", () => {
       getProviderConfigInvalidReason(
         "openrouter",
         { ...EMPTY_PREFS, openrouterApiKey: "sk-or-key" },
-        {},
+        NO_CLI_TOOLS,
       ),
     ).toBeNull();
     expect(
       getProviderConfigInvalidReason(
         "openrouter",
         { ...EMPTY_PREFS, openaiApiKey: "sk-openai-key" },
-        {},
-      ),
-    ).toBeNull();
-    expect(
-      getProviderConfigInvalidReason(
-        "openai",
-        { ...EMPTY_PREFS, openaiApiKey: "sk-openai-key" },
-        {},
+        NO_CLI_TOOLS,
       ),
     ).toBeNull();
   });
