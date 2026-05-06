@@ -1,0 +1,39 @@
+{
+  "scenario": "macos_customization_save_rollback_smoke",
+  "passed": 10,
+  "failed": 0,
+  "duration_seconds": 87,
+  "success": true,
+  "phases": [
+    {
+      "phase": 1,
+      "status": "PASS",
+      "message": "peekabooProviderFixture: Prepared customization managed-badge fixture, deterministic HTTP provider, completion logging, and mock rebuild flag"
+    },
+    {
+      "phase": 2,
+      "status": "PASS",
+      "message": "peekabooProviderLaunch: App launched for Untracked customizations proof"
+    },
+    {
+      "phase": 4,
+      "status": "PASS",
+      "message": "peekabooProviderBuildBoundary: Build & Test advanced to Save step for Untracked customizations"
+    },
+    {
+      "phase": 5,
+      "status": "PASS",
+      "message": "peekabooProviderSaveFlow: Untracked customizations Save step committed changes and returned to Describe"
+    },
+    {
+      "phase": 6,
+      "status": "PASS",
+      "message": "peekabooCustomizationSaveRollback: Untracked customizations Add to config was built, committed, and rolled back to the disposable baseline"
+    },
+    {
+      "phase": 7,
+      "status": "PASS",
+      "message": "peekabooProviderAudit: Preserved provider/request evidence for Untracked customizations managed-badge proof"
+    }
+  ]
+}

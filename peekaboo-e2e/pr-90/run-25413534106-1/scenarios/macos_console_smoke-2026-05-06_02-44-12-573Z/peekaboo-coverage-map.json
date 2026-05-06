@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "lane": "peekaboo-local",
+  "scenario": "macos_console_smoke",
+  "note": "Peekaboo coverage is intentionally additive. correspondsTo lists related Computer Use Product Proof keys, but Peekaboo keys remain separate unless the lane satisfies the same evidence grade.",
+  "phaseCoverage": [
+    {
+      "key": "peekabooCoreFixture",
+      "label": "Peekaboo core fixture",
+      "correspondsTo": [],
+      "grade": "fixture"
+    },
+    {
+      "key": "peekabooCoreLaunch",
+      "label": "Peekaboo core launch",
+      "correspondsTo": [
+        "launch"
+      ],
+      "grade": "action-confirmed"
+    },
+    {
+      "key": "peekabooCoreConsole",
+      "label": "Peekaboo Console text",
+      "correspondsTo": [
+        "console"
+      ],
+      "grade": "sensitive-redaction-text"
+    }
+  ]
+}
