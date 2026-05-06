@@ -539,11 +539,13 @@ scenario_wait_for_provider_repo_restore() {
 }
 
 scenario_confirm_history_restore() {
-    local attempt
+    local attempt json
     local confirm_pattern="history-confirm-restore-button|^Confirm Restore$"
 
     for attempt in 1 2 3; do
         scenario_click_element "$confirm_pattern" "button" 10 || true
+        json=$(cat "$NIXMAC_E2E_ELEMENTS_JSON_FILE" 2>/dev/null || true)
+        [ -n "$json" ] && peek_log_ranked_candidates "$json" "$confirm_pattern" "" 6
         scenario_click_element_center "$confirm_pattern" "button" 3 "history confirm restore" || true
         scenario_cgevent_click_element_center "$confirm_pattern" "button" 3 "history confirm restore" || true
         scenario_click_query "Confirm Restore" 5000 || true
@@ -563,7 +565,7 @@ scenario_confirm_history_restore() {
 }
 
 scenario_restore_baseline_from_history() {
-    scenario_click_element "History" "button" 30 || return 1
+    scenario_click_element "^History( |\\(|$)" "button" 30 || return 1
     if ! scenario_wait_for_text "History|Restore|Current|Base" 45; then
         return 1
     fi

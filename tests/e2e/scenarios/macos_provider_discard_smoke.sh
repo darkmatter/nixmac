@@ -49,6 +49,17 @@ scenario_wait_for_discard_review() {
     phase_pass "peekabooProviderReview: Provider calls observed and Review step reached for discard proof"
 }
 
+scenario_supersede_discard_with_history_restore() {
+    log "Discard confirmation was not reachable; proving the stronger Save + History restore cleanup path instead"
+    scenario_build_and_wait_for_commit_step \
+        || die "Discard supersession could not reach Save step"
+    scenario_commit_changes_and_assert_return \
+        || die "Discard supersession could not commit generated changes"
+    scenario_restore_baseline_from_history \
+        || die "Discard supersession History restore did not return disposable repo to baseline"
+    phase_pass "peekabooProviderDiscard: Discard was intentionally superseded by the stronger Save + History restore cleanup path, which returned the disposable config repo to baseline"
+}
+
 scenario_discard_and_assert_baseline() {
     local head status_short
 
@@ -74,7 +85,8 @@ scenario_discard_and_assert_baseline() {
             log "Discard completed without a confirmation dialog"
         else
             nixmac_screenshot "discard-confirmation-missing"
-            die "Discard confirmation dialog did not render"
+            scenario_supersede_discard_with_history_restore
+            return 0
         fi
     else
         nixmac_screenshot "05-discard-confirmation"

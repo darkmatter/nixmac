@@ -170,13 +170,13 @@ scenario_test() {
     phase_pass "peekabooCoreSettingsPreferences: Settings Preferences tab rendered confirmation controls"
 
     phase "Prove History surface"
-    nixmac_pp_click_element "History" "button" 20 || die "History button was not reachable"
+    nixmac_pp_click_element "^History( |\\(|$)" "button" 20 || die "History button was not reachable"
     if ! scenario_capture_and_assert_text "history-text" "History|No history|changes|Empty|Analyze"; then
         nixmac_screenshot "history-missing"
         die "History surface did not render"
     fi
     nixmac_screenshot "12-history"
-    nixmac_pp_click_element "Close|^×$|^X$" "button" 5 || nixmac_pp_click_element "History" "button" 10 || true
+    nixmac_pp_click_element "Close|^×$|^X$" "button" 5 || nixmac_pp_click_element "^History( |\\(|$)" "button" 10 || true
     phase_pass "peekabooCoreHistory: History surface rendered a visible state"
 
     phase "Verify visual and text proof coverage"
