@@ -128,7 +128,7 @@ nixmac_pp_system_events_click_button() {
 
     command -v /usr/bin/osascript >/dev/null 2>&1 || return 1
     log "System Events button click for '$label'"
-    /usr/bin/osascript "$label" <<'OSA' >/dev/null 2>&1
+    /usr/bin/osascript - "$label" <<'OSA' >/dev/null 2>&1
 on run argv
   set targetLabel to item 1 of argv
   tell application "System Events"
@@ -146,6 +146,18 @@ on run argv
         end try
         try
           click (first button of w whose description is targetLabel)
+          return
+        end try
+        try
+          click (first button of w whose name contains targetLabel)
+          return
+        end try
+        try
+          click (first button of w whose title contains targetLabel)
+          return
+        end try
+        try
+          click (first button of w whose description contains targetLabel)
           return
         end try
       end repeat

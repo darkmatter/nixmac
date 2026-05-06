@@ -127,6 +127,19 @@ scenario_wait_for_managed_popover() {
         || scenario_find_element "^Add to config$" "button" 1 >/dev/null 2>&1
 }
 
+scenario_open_managed_badge_attempt() {
+    local prefix="$1"
+    local strategy="$2"
+
+    shift 2
+    "$@" >/dev/null 2>&1 || true
+    if scenario_wait_for_managed_popover "$prefix" 3; then
+        log "Opened $prefix managed badge popover via $strategy"
+        return 0
+    fi
+    return 1
+}
+
 scenario_open_managed_badge_popover() {
     local prefix="$1"
     local badge_label="$2"
@@ -134,38 +147,46 @@ scenario_open_managed_badge_popover() {
     local ratio_x="0.185"
     local ratio_y="0.635"
     local click_query_text="untracked Homebrew"
-    local button_label="1 untracked Homebrew item"
+    local button_label="untracked Homebrew"
 
     if [ "$prefix" = "customization" ]; then
         ratio_x="0.775"
         ratio_y="0.595"
         click_query_text="untracked customization"
-        button_label="1 untracked customization"
+        button_label="untracked customization"
     fi
 
-    scenario_wait_for_managed_popover "$prefix" 1 && return 0
+    if scenario_wait_for_managed_popover "$prefix" 1; then
+        log "$prefix managed badge popover already open"
+        return 0
+    fi
 
-    nixmac_pp_system_events_click_button "$button_label" >/dev/null 2>&1 || true
-    scenario_wait_for_managed_popover "$prefix" 3 && return 0
+    scenario_open_managed_badge_attempt "$prefix" "System Events label contains '$button_label'" \
+        nixmac_pp_system_events_click_button "$button_label" && return 0
+    scenario_open_managed_badge_attempt "$prefix" "accessibility selector" \
+        scenario_click_element "$visible_badge_pattern" "button" 5 && return 0
+    scenario_open_managed_badge_attempt "$prefix" "accessibility center click" \
+        scenario_click_element_center "$visible_badge_pattern" "button" 3 "$badge_label badge" && return 0
+    scenario_open_managed_badge_attempt "$prefix" "CGEvent element center click" \
+        scenario_cgevent_click_element_center "$visible_badge_pattern" "button" 3 "$badge_label badge" && return 0
+    scenario_open_managed_badge_attempt "$prefix" "Peekaboo query text" \
+        scenario_click_query "$click_query_text" 5000 && return 0
+    scenario_open_managed_badge_attempt "$prefix" "window-ratio click" \
+        nixmac_pp_click_window_ratio "$badge_label badge" "$ratio_x" "$ratio_y" && return 0
+    scenario_open_managed_badge_attempt "$prefix" "CGEvent window-ratio click" \
+        nixmac_pp_cgevent_click_window_ratio "$badge_label badge" "$ratio_x" "$ratio_y" && return 0
 
-    scenario_click_element "$visible_badge_pattern" "button" 5 >/dev/null 2>&1 || true
-    scenario_wait_for_managed_popover "$prefix" 3 && return 0
+    return 1
+}
 
-    scenario_click_element_center "$visible_badge_pattern" "button" 3 "$badge_label badge" >/dev/null 2>&1 || true
-    scenario_wait_for_managed_popover "$prefix" 3 && return 0
+scenario_try_managed_add_to_config_click() {
+    local strategy="$1"
 
-    scenario_cgevent_click_element_center "$visible_badge_pattern" "button" 3 "$badge_label badge" >/dev/null 2>&1 || true
-    scenario_wait_for_managed_popover "$prefix" 3 && return 0
-
-    scenario_click_query "$click_query_text" 5000 >/dev/null 2>&1 || true
-    scenario_wait_for_managed_popover "$prefix" 3 && return 0
-
-    nixmac_pp_click_window_ratio "$badge_label badge" "$ratio_x" "$ratio_y" >/dev/null 2>&1 || true
-    scenario_wait_for_managed_popover "$prefix" 3 && return 0
-
-    nixmac_pp_cgevent_click_window_ratio "$badge_label badge" "$ratio_x" "$ratio_y" >/dev/null 2>&1 || true
-    scenario_wait_for_managed_popover "$prefix" 3 && return 0
-
+    shift
+    if "$@" >/dev/null 2>&1; then
+        log "Clicked managed Add to config via $strategy"
+        return 0
+    fi
     return 1
 }
 
@@ -176,10 +197,14 @@ scenario_click_managed_add_to_config() {
 
     add_button_pattern=$(scenario_managed_add_button_pattern "$prefix")
 
-    scenario_click_element "$add_button_pattern" "button" 10 \
-        || scenario_click_element_center "$add_button_pattern" "button" 3 "$badge_label Add to config" \
-        || scenario_cgevent_click_element_center "$add_button_pattern" "button" 3 "$badge_label Add to config" \
-        || nixmac_pp_system_events_click_button "Add to config" \
+    scenario_try_managed_add_to_config_click "accessibility selector" \
+        scenario_click_element "$add_button_pattern" "button" 10 \
+        || scenario_try_managed_add_to_config_click "accessibility center click" \
+            scenario_click_element_center "$add_button_pattern" "button" 3 "$badge_label Add to config" \
+        || scenario_try_managed_add_to_config_click "CGEvent element center click" \
+            scenario_cgevent_click_element_center "$add_button_pattern" "button" 3 "$badge_label Add to config" \
+        || scenario_try_managed_add_to_config_click "System Events label" \
+            nixmac_pp_system_events_click_button "Add to config" \
         || die "$badge_label Add to config button was not reachable"
 }
 
