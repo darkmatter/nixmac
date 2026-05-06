@@ -123,6 +123,39 @@ nixmac_pp_cgevent_click_element_center() {
     peek_cgevent_click_element_center "$element" "$json" "$label" "$NIXMAC_APP_NAME"
 }
 
+nixmac_pp_system_events_click_button() {
+    local label="$1"
+
+    command -v /usr/bin/osascript >/dev/null 2>&1 || return 1
+    log "System Events button click for '$label'"
+    /usr/bin/osascript "$label" <<'OSA' >/dev/null 2>&1
+on run argv
+  set targetLabel to item 1 of argv
+  tell application "System Events"
+    if not (exists process "nixmac") then error "nixmac process not found"
+    tell process "nixmac"
+      set frontmost to true
+      repeat with w in windows
+        try
+          click (first button of w whose name is targetLabel)
+          return
+        end try
+        try
+          click (first button of w whose title is targetLabel)
+          return
+        end try
+        try
+          click (first button of w whose description is targetLabel)
+          return
+        end try
+      end repeat
+      error "button not found: " & targetLabel
+    end tell
+  end tell
+end run
+OSA
+}
+
 nixmac_pp_click_window_ratio() {
     local label="$1"
     local x_ratio="$2"
@@ -303,6 +336,7 @@ nixmac_pp_cleanup_common() {
     nixmac_pp_unset_launch_env NIXMAC_E2E_HOMEBREW_BREWS
     nixmac_pp_unset_launch_env NIXMAC_E2E_HOMEBREW_CASKS
     nixmac_pp_unset_launch_env NIXMAC_E2E_HOMEBREW_TAPS
+    nixmac_pp_unset_launch_env NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE
     nixmac_pp_unset_launch_env NIXMAC_E2E_SYSTEM_DEFAULTS_JSON
     nixmac_pp_unset_launch_env OPENAI_API_KEY
     nixmac_pp_unset_launch_env OPENROUTER_API_KEY
@@ -369,6 +403,11 @@ nixmac_pp_set_e2e_launch_env() {
         nixmac_pp_set_launch_env NIXMAC_E2E_SYSTEM_DEFAULTS_JSON "$NIXMAC_E2E_SYSTEM_DEFAULTS_JSON"
     else
         nixmac_pp_unset_launch_env NIXMAC_E2E_SYSTEM_DEFAULTS_JSON
+    fi
+    if [ -n "${NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE:-}" ]; then
+        nixmac_pp_set_launch_env NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE "$NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE"
+    else
+        nixmac_pp_unset_launch_env NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE
     fi
     nixmac_pp_set_launch_env OPENAI_API_KEY "$OPENAI_API_KEY"
     nixmac_pp_set_launch_env OPENROUTER_API_KEY "$OPENROUTER_API_KEY"

@@ -11,6 +11,7 @@ scenario_managed_badge_prepare() {
     nixmac_clear_state
     scenario_seed_settings
     export NIXMAC_E2E_HOMEBREW_BREWS="${NIXMAC_E2E_HOMEBREW_BREWS:-ripgrep}"
+    export NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE="${NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE:-1}"
     export NIXMAC_E2E_SYSTEM_DEFAULTS_JSON="${NIXMAC_E2E_SYSTEM_DEFAULTS_JSON:-[{\"nixKey\":\"system.defaults.finder.ShowPathbar\",\"label\":\"Show Finder path bar\",\"category\":\"Finder\",\"currentValue\":\"true\",\"defaultValue\":\"false\"}]}"
     nixmac_pp_set_e2e_launch_env
     export NIXMAC_RECORD_COMPLETIONS=1
@@ -96,6 +97,86 @@ scenario_changed_paths_including_untracked() {
     } | sed '/^$/d' | sort -u
 }
 
+scenario_managed_popover_pattern() {
+    local prefix="$1"
+
+    if [ "$prefix" = "homebrew" ]; then
+        printf '%s\n' "managed-homebrew-popover"
+    else
+        printf '%s\n' "managed-system-defaults-popover"
+    fi
+}
+
+scenario_managed_add_button_pattern() {
+    local prefix="$1"
+
+    if [ "$prefix" = "homebrew" ]; then
+        printf '%s\n' "managed-homebrew-add-to-config|^Add to config$"
+    else
+        printf '%s\n' "managed-system-defaults-add-to-config|^Add to config$"
+    fi
+}
+
+scenario_wait_for_managed_popover() {
+    local prefix="$1"
+    local timeout="${2:-5}"
+    local popover_pattern
+
+    popover_pattern=$(scenario_managed_popover_pattern "$prefix")
+    scenario_find_element "$popover_pattern" "" "$timeout" >/dev/null 2>&1 \
+        || scenario_find_element "^Add to config$" "button" 1 >/dev/null 2>&1
+}
+
+scenario_open_managed_badge_popover() {
+    local prefix="$1"
+    local badge_label="$2"
+    local visible_badge_pattern="$3"
+    local ratio_x="0.760"
+    local ratio_y="0.560"
+    local click_query_text="untracked Homebrew"
+
+    if [ "$prefix" = "customization" ]; then
+        ratio_x="0.710"
+        click_query_text="untracked customization"
+    fi
+
+    scenario_wait_for_managed_popover "$prefix" 1 && return 0
+
+    scenario_click_element "$visible_badge_pattern" "button" 5 >/dev/null 2>&1 || true
+    scenario_wait_for_managed_popover "$prefix" 3 && return 0
+
+    scenario_click_element_center "$visible_badge_pattern" "button" 3 "$badge_label badge" >/dev/null 2>&1 || true
+    scenario_wait_for_managed_popover "$prefix" 3 && return 0
+
+    scenario_cgevent_click_element_center "$visible_badge_pattern" "button" 3 "$badge_label badge" >/dev/null 2>&1 || true
+    scenario_wait_for_managed_popover "$prefix" 3 && return 0
+
+    scenario_click_query "$click_query_text" 5000 >/dev/null 2>&1 || true
+    scenario_wait_for_managed_popover "$prefix" 3 && return 0
+
+    nixmac_pp_click_window_ratio "$badge_label badge" "$ratio_x" "$ratio_y" >/dev/null 2>&1 || true
+    scenario_wait_for_managed_popover "$prefix" 3 && return 0
+
+    nixmac_pp_cgevent_click_window_ratio "$badge_label badge" "$ratio_x" "$ratio_y" >/dev/null 2>&1 || true
+    scenario_wait_for_managed_popover "$prefix" 3 && return 0
+
+    return 1
+}
+
+scenario_click_managed_add_to_config() {
+    local prefix="$1"
+    local badge_label="$2"
+    local add_button_pattern
+
+    add_button_pattern=$(scenario_managed_add_button_pattern "$prefix")
+
+    scenario_click_element "$add_button_pattern" "button" 10 \
+        || scenario_click_element_center "$add_button_pattern" "button" 3 "$badge_label Add to config" \
+        || scenario_cgevent_click_element_center "$add_button_pattern" "button" 3 "$badge_label Add to config" \
+        || nixmac_pp_system_events_click_button "Add to config" \
+        || die "$badge_label Add to config button was not reachable"
+}
+
 scenario_restore_managed_badge_baseline() {
     local prefix="$1"
     local deadline
@@ -143,27 +224,15 @@ scenario_managed_badge_save_rollback() {
     fi
 
     phase "Apply $badge_label to config"
-    if [ "$prefix" = "customization" ]; then
-        if nixmac_pp_click_window_ratio "$badge_label badge" 0.780 0.592; then
-            scenario_wait_for_text "Add to config|$badge_pattern" 5 \
-                || scenario_click_element "$visible_badge_pattern" "" 10 \
-                || die "$badge_label badge was not reachable"
-        else
-            scenario_click_element "$visible_badge_pattern" "" 10 \
-                || die "$badge_label badge was not reachable"
-        fi
-    else
-        scenario_click_element "$visible_badge_pattern" "button" 30 \
-            || die "$badge_label badge was not reachable"
-    fi
-    scenario_wait_for_text "Add to config|$badge_pattern" 20 \
+    scenario_open_managed_badge_popover "$prefix" "$badge_label" "$visible_badge_pattern" \
+        || die "$badge_label badge was not reachable"
+    scenario_wait_for_managed_popover "$prefix" 10 \
         || die "$badge_label popover did not render"
     nixmac_screenshot "02-$prefix-popover"
     if scenario_wait_for_text "Applying changes|Adding" 2; then
         log "$badge_label Add to config was already accepted and is applying"
     else
-        scenario_click_element "Add to config" "button" 20 \
-            || die "$badge_label Add to config button was not reachable"
+        scenario_click_managed_add_to_config "$prefix" "$badge_label"
     fi
     scenario_wait_for_text "Ready to test-drive|Build & Test|Discard|Summary|Diff" 90 \
         || die "$badge_label Add to config did not reach Review"

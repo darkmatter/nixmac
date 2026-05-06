@@ -10,19 +10,30 @@
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/macos_provider_evolve_full_smoke.sh"
 
 scenario_submit_descriptor_for_discard() {
+    local attempt
+
     if ! scenario_wait_for_text "Describe changes|configuration" 45; then
         nixmac_screenshot "discard-missing-descriptor-prompt"
         die "Descriptor prompt screen did not become visible"
     fi
-    if ! nixmac_pp_click_element "evolve-prompt-input|Configuration change descriptor|Describe changes to make to your configuration" "textField" 30; then
-        nixmac_pp_click_window_ratio "discard descriptor prompt input" "0.500" "0.455" \
+
+    for attempt in 1 2 3; do
+        nixmac_pp_click_element "evolve-prompt-input|Configuration change descriptor|Describe changes to make to your configuration" "textField" 10 \
+            || nixmac_pp_click_element_center "evolve-prompt-input|Configuration change descriptor|Describe changes to make to your configuration" "textField" 3 "discard descriptor prompt input" \
+            || nixmac_pp_cgevent_click_element_center "evolve-prompt-input|Configuration change descriptor|Describe changes to make to your configuration" "textField" 3 "discard descriptor prompt input" \
+            || nixmac_pp_click_window_ratio "discard descriptor prompt input" "0.500" "0.455" \
             || die "Descriptor prompt input was not reachable by accessibility metadata or coordinate fallback"
-    fi
-    peek_hotkey "cmd+a" >/dev/null 2>&1 || true
-    peekaboo_run paste "$NIXMAC_E2E_DESCRIPTOR_TEXT" >/dev/null 2>&1 \
-        || peek_type "$NIXMAC_E2E_DESCRIPTOR_TEXT" \
-        || die "Failed to type descriptor"
-    nixmac_pp_wait_for_prompt_value "$NIXMAC_E2E_DESCRIPTOR_TEXT" 20 \
+        peek_hotkey "cmd+a" >/dev/null 2>&1 || true
+        peekaboo_run paste "$NIXMAC_E2E_DESCRIPTOR_TEXT" >/dev/null 2>&1 \
+            || peek_type "$NIXMAC_E2E_DESCRIPTOR_TEXT" \
+            || die "Failed to type descriptor"
+        if nixmac_pp_wait_for_prompt_value_exact "$NIXMAC_E2E_DESCRIPTOR_TEXT" 8; then
+            break
+        fi
+        nixmac_screenshot "discard-descriptor-type-retry-${attempt}"
+        log "Descriptor value was not visible after attempt ${attempt}; refocusing and retrying"
+    done
+    nixmac_pp_wait_for_prompt_value_exact "$NIXMAC_E2E_DESCRIPTOR_TEXT" 1 \
         || die "Typed descriptor was not visible in the prompt input"
     nixmac_screenshot "02-discard-descriptor-typed"
     if ! nixmac_pp_click_element "evolve-prompt-send|Submit configuration change descriptor|Send" "" 20; then

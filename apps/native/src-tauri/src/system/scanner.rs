@@ -1258,12 +1258,39 @@ fn e2e_mock_system_enabled() -> bool {
     cfg!(debug_assertions) && std::env::var("NIXMAC_E2E_MOCK_SYSTEM").ok().as_deref() == Some("1")
 }
 
+fn e2e_default_system_defaults_fixture() -> SystemDefaultsScan {
+    SystemDefaultsScan {
+        defaults: vec![SystemDefault {
+            nix_key: "system.defaults.finder.ShowPathbar".to_string(),
+            label: "Show Finder path bar".to_string(),
+            category: "Finder".to_string(),
+            current_value: "true".to_string(),
+            default_value: "false".to_string(),
+        }],
+        total_scanned: KEY_DEFS.iter().map(|(_, defs)| defs.len()).sum(),
+    }
+}
+
 fn e2e_system_defaults_scan() -> Option<SystemDefaultsScan> {
     if !e2e_mock_system_enabled() {
         return None;
     }
 
+    if std::env::var("NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE")
+        .ok()
+        .as_deref()
+        == Some("1")
+    {
+        log::info!("Using deterministic NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE scan");
+        return Some(e2e_default_system_defaults_fixture());
+    }
+
     let raw = std::env::var("NIXMAC_E2E_SYSTEM_DEFAULTS_JSON").ok()?;
+    log::info!(
+        "Using NIXMAC_E2E_SYSTEM_DEFAULTS_JSON fixture, len={}, prefix={:?}",
+        raw.len(),
+        raw.chars().take(400).collect::<String>()
+    );
     let defaults: Vec<SystemDefault> = match serde_json::from_str(&raw) {
         Ok(defaults) => defaults,
         Err(error) => {
@@ -1812,6 +1839,37 @@ mod tests {
         assert_eq!(normalize_bool("0"), "false");
         assert_eq!(normalize_bool("no"), "false");
         assert_eq!(normalize_bool(""), "false");
+    }
+
+    #[test]
+    fn test_e2e_system_defaults_fixture_returns_customization() {
+        let old_mock = std::env::var("NIXMAC_E2E_MOCK_SYSTEM").ok();
+        let old_fixture = std::env::var("NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE").ok();
+        let old_json = std::env::var("NIXMAC_E2E_SYSTEM_DEFAULTS_JSON").ok();
+
+        std::env::set_var("NIXMAC_E2E_MOCK_SYSTEM", "1");
+        std::env::set_var("NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE", "1");
+        std::env::remove_var("NIXMAC_E2E_SYSTEM_DEFAULTS_JSON");
+
+        let scan = e2e_system_defaults_scan().expect("fixture scan");
+        assert_eq!(scan.defaults.len(), 1);
+        assert_eq!(
+            scan.defaults[0].nix_key,
+            "system.defaults.finder.ShowPathbar"
+        );
+
+        match old_mock {
+            Some(value) => std::env::set_var("NIXMAC_E2E_MOCK_SYSTEM", value),
+            None => std::env::remove_var("NIXMAC_E2E_MOCK_SYSTEM"),
+        }
+        match old_fixture {
+            Some(value) => std::env::set_var("NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE", value),
+            None => std::env::remove_var("NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE"),
+        }
+        match old_json {
+            Some(value) => std::env::set_var("NIXMAC_E2E_SYSTEM_DEFAULTS_JSON", value),
+            None => std::env::remove_var("NIXMAC_E2E_SYSTEM_DEFAULTS_JSON"),
+        }
     }
 
     #[test]

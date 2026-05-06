@@ -543,15 +543,23 @@ scenario_confirm_history_restore() {
     local confirm_pattern="history-confirm-restore-button|^Confirm Restore$"
 
     for attempt in 1 2 3; do
+        nixmac_pp_system_events_click_button "Confirm Restore" || true
+        if ! scenario_wait_for_text "Confirm Restore" 3; then
+            return 0
+        fi
+
         scenario_click_element "$confirm_pattern" "button" 10 || true
         json=$(cat "$NIXMAC_E2E_ELEMENTS_JSON_FILE" 2>/dev/null || true)
         [ -n "$json" ] && peek_log_ranked_candidates "$json" "$confirm_pattern" "" 6
         scenario_click_element_center "$confirm_pattern" "button" 3 "history confirm restore" || true
         scenario_cgevent_click_element_center "$confirm_pattern" "button" 3 "history confirm restore" || true
         scenario_click_query "Confirm Restore" 5000 || true
+        nixmac_pp_click_window_ratio "history confirm restore primary action" "0.705" "0.268" || true
+        nixmac_pp_cgevent_click_window_ratio "history confirm restore primary action" "0.705" "0.268" || true
         nixmac_pp_click_window_ratio "history confirm restore" "0.735" "0.268" || true
         nixmac_pp_cgevent_click_window_ratio "history confirm restore" "0.735" "0.268" || true
-        peek_press "tab" >/dev/null 2>&1 || true
+        peek_hotkey "shift+tab" >/dev/null 2>&1 || true
+        peek_press "space" >/dev/null 2>&1 || true
         peek_press "return" >/dev/null 2>&1 || true
 
         if ! scenario_wait_for_text "Confirm Restore" 3; then

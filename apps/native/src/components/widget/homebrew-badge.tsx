@@ -40,12 +40,20 @@ export function HomebrewBadge() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <BadgeButton icon={Package} badgeVariant="muted">
+        <BadgeButton
+          icon={Package}
+          badgeVariant="muted"
+          data-testid="managed-homebrew-badge"
+        >
           {total} untracked Homebrew {total === 1 ? "item" : "items"}
         </BadgeButton>
       </PopoverTrigger>
 
-      <PopoverContent className="w-72 p-3" align="start">
+      <PopoverContent
+        className="w-72 p-3"
+        align="start"
+        data-testid="managed-homebrew-popover"
+      >
         <div className="flex flex-col text-sm">
           <div className="max-h-56 overflow-y-auto pr-2">
             {diff.taps.length > 0 && (
@@ -62,6 +70,7 @@ export function HomebrewBadge() {
           <Button
             size="sm"
             className="mt-3 w-full"
+            data-testid="managed-homebrew-add-to-config"
             disabled={isApplying}
             onClick={() => {
               applyDiff();
