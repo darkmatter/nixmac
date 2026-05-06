@@ -360,6 +360,16 @@ scenario_click_element() {
     peek_click "$element" "$json"
 }
 
+scenario_click_query() {
+    local query="$1"
+    local timeout_ms="${2:-10000}"
+
+    log "Clicking query '$query'"
+    peekaboo_run app switch --to "$NIXMAC_APP_NAME" >/dev/null 2>&1 || true
+    sleep 0.2
+    peekaboo_run click "$query" --app "$NIXMAC_APP_NAME" --wait-for "$timeout_ms" >/dev/null 2>&1
+}
+
 scenario_wait_for_text() {
     local pattern="$1"
     local timeout="${2:-30}"
@@ -474,7 +484,8 @@ scenario_provider_repo_restored_to_baseline() {
 
     status_short=$(git -C "$NIXMAC_E2E_CONFIG_REPO" status --short)
     [ -z "$status_short" ] \
-        && ! grep -q "ripgrep" "$NIXMAC_E2E_CONFIG_REPO/flake.nix"
+        && ! grep -q "ripgrep" "$NIXMAC_E2E_CONFIG_REPO/flake.nix" \
+        && git -C "$NIXMAC_E2E_CONFIG_REPO" diff --quiet "$NIXMAC_E2E_BASELINE_COMMIT" HEAD -- flake.nix flake.lock
 }
 
 scenario_wait_for_provider_repo_restore() {
@@ -494,15 +505,22 @@ scenario_wait_for_provider_repo_restore() {
 }
 
 scenario_confirm_history_restore() {
-    scenario_click_element "Confirm Restore|confirm Restore" "" 10 \
-        || nixmac_pp_click_window_ratio "history confirm restore" "0.735" "0.268" \
-        || return 1
+    local attempt
 
-    if scenario_wait_for_text "Confirm Restore" 3; then
-        nixmac_pp_click_window_ratio "history confirm restore retry" "0.735" "0.268" \
+    for attempt in 1 2 3; do
+        scenario_click_query "Confirm Restore" 10000 \
             || scenario_click_element "Confirm Restore|confirm Restore" "" 10 \
+            || nixmac_pp_click_window_ratio "history confirm restore" "0.735" "0.268" \
             || return 1
-    fi
+
+        if ! scenario_wait_for_text "Confirm Restore" 3; then
+            return 0
+        fi
+
+        log "Confirm Restore still visible after attempt ${attempt}; retrying"
+    done
+
+    return 1
 }
 
 scenario_restore_baseline_from_history() {
