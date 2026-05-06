@@ -1,0 +1,5 @@
+{"timestamp_unix_ms":1778106903627,"client_timestamp_unix_ms":1778106903619,"label":"main.tsx loaded","detail":null}
+{"timestamp_unix_ms":1778106903628,"client_timestamp_unix_ms":1778106903627,"label":"root element found","detail":null}
+{"timestamp_unix_ms":1778106903629,"client_timestamp_unix_ms":1778106903628,"label":"React render start","detail":null}
+{"timestamp_unix_ms":1778106903629,"client_timestamp_unix_ms":1778106903629,"label":"React render scheduled","detail":null}
+{"timestamp_unix_ms":1778106903629,"client_timestamp_unix_ms":1778106903629,"label":"ui_get_prefs invoke start","detail":null}

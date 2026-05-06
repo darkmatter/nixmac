@@ -1,8 +1,0 @@
-{"timestamp_unix_ms":1778104850025,"client_timestamp_unix_ms":1778104850014,"label":"main.tsx loaded","detail":null}
-{"timestamp_unix_ms":1778104850026,"client_timestamp_unix_ms":1778104850021,"label":"root element found","detail":null}{"timestamp_unix_ms":1778104850026,"client_timestamp_unix_ms":1778104850022,"label":"ui_get_prefs invoke start","detail":null}
-
-{"timestamp_unix_ms":1778104865102,"client_timestamp_unix_ms":1778104865100,"label":"React render start","detail":null}
-{"timestamp_unix_ms":1778104865102,"client_timestamp_unix_ms":1778104865100,"label":"Sentry init skipped","detail":"{\"sendDiagnostics\":false,\"hasDsn\":false}"}{"timestamp_unix_ms":1778104865102,"client_timestamp_unix_ms":1778104865098,"label":"ui_get_prefs invoke success","detail":"{\"sendDiagnostics\":false}"}
-
-{"timestamp_unix_ms":1778104865103,"client_timestamp_unix_ms":1778104865102,"label":"React render scheduled","detail":null}
-{"timestamp_unix_ms":1778104865214,"client_timestamp_unix_ms":1778104865211,"label":"App mounted","detail":null}

@@ -1,0 +1,114 @@
+2026-05-06T22:32:04.861934Z  INFO nixmac: NIXMAC_LOGFILE active at /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-06_22-31-52-303Z/diagnostics/nixmac-app.log
+2026-05-06T22:32:04.864256Z DEBUG nixmac: nixmac process booted
+2026-05-06T22:32:05.074957Z DEBUG nixmac: Tauri setup started
+2026-05-06T22:32:05.075040Z  INFO nixmac::panic_handler: Custom panic handler installed
+2026-05-06T22:32:05.077459Z DEBUG rusqlite_migration: some migrations defined (version: 3), try to migrate
+2026-05-06T22:32:05.078837Z DEBUG rusqlite_migration: some migrations to run, target: 3, current: 0
+2026-05-06T22:32:05.078924Z DEBUG rusqlite_migration: Running: CREATE TABLE IF NOT EXISTS commits (
+    id INTEGER PRIMARY KEY,
+    hash TEXT NOT NULL UNIQUE,
+    tree_hash TEXT NOT NULL,
+    message TEXT,
+    created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS evolutions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    origin_branch TEXT NOT NULL,
+    merged INTEGER NOT NULL DEFAULT 0,
+    builds INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS change_summaries (
+    id INTEGER PRIMARY KEY,
+    title TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'QUEUED' CHECK(status IN ('QUEUED', 'DONE', 'FAILED', 'CANCELLED')),
+    created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS changes (
+    id INTEGER PRIMARY KEY,
+    hash TEXT NOT NULL UNIQUE,
+    filename TEXT NOT NULL,
+    diff TEXT NOT NULL,
+    line_count INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    own_summary_id INTEGER REFERENCES change_summaries(id)
+);
+
+CREATE TABLE IF NOT EXISTS group_summaries (
+    change_id INTEGER NOT NULL REFERENCES changes(id),
+    change_summary_id INTEGER NOT NULL REFERENCES change_summaries(id)
+);
+
+CREATE TABLE IF NOT EXISTS change_sets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    commit_id INTEGER REFERENCES commits(id),
+    base_commit_id INTEGER NOT NULL REFERENCES commits(id),
+    commit_message TEXT,
+    generated_commit_message TEXT,
+    created_at INTEGER NOT NULL,
+    evolution_id INTEGER REFERENCES evolutions(id)
+);
+
+CREATE TABLE IF NOT EXISTS set_changes (
+    change_set_id INTEGER NOT NULL REFERENCES change_sets(id),
+    change_id INTEGER NOT NULL REFERENCES changes(id),
+    PRIMARY KEY (change_set_id, change_id)
+);
+
+CREATE TABLE IF NOT EXISTS queued_summaries (
+    id INTEGER PRIMARY KEY,
+    status TEXT NOT NULL DEFAULT 'QUEUED' CHECK(status IN ('QUEUED', 'DONE', 'FAILED', 'CANCELLED')),
+    attempted_count INTEGER NOT NULL DEFAULT 0,
+    prompt TEXT NOT NULL,
+    model_response TEXT,
+    group_summary_id INTEGER REFERENCES change_summaries(id),
+    hash_own_summary_id_pairs TEXT,
+    type TEXT NOT NULL CHECK(type IN ('NEW_SINGLE', 'NEW_GROUP', 'EVOLVED_GROUP'))
+);
+
+CREATE TABLE IF NOT EXISTS prompts (
+    id INTEGER PRIMARY KEY,
+    text TEXT NOT NULL,
+    commit_id INTEGER REFERENCES commits(id) ON DELETE SET NULL,
+    created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_commits_tree_hash ON commits(tree_hash);
+CREATE INDEX IF NOT EXISTS idx_evolutions_origin_branch ON evolutions(origin_branch);
+CREATE INDEX IF NOT EXISTS idx_prompts_commit ON prompts(commit_id);
+CREATE INDEX IF NOT EXISTS idx_change_sets_commit ON change_sets(commit_id);
+CREATE INDEX IF NOT EXISTS idx_change_sets_base ON change_sets(base_commit_id);
+CREATE INDEX IF NOT EXISTS idx_set_changes_change ON set_changes(change_id);
+CREATE INDEX IF NOT EXISTS idx_queued_summaries_status ON queued_summaries(status);
+
+2026-05-06T22:32:05.082510Z DEBUG rusqlite_migration: Running: CREATE TABLE IF NOT EXISTS restore_commits (
+    commit_hash TEXT PRIMARY KEY,
+    origin_hash TEXT NOT NULL
+);
+
+2026-05-06T22:32:05.082618Z DEBUG rusqlite_migration: Running: -- Legacy databases created before rusqlite_migration used `evolutions.branch`.
+-- The Rust hook for this migration performs the conditional column repair.
+SELECT 1;
+
+2026-05-06T22:32:05.084310Z  INFO rusqlite_migration: Database migrated to version 3
+2026-05-06T22:32:05.084744Z  INFO nixmac: Database initialized successfully
+2026-05-06T22:32:09.544685Z  WARN nixmac::system::secret_scanner: Using fallback regex for gitleaks rule: generic-api-key (original error: Error compiling regex: Regex error: error building NFA)
+2026-05-06T22:32:13.304678Z  WARN nixmac::system::secret_scanner: Skipping gitleaks rule without regex: pkcs12-file
+2026-05-06T22:32:14.464877Z  WARN nixmac::system::secret_scanner: Using fallback regex for gitleaks rule: pypi-upload-token (original error: Error compiling regex: Regex error: error building NFA)
+2026-05-06T22:32:17.069888Z  WARN nixmac::system::secret_scanner: Using fallback regex for gitleaks rule: vault-batch-token (original error: Error compiling regex: Regex error: error building NFA)
+2026-05-06T22:32:17.662376Z  INFO nixmac::evolve::search_docs: [search_docs] initialized docs index with 676 nix-darwin + 5230 home-manager = 5906 total entries
+2026-05-06T22:32:17.663075Z  INFO nixmac: Sentry diagnostics disabled by user preference
+2026-05-06T22:32:17.692939Z  INFO nixmac: NIXMAC_E2E_OPAQUE_WINDOW enabled; using an opaque visible-titlebar window with dark WebView backing for host visual capture
+2026-05-06T22:32:17.814482Z DEBUG nixmac: Main nixmac window created
+2026-05-06T22:32:18.374448Z DEBUG nixmac::evolve::chat_memory: [chat_memory] cleared messages count_before=0 count_after=0
+2026-05-06T22:32:48.380267Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs started
+2026-05-06T22:32:48.380479Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading OpenRouter credential
+2026-05-06T22:32:48.380519Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading OpenAI credential
+2026-05-06T22:32:48.380528Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading diagnostics preference
+2026-05-06T22:32:48.380587Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading model preferences
+2026-05-06T22:32:48.380714Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading iteration and endpoint preferences
+2026-05-06T22:32:48.380796Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading confirmation preferences
+2026-05-06T22:32:48.380903Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs completed
