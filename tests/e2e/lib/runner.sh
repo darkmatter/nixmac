@@ -58,7 +58,7 @@ runner_exec() {
     runner_lock
     trap 'runner_cleanup' EXIT
     peekaboo_cleanup_desktop_artifacts 2>/dev/null || true
-    recording_close_terminal_windows 2>/dev/null || true
+    E2E_TERMINAL_CLEANUP_MODE=kill recording_close_terminal_windows 2>/dev/null || true
     
     # Source scenario first to pick up E2E_ADAPTER/E2E_FIXTURE declarations
     source "$scenario_file"

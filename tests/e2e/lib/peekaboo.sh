@@ -621,6 +621,33 @@ click_button() {
     peek_click "$btn" "$json"
 }
 
+# Find a positive button in a dialog JSON blob. Exact labels avoid Don't Allow.
+peek_find_affirmative_dialog_button() {
+    local json="$1"
+    echo "$json" | jq -r '
+        .data.ui_elements[]? |
+        select(.role == "button") |
+        select(.label? // .title? // "" | test("^(Allow|OK|Open|Continue|Grant Access)$"; "i")) |
+        .id
+    ' 2>/dev/null | head -1
+}
+
+dismiss_dialog_json() {
+    local json="$1"
+    local source="${2:-active app}"
+    local dialog_button
+
+    dialog_button=$(peek_find_affirmative_dialog_button "$json")
+    if [ -z "$dialog_button" ]; then
+        return 1
+    fi
+
+    log "Dismissing system dialog from $source (clicking $dialog_button)..."
+    peek_click "$dialog_button" "$json" || true
+    sleep 2
+    return 0
+}
+
 # Dismiss system dialogs (Allow, OK, Open, Continue).
 #
 # Scans ALL windows (not app-scoped) so macOS-level permission prompts
@@ -634,26 +661,43 @@ dismiss_dialogs() {
     local max_attempts="${1:-5}"
     local i=0
     while [ "$i" -lt "$max_attempts" ]; do
-        local json
+        local json clicked pid process
         # No --app flag: scan the entire screen so we catch system dialogs
         json=$(peek_elements)
-        
-        # Look for affirmative buttons in system dialogs.
-        # Use exact-match patterns to avoid matching "Don't Allow".
-        local dialog_button
-        dialog_button=$(echo "$json" | jq -r '
-            .data.ui_elements[]? |
-            select(.role == "button") |
-            select(.label? // .title? // "" | test("^(Allow|OK|Open|Continue|Grant Access)$"; "i")) |
-            .id
-        ' 2>/dev/null | head -1)
-        
-        if [ -n "$dialog_button" ]; then
-            log "Dismissing system dialog (clicking $dialog_button)..."
-            peek_click "$dialog_button" "$json" || true
-            sleep 2
-        else
-            break
+        clicked=0
+
+        if dismiss_dialog_json "$json" "active app"; then
+            clicked=1
+        fi
+
+        if [ "$clicked" -eq 0 ]; then
+            while IFS= read -r line; do
+                [ -n "$line" ] || continue
+                pid="${line%% *}"
+                process="${line#* }"
+                [ -n "$pid" ] || continue
+                json=$(peekaboo_run see --pid "$pid" --json 2>/dev/null || peekaboo_empty_elements_json)
+                if dismiss_dialog_json "$json" "$process pid $pid"; then
+                    clicked=1
+                    break
+                fi
+            done < <(ps -axo pid=,comm= 2>/dev/null | awk '
+                {
+                    pid=$1
+                    $1=""
+                    sub(/^ +/, "")
+                    process=$0
+                    split(process, parts, "/")
+                    basename=parts[length(parts)]
+                    if (basename ~ /^(tccd|SecurityAgent|UserNotificationCenter|CoreServicesUIAgent)$/) {
+                        print pid " " process
+                    }
+                }
+            ')
+        fi
+
+        if [ "$clicked" -eq 0 ]; then
+            return 0
         fi
         i=$((i + 1))
     done

@@ -13,10 +13,7 @@ use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter};
 
 fn e2e_mock_system_enabled() -> bool {
-    cfg!(debug_assertions)
-        && std::env::var("NIXMAC_E2E_MOCK_SYSTEM")
-            .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
-            .unwrap_or(false)
+    cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_MOCK_SYSTEM")
 }
 
 /// Get the log directory path, creating it if needed.

@@ -1255,7 +1255,7 @@ const KEY_DEFS: &[(&str, &[KeyDef])] = &[
 ];
 
 fn e2e_mock_system_enabled() -> bool {
-    cfg!(debug_assertions) && std::env::var("NIXMAC_E2E_MOCK_SYSTEM").ok().as_deref() == Some("1")
+    cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_MOCK_SYSTEM")
 }
 
 fn e2e_default_system_defaults_fixture() -> SystemDefaultsScan {
@@ -1276,16 +1276,12 @@ fn e2e_system_defaults_scan() -> Option<SystemDefaultsScan> {
         return None;
     }
 
-    if std::env::var("NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE")
-        .ok()
-        .as_deref()
-        == Some("1")
-    {
+    if crate::e2e_runtime::enabled("NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE") {
         log::info!("Using deterministic NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE scan");
         return Some(e2e_default_system_defaults_fixture());
     }
 
-    let raw = std::env::var("NIXMAC_E2E_SYSTEM_DEFAULTS_JSON").ok()?;
+    let raw = crate::e2e_runtime::value("NIXMAC_E2E_SYSTEM_DEFAULTS_JSON")?;
     log::info!(
         "Using NIXMAC_E2E_SYSTEM_DEFAULTS_JSON fixture, len={}, prefix={:?}",
         raw.len(),

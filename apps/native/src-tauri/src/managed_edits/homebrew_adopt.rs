@@ -47,12 +47,11 @@ fn make_homebrew_state(is_installed: bool, source: Option<String>) -> HomebrewSt
 }
 
 fn e2e_mock_system_enabled() -> bool {
-    cfg!(debug_assertions) && std::env::var("NIXMAC_E2E_MOCK_SYSTEM").ok().as_deref() == Some("1")
+    cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_MOCK_SYSTEM")
 }
 
 fn e2e_list_env(name: &str) -> Vec<String> {
-    std::env::var(name)
-        .ok()
+    crate::e2e_runtime::value(name)
         .into_iter()
         .flat_map(|value| {
             value
@@ -76,7 +75,7 @@ fn e2e_homebrew_state() -> Option<HomebrewState> {
         "NIXMAC_E2E_HOMEBREW_TAPS",
     ]
     .iter()
-    .any(|name| std::env::var(name).is_ok());
+    .any(|name| crate::e2e_runtime::value(name).is_some());
     if !fixture_is_configured {
         return None;
     }

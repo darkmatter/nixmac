@@ -2973,6 +2973,32 @@ async function runSelfTest() {
     'inconclusive',
     'Peekaboo suite verdict should downgrade when required Computer Use parity keys are missing',
   );
+  {
+    const allRequiredCoverageState = {
+      mode: 'peekaboo-suite',
+      scenarios: {},
+      peekaboo: { coverageMap: { phaseCoverage: [] } },
+    };
+    for (const [index, computerUseKey] of PR75_COMPUTER_USE_BASELINE.requiredKeys.entries()) {
+      const key = `selfTestPeekabooParity${index}`;
+      allRequiredCoverageState.scenarios[key] = { status: 'pass' };
+      allRequiredCoverageState.peekaboo.coverageMap.phaseCoverage.push({
+        key,
+        correspondsTo: [computerUseKey],
+        grade: 'self-test',
+      });
+    }
+    assert.deepEqual(
+      requiredComputerUseCoverage(allRequiredCoverageState).missingRequiredKeys,
+      [],
+      'Synthetic all-pass Peekaboo suite should cover every required PR #75 Computer Use key',
+    );
+    assert.equal(
+      verdictFor(allRequiredCoverageState),
+      'pass',
+      'Peekaboo suite verdict should pass when every required Computer Use parity key is covered by passing Peekaboo evidence',
+    );
+  }
   assert.equal(
     reportStaticChecks({
       state: {

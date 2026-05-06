@@ -9,13 +9,19 @@ const repoRoot = path.resolve(path.dirname(thisFile), '../..');
 const workflowPath = path.join(repoRoot, '.github/workflows/peekaboo-e2e.yml');
 const productProofPath = path.join(repoRoot, 'tests/e2e/lib/nixmac_product_proof.sh');
 const peekabooShellPath = path.join(repoRoot, 'tests/e2e/lib/peekaboo.sh');
+const runnerShellPath = path.join(repoRoot, 'tests/e2e/lib/runner.sh');
 const nixmacAdapterPath = path.join(repoRoot, 'tests/e2e/adapters/nixmac.sh');
 const peekabooRunnerPath = path.join(repoRoot, 'tools/computer-use-e2e/peekaboo-runner.mjs');
+const permissionsPath = path.join(repoRoot, 'apps/native/src-tauri/src/system/permissions.rs');
+const e2eRuntimePath = path.join(repoRoot, 'apps/native/src-tauri/src/e2e_runtime.rs');
 const workflow = readFileSync(workflowPath, 'utf8');
 const productProof = readFileSync(productProofPath, 'utf8');
 const peekabooShell = readFileSync(peekabooShellPath, 'utf8');
+const runnerShell = readFileSync(runnerShellPath, 'utf8');
 const nixmacAdapter = readFileSync(nixmacAdapterPath, 'utf8');
 const peekabooRunner = readFileSync(peekabooRunnerPath, 'utf8');
+const permissions = readFileSync(permissionsPath, 'utf8');
+const e2eRuntime = readFileSync(e2eRuntimePath, 'utf8');
 
 function section(startPattern, endPattern = null) {
   const source = typeof startPattern === 'object' && startPattern.sourceText ? startPattern.sourceText : workflow;
@@ -76,6 +82,7 @@ assert.match(proof, /ServerAliveInterval=15[\s\S]*run-peekaboo-suite --allow-cle
 assert.match(proof, /trusted-secret-scan\.json[\s\S]*mktemp[\s\S]*secretPattern[\s\S]*github_pat_[\s\S]*lstatSync[\s\S]*isSymbolicLink\(\)[\s\S]*trusted_secret_scan_passed/, 'workflow must independently re-scan fetched report text artifacts before public publishing without following symlinks');
 assert.match(proof, /scannedPaths[\s\S]*path\.relative\(root, full\)\.split\(path\.sep\)\.join\('\/'\)[\s\S]*secretPattern\.test\(relativePath\)[\s\S]*path:\$\{relativePath\}[\s\S]*isSymbolicLink\(\)/, 'trusted report scan must inspect artifact paths, including symlink names, before refusing to follow symlinks');
 assert.match(proof, /NIXMAC_APP_PATH=\$\(printf '%q' "\$REMOTE_APP_PATH"\)[\s\S]*run-peekaboo-suite --allow-cleanup/, 'Peekaboo run must use the freshly built PR app bundle');
+assert.match(proof, /remote_env_parts=\([\s\S]*E2E_TERMINAL_CLEANUP_MODE=kill[\s\S]*E2E_HIDE_RECORDING_TERMINAL=1[\s\S]*E2E_CLOSE_RECORDING_TERMINAL=1/, 'MacInCloud remote runner must force stale recorder Terminal cleanup and keep recorder windows hidden/closed');
 assert.doesNotMatch(proof, /Run Peekaboo suite on MacInCloud[\s\S]*node tools\/computer-use-e2e\/run-local\.mjs run-peekaboo-macincloud/, 'proof job must not run PR-controlled local orchestration while the MacInCloud SSH key is present');
 assert.match(proof, /--allow-cleanup/, 'Peekaboo suite must restore local app support state after the run');
 assert.match(proof, /artifacts\/computer-use-local\/\.current-run/, 'workflow must fetch the suite report using the runner current-run contract');
@@ -124,7 +131,18 @@ assert.match(result, /publish job result was \$publish_result/, 'result job must
 
 assert.match(launchEnv, /export NIXMAC_SKIP_PERMISSIONS=1/, 'Product Proof launch env must skip macOS permission probes in E2E');
 assert.match(launchEnv, /nixmac_pp_set_launch_env NIXMAC_SKIP_PERMISSIONS "\$NIXMAC_SKIP_PERMISSIONS"/, 'Product Proof launch env must propagate permission skipping through launchctl');
+assert.match(launchEnv, /nixmac_pp_clear_e2e_runtime[\s\S]*nixmac_pp_write_e2e_runtime/, 'Product Proof launch setup must clear stale runtime overrides before writing the current E2E runtime file');
 assert.match(cleanup, /nixmac_pp_unset_launch_env NIXMAC_SKIP_PERMISSIONS/, 'Product Proof cleanup must remove permission skipping from launchctl');
+assert.match(cleanup, /nixmac_pp_clear_e2e_runtime/, 'Product Proof cleanup must remove the debug E2E runtime file');
+assert.match(productProof, /nixmac_pp_runtime_path\(\)[\s\S]*e2e-runtime\.json/, 'Product Proof runtime path must target the nixmac debug E2E runtime file');
+assert.match(productProof, /nixmac_pp_write_e2e_runtime\(\)[\s\S]*expiresAtUnix[\s\S]*NIXMAC_SKIP_PERMISSIONS[\s\S]*NIXMAC_E2E_CONFIG_DIR[\s\S]*OPENAI_API_KEY/, 'Product Proof must write an expiring debug runtime override with launch, fixture, and provider keys');
+assert.match(runnerShell, /E2E_TERMINAL_CLEANUP_MODE=kill recording_close_terminal_windows/, 'Runner preflight must kill stale recorder Terminal windows before each scenario');
+assert.match(e2eRuntime, /#\[cfg\(debug_assertions\)\][\s\S]*fn file_value[\s\S]*runtime\.schema_version != 1[\s\S]*runtime\.session_id\.trim\(\)\.is_empty\(\)[\s\S]*now_unix\(\)\? > runtime\.expires_at_unix/, 'Rust E2E runtime file reader must be debug-only and reject stale, malformed, or expired runtime files');
+assert.match(e2eRuntime, /#\[cfg\(not\(debug_assertions\)\)\][\s\S]*fn file_value\(_name: &str\) -> Option<String>[\s\S]*None/, 'Release builds must ignore E2E runtime files');
+assert.match(permissions, /fn check_desktop_access\(\) -> PermissionStatus \{\n\s+if e2e_skip_permissions_enabled\(\)[\s\S]{0,180}?dirs::home_dir/, 'Desktop permission check must honor E2E skip before touching the Desktop folder');
+assert.match(permissions, /fn check_documents_access\(\) -> PermissionStatus \{\n\s+if e2e_skip_permissions_enabled\(\)[\s\S]{0,180}?dirs::home_dir/, 'Documents permission check must honor E2E skip before touching the Documents folder');
+assert.match(permissions, /"desktop" => \{\n\s+if e2e_skip_permissions_enabled\(\)[\s\S]{0,520}?let home = dirs::home_dir/, 'Desktop permission request must return before filesystem writes when E2E skip is enabled');
+assert.match(permissions, /"documents" => \{\n\s+if e2e_skip_permissions_enabled\(\)[\s\S]{0,560}?let home = dirs::home_dir/, 'Documents permission request must return before filesystem writes when E2E skip is enabled');
 assert.match(peekabooRunner, /for key in [^\n]*NIXMAC_SKIP_PERMISSIONS/, 'runner preflight must clear stale permission-skip launchctl state');
 assert.match(peekabooRunner, /launchctl asuser "\$uid" launchctl unsetenv "\$key"/, 'runner preflight must clear stale launchctl state in the GUI user domain');
 assert.match(peekabooShell, /peekaboo_restore_active_app\(\)/, 'Peekaboo shell library must expose a generic active-app restoration helper');

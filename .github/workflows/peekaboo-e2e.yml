@@ -279,6 +279,9 @@ jobs:
           remote_env_parts=(
             "PATH=/opt/homebrew/bin:\$PATH"
             "NIXMAC_APP_PATH=$(printf '%q' "$REMOTE_APP_PATH")"
+            "E2E_TERMINAL_CLEANUP_MODE=kill"
+            "E2E_HIDE_RECORDING_TERMINAL=1"
+            "E2E_CLOSE_RECORDING_TERMINAL=1"
             "GITHUB_EVENT_NAME=$(printf '%q' "${GITHUB_EVENT_NAME:-}")"
             "GITHUB_PR_NUMBER=$(printf '%q' "${GITHUB_PR_NUMBER:-}")"
             "GITHUB_HEAD_REF=$(printf '%q' "${GITHUB_HEAD_REF:-}")"

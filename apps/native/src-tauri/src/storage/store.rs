@@ -42,16 +42,14 @@ pub const DEFAULT_MAX_ITERATIONS: usize = 25;
 const KEYCHAIN_SERVICE: &str = "com.darkmatter.nixmac";
 
 fn e2e_mock_system_enabled() -> bool {
-    cfg!(debug_assertions) && std::env::var("NIXMAC_E2E_MOCK_SYSTEM").ok().as_deref() == Some("1")
+    cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_MOCK_SYSTEM")
 }
 
 fn e2e_env_value(name: &str) -> Option<String> {
     if !e2e_mock_system_enabled() {
         return None;
     }
-    std::env::var(name)
-        .ok()
-        .filter(|value| !value.trim().is_empty())
+    crate::e2e_runtime::value(name)
 }
 
 /// Gets a handle to the settings store.
@@ -280,7 +278,7 @@ pub fn set_vllm_api_key<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<()>
 /// Priority: `OPENROUTER_API_KEY` environment variable, then keychain-backed settings.
 pub fn get_effective_openrouter_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
     resolve_secret_with_env_override(
-        normalize_env_secret(std::env::var("OPENROUTER_API_KEY").ok()),
+        normalize_env_secret(crate::e2e_runtime::value("OPENROUTER_API_KEY")),
         || get_openrouter_api_key(app),
     )
 }
@@ -290,7 +288,7 @@ pub fn get_effective_openrouter_api_key<R: Runtime>(app: &AppHandle<R>) -> Resul
 /// Priority: `OPENAI_API_KEY` environment variable, then keychain-backed settings.
 pub fn get_effective_openai_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
     resolve_secret_with_env_override(
-        normalize_env_secret(std::env::var("OPENAI_API_KEY").ok()),
+        normalize_env_secret(crate::e2e_runtime::value("OPENAI_API_KEY")),
         || get_openai_api_key(app),
     )
 }
@@ -300,7 +298,7 @@ pub fn get_effective_openai_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Op
 /// Priority: `VLLM_API_KEY` environment variable, then keychain-backed settings.
 pub fn get_effective_vllm_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
     resolve_secret_with_env_override(
-        normalize_env_secret(std::env::var("VLLM_API_KEY").ok()),
+        normalize_env_secret(crate::e2e_runtime::value("VLLM_API_KEY")),
         || get_vllm_api_key(app),
     )
 }
@@ -340,7 +338,7 @@ pub fn get_env_openai_compatible_credential() -> Option<(String, &'static str)> 
 }
 
 fn read_non_empty_env(name: &str) -> Option<String> {
-    normalize_env_secret(std::env::var(name).ok())
+    normalize_env_secret(crate::e2e_runtime::value(name))
 }
 
 fn normalize_env_secret(value: Option<String>) -> Option<String> {

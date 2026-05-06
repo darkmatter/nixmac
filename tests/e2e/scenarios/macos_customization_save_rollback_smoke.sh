@@ -20,3 +20,7 @@ scenario_test() {
         "customization" \
         "feat(e2e): import untracked macos customizations"
 }
+
+scenario_cleanup() {
+    scenario_provider_cleanup
+}

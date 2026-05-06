@@ -643,9 +643,9 @@ scenario_test() {
     scenario_start_provider
     nixmac_clear_state
     scenario_seed_settings
-    nixmac_pp_set_e2e_launch_env
     export NIXMAC_RECORD_COMPLETIONS=1
     export NIXMAC_COMPLETION_LOG_DIR="$NIXMAC_E2E_COMPLETION_LOG_DIR"
+    nixmac_pp_set_e2e_launch_env
     launchctl setenv NIXMAC_RECORD_COMPLETIONS 1
     launchctl setenv NIXMAC_COMPLETION_LOG_DIR "$NIXMAC_E2E_COMPLETION_LOG_DIR"
     scenario_install_system_mock_shim
@@ -774,8 +774,9 @@ scenario_test() {
     phase_pass "peekabooProviderAudit: Observed $request_count provider HTTP requests across evolve and summary paths"
 }
 
-scenario_cleanup() {
+scenario_provider_cleanup() {
     nixmac_quit
+    nixmac_pp_cleanup_common
     launchctl unsetenv NIXMAC_E2E_MOCK_SYSTEM 2>/dev/null || true
     launchctl unsetenv NIXMAC_E2E_OPAQUE_WINDOW 2>/dev/null || true
     launchctl unsetenv NIXMAC_SKIP_PERMISSIONS 2>/dev/null || true
@@ -803,4 +804,8 @@ scenario_cleanup() {
     if [ -n "$NIXMAC_E2E_COMPLETION_LOG_DIR" ]; then
         rm -rf "$NIXMAC_E2E_COMPLETION_LOG_DIR" 2>/dev/null || true
     fi
+}
+
+scenario_cleanup() {
+    scenario_provider_cleanup
 }

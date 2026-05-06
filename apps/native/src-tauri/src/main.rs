@@ -15,6 +15,7 @@ mod cli;
 mod commands;
 mod db;
 mod editor;
+mod e2e_runtime;
 mod evolve;
 mod feedback;
 mod git;
@@ -84,10 +85,7 @@ use tauri::{
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 fn e2e_opaque_window_enabled() -> bool {
-    cfg!(debug_assertions)
-        && env::var("NIXMAC_E2E_OPAQUE_WINDOW")
-            .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
-            .unwrap_or(false)
+    cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_OPAQUE_WINDOW")
 }
 
 const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"

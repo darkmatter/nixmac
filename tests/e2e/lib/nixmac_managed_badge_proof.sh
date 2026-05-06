@@ -13,9 +13,9 @@ scenario_managed_badge_prepare() {
     export NIXMAC_E2E_HOMEBREW_BREWS="${NIXMAC_E2E_HOMEBREW_BREWS:-ripgrep}"
     export NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE="${NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE:-1}"
     export NIXMAC_E2E_SYSTEM_DEFAULTS_JSON="${NIXMAC_E2E_SYSTEM_DEFAULTS_JSON:-[{\"nixKey\":\"system.defaults.finder.ShowPathbar\",\"label\":\"Show Finder path bar\",\"category\":\"Finder\",\"currentValue\":\"true\",\"defaultValue\":\"false\"}]}"
-    nixmac_pp_set_e2e_launch_env
     export NIXMAC_RECORD_COMPLETIONS=1
     export NIXMAC_COMPLETION_LOG_DIR="$NIXMAC_E2E_COMPLETION_LOG_DIR"
+    nixmac_pp_set_e2e_launch_env
     launchctl setenv NIXMAC_RECORD_COMPLETIONS 1
     launchctl setenv NIXMAC_COMPLETION_LOG_DIR "$NIXMAC_E2E_COMPLETION_LOG_DIR"
     scenario_install_system_mock_shim

@@ -4,6 +4,7 @@
 NIXMAC_PP_ELEMENTS_JSON_FILE="${NIXMAC_PP_ELEMENTS_JSON_FILE:-${TMPDIR:-/tmp}/nixmac-e2e-elements-$$.json}"
 NIXMAC_PP_READY_SHELL_PATTERN="evolve-prompt-input|Configuration change descriptor|Describe changes|Submit configuration change descriptor|evolve-prompt-send|Settings|History|Report Issue|Give feedback|Console|No base URL set"
 NIXMAC_PP_READY_SHELL_MIN_ELEMENTS="${NIXMAC_PP_READY_SHELL_MIN_ELEMENTS:-20}"
+NIXMAC_PP_E2E_RUNTIME_TTL_SECONDS="${NIXMAC_PP_E2E_RUNTIME_TTL_SECONDS:-1800}"
 
 nixmac_pp_repo_root() {
     cd "$E2E_ROOT/../.." && pwd
@@ -59,6 +60,70 @@ nixmac_pp_seed_local_validation_settings() {
         }' > "$settings_path" || die "Failed to write nixmac settings"
 
     log "Seeded nixmac settings at $settings_path"
+}
+
+nixmac_pp_runtime_path() {
+    printf '%s\n' "$HOME/Library/Application Support/${NIXMAC_BUNDLE_ID}/e2e-runtime.json"
+}
+
+nixmac_pp_clear_e2e_runtime() {
+    rm -f "$(nixmac_pp_runtime_path)" 2>/dev/null || true
+}
+
+nixmac_pp_write_e2e_runtime() {
+    local path session_id now expires
+
+    path="$(nixmac_pp_runtime_path)"
+    mkdir -p "$(dirname "$path")" || die "Failed to create nixmac E2E runtime directory"
+    session_id="${E2E_RUN_ID:-${E2E_SCENARIO_NAME:-peekaboo}-$(date +%s)-$$}"
+    now="$(date +%s)"
+    expires="$((now + NIXMAC_PP_E2E_RUNTIME_TTL_SECONDS))"
+
+    jq -n \
+        --arg sessionId "$session_id" \
+        --argjson writtenAtUnix "$now" \
+        --argjson expiresAtUnix "$expires" \
+        --arg mockSystem "${NIXMAC_E2E_MOCK_SYSTEM:-1}" \
+        --arg opaqueWindow "${NIXMAC_E2E_OPAQUE_WINDOW:-1}" \
+        --arg skipPermissions "${NIXMAC_SKIP_PERMISSIONS:-1}" \
+        --arg configDir "${NIXMAC_E2E_CONFIG_DIR:-}" \
+        --arg hostAttr "${NIXMAC_E2E_HOST_ATTR:-e2e-host}" \
+        --arg brews "${NIXMAC_E2E_HOMEBREW_BREWS:-}" \
+        --arg casks "${NIXMAC_E2E_HOMEBREW_CASKS:-}" \
+        --arg taps "${NIXMAC_E2E_HOMEBREW_TAPS:-}" \
+        --arg defaultsFixture "${NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE:-}" \
+        --arg defaultsJson "${NIXMAC_E2E_SYSTEM_DEFAULTS_JSON:-}" \
+        --arg recordCompletions "${NIXMAC_RECORD_COMPLETIONS:-}" \
+        --arg completionLogDir "${NIXMAC_COMPLETION_LOG_DIR:-}" \
+        --arg openai "${OPENAI_API_KEY:-}" \
+        --arg openrouter "${OPENROUTER_API_KEY:-}" \
+        --arg vllm "${VLLM_API_KEY:-}" \
+        '{
+            schemaVersion: 1,
+            sessionId: $sessionId,
+            writtenAtUnix: $writtenAtUnix,
+            expiresAtUnix: $expiresAtUnix,
+            values: {
+                NIXMAC_E2E_MOCK_SYSTEM: $mockSystem,
+                NIXMAC_E2E_OPAQUE_WINDOW: $opaqueWindow,
+                NIXMAC_SKIP_PERMISSIONS: $skipPermissions,
+                NIXMAC_E2E_CONFIG_DIR: $configDir,
+                NIXMAC_E2E_HOST_ATTR: $hostAttr,
+                NIXMAC_E2E_HOMEBREW_BREWS: $brews,
+                NIXMAC_E2E_HOMEBREW_CASKS: $casks,
+                NIXMAC_E2E_HOMEBREW_TAPS: $taps,
+                NIXMAC_E2E_SYSTEM_DEFAULTS_FIXTURE: $defaultsFixture,
+                NIXMAC_E2E_SYSTEM_DEFAULTS_JSON: $defaultsJson,
+                NIXMAC_RECORD_COMPLETIONS: $recordCompletions,
+                NIXMAC_COMPLETION_LOG_DIR: $completionLogDir,
+                OPENAI_API_KEY: $openai,
+                OPENROUTER_API_KEY: $openrouter,
+                VLLM_API_KEY: $vllm
+            }
+        } | .values |= with_entries(select(.value != ""))' > "$path" \
+        || die "Failed to write nixmac E2E runtime"
+    chmod 600 "$path" 2>/dev/null || true
+    log "Seeded nixmac E2E runtime at $path (expires $(date -r "$expires" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo "$expires"))"
 }
 
 nixmac_pp_find_element() {
@@ -516,6 +581,7 @@ nixmac_pp_cleanup_common() {
     nixmac_pp_unset_launch_env OPENAI_API_KEY
     nixmac_pp_unset_launch_env OPENROUTER_API_KEY
     nixmac_pp_unset_launch_env VLLM_API_KEY
+    nixmac_pp_clear_e2e_runtime
     rm -f "$NIXMAC_PP_ELEMENTS_JSON_FILE" 2>/dev/null || true
     if [ -n "${NIXMAC_E2E_CONFIG_REPO:-}" ]; then
         rm -rf "$NIXMAC_E2E_CONFIG_REPO" 2>/dev/null || true
@@ -546,6 +612,7 @@ nixmac_pp_unset_launch_env() {
 }
 
 nixmac_pp_set_e2e_launch_env() {
+    nixmac_pp_clear_e2e_runtime
     export NIXMAC_E2E_MOCK_SYSTEM=1
     export NIXMAC_E2E_OPAQUE_WINDOW=1
     export NIXMAC_SKIP_PERMISSIONS=1
@@ -587,4 +654,5 @@ nixmac_pp_set_e2e_launch_env() {
     nixmac_pp_set_launch_env OPENAI_API_KEY "$OPENAI_API_KEY"
     nixmac_pp_set_launch_env OPENROUTER_API_KEY "$OPENROUTER_API_KEY"
     nixmac_pp_set_launch_env VLLM_API_KEY "$VLLM_API_KEY"
+    nixmac_pp_write_e2e_runtime
 }

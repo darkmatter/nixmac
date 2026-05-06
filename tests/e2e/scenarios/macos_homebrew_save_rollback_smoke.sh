@@ -20,3 +20,7 @@ scenario_test() {
         "homebrew" \
         "feat(e2e): import untracked homebrew items"
 }
+
+scenario_cleanup() {
+    scenario_provider_cleanup
+}
