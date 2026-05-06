@@ -140,6 +140,42 @@ nixmac_pp_click_window_ratio() {
     peekaboo_run click --coords "$coords" >/dev/null 2>&1
 }
 
+nixmac_pp_cgevent_click_window_ratio() {
+    local label="$1"
+    local x_ratio="$2"
+    local y_ratio="$3"
+    local bounds coords x y window_json
+
+    command -v /usr/bin/swift >/dev/null 2>&1 || return 1
+    window_json=$(peekaboo_run window list --app "$NIXMAC_APP_NAME" --json 2>/dev/null || true)
+    bounds=$(echo "$window_json" | jq -r '
+        .data.windows
+        | map(select(.bounds?.x != null and .bounds?.y != null and .bounds?.width != null and .bounds?.height != null))
+        | sort_by(
+            if ((.window_title? // "") | test("^nixmac$"; "i")) then 1 else 0 end,
+            (.bounds.width * .bounds.height)
+        )
+        | reverse
+        | .[0].bounds? |
+        select(.x != null and .y != null and .width != null and .height != null) |
+        "\(.x),\(.y),\(.width),\(.height)"
+    ' 2>/dev/null | head -1)
+    if [ -z "$bounds" ]; then
+        warn "CGEvent fallback could not resolve nixmac window bounds for $label"
+        return 1
+    fi
+    coords=$(printf '%s\n' "$bounds" | awk -F, -v xr="$x_ratio" -v yr="$y_ratio" '
+        NF == 4 { printf "%d,%d", $1 + ($3 * xr), $2 + ($4 * yr) }
+    ')
+    [ -n "$coords" ] || return 1
+    x="${coords%,*}"
+    y="${coords#*,}"
+    log "CGEvent fallback click for $label at $coords"
+    peekaboo_run app switch --to "$NIXMAC_APP_NAME" >/dev/null 2>&1 || true
+    sleep 0.2
+    /usr/bin/swift -e "import CoreGraphics; import Foundation; let p = CGPoint(x: Double($x), y: Double($y)); CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: p, mouseButton: .left)?.post(tap: .cghidEventTap); usleep(100000); CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: p, mouseButton: .left)?.post(tap: .cghidEventTap); usleep(120000); CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: p, mouseButton: .left)?.post(tap: .cghidEventTap); usleep(100000)" >/dev/null 2>&1
+}
+
 nixmac_pp_wait_for_text() {
     local pattern="$1"
     local timeout="${2:-30}"

@@ -508,10 +508,10 @@ scenario_confirm_history_restore() {
     local attempt
 
     for attempt in 1 2 3; do
-        scenario_click_query "Confirm Restore" 10000 \
-            || scenario_click_element "Confirm Restore|confirm Restore" "" 10 \
-            || nixmac_pp_click_window_ratio "history confirm restore" "0.735" "0.268" \
-            || return 1
+        scenario_click_query "Confirm Restore" 10000 || true
+        scenario_click_element "Confirm Restore|confirm Restore" "" 10 || true
+        nixmac_pp_click_window_ratio "history confirm restore" "0.735" "0.268" || true
+        nixmac_pp_cgevent_click_window_ratio "history confirm restore" "0.735" "0.268" || true
 
         if ! scenario_wait_for_text "Confirm Restore" 3; then
             return 0

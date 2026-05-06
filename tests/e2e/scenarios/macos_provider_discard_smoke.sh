@@ -55,15 +55,15 @@ scenario_discard_and_assert_baseline() {
     scenario_wait_for_text "Discard|Build & Test|Ready to test-drive" 30 \
         || die "Review actions were not visible before discard"
     nixmac_screenshot "04-discard-ready"
-    scenario_click_query "Discard" 10000 \
-        || scenario_click_element "evolve-discard-button|^Discard$|Undo All" "" 10 \
-        || nixmac_pp_click_window_ratio "discard button" "0.720" "0.252" \
-        || die "Discard button was not reachable"
+    scenario_click_query "Discard" 10000 || true
+    scenario_click_element "evolve-discard-button|^Discard$|Undo All" "" 10 || true
+    nixmac_pp_click_window_ratio "discard button" "0.720" "0.252" || true
+    nixmac_pp_cgevent_click_window_ratio "discard button" "0.720" "0.252" || true
     if ! scenario_wait_for_text "Discard all current changes|Confirm|Cancel" 30; then
-        scenario_click_query "Discard" 10000 \
-            || nixmac_pp_click_window_ratio "discard button retry" "0.720" "0.252" \
-            || scenario_click_element "evolve-discard-button|^Discard$|Undo All" "" 10 \
-            || true
+        scenario_click_query "Discard" 10000 || true
+        scenario_click_element "evolve-discard-button|^Discard$|Undo All" "" 10 || true
+        nixmac_pp_click_window_ratio "discard button retry" "0.720" "0.252" || true
+        nixmac_pp_cgevent_click_window_ratio "discard button retry" "0.720" "0.252" || true
     fi
     if ! scenario_wait_for_text "Discard all current changes|Confirm|Cancel" 10; then
         if scenario_wait_for_text "Describe changes|What to change" 5; then
@@ -74,10 +74,10 @@ scenario_discard_and_assert_baseline() {
         fi
     else
         nixmac_screenshot "05-discard-confirmation"
-        scenario_click_query "Confirm" 10000 \
-            || scenario_click_element "^Confirm$" "" 10 \
-            || nixmac_pp_click_window_ratio "discard confirmation button" "0.735" "0.578" \
-            || die "Discard confirmation button was not reachable"
+        scenario_click_query "Confirm" 10000 || true
+        scenario_click_element "^Confirm$" "" 10 || true
+        nixmac_pp_click_window_ratio "discard confirmation button" "0.735" "0.578" || true
+        nixmac_pp_cgevent_click_window_ratio "discard confirmation button" "0.735" "0.578" || true
     fi
     if ! scenario_wait_for_text "Describe changes|What to change" 90; then
         nixmac_screenshot "discard-did-not-return-to-describe"
