@@ -825,7 +825,7 @@ fn run_gui_mode(
             log::debug!("Main nixmac window created");
 
             #[cfg(target_os = "macos")]
-            if e2e_opaque_window {
+            if e2e_css_capture {
                 use objc::msg_send;
                 use objc::runtime::Object;
                 use objc::sel;
@@ -834,12 +834,27 @@ fn run_gui_mode(
                 match main_window.ns_window() {
                     Ok(ns_window) => unsafe {
                         let ns_window = ns_window as *mut Object;
+                        let sharing_type_before: usize = msg_send![ns_window, sharingType];
+                        if let Err(error) = main_window.set_content_protected(false) {
+                            log::warn!(
+                                "NIXMAC_E2E_CAPTURE native window could not disable content protection: {}",
+                                error
+                            );
+                        }
+                        let sharing_type_after: usize = msg_send![ns_window, sharingType];
                         let is_opaque: bool = msg_send![ns_window, isOpaque];
                         let alpha_value: f64 = msg_send![ns_window, alphaValue];
                         let level: i64 = msg_send![ns_window, level];
                         let has_shadow: bool = msg_send![ns_window, hasShadow];
                         log::info!(
-                            "NIXMAC_E2E_OPAQUE_WINDOW native window diagnostics: isOpaque={} alphaValue={:.3} level={} hasShadow={}",
+                            "NIXMAC_E2E_CAPTURE native window diagnostics: mode={} sharingTypeBefore={} sharingTypeAfter={} isOpaque={} alphaValue={:.3} level={} hasShadow={}",
+                            if e2e_opaque_window {
+                                "opaque"
+                            } else {
+                                "solid"
+                            },
+                            sharing_type_before,
+                            sharing_type_after,
                             is_opaque,
                             alpha_value,
                             level,
@@ -848,7 +863,7 @@ fn run_gui_mode(
                     },
                     Err(error) => {
                         log::warn!(
-                            "NIXMAC_E2E_OPAQUE_WINDOW native window diagnostics unavailable: {}",
+                            "NIXMAC_E2E_CAPTURE native window diagnostics unavailable: {}",
                             error
                         );
                     }
