@@ -1,0 +1,274 @@
+{
+  "schemaVersion": 1,
+  "repo": "darkmatter/nixmac",
+  "prNumber": null,
+  "headSha": "unknown",
+  "baseSha": null,
+  "workflowRunId": null,
+  "attempt": null,
+  "lane": "peekaboo-local",
+  "scenario": "macos_provider_evolve_full_smoke",
+  "runnerId": "macos-e2e",
+  "runnerKind": "peekaboo-local",
+  "startedAt": "2026-05-07T18:50:04Z",
+  "finishedAt": "2026-05-07T18:52:16Z",
+  "durationMs": 132000,
+  "status": "failed",
+  "htmlReportUrl": null,
+  "primaryProofUrl": "macos_provider_evolve_full_smoke/peekaboo-e2e.mp4",
+  "failureProofUrl": "macos_provider_evolve_full_smoke/failure-1778179925-1778179925.png",
+  "failureScreenshotUrl": "macos_provider_evolve_full_smoke/failure-1778179925-1778179925.png",
+  "failureVideoUrl": "macos_provider_evolve_full_smoke/peekaboo-e2e.mp4",
+  "failureTimestampMs": null,
+  "replayCommand": "tests/e2e/run.sh macos_provider_evolve_full_smoke",
+  "localReproCommand": "tests/e2e/run.sh macos_provider_evolve_full_smoke",
+  "phases": [
+    {
+      "name": "peekabooProviderFixture: Prepared config repo, deterministic HTTP provider, completion logging, and mock rebuild flag",
+      "status": "passed",
+      "startedAt": null,
+      "finishedAt": null,
+      "durationMs": 0,
+      "assertions": [
+        "peekabooProviderFixture: Prepared config repo, deterministic HTTP provider, completion logging, and mock rebuild flag"
+      ],
+      "proof": [],
+      "error": null
+    },
+    {
+      "name": "App shell did not expose provider prompt with visible screenshot signal",
+      "status": "failed",
+      "startedAt": null,
+      "finishedAt": null,
+      "durationMs": 0,
+      "assertions": [
+        "App shell did not expose provider prompt with visible screenshot signal"
+      ],
+      "proof": [],
+      "error": "App shell did not expose provider prompt with visible screenshot signal"
+    }
+  ],
+  "captureLimitations": [],
+  "proof": [
+    {
+      "kind": "screenshot",
+      "path": "macos_provider_evolve_full_smoke/failure-1778179925-1778179925.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "failure-1778179925-1778179925.png",
+      "isPrimary": false,
+      "isFailureProof": true
+    },
+    {
+      "kind": "screenshot",
+      "path": "macos_provider_evolve_full_smoke/failure-1778179925-1778179925_annotated.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "failure-1778179925-1778179925_annotated.png",
+      "isPrimary": false,
+      "isFailureProof": true
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_provider_evolve_full_smoke/diagnostics/20260507T185014Z-nixmac-pre-clear-app-list.json",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260507T185014Z-nixmac-pre-clear-app-list.json",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_provider_evolve_full_smoke/diagnostics/20260507T185014Z-nixmac-pre-clear-bridge.txt",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260507T185014Z-nixmac-pre-clear-bridge.txt",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_provider_evolve_full_smoke/diagnostics/20260507T185014Z-nixmac-pre-clear-permissions.txt",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260507T185014Z-nixmac-pre-clear-permissions.txt",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_provider_evolve_full_smoke/diagnostics/20260507T185014Z-nixmac-pre-clear-process-list.json",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260507T185014Z-nixmac-pre-clear-process-list.json",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_provider_evolve_full_smoke/diagnostics/20260507T185014Z-nixmac-pre-clear-screen.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260507T185014Z-nixmac-pre-clear-screen.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_provider_evolve_full_smoke/diagnostics/20260507T185014Z-nixmac-pre-clear-screen.txt",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260507T185014Z-nixmac-pre-clear-screen.txt",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_provider_evolve_full_smoke/diagnostics/20260507T185014Z-nixmac-pre-clear-window-list.json",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260507T185014Z-nixmac-pre-clear-window-list.json",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_provider_evolve_full_smoke/diagnostics/20260507T185204Z-nixmac-ready-shell-timeout-app-list.json",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260507T185204Z-nixmac-ready-shell-timeout-app-list.json",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_provider_evolve_full_smoke/diagnostics/20260507T185204Z-nixmac-ready-shell-timeout-bridge.txt",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260507T185204Z-nixmac-ready-shell-timeout-bridge.txt",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_provider_evolve_full_smoke/diagnostics/20260507T185204Z-nixmac-ready-shell-timeout-permissions.txt",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260507T185204Z-nixmac-ready-shell-timeout-permissions.txt",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_provider_evolve_full_smoke/diagnostics/20260507T185204Z-nixmac-ready-shell-timeout-process-list.json",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260507T185204Z-nixmac-ready-shell-timeout-process-list.json",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_provider_evolve_full_smoke/diagnostics/20260507T185204Z-nixmac-ready-shell-timeout-screen.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260507T185204Z-nixmac-ready-shell-timeout-screen.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_provider_evolve_full_smoke/diagnostics/20260507T185204Z-nixmac-ready-shell-timeout-screen.txt",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260507T185204Z-nixmac-ready-shell-timeout-screen.txt",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_provider_evolve_full_smoke/diagnostics/20260507T185204Z-nixmac-ready-shell-timeout-window-list.json",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260507T185204Z-nixmac-ready-shell-timeout-window-list.json",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_provider_evolve_full_smoke/diagnostics/nixmac-app.log",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/nixmac-app.log",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_provider_evolve_full_smoke/diagnostics/nixmac-frontend-breadcrumbs.jsonl",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/nixmac-frontend-breadcrumbs.jsonl",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_provider_evolve_full_smoke/diagnostics/system-screenshots/failure-1778179925-system.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/system-screenshots/failure-1778179925-system.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "video",
+      "path": "macos_provider_evolve_full_smoke/peekaboo-e2e.mp4",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "Full screen recording",
+      "isPrimary": true,
+      "isFailureProof": true
+    }
+  ]
+}
