@@ -47,7 +47,7 @@ function makeGroup(id: number, changeCount: number): SemanticChangeGroup {
 }
 
 describe("SummaryItems", () => {
-  it("shows all items when 5 or fewer", () => {
+  it("renders all groups and all singles when singles fit under MAX_ITEMS", () => {
     const map: SemanticChangeMap = {
       groups: [makeGroup(1, 2)],
       singles: [makeSingle(10), makeSingle(11), makeSingle(12)],
@@ -58,26 +58,26 @@ describe("SummaryItems", () => {
     expect(screen.getByText("Change 10")).toBeInTheDocument();
     expect(screen.getByText("Change 11")).toBeInTheDocument();
     expect(screen.getByText("Change 12")).toBeInTheDocument();
-    expect(screen.queryByText(/more file/)).not.toBeInTheDocument();
   });
 
-  it("truncates after 5 items and shows remaining count", () => {
+  it("renders all groups regardless of count and truncates singles to MAX_ITEMS", () => {
     const map: SemanticChangeMap = {
       groups: [makeGroup(1, 2), makeGroup(2, 3)],
-      singles: [makeSingle(10), makeSingle(11), makeSingle(12), makeSingle(13)],
+      singles: Array.from({ length: 8 }, (_, i) => makeSingle(i + 10)),
       unsummarizedHashes: [],
     };
     render(<SummaryItems map={map} unsummarized={[]} />);
     expect(screen.getByText("Group 1")).toBeInTheDocument();
     expect(screen.getByText("Group 2")).toBeInTheDocument();
-    expect(screen.getByText("Change 10")).toBeInTheDocument();
-    expect(screen.getByText("Change 11")).toBeInTheDocument();
-    expect(screen.getByText("Change 12")).toBeInTheDocument();
-    expect(screen.queryByText("Change 13")).not.toBeInTheDocument();
-    expect(screen.getByText("…and 1 more file")).toBeInTheDocument();
+    for (let i = 10; i < 15; i += 1) {
+      expect(screen.getByText(`Change ${i}`)).toBeInTheDocument();
+    }
+    for (let i = 15; i < 18; i += 1) {
+      expect(screen.queryByText(`Change ${i}`)).not.toBeInTheDocument();
+    }
   });
 
-  it("uses plural for multiple remaining", () => {
+  it("drops singles past MAX_ITEMS when there are no groups", () => {
     const singles = Array.from({ length: 10 }, (_, i) => makeSingle(i + 1));
     const map: SemanticChangeMap = {
       groups: [],
@@ -85,10 +85,15 @@ describe("SummaryItems", () => {
       unsummarizedHashes: [],
     };
     render(<SummaryItems map={map} unsummarized={[]} />);
-    expect(screen.getByText("…and 5 more files")).toBeInTheDocument();
+    for (let i = 1; i <= 5; i += 1) {
+      expect(screen.getByText(`Change ${i}`)).toBeInTheDocument();
+    }
+    for (let i = 6; i <= 10; i += 1) {
+      expect(screen.queryByText(`Change ${i}`)).not.toBeInTheDocument();
+    }
   });
 
-  it("still shows unsummarized section after truncation", () => {
+  it("still shows unsummarized section after truncating singles", () => {
     const map: SemanticChangeMap = {
       groups: [],
       singles: Array.from({ length: 8 }, (_, i) => makeSingle(i + 1)),
@@ -99,6 +104,11 @@ describe("SummaryItems", () => {
     ];
     render(<SummaryItems map={map} unsummarized={unsummarized} />);
     expect(screen.getByTestId("unsummarized")).toBeInTheDocument();
-    expect(screen.getByText("…and 3 more files")).toBeInTheDocument();
+    for (let i = 1; i <= 5; i += 1) {
+      expect(screen.getByText(`Change ${i}`)).toBeInTheDocument();
+    }
+    for (let i = 6; i <= 8; i += 1) {
+      expect(screen.queryByText(`Change ${i}`)).not.toBeInTheDocument();
+    }
   });
 });
