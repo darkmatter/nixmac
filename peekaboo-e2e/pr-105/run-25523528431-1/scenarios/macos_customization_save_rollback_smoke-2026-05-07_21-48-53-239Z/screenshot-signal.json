@@ -1,0 +1,11 @@
+{
+  "status": "failed",
+  "scannedFiles": 2,
+  "violations": [
+    {
+      "path": "screenshots/failure-1778190656-1778190656.png",
+      "label": "failure-1778190656-1778190656",
+      "issue": "central app content appears blank or occluded (YMAX 25 below 35)"
+    }
+  ]
+}

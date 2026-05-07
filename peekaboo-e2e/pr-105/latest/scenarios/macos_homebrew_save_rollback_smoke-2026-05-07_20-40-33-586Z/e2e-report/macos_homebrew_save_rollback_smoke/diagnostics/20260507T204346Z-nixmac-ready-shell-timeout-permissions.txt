@@ -1,3 +1,0 @@
-Source: local runtime
-Screen Recording (Required): Granted
-Accessibility (Required): Granted
