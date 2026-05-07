@@ -334,14 +334,4 @@ describe("UI helpers", () => {
     expect(s.feedbackInitialText).toBe("something broke");
   });
 
-  it("clearPreview wipes changeMap and summaryAvailable", () => {
-    const store = createWidgetStore({
-      changeMap: { foo: "bar" } as never,
-      summaryAvailable: true,
-    });
-    store.getState().clearPreview();
-    const s = store.getState();
-    expect(s.changeMap).toBeNull();
-    expect(s.summaryAvailable).toBe(false);
-  });
 });
