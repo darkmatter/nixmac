@@ -4,6 +4,14 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
+      - 'package.json'
+      - 'bun.lock'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'devenv.nix'
+      - 'devenv.lock'
       - 'apps/native/**'
       - 'tests/e2e/**'
       - 'tools/computer-use-e2e/**'
@@ -433,10 +441,15 @@ jobs:
           import path from 'node:path';
           const root = process.argv[2];
           const secretPattern = /(?:sk-[A-Za-z0-9_-]{16,}|xai-[A-Za-z0-9_-]{16,}|gh[opsu]_[A-Za-z0-9_]{16,}|github_pat_[A-Za-z0-9_]{22,}|xox[abprs]-[A-Za-z0-9-]{16,}|AKIA[0-9A-Z]{16}|Bearer\s+[A-Za-z0-9._-]{16,}|(?:OPENROUTER|OPENAI|ANTHROPIC|GROQ|XAI|MISTRAL|COHERE|GITHUB|SLACK|AWS)_API_KEY=(?!\[REDACTED\])[^\s"'<>]+)/i;
-          const textExtPattern = /\.(jsonl?|txt|log|html|md|csv)$/i;
           const violations = [];
           let scannedPaths = 0;
           let scannedFiles = 0;
+          function looksLikeTextFile(full) {
+            const sample = readFileSync(full).subarray(0, 8192);
+            if (sample.includes(0)) return false;
+            const suspiciousControlBytes = [...sample].filter((byte) => byte < 9 || (byte > 13 && byte < 32)).length;
+            return sample.length === 0 || suspiciousControlBytes / sample.length < 0.02;
+          }
           function walk(dir) {
             for (const entry of readdirSync(dir)) {
               const full = path.join(dir, entry);
@@ -447,7 +460,7 @@ jobs:
               if (stat.isSymbolicLink()) continue;
               if (stat.isDirectory()) {
                 walk(full);
-              } else if (stat.isFile() && textExtPattern.test(entry)) {
+              } else if (stat.isFile() && looksLikeTextFile(full)) {
                 scannedFiles += 1;
                 const text = readFileSync(full, 'utf8');
                 if (secretPattern.test(text)) violations.push(`content:${relativePath}`);

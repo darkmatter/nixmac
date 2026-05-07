@@ -5,7 +5,7 @@ import App from "./App";
 import "./index.css";
 import { darwinAPI } from "@/tauri-api";
 import type { UiPrefs as DarwinPrefs } from "@/types/shared";
-import { bootBreadcrumb } from "@/lib/e2e-boot-diagnostics";
+import { bootBreadcrumb, markBootStage } from "@/lib/e2e-boot-diagnostics";
 
 function FallbackComponent() {
   return (
@@ -44,12 +44,14 @@ function FallbackComponent() {
 const rootElement = document.getElementById("root");
 
 bootBreadcrumb("main.tsx loaded");
+markBootStage("main-loaded");
 
 if (!rootElement) {
   bootBreadcrumb("root element missing");
   throw new Error("Root element not found");
 }
 bootBreadcrumb("root element found");
+markBootStage("root-found");
 
 const E2E_APP_MOUNT_RELOAD_TIMEOUT_MS = 12000;
 const E2E_APP_MOUNT_RELOAD_KEY = "nixmac:e2e-app-mount-reload-attempted";
@@ -400,6 +402,7 @@ if (E2E_BOOT_PREFS_DISABLED) {
 
 const renderApp = () => {
   bootBreadcrumb("React render start");
+  markBootStage("react-render-start");
   root.render(
     <React.StrictMode>
       <Sentry.ErrorBoundary
@@ -415,12 +418,14 @@ const renderApp = () => {
     </React.StrictMode>,
   );
   bootBreadcrumb("React render scheduled");
+  markBootStage("react-render-scheduled");
 };
 
 try {
   renderApp();
 } catch (error) {
   bootBreadcrumb("React render fatal error", error);
+  markBootStage("react-render-fatal");
   captureRenderErrorAfterSentryInit("render-fatal", error);
   root.render(<FallbackComponent />);
 }

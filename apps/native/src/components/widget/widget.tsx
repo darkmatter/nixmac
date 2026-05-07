@@ -35,6 +35,7 @@ import { useQueueSummarizer } from "@/hooks/use-queue-summarizer";
 import { useWatcher } from "@/hooks/use-watcher";
 import { loadConfig, loadHosts, loadEvolveState } from "@/hooks/use-widget-initialization";
 import { useSummary } from "@/hooks/use-summary";
+import { markBootStage } from "@/lib/e2e-boot-diagnostics";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { UpdateBanner } from "@/components/update-banner";
 import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
@@ -46,6 +47,8 @@ import { useEffect } from "react";
  */
 
 export function DarwinWidget() {
+  markBootStage("darwin-widget-render");
+
   const step = useCurrentStep();
   const { getInitialStatus } = useGitOperations();
   const { checkNix } = useNixInstall();

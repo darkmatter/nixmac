@@ -11,6 +11,7 @@ const productProofPath = path.join(repoRoot, 'tests/e2e/lib/nixmac_product_proof
 const peekabooShellPath = path.join(repoRoot, 'tests/e2e/lib/peekaboo.sh');
 const runnerShellPath = path.join(repoRoot, 'tests/e2e/lib/runner.sh');
 const nixmacAdapterPath = path.join(repoRoot, 'tests/e2e/adapters/nixmac.sh');
+const runLocalPath = path.join(repoRoot, 'tools/computer-use-e2e/run-local.mjs');
 const peekabooRunnerPath = path.join(repoRoot, 'tools/computer-use-e2e/peekaboo-runner.mjs');
 const permissionsPath = path.join(repoRoot, 'apps/native/src-tauri/src/system/permissions.rs');
 const e2eRuntimePath = path.join(repoRoot, 'apps/native/src-tauri/src/e2e_runtime.rs');
@@ -18,12 +19,17 @@ const nativeMainPath = path.join(repoRoot, 'apps/native/src-tauri/src/main.rs');
 const debugCommandsPath = path.join(repoRoot, 'apps/native/src-tauri/src/commands/debug.rs');
 const nativeStorePath = path.join(repoRoot, 'apps/native/src-tauri/src/storage/store.rs');
 const frontendMainPath = path.join(repoRoot, 'apps/native/src/main.tsx');
+const frontendAppPath = path.join(repoRoot, 'apps/native/src/App.tsx');
+const frontendWidgetPath = path.join(repoRoot, 'apps/native/src/components/widget/widget.tsx');
+const frontendEditorPanelPath = path.join(repoRoot, 'apps/native/src/components/editor-panel.tsx');
+const frontendBootDiagnosticsPath = path.join(repoRoot, 'apps/native/src/lib/e2e-boot-diagnostics.ts');
 const tauriApiPath = path.join(repoRoot, 'apps/native/src/tauri-api.ts');
 const workflow = readFileSync(workflowPath, 'utf8');
 const productProof = readFileSync(productProofPath, 'utf8');
 const peekabooShell = readFileSync(peekabooShellPath, 'utf8');
 const runnerShell = readFileSync(runnerShellPath, 'utf8');
 const nixmacAdapter = readFileSync(nixmacAdapterPath, 'utf8');
+const runLocal = readFileSync(runLocalPath, 'utf8');
 const peekabooRunner = readFileSync(peekabooRunnerPath, 'utf8');
 const permissions = readFileSync(permissionsPath, 'utf8');
 const e2eRuntime = readFileSync(e2eRuntimePath, 'utf8');
@@ -31,6 +37,10 @@ const nativeMain = readFileSync(nativeMainPath, 'utf8');
 const debugCommands = readFileSync(debugCommandsPath, 'utf8');
 const nativeStore = readFileSync(nativeStorePath, 'utf8');
 const frontendMain = readFileSync(frontendMainPath, 'utf8');
+const frontendApp = readFileSync(frontendAppPath, 'utf8');
+const frontendWidget = readFileSync(frontendWidgetPath, 'utf8');
+const frontendEditorPanel = readFileSync(frontendEditorPanelPath, 'utf8');
+const frontendBootDiagnostics = readFileSync(frontendBootDiagnosticsPath, 'utf8');
 const tauriApi = readFileSync(tauriApiPath, 'utf8');
 
 function section(startPattern, endPattern = null) {
@@ -62,6 +72,7 @@ const cleanup = section({ sourceText: productProof, pattern: /^nixmac_pp_cleanup
 const frontendRenderApp = section({ sourceText: frontendMain, pattern: /^const renderApp = \(\) => \{$/m }, /^};$/m);
 
 assert.doesNotMatch(trigger, /^\s+branches:/m, 'Peekaboo workflow must run for stacked PR bases, not only main');
+assert.match(trigger, /'package\.json'[\s\S]*'bun\.lock'[\s\S]*'Cargo\.toml'[\s\S]*'Cargo\.lock'[\s\S]*'flake\.nix'[\s\S]*'flake\.lock'[\s\S]*'devenv\.nix'[\s\S]*'devenv\.lock'/, 'Peekaboo workflow must run for root dependency, Nix, and devenv manifest/lockfile changes that affect the native app build');
 assert.match(workflow, /build_attempts:[\s\S]*default: '2'/, 'Peekaboo PR runs should default to two remote build attempts for transient MacInCloud build failures');
 assert.match(publish, /permissions:[\s\S]*contents: write/, 'publish job must be able to publish gh-pages reports');
 assert.match(publish, /permissions:[\s\S]*issues: write/, 'publish job must be able to create or update the sticky PR comment');
@@ -100,6 +111,8 @@ assert.match(proof, /state_secret_scan_passed="\$\(jq -r '\(\.peekaboo\.secretSc
 assert.match(proof, /ServerAliveInterval=15[\s\S]*run-peekaboo-suite --allow-cleanup/, 'long-running Peekaboo SSH run must use keepalives');
 assert.match(proof, /trusted-secret-scan\.json[\s\S]*mktemp[\s\S]*secretPattern[\s\S]*github_pat_[\s\S]*lstatSync[\s\S]*isSymbolicLink\(\)[\s\S]*trusted_secret_scan_passed/, 'workflow must independently re-scan fetched report text artifacts before public publishing without following symlinks');
 assert.match(proof, /scannedPaths[\s\S]*path\.relative\(root, full\)\.split\(path\.sep\)\.join\('\/'\)[\s\S]*secretPattern\.test\(relativePath\)[\s\S]*path:\$\{relativePath\}[\s\S]*isSymbolicLink\(\)/, 'trusted report scan must inspect artifact paths, including symlink names, before refusing to follow symlinks');
+assert.match(proof, /function looksLikeTextFile\(full\)[\s\S]*subarray\(0, 8192\)[\s\S]*sample\.includes\(0\)[\s\S]*suspiciousControlBytes/, 'trusted report scan must sniff text-like files instead of relying only on a small extension allowlist');
+assert.doesNotMatch(proof, /textExtPattern/, 'trusted report content scan must not skip extensionless or renamed text diagnostics');
 assert.match(proof, /NIXMAC_APP_PATH=\$\(printf '%q' "\$REMOTE_APP_PATH"\)[\s\S]*run-peekaboo-suite --allow-cleanup/, 'Peekaboo run must use the freshly built PR app bundle');
 assert.match(proof, /remote_env_parts=\([\s\S]*E2E_TERMINAL_CLEANUP_MODE=kill[\s\S]*E2E_HIDE_RECORDING_TERMINAL=1[\s\S]*E2E_CLOSE_RECORDING_TERMINAL=1/, 'MacInCloud remote runner must force stale recorder Terminal cleanup and keep recorder windows hidden/closed');
 assert.doesNotMatch(proof, /Run Peekaboo suite on MacInCloud[\s\S]*node tools\/computer-use-e2e\/run-local\.mjs run-peekaboo-macincloud/, 'proof job must not run PR-controlled local orchestration while the MacInCloud SSH key is present');
@@ -171,7 +184,14 @@ assert.match(nativeMain, /if e2e_opaque_window \{\n\s+let watchdog_window[\s\S]*
 assert.match(nativeStore, /fn get_secret_pref[\s\S]*if e2e_mock_system_enabled\(\) \{[\s\S]*return get_string_pref_raw\(app, key\);[\s\S]*get_with_lazy_migration/, 'E2E mock-system mode must bypass keychain reads in UI preference secret lookups');
 assert.match(debugCommands, /pub async fn e2e_log_breadcrumb[\s\S]*client_timestamp_unix_ms[\s\S]*NIXMAC_E2E_DIAGNOSTICS_DIR[\s\S]*nixmac-frontend-breadcrumbs\.jsonl/, 'Debug command must persist client-timestamped frontend boot breadcrumbs into E2E diagnostics');
 assert.match(tauriApi, /logBreadcrumb:[\s\S]*clientTimestampUnixMs[\s\S]*invoke<OkResult>\("e2e_log_breadcrumb"/, 'Frontend API must expose timestamped debug breadcrumb logging through Tauri IPC');
+assert.match(frontendBootDiagnostics, /let bootStageCleared = false[\s\S]*export function markBootStage[\s\S]*bootStageCleared[\s\S]*document\.documentElement\.dataset\.nixmacBootStage[\s\S]*document\.title = `nixmac boot:\$\{normalizedStage\}`[\s\S]*setStorageValue\("nixmac:e2e-boot-stage"/, 'Frontend boot diagnostics must expose synchronous out-of-band stage markers for event-loop-hang debugging and stop mutating them after mount');
+assert.match(frontendBootDiagnostics, /export function clearBootStage[\s\S]*document\.title = APP_TITLE[\s\S]*nixmac:e2e-boot-stage", "mounted"/, 'Frontend boot diagnostics must restore the normal window title after mount');
 assert.match(frontendMain, /PREFS_BOOT_TIMEOUT_MS = 8000[\s\S]*ui_get_prefs invoke start[\s\S]*success after timeout[\s\S]*Promise\.race\(\[prefsPromise, timeoutPromise\]\)/, 'Frontend boot must log prefs IPC progress with clear after-timeout labels');
+assert.match(frontendMain, /markBootStage\("main-loaded"\)[\s\S]*markBootStage\("root-found"\)[\s\S]*markBootStage\("react-render-start"\)[\s\S]*markBootStage\("react-render-scheduled"\)/, 'Frontend boot must synchronously mark module, root, and render-scheduling stages');
+assert.match(frontendApp, /markBootStage\("app-render"\)[\s\S]*markBootStage\("app-effect"\)[\s\S]*clearBootStage\(\)/, 'App must synchronously mark render/effect stages and clear the E2E title marker after mount');
+assert.match(frontendWidget, /markBootStage\("darwin-widget-render"\)/, 'DarwinWidget must mark when the product widget render body is reached');
+assert.match(frontendEditorPanel, /const LazyNixEditor = lazy\(async \(\) => \{[\s\S]*import\("@\/components\/kibo-ui\/nix-editor"\)[\s\S]*default: module\.NixEditor/, 'EditorPanel must lazy-load the Monaco-backed Nix editor only when a file is opened');
+assert.doesNotMatch(frontendEditorPanel, /import \{ NixEditor \}/, 'EditorPanel must not import the Monaco-backed editor in the first app boot bundle');
 assert.match(frontendMain, /if \(E2E_BOOT_PREFS_DISABLED\) \{[\s\S]*setInterval\(\(\) => \{[\s\S]*boot heartbeat[\s\S]*boot heartbeat upper bound reached[\s\S]*stopBootHeartbeat[\s\S]*boot heartbeat stopped[\s\S]*nixmac:app-mounted/, 'Frontend boot must emit bounded E2E-only heartbeat breadcrumbs until App mounted and record when the bound is reached');
 assert.match(frontendMain, /E2E_BOOT_PREFS_DISABLED = import\.meta\.env\.VITE_NIXMAC_SKIP_PERMISSIONS === "true"[\s\S]*Sentry init skipped for E2E boot[\s\S]*return;/, 'Frontend boot must use the existing build-time E2E flag to skip boot-time Sentry prefs IPC without adding another IPC gate');
 assert.match(frontendMain, /E2E_APP_MOUNT_RELOAD_TIMEOUT_MS = 12000[\s\S]*E2E_APP_MOUNT_RELOAD_KEY[\s\S]*E2E app-mounted watchdog reloading[\s\S]*window\.location\.reload\(\)/, 'Frontend E2E boot must request one reload when the page loads but App never mounts');
@@ -193,6 +213,9 @@ assert.match(permissions, /"desktop" => \{\n\s+if e2e_skip_permissions_enabled\(
 assert.match(permissions, /"documents" => \{\n\s+if e2e_skip_permissions_enabled\(\)[\s\S]{0,560}?let home = dirs::home_dir/, 'Documents permission request must return before filesystem writes when E2E skip is enabled');
 assert.match(peekabooRunner, /for key in [^\n]*NIXMAC_SKIP_PERMISSIONS/, 'runner preflight must clear stale permission-skip launchctl state');
 assert.match(peekabooRunner, /launchctl asuser "\$uid" launchctl unsetenv "\$key"/, 'runner preflight must clear stale launchctl state in the GUI user domain');
+assert.match(runLocal, /function getNixmacWindowInfo\(\)[\s\S]*set windowTitle to \(name of window 1\) as text[\s\S]*on error[\s\S]*set windowTitle to ""[\s\S]*return \{ region, title: titleLines\.join\('\\n'\)\.trim\(\) \}/, 'Peekaboo screenshot capture must persist the Accessibility window title as an automated boot-stage consumer without failing on missing titles');
+assert.match(runLocal, /windowTitle: windowInfo\.title \|\| null[\s\S]*screenshot\.captured[\s\S]*windowTitle: windowInfo\.title \|\| null/, 'Peekaboo screenshot metadata and events must include the captured window title for report/debug inspection');
+assert.match(runLocal, /Window title at capture:/, 'Peekaboo HTML report must surface captured window titles next to screenshot proof cards');
 assert.match(peekabooShell, /peekaboo_restore_active_app\(\)/, 'Peekaboo shell library must expose a generic active-app restoration helper');
 assert.doesNotMatch(peekabooShell, /NIXMAC_(?:APP_NAME|BUNDLE_ID)/, 'Generic Peekaboo shell library must not depend on nixmac-specific app names or bundle IDs');
 assert.match(peekabooShell, /peekaboo_recover_bridge\(\)[\s\S]*peekaboo_restore_active_app/, 'Peekaboo bridge recovery must restore the configured active app after remote bridge recovery');
