@@ -4,7 +4,7 @@ import preview from "#storybook/preview";
 import { useWidgetStore } from "@/stores/widget-store";
 import type React from "react";
 import { useEffect } from "react";
-import { DeveloperTab } from "./developer-tab";
+import { DeveloperTab } from "@/components/widget/settings/developer-tab";
 
 const meta = preview.meta({
   title: "Settings/DeveloperTab",
