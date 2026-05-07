@@ -355,6 +355,49 @@ fn e2e_write_native_snapshot_status(
 }
 
 #[cfg(all(debug_assertions, target_os = "macos"))]
+unsafe fn e2e_nsstring_to_string(value: *mut objc::runtime::Object) -> Option<String> {
+    use objc::{msg_send, sel, sel_impl};
+
+    if value.is_null() {
+        return None;
+    }
+    let utf8: *const std::os::raw::c_char = msg_send![value, UTF8String];
+    if utf8.is_null() {
+        return None;
+    }
+    Some(
+        std::ffi::CStr::from_ptr(utf8)
+            .to_string_lossy()
+            .into_owned(),
+    )
+}
+
+#[cfg(all(debug_assertions, target_os = "macos"))]
+unsafe fn e2e_ns_error_summary(error: *mut objc::runtime::Object) -> String {
+    use objc::{msg_send, sel, sel_impl};
+
+    if error.is_null() {
+        return "WebKit returned an error".to_string();
+    }
+    let domain: *mut objc::runtime::Object = msg_send![error, domain];
+    let description: *mut objc::runtime::Object = msg_send![error, localizedDescription];
+    let user_info: *mut objc::runtime::Object = msg_send![error, userInfo];
+    let user_info_description: *mut objc::runtime::Object = if user_info.is_null() {
+        std::ptr::null_mut()
+    } else {
+        msg_send![user_info, description]
+    };
+    let code: i64 = msg_send![error, code];
+    format!(
+        "WebKit returned an error: domain={} code={} description={} userInfo={}",
+        e2e_nsstring_to_string(domain).unwrap_or_else(|| "unknown".to_string()),
+        code,
+        e2e_nsstring_to_string(description).unwrap_or_else(|| "unknown".to_string()),
+        e2e_nsstring_to_string(user_info_description).unwrap_or_else(|| "unknown".to_string())
+    )
+}
+
+#[cfg(all(debug_assertions, target_os = "macos"))]
 fn e2e_request_native_webview_snapshot(
     window: &WebviewWindow,
     label: String,
@@ -400,16 +443,18 @@ fn e2e_request_native_webview_snapshot(
         let status_for_block = status_path.clone();
         let completion = ConcreteBlock::new(move |image: *mut Object, error: *mut Object| {
             if !error.is_null() {
+                let error_message = e2e_ns_error_summary(error);
                 log::warn!(
-                    "NIXMAC_E2E_NATIVE_SNAPSHOT failed for {}: WebKit returned an error",
-                    label_for_status
+                    "NIXMAC_E2E_NATIVE_SNAPSHOT failed for {}: {}",
+                    label_for_status,
+                    error_message
                 );
                 e2e_write_native_snapshot_status(
                     &status_for_block,
                     "failed",
                     &label_for_status,
                     &output_for_block,
-                    Some("WebKit returned an error"),
+                    Some(&error_message),
                 );
                 return;
             }
@@ -1483,10 +1528,10 @@ fn run_gui_mode(
             })?;
             log::debug!("Main nixmac window created");
 
-            #[cfg(target_os = "macos")]
+            #[cfg(all(debug_assertions, target_os = "macos"))]
             if e2e_css_capture {
                 use objc::msg_send;
-                use objc::runtime::Object;
+                use objc::runtime::{Object, NO};
                 use objc::sel;
                 use objc::sel_impl;
 
@@ -1494,6 +1539,24 @@ fn run_gui_mode(
                     Ok(ns_window) => unsafe {
                         let ns_window = ns_window as *mut Object;
                         let sharing_type_before: usize = msg_send![ns_window, sharingType];
+                        let can_disable_occlusion: bool = msg_send![
+                            ns_window,
+                            respondsToSelector: sel!(_setWindowOcclusionDetectionEnabled:)
+                        ];
+                        if can_disable_occlusion {
+                            let _: () =
+                                msg_send![ns_window, _setWindowOcclusionDetectionEnabled: NO];
+                        }
+                        let can_disable_hide_on_deactivate: bool =
+                            msg_send![ns_window, respondsToSelector: sel!(setHidesOnDeactivate:)];
+                        if can_disable_hide_on_deactivate {
+                            let _: () = msg_send![ns_window, setHidesOnDeactivate: NO];
+                        }
+                        let can_disable_can_hide: bool =
+                            msg_send![ns_window, respondsToSelector: sel!(setCanHide:)];
+                        if can_disable_can_hide {
+                            let _: () = msg_send![ns_window, setCanHide: NO];
+                        }
                         if let Err(error) = main_window.set_content_protected(false) {
                             log::warn!(
                                 "NIXMAC_E2E_CAPTURE native window could not disable content protection: {}",
@@ -1506,7 +1569,7 @@ fn run_gui_mode(
                         let level: i64 = msg_send![ns_window, level];
                         let has_shadow: bool = msg_send![ns_window, hasShadow];
                         log::info!(
-                            "NIXMAC_E2E_CAPTURE native window diagnostics: mode={} sharingTypeBefore={} sharingTypeAfter={} isOpaque={} alphaValue={:.3} level={} hasShadow={}",
+                            "NIXMAC_E2E_CAPTURE native window diagnostics: mode={} sharingTypeBefore={} sharingTypeAfter={} isOpaque={} alphaValue={:.3} level={} hasShadow={} occlusionDetectionDisabled={} hidesOnDeactivateDisabled={} canHideDisabled={}",
                             if e2e_opaque_window {
                                 "opaque"
                             } else {
@@ -1517,7 +1580,10 @@ fn run_gui_mode(
                             is_opaque,
                             alpha_value,
                             level,
-                            has_shadow
+                            has_shadow,
+                            can_disable_occlusion,
+                            can_disable_hide_on_deactivate,
+                            can_disable_can_hide
                         );
                     },
                     Err(error) => {

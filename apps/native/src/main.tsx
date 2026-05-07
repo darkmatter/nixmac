@@ -1,4 +1,5 @@
 import React from "react";
+import { flushSync } from "react-dom";
 import ReactDOM from "react-dom/client";
 import * as Sentry from "@sentry/react";
 import App from "./App";
@@ -414,7 +415,7 @@ if (E2E_BOOT_PREFS_DISABLED) {
 const renderApp = () => {
   bootBreadcrumb("React render start");
   markBootStage("react-render-start");
-  root.render(
+  const app = (
     <React.StrictMode>
       <Sentry.ErrorBoundary
         fallback={<FallbackComponent />}
@@ -426,8 +427,19 @@ const renderApp = () => {
       >
         <App />
       </Sentry.ErrorBoundary>
-    </React.StrictMode>,
+    </React.StrictMode>
   );
+  if (E2E_BOOT_PREFS_DISABLED) {
+    bootBreadcrumb("React render flushSync start");
+    flushSync(() => {
+      root.render(app);
+    });
+    bootBreadcrumb("React render flushSync complete", {
+      rootChildCount: rootElement.childElementCount,
+    });
+  } else {
+    root.render(app);
+  }
   bootBreadcrumb("React render scheduled");
   markBootStage("react-render-scheduled");
 };
