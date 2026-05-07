@@ -262,6 +262,18 @@ function reportDiagnosticEntries(report, runDir) {
     });
 }
 
+function dedupeArtifactEntries(artifacts) {
+  const byPath = new Map();
+  for (const artifact of artifacts) {
+    if (!artifact?.path) continue;
+    const existing = byPath.get(artifact.path);
+    if (!existing || (artifact.bytes ?? 0) > (existing.bytes ?? 0)) {
+      byPath.set(artifact.path, artifact);
+    }
+  }
+  return [...byPath.values()].sort((a, b) => a.path.localeCompare(b.path));
+}
+
 function walkTextArtifactFiles(root) {
   if (!existsSync(root)) return [];
   const files = [];
@@ -746,10 +758,10 @@ export async function runPeekabooScenario(plan) {
     ...reportProofEntries(report, path.dirname(plan.logFile)),
   ]);
   const reportDiagnostics = reportDiagnosticEntries(report, path.dirname(plan.logFile));
-  const diagnostics =
-    reportDiagnostics.length > 0
-      ? reportDiagnostics
-      : fileEntries(plan.diagnosticDir, path.dirname(plan.logFile), { note: 'Peekaboo diagnostic artifact.' });
+  const diagnostics = dedupeArtifactEntries([
+    ...reportDiagnostics,
+    ...fileEntries(plan.diagnosticDir, path.dirname(plan.logFile), { note: 'Peekaboo diagnostic artifact.' }),
+  ]);
   const videoExists = existsSync(plan.videoFile);
   const reportVideoPath = report?.proof?.find((entry) => entry.kind === 'video' && entry.path)?.path;
   const reportVideoFile = reportVideoPath ? path.join(plan.reportRoot, reportVideoPath) : null;
@@ -889,6 +901,17 @@ export function applyPeekabooResultToState(state, peekabooResult) {
         `Screenshot signal violations: ${peekabooResult.screenshotSignal.violations
           .map((violation) => `${violation.path} (${violation.issue})`)
           .join(', ')}`,
+      );
+    }
+  }
+  if (peekabooResult.screenshotSignal?.status === 'failed') {
+    const diagnosticPaths = (peekabooResult.artifacts.diagnostics ?? []).map((diagnostic) => diagnostic.path ?? '');
+    const processDiagnostics = diagnosticPaths.filter((entry) => /process-list\.json$/i.test(entry));
+    const windowDiagnostics = diagnosticPaths.filter((entry) => /window-list\.json$/i.test(entry));
+    const domDiagnostics = diagnosticPaths.filter((entry) => /nixmac-frontend-breadcrumbs\.jsonl$/i.test(entry));
+    if (processDiagnostics.length || windowDiagnostics.length || domDiagnostics.length) {
+      scenarioState.notes.push(
+        `Visual failure diagnostics captured ${processDiagnostics.length} process-list, ${windowDiagnostics.length} window-list, and ${domDiagnostics.length} frontend breadcrumb artifact(s).`,
       );
     }
   }

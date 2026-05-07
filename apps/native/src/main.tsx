@@ -5,7 +5,12 @@ import App from "./App";
 import "./index.css";
 import { darwinAPI } from "@/tauri-api";
 import type { UiPrefs as DarwinPrefs } from "@/types/shared";
-import { bootBreadcrumb, markBootStage } from "@/lib/e2e-boot-diagnostics";
+import {
+  bootBreadcrumb,
+  markBootStage,
+  recordE2eDomSnapshot,
+  scheduleE2eDomSnapshots,
+} from "@/lib/e2e-boot-diagnostics";
 
 function FallbackComponent() {
   return (
@@ -96,6 +101,7 @@ window.addEventListener(
   "nixmac:app-mounted",
   () => {
     bootBreadcrumb("app mounted event received");
+    scheduleE2eDomSnapshots("post-mount");
     window.sessionStorage.removeItem(E2E_APP_MOUNT_RELOAD_KEY);
     stopBootHeartbeat();
   },
@@ -392,11 +398,16 @@ if (E2E_BOOT_PREFS_DISABLED) {
     }
 
     window.sessionStorage.setItem(E2E_APP_MOUNT_RELOAD_KEY, "true");
+    recordE2eDomSnapshot("app-mounted-watchdog-before-reload", {
+      storagePrefix: "nixmac:e2e-dom-snapshot:watchdog-pre-reload",
+    });
     bootBreadcrumb("E2E app-mounted watchdog reloading", {
       timeoutMs: E2E_APP_MOUNT_RELOAD_TIMEOUT_MS,
       rootChildCount: rootElement.childElementCount,
     });
-    window.location.reload();
+    window.setTimeout(() => {
+      window.location.reload();
+    }, 250);
   }, E2E_APP_MOUNT_RELOAD_TIMEOUT_MS);
 }
 
