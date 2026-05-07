@@ -258,6 +258,12 @@ export const darwinAPI = {
     getStateDiff: () => invoke<HomebrewState>("homebrew_get_state_diff"),
     applyDiff: (diff: HomebrewState) => invoke<ConfigEditApplyResult>("homebrew_apply_diff", { diff }),
   },
+
+  updater: {
+    installVersion: (version: string) => invoke<void>("install_version", { version }),
+    relaunch: () => invoke<void>("relaunch_after_update"),
+    clearPinnedVersion: () => invoke<void>("clear_pinned_version"),
+  },
 };
 
 export const ipcRenderer = {
