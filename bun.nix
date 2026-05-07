@@ -3470,10 +3470,6 @@
     url = "https://registry.npmjs.org/lru-cache/-/lru-cache-7.18.3.tgz";
     hash = "sha512-jumlc0BIUrS3qJGgIkWZsyfAM7NCWiBcCDhnd+3NNM5KbBmLTgHVfWBcg6W+rLUsIpzpERPsvwUP7CckAQSOoA==";
   };
-  "lucide-react@0.562.0" = fetchurl {
-    url = "https://registry.npmjs.org/lucide-react/-/lucide-react-0.562.0.tgz";
-    hash = "sha512-82hOAu7y0dbVuFfmO4bYF1XEwYk/mEbM5E+b1jgci/udUBEE/R7LF5Ip0CCEmXe8AybRM8L+04eP+LGZeDvkiw==";
-  };
   "lucide-react@1.14.0" = fetchurl {
     url = "https://registry.npmjs.org/lucide-react/-/lucide-react-1.14.0.tgz";
     hash = "sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA==";
