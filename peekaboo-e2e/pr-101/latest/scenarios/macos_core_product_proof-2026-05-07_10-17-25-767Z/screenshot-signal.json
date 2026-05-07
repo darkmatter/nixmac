@@ -1,0 +1,11 @@
+{
+  "status": "failed",
+  "scannedFiles": 0,
+  "violations": [
+    {
+      "path": null,
+      "label": "screenshot artifact",
+      "issue": "no PNG screenshot artifacts were captured"
+    }
+  ]
+}

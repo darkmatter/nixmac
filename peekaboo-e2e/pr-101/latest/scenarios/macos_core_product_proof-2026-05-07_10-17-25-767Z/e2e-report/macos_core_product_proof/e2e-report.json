@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "repo": "darkmatter/nixmac",
+  "prNumber": null,
+  "headSha": "unknown",
+  "baseSha": null,
+  "workflowRunId": null,
+  "attempt": null,
+  "lane": "peekaboo-local",
+  "scenario": "macos_core_product_proof",
+  "runnerId": "macos-e2e",
+  "runnerKind": "peekaboo-local",
+  "startedAt": "2026-05-07T10:17:27Z",
+  "finishedAt": "2026-05-07T10:19:03Z",
+  "durationMs": 96000,
+  "status": "passed",
+  "htmlReportUrl": null,
+  "primaryProofUrl": "macos_core_product_proof/diagnostics/20260507T101737Z-nixmac-pre-clear-app-list.json",
+  "failureProofUrl": null,
+  "failureScreenshotUrl": null,
+  "failureVideoUrl": null,
+  "failureTimestampMs": null,
+  "replayCommand": "tests/e2e/run.sh macos_core_product_proof",
+  "localReproCommand": "tests/e2e/run.sh macos_core_product_proof",
+  "phases": [
+    {
+      "name": "peekabooCoreFixture: Prepared deterministic config, local validation settings, and mock system flag",
+      "status": "passed",
+      "startedAt": null,
+      "finishedAt": null,
+      "durationMs": 0,
+      "assertions": [
+        "peekabooCoreFixture: Prepared deterministic config, local validation settings, and mock system flag"
+      ],
+      "proof": [],
+      "error": null
+    }
+  ],
+  "captureLimitations": [
+    "screen_recording_invalid"
+  ],
+  "proof": [
+    {
+      "kind": "diagnostic",
+      "path": "macos_core_product_proof/diagnostics/20260507T101737Z-nixmac-pre-clear-app-list.json",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260507T101737Z-nixmac-pre-clear-app-list.json",
+      "isPrimary": true,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_core_product_proof/diagnostics/20260507T101737Z-nixmac-pre-clear-bridge.txt",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260507T101737Z-nixmac-pre-clear-bridge.txt",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_core_product_proof/diagnostics/20260507T101737Z-nixmac-pre-clear-permissions.txt",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260507T101737Z-nixmac-pre-clear-permissions.txt",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_core_product_proof/diagnostics/20260507T101737Z-nixmac-pre-clear-process-list.json",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260507T101737Z-nixmac-pre-clear-process-list.json",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_core_product_proof/diagnostics/20260507T101737Z-nixmac-pre-clear-screen.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260507T101737Z-nixmac-pre-clear-screen.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_core_product_proof/diagnostics/20260507T101737Z-nixmac-pre-clear-screen.txt",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260507T101737Z-nixmac-pre-clear-screen.txt",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_core_product_proof/diagnostics/20260507T101737Z-nixmac-pre-clear-window-list.json",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260507T101737Z-nixmac-pre-clear-window-list.json",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_core_product_proof/diagnostics/nixmac-app.log",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/nixmac-app.log",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_core_product_proof/diagnostics/nixmac-frontend-breadcrumbs.jsonl",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/nixmac-frontend-breadcrumbs.jsonl",
+      "isPrimary": false,
+      "isFailureProof": false
+    }
+  ]
+}
