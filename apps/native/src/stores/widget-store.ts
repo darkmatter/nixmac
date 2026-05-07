@@ -1,4 +1,5 @@
 import { computeCurrentStep } from "@/components/widget/utils";
+import { FeedbackType } from "@/types/feedback";
 import type {
   EvolveEvent,
   EvolveState,
@@ -6,17 +7,16 @@ import type {
   HistoryItem,
   PermissionsState,
   RecommendedPrompt,
-} from "@/tauri-api";
-import { FeedbackType } from "@/types/feedback";
-import type { SemanticChangeMap } from "@/types/shared";
+  SemanticChangeMap,
+} from "@/types/shared";
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 export type {
   EvolveEvent,
-  EvolveEventType, EvolveState, 
+  EvolveEventType,
+  EvolveState,
   GitStatus,
-  
-} from "@/tauri-api";
+} from "@/types/shared";
 
 // =============================================================================
 // Types
@@ -25,11 +25,31 @@ export type {
 /**
  * Widget step state - updated by useEffect based on app state.
  */
-export type SettingsTab = "general" | "api-keys" | "ai-models" | "preferences" | "developer";
-export type WidgetStep = "permissions" | "nix-setup" | "setup" | "begin" | "evolve" | "commit" | "manualEvolve" | "manualCommit" | "history";
+export type SettingsTab =
+  | "general"
+  | "api-keys"
+  | "ai-models"
+  | "preferences"
+  | "developer";
+export type WidgetStep =
+  | "permissions"
+  | "nix-setup"
+  | "setup"
+  | "begin"
+  | "evolve"
+  | "commit"
+  | "manualEvolve"
+  | "manualCommit"
+  | "history";
 type ProcessingAction = "evolve" | "apply" | "commit" | "cancel" | null;
-export type ConfirmPrefKey = "confirmBuild" | "confirmClear" | "confirmRollback";
-export type BoolPrefKey = ConfirmPrefKey | "autoSummarizeOnFocus" | "scanHomebrewOnStartup";
+export type ConfirmPrefKey =
+  | "confirmBuild"
+  | "confirmClear"
+  | "confirmRollback";
+export type BoolPrefKey =
+  | ConfirmPrefKey
+  | "autoSummarizeOnFocus"
+  | "scanHomebrewOnStartup";
 
 // Rebuild state for showing progress inline in the widget
 export type RebuildErrorType =
@@ -76,7 +96,11 @@ export interface WidgetState {
   // Nix installation
   nixInstalled: boolean | null; // null = not checked yet
   nixInstalling: boolean;
-  nixInstallPhase: "downloading" | "waiting-for-installer" | "prefetching" | null;
+  nixInstallPhase:
+    | "downloading"
+    | "waiting-for-installer"
+    | "prefetching"
+    | null;
   nixDownloadProgress: { downloaded: number; total: number } | null;
 
   // nix-darwin (darwin-rebuild availability)
@@ -167,7 +191,9 @@ interface WidgetActions {
   setNixInstallPhase: (
     phase: "downloading" | "waiting-for-installer" | "prefetching" | null,
   ) => void;
-  setNixDownloadProgress: (progress: { downloaded: number; total: number } | null) => void;
+  setNixDownloadProgress: (
+    progress: { downloaded: number; total: number } | null,
+  ) => void;
   setDarwinRebuildAvailable: (available: boolean | null) => void;
   setDarwinRebuildPrefetching: (prefetching: boolean) => void;
   setEvolveState: (state: EvolveState | null) => void;
@@ -182,7 +208,12 @@ interface WidgetActions {
   setFeedbackOpen: (open: boolean) => void;
   setError: (error: string | null) => void;
   setPanicDetails: (
-    details: { message: string; location?: string; backtrace?: string; timestamp: string } | null,
+    details: {
+      message: string;
+      location?: string;
+      backtrace?: string;
+      timestamp: string;
+    } | null,
   ) => void;
   setPromptHistory: (history: string[]) => void;
   setRecommendedPrompt: (prompt: RecommendedPrompt | null | undefined) => void;
@@ -346,138 +377,152 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
   return create<WidgetStore>()(
     devtools(
       (set, _get) => ({
-    ...initialWidgetState,
-    ...initialState,
+        ...initialWidgetState,
+        ...initialState,
 
-    // Permissions
-    setPermissionsState: (permissionsState) => set({ permissionsState }),
-    setPermissionsChecked: (permissionsChecked) => set({ permissionsChecked }),
+        // Permissions
+        setPermissionsState: (permissionsState) => set({ permissionsState }),
+        setPermissionsChecked: (permissionsChecked) =>
+          set({ permissionsChecked }),
 
-    // Setters
-    setConfigDir: (configDir) => set({ configDir }),
-    setHosts: (hosts) => set({ hosts }),
-    setHost: (host) => set({ host }),
-    setEvolveState: (evolveState) => set({ evolveState: evolveState }),
-    setExternalBuildDetected: (externalBuildDetected) => set({ externalBuildDetected }),
-    setGitStatus: (gitStatus) => set({ gitStatus }),
-    setEvolvePrompt: (evolvePrompt) => set({ evolvePrompt }),
-    setProcessing: (isProcessing, action = null) =>
-      set({
-        isProcessing,
-        processingAction: isProcessing ? action : null,
-      }),
-    setChangeMap: (changeMap) => set({ changeMap }),
-    setBoolPref: (key: BoolPrefKey, value: boolean) => set({ [key]: value }),
-    initConfirmPrefs: (prefs) =>
-      set({
-        confirmBuild: prefs.confirmBuild ?? true,
-        confirmClear: prefs.confirmClear ?? true,
-        confirmRollback: prefs.confirmRollback ?? true,
-      }),
-    setAutoSummarizeOnFocus: (value) => set({ autoSummarizeOnFocus: value }),
-    setDeveloperMode: (value) => set({ developerMode: value }),
-    setPinnedVersion: (value) => set({ pinnedVersion: value }),
-    setHistory: (history) => set({ history }),
-    setHistoryLoading: (historyLoading) => set({ historyLoading }),
-    addAnalyzingHistoryHash: (hash) =>
-      set((state) => ({
-        analyzingHistoryForHashes: new Set([...state.analyzingHistoryForHashes, hash]),
-      })),
-    removeAnalyzingHistoryHash: (hash) =>
-      set((state) => {
-        const next = new Set(state.analyzingHistoryForHashes);
-        next.delete(hash);
-        return { analyzingHistoryForHashes: next };
-      }),
-    setSettingsOpen: (settingsOpen, tab) =>
-      set({ settingsOpen, settingsActiveTab: tab ?? null }),
-    setPrefsLoaded: (prefsLoaded) => set({ prefsLoaded }),
-    setShowHistory: (showHistory) => set({ showHistory }),
-    setFeedbackOpen: (feedbackOpen) => set({ feedbackOpen }),
-    setFeedbackTypeOverride: (feedbackTypeOverride) => set({ feedbackTypeOverride }),
-    openFeedback: (type, initialText) =>
-      set({
-        feedbackOpen: true,
-        feedbackTypeOverride: type ?? null,
-        feedbackInitialText: initialText ?? null,
-      }),
-    setError: (error) => set({ error }),
-    setPanicDetails: (panicDetails) => set({ panicDetails }),
-    setPromptHistory: (promptHistory) => set({ promptHistory }),
-    setRecommendedPrompt: (recommendedPrompt) => set({ recommendedPrompt }),
+        // Setters
+        setConfigDir: (configDir) => set({ configDir }),
+        setHosts: (hosts) => set({ hosts }),
+        setHost: (host) => set({ host }),
+        setEvolveState: (evolveState) => set({ evolveState: evolveState }),
+        setExternalBuildDetected: (externalBuildDetected) =>
+          set({ externalBuildDetected }),
+        setGitStatus: (gitStatus) => set({ gitStatus }),
+        setEvolvePrompt: (evolvePrompt) => set({ evolvePrompt }),
+        setProcessing: (isProcessing, action = null) =>
+          set({
+            isProcessing,
+            processingAction: isProcessing ? action : null,
+          }),
+        setChangeMap: (changeMap) => set({ changeMap }),
+        setBoolPref: (key: BoolPrefKey, value: boolean) =>
+          set({ [key]: value }),
+        initConfirmPrefs: (prefs) =>
+          set({
+            confirmBuild: prefs.confirmBuild ?? true,
+            confirmClear: prefs.confirmClear ?? true,
+            confirmRollback: prefs.confirmRollback ?? true,
+          }),
+        setAutoSummarizeOnFocus: (value) =>
+          set({ autoSummarizeOnFocus: value }),
+        setDeveloperMode: (value) => set({ developerMode: value }),
+        setPinnedVersion: (value) => set({ pinnedVersion: value }),
+        setHistory: (history) => set({ history }),
+        setHistoryLoading: (historyLoading) => set({ historyLoading }),
+        addAnalyzingHistoryHash: (hash) =>
+          set((state) => ({
+            analyzingHistoryForHashes: new Set([
+              ...state.analyzingHistoryForHashes,
+              hash,
+            ]),
+          })),
+        removeAnalyzingHistoryHash: (hash) =>
+          set((state) => {
+            const next = new Set(state.analyzingHistoryForHashes);
+            next.delete(hash);
+            return { analyzingHistoryForHashes: next };
+          }),
+        setSettingsOpen: (settingsOpen, tab) =>
+          set({ settingsOpen, settingsActiveTab: tab ?? null }),
+        setPrefsLoaded: (prefsLoaded) => set({ prefsLoaded }),
+        setShowHistory: (showHistory) => set({ showHistory }),
+        setFeedbackOpen: (feedbackOpen) => set({ feedbackOpen }),
+        setFeedbackTypeOverride: (feedbackTypeOverride) =>
+          set({ feedbackTypeOverride }),
+        openFeedback: (type, initialText) =>
+          set({
+            feedbackOpen: true,
+            feedbackTypeOverride: type ?? null,
+            feedbackInitialText: initialText ?? null,
+          }),
+        setError: (error) => set({ error }),
+        setPanicDetails: (panicDetails) => set({ panicDetails }),
+        setPromptHistory: (promptHistory) => set({ promptHistory }),
+        setRecommendedPrompt: (recommendedPrompt) => set({ recommendedPrompt }),
 
-    // Client-side UI state (NOT from server)
-    setBootstrapping: (isBootstrapping) => set({ isBootstrapping }),
-    setNixInstalled: (nixInstalled) => set({ nixInstalled }),
-    setNixInstalling: (nixInstalling) => set({ nixInstalling }),
-    setNixInstallPhase: (nixInstallPhase) => set({ nixInstallPhase }),
-    setNixDownloadProgress: (nixDownloadProgress) => set({ nixDownloadProgress }),
-    setDarwinRebuildAvailable: (darwinRebuildAvailable) => set({ darwinRebuildAvailable }),
-    setDarwinRebuildPrefetching: (darwinRebuildPrefetching) => set({ darwinRebuildPrefetching }),
-    setSummarizing: (isSummarizing) => set({ isSummarizing }),
-    setGenerating: (isGenerating) => set({ isGenerating }),
+        // Client-side UI state (NOT from server)
+        setBootstrapping: (isBootstrapping) => set({ isBootstrapping }),
+        setNixInstalled: (nixInstalled) => set({ nixInstalled }),
+        setNixInstalling: (nixInstalling) => set({ nixInstalling }),
+        setNixInstallPhase: (nixInstallPhase) => set({ nixInstallPhase }),
+        setNixDownloadProgress: (nixDownloadProgress) =>
+          set({ nixDownloadProgress }),
+        setDarwinRebuildAvailable: (darwinRebuildAvailable) =>
+          set({ darwinRebuildAvailable }),
+        setDarwinRebuildPrefetching: (darwinRebuildPrefetching) =>
+          set({ darwinRebuildPrefetching }),
+        setSummarizing: (isSummarizing) => set({ isSummarizing }),
+        setGenerating: (isGenerating) => set({ isGenerating }),
 
-    // Console
-    appendLog: (text) => set((state) => ({ consoleLogs: state.consoleLogs + text })),
-    clearLogs: () => set({ consoleLogs: "" }),
+        // Console
+        appendLog: (text) =>
+          set((state) => ({ consoleLogs: state.consoleLogs + text })),
+        clearLogs: () => set({ consoleLogs: "" }),
 
-    // Evolve events
-    appendEvolveEvent: (event) =>
-      set((state) => ({ evolveEvents: [...state.evolveEvents, event] })),
-    clearEvolveEvents: () => set({ evolveEvents: [] }),
+        // Evolve events
+        appendEvolveEvent: (event) =>
+          set((state) => ({ evolveEvents: [...state.evolveEvents, event] })),
+        clearEvolveEvents: () => set({ evolveEvents: [] }),
 
-    // Conversational response
-    setConversationalResponse: (conversationalResponse) => set({ conversationalResponse }),
+        // Conversational response
+        setConversationalResponse: (conversationalResponse) =>
+          set({ conversationalResponse }),
 
-    // Commit message suggestion
-    setCommitMessageSuggestion: (commitMessageSuggestion) => set({ commitMessageSuggestion }),
+        // Commit message suggestion
+        setCommitMessageSuggestion: (commitMessageSuggestion) =>
+          set({ commitMessageSuggestion }),
 
-    // Rebuild state
-    startRebuild: (context) =>
-      set({
-        rebuild: {
-          isRunning: true,
-          context,
-          lines: [{ id: 0, text: "Preparing rebuild...", type: "info" }],
-          rawLines: [],
-          exitCode: undefined,
-          success: undefined,
-          errorType: undefined,
-          errorMessage: undefined,
-        },
-      }),
-    appendRebuildLine: (line) =>
-      set((state) => ({
-        rebuild: {
-          ...state.rebuild,
-          lines: [...state.rebuild.lines, line].slice(-50), // Keep last 50 lines
-        },
-      })),
-    appendRawLine: (line) =>
-      set((state) => ({
-        rebuild: {
-          ...state.rebuild,
-          rawLines: [...state.rebuild.rawLines, line].slice(-500), // Keep last 500 raw lines
-        },
-      })),
-    setRebuildError: (errorType, errorMessage) =>
-      set((state) => ({
-        rebuild: {
-          ...state.rebuild,
-          errorType,
-          errorMessage,
-        },
-      })),
-    setRebuildComplete: (success, exitCode) =>
-      set((state) => ({
-        rebuild: {
-          ...state.rebuild,
-          isRunning: false,
-          success,
-          exitCode,
-        },
-      })),
-    clearRebuild: () => set({ rebuild: initialRebuildState }),
+        // Rebuild state
+        startRebuild: (context) =>
+          set({
+            rebuild: {
+              isRunning: true,
+              context,
+              lines: [{ id: 0, text: "Preparing rebuild...", type: "info" }],
+              rawLines: [],
+              exitCode: undefined,
+              success: undefined,
+              errorType: undefined,
+              errorMessage: undefined,
+            },
+          }),
+        appendRebuildLine: (line) =>
+          set((state) => ({
+            rebuild: {
+              ...state.rebuild,
+              lines: [...state.rebuild.lines, line].slice(-50), // Keep last 50 lines
+            },
+          })),
+        appendRawLine: (line) =>
+          set((state) => ({
+            rebuild: {
+              ...state.rebuild,
+              rawLines: [...state.rebuild.rawLines, line].slice(-500), // Keep last 500 raw lines
+            },
+          })),
+        setRebuildError: (errorType, errorMessage) =>
+          set((state) => ({
+            rebuild: {
+              ...state.rebuild,
+              errorType,
+              errorMessage,
+            },
+          })),
+        setRebuildComplete: (success, exitCode) =>
+          set((state) => ({
+            rebuild: {
+              ...state.rebuild,
+              isRunning: false,
+              success,
+              exitCode,
+            },
+          })),
+        clearRebuild: () => set({ rebuild: initialRebuildState }),
       }),
       {
         name: "widget-store",

@@ -1,5 +1,6 @@
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI, EVOLVE_EVENT_CHANNEL, ipcRenderer, type EvolveEvent } from "@/tauri-api";
+import { darwinAPI, EVOLVE_EVENT_CHANNEL, ipcRenderer } from "@/tauri-api";
+import type { EvolveEvent } from "@/types/shared";
 import { useCallback } from "react";
 import { useGitOperations } from "./use-git-operations";
 import { usePromptHistory } from "./use-prompt-history";

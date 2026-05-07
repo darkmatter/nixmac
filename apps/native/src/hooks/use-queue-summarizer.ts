@@ -1,6 +1,7 @@
 import { useHistory } from "@/hooks/use-history";
 import { useWidgetStore } from "@/stores/widget-store";
-import { ipcRenderer, type SummarizerUpdateEvent } from "@/tauri-api";
+import { ipcRenderer } from "@/tauri-api";
+import type { SummarizerUpdateEvent } from "@/types/shared";
 import { useCallback, useRef } from "react";
 
 /**

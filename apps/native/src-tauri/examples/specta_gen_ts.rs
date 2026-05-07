@@ -39,6 +39,8 @@ fn main() {
         .register::<shared_types::Config>()
         .register::<shared_types::FeedbackShareOptions>()
         .register::<shared_types::FeedbackSystemInfo>()
+        .register::<shared_types::FeedbackUsageStats>()
+        .register::<shared_types::FeedbackMetadata>()
         .register::<shared_types::FeedbackAiProviderModelInfo>()
         .register::<shared_types::FeedbackFlakeInputEntry>()
         .register::<shared_types::FeedbackFlakeInputsSnapshot>()
@@ -94,8 +96,7 @@ fn main() {
         .register::<shared_types::PermissionsState>()
         .register::<shared_types::SystemDefault>()
         .register::<shared_types::SystemDefaultsScan>()
-        .register::<shared_types::RecommendedPrompt>()
-        .register::<shared_types::FileEntry>();
+        .register::<shared_types::RecommendedPrompt>();
 
     let shared_output_path = "../src/types/shared.ts";
 

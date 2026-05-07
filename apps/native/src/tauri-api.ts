@@ -13,11 +13,8 @@ import type {
   EvolveCancelResult,
   EvolutionResult,
   EvolveState,
-  FeedbackAiProviderModelInfo,
-  FeedbackFlakeInputsSnapshot,
-  FeedbackPanicDetails,
+  FeedbackMetadata,
   FeedbackShareOptions,
-  FeedbackSystemInfo,
   FinalizeApplyResult,
   GitStatus,
   HomebrewState,
@@ -37,90 +34,7 @@ import type {
   UiPrefsUpdate as DarwinPrefsUpdate,
 } from "./types/shared";
 
-export type {
-  BuildCheckResult,
-  ChangeType,
-  CliToolsState,
-  CommitResult,
-  Config as DarwinConfig,
-  ConfigChangedEvent,
-  ConfigEditApplyResult,
-  DarwinApplyDataEvent,
-  DarwinApplyEndEvent,
-  DarwinApplySummaryEvent,
-  EvolveCancelResult,
-  EvolveEvent,
-  EvolveEventType,
-  EvolutionFailureResult,
-  EvolutionResult,
-  EvolutionState,
-  EvolutionTelemetry,
-  EvolveState,
-  EvolveStep,
-  FeedbackAiProviderModelInfo,
-  FeedbackFlakeInputEntry,
-  FeedbackFlakeInputsSnapshot,
-  FeedbackMetadataRequest,
-  FeedbackPanicDetails,
-  FeedbackShareOptions,
-  FeedbackSystemInfo,
-  FinalizeApplyResult,
-  GitFileStatus,
-  GitStatus,
-  HomebrewState,
-  HistoryItem,
-  NixCheckResult,
-  NixDarwinRebuildEndEvent,
-  NixInstallEndEvent,
-  NixInstallErrorType,
-  NixInstallPhase,
-  NixInstallProgressEvent,
-  OkResult,
-  Permission,
-  PermissionStatus,
-  PermissionsState,
-  PreviewIndicatorState,
-  RecommendedPrompt,
-  RebuildErrorType,
-  SemanticChangeMap,
-  SetDirResult,
-  SummarizerUpdateEvent,
-  SummarizedChangeSet,
-  RustPanicEvent,
-  SystemDefault,
-  SystemDefaultsScan,
-  UiPrefs as DarwinPrefs,
-  UiPrefsUpdate as DarwinPrefsUpdate,
-  WatcherEvent,
-} from "./types/shared";
-export type { Change, Commit } from "./types/sqlite";
-
 export const DEFAULT_MAX_ITERATIONS = 25;
-
-// =============================================================================
-// Feedback Types
-// =============================================================================
-
-export interface FeedbackUsageStats {
-  totalEvolutions?: number;
-  successRate?: number;
-  avgIterations?: number;
-  lastComputedAt?: string;
-  extra?: Record<string, unknown>;
-}
-
-export interface FeedbackMetadata {
-  currentAppStateSnapshot?: unknown;
-  systemInfo?: FeedbackSystemInfo;
-  usageStats?: FeedbackUsageStats;
-  evolutionLogContent?: string;
-  changedNixFilesDiff?: string;
-  aiProviderModelInfo?: FeedbackAiProviderModelInfo;
-  buildErrorOutput?: string;
-  flakeInputsSnapshot?: FeedbackFlakeInputsSnapshot;
-  appLogsContent?: string;
-  panicDetails?: FeedbackPanicDetails;
-}
 
 export const EVOLVE_EVENT_CHANNEL = "darwin:evolve:event";
 export const CONFIG_CHANGED_CHANNEL = "config:changed";

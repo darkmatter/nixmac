@@ -62,7 +62,7 @@ fancy-regex = "0.17.0"
 toml = "1.0.3"
 backtrace = "0.3"
 clap = { version = "4", features = ["derive"] }
-specta = { version = "=2.0.0-rc.22", features = ["derive"] }
+specta = { version = "=2.0.0-rc.22", features = ["derive", "serde_json"] }
 specta-typescript = "0.0.9"
 rnix = "0.14.0"
 serde_yaml = "0.9"

@@ -1,11 +1,6 @@
 import { useWidgetStore, type RebuildContext } from "@/stores/widget-store";
-import {
-  darwinAPI,
-  ipcRenderer,
-  type DarwinApplyDataEvent,
-  type DarwinApplyEndEvent,
-  type DarwinApplySummaryEvent,
-} from "@/tauri-api";
+import { darwinAPI, ipcRenderer } from "@/tauri-api";
+import type { DarwinApplyDataEvent, DarwinApplyEndEvent, DarwinApplySummaryEvent } from "@/types/shared";
 import { useCallback, useRef } from "react";
 import { useGitOperations } from "./use-git-operations";
 

@@ -406,7 +406,7 @@ export type EvolveEventType =
 /**
  * Agent is reading a file.
  */
-"reading" | 
+"reading" | "searchPackages" | 
 /**
  * Agent is editing a file.
  */
@@ -590,6 +590,51 @@ nixpkgs: FeedbackFlakeInputEntry | null;
 "home-manager": FeedbackFlakeInputEntry | null }
 
 /**
+ * Metadata collected for feedback submission based on user opt-in.
+ */
+export type FeedbackMetadata = { 
+/**
+ * Current frontend/store snapshot, represented as arbitrary JSON.
+ */
+currentAppStateSnapshot: JsonValue | null; 
+/**
+ * Runtime system information.
+ */
+systemInfo: FeedbackSystemInfo | null; 
+/**
+ * Aggregated local usage statistics.
+ */
+usageStats: FeedbackUsageStats | null; 
+/**
+ * Captured evolution log content.
+ */
+evolutionLogContent: string | null; 
+/**
+ * Diff for changed Nix files at submission time.
+ */
+changedNixFilesDiff: string | null; 
+/**
+ * AI provider/model metadata for the related run.
+ */
+aiProviderModelInfo: FeedbackAiProviderModelInfo | null; 
+/**
+ * Latest build error output.
+ */
+buildErrorOutput: string | null; 
+/**
+ * Selected locked flake input metadata.
+ */
+flakeInputsSnapshot: FeedbackFlakeInputsSnapshot | null; 
+/**
+ * Recent application log content.
+ */
+appLogsContent: string | null; 
+/**
+ * Panic details when feedback is submitted after a crash.
+ */
+panicDetails: FeedbackPanicDetails | null }
+
+/**
  * Request payload for gathering feedback metadata.
  */
 export type FeedbackMetadataRequest = { 
@@ -690,21 +735,29 @@ nixVersion: string | null;
 appVersion: string | null }
 
 /**
- * File or directory entry returned by the editor tree.
+ * Aggregated usage stats for feedback.
  */
-export type FileEntry = { 
+export type FeedbackUsageStats = { 
 /**
- * Path relative to the selected config directory.
+ * Number of evolutions recorded locally.
  */
-path: string; 
+totalEvolutions: number | null; 
 /**
- * File or directory basename.
+ * Percentage of evolutions that completed successfully.
  */
-name: string; 
+successRate: number | null; 
 /**
- * Whether this entry is a directory.
+ * Average number of agent iterations per evolution.
  */
-isDir: boolean }
+avgIterations: number | null; 
+/**
+ * Timestamp when the stats were computed.
+ */
+lastComputedAt: string | null; 
+/**
+ * Additional structured usage fields that are not part of the stable contract.
+ */
+extra: JsonValue | null }
 
 /**
  * Result of a successful `finalize_apply` or `finalize_rollback` command.
@@ -862,6 +915,8 @@ source: string | null;
  * Unix timestamp when this state was last collected.
  */
 lastChecked: number }
+
+export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
 
 /**
  * Result of `nix_check` — reports whether Nix and darwin-rebuild are available.

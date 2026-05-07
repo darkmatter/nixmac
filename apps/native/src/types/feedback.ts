@@ -1,3 +1,17 @@
+import type {
+  FeedbackAiProviderModelInfo,
+  FeedbackFlakeInputsSnapshot,
+  FeedbackSystemInfo,
+  FeedbackUsageStats,
+} from "./shared";
+
+export type {
+  FeedbackAiProviderModelInfo,
+  FeedbackFlakeInputsSnapshot,
+  FeedbackSystemInfo,
+  FeedbackUsageStats,
+};
+
 /**
  * The high-level categories of feedback the user can submit.
  *
@@ -32,64 +46,10 @@ export interface ShareOptions {
   lastPrompt?: boolean;
 }
 
-/**
- * System information captured from the runtime. Fields are optional so
- * collectors can populate what is available on the platform.
- */
-interface SystemInfo {
-  osName?: string | null; // e.g. "macOS"
-  osVersion?: string | null; // e.g. "15.3"
-  arch?: string | null; // e.g. "aarch64-darwin"
-  nixVersion?: string | null; // e.g. "2.24.1"
-  appVersion?: string | null; // app build/version string
-}
-
-/**
- * Aggregated nixmac usage statistics from the app.
- * Fields are optional and may be filled by the runtime when
- * the user opts-in to sharing usage stats.
- */
-interface UsageStats {
-  /** Total number of evolutions the user has run */
-  totalEvolutions?: number;
-  /** Success rate as a percentage (0.0 - 100.0) of evolutions */
-  successRate?: number;
-  /** Average number of iterations per evolution */
-  avgIterations?: number;
-  /** ISO timestamp when these stats were last computed */
-  lastComputedAt?: string;
-  extra?: Record<string, unknown>;
-}
-
-/**
- * AI provider/model details and usage signals captured from the app.
- * Fields are optional and may be partially populated.
- */
-interface AiProviderModelInfo {
-  evolveProvider?: string | null;
-  evolveModel?: string | null;
-  summaryProvider?: string | null;
-  summaryModel?: string | null;
-  totalTokens?: number | null;
-  latencyMs?: number | null;
-  iterations?: number | null;
-  buildAttempts?: number | null;
-}
-
-/**
- * Flake.lock input metadata (subset) captured from the user's configuration.
- */
-interface FlakeInputEntry {
-  rev?: string | null;
-  lastModified?: number | null;
-  narHash?: string | null;
-}
-
-interface FlakeInputsSnapshot {
-  nixpkgs?: FlakeInputEntry | null;
-  "nix-darwin"?: FlakeInputEntry | null;
-  "home-manager"?: FlakeInputEntry | null;
-}
+type SystemInfo = FeedbackSystemInfo;
+type UsageStats = FeedbackUsageStats;
+type AiProviderModelInfo = FeedbackAiProviderModelInfo;
+type FlakeInputsSnapshot = FeedbackFlakeInputsSnapshot;
 
 /**
  * The serializable shape of feedback that will be sent to the server.

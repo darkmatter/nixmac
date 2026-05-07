@@ -1,11 +1,6 @@
 import { useWidgetStore } from "@/stores/widget-store";
-import {
-  darwinAPI,
-  ipcRenderer,
-  type NixDarwinRebuildEndEvent,
-  type NixInstallEndEvent,
-  type NixInstallProgressEvent,
-} from "@/tauri-api";
+import { darwinAPI, ipcRenderer } from "@/tauri-api";
+import type { NixDarwinRebuildEndEvent, NixInstallEndEvent, NixInstallProgressEvent } from "@/types/shared";
 import { useCallback } from "react";
 
 export function useNixInstall() {

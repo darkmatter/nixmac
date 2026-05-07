@@ -1,7 +1,8 @@
 "use client";
 
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI, type Permission, type PermissionStatus } from "@/tauri-api";
+import { darwinAPI } from "@/tauri-api";
+import type { Permission, PermissionStatus } from "@/types/shared";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Shield, Check, X, AlertCircle, Loader2 } from "lucide-react";

@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import type { KeyboardEvent } from "react";
-import type { HistoryItem } from "@/tauri-api";
+import type { HistoryItem } from "@/types/shared";
 import { cn } from "@/lib/utils";
 import { buildColorMap } from "@/components/widget/utils";
 import type { ColorMap } from "@/components/widget/utils";
