@@ -1,0 +1,8 @@
+{
+  "capturedAtUnixMs": 1778194815236,
+  "label": "page-load-finished-plus-5s",
+  "message": "WebKit returned an error: domain=WKErrorDomain code=1 description=An unknown error occurred userInfo={\n    NSLocalizedDescription = \"An unknown error occurred\";\n}",
+  "path": "/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-07_22-59-34-260Z/diagnostics/native-webview-snapshots/native-webview-0002-page-load-finished-plus-5s-1778194806411.png",
+  "source": "WKWebView.takeSnapshotWithConfiguration",
+  "status": "failed"
+}

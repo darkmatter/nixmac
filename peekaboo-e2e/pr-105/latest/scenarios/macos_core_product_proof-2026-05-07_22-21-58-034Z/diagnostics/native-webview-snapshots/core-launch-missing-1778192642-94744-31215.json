@@ -1,8 +1,0 @@
-{
-  "capturedAtUnixMs": 1778192642712,
-  "label": "core-launch-missing",
-  "message": "WebKit returned an error: domain=WKErrorDomain code=1 description=An unknown error occurred userInfo={\n    NSLocalizedDescription = \"An unknown error occurred\";\n}",
-  "path": "/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-07_22-21-58-034Z/diagnostics/native-webview-snapshots/core-launch-missing-1778192642-94744-31215.png",
-  "source": "WKWebView.takeSnapshotWithConfiguration",
-  "status": "failed"
-}
