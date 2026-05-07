@@ -1,10 +1,7 @@
 import { afterEach, beforeAll, expect } from "vitest";
-import { setProjectAnnotations } from "@storybook/react-vite";
 import preview from "./preview";
 
-const annotations = setProjectAnnotations([preview as any]);
-
-beforeAll(annotations.beforeAll);
+beforeAll(preview.composed.beforeAll);
 
 /**
  * Normalize non-deterministic animation values in rendered HTML
