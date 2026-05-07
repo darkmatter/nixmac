@@ -95,6 +95,8 @@ fn e2e_request_webview_boot_probe(window: &WebviewWindow, label: &'static str) {
     return values;
   }};
   const detail = JSON.stringify({{
+    url: document.URL || "",
+    baseURI: document.baseURI || "",
     title: document.title || "",
     readyState: document.readyState || "",
     bootStage: document.documentElement?.dataset?.nixmacBootStage || "",
@@ -102,6 +104,21 @@ fn e2e_request_webview_boot_probe(window: &WebviewWindow, label: &'static str) {
     capturePaint: document.documentElement?.dataset?.nixmacE2eCapturePaint || "",
     rootChildren: document.getElementById("root")?.childElementCount ?? null,
     bodyTextLength: document.body?.innerText?.length ?? null,
+    htmlLength: document.documentElement?.outerHTML?.length ?? null,
+    htmlExcerpt: (document.documentElement?.outerHTML || "").slice(0, 1600),
+    scripts: [...document.scripts].map((script) => ({{
+      src: script.src || "",
+      type: script.type || "",
+      crossOrigin: script.crossOrigin || "",
+      defer: script.defer,
+      async: script.async,
+    }})),
+    stylesheets: [...document.querySelectorAll("link[rel~='stylesheet']")].map((link) => ({{
+      href: link.href || "",
+      crossOrigin: link.crossOrigin || "",
+      media: link.media || "",
+    }})),
+    tauriInvokeAvailable: typeof (window.__TAURI__?.core?.invoke || window.__TAURI_INTERNALS__?.invoke) === "function",
     storage: summarizeStorage(),
   }});
   const invoke = window.__TAURI__?.core?.invoke || window.__TAURI_INTERNALS__?.invoke;
@@ -785,6 +802,69 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
       return { ok: false, error: String(error) };
     }
   };
+  const assetUrls = () => {
+    const entries = [];
+    for (const script of [...document.scripts]) {
+      if (script.src) entries.push({ kind: "script", url: script.src, crossOrigin: script.crossOrigin || "" });
+    }
+    for (const link of [...document.querySelectorAll("link[rel~='stylesheet']")]) {
+      if (link.href) entries.push({ kind: "stylesheet", url: link.href, crossOrigin: link.crossOrigin || "" });
+    }
+    return entries;
+  };
+  const assetFetchProbe = async (label) => {
+    const assets = assetUrls();
+    const results = [];
+    for (const asset of assets) {
+      const startedAt = performance.now();
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 5000);
+      try {
+        const response = await fetch(asset.url, { cache: "no-store", signal: controller.signal });
+        const text = await response.clone().text().catch(() => "");
+        results.push({
+          ...asset,
+          ok: response.ok,
+          status: response.status,
+          statusText: response.statusText,
+          redirected: response.redirected,
+          contentType: response.headers.get("content-type") || "",
+          byteLength: text.length,
+          elapsedMs: Math.round(performance.now() - startedAt),
+        });
+      } catch (error) {
+        results.push({
+          ...asset,
+          ok: false,
+          status: null,
+          statusText: "",
+          redirected: false,
+          contentType: "",
+          byteLength: 0,
+          elapsedMs: Math.round(performance.now() - startedAt),
+          errorName: error?.name || "Error",
+          errorMessage: String(error?.message || error),
+        });
+      } finally {
+        window.clearTimeout(timeout);
+      }
+    }
+    const payload = {
+      label,
+      url: document.URL || "",
+      baseURI: document.baseURI || "",
+      readyState: document.readyState || "",
+      rootChildren: document.getElementById("root")?.childElementCount ?? null,
+      bodyTextLength: document.body?.innerText?.length ?? null,
+      htmlLength: document.documentElement?.outerHTML?.length ?? null,
+      assets: results,
+    };
+    const serialized = JSON.stringify(payload);
+    try {
+      window.localStorage.setItem(`nixmac:e2e-asset-probe:${label}`, serialized.slice(0, 12000));
+    } catch {}
+    logCaptureBreadcrumb(`e2e-asset-fetch-${label}`, serialized);
+  };
   const captureStyleProbe = (label) => {
     try {
       const root = document.getElementById("root");
@@ -794,6 +874,7 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
       const button = document.querySelector("button");
       const svg = document.querySelector("svg");
       const textElement = firstTextElement();
+      const assets = assetUrls();
       const htmlStyle = window.getComputedStyle(document.documentElement);
       const bodyStyle = document.body ? window.getComputedStyle(document.body) : null;
       const shellStyle = shell ? window.getComputedStyle(shell) : null;
@@ -807,6 +888,8 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
           viewport: { width: window.innerWidth, height: window.innerHeight },
           rootChildren: root?.childElementCount ?? null,
           bodyChildren: document.body?.childElementCount ?? null,
+          assetCount: assets.length,
+          assetUrls: assets,
           shellClassName: typeof shell?.className === "string" ? shell.className : null,
           rootRect: rectFor(root),
           shellRect: rectFor(shell),
@@ -916,6 +999,9 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
         }),
       );
       captureStyleProbe("initial-raf");
+      assetFetchProbe("initial-raf").catch((error) => {
+        logCaptureBreadcrumb("e2e-asset-fetch-error", String(error));
+      });
       requestAnimationFrame(() => {
         document.documentElement.dataset.nixmacE2eCaptureReady = "1";
         logCaptureBreadcrumb(
@@ -927,6 +1013,9 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
           }),
         );
         captureStyleProbe("capture-ready-2raf");
+        assetFetchProbe("capture-ready-2raf").catch((error) => {
+          logCaptureBreadcrumb("e2e-asset-fetch-error", String(error));
+        });
       });
     });
     window.addEventListener(
@@ -947,6 +1036,16 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
   } else {
     document.addEventListener("DOMContentLoaded", applyCaptureBackground, { once: true });
   }
+  document.addEventListener("DOMContentLoaded", () => {
+    assetFetchProbe("dom-content-loaded").catch((error) => {
+      logCaptureBreadcrumb("e2e-asset-fetch-error", String(error));
+    });
+  }, { once: true });
+  window.setTimeout(() => {
+    assetFetchProbe("post-injection-plus-2s").catch((error) => {
+      logCaptureBreadcrumb("e2e-asset-fetch-error", String(error));
+    });
+  }, 2000);
 })();
 "#;
 

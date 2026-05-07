@@ -93,6 +93,15 @@ fn clean_field(value: &str, max_len: usize) -> String {
         .to_string()
 }
 
+#[cfg(debug_assertions)]
+fn e2e_breadcrumb_detail_limit(label: &str) -> usize {
+    if label.starts_with("native webview boot probe ") || label.starts_with("e2e-asset-fetch-") {
+        12_000
+    } else {
+        1_000
+    }
+}
+
 /// Records frontend boot breadcrumbs for E2E diagnostics.
 ///
 /// This is debug-only and writes only when the E2E runtime file/env provides a
@@ -164,8 +173,9 @@ fn write_e2e_breadcrumb(
     if label.is_empty() {
         return Ok(());
     }
+    let detail_limit = e2e_breadcrumb_detail_limit(&label);
     let detail = detail
-        .map(|value| clean_field(value, 1_000))
+        .map(|value| clean_field(value, detail_limit))
         .filter(|value| !value.is_empty());
 
     std::fs::create_dir_all(diagnostics_dir)

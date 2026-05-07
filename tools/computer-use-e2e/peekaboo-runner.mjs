@@ -331,7 +331,102 @@ function screenshotRequiresDarkChromeProbe(screenshot) {
   return /\b(?:launch|app shell|suggestion|descriptor|settings|history|console)\b/.test(text);
 }
 
-function peekabooScreenshotSignalIssue(runDir, screenshot) {
+function parseBreadcrumbDetail(detail) {
+  if (detail == null) return null;
+  if (typeof detail === 'object') return detail;
+  if (typeof detail !== 'string') return null;
+  try {
+    return JSON.parse(detail);
+  } catch {
+    return null;
+  }
+}
+
+function readWebviewProof(runDir) {
+  const breadcrumbPath = path.join(runDir, 'diagnostics', 'nixmac-frontend-breadcrumbs.jsonl');
+  if (!existsSync(breadcrumbPath)) {
+    return {
+      status: 'missing',
+      domRendered: false,
+      captureReady: false,
+      assetProbeCount: 0,
+      mountedBreadcrumbs: 0,
+      note: 'No frontend breadcrumb diagnostics were captured.',
+    };
+  }
+
+  const proof = {
+    status: 'captured',
+    domRendered: false,
+    captureReady: false,
+    assetProbeCount: 0,
+    mountedBreadcrumbs: 0,
+    maxRootChildren: 0,
+    maxBodyTextLength: 0,
+    assetFailures: [],
+    latestDomText: '',
+    note: '',
+  };
+  const lines = readFileSync(breadcrumbPath, 'utf8').split(/\r?\n/).filter(Boolean);
+  for (const line of lines) {
+    let record = null;
+    try {
+      record = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    const label = String(record.label ?? '');
+    const detail = parseBreadcrumbDetail(record.detail);
+    if (
+      /app mounted/i.test(label) ||
+      (/native boot stage marker/i.test(label) && /mounted|app-render|app-effect/i.test(String(record.detail ?? '')))
+    ) {
+      proof.mountedBreadcrumbs += 1;
+    }
+    if (/E2E DOM snapshot .* text/i.test(label) && typeof record.detail === 'string') {
+      proof.latestDomText = record.detail.slice(0, 220);
+    }
+    if (!detail) continue;
+    const rootChildren = Number(detail.rootChildren ?? detail.rootChildCount ?? 0);
+    const bodyTextLength = Number(detail.bodyTextLength ?? 0);
+    if (Number.isFinite(rootChildren)) proof.maxRootChildren = Math.max(proof.maxRootChildren, rootChildren);
+    if (Number.isFinite(bodyTextLength)) proof.maxBodyTextLength = Math.max(proof.maxBodyTextLength, bodyTextLength);
+    if (detail.captureReady || detail.capturePaint) proof.captureReady = true;
+    if (Array.isArray(detail.assets)) {
+      proof.assetProbeCount += 1;
+      for (const asset of detail.assets) {
+        if (asset?.ok === false) {
+          proof.assetFailures.push({
+            kind: asset.kind ?? '',
+            url: asset.url ?? '',
+            status: asset.status ?? null,
+            errorName: asset.errorName ?? '',
+            errorMessage: asset.errorMessage ?? '',
+          });
+        }
+      }
+    }
+  }
+  proof.domRendered = proof.maxRootChildren > 0 && proof.maxBodyTextLength > 0;
+  proof.note = proof.domRendered
+    ? `WebView DOM rendered (${proof.maxRootChildren} root child node(s), ${proof.maxBodyTextLength} text chars).`
+    : 'WebView DOM did not prove rendered app content.';
+  return proof;
+}
+
+function writeWebviewProof(runDir, proof) {
+  const proofPath = path.join(runDir, 'webview-proof.json');
+  writeFileSync(proofPath, `${JSON.stringify(proof, null, 2)}\n`, 'utf8');
+  return proofPath;
+}
+
+function hostCaptureContext(issue, webviewProof) {
+  return webviewProof?.domRendered
+    ? `${issue}; WebView DOM rendered, so host pixel capture is likely black/occluded`
+    : issue;
+}
+
+function peekabooScreenshotSignalIssue(runDir, screenshot, webviewProof = null) {
   const baseIssue = imageArtifactIssue({ runDir }, screenshot.path);
   if (baseIssue) return baseIssue;
 
@@ -352,13 +447,22 @@ function peekabooScreenshotSignalIssue(runDir, screenshot) {
   const yAvg = cropStats.stats.YAVG;
   const yRange = Number.isFinite(yMin) && Number.isFinite(yMax) ? yMax - yMin : NaN;
   if (!Number.isFinite(yAvg) || yAvg < PEEKABOO_SCREENSHOT_CONTENT_PROBE.minYAvg) {
-    return `central app content is too dark (YAVG ${Number.isFinite(yAvg) ? yAvg : 'unknown'} below ${PEEKABOO_SCREENSHOT_CONTENT_PROBE.minYAvg})`;
+    return hostCaptureContext(
+      `central app content is too dark (YAVG ${Number.isFinite(yAvg) ? yAvg : 'unknown'} below ${PEEKABOO_SCREENSHOT_CONTENT_PROBE.minYAvg})`,
+      webviewProof,
+    );
   }
   if (!Number.isFinite(yMax) || yMax < PEEKABOO_SCREENSHOT_CONTENT_PROBE.minYMax) {
-    return `central app content appears blank or occluded (YMAX ${Number.isFinite(yMax) ? yMax : 'unknown'} below ${PEEKABOO_SCREENSHOT_CONTENT_PROBE.minYMax})`;
+    return hostCaptureContext(
+      `central app content appears blank or occluded (YMAX ${Number.isFinite(yMax) ? yMax : 'unknown'} below ${PEEKABOO_SCREENSHOT_CONTENT_PROBE.minYMax})`,
+      webviewProof,
+    );
   }
   if (!Number.isFinite(yRange) || yRange < PEEKABOO_SCREENSHOT_CONTENT_PROBE.minYRange) {
-    return `central app content has too little visual contrast (Y range ${Number.isFinite(yRange) ? yRange : 'unknown'} below ${PEEKABOO_SCREENSHOT_CONTENT_PROBE.minYRange})`;
+    return hostCaptureContext(
+      `central app content has too little visual contrast (Y range ${Number.isFinite(yRange) ? yRange : 'unknown'} below ${PEEKABOO_SCREENSHOT_CONTENT_PROBE.minYRange})`,
+      webviewProof,
+    );
   }
   if (
     screenshotRequiresDarkChromeProbe(screenshot) &&
@@ -370,12 +474,12 @@ function peekabooScreenshotSignalIssue(runDir, screenshot) {
   return '';
 }
 
-function scanPeekabooScreenshotSignal(runDir, screenshots) {
+function scanPeekabooScreenshotSignal(runDir, screenshots, webviewProof = null) {
   const pngScreenshots = screenshots.filter((screenshot) => /\.png$/i.test(screenshot?.path ?? ''));
   const results = [];
   for (const screenshot of pngScreenshots) {
     if (!screenshot?.path || !/\.png$/i.test(screenshot.path)) continue;
-    const issue = peekabooScreenshotSignalIssue(runDir, screenshot);
+    const issue = peekabooScreenshotSignalIssue(runDir, screenshot, webviewProof);
     results.push({
       screenshot,
       issue,
@@ -780,7 +884,9 @@ export async function runPeekabooScenario(plan) {
   const secretScan = scanRunDirForUnmaskedSecrets(path.dirname(plan.logFile));
   const secretScanPath = path.join(path.dirname(plan.logFile), 'secret-scan.json');
   await writeFile(secretScanPath, `${JSON.stringify(secretScan, null, 2)}\n`, 'utf8');
-  const screenshotSignal = scanPeekabooScreenshotSignal(path.dirname(plan.logFile), screenshots);
+  const webviewProof = readWebviewProof(path.dirname(plan.logFile));
+  const webviewProofPath = writeWebviewProof(path.dirname(plan.logFile), webviewProof);
+  const screenshotSignal = scanPeekabooScreenshotSignal(path.dirname(plan.logFile), screenshots, webviewProof);
   const screenshotSignalPath = path.join(path.dirname(plan.logFile), 'screenshot-signal.json');
   await writeFile(screenshotSignalPath, `${JSON.stringify(screenshotSignal, null, 2)}\n`, 'utf8');
   const supplementalDiagnostics = [
@@ -809,6 +915,13 @@ export async function runPeekabooScenario(plan) {
       note: 'Peekaboo screenshot visual-signal scan.',
       bytes: statSync(screenshotSignalPath).size,
     },
+    {
+      label: 'webview-proof.json',
+      path: path.relative(path.dirname(plan.logFile), webviewProofPath),
+      capturedAt: new Date().toISOString(),
+      note: 'WebView DOM, paint, and asset-probe summary used to distinguish app render from host screenshot capture.',
+      bytes: statSync(webviewProofPath).size,
+    },
   ];
 
   return {
@@ -828,6 +941,7 @@ export async function runPeekabooScenario(plan) {
     infraFailure,
     secretScan,
     screenshotSignal,
+    webviewProof,
     coverageMap,
     results,
     report,
@@ -1028,6 +1142,7 @@ export function applyPeekabooResultToState(state, peekabooResult) {
   if (peekabooResult.coverageMap) state.peekaboo.coverageMap = peekabooResult.coverageMap;
   if (peekabooResult.secretScan) state.peekaboo.secretScan = peekabooResult.secretScan;
   if (peekabooResult.screenshotSignal) state.peekaboo.screenshotSignal = peekabooResult.screenshotSignal;
+  if (peekabooResult.webviewProof) state.peekaboo.webviewProof = peekabooResult.webviewProof;
   return state;
 }
 
