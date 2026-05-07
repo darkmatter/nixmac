@@ -129,7 +129,7 @@ export function PromptInput() {
   return (
     <div className="space-y-3 flex-col min-h-24">
       <BeginEvolveWarning open={warningOpen} onOpenChange={setWarningOpen} handleEvolve={handleEvolve} />
-      <InputGroup className="bg-background">
+      <InputGroup className="bg-background flex-col min-h-24">
         <InputGroupTextarea
           id="evolve-prompt-input"
           data-testid="evolve-prompt-input"
@@ -142,16 +142,17 @@ export function PromptInput() {
           }}
           placeholder={placeholder}
           value={evolvePrompt}
+          className="outline-none"
         />
           <InputGroupAddon align="block-end">
-            <InputGroupButton
-              className="rounded-full"
+            {/* <InputGroupButton
+              className="rounded-full size-6 p-0.5"
               size="icon-xs"
               variant="outline"
             >
               <Plus />
-            </InputGroupButton>
-             <DropdownMenu>
+            </InputGroupButton> */}
+             {/* <DropdownMenu>
                <DropdownMenuTrigger asChild>
                  <InputGroupButton variant="ghost">Auto</InputGroupButton>
                </DropdownMenuTrigger>
@@ -164,12 +165,12 @@ export function PromptInput() {
                  <DropdownMenuItem>Agent</DropdownMenuItem>
                  <DropdownMenuItem>Manual</DropdownMenuItem>
                </DropdownMenuContent>
-             </DropdownMenu>
+             </DropdownMenu> */}
              <InputGroupText className="ml-auto">{contextUsage}</InputGroupText>
              <Separator className="!h-4" orientation="vertical" />
              <Separator className="!h-4" orientation="vertical" />
              <InputGroupButton
-               className="rounded-full"
+               className="rounded-full size-6 p-0.5"
                size="icon-xs"
             variant="default"
             id="evolve-prompt-send"
