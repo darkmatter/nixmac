@@ -408,6 +408,10 @@ export async function assertPromptHistoryContains(promptText: string) {
   );
 }
 
+export async function captureChangeMap(): Promise<string> {
+  return (browser as any).execute(() => (window as any).__testWidget?.getChangeMap?.());
+}
+
 export async function assertConversationalPromptContains(expectedText: string) {
   const conversationalResponseSelector = '[data-testid="conversational-response"]';
   const conversationalResponseBodySelector = '[data-testid="conversational-response-body"]';

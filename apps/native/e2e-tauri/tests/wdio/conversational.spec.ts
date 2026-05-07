@@ -3,11 +3,12 @@ import {
   assertConversationalPromptContains,
   assertPromptFlowReachedBegin,
   assertPromptFlowReachedEvolveReview,
+  captureChangeMap,
   registerPromptSuiteBeforeEach,
   submitPromptMessage,
 } from './helpers/app-ui.js';
 import { getMockVllmFixturePreset } from './helpers/mock-vllm-presets.js';
-import { use } from 'chai';
+import { expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 
 use(chaiAsPromised);
@@ -33,9 +34,13 @@ describe('conversational prompts', () => {
     await submitPromptMessage('add a new programming font to my system');
     await assertPromptFlowReachedEvolveReview();
 
+    const changeMapBefore = await captureChangeMap();
+
     // Ask a follow-up conversational question in the Evolve step and ensure it stays on Evolve.
     await submitPromptMessage('can you help me add homebrew packages?');
     await assertPromptFlowReachedEvolveReview();
     await assertConversationalPromptContains('Sure! Which Homebrew formulae');
+
+    expect(await captureChangeMap()).to.equal(changeMapBefore);
   });
 });
