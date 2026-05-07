@@ -14,6 +14,21 @@ const mockPickDir = vi.fn();
 vi.mock("@/hooks/use-darwin-config", () => ({
   useDarwinConfig: () => ({
     pickDir: mockPickDir,
+    setDir: async (p: string) => {
+      await mockSetDir(p);
+      useWidgetStore.getState().setConfigDir(p);
+      useWidgetStore.getState().setHost("");
+      try {
+        await mockSetHostAttr("");
+      } catch {}
+      try {
+        const hosts = await mockListHosts();
+        useWidgetStore.getState().setHosts(hosts);
+      } catch {
+        useWidgetStore.getState().setHosts([]);
+      }
+      return { dir: p, evolveState: null, hosts: null };
+    },
   }),
 }));
 
