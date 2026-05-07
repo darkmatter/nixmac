@@ -200,7 +200,6 @@ function AnimatedEvolveFlow() {
         evolveState: evolveStateEvolve,
         gitStatus: mockGitStatus,
         changeMap: mockChangeMap,
-        summaryAvailable: true,
       });
     }, completionTime);
     timeoutsRef.current.push(t2);
@@ -282,7 +281,6 @@ export const Review = meta.story({
         evolveState: evolveStateEvolve,
         gitStatus: mockGitStatus,
         changeMap: mockChangeMap,
-        summaryAvailable: true,
         evolveEvents: mockEvolveEvents,
       }}
     />
@@ -298,7 +296,6 @@ export const Merge = meta.story({
         evolveState: evolveStateMerge,
         gitStatus: mockGitStatus,
         changeMap: mockChangeMap,
-        summaryAvailable: true,
         commitMessageSuggestion: "feat: add system monitoring tools (htop, btop, bottom, bandwhich, procs)",
       }}
     />

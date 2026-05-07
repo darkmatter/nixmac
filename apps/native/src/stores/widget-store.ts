@@ -114,7 +114,6 @@ export interface WidgetState {
   analyzingHistoryForHashes: Set<string>;
 
   // UI
-  summaryAvailable: boolean;
   isSummarizing: boolean;
   isGenerating: boolean;
   settingsOpen: boolean;
@@ -186,7 +185,6 @@ interface WidgetActions {
     details: { message: string; location?: string; backtrace?: string; timestamp: string } | null,
   ) => void;
   setPromptHistory: (history: string[]) => void;
-  setSummaryAvailable: (available: boolean) => void;
   setRecommendedPrompt: (prompt: RecommendedPrompt | null | undefined) => void;
 
   // History
@@ -209,7 +207,6 @@ interface WidgetActions {
   // Client-side state (NOT from server)
   setSummarizing: (summarizing: boolean) => void;
   setGenerating: (generating: boolean) => void;
-  clearPreview: () => void;
   setFeedbackTypeOverride: (type: FeedbackType | null) => void;
   openFeedback: (type?: FeedbackType, initialText?: string) => void;
 
@@ -293,7 +290,6 @@ const initialWidgetState: WidgetState = {
   analyzingHistoryForHashes: new Set<string>(),
 
   changeMap: null,
-  summaryAvailable: false,
 
   // Commit message suggestion
   commitMessageSuggestion: null,
@@ -371,7 +367,6 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
         processingAction: isProcessing ? action : null,
       }),
     setChangeMap: (changeMap) => set({ changeMap }),
-    setSummaryAvailable: (summaryAvailable) => set({ summaryAvailable }),
     setBoolPref: (key: BoolPrefKey, value: boolean) => set({ [key]: value }),
     initConfirmPrefs: (prefs) =>
       set({
@@ -421,11 +416,6 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setDarwinRebuildPrefetching: (darwinRebuildPrefetching) => set({ darwinRebuildPrefetching }),
     setSummarizing: (isSummarizing) => set({ isSummarizing }),
     setGenerating: (isGenerating) => set({ isGenerating }),
-    clearPreview: () =>
-      set({
-        changeMap: null,
-        summaryAvailable: false,
-      }),
 
     // Console
     appendLog: (text) => set((state) => ({ consoleLogs: state.consoleLogs + text })),

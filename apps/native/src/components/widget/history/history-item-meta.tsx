@@ -3,7 +3,7 @@ import { CommitHashBadge } from "@/components/widget/badges/commit-hash-badge";
 import { FileCountBadge } from "@/components/widget/badges/file-count-badge";
 import { TimeBadge } from "@/components/widget/badges/time-badge";
 import { ExternalBadge } from "@/components/widget/badges/external-badge";
-import { AnalyzeHistoryItemButton } from "@/components/widget/analyze-history-item-button";
+import { AnalyzeHistoryItemButton } from "@/components/widget/history/analyze-history-item-button";
 
 export function HistoryItemMeta({ item, isPreview }: { item: HistoryItem; isPreview?: boolean }) {
   const showAnalyze = (!item.changeMap || item.unsummarizedHashes.length > 0) && !item.isBase;
