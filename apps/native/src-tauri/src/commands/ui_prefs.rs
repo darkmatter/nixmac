@@ -6,13 +6,18 @@ use tauri::AppHandle;
 /// Returns all UI preferences.
 #[tauri::command]
 pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, String> {
+    log::debug!("ui_get_prefs started");
+    log::debug!("ui_get_prefs loading OpenRouter credential");
     let openrouter_api_key = store::get_effective_openrouter_api_key(&app)
         .map_err(|e| capture_err("ui_get_prefs", e))?;
+    log::debug!("ui_get_prefs loading OpenAI credential");
     let openai_api_key =
         store::get_effective_openai_api_key(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+    log::debug!("ui_get_prefs loading diagnostics preference");
     let send_diagnostics =
         store::get_send_diagnostics(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
 
+    log::debug!("ui_get_prefs loading model preferences");
     let evolve_provider =
         store::get_evolve_provider(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
     let evolve_model = store::get_evolve_model(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
@@ -21,6 +26,7 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, Strin
     let summary_model =
         store::get_summary_model(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
 
+    log::debug!("ui_get_prefs loading iteration and endpoint preferences");
     let max_iterations =
         Some(store::get_max_iterations(&app).unwrap_or(store::DEFAULT_MAX_ITERATIONS));
     let max_build_attempts = Some(store::get_max_build_attempts(&app).unwrap_or(5));
@@ -31,6 +37,7 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, Strin
     let vllm_api_key =
         store::get_effective_vllm_api_key(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
 
+    log::debug!("ui_get_prefs loading confirmation preferences");
     let confirm_build = store::get_bool_pref(&app, store::CONFIRM_BUILD_KEY, true)
         .map_err(|e| capture_err("ui_get_prefs", e))?;
     let confirm_clear = store::get_bool_pref(&app, store::CONFIRM_CLEAR_KEY, true)
@@ -47,6 +54,7 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, Strin
         .map_err(|e| capture_err("ui_get_prefs", e))?;
     let pinned_version = store::get_string_pref_public(&app, store::PINNED_VERSION_KEY)
         .map_err(|e| capture_err("ui_get_prefs", e))?;
+    log::debug!("ui_get_prefs completed");
 
     Ok(shared_types::UiPrefs {
         openrouter_api_key,

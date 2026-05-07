@@ -22,7 +22,6 @@ export function useRollback() {
       store.setGitStatus(result.gitStatus);
       store.setEvolveState(result.evolveState);
       store.setEvolvePrompt("");
-      store.clearPreview();
       store.appendLog("✓ Changes discarded\n");
 
       if (result.rollbackStorePath && wasCommittable) {

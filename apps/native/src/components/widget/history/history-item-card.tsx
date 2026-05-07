@@ -1,7 +1,7 @@
 import { BaseCommitBadge } from "@/components/widget/badges/base-commit-badge";
 import { HistoryCurrentItemBadge } from "@/components/widget/badges/current-item-badge";
-import { BuildHeadButton } from "@/components/widget/build-head-button";
-import { CommitMessage } from "@/components/widget/commit-message";
+import { BuildHeadButton } from "@/components/widget/controls/build-head-button";
+import { CommitMessage } from "@/components/widget/controls/commit-message";
 import { ChangeBadges } from "@/components/widget/history/change-badges";
 import { HistoryConfirmRestoreButton } from "@/components/widget/history/history-confirm-restore-button";
 import { HistoryCommitInfo } from "@/components/widget/history/history-item-card-header";
@@ -11,8 +11,8 @@ import { HistoryRestoreItemButton } from "@/components/widget/history/history-re
 import { useHistoryCard } from "@/hooks/use-history-card";
 import { cn } from "@/lib/utils";
 import type { HistoryItem } from "@/tauri-api";
-import type { TimelineContext } from "./timeline-connector";
-import { HistoryItemTimeline, TimeLineConnector, TimelineDot } from "./timeline-connector";
+import type { TimelineContext } from "@/components/widget/history/timeline-connector";
+import { HistoryItemTimeline, TimeLineConnector, TimelineDot } from "@/components/widget/history/timeline-connector";
 
 interface HistoryItemCardProps {
   item: HistoryItem;
@@ -39,6 +39,7 @@ export function HistoryItemCard({
 }: HistoryItemCardProps) {
   const { expanded, colorMap, cardClassName, actionType, handleCardClick, handleKeyDown } = useHistoryCard(item, isPreview);
   const { isUndone } = timeline;
+  const isCardInteractive = !!item.changeMap && !isPreview;
 
   const getActionOrBadge = () => {
     switch (actionType) {
@@ -75,10 +76,10 @@ export function HistoryItemCard({
             isPreview && "border-teal-400/40 group-hover:border-teal-400/50 group-hover:bg-[#111111]",
             item.isBuilt && isPreviewActive && "border-white/[0.12]",
           )}
-          onClick={handleCardClick}
-          onKeyDown={item.changeMap ? handleKeyDown : undefined}
-          role={item.changeMap ? "button" : undefined}
-          tabIndex={item.changeMap ? 0 : undefined}
+          onClick={isCardInteractive ? handleCardClick : undefined}
+          onKeyDown={isCardInteractive ? handleKeyDown : undefined}
+          role={isCardInteractive ? "button" : undefined}
+          tabIndex={isCardInteractive ? 0 : undefined}
         >
           <HistoryCommitInfo
             header={<CommitMessage hash={item.hash} message={item.message} originMessage={item.originMessage ?? undefined} />}

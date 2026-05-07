@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { LINE_LABEL, LINE_UNDONE } from "./timeline-connector";
+import { LINE_LABEL, LINE_UNDONE } from "@/components/widget/history/timeline-connector";
 
 interface HistoryDayLabelProps {
   label: string;

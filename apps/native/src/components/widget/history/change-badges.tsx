@@ -1,6 +1,6 @@
 import { ChangeBadge } from "@/components/widget/badges/change-badge";
 import { FilenameBadge } from "@/components/widget/badges/filename-badge";
-import { BadgeList } from "@/components/widget/badge-list";
+import { BadgeList } from "@/components/widget/badges/badge-list";
 import type { ColorMap } from "@/components/widget/utils";
 import type { Change, SemanticChangeMap } from "@/types/shared";
 

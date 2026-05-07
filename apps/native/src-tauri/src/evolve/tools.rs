@@ -1,7 +1,8 @@
 //! Tools used by AI
 
-use crate::evolve::edit_nix_file::apply_semantic_edit;
+use crate::evolve::edit_nix_file::{apply_semantic_edit, nix_quote_values};
 use crate::evolve::ensure_secret::{execute_ensure_secret, EnsureSecretResult};
+use crate::evolve::search_packages::SearchPackageResult;
 use crate::evolve::types::{FileEditAction, SemanticFileEdit};
 
 use super::file_ops::{
@@ -11,7 +12,8 @@ use super::gitignore::is_ignored_by_matcher;
 use super::messages::Tool;
 use super::search_code::execute_search_code;
 use super::search_docs::{
-    default_limit as search_docs_default_limit, execute_search_docs, DocsSource,
+    default_limit as search_docs_default_limit, execute_search_docs,
+    max_limit as search_docs_max_limit, DocsSource,
 };
 use super::search_packages::execute_search_packages;
 use super::types::FileEdit;
@@ -28,6 +30,12 @@ use std::path::{Component, Path};
 
 /// Creates provider-agnostic tools
 pub fn create_tools() -> Vec<Tool> {
+    let search_docs_limit_description = format!(
+        "Maximum results to return (default: {}, max: {})",
+        search_docs_default_limit(),
+        search_docs_max_limit()
+    );
+
     vec![
         Tool {
             name: "think".to_string(),
@@ -100,7 +108,7 @@ pub fn create_tools() -> Vec<Tool> {
         Tool {
             name: "edit_nix_file".to_string(),
             description: r#"Edit a Nix file with semantic operations using attribute-path Add/Remove/Set/SetAttrs actions.
-Use this tool whenever you need the agent to make structured edits to Nix config. `add` and `remove` operate on list-valued attributes such as `home.packages` or `environment.systemPackages`. `set` assigns a scalar value such as a boolean, string, number, or `null` to an attribute path like `services.tailscale.enable`. `set_attrs` creates or updates a Nix attribute set (object) at a given path and sets key-value pairs inside it, including nested JSON objects/arrays that map to nested Nix attrsets/lists. Use this for options like `system.defaults.dock` that take an attrset value. The tool understands Nix syntax and will modify existing assignments when possible, or insert a new assignment into the module body if missing.
+Use this tool whenever you need the agent to make structured edits to Nix config. `add` and `remove` operate on list-valued attributes such as `home.packages` or `environment.systemPackages`. For Homebrew list attributes (`homebrew.brews`, `homebrew.casks`, and `homebrew.taps`), pass raw package/token strings such as `"bat"`; the tool writes them as Nix string literals. `set` assigns a scalar value such as a boolean, string, number, or `null` to an attribute path like `services.tailscale.enable`. `set_attrs` creates or updates a Nix attribute set (object) at a given path and sets key-value pairs inside it, including nested JSON objects/arrays that map to nested Nix attrsets/lists. Use this for options like `system.defaults.dock` that take an attrset value. The tool understands Nix syntax and will modify existing assignments when possible, or insert a new assignment into the module body if missing.
 Always: provide an `action` object with exactly one of `add`, `remove`, `set`, or `set_attrs`. After calling this tool, run `build_check` to verify changes.
 IMPORTANT: Do not use this tool for files under .nixmac. Nix implementation files there are reserved for Nixmac; only exact .nixmac/<module>/data.json files may be edited with edit_file.
 IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with syntax errors (unmatched braces/brackets, unclosed strings, etc) will be rejected. Ensure all generated code is syntactically complete and correct."#.to_string(),            parameters: serde_json::json!({
@@ -138,11 +146,11 @@ IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with
                                     "add": {
                                         "type": "object",
                                         "properties": {
-                                            "path": { "type": "string", "description": "Dot-separated attribute path (e.g. environment.systemPackages or home.packages)" },
+                                            "path": { "type": "string", "description": "Dot-separated attribute path (e.g. environment.systemPackages, home.packages, or homebrew.brews)" },
                                             "values": {
                                                 "type": "array",
                                                 "items": { "type": "string" },
-                                                "description": "Values to add to the list. Use a one-element array for a single package."
+                                                "description": "Values to add to the list. Use a one-element array for a single package. For homebrew.brews/casks/taps, pass raw package or token names; the tool quotes them as Nix strings."
                                             }
                                         },
                                         "required": ["path", "values"],
@@ -162,7 +170,7 @@ IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with
                                             "values": {
                                                 "type": "array",
                                                 "items": { "type": "string" },
-                                                "description": "Values to remove from the list. Use a one-element array for a single package."
+                                                "description": "Values to remove from the list. Use a one-element array for a single package. For homebrew.brews/casks/taps, pass raw package or token names; the tool matches their Nix string literal form."
                                             }
                                         },
                                         "required": ["path", "values"],
@@ -279,12 +287,14 @@ IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with
         Tool {
             name: "search_packages".to_string(),
             description: "Search for Nix packages by name or description. This is a convenient \
-                         wrapper around 'nix search' that returns compact structured JSON results. \
-                         Output format: JSON object keyed by package name. Each value must include \
-                         {\"attr_path\": string, \"version\": string, \"description\": string, \"channel\": string}. \
-                         Example: {\"wget\": {\"attr_path\": \"wget\", \"version\": \"1.21.3\", \"description\": \"retrieves files from the web\", \"channel\": \"nixpkgs-unstable\"}}. \
-                         Return JSON only (no prose). \
-                         Parameters: search_type controls where to search (names, descriptions, or both); \
+                         wrapper around 'nix search' that returns a list of structured JSON results. \
+                         Output format: Array of SearchPackageResult objects, each containing \
+                         {\"name\": string, \"attr_path\": string, \"version\": string, \"description\": string, \"channel\": string, \"installTarget\": SearchResultInstallTarget}. \
+                         The installTarget field indicates whether a package should be installed via Homebrew (Homebrew), \
+                         Nix (System), or either (Either). IMPORTANT: When making nix package edits later, try to respect \
+                         1) any expressed user preference, followed by 2) the installTarget value to guide installation method recommendations. \
+                         Example: [{\"name\": \"wget\", \"attr_path\": \"wget\", \"version\": \"1.21.3\", \"description\": \"retrieves files from the web\", \"channel\": \"nixpkgs-unstable\", \"installTarget\": \"System\"}]. \
+                         Parameters: \
                          use_regex enables regex patterns for advanced matching; \
                          channels lets you search in different flakes (one or more of nixpkgs, nixpkgs-unstable, etc.), max 5".to_string(),
             parameters: serde_json::json!({
@@ -297,11 +307,6 @@ IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with
                     "limit": {
                         "type": "integer",
                         "description": "Maximum number of results to return (default: 20)"
-                    },
-                    "search_type": {
-                        "type": "string",
-                        "enum": ["name", "description", "both"],
-                        "description": "What to search in: 'name' for package names only, 'description' for descriptions only, 'both' for all fields (default: 'both')"
                     },
                     "use_regex": {
                         "type": "boolean",
@@ -335,7 +340,7 @@ IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with
                     },
                     "limit": {
                         "type": "integer",
-                        "description": "Maximum results to return (default: 3, max: 10)"
+                        "description": search_docs_limit_description
                     },
                     "source": {
                         "type": "string",
@@ -472,6 +477,8 @@ pub enum ToolResult {
     EditSemantic(SemanticFileEdit),
     /// A SOPS secret was created/updated (and possibly injected into a Nix file).
     EnsureSecret(EnsureSecretResult),
+    // Results from package search operations
+    SearchPackages(Vec<SearchPackageResult>),
     /// Agent wants to ask the user a question
     Question {
         question: String,
@@ -677,7 +684,10 @@ pub fn execute_tool(
                 let attr_path = add_obj["path"]
                     .as_str()
                     .ok_or_else(|| anyhow!("edit_nix_file.add: missing path"))?;
-                let values = parse_values(&add_obj["values"], "edit_nix_file.add")?;
+                let values = quote_homebrew_list_values(
+                    attr_path,
+                    parse_values(&add_obj["values"], "edit_nix_file.add")?,
+                );
                 FileEditAction::Add {
                     path: attr_path.to_string(),
                     values,
@@ -687,7 +697,10 @@ pub fn execute_tool(
                 let attr_path = rem_obj["path"]
                     .as_str()
                     .ok_or_else(|| anyhow!("edit_nix_file.remove: missing path"))?;
-                let values = parse_values(&rem_obj["values"], "edit_nix_file.remove")?;
+                let values = quote_homebrew_list_values(
+                    attr_path,
+                    parse_values(&rem_obj["values"], "edit_nix_file.remove")?,
+                );
                 FileEditAction::Remove {
                     path: attr_path.to_string(),
                     values,
@@ -800,7 +813,6 @@ pub fn execute_tool(
             // Clamp `limit` between 1 and 50 (default 20). Use as_i64 so negative
             // and crazy-large values provided by callers are handled gracefully.
             let limit = args["limit"].as_i64().unwrap_or(20).clamp(1, 50) as u64;
-            let search_type = args["search_type"].as_str().unwrap_or("both");
             let use_regex = args["use_regex"].as_bool().unwrap_or(false);
 
             // Clamp to at most 5 channels to prevent abuse since each channel adds latency
@@ -822,15 +834,8 @@ pub fn execute_tool(
                 channels
             };
 
-            let result = execute_search_packages(
-                config_dir,
-                query,
-                limit,
-                search_type,
-                use_regex,
-                &channels,
-            )?;
-            Ok(ToolResult::Continue(result))
+            let result = execute_search_packages(config_dir, query, limit, use_regex, &channels)?;
+            Ok(ToolResult::SearchPackages(result))
         }
 
         "search_docs" => {
@@ -895,6 +900,21 @@ pub fn execute_tool(
 /// evolution process and should be tracked as such.
 pub fn is_editing_tool(name: &str) -> bool {
     matches!(name, "edit_file" | "edit_nix_file" | "ensure_secret")
+}
+
+fn is_homebrew_list_path(path: &str) -> bool {
+    matches!(
+        path.trim(),
+        "homebrew.brews" | "homebrew.casks" | "homebrew.taps"
+    )
+}
+
+fn quote_homebrew_list_values(path: &str, values: Vec<String>) -> Vec<String> {
+    if is_homebrew_list_path(path) {
+        nix_quote_values(&values)
+    } else {
+        values
+    }
 }
 
 // Truncate string for logging (single line preview)
@@ -1090,6 +1110,80 @@ mod tests {
             err.to_string().contains("ignored by .gitignore"),
             "unexpected error: {err:#}"
         );
+    }
+
+    #[test]
+    fn edit_nix_file_quotes_homebrew_add_values() {
+        let tmp = tempdir().expect("tempdir");
+        fs::write(
+            tmp.path().join("homebrew.nix"),
+            r#"{ ... }:
+{
+  homebrew = {
+    brews = [ ];
+  };
+}
+"#,
+        )
+        .expect("write homebrew module");
+
+        execute_tool(
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "path": "homebrew.nix",
+                "action": {
+                    "add": {
+                        "path": "homebrew.brews",
+                        "values": ["bat"]
+                    }
+                }
+            }),
+            None,
+        )
+        .expect("edit_nix_file should quote Homebrew values");
+
+        let edited = fs::read_to_string(tmp.path().join("homebrew.nix")).expect("read edited");
+        assert!(edited.contains(r#"brews = [ "bat" ];"#), "{edited}");
+        assert!(!edited.contains("brews = [ bat ];"), "{edited}");
+    }
+
+    #[test]
+    fn edit_nix_file_quotes_homebrew_remove_values() {
+        let tmp = tempdir().expect("tempdir");
+        fs::write(
+            tmp.path().join("homebrew.nix"),
+            r#"{ ... }:
+{
+  homebrew = {
+    brews = [ "bat" "jq" ];
+  };
+}
+"#,
+        )
+        .expect("write homebrew module");
+
+        execute_tool(
+            tmp.path().to_str().expect("utf-8 path"),
+            "dummy-host",
+            "edit_nix_file",
+            &json!({
+                "path": "homebrew.nix",
+                "action": {
+                    "remove": {
+                        "path": "homebrew.brews",
+                        "values": ["bat"]
+                    }
+                }
+            }),
+            None,
+        )
+        .expect("edit_nix_file should match quoted Homebrew values");
+
+        let edited = fs::read_to_string(tmp.path().join("homebrew.nix")).expect("read edited");
+        assert!(edited.contains(r#"brews = [ "jq" ];"#), "{edited}");
+        assert!(!edited.contains(r#""bat""#), "{edited}");
     }
 
     #[test]

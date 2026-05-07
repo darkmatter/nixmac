@@ -36,7 +36,6 @@ export function useWatcher() {
           store.setGitStatus(gitStatus ?? null);
           if (changeMap) {
             store.setChangeMap(changeMap);
-            store.setSummaryAvailable(changeMap.groups.length > 0 || changeMap.singles.length > 0);
           }
           if (evolveState) {
             store.setEvolveState(evolveState);

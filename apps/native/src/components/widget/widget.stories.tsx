@@ -1,10 +1,8 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
-import { PermissionsScreen } from "@/components/permissions-screen";
 import type { EvolveEvent, GitStatus } from "@/stores/widget-store";
 import { useWidgetStore } from "@/stores/widget-store";
 import type { SemanticChangeMap } from "@/types/shared";
-import { fn } from "storybook/test";
 import type React from "react";
 import { useEffect } from "react";
 import { DarwinWidget } from "./widget";
@@ -661,28 +659,3 @@ export const OnboardingWithPermissions = meta.story({
   ],
 });
 
-/**
- * Permissions step in onboarding - standalone view
- *
- * Shows just the permissions screen as it appears during onboarding,
- * without the widget wrapper.
- */
-export const OnboardingPermissionsStep = meta.story({
-  render: () => (
-    <PermissionsScreen
-      onComplete={() => {
-        fn()();
-      }}
-    />
-  ),
-  parameters: {
-    layout: "fullscreen",
-  },
-  decorators: [
-    (Story: React.ComponentType) => (
-      <div className="h-screen w-full">
-        <Story />
-      </div>
-    ),
-  ],
-});

@@ -194,7 +194,7 @@ function mockEditorListFiles() {
   ];
 }
 
-async function invoke(command: string, args?: Record<string, unknown>) {
+export async function invoke(command: string, args?: Record<string, unknown>) {
   switch (command) {
     case "plugin:event|listen":
       return nextCallbackId++;
@@ -240,13 +240,13 @@ async function invoke(command: string, args?: Record<string, unknown>) {
   }
 }
 
-const tauriEvent = {
+export const tauriEvent = {
   listen: addListener,
   once: <T>(eventName: string, handler: (event: { payload: T }) => void) => addListener(eventName, handler, true),
   emit,
 };
 
-const storybookDarwinAPI = {
+export const storybookDarwinAPI = {
   config: {
     get: async () => ({ configDir: "/Users/demo/.darwin", hostAttr: defaultHosts[0] }),
     setDir: async () => baseSetDirResult(),
@@ -461,5 +461,3 @@ if (typeof window !== "undefined") {
     transformCallback,
   };
 }
-
-export { invoke, storybookDarwinAPI, tauriEvent };

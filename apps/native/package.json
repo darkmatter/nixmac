@@ -34,6 +34,7 @@
     "build:e2e": "tsc -p e2e-tauri/tsconfig.json",
     "test:wdio:smoke": "npm run build:e2e && wdio run e2e-tauri/wdio.smoke.conf.mjs",
     "test:wdio:basic-prompts": "npm run build:e2e && wdio run e2e-tauri/wdio.basic-prompts.conf.mjs",
+    "test:wdio:conversational": "npm run build:e2e && wdio run e2e-tauri/wdio.conversational.conf.mjs",
     "test:wdio:discard": "npm run build:e2e && wdio run e2e-tauri/wdio.discard.conf.mjs",
     "test:wdio:modify": "npm run build:e2e && wdio run e2e-tauri/wdio.modify.conf.mjs",
     "test:wdio:onboarding": "npm run build:e2e && wdio run e2e-tauri/wdio.onboarding.conf.mjs"

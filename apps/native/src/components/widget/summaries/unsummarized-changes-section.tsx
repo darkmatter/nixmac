@@ -1,7 +1,7 @@
 "use client";
 
 import { UnsummarizedChange } from "@/components/widget/summaries/unsummarized-change";
-import { UnsummarizedChangesDetected } from "@/components/widget/unsummarized-changes-detected";
+import { UnsummarizedChangesDetected } from "@/components/widget/notifications/unsummarized-changes-detected";
 import {
   categorizeRenamed,
   ChangeWithRichType,
