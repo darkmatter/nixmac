@@ -102,6 +102,7 @@ export const darwinAPI = {
         stage,
         clientTimestampUnixMs: clientTimestampUnixMs ?? null,
       }),
+    sentryEvent: () => invoke<void>("debug_sentry_event"),
   },
   ui: {
     getPrefs: () => invoke<DarwinPrefs>("ui_get_prefs"),
@@ -177,10 +178,6 @@ export const darwinAPI = {
     installVersion: (version: string) => invoke<void>("install_version", { version }),
     relaunch: () => invoke<void>("relaunch_after_update"),
     clearPinnedVersion: () => invoke<void>("clear_pinned_version"),
-  },
-
-  debug: {
-    sentryEvent: () => invoke<void>("debug_sentry_event"),
   },
 };
 

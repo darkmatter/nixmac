@@ -2,6 +2,8 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import "@testing-library/jest-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { SetDirResult } from "@/types/shared";
+
 import { useWidgetStore } from "@/stores/widget-store";
 import { DirectoryPicker } from "@/components/widget/controls/directory-picker";
 
@@ -34,7 +36,7 @@ vi.mock("@/hooks/use-darwin-config", () => ({
 
 const mockNormalize = vi.fn<(p: string) => Promise<string | null>>();
 const mockExists = vi.fn<(p: string) => Promise<boolean>>();
-const mockSetDir = vi.fn<(p: string) => Promise<void>>();
+const mockSetDir = vi.fn<(p: string) => Promise<SetDirResult>>();
 const mockSetHostAttr = vi.fn<(h: string) => Promise<void>>();
 const mockListHosts = vi.fn<() => Promise<string[]>>();
 const mockFlakeExistsAt = vi.fn<(p: string) => Promise<boolean>>();
@@ -49,9 +51,6 @@ vi.mock("@/tauri-api", () => ({
     config: {
       setDir: (p: string) => mockSetDir(p),
       pickDir: () => mockPickDir(),
-      setHostAttr: (h: string) => mockSetHostAttr(h),
-    },
-    flake: {
       setHostAttr: (h: string) => mockSetHostAttr(h),
     },
     flake: {
