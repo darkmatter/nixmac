@@ -11,7 +11,7 @@
 // Inside `__mocks__`, the relative import resolves to the un-mocked
 // original module — that's the manual-mock contract Storybook
 // inherits from Vitest.
-import { createWidgetStore as createRealWidgetStore, type WidgetState } from "../widget-store";
+import { createWidgetStore as createRealWidgetStore, type WidgetState } from "@/stores/widget-store.impl";
 
 export type {
   EvolveEvent,
@@ -20,7 +20,7 @@ export type {
   GitFileStatus,
   GitStatus,
   PermissionsState,
-} from "../widget-store";
+} from "@/stores/widget-store.impl";
 
 export type {
   BoolPrefKey,
@@ -32,20 +32,20 @@ export type {
   SettingsTab,
   WidgetState,
   WidgetStep,
-} from "../widget-store";
+} from "@/stores/widget-store.impl";
 
-export { initialRebuildState } from "../widget-store";
+export { initialRebuildState } from "@/stores/widget-store.impl";
 
 // =============================================================================
 // Bypass invariants — these never drift from "all granted, all installed."
 // =============================================================================
 
-const BYPASS_KEYS: ReadonlyArray<keyof WidgetState> = [
+const BYPASS_KEYS = [
   "nixInstalled",
   "darwinRebuildAvailable",
   "permissionsChecked",
   "permissionsState",
-];
+] as const satisfies ReadonlyArray<keyof WidgetState>;
 
 function bypassValues(): Pick<WidgetState, (typeof BYPASS_KEYS)[number]> {
   return {
@@ -117,7 +117,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
 export const useWidgetStore = createWidgetStore();
 
 import { computeCurrentStep } from "@/components/widget/utils";
-import type { WidgetStep } from "../widget-store";
+import type { WidgetStep } from "@/stores/widget-store.impl";
 
 export function useCurrentStep(): WidgetStep {
   return useWidgetStore((state) => computeCurrentStep(state));
