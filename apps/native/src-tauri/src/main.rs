@@ -150,6 +150,124 @@ fn e2e_schedule_webview_boot_probe(window: WebviewWindow, label: &'static str, d
 fn e2e_schedule_webview_boot_probe(_window: WebviewWindow, _label: &'static str, _delay: Duration) {
 }
 
+#[cfg(all(debug_assertions, target_os = "macos"))]
+fn e2e_request_native_webview_capture_probe(window: &WebviewWindow, label: &'static str) {
+    use objc::msg_send;
+    use objc::runtime::{Object, YES};
+    use objc::sel;
+    use objc::sel_impl;
+
+    #[repr(C)]
+    struct E2eNativePoint {
+        x: f64,
+        y: f64,
+    }
+
+    #[repr(C)]
+    struct E2eNativeSize {
+        width: f64,
+        height: f64,
+    }
+
+    #[repr(C)]
+    struct E2eNativeRect {
+        origin: E2eNativePoint,
+        size: E2eNativeSize,
+    }
+
+    if let Err(error) = window.with_webview(move |webview| unsafe {
+        let webview = webview.inner() as *mut Object;
+        let is_hidden: bool = msg_send![webview, isHidden];
+        let alpha_value: f64 = msg_send![webview, alphaValue];
+        let wants_layer: bool = msg_send![webview, wantsLayer];
+        let frame: E2eNativeRect = msg_send![webview, frame];
+        let bounds: E2eNativeRect = msg_send![webview, bounds];
+        let responds_to_draws_background: bool =
+            msg_send![webview, respondsToSelector: sel!(drawsBackground)];
+        let draws_background = if responds_to_draws_background {
+            let value: bool = msg_send![webview, drawsBackground];
+            Some(value)
+        } else {
+            None
+        };
+        let layer: *mut Object = msg_send![webview, layer];
+        let layer_has_contents = if layer.is_null() {
+            false
+        } else {
+            let contents: *mut Object = msg_send![layer, contents];
+            !contents.is_null()
+        };
+        let layer_opacity: f32 = if layer.is_null() {
+            -1.0
+        } else {
+            msg_send![layer, opacity]
+        };
+        let layer_hidden: bool = if layer.is_null() {
+            false
+        } else {
+            msg_send![layer, isHidden]
+        };
+
+        // Best-effort AppKit invalidation for the virtualized MacInCloud capture path.
+        // WKWebView content is out-of-process, so this is evidence plus a hint, not a
+        // guarantee that WebContent will repaint.
+        let _: () = msg_send![webview, setNeedsDisplay: YES];
+        let _: () = msg_send![webview, displayIfNeeded];
+
+        log::info!(
+            "NIXMAC_E2E_CAPTURE webview diagnostics: label={} drawsBackground={:?} respondsToDrawsBackground={} hidden={} alphaValue={:.3} wantsLayer={} frame={:.0},{:.0},{:.0},{:.0} bounds={:.0},{:.0},{:.0},{:.0} layerPresent={} layerHidden={} layerOpacity={:.3} layerHasContents={} appKitDisplayHint=true",
+            label,
+            draws_background,
+            responds_to_draws_background,
+            is_hidden,
+            alpha_value,
+            wants_layer,
+            frame.origin.x,
+            frame.origin.y,
+            frame.size.width,
+            frame.size.height,
+            bounds.origin.x,
+            bounds.origin.y,
+            bounds.size.width,
+            bounds.size.height,
+            !layer.is_null(),
+            layer_hidden,
+            layer_opacity,
+            layer_has_contents
+        );
+    }) {
+        log::warn!(
+            "NIXMAC_E2E_CAPTURE webview diagnostics unavailable for {}: {}",
+            label,
+            error
+        );
+    }
+}
+
+#[cfg(not(all(debug_assertions, target_os = "macos")))]
+#[allow(dead_code)]
+fn e2e_request_native_webview_capture_probe(_window: &WebviewWindow, _label: &'static str) {}
+
+#[cfg(debug_assertions)]
+fn e2e_schedule_native_webview_capture_probe(
+    window: WebviewWindow,
+    label: &'static str,
+    delay: Duration,
+) {
+    std::thread::spawn(move || {
+        std::thread::sleep(delay);
+        e2e_request_native_webview_capture_probe(&window, label);
+    });
+}
+
+#[cfg(not(debug_assertions))]
+fn e2e_schedule_native_webview_capture_probe(
+    _window: WebviewWindow,
+    _label: &'static str,
+    _delay: Duration,
+) {
+}
+
 const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
 (() => {
   const styleId = "nixmac-e2e-capture-background";
@@ -202,6 +320,63 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
       visibility: style.visibility,
     };
   };
+  const rectFor = (element) => {
+    if (!element) return null;
+    const rect = element.getBoundingClientRect();
+    return {
+      x: Math.round(rect.x),
+      y: Math.round(rect.y),
+      width: Math.round(rect.width),
+      height: Math.round(rect.height),
+      top: Math.round(rect.top),
+      right: Math.round(rect.right),
+      bottom: Math.round(rect.bottom),
+      left: Math.round(rect.left),
+    };
+  };
+  const summarizeElement = (element) => {
+    if (!element) return null;
+    return {
+      tagName: element.tagName?.toLowerCase() ?? null,
+      className: typeof element.className === "string" ? element.className : null,
+      text: element.textContent?.trim().slice(0, 80) ?? null,
+      rect: rectFor(element),
+    };
+  };
+  const elementAtCenter = (element) => {
+    const rect = element?.getBoundingClientRect();
+    if (!rect || rect.width <= 0 || rect.height <= 0) return null;
+    const x = Math.max(0, Math.min(window.innerWidth - 1, rect.left + rect.width / 2));
+    const y = Math.max(0, Math.min(window.innerHeight - 1, rect.top + rect.height / 2));
+    const hit = document.elementFromPoint(x, y);
+    return {
+      point: { x: Math.round(x), y: Math.round(y) },
+      hit: summarizeElement(hit),
+      textContainsHit: Boolean(hit && (element === hit || element.contains(hit))),
+      hitContainsText: Boolean(hit && hit.contains(element)),
+    };
+  };
+  const canvasReadbackProbe = () => {
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = 2;
+      canvas.height = 2;
+      const context = canvas.getContext("2d");
+      if (!context) return { ok: false, error: "2d context unavailable" };
+      context.fillStyle = "rgb(255, 255, 255)";
+      context.fillRect(0, 0, 2, 2);
+      context.fillStyle = "rgb(17, 17, 17)";
+      context.fillRect(1, 1, 1, 1);
+      const pixel = context.getImageData(0, 0, 1, 1).data;
+      return {
+        ok: true,
+        firstPixel: [pixel[0], pixel[1], pixel[2], pixel[3]],
+        dataUrlPrefix: canvas.toDataURL("image/png").slice(0, 32),
+      };
+    } catch (error) {
+      return { ok: false, error: String(error) };
+    }
+  };
   const captureStyleProbe = (label) => {
     try {
       const root = document.getElementById("root");
@@ -219,9 +394,14 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
         JSON.stringify({
           captureMode,
           capturePaint: document.documentElement.dataset.nixmacE2eCapturePaint ?? null,
+          visibilityState: document.visibilityState,
+          devicePixelRatio: window.devicePixelRatio,
+          viewport: { width: window.innerWidth, height: window.innerHeight },
           rootChildren: root?.childElementCount ?? null,
           bodyChildren: document.body?.childElementCount ?? null,
           shellClassName: typeof shell?.className === "string" ? shell.className : null,
+          rootRect: rectFor(root),
+          shellRect: rectFor(shell),
           htmlBackgroundColor: htmlStyle.backgroundColor,
           bodyBackgroundColor: bodyStyle?.backgroundColor ?? null,
           shellBackgroundColor: shellStyle?.backgroundColor ?? null,
@@ -235,6 +415,9 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
           buttonStyle: sampleStyle(button),
           svgStyle: sampleStyle(svg),
           textStyle: sampleStyle(textElement),
+          textRect: rectFor(textElement),
+          textElementAtCenter: elementAtCenter(textElement),
+          canvasReadback: canvasReadbackProbe(),
         }),
       );
     } catch (error) {
@@ -861,6 +1044,7 @@ fn run_gui_mode(
             let main_webview_loaded = Arc::new(AtomicBool::new(false));
             let main_webview_loaded_for_page_load = Arc::clone(&main_webview_loaded);
             let e2e_page_load_boot_probe = e2e_webview_watchdog;
+            let e2e_page_load_native_capture_probe = e2e_css_capture;
 
             let mut main_window_builder =
                 WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
@@ -900,6 +1084,13 @@ fn run_gui_mode(
                                 e2e_schedule_webview_boot_probe(
                                     window.clone(),
                                     "page-load-finished-plus-5s",
+                                    Duration::from_secs(5),
+                                );
+                            }
+                            if e2e_page_load_native_capture_probe {
+                                e2e_schedule_native_webview_capture_probe(
+                                    window.clone(),
+                                    "native-page-load-finished-plus-5s",
                                     Duration::from_secs(5),
                                 );
                             }
@@ -968,6 +1159,14 @@ fn run_gui_mode(
                         );
                     }
                 }
+            }
+
+            if e2e_css_capture {
+                e2e_schedule_native_webview_capture_probe(
+                    main_window.clone(),
+                    "native-post-build-plus-2s",
+                    Duration::from_secs(2),
+                );
             }
 
             if e2e_webview_watchdog {
