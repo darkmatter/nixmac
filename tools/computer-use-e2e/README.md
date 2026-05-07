@@ -633,6 +633,12 @@ MacInCloud operator notes:
   forcing a solid dark CSS backing inside the WebView. The default path does not
   set a native AppKit background color; the WebView owns the dark backing so
   remote capture sees the same layer that paints the product UI.
+- The GitHub MacInCloud lane deliberately adds `NIXMAC_E2E_OPAQUE_WINDOW=1`
+  around the remote suite run. MacInCloud artifacts showed the transparent
+  WebView path could run the init script and mount React while the target window
+  screenshot stayed transparent black, so CI uses the E2E-only opaque native
+  window path to make captured pixels reliable. Local developer runs keep the
+  CSS-only solid path unless they explicitly set the opaque flag.
 - The Peekaboo scenarios keep the E2E WebView load watchdog enabled by default
   through `NIXMAC_E2E_WEBVIEW_WATCHDOG=1`; stalled initial WebView loads request
   one reload and are logged into the scenario diagnostics.

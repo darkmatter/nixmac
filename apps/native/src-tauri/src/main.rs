@@ -672,6 +672,37 @@ fn run_gui_mode(
             })?;
             log::debug!("Main nixmac window created");
 
+            #[cfg(target_os = "macos")]
+            if e2e_opaque_window {
+                use objc::msg_send;
+                use objc::runtime::Object;
+                use objc::sel;
+                use objc::sel_impl;
+
+                match main_window.ns_window() {
+                    Ok(ns_window) => unsafe {
+                        let ns_window = ns_window as *mut Object;
+                        let is_opaque: bool = msg_send![ns_window, isOpaque];
+                        let alpha_value: f64 = msg_send![ns_window, alphaValue];
+                        let level: i64 = msg_send![ns_window, level];
+                        let has_shadow: bool = msg_send![ns_window, hasShadow];
+                        log::info!(
+                            "NIXMAC_E2E_OPAQUE_WINDOW native window diagnostics: isOpaque={} alphaValue={:.3} level={} hasShadow={}",
+                            is_opaque,
+                            alpha_value,
+                            level,
+                            has_shadow
+                        );
+                    },
+                    Err(error) => {
+                        log::warn!(
+                            "NIXMAC_E2E_OPAQUE_WINDOW native window diagnostics unavailable: {}",
+                            error
+                        );
+                    }
+                }
+            }
+
             if e2e_webview_watchdog {
                 let watchdog_window = main_window.clone();
                 let watchdog_loaded = Arc::clone(&main_webview_loaded);

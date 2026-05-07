@@ -288,6 +288,7 @@ jobs:
           remote_env_parts=(
             "PATH=/opt/homebrew/bin:\$PATH"
             "NIXMAC_APP_PATH=$(printf '%q' "$REMOTE_APP_PATH")"
+            "NIXMAC_E2E_OPAQUE_WINDOW=1"
             "E2E_TERMINAL_CLEANUP_MODE=kill"
             "E2E_HIDE_RECORDING_TERMINAL=1"
             "E2E_CLOSE_RECORDING_TERMINAL=1"
