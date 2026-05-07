@@ -548,7 +548,7 @@ function runPreflight(plan) {
 		set -uo pipefail
 		export PATH="/opt/homebrew/bin:$PATH"
 		uid="$(id -u 2>/dev/null || true)"
-		for key in NIXMAC_E2E_MOCK_SYSTEM NIXMAC_E2E_OPAQUE_WINDOW NIXMAC_SKIP_PERMISSIONS NIXMAC_RECORD_COMPLETIONS NIXMAC_COMPLETION_LOG_DIR OPENAI_API_KEY OPENROUTER_API_KEY VLLM_API_KEY ANTHROPIC_API_KEY; do
+		for key in NIXMAC_E2E_MOCK_SYSTEM NIXMAC_E2E_OPAQUE_WINDOW NIXMAC_E2E_WEBVIEW_WATCHDOG NIXMAC_SKIP_PERMISSIONS NIXMAC_RECORD_COMPLETIONS NIXMAC_COMPLETION_LOG_DIR OPENAI_API_KEY OPENROUTER_API_KEY VLLM_API_KEY ANTHROPIC_API_KEY; do
 		  launchctl unsetenv "$key" >/dev/null 2>&1 || true
 		  if [ -n "$uid" ]; then
 		    launchctl asuser "$uid" launchctl unsetenv "$key" >/dev/null 2>&1 || true

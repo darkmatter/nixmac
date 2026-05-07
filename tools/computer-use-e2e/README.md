@@ -553,9 +553,9 @@ node tools/computer-use-e2e/run-local.mjs run-peekaboo-suite --no-record
 NIXMAC_APP_PATH=/path/to/nixmac.app node tools/computer-use-e2e/run-local.mjs run-peekaboo
 ```
 
-Use a debug/dev nixmac build for the mocked-system and opaque-window E2E flags;
-release builds ignore those Rust debug-only gates and will take the slower real
-system-check path.
+Use a debug/dev nixmac build for the mocked-system flag, WebView load watchdog,
+and opt-in opaque-window capture flag; release builds ignore those Rust
+debug-only gates and will take the slower real system-check path.
 
 Developers can run the same Peekaboo suite on a MacInCloud host from their own
 machine when the host already has this checkout, Peekaboo, TCC permissions, and
@@ -605,6 +605,7 @@ If a run is killed hard and you want to recover the session manually, run:
 ```bash
 launchctl unsetenv NIXMAC_E2E_MOCK_SYSTEM
 launchctl unsetenv NIXMAC_E2E_OPAQUE_WINDOW
+launchctl unsetenv NIXMAC_E2E_WEBVIEW_WATCHDOG
 launchctl unsetenv NIXMAC_RECORD_COMPLETIONS
 launchctl unsetenv NIXMAC_COMPLETION_LOG_DIR
 launchctl unsetenv OPENAI_API_KEY
@@ -626,12 +627,15 @@ MacInCloud operator notes:
   fail those runs instead of accepting hollow visual proof.
 - Allow the nixmac Documents-folder consent prompt once on the host when it
   appears.
-- The Peekaboo scenarios set `NIXMAC_E2E_OPAQUE_WINDOW=1` automatically so the
-  app uses an opaque, visible-titlebar window that is more reliable for remote
-  host capture. In debug builds, that same capture mode also forces a dark
-  WebView backing color so the screenshots stay visually close to nixmac's
+- The Peekaboo scenarios keep the E2E WebView load watchdog enabled by default
+  through `NIXMAC_E2E_WEBVIEW_WATCHDOG=1`; stalled initial WebView loads request
+  one reload and are logged into the scenario diagnostics.
+- `NIXMAC_E2E_OPAQUE_WINDOW=1` is an opt-in debug escape hatch for remote
+  capture investigation. It uses an opaque, visible-titlebar window and forces a
+  dark WebView backing color so screenshots stay visually close to nixmac's
   black app chrome instead of showing WebView/macOS light gray through
-  translucent app surfaces.
+  translucent app surfaces. Default Product Proof runs clear stale opaque-mode
+  launch state so MacInCloud screenshots reflect the normal nixmac window.
 
 The remote Codex app-server lane remains the PR/Product Proof production lane.
 The Peekaboo lane is isolated local evidence so the team can compare driver

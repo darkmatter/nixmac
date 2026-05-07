@@ -779,6 +779,7 @@ scenario_provider_cleanup() {
     nixmac_pp_cleanup_common
     launchctl unsetenv NIXMAC_E2E_MOCK_SYSTEM 2>/dev/null || true
     launchctl unsetenv NIXMAC_E2E_OPAQUE_WINDOW 2>/dev/null || true
+    launchctl unsetenv NIXMAC_E2E_WEBVIEW_WATCHDOG 2>/dev/null || true
     launchctl unsetenv NIXMAC_SKIP_PERMISSIONS 2>/dev/null || true
     launchctl unsetenv OPENAI_API_KEY 2>/dev/null || true
     launchctl unsetenv OPENROUTER_API_KEY 2>/dev/null || true

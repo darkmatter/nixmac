@@ -57,6 +57,10 @@ fn e2e_opaque_window_enabled() -> bool {
     cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_OPAQUE_WINDOW")
 }
 
+fn e2e_webview_watchdog_enabled() -> bool {
+    cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_WEBVIEW_WATCHDOG")
+}
+
 const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
 (() => {
   const styleId = "nixmac-e2e-capture-background";
@@ -569,8 +573,12 @@ fn run_gui_mode(
             let min_height = 400.0;
             let max_height = 900.0;
             let e2e_opaque_window = e2e_opaque_window_enabled();
+            let e2e_webview_watchdog = e2e_webview_watchdog_enabled() || e2e_opaque_window;
             if e2e_opaque_window {
                 log::info!("NIXMAC_E2E_OPAQUE_WINDOW enabled; using an opaque visible-titlebar window with dark WebView backing for host visual capture");
+            }
+            if e2e_webview_watchdog {
+                log::info!("NIXMAC_E2E_WEBVIEW_WATCHDOG enabled; stalled main WebView loads will request one reload");
             }
             let main_webview_loaded = Arc::new(AtomicBool::new(false));
             let main_webview_loaded_for_page_load = Arc::clone(&main_webview_loaded);
@@ -621,7 +629,7 @@ fn run_gui_mode(
             })?;
             log::debug!("Main nixmac window created");
 
-            if e2e_opaque_window {
+            if e2e_webview_watchdog {
                 let watchdog_window = main_window.clone();
                 let watchdog_loaded = Arc::clone(&main_webview_loaded);
                 let watchdog_secs =
