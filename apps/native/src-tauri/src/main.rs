@@ -68,23 +68,36 @@ fn e2e_webview_watchdog_enabled() -> bool {
 const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
 (() => {
   const styleId = "nixmac-e2e-capture-background";
+  const captureMode = "solid";
+  const captureBackground = "hsl(0 0% 3.9%)";
   const applyCaptureBackground = () => {
     document.documentElement.classList.add("dark");
-    document.documentElement.dataset.nixmacE2eCapture = "opaque";
+    document.documentElement.dataset.nixmacE2eCapture = captureMode;
     if (!document.getElementById(styleId)) {
       const style = document.createElement("style");
       style.id = styleId;
       style.textContent = `
-        html, body, #root {
-          background: hsl(0 0% 3.9%) !important;
+        html[data-nixmac-e2e-capture="${captureMode}"],
+        html[data-nixmac-e2e-capture="${captureMode}"] body,
+        html[data-nixmac-e2e-capture="${captureMode}"] #root {
+          background: ${captureBackground} !important;
+          background-color: ${captureBackground} !important;
         }
-        html[data-nixmac-e2e-capture="opaque"] .bg-background\\/90,
-        html[data-nixmac-e2e-capture="opaque"] .bg-background\\/95 {
-          background-color: hsl(0 0% 3.9%) !important;
+        html[data-nixmac-e2e-capture="${captureMode}"] .bg-background\\/80,
+        html[data-nixmac-e2e-capture="${captureMode}"] .bg-background\\/90,
+        html[data-nixmac-e2e-capture="${captureMode}"] .bg-background\\/95,
+        html[data-nixmac-e2e-capture="${captureMode}"] .bg-card\\/50,
+        html[data-nixmac-e2e-capture="${captureMode}"] .bg-card\\/80,
+        html[data-nixmac-e2e-capture="${captureMode}"] .bg-card\\/95,
+        html[data-nixmac-e2e-capture="${captureMode}"] .bg-zinc-900\\/95 {
+          background-color: ${captureBackground} !important;
         }
       `;
       document.head.appendChild(style);
     }
+    requestAnimationFrame(() => {
+      document.documentElement.dataset.nixmacE2eCapturePaint = "raf";
+    });
   };
   if (document.head) {
     applyCaptureBackground();
@@ -577,10 +590,11 @@ fn run_gui_mode(
             let min_height = 400.0;
             let max_height = 900.0;
             let e2e_opaque_window = e2e_opaque_window_enabled();
-            let e2e_solid_capture = e2e_solid_capture_enabled() || e2e_opaque_window;
+            let e2e_solid_capture = e2e_solid_capture_enabled();
+            let e2e_capture_background = e2e_solid_capture || e2e_opaque_window;
             let e2e_webview_watchdog = e2e_webview_watchdog_enabled() || e2e_opaque_window;
             if e2e_solid_capture {
-                log::info!("NIXMAC_E2E_SOLID_CAPTURE enabled; using solid dark WebView backing for host visual capture");
+                log::info!("NIXMAC_E2E_SOLID_CAPTURE enabled; using CSS-backed dark WebView capture while preserving the normal overlay window");
             }
             if e2e_opaque_window {
                 log::info!("NIXMAC_E2E_OPAQUE_WINDOW enabled; using an opaque visible-titlebar window with dark WebView backing for host visual capture");
@@ -602,7 +616,7 @@ fn run_gui_mode(
                     .minimizable(true)
                     .closable(true)
                     .decorations(true)
-                    .transparent(!e2e_solid_capture)
+                    .transparent(!e2e_opaque_window)
                     .visible(true)
                     .always_on_top(false)
                     .visible_on_all_workspaces(true)
@@ -623,12 +637,9 @@ fn run_gui_mode(
                         }
                     });
 
-            if e2e_solid_capture {
+            if e2e_capture_background {
                 main_window_builder = main_window_builder
                     .background_color(tauri::utils::config::Color(10, 10, 10, 255));
-            }
-
-            if e2e_opaque_window {
                 main_window_builder =
                     main_window_builder.initialization_script(E2E_CAPTURE_DARK_BACKGROUND_SCRIPT);
             }
