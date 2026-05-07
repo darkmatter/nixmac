@@ -7,8 +7,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BootstrapConfig } from "@/components/widget/bootstrap-config";
-import { DirectoryPicker } from "@/components/widget/directory-picker";
+import { BootstrapConfig } from "@/components/widget/controls/bootstrap-config";
+import { DirectoryPicker } from "@/components/widget/controls/directory-picker";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { useWidgetStore } from "@/stores/widget-store";
 import { Monitor } from "lucide-react";

@@ -1,5 +1,5 @@
 import { Clock } from "lucide-react";
-import { AnalyzeHistoryButton } from "@/components/widget/analyze-history-button";
+import { AnalyzeHistoryButton } from "@/components/widget/history/analyze-history-button";
 
 interface HistoryHeaderProps {
   count: number;

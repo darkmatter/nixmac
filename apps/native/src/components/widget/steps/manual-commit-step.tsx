@@ -1,10 +1,10 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { ConfirmButton } from "@/components/widget/confirm-button";
-import { MergeSection } from "@/components/widget/merge-section";
-import { PromptInputSection } from "@/components/widget/prompt-input-section";
-import { StepActionsHeader } from "@/components/widget/step-actions-header";
+import { ConfirmButton } from "@/components/widget/controls/confirm-button";
+import { MergeSection } from "@/components/widget/layout/merge-section";
+import { PromptInputSection } from "@/components/widget/promptinput/prompt-input-section";
+import { StepActionsHeader } from "@/components/widget/layout/step-actions-header";
 import { SummaryOrDiff } from "@/components/widget/summaries/summary-or-diff";
 import { useRollback } from "@/hooks/use-rollback";
 import { RefreshCw, Undo2 } from "lucide-react";
