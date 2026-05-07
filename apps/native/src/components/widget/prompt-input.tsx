@@ -17,8 +17,10 @@ import { useEvolve } from "@/hooks/use-evolve";
 import { getProviderConfigInvalidReason } from "@/lib/ai-provider-validation";
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
-import { ArrowUpIcon } from "lucide-react";
+import { ArrowUpIcon, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { Separator } from "@/components/ui/separator";
 
 const MAX_CONTEXT_LENGTH = 1000;
 
@@ -125,9 +127,9 @@ export function PromptInput() {
     percentage >= 1 ? "100% used" : percentage < 0.1 ? "" : `${Math.floor(percentage * 100)}% used`;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 flex-col min-h-24">
       <BeginEvolveWarning open={warningOpen} onOpenChange={setWarningOpen} handleEvolve={handleEvolve} />
-      <InputGroup>
+      <InputGroup className="bg-background">
         <InputGroupTextarea
           id="evolve-prompt-input"
           data-testid="evolve-prompt-input"
@@ -141,48 +143,44 @@ export function PromptInput() {
           placeholder={placeholder}
           value={evolvePrompt}
         />
-
-        {/* Placeholder template
-        "+" for adding files/resources for context
-        "dropdown" for selecting context mode (auto/agent/manual) */}
-
-        <InputGroupAddon align="block-end">
-          {/* <InputGroupButton
-            className="rounded-full"
-            size="icon-xs"
-            variant="outline"
-          >
-            <Plus />
-          </InputGroupButton> */}
-          {/* <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <InputGroupButton variant="ghost">Auto</InputGroupButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              className="[--radius:0.95rem]"
-              side="top"
+          <InputGroupAddon align="block-end">
+            <InputGroupButton
+              className="rounded-full"
+              size="icon-xs"
+              variant="outline"
             >
-              <DropdownMenuItem>Auto</DropdownMenuItem>
-              <DropdownMenuItem>Agent</DropdownMenuItem>
-              <DropdownMenuItem>Manual</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu> */}
-          <InputGroupText className="ml-auto">{contextUsage}</InputGroupText>
-          {/* <Separator className="!h-4" orientation="vertical" /> */}
-          <InputGroupButton
+              <Plus />
+            </InputGroupButton>
+             <DropdownMenu>
+               <DropdownMenuTrigger asChild>
+                 <InputGroupButton variant="ghost">Auto</InputGroupButton>
+               </DropdownMenuTrigger>
+               <DropdownMenuContent
+                 align="start"
+                 className="[--radius:0.95rem]"
+                 side="top"
+               >
+                 <DropdownMenuItem>Auto</DropdownMenuItem>
+                 <DropdownMenuItem>Agent</DropdownMenuItem>
+                 <DropdownMenuItem>Manual</DropdownMenuItem>
+               </DropdownMenuContent>
+             </DropdownMenu>
+             <InputGroupText className="ml-auto">52% used</InputGroupText>
+             <Separator className="!h-4" orientation="vertical" />
+             <Separator className="!h-4" orientation="vertical" />
+             <InputGroupButton
+               className="rounded-full"
+               size="icon-xs"
+            variant="default"
             id="evolve-prompt-send"
             data-testid="evolve-prompt-send"
-            className="rounded-full"
             disabled={sendDisabled}
             onClick={handleSubmit}
-            size="icon-xs"
-            variant="default"
-          >
-            <ArrowUpIcon />
-            <span className="sr-only">Send</span>
-          </InputGroupButton>
-        </InputGroupAddon>
+             >
+               <ArrowUpIcon />
+               <span className="sr-only">Send</span>
+             </InputGroupButton>
+           </InputGroupAddon>
       </InputGroup>
 
       {promptValidationError && (
