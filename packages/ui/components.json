@@ -4,19 +4,19 @@
   "rsc": false,
   "tsx": true,
   "tailwind": {
-    "config": "tailwind.config.js",
-    "css": "src/index.css",
+    "config": "../../apps/native/tailwind.config.js",
+    "css": "../../apps/native/src/index.css",
     "baseColor": "neutral",
     "cssVariables": true,
     "prefix": ""
   },
   "iconLibrary": "lucide",
   "aliases": {
-    "components": "@nixmac/ui/components",
-    "utils": "@nixmac/ui/lib/utils",
-    "ui": "@nixmac/ui/components/ui",
-    "lib": "@nixmac/ui/lib",
-    "hooks": "@nixmac/ui/hooks"
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
   },
   "registries": {
     "@aceternity": "https://ui.aceternity.com/registry/{name}.json",
