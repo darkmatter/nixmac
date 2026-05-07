@@ -1,6 +1,7 @@
 import { EVOLUTION_CANCELLED_MSG } from "@/lib/constants";
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI, EVOLVE_EVENT_CHANNEL, ipcRenderer } from "@/tauri-api";
+import { EVOLVE_EVENT_CHANNEL } from "@/../shared/constants";
+import { darwinAPI, ipcRenderer } from "@/tauri-api";
 import type { EvolveEvent } from "@/types/shared";
 
 /**

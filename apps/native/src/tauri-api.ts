@@ -35,11 +35,6 @@ import type {
   UiPrefsUpdate as DarwinPrefsUpdate,
 } from "./types/shared";
 
-export const DEFAULT_MAX_ITERATIONS = 25;
-
-export const EVOLVE_EVENT_CHANNEL = "darwin:evolve:event";
-export const CONFIG_CHANGED_CHANNEL = "config:changed";
-
 export const darwinAPI = {
   config: {
     get: () => invoke<DarwinConfig>("config_get"),
@@ -195,14 +190,6 @@ export const ipcRenderer = {
   once: <T = unknown>(channel: string, listener: (event: Event<T>) => void) =>
     once<T>(channel, listener),
 };
-
-// const w = new Window("lol");
-// w.once("tauri://window-created", (event) => {
-//   console.log(event);
-// });
-// w.once("tauri://destroyed", (event) => {
-//   console.log(event);
-// });
 
 declare global {
   interface Window {
