@@ -34,7 +34,7 @@ scenario_test() {
     phase "Launch nixmac app"
     nixmac_launch || die "App failed to launch"
     nixmac_pp_wait_for_ready_app_shell 60 \
-        || die "App shell did not expose Console footer with visible screenshot signal"
+        || die "App shell did not expose Console footer"
     nixmac_screenshot "01-console-launch"
     phase_pass "peekabooCoreLaunch: App shell rendered before Console proof"
 
@@ -48,7 +48,7 @@ scenario_test() {
         die "Console text surface did not render"
     fi
     nixmac_screenshot "02-console-expanded"
-    phase_pass "peekabooCoreConsole: Console rendered text evidence with screenshot proof"
+    phase_pass "peekabooCoreConsole: Console rendered text evidence"
 }
 
 scenario_cleanup() {

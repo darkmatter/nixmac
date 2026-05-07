@@ -345,6 +345,25 @@ fn e2e_write_native_snapshot_status(
     output_path: &std::path::Path,
     message: Option<&str>,
 ) {
+    e2e_write_native_snapshot_status_with_source(
+        status_path,
+        status,
+        label,
+        output_path,
+        message,
+        "WKWebView.takeSnapshotWithConfiguration",
+    );
+}
+
+#[cfg(all(debug_assertions, target_os = "macos"))]
+fn e2e_write_native_snapshot_status_with_source(
+    status_path: &std::path::Path,
+    status: &str,
+    label: &str,
+    output_path: &std::path::Path,
+    message: Option<&str>,
+    source: &str,
+) {
     if let Some(parent) = status_path.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
@@ -357,7 +376,7 @@ fn e2e_write_native_snapshot_status(
             .duration_since(std::time::UNIX_EPOCH)
             .map(|duration| duration.as_millis())
             .unwrap_or(0),
-        "source": "WKWebView.takeSnapshotWithConfiguration"
+        "source": source
     });
     let tmp_status_path = status_path.with_extension("json.tmp");
     if std::fs::write(
@@ -368,6 +387,143 @@ fn e2e_write_native_snapshot_status(
     .is_err()
     {
         let _ = std::fs::remove_file(&tmp_status_path);
+    }
+}
+
+#[cfg(all(debug_assertions, target_os = "macos"))]
+unsafe fn e2e_write_bitmap_rep_png(
+    bitmap_rep: *mut objc::runtime::Object,
+    output_path: &std::path::Path,
+) -> Result<(), String> {
+    use objc::class;
+    use objc::msg_send;
+    use objc::runtime::Object;
+    use objc::sel;
+    use objc::sel_impl;
+
+    if bitmap_rep.is_null() {
+        return Err("NSBitmapImageRep was nil".to_string());
+    }
+
+    let properties: *mut Object = msg_send![class!(NSDictionary), dictionary];
+    const NS_BITMAP_IMAGE_FILE_TYPE_PNG: usize = 4;
+    let png_data: *mut Object = msg_send![
+        bitmap_rep,
+        representationUsingType: NS_BITMAP_IMAGE_FILE_TYPE_PNG
+        properties: properties
+    ];
+    if png_data.is_null() {
+        return Err("NSBitmapImageRep PNG representation was nil".to_string());
+    }
+
+    let bytes: *const std::ffi::c_void = msg_send![png_data, bytes];
+    let len: usize = msg_send![png_data, length];
+    if bytes.is_null() || len == 0 {
+        return Err("PNG data was empty".to_string());
+    }
+
+    let slice = std::slice::from_raw_parts(bytes.cast::<u8>(), len);
+    let tmp_output = output_path.with_extension("png.tmp");
+    std::fs::write(&tmp_output, slice)
+        .and_then(|()| std::fs::rename(&tmp_output, output_path))
+        .map_err(|error| {
+            let _ = std::fs::remove_file(&tmp_output);
+            format!("failed to write PNG atomically: {error}")
+        })
+}
+
+#[cfg(all(debug_assertions, target_os = "macos"))]
+unsafe fn e2e_try_cached_display_snapshot(
+    webview: *mut objc::runtime::Object,
+    status_path: &std::path::Path,
+    label: &str,
+    output_path: &std::path::Path,
+    prior_error: &str,
+) -> bool {
+    use objc::msg_send;
+    use objc::runtime::Object;
+    use objc::sel;
+    use objc::sel_impl;
+
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    struct E2eNativePoint {
+        x: f64,
+        y: f64,
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    struct E2eNativeSize {
+        width: f64,
+        height: f64,
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    struct E2eNativeRect {
+        origin: E2eNativePoint,
+        size: E2eNativeSize,
+    }
+
+    if webview.is_null() {
+        return false;
+    }
+    let bounds: E2eNativeRect = msg_send![webview, bounds];
+    if bounds.size.width <= 0.0 || bounds.size.height <= 0.0 {
+        e2e_write_native_snapshot_status_with_source(
+            status_path,
+            "failed",
+            label,
+            output_path,
+            Some(&format!(
+                "{prior_error}; AppKit fallback had invalid bounds {:.0}x{:.0}",
+                bounds.size.width, bounds.size.height
+            )),
+            "NSView.cacheDisplayInRect",
+        );
+        return false;
+    }
+    let bitmap_rep: *mut Object = msg_send![webview, bitmapImageRepForCachingDisplayInRect: bounds];
+    if bitmap_rep.is_null() {
+        e2e_write_native_snapshot_status_with_source(
+            status_path,
+            "failed",
+            label,
+            output_path,
+            Some(&format!(
+                "{prior_error}; AppKit fallback returned nil bitmap rep"
+            )),
+            "NSView.cacheDisplayInRect",
+        );
+        return false;
+    }
+    let _: () = msg_send![webview, cacheDisplayInRect: bounds toBitmapImageRep: bitmap_rep];
+    match e2e_write_bitmap_rep_png(bitmap_rep, output_path) {
+        Ok(()) => {
+            e2e_write_native_snapshot_status_with_source(
+                status_path,
+                "passed",
+                label,
+                output_path,
+                Some(&format!(
+                    "WKWebView snapshot failed first ({prior_error}); AppKit cached-display fallback wrote PNG"
+                )),
+                "NSView.cacheDisplayInRect",
+            );
+            true
+        }
+        Err(error) => {
+            e2e_write_native_snapshot_status_with_source(
+                status_path,
+                "failed",
+                label,
+                output_path,
+                Some(&format!("{prior_error}; AppKit fallback failed: {error}")),
+                "NSView.cacheDisplayInRect",
+            );
+            false
+        }
     }
 }
 
@@ -458,9 +614,23 @@ fn e2e_request_native_webview_snapshot(
         let label_for_status = label.clone();
         let output_for_block = output_path.clone();
         let status_for_block = status_path.clone();
+        let webview_for_fallback = webview.inner() as *mut Object;
         let completion = ConcreteBlock::new(move |image: *mut Object, error: *mut Object| {
             if !error.is_null() {
                 let error_message = e2e_ns_error_summary(error);
+                if e2e_try_cached_display_snapshot(
+                    webview_for_fallback,
+                    &status_for_block,
+                    &label_for_status,
+                    &output_for_block,
+                    &error_message,
+                ) {
+                    log::info!(
+                        "NIXMAC_E2E_NATIVE_SNAPSHOT used AppKit cached-display fallback for {}",
+                        label_for_status
+                    );
+                    return;
+                }
                 log::warn!(
                     "NIXMAC_E2E_NATIVE_SNAPSHOT failed for {}: {}",
                     label_for_status,
@@ -513,40 +683,7 @@ fn e2e_request_native_webview_snapshot(
                 );
                 return;
             }
-            let properties: *mut Object = msg_send![class!(NSDictionary), dictionary];
-            const NS_BITMAP_IMAGE_FILE_TYPE_PNG: usize = 4;
-            let png_data: *mut Object = msg_send![
-                bitmap_rep,
-                representationUsingType: NS_BITMAP_IMAGE_FILE_TYPE_PNG
-                properties: properties
-            ];
-            if png_data.is_null() {
-                e2e_write_native_snapshot_status(
-                    &status_for_block,
-                    "failed",
-                    &label_for_status,
-                    &output_for_block,
-                    Some("NSBitmapImageRep PNG representation was nil"),
-                );
-                return;
-            }
-            let bytes: *const std::ffi::c_void = msg_send![png_data, bytes];
-            let len: usize = msg_send![png_data, length];
-            if bytes.is_null() || len == 0 {
-                e2e_write_native_snapshot_status(
-                    &status_for_block,
-                    "failed",
-                    &label_for_status,
-                    &output_for_block,
-                    Some("PNG data was empty"),
-                );
-                return;
-            }
-            let slice = std::slice::from_raw_parts(bytes.cast::<u8>(), len);
-            let tmp_output = output_for_block.with_extension("png.tmp");
-            let write_result = std::fs::write(&tmp_output, slice)
-                .and_then(|()| std::fs::rename(&tmp_output, &output_for_block));
-            match write_result {
+            match e2e_write_bitmap_rep_png(bitmap_rep, &output_for_block) {
                 Ok(()) => {
                     log::info!(
                         "NIXMAC_E2E_NATIVE_SNAPSHOT wrote {} for {}",
@@ -562,7 +699,6 @@ fn e2e_request_native_webview_snapshot(
                     );
                 }
                 Err(error) => {
-                    let _ = std::fs::remove_file(&tmp_output);
                     log::warn!(
                         "NIXMAC_E2E_NATIVE_SNAPSHOT failed to write {} for {}: {}",
                         output_for_block.display(),
@@ -574,19 +710,45 @@ fn e2e_request_native_webview_snapshot(
                         "failed",
                         &label_for_status,
                         &output_for_block,
-                        Some(&format!("failed to write PNG atomically: {error}")),
+                        Some(&error),
                     );
                 }
             }
         })
         .copy();
         let webview = webview.inner() as *mut Object;
-        let configuration: *mut Object = std::ptr::null_mut();
+        let configuration: *mut Object = msg_send![class!(WKSnapshotConfiguration), new];
+        if !configuration.is_null() {
+            #[repr(C)]
+            struct E2eNativePoint {
+                x: f64,
+                y: f64,
+            }
+
+            #[repr(C)]
+            struct E2eNativeSize {
+                width: f64,
+                height: f64,
+            }
+
+            #[repr(C)]
+            struct E2eNativeRect {
+                origin: E2eNativePoint,
+                size: E2eNativeSize,
+            }
+
+            let bounds: E2eNativeRect = msg_send![webview, bounds];
+            let _: () = msg_send![configuration, setRect: bounds];
+            let _: () = msg_send![configuration, setAfterScreenUpdates: false];
+        }
         let _: () = msg_send![
             webview,
             takeSnapshotWithConfiguration: configuration
             completionHandler: &*completion
         ];
+        if !configuration.is_null() {
+            let _: () = msg_send![configuration, release];
+        }
         // The completion is async and owned by WebKit after dispatch. Leaking the
         // copied block is acceptable in debug-only E2E runs and avoids use-after-free
         // while the virtualized host is under load.

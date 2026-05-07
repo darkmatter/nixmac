@@ -171,7 +171,7 @@ nixmac_text() {
 
 nixmac_screenshot() {
     local label="${1:-nixmac}"
-    local system_path native_path native_dest system_diag_dir system_diag_path
+    local system_path native_output native_path native_dest system_diag_dir system_diag_path
 
     system_path=$(screenshot "$label" "$NIXMAC_APP_NAME" | tail -n 1)
     if ! declare -f nixmac_pp_capture_native_visual_signal >/dev/null 2>&1; then
@@ -179,10 +179,11 @@ nixmac_screenshot() {
         return 0
     fi
 
-    native_path=$(nixmac_pp_capture_native_visual_signal "$label") || {
+    native_output=$(nixmac_pp_capture_native_visual_signal "$label") || {
         printf '%s\n' "$system_path"
         return 0
     }
+    native_path=$(printf '%s\n' "$native_output" | tail -n 1)
 
     mkdir -p "$E2E_SCREENSHOT_DIR" 2>/dev/null || true
     native_dest="$E2E_SCREENSHOT_DIR/${label//[^a-zA-Z0-9._-]/_}-webkit-snapshot-$(date +%s)-$$-$RANDOM.png"

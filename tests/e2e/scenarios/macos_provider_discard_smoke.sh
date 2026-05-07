@@ -156,7 +156,7 @@ scenario_test() {
     phase "Launch nixmac app for discard proof"
     nixmac_launch || die "App failed to launch"
     nixmac_pp_wait_for_ready_app_shell 60 \
-        || die "App shell did not expose discard prompt with visible screenshot signal"
+        || die "App shell did not expose discard prompt"
     nixmac_screenshot "01-discard-launched"
     phase_pass "peekabooProviderLaunch: App launched for discard proof"
 

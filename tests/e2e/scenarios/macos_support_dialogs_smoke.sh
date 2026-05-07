@@ -42,7 +42,7 @@ scenario_test() {
     phase "Launch nixmac app"
     nixmac_launch || die "App failed to launch"
     nixmac_pp_wait_for_ready_app_shell 60 \
-        || die "App shell did not expose support controls with visible screenshot signal"
+        || die "App shell did not expose support controls"
     nixmac_screenshot "01-support-launch"
     phase_pass "peekabooCoreLaunch: App shell rendered before support dialog proof"
 

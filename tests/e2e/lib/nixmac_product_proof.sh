@@ -434,11 +434,23 @@ nixmac_pp_request_native_webview_snapshot() {
 
 nixmac_pp_capture_native_visual_signal() {
     local label="${1:-ready-shell}"
-    local path result
+    local path result disable_marker disable_marker_dir
 
-    path=$(nixmac_pp_request_native_webview_snapshot "$label" 5) || return 1
+    disable_marker="${NIXMAC_E2E_DIAGNOSTICS_DIR:-$E2E_DIAGNOSTIC_DIR}/native-webview-snapshots/.disabled"
+    [ ! -f "$disable_marker" ] || return 1
+    path=$(nixmac_pp_request_native_webview_snapshot "$label" 5) || {
+        disable_marker_dir="$(dirname "$disable_marker")"
+        mkdir -p "$disable_marker_dir"
+        printf 'request-failed label=%s ts=%s\n' "$label" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$disable_marker"
+        debug "Native WKWebView snapshot disabled for the rest of this scenario after request failure"
+        return 1
+    }
     result=$(nixmac_pp_screenshot_has_visual_signal "$path" 2>&1) || {
         debug "Native WKWebView visual signal not established for $path: $result"
+        disable_marker_dir="$(dirname "$disable_marker")"
+        mkdir -p "$disable_marker_dir"
+        printf 'visual-signal-failed label=%s ts=%s path=%s detail=%s\n' "$label" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$path" "$result" >"$disable_marker"
+        debug "Native WKWebView snapshot promotion disabled for the rest of this scenario after visual-signal failure"
         return 1
     }
     debug "Native WKWebView snapshot visual signal ready for $path: $result"
@@ -447,7 +459,7 @@ nixmac_pp_capture_native_visual_signal() {
 
 nixmac_pp_capture_ready_visual_signal() {
     local label="${1:-ready-shell}"
-    local dir path result native_path
+    local dir path result native_output native_path
 
     dir="$E2E_DIAGNOSTIC_DIR/visual-readiness"
     mkdir -p "$dir"
@@ -464,11 +476,34 @@ nixmac_pp_capture_ready_visual_signal() {
         debug "Ready-shell system visual signal not established for $path: $result"
     fi
 
-    native_path=$(nixmac_pp_capture_native_visual_signal "$label") || {
+    native_output=$(nixmac_pp_capture_native_visual_signal "$label") || {
         debug "Ready-shell visual signal not established for $path: $result"
         return 1
     }
+    native_path=$(printf '%s\n' "$native_output" | tail -n 1)
     debug "Ready-shell visual signal established from native WKWebView snapshot: $native_path"
+}
+
+nixmac_pp_record_ready_visual_signal() {
+    local label="${1:-ready-shell}"
+    local dir result_path result
+
+    dir="$E2E_DIAGNOSTIC_DIR/visual-readiness"
+    mkdir -p "$dir"
+    result_path="$dir/${label//[^a-zA-Z0-9._-]/_}-status.txt"
+    if result=$(nixmac_pp_capture_ready_visual_signal "$label" 2>&1); then
+        {
+            printf 'status=passed\n'
+            printf 'detail=%s\n' "$result"
+        } >"$result_path"
+        return 0
+    fi
+    {
+        printf 'status=failed\n'
+        printf 'detail=%s\n' "$result"
+    } >"$result_path"
+    warn "Ready-shell visual signal unavailable for $label; continuing with driver-visible shell and preserving strict screenshot-signal report gate"
+    return 1
 }
 
 nixmac_pp_wait_for_ready_app_shell() {
@@ -483,10 +518,9 @@ nixmac_pp_wait_for_ready_app_shell() {
         json=$(E2E_PEEKABOO_SUPPRESS_EMPTY_DIAG=1 peek_elements "$NIXMAC_APP_NAME") || true
         count=$(peekaboo_element_count "$json")
         if nixmac_pp_elements_show_ready_shell "$json" "$NIXMAC_PP_READY_SHELL_MIN_ELEMENTS" "$NIXMAC_PP_READY_SHELL_PATTERN"; then
-            if nixmac_pp_capture_ready_visual_signal "ready-shell"; then
-                debug "nixmac Product Proof shell ready ($count element(s))"
-                return 0
-            fi
+            nixmac_pp_record_ready_visual_signal "ready-shell" || true
+            debug "nixmac Product Proof shell driver-ready ($count element(s))"
+            return 0
         else
             debug "nixmac Product Proof shell not ready yet ($count element(s))"
         fi

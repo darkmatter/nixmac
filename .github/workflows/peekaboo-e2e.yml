@@ -209,6 +209,16 @@ jobs:
           export PATH="$HOME/.cargo/bin:$HOME/.bun/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
           mkdir -p "$REPO_DIR/artifacts/computer-use-local"
           stale_run="$(cat "$REPO_DIR/artifacts/computer-use-local/.current-run" 2>/dev/null || true)"
+          stale_single_frame_recorders="$(
+            ps -axo pid=,command= |
+              awk '/ffmpeg/ && /-frames:v 1/ && !/-framerate/ { print $1 }'
+          )"
+          if [[ -n "$stale_single_frame_recorders" ]]; then
+            echo "Clearing stale one-frame ffmpeg capture process(es): $stale_single_frame_recorders"
+            kill $stale_single_frame_recorders >/dev/null 2>&1 || true
+            sleep 1
+            kill -9 $stale_single_frame_recorders >/dev/null 2>&1 || true
+          fi
           pkill -TERM -f 'tools/computer-use-e2e/run-local\.mjs run-peekaboo-suite|tests/e2e/run\.sh|nixmac-e2e-provider|nixmac\.app/Contents/MacOS/nixmac|ffmpeg .*peekaboo-e2e' >/dev/null 2>&1 || true
           sleep 2
           pkill -KILL -f 'tools/computer-use-e2e/run-local\.mjs run-peekaboo-suite|tests/e2e/run\.sh|nixmac-e2e-provider|nixmac\.app/Contents/MacOS/nixmac|ffmpeg .*peekaboo-e2e' >/dev/null 2>&1 || true
