@@ -154,7 +154,6 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
 (() => {
   const styleId = "nixmac-e2e-capture-background";
   const captureMode = "solid";
-  const captureBackground = "hsl(0 0% 3.9%)";
   const logCaptureBreadcrumb = (label, detail) => {
     const invoke = window.__TAURI__?.core?.invoke || window.__TAURI_INTERNALS__?.invoke;
     if (typeof invoke !== "function") return;
@@ -169,10 +168,49 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
     const value = style.getPropertyValue(property);
     return value === "" ? null : value;
   };
+  const firstMatchingElement = (selectors) => {
+    for (const selector of selectors) {
+      const element = document.querySelector(selector);
+      if (element) return element;
+    }
+    return null;
+  };
+  const firstTextElement = () => {
+    const candidates = document.body?.querySelectorAll("h1,h2,h3,p,span,button,[data-slot='card']") ?? [];
+    return [...candidates].find((element) => {
+      const style = window.getComputedStyle(element);
+      return (
+        element.textContent?.trim() &&
+        style.display !== "none" &&
+        style.visibility !== "hidden" &&
+        style.opacity !== "0"
+      );
+    }) ?? null;
+  };
+  const sampleStyle = (element) => {
+    if (!element) return null;
+    const style = window.getComputedStyle(element);
+    return {
+      tagName: element.tagName?.toLowerCase() ?? null,
+      className: typeof element.className === "string" ? element.className : null,
+      text: element.textContent?.trim().slice(0, 80) ?? null,
+      backgroundColor: style.backgroundColor,
+      borderTopColor: style.borderTopColor,
+      color: style.color,
+      display: style.display,
+      opacity: style.opacity,
+      visibility: style.visibility,
+    };
+  };
   const captureStyleProbe = (label) => {
     try {
       const root = document.getElementById("root");
       const shell = root?.firstElementChild ?? null;
+      const card = firstMatchingElement(["[data-slot='card']", ".bg-card", ".bg-card\\/50", ".bg-card\\/80", ".bg-card\\/95"]);
+      const header = firstMatchingElement(["[data-tauri-drag-region='true'].border-b", ".border-b"]);
+      const button = document.querySelector("button");
+      const svg = document.querySelector("svg");
+      const textElement = firstTextElement();
       const htmlStyle = window.getComputedStyle(document.documentElement);
       const bodyStyle = document.body ? window.getComputedStyle(document.body) : null;
       const shellStyle = shell ? window.getComputedStyle(shell) : null;
@@ -190,6 +228,13 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
           shellBackdropFilter: getCssValue(shellStyle, "backdrop-filter"),
           shellWebkitBackdropFilter: getCssValue(shellStyle, "-webkit-backdrop-filter"),
           shellOpacity: shellStyle?.opacity ?? null,
+          bodyColor: bodyStyle?.color ?? null,
+          captureReady: document.documentElement.dataset.nixmacE2eCaptureReady ?? null,
+          cardStyle: sampleStyle(card),
+          headerStyle: sampleStyle(header),
+          buttonStyle: sampleStyle(button),
+          svgStyle: sampleStyle(svg),
+          textStyle: sampleStyle(textElement),
         }),
       );
     } catch (error) {
@@ -206,17 +251,59 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
         html[data-nixmac-e2e-capture="${captureMode}"],
         html[data-nixmac-e2e-capture="${captureMode}"] body,
         html[data-nixmac-e2e-capture="${captureMode}"] #root {
-          background: ${captureBackground} !important;
-          background-color: ${captureBackground} !important;
+          --nixmac-e2e-capture-background: hsl(var(--background, 0 0% 3.9%));
+          --nixmac-e2e-capture-surface: hsl(var(--accent, 0 0% 14.9%));
+          --nixmac-e2e-capture-card: hsl(var(--card, 0 0% 3.9%));
+          --nixmac-e2e-capture-foreground: hsl(var(--foreground, 0 0% 98%));
+          --nixmac-e2e-capture-muted: hsl(var(--muted-foreground, 0 0% 63.9%));
+          --nixmac-e2e-capture-border: hsl(var(--border, 0 0% 14.9%));
+          --nixmac-e2e-capture-primary: hsl(var(--primary, 0 0% 98%));
+          --nixmac-e2e-capture-primary-foreground: hsl(var(--primary-foreground, 0 0% 9%));
+          background: var(--nixmac-e2e-capture-background) !important;
+          background-color: var(--nixmac-e2e-capture-background) !important;
+          color: var(--nixmac-e2e-capture-foreground) !important;
+        }
+        html[data-nixmac-e2e-capture="${captureMode}"] #root > * {
+          background-color: var(--nixmac-e2e-capture-background) !important;
+          color: var(--nixmac-e2e-capture-foreground) !important;
         }
         html[data-nixmac-e2e-capture="${captureMode}"] .bg-background\\/80,
         html[data-nixmac-e2e-capture="${captureMode}"] .bg-background\\/90,
-        html[data-nixmac-e2e-capture="${captureMode}"] .bg-background\\/95,
+        html[data-nixmac-e2e-capture="${captureMode}"] .bg-background\\/95 {
+          background-color: var(--nixmac-e2e-capture-background) !important;
+        }
         html[data-nixmac-e2e-capture="${captureMode}"] .bg-card\\/50,
         html[data-nixmac-e2e-capture="${captureMode}"] .bg-card\\/80,
         html[data-nixmac-e2e-capture="${captureMode}"] .bg-card\\/95,
         html[data-nixmac-e2e-capture="${captureMode}"] .bg-zinc-900\\/95 {
-          background-color: ${captureBackground} !important;
+          background-color: var(--nixmac-e2e-capture-surface) !important;
+        }
+        html[data-nixmac-e2e-capture="${captureMode}"] [data-slot="card"],
+        html[data-nixmac-e2e-capture="${captureMode}"] .bg-card {
+          background-color: var(--nixmac-e2e-capture-card) !important;
+          border-color: var(--nixmac-e2e-capture-border) !important;
+          color: var(--nixmac-e2e-capture-foreground) !important;
+        }
+        html[data-nixmac-e2e-capture="${captureMode}"] [class*="text-foreground"],
+        html[data-nixmac-e2e-capture="${captureMode}"] [class*="text-card-foreground"] {
+          color: var(--nixmac-e2e-capture-foreground) !important;
+        }
+        html[data-nixmac-e2e-capture="${captureMode}"] [class*="text-muted-foreground"] {
+          color: var(--nixmac-e2e-capture-muted) !important;
+        }
+        html[data-nixmac-e2e-capture="${captureMode}"] [class~="text-primary"] {
+          color: var(--nixmac-e2e-capture-primary) !important;
+        }
+        html[data-nixmac-e2e-capture="${captureMode}"] .bg-primary {
+          background-color: var(--nixmac-e2e-capture-primary) !important;
+          color: var(--nixmac-e2e-capture-primary-foreground) !important;
+        }
+        html[data-nixmac-e2e-capture="${captureMode}"] [class*="border"] {
+          border-color: var(--nixmac-e2e-capture-border) !important;
+        }
+        html[data-nixmac-e2e-capture="${captureMode}"] svg {
+          color: currentColor;
+          stroke: currentColor;
         }
         html[data-nixmac-e2e-capture="${captureMode}"] *,
         html[data-nixmac-e2e-capture="${captureMode}"] *::before,
@@ -238,12 +325,25 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
         }),
       );
       captureStyleProbe("initial-raf");
+      requestAnimationFrame(() => {
+        document.documentElement.dataset.nixmacE2eCaptureReady = "1";
+        logCaptureBreadcrumb(
+          "e2e-capture-ready-2raf",
+          JSON.stringify({
+            captureMode,
+            rootChildren: document.getElementById("root")?.childElementCount ?? null,
+            bodyChildren: document.body?.childElementCount ?? null,
+          }),
+        );
+        captureStyleProbe("capture-ready-2raf");
+      });
     });
     window.addEventListener(
       "nixmac:app-mounted",
       () => {
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
+            document.documentElement.dataset.nixmacE2eCaptureReady = "app-mounted";
             captureStyleProbe("app-mounted-plus-2raf");
           });
         });
