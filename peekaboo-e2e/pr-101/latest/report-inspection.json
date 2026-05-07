@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "inspectedAt": "2026-05-07T06:57:17.994Z",
+  "inspector": "runner",
+  "method": "ci-static",
+  "reportPath": "/home/runner/work/nixmac/nixmac/artifacts/peekaboo-e2e-report/2026-05-07_06-56-42-769Z-peekaboo-suite/index.html",
+  "notes": "CI workflow inspected the rendered Peekaboo HTML report with static integrity checks and verified the summary, PR #75 baseline parity coverage, evidence video/storyboard, screenshots, visual proof, and artifact sections before publishing.",
+  "staticChecks": {
+    "status": "passed",
+    "checks": [
+      {
+        "name": "title",
+        "status": "passed"
+      },
+      {
+        "name": "verdict",
+        "status": "passed"
+      },
+      {
+        "name": "coverage metric",
+        "status": "passed"
+      },
+      {
+        "name": "baseline table",
+        "status": "passed"
+      },
+      {
+        "name": "evidence video/storyboard",
+        "status": "passed"
+      },
+      {
+        "name": "visual proof",
+        "status": "passed"
+      },
+      {
+        "name": "visual report callouts",
+        "status": "passed"
+      },
+      {
+        "name": "raw screenshot fallback",
+        "status": "passed"
+      },
+      {
+        "name": "peekaboo ax overlay labeled",
+        "status": "passed"
+      }
+    ],
+    "failed": [],
+    "coveredRequiredKeys": [
+      "reportInspection"
+    ],
+    "missingRequiredKeys": [
+      "launch",
+      "updateBanner",
+      "settingsGeneral",
+      "settingsAIModels",
+      "settingsAPIKeys",
+      "settingsPreferences",
+      "history",
+      "console",
+      "feedback",
+      "reportIssue",
+      "suggestionCards",
+      "customizationSaveRollback",
+      "homebrewSaveRollback",
+      "typedIntent",
+      "review",
+      "summary",
+      "diff",
+      "buildBoundary",
+      "saveFlow",
+      "rollbackCleanup",
+      "discard",
+      "visualCoverage",
+      "visualProofQuality"
+    ]
+  }
+}
