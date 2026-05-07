@@ -4,6 +4,14 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
+      - 'package.json'
+      - 'bun.lock'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'devenv.nix'
+      - 'devenv.lock'
       - 'apps/native/**'
       - 'tests/e2e/**'
       - 'tools/computer-use-e2e/**'
@@ -43,6 +51,7 @@ jobs:
       setup_failed: ${{ steps.report-meta.outputs.setup_failed }}
       report_dir: ${{ steps.report-meta.outputs.report_dir }}
       report_slug: ${{ steps.report-meta.outputs.report_slug }}
+      rsync_status: ${{ steps.report-meta.outputs.rsync_status }}
       verdict: ${{ steps.report-meta.outputs.verdict }}
       pass: ${{ steps.report-meta.outputs.pass }}
       fail: ${{ steps.report-meta.outputs.fail }}
@@ -279,6 +288,7 @@ jobs:
           remote_env_parts=(
             "PATH=/opt/homebrew/bin:\$PATH"
             "NIXMAC_APP_PATH=$(printf '%q' "$REMOTE_APP_PATH")"
+            "NIXMAC_E2E_OPAQUE_WINDOW=1"
             "E2E_TERMINAL_CLEANUP_MODE=kill"
             "E2E_HIDE_RECORDING_TERMINAL=1"
             "E2E_CLOSE_RECORDING_TERMINAL=1"
@@ -338,12 +348,27 @@ jobs:
           report_slug="$(basename "$remote_run_dir")"
           report_dir="artifacts/peekaboo-e2e-report/${report_slug}"
           mkdir -p "$report_dir"
+          set +e
           rsync -az -e "ssh -i ~/.ssh/nixmac-peekaboo-e2e -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts" \
             "$SSH_DEST:$remote_run_dir/" "$report_dir/"
+          rsync_status="$?"
+          set -e
+          if [[ "$rsync_status" != "0" ]]; then
+            echo "Peekaboo report rsync exited with status $rsync_status; checking for a usable partial report." >&2
+          fi
+          if [[ ! -f "$report_dir/state.json" ]]; then
+            echo "No usable Peekaboo report state.json was fetched from MacInCloud." >&2
+            echo "has_report=false" >> "$GITHUB_OUTPUT"
+            if [[ "$rsync_status" != "0" ]]; then
+              exit "$rsync_status"
+            fi
+            exit 1
+          fi
           {
             echo "has_report=true"
             echo "report_slug=$report_slug"
             echo "report_dir=$report_dir"
+            echo "rsync_status=$rsync_status"
           } >> "$GITHUB_OUTPUT"
 
       - name: Drop MacInCloud SSH key before local report processing
@@ -371,6 +396,7 @@ jobs:
           FETCH_HAS_REPORT: ${{ steps.fetch-report.outputs.has_report || 'false' }}
           FETCH_REPORT_DIR: ${{ steps.fetch-report.outputs.report_dir }}
           FETCH_REPORT_SLUG: ${{ steps.fetch-report.outputs.report_slug }}
+          FETCH_RSYNC_STATUS: ${{ steps.fetch-report.outputs.rsync_status || '0' }}
         run: |
           set -euo pipefail
           html_preview_base="https://htmlpreview.github.io/?https://github.com/${GITHUB_REPOSITORY}/blob/gh-pages"
@@ -399,6 +425,7 @@ jobs:
               echo "setup_failed=true"
               echo "report_dir="
               echo "report_slug="
+              echo "rsync_status=${FETCH_RSYNC_STATUS:-0}"
               echo "verdict=fail"
               echo "pass=0"
               echo "fail=0"
@@ -433,10 +460,15 @@ jobs:
           import path from 'node:path';
           const root = process.argv[2];
           const secretPattern = /(?:sk-[A-Za-z0-9_-]{16,}|xai-[A-Za-z0-9_-]{16,}|gh[opsu]_[A-Za-z0-9_]{16,}|github_pat_[A-Za-z0-9_]{22,}|xox[abprs]-[A-Za-z0-9-]{16,}|AKIA[0-9A-Z]{16}|Bearer\s+[A-Za-z0-9._-]{16,}|(?:OPENROUTER|OPENAI|ANTHROPIC|GROQ|XAI|MISTRAL|COHERE|GITHUB|SLACK|AWS)_API_KEY=(?!\[REDACTED\])[^\s"'<>]+)/i;
-          const textExtPattern = /\.(jsonl?|txt|log|html|md|csv)$/i;
           const violations = [];
           let scannedPaths = 0;
           let scannedFiles = 0;
+          function looksLikeTextFile(full) {
+            const sample = readFileSync(full).subarray(0, 8192);
+            if (sample.includes(0)) return false;
+            const suspiciousControlBytes = [...sample].filter((byte) => byte < 9 || (byte > 13 && byte < 32)).length;
+            return sample.length === 0 || suspiciousControlBytes / sample.length < 0.02;
+          }
           function walk(dir) {
             for (const entry of readdirSync(dir)) {
               const full = path.join(dir, entry);
@@ -447,7 +479,7 @@ jobs:
               if (stat.isSymbolicLink()) continue;
               if (stat.isDirectory()) {
                 walk(full);
-              } else if (stat.isFile() && textExtPattern.test(entry)) {
+              } else if (stat.isFile() && looksLikeTextFile(full)) {
                 scannedFiles += 1;
                 const text = readFileSync(full, 'utf8');
                 if (secretPattern.test(text)) violations.push(`content:${relativePath}`);
@@ -468,6 +500,7 @@ jobs:
             echo "setup_failed=false"
             echo "report_dir=$FETCH_REPORT_DIR"
             echo "report_slug=$FETCH_REPORT_SLUG"
+            echo "rsync_status=${FETCH_RSYNC_STATUS:-0}"
             echo "verdict=$verdict"
             echo "pass=$pass_count"
             echo "fail=$fail_count"
@@ -495,6 +528,9 @@ jobs:
               echo "- CU coverage: \`${{ steps.report-meta.outputs.cu_covered }}/${{ steps.report-meta.outputs.cu_required }}\`"
               echo "- Evidence: \`${{ steps.report-meta.outputs.screenshots }} screenshots / ${{ steps.report-meta.outputs.video_frames }} video frames\`"
               echo "- Artifact path: \`${{ steps.report-meta.outputs.report_dir }}/index.html\`"
+              if [[ "${{ steps.report-meta.outputs.rsync_status }}" != "0" ]]; then
+                echo "- Report fetch: \`partial rsync status ${{ steps.report-meta.outputs.rsync_status }}\`"
+              fi
               if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
                 echo "- Hosted HTML: ${{ steps.report-meta.outputs.index_url }}"
               else
@@ -603,6 +639,7 @@ jobs:
           FAIL_COUNT: ${{ needs.peekaboo-product-proof.outputs.fail }}
           INCONCLUSIVE_COUNT: ${{ needs.peekaboo-product-proof.outputs.inconclusive }}
           NOT_REQUIRED_COUNT: ${{ needs.peekaboo-product-proof.outputs.not_required }}
+          RSYNC_STATUS: ${{ needs.peekaboo-product-proof.outputs.rsync_status }}
           CU_COVERED: ${{ needs.peekaboo-product-proof.outputs.cu_covered }}
           CU_REQUIRED: ${{ needs.peekaboo-product-proof.outputs.cu_required }}
           SCREENSHOTS: ${{ needs.peekaboo-product-proof.outputs.screenshots }}
@@ -633,6 +670,7 @@ jobs:
           - Result: \`$PASS_COUNT pass / $FAIL_COUNT fail / $INCONCLUSIVE_COUNT inconclusive / $NOT_REQUIRED_COUNT not required\`
           - CU parity coverage: \`$CU_COVERED/$CU_REQUIRED\`
           - Evidence: \`$SCREENSHOTS screenshots / $VIDEO_FRAMES timestamped video frames\`
+          - Report fetch: \`$(if [[ "${RSYNC_STATUS:-0}" == "0" ]]; then printf 'complete'; else printf 'partial rsync status %s' "$RSYNC_STATUS"; fi)\`
           - Secret scan: \`$SECRET_SCAN_PASSED\`
           - Next action: $next_action
           - Hosted HTML report: $INDEX_URL

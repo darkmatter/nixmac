@@ -168,6 +168,25 @@ peekaboo_capture_app_diagnostics() {
     peekaboo_run permissions > "${prefix}-permissions.txt" 2>&1 || true
     peekaboo_run app list --json > "${prefix}-app-list.json" 2>&1 || true
     peekaboo_run window list --app "$app" --json > "${prefix}-window-list.json" 2>&1 || true
+    {
+        printf '{\n  "app": %s,\n  "reason": %s,\n  "capturedAt": %s,\n  "processes": [\n' \
+            "$(printf '%s' "$app" | jq -Rs .)" \
+            "$(printf '%s' "$reason" | jq -Rs .)" \
+            "$(printf '%s' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" | jq -Rs .)"
+        local first=1 pid ps_line
+        while IFS= read -r pid; do
+            [ -n "$pid" ] || continue
+            [ "$first" -eq 0 ] && printf ',\n'
+            first=0
+            ps_line=$(ps -p "$pid" -o pid=,ppid=,stat=,lstart=,command= 2>/dev/null | sed -n '1p' || true)
+            [ -n "$ps_line" ] || ps_line="<dead pid>"
+            jq -n --arg pid "$pid" --arg ps "$ps_line" '{
+                    pid: ($pid | tonumber?),
+                    ps: $ps
+                }' 2>/dev/null || printf '{"pid":%s,"ps":%s}' "$pid" "$(printf '%s' "$ps_line" | jq -Rs .)"
+        done < <(pgrep -x "$app" 2>/dev/null || true)
+        printf '\n  ]\n}\n'
+    } > "${prefix}-process-list.json" 2>/dev/null || true
     peekaboo_run image --mode screen --path "${prefix}-screen.png" > "${prefix}-screen.txt" 2>&1 || true
     echo "[diagnostic] Captured Peekaboo diagnostics for $app ($reason): $prefix-*" >> "$E2E_LOG_FILE"
 }

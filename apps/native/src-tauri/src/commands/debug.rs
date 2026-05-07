@@ -8,6 +8,8 @@ use std::io::Write;
 use std::path::Path;
 #[cfg(debug_assertions)]
 use std::time::{SystemTime, UNIX_EPOCH};
+#[cfg(debug_assertions)]
+use tauri::{AppHandle, Manager};
 
 /// Test command to trigger a panic and verify the panic handler works.
 /// This will cause a controlled panic that should be caught by the panic handler
@@ -89,6 +91,42 @@ pub async fn e2e_log_breadcrumb(
         detail.as_deref(),
         client_timestamp_unix_ms,
     )
+}
+
+#[cfg(debug_assertions)]
+#[tauri::command]
+pub async fn e2e_mark_boot_stage(
+    app: AppHandle,
+    stage: String,
+    client_timestamp_unix_ms: Option<u128>,
+) -> Result<(), String> {
+    let stage = clean_field(&stage, 80);
+    if stage.is_empty() {
+        return Ok(());
+    }
+
+    if let Some(window) = app.get_webview_window("main") {
+        let title = if stage == "mounted" {
+            "nixmac".to_string()
+        } else {
+            format!("nixmac boot:{stage}")
+        };
+        if let Err(error) = window.set_title(&title) {
+            log::warn!("failed to set E2E native boot-stage title: {}", error);
+        }
+    }
+
+    if let Some(diagnostics_dir) = crate::e2e_runtime::value("NIXMAC_E2E_DIAGNOSTICS_DIR") {
+        write_e2e_breadcrumb(
+            Path::new(&diagnostics_dir),
+            "native boot stage marker",
+            Some(&stage),
+            client_timestamp_unix_ms,
+        )?;
+    }
+
+    log::debug!("NIXMAC_E2E native boot stage marker: {}", stage);
+    Ok(())
 }
 
 #[cfg(debug_assertions)]

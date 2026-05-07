@@ -84,7 +84,9 @@ nixmac_pp_write_e2e_runtime() {
         --argjson writtenAtUnix "$now" \
         --argjson expiresAtUnix "$expires" \
         --arg mockSystem "${NIXMAC_E2E_MOCK_SYSTEM:-1}" \
-        --arg opaqueWindow "${NIXMAC_E2E_OPAQUE_WINDOW:-1}" \
+        --arg solidCapture "${NIXMAC_E2E_SOLID_CAPTURE:-1}" \
+        --arg opaqueWindow "${NIXMAC_E2E_OPAQUE_WINDOW:-0}" \
+        --arg webviewWatchdog "${NIXMAC_E2E_WEBVIEW_WATCHDOG:-1}" \
         --arg skipPermissions "${NIXMAC_SKIP_PERMISSIONS:-1}" \
         --arg configDir "${NIXMAC_E2E_CONFIG_DIR:-}" \
         --arg hostAttr "${NIXMAC_E2E_HOST_ATTR:-e2e-host}" \
@@ -108,7 +110,9 @@ nixmac_pp_write_e2e_runtime() {
             expiresAtUnix: $expiresAtUnix,
             values: {
                 NIXMAC_E2E_MOCK_SYSTEM: $mockSystem,
+                NIXMAC_E2E_SOLID_CAPTURE: $solidCapture,
                 NIXMAC_E2E_OPAQUE_WINDOW: $opaqueWindow,
+                NIXMAC_E2E_WEBVIEW_WATCHDOG: $webviewWatchdog,
                 NIXMAC_SKIP_PERMISSIONS: $skipPermissions,
                 NIXMAC_E2E_CONFIG_DIR: $configDir,
                 NIXMAC_E2E_HOST_ATTR: $hostAttr,
@@ -575,7 +579,9 @@ process.stdin.on("end", async () => {
 
 nixmac_pp_cleanup_common() {
     nixmac_pp_unset_launch_env NIXMAC_E2E_MOCK_SYSTEM
+    nixmac_pp_unset_launch_env NIXMAC_E2E_SOLID_CAPTURE
     nixmac_pp_unset_launch_env NIXMAC_E2E_OPAQUE_WINDOW
+    nixmac_pp_unset_launch_env NIXMAC_E2E_WEBVIEW_WATCHDOG
     nixmac_pp_unset_launch_env NIXMAC_SKIP_PERMISSIONS
     nixmac_pp_unset_launch_env NIXMAC_E2E_CONFIG_DIR
     nixmac_pp_unset_launch_env NIXMAC_E2E_HOST_ATTR
@@ -620,10 +626,21 @@ nixmac_pp_unset_launch_env() {
     fi
 }
 
+nixmac_pp_truthy() {
+    local value
+    value="$(printf '%s' "${1:-}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+    case "$value" in
+        1|true|TRUE|yes|YES) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 nixmac_pp_set_e2e_launch_env() {
     nixmac_pp_clear_e2e_runtime
     export NIXMAC_E2E_MOCK_SYSTEM=1
-    export NIXMAC_E2E_OPAQUE_WINDOW=1
+    export NIXMAC_E2E_SOLID_CAPTURE="${NIXMAC_E2E_SOLID_CAPTURE:-1}"
+    export NIXMAC_E2E_OPAQUE_WINDOW="${NIXMAC_E2E_OPAQUE_WINDOW:-0}"
+    export NIXMAC_E2E_WEBVIEW_WATCHDOG="${NIXMAC_E2E_WEBVIEW_WATCHDOG:-1}"
     export NIXMAC_SKIP_PERMISSIONS=1
     export NIXMAC_E2E_CONFIG_DIR="${NIXMAC_E2E_CONFIG_REPO:-}"
     export NIXMAC_E2E_HOST_ATTR="${NIXMAC_E2E_HOST_ATTR:-e2e-host}"
@@ -634,7 +651,13 @@ nixmac_pp_set_e2e_launch_env() {
     export OPENROUTER_API_KEY="[REDACTED]"
     export VLLM_API_KEY=e2e
     nixmac_pp_set_launch_env NIXMAC_E2E_MOCK_SYSTEM "$NIXMAC_E2E_MOCK_SYSTEM"
-    nixmac_pp_set_launch_env NIXMAC_E2E_OPAQUE_WINDOW "$NIXMAC_E2E_OPAQUE_WINDOW"
+    nixmac_pp_set_launch_env NIXMAC_E2E_SOLID_CAPTURE "$NIXMAC_E2E_SOLID_CAPTURE"
+    if nixmac_pp_truthy "$NIXMAC_E2E_OPAQUE_WINDOW"; then
+        nixmac_pp_set_launch_env NIXMAC_E2E_OPAQUE_WINDOW "$NIXMAC_E2E_OPAQUE_WINDOW"
+    else
+        nixmac_pp_unset_launch_env NIXMAC_E2E_OPAQUE_WINDOW
+    fi
+    nixmac_pp_set_launch_env NIXMAC_E2E_WEBVIEW_WATCHDOG "$NIXMAC_E2E_WEBVIEW_WATCHDOG"
     nixmac_pp_set_launch_env NIXMAC_SKIP_PERMISSIONS "$NIXMAC_SKIP_PERMISSIONS"
     nixmac_pp_set_launch_env NIXMAC_E2E_CONFIG_DIR "$NIXMAC_E2E_CONFIG_DIR"
     nixmac_pp_set_launch_env NIXMAC_E2E_HOST_ATTR "$NIXMAC_E2E_HOST_ATTR"

@@ -2609,7 +2609,7 @@ async function runSelfTest() {
   applyHistoricalRenderMigration(negativeRollbackOnly);
   assert.deepEqual(negativeRollbackOnly, negativeRollbackOnlyBefore, 'historical migration should not re-promote discard unless discard is inconclusive');
   assert.equal(sourcePrefixExists('apps/native/src/components/widget/settings/'), true, 'coverage freshness should accept existing directory prefixes');
-  assert.equal(sourcePrefixExists('apps/native/src/components/widget/settings-dialog.tsx'), true, 'coverage freshness should accept existing file prefixes');
+  assert.equal(sourcePrefixExists('apps/native/src/components/widget/settings/settings-dialog.tsx'), true, 'coverage freshness should accept existing file prefixes');
   assert.equal(sourcePrefixExists('apps/native/src/components/widget/__missing__/'), false, 'coverage freshness should reject missing directory prefixes');
   const previousExtraCases = process.env.NIXMAC_E2E_EXTRA_EVOLVED_CASES;
   process.env.NIXMAC_E2E_EXTRA_EVOLVED_CASES = 'inline-question-font';

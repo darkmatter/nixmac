@@ -39,12 +39,17 @@ use state::watcher;
 use storage::store;
 
 use std::env;
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
+};
+use std::time::Duration;
 use tauri::{
     image::Image,
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
-    Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent,
+    webview::PageLoadEvent,
+    Emitter, Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
 };
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
@@ -52,26 +57,149 @@ fn e2e_opaque_window_enabled() -> bool {
     cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_OPAQUE_WINDOW")
 }
 
+fn e2e_solid_capture_enabled() -> bool {
+    cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_SOLID_CAPTURE")
+}
+
+fn e2e_webview_watchdog_enabled() -> bool {
+    cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_WEBVIEW_WATCHDOG")
+}
+
+#[cfg(debug_assertions)]
+fn e2e_request_webview_boot_probe(window: &WebviewWindow, label: &'static str) {
+    let label_json =
+        serde_json::to_string(label).unwrap_or_else(|_| "\"unknown-native-probe\"".to_string());
+    let script = format!(
+        r#"
+(() => {{
+  const label = {label_json};
+  const summarizeStorage = () => {{
+    const values = {{}};
+    for (const key of [
+      "nixmac:e2e-boot-stage",
+      "nixmac:e2e-dom-snapshot:last",
+      "nixmac:e2e-dom-snapshot:text",
+      "nixmac:e2e-dom-snapshot:html",
+      "nixmac:e2e-dom-snapshot:watchdog-pre-reload:last"
+    ]) {{
+      try {{
+        values[key] = window.localStorage.getItem(key);
+      }} catch {{
+        values[key] = "[unavailable]";
+      }}
+    }}
+    return values;
+  }};
+  const detail = JSON.stringify({{
+    title: document.title || "",
+    readyState: document.readyState || "",
+    bootStage: document.documentElement?.dataset?.nixmacBootStage || "",
+    capture: document.documentElement?.dataset?.nixmacE2eCapture || "",
+    capturePaint: document.documentElement?.dataset?.nixmacE2eCapturePaint || "",
+    rootChildren: document.getElementById("root")?.childElementCount ?? null,
+    bodyTextLength: document.body?.innerText?.length ?? null,
+    storage: summarizeStorage(),
+  }});
+  const invoke = window.__TAURI__?.core?.invoke || window.__TAURI_INTERNALS__?.invoke;
+  if (typeof invoke === "function") {{
+    invoke("e2e_log_breadcrumb", {{
+      label: `native webview boot probe ${{label}}`,
+      detail,
+      clientTimestampUnixMs: Date.now(),
+    }}).catch(() => {{}});
+  }}
+  console.info(`[nixmac native webview boot probe] ${{label}}`, detail);
+}})();
+"#,
+    );
+    match window.eval(script) {
+        Ok(()) => {
+            log::debug!("main webview E2E boot probe requested: {}", label);
+        }
+        Err(error) => {
+            log::warn!(
+                "main webview E2E boot probe eval failed for {}: {}",
+                label,
+                error
+            );
+        }
+    }
+}
+
+#[cfg(not(debug_assertions))]
+fn e2e_request_webview_boot_probe(_window: &WebviewWindow, _label: &'static str) {}
+
+#[cfg(debug_assertions)]
+fn e2e_schedule_webview_boot_probe(window: WebviewWindow, label: &'static str, delay: Duration) {
+    std::thread::spawn(move || {
+        std::thread::sleep(delay);
+        let probe_window = window.clone();
+        if let Err(error) = window.run_on_main_thread(move || {
+            e2e_request_webview_boot_probe(&probe_window, label);
+        }) {
+            log::warn!(
+                "main webview E2E boot probe could not schedule {}: {}",
+                label,
+                error
+            );
+        }
+    });
+}
+
+#[cfg(not(debug_assertions))]
+fn e2e_schedule_webview_boot_probe(_window: WebviewWindow, _label: &'static str, _delay: Duration) {
+}
+
 const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
 (() => {
   const styleId = "nixmac-e2e-capture-background";
+  const captureMode = "solid";
+  const captureBackground = "hsl(0 0% 3.9%)";
+  const logCaptureBreadcrumb = (label, detail) => {
+    const invoke = window.__TAURI__?.core?.invoke || window.__TAURI_INTERNALS__?.invoke;
+    if (typeof invoke !== "function") return;
+    invoke("e2e_log_breadcrumb", {
+      label,
+      detail,
+      clientTimestampUnixMs: Date.now(),
+    }).catch(() => {});
+  };
   const applyCaptureBackground = () => {
     document.documentElement.classList.add("dark");
-    document.documentElement.dataset.nixmacE2eCapture = "opaque";
+    document.documentElement.dataset.nixmacE2eCapture = captureMode;
     if (!document.getElementById(styleId)) {
       const style = document.createElement("style");
       style.id = styleId;
       style.textContent = `
-        html, body, #root {
-          background: hsl(0 0% 3.9%) !important;
+        html[data-nixmac-e2e-capture="${captureMode}"],
+        html[data-nixmac-e2e-capture="${captureMode}"] body,
+        html[data-nixmac-e2e-capture="${captureMode}"] #root {
+          background: ${captureBackground} !important;
+          background-color: ${captureBackground} !important;
         }
-        html[data-nixmac-e2e-capture="opaque"] .bg-background\\/90,
-        html[data-nixmac-e2e-capture="opaque"] .bg-background\\/95 {
-          background-color: hsl(0 0% 3.9%) !important;
+        html[data-nixmac-e2e-capture="${captureMode}"] .bg-background\\/80,
+        html[data-nixmac-e2e-capture="${captureMode}"] .bg-background\\/90,
+        html[data-nixmac-e2e-capture="${captureMode}"] .bg-background\\/95,
+        html[data-nixmac-e2e-capture="${captureMode}"] .bg-card\\/50,
+        html[data-nixmac-e2e-capture="${captureMode}"] .bg-card\\/80,
+        html[data-nixmac-e2e-capture="${captureMode}"] .bg-card\\/95,
+        html[data-nixmac-e2e-capture="${captureMode}"] .bg-zinc-900\\/95 {
+          background-color: ${captureBackground} !important;
         }
       `;
       document.head.appendChild(style);
     }
+    requestAnimationFrame(() => {
+      document.documentElement.dataset.nixmacE2eCapturePaint = "raf";
+      logCaptureBreadcrumb(
+        "e2e-capture-paint-raf",
+        JSON.stringify({
+          captureMode,
+          rootChildren: document.getElementById("root")?.childElementCount ?? null,
+          bodyChildren: document.body?.childElementCount ?? null,
+        }),
+      );
+    });
   };
   if (document.head) {
     applyCaptureBackground();
@@ -354,6 +482,8 @@ fn run_gui_mode(
             commands::debug::debug_sentry_event,
             #[cfg(debug_assertions)]
             commands::debug::e2e_log_breadcrumb,
+            #[cfg(debug_assertions)]
+            commands::debug::e2e_mark_boot_stage,
             // Homebrew
             commands::homebrew::homebrew_apply_diff,
             commands::homebrew::homebrew_get_state_diff,
@@ -564,9 +694,21 @@ fn run_gui_mode(
             let min_height = 400.0;
             let max_height = 900.0;
             let e2e_opaque_window = e2e_opaque_window_enabled();
+            let e2e_solid_capture = e2e_solid_capture_enabled();
+            let e2e_css_capture = e2e_solid_capture || e2e_opaque_window;
+            let e2e_webview_watchdog = e2e_webview_watchdog_enabled() || e2e_opaque_window;
+            if e2e_solid_capture {
+                log::info!("NIXMAC_E2E_SOLID_CAPTURE enabled; using CSS-only dark WebView capture while preserving the normal overlay window");
+            }
             if e2e_opaque_window {
                 log::info!("NIXMAC_E2E_OPAQUE_WINDOW enabled; using an opaque visible-titlebar window with dark WebView backing for host visual capture");
             }
+            if e2e_webview_watchdog {
+                log::info!("NIXMAC_E2E_WEBVIEW_WATCHDOG enabled; stalled main WebView loads will request one reload");
+            }
+            let main_webview_loaded = Arc::new(AtomicBool::new(false));
+            let main_webview_loaded_for_page_load = Arc::clone(&main_webview_loaded);
+            let e2e_page_load_boot_probe = e2e_webview_watchdog;
 
             let mut main_window_builder =
                 WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
@@ -588,12 +730,38 @@ fn run_gui_mode(
                         tauri::TitleBarStyle::Visible
                     } else {
                         tauri::TitleBarStyle::Overlay
+                    })
+                    .on_page_load(move |window, payload| {
+                        log::debug!(
+                            "main webview page load {:?}: {}",
+                            payload.event(),
+                            payload.url()
+                        );
+                        if payload.event() == PageLoadEvent::Finished {
+                            main_webview_loaded_for_page_load.store(true, Ordering::SeqCst);
+                            if e2e_page_load_boot_probe {
+                                e2e_schedule_webview_boot_probe(
+                                    window.clone(),
+                                    "page-load-finished-plus-1s",
+                                    Duration::from_secs(1),
+                                );
+                                e2e_schedule_webview_boot_probe(
+                                    window.clone(),
+                                    "page-load-finished-plus-5s",
+                                    Duration::from_secs(5),
+                                );
+                            }
+                        }
                     });
 
             if e2e_opaque_window {
                 main_window_builder = main_window_builder
-                    .background_color(tauri::utils::config::Color(10, 10, 10, 255))
-                    .initialization_script(E2E_CAPTURE_DARK_BACKGROUND_SCRIPT);
+                    .background_color(tauri::utils::config::Color(10, 10, 10, 255));
+            }
+
+            if e2e_css_capture {
+                main_window_builder =
+                    main_window_builder.initialization_script(E2E_CAPTURE_DARK_BACKGROUND_SCRIPT);
             }
 
             let main_window = main_window_builder.build().map_err(|e| {
@@ -603,6 +771,85 @@ fn run_gui_mode(
                 msg
             })?;
             log::debug!("Main nixmac window created");
+
+            #[cfg(target_os = "macos")]
+            if e2e_opaque_window {
+                use objc::msg_send;
+                use objc::runtime::Object;
+                use objc::sel;
+                use objc::sel_impl;
+
+                match main_window.ns_window() {
+                    Ok(ns_window) => unsafe {
+                        let ns_window = ns_window as *mut Object;
+                        let is_opaque: bool = msg_send![ns_window, isOpaque];
+                        let alpha_value: f64 = msg_send![ns_window, alphaValue];
+                        let level: i64 = msg_send![ns_window, level];
+                        let has_shadow: bool = msg_send![ns_window, hasShadow];
+                        log::info!(
+                            "NIXMAC_E2E_OPAQUE_WINDOW native window diagnostics: isOpaque={} alphaValue={:.3} level={} hasShadow={}",
+                            is_opaque,
+                            alpha_value,
+                            level,
+                            has_shadow
+                        );
+                    },
+                    Err(error) => {
+                        log::warn!(
+                            "NIXMAC_E2E_OPAQUE_WINDOW native window diagnostics unavailable: {}",
+                            error
+                        );
+                    }
+                }
+            }
+
+            if e2e_webview_watchdog {
+                e2e_schedule_webview_boot_probe(
+                    main_window.clone(),
+                    "post-build-plus-2s",
+                    Duration::from_secs(2),
+                );
+                e2e_schedule_webview_boot_probe(
+                    main_window.clone(),
+                    "post-build-plus-10s",
+                    Duration::from_secs(10),
+                );
+                let watchdog_window = main_window.clone();
+                let watchdog_loaded = Arc::clone(&main_webview_loaded);
+                let watchdog_secs =
+                    crate::e2e_runtime::value("NIXMAC_E2E_WEBVIEW_WATCHDOG_SECS")
+                        .and_then(|value| value.parse::<u64>().ok())
+                        .filter(|value| (1..=60).contains(value))
+                        .unwrap_or(12);
+                std::thread::spawn(move || {
+                    std::thread::sleep(Duration::from_secs(watchdog_secs));
+                    if watchdog_loaded.load(Ordering::SeqCst) {
+                        log::debug!("main webview E2E load watchdog satisfied before reload");
+                        return;
+                    }
+
+                    log::warn!(
+                        "main webview E2E load watchdog did not observe PageLoadEvent::Finished; reloading main webview"
+                    );
+                    let reload_window = watchdog_window.clone();
+                    if let Err(err) = watchdog_window.run_on_main_thread(move || {
+                        e2e_request_webview_boot_probe(&reload_window, "watchdog-before-reload");
+                        if let Err(reload_err) = reload_window.reload() {
+                            log::error!(
+                                "main webview E2E load watchdog reload failed: {}",
+                                reload_err
+                            );
+                        } else {
+                            log::warn!("main webview E2E load watchdog reload requested");
+                        }
+                    }) {
+                        log::error!(
+                            "main webview E2E load watchdog could not schedule reload: {}",
+                            err
+                        );
+                    }
+                });
+            }
 
             // set up watcher with interval based on focus
             let handle_for_focus = handle.clone();

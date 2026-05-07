@@ -1361,7 +1361,7 @@ async function renderPeekabooSuiteAggregate({ results, suiteScenarios, noRecord,
   return runDir;
 }
 
-function getNixmacWindowRegion() {
+function getNixmacWindowInfo() {
   const script = `
 tell application "System Events"
   set matches to (processes whose bundle identifier is "com.darkmatter.nixmac")
@@ -1371,14 +1371,19 @@ tell application "System Events"
     set {windowX, windowY} to position of window 1
     set {windowWidth, windowHeight} to size of window 1
     if windowWidth < 1 or windowHeight < 1 then error "nixmac window has invalid bounds"
-    return (windowX as text) & "," & (windowY as text) & "," & (windowWidth as text) & "," & (windowHeight as text)
+    try
+      set windowTitle to (name of window 1) as text
+    on error
+      set windowTitle to ""
+    end try
+    return (windowX as text) & "," & (windowY as text) & "," & (windowWidth as text) & "," & (windowHeight as text) & linefeed & windowTitle
   end tell
 end tell`;
-  const region = run('osascript', ['-e', script]).trim();
+  const [region, ...titleLines] = run('osascript', ['-e', script]).trim().split(/\r?\n/);
   if (!/^-?\d+,-?\d+,\d+,\d+$/.test(region)) {
     throw new Error(`Invalid nixmac window region from Accessibility: ${region || '<empty>'}`);
   }
-  return region;
+  return { region, title: titleLines.join('\n').trim() };
 }
 
 async function capture(args) {
@@ -1389,8 +1394,8 @@ async function capture(args) {
   const safeLabel = label.replace(/[^a-zA-Z0-9._-]+/g, '-');
   const fileName = `${String(state.screenshots.length + 1).padStart(2, '0')}-${safeLabel}.png`;
   const screenshotPath = path.join(state.runDir, 'screenshots', fileName);
-  const windowRegion = getNixmacWindowRegion();
-  run('screencapture', ['-x', '-R', windowRegion, screenshotPath]);
+  const windowInfo = getNixmacWindowInfo();
+  run('screencapture', ['-x', '-R', windowInfo.region, screenshotPath]);
   const fileStat = await stat(screenshotPath);
   state.screenshots.push({
     label,
@@ -1398,10 +1403,16 @@ async function capture(args) {
     capturedAt: new Date().toISOString(),
     note,
     bytes: fileStat.size,
+    windowTitle: windowInfo.title || null,
   });
   if (note) state.narrative.push({ ts: new Date().toISOString(), text: note });
   await saveState(state);
-  await appendEvent(state, 'screenshot.captured', { label, path: path.relative(state.runDir, screenshotPath), note });
+  await appendEvent(state, 'screenshot.captured', {
+    label,
+    path: path.relative(state.runDir, screenshotPath),
+    note,
+    windowTitle: windowInfo.title || null,
+  });
   console.log(screenshotPath);
 }
 
@@ -2209,6 +2220,11 @@ function renderGallery(state) {
             </span>
             <span>${escapeHtml(galleryScenarioLabel(item))} - ${escapeHtml(item.primary.note || 'Screenshot proof')}</span>
             <span class="proof-meta">Captured ${escapeHtml(item.primary.capturedAt || 'time unavailable')} from the raw screenshot; video/storyboard frames remain raw.</span>
+            ${
+              item.primary.windowTitle
+                ? `<span class="proof-meta">Window title at capture: ${escapeHtml(item.primary.windowTitle)}</span>`
+                : ''
+            }
             <a class="proof-link" href="${escapeHtml(item.primary.path)}" target="_blank" rel="noopener">Open raw screenshot</a>
             ${
               item.annotated && item.annotated.path !== item.primary.path
@@ -3018,7 +3034,7 @@ async function runSelfTest() {
     NIXMAC_E2E_PR_HEAD_REF: 'fkb/scott-peekaboo-local-e2e',
     NIXMAC_E2E_PR_BASE_REF: 'fkb/e2e-required-gate-policy',
     NIXMAC_E2E_PR_CHANGED_FILES: [
-      'apps/native/src/components/widget/settings-dialog.tsx',
+      'apps/native/src/components/widget/settings/settings-dialog.tsx',
       'apps/native/src-tauri/src/main.rs',
       'apps/native/src-tauri/src/rebuild/darwin.rs',
       'apps/native/src-tauri/src/storage/store.rs',
@@ -3064,7 +3080,7 @@ async function runSelfTest() {
       '--allow-cleanup',
     ],
     {
-      NIXMAC_E2E_PR_CHANGED_FILES: 'apps/native/src/components/widget/settings-dialog.tsx',
+      NIXMAC_E2E_PR_CHANGED_FILES: 'apps/native/src/components/widget/settings/settings-dialog.tsx',
       NIXMAC_E2E_PR_NUMBER: '90',
     },
   );

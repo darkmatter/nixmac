@@ -1,11 +1,16 @@
 import { DarwinWidget } from "@/components/widget/widget";
-import { bootBreadcrumb } from "@/lib/e2e-boot-diagnostics";
+import { bootBreadcrumb, clearBootStage, markBootStage } from "@/lib/e2e-boot-diagnostics";
 import { useEffect } from "react";
 import { Toaster } from "sonner";
 
 export default function App() {
+  markBootStage("app-render");
+
   useEffect(() => {
+    markBootStage("app-effect");
     bootBreadcrumb("App mounted");
+    window.dispatchEvent(new Event("nixmac:app-mounted"));
+    clearBootStage();
   }, []);
 
   return (

@@ -20,6 +20,10 @@ NIX_BINARY="/nix/var/nix/profiles/default/bin/nix"
 # Required between runs so the app shows the install screen fresh
 nixmac_clear_state() {
     log "Clearing nixmac app state..."
+    if declare -f peekaboo_capture_app_diagnostics >/dev/null 2>&1; then
+        peekaboo_capture_app_diagnostics "$NIXMAC_APP_NAME" "pre-clear" >/dev/null 2>&1 || true
+    fi
+    app_quit "$NIXMAC_APP_NAME" >/dev/null 2>&1 || true
     # Drain service-scoped app secrets so a leftover keychain prompt cannot
     # interrupt first-launch E2E flows.
     while security delete-generic-password -s "$NIXMAC_BUNDLE_ID" >/dev/null 2>&1; do

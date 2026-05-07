@@ -1,7 +1,12 @@
 import { X } from "lucide-react";
-import { NixEditor } from "@/components/kibo-ui/nix-editor";
+import { lazy, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { useWidgetStore } from "@/stores/widget-store";
+
+const LazyNixEditor = lazy(async () => {
+  const module = await import("@/components/kibo-ui/nix-editor");
+  return { default: module.NixEditor };
+});
 
 export function EditorPanel({ disableEditorRuntime = false }: { disableEditorRuntime?: boolean }) {
   const editingFile = useWidgetStore((s) => s.editingFile);
@@ -24,14 +29,22 @@ export function EditorPanel({ disableEditorRuntime = false }: { disableEditorRun
           <X className="h-4 w-4" />
         </Button>
       </div>
-      <NixEditor
-        filePath={editingFile}
-        className="flex-1"
-        disableRuntime={disableEditorRuntime}
-        onSave={() => {
-          // Could trigger a git status refresh here in the future
-        }}
-      />
+      <Suspense
+        fallback={
+          <div className="flex flex-1 items-center justify-center text-muted-foreground text-sm">
+            Loading editor...
+          </div>
+        }
+      >
+        <LazyNixEditor
+          filePath={editingFile}
+          className="flex-1"
+          disableRuntime={disableEditorRuntime}
+          onSave={() => {
+            // Could trigger a git status refresh here in the future
+          }}
+        />
+      </Suspense>
     </div>
   );
 }
