@@ -57,9 +57,6 @@ export function useHomebrewDiff(enabled = true) {
       const result = await darwinAPI.homebrew.applyDiff(diff);
       store.setEvolveState(result.evolveState);
       store.setChangeMap(result.changeMap);
-      store.setSummaryAvailable(
-        result.changeMap.groups.length > 0 || result.changeMap.singles.length > 0,
-      );
       store.setGitStatus(result.gitStatus);
       store.setRecommendedPrompt(undefined);
       // Clear so we re-fetch on next render (the watcher will also advance the step).

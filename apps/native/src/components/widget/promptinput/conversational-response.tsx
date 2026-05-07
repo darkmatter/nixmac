@@ -12,6 +12,7 @@ export function ConversationalResponse() {
 
   return (
     <div
+      data-testid="conversational-response"
       className={cn(
         "relative rounded-xl border border-primary/20 bg-primary/5 p-4",
         "animate-in fade-in slide-in-from-bottom-2 duration-300",
@@ -36,7 +37,10 @@ export function ConversationalResponse() {
       </div>
 
       {/* Response body */}
-      <p className="whitespace-pre-wrap text-sm text-foreground/90 leading-relaxed pr-4">
+      <p
+        data-testid="conversational-response-body"
+        className="whitespace-pre-wrap text-sm text-foreground/90 leading-relaxed pr-4"
+      >
         {response}
       </p>
     </div>
