@@ -65,6 +65,10 @@ fn e2e_webview_watchdog_enabled() -> bool {
     cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_WEBVIEW_WATCHDOG")
 }
 
+#[cfg(all(debug_assertions, target_os = "macos"))]
+static E2E_NATIVE_SNAPSHOT_COUNTER: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+
 #[cfg(debug_assertions)]
 fn e2e_request_webview_boot_probe(window: &WebviewWindow, label: &'static str) {
     let label_json =
@@ -267,6 +271,365 @@ fn e2e_schedule_native_webview_capture_probe(
     _delay: Duration,
 ) {
 }
+
+#[cfg(all(debug_assertions, target_os = "macos"))]
+fn e2e_clean_snapshot_label(label: &str) -> String {
+    let cleaned = label
+        .chars()
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() || ch == '.' || ch == '_' || ch == '-' {
+                ch
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>()
+        .trim_matches('-')
+        .chars()
+        .take(80)
+        .collect::<String>();
+    if cleaned.is_empty() {
+        "snapshot".to_string()
+    } else {
+        cleaned
+    }
+}
+
+#[cfg(all(debug_assertions, target_os = "macos"))]
+fn e2e_native_snapshot_root_dir() -> Option<std::path::PathBuf> {
+    crate::e2e_runtime::value("NIXMAC_E2E_DIAGNOSTICS_DIR")
+        .map(std::path::PathBuf::from)
+        .map(|path| path.join("native-webview-snapshots"))
+}
+
+#[cfg(all(debug_assertions, target_os = "macos"))]
+fn e2e_native_snapshot_paths(label: &str) -> Option<(std::path::PathBuf, std::path::PathBuf)> {
+    let root = e2e_native_snapshot_root_dir()?;
+    let sequence = E2E_NATIVE_SNAPSHOT_COUNTER.fetch_add(1, Ordering::SeqCst) + 1;
+    let epoch_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .unwrap_or(0);
+    let stem = format!(
+        "native-webview-{sequence:04}-{}-{epoch_ms}",
+        e2e_clean_snapshot_label(label)
+    );
+    Some((
+        root.join(format!("{stem}.png")),
+        root.join(format!("{stem}.json")),
+    ))
+}
+
+#[cfg(all(debug_assertions, target_os = "macos"))]
+fn e2e_write_native_snapshot_status(
+    status_path: &std::path::Path,
+    status: &str,
+    label: &str,
+    output_path: &std::path::Path,
+    message: Option<&str>,
+) {
+    if let Some(parent) = status_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let payload = serde_json::json!({
+        "status": status,
+        "label": label,
+        "path": output_path,
+        "message": message,
+        "capturedAtUnixMs": std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_millis())
+            .unwrap_or(0),
+        "source": "WKWebView.takeSnapshotWithConfiguration"
+    });
+    let tmp_status_path = status_path.with_extension("json.tmp");
+    if std::fs::write(
+        &tmp_status_path,
+        serde_json::to_string_pretty(&payload).unwrap_or_else(|_| "{}".to_string()),
+    )
+    .and_then(|()| std::fs::rename(&tmp_status_path, status_path))
+    .is_err()
+    {
+        let _ = std::fs::remove_file(&tmp_status_path);
+    }
+}
+
+#[cfg(all(debug_assertions, target_os = "macos"))]
+fn e2e_request_native_webview_snapshot(
+    window: &WebviewWindow,
+    label: String,
+    output_path: std::path::PathBuf,
+    status_path: std::path::PathBuf,
+) {
+    use block::ConcreteBlock;
+    use objc::class;
+    use objc::msg_send;
+    use objc::runtime::Object;
+    use objc::sel;
+    use objc::sel_impl;
+
+    if let Some(parent) = output_path.parent() {
+        if let Err(error) = std::fs::create_dir_all(parent) {
+            log::warn!(
+                "NIXMAC_E2E_NATIVE_SNAPSHOT could not create output dir for {}: {}",
+                label,
+                error
+            );
+            e2e_write_native_snapshot_status(
+                &status_path,
+                "failed",
+                &label,
+                &output_path,
+                Some(&format!("failed to create output directory: {error}")),
+            );
+            return;
+        }
+    }
+    if let Some(parent) = status_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    e2e_write_native_snapshot_status(&status_path, "pending", &label, &output_path, None);
+
+    let error_label = label.clone();
+    let error_output_path = output_path.clone();
+    let error_status_path = status_path.clone();
+    if let Err(error) = window.with_webview(move |webview| unsafe {
+        let label_for_log = label.clone();
+        let label_for_status = label.clone();
+        let output_for_block = output_path.clone();
+        let status_for_block = status_path.clone();
+        let completion = ConcreteBlock::new(move |image: *mut Object, error: *mut Object| {
+            if !error.is_null() {
+                log::warn!(
+                    "NIXMAC_E2E_NATIVE_SNAPSHOT failed for {}: WebKit returned an error",
+                    label_for_status
+                );
+                e2e_write_native_snapshot_status(
+                    &status_for_block,
+                    "failed",
+                    &label_for_status,
+                    &output_for_block,
+                    Some("WebKit returned an error"),
+                );
+                return;
+            }
+            if image.is_null() {
+                log::warn!(
+                    "NIXMAC_E2E_NATIVE_SNAPSHOT failed for {}: WebKit returned no image",
+                    label_for_status
+                );
+                e2e_write_native_snapshot_status(
+                    &status_for_block,
+                    "failed",
+                    &label_for_status,
+                    &output_for_block,
+                    Some("WebKit returned no image"),
+                );
+                return;
+            }
+
+            let tiff_data: *mut Object = msg_send![image, TIFFRepresentation];
+            if tiff_data.is_null() {
+                e2e_write_native_snapshot_status(
+                    &status_for_block,
+                    "failed",
+                    &label_for_status,
+                    &output_for_block,
+                    Some("NSImage TIFFRepresentation was nil"),
+                );
+                return;
+            }
+            let bitmap_rep: *mut Object =
+                msg_send![class!(NSBitmapImageRep), imageRepWithData: tiff_data];
+            if bitmap_rep.is_null() {
+                e2e_write_native_snapshot_status(
+                    &status_for_block,
+                    "failed",
+                    &label_for_status,
+                    &output_for_block,
+                    Some("NSBitmapImageRep could not read snapshot data"),
+                );
+                return;
+            }
+            let properties: *mut Object = msg_send![class!(NSDictionary), dictionary];
+            const NS_BITMAP_IMAGE_FILE_TYPE_PNG: usize = 4;
+            let png_data: *mut Object = msg_send![
+                bitmap_rep,
+                representationUsingType: NS_BITMAP_IMAGE_FILE_TYPE_PNG
+                properties: properties
+            ];
+            if png_data.is_null() {
+                e2e_write_native_snapshot_status(
+                    &status_for_block,
+                    "failed",
+                    &label_for_status,
+                    &output_for_block,
+                    Some("NSBitmapImageRep PNG representation was nil"),
+                );
+                return;
+            }
+            let bytes: *const std::ffi::c_void = msg_send![png_data, bytes];
+            let len: usize = msg_send![png_data, length];
+            if bytes.is_null() || len == 0 {
+                e2e_write_native_snapshot_status(
+                    &status_for_block,
+                    "failed",
+                    &label_for_status,
+                    &output_for_block,
+                    Some("PNG data was empty"),
+                );
+                return;
+            }
+            let slice = std::slice::from_raw_parts(bytes.cast::<u8>(), len);
+            let tmp_output = output_for_block.with_extension("png.tmp");
+            let write_result = std::fs::write(&tmp_output, slice)
+                .and_then(|()| std::fs::rename(&tmp_output, &output_for_block));
+            match write_result {
+                Ok(()) => {
+                    log::info!(
+                        "NIXMAC_E2E_NATIVE_SNAPSHOT wrote {} for {}",
+                        output_for_block.display(),
+                        label_for_status
+                    );
+                    e2e_write_native_snapshot_status(
+                        &status_for_block,
+                        "passed",
+                        &label_for_status,
+                        &output_for_block,
+                        None,
+                    );
+                }
+                Err(error) => {
+                    let _ = std::fs::remove_file(&tmp_output);
+                    log::warn!(
+                        "NIXMAC_E2E_NATIVE_SNAPSHOT failed to write {} for {}: {}",
+                        output_for_block.display(),
+                        label_for_status,
+                        error
+                    );
+                    e2e_write_native_snapshot_status(
+                        &status_for_block,
+                        "failed",
+                        &label_for_status,
+                        &output_for_block,
+                        Some(&format!("failed to write PNG atomically: {error}")),
+                    );
+                }
+            }
+        })
+        .copy();
+        let webview = webview.inner() as *mut Object;
+        let configuration: *mut Object = std::ptr::null_mut();
+        let _: () = msg_send![
+            webview,
+            takeSnapshotWithConfiguration: configuration
+            completionHandler: &*completion
+        ];
+        // The completion is async and owned by WebKit after dispatch. Leaking the
+        // copied block is acceptable in debug-only E2E runs and avoids use-after-free
+        // while the virtualized host is under load.
+        std::mem::forget(completion);
+        log::debug!(
+            "NIXMAC_E2E_NATIVE_SNAPSHOT requested {} for {}",
+            output_path.display(),
+            label_for_log
+        );
+    }) {
+        log::warn!(
+            "NIXMAC_E2E_NATIVE_SNAPSHOT unavailable for {}: {}",
+            error_label,
+            error
+        );
+        e2e_write_native_snapshot_status(
+            &error_status_path,
+            "failed",
+            &error_label,
+            &error_output_path,
+            Some(&format!("webview unavailable: {error}")),
+        );
+    }
+}
+
+#[cfg(all(debug_assertions, target_os = "macos"))]
+fn e2e_schedule_native_webview_snapshot(
+    window: WebviewWindow,
+    label: &'static str,
+    delay: Duration,
+) {
+    std::thread::spawn(move || {
+        std::thread::sleep(delay);
+        if let Some((output_path, status_path)) = e2e_native_snapshot_paths(label) {
+            e2e_request_native_webview_snapshot(
+                &window,
+                label.to_string(),
+                output_path,
+                status_path,
+            );
+        }
+    });
+}
+
+#[cfg(all(debug_assertions, target_os = "macos"))]
+fn e2e_start_native_webview_snapshot_request_poller(window: WebviewWindow) {
+    let Some(root) = e2e_native_snapshot_root_dir() else {
+        return;
+    };
+    let request_dir = root.join("requests");
+    if let Err(error) = std::fs::create_dir_all(&request_dir) {
+        log::warn!(
+            "NIXMAC_E2E_NATIVE_SNAPSHOT could not create request dir {}: {}",
+            request_dir.display(),
+            error
+        );
+        return;
+    }
+    log::info!(
+        "NIXMAC_E2E_NATIVE_SNAPSHOT polling requests in {}",
+        request_dir.display()
+    );
+    std::thread::spawn(move || {
+        let started = std::time::Instant::now();
+        let max_runtime = Duration::from_secs(2 * 60 * 60);
+        while started.elapsed() < max_runtime {
+            let Ok(entries) = std::fs::read_dir(&request_dir) else {
+                std::thread::sleep(Duration::from_millis(250));
+                continue;
+            };
+            for entry in entries.flatten() {
+                let request_path = entry.path();
+                let Some(file_name) = request_path.file_name().and_then(|name| name.to_str())
+                else {
+                    continue;
+                };
+                let Some(request_id) = file_name.strip_suffix(".request") else {
+                    continue;
+                };
+                let label = std::fs::read_to_string(&request_path)
+                    .ok()
+                    .map(|value| value.trim().to_string())
+                    .filter(|value| !value.is_empty())
+                    .unwrap_or_else(|| request_id.to_string());
+                let _ = std::fs::remove_file(&request_path);
+                let output_path = root.join(format!("{request_id}.png"));
+                let status_path = root.join(format!("{request_id}.json"));
+                e2e_request_native_webview_snapshot(&window, label, output_path, status_path);
+            }
+            std::thread::sleep(Duration::from_millis(250));
+        }
+        log::warn!("NIXMAC_E2E_NATIVE_SNAPSHOT request poller stopped after max runtime");
+    });
+}
+
+#[cfg(not(all(debug_assertions, target_os = "macos")))]
+fn e2e_schedule_native_webview_snapshot(
+    _window: WebviewWindow,
+    _label: &'static str,
+    _delay: Duration,
+) {
+}
+
+#[cfg(not(all(debug_assertions, target_os = "macos")))]
+fn e2e_start_native_webview_snapshot_request_poller(_window: WebviewWindow) {}
 
 const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
 (() => {
@@ -1093,6 +1456,11 @@ fn run_gui_mode(
                                     "native-page-load-finished-plus-5s",
                                     Duration::from_secs(5),
                                 );
+                                e2e_schedule_native_webview_snapshot(
+                                    window.clone(),
+                                    "page-load-finished-plus-5s",
+                                    Duration::from_secs(5),
+                                );
                             }
                         }
                     });
@@ -1162,9 +1530,15 @@ fn run_gui_mode(
             }
 
             if e2e_css_capture {
+                e2e_start_native_webview_snapshot_request_poller(main_window.clone());
                 e2e_schedule_native_webview_capture_probe(
                     main_window.clone(),
                     "native-post-build-plus-2s",
+                    Duration::from_secs(2),
+                );
+                e2e_schedule_native_webview_snapshot(
+                    main_window.clone(),
+                    "post-build-plus-2s",
                     Duration::from_secs(2),
                 );
             }

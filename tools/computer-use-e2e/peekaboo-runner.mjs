@@ -173,7 +173,9 @@ function artifactEntries(dirPath, runDir) {
         label: entry.replace(/\.[^.]+$/, ''),
         path: path.relative(runDir, fullPath),
         capturedAt: new Date(fileStat.mtimeMs).toISOString(),
-        note: 'Captured by Peekaboo runner.',
+        note: /webkit-snapshot/i.test(entry)
+          ? 'WKWebView internal snapshot captured from the running nixmac WebContent surface.'
+          : 'Captured by Peekaboo runner.',
         bytes: fileStat.size,
       };
     });

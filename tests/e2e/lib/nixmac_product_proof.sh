@@ -395,22 +395,80 @@ console.log(`central app content visual signal ready: YAVG ${yAvg}, Y range ${yM
 NODE
 }
 
+nixmac_pp_request_native_webview_snapshot() {
+    local label="${1:-snapshot}"
+    local timeout="${2:-15}"
+    local root request_dir safe_label request_id request_path output_path status_path deadline status
+
+    [ -n "${NIXMAC_E2E_DIAGNOSTICS_DIR:-}" ] || return 1
+    root="$NIXMAC_E2E_DIAGNOSTICS_DIR/native-webview-snapshots"
+    request_dir="$root/requests"
+    mkdir -p "$request_dir" "$root" || return 1
+    safe_label=$(printf '%s' "$label" | tr -cs 'A-Za-z0-9._-' '-' | sed -E 's/^-+|-+$//g' | cut -c1-80)
+    [ -n "$safe_label" ] || safe_label="snapshot"
+    request_id="${safe_label}-$(date +%s)-$$-$RANDOM"
+    request_path="$request_dir/$request_id.request"
+    output_path="$root/$request_id.png"
+    status_path="$root/$request_id.json"
+
+    printf '%s\n' "$label" > "$request_path" || return 1
+    deadline=$(($(date +%s) + timeout))
+    while [ "$(date +%s)" -le "$deadline" ]; do
+        if [ -s "$output_path" ]; then
+            printf '%s\n' "$output_path"
+            return 0
+        fi
+        if [ -s "$status_path" ]; then
+            status=$(jq -r '.status // ""' "$status_path" 2>/dev/null || true)
+            if [ "$status" = "failed" ]; then
+                debug "Native WKWebView snapshot failed for $label: $(jq -r '.message // "unknown"' "$status_path" 2>/dev/null || echo unknown)"
+                return 1
+            fi
+        fi
+        sleep 0.2
+    done
+
+    debug "Native WKWebView snapshot timed out for $label"
+    return 1
+}
+
+nixmac_pp_capture_native_visual_signal() {
+    local label="${1:-ready-shell}"
+    local path result
+
+    path=$(nixmac_pp_request_native_webview_snapshot "$label" 5) || return 1
+    result=$(nixmac_pp_screenshot_has_visual_signal "$path" 2>&1) || {
+        debug "Native WKWebView visual signal not established for $path: $result"
+        return 1
+    }
+    debug "Native WKWebView snapshot visual signal ready for $path: $result"
+    printf '%s\n' "$path"
+}
+
 nixmac_pp_capture_ready_visual_signal() {
     local label="${1:-ready-shell}"
-    local dir path result
+    local dir path result native_path
 
     dir="$E2E_DIAGNOSTIC_DIR/visual-readiness"
     mkdir -p "$dir"
     path="$dir/${label//[^a-zA-Z0-9._-]/_}.png"
-    peekaboo_run see --app "$NIXMAC_APP_NAME" --path "$path" >/dev/null 2>&1 \
-        || peekaboo_run image --mode screen --path "$path" >/dev/null 2>&1 \
-        || return 1
-    [ -s "$path" ] || return 1
-    result=$(nixmac_pp_screenshot_has_visual_signal "$path" 2>&1) || {
+    if peekaboo_run see --app "$NIXMAC_APP_NAME" --path "$path" >/dev/null 2>&1 \
+        || peekaboo_run image --mode screen --path "$path" >/dev/null 2>&1; then
+        result=$(nixmac_pp_screenshot_has_visual_signal "$path" 2>&1) && {
+            debug "$result"
+            return 0
+        }
+        debug "Ready-shell system visual signal not established for $path: $result"
+    else
+        result="system screenshot capture failed"
+        debug "Ready-shell system visual signal not established for $path: $result"
+    fi
+
+    native_path=$(nixmac_pp_capture_native_visual_signal "$label") || {
         debug "Ready-shell visual signal not established for $path: $result"
         return 1
     }
-    debug "$result"
+    debug "Ready-shell visual signal established from native WKWebView snapshot: $native_path"
 }
 
 nixmac_pp_wait_for_ready_app_shell() {

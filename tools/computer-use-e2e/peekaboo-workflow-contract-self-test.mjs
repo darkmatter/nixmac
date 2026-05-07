@@ -24,6 +24,7 @@ const frontendWidgetPath = path.join(repoRoot, 'apps/native/src/components/widge
 const frontendEditorPanelPath = path.join(repoRoot, 'apps/native/src/components/widget/overlays/editor-panel.tsx');
 const frontendBootDiagnosticsPath = path.join(repoRoot, 'apps/native/src/lib/e2e-boot-diagnostics.ts');
 const tauriApiPath = path.join(repoRoot, 'apps/native/src/tauri-api.ts');
+const cargoTomlPath = path.join(repoRoot, 'apps/native/src-tauri/Cargo.toml');
 const workflow = readFileSync(workflowPath, 'utf8');
 const productProof = readFileSync(productProofPath, 'utf8');
 const peekabooShell = readFileSync(peekabooShellPath, 'utf8');
@@ -42,6 +43,7 @@ const frontendWidget = readFileSync(frontendWidgetPath, 'utf8');
 const frontendEditorPanel = readFileSync(frontendEditorPanelPath, 'utf8');
 const frontendBootDiagnostics = readFileSync(frontendBootDiagnosticsPath, 'utf8');
 const tauriApi = readFileSync(tauriApiPath, 'utf8');
+const cargoToml = readFileSync(cargoTomlPath, 'utf8');
 
 function section(startPattern, endPattern = null) {
   const source = typeof startPattern === 'object' && startPattern.sourceText ? startPattern.sourceText : workflow;
@@ -218,6 +220,15 @@ assert.match(nativeMain, /if e2e_css_capture \{[\s\S]*match main_window\.ns_wind
 assert.match(nativeMain, /NIXMAC_E2E_CAPTURE native window diagnostics:[\s\S]*sharingTypeBefore=\{\}[\s\S]*sharingTypeAfter=\{\}[\s\S]*isOpaque[\s\S]*alphaValue[\s\S]*hasShadow/, 'Native app must log native sharing diagnostics for MacInCloud capture debugging');
 assert.match(nativeMain, /fn e2e_request_native_webview_capture_probe[\s\S]*with_webview\(move \|webview\|[\s\S]*respondsToSelector: sel!\(drawsBackground\)[\s\S]*setNeedsDisplay: YES[\s\S]*displayIfNeeded[\s\S]*NIXMAC_E2E_CAPTURE webview diagnostics:[\s\S]*fn e2e_schedule_native_webview_capture_probe/, 'Native app must provide guarded WebView diagnostics and a best-effort AppKit display hint for MacInCloud black-capture diagnosis');
 assert.match(nativeMain, /e2e_page_load_native_capture_probe[\s\S]*native-page-load-finished-plus-5s[\s\S]*e2e_schedule_native_webview_capture_probe[\s\S]*native-post-build-plus-2s/, 'Native app must schedule native WebView capture diagnostics after build and after page-load');
+assert.match(cargoToml, /\[target\.'cfg\(target_os = "macos"\)'\.dependencies\][\s\S]*block = "0\.1"[\s\S]*objc = "0\.2"/, 'Native WKWebView snapshot completion blocks must declare the small macOS-only block crate beside objc/cocoa');
+assert.match(nativeMain, /fn e2e_request_native_webview_snapshot[\s\S]*ConcreteBlock::new[\s\S]*NSBitmapImageRep[\s\S]*representationUsingType[\s\S]*takeSnapshotWithConfiguration[\s\S]*std::mem::forget\(completion\)/, 'Native app must provide an E2E-only WKWebView snapshot writer using WebKit snapshot API and explicit async block lifetime handling');
+assert.match(nativeMain, /let tmp_status_path = status_path\.with_extension\("json\.tmp"\)[\s\S]*std::fs::write\([\s\S]*&tmp_status_path[\s\S]*std::fs::rename\(&tmp_status_path, status_path\)/, 'Native WKWebView snapshot status writer must publish JSON atomically so shell polling cannot read partial status');
+assert.match(nativeMain, /let tmp_output = output_for_block\.with_extension\("png\.tmp"\)[\s\S]*std::fs::write\(&tmp_output, slice\)[\s\S]*std::fs::rename\(&tmp_output, &output_for_block\)/, 'Native WKWebView snapshot writer must publish PNGs atomically so shell polling cannot read partial files');
+assert.match(nativeMain, /fn e2e_native_snapshot_root_dir[\s\S]*NIXMAC_E2E_DIAGNOSTICS_DIR[\s\S]*native-webview-snapshots/, 'Native snapshots must reuse the existing E2E diagnostics directory');
+assert.match(nativeMain, /fn e2e_start_native_webview_snapshot_request_poller[\s\S]*request_dir[\s\S]*requests[\s\S]*\.request[\s\S]*e2e_request_native_webview_snapshot/, 'Native app must poll diagnostics-dir snapshot requests so Scott’s shell driver can demand fresh native visual evidence');
+assert.match(nativeMain, /let output_path = root\.join\(format!\("\{request_id\}\.png"\)\);[\s\S]*let status_path = root\.join\(format!\("\{request_id\}\.json"\)\);/, 'Native snapshot poller must use the shell request id verbatim so shell and Rust wait/write paths cannot desync on long labels');
+assert.match(nativeMain, /e2e_schedule_native_webview_snapshot[\s\S]*page-load-finished-plus-5s[\s\S]*e2e_start_native_webview_snapshot_request_poller[\s\S]*post-build-plus-2s/, 'Native app must take bounded readiness snapshots and start the on-demand snapshot request poller only in E2E capture mode');
+assert.doesNotMatch(nativeMain, /setInterval|Duration::from_millis\((?:1000|2000|3000)\)[\s\S]*e2e_request_native_webview_snapshot/, 'Native app must not create noisy background interval snapshots while scenarios run');
 assert.match(nativeSolidCaptureBranch, /NIXMAC_E2E_SOLID_CAPTURE enabled/, 'Native app must keep an explicit solid-capture branch for diagnostics');
 assert.doesNotMatch(nativeSolidCaptureBranch, /background_color\(tauri::utils::config::Color\(10, 10, 10, 255\)\)/, 'Native app must not apply native background_color from the default solid-capture path');
 assert.match(nativeMain, /fn e2e_webview_watchdog_enabled\(\) -> bool \{\n\s+cfg!\(debug_assertions\) && crate::e2e_runtime::enabled\("NIXMAC_E2E_WEBVIEW_WATCHDOG"\)/, 'Native app must expose an E2E-only WebView watchdog gate independent of opaque capture');
@@ -283,7 +294,13 @@ assert.match(productProof, /nixmac_pp_wait_for_ready_app_shell\(\)/, 'Product Pr
 assert.match(productProof, /nixmac_pp_elements_show_ready_shell\(\)[\s\S]*NIXMAC_PP_READY_SHELL_MIN_ELEMENTS[\s\S]*NIXMAC_PP_READY_SHELL_PATTERN/, 'ready-shell gate must require both element breadth and product markers');
 assert.match(productProof, /nixmac_pp_screenshot_has_visual_signal\(\)[\s\S]*visual-proof\.mjs[\s\S]*pngSignalStats[\s\S]*probeCropForImage/, 'ready-shell gate must use the same screenshot signal helpers as the report scanner');
 assert.match(productProof, /maxDarkChromeYAvg: 42/, 'ready-shell visual gate must enforce the same nixmac dark-capture upper bound as the report scanner');
+assert.match(productProof, /nixmac_pp_request_native_webview_snapshot\(\)[\s\S]*NIXMAC_E2E_DIAGNOSTICS_DIR[\s\S]*native-webview-snapshots[\s\S]*\.request[\s\S]*status_path/, 'Product Proof must request fresh native WKWebView snapshots through the existing diagnostics directory');
+assert.match(productProof, /nixmac_pp_capture_native_visual_signal\(\)[\s\S]*nixmac_pp_request_native_webview_snapshot[\s\S]*nixmac_pp_screenshot_has_visual_signal/, 'Native WKWebView fallback must run the exact same visual signal probe before it can satisfy readiness');
+assert.match(productProof, /nixmac_pp_capture_ready_visual_signal\(\)[\s\S]*peekaboo_run see --app "\$NIXMAC_APP_NAME" --path "\$path"[\s\S]*nixmac_pp_screenshot_has_visual_signal "\$path"[\s\S]*nixmac_pp_capture_native_visual_signal/, 'Ready-shell gate must try system pixels first, then use a fresh native WKWebView snapshot only as a strict fallback');
 assert.match(productProof, /nixmac_pp_wait_for_ready_app_shell\(\)[\s\S]*nixmac_pp_capture_ready_visual_signal/, 'ready-shell gate must require screenshot visual signal before launch passes');
+assert.match(nixmacAdapter, /nixmac_screenshot\(\)[\s\S]*screenshot "\$label" "\$NIXMAC_APP_NAME"[\s\S]*nixmac_pp_capture_native_visual_signal[\s\S]*webkit-snapshot[\s\S]*system-captures[\s\S]*Promoted native WKWebView snapshot/, 'nixmac screenshots must promote passing WKWebView snapshots into screenshot evidence while retaining black system captures as diagnostics');
+assert.match(peekabooRunner, /webkit-snapshot[\s\S]*WKWebView internal snapshot captured from the running nixmac WebContent surface/, 'Peekaboo runner must label WKWebView snapshot screenshot provenance');
+assert.match(runLocal, /webkit-snapshot[\s\S]*WKWebView internal snapshot[\s\S]*running WKWebView WebContent surface/, 'HTML report must visibly distinguish WKWebView internal snapshots from Peekaboo screen captures');
 
 const setKeys = [...launchEnv.matchAll(/nixmac_pp_set_launch_env ([A-Z0-9_]+)/g)].map((match) => match[1]);
 const unsetKeys = new Set([...cleanup.matchAll(/nixmac_pp_unset_launch_env ([A-Z0-9_]+)/g)].map((match) => match[1]));

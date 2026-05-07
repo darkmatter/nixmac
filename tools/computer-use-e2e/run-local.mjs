@@ -1873,7 +1873,8 @@ function screenshotFamily(labelOrPath) {
   return path
     .basename(String(labelOrPath ?? 'screenshot'))
     .replace(/\.[^.]+$/, '')
-    .replace(/_annotated$/, '');
+    .replace(/_annotated$/, '')
+    .replace(/-webkit-snapshot-\d+$/i, '');
 }
 
 function proofGalleryItems(state) {
@@ -2205,6 +2206,7 @@ function renderGallery(state) {
         const { label } = splitScreenshotLabel(item.primary.label);
         const displayLabel = humanizeScreenshotLabel(label);
         const callouts = galleryCallouts(item);
+        const isWebkitSnapshot = /webkit-snapshot/i.test(`${item.primary.label ?? ''} ${item.primary.path ?? ''}`);
         return `<figure class="proof-card proof-card-${escapeHtml(status)}" id="screenshot-${escapeHtml(item.family)}">
           <div class="screenshot-proof-frame" data-visual-annotation="report-callouts">
             <img src="${escapeHtml(item.primary.path)}" alt="${escapeHtml(item.primary.label)}">
@@ -2216,10 +2218,10 @@ function renderGallery(state) {
           <figcaption>
             <span class="proof-caption-head">
               <strong>${escapeHtml(displayLabel || item.primary.label)}</strong>
-              <span class="proof-mode">review highlight</span>
+              <span class="proof-mode">${escapeHtml(isWebkitSnapshot ? 'WKWebView internal snapshot' : 'review highlight')}</span>
             </span>
             <span>${escapeHtml(galleryScenarioLabel(item))} - ${escapeHtml(item.primary.note || 'Screenshot proof')}</span>
-            <span class="proof-meta">Captured ${escapeHtml(item.primary.capturedAt || 'time unavailable')} from the raw screenshot; video/storyboard frames remain raw.</span>
+            <span class="proof-meta">Captured ${escapeHtml(item.primary.capturedAt || 'time unavailable')} from ${escapeHtml(isWebkitSnapshot ? 'the running WKWebView WebContent surface' : 'the raw screenshot')}; video/storyboard frames remain raw.</span>
             ${
               item.primary.windowTitle
                 ? `<span class="proof-meta">Window title at capture: ${escapeHtml(item.primary.windowTitle)}</span>`
