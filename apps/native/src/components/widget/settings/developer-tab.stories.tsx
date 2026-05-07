@@ -25,7 +25,7 @@ const meta = preview.meta({
 export default meta;
 
 /** Default state — developer mode on, no version pinned. */
-export const Unpinned = {
+export const Unpinned = meta.story({
   decorators: [
     (Story: React.ComponentType) => {
       useEffect(() => {
@@ -34,10 +34,10 @@ export const Unpinned = {
       return <Story />;
     },
   ],
-};
+});
 
 /** A past release is pinned — silent auto-update is suppressed; "Resume auto-update" appears. */
-export const PinnedToPastVersion = {
+export const PinnedToPastVersion = meta.story({
   decorators: [
     (Story: React.ComponentType) => {
       useEffect(() => {
@@ -46,4 +46,4 @@ export const PinnedToPastVersion = {
       return <Story />;
     },
   ],
-};
+});
