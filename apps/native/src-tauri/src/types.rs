@@ -110,6 +110,16 @@ impl EvolveEvent {
         )
     }
 
+    pub(crate) fn search_packages(start_time: i64, iter: usize, packages: &str) -> Self {
+        Self::new(
+            EvolveEventType::SearchPackages,
+            format!("Found packages: {}", packages),
+            format!("Found packages: {}", packages),
+            Some(iter),
+            start_time,
+        )
+    }
+
     pub(crate) fn tool_call(start_time: i64, iter: usize, tool: &str, args_summary: &str) -> Self {
         let summary = match tool {
             "read_file" => "Reading file...".to_string(),
