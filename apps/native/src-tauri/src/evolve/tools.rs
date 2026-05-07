@@ -12,7 +12,8 @@ use super::gitignore::is_ignored_by_matcher;
 use super::messages::Tool;
 use super::search_code::execute_search_code;
 use super::search_docs::{
-    default_limit as search_docs_default_limit, execute_search_docs, DocsSource,
+    default_limit as search_docs_default_limit, execute_search_docs,
+    max_limit as search_docs_max_limit, DocsSource,
 };
 use super::search_packages::execute_search_packages;
 use super::types::FileEdit;
@@ -29,6 +30,12 @@ use std::path::{Component, Path};
 
 /// Creates provider-agnostic tools
 pub fn create_tools() -> Vec<Tool> {
+    let search_docs_limit_description = format!(
+        "Maximum results to return (default: {}, max: {})",
+        search_docs_default_limit(),
+        search_docs_max_limit()
+    );
+
     vec![
         Tool {
             name: "think".to_string(),
@@ -333,7 +340,7 @@ IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with
                     },
                     "limit": {
                         "type": "integer",
-                        "description": "Maximum results to return (default: 3, max: 10)"
+                        "description": search_docs_limit_description
                     },
                     "source": {
                         "type": "string",
