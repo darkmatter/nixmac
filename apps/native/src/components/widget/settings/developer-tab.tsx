@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI, type UpdateChannel } from "@/tauri-api";
+import { darwinAPI } from "@/tauri-api";
+import type { UpdateChannel } from "@/types/shared";
 import { invoke } from "@tauri-apps/api/core";
 import { useUpdater } from "@/hooks/use-updater";
 import { getVersion } from "@tauri-apps/api/app";

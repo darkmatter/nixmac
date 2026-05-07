@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { darwinAPI } from "@/tauri-api";
-import type { UpdateInfo } from "@/tauri-api";
+import type { UpdateInfo } from "@/types/shared";
 import { useWidgetStore } from "@/stores/widget-store";
 
 interface UpdateState {

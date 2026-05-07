@@ -1,4 +1,4 @@
-import type { PermissionsState } from "@/tauri-api";
+import type { PermissionsState } from "@/types/shared";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

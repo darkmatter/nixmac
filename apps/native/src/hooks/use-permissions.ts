@@ -1,6 +1,6 @@
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
-import type { PermissionStatus, PermissionsState } from "@/tauri-api";
+import type { PermissionStatus, PermissionsState } from "@/types/shared";
 
 /**
  * Hook for checking and managing macOS permissions.

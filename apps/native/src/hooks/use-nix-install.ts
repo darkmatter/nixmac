@@ -1,11 +1,10 @@
 import { useWidgetStore } from "@/stores/widget-store";
-import {
-  darwinAPI,
-  ipcRenderer,
-  type NixDarwinRebuildEndEvent,
-  type NixInstallEndEvent,
-  type NixInstallProgressEvent,
-} from "@/tauri-api";
+import { darwinAPI, ipcRenderer } from "@/tauri-api";
+import type {
+  NixDarwinRebuildEndEvent,
+  NixInstallEndEvent,
+  NixInstallProgressEvent,
+} from "@/types/shared";
 
 const checkNix = async () => {
     try {
