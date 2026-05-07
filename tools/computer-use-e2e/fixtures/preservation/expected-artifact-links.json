@@ -1,0 +1,318 @@
+{
+  "screenshots": [
+    {
+      "label": "after-history-restore",
+      "path": "screenshots/60-after-history-restore.png"
+    },
+    {
+      "label": "build-boundary",
+      "path": "screenshots/54-build-boundary.png"
+    },
+    {
+      "label": "feedback",
+      "path": "screenshots/11-feedback.png"
+    },
+    {
+      "label": "history",
+      "path": "screenshots/07-history.png"
+    },
+    {
+      "label": "history-restore-preview",
+      "path": "screenshots/59-history-restore-preview.png"
+    },
+    {
+      "label": "HTML report inspection",
+      "path": "screenshots/59-report-inspection-Safari.png"
+    },
+    {
+      "label": "launch",
+      "path": "screenshots/01-launch.png"
+    },
+    {
+      "label": "provider-progress-05",
+      "path": "screenshots/47-provider-progress-05.png"
+    },
+    {
+      "label": "report-issue",
+      "path": "screenshots/13-report-issue.png"
+    },
+    {
+      "label": "review-diff",
+      "path": "screenshots/53-review-diff.png"
+    },
+    {
+      "label": "review-summary",
+      "path": "screenshots/52-review-summary.png"
+    },
+    {
+      "label": "settings-ai-models",
+      "path": "screenshots/03-settings-ai-models.png"
+    },
+    {
+      "label": "settings-general",
+      "path": "screenshots/02-settings-general.png"
+    },
+    {
+      "label": "settings-preferences",
+      "path": "screenshots/05-settings-preferences.png"
+    },
+    {
+      "label": "step-3-ready",
+      "path": "screenshots/56-step-3-ready.png"
+    },
+    {
+      "label": "suggestion-card",
+      "path": "screenshots/41-suggestion-card.png"
+    },
+    {
+      "label": "typed-intent",
+      "path": "screenshots/42-typed-intent.png"
+    }
+  ],
+  "textSnapshots": [
+    {
+      "label": "after-commit",
+      "path": "texts/57-after-commit.txt"
+    },
+    {
+      "label": "after-history-restore",
+      "path": "texts/60-after-history-restore.txt"
+    },
+    {
+      "label": "build-boundary",
+      "path": "texts/54-build-boundary.txt"
+    },
+    {
+      "label": "build-to-step-3-01",
+      "path": "texts/55-build-to-step-3-01.txt"
+    },
+    {
+      "label": "console",
+      "path": "texts/09-console.txt"
+    },
+    {
+      "label": "customization-after-commit",
+      "path": "texts/36-customization-after-commit.txt"
+    },
+    {
+      "label": "customization-after-history-restore",
+      "path": "texts/39-customization-after-history-restore.txt"
+    },
+    {
+      "label": "customization-apply",
+      "path": "texts/31-customization-apply.txt"
+    },
+    {
+      "label": "customization-apply-01",
+      "path": "texts/29-customization-apply-01.txt"
+    },
+    {
+      "label": "customization-apply-02",
+      "path": "texts/30-customization-apply-02.txt"
+    },
+    {
+      "label": "customization-build-boundary",
+      "path": "texts/32-customization-build-boundary.txt"
+    },
+    {
+      "label": "customization-build-to-step-3-01",
+      "path": "texts/33-customization-build-to-step-3-01.txt"
+    },
+    {
+      "label": "customization-build-to-step-3-02",
+      "path": "texts/34-customization-build-to-step-3-02.txt"
+    },
+    {
+      "label": "customization-external-restore",
+      "path": "texts/40-customization-external-restore.txt"
+    },
+    {
+      "label": "customization-history-before-restore",
+      "path": "texts/37-customization-history-before-restore.txt"
+    },
+    {
+      "label": "customization-history-restore-preview",
+      "path": "texts/38-customization-history-restore-preview.txt"
+    },
+    {
+      "label": "customization-popover",
+      "path": "texts/28-customization-popover.txt"
+    },
+    {
+      "label": "customization-step-3-ready",
+      "path": "texts/35-customization-step-3-ready.txt"
+    },
+    {
+      "label": "feedback",
+      "path": "texts/11-feedback.txt"
+    },
+    {
+      "label": "history",
+      "path": "texts/07-history.txt"
+    },
+    {
+      "label": "history-before-restore",
+      "path": "texts/58-history-before-restore.txt"
+    },
+    {
+      "label": "history-restore-preview",
+      "path": "texts/59-history-restore-preview.txt"
+    },
+    {
+      "label": "home-after-console",
+      "path": "texts/10-home-after-console.txt"
+    },
+    {
+      "label": "home-after-feedback",
+      "path": "texts/12-home-after-feedback.txt"
+    },
+    {
+      "label": "home-after-history",
+      "path": "texts/08-home-after-history.txt"
+    },
+    {
+      "label": "home-after-report-issue",
+      "path": "texts/14-home-after-report-issue.txt"
+    },
+    {
+      "label": "home-after-settings",
+      "path": "texts/06-home-after-settings.txt"
+    },
+    {
+      "label": "homebrew-after-commit",
+      "path": "texts/23-homebrew-after-commit.txt"
+    },
+    {
+      "label": "homebrew-after-history-restore",
+      "path": "texts/26-homebrew-after-history-restore.txt"
+    },
+    {
+      "label": "homebrew-after-rollback-home",
+      "path": "texts/27-homebrew-after-rollback-home.txt"
+    },
+    {
+      "label": "homebrew-apply",
+      "path": "texts/18-homebrew-apply.txt"
+    },
+    {
+      "label": "homebrew-apply-01",
+      "path": "texts/16-homebrew-apply-01.txt"
+    },
+    {
+      "label": "homebrew-apply-02",
+      "path": "texts/17-homebrew-apply-02.txt"
+    },
+    {
+      "label": "homebrew-build-boundary",
+      "path": "texts/19-homebrew-build-boundary.txt"
+    },
+    {
+      "label": "homebrew-build-to-step-3-01",
+      "path": "texts/20-homebrew-build-to-step-3-01.txt"
+    },
+    {
+      "label": "homebrew-build-to-step-3-02",
+      "path": "texts/21-homebrew-build-to-step-3-02.txt"
+    },
+    {
+      "label": "homebrew-history-before-restore",
+      "path": "texts/24-homebrew-history-before-restore.txt"
+    },
+    {
+      "label": "homebrew-history-restore-preview",
+      "path": "texts/25-homebrew-history-restore-preview.txt"
+    },
+    {
+      "label": "homebrew-popover",
+      "path": "texts/15-homebrew-popover.txt"
+    },
+    {
+      "label": "homebrew-step-3-ready",
+      "path": "texts/22-homebrew-step-3-ready.txt"
+    },
+    {
+      "label": "HTML report inspection",
+      "path": "texts/61-report-inspection-Safari.txt"
+    },
+    {
+      "label": "launch",
+      "path": "texts/01-launch.txt"
+    },
+    {
+      "label": "provider-progress-01",
+      "path": "texts/43-provider-progress-01.txt"
+    },
+    {
+      "label": "provider-progress-02",
+      "path": "texts/44-provider-progress-02.txt"
+    },
+    {
+      "label": "provider-progress-03",
+      "path": "texts/45-provider-progress-03.txt"
+    },
+    {
+      "label": "provider-progress-04",
+      "path": "texts/46-provider-progress-04.txt"
+    },
+    {
+      "label": "provider-progress-05",
+      "path": "texts/47-provider-progress-05.txt"
+    },
+    {
+      "label": "provider-progress-06",
+      "path": "texts/48-provider-progress-06.txt"
+    },
+    {
+      "label": "provider-progress-07",
+      "path": "texts/49-provider-progress-07.txt"
+    },
+    {
+      "label": "provider-progress-08",
+      "path": "texts/50-provider-progress-08.txt"
+    },
+    {
+      "label": "provider-progress-09",
+      "path": "texts/51-provider-progress-09.txt"
+    },
+    {
+      "label": "report-issue",
+      "path": "texts/13-report-issue.txt"
+    },
+    {
+      "label": "review-diff",
+      "path": "texts/53-review-diff.txt"
+    },
+    {
+      "label": "review-summary",
+      "path": "texts/52-review-summary.txt"
+    },
+    {
+      "label": "settings-ai-models",
+      "path": "texts/03-settings-ai-models.txt"
+    },
+    {
+      "label": "settings-api-keys-01",
+      "path": "texts/04-settings-api-keys-01.txt"
+    },
+    {
+      "label": "settings-general",
+      "path": "texts/02-settings-general.txt"
+    },
+    {
+      "label": "settings-preferences",
+      "path": "texts/05-settings-preferences.txt"
+    },
+    {
+      "label": "step-3-ready",
+      "path": "texts/56-step-3-ready.txt"
+    },
+    {
+      "label": "suggestion-card",
+      "path": "texts/41-suggestion-card.txt"
+    },
+    {
+      "label": "typed-intent",
+      "path": "texts/42-typed-intent.txt"
+    }
+  ]
+}

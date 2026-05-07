@@ -45,6 +45,10 @@ node tools/computer-use-e2e/run-remote-cua.mjs self-test
 
 The runner:
 
+- builds and publishes a per-run Storybook preview for PRs that touch frontend
+  UI files, then links changed files to direct Storybook story URLs in the
+  report so reviewers can inspect affected UI states before reading native
+  evidence;
 - captures screenshots from `get_app_state`, not Screen Sharing;
 - captures API Keys screenshots only when raw accessibility text confirms no
   unmasked key-like secret is present; Console image artifacts are still
@@ -109,6 +113,39 @@ core nixmac app code. Its durable contract is the runner-owned scenario catalog,
 coverage manifest, derived `state.v2.scenarioContracts`, and rendered report
 sections rather than a separate proposal doc.
 
+The modularization and preservation contracts for this toolchain live in
+`tools/computer-use-e2e/ARCHITECTURE.md`. Use that document as the review gate
+before moving code out of `run-remote-cua.mjs`; module extraction should not
+start until the preservation harness it describes exists and is green.
+
+Run the preservation harness locally with:
+
+```bash
+node tools/computer-use-e2e/preservation-harness.mjs run
+```
+
+Summarize already-collected local evidence without touching GitHub, DXU, SSH, or
+provider APIs with:
+
+```bash
+node tools/computer-use-e2e/summarize-runs.mjs \
+  --root artifacts/computer-use-remote \
+  --format markdown \
+  --out artifacts/computer-use-summary/product-proof-summary.md
+```
+
+The summary CLI is a presentation and operator-review aid, not gate
+satisfaction. It counts only nested `live-pr*/<timestamp>` workflow bundles
+toward the real clean-run streak, labels copied render/adversarial fixtures as
+non-gate evidence, redacts remote identity and prompts by default, and reports
+relative artifact paths only. Required branch protection still depends on fresh
+same-SHA workflow evidence and the promotion policy below.
+
+Operational playbooks for host rotation, singleton capacity, evidence policy,
+override lifecycle, and maintenance cadence live in `OPERATIONS.md`. This README
+remains the policy contract; the operations runbook should link here rather than
+forking policy text.
+
 The scenario catalog lives in `scenario-catalog.mjs` so reviewers can inspect
 scenario labels, proof metadata, assertion hints, and optional evolved cases
 without reading the full runner. Adding a scenario usually means updating that
@@ -136,6 +173,19 @@ the verdict, counts, public hosted `index.html`, Actions run, and artifact
 backup. The workflow does not send Slack or other team
 notifications.
 
+For PRs that touch component/story files under `apps/native/src/components/**`,
+the prepare job also builds Storybook, uploads the static preview, and publishes
+it next to the Product Proof report under `storybook/`. The report's Storybook
+Preview section maps changed UI files to direct `?path=/story/...` URLs when a
+matching story exists, and the sticky PR comment includes compact Storybook
+quick links for the changed files. When the changed-file set is UI-only and has
+no native/runtime or unknown files, native Computer Use is skipped by policy and
+Storybook becomes the required proof lane. Runtime/native or unknown file
+changes still run native Computer Use. Missing stories fail only when the
+planner can confidently identify a changed UI file with no inspectable nearby
+story; helper/style advisory gaps are listed without creating noisy false-red
+native gates.
+
 The V1 public report URL uses `htmlpreview.github.io` to render the HTML stored
 on the public `gh-pages` report branch. The repository Pages API currently
 returns `404`, so first-party GitHub Pages hosting is not configured for this
@@ -151,14 +201,39 @@ has more than 20 `run-*` directories, older published runs are pruned from
 `gh-pages`; use the Actions artifact backup during its retention window or copy
 important evidence into a durable project artifact.
 
-The workflow serializes all runs through one DXU remote-machine concurrency
-group. Do not make concurrency per PR while the suite depends on a singleton
-interactive Mac, because overlapping runs can race on app state, launchd
-environment, Authorization Services policy, and the Codex app-server port.
+The workflow is split into prepare, remote, publish, and final-result jobs.
+Prepare handles GitHub-hosted validation, PR metadata, stale/no-secret
+no-touch reports, and PR-built app artifact packaging without holding the DXU
+remote-machine lane. The remote job is still serialized through
+`computer-use-e2e-dxu-remote`; do not make that concurrency per PR while the
+suite depends on a singleton interactive Mac, because overlapping runs can race
+on app state, launchd environment, Authorization Services policy, and the Codex
+app-server port.
+
 Before this becomes broad required branch protection, the operator policy must
-either skip stale non-tip commits after queueing or provide a documented manual
-cancel/runbook so one noisy PR cannot burn the singleton Mac for obsolete
-commits.
+skip stale non-tip commits after queueing so one noisy PR cannot burn the
+singleton Mac for obsolete commits. The workflow checks for stale queued PR runs
+during prepare and repeats the check at the start of the serialized remote job,
+immediately before SSH/readiness, app staging, tunnel setup, app-driving, or
+cleanup can touch the remote Mac.
+
+Report publishing is a separate serialized lane,
+`computer-use-e2e-gh-pages-publish`. Keep `gh-pages` publishing in that lane
+unless the workflow grows an explicit fetch/rebase/retry equivalent, because the
+publisher rewrites each PR prefix's `latest` pointer and prunes old `run-*`
+directories.
+
+If this workflow becomes a required check, branch protection should require the
+workflow-level result or the `Computer Use E2E Result` job. Do not require only
+`Remote Computer Use E2E`: stale, no-secret, and prepare setup-failure runs can
+intentionally skip that job, and the final result job is the source of truth for
+whether the split workflow should be green or red.
+
+Local run summaries generated by `summarize-runs.mjs` are useful for watching
+clean-run streaks and evidence volume over time, but they are intentionally not
+authoritative gate state. They can include copied fixtures, old local validation
+runs, or manually preserved reports; reviewers must use the classification field
+before citing a run as release or branch-protection evidence.
 
 ## Productization Policy
 
@@ -179,26 +254,138 @@ Phase progression:
   expired reviews, and a tested override process for infra-only inconclusive
   runs.
 
+Accountability roles:
+
+- Product Proof owner: owns gate semantics, promotion policy, managed waivers,
+  and report truthfulness. Resolve the current owner from this README until a
+  dedicated operator runbook names a replacement; if unclear, the Release
+  approver must name the Product Proof owner in the override record.
+- DXU operator: owns remote Mac availability, expected host identity, pinned SSH
+  host keys, Authorization Services policy mutation/restore behavior, remote
+  cleanup, and host rotation. Default resolver: the teammate who owns the
+  MacinCloud/DXU credentials for the run.
+- Release approver: owns accepting or rejecting an infra-only override for a
+  release cut or high-risk app-facing PR. Resolve the approver from the
+  branch-protection bypass actor or required reviewer for that change, and record
+  that person in the override record.
+- PR author/reviewer: owns reading the Product Proof report and not treating
+  no-touch or infra-inconclusive results as product proof.
+
 Infra-inconclusive override is a human release policy, not a hidden CI bypass.
 Do not make the workflow green when the report says `fail` or `inconclusive`.
-For Phase B, an override must record owner, date, reason, evidence link, affected
-commit, and why the result is remote-infra-only rather than app/product risk.
+For Phase B, the Release approver applies the override outside the workflow, for
+example by admin/bypass merge after posting the override record. The workflow
+check itself stays honest.
+
+Store override records as PR comments with the fixed marker
+`<!-- nixmac-product-proof-override -->` until a durable waiver store exists.
+For release-cut overrides without a PR, store the same record in the release
+tracking issue or release PR. An override record must include:
+
+- owner and role;
+- timestamp;
+- PR or release identifier;
+- affected commit SHA;
+- Product Proof run URL;
+- report URL or artifact URL;
+- classification;
+- evidence that the issue is remote-infra-only;
+- why the result is not app/product risk;
+- retry plan or follow-up issue;
+- expiry or review-after date.
+
+Template:
+
+```markdown
+<!-- nixmac-product-proof-override -->
+- owner:
+- role:
+- timestamp:
+- PR or release:
+- affected commit:
+- Product Proof run:
+- report or artifact:
+- classification:
+- evidence:
+- why not app/product risk:
+- retry or follow-up:
+- expires or review-after:
+```
+
+Allowed infra-only override classes:
+
+- `missing-secrets`: repository or environment secrets are absent.
+- `remote-unreachable`: DXU/MacinCloud cannot be reached before app state is
+  touched.
+- `remote-identity-mismatch`: host identity does not match the configured
+  expected Mac.
+- `provider-preflight-blocked`: provider health or billing blocks proof before
+  the app path is tested.
+- `operator-disabled`: the Product Proof owner or DXU operator intentionally
+  disables the remote lane with a dated reason.
+
+These no-touch classes may legitimately have no screenshots or video because
+the workflow did not touch app state. That is different from a run that touched
+the Mac and then failed to capture required evidence; missing required evidence
+after app interaction is not an infra-only override.
+
+Do not use the infra-only override path for app scenario failures, coverage
+drift without an accepted waiver, provider failures after the product path is
+under test, secret leak risk, cleanup failure touching persistent state, or
+missing required screenshot/video evidence after touching app state.
+
+`stale-queued-run` is a no-touch workflow auto-skip, not an infra-only override
+class. First-attempt PR runs skip when the queued event head no longer matches
+the current PR head, or when the PR closed/merged while queued. API uncertainty
+does not skip. The superseding PR tip must get its own Product Proof run.
+
+Operator-initiated reruns and `workflow_dispatch` runs on stale or non-tip
+commits are triage evidence, not release-gate satisfaction. A successful stale
+or triage run on an obsolete SHA does not satisfy required branch protection for
+the current PR tip SHA.
 
 Fork pull requests do not receive the secret-backed remote lane. The publish and
 PR-comment steps are intentionally limited to same-repository PRs because the
 workflow needs remote SSH credentials and provider credentials. If nixmac starts
 accepting external fork PRs, fork/no-secret runs need a separate non-blocking
-classification instead of sharing infra-inconclusive semantics.
+classification instead of sharing infra-inconclusive semantics. Fork/no-secret
+classification is not an infra-only override.
+
+Promotion checklist:
+
+- Stay advisory beta until no-touch classes are structured, stale queued runs do
+  not consume DXU time, override records are discoverable, and managed waivers
+  are reviewed.
+- Promote release/high-risk app-facing PR gate only after the team accepts the
+  screenshot-reel evidence policy or continuous recording is implemented, and
+  after the lane has enough consecutive current-head clean passes to trust
+  retry/override behavior.
+- Promote broad required PR gate only after singleton capacity, queue p95,
+  cleanup reliability, owner coverage, host rotation, and infra-only override
+  practice are measured and boring.
 
 MacinCloud/DXU ownership is part of the product, not a workflow footnote. The
 operator runbook must track the host, pinned SSH key material, host rotation
 procedure, Authorization Services policy mutation/restore behavior, monthly cost,
 and who owns restoring the lane when DXU is unreachable or reassigned.
 
-Before touching remote app state, the workflow waits for the matching
-`Build macOS App` run for the same commit, downloads the `nixmac-macos-app`
-artifact, and stages that app bundle under a per-run `/tmp` directory on DXU for
-the duration of the test.
+Before touching remote app state, the workflow checks for the matching
+successful `Build macOS App` run for the same commit, downloads the
+`nixmac-macos-app` artifact, and stages that app bundle under a per-run `/tmp`
+directory on DXU for the duration of the test.
+That same-head build gate runs after the stale-run check and before remote
+secrets, SSH preparation, DXU readiness, app staging, tunnel setup, or cleanup.
+If no usable successful app artifact exists for the exact PR head SHA at the
+gate, the workflow renders a build-gate unavailable report and fails before
+remote setup; generic setup-failure reports are reserved for failures after this
+gate passes.
+The default gate is intentionally fast (`1` attempt) while this workflow is
+serialized by the DXU remote concurrency group: a fresh PR push can therefore
+produce a build-gate unavailable report before `build.yaml` finishes. Re-run the
+workflow after the same-head build succeeds, or use workflow dispatch
+`build_artifact_attempts` / repo variable `NIXMAC_E2E_BUILD_ARTIFACT_ATTEMPTS`
+when the operator intentionally wants the gate to wait longer before remote
+setup.
 The build artifact must preserve hidden files because Tauri bundles resources
 under dot-prefixed directories; stripping those files invalidates the app
 signature and can leave LaunchServices wedged on a broken `/Applications`
@@ -331,7 +518,143 @@ without touching app state.
 
 ### Real Provider Lane
 
-This is the first-class local lane. It uses the real app and the app's existing
+### Peekaboo Local Lane
+
+This is the fast local comparison lane for development. It reuses the
+`tests/e2e` Peekaboo runner and renders the result into the local Product Proof
+evidence report. The bridge backs up nixmac Application Support before running
+because the macOS scenarios intentionally seed settings for deterministic app
+state.
+
+```bash
+node tools/computer-use-e2e/run-local.mjs run-peekaboo
+```
+
+By default this runs `tests/e2e/scenarios/macos_descriptor_prompt_smoke.sh`, a
+non-destructive smoke scenario that launches the app, reaches the descriptor
+prompt through accessibility metadata, types an intent, and verifies the
+expected local provider-validation block. It writes:
+
+- `artifacts/computer-use-local/<timestamp>/index.html`;
+- `state.json` and `events.json`;
+- `peekaboo-e2e.log`, `peekaboo-e2e-results.json`, stdout/stderr captures;
+- `e2e-report/<scenario>/e2e-report.json`;
+- Peekaboo screenshots under `screenshots/`;
+- `video/peekaboo-e2e.mp4` when recording is enabled and ffmpeg/Terminal screen
+  recording are available.
+
+Useful variants:
+
+```bash
+node tools/computer-use-e2e/run-local.mjs run-peekaboo macos_descriptor_prompt_smoke --no-record
+node tools/computer-use-e2e/run-local.mjs run-peekaboo macos_core_product_proof --no-record
+node tools/computer-use-e2e/run-local.mjs run-peekaboo macos_provider_evolve_full_smoke --no-record
+node tools/computer-use-e2e/run-local.mjs run-peekaboo-suite --no-record
+NIXMAC_APP_PATH=/path/to/nixmac.app node tools/computer-use-e2e/run-local.mjs run-peekaboo
+```
+
+Use a debug/dev nixmac build for the mocked-system flag, solid-capture window,
+WebView load watchdog, and opt-in opaque-window debug flag; release builds ignore
+those Rust debug-only gates and will take the slower real system-check path.
+
+Developers can run the same Peekaboo suite on a MacInCloud host from their own
+machine when the host already has this checkout, Peekaboo, TCC permissions, and
+a runnable nixmac app:
+
+```bash
+node tools/computer-use-e2e/run-local.mjs run-peekaboo-macincloud \
+  --ssh-dest admin@dxu97120.macincloud.com \
+  --identity-file ~/.ssh/nixmac_e2e_ci \
+  --repo-dir /Users/admin/nixmac-peekaboo-local-e2e \
+  --app-path /Users/admin/nixmac-e2e-current.app \
+  --no-record \
+  --allow-cleanup
+```
+
+For a focused remote scenario, add `--scenario macos_core_product_proof`.
+Equivalent environment variables are `NIXMAC_E2E_MACINCLOUD_SSH_DEST`,
+`NIXMAC_E2E_MACINCLOUD_SSH_KEY`, `NIXMAC_E2E_MACINCLOUD_REPO_DIR`, and
+`NIXMAC_E2E_MACINCLOUD_APP_PATH`. Omitting `--scenario` runs the full suite;
+running `run-peekaboo-suite` directly executes on the developer's current Mac.
+
+`macos_core_product_proof` expands the local lane beyond the descriptor smoke:
+it covers launch, settings tabs, API-key redaction, history, console text,
+feedback/report surfaces, typed intent, provider-validation guardrails, and
+artifact-quality checks. `macos_provider_evolve_full_smoke` covers the
+provider-backed Review, Build & Test, Save, and History restore path against a
+local OpenAI-compatible HTTP stub. The suite command runs both, writes a
+Peekaboo-specific coverage map, and keeps those `peekaboo*` results separate
+from the shared Computer Use scenario keys unless a lane satisfies the same
+evidence contract.
+
+The historical `nix-install` scenario is intentionally not the default. It can
+uninstall/reinstall system Nix and should only run on a disposable runner:
+
+```bash
+node tools/computer-use-e2e/run-local.mjs run-peekaboo nix-install --allow-destructive
+```
+
+The bridge fails fast before GUI driving if Peekaboo, jq, `/Applications/nixmac.app`,
+or required TCC permissions are missing. On DXU, grant Screen Recording and
+Accessibility through the remote console before expecting a full run to pass.
+Each Peekaboo run also clears stale launchctl E2E flags and removes leftover
+`nixmac-e2e-system-mock-bin` PATH segments before preflight so a killed prior
+run cannot keep the mock activation shim alive for the next login-session app.
+If a run is killed hard and you want to recover the session manually, run:
+
+```bash
+launchctl unsetenv NIXMAC_E2E_MOCK_SYSTEM
+launchctl unsetenv NIXMAC_E2E_SOLID_CAPTURE
+launchctl unsetenv NIXMAC_E2E_OPAQUE_WINDOW
+launchctl unsetenv NIXMAC_E2E_WEBVIEW_WATCHDOG
+launchctl unsetenv NIXMAC_RECORD_COMPLETIONS
+launchctl unsetenv NIXMAC_COMPLETION_LOG_DIR
+launchctl unsetenv OPENAI_API_KEY
+launchctl unsetenv OPENROUTER_API_KEY
+launchctl unsetenv VLLM_API_KEY
+launchctl unsetenv ANTHROPIC_API_KEY
+launchctl getenv PATH | tr ':' '\n' | grep -v nixmac-e2e-system-mock-bin | paste -sd ':' -
+```
+
+If the final command prints a cleaned PATH, apply it with
+`launchctl setenv PATH "<cleaned-path>"`; if it prints nothing, use
+`launchctl unsetenv PATH`.
+
+MacInCloud operator notes:
+
+- Keep an active Screen Sharing session attached for the duration of the run.
+  Without an attached display session, WebKit can remain accessible to AX while
+  screenshots capture as black or white; the `screenshot-signal.json` gate will
+  fail those runs instead of accepting hollow visual proof.
+- Allow the nixmac Documents-folder consent prompt once on the host when it
+  appears.
+- The Peekaboo scenarios use `NIXMAC_E2E_SOLID_CAPTURE=1` by default so the
+  debug app keeps nixmac's normal transparent overlay-titlebar window while
+  forcing a solid dark CSS backing inside the WebView. The default path does not
+  set a native AppKit background color; the WebView owns the dark backing so
+  remote capture sees the same layer that paints the product UI.
+- The GitHub MacInCloud lane deliberately adds `NIXMAC_E2E_OPAQUE_WINDOW=1`
+  around the remote suite run. MacInCloud artifacts showed the transparent
+  WebView path could run the init script and mount React while the target window
+  screenshot stayed transparent black, so CI uses the E2E-only opaque native
+  window path to make captured pixels reliable. Local developer runs keep the
+  CSS-only solid path unless they explicitly set the opaque flag.
+- The Peekaboo scenarios keep the E2E WebView load watchdog enabled by default
+  through `NIXMAC_E2E_WEBVIEW_WATCHDOG=1`; stalled initial WebView loads request
+  one reload and are logged into the scenario diagnostics.
+- `NIXMAC_E2E_OPAQUE_WINDOW=1` is an opt-in debug escape hatch for remote
+  capture investigation. It uses an opaque, visible-titlebar native window,
+  native dark background color, and the same dark WebView backing script.
+  Default Product Proof runs clear stale opaque-mode launch state and uses
+  CSS-only solid capture instead.
+
+The remote Codex app-server lane remains the PR/Product Proof production lane.
+The Peekaboo lane is isolated local evidence so the team can compare driver
+approaches without changing the remote workflow contract.
+
+### Real Provider Local Lane
+
+This lane uses the real app and the app's existing
 OpenRouter-compatible credential, but points nixmac at a disposable config
 created from `apps/native/templates/nix-darwin-determinate`.
 

@@ -46,6 +46,51 @@ fn make_homebrew_state(is_installed: bool, source: Option<String>) -> HomebrewSt
     }
 }
 
+fn e2e_mock_system_enabled() -> bool {
+    cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_MOCK_SYSTEM")
+}
+
+fn e2e_list_env(name: &str) -> Vec<String> {
+    crate::e2e_runtime::value(name)
+        .into_iter()
+        .flat_map(|value| {
+            value
+                .split([',', '\n'])
+                .map(str::trim)
+                .filter(|item| !item.is_empty())
+                .map(str::to_string)
+                .collect::<Vec<_>>()
+        })
+        .collect()
+}
+
+fn e2e_homebrew_state() -> Option<HomebrewState> {
+    if !e2e_mock_system_enabled() {
+        return None;
+    }
+
+    let fixture_is_configured = [
+        "NIXMAC_E2E_HOMEBREW_BREWS",
+        "NIXMAC_E2E_HOMEBREW_CASKS",
+        "NIXMAC_E2E_HOMEBREW_TAPS",
+    ]
+    .iter()
+    .any(|name| crate::e2e_runtime::value(name).is_some());
+    if !fixture_is_configured {
+        return None;
+    }
+
+    let brews = e2e_list_env("NIXMAC_E2E_HOMEBREW_BREWS");
+    let casks = e2e_list_env("NIXMAC_E2E_HOMEBREW_CASKS");
+    let taps = e2e_list_env("NIXMAC_E2E_HOMEBREW_TAPS");
+
+    let mut state = make_homebrew_state(true, None);
+    state.brews = brews;
+    state.casks = casks;
+    state.taps = taps;
+    Some(state)
+}
+
 fn json_string_array(value: &Value, key: &str) -> Vec<String> {
     value
         .get(key)
@@ -160,6 +205,10 @@ pub async fn apply_homebrew_diff(
 /// Excludes default taps (homebrew/core, homebrew/cask).
 /// If homebrew is not installed, returns an empty state with is_installed set to false.
 pub fn scan_homebrew() -> HomebrewState {
+    if let Some(state) = e2e_homebrew_state() {
+        return state;
+    }
+
     let mut state = make_homebrew_state(is_homebrew_installed(), None);
     if let Ok(output) = std::process::Command::new("brew")
         .args(["list", "--installed-on-request", "--formula"])

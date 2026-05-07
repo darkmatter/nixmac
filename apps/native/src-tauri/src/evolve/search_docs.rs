@@ -65,7 +65,10 @@ const NIX_DARWIN_DOCS_JSON: &str = include_str!("../../resources/nix-darwin-docs
 const HOME_MANAGER_DOCS_JSON: &str = include_str!("../../resources/home-manager-docs.json");
 
 /// Default limit for search_docs results, can be overridden by the query.
-const DEFAULT_RESULT_LIMIT: usize = 3;
+const DEFAULT_RESULT_LIMIT: usize = 10;
+
+// Max limit for search_docs results to prevent token bonfires or overwhelming the agent.
+const MAX_RESULT_LIMIT: usize = 20;
 
 /// Sentinel string included in the response when no results are found, to allow the agent
 /// to reliably detect this case and avoid retrying with similar queries or different limits,
@@ -146,7 +149,7 @@ pub fn execute_search_docs(
         .filter(|e| source_filter.map_or_else(|| true, |s| e.source == s))
         .collect();
 
-    let max_results = limit.clamp(1, 10);
+    let max_results = limit.clamp(1, MAX_RESULT_LIMIT);
     let mut ranked = rank_entries_ref(&entries, &normalized_query);
 
     // Debug: log candidate names and scores
@@ -365,6 +368,10 @@ pub fn default_limit() -> usize {
     DEFAULT_RESULT_LIMIT
 }
 
+pub fn max_limit() -> usize {
+    MAX_RESULT_LIMIT
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -499,6 +506,31 @@ mod tests {
         assert!(
             !result.starts_with(NO_RESULTS_SENTINEL),
             "expected results for broad query 'enable'"
+        );
+    }
+
+    #[test]
+    fn limit_parameter_restricts_number_of_results() {
+        let result = execute_search_docs("enable", 3, None).expect("search should succeed");
+        let lines: Vec<&str> = result.lines().collect();
+        // The first line is the header, and each result takes 2 lines, so
+        // expect at most 3 results + 1 header = 7 lines.
+        assert!(
+            lines.len() <= 7,
+            "expected at most 3 results plus header line, got {} lines",
+            lines.len()
+        );
+    }
+
+    #[test]
+    fn max_limit_enforced() {
+        let result = execute_search_docs("enable", 100, None).expect("search should succeed");
+        let lines: Vec<&str> = result.lines().collect();
+        // With a max limit of 20, we expect at most 20 results + 1 header = 41 lines.
+        assert!(
+            lines.len() <= 41,
+            "expected max limit of 20 results plus header line, got {} lines",
+            lines.len()
         );
     }
 }

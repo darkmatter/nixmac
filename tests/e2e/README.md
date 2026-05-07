@@ -10,6 +10,9 @@ GUI test framework for macOS apps. Uses [Peekaboo](https://peekaboo.boo) for acc
 # Run the Nix install flow test
 ./run.sh nix-install
 
+# Run the non-destructive descriptor prompt smoke test
+./run.sh macos_descriptor_prompt_smoke --no-cleanup
+
 # List available scenarios
 ./run.sh --list
 
@@ -36,6 +39,7 @@ tests/e2e/
 │   ├── recording.sh        # ffmpeg AVFoundation screen capture
 │   ├── app.sh              # App lifecycle (launch, quit, pkg install)
 │   ├── runner.sh           # Test orchestration (lock, source, cleanup)
+│   ├── report.sh           # Structured E2E report writer
 │   └── API.md              # Full API reference
 ├── adapters/
 │   └── nixmac.sh           # nixmac-specific helpers (Nix, app flow)
@@ -43,7 +47,9 @@ tests/e2e/
 │   ├── clean-machine.sh    # Nix uninstalled, app not running
 │   └── nix-installed.sh    # Nix present, app through setup
 └── scenarios/
-    └── nix-install.sh      # Full install flow test
+    ├── nix-install.sh                       # Full install flow test
+    ├── macos_descriptor_prompt_smoke.sh     # Fast local descriptor proof
+    └── macos_provider_evolve_full_smoke.sh  # Provider-backed local proof
 ```
 
 ### How it works
@@ -113,6 +119,22 @@ adapter_cleanup() {
 ```
 
 Then reference it in your scenario: `E2E_ADAPTER="myapp"`
+
+## Product Proof Smoke
+
+`macos_descriptor_prompt_smoke` is the safe inner-loop scenario used by
+`tools/computer-use-e2e/run-local.mjs run-peekaboo`. It launches the real app,
+drives the descriptor prompt through Peekaboo accessibility metadata, captures
+screenshots/video/logs, and does not install, uninstall, build, save, discard,
+or mutate system Nix state. It does write temporary nixmac settings; the
+`run-peekaboo` bridge backs up and restores Application Support around the run.
+
+`macos_provider_evolve_full_smoke` is the stronger local proof. It owns a local
+OpenAI-compatible provider stub, applies a tool-driven config edit, mocks only
+host rebuild/activation, and continues through the Save step.
+
+`nix-install` remains the full-system install scenario. It can uninstall and
+reinstall Nix and should run only on a disposable runner.
 
 ## Runner setup (one-time)
 
