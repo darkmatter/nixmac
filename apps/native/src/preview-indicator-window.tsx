@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
-import { PreviewIndicator } from "@/components/preview-indicator";
+import { PreviewIndicator } from "@/components/preview-indicator/preview-indicator";
 import type { PreviewIndicatorState } from "@/tauri-api";
 import "./index.css";
 

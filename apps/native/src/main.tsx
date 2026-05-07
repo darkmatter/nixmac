@@ -4,16 +4,117 @@ import * as Sentry from "@sentry/react";
 import App from "./App";
 import "./index.css";
 import { darwinAPI } from "@/tauri-api";
+import type { UiPrefs as DarwinPrefs } from "@/types/shared";
+import {
+  bootBreadcrumb,
+  markBootStage,
+  recordE2eDomSnapshot,
+  scheduleE2eDomSnapshots,
+} from "@/lib/e2e-boot-diagnostics";
 
 function FallbackComponent() {
-  return <div>Something went wrong.</div>;
+  return (
+    <div
+      style={{
+        alignItems: "center",
+        background: "#0a0a0a",
+        color: "#f4f4f5",
+        display: "flex",
+        height: "100vh",
+        justifyContent: "center",
+        width: "100vw",
+      }}
+    >
+      <div
+        role="alert"
+        style={{
+          background: "#27272a",
+          border: "1px solid #52525b",
+          borderRadius: 12,
+          boxShadow: "0 18px 50px rgba(0, 0, 0, 0.45)",
+          maxWidth: 460,
+          padding: "24px 28px",
+          textAlign: "center",
+        }}
+      >
+        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>nixmac could not render</div>
+        <div style={{ color: "#d4d4d8", fontSize: 13, lineHeight: 1.5 }}>
+          The app shell hit a startup error. Diagnostic breadcrumbs were recorded for this run.
+        </div>
+      </div>
+    </div>
+  );
 }
 
 const rootElement = document.getElementById("root");
 
+bootBreadcrumb("main.tsx loaded");
+markBootStage("main-loaded");
+
 if (!rootElement) {
+  bootBreadcrumb("root element missing");
   throw new Error("Root element not found");
 }
+bootBreadcrumb("root element found");
+markBootStage("root-found");
+
+const E2E_APP_MOUNT_RELOAD_TIMEOUT_MS = 12000;
+const E2E_APP_MOUNT_RELOAD_KEY = "nixmac:e2e-app-mount-reload-attempted";
+// This existing flag marks E2E/dev permission bypass builds. In that mode, boot must not
+// introduce another preference IPC before the app shell has rendered.
+const E2E_BOOT_PREFS_DISABLED = import.meta.env.VITE_NIXMAC_SKIP_PERMISSIONS === "true";
+
+let bootHeartbeatStopped = false;
+let bootHeartbeatTick = 0;
+let bootHeartbeat: number | null = null;
+
+if (E2E_BOOT_PREFS_DISABLED) {
+  bootHeartbeat = window.setInterval(() => {
+    if (bootHeartbeatStopped) {
+      if (bootHeartbeat !== null) {
+        window.clearInterval(bootHeartbeat);
+      }
+      return;
+    }
+    bootHeartbeatTick += 1;
+    bootBreadcrumb("boot heartbeat", { tick: bootHeartbeatTick });
+    if (bootHeartbeatTick >= 30) {
+      bootBreadcrumb("boot heartbeat upper bound reached", { tick: bootHeartbeatTick });
+      if (bootHeartbeat !== null) {
+        window.clearInterval(bootHeartbeat);
+      }
+    }
+  }, 1000);
+}
+
+const stopBootHeartbeat = () => {
+  if (!bootHeartbeatStopped) {
+    bootHeartbeatStopped = true;
+    if (bootHeartbeat !== null) {
+      window.clearInterval(bootHeartbeat);
+    }
+    bootBreadcrumb("boot heartbeat stopped", { tick: bootHeartbeatTick });
+  }
+};
+
+window.addEventListener(
+  "nixmac:app-mounted",
+  () => {
+    bootBreadcrumb("app mounted event received");
+    scheduleE2eDomSnapshots("post-mount");
+    window.sessionStorage.removeItem(E2E_APP_MOUNT_RELOAD_KEY);
+    stopBootHeartbeat();
+  },
+  { once: true },
+);
+
+window.addEventListener("error", (event) => {
+  bootBreadcrumb("window error", event.error ?? event.message);
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  bootBreadcrumb("window unhandled rejection", event.reason);
+});
 
 const REDACTED = "[REDACTED]";
 const REDACTED_APP_CONTENT = "[REDACTED_APP_CONTENT]";
@@ -123,10 +224,59 @@ const sanitizeSentryEvent = (event: unknown): unknown => {
   return sanitizedRecord;
 };
 
-const initializeApp = async () => {
-  const prefs = await darwinAPI.ui.getPrefs().catch(() => null);
-  const sendDiagnostics = prefs?.sendDiagnostics ?? false;
+const PREFS_BOOT_TIMEOUT_MS = 8000;
+const SENTRY_MOUNT_TIMEOUT_MS = 5000;
 
+const loadPrefsForBoot = async (): Promise<DarwinPrefs | null> => {
+  bootBreadcrumb("ui_get_prefs invoke start");
+  let settled = false;
+  let timedOut = false;
+
+  const prefsPromise = darwinAPI.ui
+    .getPrefs()
+    .then((prefs) => {
+      settled = true;
+      bootBreadcrumb(
+        timedOut ? "ui_get_prefs invoke success after timeout" : "ui_get_prefs invoke success",
+        {
+          sendDiagnostics: prefs.sendDiagnostics,
+        },
+      );
+      return prefs;
+    })
+    .catch((error) => {
+      settled = true;
+      bootBreadcrumb(
+        timedOut ? "ui_get_prefs invoke error after timeout" : "ui_get_prefs invoke error",
+        error,
+      );
+      return null;
+    });
+
+  const timeoutPromise = new Promise<null>((resolve) => {
+    window.setTimeout(() => {
+      if (!settled) {
+        timedOut = true;
+        bootBreadcrumb("ui_get_prefs invoke timeout", `${PREFS_BOOT_TIMEOUT_MS}ms`);
+      }
+      resolve(null);
+    }, PREFS_BOOT_TIMEOUT_MS);
+  });
+
+  return Promise.race([prefsPromise, timeoutPromise]);
+};
+
+const initializeSentryAfterPostMountFrame = async () => {
+  if (E2E_BOOT_PREFS_DISABLED) {
+    bootBreadcrumb("Sentry init skipped for E2E boot", {
+      viteSkipPermissions: true,
+    });
+    console.info("Sentry not enabled during E2E boot.");
+    return;
+  }
+
+  const prefs = await loadPrefsForBoot();
+  const sendDiagnostics = prefs?.sendDiagnostics ?? false;
   // Vite exposes environment variables at build time, so read the Sentry DSN and other config from there.
   const sentryDsn = (import.meta.env.VITE_SENTRY_DSN || "").toString().trim();
   const sentryEnabled = sendDiagnostics && sentryDsn.length > 0;
@@ -138,6 +288,7 @@ const initializeApp = async () => {
     "prod"
   ).toString();
   if (sentryEnabled) {
+    bootBreadcrumb("Sentry init enabled", { environment, release });
     Sentry.init({
       dsn: sentryDsn,
       environment: environment,
@@ -158,25 +309,142 @@ const initializeApp = async () => {
       release: release,
     });
   } else {
+    bootBreadcrumb("Sentry init skipped", {
+      sendDiagnostics,
+      hasDsn: sentryDsn.length > 0,
+    });
     console.info("Sentry not enabled.");
   }
-
-  ReactDOM.createRoot(rootElement).render(
-    <React.StrictMode>
-      {sentryEnabled ? (
-        <Sentry.ErrorBoundary
-          fallback={<FallbackComponent />}
-          onError={(error, componentStack) => {
-            console.error("ErrorBoundary caught:", error, componentStack);
-          }}
-        >
-          <App />
-        </Sentry.ErrorBoundary>
-      ) : (
-        <App />
-      )}
-    </React.StrictMode>,
-  );
 };
 
-void initializeApp();
+const root = ReactDOM.createRoot(rootElement);
+let sentryInitStarted = false;
+let sentryInitPromise: Promise<void> | null = null;
+
+const scheduleAfterPostMountFrame = (callback: () => void) => {
+  bootBreadcrumb("post-mount init scheduled");
+  const run = () => {
+    bootBreadcrumb("post-mount first frame elapsed");
+    callback();
+  };
+
+  if (typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(run);
+    });
+    return;
+  }
+
+  window.setTimeout(run, 0);
+};
+
+const startSentryInitOnce = (
+  reason: "app-mounted" | "mount-timeout" | "render-error" | "render-fatal",
+): Promise<void> => {
+  if (sentryInitStarted) {
+    bootBreadcrumb("Sentry init start ignored", { reason });
+    return sentryInitPromise ?? Promise.resolve();
+  }
+
+  sentryInitStarted = true;
+  bootBreadcrumb("Sentry init start requested", { reason });
+  sentryInitPromise = new Promise((resolve) => {
+    scheduleAfterPostMountFrame(() => {
+      void initializeSentryAfterPostMountFrame()
+        .catch((error) => {
+          bootBreadcrumb("post-render Sentry init error", error);
+        })
+        .finally(resolve);
+    });
+  });
+
+  return sentryInitPromise;
+};
+
+const captureRenderErrorAfterSentryInit = (
+  reason: "render-error" | "render-fatal",
+  error: unknown,
+) => {
+  void startSentryInitOnce(reason).then(() => {
+    if (!E2E_BOOT_PREFS_DISABLED) {
+      Sentry.captureException(error);
+    }
+  });
+};
+
+window.addEventListener(
+  "nixmac:app-mounted",
+  () => {
+    startSentryInitOnce("app-mounted");
+  },
+  { once: true },
+);
+
+window.setTimeout(() => {
+  startSentryInitOnce("mount-timeout");
+}, SENTRY_MOUNT_TIMEOUT_MS);
+
+if (E2E_BOOT_PREFS_DISABLED) {
+  window.setTimeout(() => {
+    if (bootHeartbeatStopped) {
+      return;
+    }
+
+    if (window.sessionStorage.getItem(E2E_APP_MOUNT_RELOAD_KEY) === "true") {
+      bootBreadcrumb("E2E app-mounted watchdog exhausted", {
+        timeoutMs: E2E_APP_MOUNT_RELOAD_TIMEOUT_MS,
+      });
+      return;
+    }
+
+    window.sessionStorage.setItem(E2E_APP_MOUNT_RELOAD_KEY, "true");
+    recordE2eDomSnapshot("app-mounted-watchdog-before-reload", {
+      storagePrefix: "nixmac:e2e-dom-snapshot:watchdog-pre-reload",
+    });
+    bootBreadcrumb("E2E app-mounted watchdog reloading", {
+      timeoutMs: E2E_APP_MOUNT_RELOAD_TIMEOUT_MS,
+      rootChildCount: rootElement.childElementCount,
+    });
+    window.setTimeout(() => {
+      window.location.reload();
+    }, 250);
+  }, E2E_APP_MOUNT_RELOAD_TIMEOUT_MS);
+}
+
+const renderApp = () => {
+  bootBreadcrumb("React render start");
+  markBootStage("react-render-start");
+  root.render(
+    <React.StrictMode>
+      <Sentry.ErrorBoundary
+        fallback={<FallbackComponent />}
+        onError={(error, componentStack) => {
+          console.error("ErrorBoundary caught:", error, componentStack);
+          bootBreadcrumb("ErrorBoundary caught render error", error);
+          captureRenderErrorAfterSentryInit("render-error", error);
+        }}
+      >
+        <App />
+      </Sentry.ErrorBoundary>
+    </React.StrictMode>,
+  );
+  bootBreadcrumb("React render scheduled");
+  markBootStage("react-render-scheduled");
+};
+
+try {
+  renderApp();
+} catch (error) {
+  bootBreadcrumb("React render fatal error", error);
+  markBootStage("react-render-fatal");
+  captureRenderErrorAfterSentryInit("render-fatal", error);
+  root.render(<FallbackComponent />);
+}
+
+window.setTimeout(() => {
+  bootBreadcrumb("post-render dom probe", {
+    rootChildCount: rootElement.childElementCount,
+    bodyWidth: document.body?.clientWidth ?? null,
+    bodyHeight: document.body?.clientHeight ?? null,
+  });
+}, 0);

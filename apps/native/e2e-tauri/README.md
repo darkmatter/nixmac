@@ -22,6 +22,7 @@ Each WDIO test suite runs in its **own isolated process** with its own `onPrepar
 
   1. `test:wdio:smoke` → fresh config repo → cleanup
   1. `test:wdio:basic-prompts` → fresh config repo → cleanup
+  1. `test:wdio:conversational` → fresh config repo → cleanup
   1. `test:wdio:discard` → fresh config repo → cleanup
   1. `test:wdio:modify` → fresh config repo → cleanup
   1. `test:wdio:onboarding` → empty config dir → cleanup
@@ -33,6 +34,7 @@ Each WDIO test suite runs in its **own isolated process** with its own `onPrepar
 
   ⏳ SMOKE... ✅
   ⏳ BASIC-PROMPTS... ✅
+  ⏳ CONVERSATIONAL... ✅
   ⏳ DISCARD... ✅
   ⏳ MODIFY... ✅
   ⏳ ONBOARDING... ✅
@@ -42,12 +44,13 @@ Each WDIO test suite runs in its **own isolated process** with its own `onPrepar
   ==================================================
     ✅ SMOKE
     ✅ BASIC-PROMPTS
+    ✅ CONVERSATIONAL
     ✅ DISCARD
     ✅ MODIFY
     ✅ ONBOARDING
   ==================================================
 
-  5/5 suites passed
+  6/6 suites passed
   ```
 
   The aggregate reporting script ([scripts/run-wdio-tests.mjs](../scripts/run-wdio-tests.mjs)) runs all suites and collects their results, printing a unified summary at the end. This is useful for CI pipelines that need to see `X/Y suites passed` at a glance.
@@ -68,7 +71,7 @@ The test runner uses a wrapper script ([scripts/run-wdio-tests.mjs](../scripts/r
 
 1. **Run each suite in sequence** in its own isolated WDIO process
 1. **Collect results** from each suite (pass/fail)
-1. **Print a unified summary** showing `X/5 suites passed`
+1. **Print a unified summary** showing `X/6 suites passed`
 1. **Exit with status 1** if any suite fails (useful for CI pipeline gates)
 
 This design gives you the best of both worlds:
@@ -131,6 +134,7 @@ By giving each suite its own config file (and thus its own process), we ensure:
    const suites = [
      'test:wdio:smoke',
      'test:wdio:basic-prompts',
+     'test:wdio:conversational',
      'test:wdio:discard',
      'test:wdio:modify',
      'test:wdio:my-feature',  // ← add your new suite here

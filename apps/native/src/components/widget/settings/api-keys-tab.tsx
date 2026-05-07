@@ -11,11 +11,6 @@ interface ApiKeysTabProps {
   openrouterKeyStatus: ApiKeyStatus;
   verifyOpenrouterKey: (key: string) => Promise<void>;
   openrouterTimeoutRef: React.RefObject<NodeJS.Timeout | null>;
-  // OpenAI
-  openaiApiKeyField: AnyFieldApi;
-  openaiKeyStatus: ApiKeyStatus;
-  verifyOpenaiKey: (key: string) => Promise<void>;
-  openaiTimeoutRef: React.RefObject<NodeJS.Timeout | null>;
   // Ollama
   ollamaApiBaseUrlField: AnyFieldApi;
   onSaveOllamaUrl: (url: string) => Promise<void>;
@@ -217,10 +212,6 @@ export function ApiKeysTab({
   openrouterKeyStatus,
   verifyOpenrouterKey,
   openrouterTimeoutRef,
-  openaiApiKeyField,
-  openaiKeyStatus,
-  verifyOpenaiKey,
-  openaiTimeoutRef,
   ollamaApiBaseUrlField,
   onSaveOllamaUrl,
   vllmApiBaseUrlField,
@@ -258,34 +249,6 @@ export function ApiKeysTab({
               status={openrouterKeyStatus}
               verifyKey={verifyOpenrouterKey}
               timeoutRef={openrouterTimeoutRef}
-              form={form}
-            />
-          </div>
-
-          {/* OpenAI API Key */}
-          <div className="rounded-lg border border-border p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-black">
-                <span className="font-bold text-white text-xs">AI</span>
-              </div>
-              <div>
-                <h3 className="font-medium text-sm">OpenAI</h3>
-                <p className="text-muted-foreground text-xs">
-                  Direct access to OpenAI models (GPT-4, etc.)
-                </p>
-              </div>
-            </div>
-            <ApiKeyInput
-              id="openaiApiKey"
-              label="API Key"
-              description="For direct OpenAI access without OpenRouter."
-              linkText="Get an API key →"
-              linkHref="https://platform.openai.com/api-keys"
-              placeholder="sk-..."
-              field={openaiApiKeyField}
-              status={openaiKeyStatus}
-              verifyKey={verifyOpenaiKey}
-              timeoutRef={openaiTimeoutRef}
               form={form}
             />
           </div>
@@ -353,9 +316,10 @@ export function ApiKeysTab({
           {/* Info box */}
           <div className="rounded-lg bg-muted/50 p-3">
             <p className="text-muted-foreground text-xs">
-              <strong className="text-foreground">Tip:</strong> OpenRouter is recommended as it
-              provides access to multiple AI providers (OpenAI, Anthropic, Google, etc.) through a
-              single API key. If you have both keys configured, OpenRouter will be used by default.
+              <strong className="text-foreground">Tip:</strong> OpenRouter is the supported cloud
+              model path in the main UI. Use Ollama or vLLM when you want local or self-hosted
+              models. Previously saved direct OpenAI keys still work as a legacy fallback, but
+              they are no longer shown in Settings.
             </p>
           </div>
         </div>

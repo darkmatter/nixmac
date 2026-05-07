@@ -41,6 +41,17 @@ pub const PINNED_VERSION_KEY: &str = "pinnedVersion";
 pub const DEFAULT_MAX_ITERATIONS: usize = 25;
 const KEYCHAIN_SERVICE: &str = "com.darkmatter.nixmac";
 
+fn e2e_mock_system_enabled() -> bool {
+    cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_MOCK_SYSTEM")
+}
+
+fn e2e_env_value(name: &str) -> Option<String> {
+    if !e2e_mock_system_enabled() {
+        return None;
+    }
+    crate::e2e_runtime::value(name)
+}
+
 /// Gets a handle to the settings store.
 pub fn get_store<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<Store<R>>> {
     let store = app.store(STORE_PATH)?;
@@ -53,6 +64,10 @@ pub fn get_store<R: Runtime>(app: &AppHandle<R>) -> Result<Arc<Store<R>>> {
 
 /// Gets the flake configuration directory, defaulting to ~/.darwin.
 pub fn get_config_dir<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
+    if let Some(dir) = e2e_env_value("NIXMAC_E2E_CONFIG_DIR") {
+        return Ok(dir);
+    }
+
     let store = get_store(app)?;
 
     if let Some(dir) = store.get("configDir") {
@@ -85,6 +100,10 @@ pub fn ensure_config_dir_exists<R: Runtime>(app: &AppHandle<R>) -> Result<String
 
 /// Gets the stored nix-darwin host attribute name.
 pub fn get_host_attr<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
+    if let Some(attr) = e2e_env_value("NIXMAC_E2E_HOST_ATTR") {
+        return Ok(Some(attr));
+    }
+
     let store = get_store(app)?;
 
     if let Some(attr) = store.get("hostAttr") {
@@ -259,7 +278,7 @@ pub fn set_vllm_api_key<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<()>
 /// Priority: `OPENROUTER_API_KEY` environment variable, then keychain-backed settings.
 pub fn get_effective_openrouter_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
     resolve_secret_with_env_override(
-        normalize_env_secret(std::env::var("OPENROUTER_API_KEY").ok()),
+        normalize_env_secret(crate::e2e_runtime::value("OPENROUTER_API_KEY")),
         || get_openrouter_api_key(app),
     )
 }
@@ -269,7 +288,7 @@ pub fn get_effective_openrouter_api_key<R: Runtime>(app: &AppHandle<R>) -> Resul
 /// Priority: `OPENAI_API_KEY` environment variable, then keychain-backed settings.
 pub fn get_effective_openai_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
     resolve_secret_with_env_override(
-        normalize_env_secret(std::env::var("OPENAI_API_KEY").ok()),
+        normalize_env_secret(crate::e2e_runtime::value("OPENAI_API_KEY")),
         || get_openai_api_key(app),
     )
 }
@@ -279,7 +298,7 @@ pub fn get_effective_openai_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Op
 /// Priority: `VLLM_API_KEY` environment variable, then keychain-backed settings.
 pub fn get_effective_vllm_api_key<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String>> {
     resolve_secret_with_env_override(
-        normalize_env_secret(std::env::var("VLLM_API_KEY").ok()),
+        normalize_env_secret(crate::e2e_runtime::value("VLLM_API_KEY")),
         || get_vllm_api_key(app),
     )
 }
@@ -319,7 +338,7 @@ pub fn get_env_openai_compatible_credential() -> Option<(String, &'static str)> 
 }
 
 fn read_non_empty_env(name: &str) -> Option<String> {
-    normalize_env_secret(std::env::var(name).ok())
+    normalize_env_secret(crate::e2e_runtime::value(name))
 }
 
 fn normalize_env_secret(value: Option<String>) -> Option<String> {
@@ -405,12 +424,20 @@ fn legacy_settings_store<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> S
 }
 
 fn get_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str) -> Result<Option<String>> {
+    if e2e_mock_system_enabled() {
+        return get_string_pref_raw(app, key);
+    }
+
     let keychain = keychain_store_for(app, key);
     let legacy = legacy_settings_store(app, key);
     get_with_lazy_migration(&keychain, &legacy).map_err(anyhow::Error::from)
 }
 
 fn set_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str, value: &str) -> Result<()> {
+    if e2e_mock_system_enabled() {
+        return set_string_pref(app, key, value);
+    }
+
     let keychain = keychain_store_for(app, key);
     let legacy = legacy_settings_store(app, key);
     set_with_cleanup(&keychain, &legacy, value).map_err(anyhow::Error::from)
@@ -653,5 +680,28 @@ mod tests {
 
         assert_eq!(result.as_deref(), Some("store-secret"));
         assert!(fallback_called.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn e2e_env_value_requires_debug_mock_system_gate() {
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore = crate::test_support::EnvVarRestore::capture(&[
+            "NIXMAC_E2E_MOCK_SYSTEM",
+            "NIXMAC_E2E_CONFIG_DIR",
+        ]);
+
+        std::env::remove_var("NIXMAC_E2E_MOCK_SYSTEM");
+        std::env::set_var("NIXMAC_E2E_CONFIG_DIR", "/tmp/nixmac-e2e-config");
+        assert_eq!(e2e_env_value("NIXMAC_E2E_CONFIG_DIR"), None);
+
+        std::env::set_var("NIXMAC_E2E_MOCK_SYSTEM", "1");
+        if cfg!(debug_assertions) {
+            assert_eq!(
+                e2e_env_value("NIXMAC_E2E_CONFIG_DIR").as_deref(),
+                Some("/tmp/nixmac-e2e-config")
+            );
+        } else {
+            assert_eq!(e2e_env_value("NIXMAC_E2E_CONFIG_DIR"), None);
+        }
     }
 }

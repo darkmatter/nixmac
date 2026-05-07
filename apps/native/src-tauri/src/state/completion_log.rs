@@ -12,9 +12,13 @@ use tokio::task::spawn_blocking;
 /// on a Mac.
 fn log_path_for_today(prefix: &str) -> PathBuf {
     let date = Local::now().format("%Y-%m-%d");
-    dirs::data_local_dir()
-        .unwrap_or_else(|| std::path::PathBuf::from("."))
-        .join("nixmac")
+    crate::e2e_runtime::value("NIXMAC_COMPLETION_LOG_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            dirs::data_local_dir()
+                .unwrap_or_else(|| std::path::PathBuf::from("."))
+                .join("nixmac")
+        })
         .join("logs")
         .join(format!("{prefix}_{date}.jsonl"))
 }
@@ -22,7 +26,7 @@ fn log_path_for_today(prefix: &str) -> PathBuf {
 /// Checks `NIXMAC_RECORD_COMPLETIONS`, ensures the log directory exists, and
 /// logs the target path. Returns `true` when recording should be enabled.
 pub fn init_recording(prefix: &str, label: &str) -> bool {
-    if std::env::var_os("NIXMAC_RECORD_COMPLETIONS").is_none() {
+    if crate::e2e_runtime::value("NIXMAC_RECORD_COMPLETIONS").is_none() {
         return false;
     }
 
