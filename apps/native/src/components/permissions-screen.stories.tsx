@@ -1,6 +1,6 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 
-import { fn } from "@storybook/test";
+import { fn } from "storybook/test";
 import type React from "react";
 import { useState } from "react";
 import preview from "#storybook/preview";

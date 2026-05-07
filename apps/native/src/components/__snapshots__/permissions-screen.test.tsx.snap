@@ -229,6 +229,11 @@ exports[`all granted matches snapshot 1`] = `
                     Full Disk Access
                   </h3>
                   <span
+                    class="rounded-md bg-primary/10 px-2 py-0.5 font-medium text-primary text-xs"
+                  >
+                    Required
+                  </span>
+                  <span
                     class="rounded-md border px-2 py-0.5 font-medium text-xs bg-console-success/10 text-console-success border-console-success/20"
                   >
                     ✓
@@ -239,7 +244,7 @@ exports[`all granted matches snapshot 1`] = `
                 <p
                   class="text-muted-foreground text-sm"
                 >
-                  Recommended for complete system management capabilities
+                  Required for darwin-rebuild to apply system changes
                 </p>
                 <div
                   class="mt-2 rounded-md border border-border bg-secondary/50 p-3"
@@ -556,6 +561,11 @@ exports[`default state matches snapshot 1`] = `
                     Full Disk Access
                   </h3>
                   <span
+                    class="rounded-md bg-primary/10 px-2 py-0.5 font-medium text-primary text-xs"
+                  >
+                    Required
+                  </span>
+                  <span
                     class="rounded-md border px-2 py-0.5 font-medium text-xs bg-secondary text-muted-foreground border-border"
                   >
                     ○
@@ -566,7 +576,7 @@ exports[`default state matches snapshot 1`] = `
                 <p
                   class="text-muted-foreground text-sm"
                 >
-                  Recommended for complete system management capabilities
+                  Required for darwin-rebuild to apply system changes
                 </p>
                 <div
                   class="mt-2 rounded-md border border-border bg-secondary/50 p-3"

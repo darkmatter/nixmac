@@ -165,7 +165,7 @@ export function PromptInput() {
                  <DropdownMenuItem>Manual</DropdownMenuItem>
                </DropdownMenuContent>
              </DropdownMenu>
-             <InputGroupText className="ml-auto">52% used</InputGroupText>
+             <InputGroupText className="ml-auto">{contextUsage}</InputGroupText>
              <Separator className="!h-4" orientation="vertical" />
              <Separator className="!h-4" orientation="vertical" />
              <InputGroupButton

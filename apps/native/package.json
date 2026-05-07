@@ -82,11 +82,10 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
-    "@storybook/addon-a11y": "^10.1.8",
-    "@storybook/addon-onboarding": "^10.1.8",
-    "@storybook/addon-vitest": "^10.1.8",
-    "@storybook/react-vite": "^10.1.8",
-    "@storybook/test": "^8.6.15",
+    "@storybook/addon-a11y": "^10.3.6",
+    "@storybook/addon-onboarding": "^10.3.6",
+    "@storybook/addon-vitest": "^10.3.6",
+    "@storybook/react-vite": "^10.3.6",
     "@tauri-apps/cli": "^2.9.4",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
@@ -102,6 +101,7 @@
     "@wdio/cli": "^9.27.0",
     "@wdio/globals": "^9.27.0",
     "autoprefixer": "^10.4.22",
+    "babel-plugin-react-compiler": "^1.0.0",
     "chai": "^6.2.2",
     "chai-as-promised": "^8.0.2",
     "clsx": "^2.1.1",
@@ -109,13 +109,14 @@
     "jsdom": "^27.3.0",
     "playwright": "^1.57.0",
     "postcss": "^8.5.6",
-    "storybook": "^10.1.8",
+    "storybook": "^10.3.6",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "3.4.13",
     "typescript": "^5.2.2",
     "vite": "^7.2.4",
     "vite-plugin-monaco-editor": "^1.1.0",
     "vitest": "^3.0.0",
-    "babel-plugin-react-compiler": "^1.0.0"
+    "eslint-plugin-storybook": "10.3.6",
+    "@storybook/addon-docs": "^10.3.6"
   }
 }

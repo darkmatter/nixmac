@@ -23,19 +23,18 @@ export function UnsummarizedChangesSection({
   const displayedChanges = changesWithRenamed.slice(0, MAX_ITEMS);
   const showMore = remaining > 0;
 
-
   return (
     <>
       <UnsummarizedChangesDetected />
       {changesWithRenamed.length > 0 && (
         <div className="flex flex-wrap  items-center">
-          {changesWithRenamed.slice(0, MAX_ITEMS).map((item) => (
+          {displayedChanges.map((item) => (
             <UnsummarizedChange
               key={item.oldFilename ?? item.filename}
               {...item}
             />
           ))}
-          {showMore && showMore > 0 && <span className="text-[11px] text-zinc-500  font-mono relative">+{remaining} more</span>}
+          {showMore && <span className="text-[11px] text-zinc-500  font-mono relative">+{remaining} more</span>}
         </div>
       )}
     </>

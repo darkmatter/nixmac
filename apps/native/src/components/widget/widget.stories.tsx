@@ -4,7 +4,7 @@ import { PermissionsScreen } from "@/components/permissions-screen";
 import type { EvolveEvent, GitStatus } from "@/stores/widget-store";
 import { useWidgetStore } from "@/stores/widget-store";
 import type { SemanticChangeMap } from "@/types/shared";
-import { fn } from "@storybook/test";
+import { fn } from "storybook/test";
 import type React from "react";
 import { useEffect } from "react";
 import { DarwinWidget } from "./widget";

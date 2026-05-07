@@ -1,8 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { useWidgetStore } from "@/stores/widget-store";
 import { HoverClickPopoverIcon } from "@/components/ui/hover-click-popover-icon";
@@ -11,7 +10,6 @@ import { GitignoreBadge } from "@/components/widget/gitignore-badge";
 import { FolderOpen, FolderPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { darwinAPI } from "@/tauri-api";
-import { set } from "effect/TSubscriptionRef";
 
 type DirectoryPickerProps = {
   label: string;
@@ -43,9 +41,6 @@ export function DirectoryPicker({
   const [value, setValue] = useState<string>(configDir || "");
   const [setupChoice, setSetupChoice] = useState<SetupChoice>(isSetupFlow ? "new" : "existing");
   const [directoryName, setDirectoryName] = useState<string>(() => getDirectoryName(configDir));
-  const [directoryExists, setDirectoryExists] = useState<boolean>(false);
-  const [flakeExists, setFlakeExists] = useState<boolean>(false);
-  const ok = directoryExists && flakeExists;
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const [showPrivacyNote, setShowPrivacyNote] = useState(false);
 
@@ -69,13 +64,11 @@ export function DirectoryPicker({
       }
 
       const exists = await validateDirectoryExists(configDir);
-      setDirectoryExists(exists);
       if (!exists) {
         return;
       }
 
-      const flakeExists = await validateFlakeExists(configDir);
-      setFlakeExists(flakeExists);
+      await validateFlakeExists(configDir);
     })();
   }, [configDir]);
 
@@ -213,14 +206,18 @@ export function DirectoryPicker({
         {isSetupFlow && (
           <Tabs
             className="w-full max-w-md"
-            defaultValue="existing"
+            value={setupChoice}
             onValueChange={(value) => {
               if (value === "new" || value === "existing") setSetupChoice(value);
             }}
           >
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="existing">Existing</TabsTrigger>
-              <TabsTrigger value="new">New</TabsTrigger>
+              <TabsTrigger onClick={() => setSetupChoice("existing")} value="existing">
+                Existing
+              </TabsTrigger>
+              <TabsTrigger onClick={() => setSetupChoice("new")} value="new">
+                New
+              </TabsTrigger>
             </TabsList>
           </Tabs>
         )}

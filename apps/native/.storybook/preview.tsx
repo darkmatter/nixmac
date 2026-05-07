@@ -1,3 +1,4 @@
+import addonA11y from "@storybook/addon-a11y";
 import type { Decorator } from "@storybook/react-vite";
 import { definePreview } from "@storybook/react-vite";
 import { sb } from "storybook/test";
@@ -29,16 +30,18 @@ const withDarkTheme: Decorator = (Story) => {
 };
 
 const preview = definePreview({
-  addons: [],
+  addons: [addonA11y()],
   tags: ["autodocs", "test"],
   parameters: {
     layout: "padded",
+
     controls: {
       matchers: {
         color: /(background|color)$/i,
         date: /Date$/i,
       },
     },
+
     backgrounds: {
       options: {
         dark: { name: "dark", value: "#0a0a0b" },
@@ -47,6 +50,13 @@ const preview = definePreview({
       },
       default: "dark",
     },
+
+    a11y: {
+      // 'todo' - show a11y violations in the test UI only
+      // 'error' - fail CI on a11y violations
+      // 'off' - skip a11y checks entirely
+      test: "todo"
+    }
   },
   initialGlobals: {
     // 👇 Set the initial background color

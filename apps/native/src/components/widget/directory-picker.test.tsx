@@ -246,8 +246,8 @@ describe("<DirectoryPicker>", () => {
 
     render(<DirectoryPicker label="Config directory" flow="setup" onConfigured={onConfigured} />);
 
-    expect(screen.getByRole("radio", { name: "New" })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: "Existing" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "New" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Existing" })).toBeInTheDocument();
 
     const nameInput = screen.getByLabelText("Config directory name");
     fireEvent.change(nameInput, { target: { value: ".nixmac" } });
@@ -275,8 +275,8 @@ describe("<DirectoryPicker>", () => {
     mockPickDir.mockResolvedValue({ dir: "/Users/me/config", evolveState: null, hosts: ["mbp"] });
 
     render(<DirectoryPicker label="Config directory" flow="setup" onConfigured={onConfigured} />);
-    fireEvent.click(screen.getByRole("radio", { name: "Existing" }));
-    fireEvent.click(screen.getByRole("button", { name: /browse/i }));
+    fireEvent.click(screen.getByRole("tab", { name: "Existing" }));
+    fireEvent.click(await screen.findByRole("button", { name: /browse/i }));
 
     await waitFor(() => expect(mockPickDir).toHaveBeenCalledTimes(1));
     expect(useWidgetStore.getState().configDir).toBe("/Users/me/config");
