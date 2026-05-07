@@ -57,6 +57,10 @@ fn e2e_opaque_window_enabled() -> bool {
     cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_OPAQUE_WINDOW")
 }
 
+fn e2e_solid_capture_enabled() -> bool {
+    cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_SOLID_CAPTURE")
+}
+
 fn e2e_webview_watchdog_enabled() -> bool {
     cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_WEBVIEW_WATCHDOG")
 }
@@ -573,7 +577,11 @@ fn run_gui_mode(
             let min_height = 400.0;
             let max_height = 900.0;
             let e2e_opaque_window = e2e_opaque_window_enabled();
+            let e2e_solid_capture = e2e_solid_capture_enabled() || e2e_opaque_window;
             let e2e_webview_watchdog = e2e_webview_watchdog_enabled() || e2e_opaque_window;
+            if e2e_solid_capture {
+                log::info!("NIXMAC_E2E_SOLID_CAPTURE enabled; using solid dark WebView backing for host visual capture");
+            }
             if e2e_opaque_window {
                 log::info!("NIXMAC_E2E_OPAQUE_WINDOW enabled; using an opaque visible-titlebar window with dark WebView backing for host visual capture");
             }
@@ -594,7 +602,7 @@ fn run_gui_mode(
                     .minimizable(true)
                     .closable(true)
                     .decorations(true)
-                    .transparent(!e2e_opaque_window)
+                    .transparent(!e2e_solid_capture)
                     .visible(true)
                     .always_on_top(false)
                     .visible_on_all_workspaces(true)
@@ -615,10 +623,14 @@ fn run_gui_mode(
                         }
                     });
 
-            if e2e_opaque_window {
+            if e2e_solid_capture {
                 main_window_builder = main_window_builder
-                    .background_color(tauri::utils::config::Color(10, 10, 10, 255))
-                    .initialization_script(E2E_CAPTURE_DARK_BACKGROUND_SCRIPT);
+                    .background_color(tauri::utils::config::Color(10, 10, 10, 255));
+            }
+
+            if e2e_opaque_window {
+                main_window_builder =
+                    main_window_builder.initialization_script(E2E_CAPTURE_DARK_BACKGROUND_SCRIPT);
             }
 
             let main_window = main_window_builder.build().map_err(|e| {

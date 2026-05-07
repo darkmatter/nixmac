@@ -149,6 +149,13 @@ assert.match(publish, /RUN_ASSET_BASE_URL[\s\S]*<base href="\$ENV\{RUN_ASSET_BAS
 assert.match(publish, /<!-- nixmac-peekaboo-e2e-report -->/, 'PR comment must use a stable Peekaboo marker');
 assert.match(publish, /gh api -X PATCH[\s\S]*issues\/comments/, 'comment step must update the existing sticky comment');
 assert.match(publish, /gh api -X POST[\s\S]*issues\/\$\{PR_NUMBER\}\/comments/, 'comment step must create the sticky comment if missing');
+assert.match(proof, /rsync_status="\$\(.*rsync[\s\S]*\)"|rsync_status="\$\?"/, 'fetch step must capture rsync status instead of blindly trusting transport success');
+assert.match(proof, /usable partial report[\s\S]*state\.json[\s\S]*has_report=true/, 'fetch step must accept a partial MacInCloud report when state.json was transferred');
+assert.match(proof, /if \[\[ ! -f "\$report_dir\/state\.json" \]\][\s\S]*if \[\[ "\$rsync_status" != "0" \]\][\s\S]*exit "\$rsync_status"[\s\S]*exit 1/, 'fetch step must fail when state.json is missing even if rsync exited cleanly');
+assert.match(proof, /rsync_status: \$\{\{ steps\.report-meta\.outputs\.rsync_status \}\}/, 'proof job outputs must expose report fetch rsync status');
+assert.match(proof, /FETCH_RSYNC_STATUS: \$\{\{ steps\.fetch-report\.outputs\.rsync_status \|\| '0' \}\}[\s\S]*echo "rsync_status=\$\{FETCH_RSYNC_STATUS:-0\}"/, 'report metadata must propagate rsync status for summaries and PR comments');
+assert.match(proof, /Report fetch:[\s\S]*partial rsync status/, 'workflow summary must surface partial report fetches');
+assert.match(publish, /RSYNC_STATUS: \$\{\{ needs\.peekaboo-product-proof\.outputs\.rsync_status \}\}[\s\S]*Report fetch:[\s\S]*partial rsync status/, 'PR comment must surface complete versus partial report fetch status');
 
 assert.match(result, /setup_failed="\$\{\{ needs\.peekaboo-product-proof\.outputs\.setup_failed \}\}"/, 'result job must observe setup failures');
 assert.match(result, /has_report="\$\{\{ needs\.peekaboo-product-proof\.outputs\.has_report \}\}"/, 'result job must require a generated report');
@@ -163,6 +170,8 @@ assert.match(result, /publish job result was \$publish_result/, 'result job must
 
 assert.match(launchEnv, /export NIXMAC_SKIP_PERMISSIONS=1/, 'Product Proof launch env must skip macOS permission probes in E2E');
 assert.match(launchEnv, /nixmac_pp_set_launch_env NIXMAC_SKIP_PERMISSIONS "\$NIXMAC_SKIP_PERMISSIONS"/, 'Product Proof launch env must propagate permission skipping through launchctl');
+assert.match(launchEnv, /export NIXMAC_E2E_SOLID_CAPTURE="\$\{NIXMAC_E2E_SOLID_CAPTURE:-1\}"/, 'Product Proof launch env must enable solid capture by default');
+assert.match(launchEnv, /nixmac_pp_set_launch_env NIXMAC_E2E_SOLID_CAPTURE "\$NIXMAC_E2E_SOLID_CAPTURE"/, 'Product Proof launch env must propagate solid capture through launchctl');
 assert.match(launchEnv, /export NIXMAC_E2E_OPAQUE_WINDOW="\$\{NIXMAC_E2E_OPAQUE_WINDOW:-0\}"/, 'Product Proof launch env must keep opaque capture opt-in by default');
 assert.match(launchEnv, /if nixmac_pp_truthy "\$NIXMAC_E2E_OPAQUE_WINDOW"[\s\S]*nixmac_pp_set_launch_env NIXMAC_E2E_OPAQUE_WINDOW "\$NIXMAC_E2E_OPAQUE_WINDOW"[\s\S]*else[\s\S]*nixmac_pp_unset_launch_env NIXMAC_E2E_OPAQUE_WINDOW/, 'Product Proof launch env must only propagate opaque capture when explicitly enabled and clear stale launchctl state otherwise');
 assert.match(launchEnv, /export NIXMAC_E2E_WEBVIEW_WATCHDOG="\$\{NIXMAC_E2E_WEBVIEW_WATCHDOG:-1\}"/, 'Product Proof launch env must enable the E2E WebView load watchdog independently of opaque capture');
@@ -175,6 +184,7 @@ assert.match(launchEnv, /nixmac_pp_set_launch_env NIXMAC_LOGFILE "\$NIXMAC_LOGFI
 assert.match(launchEnv, /nixmac_pp_set_launch_env RUST_LOG "\$RUST_LOG"/, 'Product Proof launch env must propagate debug log filter through launchctl');
 assert.match(launchEnv, /nixmac_pp_clear_e2e_runtime[\s\S]*nixmac_pp_write_e2e_runtime/, 'Product Proof launch setup must clear stale runtime overrides before writing the current E2E runtime file');
 assert.match(cleanup, /nixmac_pp_unset_launch_env NIXMAC_SKIP_PERMISSIONS/, 'Product Proof cleanup must remove permission skipping from launchctl');
+assert.match(cleanup, /nixmac_pp_unset_launch_env NIXMAC_E2E_SOLID_CAPTURE/, 'Product Proof cleanup must remove solid capture from launchctl');
 assert.match(cleanup, /nixmac_pp_unset_launch_env NIXMAC_E2E_OPAQUE_WINDOW/, 'Product Proof cleanup must remove opaque capture from launchctl');
 assert.match(cleanup, /nixmac_pp_unset_launch_env NIXMAC_E2E_WEBVIEW_WATCHDOG/, 'Product Proof cleanup must remove WebView watchdog from launchctl');
 assert.match(cleanup, /nixmac_pp_unset_launch_env NIXMAC_E2E_DIAGNOSTICS_DIR/, 'Product Proof cleanup must remove diagnostics dir from launchctl');
@@ -182,10 +192,12 @@ assert.match(cleanup, /nixmac_pp_unset_launch_env NIXMAC_LOGFILE/, 'Product Proo
 assert.match(cleanup, /nixmac_pp_unset_launch_env RUST_LOG/, 'Product Proof cleanup must remove debug log filter from launchctl');
 assert.match(cleanup, /nixmac_pp_clear_e2e_runtime/, 'Product Proof cleanup must remove the debug E2E runtime file');
 assert.match(productProof, /nixmac_pp_runtime_path\(\)[\s\S]*e2e-runtime\.json/, 'Product Proof runtime path must target the nixmac debug E2E runtime file');
-assert.match(productProof, /nixmac_pp_write_e2e_runtime\(\)[\s\S]*expiresAtUnix[\s\S]*NIXMAC_E2E_OPAQUE_WINDOW[\s\S]*NIXMAC_E2E_WEBVIEW_WATCHDOG[\s\S]*NIXMAC_SKIP_PERMISSIONS[\s\S]*NIXMAC_E2E_CONFIG_DIR[\s\S]*NIXMAC_E2E_DIAGNOSTICS_DIR[\s\S]*NIXMAC_LOGFILE[\s\S]*RUST_LOG[\s\S]*OPENAI_API_KEY/, 'Product Proof must write an expiring debug runtime override with launch, diagnostics, fixture, and provider keys');
+assert.match(productProof, /nixmac_pp_write_e2e_runtime\(\)[\s\S]*expiresAtUnix[\s\S]*NIXMAC_E2E_SOLID_CAPTURE[\s\S]*NIXMAC_E2E_OPAQUE_WINDOW[\s\S]*NIXMAC_E2E_WEBVIEW_WATCHDOG[\s\S]*NIXMAC_SKIP_PERMISSIONS[\s\S]*NIXMAC_E2E_CONFIG_DIR[\s\S]*NIXMAC_E2E_DIAGNOSTICS_DIR[\s\S]*NIXMAC_LOGFILE[\s\S]*RUST_LOG[\s\S]*OPENAI_API_KEY/, 'Product Proof must write an expiring debug runtime override with launch, diagnostics, fixture, and provider keys');
 assert.match(nativeMain, /crate::e2e_runtime::value\("NIXMAC_LOGFILE"\)/, 'Native app logging must read NIXMAC_LOGFILE through the E2E runtime file when launched via LaunchServices');
 assert.match(nativeMain, /crate::e2e_runtime::value\("RUST_LOG"\)[\s\S]*EnvFilter::try_from_default_env/, 'Native app logging must read RUST_LOG through the E2E runtime file before falling back to process env/default filters');
 assert.match(nativeMain, /on_page_load\(move[\s\S]*main webview page load[\s\S]*PageLoadEvent::Finished[\s\S]*store\(true, Ordering::SeqCst\)/, 'Native app must log main WebView page-load lifecycle and mark finished loads for E2E diagnostics');
+assert.match(nativeMain, /fn e2e_solid_capture_enabled\(\) -> bool \{\n\s+cfg!\(debug_assertions\) && crate::e2e_runtime::enabled\("NIXMAC_E2E_SOLID_CAPTURE"\)/, 'Native app must expose an E2E-only solid capture gate');
+assert.match(nativeMain, /let e2e_solid_capture = e2e_solid_capture_enabled\(\) \|\| e2e_opaque_window[\s\S]*transparent\(!e2e_solid_capture\)[\s\S]*if e2e_solid_capture \{\n\s+main_window_builder = main_window_builder\s+\.background_color\(tauri::utils::config::Color\(10, 10, 10, 255\)\);[\s\S]*if e2e_opaque_window \{\n\s+main_window_builder =\s+main_window_builder\.initialization_script\(E2E_CAPTURE_DARK_BACKGROUND_SCRIPT\);/, 'Native app must make solid capture non-transparent with a dark backing while keeping the dark CSS script limited to opaque debug mode');
 assert.match(nativeMain, /fn e2e_webview_watchdog_enabled\(\) -> bool \{\n\s+cfg!\(debug_assertions\) && crate::e2e_runtime::enabled\("NIXMAC_E2E_WEBVIEW_WATCHDOG"\)/, 'Native app must expose an E2E-only WebView watchdog gate independent of opaque capture');
 assert.match(nativeMain, /let e2e_webview_watchdog = e2e_webview_watchdog_enabled\(\) \|\| e2e_opaque_window[\s\S]*if e2e_webview_watchdog \{\n\s+let watchdog_window[\s\S]*NIXMAC_E2E_WEBVIEW_WATCHDOG_SECS[\s\S]*unwrap_or\(12\)[\s\S]*Duration::from_secs\(watchdog_secs\)[\s\S]*main webview E2E load watchdog[\s\S]*run_on_main_thread[\s\S]*reload\(\)/, 'Native app must run the E2E-only main WebView load watchdog independently of opaque capture and request one reload when page load stalls');
 assert.match(nativeStore, /fn get_secret_pref[\s\S]*if e2e_mock_system_enabled\(\) \{[\s\S]*return get_string_pref_raw\(app, key\);[\s\S]*get_with_lazy_migration/, 'E2E mock-system mode must bypass keychain reads in UI preference secret lookups');
@@ -216,7 +228,7 @@ assert.doesNotMatch(frontendRenderApp, /\bawait\b/, 'Frontend renderApp must sta
 assert.match(frontendMain, /role="alert"[\s\S]*background: "#27272a"[\s\S]*border: "1px solid #52525b"/, 'Frontend error fallback must include a visible central card with enough luminance range for screenshot signal diagnostics');
 assert.match(frontendMain, /window\.addEventListener\("unhandledrejection"[\s\S]*window unhandled rejection/, 'Frontend boot diagnostics must capture top-level unhandled rejections');
 assert.match(runnerShell, /E2E_TERMINAL_CLEANUP_MODE=kill recording_close_terminal_windows/, 'Runner preflight must kill stale recorder Terminal windows before each scenario');
-assert.match(peekabooRunner, /for key in NIXMAC_E2E_MOCK_SYSTEM NIXMAC_E2E_OPAQUE_WINDOW NIXMAC_E2E_WEBVIEW_WATCHDOG NIXMAC_SKIP_PERMISSIONS/, 'Runner preflight must clear stale Peekaboo launchctl flags, including opaque capture and the independent WebView watchdog');
+assert.match(peekabooRunner, /for key in NIXMAC_E2E_MOCK_SYSTEM NIXMAC_E2E_SOLID_CAPTURE NIXMAC_E2E_OPAQUE_WINDOW NIXMAC_E2E_WEBVIEW_WATCHDOG NIXMAC_SKIP_PERMISSIONS/, 'Runner preflight must clear stale Peekaboo launchctl flags, including solid capture, opaque capture, and the independent WebView watchdog');
 assert.match(e2eRuntime, /#\[cfg\(debug_assertions\)\][\s\S]*fn file_value[\s\S]*runtime\.schema_version != 1[\s\S]*runtime\.session_id\.trim\(\)\.is_empty\(\)[\s\S]*now_unix\(\)\? > runtime\.expires_at_unix/, 'Rust E2E runtime file reader must be debug-only and reject stale, malformed, or expired runtime files');
 assert.match(e2eRuntime, /#\[cfg\(not\(debug_assertions\)\)\][\s\S]*fn file_value\(_name: &str\) -> Option<String>[\s\S]*None/, 'Release builds must ignore E2E runtime files');
 assert.match(permissions, /fn check_desktop_access\(\) -> PermissionStatus \{\n\s+if e2e_skip_permissions_enabled\(\)[\s\S]{0,180}?dirs::home_dir/, 'Desktop permission check must honor E2E skip before touching the Desktop folder');
