@@ -152,6 +152,16 @@ pub fn relaunch_after_update(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+pub async fn install_version(app: AppHandle, version: String) -> Result<(), String> {
+    crate::updater_pin::install_version(app, version).await
+}
+
+#[tauri::command]
+pub async fn clear_pinned_version(app: AppHandle) -> Result<(), String> {
+    crate::updater_pin::clear_pinned_version(app).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
