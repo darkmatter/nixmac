@@ -1,4 +1,5 @@
 import addonA11y from "@storybook/addon-a11y";
+import addonDocs from "@storybook/addon-docs";
 import type { Decorator } from "@storybook/react-vite";
 import { definePreview } from "@storybook/react-vite";
 import { sb } from "storybook/test";
@@ -30,7 +31,7 @@ const withDarkTheme: Decorator = (Story) => {
 };
 
 const preview = definePreview({
-  addons: [addonA11y()],
+  addons: [addonA11y(), addonDocs()],
   tags: ["autodocs", "test"],
   parameters: {
     layout: "padded",
