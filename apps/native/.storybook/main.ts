@@ -51,6 +51,8 @@ const config: StorybookConfig = {
     const merged = mergeConfig(config, {
       resolve: {
         alias: {
+          "@": path.resolve(appRoot, "src"),
+          "#storybook/preview": path.resolve(storybookDir, "preview.tsx"),
           "@/tauri-api": path.resolve(storybookDir, "mocks/tauri-api.ts"),
           "@/components/ui": path.resolve(uiPackageRoot, "components/ui"),
           "@nixmac/ui": uiPackageRoot,
@@ -65,11 +67,15 @@ const config: StorybookConfig = {
         },
       },
     });
-    merged.plugins = withoutMonacoEditorPlugin(merged.plugins) as typeof merged.plugins;
+    // merged.plugins = withoutMonacoEditorPlugin(merged.plugins) as typeof merged.plugins;
     merged.build ??= {};
     merged.build.target = "esnext";
     return merged;
   },
+  env: (config) => ({
+    ...config,
+    NIX_INSTALLED_OVERRIDE: "true",
+  }),
 };
 
 export default config;
