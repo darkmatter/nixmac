@@ -15,6 +15,8 @@ export function HistoryConfirmRestoreButton({ deactivateCount, onConfirm, onCanc
           type="button"
           variant="outline"
           size="sm"
+          id="history-confirm-restore-button"
+          data-testid="history-confirm-restore-button"
           className="h-auto whitespace-nowrap border-teal-400/30 bg-teal-400/10 px-[10px] py-1 text-[10px] text-teal-400 hover:border-teal-400/50 hover:bg-teal-400/15"
           onClick={(e) => { e.stopPropagation(); onConfirm?.(); }}
         >
