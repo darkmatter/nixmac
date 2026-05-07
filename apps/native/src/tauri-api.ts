@@ -283,6 +283,10 @@ export const darwinAPI = {
     relaunch: () => invoke<void>("relaunch_after_update"),
     clearPinnedVersion: () => invoke<void>("clear_pinned_version"),
   },
+
+  debug: {
+    sentryEvent: () => invoke<void>("debug_sentry_event"),
+  },
 };
 
 export const ipcRenderer = {
