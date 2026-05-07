@@ -34,10 +34,9 @@ vi.mock("@/hooks/use-darwin-config", () => ({
 
 const mockNormalize = vi.fn<(p: string) => Promise<string | null>>();
 const mockExists = vi.fn<(p: string) => Promise<boolean>>();
-const mockSetDir = vi.fn<
-  (p: string) => Promise<{ dir: string; evolveState: never; hosts: string[] | null }>
->();
+const mockSetDir = vi.fn<(p: string) => Promise<void>>();
 const mockSetHostAttr = vi.fn<(h: string) => Promise<void>>();
+const mockListHosts = vi.fn<() => Promise<string[]>>();
 const mockFlakeExistsAt = vi.fn<(p: string) => Promise<boolean>>();
 const mockFlakeExists = vi.fn<() => Promise<boolean>>();
 
@@ -53,6 +52,10 @@ vi.mock("@/tauri-api", () => ({
       setHostAttr: (h: string) => mockSetHostAttr(h),
     },
     flake: {
+      setHostAttr: (h: string) => mockSetHostAttr(h),
+    },
+    flake: {
+      listHosts: () => mockListHosts(),
       existsAt: (p: string) => mockFlakeExistsAt(p),
       exists: () => mockFlakeExists(),
     },
@@ -92,6 +95,7 @@ function resetMocks() {
   mockFlakeExistsAt.mockResolvedValue(true);
   mockFlakeExists.mockResolvedValue(true);
   mockPickDir.mockResolvedValue(null);
+  mockListHosts.mockResolvedValue([]);
 }
 
 /** Type into the input then fire a blur event. Mirrors `userEvent.type` + tab-out
@@ -157,6 +161,7 @@ describe("<DirectoryPicker>", () => {
       evolveState: {} as never,
       hosts: ["mbp", "workbook"],
     });
+    mockListHosts.mockResolvedValue(["mbp", "workbook"]);
     useWidgetStore.getState().setHost("old-host");
 
     render(<DirectoryPicker label="Config directory" />);
@@ -165,11 +170,15 @@ describe("<DirectoryPicker>", () => {
     await waitFor(() => {
       expect(mockSetDir).toHaveBeenCalledWith("/Users/me/.darwin");
     });
+    // Allow all chained awaits in onBlur to settle.
+    await screen.findByDisplayValue("/Users/me/.darwin");
 
     // Input is trimmed before being passed to `darwinAPI.path.normalize`.
     expect(mockNormalize).toHaveBeenCalledWith("/Users/me/.darwin");
     expect(mockExists).toHaveBeenCalledWith("/Users/me/.darwin");
+    expect(mockSetDir).toHaveBeenCalledWith("/Users/me/.darwin");
     expect(mockSetHostAttr).toHaveBeenCalledWith("");
+    expect(mockListHosts).toHaveBeenCalledTimes(1);
 
     const s = useWidgetStore.getState();
     expect(s.configDir).toBe("/Users/me/.darwin");
