@@ -456,18 +456,68 @@ jobs:
           trusted_secret_scan_file="$FETCH_REPORT_DIR/trusted-secret-scan.json"
           trusted_secret_scan_tmp="$(mktemp "${RUNNER_TEMP:-/tmp}/nixmac-trusted-secret-scan.XXXXXX.json")"
           node --input-type=module - "$FETCH_REPORT_DIR" > "$trusted_secret_scan_tmp" <<'NODE'
-          import { readdirSync, readFileSync, lstatSync } from 'node:fs';
+          import { closeSync, lstatSync, openSync, readSync, readdirSync } from 'node:fs';
           import path from 'node:path';
           const root = process.argv[2];
           const secretPattern = /(?:sk-[A-Za-z0-9_-]{16,}|xai-[A-Za-z0-9_-]{16,}|gh[opsu]_[A-Za-z0-9_]{16,}|github_pat_[A-Za-z0-9_]{22,}|xox[abprs]-[A-Za-z0-9-]{16,}|AKIA[0-9A-Z]{16}|Bearer\s+[A-Za-z0-9._-]{16,}|(?:OPENROUTER|OPENAI|ANTHROPIC|GROQ|XAI|MISTRAL|COHERE|GITHUB|SLACK|AWS)_API_KEY=(?!\[REDACTED\])[^\s"'<>]+)/i;
+          const secretPatternGlobal = new RegExp(secretPattern.source, `${secretPattern.flags.replace('g', '')}g`);
+          const TEXT_SNIFF_BYTES = 8192;
+          const TEXT_SCAN_CHUNK_BYTES = 65536;
+          // Larger than real token lengths, so chunk-boundary matches stay bounded-memory.
+          const TEXT_SCAN_OVERLAP_CHARS = 2048;
           const violations = [];
           let scannedPaths = 0;
           let scannedFiles = 0;
+          function readSample(full, maxBytes = TEXT_SNIFF_BYTES) {
+            const fd = openSync(full, 'r');
+            try {
+              const buffer = Buffer.allocUnsafe(maxBytes);
+              const bytesRead = readSync(fd, buffer, 0, maxBytes, 0);
+              return buffer.subarray(0, bytesRead);
+            } finally {
+              closeSync(fd);
+            }
+          }
           function looksLikeTextFile(full) {
-            const sample = readFileSync(full).subarray(0, 8192);
+            const sample = readSample(full);
             if (sample.includes(0)) return false;
             const suspiciousControlBytes = [...sample].filter((byte) => byte < 9 || (byte > 13 && byte < 32)).length;
             return sample.length === 0 || suspiciousControlBytes / sample.length < 0.02;
+          }
+          function scanChunkForSecret(text, hasPotentialNextChunk) {
+            secretPatternGlobal.lastIndex = 0;
+            for (const match of text.matchAll(secretPatternGlobal)) {
+              const matchEnd = (match.index ?? 0) + match[0].length;
+              if (hasPotentialNextChunk && matchEnd === text.length) {
+                const maybeValue = match[0].split('=').at(-1) ?? '';
+                if ('[REDACTED]'.startsWith(maybeValue)) {
+                  return { status: 'deferred-redaction', carryStart: match.index ?? 0 };
+                }
+              }
+              return { status: 'match', carryStart: null };
+            }
+            return { status: 'none', carryStart: null };
+          }
+          function textFileHasSecret(full) {
+            const fd = openSync(full, 'r');
+            const buffer = Buffer.allocUnsafe(TEXT_SCAN_CHUNK_BYTES);
+            let position = 0;
+            let carry = '';
+            try {
+              for (;;) {
+                const bytesRead = readSync(fd, buffer, 0, buffer.length, position);
+                if (bytesRead === 0) return false;
+                const text = carry + buffer.subarray(0, bytesRead).toString('utf8');
+                const scanStatus = scanChunkForSecret(text, bytesRead === buffer.length);
+                if (scanStatus.status === 'match') return true;
+                carry = scanStatus.status === 'deferred-redaction'
+                  ? text.slice(scanStatus.carryStart)
+                  : text.slice(-TEXT_SCAN_OVERLAP_CHARS);
+                position += bytesRead;
+              }
+            } finally {
+              closeSync(fd);
+            }
           }
           function walk(dir) {
             for (const entry of readdirSync(dir)) {
@@ -481,8 +531,7 @@ jobs:
                 walk(full);
               } else if (stat.isFile() && looksLikeTextFile(full)) {
                 scannedFiles += 1;
-                const text = readFileSync(full, 'utf8');
-                if (secretPattern.test(text)) violations.push(`content:${relativePath}`);
+                if (textFileHasSecret(full)) violations.push(`content:${relativePath}`);
               }
             }
           }

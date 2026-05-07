@@ -164,6 +164,38 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
       clientTimestampUnixMs: Date.now(),
     }).catch(() => {});
   };
+  const getCssValue = (style, property) => {
+    if (!style) return null;
+    const value = style.getPropertyValue(property);
+    return value === "" ? null : value;
+  };
+  const captureStyleProbe = (label) => {
+    try {
+      const root = document.getElementById("root");
+      const shell = root?.firstElementChild ?? null;
+      const htmlStyle = window.getComputedStyle(document.documentElement);
+      const bodyStyle = document.body ? window.getComputedStyle(document.body) : null;
+      const shellStyle = shell ? window.getComputedStyle(shell) : null;
+      logCaptureBreadcrumb(
+        `e2e-capture-style-${label}`,
+        JSON.stringify({
+          captureMode,
+          capturePaint: document.documentElement.dataset.nixmacE2eCapturePaint ?? null,
+          rootChildren: root?.childElementCount ?? null,
+          bodyChildren: document.body?.childElementCount ?? null,
+          shellClassName: typeof shell?.className === "string" ? shell.className : null,
+          htmlBackgroundColor: htmlStyle.backgroundColor,
+          bodyBackgroundColor: bodyStyle?.backgroundColor ?? null,
+          shellBackgroundColor: shellStyle?.backgroundColor ?? null,
+          shellBackdropFilter: getCssValue(shellStyle, "backdrop-filter"),
+          shellWebkitBackdropFilter: getCssValue(shellStyle, "-webkit-backdrop-filter"),
+          shellOpacity: shellStyle?.opacity ?? null,
+        }),
+      );
+    } catch (error) {
+      logCaptureBreadcrumb("e2e-capture-style-probe-error", String(error));
+    }
+  };
   const applyCaptureBackground = () => {
     document.documentElement.classList.add("dark");
     document.documentElement.dataset.nixmacE2eCapture = captureMode;
@@ -186,6 +218,12 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
         html[data-nixmac-e2e-capture="${captureMode}"] .bg-zinc-900\\/95 {
           background-color: ${captureBackground} !important;
         }
+        html[data-nixmac-e2e-capture="${captureMode}"] *,
+        html[data-nixmac-e2e-capture="${captureMode}"] *::before,
+        html[data-nixmac-e2e-capture="${captureMode}"] *::after {
+          -webkit-backdrop-filter: none !important;
+          backdrop-filter: none !important;
+        }
       `;
       document.head.appendChild(style);
     }
@@ -199,7 +237,19 @@ const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
           bodyChildren: document.body?.childElementCount ?? null,
         }),
       );
+      captureStyleProbe("initial-raf");
     });
+    window.addEventListener(
+      "nixmac:app-mounted",
+      () => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            captureStyleProbe("app-mounted-plus-2raf");
+          });
+        });
+      },
+      { once: true },
+    );
   };
   if (document.head) {
     applyCaptureBackground();
