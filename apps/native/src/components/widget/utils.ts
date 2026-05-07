@@ -14,7 +14,10 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
     return "permissions";
   }
 
-  if (state.nixInstalled !== true || state.darwinRebuildAvailable !== true) {
+  if (
+    (state.nixInstalled !== true || state.darwinRebuildAvailable !== true)
+    && settings.NIX_INSTALLED_OVERRIDE !== true // bypass used for testing
+  ) {
     return "nix-setup";
   }
 
@@ -148,6 +151,7 @@ export function getCategoryStyle(title: string): CategoryStyle {
 export type ColorMap = Map<string, CategoryStyle>;
 
 import type { Change, ChangeType, SemanticChangeMap } from "@/types/shared";
+import { settings } from "@/lib/env";
 
 export function buildColorMap(changeMap: SemanticChangeMap): ColorMap {
   const map: ColorMap = new Map();
