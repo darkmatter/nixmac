@@ -201,3 +201,183 @@ pub fn commit_message(map: &crate::shared_types::SemanticChangeMap) -> String {
 
     lines.join("")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::shared_types::{ChangeWithSummary, SemanticChangeGroup, SemanticChangeMap};
+    use crate::sqlite_types::Change;
+    use crate::sqlite_types::ChangeSummary;
+    use crate::summarize::simplify_grouped::SimplifiedChange;
+    use serde_json::Value;
+
+    fn extract_json_block(s: &str) -> Option<Value> {
+        let mut results = Vec::new();
+        let bytes = s.as_bytes();
+        let len = bytes.len();
+        let mut i = 0usize;
+        while i < len {
+            if bytes[i] == b'{' {
+                let mut depth = 1usize;
+                let mut j = i + 1;
+                while j < len {
+                    match bytes[j] as char {
+                        '{' => depth += 1,
+                        '}' => {
+                            depth -= 1;
+                            if depth == 0 {
+                                // extract substring i..=j
+                                if let Ok(candidate) = std::str::from_utf8(&bytes[i..=j]) {
+                                    if let Ok(v) = serde_json::from_str::<Value>(candidate) {
+                                        results.push(v);
+                                    }
+                                }
+                                i = j; // advance
+                                break;
+                            }
+                        }
+                        _ => {}
+                    }
+                    j += 1;
+                }
+            }
+            i += 1;
+        }
+        results.pop()
+    }
+
+    #[test]
+    fn new_single_contains_hash_and_valid_json() {
+        let change = Change {
+            id: 1,
+            hash: "deadbeef".into(),
+            filename: "foo.nix".into(),
+            diff: "+x".into(),
+            line_count: 1,
+            created_at: 0,
+            own_summary_id: None,
+        };
+        let out = new_single(&change);
+        // tolerate formatting changes in the markdown preamble; ensure Title/Description guidance exists
+        assert!(out.to_lowercase().contains("title"));
+        assert!(out.contains(&change.hash));
+        let json = extract_json_block(&out).expect("should find JSON");
+        assert!(json.get("title").is_some());
+        assert!(json.get("description").is_some());
+    }
+
+    #[test]
+    fn new_group_emits_valid_changes_and_group_json() {
+        let hashes = vec!["abc123".to_string()];
+        let change = Change {
+            id: 2,
+            hash: "abc123".into(),
+            filename: "bar.nix".into(),
+            diff: "-y".into(),
+            line_count: 2,
+            created_at: 0,
+            own_summary_id: None,
+        };
+        let resolved = vec![&change];
+        let out = new_group(&hashes, &resolved);
+        let json = extract_json_block(&out).expect("should find JSON");
+        assert!(json.get("changes").is_some());
+        assert!(json.get("group").is_some());
+    }
+
+    #[test]
+    fn evolve_group_includes_existing_summary_and_json() {
+        let existing = vec![SimplifiedChange {
+            hash: "h1".into(),
+            filename: "f".into(),
+            title: "T".into(),
+            description: "D".into(),
+        }];
+        let change = Change {
+            id: 3,
+            hash: "h2".into(),
+            filename: "f2".into(),
+            diff: "z".into(),
+            line_count: 1,
+            created_at: 0,
+            own_summary_id: None,
+        };
+        let new_changes = vec![&change];
+        let new_hashes = vec!["h2".to_string()];
+        let out = evolve_group(&existing, &new_changes, &new_hashes);
+        assert!(out.contains("T - D"));
+        let json = extract_json_block(&out).expect("should find JSON");
+        assert!(json.get("changes").is_some());
+        assert!(json.get("group").is_some());
+    }
+
+    #[test]
+    fn placement_produces_placements_array() {
+        let change = Change {
+            id: 4,
+            hash: "p1".into(),
+            filename: "x".into(),
+            diff: "a".into(),
+            line_count: 1,
+            created_at: 0,
+            own_summary_id: None,
+        };
+        let changes = vec![&change];
+        let simplified_json = "{ \"groups\": [] }";
+        let out = placement(&changes, simplified_json);
+        let json = extract_json_block(&out).expect("should find JSON");
+        assert!(json.get("placements").is_some());
+    }
+
+    #[test]
+    fn new_map_produces_changes_array() {
+        let change = Change {
+            id: 5,
+            hash: "m1".into(),
+            filename: "y".into(),
+            diff: "b".into(),
+            line_count: 1,
+            created_at: 0,
+            own_summary_id: None,
+        };
+        let changes = vec![&change];
+        let out = new_map(&changes);
+        let json = extract_json_block(&out).expect("should find JSON");
+        assert!(json.get("changes").is_some());
+    }
+
+    #[test]
+    fn commit_message_includes_titles_and_instruction() {
+        let summary = ChangeSummary {
+            id: 1,
+            title: "GTitle".into(),
+            description: "GDesc".into(),
+            status: "DONE".into(),
+            created_at: 0,
+        };
+        let group = SemanticChangeGroup {
+            summary: summary.clone(),
+            changes: vec![],
+        };
+        let single = ChangeWithSummary {
+            id: 2,
+            hash: "s1".into(),
+            filename: "z".into(),
+            diff: "c".into(),
+            line_count: 1,
+            created_at: 0,
+            own_summary_id: None,
+            title: "STitle".into(),
+            description: "SDesc".into(),
+        };
+        let map = SemanticChangeMap {
+            groups: vec![group],
+            singles: vec![single],
+            unsummarized_hashes: vec![],
+        };
+        let out = commit_message(&map);
+        assert!(out.contains("GTitle"));
+        assert!(out.contains("STitle"));
+        assert!(out.contains("Write a conventional commit message"));
+    }
+}

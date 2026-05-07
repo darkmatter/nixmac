@@ -268,8 +268,8 @@ const caseDefinitions = [
         title: 'Adversarial settings regression fixture',
         headRef: 'adversarial/settings-regression',
         baseRef: 'main',
-        changedFiles: ['apps/native/src/components/widget/settings-dialog.tsx'],
-        userVisibleFiles: ['apps/native/src/components/widget/settings-dialog.tsx'],
+        changedFiles: ['apps/native/src/components/widget/settings/settings-dialog.tsx'],
+        userVisibleFiles: ['apps/native/src/components/widget/settings/settings-dialog.tsx'],
         scenarioKeys: ['settingsGeneral', 'settingsAIModels', 'settingsAPIKeys', 'settingsPreferences'],
       };
       mutateScenario(state, 'settingsAIModels', 'fail', 'Adversarial fixture: AI Models tab rendered the wrong content.');

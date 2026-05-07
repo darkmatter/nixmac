@@ -1,17 +1,17 @@
 "use client";
 
-import { ConfigEditOverlayPanel } from "@/components/config-edit-overlay-panel";
-import { EditorPanel } from "@/components/editor-panel";
-import { EvolveOverlayPanel } from "@/components/evolve-overlay-panel";
-import { RebuildOverlayPanel } from "@/components/rebuild-overlay-panel";
-import { Console } from "@/components/widget/console";
-import { ErrorMessage } from "@/components/widget/error-message";
-import { FeedbackDialog } from "@/components/widget/feedback-dialog";
-import { Header } from "@/components/widget/header";
-import { ReportIssueButton } from "@/components/widget/report-issue-button";
-import { SettingsDialog } from "@/components/widget/settings-dialog";
-import { StepContentWrapper } from "@/components/widget/step-content-wrapper";
-import { Stepper } from "@/components/widget/stepper";
+import { ConfigEditOverlayPanel } from "@/components/widget/overlays/config-edit-overlay-panel";
+import { EditorPanel } from "@/components/widget/overlays/editor-panel";
+import { EvolveOverlayPanel } from "@/components/widget/overlays/evolve-overlay-panel";
+import { RebuildOverlayPanel } from "@/components/widget/overlays/rebuild-overlay-panel";
+import { Console } from "@/components/widget/layout/console";
+import { ErrorMessage } from "@/components/widget/layout/error-message";
+import { FeedbackDialog } from "@/components/widget/feedback/feedback-dialog";
+import { Header } from "@/components/widget/layout/header";
+import { ReportIssueButton } from "@/components/widget/feedback/report-issue-button";
+import { SettingsDialog } from "@/components/widget/settings/settings-dialog";
+import { StepContentWrapper } from "@/components/widget/layout/step-content-wrapper";
+import { Stepper } from "@/components/widget/layout/stepper";
 import {
     BeginStep,
     CommitStep,
@@ -23,7 +23,6 @@ import {
     PermissionsStep,
     SetupStep,
 } from "@/components/widget/steps";
-import { useErrorHandler } from "@/hooks/use-error-handler";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useNixInstall } from "@/hooks/use-nix-install";
 import { usePanicHandler } from "@/hooks/use-panic-handler";
@@ -37,7 +36,7 @@ import { loadConfig, loadHosts, loadEvolveState } from "@/hooks/use-widget-initi
 import { useSummary } from "@/hooks/use-summary";
 import { markBootStage } from "@/lib/e2e-boot-diagnostics";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
-import { UpdateBanner } from "@/components/update-banner";
+import { UpdateBanner } from "@/components/widget/layout/update-banner";
 import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
 import { setupWidgetTestHelpers } from "@/utils/widget-test-helpers";
 import { useEffect } from "react";
@@ -64,9 +63,6 @@ export function DarwinWidget() {
 
   // Listen for tray menu events (Send Feedback, Settings)
   useTrayEvents();
-
-  // Set up error handler to catch unhandled JavaScript errors and promise rejections
-  useErrorHandler();
 
   // Set up test helpers for error handlers and widget store (development only)
   useEffect(() => {

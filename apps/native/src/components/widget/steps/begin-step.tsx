@@ -1,7 +1,7 @@
 "use client";
 
-import { GetStartedMessage } from "@/components/widget/get-started-message";
-import { PromptInputSection } from "@/components/widget/prompt-input-section";
+import { GetStartedMessage } from "@/components/widget/layout/get-started-message";
+import { PromptInputSection } from "@/components/widget/promptinput/prompt-input-section";
 
 export function BeginStep() {
   return (

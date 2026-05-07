@@ -1,7 +1,7 @@
 import { BaseCommitBadge } from "@/components/widget/badges/base-commit-badge";
 import { HistoryCurrentItemBadge } from "@/components/widget/badges/current-item-badge";
-import { BuildHeadButton } from "@/components/widget/build-head-button";
-import { CommitMessage } from "@/components/widget/commit-message";
+import { BuildHeadButton } from "@/components/widget/controls/build-head-button";
+import { CommitMessage } from "@/components/widget/controls/commit-message";
 import { ChangeBadges } from "@/components/widget/history/change-badges";
 import { HistoryConfirmRestoreButton } from "@/components/widget/history/history-confirm-restore-button";
 import { HistoryCommitInfo } from "@/components/widget/history/history-item-card-header";
@@ -11,8 +11,8 @@ import { HistoryRestoreItemButton } from "@/components/widget/history/history-re
 import { useHistoryCard } from "@/hooks/use-history-card";
 import { cn } from "@/lib/utils";
 import type { HistoryItem } from "@/tauri-api";
-import type { TimelineContext } from "./timeline-connector";
-import { HistoryItemTimeline, TimeLineConnector, TimelineDot } from "./timeline-connector";
+import type { TimelineContext } from "@/components/widget/history/timeline-connector";
+import { HistoryItemTimeline, TimeLineConnector, TimelineDot } from "@/components/widget/history/timeline-connector";
 
 interface HistoryItemCardProps {
   item: HistoryItem;

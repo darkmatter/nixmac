@@ -3034,7 +3034,7 @@ async function runSelfTest() {
     NIXMAC_E2E_PR_HEAD_REF: 'fkb/scott-peekaboo-local-e2e',
     NIXMAC_E2E_PR_BASE_REF: 'fkb/e2e-required-gate-policy',
     NIXMAC_E2E_PR_CHANGED_FILES: [
-      'apps/native/src/components/widget/settings-dialog.tsx',
+      'apps/native/src/components/widget/settings/settings-dialog.tsx',
       'apps/native/src-tauri/src/main.rs',
       'apps/native/src-tauri/src/rebuild/darwin.rs',
       'apps/native/src-tauri/src/storage/store.rs',
@@ -3080,7 +3080,7 @@ async function runSelfTest() {
       '--allow-cleanup',
     ],
     {
-      NIXMAC_E2E_PR_CHANGED_FILES: 'apps/native/src/components/widget/settings-dialog.tsx',
+      NIXMAC_E2E_PR_CHANGED_FILES: 'apps/native/src/components/widget/settings/settings-dialog.tsx',
       NIXMAC_E2E_PR_NUMBER: '90',
     },
   );

@@ -7,8 +7,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BootstrapConfig } from "@/components/widget/bootstrap-config";
-import { DirectoryPicker } from "@/components/widget/directory-picker";
+import { BootstrapConfig } from "@/components/widget/controls/bootstrap-config";
+import { DirectoryPicker } from "@/components/widget/controls/directory-picker";
 import { getWebSiteUrl } from "@/lib/env";
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
