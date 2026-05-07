@@ -21,6 +21,11 @@ interface WidgetTestHelpers {
    */
   getPromptHistory: () => string[];
   /**
+   * Returns the current changeMap from the store serialized as JSON, for
+   * comparison across browser.execute boundaries.
+   */
+  getChangeMap: () => string;
+  /**
    * Reset transient client-side widget state between e2e tests.
    */
   resetForTest: () => void;
@@ -40,11 +45,13 @@ export function setupWidgetTestHelpers() {
     getPromptHistory: () => {
       return [...(useWidgetStore.getState().promptHistory ?? [])];
     },
+    getChangeMap: () => {
+      return JSON.stringify(useWidgetStore.getState().changeMap);
+    },
     resetForTest: () => {
       const state = useWidgetStore.getState();
       state.setEvolvePrompt("");
       state.setPromptHistory([]);
-      state.clearPreview();
       state.clearLogs();
       state.clearEvolveEvents();
       state.setConversationalResponse(null);

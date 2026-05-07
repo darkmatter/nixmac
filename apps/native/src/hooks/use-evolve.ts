@@ -45,7 +45,6 @@ export function useEvolve() {
     store.setExternalBuildDetected(false);
     store.clearEvolveEvents();
     store.clearLogs();
-    store.clearPreview();
     store.setConversationalResponse(null);
     store.appendLog(`\n> Evolving: "${store.evolvePrompt}"\n`);
 
@@ -69,8 +68,6 @@ export function useEvolve() {
 
       if (isConversational) {
         useWidgetStore.getState().setConversationalResponse(result.conversationalResponse ?? null);
-      } else {
-        store.setSummaryAvailable(true);
       }
       if (result?.gitStatus) {
         useWidgetStore.getState().setGitStatus(result.gitStatus);
