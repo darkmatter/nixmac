@@ -1,9 +1,9 @@
 "use client";
 
-import { ConfirmButton } from "@/components/widget/confirm-button";
-import { ExternalBuildDetected } from "@/components/widget/external-build-detected";
-import { PromptInputSection } from "@/components/widget/prompt-input-section";
-import { StepActionsHeader } from "@/components/widget/step-actions-header";
+import { ConfirmButton } from "@/components/widget/controls/confirm-button";
+import { ExternalBuildDetected } from "@/components/widget/notifications/external-build-detected";
+import { PromptInputSection } from "@/components/widget/promptinput/prompt-input-section";
+import { StepActionsHeader } from "@/components/widget/layout/step-actions-header";
 import { SummaryOrDiff } from "@/components/widget/summaries/summary-or-diff";
 import { useApply } from "@/hooks/use-apply";
 import { useRollback } from "@/hooks/use-rollback";

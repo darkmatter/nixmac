@@ -9,12 +9,11 @@ export function useSummary() {
   const autoSummarizeOnFocus = useWidgetStore((s) => s.autoSummarizeOnFocus);
 
   const findChangeMap = useCallback(async (): Promise<void> => {
-    const { setChangeMap, setSummaryAvailable } = useWidgetStore.getState();
+    const { setChangeMap } = useWidgetStore.getState();
     try {
       const map = await darwinAPI.summarizedChanges.findChangeMap();
       if (map) {
         setChangeMap(map);
-        setSummaryAvailable(map.groups.length > 0 || map.singles.length > 0);
       }
     } catch (e) {
       console.error("[SemanticChangeMap] error", e);
@@ -33,12 +32,11 @@ export function useSummary() {
   }, []);
 
   const generateCurrentSummary = useCallback(async () => {
-    const { setSummarizing, setChangeMap, setSummaryAvailable } = useWidgetStore.getState();
+    const { setSummarizing, setChangeMap } = useWidgetStore.getState();
     setSummarizing(true);
     try {
       const map = await darwinAPI.summarizedChanges.summarizeCurrent();
       setChangeMap(map);
-      setSummaryAvailable(map.groups.length > 0 || map.singles.length > 0);
     } finally {
       setSummarizing(false);
     }
