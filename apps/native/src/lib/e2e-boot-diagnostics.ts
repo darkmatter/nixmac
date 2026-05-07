@@ -25,6 +25,10 @@ function setStorageValue(key: string, value: string) {
   }
 }
 
+function markNativeBootStage(stage: string) {
+  void darwinAPI.debug.markBootStage(stage, Date.now()).catch(() => {});
+}
+
 function simpleHash(value: string) {
   let hash = 2166136261;
   for (let index = 0; index < value.length; index += 1) {
@@ -77,6 +81,7 @@ export function markBootStage(stage: string) {
   document.documentElement.dataset.nixmacBootStage = normalizedStage;
   document.title = `nixmac boot:${normalizedStage}`;
   setStorageValue("nixmac:e2e-boot-stage", normalizedStage);
+  markNativeBootStage(normalizedStage);
   console.info(`[nixmac boot-stage] ${normalizedStage}`);
 }
 
@@ -87,6 +92,7 @@ export function clearBootStage() {
   document.documentElement.dataset.nixmacBootStage = "mounted";
   document.title = APP_TITLE;
   setStorageValue("nixmac:e2e-boot-stage", "mounted");
+  markNativeBootStage("mounted");
 }
 
 function summarizeDetail(detail: unknown): string | undefined {

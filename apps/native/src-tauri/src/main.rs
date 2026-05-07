@@ -49,7 +49,7 @@ use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
     webview::PageLoadEvent,
-    Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent,
+    Emitter, Manager, RunEvent, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
 };
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
@@ -63,6 +63,91 @@ fn e2e_solid_capture_enabled() -> bool {
 
 fn e2e_webview_watchdog_enabled() -> bool {
     cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_WEBVIEW_WATCHDOG")
+}
+
+#[cfg(debug_assertions)]
+fn e2e_request_webview_boot_probe(window: &WebviewWindow, label: &'static str) {
+    let label_json =
+        serde_json::to_string(label).unwrap_or_else(|_| "\"unknown-native-probe\"".to_string());
+    let script = format!(
+        r#"
+(() => {{
+  const label = {label_json};
+  const summarizeStorage = () => {{
+    const values = {{}};
+    for (const key of [
+      "nixmac:e2e-boot-stage",
+      "nixmac:e2e-dom-snapshot:last",
+      "nixmac:e2e-dom-snapshot:text",
+      "nixmac:e2e-dom-snapshot:html",
+      "nixmac:e2e-dom-snapshot:watchdog-pre-reload:last"
+    ]) {{
+      try {{
+        values[key] = window.localStorage.getItem(key);
+      }} catch {{
+        values[key] = "[unavailable]";
+      }}
+    }}
+    return values;
+  }};
+  const detail = JSON.stringify({{
+    title: document.title || "",
+    readyState: document.readyState || "",
+    bootStage: document.documentElement?.dataset?.nixmacBootStage || "",
+    capture: document.documentElement?.dataset?.nixmacE2eCapture || "",
+    capturePaint: document.documentElement?.dataset?.nixmacE2eCapturePaint || "",
+    rootChildren: document.getElementById("root")?.childElementCount ?? null,
+    bodyTextLength: document.body?.innerText?.length ?? null,
+    storage: summarizeStorage(),
+  }});
+  const invoke = window.__TAURI__?.core?.invoke || window.__TAURI_INTERNALS__?.invoke;
+  if (typeof invoke === "function") {{
+    invoke("e2e_log_breadcrumb", {{
+      label: `native webview boot probe ${{label}}`,
+      detail,
+      clientTimestampUnixMs: Date.now(),
+    }}).catch(() => {{}});
+  }}
+  console.info(`[nixmac native webview boot probe] ${{label}}`, detail);
+}})();
+"#,
+    );
+    match window.eval(script) {
+        Ok(()) => {
+            log::debug!("main webview E2E boot probe requested: {}", label);
+        }
+        Err(error) => {
+            log::warn!(
+                "main webview E2E boot probe eval failed for {}: {}",
+                label,
+                error
+            );
+        }
+    }
+}
+
+#[cfg(not(debug_assertions))]
+fn e2e_request_webview_boot_probe(_window: &WebviewWindow, _label: &'static str) {}
+
+#[cfg(debug_assertions)]
+fn e2e_schedule_webview_boot_probe(window: WebviewWindow, label: &'static str, delay: Duration) {
+    std::thread::spawn(move || {
+        std::thread::sleep(delay);
+        let probe_window = window.clone();
+        if let Err(error) = window.run_on_main_thread(move || {
+            e2e_request_webview_boot_probe(&probe_window, label);
+        }) {
+            log::warn!(
+                "main webview E2E boot probe could not schedule {}: {}",
+                label,
+                error
+            );
+        }
+    });
+}
+
+#[cfg(not(debug_assertions))]
+fn e2e_schedule_webview_boot_probe(_window: WebviewWindow, _label: &'static str, _delay: Duration) {
 }
 
 const E2E_CAPTURE_DARK_BACKGROUND_SCRIPT: &str = r#"
@@ -397,6 +482,8 @@ fn run_gui_mode(
             commands::debug::debug_sentry_event,
             #[cfg(debug_assertions)]
             commands::debug::e2e_log_breadcrumb,
+            #[cfg(debug_assertions)]
+            commands::debug::e2e_mark_boot_stage,
             // Homebrew
             commands::homebrew::homebrew_apply_diff,
             commands::homebrew::homebrew_get_state_diff,
@@ -621,6 +708,7 @@ fn run_gui_mode(
             }
             let main_webview_loaded = Arc::new(AtomicBool::new(false));
             let main_webview_loaded_for_page_load = Arc::clone(&main_webview_loaded);
+            let e2e_page_load_boot_probe = e2e_webview_watchdog;
 
             let mut main_window_builder =
                 WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
@@ -643,7 +731,7 @@ fn run_gui_mode(
                     } else {
                         tauri::TitleBarStyle::Overlay
                     })
-                    .on_page_load(move |_window, payload| {
+                    .on_page_load(move |window, payload| {
                         log::debug!(
                             "main webview page load {:?}: {}",
                             payload.event(),
@@ -651,6 +739,18 @@ fn run_gui_mode(
                         );
                         if payload.event() == PageLoadEvent::Finished {
                             main_webview_loaded_for_page_load.store(true, Ordering::SeqCst);
+                            if e2e_page_load_boot_probe {
+                                e2e_schedule_webview_boot_probe(
+                                    window.clone(),
+                                    "page-load-finished-plus-1s",
+                                    Duration::from_secs(1),
+                                );
+                                e2e_schedule_webview_boot_probe(
+                                    window.clone(),
+                                    "page-load-finished-plus-5s",
+                                    Duration::from_secs(5),
+                                );
+                            }
                         }
                     });
 
@@ -704,6 +804,16 @@ fn run_gui_mode(
             }
 
             if e2e_webview_watchdog {
+                e2e_schedule_webview_boot_probe(
+                    main_window.clone(),
+                    "post-build-plus-2s",
+                    Duration::from_secs(2),
+                );
+                e2e_schedule_webview_boot_probe(
+                    main_window.clone(),
+                    "post-build-plus-10s",
+                    Duration::from_secs(10),
+                );
                 let watchdog_window = main_window.clone();
                 let watchdog_loaded = Arc::clone(&main_webview_loaded);
                 let watchdog_secs =
@@ -723,6 +833,7 @@ fn run_gui_mode(
                     );
                     let reload_window = watchdog_window.clone();
                     if let Err(err) = watchdog_window.run_on_main_thread(move || {
+                        e2e_request_webview_boot_probe(&reload_window, "watchdog-before-reload");
                         if let Err(reload_err) = reload_window.reload() {
                             log::error!(
                                 "main webview E2E load watchdog reload failed: {}",

@@ -194,6 +194,11 @@ export const darwinAPI = {
         detail: detail ?? null,
         clientTimestampUnixMs: clientTimestampUnixMs ?? null,
       }),
+    markBootStage: (stage: string, clientTimestampUnixMs?: number) =>
+      invoke<OkResult>("e2e_mark_boot_stage", {
+        stage,
+        clientTimestampUnixMs: clientTimestampUnixMs ?? null,
+      }),
   },
   ui: {
     getPrefs: () => invoke<DarwinPrefs>("ui_get_prefs"),
