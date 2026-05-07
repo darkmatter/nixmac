@@ -22,10 +22,17 @@ const setDir = async (dir: string) => {
   return result;
 };
 
+const prepareNewDir = async (dir: string) => {
+  const result = await darwinAPI.config.prepareNewDir(dir);
+  await applyDirResult(result);
+  return result;
+};
+
 const pickDir = async () => {
   const result = await darwinAPI.config.pickDir();
   if (!result) return;
   await applyDirResult(result);
+  return result;
 };
 
 const saveHost = async (host: string) => {
@@ -75,5 +82,5 @@ const bootstrap = async (hostname: string) => {
 export function useDarwinConfig() {
   const isBootstrapping = useWidgetStore((state) => state.isBootstrapping);
 
-  return { setDir, pickDir, saveHost, bootstrap, isBootstrapping };
+  return { setDir, prepareNewDir, pickDir, saveHost, bootstrap, isBootstrapping };
 }
