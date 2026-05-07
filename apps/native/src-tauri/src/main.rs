@@ -493,7 +493,6 @@ fn run_gui_mode(
             commands::git::git_init_repo,
             commands::git::git_status,
             commands::git::git_status_and_cache,
-            commands::git::git_cached,
             commands::git::git_commit,
             commands::git::git_stash,
             commands::git::git_file_diff_contents,
@@ -503,7 +502,6 @@ fn run_gui_mode(
             commands::evolve::darwin_evolve_answer,
             commands::apply::darwin_apply_stream_start,
             commands::apply::darwin_activate_store_path,
-            commands::apply::darwin_apply_stream_cancel,
             commands::apply::finalize_apply,
             commands::apply::finalize_rollback,
             commands::rollback::rollback_erase,
@@ -518,8 +516,6 @@ fn run_gui_mode(
             commands::apply::nix_check,
             commands::apply::nix_install_start,
             commands::apply::darwin_rebuild_prefetch,
-            commands::apply::finalize_flake_lock,
-            commands::apply::flake_installed_apps,
             commands::apply::flake_list_hosts,
             commands::config::flake_exists,
             commands::config::bootstrap_default_config,
@@ -550,7 +546,6 @@ fn run_gui_mode(
             // Permissions
             commands::permissions::permissions_check_all,
             commands::permissions::permissions_request,
-            commands::permissions::permissions_all_required_granted,
             // System defaults scanner
             commands::system_defaults::get_recommended_prompt,
             commands::system_defaults::scan_system_defaults,
@@ -567,7 +562,6 @@ fn run_gui_mode(
             // Editor
             commands::editor::editor_read_file,
             commands::editor::editor_write_file,
-            commands::editor::editor_list_files,
             // LSP
             commands::editor::lsp_start,
             commands::editor::lsp_send,
