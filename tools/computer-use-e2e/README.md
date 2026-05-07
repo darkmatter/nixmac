@@ -630,16 +630,17 @@ MacInCloud operator notes:
   appears.
 - The Peekaboo scenarios use `NIXMAC_E2E_SOLID_CAPTURE=1` by default so the
   debug app keeps nixmac's normal transparent overlay-titlebar window while
-  forcing a solid dark CSS backing inside the WebView. This keeps screenshots
-  visually close to the real app and prevents transparent app surfaces from
-  showing host apps underneath.
+  forcing a solid dark CSS backing inside the WebView. The default path does not
+  set a native AppKit background color; the WebView owns the dark backing so
+  remote capture sees the same layer that paints the product UI.
 - The Peekaboo scenarios keep the E2E WebView load watchdog enabled by default
   through `NIXMAC_E2E_WEBVIEW_WATCHDOG=1`; stalled initial WebView loads request
   one reload and are logged into the scenario diagnostics.
 - `NIXMAC_E2E_OPAQUE_WINDOW=1` is an opt-in debug escape hatch for remote
-  capture investigation. It uses an opaque, visible-titlebar native window plus
-  the same dark WebView backing script. Default Product Proof runs clear stale
-  opaque-mode launch state and uses CSS-backed solid capture instead.
+  capture investigation. It uses an opaque, visible-titlebar native window,
+  native dark background color, and the same dark WebView backing script.
+  Default Product Proof runs clear stale opaque-mode launch state and uses
+  CSS-only solid capture instead.
 
 The remote Codex app-server lane remains the PR/Product Proof production lane.
 The Peekaboo lane is isolated local evidence so the team can compare driver
