@@ -384,8 +384,8 @@ fn run_gui_mode(
             commands::cli_tool::list_cli_models,
             // Updater
             commands::updater::relaunch_after_update,
-            updater_pin::install_version,
-            updater_pin::clear_pinned_version,
+            commands::updater::install_version,
+            commands::updater::clear_pinned_version,
             // Editor
             commands::editor::editor_read_file,
             commands::editor::editor_write_file,
