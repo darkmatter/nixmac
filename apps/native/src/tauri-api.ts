@@ -18,7 +18,6 @@ import type {
   FeedbackPanicDetails,
   FeedbackShareOptions,
   FeedbackSystemInfo,
-  FileEntry,
   FinalizeApplyResult,
   GitStatus,
   HomebrewState,
@@ -65,7 +64,6 @@ export type {
   FeedbackPanicDetails,
   FeedbackShareOptions,
   FeedbackSystemInfo,
-  FileEntry,
   FinalizeApplyResult,
   GitFileStatus,
   GitStatus,
@@ -137,7 +135,6 @@ export const darwinAPI = {
   git: {
     status: () => invoke<GitStatus>("git_status"),
     statusAndCache: () => invoke<GitStatus>("git_status_and_cache"),
-    cached: () => invoke<GitStatus | null>("git_cached"),
     commit: (message: string) => invoke<CommitResult>("git_commit", { message }),
     stash: (message: string) => invoke<OkResult>("git_stash", { message }),
   },
@@ -151,7 +148,6 @@ export const darwinAPI = {
       invoke<OkResult>("darwin_apply_stream_start", { hostOverride }),
     activateStorePath: (storePath: string) =>
       invoke<OkResult>("darwin_activate_store_path", { storePath }),
-    applyStreamCancel: () => invoke<OkResult>("darwin_apply_stream_cancel"),
     finalizeApply: () => invoke<FinalizeApplyResult>("finalize_apply"),
     finalizeRollback: (storePath: string | null, changesetId: number | null) =>
       invoke<FinalizeApplyResult>("finalize_rollback", { storePath, changesetId }),
@@ -167,11 +163,9 @@ export const darwinAPI = {
   },
   flake: {
     listHosts: () => invoke<string[]>("flake_list_hosts"),
-    installedApps: () => invoke<unknown[]>("flake_installed_apps"),
     exists: () => invoke<boolean>("flake_exists"),
     existsAt: (dir: string) => invoke<boolean>("flake_exists_at", { dir }),
     bootstrapDefault: (hostname: string) => invoke<void>("bootstrap_default_config", { hostname }),
-    finalizeFlakeLock: () => invoke<OkResult>("finalize_flake_lock"),
   },
   path: {
     exists: (dir: string) => invoke<boolean>("path_exists", { dir }),
@@ -224,7 +218,6 @@ export const darwinAPI = {
   permissions: {
     checkAll: () => invoke<PermissionsState>("permissions_check_all"),
     request: (permissionId: string) => invoke<Permission>("permissions_request", { permissionId }),
-    allRequiredGranted: () => invoke<boolean>("permissions_all_required_granted"),
     // macOS-specific permission checks via tauri-plugin-macos-permissions
     checkFullDiskAccess: () => checkFullDiskAccessPermission(),
     requestFullDiskAccess: () => requestFullDiskAccessPermission(),
@@ -245,7 +238,6 @@ export const darwinAPI = {
     readFile: (relPath: string) => invoke<string>("editor_read_file", { relPath }),
     writeFile: (relPath: string, content: string) =>
       invoke<void>("editor_write_file", { relPath, content }),
-    listFiles: () => invoke<FileEntry[]>("editor_list_files"),
   },
 
   lsp: {

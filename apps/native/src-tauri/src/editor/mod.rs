@@ -7,7 +7,6 @@ pub mod lsp;
 
 use std::path::Path;
 
-pub(crate) use crate::shared_types::FileEntry;
 use tauri::AppHandle;
 
 use crate::evolve::file_ops;
@@ -46,48 +45,3 @@ pub async fn write_file(app: &AppHandle, rel_path: &str, content: &str) -> Resul
     std::fs::write(&full_path, content).map_err(|e| format!("Failed to write {}: {}", rel_path, e))
 }
 
-/// List files in the config directory recursively.
-pub async fn list_files(app: &AppHandle) -> Result<Vec<FileEntry>, String> {
-    let config_dir = store::get_config_dir(app).map_err(|e| e.to_string())?;
-    let base = Path::new(&config_dir);
-
-    let mut entries = Vec::new();
-    collect_entries(base, base, &mut entries).map_err(|e| e.to_string())?;
-    entries.sort_by(|a, b| a.path.cmp(&b.path));
-    Ok(entries)
-}
-
-fn collect_entries(
-    base: &Path,
-    dir: &Path,
-    entries: &mut Vec<FileEntry>,
-) -> Result<(), std::io::Error> {
-    for entry in std::fs::read_dir(dir)? {
-        let entry = entry?;
-        let path = entry.path();
-        let name = entry.file_name().to_string_lossy().to_string();
-
-        // Skip hidden files/dirs and common noise
-        if name.starts_with('.') || name == "node_modules" || name == "result" {
-            continue;
-        }
-
-        let rel = path
-            .strip_prefix(base)
-            .unwrap_or(&path)
-            .to_string_lossy()
-            .to_string();
-
-        let is_dir = path.is_dir();
-        entries.push(FileEntry {
-            path: rel,
-            name,
-            is_dir,
-        });
-
-        if is_dir {
-            collect_entries(base, &path, entries)?;
-        }
-    }
-    Ok(())
-}

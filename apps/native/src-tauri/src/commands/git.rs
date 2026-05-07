@@ -22,12 +22,6 @@ pub async fn git_status_and_cache(app: AppHandle) -> Result<shared_types::GitSta
     Ok(status)
 }
 
-/// Returns the cached git status if available.
-#[tauri::command]
-pub async fn git_cached(app: AppHandle) -> Result<Option<shared_types::GitStatus>, String> {
-    git::cached(&app).map_err(|e| capture_err("git_cached", e))
-}
-
 /// Stages all changes and creates a commit with the given message.
 #[tauri::command]
 pub async fn git_commit(
