@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
-import { invoke } from "@tauri-apps/api/core";
+import { useUpdater } from "@/hooks/use-updater";
 import { getVersion } from "@tauri-apps/api/app";
 import { AlertTriangle, Download, History, Pin, RotateCcw } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 const VERSION_PATTERN = /^[0-9]+(?:\.[0-9]+){0,2}(?:-[a-zA-Z0-9.-]+)?$/;
 
 export function DeveloperTab() {
+  const { installVersion, relaunch, clearPinnedVersion } = useUpdater();
   const pinnedVersion = useWidgetStore((s) => s.pinnedVersion);
   const setPinnedVersion = useWidgetStore((s) => s.setPinnedVersion);
   const [currentVersion, setCurrentVersion] = useState<string | null>(null);
@@ -37,12 +38,11 @@ export function DeveloperTab() {
     setStatusMessage(`Fetching v${target}…`);
     setInstalling(true);
     try {
-      await invoke("install_version", { version: target });
+      await installVersion(target);
       // Sync local store immediately — persistence already happened on the Rust side.
       setPinnedVersion(target);
       setStatusMessage(`Installed v${target}. Relaunching…`);
-      // Reuse the same relaunch path the production updater uses.
-      await invoke("relaunch_after_update");
+      await relaunch();
     } catch (err) {
       setStatusMessage(null);
       setErrorMessage(err instanceof Error ? err.message : String(err));
@@ -53,7 +53,7 @@ export function DeveloperTab() {
   const handleClearPin = async () => {
     setErrorMessage(null);
     try {
-      await invoke("clear_pinned_version");
+      await clearPinnedVersion();
       setPinnedVersion(null);
       setStatusMessage("Cleared pinned version. The auto-updater will check for the latest on next launch.");
     } catch (err) {

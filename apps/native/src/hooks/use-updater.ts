@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Update } from "@tauri-apps/plugin-updater";
-import { invoke } from "@tauri-apps/api/core";
 import { darwinAPI } from "@/tauri-api";
 import { useWidgetStore } from "@/stores/widget-store";
 
@@ -120,7 +119,7 @@ export function useUpdater() {
       // custom relaunch_after_update command opens the newly-installed
       // bundle via LaunchServices instead of re-exec-ing the cached
       // (potentially stale) binary path from the old bundle.
-      await invoke("relaunch_after_update");
+      await darwinAPI.updater.relaunch();
     } catch (err) {
       if (isDevMode) {
         setState((s) => ({
@@ -143,6 +142,18 @@ export function useUpdater() {
       }));
     }
   }, [isDevMode, state.available]);
+
+  const installVersion = useCallback(async (version: string): Promise<void> => {
+    await darwinAPI.updater.installVersion(version);
+  }, []);
+
+  const relaunch = useCallback(async (): Promise<void> => {
+    await darwinAPI.updater.relaunch();
+  }, []);
+
+  const clearPinnedVersion = useCallback(async (): Promise<void> => {
+    await darwinAPI.updater.clearPinnedVersion();
+  }, []);
 
   const dismiss = useCallback(() => {
     setState(initialState);
@@ -189,6 +200,9 @@ export function useUpdater() {
     ...state,
     checkForUpdates,
     installUpdate,
+    installVersion,
+    relaunch,
+    clearPinnedVersion,
     dismiss,
   };
 }
