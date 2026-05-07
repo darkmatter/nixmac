@@ -1,0 +1,12 @@
+{
+  "app": "nixmac",
+  "reason": "ready-shell-timeout",
+  "capturedAt": "2026-05-07T22:35:19Z",
+  "processes": [
+{
+  "pid": 14253,
+  "ps": "14253     1 S    Thu May  7 15:33:32 2026     /private/tmp/nixmac-peekaboo-e2e-app-25525254610-1/nixmac.app/Contents/MacOS/nixmac"
+}
+
+  ]
+}

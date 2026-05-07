@@ -1,8 +1,0 @@
-{
-  "capturedAtUnixMs": 1778190322791,
-  "label": "page-load-finished-plus-5s",
-  "message": "WebKit returned an error",
-  "path": "/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-07_21-44-22-043Z/diagnostics/native-webview-snapshots/native-webview-0002-page-load-finished-plus-5s-1778190322791.png",
-  "source": "WKWebView.takeSnapshotWithConfiguration",
-  "status": "failed"
-}
