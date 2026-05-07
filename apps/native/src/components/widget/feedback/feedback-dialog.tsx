@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import * as Sentry from "@sentry/react";
-import { invoke } from "@tauri-apps/api/core";
+
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import {
   Dialog,
@@ -443,7 +443,7 @@ export function FeedbackDialog() {
 
     // Also send from Rust backend
     try {
-      await invoke("debug_sentry_event");
+      await darwinAPI.debug.sentryEvent();
     } catch (err) {
       // eslint-disable-next-line no-console
       console.warn("[debug_sentry_event] Failed to invoke Rust command:", err);
