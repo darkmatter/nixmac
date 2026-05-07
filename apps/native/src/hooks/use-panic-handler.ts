@@ -48,11 +48,14 @@ export function usePanicHandler() {
       // Automatically open the feedback dialog with Error type and pre-filled error details
       // This gives the user an immediate way to report the crash
       openFeedback(FeedbackType.Error, errorMessage);
+    }).catch((error) => {
+      if (import.meta.env.PROD) console.error("Panic listener unavailable:", error);
+      return () => {};
     });
 
     // Cleanup listener on unmount
     return () => {
-      unlisten.then((fn) => fn());
+      unlisten.then((fn) => fn()).catch(() => {});
     };
   }, [setError, openFeedback, setPanicDetails]);
 }

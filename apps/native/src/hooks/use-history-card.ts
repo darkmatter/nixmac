@@ -25,16 +25,17 @@ export function useHistoryCard(item: HistoryItem, isPreview = false): UseHistory
 
   const handleCardClick = useCallback(() => {
     if (window.getSelection()?.toString()) return;
-    if (!item.changeMap) return;
+    if (!item.changeMap || isPreview) return;
     setExpanded((prev) => !prev);
-  }, [item.changeMap]);
+  }, [item.changeMap, isPreview]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (isPreview) return;
     if (e.key === "Enter" || e.key === " ") setExpanded((prev) => !prev);
-  }, []);
+  }, [isPreview]);
 
   const borderColor = item.isBuilt ? "border-teal-400/40" : "border-white/[0.12]";
-  const interactivity = item.changeMap
+  const interactivity = item.changeMap && !isPreview
     ? cn(
         "cursor-pointer",
         item.isBuilt

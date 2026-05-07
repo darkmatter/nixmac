@@ -74,6 +74,7 @@ export E2E_RECORD="${E2E_RECORD:-1}"
 export E2E_CLEANUP_NIX="${E2E_CLEANUP_NIX:-1}"
 export E2E_VERBOSE="${E2E_VERBOSE:-0}"
 export E2E_JSON="${E2E_JSON:-0}"
+export E2E_DIALOG_AUTOMATION="${E2E_DIALOG_AUTOMATION:-1}"
 
 while [ $# -gt 0 ]; do
     case "$1" in

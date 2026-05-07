@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { darwinAPI } from "@/tauri-api";
 
 interface ModelComboboxProps {
-  provider: "openai" | "ollama" | "vllm" | "opencode";
+  provider: "openrouter" | "openai" | "ollama" | "vllm" | "opencode";
   value: string;
   onChange: (value: string) => void;
   onBlur?: () => void;
@@ -112,7 +112,7 @@ export function ModelCombobox({
     try {
       let freshModels: string[] = [];
 
-      if (provider === "openai") {
+      if (provider === "openrouter" || provider === "openai") {
         freshModels = await fetchOpenRouterModels();
       } else if (provider === "ollama") {
         const prefs = await darwinAPI.ui.getPrefs();

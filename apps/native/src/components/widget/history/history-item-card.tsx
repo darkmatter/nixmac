@@ -39,6 +39,7 @@ export function HistoryItemCard({
 }: HistoryItemCardProps) {
   const { expanded, colorMap, cardClassName, actionType, handleCardClick, handleKeyDown } = useHistoryCard(item, isPreview);
   const { isUndone } = timeline;
+  const isCardInteractive = !!item.changeMap && !isPreview;
 
   const getActionOrBadge = () => {
     switch (actionType) {
@@ -75,10 +76,10 @@ export function HistoryItemCard({
             isPreview && "border-teal-400/40 group-hover:border-teal-400/50 group-hover:bg-[#111111]",
             item.isBuilt && isPreviewActive && "border-white/[0.12]",
           )}
-          onClick={handleCardClick}
-          onKeyDown={item.changeMap ? handleKeyDown : undefined}
-          role={item.changeMap ? "button" : undefined}
-          tabIndex={item.changeMap ? 0 : undefined}
+          onClick={isCardInteractive ? handleCardClick : undefined}
+          onKeyDown={isCardInteractive ? handleKeyDown : undefined}
+          role={isCardInteractive ? "button" : undefined}
+          tabIndex={isCardInteractive ? 0 : undefined}
         >
           <HistoryCommitInfo
             header={<CommitMessage hash={item.hash} message={item.message} originMessage={item.originMessage ?? undefined} />}

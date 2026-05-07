@@ -11,14 +11,19 @@ export function useTrayEvents() {
       listen("tray:open-settings", () => {
         useWidgetStore.getState().setSettingsOpen(true);
       }),
-    ]);
+    ]).catch((error) => {
+      if (import.meta.env.PROD) console.error("Tray listeners unavailable:", error);
+      return [];
+    });
 
     return () => {
-      unlisten.then((fns) => {
-        for (const fn of fns) {
-          fn();
-        }
-      });
+      unlisten
+        .then((fns) => {
+          for (const fn of fns) {
+            fn();
+          }
+        })
+        .catch(() => {});
     };
   }, []);
 }

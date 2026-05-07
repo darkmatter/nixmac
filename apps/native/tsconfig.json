@@ -53,7 +53,11 @@
     "src/components/ui/switch.tsx",
     "src/components/ui/toggle-group.tsx",
     "src/components/ui/toggle.tsx",
-    "src/components/theme-provider.tsx"
+    "src/components/theme-provider.tsx",
+    "src/components/code-example4.tsx",
+    "src/components/system-manager-showcase.tsx",
+    "src/components/tabs-standard-1.tsx",
+    "src/components/ui/dropdown-menu.tsx"
   ],
   "references": [
     {

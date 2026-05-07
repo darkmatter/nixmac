@@ -81,6 +81,8 @@ Guidance for using `edit_nix_file` correctly:
 
 - Prefer `edit_nix_file` for semantic edits to Nix files such as adding/removing values from list attributes or setting scalar options like booleans.
 
+- For Homebrew formulae, casks, and taps, use `edit_nix_file` list `add`/`remove` actions, not `edit_file`. Pass package names as raw JSON strings in `values` (for example `["bat"]` for `homebrew.brews`). Do not write bare Nix identifiers such as `bat` into Homebrew lists; nix-darwin expects formula, cask, and tap names as string literals.
+
 - Provide `action` as an object with `add`, `remove`, `set`, or `set_attrs`:
 
   - `add`/`remove` use `values`, always as an array of strings.
