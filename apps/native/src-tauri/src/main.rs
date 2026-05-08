@@ -726,44 +726,21 @@ fn e2e_request_native_webview_snapshot(
         })
         .copy();
         let webview = webview.inner() as *mut Object;
-        let configuration: *mut Object = msg_send![class!(WKSnapshotConfiguration), new];
-        if !configuration.is_null() {
-            #[repr(C)]
-            struct E2eNativePoint {
-                x: f64,
-                y: f64,
-            }
-
-            #[repr(C)]
-            struct E2eNativeSize {
-                width: f64,
-                height: f64,
-            }
-
-            #[repr(C)]
-            struct E2eNativeRect {
-                origin: E2eNativePoint,
-                size: E2eNativeSize,
-            }
-
-            let bounds: E2eNativeRect = msg_send![webview, bounds];
-            let _: () = msg_send![configuration, setRect: bounds];
-            let _: () = msg_send![configuration, setAfterScreenUpdates: true];
-        }
+        // Use WebKit's full-view snapshot path instead of passing a rect from
+        // AppKit bounds. On virtualized hosts the bounds can be valid while the
+        // configured snapshot still fails with WKErrorDomain code=1.
+        let configuration: *mut Object = std::ptr::null_mut();
         let _: () = msg_send![
             webview,
             takeSnapshotWithConfiguration: configuration
             completionHandler: &*completion
         ];
-        if !configuration.is_null() {
-            let _: () = msg_send![configuration, release];
-        }
         // The completion is async and owned by WebKit after dispatch. Leaking the
         // copied block is acceptable in debug-only E2E runs and avoids use-after-free
         // while the virtualized host is under load.
         std::mem::forget(completion);
         log::debug!(
-            "NIXMAC_E2E_NATIVE_SNAPSHOT requested {} for {}",
+            "NIXMAC_E2E_NATIVE_SNAPSHOT requested {} for {} using nil WKSnapshotConfiguration",
             output_path.display(),
             label_for_log
         );
