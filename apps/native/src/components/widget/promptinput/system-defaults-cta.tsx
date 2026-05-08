@@ -10,7 +10,7 @@ import { useWidgetStore } from "@/stores/widget-store";
 import type { SystemDefault, SystemDefaultsScan } from "@/tauri-api";
 import { darwinAPI } from "@/tauri-api";
 import { Monitor, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 const DISMISS_KEY = "nixmac:system-defaults-dismissed";
 
@@ -72,7 +72,7 @@ export function SystemDefaultsCTA() {
     };
   }, [eligible]);
 
-  const handleApply = useCallback(async (defaults: SystemDefault[]) => {
+  const handleApply = async (defaults: SystemDefault[]) => {
     const store = useWidgetStore.getState();
     setApplying(true);
     store.setProcessing(true, "apply");
@@ -92,7 +92,7 @@ export function SystemDefaultsCTA() {
       setOpen(false);
       useWidgetStore.getState().setProcessing(false);
     }
-  }, []);
+  };
 
   const handleDismiss = () => {
     localStorage.setItem(DISMISS_KEY, "true");
@@ -100,10 +100,7 @@ export function SystemDefaultsCTA() {
     setOpen(false);
   };
 
-  const categories = useMemo(() => {
-    if (!scan) return new Map<string, SystemDefault[]>();
-    return groupByCategory(scan.defaults);
-  }, [scan]);
+  const categories = scan ? groupByCategory(scan.defaults) : new Map<string, SystemDefault[]>();
 
   if (dismissed) return null;
   if (!eligible) return null;

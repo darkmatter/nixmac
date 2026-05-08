@@ -469,6 +469,7 @@ fn run_gui_mode(
             commands::config::config_get,
             commands::config::config_set_host_attr,
             commands::config::config_set_dir,
+            commands::config::config_prepare_new_dir,
             commands::config::config_pick_dir,
             commands::config::flake_exists_at,
             commands::config::path_exists,
@@ -480,6 +481,7 @@ fn run_gui_mode(
             commands::debug::trigger_test_panic,
             #[cfg(debug_assertions)]
             commands::debug::debug_sentry_event,
+            commands::debug::developer_clear_tauri_state,
             #[cfg(debug_assertions)]
             commands::debug::e2e_log_breadcrumb,
             #[cfg(debug_assertions)]

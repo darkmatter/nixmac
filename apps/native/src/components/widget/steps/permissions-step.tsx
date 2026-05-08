@@ -5,7 +5,7 @@ import { darwinAPI, type Permission, type PermissionStatus } from "@/tauri-api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Shield, Check, X, AlertCircle, Loader2 } from "lucide-react";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 
 /**
  * Check FDA permission using the native plugin and update the permissions state.
@@ -67,60 +67,57 @@ export function PermissionsStep() {
     refreshPermissions();
   }, [setPermissionsState]);
 
-  const handleRequestPermission = useCallback(
-    async (permissionId: string) => {
-      setIsLoading(permissionId);
-      try {
-        // For FDA, use the native plugin to request
-        if (permissionId === "full-disk") {
-          await darwinAPI.permissions.requestFullDiskAccess();
-          // Wait a bit for user to potentially grant access, then re-check
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-          const updatedPermissions = await checkAndUpdateFDAPermission(
-            permissionsState?.permissions ?? [],
-          );
+  const handleRequestPermission = async (permissionId: string) => {
+    setIsLoading(permissionId);
+    try {
+      // For FDA, use the native plugin to request
+      if (permissionId === "full-disk") {
+        await darwinAPI.permissions.requestFullDiskAccess();
+        // Wait a bit for user to potentially grant access, then re-check
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const updatedPermissions = await checkAndUpdateFDAPermission(
+          permissionsState?.permissions ?? [],
+        );
 
-          if (permissionsState) {
-            const allRequiredGranted = updatedPermissions
-              .filter((p) => p.required)
-              .every((p) => p.status === "granted");
+        if (permissionsState) {
+          const allRequiredGranted = updatedPermissions
+            .filter((p) => p.required)
+            .every((p) => p.status === "granted");
 
-            setPermissionsState({
-              ...permissionsState,
-              permissions: updatedPermissions,
-              allRequiredGranted,
-            });
-          }
-        } else {
-          // For other permissions, use the backend
-          const updatedPermission = await darwinAPI.permissions.request(permissionId);
-
-          // Update the permission in the state
-          if (permissionsState) {
-            const updatedPermissions = permissionsState.permissions.map((p) =>
-              p.id === permissionId ? updatedPermission : p,
-            );
-            const allRequiredGranted = updatedPermissions
-              .filter((p) => p.required)
-              .every((p) => p.status === "granted");
-
-            setPermissionsState({
-              ...permissionsState,
-              permissions: updatedPermissions,
-              allRequiredGranted,
-            });
-          }
+          setPermissionsState({
+            ...permissionsState,
+            permissions: updatedPermissions,
+            allRequiredGranted,
+          });
         }
-      } catch (error) {
-        console.error("Failed to request permission:", error);
-      } finally {
-        setIsLoading(null);
-      }
-    },
-    [permissionsState, setPermissionsState],
-  );
+      } else {
+        // For other permissions, use the backend
+        const updatedPermission = await darwinAPI.permissions.request(permissionId);
 
-  const handleRefreshAll = useCallback(async () => {
+        // Update the permission in the state
+        if (permissionsState) {
+          const updatedPermissions = permissionsState.permissions.map((p) =>
+            p.id === permissionId ? updatedPermission : p,
+          );
+          const allRequiredGranted = updatedPermissions
+            .filter((p) => p.required)
+            .every((p) => p.status === "granted");
+
+          setPermissionsState({
+            ...permissionsState,
+            permissions: updatedPermissions,
+            allRequiredGranted,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to request permission:", error);
+    } finally {
+      setIsLoading(null);
+    }
+  };
+
+  const handleRefreshAll = async () => {
     setIsLoading("all");
     try {
       const state = await darwinAPI.permissions.checkAll();
@@ -139,7 +136,7 @@ export function PermissionsStep() {
     } finally {
       setIsLoading(null);
     }
-  }, [setPermissionsState]);
+  };
 
   const permissions = permissionsState?.permissions ?? [];
   const allRequiredGranted = permissionsState?.allRequiredGranted ?? false;

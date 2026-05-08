@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -74,6 +74,60 @@ async function fetchOllamaModels(baseUrl?: string): Promise<string[]> {
   }
 }
 
+type ModelProvider = ModelComboboxProps["provider"];
+
+async function fetchFreshModels(provider: ModelProvider): Promise<string[]> {
+  if (provider === "openai") {
+    return fetchOpenRouterModels();
+  }
+  if (provider === "ollama") {
+    const prefs = await darwinAPI.ui.getPrefs();
+    const baseUrl = prefs?.ollamaApiBaseUrl || undefined;
+    return fetchOllamaModels(baseUrl);
+  }
+  if (provider === "opencode") {
+    return darwinAPI.cli.listModels("opencode");
+  }
+  return [];
+}
+
+async function loadProviderModels(
+  provider: ModelProvider,
+  applyModels: (models: string[]) => void,
+) {
+  // First try to load from cache
+  try {
+    const cached = await darwinAPI.models.getCached(provider);
+    if (cached && cached.length > 0) {
+      applyModels(cached);
+    }
+  } catch {
+    // Ignore cache errors
+  }
+
+  // Then fetch fresh models
+  try {
+    const freshModels = await fetchFreshModels(provider);
+
+    // Update the models list with fresh results (only if we got any, to avoid wiping the cache-populated list)
+    if (freshModels.length > 0) {
+      applyModels(freshModels);
+    }
+
+    // Cache the models when we got any
+    if (freshModels.length > 0) {
+      try {
+        await darwinAPI.models.setCached(provider, freshModels);
+      } catch {
+        // Ignore cache errors
+      }
+    }
+  } catch {
+    // We'll use cached models or empty list
+    toast.error(`Failed to fetch models for ${provider}`);
+  }
+}
+
 export function ModelCombobox({
   provider,
   value,
@@ -92,68 +146,38 @@ export function ModelCombobox({
     setInputValue(value);
   }, [value]);
 
-  const loadModels = useCallback(async () => {
+  const loadModels = () => {
+    let cancelled = false;
+
     setIsLoading(true);
 
     // Clear current list immediately when loading to avoid showing stale models
     setModels([]);
 
-    // First try to load from cache
-    try {
-      const cached = await darwinAPI.models.getCached(provider);
-      if (cached && cached.length > 0) {
-        setModels(cached);
+    loadProviderModels(provider, (nextModels) => {
+      if (!cancelled) {
+        setModels(nextModels);
       }
-    } catch {
-      // Ignore cache errors
-    }
-
-    // Then fetch fresh models
-    try {
-      let freshModels: string[] = [];
-
-      if (provider === "openrouter" || provider === "openai") {
-        freshModels = await fetchOpenRouterModels();
-      } else if (provider === "ollama") {
-        const prefs = await darwinAPI.ui.getPrefs();
-        const baseUrl = prefs?.ollamaApiBaseUrl || undefined;
-        freshModels = await fetchOllamaModels(baseUrl);
-      } else if (provider === "opencode") {
-        freshModels = await darwinAPI.cli.listModels("opencode");
+    }).finally(() => {
+      if (!cancelled) {
+        setIsLoading(false);
       }
+    });
 
-      // Update the models list with fresh results (only if we got any, to avoid wiping the cache-populated list)
-      if (freshModels.length > 0) {
-        setModels(freshModels);
-      }
-
-      // Cache the models when we got any
-      if (freshModels.length > 0) {
-        try {
-          await darwinAPI.models.setCached(provider, freshModels);
-        } catch {
-          // Ignore cache errors
-        }
-      }
-    } catch {
-      // We'll use cached models or empty list
-      toast.error(`Failed to fetch models for ${provider}`);
-    }
-
-    setIsLoading(false);
-  }, [provider]);
+    return () => {
+      cancelled = true;
+    };
+  };
 
   // Load models when popover opens
   useEffect(() => {
     if (open) {
-      loadModels();
+      return loadModels();
     }
-  }, [open, loadModels]);
+  }, [open, provider]);
 
-  // Also load models on mount to have them ready
-  useEffect(() => {
-    loadModels();
-  }, [loadModels]);
+  // Also load models on mount and provider change to have them ready
+  useEffect(() => loadModels(), [provider]);
 
   const handleSelect = (selectedValue: string) => {
     onChange(selectedValue);

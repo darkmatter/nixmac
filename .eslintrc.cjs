@@ -1,5 +1,6 @@
 module.exports = {
   plugins: ['chai-friendly'],
+
   overrides: [
     {
       files: ['**/*.spec.{js,mjs,ts,tsx}', 'apps/**/e2e-tauri/**/*.mjs', 'apps/**/tests/**/*.mjs'],
@@ -8,5 +9,7 @@ module.exports = {
         'chai-friendly/no-unused-expressions': 'error'
       }
     }
-  ]
+  ],
+
+  extends: ['plugin:storybook/recommended']
 };

@@ -1,3 +1,4 @@
+import { filesystemViewEnabled } from "@/lib/flags";
 import type { WidgetState, WidgetStep } from "@/stores/widget-store";
 import { FilePen, FilePlus, FileX, FileCode, type LucideIcon } from "lucide-react";
 
@@ -13,7 +14,10 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
     return "permissions";
   }
 
-  if (state.nixInstalled !== true || state.darwinRebuildAvailable !== true) {
+  if (
+    (state.nixInstalled !== true || state.darwinRebuildAvailable !== true)
+    && settings.NIX_INSTALLED_OVERRIDE !== true // bypass used for testing
+  ) {
     return "nix-setup";
   }
 
@@ -27,6 +31,10 @@ export function computeCurrentStep(state: WidgetState): WidgetStep {
 
   if (state.showHistory) {
     return "history";
+  }
+
+  if (state.showFilesystem && filesystemViewEnabled) {
+    return "filesystem";
   }
 
   // Backend is the source of truth for evolve routing
@@ -143,6 +151,7 @@ export function getCategoryStyle(title: string): CategoryStyle {
 export type ColorMap = Map<string, CategoryStyle>;
 
 import type { Change, ChangeType, SemanticChangeMap } from "@/types/shared";
+import { settings } from "@/lib/env";
 
 export function buildColorMap(changeMap: SemanticChangeMap): ColorMap {
   const map: ColorMap = new Map();

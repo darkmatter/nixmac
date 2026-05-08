@@ -6,7 +6,7 @@ import {
   type DarwinApplyEndEvent,
   type DarwinApplySummaryEvent,
 } from "@/tauri-api";
-import { useCallback, useRef } from "react";
+import { useRef } from "react";
 import { useGitOperations } from "./use-git-operations";
 
 interface RebuildOptions {
@@ -25,8 +25,7 @@ export function useRebuildStream() {
   const { refreshGitStatus } = useGitOperations();
   const rebuildLineIdRef = useRef(1);
 
-  const triggerRebuild = useCallback(
-    async (options: RebuildOptions) => {
+  const triggerRebuild = async (options: RebuildOptions) => {
       const store = useWidgetStore.getState();
       store.startRebuild(options.context);
       rebuildLineIdRef.current = 1;
@@ -146,9 +145,7 @@ export function useRebuildStream() {
         unlistenSummary();
         unlistenEnd();
       }
-    },
-    [refreshGitStatus],
-  );
+    };
 
   return { triggerRebuild };
 }

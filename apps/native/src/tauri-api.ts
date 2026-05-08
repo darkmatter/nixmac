@@ -133,6 +133,7 @@ export const darwinAPI = {
   config: {
     get: () => invoke<DarwinConfig>("config_get"),
     setDir: (dir: string) => invoke<SetDirResult>("config_set_dir", { dir }),
+    prepareNewDir: (dir: string) => invoke<SetDirResult>("config_prepare_new_dir", { dir }),
     pickDir: () => invoke<SetDirResult | null>("config_pick_dir"),
     setHostAttr: (host: string) => invoke<OkResult>("config_set_host_attr", { host }),
   },

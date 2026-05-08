@@ -4,7 +4,16 @@ import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI, type UpdateChannel } from "@/tauri-api";
 import { invoke } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
-import { AlertTriangle, Download, GitBranch, History, Pin, RotateCcw } from "lucide-react";
+import {
+  AlertTriangle,
+  DatabaseZap,
+  Download,
+  GitBranch,
+  Eraser,
+  History,
+  Pin,
+  RotateCcw,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
 const VERSION_PATTERN = /^[0-9]+(?:\.[0-9]+){0,2}(?:-[a-zA-Z0-9.-]+)?$/;
@@ -17,6 +26,7 @@ export function DeveloperTab() {
   const [currentVersion, setCurrentVersion] = useState<string | null>(null);
   const [versionInput, setVersionInput] = useState("");
   const [installing, setInstalling] = useState(false);
+  const [clearingState, setClearingState] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -78,6 +88,45 @@ export function DeveloperTab() {
       setUpdateChannel(previous);
       setErrorMessage(err instanceof Error ? err.message : String(err));
     }
+  };
+
+  const handleClearTauriState = async () => {
+    if (
+      !window.confirm("Clear Tauri stores? This resets saved settings, routing state, build state, and caches.")
+    ) {
+      return;
+    }
+
+    setErrorMessage(null);
+    setStatusMessage(null);
+    setClearingState(true);
+    try {
+      await invoke("developer_clear_tauri_state");
+      useWidgetStore.getState().setEvolveState(null);
+      useWidgetStore.getState().setGitStatus(null);
+      useWidgetStore.getState().setPromptHistory([]);
+      useWidgetStore.getState().setExternalBuildDetected(false);
+      useWidgetStore.getState().setPinnedVersion(null);
+      setStatusMessage(
+        "Cleared Tauri stores: settings.json, evolve-state.json, and build-state.json. Relaunch or reopen settings to reload defaults.",
+      );
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : String(err));
+    } finally {
+      setClearingState(false);
+    }
+  };
+
+  const handleClearUiBuffers = () => {
+    const store = useWidgetStore.getState();
+    store.clearLogs();
+    store.clearEvolveEvents();
+    store.clearPreview();
+    store.clearRebuild();
+    store.setConversationalResponse(null);
+    store.setCommitMessageSuggestion(null);
+    setStatusMessage("Cleared local UI debug buffers.");
+    setErrorMessage(null);
   };
 
   const handleDisableDeveloper = async () => {
@@ -197,10 +246,39 @@ export function DeveloperTab() {
               {installing ? "Installing…" : "Install"}
             </Button>
           </div>
-          {statusMessage && <div className="text-xs text-muted-foreground">{statusMessage}</div>}
-          {errorMessage && <div className="text-xs text-red-400">{errorMessage}</div>}
         </div>
       </div>
+
+      {/* State reset tools */}
+      <div className="rounded-lg border border-border p-3">
+        <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+          <DatabaseZap className="h-3.5 w-3.5" />
+          State reset
+        </div>
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Reset saved Tauri plugin-store data when the widget gets stuck in the wrong step or cached data looks stale.
+            This clears saved settings, routing state, build state, prompt history, and model caches.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={handleClearTauriState} disabled={clearingState} size="sm" variant="outline">
+              <DatabaseZap className="mr-2 h-3.5 w-3.5" />
+              {clearingState ? "Clearing…" : "Clear Tauri state"}
+            </Button>
+            <Button onClick={handleClearUiBuffers} size="sm" variant="outline">
+              <Eraser className="mr-2 h-3.5 w-3.5" />
+              Clear UI buffers
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {(statusMessage || errorMessage) && (
+        <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs">
+          {statusMessage && <div className="text-muted-foreground">{statusMessage}</div>}
+          {errorMessage && <div className="text-red-400">{errorMessage}</div>}
+        </div>
+      )}
 
       {/* Exit developer mode */}
       <div className="border-t border-border pt-3">
