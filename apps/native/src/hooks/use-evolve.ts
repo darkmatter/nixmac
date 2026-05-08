@@ -1,5 +1,5 @@
 import { useWidgetStore } from "@/stores/widget-store";
-import { EVOLVE_EVENT_CHANNEL } from "@/../shared/constants";
+import { EVOLVE_EVENT_CHANNEL } from "@/lib/constants";
 import { darwinAPI, ipcRenderer } from "@/tauri-api";
 import type { EvolveEvent } from "@/types/shared";
 import { useCallback } from "react";
