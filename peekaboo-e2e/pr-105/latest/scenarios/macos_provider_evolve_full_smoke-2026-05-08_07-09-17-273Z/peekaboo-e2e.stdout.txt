@@ -1,0 +1,32 @@
+📝 Created annotated screenshot with 108 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-08_07-09-17-273Z/screenshots/failure-1778224280-1778224280.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-08_07-09-17-273Z/screenshots/failure-1778224280-1778224280_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist
+📊 UI elements detected: 133
+⚙️  Interactable elements: 108
+⏱️  Execution time: 0.39s
+
+🔍 Element Summary
+• elem_2 (button) - close button
+• elem_3 (button) - full screen button
+• elem_6 (button) - minimize button
+• elem_1 (group) - group
+• elem_4 (group) - group
+• elem_5 (group) - group
+• menu_8 (menu) - Apple
+• menu_80 (menu) - nixmac
+• menu_101 (menu) - File
+• menu_105 (menu) - Edit
+  ...and 123 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 14F536E1-6887-41A5-AB02-29E48CA0BE94
+Agent: Use a tool like view_image to inspect it.
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-08_07-09-17-273Z/screenshots/failure-1778224280-1778224280.png
+✓ Quit nixmac
+ INFO nix-installer v3.19.0
+ INFO nix-installer v3.19.0
+[31m`nix-darwin` installation detected, it must be removed before uninstalling Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.[39m

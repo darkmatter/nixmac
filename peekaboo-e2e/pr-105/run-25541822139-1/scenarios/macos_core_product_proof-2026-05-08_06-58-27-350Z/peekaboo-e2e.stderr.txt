@@ -1,0 +1,24 @@
+[0;34m[23:58:29][0m === macos-e2e test runner ===
+[0;34m[23:58:29][0m Started at Thu May  7 23:58:29 PDT 2026
+[0;34m[23:58:29][0m Machine: DXU97120 | macOS 26.2
+[0;34m[23:58:29][0m Working directory: /Users/admin/nixmac-peekaboo-local-e2e/tests/e2e
+[0;34m[23:58:30][0m Scenario: macos_core_product_proof
+[0;34m[23:58:30][0m Starting screen recording: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-08_06-58-27-350Z/video/peekaboo-e2e.mp4
+[0;34m[23:58:34][0m Attempted to dismiss Terminal Automation permission prompt
+[0;34m[23:58:37][0m Recorder started (PID: 34021)
+[0;34m[23:58:37][0m === Phase 1: Prepare broad local Product Proof fixture ===
+[0;32m[PASS][0m Peekaboo Bridge connected
+[0;32m[PASS][0m Peekaboo permissions OK
+[1;33m[WARN][0m No ADMIN_PASSWORD set, cannot unlock screen
+[0;34m[23:58:37][0m Clearing nixmac app state...
+[0;32m[PASS][0m App state cleared
+[0;34m[23:58:40][0m Seeded nixmac settings at /Users/admin/Library/Application Support/com.darkmatter.nixmac/settings.json
+[0;34m[23:58:40][0m Seeded nixmac E2E runtime at /Users/admin/Library/Application Support/com.darkmatter.nixmac/e2e-runtime.json (expires 2026-05-08 00:28:40)
+[0;32m[PASS][0m peekabooCoreFixture: Prepared deterministic config, local validation settings, and mock system flag
+[0;34m[23:58:40][0m === Phase 2: Launch and prove app shell ===
+[0;34m[23:58:40][0m Launching nixmac...
+[0;32m[PASS][0m App launched: nixmac
+[0;34m[00:00:31][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-08_06-58-27-350Z/screenshots/core-launch-missing-1778223630.png
+[0;31m[FAIL][0m App shell did not expose expected interactive controls
+[0;34m[00:00:40][0m Uninstalling Nix...
+[0;32m[PASS][0m Nix uninstalled
