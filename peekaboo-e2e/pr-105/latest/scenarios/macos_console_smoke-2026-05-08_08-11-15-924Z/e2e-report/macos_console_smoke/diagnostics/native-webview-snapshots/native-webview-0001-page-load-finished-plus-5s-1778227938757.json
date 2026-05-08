@@ -1,8 +1,0 @@
-{
-  "capturedAtUnixMs": 1778227938766,
-  "label": "page-load-finished-plus-5s",
-  "message": "WKWebView snapshot failed first (WebKit returned an error: domain=WKErrorDomain code=1 description=An unknown error occurred userInfo={\n    NSLocalizedDescription = \"An unknown error occurred\";\n}; WKWebView PDF fallback failed (WebKit returned an error: domain=WKErrorDomain code=1 description=An unknown error occurred userInfo={\n    NSLocalizedDescription = \"An unknown error occurred\";\n})); AppKit cached-display fallback wrote PNG",
-  "path": "/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-08_08-11-15-924Z/diagnostics/native-webview-snapshots/native-webview-0001-page-load-finished-plus-5s-1778227938757.png",
-  "source": "NSView.cacheDisplayInRect",
-  "status": "degraded"
-}
