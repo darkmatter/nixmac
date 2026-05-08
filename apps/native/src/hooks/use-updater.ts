@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { Update } from "@tauri-apps/plugin-updater";
 import { invoke } from "@tauri-apps/api/core";
 import { darwinAPI } from "@/tauri-api";
 import type { UpdateInfo } from "@/tauri-api";
@@ -42,7 +41,7 @@ export function useUpdater() {
   const pinnedVersion = useWidgetStore((s) => s.pinnedVersion);
   const updateChannel = useWidgetStore((s) => s.updateChannel);
 
-  const checkForUpdates = async () => {
+  const checkForUpdates = useCallback(async () => {
     setState((s) => ({ ...s, checking: true, error: null }));
     try {
       const update = await invoke<UpdateInfo | null>("check_update");
@@ -85,7 +84,7 @@ export function useUpdater() {
         errorSource: "check",
       }));
     }
-  };
+  }, [isDevMode]);
 
   const installUpdate = async () => {
     const update = state.available;
