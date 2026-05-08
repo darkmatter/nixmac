@@ -1,0 +1,10 @@
+{
+  "success" : false,
+  "debug_logs" : [
+    "[2026-05-08T07:30:16.839Z] DEBUG: Runtime host: remote gui via \/Users\/admin\/Library\/Application Support\/Peekaboo\/bridge.sock (build 3.0.0-beta3 (1))"
+  ],
+  "error" : {
+    "message" : "The operation couldn’t be completed. (PeekabooBridge.PeekabooBridgeErrorEnvelope error 1.)",
+    "code" : "INTERNAL_SWIFT_ERROR"
+  }
+}
