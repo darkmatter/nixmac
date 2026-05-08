@@ -6,6 +6,14 @@ use crate::{rebuild, shared_types};
 use std::process::Command;
 use tauri::AppHandle;
 
+fn e2e_mock_system_enabled() -> bool {
+    cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_MOCK_SYSTEM")
+}
+
+fn e2e_mock_host_attr() -> String {
+    crate::e2e_runtime::value("NIXMAC_E2E_HOST_ATTR").unwrap_or_else(|| "e2e-host".to_string())
+}
+
 /// Starts a streaming darwin-rebuild switch operation.
 /// Progress is emitted via `darwin:apply:data` events, completion via `darwin:apply:end`.
 #[tauri::command]
@@ -141,6 +149,14 @@ pub async fn finalize_rollback(
 
 #[tauri::command]
 pub async fn flake_installed_apps(app: AppHandle) -> Result<Vec<serde_json::Value>, String> {
+    if e2e_mock_system_enabled() {
+        log::info!(
+            "[apply] NIXMAC_E2E_MOCK_SYSTEM enabled; returning empty installed apps fixture"
+        );
+        // No current Product Proof surface depends on installed-app shape; avoid real Nix here.
+        return Ok(Vec::new());
+    }
+
     let dir = store::ensure_config_dir_exists(&app)
         .map_err(|e| capture_err("flake_installed_apps", e))?;
 
@@ -160,8 +176,18 @@ pub async fn flake_installed_apps(app: AppHandle) -> Result<Vec<serde_json::Valu
     Ok(apps)
 }
 
-#[tauri::command]
-pub async fn nix_check() -> Result<shared_types::NixCheckResult, String> {
+fn nix_check_result() -> shared_types::NixCheckResult {
+    if e2e_mock_system_enabled() {
+        log::info!(
+            "[apply] NIXMAC_E2E_MOCK_SYSTEM enabled; reporting mocked Nix/darwin-rebuild availability"
+        );
+        return shared_types::NixCheckResult {
+            installed: true,
+            version: Some("NIXMAC_E2E_MOCK_SYSTEM mocked nix".to_string()),
+            darwin_rebuild_available: true,
+        };
+    }
+
     let installed = nix::is_nix_installed();
     let version = if installed {
         nix::get_nix_version()
@@ -173,11 +199,16 @@ pub async fn nix_check() -> Result<shared_types::NixCheckResult, String> {
     } else {
         false
     };
-    Ok(shared_types::NixCheckResult {
+    shared_types::NixCheckResult {
         installed,
         version,
         darwin_rebuild_available,
-    })
+    }
+}
+
+#[tauri::command]
+pub async fn nix_check() -> Result<shared_types::NixCheckResult, String> {
+    Ok(nix_check_result())
 }
 
 #[tauri::command]
@@ -202,8 +233,54 @@ pub async fn finalize_flake_lock(app: AppHandle) -> Result<shared_types::OkResul
 /// Lists all darwinConfigurations defined in the flake.
 #[tauri::command]
 pub async fn flake_list_hosts(app: AppHandle) -> Result<Vec<String>, String> {
+    if e2e_mock_system_enabled() {
+        let host = e2e_mock_host_attr();
+        log::info!(
+            "[apply] NIXMAC_E2E_MOCK_SYSTEM enabled; returning mocked flake host {}",
+            host
+        );
+        return Ok(vec![host]);
+    }
+
     let dir =
         store::ensure_config_dir_exists(&app).map_err(|e| capture_err("flake_list_hosts", e))?;
     let hosts = nix::list_darwin_hosts(&dir).map_err(|e| capture_err("flake_list_hosts", e))?;
     Ok(hosts)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn e2e_mock_nix_check_reports_available_system() {
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore = crate::test_support::EnvVarRestore::capture(&["NIXMAC_E2E_MOCK_SYSTEM"]);
+
+        std::env::set_var("NIXMAC_E2E_MOCK_SYSTEM", "1");
+        let result = nix_check_result();
+
+        assert!(result.installed);
+        assert!(result.darwin_rebuild_available);
+        assert_eq!(
+            result.version.as_deref(),
+            Some("NIXMAC_E2E_MOCK_SYSTEM mocked nix")
+        );
+    }
+
+    #[test]
+    fn e2e_mock_host_attr_uses_runtime_value_or_default() {
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore =
+            crate::test_support::EnvVarRestore::capture(&["HOME", "NIXMAC_E2E_HOST_ATTR"]);
+        let temp_home = tempfile::tempdir().unwrap();
+
+        std::env::set_var("HOME", temp_home.path());
+        std::env::remove_var("NIXMAC_E2E_HOST_ATTR");
+        assert_eq!(e2e_mock_host_attr(), "e2e-host");
+
+        std::env::set_var("NIXMAC_E2E_HOST_ATTR", "ci-host");
+        assert_eq!(e2e_mock_host_attr(), "ci-host");
+    }
 }

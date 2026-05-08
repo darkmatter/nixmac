@@ -16,6 +16,7 @@ const peekabooRunnerPath = path.join(repoRoot, 'tools/computer-use-e2e/peekaboo-
 const permissionsPath = path.join(repoRoot, 'apps/native/src-tauri/src/system/permissions.rs');
 const e2eRuntimePath = path.join(repoRoot, 'apps/native/src-tauri/src/e2e_runtime.rs');
 const nativeMainPath = path.join(repoRoot, 'apps/native/src-tauri/src/main.rs');
+const applyCommandsPath = path.join(repoRoot, 'apps/native/src-tauri/src/commands/apply.rs');
 const debugCommandsPath = path.join(repoRoot, 'apps/native/src-tauri/src/commands/debug.rs');
 const nativeStorePath = path.join(repoRoot, 'apps/native/src-tauri/src/storage/store.rs');
 const frontendMainPath = path.join(repoRoot, 'apps/native/src/main.tsx');
@@ -35,6 +36,7 @@ const peekabooRunner = readFileSync(peekabooRunnerPath, 'utf8');
 const permissions = readFileSync(permissionsPath, 'utf8');
 const e2eRuntime = readFileSync(e2eRuntimePath, 'utf8');
 const nativeMain = readFileSync(nativeMainPath, 'utf8');
+const applyCommands = readFileSync(applyCommandsPath, 'utf8');
 const debugCommands = readFileSync(debugCommandsPath, 'utf8');
 const nativeStore = readFileSync(nativeStorePath, 'utf8');
 const frontendMain = readFileSync(frontendMainPath, 'utf8');
@@ -72,6 +74,18 @@ const result = section(/^  peekaboo-result:$/m);
 const launchEnv = section({ sourceText: productProof, pattern: /^nixmac_pp_set_e2e_launch_env\(\) \{$/m }, /^}$/m);
 const cleanup = section({ sourceText: productProof, pattern: /^nixmac_pp_cleanup_common\(\) \{$/m }, /^}$/m);
 const frontendRenderApp = section({ sourceText: frontendMain, pattern: /^const renderApp = \(\) => \{$/m }, /^};$/m);
+const flakeInstalledAppsCommand = section(
+  { sourceText: applyCommands, pattern: /^pub async fn flake_installed_apps\(app: AppHandle\)/m },
+  /^\}\n\nfn nix_check_result/m,
+);
+const nixCheckResultCommand = section(
+  { sourceText: applyCommands, pattern: /^fn nix_check_result\(\) -> shared_types::NixCheckResult \{$/m },
+  /^\}\n\n#\[tauri::command\]\npub async fn nix_check/m,
+);
+const flakeListHostsCommand = section(
+  { sourceText: applyCommands, pattern: /^pub async fn flake_list_hosts\(app: AppHandle\)/m },
+  /^\}\n\n#\[cfg\(test\)\]/m,
+);
 const nativeCaptureWindowSetup = section(
   { sourceText: nativeMain, pattern: /let e2e_opaque_window = e2e_opaque_window_enabled\(\);/ },
   /let main_window = main_window_builder\.build/,
@@ -278,6 +292,10 @@ assert.match(runnerShell, /E2E_TERMINAL_CLEANUP_MODE=kill recording_close_termin
 assert.match(peekabooRunner, /for key in NIXMAC_E2E_MOCK_SYSTEM NIXMAC_E2E_SOLID_CAPTURE NIXMAC_E2E_OPAQUE_WINDOW NIXMAC_E2E_WEBVIEW_WATCHDOG NIXMAC_SKIP_PERMISSIONS/, 'Runner preflight must clear stale Peekaboo launchctl flags, including solid capture, opaque capture, and the independent WebView watchdog');
 assert.match(e2eRuntime, /#\[cfg\(debug_assertions\)\][\s\S]*fn file_value[\s\S]*runtime\.schema_version != 1[\s\S]*runtime\.session_id\.trim\(\)\.is_empty\(\)[\s\S]*now_unix\(\)\? > runtime\.expires_at_unix/, 'Rust E2E runtime file reader must be debug-only and reject stale, malformed, or expired runtime files');
 assert.match(e2eRuntime, /#\[cfg\(not\(debug_assertions\)\)\][\s\S]*fn file_value\(_name: &str\) -> Option<String>[\s\S]*None/, 'Release builds must ignore E2E runtime files');
+assert.match(applyCommands, /fn e2e_mock_system_enabled\(\) -> bool \{\s*cfg!\(debug_assertions\) && crate::e2e_runtime::enabled\("NIXMAC_E2E_MOCK_SYSTEM"\)\s*\}/, 'apply commands must use the same debug-only NIXMAC_E2E_MOCK_SYSTEM gate as rebuild/scanner/store paths');
+assert.match(nixCheckResultCommand, /NIXMAC_E2E_MOCK_SYSTEM enabled[\s\S]{0,240}?installed: true[\s\S]{0,180}?darwin_rebuild_available: true[\s\S]{0,180}?let installed = nix::is_nix_installed/, 'nix_check must report mocked Nix and darwin-rebuild availability before calling real Nix on MacInCloud Product Proof runs');
+assert.match(flakeListHostsCommand, /if e2e_mock_system_enabled\(\) \{[\s\S]{0,260}?return Ok\(vec!\[host\]\);[\s\S]{0,180}?nix::list_darwin_hosts/, 'flake_list_hosts must use the mocked E2E host before shelling out to real nix');
+assert.match(flakeInstalledAppsCommand, /if e2e_mock_system_enabled\(\) \{[\s\S]{0,320}?return Ok\(Vec::new\(\)\);[\s\S]{0,700}?nix::evaluate_installed_apps/, 'flake_installed_apps must avoid real nix under the E2E mock system gate');
 assert.match(permissions, /fn check_desktop_access\(\) -> PermissionStatus \{\n\s+if e2e_skip_permissions_enabled\(\)[\s\S]{0,180}?dirs::home_dir/, 'Desktop permission check must honor E2E skip before touching the Desktop folder');
 assert.match(permissions, /fn check_documents_access\(\) -> PermissionStatus \{\n\s+if e2e_skip_permissions_enabled\(\)[\s\S]{0,180}?dirs::home_dir/, 'Documents permission check must honor E2E skip before touching the Documents folder');
 assert.match(permissions, /"desktop" => \{\n\s+if e2e_skip_permissions_enabled\(\)[\s\S]{0,520}?let home = dirs::home_dir/, 'Desktop permission request must return before filesystem writes when E2E skip is enabled');
