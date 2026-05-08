@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { cn } from "@/lib/utils";
 import { type SettingsTab, useWidgetStore } from "@/stores/widget-store";
-import { DEFAULT_MAX_ITERATIONS } from "@/../shared/constants";
+import { DEFAULT_MAX_ITERATIONS } from "@/lib/constants";
 import { darwinAPI } from "@/tauri-api";
 import { useForm } from "@tanstack/react-form";
 import { Bot, FolderOpen, Key, Settings2, SlidersHorizontal, Wrench } from "lucide-react";
