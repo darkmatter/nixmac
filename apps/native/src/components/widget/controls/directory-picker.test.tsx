@@ -10,33 +10,11 @@ import { DirectoryPicker } from "@/components/widget/controls/directory-picker";
 // ---------------------------------------------------------------------------
 
 const mockPickDir = vi.fn();
-
-vi.mock("@/hooks/use-darwin-config", () => ({
-  useDarwinConfig: () => ({
-    pickDir: mockPickDir,
-    setDir: async (p: string) => {
-      await mockSetDir(p);
-      useWidgetStore.getState().setConfigDir(p);
-      useWidgetStore.getState().setHost("");
-      try {
-        await mockSetHostAttr("");
-      } catch {}
-      try {
-        const hosts = await mockListHosts();
-        useWidgetStore.getState().setHosts(hosts);
-      } catch {
-        useWidgetStore.getState().setHosts([]);
-      }
-      return { dir: p, evolveState: null, hosts: null };
-    },
-  }),
-}));
-
 const mockNormalize = vi.fn<(p: string) => Promise<string | null>>();
 const mockExists = vi.fn<(p: string) => Promise<boolean>>();
-const mockSetDir = vi.fn<(p: string) => Promise<void>>();
+const mockSetDir =
+  vi.fn<(p: string) => Promise<{ dir: string; evolveState: never; hosts: string[] | null }>>();
 const mockSetHostAttr = vi.fn<(h: string) => Promise<void>>();
-const mockListHosts = vi.fn<() => Promise<string[]>>();
 const mockFlakeExistsAt = vi.fn<(p: string) => Promise<boolean>>();
 const mockFlakeExists = vi.fn<() => Promise<boolean>>();
 
@@ -52,10 +30,6 @@ vi.mock("@/tauri-api", () => ({
       setHostAttr: (h: string) => mockSetHostAttr(h),
     },
     flake: {
-      setHostAttr: (h: string) => mockSetHostAttr(h),
-    },
-    flake: {
-      listHosts: () => mockListHosts(),
       existsAt: (p: string) => mockFlakeExistsAt(p),
       exists: () => mockFlakeExists(),
     },
@@ -95,7 +69,6 @@ function resetMocks() {
   mockFlakeExistsAt.mockResolvedValue(true);
   mockFlakeExists.mockResolvedValue(true);
   mockPickDir.mockResolvedValue(null);
-  mockListHosts.mockResolvedValue([]);
 }
 
 /** Type into the input then fire a blur event. Mirrors `userEvent.type` + tab-out
@@ -161,7 +134,6 @@ describe("<DirectoryPicker>", () => {
       evolveState: {} as never,
       hosts: ["mbp", "workbook"],
     });
-    mockListHosts.mockResolvedValue(["mbp", "workbook"]);
     useWidgetStore.getState().setHost("old-host");
 
     render(<DirectoryPicker label="Config directory" />);
@@ -178,7 +150,6 @@ describe("<DirectoryPicker>", () => {
     expect(mockExists).toHaveBeenCalledWith("/Users/me/.darwin");
     expect(mockSetDir).toHaveBeenCalledWith("/Users/me/.darwin");
     expect(mockSetHostAttr).toHaveBeenCalledWith("");
-    expect(mockListHosts).toHaveBeenCalledTimes(1);
 
     const s = useWidgetStore.getState();
     expect(s.configDir).toBe("/Users/me/.darwin");
