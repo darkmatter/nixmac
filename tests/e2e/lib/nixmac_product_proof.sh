@@ -417,12 +417,14 @@ nixmac_pp_request_native_webview_snapshot() {
         if [ -s "$status_path" ]; then
             status=$(jq -r '.status // ""' "$status_path" 2>/dev/null || true)
             case "$status" in
-                passed)
+                # "rendered" means a fallback produced PNG bytes, not pass-grade proof.
+                # Callers must run nixmac_pp_screenshot_has_visual_signal before trusting it.
+                passed|rendered)
                     if [ -s "$output_path" ]; then
                         printf '%s\n' "$output_path"
                         return 0
                     fi
-                    debug "Native WKWebView snapshot status passed for $label but PNG is not ready yet"
+                    debug "Native WKWebView snapshot status $status for $label but PNG is not ready yet"
                     ;;
                 degraded)
                     debug "Native WKWebView snapshot degraded for $label: $(jq -r '.message // "unknown"' "$status_path" 2>/dev/null || echo unknown)"

@@ -65,6 +65,10 @@ fn e2e_webview_watchdog_enabled() -> bool {
     cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_WEBVIEW_WATCHDOG")
 }
 
+fn e2e_preload_native_capture_enabled() -> bool {
+    cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_PRELOAD_NATIVE_CAPTURE")
+}
+
 #[cfg(all(debug_assertions, target_os = "macos"))]
 static E2E_NATIVE_SNAPSHOT_COUNTER: std::sync::atomic::AtomicUsize =
     std::sync::atomic::AtomicUsize::new(0);
@@ -726,11 +730,11 @@ unsafe fn e2e_try_pdf_snapshot(
             Ok(()) => {
                 e2e_write_native_snapshot_status_with_source(
                     &status_for_block,
-                    "passed",
+                    "rendered",
                     &label_for_status,
                     &output_for_block,
                     Some(&format!(
-                        "WKWebView snapshot failed first ({}); WKWebView PDF fallback wrote PNG and PDF",
+                        "WKWebView snapshot failed first ({}); WKWebView PDF fallback wrote PNG and PDF; caller must validate visual signal before using it as proof",
                         prior_error_for_block
                     )),
                     "WKWebView.createPDFWithConfiguration",
@@ -2126,16 +2130,22 @@ fn run_gui_mode(
 
             if e2e_css_capture {
                 e2e_start_native_webview_snapshot_request_poller(main_window.clone());
-                e2e_schedule_native_webview_capture_probe(
-                    main_window.clone(),
-                    "native-post-build-plus-2s",
-                    Duration::from_secs(2),
-                );
-                e2e_schedule_native_webview_snapshot(
-                    main_window.clone(),
-                    "post-build-plus-2s",
-                    Duration::from_secs(2),
-                );
+                if e2e_preload_native_capture_enabled() {
+                    e2e_schedule_native_webview_capture_probe(
+                        main_window.clone(),
+                        "native-post-build-plus-2s",
+                        Duration::from_secs(2),
+                    );
+                    e2e_schedule_native_webview_snapshot(
+                        main_window.clone(),
+                        "post-build-plus-2s",
+                        Duration::from_secs(2),
+                    );
+                } else {
+                    log::info!(
+                        "NIXMAC_E2E_PRELOAD_NATIVE_CAPTURE disabled; deferring native WebView captures until page-load or explicit shell request"
+                    );
+                }
             }
 
             if e2e_webview_watchdog {
