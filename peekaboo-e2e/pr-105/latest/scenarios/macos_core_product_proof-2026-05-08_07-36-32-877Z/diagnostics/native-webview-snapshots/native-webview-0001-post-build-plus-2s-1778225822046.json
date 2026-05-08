@@ -1,8 +1,0 @@
-{
-  "capturedAtUnixMs": 1778225850489,
-  "label": "post-build-plus-2s",
-  "message": "WKWebView snapshot failed first (WebKit returned an error: domain=WKErrorDomain code=1 description=An unknown error occurred userInfo={\n    NSLocalizedDescription = \"An unknown error occurred\";\n}); WKWebView PDF fallback wrote PNG and PDF",
-  "path": "/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-08_07-36-32-877Z/diagnostics/native-webview-snapshots/native-webview-0001-post-build-plus-2s-1778225822046.png",
-  "source": "WKWebView.createPDFWithConfiguration",
-  "status": "passed"
-}
