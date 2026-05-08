@@ -588,10 +588,14 @@ fn run_gui_mode(
             // needed right now. fire-and-forget is intentional here.
             let scanner_handle = handle.clone();
             tauri::async_runtime::spawn(async move {
-                let _ = system::secret_scanner::SecretScanner::global(&scanner_handle);
-                
+                let _ = tauri::async_runtime::spawn_blocking({
+                    let h = scanner_handle.clone();
+                    move || system::secret_scanner::SecretScanner::global(&h)
+                }).await;
+
                 // Retry any pending feedback reports from previous failed submissions
-                // Note that this depends on the secret scanner having been initialized first.
+                // Note that this depends on the secret scanner having been initialized first,
+                // hence the blocking spawn and await above.
                 match feedback::retry_pending(&scanner_handle).await {
                     Ok(n) if n > 0 => {
                         log::info!("Retried and sent {} pending feedback report(s)", n)
@@ -602,9 +606,9 @@ fn run_gui_mode(
             });
 
             // Background initialize the nix-darwin docs index once at startup for fast option-shape lookup.
-            tauri::async_runtime::spawn(async move {
-                evolve::search_docs::initialize_docs_index();
-            });
+             tauri::async_runtime::spawn_blocking(|| {
+                 evolve::search_docs::initialize_docs_index();
+             });
 
             let send_diagnostics = store::get_send_diagnostics(handle).unwrap_or(false);
             if send_diagnostics {
