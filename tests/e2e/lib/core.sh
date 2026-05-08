@@ -89,28 +89,33 @@ _NC='\033[0m'
 
 # --- Logging ---
 
+_e2e_log_stderr() {
+    local line="$1"
+    printf '%b\n' "$line" | tee -a "$E2E_LOG_FILE" >&2
+}
+
 log() {
-    echo -e "${_BLUE}[$(date +%H:%M:%S)]${_NC} $*" | tee -a "$E2E_LOG_FILE"
+    _e2e_log_stderr "${_BLUE}[$(date +%H:%M:%S)]${_NC} $*"
 }
 
 debug() {
     if [ "${E2E_VERBOSE:-0}" = "1" ]; then
-        echo -e "${_DIM}[$(date +%H:%M:%S)] [debug] $*${_NC}" | tee -a "$E2E_LOG_FILE"
+        _e2e_log_stderr "${_DIM}[$(date +%H:%M:%S)] [debug] $*${_NC}"
     fi
 }
 
 warn() {
-    echo -e "${_YELLOW}[WARN]${_NC} $*" | tee -a "$E2E_LOG_FILE"
+    _e2e_log_stderr "${_YELLOW}[WARN]${_NC} $*"
 }
 
 pass() {
     _E2E_PASS_COUNT=$((_E2E_PASS_COUNT + 1))
-    echo -e "${_GREEN}[PASS]${_NC} $*" | tee -a "$E2E_LOG_FILE"
+    _e2e_log_stderr "${_GREEN}[PASS]${_NC} $*"
 }
 
 fail() {
     _E2E_FAIL_COUNT=$((_E2E_FAIL_COUNT + 1))
-    echo -e "${_RED}[FAIL]${_NC} $*" | tee -a "$E2E_LOG_FILE"
+    _e2e_log_stderr "${_RED}[FAIL]${_NC} $*"
 }
 
 die() {
@@ -239,7 +244,7 @@ assert_command() {
 # --- Results ---
 
 print_results() {
-    echo ""
+    _e2e_log_stderr ""
     log "=========================================="
     log "  Test Results"
     log "=========================================="
@@ -251,17 +256,17 @@ print_results() {
         local num=$(echo "$result" | cut -d'|' -f2)
         local msg=$(echo "$result" | cut -d'|' -f3-)
         if [ "$status" = "PASS" ]; then
-            echo -e "  ${_GREEN}✅${_NC} Phase $num: $msg" | tee -a "$E2E_LOG_FILE"
+            _e2e_log_stderr "  ${_GREEN}✅${_NC} Phase $num: $msg"
         else
-            echo -e "  ${_RED}❌${_NC} Phase $num: $msg" | tee -a "$E2E_LOG_FILE"
+            _e2e_log_stderr "  ${_RED}❌${_NC} Phase $num: $msg"
         fi
     done
     
-    echo "" | tee -a "$E2E_LOG_FILE"
+    _e2e_log_stderr ""
     if [ "$_E2E_FAIL_COUNT" -eq 0 ]; then
-        echo -e "  ${_GREEN}All $total checks passed${_NC}" | tee -a "$E2E_LOG_FILE"
+        _e2e_log_stderr "  ${_GREEN}All $total checks passed${_NC}"
     else
-        echo -e "  ${_RED}$_E2E_FAIL_COUNT/$total checks failed${_NC}" | tee -a "$E2E_LOG_FILE"
+        _e2e_log_stderr "  ${_RED}$_E2E_FAIL_COUNT/$total checks failed${_NC}"
     fi
     log "=========================================="
 }

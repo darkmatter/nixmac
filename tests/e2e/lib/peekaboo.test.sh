@@ -20,6 +20,31 @@ source "$E2E_LIB/core.sh"
 source "$E2E_LIB/peekaboo.sh"
 source "$E2E_LIB/nixmac_product_proof.sh"
 
+assert_empty_stdout() {
+    local label="$1"
+    local output="$2"
+    if [ -n "$output" ]; then
+        echo "expected $label to write terminal output to stderr only, got stdout: $output" >&2
+        exit 1
+    fi
+}
+
+export E2E_VERBOSE=1
+assert_empty_stdout "log" "$(log "stdout isolation log probe" 2>"$TEST_DIR/log.stderr")"
+assert_empty_stdout "debug" "$(debug "stdout isolation debug probe" 2>"$TEST_DIR/debug.stderr")"
+assert_empty_stdout "warn" "$(warn "stdout isolation warn probe" 2>"$TEST_DIR/warn.stderr")"
+assert_empty_stdout "pass" "$(pass "stdout isolation pass probe" 2>"$TEST_DIR/pass.stderr")"
+assert_empty_stdout "fail" "$(fail "stdout isolation fail probe" 2>"$TEST_DIR/fail.stderr")"
+for expected in "stdout isolation log probe" "stdout isolation debug probe" "stdout isolation warn probe" "stdout isolation pass probe" "stdout isolation fail probe"; do
+    grep -q "$expected" "$E2E_LOG_FILE" || {
+        echo "expected log file to contain: $expected" >&2
+        exit 1
+    }
+done
+_E2E_PASS_COUNT=0
+_E2E_FAIL_COUNT=0
+export E2E_VERBOSE=0
+
 peekaboo_run() {
     case "$*" in
         "app switch --to nixmac")
@@ -116,5 +141,25 @@ nixmac_pp_elements_show_ready_shell "$ready_shell_json" 20 || {
     echo "expected product shell marker and sufficient elements to satisfy ready shell" >&2
     exit 1
 }
+
+native_snapshot_path="$TEST_DIR/native-proof.png"
+printf 'png' > "$native_snapshot_path"
+nixmac_pp_request_native_webview_snapshot() {
+    printf '%s\n' "$native_snapshot_path"
+}
+nixmac_pp_screenshot_has_visual_signal() {
+    printf 'visual signal probe passed\n'
+}
+export E2E_VERBOSE=1
+native_stdout="$(nixmac_pp_capture_native_visual_signal "stdout-isolation" 2>"$TEST_DIR/native-stderr.log")"
+if [ "$native_stdout" != "$native_snapshot_path" ]; then
+    echo "expected native visual signal stdout to contain only the snapshot path, got: $native_stdout" >&2
+    exit 1
+fi
+grep -q "Native WKWebView snapshot visual signal ready" "$TEST_DIR/native-stderr.log" || {
+    echo "expected native visual signal debug detail on stderr" >&2
+    exit 1
+}
+export E2E_VERBOSE=0
 
 echo "Peekaboo shell fallback self-test passed."
