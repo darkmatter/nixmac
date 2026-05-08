@@ -1,0 +1,6 @@
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-08_06-11-31-727Z/screenshots/core-launch-missing-1778220793.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-08_06-11-31-727Z/screenshots/failure-1778220817-1778220817.png
+✓ Quit nixmac
+ INFO nix-installer v3.19.0
+ INFO nix-installer v3.19.0
+[31m`nix-darwin` installation detected, it must be removed before uninstalling Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.[39m

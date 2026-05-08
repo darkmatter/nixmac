@@ -1,0 +1,8 @@
+{
+  "capturedAtUnixMs": 1778221039767,
+  "label": "post-build-plus-2s",
+  "message": "WKWebView snapshot failed first (WebKit returned an error: domain=WKErrorDomain code=1 description=An unknown error occurred userInfo={\n    NSLocalizedDescription = \"An unknown error occurred\";\n}); AppKit cached-display fallback wrote PNG",
+  "path": "/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-08_06-16-38-933Z/diagnostics/native-webview-snapshots/native-webview-0001-post-build-plus-2s-1778221026496.png",
+  "source": "NSView.cacheDisplayInRect",
+  "status": "degraded"
+}
