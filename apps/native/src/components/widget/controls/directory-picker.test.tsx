@@ -34,7 +34,7 @@ vi.mock("@/hooks/use-darwin-config", () => ({
 
 const mockNormalize = vi.fn<(p: string) => Promise<string | null>>();
 const mockExists = vi.fn<(p: string) => Promise<boolean>>();
-const mockSetDir = vi.fn<(p: string) => Promise<void>>();
+const mockSetDir = vi.fn<(p: string) => Promise<{ dir: string; evolveState: null; hosts: string[] | null }>>();
 const mockSetHostAttr = vi.fn<(h: string) => Promise<void>>();
 const mockListHosts = vi.fn<() => Promise<string[]>>();
 const mockFlakeExistsAt = vi.fn<(p: string) => Promise<boolean>>();
@@ -53,8 +53,6 @@ vi.mock("@/tauri-api", () => ({
     },
     flake: {
       setHostAttr: (h: string) => mockSetHostAttr(h),
-    },
-    flake: {
       listHosts: () => mockListHosts(),
       existsAt: (p: string) => mockFlakeExistsAt(p),
       exists: () => mockFlakeExists(),
@@ -86,11 +84,11 @@ function resetMocks() {
   // Sensible "happy-path" defaults; individual tests override as needed.
   mockNormalize.mockImplementation(async (p) => p.trim());
   mockExists.mockResolvedValue(true);
-  mockSetDir.mockImplementation(async (p) => ({
-    dir: p,
+  mockSetDir.mockResolvedValue({
+    dir: "/Users/me/.darwin",
     evolveState: {} as never,
     hosts: [],
-  }));
+  });
   mockSetHostAttr.mockResolvedValue();
   mockFlakeExistsAt.mockResolvedValue(true);
   mockFlakeExists.mockResolvedValue(true);
@@ -156,6 +154,7 @@ describe("<DirectoryPicker>", () => {
 
   it("on a valid path, normalizes, persists, clears host, and refreshes the hosts list", async () => {
     mockNormalize.mockResolvedValue("/Users/me/.darwin");
+    mockExists.mockResolvedValue(true);
     mockSetDir.mockResolvedValue({
       dir: "/Users/me/.darwin",
       evolveState: {} as never,

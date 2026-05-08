@@ -14,6 +14,8 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 use tauri::{AppHandle, Manager, Runtime};
 
+use crate::commands::debug::TimerGuard;
+
 static DB_PATH: OnceLock<PathBuf> = OnceLock::new();
 
 /// Get the database file path (in app data directory)
@@ -33,6 +35,7 @@ pub fn get_db_path<R: Runtime>(app: &AppHandle<R>) -> Result<PathBuf> {
 
 /// Initialize the database (create file and run migrations)
 pub async fn init<R: Runtime>(app: &AppHandle<R>) -> Result<()> {
+    let _timer = TimerGuard::new("db::init");
     let path = get_db_path(app)?;
     schema::init_schema(&path).await
 }

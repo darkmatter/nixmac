@@ -11,6 +11,29 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[cfg(debug_assertions)]
 use tauri::{AppHandle, Manager};
 
+use std::time::Instant;
+
+pub struct TimerGuard {
+    name: &'static str,
+    start: Instant,
+}
+
+impl TimerGuard {
+    pub fn new(name: &'static str) -> Self {
+        Self {
+            name,
+            start: Instant::now(),
+        }
+    }
+}
+
+impl Drop for TimerGuard {
+    fn drop(&mut self) {
+        let elapsed = self.start.elapsed();
+        log::debug!("⏱️  [{}] took {:?}", self.name, elapsed);
+    }
+}
+
 /// Test command to trigger a panic and verify the panic handler works.
 /// This will cause a controlled panic that should be caught by the panic handler
 /// and trigger the feedback dialog.
