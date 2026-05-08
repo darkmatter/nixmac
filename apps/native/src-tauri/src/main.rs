@@ -442,6 +442,77 @@ unsafe fn e2e_write_bitmap_rep_png(
 }
 
 #[cfg(all(debug_assertions, target_os = "macos"))]
+unsafe fn e2e_write_nsdata(
+    data: *mut objc::runtime::Object,
+    output_path: &std::path::Path,
+) -> Result<(), String> {
+    use objc::msg_send;
+    use objc::sel;
+    use objc::sel_impl;
+
+    if data.is_null() {
+        return Err("NSData was nil".to_string());
+    }
+
+    let bytes: *const std::ffi::c_void = msg_send![data, bytes];
+    let len: usize = msg_send![data, length];
+    if bytes.is_null() || len == 0 {
+        return Err("NSData was empty".to_string());
+    }
+
+    let slice = std::slice::from_raw_parts(bytes.cast::<u8>(), len);
+    let tmp_output = output_path.with_extension(
+        output_path
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .map(|extension| format!("{extension}.tmp"))
+            .unwrap_or_else(|| "tmp".to_string()),
+    );
+    std::fs::write(&tmp_output, slice)
+        .and_then(|()| std::fs::rename(&tmp_output, output_path))
+        .map_err(|error| {
+            let _ = std::fs::remove_file(&tmp_output);
+            format!("failed to write NSData atomically: {error}")
+        })
+}
+
+#[cfg(all(debug_assertions, target_os = "macos"))]
+unsafe fn e2e_write_pdf_data_as_png(
+    pdf_data: *mut objc::runtime::Object,
+    output_path: &std::path::Path,
+) -> Result<(), String> {
+    use objc::class;
+    use objc::msg_send;
+    use objc::runtime::Object;
+    use objc::sel;
+    use objc::sel_impl;
+
+    let ns_image_alloc: *mut Object = msg_send![class!(NSImage), alloc];
+    if ns_image_alloc.is_null() {
+        return Err("NSImage alloc returned nil".to_string());
+    }
+    let ns_image: *mut Object = msg_send![ns_image_alloc, initWithData: pdf_data];
+    if ns_image.is_null() {
+        return Err("NSImage could not initialize from PDF data".to_string());
+    }
+
+    let tiff_data: *mut Object = msg_send![ns_image, TIFFRepresentation];
+    if tiff_data.is_null() {
+        return Err("NSImage TIFFRepresentation for PDF data was nil".to_string());
+    }
+
+    let bitmap_rep: *mut Object = msg_send![class!(NSBitmapImageRep), imageRepWithData: tiff_data];
+    if bitmap_rep.is_null() {
+        let _: () = msg_send![ns_image, release];
+        return Err("NSBitmapImageRep could not read rendered PDF image data".to_string());
+    }
+
+    let result = e2e_write_bitmap_rep_png(bitmap_rep, output_path);
+    let _: () = msg_send![ns_image, release];
+    result
+}
+
+#[cfg(all(debug_assertions, target_os = "macos"))]
 unsafe fn e2e_try_cached_display_snapshot(
     webview: *mut objc::runtime::Object,
     status_path: &std::path::Path,
@@ -537,6 +608,162 @@ unsafe fn e2e_try_cached_display_snapshot(
 }
 
 #[cfg(all(debug_assertions, target_os = "macos"))]
+unsafe fn e2e_try_pdf_snapshot(
+    webview: *mut objc::runtime::Object,
+    status_path: &std::path::Path,
+    label: &str,
+    output_path: &std::path::Path,
+    prior_error: &str,
+) -> bool {
+    use block::ConcreteBlock;
+    use objc::class;
+    use objc::msg_send;
+    use objc::runtime::Object;
+    use objc::sel;
+    use objc::sel_impl;
+
+    if webview.is_null() {
+        return false;
+    }
+    let can_create_pdf: bool =
+        msg_send![webview, respondsToSelector: sel!(createPDFWithConfiguration:completionHandler:)];
+    if !can_create_pdf {
+        return false;
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    struct E2eNativePoint {
+        x: f64,
+        y: f64,
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    struct E2eNativeSize {
+        width: f64,
+        height: f64,
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    struct E2eNativeRect {
+        origin: E2eNativePoint,
+        size: E2eNativeSize,
+    }
+
+    let bounds: E2eNativeRect = msg_send![webview, bounds];
+    if bounds.size.width <= 0.0 || bounds.size.height <= 0.0 {
+        return false;
+    }
+
+    let configuration: *mut Object = msg_send![class!(WKPDFConfiguration), new];
+    if configuration.is_null() {
+        return false;
+    }
+    let _: () = msg_send![configuration, setRect: bounds];
+    if msg_send![configuration, respondsToSelector: sel!(setAllowTransparentBackground:)] {
+        let _: () = msg_send![configuration, setAllowTransparentBackground: false];
+    }
+
+    let label_for_status = label.to_string();
+    let output_for_block = output_path.to_path_buf();
+    let status_for_block = status_path.to_path_buf();
+    let prior_error_for_block = prior_error.to_string();
+    let pdf_output = output_path.with_extension("pdf");
+    let webview_for_fallback = webview;
+    let completion = ConcreteBlock::new(move |pdf_data: *mut Object, error: *mut Object| {
+        if !error.is_null() {
+            let error_message = e2e_ns_error_summary(error);
+            if e2e_try_cached_display_snapshot(
+                webview_for_fallback,
+                &status_for_block,
+                &label_for_status,
+                &output_for_block,
+                &format!(
+                    "{}; WKWebView PDF fallback failed ({})",
+                    prior_error_for_block, error_message
+                ),
+            ) {
+                log::info!(
+                    "NIXMAC_E2E_NATIVE_SNAPSHOT used AppKit cached-display fallback for {} after PDF failure",
+                    label_for_status
+                );
+                return;
+            }
+            e2e_write_native_snapshot_status_with_source(
+                &status_for_block,
+                "failed",
+                &label_for_status,
+                &output_for_block,
+                Some(&format!(
+                    "{}; WKWebView PDF fallback failed ({})",
+                    prior_error_for_block, error_message
+                )),
+                "WKWebView.createPDFWithConfiguration",
+            );
+            return;
+        }
+
+        if pdf_data.is_null() {
+            e2e_write_native_snapshot_status_with_source(
+                &status_for_block,
+                "failed",
+                &label_for_status,
+                &output_for_block,
+                Some(&format!(
+                    "{}; WKWebView PDF fallback returned no data",
+                    prior_error_for_block
+                )),
+                "WKWebView.createPDFWithConfiguration",
+            );
+            return;
+        }
+
+        match e2e_write_nsdata(pdf_data, &pdf_output)
+            .and_then(|()| e2e_write_pdf_data_as_png(pdf_data, &output_for_block))
+        {
+            Ok(()) => {
+                e2e_write_native_snapshot_status_with_source(
+                    &status_for_block,
+                    "passed",
+                    &label_for_status,
+                    &output_for_block,
+                    Some(&format!(
+                        "WKWebView snapshot failed first ({}); WKWebView PDF fallback wrote PNG and PDF",
+                        prior_error_for_block
+                    )),
+                    "WKWebView.createPDFWithConfiguration",
+                );
+            }
+            Err(error) => {
+                e2e_write_native_snapshot_status_with_source(
+                    &status_for_block,
+                    "failed",
+                    &label_for_status,
+                    &output_for_block,
+                    Some(&format!(
+                        "{}; WKWebView PDF fallback could not render PNG ({})",
+                        prior_error_for_block, error
+                    )),
+                    "WKWebView.createPDFWithConfiguration",
+                );
+            }
+        }
+    })
+    .copy();
+
+    let _: () = msg_send![
+        webview,
+        createPDFWithConfiguration: configuration
+        completionHandler: &*completion
+    ];
+    let _: () = msg_send![configuration, release];
+    std::mem::forget(completion);
+    true
+}
+
+#[cfg(all(debug_assertions, target_os = "macos"))]
 unsafe fn e2e_nsstring_to_string(value: *mut objc::runtime::Object) -> Option<String> {
     use objc::{msg_send, sel, sel_impl};
 
@@ -627,6 +854,19 @@ fn e2e_request_native_webview_snapshot(
         let completion = ConcreteBlock::new(move |image: *mut Object, error: *mut Object| {
             if !error.is_null() {
                 let error_message = e2e_ns_error_summary(error);
+                if e2e_try_pdf_snapshot(
+                    webview_for_fallback,
+                    &status_for_block,
+                    &label_for_status,
+                    &output_for_block,
+                    &error_message,
+                ) {
+                    log::info!(
+                        "NIXMAC_E2E_NATIVE_SNAPSHOT requested WKWebView PDF fallback for {}",
+                        label_for_status
+                    );
+                    return;
+                }
                 if e2e_try_cached_display_snapshot(
                     webview_for_fallback,
                     &status_for_block,
