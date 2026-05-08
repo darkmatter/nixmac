@@ -1,0 +1,12 @@
+{
+  "status": "captured",
+  "domRendered": false,
+  "captureReady": false,
+  "assetProbeCount": 0,
+  "mountedBreadcrumbs": 3,
+  "maxRootChildren": 2,
+  "maxBodyTextLength": 0,
+  "assetFailures": [],
+  "latestDomText": "",
+  "note": "WebView DOM did not prove rendered app content."
+}
