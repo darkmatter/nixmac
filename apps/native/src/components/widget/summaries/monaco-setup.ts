@@ -1,12 +1,17 @@
 import { loader } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 import type { editor } from "monaco-editor";
+import { initNixGrammar } from "@/lib/nix-grammar";
 import { NIXMAC_THEME, NIXMAC_THEME_DATA } from "./monaco-theme";
 
 // Use the locally bundled monaco-editor instead of CDN (required in Tauri offline context)
 loader.config({ monaco });
 
 monaco.editor.defineTheme(NIXMAC_THEME, NIXMAC_THEME_DATA);
+
+// Eagerly register the Nix textmate grammar so FileView/DiffView pick up Nix
+// highlighting without waiting for the nix-editor panel to open.
+initNixGrammar(monaco).catch((e) => console.warn("Nix grammar init failed:", e));
 
 export const FILE_VIEW_OPTIONS: editor.IStandaloneEditorConstructionOptions = {
   readOnly: true,

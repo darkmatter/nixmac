@@ -26,6 +26,31 @@ export const NIXMAC_THEME_DATA = {
     { token: "addition.diff", foreground: "23d0e7" },
     { token: "deletion.diff", foreground: "f4587c" },
     { token: "info.diff", foreground: "a3a3a3" },
+    // JSON-specific (vs-dark has more specific rules that override our generic "string"/"keyword"; explicit suffix wins)
+    { token: "string.key.json", foreground: "55a0f6" },
+    { token: "string.value.json", foreground: "23d0e7" },
+    { token: "keyword.json", foreground: "f7b23b" },
+    { token: "number.json", foreground: "f7b23b" },
+    // YAML-specific
+    { token: "string.yaml", foreground: "23d0e7" },
+    { token: "comment.yaml", foreground: "a3a3a3", fontStyle: "italic" },
+    { token: "keyword.yaml", foreground: "55a0f6" },
+    { token: "number.yaml", foreground: "f7b23b" },
+    { token: "type.yaml", foreground: "55a0f6" },
+    { token: "tag.yaml", foreground: "f4587c" },
+    // TOML-specific
+    { token: "string.toml", foreground: "23d0e7" },
+    { token: "comment.toml", foreground: "a3a3a3", fontStyle: "italic" },
+    { token: "keyword.toml", foreground: "55a0f6" },
+    { token: "number.toml", foreground: "f7b23b" },
+    { token: "type.toml", foreground: "55a0f6" },
+    // Shell-specific
+    { token: "string.shell", foreground: "23d0e7" },
+    { token: "comment.shell", foreground: "a3a3a3", fontStyle: "italic" },
+    { token: "keyword.shell", foreground: "55a0f6" },
+    { token: "number.shell", foreground: "f7b23b" },
+    { token: "variable.shell", foreground: "f7b23b" },
+    { token: "predefined.shell", foreground: "23d0e7" },
   ],
   colors: {
     "editor.background": "#0a0a0a",
