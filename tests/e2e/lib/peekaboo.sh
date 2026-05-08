@@ -191,6 +191,40 @@ peekaboo_capture_app_diagnostics() {
     echo "[diagnostic] Captured Peekaboo diagnostics for $app ($reason): $prefix-*" >> "$E2E_LOG_FILE"
 }
 
+peekaboo_window_id_for_app() {
+    local app="$1"
+    local json window_id
+
+    [ -n "$app" ] || return 1
+    json=$(peekaboo_run window list --app "$app" --json 2>/dev/null || echo '{}')
+    window_id=$(echo "$json" | jq -r '
+        [
+            .data.windows[]? |
+            select((.is_on_screen // true) == true) |
+            # Skip tooltips/popovers and prefer the real app window.
+            select(((.bounds.width // 0) >= 500) and ((.bounds.height // 0) >= 350)) |
+            .window_id
+        ][0] // [
+            .data.windows[]? |
+            select((.is_on_screen // true) == true) |
+            .window_id
+        ][0] // ""
+    ' 2>/dev/null | head -1)
+    [ -n "$window_id" ] || return 1
+    printf '%s\n' "$window_id"
+}
+
+peekaboo_capture_window_image() {
+    local app="$1"
+    local path="$2"
+    local window_id
+
+    [ -n "$path" ] || return 1
+    window_id=$(peekaboo_window_id_for_app "$app") || return 1
+    mkdir -p "$(dirname "$path")" || return 1
+    peekaboo_run image --mode window --window-id "$window_id" --path "$path" >/dev/null 2>&1
+}
+
 peekaboo_app_pid() {
     local app="$1"
     local bundle="${E2E_ACTIVE_BUNDLE_ID:-}"

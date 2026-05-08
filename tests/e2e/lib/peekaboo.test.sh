@@ -111,6 +111,21 @@ find "$E2E_DIAGNOSTIC_DIR" -type f -name '*-app-list.json' | grep -q . || {
     exit 1
 }
 
+window_id="$(peekaboo_window_id_for_app nixmac)"
+[ "$window_id" = "1" ] || {
+    echo "expected window-id helper to return 1, got $window_id" >&2
+    exit 1
+}
+window_capture="$TEST_DIR/window-capture.png"
+peekaboo_capture_window_image nixmac "$window_capture" || {
+    echo "expected window-id capture helper to succeed" >&2
+    exit 1
+}
+[ -s "$window_capture" ] || {
+    echo "expected window-id capture helper to write a PNG" >&2
+    exit 1
+}
+
 export E2E_ACTIVE_APP_NAME="nixmac"
 PEEKABOO_TEST_RESTORE_READY=0
 : > "$TEST_DIR/app-switch.log"

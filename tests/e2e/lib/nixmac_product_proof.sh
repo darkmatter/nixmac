@@ -468,9 +468,28 @@ nixmac_pp_capture_native_visual_signal() {
     printf '%s\n' "$path"
 }
 
+nixmac_pp_capture_window_visual_signal() {
+    local label="${1:-window-capture}"
+    local dir path result
+
+    dir="${NIXMAC_E2E_DIAGNOSTICS_DIR:-$E2E_DIAGNOSTIC_DIR}/window-captures"
+    mkdir -p "$dir"
+    path="$dir/${label//[^a-zA-Z0-9._-]/_}-window-$(date +%s)-$$-$RANDOM.png"
+    if ! peekaboo_capture_window_image "$NIXMAC_APP_NAME" "$path"; then
+        debug "Peekaboo window-id capture failed for $label"
+        return 1
+    fi
+    result=$(nixmac_pp_screenshot_has_visual_signal "$path" 2>&1) || {
+        debug "Peekaboo window-id capture visual signal not established for $path: $result"
+        return 1
+    }
+    debug "Peekaboo window-id capture visual signal ready for $path: $result"
+    printf '%s\n' "$path"
+}
+
 nixmac_pp_capture_ready_visual_signal() {
     local label="${1:-ready-shell}"
-    local dir path result native_output native_path
+    local dir path result window_output window_path native_output native_path
 
     dir="$E2E_DIAGNOSTIC_DIR/visual-readiness"
     mkdir -p "$dir"
@@ -486,6 +505,12 @@ nixmac_pp_capture_ready_visual_signal() {
         result="system screenshot capture failed"
         debug "Ready-shell system visual signal not established for $path: $result"
     fi
+
+    window_output=$(nixmac_pp_capture_window_visual_signal "$label") && {
+        window_path=$(printf '%s\n' "$window_output" | tail -n 1)
+        debug "Ready-shell visual signal established from Peekaboo window-id capture: $window_path"
+        return 0
+    }
 
     native_output=$(nixmac_pp_capture_native_visual_signal "$label") || {
         debug "Ready-shell visual signal not established for $path: $result"
