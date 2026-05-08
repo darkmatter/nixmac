@@ -3,8 +3,18 @@ import preview from "#storybook/preview";
 import { useWidgetStore } from "@/stores/widget-store";
 import type { ChangeWithRichType } from "@/components/widget/utils";
 import type { FileDiffContents } from "@/types/shared";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { FullFileDiffEditor } from "./full-file-diff-editor";
+
+function ControlledFullFileDiffEditor({
+  initialOpen = false,
+  ...props
+}: Omit<React.ComponentProps<typeof FullFileDiffEditor>, "isOpen" | "onOpenChange"> & {
+  initialOpen?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(initialOpen);
+  return <FullFileDiffEditor {...props} isOpen={isOpen} onOpenChange={setIsOpen} />;
+}
 
 const meta = preview.meta({
   title: "Widget/Summaries/FullFileDiffEditor",
@@ -107,11 +117,11 @@ function WithStore({ children }: { children: React.ReactNode }) {
 export const SingleHunk = meta.story({
   render: () => (
     <WithStore>
-      <FullFileDiffEditor
+      <ControlledFullFileDiffEditor
         filename="configuration.nix"
         changes={[makeChange(1, DIFF_HEADER)]}
         contents={mockContents}
-        defaultOpen
+        initialOpen
       />
     </WithStore>
   ),
@@ -120,11 +130,11 @@ export const SingleHunk = meta.story({
 export const MultipleHunks = meta.story({
   render: () => (
     <WithStore>
-      <FullFileDiffEditor
+      <ControlledFullFileDiffEditor
         filename="configuration.nix"
         changes={[makeChange(1, DIFF_HEADER), makeChange(2, DIFF_HEADER_2)]}
         contents={mockContents}
-        defaultOpen
+        initialOpen
       />
     </WithStore>
   ),
@@ -133,7 +143,7 @@ export const MultipleHunks = meta.story({
 export const Collapsed = meta.story({
   render: () => (
     <WithStore>
-      <FullFileDiffEditor
+      <ControlledFullFileDiffEditor
         filename="configuration.nix"
         changes={[makeChange(1, DIFF_HEADER), makeChange(2, DIFF_HEADER_2)]}
         contents={mockContents}
@@ -145,11 +155,11 @@ export const Collapsed = meta.story({
 export const Loading = meta.story({
   render: () => (
     <WithStore>
-      <FullFileDiffEditor
+      <ControlledFullFileDiffEditor
         filename="configuration.nix"
         changes={[makeChange(1, DIFF_HEADER)]}
         contents={undefined}
-        defaultOpen
+        initialOpen
       />
     </WithStore>
   ),

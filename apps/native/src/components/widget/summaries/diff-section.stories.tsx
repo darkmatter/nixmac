@@ -1,7 +1,13 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
 import type { Change } from "@/types/shared";
+import { useState } from "react";
 import { DiffSection } from "./diff-section";
+
+function ControlledDiffSection({ changes }: { changes: Change[] }) {
+  const [openFiles, setOpenFiles] = useState<Record<string, boolean>>({});
+  return <DiffSection changes={changes} openFiles={openFiles} onOpenFilesChange={setOpenFiles} />;
+}
 
 const meta = preview.meta({
   title: "Widget/Summaries/DiffSection",
@@ -66,7 +72,7 @@ const flakeDiff = `diff --git a/flake.nix b/flake.nix
 export const SingleFile = meta.story({
   render: () => (
     <div className="w-[560px]">
-      <DiffSection changes={[makeChange(1, "modules/darwin/packages.nix", packagesDiff)]} />
+      <ControlledDiffSection changes={[makeChange(1, "modules/darwin/packages.nix", packagesDiff)]} />
     </div>
   ),
 });
@@ -74,7 +80,7 @@ export const SingleFile = meta.story({
 export const MultipleFiles = meta.story({
   render: () => (
     <div className="w-[560px]">
-      <DiffSection
+      <ControlledDiffSection
         changes={[
           makeChange(1, "modules/darwin/packages.nix", packagesDiff),
           makeChange(2, "modules/home/shell.nix", shellDiff),
@@ -88,7 +94,7 @@ export const MultipleFiles = meta.story({
 export const Empty = meta.story({
   render: () => (
     <div className="w-[560px]">
-      <DiffSection changes={[]} />
+      <ControlledDiffSection changes={[]} />
     </div>
   ),
 });

@@ -73,7 +73,7 @@ export function CollapsibleDiff({
           </button>
         )}
       </div>
-      <CollapsibleContent className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
+      <CollapsibleContent className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=open]:[animation-delay:50ms] data-[state=open]:[animation-fill-mode:backwards] data-[state=closed]:animate-collapsible-up">
         <div className="overflow-hidden border-border border-t">{children}</div>
       </CollapsibleContent>
     </Collapsible>

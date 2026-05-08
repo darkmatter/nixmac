@@ -1,7 +1,7 @@
 import { getShortFilename, type ChangeWithRichType } from "@/components/widget/utils";
 import type { FileDiffContents } from "@/types/shared";
 import type { editor } from "monaco-editor";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { CollapsibleDiff } from "./collapsible-diff";
 import { HunkPill } from "./hunk-pill";
 import { DiffView } from "./diff-view";
@@ -17,12 +17,12 @@ interface FullFileDiffEditorProps {
   filename: string;
   changes: ChangeWithRichType[];
   contents?: FileDiffContents;
-  defaultOpen?: boolean;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export function FullFileDiffEditor({ filename, changes, contents, defaultOpen }: FullFileDiffEditorProps) {
+export function FullFileDiffEditor({ filename, changes, contents, isOpen, onOpenChange }: FullFileDiffEditorProps) {
   const editorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
-  const [isOpen, setIsOpen] = useState(defaultOpen ?? false);
 
   const scrollToChange = (index: number) => {
     const line = getModStartLine(changes[index].diff);
@@ -31,7 +31,7 @@ export function FullFileDiffEditor({ filename, changes, contents, defaultOpen }:
 
   const handlePillClick = (index: number) => {
     if (!isOpen) {
-      setIsOpen(true);
+      onOpenChange(true);
       setTimeout(() => scrollToChange(index), 150);
     } else {
       scrollToChange(index);
@@ -40,10 +40,10 @@ export function FullFileDiffEditor({ filename, changes, contents, defaultOpen }:
 
   const handleToggle = () => {
     if (!isOpen) {
-      setIsOpen(true);
+      onOpenChange(true);
       setTimeout(() => scrollToChange(0), 150);
     } else {
-      setIsOpen(false);
+      onOpenChange(false);
       editorRef.current?.setModel(null);
     }
   };

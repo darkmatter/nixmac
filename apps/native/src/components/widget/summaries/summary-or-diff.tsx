@@ -25,6 +25,7 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   const evolveState = useWidgetStore((s) => s.evolveState);
   const { summarizeOnFocus } = useSummary();
   const [activeTab, setActiveTab] = useState("summary");
+  const [openFiles, setOpenFiles] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     window.addEventListener("focus", summarizeOnFocus);
@@ -77,7 +78,11 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
           )}
         </Activity>
         {activeTab === "diff" && (
-          <DiffSection changes={gitStatus.changes} />
+          <DiffSection
+            changes={gitStatus.changes}
+            openFiles={openFiles}
+            onOpenFilesChange={setOpenFiles}
+          />
         )}
       </>
     </Tabs>

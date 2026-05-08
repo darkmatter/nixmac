@@ -2,6 +2,7 @@ import { computeCurrentStep } from "@/components/widget/utils";
 import type {
   EvolveEvent,
   EvolveState,
+  FileDiffContents,
   GitStatus,
   HistoryItem,
   PermissionsState,
@@ -91,6 +92,7 @@ export interface WidgetState {
 
   // Git (from backend)
   gitStatus: GitStatus | null;
+  fileDiffContents: Record<string, FileDiffContents>;
   // Evolution
   evolvePrompt: string;
   isProcessing: boolean;
@@ -184,6 +186,7 @@ interface WidgetActions {
   setEvolveState: (state: EvolveState | null) => void;
   setExternalBuildDetected: (detected: boolean) => void;
   setGitStatus: (status: GitStatus | null) => void;
+  setFileDiffContents: (contents: Record<string, FileDiffContents>) => void;
   setEvolvePrompt: (prompt: string) => void;
   setProcessing: (isProcessing: boolean, action?: ProcessingAction) => void;
   setChangeMap: (map: SemanticChangeMap | null) => void;
@@ -293,6 +296,7 @@ const initialWidgetState: WidgetState = {
 
   // Git
   gitStatus: null,
+  fileDiffContents: {},
 
   // Evolution
   evolvePrompt: "",
@@ -381,6 +385,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setEvolveState: (evolveState) => set({ evolveState: evolveState }),
     setExternalBuildDetected: (externalBuildDetected) => set({ externalBuildDetected }),
     setGitStatus: (gitStatus) => set({ gitStatus }),
+    setFileDiffContents: (fileDiffContents) => set({ fileDiffContents }),
     setEvolvePrompt: (evolvePrompt) => set({ evolvePrompt }),
     setProcessing: (isProcessing, action = null) =>
       set({
