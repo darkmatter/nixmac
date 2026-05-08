@@ -31,6 +31,13 @@ function normalizeSnapshotRoot(root: Element): string {
     editor.appendChild(placeholder);
   }
 
+  for (const editor of clone.querySelectorAll(".monaco-diff-editor, .monaco-editor")) {
+    editor.replaceChildren();
+    const placeholder = document.createElement("div");
+    placeholder.setAttribute("data-slot", "monaco-editor-placeholder");
+    editor.appendChild(placeholder);
+  }
+
   let html = normalizeAnimations(clone.innerHTML);
   // Monaco assigns auto-incrementing model IDs that vary by test-suite order.
   html = html.replace(/inmemory:\/\/model\/\d+/g, "inmemory://model/N");
