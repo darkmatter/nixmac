@@ -1,9 +1,12 @@
 use crate::shared_types;
 use tauri::AppHandle;
 
+#[cfg(any(not(debug_assertions), test))]
 const STABLE_MANIFEST_URL: &str = "https://releases.nixmac.com/latest.json";
+#[cfg(any(not(debug_assertions), test))]
 const DEVELOP_MANIFEST_URL: &str = "https://releases.nixmac.com/channels/develop/latest.json";
 
+#[cfg(any(not(debug_assertions), test))]
 fn update_manifest_url(channel: shared_types::UpdateChannel) -> &'static str {
     match channel {
         shared_types::UpdateChannel::Stable => STABLE_MANIFEST_URL,
