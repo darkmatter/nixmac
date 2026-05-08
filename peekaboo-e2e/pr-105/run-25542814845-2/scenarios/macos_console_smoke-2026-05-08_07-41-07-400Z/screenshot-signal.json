@@ -1,0 +1,11 @@
+{
+  "status": "failed",
+  "scannedFiles": 2,
+  "violations": [
+    {
+      "path": "screenshots/failure-1778226190-1778226190.png",
+      "label": "failure-1778226190-1778226190",
+      "issue": "central app content appears blank or occluded (YMAX 25 below 35); WebView DOM rendered, so host pixel capture is likely black/occluded"
+    }
+  ]
+}

@@ -1,0 +1,340 @@
+{
+  "schemaVersion": 1,
+  "repo": "darkmatter/nixmac",
+  "prNumber": null,
+  "headSha": "unknown",
+  "baseSha": null,
+  "workflowRunId": null,
+  "attempt": null,
+  "lane": "peekaboo-local",
+  "scenario": "macos_console_smoke",
+  "runnerId": "macos-e2e",
+  "runnerKind": "peekaboo-local",
+  "startedAt": "2026-05-08T07:41:08Z",
+  "finishedAt": "2026-05-08T07:43:20Z",
+  "durationMs": 132000,
+  "status": "failed",
+  "htmlReportUrl": null,
+  "primaryProofUrl": "macos_console_smoke/peekaboo-e2e.mp4",
+  "failureProofUrl": "macos_console_smoke/failure-1778226190-1778226190.png",
+  "failureScreenshotUrl": "macos_console_smoke/failure-1778226190-1778226190.png",
+  "failureVideoUrl": "macos_console_smoke/peekaboo-e2e.mp4",
+  "failureTimestampMs": null,
+  "replayCommand": "tests/e2e/run.sh macos_console_smoke",
+  "localReproCommand": "tests/e2e/run.sh macos_console_smoke",
+  "phases": [
+    {
+      "name": "peekabooCoreFixture: Prepared deterministic config and local provider-validation settings",
+      "status": "passed",
+      "startedAt": null,
+      "finishedAt": null,
+      "durationMs": 0,
+      "assertions": [
+        "peekabooCoreFixture: Prepared deterministic config and local provider-validation settings"
+      ],
+      "proof": [],
+      "error": null
+    },
+    {
+      "name": "App shell did not expose Console footer",
+      "status": "failed",
+      "startedAt": null,
+      "finishedAt": null,
+      "durationMs": 0,
+      "assertions": [
+        "App shell did not expose Console footer"
+      ],
+      "proof": [],
+      "error": "App shell did not expose Console footer"
+    }
+  ],
+  "captureLimitations": [],
+  "proof": [
+    {
+      "kind": "screenshot",
+      "path": "macos_console_smoke/failure-1778226190-1778226190.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "failure-1778226190-1778226190.png",
+      "isPrimary": false,
+      "isFailureProof": true
+    },
+    {
+      "kind": "screenshot",
+      "path": "macos_console_smoke/failure-1778226190-1778226190_annotated.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "failure-1778226190-1778226190_annotated.png",
+      "isPrimary": false,
+      "isFailureProof": true
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/20260508T074117Z-nixmac-pre-clear-app-list.json",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260508T074117Z-nixmac-pre-clear-app-list.json",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/20260508T074117Z-nixmac-pre-clear-bridge.txt",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260508T074117Z-nixmac-pre-clear-bridge.txt",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/20260508T074117Z-nixmac-pre-clear-permissions.txt",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260508T074117Z-nixmac-pre-clear-permissions.txt",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/20260508T074117Z-nixmac-pre-clear-process-list.json",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260508T074117Z-nixmac-pre-clear-process-list.json",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/20260508T074117Z-nixmac-pre-clear-screen.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260508T074117Z-nixmac-pre-clear-screen.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/20260508T074117Z-nixmac-pre-clear-screen.txt",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260508T074117Z-nixmac-pre-clear-screen.txt",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/20260508T074117Z-nixmac-pre-clear-window-list.json",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260508T074117Z-nixmac-pre-clear-window-list.json",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/20260508T074309Z-nixmac-ready-shell-timeout-app-list.json",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260508T074309Z-nixmac-ready-shell-timeout-app-list.json",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/20260508T074309Z-nixmac-ready-shell-timeout-bridge.txt",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260508T074309Z-nixmac-ready-shell-timeout-bridge.txt",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/20260508T074309Z-nixmac-ready-shell-timeout-permissions.txt",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260508T074309Z-nixmac-ready-shell-timeout-permissions.txt",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/20260508T074309Z-nixmac-ready-shell-timeout-process-list.json",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260508T074309Z-nixmac-ready-shell-timeout-process-list.json",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/20260508T074309Z-nixmac-ready-shell-timeout-screen.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260508T074309Z-nixmac-ready-shell-timeout-screen.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/20260508T074309Z-nixmac-ready-shell-timeout-screen.txt",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260508T074309Z-nixmac-ready-shell-timeout-screen.txt",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/20260508T074309Z-nixmac-ready-shell-timeout-window-list.json",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/20260508T074309Z-nixmac-ready-shell-timeout-window-list.json",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/native-webview-snapshots/native-webview-0001-post-build-plus-2s-1778226094886.json",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/native-webview-snapshots/native-webview-0001-post-build-plus-2s-1778226094886.json",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/native-webview-snapshots/native-webview-0001-post-build-plus-2s-1778226094886.pdf",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/native-webview-snapshots/native-webview-0001-post-build-plus-2s-1778226094886.pdf",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/native-webview-snapshots/native-webview-0001-post-build-plus-2s-1778226094886.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/native-webview-snapshots/native-webview-0001-post-build-plus-2s-1778226094886.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/native-webview-snapshots/native-webview-0002-page-load-finished-plus-5s-1778226099296.json",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/native-webview-snapshots/native-webview-0002-page-load-finished-plus-5s-1778226099296.json",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/native-webview-snapshots/native-webview-0002-page-load-finished-plus-5s-1778226099296.pdf",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/native-webview-snapshots/native-webview-0002-page-load-finished-plus-5s-1778226099296.pdf",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/native-webview-snapshots/native-webview-0002-page-load-finished-plus-5s-1778226099296.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/native-webview-snapshots/native-webview-0002-page-load-finished-plus-5s-1778226099296.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/nixmac-app.log",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/nixmac-app.log",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/nixmac-frontend-breadcrumbs.jsonl",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/nixmac-frontend-breadcrumbs.jsonl",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "diagnostic",
+      "path": "macos_console_smoke/diagnostics/system-screenshots/failure-1778226190-system.png",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "diagnostics/system-screenshots/failure-1778226190-system.png",
+      "isPrimary": false,
+      "isFailureProof": false
+    },
+    {
+      "kind": "video",
+      "path": "macos_console_smoke/peekaboo-e2e.mp4",
+      "url": null,
+      "thumbnailUrl": null,
+      "timestampMs": null,
+      "phase": "macos-e2e",
+      "caption": "Full screen recording",
+      "isPrimary": true,
+      "isFailureProof": true
+    }
+  ]
+}
