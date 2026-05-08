@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useHistory } from "@/hooks/use-history";
 import { useWidgetStore } from "@/stores/widget-store";
 import { useHistoryRestore, PREVIEW_ITEM_HASH } from "@/hooks/use-history-restore";
@@ -21,13 +21,13 @@ export function HistoryStep() {
     loadHistory();
   }, [loadHistory]);
 
-  const handleUncommittedChanges = useCallback(() => {
+  const handleUncommittedChanges = () => {
     const viewport = scrollAreaRef.current?.querySelector(
       "[data-radix-scroll-area-viewport]",
     );
     viewport?.scrollTo({ top: 0, behavior: "smooth" });
     setIsFlashing(true);
-  }, []);
+  };
 
   const {
     restoringHash,

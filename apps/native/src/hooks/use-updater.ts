@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Update } from "@tauri-apps/plugin-updater";
 import { invoke } from "@tauri-apps/api/core";
 import { darwinAPI } from "@/tauri-api";
@@ -40,7 +40,7 @@ export function useUpdater() {
   const isDevMode = import.meta.env.DEV;
   const pinnedVersion = useWidgetStore((s) => s.pinnedVersion);
 
-  const checkForUpdates = useCallback(async () => {
+  const checkForUpdates = async () => {
     setState((s) => ({ ...s, checking: true, error: null }));
     try {
       // Dynamic import: if the updater plugin isn't registered (e.g. NIXMAC_DISABLE_UPDATER=1),
@@ -86,9 +86,9 @@ export function useUpdater() {
         errorSource: "check",
       }));
     }
-  }, [isDevMode]);
+  };
 
-  const installUpdate = useCallback(async () => {
+  const installUpdate = async () => {
     const update = state.available;
     if (!update) return;
 
@@ -142,11 +142,11 @@ export function useUpdater() {
         errorSource: "install",
       }));
     }
-  }, [isDevMode, state.available]);
+  };
 
-  const dismiss = useCallback(() => {
+  const dismiss = () => {
     setState(initialState);
-  }, []);
+  };
 
   // Silent check on mount — skipped while a developer pin is active so the app
   // doesn't try to jump back to latest mid-bisect. Wait for prefs to load before
@@ -183,7 +183,7 @@ export function useUpdater() {
     return () => {
       cancelled = true;
     };
-  }, [checkForUpdates, pinnedVersion]);
+  }, [pinnedVersion]);
 
   return {
     ...state,

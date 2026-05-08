@@ -15,6 +15,9 @@ jobs:
     name: Storybook Snapshot Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -116,6 +119,41 @@ jobs:
             --branch="$BRANCH" 2>&1 | tee /dev/stderr)
           url=$(echo "$output" | grep -oE 'https://[a-zA-Z0-9.-]+\.pages\.dev' | head -n1 || true)
           echo "deployment-url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Comment Storybook preview URL on PR
+        if: github.event_name == 'pull_request' && steps.deploy.outputs.deployment-url != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          MARKER='<!-- nixmac-storybook-preview -->'
+          BODY=$(cat <<EOF
+          ${MARKER}
+          ### 🎨 Storybook preview
+
+          ${DEPLOY_URL}
+
+          Updated for ${SHA}
+          EOF
+          )
+
+          # Find existing sticky comment (if any) and update; otherwise create.
+          EXISTING_ID=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --paginate --jq ".[] | select(.body | startswith(\"${MARKER}\")) | .id" \
+            | head -n1 || true)
+
+          if [ -n "${EXISTING_ID}" ]; then
+            gh api --method PATCH "repos/${REPO}/issues/comments/${EXISTING_ID}" \
+              -f body="${BODY}" >/dev/null
+            echo "Updated sticky comment ${EXISTING_ID}"
+          else
+            gh pr comment "${PR_NUMBER}" --repo "${REPO}" --body "${BODY}"
+            echo "Created sticky comment"
+          fi
 
       - name: Upload snapshot diffs on failure
         if: failure()

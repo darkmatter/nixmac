@@ -140,6 +140,8 @@ interface SummaryItemsProps {
   unsummarized: ChangeWithRichType[];
 }
 
+const MAX_ITEMS = 5;
+
 export function SummaryItems({ map, unsummarized }: SummaryItemsProps) {
   const partiallySummarized =
     unsummarized.length > 0 &&
@@ -149,7 +151,7 @@ export function SummaryItems({ map, unsummarized }: SummaryItemsProps) {
       {map.groups.map((group, i) => (
         <GroupItem key={`group-${group.summary.id}`} group={group} index={i} />
       ))}
-      {map.singles.map((change, i) => (
+      {map.singles.slice(0, MAX_ITEMS).map((change, i) => (
         <SingleItem key={change.hash} change={change} index={i} />
       ))}
       {partiallySummarized && <Separator />}

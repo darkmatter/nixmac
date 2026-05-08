@@ -17,7 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { Activity, useCallback, useEffect, useRef, useState } from "react";
+import { Activity, useEffect, useRef, useState } from "react";
 
 /** Get a user-friendly title for the error type */
 function getErrorTitle(errorType: RebuildErrorType | undefined): string {
@@ -347,14 +347,14 @@ export function RebuildOverlayPanel() {
   );
   const isRollback = context === "rollback";
 
-  const handleRetry = useCallback(async () => {
+  const handleRetry = async () => {
     useWidgetStore.getState().setProcessing(true, "cancel");
     await triggerRebuild({ context: "rollback" });
-  }, [triggerRebuild]);
+  };
 
-  const handleDismiss = useCallback(() => {
+  const handleDismiss = () => {
     useWidgetStore.getState().clearRebuild();
-  }, []);
+  };
 
   const [showConsole, setShowConsole] = useState(false);
 

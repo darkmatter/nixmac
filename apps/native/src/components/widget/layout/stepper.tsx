@@ -21,6 +21,7 @@ export function Stepper() {
     step === "permissions" ||
     step === "nix-setup" ||
     step === "history" ||
+    step === "filesystem" ||
     isGenerating ||
     isRebuilding
   ) {

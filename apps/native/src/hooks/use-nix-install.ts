@@ -6,10 +6,8 @@ import {
   type NixInstallEndEvent,
   type NixInstallProgressEvent,
 } from "@/tauri-api";
-import { useCallback } from "react";
 
-export function useNixInstall() {
-  const checkNix = useCallback(async () => {
+const checkNix = async () => {
     try {
       const result = await darwinAPI.nix.check();
       const store = useWidgetStore.getState();
@@ -18,9 +16,9 @@ export function useNixInstall() {
     } catch {
       useWidgetStore.getState().setNixInstalled(false);
     }
-  }, []);
+};
 
-  const installNix = useCallback(async () => {
+const installNix = async () => {
     const store = useWidgetStore.getState();
     store.setNixInstalling(true);
     store.setNixInstallPhase(null);
@@ -67,9 +65,9 @@ export function useNixInstall() {
       unlistenProgress();
       unlistenEnd();
     }
-  }, []);
+};
 
-  const prefetchDarwinRebuild = useCallback(async () => {
+const prefetchDarwinRebuild = async () => {
     const store = useWidgetStore.getState();
     store.setDarwinRebuildPrefetching(true);
     store.setError(null);
@@ -94,7 +92,8 @@ export function useNixInstall() {
       store.setError(msg);
       unlistenEnd();
     }
-  }, []);
+};
 
+export function useNixInstall() {
   return { checkNix, installNix, prefetchDarwinRebuild };
 }
