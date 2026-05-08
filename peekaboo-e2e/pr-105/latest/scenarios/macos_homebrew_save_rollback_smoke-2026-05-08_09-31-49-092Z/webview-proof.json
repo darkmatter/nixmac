@@ -1,0 +1,12 @@
+{
+  "status": "captured",
+  "domRendered": true,
+  "captureReady": false,
+  "assetProbeCount": 0,
+  "mountedBreadcrumbs": 5,
+  "maxRootChildren": 2,
+  "maxBodyTextLength": 231,
+  "assetFailures": [],
+  "latestDomText": "nixmacWelcome to nixmacLet's set up your nix-darwin configuration1. Configuration DirectoryExistingNewCreateCreates an empty folder in your home directory, then nixmac can generate a default flake.Report IssueConsole",
+  "note": "WebView DOM rendered (2 root child node(s), 231 text chars)."
+}
