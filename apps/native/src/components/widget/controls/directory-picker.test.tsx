@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useWidgetStore } from "@/stores/widget-store";
 import type { SetDirResult } from "@/types/shared";
 import { DirectoryPicker } from "@/components/widget/controls/directory-picker";
-import type { SetDirResult } from "@/types/shared";
 
 // ---------------------------------------------------------------------------
 // Mocks

@@ -69,6 +69,10 @@ fn e2e_preload_native_capture_enabled() -> bool {
     cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_PRELOAD_NATIVE_CAPTURE")
 }
 
+fn e2e_page_load_native_capture_enabled() -> bool {
+    cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_E2E_PAGE_LOAD_NATIVE_CAPTURE")
+}
+
 #[cfg(all(debug_assertions, target_os = "macos"))]
 static E2E_NATIVE_SNAPSHOT_COUNTER: std::sync::atomic::AtomicUsize =
     std::sync::atomic::AtomicUsize::new(0);
@@ -1985,7 +1989,8 @@ fn run_gui_mode(
             let main_webview_loaded = Arc::new(AtomicBool::new(false));
             let main_webview_loaded_for_page_load = Arc::clone(&main_webview_loaded);
             let e2e_page_load_boot_probe = e2e_webview_watchdog;
-            let e2e_page_load_native_capture_probe = e2e_css_capture;
+            let e2e_page_load_native_capture_probe =
+                e2e_css_capture && e2e_page_load_native_capture_enabled();
 
             let mut main_window_builder =
                 WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
@@ -2038,6 +2043,10 @@ fn run_gui_mode(
                                     window.clone(),
                                     "page-load-finished-plus-5s",
                                     Duration::from_secs(5),
+                                );
+                            } else if e2e_css_capture {
+                                log::info!(
+                                    "NIXMAC_E2E_PAGE_LOAD_NATIVE_CAPTURE disabled; native WebView captures remain on-demand after shell readiness"
                                 );
                             }
                         }
