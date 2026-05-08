@@ -1,16 +1,16 @@
 import type { FileDiffContents } from "@/types/shared";
-import { DiffEditor as MonacoDiffEditor } from "@monaco-editor/react";
+import { DiffEditor } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
 import { useEffect, useRef } from "react";
-import { DIFF_EDITOR_OPTIONS, monaco } from "./monaco-setup";
+import { DIFF_EDITOR_OPTIONS, monaco, NIXMAC_THEME, NIXMAC_THEME_DATA } from "./monaco-setup";
 
-interface DiffEditorProps {
+interface DiffViewProps {
   contents: FileDiffContents;
   filename: string;
   onMount: (editor: editor.IStandaloneDiffEditor) => void;
 }
 
-export function DiffEditor({ contents, filename, onMount }: DiffEditorProps) {
+export function DiffView({ contents, filename, onMount }: DiffViewProps) {
   const disposableRef = useRef<monaco.IDisposable | null>(null);
   const editorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
   const lineCount = Math.max(
@@ -27,13 +27,14 @@ export function DiffEditor({ contents, filename, onMount }: DiffEditorProps) {
   }, []);
 
   return (
-    <MonacoDiffEditor
+    <DiffEditor
       key={filename}
       height={Math.min(Math.max(lineCount * 19, 100), 400)}
       original={contents.original}
       modified={contents.modified}
-      theme="nixmac-dark"
+      theme={NIXMAC_THEME}
       options={DIFF_EDITOR_OPTIONS}
+      beforeMount={(m) => m.editor.defineTheme(NIXMAC_THEME, NIXMAC_THEME_DATA)}
       onMount={(ed: editor.IStandaloneDiffEditor) => {
         editorRef.current = ed;
         onMount(ed);

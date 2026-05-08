@@ -4,9 +4,9 @@ import type { editor } from "monaco-editor";
 import { useRef, useState } from "react";
 import { CollapsibleDiff } from "./collapsible-diff";
 import { HunkPill } from "./hunk-pill";
-import { DiffEditor } from "./diff-editor";
+import { DiffView } from "./diff-view";
 import { monaco } from "./monaco-setup";
-import { PlainEditor } from "./plain-editor";
+import { FileView } from "./file-view";
 
 function getModStartLine(diff: string): number | null {
   const match = /@@ -\d+(?:,\d+)? \+(\d+)/.exec(diff);
@@ -71,9 +71,9 @@ export function FullFileDiffEditor({ filename, changes, contents, defaultOpen }:
     >
       {contents ? (
         changeType === "new" || changeType === "removed" ? (
-          <PlainEditor contents={contents} filename={filename} changeType={changeType} />
+          <FileView contents={contents} filename={filename} changeType={changeType} />
         ) : (
-          <DiffEditor contents={contents} filename={filename} onMount={(ed) => { editorRef.current = ed; }} />
+          <DiffView contents={contents} filename={filename} onMount={(ed) => { editorRef.current = ed; }} />
         )
       ) : (
         <div className="flex items-center justify-center py-8 text-muted-foreground text-xs">

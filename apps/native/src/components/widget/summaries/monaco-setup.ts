@@ -8,7 +8,7 @@ loader.config({ monaco });
 
 monaco.editor.defineTheme(NIXMAC_THEME, NIXMAC_THEME_DATA);
 
-export const PLAIN_EDITOR_OPTIONS: editor.IStandaloneEditorConstructionOptions = {
+export const FILE_VIEW_OPTIONS: editor.IStandaloneEditorConstructionOptions = {
   readOnly: true,
   minimap: { enabled: false },
   renderLineHighlight: "none",
