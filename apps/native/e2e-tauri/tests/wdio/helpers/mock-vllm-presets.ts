@@ -3,6 +3,8 @@ const MOCK_VLLM_FIXTURE_PRESETS: Record<string, string[]> = Object.freeze({
   basicPromptsConfigureScreenshots: ['configure-screenshots.jsonl'],
   modifySequentialPrompts: ['add-font-add-another.jsonl'],
   askQuestionPrompts: ['ask-question.jsonl', 'add-font.jsonl'],
+  conversationalPromptsOnBegin: ['conversational.jsonl'],
+  conversationalPromptsOnEvolve: ['add-font.jsonl', 'conversational.jsonl'],
 });
 
 function listMockVllmFixturePresetNames(): string[] {

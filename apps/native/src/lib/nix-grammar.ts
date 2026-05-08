@@ -9,6 +9,10 @@ export async function initNixGrammar(
   monaco: typeof monacoNs,
   editor?: monacoNs.editor.ICodeEditor,
 ): Promise<void> {
+  if (import.meta.env.STORYBOOK || import.meta.env.VITEST) {
+    return;
+  }
+
   if (initialized) return;
 
   const onigWasmUrl = new URL("onigasm/lib/onigasm.wasm", import.meta.url);

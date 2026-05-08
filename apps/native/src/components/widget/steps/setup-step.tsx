@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -7,20 +8,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BootstrapConfig } from "@/components/widget/bootstrap-config";
-import { DirectoryPicker } from "@/components/widget/directory-picker";
+import { BootstrapConfig } from "@/components/widget/controls/bootstrap-config";
+import { DirectoryPicker } from "@/components/widget/controls/directory-picker";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { useWidgetStore } from "@/stores/widget-store";
 import { Monitor } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export function SetupStep() {
   const configDir = useWidgetStore((state) => state.configDir);
   const hosts = useWidgetStore((state) => state.hosts);
   const host = useWidgetStore((state) => state.host);
+  const [configDirConfirmed, setConfigDirConfirmed] = useState(false);
+  const [selectedHost, setSelectedHost] = useState<string>("");
 
   const { saveHost } = useDarwinConfig();
 
-  const hasConfigDir = Boolean(configDir);
+  useEffect(() => {
+    if (hosts.length > 0) setConfigDirConfirmed(true);
+  }, [hosts.length]);
+
+  const hasConfigDir = Boolean(configDir) && configDirConfirmed;
   const hasHosts = hasConfigDir && hosts.length > 0;
 
   return (
@@ -36,17 +44,23 @@ export function SetupStep() {
       </div>
 
       <div className="w-full max-w-sm">
-        <DirectoryPicker label="1. Configuration Directory" />
+        <DirectoryPicker
+          label="1. Configuration Directory"
+          flow="setup"
+          onConfigured={() => setConfigDirConfirmed(true)}
+        />
       </div>
 
-      {hasConfigDir && (
+      <hr className="w-96 mx-auto" />
+
+      {(hasConfigDir && configDirConfirmed) && (
         <div className="w-full max-w-sm space-y-2">
           {hasHosts ? (
             <>
               <label className="font-medium text-foreground text-sm">
                 2. Configuration
               </label>
-              <Select onValueChange={saveHost} value={host || undefined}>
+              <Select onValueChange={setSelectedHost} value={host || undefined}>
                 <SelectTrigger className="w-full" id="host-select">
                   <SelectValue placeholder="Choose a host configuration" />
                 </SelectTrigger>
@@ -68,6 +82,9 @@ export function SetupStep() {
           ) : (
             <BootstrapConfig label="2. Configuration" />
           )}
+          <Button onClick={() => saveHost(selectedHost)}>
+            Next
+          </Button>
         </div>
       )}
     </div>

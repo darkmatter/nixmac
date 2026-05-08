@@ -1,7 +1,10 @@
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 import monacoEditorPlugin from "vite-plugin-monaco-editor";
 import { defineConfig } from "vite";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Repo root (two levels up from apps/native). Needed so Vite's dev server
 // is allowed to serve files from the real paths of symlinked deps under
@@ -10,13 +13,25 @@ import { defineConfig } from "vite";
 // `node_modules/.bun/monaco-editor@X/...` path once `preserveSymlinks`
 // is false — return 403 from Vite's fs guard.
 const repoRoot = path.resolve(__dirname, "../..");
+const uiPackageRoot = path.resolve(repoRoot, "packages/ui/src");
 
 // https://vite.dev/config/
 export default defineConfig({
   resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "src"),
-    },
+    alias: [
+      {
+        find: "@/components/ui",
+        replacement: path.resolve(uiPackageRoot, "components/ui"),
+      },
+      {
+        find: "@nixmac/ui",
+        replacement: uiPackageRoot,
+      },
+      {
+        find: "@",
+        replacement: path.resolve(__dirname, "src"),
+      },
+    ],
     // PNPM requires following symlinks for nested deps resolution (e.g. react-style-singleton).
     // Keeping this false fixes "Failed to resolve import" for transitive deps.
     preserveSymlinks: false,
@@ -24,7 +39,7 @@ export default defineConfig({
   plugins: [
     react({
       babel: {
-        // plugins: [['babel-plugin-react-compiler']],
+        plugins: [["babel-plugin-react-compiler"]],
       },
     }),
     (monacoEditorPlugin as unknown as { default: typeof monacoEditorPlugin })

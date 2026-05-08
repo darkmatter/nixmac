@@ -1,52 +1,51 @@
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
-import { useCallback } from "react";
 
 /**
  * Hook for fetching and managing the AI-generated summary of changes.
  */
-export function useSummary() {
-  const autoSummarizeOnFocus = useWidgetStore((s) => s.autoSummarizeOnFocus);
-
-  const findChangeMap = useCallback(async (): Promise<void> => {
-    const { setChangeMap, setSummaryAvailable } = useWidgetStore.getState();
-    try {
-      const map = await darwinAPI.summarizedChanges.findChangeMap();
-      if (map) {
-        setChangeMap(map);
-        setSummaryAvailable(map.groups.length > 0 || map.singles.length > 0);
-      }
-    } catch (e) {
-      console.error("[SemanticChangeMap] error", e);
-    }
-  }, []);
-
-  const generateCommitMessage = useCallback(async () => {
-    const { setCommitMessageSuggestion } = useWidgetStore.getState();
-    setCommitMessageSuggestion(null);
-    try {
-      const message = await darwinAPI.summarizedChanges.generateCommitMessage();
-      setCommitMessageSuggestion(message);
-    } catch {
-      // Keep null on error — user can type manually
-    }
-  }, []);
-
-  const generateCurrentSummary = useCallback(async () => {
-    const { setSummarizing, setChangeMap, setSummaryAvailable } = useWidgetStore.getState();
-    setSummarizing(true);
-    try {
-      const map = await darwinAPI.summarizedChanges.summarizeCurrent();
+const findChangeMap = async (): Promise<void> => {
+  const { setChangeMap, setSummaryAvailable } = useWidgetStore.getState();
+  try {
+    const map = await darwinAPI.summarizedChanges.findChangeMap();
+    if (map) {
       setChangeMap(map);
       setSummaryAvailable(map.groups.length > 0 || map.singles.length > 0);
-    } finally {
-      setSummarizing(false);
     }
-  }, []);
+  } catch (e) {
+    console.error("[SemanticChangeMap] error", e);
+  }
+};
 
-  const summarizeOnFocus = useCallback(() => {
-    if (autoSummarizeOnFocus) generateCurrentSummary();
-  }, [autoSummarizeOnFocus, generateCurrentSummary]);
+const generateCommitMessage = async () => {
+  const { setCommitMessageSuggestion } = useWidgetStore.getState();
+  setCommitMessageSuggestion(null);
+  try {
+    const message = await darwinAPI.summarizedChanges.generateCommitMessage();
+    setCommitMessageSuggestion(message);
+  } catch {
+    // Keep null on error — user can type manually
+  }
+};
 
+const generateCurrentSummary = async () => {
+  const { setSummarizing, setChangeMap, setSummaryAvailable } = useWidgetStore.getState();
+  setSummarizing(true);
+  try {
+    const map = await darwinAPI.summarizedChanges.summarizeCurrent();
+    setChangeMap(map);
+    setSummaryAvailable(map.groups.length > 0 || map.singles.length > 0);
+  } finally {
+    setSummarizing(false);
+  }
+};
+
+const summarizeOnFocus = () => {
+  if (useWidgetStore.getState().autoSummarizeOnFocus) {
+    generateCurrentSummary();
+  }
+};
+
+export function useSummary() {
   return { findChangeMap, generateCommitMessage, generateCurrentSummary, summarizeOnFocus };
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useHistory } from "@/hooks/use-history";
 import { useWidgetStore } from "@/stores/widget-store";
 import { useHistoryRestore, PREVIEW_ITEM_HASH } from "@/hooks/use-history-restore";
@@ -6,8 +6,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { HistoryDayLabel } from "@/components/widget/history/history-day-label";
 import { HistoryHeader } from "@/components/widget/history/history-header";
 import { HistoryItemCard } from "@/components/widget/history/history-item-card";
-import { UncommittedChangesDetected } from "@/components/widget/uncommitted-changes-detected";
-import { DiscardUncommittedDialog } from "@/components/widget/discard-uncommitted-dialog";
+import { UncommittedChangesDetected } from "@/components/widget/notifications/uncommitted-changes-detected";
+import { DiscardUncommittedDialog } from "@/components/widget/history/discard-uncommitted-dialog";
 
 export function HistoryStep() {
   const { loadHistory } = useHistory();
@@ -21,13 +21,13 @@ export function HistoryStep() {
     loadHistory();
   }, [loadHistory]);
 
-  const handleUncommittedChanges = useCallback(() => {
+  const handleUncommittedChanges = () => {
     const viewport = scrollAreaRef.current?.querySelector(
       "[data-radix-scroll-area-viewport]",
     );
     viewport?.scrollTo({ top: 0, behavior: "smooth" });
     setIsFlashing(true);
-  }, []);
+  };
 
   const {
     restoringHash,

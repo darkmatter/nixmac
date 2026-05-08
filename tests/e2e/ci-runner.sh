@@ -61,16 +61,51 @@ rm -rf /tmp/e2e-screenshots /tmp/e2e-recording.mp4 /tmp/e2e-test.log /tmp/e2e-ru
 # --- Download app artifact (pinned to commit SHA if available) ---
 echo "[ci] Downloading app from CI (branch: $BRANCH)..."
 
-# Try exact commit first, then fall back to latest successful on branch
+# For PR/synchronize runs, the E2E workflow can start before the macOS build
+# finishes. Wait for the exact build instead of testing stale branch/main app
+# artifacts with the branch's E2E scripts.
 RUN_ID=""
 if [ -n "$COMMIT_SHA" ]; then
-    RUN_ID=$(gh api "repos/${REPO}/actions/runs?head_sha=${COMMIT_SHA}&status=success&per_page=5" \
-        --jq "[.workflow_runs[] | select(.name == \"Build macOS App\")] | .[0].id" 2>/dev/null)
-    [ "$RUN_ID" = "null" ] && RUN_ID=""
+    BUILD_WAIT_SECONDS="${BUILD_WAIT_SECONDS:-2700}"
+    BUILD_POLL_SECONDS="${BUILD_POLL_SECONDS:-30}"
+    ELAPSED=0
+
+    while [ "$ELAPSED" -le "$BUILD_WAIT_SECONDS" ]; do
+        BUILD_INFO=$(gh api "repos/${REPO}/actions/runs?head_sha=${COMMIT_SHA}&per_page=20" \
+            --jq "[.workflow_runs[] | select(.name == \"Build macOS App\")] | sort_by(.created_at) | reverse | .[0] | if . == null then \"\" else \"\\(.id) \\(.status) \\(.conclusion // \"none\") \\(.html_url)\" end" 2>/dev/null)
+
+        if [ -z "$BUILD_INFO" ]; then
+            echo "[ci] Waiting for Build macOS App run for ${COMMIT_SHA}... (${ELAPSED}s)"
+        else
+            read -r RUN_ID BUILD_STATUS BUILD_CONCLUSION BUILD_URL <<< "$BUILD_INFO"
+            case "$BUILD_STATUS:$BUILD_CONCLUSION" in
+                completed:success)
+                    break
+                    ;;
+                completed:*)
+                    echo "[ci] ERROR: Build macOS App for ${COMMIT_SHA} finished with conclusion '${BUILD_CONCLUSION}'"
+                    echo "[ci] Build URL: ${BUILD_URL}"
+                    exit 1
+                    ;;
+                *)
+                    echo "[ci] Waiting for Build macOS App run ${RUN_ID} (${BUILD_STATUS})... (${ELAPSED}s)"
+                    RUN_ID=""
+                    ;;
+            esac
+        fi
+
+        sleep "$BUILD_POLL_SECONDS"
+        ELAPSED=$((ELAPSED + BUILD_POLL_SECONDS))
+    done
+
+    if [ -z "$RUN_ID" ]; then
+        echo "[ci] ERROR: Timed out waiting for successful Build macOS App for ${COMMIT_SHA}"
+        exit 1
+    fi
 fi
 
 if [ -z "$RUN_ID" ]; then
-    echo "[ci] No build for exact commit, trying latest successful on branch $BRANCH..."
+    echo "[ci] No exact commit supplied, trying latest successful on branch $BRANCH..."
     RUN_ID=$(gh api "repos/${REPO}/actions/runs?branch=${BRANCH}&status=success&per_page=10" \
         --jq "[.workflow_runs[] | select(.name == \"Build macOS App\")] | .[0].id" 2>/dev/null)
     [ "$RUN_ID" = "null" ] && RUN_ID=""

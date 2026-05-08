@@ -1,21 +1,22 @@
 "use client";
 
-import { ConfigEditOverlayPanel } from "@/components/config-edit-overlay-panel";
-import { EditorPanel } from "@/components/editor-panel";
-import { EvolveOverlayPanel } from "@/components/evolve-overlay-panel";
-import { RebuildOverlayPanel } from "@/components/rebuild-overlay-panel";
-import { Console } from "@/components/widget/console";
-import { ErrorMessage } from "@/components/widget/error-message";
-import { FeedbackDialog } from "@/components/widget/feedback-dialog";
-import { Header } from "@/components/widget/header";
-import { ReportIssueButton } from "@/components/widget/report-issue-button";
-import { SettingsDialog } from "@/components/widget/settings-dialog";
-import { StepContentWrapper } from "@/components/widget/step-content-wrapper";
-import { Stepper } from "@/components/widget/stepper";
+import { ConfigEditOverlayPanel } from "@/components/widget/overlays/config-edit-overlay-panel";
+import { EditorPanel } from "@/components/widget/overlays/editor-panel";
+import { EvolveOverlayPanel } from "@/components/widget/overlays/evolve-overlay-panel";
+import { RebuildOverlayPanel } from "@/components/widget/overlays/rebuild-overlay-panel";
+import { Console } from "@/components/widget/layout/console";
+import { ErrorMessage } from "@/components/widget/layout/error-message";
+import { FeedbackDialog } from "@/components/widget/feedback/feedback-dialog";
+import { Header } from "@/components/widget/layout/header";
+import { ReportIssueButton } from "@/components/widget/feedback/report-issue-button";
+import { SettingsDialog } from "@/components/widget/settings/settings-dialog";
+import { StepContentWrapper } from "@/components/widget/layout/step-content-wrapper";
+import { Stepper } from "@/components/widget/layout/stepper";
 import {
     BeginStep,
     CommitStep,
     EvolveStep,
+    FilesystemStep,
     HistoryStep,
     ManualCommitStep,
     ManualEvolveStep,
@@ -34,8 +35,9 @@ import { useQueueSummarizer } from "@/hooks/use-queue-summarizer";
 import { useWatcher } from "@/hooks/use-watcher";
 import { loadConfig, loadHosts, loadEvolveState } from "@/hooks/use-widget-initialization";
 import { useSummary } from "@/hooks/use-summary";
+import { markBootStage } from "@/lib/e2e-boot-diagnostics";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
-import { UpdateBanner } from "@/components/update-banner";
+import { UpdateBanner } from "@/components/widget/layout/update-banner";
 import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
 import { setupWidgetTestHelpers } from "@/utils/widget-test-helpers";
 import { useEffect } from "react";
@@ -45,6 +47,8 @@ import { useEffect } from "react";
  */
 
 export function DarwinWidget() {
+  markBootStage("darwin-widget-render");
+
   const step = useCurrentStep();
   const { getInitialStatus } = useGitOperations();
   const { checkNix } = useNixInstall();
@@ -75,14 +79,25 @@ export function DarwinWidget() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
-      const { settingsOpen, showHistory, isProcessing, isGenerating, setSettingsOpen, setShowHistory } =
-        useWidgetStore.getState();
+      const {
+        settingsOpen,
+        showHistory,
+        showFilesystem,
+        isProcessing,
+        isGenerating,
+        setSettingsOpen,
+        setShowHistory,
+        setShowFilesystem,
+      } = useWidgetStore.getState();
       if (settingsOpen) {
         e.preventDefault();
         setSettingsOpen(false);
       } else if (showHistory && !(isProcessing || isGenerating)) {
         e.preventDefault();
         setShowHistory(false);
+      } else if (showFilesystem && !(isProcessing || isGenerating)) {
+        e.preventDefault();
+        setShowFilesystem(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -141,8 +156,15 @@ export function DarwinWidget() {
 
       case "history":
         return <HistoryStep />;
+
+      case "filesystem":
+        return <FilesystemStep />;
     }
   };
+
+  // Filesystem renders edge-to-edge with its own internal scrollers, so it skips
+  // the StepContentWrapper's padding & overflow handling.
+  const isEdgeToEdgeStep = step === "filesystem";
 
   return (
     <div className="flex h-full w-full flex-col bg-background/90 backdrop-blur-xl">
@@ -150,11 +172,18 @@ export function DarwinWidget() {
       <Stepper />
       <UpdateBanner />
 
-      <StepContentWrapper>
-        <ErrorMessage />
-        {getActiveStepComponent()}
-        <ReportIssueButton />
-      </StepContentWrapper>
+      {isEdgeToEdgeStep ? (
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <ErrorMessage />
+          {getActiveStepComponent()}
+        </div>
+      ) : (
+        <StepContentWrapper>
+          <ErrorMessage />
+          {getActiveStepComponent()}
+          <ReportIssueButton />
+        </StepContentWrapper>
+      )}
 
       <EvolveOverlayPanel />
       <ConfigEditOverlayPanel />

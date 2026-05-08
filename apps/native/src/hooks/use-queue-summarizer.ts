@@ -1,7 +1,7 @@
 import { useHistory } from "@/hooks/use-history";
 import { useWidgetStore } from "@/stores/widget-store";
 import { ipcRenderer, type SummarizerUpdateEvent } from "@/tauri-api";
-import { useCallback, useRef } from "react";
+import { useRef } from "react";
 
 /**
  * Hook that subscribes to summarizer:update events emitted by the
@@ -12,7 +12,7 @@ export function useQueueSummarizer() {
   const unlistenRef = useRef<(() => void) | null>(null);
   const isSubscribingRef = useRef(false);
 
-  const queueForSummaries = useCallback(() => {
+  const queueForSummaries = () => {
     if (unlistenRef.current || isSubscribingRef.current) return;
     isSubscribingRef.current = true;
 
@@ -22,9 +22,6 @@ export function useQueueSummarizer() {
         const store = useWidgetStore.getState();
         const map = event.payload.semanticMap;
         store.setChangeMap(map);
-        store.setSummaryAvailable(
-          map.groups.length > 0 || map.singles.length > 0,
-        );
         if (store.showHistory) {
           loadHistory();
         }
@@ -35,15 +32,15 @@ export function useQueueSummarizer() {
       unlistenRef.current = unlisten;
       isSubscribingRef.current = false;
     });
-  }, [loadHistory]);
+  };
 
-  const unqueueForSummaries = useCallback(() => {
+  const unqueueForSummaries = () => {
     isSubscribingRef.current = false;
     if (unlistenRef.current) {
       unlistenRef.current();
       unlistenRef.current = null;
     }
-  }, []);
+  };
 
   return { queueForSummaries, unqueueForSummaries };
 }

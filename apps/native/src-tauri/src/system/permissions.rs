@@ -73,8 +73,28 @@ fn get_default_permissions() -> Vec<Permission> {
     ]
 }
 
+fn e2e_skip_permissions_enabled() -> bool {
+    crate::e2e_runtime::enabled("NIXMAC_SKIP_PERMISSIONS")
+}
+
+fn granted_folder_permission(id: &str, name: &str, description: &str) -> Permission {
+    Permission {
+        id: id.to_string(),
+        name: name.to_string(),
+        description: description.to_string(),
+        required: true,
+        can_request_programmatically: true,
+        status: PermissionStatus::Granted,
+        instructions: None,
+    }
+}
+
 /// Check if we have access to the Desktop folder
 fn check_desktop_access() -> PermissionStatus {
+    if e2e_skip_permissions_enabled() {
+        return PermissionStatus::Granted;
+    }
+
     let home = match dirs::home_dir() {
         Some(h) => h,
         None => return PermissionStatus::Unknown,
@@ -86,6 +106,10 @@ fn check_desktop_access() -> PermissionStatus {
 
 /// Check if we have access to the Documents folder
 fn check_documents_access() -> PermissionStatus {
+    if e2e_skip_permissions_enabled() {
+        return PermissionStatus::Granted;
+    }
+
     let home = match dirs::home_dir() {
         Some(h) => h,
         None => return PermissionStatus::Unknown,
@@ -125,6 +149,10 @@ fn check_folder_access(path: &PathBuf) -> PermissionStatus {
 fn check_full_disk_access() -> PermissionStatus {
     if std::env::var("VITE_NIXMAC_SKIP_PERMISSIONS").is_ok() {
         debug!("VITE_NIXMAC_SKIP_PERMISSIONS is set, assuming Full Disk Access granted");
+        return PermissionStatus::Granted;
+    }
+    if e2e_skip_permissions_enabled() {
+        debug!("E2E permission skip enabled, assuming Full Disk Access granted");
         return PermissionStatus::Granted;
     }
 
@@ -202,7 +230,7 @@ fn check_admin_privileges() -> PermissionStatus {
 pub fn check_all_permissions() -> PermissionsState {
     // In CI/E2E mode, skip all permission checks and report everything as granted.
     // The E2E test environment may not have FDA granted and can't obtain it programmatically.
-    if std::env::var("NIXMAC_SKIP_PERMISSIONS").unwrap_or_default() == "1" {
+    if e2e_skip_permissions_enabled() {
         info!("NIXMAC_SKIP_PERMISSIONS=1: reporting all permissions as granted");
         let mut permissions = get_default_permissions();
         for perm in &mut permissions {
@@ -263,6 +291,13 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
 
     match permission_id {
         "desktop" => {
+            if e2e_skip_permissions_enabled() {
+                return Ok(granted_folder_permission(
+                    "desktop",
+                    "Desktop Folder Access",
+                    "Required to manage and sync desktop files and configurations",
+                ));
+            }
             // Try to create a temp file in Desktop to trigger the permission prompt
             let home = dirs::home_dir().ok_or_else(|| anyhow::anyhow!("No home directory"))?;
             let desktop = home.join("Desktop");
@@ -297,6 +332,13 @@ pub fn request_permission(permission_id: &str) -> Result<Permission> {
             }
         }
         "documents" => {
+            if e2e_skip_permissions_enabled() {
+                return Ok(granted_folder_permission(
+                    "documents",
+                    "Documents Folder Access",
+                    "Required to access and manage configuration files stored in Documents",
+                ));
+            }
             // Try to create a temp file in Documents to trigger the permission prompt
             let home = dirs::home_dir().ok_or_else(|| anyhow::anyhow!("No home directory"))?;
             let documents = home.join("Documents");

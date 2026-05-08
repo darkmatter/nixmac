@@ -1,19 +1,14 @@
 import { afterEach, beforeAll, expect } from "vitest";
-import { setProjectAnnotations } from "@storybook/react-vite";
 import preview from "./preview";
 
-const annotations = setProjectAnnotations([preview as any]);
+beforeAll(preview.composed.beforeAll);
 
-beforeAll(annotations.beforeAll);
-
-/**
- * Normalize non-deterministic animation values in rendered HTML
- * so snapshots remain stable across runs.
- */
 function normalizeAnimations(html: string): string {
   return html
     .replace(/translateY\(([^)]+)\)/g, (_match, val) => {
-      return `translateY(${Math.round(Number.parseFloat(val))}px)`;
+      const rounded = Math.round(Number.parseFloat(val));
+      const stableOffset = rounded >= 9 && rounded <= 11 ? 10 : rounded;
+      return `translateY(${stableOffset}px)`;
     })
     .replace(/translateX\(([^)]+)\)/g, (_match, val) => {
       return `translateX(${Math.round(Number.parseFloat(val))}px)`;

@@ -133,6 +133,7 @@ export const darwinAPI = {
   config: {
     get: () => invoke<DarwinConfig>("config_get"),
     setDir: (dir: string) => invoke<SetDirResult>("config_set_dir", { dir }),
+    prepareNewDir: (dir: string) => invoke<SetDirResult>("config_prepare_new_dir", { dir }),
     pickDir: () => invoke<SetDirResult | null>("config_pick_dir"),
     setHostAttr: (host: string) => invoke<OkResult>("config_set_host_attr", { host }),
   },
@@ -189,6 +190,19 @@ export const darwinAPI = {
     gatherMetadata: (feedbackType: string, share: FeedbackShareOptions) =>
       invoke<FeedbackMetadata>("feedback_gather_metadata", { request: { feedbackType, share } }),
     submit: (payload: string) => invoke<boolean>("feedback_submit", { payload }),
+  },
+  debug: {
+    logBreadcrumb: (label: string, detail?: string, clientTimestampUnixMs?: number) =>
+      invoke<OkResult>("e2e_log_breadcrumb", {
+        label,
+        detail: detail ?? null,
+        clientTimestampUnixMs: clientTimestampUnixMs ?? null,
+      }),
+    markBootStage: (stage: string, clientTimestampUnixMs?: number) =>
+      invoke<OkResult>("e2e_mark_boot_stage", {
+        stage,
+        clientTimestampUnixMs: clientTimestampUnixMs ?? null,
+      }),
   },
   ui: {
     getPrefs: () => invoke<DarwinPrefs>("ui_get_prefs"),

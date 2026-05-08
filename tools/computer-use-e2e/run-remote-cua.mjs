@@ -2,21 +2,85 @@
 import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import {
+  artifactFileIssue,
+  artifactForLabel,
+  pngDimensions,
+} from './artifact-utils.mjs';
+import { dispatchRemoteCuaCommand, remoteCuaUsage } from './cli.mjs';
+import {
+  builtInElementAddressKinds,
+  createDriverDescriptor,
+  currentRunnerDriverCapabilityUse,
+  driverCapabilityKeys,
+  driverContractVersion,
+  validateDriverCapabilities,
+  validateDriverDescriptor,
+  validateElementAddress,
+} from './drivers/contract.mjs';
+import { tryRun } from './process-utils.mjs';
+import {
   DEFAULT_PROMPT,
   EVOLVED_CASE_CATALOG,
   curatedProofKeys,
+  scenarioVisualContracts,
   scenarioAssertionTypeHints,
   scenarioGroups,
   scenarioLabels,
   scenarioProofCatalog,
+  screenshotAnnotations,
   supportedHomebrewSourcePaths,
 } from './scenario-catalog.mjs';
+import { failureTaxonomy, scenarioContractVersion, v1GradeToEvidenceStrength } from './schemas.mjs';
+import {
+  evaluateScreenshotVisualContract,
+  imageArtifactIssue,
+  parseSignalStats,
+  probeCropForImage,
+} from './visual-proof.mjs';
+import { renderReportHtml } from './report.mjs';
+import {
+  AppServerClient,
+  clickResponseIndicatesFailure,
+  codexAppServerDriverDescriptor,
+  contentImage,
+  contentText,
+  elementEntries,
+  findElement,
+  setValueResponseIndicatesFailure,
+} from './transport.mjs';
+import { containsUnmaskedSecret, redact } from './redaction.mjs';
+import {
+  addEvent,
+  addTimingPhase,
+  addNarrative,
+  applyHistoricalRenderMigration,
+  createBaseState,
+  ensureCurrentSchema as ensureStateCurrentSchema,
+  saveState,
+  shouldFailProcessForVerdict,
+  updateScenario,
+  verdictFor,
+} from './state.mjs';
+import { mergeTimingMetadata, nowIso } from './timing.mjs';
+import {
+  captureRemoteMetadata as readRemoteMetadata,
+  meaningfulBaselineDiff,
+  remoteActivationPamSymlinkHang,
+  remoteAppPathFromEnv,
+  remoteConfigDirFromSettings,
+  remoteGitSnapshot,
+  scpArgs,
+  scpToRemote,
+  shellQuote,
+  ssh,
+  sshArgs,
+} from './remote-stage.mjs';
 
 const THIS_FILE = fileURLToPath(import.meta.url);
 const TOOL_DIR = path.dirname(THIS_FILE);
@@ -30,159 +94,34 @@ const COVERAGE_MANIFEST_PATH = path.join(TOOL_DIR, 'coverage-manifest.json');
 
 let activeRunDir = '';
 
-const scenarioContractVersion = 2;
-
-const v1GradeToEvidenceStrength = {
-  'action-confirmed': 'operational',
-  'text-confirmed': 'visual-supported',
-  'guardrail-confirmed': 'operational',
-  'manifest-confirmed': 'operational',
-  calibration: 'weak',
-  'not-run': 'not-proved',
-  insufficient: 'not-proved',
-};
-
-const failureTaxonomy = {
-  app: 'The app UI/state did not behave as expected.',
-  provider: 'The real provider returned a billing, rate-limit, timeout, or model error.',
-  credential: 'A provider key was missing, invalid, unavailable, or not injected into the launched app process.',
-  remote_infra: 'DXU, SSH, launchd, app-server, macOS permissions, or remote activation infrastructure blocked the run.',
-  harness: 'Computer Use actions, artifact generation, report rendering, or runner bookkeeping failed.',
-  coverage: 'The suite lacks a scenario, manifest mapping, PR focus, or waiver for the behavior.',
-  inconclusive: 'The runner could not prove either pass or fail.',
-};
-
-const screenshotAnnotations = {
-  launch: [
-    { label: 'Step 1 active', x: 13, y: 18, tone: 'pin' },
-    { label: 'Save step inactive', x: 72, y: 18, tone: 'pin' },
-    { label: 'Prompt field', x: 8, y: 39, w: 84, h: 14 },
-    { label: 'Send disabled', x: 88, y: 46, tone: 'pin' },
-  ],
-  'settings-general': [{ label: 'Settings content', x: 50, y: 36, tone: 'pin' }],
-  'settings-ai-models': [{ label: 'Provider/model controls', x: 50, y: 43, tone: 'pin' }],
-  'settings-preferences': [{ label: 'Confirmation controls', x: 50, y: 42, tone: 'pin' }],
-  history: [{ label: 'History surface', x: 50, y: 40, tone: 'pin' }],
-  feedback: [{ label: 'Feedback dialog', x: 50, y: 42, tone: 'pin' }],
-  'report-issue': [{ label: 'Report Issue dialog', x: 50, y: 42, tone: 'pin' }],
-  'typed-intent': [{ label: 'Typed prompt', x: 8, y: 39, w: 84, h: 14 }],
-  'review-summary': [{ label: 'Summary after Review', x: 50, y: 38, tone: 'pin' }],
-  'review-diff': [{ label: 'Diff includes requested change', x: 50, y: 45, tone: 'pin' }],
-  'build-boundary': [{ label: 'Confirm button', x: 57, y: 50, tone: 'pin' }],
-  'step-3-ready': [
-    { label: 'Step 3 active', x: 73, y: 20, tone: 'pin' },
-    { label: 'Commit controls', x: 70, y: 60, tone: 'pin' },
-  ],
-  'after-commit': [{ label: 'Saved commit state', x: 50, y: 44, tone: 'pin' }],
-  'history-before-restore': [{ label: 'History restore controls', x: 50, y: 42, tone: 'pin' }],
-  'history-restore-preview': [{ label: 'Confirm restore preview', x: 50, y: 48, tone: 'pin' }],
-  'after-history-restore': [{ label: 'Rollback cleanup result', x: 50, y: 42, tone: 'pin' }],
-  'discard-boundary': [{ label: 'Discard confirmation', x: 50, y: 48, tone: 'pin' }],
-  'evolved-screenshots-defaults-summary': [{ label: 'Screenshot defaults summary', x: 50, y: 38, tone: 'pin' }],
-  'evolved-screenshots-defaults-diff': [{ label: 'Defaults diff evidence', x: 50, y: 45, tone: 'pin' }],
-  'evolved-screenshots-defaults-after-discard': [{ label: 'Review-only cleanup', x: 50, y: 42, tone: 'pin' }],
-  'adversarial-out-of-bounds-annotation': [{ label: 'Out of bounds fixture', x: 96, y: 50, w: 12, h: 10 }],
-};
-
-const visualProbeDefaults = {
-  minWidth: 500,
-  minHeight: 500,
-  minYMax: 50,
-  minYRange: 10,
-  minCropYMax: 38,
-  minCropYRange: 4,
-};
-
-const scenarioVisualContracts = {
-  launch: {
-    screenshots: [
-      {
-        label: 'launch',
-        probes: [
-          { label: 'workflow stepper band', x: 4, y: 7, w: 90, h: 20 },
-          { label: 'prompt and controls band', x: 5, y: 35, w: 90, h: 22 },
-        ],
-      },
-    ],
-  },
-  settingsGeneral: {
-    screenshots: [{ label: 'settings-general', probes: [{ label: 'settings content panel', x: 12, y: 16, w: 80, h: 66 }] }],
-  },
-  settingsAIModels: {
-    screenshots: [{ label: 'settings-ai-models', probes: [{ label: 'provider and model controls', x: 12, y: 16, w: 80, h: 70 }] }],
-  },
-  settingsPreferences: {
-    screenshots: [{ label: 'settings-preferences', probes: [{ label: 'preference controls', x: 12, y: 16, w: 80, h: 70 }] }],
-  },
-  history: {
-    screenshots: [{ label: 'history', probes: [{ label: 'history surface', x: 10, y: 15, w: 82, h: 70 }] }],
-  },
-  feedback: {
-    screenshots: [{ label: 'feedback', probes: [{ label: 'feedback dialog', x: 20, y: 18, w: 60, h: 60 }] }],
-  },
-  reportIssue: {
-    screenshots: [{ label: 'report-issue', probes: [{ label: 'report issue dialog', x: 20, y: 18, w: 60, h: 60 }] }],
-  },
-  suggestionCards: {
-    screenshots: [{ label: 'suggestion-card', probes: [{ label: 'prompt and suggestion area', x: 5, y: 35, w: 90, h: 34 }] }],
-  },
-  typedIntent: {
-    screenshots: [{ label: 'typed-intent', probes: [{ label: 'typed prompt area', x: 5, y: 35, w: 90, h: 24 }] }],
-  },
-  review: {
-    screenshots: [{ label: 'provider-progress-05', probes: [{ label: 'review controls area', x: 8, y: 8, w: 84, h: 82 }] }],
-  },
-  summary: {
-    screenshots: [{ label: 'review-summary', probes: [{ label: 'summary content area', x: 8, y: 15, w: 84, h: 78 }] }],
-  },
-  diff: {
-    screenshots: [{ label: 'review-diff', probes: [{ label: 'diff content area', x: 8, y: 15, w: 84, h: 78 }] }],
-  },
-  buildBoundary: {
-    screenshots: [{ label: 'build-boundary', probes: [{ label: 'build confirmation dialog', x: 20, y: 22, w: 60, h: 56 }] }],
-  },
-  saveFlow: {
-    screenshots: [{ label: 'step-3-ready', probes: [{ label: 'step 3 save surface', x: 8, y: 8, w: 84, h: 82 }] }],
-  },
-  rollbackCleanup: {
-    screenshots: [
-      { label: 'history-restore-preview', probes: [{ label: 'restore confirmation preview', x: 12, y: 14, w: 76, h: 72 }] },
-      { label: 'after-history-restore', probes: [{ label: 'post-restore app state', x: 8, y: 8, w: 84, h: 82 }] },
-    ],
-  },
-  reportInspection: {
-    screenshots: [{ label: 'HTML report inspection', probes: [{ label: 'rendered report body', x: 8, y: 8, w: 84, h: 82 }] }],
-  },
-};
-
 function usage() {
-  console.log(`Usage:
-  node tools/computer-use-e2e/run-remote-cua.mjs run
-  node tools/computer-use-e2e/run-remote-cua.mjs render-unavailable --note "..."
-  node tools/computer-use-e2e/run-remote-cua.mjs render-existing --run-dir artifacts/computer-use-remote/<timestamp>
-  node tools/computer-use-e2e/run-remote-cua.mjs self-test
-
-Environment:
-  NIXMAC_COMPUTER_USE_WS       WebSocket for Codex app-server (default ${DEFAULT_WS})
-  NIXMAC_COMPUTER_USE_APP      Bundle id/app name (default ${DEFAULT_APP})
-  NIXMAC_E2E_REMOTE_SSH_DEST   Optional ssh destination, e.g. admin@38.79.97.120
-  NIXMAC_E2E_SSH_KEY           Optional ssh private key path
-  NIXMAC_E2E_SSH_KNOWN_HOSTS   Optional known_hosts path for strict SSH verification
-  NIXMAC_E2E_REMOTE_REPORT_DIR Optional remote report copy dir for browser inspection
-  NIXMAC_E2E_EXTRA_EVOLVED_CASES Optional comma/newline list of calibrated non-default evolved cases, e.g. screenshots-defaults
-  NIXMAC_E2E_APP_COMMAND       App command metadata
-  NIXMAC_E2E_DISPOSABLE_CONFIG Set true only when the app is proven to use per-run disposable config
-  NIXMAC_E2E_ALLOW_BUILD_CONFIRM Set true only when Build & Test may run against disposable config
-  NIXMAC_E2E_ALLOW_DISCARD_CONFIRM Set true only when Discard may run against disposable config
-  NIXMAC_E2E_REMOTE_CONFIG_DIR Optional explicit remote disposable config path for git proof
-  NIXMAC_E2E_PR_CHANGED_FILES  Newline/comma separated PR changed files for PR-specific focus
-`);
+  console.log(remoteCuaUsage({ defaultWs: DEFAULT_WS, defaultApp: DEFAULT_APP }));
 }
 
 function argValue(args, flag, fallback = '') {
   const index = args.indexOf(flag);
   if (index === -1) return fallback;
   return args[index + 1] ?? fallback;
+}
+
+async function mergeWorkflowTimingsFromArgs(state, args) {
+  const workflowTimingsPath = argValue(args, '--workflow-timings', process.env.NIXMAC_E2E_WORKFLOW_TIMINGS || '');
+  if (!workflowTimingsPath) return false;
+  if (!existsSync(workflowTimingsPath)) {
+    addTimingPhase(state, {
+      id: 'workflow-timing-metadata',
+      label: 'Workflow timing metadata',
+      category: 'reporting',
+      source: 'runner',
+      status: 'unavailable',
+      observable: false,
+      note: `Workflow timing metadata file was not found at ${workflowTimingsPath}.`,
+    });
+    return false;
+  }
+  const metadata = JSON.parse(await readFile(workflowTimingsPath, 'utf8'));
+  mergeTimingMetadata(state, metadata, { source: 'github-actions' });
+  return true;
 }
 
 function withRunDirArg(args, runDir) {
@@ -201,115 +140,6 @@ function run(command, args, options = {}) {
     throw new Error(`${command} ${args.join(' ')} failed with ${result.status}: ${result.stderr || result.stdout}`);
   }
   return result.stdout.trim();
-}
-
-function tryRun(command, args, options = {}) {
-  const result = spawnSync(command, args, { encoding: 'utf8', ...options });
-  return {
-    ok: result.status === 0,
-    status: result.status,
-    stdout: result.stdout?.trim() ?? '',
-    stderr: result.stderr?.trim() ?? '',
-    error: result.error ? String(result.error) : '',
-  };
-}
-
-function sshArgs(remoteCommand) {
-  const dest = process.env.NIXMAC_E2E_REMOTE_SSH_DEST;
-  if (!dest) return null;
-  const args = ['-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes'];
-  if (process.env.NIXMAC_E2E_SSH_KNOWN_HOSTS) {
-    args.push('-o', `UserKnownHostsFile=${process.env.NIXMAC_E2E_SSH_KNOWN_HOSTS}`);
-  }
-  if (process.env.NIXMAC_E2E_SSH_KEY) args.push('-i', process.env.NIXMAC_E2E_SSH_KEY);
-  args.push(dest, remoteCommand);
-  return args;
-}
-
-function ssh(remoteCommand) {
-  const args = sshArgs(remoteCommand);
-  if (!args) return { ok: false, stdout: '', stderr: 'NIXMAC_E2E_REMOTE_SSH_DEST is not set' };
-  return tryRun('ssh', args);
-}
-
-function scpToRemote(localPath, remotePath) {
-  const dest = process.env.NIXMAC_E2E_REMOTE_SSH_DEST;
-  if (!dest) return { ok: false, stdout: '', stderr: 'NIXMAC_E2E_REMOTE_SSH_DEST is not set' };
-  const args = ['-r', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=yes'];
-  if (process.env.NIXMAC_E2E_SSH_KNOWN_HOSTS) {
-    args.push('-o', `UserKnownHostsFile=${process.env.NIXMAC_E2E_SSH_KNOWN_HOSTS}`);
-  }
-  if (process.env.NIXMAC_E2E_SSH_KEY) args.push('-i', process.env.NIXMAC_E2E_SSH_KEY);
-  args.push(localPath, `${dest}:${remotePath}`);
-  return tryRun('scp', args);
-}
-
-async function pathExists(filePath) {
-  try {
-    await stat(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function pngDimensions(filePath) {
-  try {
-    const buffer = readFileSync(filePath);
-    if (buffer.length < 24 || buffer.toString('ascii', 1, 4) !== 'PNG') return null;
-    return {
-      width: buffer.readUInt32BE(16),
-      height: buffer.readUInt32BE(20),
-    };
-  } catch {
-    return null;
-  }
-}
-
-function redact(value) {
-  return String(value)
-    .replace(/sk-or-[A-Za-z0-9_-]+/g, '[REDACTED_OPENROUTER_KEY]')
-    .replace(/sk-[A-Za-z0-9_-]+/g, '[REDACTED_API_KEY]')
-    .replace(/OPENROUTER_API_KEY=[^\s"'<>]+/g, 'OPENROUTER_API_KEY=[REDACTED]')
-    .replace(/Bearer\s+[A-Za-z0-9._-]+/g, 'Bearer [REDACTED]');
-}
-
-function escapeHtml(value) {
-  return redact(value)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-}
-
-function slugify(value) {
-  return String(value || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
-function findElement(text, patterns) {
-  const list = Array.isArray(patterns) ? patterns : [patterns];
-  for (const line of text.split('\n')) {
-    const match = line.match(/^\s*(\d+)\s+(.+)$/);
-    if (!match) continue;
-    const [, index, label] = match;
-    if (list.some((pattern) => pattern.test(label))) return index;
-  }
-  return null;
-}
-
-function elementEntries(text) {
-  return text
-    .split('\n')
-    .map((line, lineNumber) => {
-      const match = line.match(/^\s*(\d+)\s+(.+)$/);
-      if (!match) return null;
-      return { lineNumber, index: match[1], label: match[2] };
-    })
-    .filter(Boolean);
 }
 
 function findQuestionInputEntry(text) {
@@ -382,80 +212,6 @@ function hasSettingsPreferencesEvidence(text) {
   return hasSettingsFrameEvidence(text) && countMatches(text, [/heading Preferences/i, /Confirmation dialogs/i, /\bBuild\b/i, /Clear \/ Discard/i, /\bRollback\b/i, /Summarization/i, /switch \(settable/i]) >= 3;
 }
 
-const clickToolFailurePatterns = [
-  /^\s*(?:error|failed|failure):\s*(?:click|action|element|stale|invalid|no such|unable|could not|not found|not clickable)/im,
-  /^\s*(?:click|action)\s+(?:failed|could not|unable)/im,
-  /^\s*element(?:\s+index)?\s+\d+\s+(?:not found|not clickable|is stale|stale|invalid)/im,
-  /\b(?:stale|invalid)\s+element(?:\s+index)?\b/i,
-  /\bno such element\b/i,
-  /\belement(?:\s+index)?\s+\d+\s+(?:not found|not clickable)\b/i,
-  /\b(?:could not|unable to)\s+click\b/i,
-];
-
-const setValueToolFailurePatterns = [
-  /^\s*(?:error|failed|failure):\s*(?:set|set_value|input|value|element|stale|invalid|no such|unable|could not|not found)/im,
-  /^\s*(?:set_value|set value|input|type)\s+(?:failed|could not|unable)/im,
-  /^\s*element(?:\s+index)?\s+\d+\s+(?:not found|not settable|is stale|stale|invalid)/im,
-  /\b(?:stale|invalid)\s+element(?:\s+index)?\b/i,
-  /\bno such element\b/i,
-  /\belement(?:\s+index)?\s+\d+\s+(?:not found|not settable)\b/i,
-  /\b(?:could not|unable to)\s+(?:set|type|enter)\b/i,
-];
-
-function clickResponseIndicatesFailure(response, responseText = contentText(response)) {
-  if (response?.result?.isError === true) return true;
-  return clickToolFailurePatterns.some((pattern) => pattern.test(responseText));
-}
-
-function setValueResponseIndicatesFailure(response, responseText = contentText(response)) {
-  if (response?.result?.isError === true) return true;
-  return setValueToolFailurePatterns.some((pattern) => pattern.test(responseText));
-}
-
-function verdictFor(state) {
-  const statuses = Object.values(state.scenarios).map((item) => item.status);
-  if (statuses.includes('fail')) return 'fail';
-  if (statuses.includes('inconclusive')) return 'inconclusive';
-  return 'pass';
-}
-
-function shouldFailProcessForVerdict(state) {
-  if (process.env.NIXMAC_E2E_STRICT_VERDICT === 'false') return false;
-  return state.verdict === 'fail' || state.verdict === 'inconclusive';
-}
-
-function statusCounts(state) {
-  const counts = { pass: 0, fail: 0, inconclusive: 0 };
-  for (const scenario of Object.values(state.scenarios)) {
-    counts[scenario.status] = (counts[scenario.status] ?? 0) + 1;
-  }
-  return counts;
-}
-
-function statusRank(status) {
-  return { fail: 0, inconclusive: 1, pass: 2 }[status] ?? 3;
-}
-
-function groupedScenarios(state) {
-  const seen = new Set();
-  const groups = scenarioGroups.map((group) => {
-    for (const key of group.keys) seen.add(key);
-    return {
-      ...group,
-      items: group.keys
-        .filter((key) => state.scenarios[key])
-        .map((key) => ({ key, ...state.scenarios[key] }))
-        .sort((a, b) => statusRank(a.status) - statusRank(b.status)),
-    };
-  });
-  const ungrouped = Object.entries(state.scenarios)
-    .filter(([key]) => !seen.has(key))
-    .map(([key, item]) => ({ key, ...item }))
-    .sort((a, b) => statusRank(a.status) - statusRank(b.status));
-  if (ungrouped.length) groups.push({ name: 'Other', keys: ungrouped.map((item) => item.key), items: ungrouped });
-  return groups;
-}
-
 function splitEnvList(value = '') {
   return String(value)
     .split(/\r?\n|,/)
@@ -490,10 +246,14 @@ function evolvedCaseStrategy(extraCases = enabledExtraEvolvedCases()) {
 function buildPrFocus() {
   const changedFiles = splitEnvList(process.env.NIXMAC_E2E_PR_CHANGED_FILES || '');
   const userVisibleFiles = changedFiles.filter((file) =>
-    /^(apps\/native\/src\/(components|hooks|stores|lib|styles)|apps\/native\/src-tauri|tools\/computer-use-e2e|\.github\/workflows\/computer-use-e2e\.yml)/.test(file),
+    /^(apps\/native\/src\/(?:[^/]+\.(?:css|ts|tsx)|(?:components|hooks|stores|lib|styles)\/)|apps\/native\/src-tauri|tools\/computer-use-e2e|\.github\/workflows\/computer-use-e2e\.yml)/.test(file),
   );
   const scenarioKeys = new Set();
   for (const file of userVisibleFiles) {
+    if (/^apps\/native\/src\/[^/]+\.(?:css|ts|tsx)$/i.test(file)) {
+      scenarioKeys.add('launch');
+      scenarioKeys.add('visualCoverage');
+    }
     if (/settings|prefs|api-keys|store|commands\.rs|store\.rs/i.test(file)) {
       scenarioKeys.add('settingsGeneral');
       scenarioKeys.add('settingsAIModels');
@@ -749,49 +509,44 @@ function updatePrSpecificCoverage(state) {
   }
 }
 
-function ensureCurrentSchema(state) {
-  state.scenarios ||= {};
-  delete state.scenarios.videoEvidence;
-  for (const [key, label] of Object.entries(scenarioLabels)) {
-    if (!state.scenarios[key]) {
-      state.scenarios[key] = {
-        label,
-        status: 'inconclusive',
-        notes: [`Scenario was added after this run or was not exercised by this runner.`],
-      };
-    }
+function updateStorybookPreviewCoverage(state) {
+  const preview = state.storybookPreview || {};
+  if (state.scenarios.storybookPreview?.notes) state.scenarios.storybookPreview.notes = [];
+  if (!preview.uiFiles?.length) {
+    updateScenario(state, 'storybookPreview', 'pass', 'No changed frontend UI source files were detected, so a Storybook preview was not required.');
+    return;
   }
-  for (const [key, label] of Object.entries(scenarioLabels)) state.scenarios[key].label = label;
-  state.claims ||= [];
-  state.failures ||= [];
-  state.narrative ||= [];
-  state.confirmationBoundaries ||= [];
-  state.screenshots ||= [];
-  state.textSnapshots ||= [];
-  state.video ||= null;
-  state.secretMaskingViolations ||= [];
-  state.visualAssertions ||= [];
-  state.evolvedCaseStrategy ||= evolvedCaseStrategy();
-  state.evolvedCaseRuns ||= [];
-  for (const shot of state.screenshots) {
-    if (!shot.imageSize && shot.path && state.runDir) {
-      const dimensions = pngDimensions(path.join(state.runDir, shot.path));
-      if (dimensions) shot.imageSize = dimensions;
-    }
+  if (preview.status === 'ready' || preview.status === 'ready_with_advisories') {
+    updateScenario(
+      state,
+      'storybookPreview',
+      'pass',
+      `Storybook preview resolved ${preview.affectedStories?.length || 0} changed UI file(s) to direct story URLs.${preview.advisoryStoryFiles?.length ? ` ${preview.advisoryStoryFiles.length} advisory story gap(s) are listed for follow-up.` : ''}${preview.uiOnly ? ' Native Computer Use was skipped by UI-only policy.' : ''}`,
+    );
+  } else if (preview.status === 'missing_story') {
+    updateScenario(
+      state,
+      'storybookPreview',
+      'fail',
+      `Changed UI files are missing Storybook story mappings: ${(preview.missingStoryFiles || []).map((item) => item.file).join(', ')}`,
+    );
+  } else if (preview.status === 'build_failed') {
+    updateScenario(state, 'storybookPreview', 'fail', 'Storybook preview build failed, so affected UI cannot be reviewed through the preview artifact.');
+  } else if (preview.status === 'index_unavailable' || preview.status === 'invalid_metadata') {
+    updateScenario(state, 'storybookPreview', 'fail', `Storybook preview metadata was not usable: ${preview.status}.`);
+  } else {
+    updateScenario(state, 'storybookPreview', 'inconclusive', `Storybook preview metadata was not reviewer-ready: ${preview.status || 'unknown'}.`);
   }
-  state.cleanup ||= { attempted: false, restored: false, note: 'No cleanup status recorded.' };
-  state.safety ||= {
-    disposableConfig: process.env.NIXMAC_E2E_DISPOSABLE_CONFIG === 'true',
-    buildConfirmEnabled: process.env.NIXMAC_E2E_ALLOW_BUILD_CONFIRM === 'true',
-    discardConfirmEnabled: process.env.NIXMAC_E2E_ALLOW_DISCARD_CONFIRM === 'true',
-    note: 'Discard/build confirmation is only allowed when disposable config mode is explicitly proven.',
-  };
-  state.prFocus ||= buildPrFocus();
-  return state;
 }
 
-function artifactForLabel(items, label) {
-  return items.find((item) => item.label === label || item.label === `HTML report inspection` && label === 'HTML report inspection') || null;
+function ensureCurrentSchema(state) {
+  return ensureStateCurrentSchema(state, {
+    scenarioLabels,
+    evolvedCaseStrategy,
+    buildPrFocus,
+    pngDimensions,
+    env: process.env,
+  });
 }
 
 function proofForScenario(state, key) {
@@ -951,75 +706,12 @@ function updateV2Contracts(state) {
   };
 }
 
-function artifactLinks(state, key) {
-  const proof = proofForScenario(state, key);
-  const screenshotLinks = proof.screenshotArtifacts.map((artifact) => `<a href="#screenshot-${escapeHtml(slugify(artifact.label || artifact.path))}"><code>${escapeHtml(artifact.path)}</code></a>`);
-  const textLinks = proof.textArtifacts.map((artifact) => `<a href="${escapeHtml(artifact.path)}" target="_blank" rel="noopener"><code>${escapeHtml(artifact.path)}</code></a>`);
-  const links = [...screenshotLinks, ...textLinks].join('<br>');
-  return links ? `<div class="artifact-list">${links}</div>` : 'No primary artifact linked.';
-}
-
-async function readTextExcerpt(state, artifact, maxLines = 10) {
-  if (!artifact?.path) return '';
-  const fullPath = path.join(state.runDir, artifact.path);
-  if (!(await pathExists(fullPath))) return '';
-  const text = redact(await readFile(fullPath, 'utf8'));
-  return text
-    .split('\n')
-    .filter((line) => line.trim())
-    .slice(0, maxLines)
-    .join('\n')
-    .slice(0, 1400);
-}
-
-function knownCoverageGaps(state) {
-  const gaps = [];
-  for (const [key, scenario] of Object.entries(state.scenarios)) {
-    if (scenario.status !== 'pass') {
-      gaps.push({
-        label: scenario.label,
-        status: scenario.status,
-        detail: scenario.notes.join(' ') || 'No detail recorded.',
-      });
-    }
-  }
-  if (!state.remoteMachine || !state.remoteApp) {
-    gaps.push({
-      label: 'Remote Mac/app metadata',
-      status: 'inconclusive',
-      detail: 'Remote machine identity, OS, hardware, staged app path, bundle version, and signing metadata were not captured.',
-    });
-  }
-  if (!state.processEnvVerification) {
-    gaps.push({
-      label: 'Credential process-env verification',
-      status: 'inconclusive',
-      detail: 'The nixmac process and GUI launchd credential environment were not checked with redacted values.',
-    });
-  }
-  if (!state.safety?.disposableConfig) {
-    gaps.push({
-      label: 'Disposable config proof',
-      status: 'inconclusive',
-      detail: 'Remote run has not proven nixmac is pointed at a per-run disposable config.',
-    });
-  }
-  return gaps;
-}
-
 function buildAppearsActive(text) {
   return /Preparing rebuild|Starting system rebuild|Building the system configuration|Downloading .* from (Nix )?cache|Fetching .* from cache|Activating system changes/i.test(text || '');
 }
 
 function activationAuthRequired(text) {
   return /administrator privileges.*password|password when needed|administrator authentication required|incorrect administrator user name or password/i.test(text || '');
-}
-
-function remoteActivationPamSymlinkHang() {
-  const result = ssh(
-    "ps -axo pid=,ppid=,stat=,etime=,command= | awk '$2 != 1 && /ln -s \\/etc\\/static\\/pam\\.d\\/sudo_local \\/etc\\/pam\\.d\\/sudo_local/ && !/awk/ { print }'",
-  );
-  return result.ok && /ln -s .*\/etc\/static\/pam\.d\/sudo_local .*\/etc\/pam\.d\/sudo_local/.test(result.stdout || '');
 }
 
 function proofQualityIssues(state) {
@@ -1034,7 +726,7 @@ function proofQualityIssues(state) {
   issues.push(...annotationGeometryIssues(state));
   for (const [key, scenario] of Object.entries(state.scenarios)) {
     if (scenario.status !== 'pass') continue;
-    if (['visualProofQuality', 'mainCoverageFreshness', 'prSpecificCoverage'].includes(key)) continue;
+    if (['visualProofQuality', 'mainCoverageFreshness', 'prSpecificCoverage', 'storybookPreview'].includes(key)) continue;
     const proof = proofForScenario(state, key);
     if (proof.screenshotArtifacts.length === 0 && proof.textArtifacts.length === 0) {
       issues.push(`${scenario.label} has no linked screenshot or text artifact.`);
@@ -1056,18 +748,6 @@ function proofQualityIssues(state) {
     issues.push(`${assertion.label} has failing screenshot visual assertions: ${failed}`);
   }
   return issues;
-}
-
-function artifactFileIssue(state, relativePath) {
-  if (!relativePath) return 'artifact path is empty';
-  try {
-    const stats = statSync(path.join(state.runDir, relativePath));
-    if (!stats.isFile()) return 'it is not a file';
-    if (stats.size === 0) return 'the file is empty';
-    return '';
-  } catch {
-    return 'the file is missing';
-  }
 }
 
 function screenshotVideoFrameEntries(state) {
@@ -1150,164 +830,6 @@ async function maybeGenerateEvidenceVideo(state) {
       };
 }
 
-function parseSignalStats(output) {
-  const stats = {};
-  for (const line of String(output || '').split('\n')) {
-    const match = line.match(/lavfi\.signalstats\.([A-Z]+)=([0-9.]+)/);
-    if (match) stats[match[1]] = Number(match[2]);
-  }
-  return stats;
-}
-
-function pngSignalStats(filePath, crop = null) {
-  const filters = [];
-  if (crop) filters.push(`crop=${crop.w}:${crop.h}:${crop.x}:${crop.y}`);
-  filters.push('signalstats', 'metadata=print:file=-');
-  const result = tryRun('ffmpeg', [
-    '-hide_banner',
-    '-i',
-    filePath,
-    '-vf',
-    filters.join(','),
-    '-frames:v',
-    '1',
-    '-f',
-    'null',
-    '-',
-  ]);
-  if (!result.ok) {
-    return {
-      ok: false,
-      error: result.stderr || result.error,
-      stats: {},
-    };
-  }
-  return {
-    ok: true,
-    stats: parseSignalStats(`${result.stdout}\n${result.stderr}`),
-  };
-}
-
-function imageArtifactIssue(state, relativePath) {
-  const baseIssue = artifactFileIssue(state, relativePath);
-  if (baseIssue) return baseIssue;
-  if (!/\.png$/i.test(relativePath)) return '';
-  const fullPath = path.join(state.runDir, relativePath);
-  const result = pngSignalStats(fullPath);
-  if (!result.ok) return `ffmpeg could not inspect the image (${result.error})`;
-  const yMax = result.stats.YMAX;
-  const yMin = result.stats.YMIN;
-  if (Number.isFinite(yMax) && yMax < 40) return 'the screenshot appears blank or visually occluded';
-  if (Number.isFinite(yMax) && Number.isFinite(yMin) && yMax - yMin < 4) return 'the screenshot has too little visual contrast';
-  return '';
-}
-
-function probeCropForImage(imageSize, probe) {
-  if (!imageSize?.width || !imageSize?.height) return null;
-  const x = Math.max(0, Math.floor((imageSize.width * probe.x) / 100));
-  const y = Math.max(0, Math.floor((imageSize.height * probe.y) / 100));
-  const w = Math.max(1, Math.floor((imageSize.width * probe.w) / 100));
-  const h = Math.max(1, Math.floor((imageSize.height * probe.h) / 100));
-  if (x + w > imageSize.width || y + h > imageSize.height) return null;
-  return { x, y, w, h };
-}
-
-function visualCheckPass(name, detail) {
-  return { name, status: 'pass', detail };
-}
-
-function visualCheckFail(name, detail) {
-  return { name, status: 'fail', detail };
-}
-
-function evaluateScreenshotVisualContract(state, screenshotRequirement) {
-  const shot = artifactForLabel(state.screenshots, screenshotRequirement.label);
-  const checks = [];
-  if (!shot) {
-    return {
-      label: screenshotRequirement.label,
-      status: 'fail',
-      checks: [visualCheckFail('screenshot artifact', 'Required screenshot artifact is missing from state.screenshots.')],
-    };
-  }
-
-  const fullPath = path.join(state.runDir, shot.path);
-  const baseIssue = artifactFileIssue(state, shot.path);
-  if (baseIssue) {
-    return {
-      label: shot.label,
-      path: shot.path,
-      status: 'fail',
-      checks: [visualCheckFail('screenshot artifact', baseIssue)],
-    };
-  }
-
-  const imageSize = shot.imageSize || pngDimensions(fullPath);
-  if (!imageSize) {
-    checks.push(visualCheckFail('image dimensions', 'Could not read PNG dimensions.'));
-  } else if (imageSize.width < visualProbeDefaults.minWidth || imageSize.height < visualProbeDefaults.minHeight) {
-    checks.push(visualCheckFail('image dimensions', `${imageSize.width}x${imageSize.height} is below ${visualProbeDefaults.minWidth}x${visualProbeDefaults.minHeight}.`));
-  } else {
-    checks.push(visualCheckPass('image dimensions', `${imageSize.width}x${imageSize.height}.`));
-  }
-
-  const fullStats = pngSignalStats(fullPath);
-  if (!fullStats.ok) {
-    checks.push(visualCheckFail('full-frame decode', `ffmpeg could not inspect the image (${fullStats.error}).`));
-  } else {
-    const yMin = fullStats.stats.YMIN;
-    const yMax = fullStats.stats.YMAX;
-    const yRange = Number.isFinite(yMin) && Number.isFinite(yMax) ? yMax - yMin : NaN;
-    if (!Number.isFinite(yMax) || yMax < visualProbeDefaults.minYMax) {
-      checks.push(visualCheckFail('full-frame brightness', `YMAX ${yMax ?? 'unknown'} is below ${visualProbeDefaults.minYMax}.`));
-    } else if (!Number.isFinite(yRange) || yRange < visualProbeDefaults.minYRange) {
-      checks.push(visualCheckFail('full-frame contrast', `Y range ${Number.isFinite(yRange) ? yRange : 'unknown'} is below ${visualProbeDefaults.minYRange}.`));
-    } else {
-      checks.push(visualCheckPass('full-frame signal', `Y range ${yMin}-${yMax}.`));
-    }
-  }
-
-  for (const probe of screenshotRequirement.probes || []) {
-    if (typeof probe.x !== 'number' || typeof probe.y !== 'number' || typeof probe.w !== 'number' || typeof probe.h !== 'number') {
-      checks.push(visualCheckFail(probe.label || 'visual probe', 'Probe coordinates are incomplete.'));
-      continue;
-    }
-    if (probe.x < 0 || probe.y < 0 || probe.w <= 0 || probe.h <= 0 || probe.x + probe.w > 100 || probe.y + probe.h > 100) {
-      checks.push(visualCheckFail(probe.label || 'visual probe', 'Probe coordinates are outside image bounds.'));
-      continue;
-    }
-    const crop = probeCropForImage(imageSize, probe);
-    if (!crop) {
-      checks.push(visualCheckFail(probe.label || 'visual probe', 'Probe could not be mapped into image pixels.'));
-      continue;
-    }
-    const cropStats = pngSignalStats(fullPath, crop);
-    if (!cropStats.ok) {
-      checks.push(visualCheckFail(probe.label, `ffmpeg could not inspect crop (${cropStats.error}).`));
-      continue;
-    }
-    const yMin = cropStats.stats.YMIN;
-    const yMax = cropStats.stats.YMAX;
-    const yRange = Number.isFinite(yMin) && Number.isFinite(yMax) ? yMax - yMin : NaN;
-    const minYMax = probe.minYMax ?? visualProbeDefaults.minCropYMax;
-    const minYRange = probe.minYRange ?? visualProbeDefaults.minCropYRange;
-    if (!Number.isFinite(yMax) || yMax < minYMax) {
-      checks.push(visualCheckFail(probe.label, `crop YMAX ${yMax ?? 'unknown'} is below ${minYMax}.`));
-    } else if (!Number.isFinite(yRange) || yRange < minYRange) {
-      checks.push(visualCheckFail(probe.label, `crop Y range ${Number.isFinite(yRange) ? yRange : 'unknown'} is below ${minYRange}.`));
-    } else {
-      checks.push(visualCheckPass(probe.label, `crop ${crop.w}x${crop.h}+${crop.x}+${crop.y}, Y range ${yMin}-${yMax}.`));
-    }
-  }
-
-  return {
-    label: shot.label,
-    path: shot.path,
-    status: checks.some((check) => check.status === 'fail') ? 'fail' : 'pass',
-    checks,
-  };
-}
-
 function applyVisualAssertions(state) {
   state.visualAssertions = [];
   for (const [scenarioKey, contract] of Object.entries(scenarioVisualContracts)) {
@@ -1347,17 +869,6 @@ function refreshVisualProofQuality(state) {
   );
 }
 
-function annotationClass(item) {
-  return ['annotation', item.tone ? `annotation-${item.tone}` : ''].filter(Boolean).join(' ');
-}
-
-function annotationStyle(item) {
-  if (item.tone === 'pin') {
-    return `left:${item.x}%;top:${item.y}%;width:16px;height:16px;transform:translate(-50%,-50%)`;
-  }
-  return `left:${item.x}%;top:${item.y}%;width:${item.w}%;height:${item.h}%`;
-}
-
 function annotationGeometryIssues(state) {
   const issues = [];
   const screenshotLabels = new Set((state.screenshots || []).map((shot) => shot.label));
@@ -1375,811 +886,16 @@ function annotationGeometryIssues(state) {
   return issues;
 }
 
-function renderAnnotatedImage(shot) {
-  const annotations = screenshotAnnotations[shot.label] || [];
-  const imageSize = shot.imageSize ? `${shot.imageSize.width}x${shot.imageSize.height}` : 'unknown-size';
-  const overlays = annotations
-    .map(
-      (item) => `<span class="${annotationClass(item)}" style="${annotationStyle(item)}"><span>${escapeHtml(item.label)}</span></span>`,
-    )
-    .join('\n');
-  return `<div class="annotated-shot" data-image-size="${escapeHtml(imageSize)}">
-  <img src="${escapeHtml(shot.path)}" alt="${escapeHtml(shot.label)}">
-  ${overlays}
-</div>`;
-}
-
-function renderV2EvidenceModel(state) {
-  const contracts = Object.values(state.v2?.scenarioContracts || {});
-  const strengthCounts = contracts.reduce((counts, item) => {
-    counts[item.evidenceStrength] = (counts[item.evidenceStrength] || 0) + 1;
-    return counts;
-  }, {});
-  const rows = ['strong', 'operational', 'visual-supported', 'weak', 'not-proved']
-    .map((strength) => {
-      const matching = contracts.filter((item) => item.evidenceStrength === strength);
-      const examples = matching
-        .slice(0, 5)
-        .map((item) => item.label)
-        .join(', ');
-      return `<tr><td><span class="strength strength-${escapeHtml(strength)}">${escapeHtml(strength)}</span></td><td>${escapeHtml(String(strengthCounts[strength] || 0))}</td><td>${escapeHtml(examples || 'None')}</td></tr>`;
-    })
-    .join('\n');
-  const mappingRows = Object.entries(state.v2?.evidenceGradeMapping || {})
-    .map(([legacy, strength]) => `<tr><td><code>${escapeHtml(legacy)}</code></td><td><span class="strength strength-${escapeHtml(strength)}">${escapeHtml(strength)}</span></td></tr>`)
-    .join('\n');
-  return `<h2 id="v2-evidence-model">V2 Evidence Model</h2>
-  <section class="panel">
-    <p><strong>Deterministic verdict remains source of truth.</strong> Evidence strength explains how much independent proof backs each scenario.</p>
-    <div class="table-scroll"><table>
-      <thead><tr><th>Evidence Strength</th><th>Scenario Count</th><th>Examples</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>
-    <details>
-      <summary>Legacy grade mapping</summary>
-      <table><thead><tr><th>V1 Grade</th><th>V2 Strength</th></tr></thead><tbody>${mappingRows}</tbody></table>
-    </details>
-  </section>`;
-}
-
-function renderAccessibilityAudit(state) {
-  const rows = Object.values(state.v2?.scenarioContracts || {})
-    .sort((a, b) => ({ high: 0, medium: 1, low: 2 }[a.accessibilityRisk] ?? 3) - ({ high: 0, medium: 1, low: 2 }[b.accessibilityRisk] ?? 3))
-    .map(
-      (item) => `<tr>
-        <td>${escapeHtml(item.label)}<br><small>${escapeHtml(item.assertionTypes.join(', '))}</small></td>
-        <td><span class="risk risk-${escapeHtml(item.accessibilityRisk)}">${escapeHtml(item.accessibilityRisk)}</span></td>
-        <td>${escapeHtml(item.accessibilityRiskReason)}</td>
-      </tr>`,
-    )
-    .join('\n');
-  return `<h2 id="accessibility-risk">Accessibility Dependency / Assertion Risk</h2>
-  <section class="panel">
-    <p>This is a reviewer-risk audit, not a separate verdict. It calls out where Computer Use accessibility text is the main assertion source and where independent state proof exists.</p>
-    <div class="table-scroll"><table>
-      <thead><tr><th>Scenario</th><th>Risk</th><th>Why</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>
-  </section>`;
-}
-
-function renderFailureTaxonomy(state) {
-  const rows = Object.values(state.v2?.scenarioContracts || {})
-    .filter((item) => item.status !== 'pass')
-    .map(
-      (item) => `<tr>
-        <td>${escapeHtml(item.label)}</td>
-        <td><span class="verdict ${escapeHtml(item.status)}">${escapeHtml(item.status)}</span></td>
-        <td><span class="failure-class">${escapeHtml(item.failureClass || 'unclassified')}</span></td>
-        <td>${escapeHtml(failureTaxonomy[item.failureClass] || item.failureClassReason || 'No classification recorded.')}</td>
-      </tr>`,
-    )
-    .join('\n');
-  const taxonomyRows = Object.entries(failureTaxonomy)
-    .map(([key, description]) => `<tr><td><code>${escapeHtml(key)}</code></td><td>${escapeHtml(description)}</td></tr>`)
-    .join('\n');
-  return `<h2 id="failure-taxonomy">Failure Taxonomy</h2>
-  <section class="panel">
-    ${
-      rows
-        ? `<div class="table-scroll"><table><thead><tr><th>Scenario</th><th>Status</th><th>Class</th><th>Meaning</th></tr></thead><tbody>${rows}</tbody></table></div>`
-        : '<p>No non-pass scenarios require failure classification.</p>'
-    }
-    <details>
-      <summary>Taxonomy definitions</summary>
-      <table><thead><tr><th>Class</th><th>Definition</th></tr></thead><tbody>${taxonomyRows}</tbody></table>
-    </details>
-  </section>`;
-}
-
-async function renderVisualProofCards(state, keys) {
-  const cards = [];
-  for (const key of keys) {
-    const scenario = state.scenarios[key];
-    if (!scenario) continue;
-    const proof = proofForScenario(state, key);
-    if (proof.screenshotArtifacts.length === 0 && proof.textArtifacts.length === 0) continue;
-    const screenshots = proof.screenshotArtifacts
-      .slice(0, 2)
-      .map((shot) => `<figure>${renderAnnotatedImage(shot)}<figcaption><strong>${escapeHtml(shot.label)}</strong> - ${escapeHtml(shot.note || '')}</figcaption></figure>`)
-      .join('\n');
-    const excerpts = [];
-    for (const artifact of proof.textArtifacts.slice(0, 2)) {
-      const excerpt = await readTextExcerpt(state, artifact);
-      if (excerpt) excerpts.push(`<details><summary>${escapeHtml(artifact.path)}</summary><pre>${escapeHtml(excerpt)}</pre></details>`);
-    }
-    cards.push(`<section class="proof-card">
-  <h3>${escapeHtml(scenario.label)}</h3>
-  <p><span class="verdict ${scenario.status}">${escapeHtml(scenario.status)}</span> <span class="grade">${escapeHtml(proof.grade)}</span></p>
-  <p><strong>Assertion:</strong> ${escapeHtml(proof.proof)}</p>
-  <p><strong>Not proved:</strong> ${escapeHtml(proof.untested)}</p>
-  ${screenshots}
-  ${excerpts.join('\n')}
-</section>`);
-  }
-  return cards.length ? cards.join('\n') : '<p>No visual proof cards generated.</p>';
-}
-
-async function renderVisualProofBoard(state) {
-  const prKeys = new Set(state.prFocus?.scenarioKeys || []);
-  const nonPassKeys = Object.entries(state.scenarios)
-    .filter(([, scenario]) => scenario.status !== 'pass')
-    .map(([key]) => key);
-  const settingsFocused = [...prKeys].some((key) => /^settings/.test(key));
-  const defaultKeys = [
-    ...nonPassKeys,
-    ...curatedProofKeys.filter((key) => !/^settings/.test(key) || settingsFocused || state.scenarios[key]?.status !== 'pass'),
-    ...[...prKeys],
-  ];
-  const uniqueDefaultKeys = [...new Set(defaultKeys)].filter((key) => state.scenarios[key]);
-  const allKeys = Object.keys(state.scenarios);
-  const additionalKeys = allKeys.filter((key) => !uniqueDefaultKeys.includes(key));
-  const defaultCards = await renderVisualProofCards(state, uniqueDefaultKeys);
-  const additionalCards = await renderVisualProofCards(state, additionalKeys);
-  return `<section class="proof-priority">
-    ${defaultCards}
-    <details>
-      <summary>Additional passing visual/text proof (${escapeHtml(String(additionalKeys.length))})</summary>
-      ${additionalCards}
-    </details>
-  </section>`;
-}
-
-function renderCoverageGaps(state) {
-  const gaps = knownCoverageGaps(state);
-  if (!gaps.length) return '<p>No known coverage gaps recorded.</p>';
-  return `<table>
-    <thead><tr><th>Gap</th><th>Status</th><th>Detail</th></tr></thead>
-    <tbody>
-      ${gaps.map((gap) => `<tr><td>${escapeHtml(gap.label)}</td><td><span class="verdict ${gap.status}">${escapeHtml(gap.status)}</span></td><td>${escapeHtml(gap.detail)}</td></tr>`).join('\n')}
-    </tbody>
-  </table>`;
-}
-
-function renderPrFocus(state) {
-  const pr = state.prFocus || buildPrFocus();
-  const changed = pr.changedFiles?.length ? pr.changedFiles.map((file) => `<li><code>${escapeHtml(file)}</code></li>`).join('\n') : '<li>No changed-file metadata provided.</li>';
-  const userVisible = pr.userVisibleFiles?.length ? pr.userVisibleFiles.map((file) => `<li><code>${escapeHtml(file)}</code></li>`).join('\n') : '<li>No user-visible changed files inferred from current metadata.</li>';
-  const scenarios = pr.scenarioKeys?.length ? pr.scenarioKeys.map((key) => `<li>${escapeHtml(state.scenarios?.[key]?.label || key)}</li>`).join('\n') : '<li>No dedicated scenario mapping inferred from changed files.</li>';
-  return `<section class="panel">
-    <p><strong>PR:</strong> ${escapeHtml(pr.number || 'not provided')} ${pr.title ? `- ${escapeHtml(pr.title)}` : ''}</p>
-    <p><strong>Refs:</strong> ${escapeHtml(pr.baseRef || 'base ?')} ← ${escapeHtml(pr.headRef || 'head ?')}</p>
-    <h3>User-Visible Focus Candidates</h3>
-    <ul>${userVisible}</ul>
-    <h3>Mapped Scenario Focus</h3>
-    <ul>${scenarios}</ul>
-    <details>
-      <summary>Full changed-file list (${escapeHtml(String(pr.changedFiles?.length || 0))})</summary>
-      <ul>${changed}</ul>
-    </details>
-  </section>`;
-}
-
-function scenarioRows(state, items) {
-  if (!items.length) return '<tr><td colspan="5">None.</td></tr>';
-  return items
-    .map((item) => {
-      const proof = proofForScenario(state, item.key);
-      const contract = state.v2?.scenarioContracts?.[item.key] || buildScenarioContract(state, item.key);
-      return `<tr><td class="scenario-cell">${escapeHtml(item.label)}<br><small>${item.notes.map(escapeHtml).join('<br>') || 'No notes recorded.'}</small></td><td class="status-cell"><span class="verdict ${item.status}">${escapeHtml(item.status)}</span></td><td class="grade-cell"><span class="grade">${escapeHtml(proof.grade)}</span><br><span class="strength strength-${escapeHtml(contract.evidenceStrength)}">${escapeHtml(contract.evidenceStrength)}</span></td><td class="artifact-cell">${artifactLinks(state, item.key)}</td><td class="proof-cell">${escapeHtml(proof.proof)}${contract.failureClass ? `<br><small>Failure class: ${escapeHtml(contract.failureClass)}</small>` : ''}</td></tr>`;
-    })
-    .join('\n');
-}
-
-function scenariosWithStatus(state, status) {
-  return Object.entries(state.scenarios)
-    .filter(([, item]) => item.status === status)
-    .map(([key, item]) => ({ key, ...item }));
-}
-
-function renderPriorityTriage(state) {
-  const failed = scenariosWithStatus(state, 'fail');
-  const inconclusive = scenariosWithStatus(state, 'inconclusive');
-  const passed = scenariosWithStatus(state, 'pass');
-  const table = (items) => `<div class="table-scroll"><table class="scenario-table">
-    <thead><tr><th class="scenario-col">Scenario</th><th class="status-col">Status</th><th class="grade-col">Evidence Grade</th><th class="artifacts-col">Primary Artifacts</th><th class="proof-col">What Proved It / Why It Matters</th></tr></thead>
-    <tbody>${scenarioRows(state, items)}</tbody>
-  </table></div>`;
-  return `<section class="priority">
-    <h3>Failures</h3>
-    ${table(failed)}
-    <h3>Inconclusive</h3>
-    ${table(inconclusive)}
-    <details>
-      <summary>Passing Checks (${passed.length})</summary>
-      ${table(passed)}
-    </details>
-  </section>`;
-}
-
-function renderPrPriority(state) {
-  const pr = state.prFocus || buildPrFocus();
-  if (!pr.configured) return `<h2 id="pull-request-focus">Pull Request Focus</h2>${renderPrFocus(state)}`;
-  const keys = pr.scenarioKeys?.length ? pr.scenarioKeys : ['prSpecificCoverage'];
-  const evidenceRows = keys
-    .filter((key) => state.scenarios[key])
-    .map((key) => ({ key, ...state.scenarios[key] }))
-    .sort((a, b) => statusRank(a.status) - statusRank(b.status));
-  return `<h2 id="pull-request-focus">Pull Request Focus</h2>
-  ${renderPrFocus(state)}
-  <section class="panel">
-    <h3>PR-Relevant Evidence</h3>
-    <div class="table-scroll"><table class="scenario-table">
-      <thead><tr><th class="scenario-col">Scenario</th><th class="status-col">Status</th><th class="grade-col">Evidence Grade</th><th class="artifacts-col">Primary Artifacts</th><th class="proof-col">What Proved It</th></tr></thead>
-      <tbody>${scenarioRows(state, evidenceRows)}</tbody>
-    </table></div>
-  </section>`;
-}
-
-function renderCoverageFreshness(state) {
-  const coverage = state.coverageFreshness;
-  if (!coverage) return '';
-  const driftRows = coverage.drift?.length
-    ? coverage.drift.map((item) => `<tr><td><span class="verdict fail">drift</span></td><td>${escapeHtml(item)}</td></tr>`).join('\n')
-    : '<tr><td><span class="verdict pass">clean</span></td><td>No unmapped user-visible candidate files or manifest mapping errors detected.</td></tr>';
-  const waiverRows = coverage.waivers?.length
-    ? coverage.waivers.map((item) => `<tr><td>${escapeHtml(item.id)}</td><td>${escapeHtml(item.label)}</td><td>${escapeHtml(item.owner || 'unowned')}</td><td>${escapeHtml(item.risk || 'unset')}</td><td>${escapeHtml(item.reviewBy || 'unset')}</td><td>${escapeHtml(item.reason)}</td><td>${escapeHtml(item.exitCriteria || 'No exit criteria recorded.')}${item.validationErrors?.length ? `<br><strong>Validation:</strong> ${escapeHtml(item.validationErrors.join('; '))}` : ''}</td></tr>`).join('\n')
-    : '<tr><td colspan="7">No waivers recorded.</td></tr>';
-  return `<h2 id="main-coverage">Main Coverage Freshness</h2>
-  <section class="panel">
-    <p><strong>Manifest v${escapeHtml(String(coverage.manifestVersion))}</strong>: ${escapeHtml(String(coverage.mappedSurfaces))}/${escapeHtml(String(coverage.totalSurfaces))} surfaces have direct scenario mappings; ${escapeHtml(String(coverage.waivedSurfaces))} have explicit waivers; ${escapeHtml(String(coverage.candidateFiles))} user-visible candidate files scanned.</p>
-    <h3>Coverage Drift</h3>
-    <table><thead><tr><th>Status</th><th>Detail</th></tr></thead><tbody>${driftRows}</tbody></table>
-    <h3>Explicit Waivers</h3>
-    <table><thead><tr><th>ID</th><th>Surface</th><th>Owner</th><th>Risk</th><th>Review By</th><th>Reason</th><th>Exit Criteria</th></tr></thead><tbody>${waiverRows}</tbody></table>
-	  </section>`;
-}
-
-function detailRows(object = {}) {
-  const entries = Object.entries(object).filter(([, value]) => value !== undefined && value !== null && value !== '');
-  if (!entries.length) return '<tr><td colspan="2">No metadata recorded.</td></tr>';
-  return entries
-    .map(([key, value]) => {
-      const rendered = Array.isArray(value) ? value.join(', ') : String(value);
-      return `<tr><th>${escapeHtml(key)}</th><td>${escapeHtml(rendered)}</td></tr>`;
-    })
-    .join('\n');
-}
-
-function renderRemoteMetadata(state) {
-  const env = state.processEnvVerification || {};
-  const machineSummary = [
-    state.remoteMachine?.hostname || state.remoteMachine?.localHostName || 'unknown host',
-    state.remoteMachine?.macosProductVersion ? `macOS ${state.remoteMachine.macosProductVersion}` : null,
-    state.remoteMachine?.architecture,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-  const appSummary = [
-    state.remoteApp?.bundleName || 'nixmac',
-    state.remoteApp?.shortVersion || state.remoteApp?.bundleVersion,
-    state.remoteApp?.codesignVerified === true ? 'codesign verified' : 'codesign not verified',
-  ]
-    .filter(Boolean)
-    .join(' · ');
-  const envSummary = [
-    env.processFound === true ? `process ${env.pid || 'found'}` : 'process not found',
-    `OpenRouter key ${env.openrouterApiKeyInProcess || 'unknown'}`,
-    env.secretValuesRecorded === false ? 'secrets not recorded' : 'secret recording unknown',
-  ].join(' · ');
-  return `<h2 id="remote-metadata">Remote Mac / App Metadata</h2>
-  <section class="summary metadata-summary" aria-label="Remote metadata summary">
-    <div class="metric"><strong>Machine</strong>${escapeHtml(machineSummary)}</div>
-    <div class="metric"><strong>App</strong>${escapeHtml(appSummary)}</div>
-    <div class="metric"><strong>Process</strong>${escapeHtml(envSummary)}</div>
-  </section>
-  <details class="panel">
-    <summary>Full remote metadata tables</summary>
-    <section class="meta metadata-grid">
-    <div class="panel">
-      <h3>Remote Mac</h3>
-      <table>${detailRows(state.remoteMachine)}</table>
-    </div>
-    <div class="panel">
-      <h3>Staged App</h3>
-      <table>${detailRows(state.remoteApp)}</table>
-    </div>
-    <div class="panel">
-      <h3>Credential Environment Verification</h3>
-      <table>${detailRows({
-        pid: env.pid,
-        processFound: env.processFound,
-        openrouterApiKeyInProcess: env.openrouterApiKeyInProcess,
-        openrouterApiKeyInGuiLaunchd: env.openrouterApiKeyInGuiLaunchd,
-        secretValuesRecorded: env.secretValuesRecorded,
-        processEnvKeys: env.processEnvKeys,
-        note: env.note,
-      })}</table>
-    </div>
-    </section>
-  </details>
-  ${state.remoteMetadataError ? `<p class="warning"><strong>Metadata capture error:</strong> ${escapeHtml(state.remoteMetadataError)}</p>` : ''}`;
-}
-
-function renderEvolvedCaseStrategy(state) {
-  const strategy = state.evolvedCaseStrategy || evolvedCaseStrategy();
-  const runs = state.evolvedCaseRuns || [];
-  const catalogRows = (strategy.catalog || [])
-    .map(
-      (item) => `<tr>
-        <td><code>${escapeHtml(item.id)}</code><br><small>${escapeHtml(item.label)}</small></td>
-        <td>${escapeHtml(item.mode)}</td>
-        <td>${item.defaultPrLane ? '<span class="verdict pass">default</span>' : '<span class="grade">optional</span>'}</td>
-        <td>${escapeHtml(item.source)}</td>
-        <td>${escapeHtml(item.note)}</td>
-      </tr>`,
-    )
-    .join('\n');
-  const runRows = runs.length
-    ? runs
-        .map(
-          (run) => `<tr>
-            <td><code>${escapeHtml(run.id)}</code><br><small>${escapeHtml(run.label || '')}</small></td>
-            <td>${escapeHtml(run.mode || '')}</td>
-            <td><span class="verdict ${escapeHtml(run.status || 'inconclusive')}">${escapeHtml(run.status || 'inconclusive')}</span></td>
-            <td>${escapeHtml((run.notes || []).join(' '))}</td>
-          </tr>`,
-        )
-        .join('\n')
-    : '<tr><td colspan="4">No optional evolved review-only cases were enabled for this run.</td></tr>';
-  return `<section>
-    <h3>Evolved Flow Case Strategy</h3>
-    <p>${escapeHtml(strategy.reviewDecision || '')}</p>
-    <p><strong>Default case:</strong> ${escapeHtml((strategy.defaultCaseIds || []).join(', ') || 'none')}<br>
-    <strong>Enabled extra cases:</strong> ${escapeHtml((strategy.extraCaseIds || []).join(', ') || 'none')}</p>
-    <h3>Case Catalog</h3>
-    <div class="table-scroll"><table class="scenario-table">
-      <thead><tr><th>Case</th><th>Mode</th><th>PR Lane</th><th>Source</th><th>Notes</th></tr></thead>
-      <tbody>${catalogRows}</tbody>
-    </table></div>
-    <h3>Optional Case Runs</h3>
-    <div class="table-scroll"><table class="scenario-table">
-      <thead><tr><th>Case</th><th>Mode</th><th>Status</th><th>Evidence</th></tr></thead>
-      <tbody>${runRows}</tbody>
-    </table></div>
-  </section>`;
-}
-
-function renderSummaryVideo(state) {
-  const textCount = state.textSnapshots?.length || 0;
-  const eventCount = state.events?.length || 0;
-  const visualCount = state.visualAssertions?.length || 0;
-  const evidencePack = `<div id="evidence-pack" class="evidence-pack" aria-label="Evidence pack">
-    <div class="evidence-pack-copy">
-      <strong>Evidence pack</strong>
-      <small>Concise proof bundle behind the verdict: redacted text, action events, remote state, and screenshot assertions.</small>
-    </div>
-    <div class="evidence-pack-grid">
-      <a href="#raw-evidence"><strong>${escapeHtml(String(textCount))}</strong><span>Text snapshots</span><small>Redacted accessibility state for each major action.</small></a>
-      <a href="#scenario-checklist"><strong>${escapeHtml(String(eventCount))}</strong><span>Action events</span><small>Click, type, polling, save, and cleanup trail.</small></a>
-      <a href="#visual-assertions"><strong>${escapeHtml(String(visualCount))}</strong><span>Visual assertions</span><small>Binding screenshot signal checks.</small></a>
-      <a href="#remote-metadata"><strong>DXU</strong><span>Remote state</span><small>Machine, app, process, and git metadata.</small></a>
-    </div>
-  </div>`;
-  if (state.video?.status === 'available' && state.video.path) {
-    return `<div id="summary-video" class="summary-video">
-      <div class="summary-video-copy">
-        <strong>Evidence video</strong>
-        <small>Screenshot walkthrough compiled from ${escapeHtml(String(state.video.frames || state.screenshots.length))} safe-to-store frames.</small>
-      </div>
-      <video controls preload="metadata" src="${escapeHtml(state.video.path)}"></video>
-    </div>
-    ${evidencePack}`;
-  }
-  return `<div id="summary-video" class="summary-video summary-video-unavailable">
-    <div class="summary-video-copy">
-      <strong>Evidence video unavailable</strong>
-      <small>${escapeHtml(state.video?.note || 'No screenshot compilation video was generated for this run.')}</small>
-    </div>
-  </div>
-  ${evidencePack}`;
-}
-
-function renderExecutiveSummary(state, counts, evidenceSummary) {
-  const pr = state.prFocus || buildPrFocus();
-  const prLabel = pr.configured ? `PR ${pr.number || '?'}${pr.title ? ` - ${pr.title}` : ''}` : 'No pull request metadata provided';
-  const prStatus = state.scenarios.prSpecificCoverage?.status || 'inconclusive';
-  const coverageStatus = state.scenarios.mainCoverageFreshness?.status || 'inconclusive';
-  const saveStatus = state.scenarios.saveFlow?.status || 'inconclusive';
-  const rollbackStatus = state.scenarios.rollbackCleanup?.status || 'inconclusive';
-  const metadataStatus = state.remoteMachine && state.remoteApp ? 'pass' : 'inconclusive';
-  const interpretation =
-    state.verdict === 'pass'
-      ? 'The PR-head run passed on the DXU remote Mac with no failed or inconclusive scenario checks.'
-      : state.verdict === 'fail'
-        ? 'The run has failures that should be inspected before treating this PR as E2E-clean.'
-        : 'The run is inconclusive; inspect setup, provider, and coverage notes before relying on it.';
-  const signal = (label, status, note) => `<div class="signal signal-${escapeHtml(status)}">
-    <span class="verdict ${escapeHtml(status)}">${escapeHtml(status)}</span>
-    <strong>${escapeHtml(label)}</strong>
-    <small>${escapeHtml(note)}</small>
-  </div>`;
-  return `<section id="summary" class="executive panel">
-    <div>
-      <h2>Review Summary</h2>
-      <p>${escapeHtml(interpretation)}</p>
-      <p><strong>${escapeHtml(prLabel)}</strong><br><small>Head: <code>${escapeHtml(state.github?.headSha || state.sha || 'unknown')}</code></small></p>
-    </div>
-    <div class="summary" aria-label="Run summary">
-      <div class="metric"><strong>${counts.pass}</strong>Passed</div>
-      <div class="metric"><strong>${counts.fail}</strong>Failed</div>
-      <div class="metric"><strong>${counts.inconclusive}</strong>Inconclusive</div>
-      <div class="metric"><strong>${escapeHtml(String(state.screenshots.length))}</strong>Screenshots</div>
-    </div>
-    ${renderSummaryVideo(state)}
-    <div class="signal-grid">
-      ${signal('PR focus', prStatus, pr.configured ? 'Mapped PR-relevant scenarios were evaluated.' : 'No PR metadata was provided.')}
-      ${signal('Coverage freshness', coverageStatus, 'Main user-visible surfaces remain mapped or explicitly waived.')}
-      ${signal('Step 3 save', saveStatus, 'Disposable config change persisted through the save path.')}
-      ${signal('Rollback cleanup', rollbackStatus, 'History rollback returned the disposable config to baseline.')}
-      ${signal('Remote metadata', metadataStatus, 'DXU machine, app, and process metadata were captured.')}
-    </div>
-    <p class="summary-links">
-      <a href="#pull-request-focus">Review PR Focus</a>
-      <a href="#findings-first">Inspect Findings</a>
-      <a href="#visual-proof">Open Visual Proof</a>
-      <a href="#remote-metadata">Check Remote Metadata</a>
-    </p>
-    <p><small>Evidence footprint: ${escapeHtml(evidenceSummary)}.</small></p>
-  </section>`;
-}
-
-function navBadge(label, value, tone = '') {
-  if (value === undefined || value === null || value === '') return '';
-  return `<span class="nav-badge ${escapeHtml(tone)}">${escapeHtml(String(value))}</span>`;
-}
-
-function renderReportNav(state, counts) {
-  const riskCount = Object.values(state.v2?.scenarioContracts || {}).filter((item) => item.accessibilityRisk === 'high' || item.accessibilityRisk === 'medium').length;
-  return `<aside class="report-nav" aria-label="Report navigation">
-    <a href="#summary">Summary</a>
-    <a href="#pull-request-focus">PR Focus ${navBadge('', state.prFocus?.scenarioKeys?.length || 0)}</a>
-    <a href="#findings-first">Findings ${navBadge('', counts.fail + counts.inconclusive, counts.fail ? 'fail' : counts.inconclusive ? 'inconclusive' : 'pass')}</a>
-    <a href="#evidence-quality">Evidence Quality ${navBadge('', riskCount)}</a>
-    <a href="#visual-assertions">Visual Assertions ${navBadge('', state.visualAssertions?.length || 0)}</a>
-    <a href="#summary-video">Evidence Video ${navBadge('', state.video?.status === 'available' ? 'available' : 'off')}</a>
-    <a href="#visual-proof">Visual Proof ${navBadge('', state.screenshots.length)}</a>
-    <a href="#scenario-checklist">Scenario Checklist</a>
-    <a href="#main-coverage">Coverage</a>
-    <a href="#remote-metadata">Remote Metadata</a>
-    <a href="#raw-evidence">Raw Evidence</a>
-    <a href="#cleanup">Cleanup</a>
-  </aside>`;
-}
-
-function renderVisualAssertionResults(state) {
-  const assertions = state.visualAssertions || [];
-  if (!assertions.length) return '<p>No binding screenshot visual assertions were evaluated for this run.</p>';
-  const rows = assertions
-    .map((assertion) => {
-      const failed = assertion.screenshots.flatMap((shot) => shot.checks.filter((check) => check.status === 'fail').map((check) => `${shot.label}: ${check.name} - ${check.detail}`));
-      const checked = assertion.screenshots.reduce((count, shot) => count + shot.checks.length, 0);
-      return `<tr>
-        <td>${escapeHtml(assertion.label)}<br><small><code>${escapeHtml(assertion.scenarioKey)}</code></small></td>
-        <td><span class="verdict ${escapeHtml(assertion.status)}">${escapeHtml(assertion.status)}</span></td>
-        <td>${escapeHtml(String(checked))}</td>
-        <td>${failed.length ? escapeHtml(failed.join('; ')) : 'Required screenshots decoded and broad visual regions contained visible signal.'}</td>
-      </tr>`;
-    })
-    .join('\n');
-  return `<div class="table-scroll"><table>
-    <thead><tr><th>Scenario</th><th>Visual Status</th><th>Checks</th><th>Result</th></tr></thead>
-    <tbody>${rows}</tbody>
-  </table></div>`;
-}
-
-function renderEvidenceQuality(state) {
-  const contracts = Object.values(state.v2?.scenarioContracts || {});
-  const strengthCounts = contracts.reduce((counts, item) => {
-    counts[item.evidenceStrength] = (counts[item.evidenceStrength] || 0) + 1;
-    return counts;
-  }, {});
-  const strengthRows = ['strong', 'operational', 'visual-supported', 'weak', 'not-proved']
-    .map((strength) => `<tr><td><span class="strength strength-${escapeHtml(strength)}">${escapeHtml(strength)}</span></td><td>${escapeHtml(String(strengthCounts[strength] || 0))}</td></tr>`)
-    .join('\n');
-  const mappingRows = Object.entries(state.v2?.evidenceGradeMapping || {})
-    .map(([legacy, strength]) => `<tr><td><code>${escapeHtml(legacy)}</code></td><td><span class="strength strength-${escapeHtml(strength)}">${escapeHtml(strength)}</span></td></tr>`)
-    .join('\n');
-  const risky = contracts
-    .filter((item) => item.accessibilityRisk === 'high' || item.accessibilityRisk === 'medium')
-    .sort((a, b) => ({ high: 0, medium: 1, low: 2 }[a.accessibilityRisk] ?? 3) - ({ high: 0, medium: 1, low: 2 }[b.accessibilityRisk] ?? 3));
-  const riskRows = (items) =>
-    items.length
-      ? items
-          .map(
-            (item) => `<tr>
-              <td>${escapeHtml(item.label)}<br><small>${escapeHtml(item.assertionTypes.join(', '))}</small></td>
-              <td><span class="risk risk-${escapeHtml(item.accessibilityRisk)}">${escapeHtml(item.accessibilityRisk)}</span></td>
-              <td>${escapeHtml(item.accessibilityRiskReason)}</td>
-            </tr>`,
-          )
-          .join('\n')
-      : '<tr><td colspan="3">No elevated assertion-risk scenarios.</td></tr>';
-  const nonPassRows = contracts
-    .filter((item) => item.status !== 'pass')
-    .map(
-      (item) => `<tr>
-        <td>${escapeHtml(item.label)}</td>
-        <td><span class="verdict ${escapeHtml(item.status)}">${escapeHtml(item.status)}</span></td>
-        <td><span class="failure-class">${escapeHtml(item.failureClass || 'unclassified')}</span></td>
-        <td>${escapeHtml(failureTaxonomy[item.failureClass] || item.failureClassReason || 'No classification recorded.')}</td>
-      </tr>`,
-    )
-    .join('\n');
-  const taxonomyRows = Object.entries(failureTaxonomy)
-    .map(([key, description]) => `<tr><td><code>${escapeHtml(key)}</code></td><td>${escapeHtml(description)}</td></tr>`)
-    .join('\n');
-  const boundaryRows = state.confirmationBoundaries.length
-    ? state.confirmationBoundaries.map((boundary) => `<li>${escapeHtml(boundary)}</li>`).join('\n')
-    : '<li>No confirmation boundaries recorded.</li>';
-  return `<h2 id="evidence-quality">Evidence Quality</h2>
-  <section class="panel">
-    <span id="v2-evidence-model" class="anchor-alias"></span>
-    <span id="accessibility-risk" class="anchor-alias"></span>
-    <span id="failure-taxonomy" class="anchor-alias"></span>
-    <span id="confirmation-boundaries" class="anchor-alias"></span>
-    <p><strong>Deterministic verdict remains source of truth.</strong> Evidence strength and assertion risk explain how much independent proof backs each scenario. Safe-to-store screenshots are binding corroborating evidence: missing, blank, occluded, or low-signal required screenshots can fail their owning scenario.</p>
-    <h3 id="visual-assertions">Visual Assertion Results</h3>
-    ${renderVisualAssertionResults(state)}
-    <div class="quality-grid">
-      <div>
-        <h3>Evidence Strength</h3>
-        <table><thead><tr><th>Strength</th><th>Count</th></tr></thead><tbody>${strengthRows}</tbody></table>
-      </div>
-      <div>
-        <h3>Elevated Assertion Risk</h3>
-        <table><thead><tr><th>Scenario</th><th>Risk</th><th>Why</th></tr></thead><tbody>${riskRows(risky)}</tbody></table>
-      </div>
-    </div>
-    <h3>Failure Classification</h3>
-    ${
-      nonPassRows
-        ? `<div class="table-scroll"><table><thead><tr><th>Scenario</th><th>Status</th><th>Class</th><th>Meaning</th></tr></thead><tbody>${nonPassRows}</tbody></table></div>`
-        : '<p>No non-pass scenarios require failure classification.</p>'
-    }
-    <details>
-      <summary>Confirmation boundaries</summary>
-      <ul>${boundaryRows}</ul>
-    </details>
-    <details>
-      <summary>Full assertion-risk table</summary>
-      <div class="table-scroll"><table><thead><tr><th>Scenario</th><th>Risk</th><th>Why</th></tr></thead><tbody>${riskRows(contracts)}</tbody></table></div>
-    </details>
-    <details>
-      <summary>Legacy grade mapping</summary>
-      <table><thead><tr><th>V1 Grade</th><th>V2 Strength</th></tr></thead><tbody>${mappingRows}</tbody></table>
-    </details>
-    <details>
-      <summary>Taxonomy definitions</summary>
-      <table><thead><tr><th>Class</th><th>Definition</th></tr></thead><tbody>${taxonomyRows}</tbody></table>
-    </details>
-  </section>`;
-}
-
-function renderScenarioChecklist(state, groupedScenarioHtml) {
-  return `<h2 id="scenario-checklist">Scenario Checklist</h2>
-  <p>Grouped scenario tables are collapsed by default so reviewers can drill into a specific surface without reading the whole suite linearly.</p>
-  ${groupedScenarioHtml}`;
-}
-
-function renderRunMetadata(state, evidenceSummary) {
-  return `<section class="meta run-metadata">
-    <div class="panel"><strong>Timestamp</strong><br>${escapeHtml(state.startedAt)}</div>
-    <div class="panel"><strong>Branch</strong><br>${escapeHtml(state.branch)}</div>
-    <div class="panel"><strong>SHA</strong><br><code>${escapeHtml(state.sha)}</code></div>
-    <div class="panel"><strong>macOS</strong><br>${escapeHtml(state.remoteMachine?.macosProductVersion || state.macosVersion)}</div>
-    <div class="panel"><strong>App</strong><br><code>${escapeHtml(state.app)}</code></div>
-    <div class="panel"><strong>Provider</strong><br><code>${escapeHtml(state.provider.kind)}</code><br>${escapeHtml(state.provider.note)}</div>
-    <div class="panel"><strong>Prompt</strong><br>${escapeHtml(state.prompt)}</div>
-    <div class="panel"><strong>Evidence</strong><br>${escapeHtml(evidenceSummary)}</div>
-  </section>`;
-}
-
-function renderRawEvidence(state, screenshotHtml) {
-  return `<h2 id="raw-evidence">Raw Evidence</h2>
-  <section class="panel">
-    <span id="screenshots" class="anchor-alias"></span>
-    <span id="narrative" class="anchor-alias"></span>
-    <span id="claims" class="anchor-alias"></span>
-    <span id="pr-specific-focus" class="anchor-alias"></span>
-    <details>
-      <summary>Full screenshot gallery (${escapeHtml(String(state.screenshots.length))})</summary>
-      ${screenshotHtml}
-    </details>
-    <details>
-      <summary>Human QA narrative (${escapeHtml(String(state.narrative.length))})</summary>
-      ${
-        state.narrative.length
-          ? `<ul>${state.narrative.map((item) => `<li>${escapeHtml(item.ts)} - ${escapeHtml(item.text)}</li>`).join('\n')}</ul>`
-          : '<p>No narrative recorded.</p>'
-      }
-    </details>
-    <details>
-      <summary>Claims vs evidence (${escapeHtml(String(state.claims.length))})</summary>
-      <table>
-        <thead><tr><th>Claim</th><th>Status</th><th>Evidence</th></tr></thead>
-        <tbody>
-          ${
-            state.claims.length
-              ? state.claims
-                  .map((claim) => `<tr><td>${escapeHtml(claim.claim)}</td><td><span class="verdict ${claim.status}">${escapeHtml(claim.status)}</span></td><td>${escapeHtml(claim.evidence)}</td></tr>`)
-                  .join('\n')
-              : '<tr><td colspan="3">No claims recorded.</td></tr>'
-          }
-        </tbody>
-      </table>
-    </details>
-    <details>
-      <summary>Run metadata</summary>
-      ${renderRunMetadata(state, `${state.screenshots.length} screenshots, ${state.textSnapshots.length} redacted text snapshots`)}
-    </details>
-  </section>`;
-}
-
 async function baseState(runDir, options) {
-  const branch = tryRun('git', ['branch', '--show-current'], { cwd: REPO_ROOT }).stdout || 'unknown';
-  const sha = tryRun('git', ['rev-parse', '--short', 'HEAD'], { cwd: REPO_ROOT }).stdout || 'unknown';
-  const macosVersion =
-    process.env.NIXMAC_E2E_MACOS_VERSION ||
-    tryRun('sw_vers', ['-productVersion']).stdout ||
-    'unknown';
-  const remoteAppPath = process.env.NIXMAC_E2E_REMOTE_APP_PATH || '/Applications/nixmac.app';
-  const scenarios = Object.fromEntries(
-    Object.entries(scenarioLabels).map(([key, label]) => [
-      key,
-      { label, status: 'inconclusive', notes: [] },
-    ]),
-  );
-  return {
-    startedAt: new Date().toISOString(),
-    runDir,
-    ws: options.ws,
-    app: options.app,
-    prompt: options.prompt,
-    branch,
-    sha,
-    macosVersion,
-    appCommand: process.env.NIXMAC_E2E_APP_COMMAND || `open -n ${remoteAppPath}`,
-    provider: {
-      kind: 'real-openrouter-compatible-provider',
-      note: 'The key value is never written to this report. Failures may reflect provider billing/auth state.',
-    },
-    evolvedCaseStrategy: evolvedCaseStrategy(),
-    evolvedCaseRuns: [],
-    safety: {
-      disposableConfig: process.env.NIXMAC_E2E_DISPOSABLE_CONFIG === 'true',
-      buildConfirmEnabled: process.env.NIXMAC_E2E_ALLOW_BUILD_CONFIRM === 'true',
-      discardConfirmEnabled: process.env.NIXMAC_E2E_ALLOW_DISCARD_CONFIRM === 'true',
-      note: 'Discard/build confirmation is only allowed when disposable config mode is explicitly proven.',
-    },
-    prFocus: buildPrFocus(),
-    cleanup: { attempted: false, restored: false, note: 'Cleanup has not run yet.' },
-    screenshots: [],
-    textSnapshots: [],
-    events: [],
-    claims: [],
-    narrative: [],
-    confirmationBoundaries: [],
-    failures: [],
-    scenarios,
-  };
-}
-
-async function saveState(state) {
-  await writeFile(path.join(state.runDir, 'state.json'), `${JSON.stringify(state, null, 2)}\n`, 'utf8');
-}
-
-async function addEvent(state, type, detail = {}) {
-  state.events.push({ ts: new Date().toISOString(), type, ...detail });
-  await writeFile(path.join(state.runDir, 'events.json'), `${JSON.stringify(state.events, null, 2)}\n`, 'utf8');
-}
-
-function updateScenario(state, key, status, note) {
-  if (!state.scenarios[key]) throw new Error(`Unknown scenario ${key}`);
-  state.scenarios[key].status = status;
-  if (note) state.scenarios[key].notes.push(redact(note));
-  const claim = {
-    claim: state.scenarios[key].label,
-    status,
-    evidence: redact(note || 'See Computer Use screenshots and text snapshots.'),
-  };
-  const existing = state.claims.find((item) => item.claim === claim.claim);
-  if (existing) Object.assign(existing, claim);
-  else state.claims.push(claim);
-}
-
-function addNarrative(state, text) {
-  state.narrative.push({ ts: new Date().toISOString(), text: redact(text) });
-}
-
-class AppServerClient {
-  constructor(url) {
-    this.url = url;
-    this.nextId = 1;
-    this.pending = new Map();
-    this.ws = null;
-    this.threadId = null;
-  }
-
-  async connect() {
-    this.ws = new WebSocket(this.url);
-    this.ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (!message.id || !this.pending.has(message.id)) return;
-      const entry = this.pending.get(message.id);
-      this.pending.delete(message.id);
-      if (message.error) entry.reject(new Error(JSON.stringify(message.error)));
-      else entry.resolve(message);
-    };
-    await new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error(`Timed out connecting to ${this.url}`)), 10000);
-      this.ws.onopen = () => {
-        clearTimeout(timer);
-        resolve();
-      };
-      this.ws.onerror = () => {
-        clearTimeout(timer);
-        reject(new Error(`WebSocket error connecting to ${this.url}`));
-      };
-    });
-    await this.request('initialize', {
-      clientInfo: { name: 'nixmac-remote-computer-use-e2e', version: '1.0.0' },
-      capabilities: { experimentalApi: true },
-    });
-    const thread = await this.request('thread/start', {
-      cwd: '/tmp',
-      model: 'gpt-5.4-mini',
-      approvalPolicy: 'never',
-      sandbox: 'danger-full-access',
-      ephemeral: true,
-    });
-    this.threadId = thread.result.thread.id;
-  }
-
-  request(method, params = {}, timeout = 60000) {
-    const id = this.nextId++;
-    this.ws.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.pending.delete(id);
-        reject(new Error(`Timed out waiting for ${method}`));
-      }, timeout);
-      this.pending.set(id, {
-        resolve: (value) => {
-          clearTimeout(timer);
-          resolve(value);
-        },
-        reject: (error) => {
-          clearTimeout(timer);
-          reject(error);
-        },
-      });
-    });
-  }
-
-  tool(tool, args = {}, timeout = 60000) {
-    return this.request(
-      'mcpServer/tool/call',
-      { server: 'computer-use', threadId: this.threadId, tool, arguments: args },
-      timeout,
-    );
-  }
-
-  close() {
-    if (this.ws) this.ws.close();
-  }
-}
-
-function contentText(response) {
-  return response?.result?.content?.find((item) => item.type === 'text')?.text ?? '';
-}
-
-function contentImage(response) {
-  return response?.result?.content?.find((item) => item.type === 'image')?.data ?? '';
-}
-
-function containsUnmaskedSecret(text) {
-  return /(?:sk-[A-Za-z0-9_-]{16,}|Bearer\s+[A-Za-z0-9._-]{16,}|(?:OPENROUTER|OPENAI|ANTHROPIC|GROQ|XAI|MISTRAL|COHERE)_API_KEY=(?!\[REDACTED\])[^\s"'<>]+)/i.test(text || '');
+  return createBaseState(runDir, options, {
+    tryRun,
+    repoRoot: REPO_ROOT,
+    remoteAppPathFromEnv,
+    scenarioLabels,
+    evolvedCaseStrategy,
+    buildPrFocus,
+    env: process.env,
+  });
 }
 
 async function captureState(client, state, label, note = '') {
@@ -2328,7 +1044,7 @@ async function maybeRelaunchRemote(state) {
   }
   const dest = process.env.NIXMAC_E2E_REMOTE_SSH_DEST;
   if (!dest) return;
-  const remoteAppPath = process.env.NIXMAC_E2E_REMOTE_APP_PATH || '/Applications/nixmac.app';
+  const remoteAppPath = remoteAppPathFromEnv();
   const result = ssh(
     `osascript -e 'tell application id "com.darkmatter.nixmac" to quit' >/dev/null 2>&1 || true; sleep 1; open -n ${shellQuote(remoteAppPath)} || true; sleep 5`,
   );
@@ -2406,185 +1122,17 @@ async function inspectReportWithComputerUse(client, state) {
   updateScenario(state, 'reportInspection', 'fail', 'Computer Use could not observe the report in Chrome or Safari after opening it on the remote Mac.');
 }
 
-function shellQuote(value) {
-  return `'${String(value).replaceAll("'", "'\\''")}'`;
-}
-
 function captureRemoteMetadata(state) {
-  const remoteAppPath = process.env.NIXMAC_E2E_REMOTE_APP_PATH || '/Applications/nixmac.app';
-  const script = String.raw`
-import hashlib
-import json
-import os
-import plistlib
-import re
-import socket
-import subprocess
-
-def run(args):
-    try:
-        result = subprocess.run(args, text=True, capture_output=True, timeout=15)
-        return {"ok": result.returncode == 0, "stdout": result.stdout.strip(), "stderr": result.stderr.strip()}
-    except Exception as exc:
-        return {"ok": False, "stdout": "", "stderr": str(exc)}
-
-def first(*commands):
-    for command in commands:
-        result = run(command)
-        if result["ok"] and result["stdout"]:
-            return result["stdout"]
-    return ""
-
-def file_sha256(path):
-    try:
-        digest = hashlib.sha256()
-        with open(path, "rb") as handle:
-            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-                digest.update(chunk)
-        return digest.hexdigest()
-    except Exception:
-        return ""
-
-app_path = os.environ.get("APP_PATH", "")
-plist_path = os.path.join(app_path, "Contents", "Info.plist")
-info = {}
-try:
-    with open(plist_path, "rb") as handle:
-        info = plistlib.load(handle)
-except Exception:
-    info = {}
-
-exe_name = info.get("CFBundleExecutable") or "nixmac"
-exe_path = os.path.join(app_path, "Contents", "MacOS", exe_name)
-codesign = run(["codesign", "--verify", "--deep", "--strict", "--verbose=2", app_path])
-codesign_detail = run(["codesign", "-dv", "--verbose=4", app_path])
-codesign_text = "\n".join([codesign["stdout"], codesign["stderr"], codesign_detail["stdout"], codesign_detail["stderr"]])
-
-pid = first(["pgrep", "-x", "nixmac"])
-pid = pid.splitlines()[-1] if pid else ""
-ps_env = run(["ps", "eww", "-p", pid]) if pid else {"ok": False, "stdout": "", "stderr": "nixmac process not found"}
-env_text = ps_env["stdout"]
-env_keys = sorted(set(re.findall(r"(?<![A-Za-z0-9_])([A-Z][A-Z0-9_]{1,80})=", env_text)))
-openrouter_in_process = "OPENROUTER_API_KEY=" in env_text
-launchd_key = run(["launchctl", "getenv", "OPENROUTER_API_KEY"])
-
-print(json.dumps({
-    "remoteMachine": {
-        "hostname": socket.gethostname(),
-        "localHostName": first(["scutil", "--get", "LocalHostName"]),
-        "computerName": first(["scutil", "--get", "ComputerName"]),
-        "consoleUser": first(["stat", "-f", "%Su", "/dev/console"]),
-        "macosProductVersion": first(["sw_vers", "-productVersion"]),
-        "macosBuildVersion": first(["sw_vers", "-buildVersion"]),
-        "kernel": first(["uname", "-a"]),
-        "architecture": first(["uname", "-m"]),
-        "hardwareModel": first(["sysctl", "-n", "hw.model"]),
-        "cpuBrand": first(["sysctl", "-n", "machdep.cpu.brand_string"]),
-    },
-    "remoteApp": {
-        "path": app_path,
-        "bundleIdentifier": info.get("CFBundleIdentifier", ""),
-        "bundleName": info.get("CFBundleName", ""),
-        "shortVersion": info.get("CFBundleShortVersionString", ""),
-        "bundleVersion": info.get("CFBundleVersion", ""),
-        "executable": exe_path,
-        "executableSha256": file_sha256(exe_path),
-        "codesignVerified": codesign["ok"],
-        "teamIdentifier": (re.search(r"TeamIdentifier=(.*)", codesign_text) or ["", ""])[1].strip(),
-        "designatedRequirement": (re.search(r"designated => (.*)", codesign_text) or ["", ""])[1].strip(),
-    },
-    "processEnvVerification": {
-        "pid": pid,
-        "processFound": bool(pid),
-        "secretValuesRecorded": False,
-        "processEnvKeys": env_keys,
-        "openrouterApiKeyInProcess": "present-redacted" if openrouter_in_process else "absent-or-not-visible",
-        "openrouterApiKeyInGuiLaunchd": "present-redacted" if launchd_key["stdout"] else "absent",
-        "note": "The launched nixmac process environment is the source of truth for this run. launchctl getenv is diagnostic only and may be absent when the app is launched with an inline environment. Only environment variable names and presence checks are recorded; secret values are never written to the report.",
-    }
-}, sort_keys=True))
-`;
-  const result = ssh(`APP_PATH=${shellQuote(remoteAppPath)} python3 -c ${shellQuote(script)}`);
-  if (!result.ok) {
-    state.remoteMetadataError = redact(result.stderr || result.stdout || 'Remote metadata command failed.');
+  const { metadata, error } = readRemoteMetadata();
+  if (!metadata) {
+    state.remoteMetadataError = redact(error || 'Remote metadata command failed.');
     return;
   }
-  try {
-    const metadata = JSON.parse(result.stdout);
-    state.remoteMetadata = metadata;
-    state.remoteMachine = metadata.remoteMachine;
-    state.remoteApp = metadata.remoteApp;
-    state.processEnvVerification = metadata.processEnvVerification;
-    if (state.remoteMachine?.macosProductVersion) state.remoteMacosVersion = state.remoteMachine.macosProductVersion;
-  } catch (error) {
-    state.remoteMetadataError = redact(error instanceof Error ? error.message : String(error));
-  }
-}
-
-function decodeBase64(value = '') {
-  if (!value) return '';
-  return Buffer.from(value, 'base64').toString('utf8').trim();
-}
-
-function parseKeyValueLines(stdout = '') {
-  const parsed = {};
-  for (const line of stdout.split('\n')) {
-    const index = line.indexOf('=');
-    if (index === -1) continue;
-    parsed[line.slice(0, index)] = line.slice(index + 1);
-  }
-  return parsed;
-}
-
-function remoteConfigDirFromSettings() {
-  if (process.env.NIXMAC_E2E_REMOTE_CONFIG_DIR) return process.env.NIXMAC_E2E_REMOTE_CONFIG_DIR;
-  const script = [
-    'import json, os',
-    'p=os.path.join(os.environ["HOME"], "Library/Application Support/com.darkmatter.nixmac", "settings.json")',
-    'with open(p, encoding="utf-8") as f: settings=json.load(f)',
-    'print(settings.get("configDir", ""))',
-  ].join('; ');
-  const result = ssh(`/usr/bin/python3 -c ${shellQuote(script)}`);
-  return result.ok ? result.stdout.trim() : '';
-}
-
-function remoteGitSnapshot(configDir, baselineHead = '') {
-  if (!configDir) return { ok: false, error: 'No remote configDir available.' };
-  const command = [
-    `CONFIG_DIR=${shellQuote(configDir)}`,
-    `BASELINE=${shellQuote(baselineHead)}`,
-    'cd "$CONFIG_DIR"',
-    'printf "HEAD="; git rev-parse HEAD',
-    'printf "STATUS_B64="; git status --porcelain=v1 | base64 | tr -d "\\n"; printf "\\n"',
-    'printf "DIFF_B64="; git diff --name-only | base64 | tr -d "\\n"; printf "\\n"',
-    'if [ -n "$BASELINE" ]; then printf "BASELINE_DIFF_B64="; git diff --name-only "$BASELINE" HEAD | base64 | tr -d "\\n"; printf "\\n"; fi',
-    'if git grep -q -E "(^|[^A-Za-z])bat([^A-Za-z]|$)" HEAD -- . >/dev/null 2>&1; then echo "CONTAINS_BAT=true"; else echo "CONTAINS_BAT=false"; fi',
-  ].join('; ');
-  const result = ssh(command);
-  if (!result.ok) return { ok: false, error: result.stderr || result.stdout || result.error || 'Remote git snapshot failed.' };
-  const parsed = parseKeyValueLines(result.stdout);
-  return {
-    ok: true,
-    configDir,
-    head: parsed.HEAD || '',
-    statusShort: decodeBase64(parsed.STATUS_B64),
-    diffNameOnly: decodeBase64(parsed.DIFF_B64),
-    baselineDiffNameOnly: decodeBase64(parsed.BASELINE_DIFF_B64),
-    containsBat: parsed.CONTAINS_BAT === 'true',
-  };
-}
-
-function meaningfulBaselineDiff(snapshot) {
-  return String(snapshot?.baselineDiffNameOnly || '')
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    // The fixed Homebrew E2E prompt proves config cleanup through the package
-    // file and absence of bat. Nix may refresh these generated build artifacts
-    // while leaving user-visible Homebrew config restored.
-    .filter((line) => line !== 'result')
-    .filter((line) => line !== 'flake.lock')
-    .join('\n');
+  state.remoteMetadata = metadata;
+  state.remoteMachine = metadata.remoteMachine;
+  state.remoteApp = metadata.remoteApp;
+  state.processEnvVerification = metadata.processEnvVerification;
+  if (state.remoteMachine?.macosProductVersion) state.remoteMacosVersion = state.remoteMachine.macosProductVersion;
 }
 
 function changedHomebrewSourcePaths(snapshot) {
@@ -3189,7 +1737,9 @@ async function prepareDisposableRemoteBaseline(state) {
 }
 
 async function render(state, { stateFileName = 'state.json', recordEvent = true } = {}) {
+  const renderStartedAt = nowIso();
   ensureCurrentSchema(state);
+  updateStorybookPreviewCoverage(state);
   const verdict = verdictFor(state);
   state.verdict = verdict;
   updateV2Contracts(state);
@@ -3198,224 +1748,19 @@ async function render(state, { stateFileName = 'state.json', recordEvent = true 
     status: scenario.status,
     evidence: scenario.notes.join(' ') || 'See proof artifacts and coverage gaps.',
   }));
-  const failures = Object.entries(state.scenarios)
-    .filter(([, item]) => item.status !== 'pass')
-    .map(([key, item]) => ({ key, ...item }));
-  const coverageFreshnessHtml = renderCoverageFreshness(state);
-  const screenshotHtml = state.screenshots.length
-    ? state.screenshots
-        .map(
-          (shot) => `<figure id="screenshot-${escapeHtml(slugify(shot.label || shot.path))}">
-  <img src="${escapeHtml(shot.path)}" alt="${escapeHtml(shot.label)}">
-  <figcaption><strong>${escapeHtml(shot.label)}</strong> - ${escapeHtml(shot.note || 'No note')} (${escapeHtml(shot.capturedAt)})</figcaption>
-</figure>`,
-        )
-        .join('\n')
-    : '<p>No screenshots captured.</p>';
-  const counts = statusCounts(state);
-  const groupedScenarioHtml = groupedScenarios(state)
-    .map(
-      (group) => {
-        const groupCounts = {
-          pass: group.items.filter((item) => item.status === 'pass').length,
-          fail: group.items.filter((item) => item.status === 'fail').length,
-          inconclusive: group.items.filter((item) => item.status === 'inconclusive').length,
-        };
-        return `<details class="group">
-  <summary>${escapeHtml(group.name)} <span class="nav-badge pass">${groupCounts.pass} pass</span>${groupCounts.fail ? ` <span class="nav-badge fail">${groupCounts.fail} fail</span>` : ''}${groupCounts.inconclusive ? ` <span class="nav-badge inconclusive">${groupCounts.inconclusive} inconclusive</span>` : ''}</summary>
-  <div class="table-scroll"><table class="scenario-table">
-    <thead><tr><th class="scenario-col">Scenario</th><th class="status-col">Status</th><th class="grade-col">Evidence Grade</th><th class="artifacts-col">Primary Artifacts</th><th class="proof-col">What Proved It</th><th class="untested-col">Still Untested</th></tr></thead>
-    <tbody>
-      ${group.items
-        .map((item) => {
-          const proof = proofForScenario(state, item.key);
-          const contract = state.v2?.scenarioContracts?.[item.key] || buildScenarioContract(state, item.key);
-          return `<tr><td class="scenario-cell">${escapeHtml(item.label)}<br><small>${item.notes.map(escapeHtml).join('<br>') || 'No notes recorded.'}</small></td><td class="status-cell"><span class="verdict ${item.status}">${escapeHtml(item.status)}</span></td><td class="grade-cell"><span class="grade">${escapeHtml(proof.grade)}</span><br><span class="strength strength-${escapeHtml(contract.evidenceStrength)}">${escapeHtml(contract.evidenceStrength)}</span></td><td class="artifact-cell">${artifactLinks(state, item.key)}</td><td class="proof-cell">${escapeHtml(proof.proof)}${contract.failureClass ? `<br><small>Failure class: ${escapeHtml(contract.failureClass)}</small>` : ''}</td><td>${escapeHtml(proof.untested)}</td></tr>`;
-        })
-        .join('\n')}
-    </tbody>
-  </table></div>
-  </details>`;
-      },
-    )
-    .join('\n');
-  let evidenceSummary = `${state.screenshots.length} screenshots, ${state.textSnapshots.length} redacted text snapshots`;
-  const coverageGapsHtml = renderCoverageGaps(state);
-  const prPriorityHtml = renderPrPriority(state);
-  const priorityTriageHtml = renderPriorityTriage(state);
   await maybeGenerateEvidenceVideo(state);
-  if (state.video?.status === 'available') evidenceSummary += ', 1 screenshot video';
-  const executiveSummaryHtml = renderExecutiveSummary(state, counts, evidenceSummary);
-  const reportNavHtml = renderReportNav(state, counts);
-  const evidenceQualityHtml = renderEvidenceQuality(state);
-  const visualProofHtml = await renderVisualProofBoard(state);
-  const remoteMetadataHtml = renderRemoteMetadata(state);
-  const rawEvidenceHtml = renderRawEvidence(state, screenshotHtml);
-  const scenarioChecklistHtml = renderScenarioChecklist(state, groupedScenarioHtml);
-
-  const html = `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>nixmac Computer Use E2E Evidence</title>
-  <style>
-    :root { color-scheme: light dark; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    body { margin: 0; background: #111318; color: #eef1f5; }
-    main { max-width: 1460px; margin: 0 auto; padding: 32px 20px 56px; }
-    h1, h2, h3 { margin: 0 0 12px; }
-    h1 { font-size: 28px; letter-spacing: 0; }
-    html { scroll-behavior: smooth; }
-    h2 { font-size: 18px; margin-top: 30px; letter-spacing: 0; }
-    h2[id], .anchor-alias { scroll-margin-top: 18px; }
-    h3 { font-size: 15px; margin-top: 18px; color: #f6f8fb; letter-spacing: 0; }
-    p, li { color: #c5cbd3; line-height: 1.5; }
-    .lede { max-width: 850px; color: #d9dee6; }
-    .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
-    .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 18px 0; }
-    .panel { border: 1px solid #303640; border-radius: 8px; padding: 14px; background: #171a21; overflow-wrap: anywhere; }
-    .metadata-grid .panel { overflow-x: auto; }
-    .report-shell { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 22px; align-items: start; margin-top: 22px; }
-    .report-nav { position: sticky; top: 14px; display: grid; gap: 8px; padding: 12px; border: 1px solid #303640; border-radius: 8px; background: rgba(17, 19, 24, 0.96); backdrop-filter: blur(8px); }
-    .report-nav a, .summary-links a { border: 1px solid #3c4654; border-radius: 999px; padding: 7px 10px; color: #dce3ec; text-decoration: none; font-size: 13px; line-height: 1.15; background: #171a21; }
-    .report-nav a:hover, .summary-links a:hover { border-color: #7fbfff; color: #a7d7ff; }
-    .report-content { min-width: 0; }
-    .warning { color: #ffd36e; }
-    .metric { border: 1px solid #303640; border-radius: 8px; padding: 14px; background: #171a21; }
-    .metric strong { display: block; font-size: 28px; color: #fff; margin-bottom: 4px; }
-    .executive { border-color: #3c4654; background: #151922; }
-    .signal-grid, .quality-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; margin: 16px 0; }
-    .signal { border: 1px solid #303640; border-radius: 8px; padding: 10px; background: #111318; }
-    .signal strong { display: block; margin: 8px 0 4px; }
-    .summary-links { display: flex; flex-wrap: wrap; gap: 8px; }
-    .nav-badge { display: inline-flex; align-items: center; justify-content: center; border: 1px solid #3c4654; border-radius: 999px; padding: 2px 6px; margin-left: 4px; font-size: 11px; color: #dce3ec; background: #20242d; }
-    .verdict { display: inline-block; border-radius: 999px; padding: 5px 10px; font-weight: 700; text-transform: uppercase; }
-    .pass { background: #123d2a; color: #8bf0bb; }
-    .fail { background: #471a1a; color: #ff9e9e; }
-    .inconclusive { background: #443512; color: #ffd36e; }
-    .group { margin-top: 18px; }
-    table { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 8px; }
-    .table-scroll { width: 100%; overflow-x: auto; border-radius: 8px; }
-    .scenario-table { min-width: 1050px; table-layout: fixed; }
-    th, td { border: 1px solid #303640; padding: 10px; text-align: left; vertical-align: top; }
-    th { background: #20242d; }
-    .scenario-table th { white-space: nowrap; }
-    .scenario-table .scenario-col { width: 30%; }
-    .scenario-table .status-col { width: 92px; }
-    .scenario-table .grade-col { width: 138px; }
-    .scenario-table .artifacts-col { width: 190px; }
-    .scenario-table .proof-col { width: 29%; }
-    .scenario-table .untested-col { width: 20%; }
-    img { width: 100%; max-width: 100%; border: 1px solid #303640; border-radius: 8px; background: #000; }
-    small { color: #9ba3ae; }
-    pre { max-height: 280px; overflow: auto; white-space: pre-wrap; border: 1px solid #303640; border-radius: 8px; padding: 10px; background: #0d0f14; color: #dce3ec; }
-    details { margin: 10px 0; }
-    summary { cursor: pointer; color: #a7d7ff; }
-    details > summary { font-weight: 700; margin: 12px 0; }
-    .grade { display: inline-flex; align-items: center; justify-content: center; border: 1px solid #3c4654; border-radius: 999px; padding: 4px 8px; color: #dce3ec; background: #20242d; font-size: 12px; line-height: 1.15; white-space: nowrap; }
-    .verdict { white-space: nowrap; text-align: center; }
-    .scenario-table .status-cell { width: 92px; min-width: 92px; text-align: center; }
-    .scenario-table .grade-cell { width: 138px; min-width: 138px; text-align: center; }
-    .scenario-table .status-cell .verdict { min-width: 54px; padding-left: 8px; padding-right: 8px; }
-    .strength, .risk, .failure-class { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; padding: 4px 8px; font-size: 12px; line-height: 1.15; font-weight: 700; white-space: nowrap; }
-    .strength { margin-top: 6px; border: 1px solid #3c4654; background: #20242d; color: #dce3ec; }
-    .strength-strong { background: #103829; color: #8bf0bb; border-color: #236b4c; }
-    .strength-operational { background: #173247; color: #a7d7ff; border-color: #315f82; }
-    .strength-visual-supported { background: #342f18; color: #ffe08a; border-color: #66592a; }
-    .strength-weak, .risk-high { background: #471a1a; color: #ffb0b0; border-color: #744; }
-    .strength-not-proved, .risk-medium { background: #443512; color: #ffd36e; border-color: #705c22; }
-    .risk-low { background: #123d2a; color: #8bf0bb; border-color: #236b4c; }
-    .failure-class { background: #20242d; color: #dce3ec; border: 1px solid #3c4654; }
-    .artifact-list { max-height: 230px; overflow: auto; padding-right: 4px; }
-    .priority table { margin-bottom: 18px; }
-    .proof-card { margin-top: 18px; border: 1px solid #303640; border-radius: 8px; padding: 14px; background: #151922; }
-    .annotated-shot { position: relative; overflow: hidden; border: 1px solid #303640; border-radius: 8px; background: #000; }
-    .annotated-shot img { display: block; border: 0; border-radius: 0; }
-    .annotation { position: absolute; box-sizing: border-box; border: 1.5px solid rgba(255, 214, 94, 0.95); border-radius: 5px; background: rgba(255, 214, 94, 0.10); box-shadow: inset 0 0 0 1px rgba(20, 19, 13, 0.35), 0 8px 24px rgba(0,0,0,0.28); pointer-events: none; }
-    .annotation::after { content: ""; position: absolute; inset: -4px; border: 1px solid rgba(255, 214, 94, 0.28); border-radius: 8px; }
-    .annotation span { position: absolute; left: 6px; top: 6px; max-width: min(260px, calc(100% - 12px)); border-radius: 4px; padding: 3px 6px; background: rgba(255, 214, 94, 0.95); color: #111318; font-size: 12px; line-height: 1.15; font-weight: 700; white-space: normal; box-shadow: 0 2px 8px rgba(0,0,0,0.22); }
-    .annotation-pin { border-radius: 999px; }
-    .annotation-pin::after { border-radius: 999px; inset: -5px; }
-    .annotation-pin span { left: 50%; top: -28px; transform: translateX(-50%); white-space: nowrap; max-width: none; }
-    .anchor-alias { display: block; height: 0; overflow: hidden; }
-    .summary-video { margin: 24px 0; display: grid; grid-template-columns: minmax(220px, 0.42fr) minmax(360px, 1fr); gap: 18px; align-items: start; padding: 16px; border: 1px solid #2e3541; border-radius: 8px; background: #10131a; }
-    .summary-video-copy strong { display: block; margin-bottom: 6px; }
-    .summary-video-copy small { color: #b8c0cb; line-height: 1.45; }
-    .summary-video video { width: 100%; max-height: 520px; border: 1px solid #2e3541; border-radius: 6px; background: #050609; }
-    .summary-video-unavailable { display: block; }
-    .evidence-pack { margin: -8px 0 22px; display: grid; grid-template-columns: minmax(220px, 0.42fr) minmax(360px, 1fr); gap: 18px; align-items: stretch; padding: 14px 16px; border: 1px solid #2e3541; border-radius: 8px; background: #10131a; }
-    .evidence-pack-copy strong { display: block; margin-bottom: 6px; }
-    .evidence-pack-copy small { color: #b8c0cb; line-height: 1.45; }
-    .evidence-pack-grid { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 10px; }
-    .evidence-pack-grid a { display: block; min-height: 86px; border: 1px solid #303640; border-radius: 8px; padding: 10px; background: #151922; color: #dce3ec; text-decoration: none; }
-    .evidence-pack-grid a:hover { border-color: #7fbfff; }
-    .evidence-pack-grid strong { display: block; color: #fff; font-size: 20px; line-height: 1.1; margin-bottom: 6px; }
-    .evidence-pack-grid span { display: block; color: #f6f8fb; font-weight: 700; margin-bottom: 4px; }
-    .evidence-pack-grid small { display: block; color: #9ba3ae; line-height: 1.35; }
-    figure { margin: 0 0 18px; }
-    figcaption { margin-top: 6px; color: #c5cbd3; font-size: 13px; }
-    code { color: #a7d7ff; overflow-wrap: anywhere; }
-    ul { padding-left: 20px; }
-    @media (max-width: 860px) {
-      main { padding: 24px 12px 44px; }
-      .report-shell { display: block; }
-      .report-nav { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: nowrap; overflow-x: auto; margin: 18px 0; }
-      .report-nav a { white-space: nowrap; }
-      .summary-video, .evidence-pack { grid-template-columns: 1fr; }
-      .evidence-pack-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
-    }
-  </style>
-</head>
-<body>
-<main>
-  <h1>nixmac Computer Use E2E Evidence</h1>
-  <p class="lede">Remote desktop QA driven through Codex Computer Use against the real macOS app. The report summarizes major feature coverage, functional UX/UI checks, screenshots, redacted text evidence, and remote machine metadata.</p>
-  <p><span class="verdict ${verdict}">Verdict: ${verdict}</span></p>
-
-  ${executiveSummaryHtml}
-
-  <div class="report-shell">
-    ${reportNavHtml}
-    <div class="report-content">
-      ${prPriorityHtml}
-
-      <h2 id="findings-first">Findings</h2>
-      <p>Failures are shown first, then inconclusive checks. Passing checks stay collapsed unless a reviewer wants the full inventory.</p>
-      ${priorityTriageHtml}
-
-      ${evidenceQualityHtml}
-
-      <h2 id="visual-proof">Visual Proof</h2>
-      <p>Screenshots are binding corroborating assertions for safe-to-store visual scenarios. Accessibility text, action events, provider state, and remote git state remain the semantic proof; screenshot signal checks catch missing, blank, occluded, or low-signal visual evidence.</p>
-      ${visualProofHtml}
-
-      ${scenarioChecklistHtml}
-
-      ${coverageFreshnessHtml}
-
-      <h2 id="coverage-gaps">Coverage Gaps / Not Proved</h2>
-      ${coverageGapsHtml}
-
-      ${remoteMetadataHtml}
-
-      <details class="panel" id="evolved-flow">
-        <summary>Evolved Flow Case Strategy</summary>
-        ${renderEvolvedCaseStrategy(state)}
-      </details>
-
-      ${rawEvidenceHtml}
-
-      <h2 id="cleanup">Cleanup / Restore Status</h2>
-      <section class="panel">
-        <p>${escapeHtml(state.cleanup.note)}</p>
-      </section>
-    </div>
-  </div>
-</main>
-</body>
-</html>
-`;
+  const html = await renderReportHtml(state, { proofForScenario });
   await writeFile(path.join(state.runDir, 'index.html'), html, 'utf8');
+  addTimingPhase(state, {
+    id: stateFileName === 'state.json' ? 'report-render' : `report-render-${stateFileName.replace(/[^a-zA-Z0-9._-]+/g, '-')}`,
+    label: stateFileName === 'state.json' ? 'Report render' : `Report render (${stateFileName})`,
+    category: 'reporting',
+    source: 'runner',
+    status: 'success',
+    startedAt: renderStartedAt,
+    endedAt: nowIso(),
+    note: `Rendered ${stateFileName} and index.html.`,
+  });
   if (stateFileName === 'state.json') await saveState(state);
   else await writeFile(path.join(state.runDir, stateFileName), `${JSON.stringify(state, null, 2)}\n`, 'utf8');
   if (recordEvent) await addEvent(state, 'report.rendered', { path: 'index.html', verdict });
@@ -3436,6 +1781,7 @@ async function runSuite(args) {
   await mkdir(path.join(runDir, 'texts'), { recursive: true });
   const state = await baseState(runDir, options);
   await saveState(state);
+  const computerUseStartedAt = nowIso();
 
   const client = new AppServerClient(options.ws);
   try {
@@ -3871,6 +2217,16 @@ async function runSuite(args) {
     updateMainCoverageFreshness(state);
 
     state.cleanup.note = 'Remote app state was not restored by this runner. CI wrapper is responsible for remote app-support backup/restore; local artifacts are retained.';
+    addTimingPhase(state, {
+      id: 'computer-use-run',
+      label: 'Computer Use run',
+      category: 'computer-use',
+      source: 'runner',
+      status: 'success',
+      startedAt: computerUseStartedAt,
+      endedAt: nowIso(),
+      note: 'Connected to Codex app-server, exercised the calibrated nixmac Computer Use suite, and reached report generation.',
+    });
     await render(state);
     await inspectReportWithComputerUse(client, state);
     refreshVisualProofQuality(state);
@@ -3897,9 +2253,36 @@ async function renderUnavailable(args) {
     app: process.env.NIXMAC_COMPUTER_USE_APP || DEFAULT_APP,
     prompt: DEFAULT_PROMPT,
   });
+  await mergeWorkflowTimingsFromArgs(state, args);
   addNarrative(state, note);
   for (const key of Object.keys(state.scenarios)) updateScenario(state, key, 'inconclusive', note);
   state.cleanup.note = 'No app state touched; unavailable report only.';
+  await render(state);
+  console.log(path.join(runDir, 'index.html'));
+}
+
+async function renderStorybookOnly(args) {
+  const note = argValue(args, '--note', 'Native Computer Use skipped because the PR is UI-only and has Storybook preview evidence.');
+  const runDir = argValue(args, '--run-dir', path.join(ARTIFACT_ROOT, timestampSlug()));
+  await mkdir(path.join(runDir, 'screenshots'), { recursive: true });
+  await mkdir(path.join(runDir, 'texts'), { recursive: true });
+  const state = await baseState(runDir, {
+    ws: process.env.NIXMAC_COMPUTER_USE_WS || DEFAULT_WS,
+    app: process.env.NIXMAC_COMPUTER_USE_APP || DEFAULT_APP,
+    prompt: DEFAULT_PROMPT,
+  });
+  await mergeWorkflowTimingsFromArgs(state, args);
+  state.nativeComputerUse = {
+    skipped: true,
+    reason: note,
+    policy: 'storybook-ui-only',
+    skippedAt: new Date().toISOString(),
+  };
+  addNarrative(state, note);
+  for (const key of Object.keys(state.scenarios)) {
+    updateScenario(state, key, 'not_required', 'Native Computer Use was intentionally skipped for this UI-only PR; Storybook preview is the required proof lane.');
+  }
+  state.cleanup.note = 'No app state touched; native Computer Use skipped for UI-only Storybook proof.';
   await render(state);
   console.log(path.join(runDir, 'index.html'));
 }
@@ -3926,18 +2309,9 @@ async function renderExisting(args) {
     regeneratedFrom: 'state.json',
     regeneratedAt: new Date().toISOString(),
   });
+  await mergeWorkflowTimingsFromArgs(state, args);
 
-  if (state.scenarios.saveFlow?.status === 'inconclusive' && state.scenarios.saveFlow.notes.length === 1 && /added after this run/.test(state.scenarios.saveFlow.notes[0])) {
-    state.scenarios.saveFlow.notes = ['Step 3 Save / Keep changes was not exercised in this historical run.'];
-  }
-  if (state.scenarios.discard?.status === 'pass' && !state.safety?.disposableConfig) {
-    state.scenarios.discard.status = 'inconclusive';
-    state.scenarios.discard.notes.push('Historical pass downgraded for regenerated report: Discard confirmation was not safe to count as pass because disposable config mode was not proven.');
-  }
-  if (state.scenarios.rollbackCleanup?.status === 'pass' && state.scenarios.discard?.status === 'inconclusive') {
-    state.scenarios.discard.status = 'pass';
-    state.scenarios.discard.notes = ['Discard was intentionally not exercised because the stronger Step 3 save plus History restore cleanup path returned the disposable config to baseline.'];
-  }
+  applyHistoricalRenderMigration(state);
   refreshVisualProofQuality(state);
   state.claims = Object.values(state.scenarios).map((scenario) => ({
     claim: scenario.label,
@@ -3967,6 +2341,7 @@ async function renderErrorReport(error, args) {
     return;
   }
 
+  await mergeWorkflowTimingsFromArgs(existingState, args);
   addNarrative(existingState, note);
   existingState.failures.push(note);
   updateScenario(existingState, 'reportInspection', 'fail', 'Runner crashed before the report inspection step; fallback report was rendered from partial run evidence.');
@@ -4004,8 +2379,237 @@ async function runSelfTest() {
   assert.equal(containsUnmaskedSecret(`${settingsFrame}\n43 text API Key, Value: sk-or-v1-1234567890abcdef1234567890abcdef`), true, 'raw OpenRouter key should be treated as an unmasked secret');
   assert.equal(containsUnmaskedSecret(`${settingsFrame}\n43 text API Key, Value: sk-ant-api03-1234567890abcdef1234567890abcdef`), true, 'raw Anthropic-style key should be treated as an unmasked secret');
   assert.equal(containsUnmaskedSecret('OPENAI_API_KEY=sk-1234567890abcdef1234567890abcdef'), true, 'raw API key env var should be treated as an unmasked secret');
+  assert.equal(redact('ordinary text'), 'ordinary text', 'redact should leave ordinary text unchanged');
+  assert.equal(redact('OPENAI_API_KEY=sk-1234567890abcdef1234567890abcdef'), 'OPENAI_API_KEY=[REDACTED]', 'redact should mask provider API key environment assignments');
+  assert.equal(redact('Bearer abcdefghijklmnopqrstuvwxyz'), 'Bearer [REDACTED]', 'redact should mask Bearer tokens');
+  assert.equal(verdictFor({ scenarios: { launch: { status: 'pass' }, review: { status: 'fail' } } }), 'fail', 'verdictFor should fail when any scenario fails');
+  assert.equal(verdictFor({ scenarios: { launch: { status: 'pass' }, review: { status: 'inconclusive' } } }), 'inconclusive', 'verdictFor should be inconclusive when no scenario fails but one is inconclusive');
+  assert.equal(verdictFor({ scenarios: { launch: { status: 'pass' }, review: { status: 'pass' } } }), 'pass', 'verdictFor should pass when all scenarios pass');
+  assert.equal(verdictFor({ scenarios: { storybookPreview: { status: 'pass' }, launch: { status: 'not_required' } } }), 'pass', 'verdictFor should ignore explicitly not-required scenarios');
+  assert.equal(shouldFailProcessForVerdict({ verdict: 'fail' }, {}), true, 'strict verdict mode should fail the process for fail verdicts');
+  assert.equal(shouldFailProcessForVerdict({ verdict: 'inconclusive' }, {}), true, 'strict verdict mode should fail the process for inconclusive verdicts');
+  assert.equal(shouldFailProcessForVerdict({ verdict: 'pass' }, {}), false, 'strict verdict mode should not fail the process for pass verdicts');
+  assert.equal(shouldFailProcessForVerdict({ verdict: 'fail' }, { NIXMAC_E2E_STRICT_VERDICT: 'false' }), false, 'strict verdict env override should suppress process failure');
+  const stateHelperRunDir = path.join(os.tmpdir(), `nixmac-state-helper-${Date.now()}`);
+  await mkdir(stateHelperRunDir, { recursive: true });
+  const stateHelperState = {
+    runDir: stateHelperRunDir,
+    events: [],
+    claims: [],
+    narrative: [],
+    scenarios: {
+      sample: { label: 'Sample scenario', status: 'inconclusive', notes: [] },
+    },
+  };
+  updateScenario(stateHelperState, 'sample', 'fail', 'OPENAI_API_KEY=sk-1234567890abcdef1234567890abcdef leaked');
+  updateScenario(stateHelperState, 'sample', 'pass', 'Recovered with Bearer abcdefghijklmnopqrstuvwxyz');
+  assert.equal(stateHelperState.scenarios.sample.status, 'pass', 'updateScenario should update scenario status');
+  assert.deepEqual(
+    stateHelperState.scenarios.sample.notes,
+    ['OPENAI_API_KEY=[REDACTED] leaked', 'Recovered with Bearer [REDACTED]'],
+    'updateScenario should redact scenario notes',
+  );
+  assert.deepEqual(
+    stateHelperState.claims,
+    [{ claim: 'Sample scenario', status: 'pass', evidence: 'Recovered with Bearer [REDACTED]' }],
+    'updateScenario should upsert a redacted claim for the scenario label',
+  );
+  addNarrative(stateHelperState, 'Narrative includes OPENROUTER_API_KEY=sk-or-v1-1234567890abcdef');
+  assert.equal(stateHelperState.narrative[0].text, 'Narrative includes OPENROUTER_API_KEY=[REDACTED]', 'addNarrative should redact narrative text');
+  await addEvent(stateHelperState, 'state.self-test', { detail: 'event detail' });
+  assert.deepEqual(
+    JSON.parse(await readFile(path.join(stateHelperRunDir, 'events.json'), 'utf8')).map((event) => event.type),
+    ['state.self-test'],
+    'addEvent should persist events.json',
+  );
+  await saveState(stateHelperState);
+  assert.equal(JSON.parse(await readFile(path.join(stateHelperRunDir, 'state.json'), 'utf8')).scenarios.sample.status, 'pass', 'saveState should persist state.json');
+  const schemaLifecycleState = ensureStateCurrentSchema(
+    {
+      runDir: stateHelperRunDir,
+      scenarios: {
+        sample: { label: 'Old sample label', status: 'pass', notes: [] },
+        videoEvidence: { label: 'Legacy video evidence', status: 'pass', notes: [] },
+      },
+      screenshots: [{ label: 'sample-shot', path: 'screenshots/sample.png' }],
+    },
+    {
+      scenarioLabels: { sample: 'Sample scenario', added: 'Added scenario' },
+      evolvedCaseStrategy: () => ({ defaultCaseId: 'homebrew-bat', extraCaseIds: [] }),
+      buildPrFocus: () => ({ changedFiles: ['apps/native/src/app.tsx'], scenarioKeys: ['sample'] }),
+      pngDimensions: (filePath) => (filePath.endsWith('screenshots/sample.png') ? { width: 100, height: 80 } : null),
+      env: {
+        NIXMAC_E2E_DISPOSABLE_CONFIG: 'true',
+        NIXMAC_E2E_ALLOW_BUILD_CONFIRM: 'true',
+        NIXMAC_E2E_ALLOW_DISCARD_CONFIRM: 'false',
+        NIXMAC_E2E_BUILD_GATE_STATUS: 'ready',
+        NIXMAC_E2E_BUILD_ARTIFACT_SHA: 'same-head-sha',
+        NIXMAC_E2E_BUILD_RUN_ID: '12345',
+        NIXMAC_E2E_BUILD_GATE_REASON: 'same-head-build-artifact-ready',
+      },
+    },
+  );
+  assert.equal(schemaLifecycleState.scenarios.sample.label, 'Sample scenario', 'ensureCurrentSchema should refresh existing scenario labels');
+  assert.equal(schemaLifecycleState.scenarios.added.status, 'inconclusive', 'ensureCurrentSchema should add missing scenarios as inconclusive');
+  assert.equal(Object.hasOwn(schemaLifecycleState.scenarios, 'videoEvidence'), false, 'ensureCurrentSchema should remove legacy videoEvidence scenario');
+  assert.deepEqual(schemaLifecycleState.screenshots[0].imageSize, { width: 100, height: 80 }, 'ensureCurrentSchema should backfill screenshot dimensions');
+  assert.equal(schemaLifecycleState.safety.disposableConfig, true, 'ensureCurrentSchema should derive safety defaults from injected env');
+  assert.equal(schemaLifecycleState.safety.buildConfirmEnabled, true, 'ensureCurrentSchema should derive build-confirm safety from injected env');
+  assert.equal(schemaLifecycleState.safety.discardConfirmEnabled, false, 'ensureCurrentSchema should derive discard-confirm safety from injected env');
+  assert.deepEqual(
+    {
+      status: schemaLifecycleState.buildGate.status,
+      requiredHeadSha: schemaLifecycleState.buildGate.requiredHeadSha,
+      buildRunId: schemaLifecycleState.buildGate.buildRunId,
+      reason: schemaLifecycleState.buildGate.reason,
+    },
+    {
+      status: 'ready',
+      requiredHeadSha: 'same-head-sha',
+      buildRunId: '12345',
+      reason: 'same-head-build-artifact-ready',
+    },
+    'ensureCurrentSchema should derive same-head build gate metadata from injected env',
+  );
+  assert.deepEqual(schemaLifecycleState.prFocus.scenarioKeys, ['sample'], 'ensureCurrentSchema should derive prFocus from injected builder');
+  assert.deepEqual(schemaLifecycleState.evolvedCaseStrategy.extraCaseIds, [], 'ensureCurrentSchema should derive evolved-case strategy from injected builder');
+  const previousPrFocus = schemaLifecycleState.prFocus;
+  const previousSafety = schemaLifecycleState.safety;
+  const previousEvolvedCaseStrategy = schemaLifecycleState.evolvedCaseStrategy;
+  ensureStateCurrentSchema(schemaLifecycleState, {
+    scenarioLabels: { sample: 'Sample scenario', added: 'Added scenario' },
+    evolvedCaseStrategy: () => ({ defaultCaseId: 'unexpected', extraCaseIds: ['unexpected'] }),
+    buildPrFocus: () => ({ scenarioKeys: ['unexpected'] }),
+    pngDimensions: () => ({ width: 1, height: 1 }),
+    env: {
+      NIXMAC_E2E_DISPOSABLE_CONFIG: 'false',
+      NIXMAC_E2E_ALLOW_BUILD_CONFIRM: 'false',
+      NIXMAC_E2E_ALLOW_DISCARD_CONFIRM: 'true',
+    },
+  });
+  assert.equal(schemaLifecycleState.prFocus, previousPrFocus, 'ensureCurrentSchema should not replace existing prFocus on a later call');
+  assert.equal(schemaLifecycleState.safety, previousSafety, 'ensureCurrentSchema should not replace existing safety on a later call');
+  assert.equal(schemaLifecycleState.evolvedCaseStrategy, previousEvolvedCaseStrategy, 'ensureCurrentSchema should not replace existing evolved-case strategy on a later call');
+  assert.deepEqual(schemaLifecycleState.screenshots[0].imageSize, { width: 100, height: 80 }, 'ensureCurrentSchema should not replace existing screenshot dimensions on a later call');
+  const baseLifecycleState = await createBaseState(
+    stateHelperRunDir,
+    { ws: 'ws://test', app: 'com.darkmatter.test', prompt: 'Test prompt' },
+    {
+      tryRun: (command, args) => {
+        if (command === 'git' && args.join(' ') === 'branch --show-current') return { stdout: 'feature/product-proof' };
+        if (command === 'git' && args.join(' ') === 'rev-parse --short HEAD') return { stdout: 'abc1234' };
+        if (command === 'sw_vers') return { stdout: '26.2' };
+        return { stdout: '' };
+      },
+      repoRoot: '/repo',
+      remoteAppPathFromEnv: () => '/tmp/nixmac.app',
+      scenarioLabels: { launch: 'App launches', review: 'Review renders' },
+      evolvedCaseStrategy: () => ({ defaultCaseId: 'homebrew-bat', selectedAt: 'stubbed' }),
+      buildPrFocus: () => ({ changedFiles: ['apps/native/src/app.tsx'], scenarioKeys: ['launch'] }),
+      env: {
+        NIXMAC_E2E_MACOS_VERSION: 'test-macos',
+        NIXMAC_E2E_DISPOSABLE_CONFIG: 'true',
+        NIXMAC_E2E_ALLOW_BUILD_CONFIRM: 'false',
+        NIXMAC_E2E_ALLOW_DISCARD_CONFIRM: 'true',
+        NIXMAC_E2E_BUILD_GATE_STATUS: 'not_ready',
+        NIXMAC_E2E_BUILD_ARTIFACT_SHA: 'head-under-test',
+        NIXMAC_E2E_BUILD_GATE_REASON: 'same-head-build-not-ready-before-timeout',
+      },
+      now: () => '2026-05-02T00:00:00.000Z',
+    },
+  );
+  assert.equal(baseLifecycleState.startedAt, '2026-05-02T00:00:00.000Z', 'createBaseState should accept deterministic startedAt injection');
+  assert.equal(baseLifecycleState.branch, 'feature/product-proof', 'createBaseState should record branch from injected runner');
+  assert.equal(baseLifecycleState.sha, 'abc1234', 'createBaseState should record SHA from injected runner');
+  assert.equal(baseLifecycleState.macosVersion, 'test-macos', 'createBaseState should prefer macOS env override');
+  assert.equal(baseLifecycleState.appCommand, 'open -n /tmp/nixmac.app', 'createBaseState should derive app command from injected remote app path');
+  assert.equal(baseLifecycleState.scenarios.launch.status, 'inconclusive', 'createBaseState should initialize scenarios as inconclusive');
+  assert.deepEqual(baseLifecycleState.scenarios.launch.notes, [], 'createBaseState should initialize fresh-run scenario notes as empty');
+  assert.equal(baseLifecycleState.cleanup.note, 'Cleanup has not run yet.', 'createBaseState should preserve fresh-run cleanup copy');
+  assert.equal(baseLifecycleState.provider.kind, 'real-openrouter-compatible-provider', 'createBaseState should preserve provider kind copy');
+  assert.match(baseLifecycleState.provider.note, /key value is never written/, 'createBaseState should preserve provider secrecy copy');
+  assert.equal(baseLifecycleState.safety.disposableConfig, true, 'createBaseState should derive disposable safety from injected env');
+  assert.equal(baseLifecycleState.safety.buildConfirmEnabled, false, 'createBaseState should derive build-confirm safety from injected env');
+  assert.equal(baseLifecycleState.safety.discardConfirmEnabled, true, 'createBaseState should derive discard-confirm safety from injected env');
+  assert.match(baseLifecycleState.safety.note, /only allowed when disposable config mode is explicitly proven/, 'createBaseState should preserve safety note copy');
+  assert.equal(baseLifecycleState.buildGate.status, 'not_ready', 'createBaseState should record build gate status');
+  assert.equal(baseLifecycleState.buildGate.requiredHeadSha, 'head-under-test', 'createBaseState should record build gate head SHA');
+  assert.deepEqual(baseLifecycleState.evolvedCaseRuns, [], 'createBaseState should initialize evolved case runs as empty');
+  assert.deepEqual(baseLifecycleState.prFocus.scenarioKeys, ['launch'], 'createBaseState should derive PR focus from injected builder');
+  assert.deepEqual(baseLifecycleState.evolvedCaseStrategy, { defaultCaseId: 'homebrew-bat', selectedAt: 'stubbed' }, 'createBaseState should derive evolved strategy from injected builder');
+  const historicalState = {
+    safety: { disposableConfig: false },
+    scenarios: {
+      saveFlow: { status: 'inconclusive', notes: ['Scenario was added after this run or was not exercised by this runner.'] },
+      discard: { status: 'pass', notes: ['Historical discard passed.'] },
+      rollbackCleanup: { status: 'pass', notes: ['Cleanup passed.'] },
+    },
+  };
+  applyHistoricalRenderMigration(historicalState);
+  assert.deepEqual(historicalState.scenarios.saveFlow.notes, ['Step 3 Save / Keep changes was not exercised in this historical run.'], 'historical migration should rewrite stale saveFlow note');
+  assert.equal(historicalState.scenarios.discard.status, 'pass', 'historical migration should re-promote discard when rollback cleanup proved stronger cleanup');
+  assert.deepEqual(
+    historicalState.scenarios.discard.notes,
+    ['Discard was intentionally not exercised because the stronger Step 3 save plus History restore cleanup path returned the disposable config to baseline.'],
+    'historical migration should replace discard notes with the stronger-cleanup explanation',
+  );
+  const historicalAfterFirstMigration = structuredClone(historicalState);
+  applyHistoricalRenderMigration(historicalState);
+  assert.deepEqual(historicalState, historicalAfterFirstMigration, 'historical migration should be idempotent');
+  const nativeInconclusiveDiscardState = {
+    safety: { disposableConfig: true },
+    scenarios: {
+      discard: { status: 'inconclusive', notes: ['Native historical inconclusive.'] },
+      rollbackCleanup: { status: 'pass', notes: [] },
+    },
+  };
+  applyHistoricalRenderMigration(nativeInconclusiveDiscardState);
+  assert.equal(nativeInconclusiveDiscardState.scenarios.discard.status, 'pass', 'historical migration should re-promote any inconclusive discard when rollback cleanup passed');
+  assert.deepEqual(
+    nativeInconclusiveDiscardState.scenarios.discard.notes,
+    ['Discard was intentionally not exercised because the stronger Step 3 save plus History restore cleanup path returned the disposable config to baseline.'],
+    'historical migration should replace native inconclusive discard notes during re-promotion',
+  );
+  const negativeHistoricalState = {
+    safety: { disposableConfig: true },
+    scenarios: {
+      saveFlow: { status: 'inconclusive', notes: ['Scenario was added after this run.', 'Extra note.'] },
+      discard: { status: 'pass', notes: ['Disposable config was proven.'] },
+      rollbackCleanup: { status: 'fail', notes: ['Cleanup failed.'] },
+    },
+  };
+  const negativeBeforeMigration = structuredClone(negativeHistoricalState);
+  applyHistoricalRenderMigration(negativeHistoricalState);
+  assert.deepEqual(negativeHistoricalState, negativeBeforeMigration, 'historical migration should not broaden no-op conditions');
+  const negativeSaveFlowOnly = {
+    scenarios: {
+      saveFlow: { status: 'inconclusive', notes: ['Scenario was added after this run.', 'Extra note.'] },
+    },
+  };
+  const negativeSaveFlowOnlyBefore = structuredClone(negativeSaveFlowOnly);
+  applyHistoricalRenderMigration(negativeSaveFlowOnly);
+  assert.deepEqual(negativeSaveFlowOnly, negativeSaveFlowOnlyBefore, 'historical migration should not rewrite multi-note saveFlow states');
+  const negativeDisposableDiscardOnly = {
+    safety: { disposableConfig: true },
+    scenarios: {
+      discard: { status: 'pass', notes: ['Disposable config was proven.'] },
+    },
+  };
+  const negativeDisposableDiscardOnlyBefore = structuredClone(negativeDisposableDiscardOnly);
+  applyHistoricalRenderMigration(negativeDisposableDiscardOnly);
+  assert.deepEqual(negativeDisposableDiscardOnly, negativeDisposableDiscardOnlyBefore, 'historical migration should not downgrade discard when disposable config was proven');
+  const negativeRollbackOnly = {
+    safety: { disposableConfig: true },
+    scenarios: {
+      discard: { status: 'pass', notes: ['Already passed.'] },
+      rollbackCleanup: { status: 'pass', notes: ['Cleanup passed.'] },
+    },
+  };
+  const negativeRollbackOnlyBefore = structuredClone(negativeRollbackOnly);
+  applyHistoricalRenderMigration(negativeRollbackOnly);
+  assert.deepEqual(negativeRollbackOnly, negativeRollbackOnlyBefore, 'historical migration should not re-promote discard unless discard is inconclusive');
   assert.equal(sourcePrefixExists('apps/native/src/components/widget/settings/'), true, 'coverage freshness should accept existing directory prefixes');
-  assert.equal(sourcePrefixExists('apps/native/src/components/widget/settings-dialog.tsx'), true, 'coverage freshness should accept existing file prefixes');
+  assert.equal(sourcePrefixExists('apps/native/src/components/widget/settings/settings-dialog.tsx'), true, 'coverage freshness should accept existing file prefixes');
   assert.equal(sourcePrefixExists('apps/native/src/components/widget/__missing__/'), false, 'coverage freshness should reject missing directory prefixes');
   const previousExtraCases = process.env.NIXMAC_E2E_EXTRA_EVOLVED_CASES;
   process.env.NIXMAC_E2E_EXTRA_EVOLVED_CASES = 'inline-question-font';
@@ -4029,6 +2633,24 @@ async function runSelfTest() {
   ]);
   const unknownCatalogKeys = [...referencedScenarioKeys].filter((key) => !catalogScenarioKeys.has(key));
   assert.deepEqual(unknownCatalogKeys, [], 'scenario catalog references should resolve to default, optional evolved, or adversarial-only scenario keys');
+  const screenshotProofLabels = new Set(Object.values(scenarioProofCatalog).flatMap((proof) => proof.screenshots || []));
+  const visualContractLabels = new Set(
+    Object.values(scenarioVisualContracts).flatMap((contract) => (contract.screenshots || []).map((shot) => shot.label)),
+  );
+  const annotationLabels = new Set(Object.keys(screenshotAnnotations));
+  const unknownAnnotationLabels = [...annotationLabels].filter((label) => !visualContractLabels.has(label) && !screenshotProofLabels.has(label));
+  assert.deepEqual(unknownAnnotationLabels, [], 'screenshot annotations should target visual contracts or proof-catalog screenshots');
+  // These labels are intentionally unannotated: suggestion/provider/report frames
+  // are visually asserted by signalstats but do not have stable callout geometry.
+  const knownUnannotatedVisualLabels = new Set(['suggestion-card', 'provider-progress-05', 'HTML report inspection']);
+  const unannotatedVisualLabels = [...visualContractLabels].filter((label) => !annotationLabels.has(label) && !knownUnannotatedVisualLabels.has(label));
+  assert.deepEqual(unannotatedVisualLabels, [], 'visual contract screenshots should be annotated or explicitly allowed as unannotated');
+  const proofGrades = new Set(Object.values(scenarioProofCatalog).map((proof) => proof.grade));
+  const unmappedProofGrades = [...proofGrades].filter((grade) => !Object.hasOwn(v1GradeToEvidenceStrength, grade));
+  assert.deepEqual(unmappedProofGrades, [], 'every proof-catalog evidence grade should map to a V2 evidence strength');
+  const emittedFailureClasses = ['app', 'provider', 'credential', 'remote_infra', 'harness', 'coverage', 'inconclusive'];
+  const missingFailureTaxonomyClasses = emittedFailureClasses.filter((key) => !Object.hasOwn(failureTaxonomy, key));
+  assert.deepEqual(missingFailureTaxonomyClasses, [], 'failure taxonomy should cover every class emitted by classifyScenarioResult');
   assert.equal(
     Object.hasOwn(ensureCurrentSchema({ scenarios: {} }).scenarios, 'inlineQuestionAnswer'),
     false,
@@ -4067,6 +2689,257 @@ async function runSelfTest() {
   assert.equal(findQuestionChoiceEntry(configuredChoiceWithoutMarker, [/programming font/i])?.index, '2', 'question choice lookup may use configured choice labels even when marker text is absent');
   assert.equal(hasAnsweredQuestionEvidence('12 text Answered: Add a programming font', 'Add a programming font'), true, 'answered question evidence should match the submitted answer');
 
+  const simpleElementText = '1 button Settings\n2 text entry area Prompt\n3 button Send';
+  assert.equal(findElement(simpleElementText, [/button Send/i]), '3', 'findElement should return the first matching AX element index');
+  assert.equal(findElement(simpleElementText, [/button Missing/i]), null, 'findElement should return null when no AX element matches');
+  assert.deepEqual(
+    elementEntries(simpleElementText),
+    [
+      { lineNumber: 0, index: '1', label: 'button Settings' },
+      { lineNumber: 1, index: '2', label: 'text entry area Prompt' },
+      { lineNumber: 2, index: '3', label: 'button Send' },
+    ],
+    'elementEntries should parse indexed AX text lines',
+  );
+  assert.equal(
+    contentText({ result: { content: [{ type: 'image', data: 'png' }, { type: 'text', text: 'state text' }] } }),
+    'state text',
+    'contentText should extract the first text response payload',
+  );
+  assert.equal(contentText({ result: { content: [] } }), '', 'contentText should return an empty string for missing text payloads');
+  assert.equal(
+    contentImage({ result: { content: [{ type: 'text', text: 'state text' }, { type: 'image', data: 'png' }] } }),
+    'png',
+    'contentImage should extract the first image response payload',
+  );
+  const sentMessages = [];
+  class MockWebSocket {
+    constructor(url) {
+      this.url = url;
+      setTimeout(() => this.onopen?.(), 0);
+    }
+
+    send(payload) {
+      const message = JSON.parse(payload);
+      sentMessages.push(message);
+      const result = message.method === 'thread/start' ? { thread: { id: 'thread-123' } } : {};
+      setTimeout(() => this.onmessage?.({ data: JSON.stringify({ id: message.id, result }) }), 0);
+    }
+
+    close() {
+      this.closed = true;
+    }
+  }
+  const appServerClient = new AppServerClient('ws://mock', { WebSocketImpl: MockWebSocket });
+  await appServerClient.connect();
+  assert.equal(appServerClient.threadId, 'thread-123', 'AppServerClient should store the started thread id');
+  await appServerClient.tool('click', { app: 'com.darkmatter.nixmac', element_index: '7' }, 1000);
+  assert.deepEqual(
+    sentMessages.map((message) => message.method),
+    ['initialize', 'thread/start', 'mcpServer/tool/call'],
+    'AppServerClient should preserve initialize, thread start, and tool-call request order',
+  );
+  assert.deepEqual(
+    sentMessages[1].params,
+    {
+      cwd: '/tmp',
+      model: 'gpt-5.4-mini',
+      approvalPolicy: 'never',
+      sandbox: 'danger-full-access',
+      ephemeral: true,
+    },
+    'AppServerClient should preserve Codex app-server thread policy',
+  );
+  assert.deepEqual(
+    sentMessages[2].params,
+    {
+      server: 'computer-use',
+      threadId: 'thread-123',
+      tool: 'click',
+      arguments: { app: 'com.darkmatter.nixmac', element_index: '7' },
+    },
+    'AppServerClient should preserve Computer Use tool-call shape',
+  );
+  appServerClient.close();
+  class MockToolErrorWebSocket {
+    constructor() {
+      setTimeout(() => this.onopen?.(), 0);
+    }
+
+    send(payload) {
+      const message = JSON.parse(payload);
+      const result = message.method === 'thread/start' ? { thread: { id: 'thread-456' } } : {};
+      const response =
+        message.method === 'mcpServer/tool/call'
+          ? { id: message.id, error: { message: 'synthetic tool failure' } }
+          : { id: message.id, result };
+      setTimeout(() => this.onmessage?.({ data: JSON.stringify(response) }), 0);
+    }
+
+    close() {}
+  }
+  const toolErrorClient = new AppServerClient('ws://mock-tool-error', { WebSocketImpl: MockToolErrorWebSocket });
+  await toolErrorClient.connect();
+  await assert.rejects(
+    () => toolErrorClient.tool('click', { app: 'com.darkmatter.nixmac', element_index: '7' }, 1000),
+    /synthetic tool failure/,
+    'AppServerClient should reject JSON-RPC error responses',
+  );
+  const timeoutClient = new AppServerClient('ws://mock-timeout');
+  timeoutClient.ws = { send() {} };
+  await assert.rejects(
+    () => timeoutClient.request('never/replies', {}, 1),
+    /Timed out waiting for never\/replies/,
+    'AppServerClient should reject timed-out requests',
+  );
+
+  const dispatched = [];
+  const dispatchExits = [];
+  let dispatchUsageCalls = 0;
+  await dispatchRemoteCuaCommand(
+    ['run', '--sample', 'value'],
+    {
+      run: async (args) => dispatched.push(['run', args]),
+      renderUnavailable: async (args) => dispatched.push(['renderUnavailable', args]),
+      renderExisting: async (args) => dispatched.push(['renderExisting', args]),
+      selfTest: async () => dispatched.push(['selfTest', []]),
+    },
+    {
+      usage: () => {
+        dispatchUsageCalls += 1;
+      },
+      exit: (code) => {
+        dispatchExits.push(code);
+      },
+    },
+  );
+  assert.deepEqual(dispatched.pop(), ['run', ['--sample', 'value']], 'CLI dispatcher should forward run args unchanged');
+  await dispatchRemoteCuaCommand(
+    ['render-existing', '--run-dir', '/tmp/run'],
+    {
+      run: async (args) => dispatched.push(['run', args]),
+      renderUnavailable: async (args) => dispatched.push(['renderUnavailable', args]),
+      renderExisting: async (args) => dispatched.push(['renderExisting', args]),
+      selfTest: async () => dispatched.push(['selfTest', []]),
+    },
+    {
+      usage: () => {
+        dispatchUsageCalls += 1;
+      },
+      exit: (code) => {
+        dispatchExits.push(code);
+      },
+    },
+  );
+  assert.deepEqual(dispatched.pop(), ['renderExisting', ['--run-dir', '/tmp/run']], 'CLI dispatcher should dispatch render-existing args');
+  await dispatchRemoteCuaCommand(
+    ['render-unavailable', '--note', 'not ready'],
+    {
+      run: async (args) => dispatched.push(['run', args]),
+      renderUnavailable: async (args) => dispatched.push(['renderUnavailable', args]),
+      renderExisting: async (args) => dispatched.push(['renderExisting', args]),
+      selfTest: async () => dispatched.push(['selfTest', []]),
+    },
+    {
+      usage: () => {
+        dispatchUsageCalls += 1;
+      },
+      exit: (code) => {
+        dispatchExits.push(code);
+      },
+    },
+  );
+  assert.deepEqual(
+    dispatched.pop(),
+    ['renderUnavailable', ['--note', 'not ready']],
+    'CLI dispatcher should dispatch render-unavailable args',
+  );
+  await dispatchRemoteCuaCommand(
+    ['self-test', '--ignored'],
+    {
+      run: async (args) => dispatched.push(['run', args]),
+      renderUnavailable: async (args) => dispatched.push(['renderUnavailable', args]),
+      renderExisting: async (args) => dispatched.push(['renderExisting', args]),
+      selfTest: async () => dispatched.push(['selfTest', []]),
+    },
+    {
+      usage: () => {
+        dispatchUsageCalls += 1;
+      },
+      exit: (code) => {
+        dispatchExits.push(code);
+      },
+    },
+  );
+  assert.deepEqual(dispatched.pop(), ['selfTest', []], 'CLI dispatcher should not pass argv through to self-test');
+  await dispatchRemoteCuaCommand(
+    ['unknown-command'],
+    {
+      run: async () => dispatched.push(['run', []]),
+      renderUnavailable: async () => dispatched.push(['renderUnavailable', []]),
+      renderExisting: async () => dispatched.push(['renderExisting', []]),
+      selfTest: async () => dispatched.push(['selfTest', []]),
+    },
+    {
+      usage: () => {
+        dispatchUsageCalls += 1;
+      },
+      exit: (code) => {
+        dispatchExits.push(code);
+      },
+    },
+  );
+  assert.equal(dispatchUsageCalls, 1, 'CLI dispatcher should print usage for unknown commands');
+  assert.equal(dispatchExits.at(-1), 1, 'CLI dispatcher should exit 1 for unknown commands');
+  await dispatchRemoteCuaCommand(
+    [],
+    {
+      run: async () => dispatched.push(['run', []]),
+      renderUnavailable: async () => dispatched.push(['renderUnavailable', []]),
+      renderExisting: async () => dispatched.push(['renderExisting', []]),
+      selfTest: async () => dispatched.push(['selfTest', []]),
+    },
+    {
+      usage: () => {
+        dispatchUsageCalls += 1;
+      },
+      exit: (code) => {
+        dispatchExits.push(code);
+      },
+    },
+  );
+  assert.equal(dispatchUsageCalls, 2, 'CLI dispatcher should print usage for missing commands');
+  assert.equal(dispatchExits.at(-1), 0, 'CLI dispatcher should exit 0 for missing commands');
+  const dispatchErrors = [];
+  await dispatchRemoteCuaCommand(
+    ['render-unavailable', '--note', 'x'],
+    {
+      run: async () => {},
+      renderUnavailable: async () => {
+        throw new Error('synthetic render-unavailable failure');
+      },
+      renderExisting: async () => {},
+      selfTest: async () => {},
+    },
+    {
+      usage: () => {
+        dispatchUsageCalls += 1;
+      },
+      exit: (code) => {
+        dispatchExits.push(code);
+      },
+      onError: (error, context) => {
+        dispatchErrors.push({ message: error.message, context });
+      },
+    },
+  );
+  assert.deepEqual(
+    dispatchErrors,
+    [{ message: 'synthetic render-unavailable failure', context: { command: 'render-unavailable', args: ['--note', 'x'] } }],
+    'CLI dispatcher should expose failing command context to wrapper error policy',
+  );
+  assert.equal(dispatchExits.at(-1), 1, 'CLI dispatcher should exit 1 after handler errors');
+
   assert.equal(clickResponseIndicatesFailure({ result: { isError: true, content: [{ type: 'text', text: 'Tool returned an error.' }] } }), true, 'MCP isError should fail click');
   assert.equal(clickResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'App state includes button Report Error and Console Error logs.' }] } }), false, 'ordinary app-state Error text should not fail click');
   assert.equal(clickResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'Error: stale element index 7' }] } }), true, 'stale element sentinel should fail click');
@@ -4074,6 +2947,101 @@ async function runSelfTest() {
   assert.equal(setValueResponseIndicatesFailure({ result: { isError: true, content: [{ type: 'text', text: 'Tool returned an error.' }] } }), true, 'MCP isError should fail set_value');
   assert.equal(setValueResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'App state includes Value: Add the bat command line tool.' }] } }), false, 'ordinary set_value app-state text should not fail input');
   assert.equal(setValueResponseIndicatesFailure({ result: { content: [{ type: 'text', text: 'Error: set_value element index 18 not found' }] } }), true, 'set_value element sentinel should fail input');
+  assert.deepEqual(builtInElementAddressKinds, ['codex-index', 'text-pattern'], 'driver contract should only ship address kinds exercised by the current runner');
+  assert.equal(validateElementAddress({ kind: 'codex-index', index: 7 }).normalized.index, '7', 'driver contract should normalize numeric Codex indexes');
+  assert.equal(validateElementAddress({ kind: 'codex-index', index: 'abc' }).ok, false, 'driver contract should reject invalid Codex indexes');
+  assert.deepEqual(
+    validateElementAddress({ kind: 'text-pattern', source: 'button Send', flags: 'i' }).normalized,
+    { kind: 'text-pattern', patterns: [{ source: 'button Send', flags: 'i' }] },
+    'driver contract should normalize text-pattern addresses',
+  );
+  assert.equal(validateElementAddress({ kind: 'text-pattern', source: 'button Send', flags: '[' }).ok, false, 'driver contract should reject invalid regex flags');
+  assert.equal(validateElementAddress({ kind: 'text-pattern', source: '[' }).ok, false, 'driver contract should reject invalid regex sources');
+  assert.equal(validateElementAddress({ kind: 'coordinate', x: 1, y: 2 }).ok, false, 'driver contract should reject future address kinds until an adapter registers them');
+  assert.equal(
+    validateElementAddress(
+      { kind: 'coordinate', x: 1, y: 2 },
+      {
+        additionalAddressValidators: {
+          coordinate: (address) => ({ ok: Number.isFinite(address.x) && Number.isFinite(address.y), issues: [], normalized: address }),
+        },
+      },
+    ).ok,
+    true,
+    'driver contract should support explicit future address-kind extension by adapter chunk',
+  );
+  assert.equal(validateDriverCapabilities({ ...codexAppServerDriverDescriptor.capabilities, unsupported: true }).ok, false, 'driver contract should reject unknown capabilities');
+  assert.equal(validateDriverCapabilities({ ...codexAppServerDriverDescriptor.capabilities, click: false }).ok, false, 'driver contract should reject missing required capabilities');
+  assert.equal(
+    validateDriverDescriptor({ ...codexAppServerDriverDescriptor, contractVersion: 'future' }).ok,
+    false,
+    'driver contract should reject descriptor version drift',
+  );
+  assert.equal(
+    validateDriverDescriptor({ ...codexAppServerDriverDescriptor, addressKinds: ['coordinate'] }).ok,
+    false,
+    'driver contract should reject unregistered descriptor address kinds',
+  );
+  assert.throws(
+    () => createDriverDescriptor({ ...codexAppServerDriverDescriptor, capabilities: { ...codexAppServerDriverDescriptor.capabilities, click: false } }),
+    /Invalid Computer Use driver descriptor/,
+    'driver descriptor creation should fail fast for invalid descriptors',
+  );
+  assert.deepEqual(validateDriverDescriptor(codexAppServerDriverDescriptor).issues, [], 'Codex app-server descriptor should satisfy the driver contract at load time');
+  assert.deepEqual(
+    currentRunnerDriverCapabilityUse.filter((capability) => codexAppServerDriverDescriptor.capabilities[capability] !== true),
+    [],
+    'Codex app-server descriptor should declare every capability the current runner uses',
+  );
+  assert.equal(driverCapabilityKeys.includes('metadata'), true, 'driver contract should distinguish optional metadata capability from required UI actions');
+  assert.equal(codexAppServerDriverDescriptor.contractVersion, driverContractVersion, 'Codex app-server descriptor should publish the active driver contract version');
+  assert.equal(shellQuote("a'b"), "'a'\\''b'", 'shellQuote should preserve single quotes safely for remote shell commands');
+  assert.equal(sshArgs('true', {}), null, 'sshArgs should be unavailable without a remote destination');
+  assert.equal(scpArgs('/tmp/local', '/tmp/remote', {}), null, 'scpArgs should be unavailable without a remote destination');
+  assert.equal(remoteAppPathFromEnv({}), '/Applications/nixmac.app', 'remoteAppPathFromEnv should default to the installed app path');
+  assert.equal(
+    remoteAppPathFromEnv({ NIXMAC_E2E_REMOTE_APP_PATH: '/tmp/nixmac.app' }),
+    '/tmp/nixmac.app',
+    'remoteAppPathFromEnv should accept an explicit app path override',
+  );
+  const remoteStageEnv = {
+    NIXMAC_E2E_REMOTE_SSH_DEST: 'user@example',
+    NIXMAC_E2E_SSH_KNOWN_HOSTS: '/tmp/known_hosts',
+    NIXMAC_E2E_SSH_KEY: '/tmp/key',
+  };
+  assert.deepEqual(
+    sshArgs('true', remoteStageEnv),
+    [
+      '-o',
+      'BatchMode=yes',
+      '-o',
+      'StrictHostKeyChecking=yes',
+      '-o',
+      'UserKnownHostsFile=/tmp/known_hosts',
+      '-i',
+      '/tmp/key',
+      'user@example',
+      'true',
+    ],
+    'sshArgs should build strict noninteractive SSH args with known_hosts and key overrides',
+  );
+  assert.deepEqual(
+    scpArgs('/tmp/local', '/tmp/remote', remoteStageEnv),
+    [
+      '-r',
+      '-o',
+      'BatchMode=yes',
+      '-o',
+      'StrictHostKeyChecking=yes',
+      '-o',
+      'UserKnownHostsFile=/tmp/known_hosts',
+      '-i',
+      '/tmp/key',
+      '/tmp/local',
+      'user@example:/tmp/remote',
+    ],
+    'scpArgs should build strict noninteractive SCP args with known_hosts and key overrides',
+  );
   assert.equal(meaningfulBaselineDiff({ baselineDiffNameOnly: 'flake.lock\nresult\n' }), '', 'generated build artifacts should not make Homebrew rollback cleanup fail');
   assert.equal(meaningfulBaselineDiff({ baselineDiffNameOnly: 'modules/darwin/homebrew.nix\nflake.lock\nresult\n' }), 'modules/darwin/homebrew.nix', 'user-visible Homebrew config drift should remain meaningful');
   assert.equal(hasExpectedHomebrewSourceDiff({ baselineDiffNameOnly: 'modules/darwin/homebrew.nix\nflake.lock\nresult\n' }), true, 'Homebrew proof should accept module source path');
@@ -4082,12 +3050,59 @@ async function runSelfTest() {
   assert.deepEqual(parseSignalStats('lavfi.signalstats.YMIN=16\nlavfi.signalstats.YMAX=235\n'), { YMIN: 16, YMAX: 235 }, 'signalstats parser should extract luminance metrics');
   assert.deepEqual(probeCropForImage({ width: 768, height: 768 }, { x: 5, y: 35, w: 90, h: 22 }), { x: 38, y: 268, w: 691, h: 168 }, 'visual probe coordinates should map to image pixels');
   assert.equal(probeCropForImage({ width: 768, height: 768 }, { x: 95, y: 95, w: 10, h: 10 }), null, 'out-of-bounds visual probes should be rejected');
+  assert.deepEqual(
+    evaluateScreenshotVisualContract({ screenshots: [], runDir: os.tmpdir() }, { label: 'missing-proof', probes: [] }),
+    {
+      label: 'missing-proof',
+      status: 'fail',
+      checks: [{ name: 'screenshot artifact', status: 'fail', detail: 'Required screenshot artifact is missing from state.screenshots.' }],
+    },
+    'visual contract evaluation should fail with a stable shape when the required screenshot is missing',
+  );
+  assert.deepEqual(
+    evaluateScreenshotVisualContract({ screenshots: [], runDir: os.tmpdir() }, { label: 'provider-progress-05', labels: ['provider-progress-05', 'provider-progress-04', 'provider-progress-01'], probes: [] }),
+    {
+      label: 'provider-progress-05',
+      status: 'fail',
+      checks: [
+        {
+          name: 'screenshot artifact',
+          status: 'fail',
+          detail: 'Required screenshot artifact is missing from state.screenshots: provider-progress-05, provider-progress-04, provider-progress-01.',
+        },
+      ],
+    },
+    'visual contract evaluation should report all fallback labels when none are available',
+  );
+  assert.equal(
+    evaluateScreenshotVisualContract(
+      {
+        runDir: os.tmpdir(),
+        screenshots: [
+          { label: 'provider-progress-01', path: 'missing-provider-progress-01.png' },
+          { label: 'provider-progress-05', path: 'missing-provider-progress-05.png' },
+        ],
+      },
+      { label: 'provider-progress-05', labels: ['provider-progress-05', 'provider-progress-01'], probes: [] },
+    ).label,
+    'provider-progress-05',
+    'visual contract evaluation should prefer earlier fallback labels when multiple screenshots are present',
+  );
 
   const previousChangedFiles = process.env.NIXMAC_E2E_PR_CHANGED_FILES;
   process.env.NIXMAC_E2E_PR_CHANGED_FILES = 'apps/native/src/components/widget/adversarial-new-visible-surface.tsx\ndocs/history.md';
   const prFocus = buildPrFocus();
   assert.deepEqual(prFocus.userVisibleFiles, ['apps/native/src/components/widget/adversarial-new-visible-surface.tsx'], 'PR focus should infer user-visible files');
   assert.deepEqual(prFocus.scenarioKeys, [], 'non-user-visible changed files must not create PR scenario mappings');
+  process.env.NIXMAC_E2E_PR_CHANGED_FILES = 'apps/native/src/App.tsx\napps/native/src/index.css\napps/native/src/preview-indicator-window.tsx';
+  const rootPrFocus = buildPrFocus();
+  assert.deepEqual(
+    rootPrFocus.userVisibleFiles,
+    ['apps/native/src/App.tsx', 'apps/native/src/index.css', 'apps/native/src/preview-indicator-window.tsx'],
+    'PR focus should infer root-level native app source files as user-visible',
+  );
+  assert.equal(rootPrFocus.scenarioKeys.includes('launch'), true, 'root-level native app source changes should focus launch coverage');
+  assert.equal(rootPrFocus.scenarioKeys.includes('visualCoverage'), true, 'root-level native app source changes should focus visual coverage');
   process.env.NIXMAC_E2E_PR_CHANGED_FILES = 'tools/computer-use-e2e/run-remote-cua.mjs';
   const toolPrFocus = buildPrFocus();
   assert.equal(toolPrFocus.scenarioKeys.includes('visualProofQuality'), true, 'Computer Use E2E changes should focus visual proof quality');
@@ -4147,13 +3162,33 @@ async function runSelfTest() {
     openrouterApiKeyInProcess: 'present-redacted',
     secretValuesRecorded: false,
   };
+  renderState.buildGate = {
+    status: 'ready',
+    requiredHeadSha: '5aa5e5ab',
+    buildRunId: '25268041985',
+    artifactName: 'nixmac-macos-app',
+    reason: 'same-head-build-artifact-ready',
+    note: 'Computer Use E2E may start remote setup only after a successful Build macOS App artifact exists for this exact head SHA.',
+  };
+  addTimingPhase(renderState, {
+    id: 'self-test-phase',
+    label: 'Self-test timing phase',
+    category: 'self-test',
+    source: 'runner',
+    status: 'success',
+    startedAt: '2026-05-02T00:00:00.000Z',
+    endedAt: '2026-05-02T00:00:03.500Z',
+    note: 'Synthetic phase proves timing renders in Product Proof reports.',
+  });
   renderState.confirmationBoundaries = ['Self-test confirmation boundary.'];
   await render(renderState, { stateFileName: 'state.self-test.json', recordEvent: false });
   const renderedHtml = await readFile(path.join(renderRunDir, 'index.html'), 'utf8');
   for (const anchor of [
     'id="summary"',
+    'id="timing-breakdown"',
     'id="evidence-pack"',
     'class="report-nav"',
+    'id="storybook-preview"',
     'id="pull-request-focus"',
     'id="findings-first"',
     'id="evidence-quality"',
@@ -4175,6 +3210,8 @@ async function runSelfTest() {
     assert.equal(renderedHtml.includes(anchor), true, `rendered report should include ${anchor}`);
   }
   assert.equal(renderedHtml.includes('id="open-issues"'), false, 'duplicate open-issues section should not be rendered');
+  assert.equal(renderedHtml.includes('Build Gate'), true, 'rendered report should include build gate metadata');
+  assert.equal(renderedHtml.includes('5aa5e5ab'), true, 'rendered report should include same-head build gate SHA');
   const ids = [...renderedHtml.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
   const duplicateIds = ids.filter((id, index) => ids.indexOf(id) !== index);
   assert.deepEqual(duplicateIds, [], 'rendered report should not include duplicate element ids');
@@ -4209,27 +3246,30 @@ async function runSelfTest() {
 }
 
 async function main() {
-  const [command, ...args] = process.argv.slice(2);
-  try {
-    if (command === 'run') await runSuite(args);
-    else if (command === 'render-unavailable') await renderUnavailable(args);
-    else if (command === 'render-existing') await renderExisting(args);
-    else if (command === 'self-test') await runSelfTest();
-    else {
-      usage();
-      process.exit(command ? 1 : 0);
-    }
-  } catch (error) {
-    console.error(redact(error instanceof Error ? error.stack || error.message : String(error)));
-    if (command === 'run') {
-      try {
-        await renderErrorReport(error, args);
-      } catch (reportError) {
-        console.error(redact(reportError instanceof Error ? reportError.stack || reportError.message : String(reportError)));
-      }
-    }
-    process.exit(1);
-  }
+  await dispatchRemoteCuaCommand(
+    process.argv.slice(2),
+    {
+      run: runSuite,
+      renderUnavailable,
+      renderStorybookOnly,
+      renderExisting,
+      selfTest: runSelfTest,
+    },
+    {
+      usage,
+      exit: (code) => process.exit(code),
+      onError: async (error, { command, args }) => {
+        console.error(redact(error instanceof Error ? error.stack || error.message : String(error)));
+        if (command === 'run') {
+          try {
+            await renderErrorReport(error, args);
+          } catch (reportError) {
+            console.error(redact(reportError instanceof Error ? reportError.stack || reportError.message : String(reportError)));
+          }
+        }
+      },
+    },
+  );
 }
 
 await main();

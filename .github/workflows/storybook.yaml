@@ -15,16 +15,29 @@ jobs:
     name: Storybook Snapshot Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
 
       - name: Install sops
         run: |
@@ -73,7 +86,7 @@ jobs:
         run: bun run test:storybook
 
       - name: Check for snapshot staleness
-        if: always() && steps.*.outcome != 'cancelled'
+        if: always() && !cancelled()
         working-directory: apps/native
         run: |
           if git diff --name-only | grep -q '__snapshots__'; then
@@ -97,15 +110,50 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ env.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
           set -euo pipefail
-          BRANCH="${{ github.head_ref || github.ref_name }}"
           output=$(bunx wrangler pages deploy apps/native/storybook-static \
             --project-name=nixmac-storybook \
             --commit-dirty=true \
             --branch="$BRANCH" 2>&1 | tee /dev/stderr)
           url=$(echo "$output" | grep -oE 'https://[a-zA-Z0-9.-]+\.pages\.dev' | head -n1 || true)
           echo "deployment-url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Comment Storybook preview URL on PR
+        if: github.event_name == 'pull_request' && steps.deploy.outputs.deployment-url != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          MARKER='<!-- nixmac-storybook-preview -->'
+          BODY=$(cat <<EOF
+          ${MARKER}
+          ### 🎨 Storybook preview
+
+          ${DEPLOY_URL}
+
+          Updated for ${SHA}
+          EOF
+          )
+
+          # Find existing sticky comment (if any) and update; otherwise create.
+          EXISTING_ID=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --paginate --jq ".[] | select(.body | startswith(\"${MARKER}\")) | .id" \
+            | head -n1 || true)
+
+          if [ -n "${EXISTING_ID}" ]; then
+            gh api --method PATCH "repos/${REPO}/issues/comments/${EXISTING_ID}" \
+              -f body="${BODY}" >/dev/null
+            echo "Updated sticky comment ${EXISTING_ID}"
+          else
+            gh pr comment "${PR_NUMBER}" --repo "${REPO}" --body "${BODY}"
+            echo "Created sticky comment"
+          fi
 
       - name: Upload snapshot diffs on failure
         if: failure()
@@ -120,14 +168,14 @@ jobs:
       - name: Post summary
         if: always()
         run: |
-          echo "### Storybook Snapshot Tests" >> $GITHUB_STEP_SUMMARY
+          echo "### Storybook Snapshot Tests" >> "$GITHUB_STEP_SUMMARY"
           if [ "${{ job.status }}" == "success" ]; then
-            echo "All Storybook snapshot tests passed" >> $GITHUB_STEP_SUMMARY
+            echo "All Storybook snapshot tests passed" >> "$GITHUB_STEP_SUMMARY"
             DEPLOY_URL="${{ steps.deploy.outputs.deployment-url }}"
             if [ -n "$DEPLOY_URL" ]; then
-              echo "Storybook: $DEPLOY_URL" >> $GITHUB_STEP_SUMMARY
+              echo "Storybook: $DEPLOY_URL" >> "$GITHUB_STEP_SUMMARY"
             fi
           else
-            echo "Storybook snapshot tests failed" >> $GITHUB_STEP_SUMMARY
-            echo "Check the 'storybook-snapshot-diffs' artifact for visual diffs." >> $GITHUB_STEP_SUMMARY
+            echo "Storybook snapshot tests failed" >> "$GITHUB_STEP_SUMMARY"
+            echo "Check the 'storybook-snapshot-diffs' artifact for visual diffs." >> "$GITHUB_STEP_SUMMARY"
           fi

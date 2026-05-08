@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ModelCombobox } from "@/components/widget/model-combobox";
+import { ModelCombobox } from "@/components/widget/controls/model-combobox";
 import { getProviderConfigInvalidReason, isCliProvider } from "@/lib/ai-provider-validation";
 import { darwinAPI, DEFAULT_MAX_ITERATIONS, type CliToolsState } from "@/tauri-api";
 import type { AnyFieldApi, ReactFormExtendedApi } from "@tanstack/react-form";
@@ -42,6 +42,7 @@ function isPlainInputCliProvider(provider: string): boolean {
 }
 
 const DEFAULT_EVOLVE_MODEL: Record<string, string> = {
+  openrouter: "anthropic/claude-sonnet-4",
   openai: "anthropic/claude-sonnet-4",
   ollama: "",
   vllm: "gpt-oss-120b",
@@ -51,6 +52,7 @@ const DEFAULT_EVOLVE_MODEL: Record<string, string> = {
 };
 
 const DEFAULT_SUMMARY_MODEL: Record<string, string> = {
+  openrouter: "openai/gpt-4o-mini",
   openai: "openai/gpt-4o-mini",
   ollama: "llama3.1",
   vllm: "gpt-oss-120b",
@@ -112,7 +114,7 @@ export function AiModelsTab({
   const renderProviderItems = () => (
     <>
       {([
-        { value: "openai", label: "OpenRouter" },
+        { value: "openrouter", label: "OpenRouter" },
         { value: "ollama", label: "Ollama" },
         { value: "vllm", label: "vLLM / LiteLLM" },
       ] as const).map(({ value, label }) => {
@@ -215,7 +217,7 @@ export function AiModelsTab({
                         />
                       ) : (
                         <ModelCombobox
-                          provider={evolveProvider as "openai" | "ollama" | "vllm" | "opencode"}
+                          provider={evolveProvider as "openrouter" | "openai" | "ollama" | "vllm" | "opencode"}
                           value={evolveModelField.state.value}
                           onChange={async (value) => {
                             evolveModelField.handleChange(value);
@@ -303,7 +305,7 @@ export function AiModelsTab({
                         />
                       ) : (
                         <ModelCombobox
-                          provider={summaryProvider as "openai" | "ollama" | "vllm" | "opencode"}
+                          provider={summaryProvider as "openrouter" | "openai" | "ollama" | "vllm" | "opencode"}
                           value={summaryModelField.state.value}
                           onChange={async (value) => {
                             summaryModelField.handleChange(value);

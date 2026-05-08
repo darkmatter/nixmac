@@ -1,6 +1,5 @@
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
-import { useCallback } from "react";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 
 /**
@@ -11,7 +10,7 @@ import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 export function useApply() {
   const { triggerRebuild } = useRebuildStream();
 
-  const handleApply = useCallback(async () => {
+  const handleApply = async () => {
     const store = useWidgetStore.getState();
     store.setProcessing(true, "apply");
 
@@ -32,9 +31,9 @@ export function useApply() {
         }
       },
     });
-  }, [triggerRebuild]);
+  };
 
-  const handleHistoryBuild = useCallback(async () => {
+  const handleHistoryBuild = async () => {
     const store = useWidgetStore.getState();
     store.setProcessing(true, "apply");
     await triggerRebuild({
@@ -43,9 +42,9 @@ export function useApply() {
         await darwinAPI.darwin.finalizeApply();
       },
     });
-  }, [triggerRebuild]);
+  };
 
-  const handleManualBuildConfirm = useCallback(async () => {
+  const handleManualBuildConfirm = async () => {
     try {
       const result = await darwinAPI.darwin.finalizeApply();
       useWidgetStore.getState().setExternalBuildDetected(false);
@@ -58,7 +57,7 @@ export function useApply() {
     } catch (e) {
       console.error("Failed to finalize manual build:", e);
     }
-  }, []);
+  };
 
   return { handleApply, handleHistoryBuild, handleManualBuildConfirm };
 }

@@ -1,7 +1,7 @@
 import { useWidgetStore } from "@/stores/widget-store";
 import type { WatcherEvent } from "@/types/shared";
 import { ipcRenderer } from "@/tauri-api";
-import { useCallback, useRef } from "react";
+import { useRef } from "react";
 import { useHistory } from "@/hooks/use-history";
 
 /**
@@ -13,7 +13,7 @@ export function useWatcher() {
   const unlistenRef = useRef<(() => void) | null>(null);
   const isSubscribingRef = useRef(false);
 
-  const startWatching = useCallback(() => {
+  const startWatching = () => {
     // Avoid duplicate subscriptions (check both active and pending)
     if (unlistenRef.current || isSubscribingRef.current) return;
     isSubscribingRef.current = true;
@@ -36,7 +36,6 @@ export function useWatcher() {
           store.setGitStatus(gitStatus ?? null);
           if (changeMap) {
             store.setChangeMap(changeMap);
-            store.setSummaryAvailable(changeMap.groups.length > 0 || changeMap.singles.length > 0);
           }
           if (evolveState) {
             store.setEvolveState(evolveState);
@@ -54,15 +53,15 @@ export function useWatcher() {
       unlistenRef.current = unlisten;
       isSubscribingRef.current = false;
     });
-  }, []);
+  };
 
-  const stopWatching = useCallback(() => {
+  const stopWatching = () => {
     isSubscribingRef.current = false;
     if (unlistenRef.current) {
       unlistenRef.current();
       unlistenRef.current = null;
     }
-  }, []);
+  };
 
   return { startWatching, stopWatching };
 }

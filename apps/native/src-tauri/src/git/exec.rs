@@ -459,12 +459,22 @@ pub fn commit_all(dir: &str, message: &str) -> Result<CommitInfo> {
     Ok(CommitInfo { hash, tree_hash })
 }
 
-/// Checks out all files from `commit_hash` into the working tree without moving HEAD.
+/// Restores tracked files to `commit_hash`, removes untracked files, and leaves HEAD in place.
+///
+/// Ignored build outputs are preserved because this intentionally uses
+/// `git clean -fd`, not `git clean -fdx`.
 pub fn checkout_files_at_commit(dir: &str, commit_hash: &str) -> Result<()> {
     git_command()
-        .args(["checkout", commit_hash, "--", "."])
+        .args(["read-tree", "--reset", "-u", commit_hash])
         .current_dir(dir)
-        .output()?;
+        .output()
+        .context("git read-tree --reset -u")?;
+
+    git_command()
+        .args(["clean", "-fd"])
+        .current_dir(dir)
+        .output()
+        .context("git clean -fd")?;
     Ok(())
 }
 
@@ -820,6 +830,107 @@ deleted file mode 100644
         assert!(
             !diff.contains("secret.nix"),
             "gitignored .nix file must not appear in diff"
+        );
+    }
+
+    #[test]
+    fn test_checkout_files_at_commit_removes_files_added_after_target_without_moving_head() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
+        let baseline = commit_all(&repo_dir_str, "initial").unwrap();
+
+        fs::create_dir_all(repo_dir.join("modules/darwin")).unwrap();
+        fs::write(
+            repo_dir.join("modules/darwin/system-defaults.nix"),
+            "{ system.defaults.NSGlobalDomain.AppleInterfaceStyle = \"Dark\"; }\n",
+        )
+        .unwrap();
+        fs::write(repo_dir.join("flake.nix"), "{ outputs = {}; }").unwrap();
+        let changed = commit_all(&repo_dir_str, "add system defaults").unwrap();
+
+        fs::write(
+            repo_dir.join("temporary-untracked.nix"),
+            "{ temp = true; }\n",
+        )
+        .unwrap();
+        checkout_files_at_commit(&repo_dir_str, &baseline.hash).unwrap();
+
+        let head_after_restore = run_git_ok(&repo_dir, &["rev-parse", "HEAD"]);
+        assert_eq!(
+            head_after_restore.trim(),
+            changed.hash,
+            "History restore preparation should not move HEAD before finalize_restore creates the restore commit"
+        );
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("flake.nix")).unwrap(),
+            "{ }",
+            "modified files should match the target commit"
+        );
+        assert!(
+            !repo_dir.join("modules/darwin/system-defaults.nix").exists(),
+            "files added after the restore target must be removed"
+        );
+        assert!(
+            !repo_dir.join("temporary-untracked.nix").exists(),
+            "untracked files should not survive restore preparation"
+        );
+        assert_eq!(
+            run_git_ok(
+                &repo_dir,
+                &["diff", "--name-only", &baseline.hash, "--cached"]
+            ),
+            "",
+            "the index should match the target commit exactly"
+        );
+
+        commit_all(&repo_dir_str, "Restore commit").unwrap();
+        assert_eq!(
+            run_git_ok(&repo_dir, &["diff", "--name-only", &baseline.hash, "HEAD"]),
+            "",
+            "the finalized restore commit should match the baseline tree"
+        );
+    }
+
+    #[test]
+    fn test_restore_all_recovers_head_after_checkout_files_at_commit() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
+        let baseline = commit_all(&repo_dir_str, "initial").unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ outputs = {}; }").unwrap();
+        fs::write(repo_dir.join("added.nix"), "{ added = true; }\n").unwrap();
+        let changed = commit_all(&repo_dir_str, "add file").unwrap();
+
+        checkout_files_at_commit(&repo_dir_str, &baseline.hash).unwrap();
+        restore_all(&repo_dir_str).unwrap();
+
+        let head_after_abort = run_git_ok(&repo_dir, &["rev-parse", "HEAD"]);
+        assert_eq!(
+            head_after_abort.trim(),
+            changed.hash,
+            "abort restore should not move HEAD"
+        );
+        assert_eq!(
+            fs::read_to_string(repo_dir.join("flake.nix")).unwrap(),
+            "{ outputs = {}; }",
+            "abort restore should recover HEAD's tracked file content"
+        );
+        assert!(
+            repo_dir.join("added.nix").exists(),
+            "abort restore should recover tracked files from HEAD"
+        );
+        assert_eq!(
+            run_git_ok(&repo_dir, &["status", "--porcelain=v1"]),
+            "",
+            "abort restore should leave the worktree clean at HEAD"
         );
     }
 

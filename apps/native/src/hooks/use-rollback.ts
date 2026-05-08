@@ -1,6 +1,5 @@
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
-import { useCallback } from "react";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useSummary } from "@/hooks/use-summary";
 
@@ -11,7 +10,7 @@ export function useRollback() {
   const { triggerRebuild } = useRebuildStream();
   const { findChangeMap } = useSummary();
 
-  const handleRollback = useCallback(async () => {
+  const handleRollback = async () => {
     const store = useWidgetStore.getState();
     const wasCommittable = store.evolveState?.committable === true;
 
@@ -23,7 +22,6 @@ export function useRollback() {
       store.setGitStatus(result.gitStatus);
       store.setEvolveState(result.evolveState);
       store.setEvolvePrompt("");
-      store.clearPreview();
       store.appendLog("✓ Changes discarded\n");
 
       if (result.rollbackStorePath && wasCommittable) {
@@ -52,7 +50,7 @@ export function useRollback() {
       useWidgetStore.getState().appendLog(`✗ Error: ${msg}\n`);
       useWidgetStore.getState().setProcessing(false);
     }
-  }, [triggerRebuild, findChangeMap]);
+  };
 
   return { handleRollback };
 }
