@@ -1,0 +1,12 @@
+{
+  "status": "captured",
+  "domRendered": true,
+  "captureReady": false,
+  "assetProbeCount": 0,
+  "mountedBreadcrumbs": 4,
+  "maxRootChildren": 2,
+  "maxBodyTextLength": 203,
+  "assetFailures": [],
+  "latestDomText": "nixmacWelcome to nixmacLet's set up your nix-darwin configuration1. Configuration DirectoryBrowseReport IssueConsole",
+  "note": "WebView DOM rendered (2 root child node(s), 203 text chars)."
+}
