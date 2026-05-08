@@ -7,7 +7,9 @@ stable generic runner API.
 
 The current production path is the Codex app-server Computer Use lane driven by
 `run-remote-cua.mjs`. Future drivers are planned work, not current production
-behavior.
+behavior. The Peekaboo AX/screen-capture runner is a complementary proof lane,
+not the production Computer Use driver adapter; its current policy lives in
+`docs/e2e-dual-lane-strategy.md`.
 
 ## Current Boundary
 

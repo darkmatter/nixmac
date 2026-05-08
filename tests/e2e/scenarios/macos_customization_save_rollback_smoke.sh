@@ -2,7 +2,7 @@
 # =============================================================================
 # Scenario: macos_customization_save_rollback_smoke
 #
-# Focused parity proof for the untracked macOS customizations badge: Add to
+# Focused correspondence proof for the untracked macOS customizations badge: Add to
 # config, Build & Test, Save, and History rollback against a disposable repo.
 # =============================================================================
 

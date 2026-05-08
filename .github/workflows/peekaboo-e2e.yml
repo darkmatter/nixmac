@@ -385,7 +385,7 @@ jobs:
           set -euo pipefail
           node tools/computer-use-e2e/run-local.mjs verify-report "$FETCH_REPORT_DIR" \
             --method ci-static \
-            --notes "CI workflow inspected the rendered Peekaboo HTML report with static integrity checks and verified the summary, PR #75 baseline parity coverage, evidence video/storyboard, screenshots, visual proof, and artifact sections before publishing."
+            --notes "CI workflow inspected the rendered Peekaboo HTML report with static integrity checks and verified the summary, Computer Use correspondence map, evidence video/storyboard, screenshots, visual proof, and artifact sections before publishing."
 
       - name: Collect report metadata
         id: report-meta
@@ -447,9 +447,6 @@ jobs:
           verdict="$(jq -r '([.scenarios[]?.status] // []) as $statuses | if any($statuses[]; . == "fail") then "fail" elif any($statuses[]; . == "inconclusive") then "inconclusive" else "pass" end' "$state_file")"
           cu_covered="$(jq -r '[.peekaboo.coverageMap.phaseCoverage[]? as $coverage | select((.scenarios[$coverage.key].status // "") == "pass") | $coverage.correspondsTo[]?] | unique | length' "$state_file")"
           cu_required=24
-          if [[ "$verdict" == "pass" && "$cu_covered" != "$cu_required" ]]; then
-            verdict="inconclusive"
-          fi
           screenshots="$(jq -r '(.screenshots // []) | length' "$state_file")"
           video_frames="$(jq -r '(.video.frames // 0) | if type == "number" then . elif type == "array" then length else 0 end' "$state_file")"
           state_secret_scan_passed="$(jq -r '(.peekaboo.secretScan.status // "missing") == "passed"' "$state_file")"
@@ -525,7 +522,7 @@ jobs:
             if [[ "${{ steps.report-meta.outputs.has_report }}" == "true" ]]; then
               echo "- Verdict: \`${{ steps.report-meta.outputs.verdict }}\`"
               echo "- Counts: \`${{ steps.report-meta.outputs.pass }} pass / ${{ steps.report-meta.outputs.fail }} fail / ${{ steps.report-meta.outputs.inconclusive }} inconclusive / ${{ steps.report-meta.outputs.not_required }} not required\`"
-              echo "- CU coverage: \`${{ steps.report-meta.outputs.cu_covered }}/${{ steps.report-meta.outputs.cu_required }}\`"
+              echo "- Computer Use correspondence: \`${{ steps.report-meta.outputs.cu_covered }}/${{ steps.report-meta.outputs.cu_required }}\`"
               echo "- Evidence: \`${{ steps.report-meta.outputs.screenshots }} screenshots / ${{ steps.report-meta.outputs.video_frames }} video frames\`"
               echo "- Artifact path: \`${{ steps.report-meta.outputs.report_dir }}/index.html\`"
               if [[ "${{ steps.report-meta.outputs.rsync_status }}" != "0" ]]; then
@@ -668,7 +665,7 @@ jobs:
           ### nixmac Peekaboo E2E: $status_label
 
           - Result: \`$PASS_COUNT pass / $FAIL_COUNT fail / $INCONCLUSIVE_COUNT inconclusive / $NOT_REQUIRED_COUNT not required\`
-          - CU parity coverage: \`$CU_COVERED/$CU_REQUIRED\`
+          - Computer Use correspondence: \`$CU_COVERED/$CU_REQUIRED\`
           - Evidence: \`$SCREENSHOTS screenshots / $VIDEO_FRAMES timestamped video frames\`
           - Report fetch: \`$(if [[ "${RSYNC_STATUS:-0}" == "0" ]]; then printf 'complete'; else printf 'partial rsync status %s' "$RSYNC_STATUS"; fi)\`
           - Secret scan: \`$SECRET_SCAN_PASSED\`
@@ -728,8 +725,7 @@ jobs:
             exit 1
           fi
           if [[ "$cu_covered" != "$cu_required" ]]; then
-            echo "Peekaboo E2E covered $cu_covered/$cu_required required Computer Use parity keys."
-            exit 1
+            echo "Peekaboo E2E mapped $cu_covered/$cu_required Computer Use correspondence keys; missing breadth is reported but no longer fails this complementary lane."
           fi
           if [[ "$verdict" != "pass" ]]; then
             echo "Peekaboo E2E verdict was $verdict."

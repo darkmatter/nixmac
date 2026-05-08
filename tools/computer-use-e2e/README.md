@@ -17,6 +17,19 @@ Proof report must make uncertainty visible: missing proof, low-signal evidence,
 stale coverage, expired waivers, remote-infra blockers, and provider failures
 must fail or downgrade the run instead of being hidden behind a passing check.
 
+## Dual-Lane Policy
+
+nixmac uses two complementary desktop E2E lanes. The Computer Use lane is the
+broad PR-ready Product Proof lane for user workflows. The Peekaboo AX/screen-capture
+lane is a fast deterministic Mac proof lane for launch/readiness, screenshots,
+fixture/state checks, Nix/system boundaries, MacInCloud health, and focused
+smoke coverage.
+
+Peekaboo reports may map evidence to Computer Use keys, but that map is
+correspondence, not a replacement claim. Missing Computer Use breadth is visible
+in the report and does not by itself fail a Peekaboo run. See
+`docs/e2e-dual-lane-strategy.md` for the engineering rationale and lane policy.
+
 ## Remote Computer Use Lane
 
 This is the PR-ready lane. Start Codex app-server on the target Mac and tunnel
@@ -649,8 +662,9 @@ MacInCloud operator notes:
   CSS-only solid capture instead.
 
 The remote Codex app-server lane remains the PR/Product Proof production lane.
-The Peekaboo lane is isolated local evidence so the team can compare driver
-approaches without changing the remote workflow contract.
+The Peekaboo lane is complementary local and MacInCloud evidence so the team can
+catch Mac/fixture/report regressions without changing the Computer Use workflow
+contract.
 
 ### Real Provider Local Lane
 

@@ -34,7 +34,7 @@ assert.match(prepare, /name: Upload Storybook plan artifact[\s\S]*name: computer
 assert.match(remote, /name: Download Storybook plan[\s\S]*name: computer-use-e2e-storybook-plan[\s\S]*path: artifacts\/computer-use-storybook-plan/, 'remote job must download the Storybook plan artifact');
 assert.match(publish, /name: Download Storybook plan[\s\S]*name: computer-use-e2e-storybook-plan[\s\S]*path: artifacts\/computer-use-storybook-plan/, 'publish job must download the Storybook plan artifact for PR comments');
 assert.match(publish, /STORYBOOK_PLAN_PATH: artifacts\/computer-use-storybook-plan\/storybook-preview\.json/, 'publish comment must read Storybook metadata from the downloaded plan artifact');
-assert.match(remote, /concurrency:\n\s+group: computer-use-e2e-dxu-remote\n\s+cancel-in-progress: false/, 'remote job must keep the singleton DXU lock');
+assert.match(remote, /concurrency:\n\s+group: nixmac-macincloud-e2e-remote\n\s+cancel-in-progress: false/, 'remote job must keep the shared singleton MacInCloud lock');
 assert.match(publish, /concurrency:\n\s+group: computer-use-e2e-gh-pages-publish\n\s+cancel-in-progress: false/, 'publish job must serialize gh-pages writes');
 
 assert.equal(/Preflight remote Mac/.test(prepare), false, 'prepare must not run remote readiness');

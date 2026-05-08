@@ -1,8 +1,14 @@
 # macos-e2e
 
-GUI test framework for macOS apps. Uses [Peekaboo](https://peekaboo.boo) for accessibility-based automation over SSH, with ffmpeg screen recording.
+Complementary macOS E2E runner for deterministic desktop checks. It uses
+[Peekaboo](https://peekaboo.boo) for Accessibility-based automation over SSH,
+plus ffmpeg screen recording.
 
-> Built for [nixmac](https://github.com/darkmatter/nixmac), designed to be extracted as a standalone tool.
+Built for [nixmac](https://github.com/darkmatter/nixmac). This runner is not the
+broad Product Proof replacement for the Computer Use lane; it is the
+Peekaboo AX/screen-capture lane for launch, readiness, screenshots, shell-owned
+fixtures, Nix/system boundaries, and focused smoke tests. See
+`../docs/e2e-dual-lane-strategy.md` for the lane split.
 
 ## Quick start
 
@@ -124,10 +130,11 @@ Then reference it in your scenario: `E2E_ADAPTER="myapp"`
 
 `macos_descriptor_prompt_smoke` is the safe inner-loop scenario used by
 `tools/computer-use-e2e/run-local.mjs run-peekaboo`. It launches the real app,
-drives the descriptor prompt through Peekaboo accessibility metadata, captures
-screenshots/video/logs, and does not install, uninstall, build, save, discard,
-or mutate system Nix state. It does write temporary nixmac settings; the
-`run-peekaboo` bridge backs up and restores Application Support around the run.
+drives the descriptor prompt through Peekaboo accessibility metadata when the
+host exposes it, captures screenshots/video/logs, and does not install,
+uninstall, build, save, discard, or mutate system Nix state. It does write
+temporary nixmac settings; the `run-peekaboo` bridge backs up and restores
+Application Support around the run.
 
 `macos_provider_evolve_full_smoke` is the stronger local proof. It owns a local
 OpenAI-compatible provider stub, applies a tool-driven config edit, mocks only

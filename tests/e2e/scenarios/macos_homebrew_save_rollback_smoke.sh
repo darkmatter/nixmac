@@ -2,7 +2,7 @@
 # =============================================================================
 # Scenario: macos_homebrew_save_rollback_smoke
 #
-# Focused parity proof for the untracked Homebrew badge: Add to config,
+# Focused correspondence proof for the untracked Homebrew badge: Add to config,
 # Build & Test, Save, and History rollback against a disposable config repo.
 # =============================================================================
 

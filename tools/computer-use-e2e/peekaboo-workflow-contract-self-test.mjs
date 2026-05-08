@@ -127,14 +127,14 @@ assert.match(proof, /artifacts\/computer-use-local\/\.current-run/, 'workflow mu
 assert.match(proof, /remote_artifact_root="\$\{PEEKABOO_REPO_DIR%\/\}\/artifacts\/computer-use-local"/, 'workflow must anchor fetched reports to the expected remote artifact root');
 assert.match(proof, /remote_run_dir" != "\$remote_artifact_root"\/\*/, 'workflow must reject current-run paths outside the artifact root before rsync');
 assert.match(proof, /remote_run_dir_physical="\$\(ssh[\s\S]*pwd -P/, 'workflow must verify the physical remote report path before rsyncing');
-assert.match(proof, /name: Record CI report inspection proof[\s\S]*run-local\.mjs verify-report "\$FETCH_REPORT_DIR"[\s\S]*--method ci-static/, 'workflow must record reportInspection parity proof before metadata is collected');
+assert.match(proof, /name: Record CI report inspection proof[\s\S]*run-local\.mjs verify-report "\$FETCH_REPORT_DIR"[\s\S]*--method ci-static/, 'workflow must record reportInspection proof before metadata is collected');
 {
   const dropKeyIndex = proof.indexOf('name: Drop MacInCloud SSH key before local report processing');
   const verifyReportIndex = proof.indexOf('run-local.mjs verify-report "$FETCH_REPORT_DIR"');
   assert.notEqual(dropKeyIndex, -1, 'workflow must explicitly remove the MacInCloud SSH key before local report processing');
   assert.ok(dropKeyIndex < verifyReportIndex, 'workflow must remove the MacInCloud SSH key before running local report verification code');
 }
-assert.match(proof, /CI workflow inspected the rendered Peekaboo HTML report[\s\S]*PR #75 baseline parity coverage[\s\S]*evidence video\/storyboard/, 'CI report inspection notes must describe concrete report sections');
+assert.match(proof, /CI workflow inspected the rendered Peekaboo HTML report[\s\S]*Computer Use correspondence map[\s\S]*evidence video\/storyboard/, 'CI report inspection notes must describe concrete report sections');
 assert.match(proof, /name: Upload Peekaboo report artifact[\s\S]*name: peekaboo-e2e-report/, 'proof job must upload the HTML report artifact');
 assert.doesNotMatch(proof, /sudo apt-get install/, 'proof job must not spend PR time installing media packages on the hosted runner');
 
@@ -169,8 +169,9 @@ assert.match(result, /verdict="\$\{\{ needs\.peekaboo-product-proof\.outputs\.ve
 assert.match(result, /publish_result="\$\{\{ needs\.publish-peekaboo-report\.result \}\}"/, 'result job must observe report publishing');
 assert.match(result, /secret_scan_passed="\$\{\{ needs\.peekaboo-product-proof\.outputs\.secret_scan_passed \}\}"/, 'result job must observe the report secret scan result');
 assert.match(result, /secret scan did not pass; hosted publishing is intentionally blocked/, 'result job must fail clearly when secret scan blocks publishing');
-assert.match(result, /cu_covered="\$\{\{ needs\.peekaboo-product-proof\.outputs\.cu_covered \}\}"/, 'result job must observe covered required Computer Use keys');
-assert.match(result, /cu_covered" != "\$cu_required"/, 'result job must fail when required Computer Use parity coverage is incomplete');
+assert.match(result, /cu_covered="\$\{\{ needs\.peekaboo-product-proof\.outputs\.cu_covered \}\}"/, 'result job must observe mapped Computer Use correspondence keys');
+assert.match(result, /missing breadth is reported but no longer fails this complementary lane/, 'result job must report missing Computer Use breadth without failing the complementary Peekaboo lane');
+assert.doesNotMatch(result, /required Computer Use parity keys/, 'result job must not describe Peekaboo as a required Computer Use parity lane');
 assert.match(result, /verdict" != "pass"/, 'result job must fail non-pass reports');
 assert.match(result, /publish job result was \$publish_result/, 'result job must fail PR runs when publishing fails');
 

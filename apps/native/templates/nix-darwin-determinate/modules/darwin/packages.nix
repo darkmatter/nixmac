@@ -15,8 +15,8 @@
   #   `nix-overlays.nix` and reference that package here.
   #
   # Example commands to preview changes:
-  # $ darwin-rebuild build --flake .#Scotts-MacBook-Pro-2
-  # $ darwin-rebuild switch --flake .#Scotts-MacBook-Pro-2
+  # $ darwin-rebuild build --flake .#my-mac
+  # $ darwin-rebuild switch --flake .#my-mac
 
   environment.systemPackages = with pkgs; [
     # Example packages (uncomment or add your own):
