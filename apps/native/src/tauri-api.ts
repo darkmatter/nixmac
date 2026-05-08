@@ -91,6 +91,8 @@ export type {
   RustPanicEvent,
   SystemDefault,
   SystemDefaultsScan,
+  UpdateChannel,
+  UpdateInfo,
   UiPrefs as DarwinPrefs,
   UiPrefsUpdate as DarwinPrefsUpdate,
   WatcherEvent,

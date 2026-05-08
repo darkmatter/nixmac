@@ -1,10 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI } from "@/tauri-api";
+import { darwinAPI, type UpdateChannel } from "@/tauri-api";
 import { invoke } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
-import { AlertTriangle, Download, History, Pin, RotateCcw } from "lucide-react";
+import { AlertTriangle, Download, GitBranch, History, Pin, RotateCcw } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const VERSION_PATTERN = /^[0-9]+(?:\.[0-9]+){0,2}(?:-[a-zA-Z0-9.-]+)?$/;
@@ -12,6 +12,8 @@ const VERSION_PATTERN = /^[0-9]+(?:\.[0-9]+){0,2}(?:-[a-zA-Z0-9.-]+)?$/;
 export function DeveloperTab() {
   const pinnedVersion = useWidgetStore((s) => s.pinnedVersion);
   const setPinnedVersion = useWidgetStore((s) => s.setPinnedVersion);
+  const updateChannel = useWidgetStore((s) => s.updateChannel);
+  const setUpdateChannel = useWidgetStore((s) => s.setUpdateChannel);
   const [currentVersion, setCurrentVersion] = useState<string | null>(null);
   const [versionInput, setVersionInput] = useState("");
   const [installing, setInstalling] = useState(false);
@@ -61,6 +63,23 @@ export function DeveloperTab() {
     }
   };
 
+  const handleSetChannel = async (channel: UpdateChannel) => {
+    const previous = updateChannel;
+    setErrorMessage(null);
+    setUpdateChannel(channel);
+    try {
+      await darwinAPI.ui.setPrefs({ updateChannel: channel });
+      setStatusMessage(
+        channel === "stable"
+          ? "Using stable updates from main."
+          : "Using develop updates. The next auto-update check will read the develop channel."
+      );
+    } catch (err) {
+      setUpdateChannel(previous);
+      setErrorMessage(err instanceof Error ? err.message : String(err));
+    }
+  };
+
   const handleDisableDeveloper = async () => {
     try {
       await darwinAPI.ui.setPrefs({ developerMode: false });
@@ -90,6 +109,40 @@ export function DeveloperTab() {
               <code className="rounded bg-muted px-1">releases.nixmac.com</code>. Bisecting only works in release
               builds — the dev binary doesn't ship the updater plugin.
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Update channel */}
+      <div className="rounded-lg border border-border p-3">
+        <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+          <GitBranch className="h-3.5 w-3.5" />
+          Update channel
+        </div>
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Stable follows releases from <code className="rounded bg-muted px-1">main</code>. Develop follows signed
+            release-mode builds from <code className="rounded bg-muted px-1">develop</code>. Version pins override the
+            selected channel until you resume auto-update.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {(["stable", "develop"] as const).map((channel) => {
+              const selected = updateChannel === channel;
+              return (
+                <Button
+                  key={channel}
+                  type="button"
+                  size="sm"
+                  variant={selected ? "default" : "outline"}
+                  onClick={() => handleSetChannel(channel)}
+                >
+                  {channel === "stable" ? "Stable" : "Develop"}
+                </Button>
+              );
+            })}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            Current channel: <code className="rounded bg-muted px-1 font-mono">{updateChannel}</code>
           </div>
         </div>
       </div>

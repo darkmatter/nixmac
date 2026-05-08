@@ -555,6 +555,8 @@ fn run_gui_mode(
             commands::cli_tool::check_cli_tools,
             commands::cli_tool::list_cli_models,
             // Updater
+            commands::updater::check_update,
+            commands::updater::install_update,
             commands::updater::relaunch_after_update,
             updater_pin::install_version,
             updater_pin::clear_pinned_version,

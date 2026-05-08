@@ -6,6 +6,7 @@ import type {
   HistoryItem,
   PermissionsState,
   RecommendedPrompt,
+  UpdateChannel,
 } from "@/tauri-api";
 import { FeedbackType } from "@/types/feedback";
 import type { SemanticChangeMap } from "@/types/shared";
@@ -147,6 +148,7 @@ export interface WidgetState {
   // Developer mode (hidden settings panel for bisecting / pinning to a past release)
   developerMode: boolean;
   pinnedVersion: string | null;
+  updateChannel: UpdateChannel;
 
   // Editor
   editingFile: string | null;
@@ -203,6 +205,7 @@ interface WidgetActions {
   // Developer mode
   setDeveloperMode: (value: boolean) => void;
   setPinnedVersion: (value: string | null) => void;
+  setUpdateChannel: (value: UpdateChannel) => void;
 
   // Client-side state (NOT from server)
   setSummarizing: (summarizing: boolean) => void;
@@ -329,6 +332,7 @@ const initialWidgetState: WidgetState = {
   // Developer mode
   developerMode: false,
   pinnedVersion: null,
+  updateChannel: "stable",
 
   // Editor
   editingFile: null,
@@ -377,6 +381,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setAutoSummarizeOnFocus: (value) => set({ autoSummarizeOnFocus: value }),
     setDeveloperMode: (value) => set({ developerMode: value }),
     setPinnedVersion: (value) => set({ pinnedVersion: value }),
+    setUpdateChannel: (value) => set({ updateChannel: value }),
     setHistory: (history) => set({ history }),
     setHistoryLoading: (historyLoading) => set({ historyLoading }),
     addAnalyzingHistoryHash: (hash) =>

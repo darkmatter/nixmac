@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { Update } from "@tauri-apps/plugin-updater";
 import { invoke } from "@tauri-apps/api/core";
 import { darwinAPI } from "@/tauri-api";
+import type { UpdateInfo } from "@/tauri-api";
 import { useWidgetStore } from "@/stores/widget-store";
 
 interface UpdateState {
   /** Whether we're currently checking for updates */
   checking: boolean;
   /** Available update (null if none) */
-  available: Update | null;
+  available: UpdateInfo | null;
   /** Version string of the available update */
   version: string | null;
   /** Release notes / changelog */
@@ -39,21 +39,19 @@ export function useUpdater() {
   const checkedRef = useRef(false);
   const isDevMode = import.meta.env.DEV;
   const pinnedVersion = useWidgetStore((s) => s.pinnedVersion);
+  const updateChannel = useWidgetStore((s) => s.updateChannel);
 
   const checkForUpdates = useCallback(async () => {
     setState((s) => ({ ...s, checking: true, error: null }));
     try {
-      // Dynamic import: if the updater plugin isn't registered (e.g. NIXMAC_DISABLE_UPDATER=1),
-      // the import will succeed but check() will throw — which we catch below.
-      const { check } = await import("@tauri-apps/plugin-updater");
-      const update = await check();
+      const update = await invoke<UpdateInfo | null>("check_update");
       if (update) {
         setState((s) => ({
           ...s,
           checking: false,
           available: update,
           version: update.version,
-          notes: update.body ?? null,
+          notes: update.notes ?? null,
         }));
       } else {
         setState((s) => ({ ...s, checking: false }));
@@ -95,26 +93,8 @@ export function useUpdater() {
     setState((s) => ({ ...s, downloading: true, progress: 0, error: null }));
 
     try {
-      let totalBytes = 0;
-      let downloadedBytes = 0;
-
-      await update.downloadAndInstall((event) => {
-        switch (event.event) {
-          case "Started":
-            totalBytes = event.data.contentLength ?? 0;
-            break;
-          case "Progress":
-            downloadedBytes += event.data.chunkLength;
-            if (totalBytes > 0) {
-              const pct = Math.round((downloadedBytes / totalBytes) * 100);
-              setState((s) => ({ ...s, progress: pct }));
-            }
-            break;
-          case "Finished":
-            setState((s) => ({ ...s, progress: 100 }));
-            break;
-        }
-      });
+      await invoke("install_update");
+      setState((s) => ({ ...s, progress: 100 }));
 
       // On macOS the updater swaps the .app bundle on disk; using the
       // custom relaunch_after_update command opens the newly-installed
@@ -183,7 +163,7 @@ export function useUpdater() {
     return () => {
       cancelled = true;
     };
-  }, [checkForUpdates, pinnedVersion]);
+  }, [checkForUpdates, pinnedVersion, updateChannel]);
 
   return {
     ...state,

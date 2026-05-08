@@ -10,6 +10,7 @@ use crate::storage::credential_store::{
 };
 
 use anyhow::Result;
+use serde::{de::DeserializeOwned, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::{AppHandle, Runtime};
@@ -37,6 +38,7 @@ pub const SCAN_HOMEBREW_ON_STARTUP_KEY: &str = "scanHomebrewOnStartup";
 // Developer-mode preference keys
 pub const DEVELOPER_MODE_KEY: &str = "developerMode";
 pub const PINNED_VERSION_KEY: &str = "pinnedVersion";
+pub const UPDATE_CHANNEL_KEY: &str = "updateChannel";
 
 pub const DEFAULT_MAX_ITERATIONS: usize = 25;
 const KEYCHAIN_SERVICE: &str = "com.darkmatter.nixmac";
@@ -351,6 +353,25 @@ fn get_string_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<S
     get_string_pref_raw(app, key)
 }
 
+pub fn get_json_pref<R, T>(app: &AppHandle<R>, key: &str) -> Result<Option<T>>
+where
+    R: Runtime,
+    T: DeserializeOwned,
+{
+    let store = get_store(app)?;
+    Ok(store
+        .get(key)
+        .and_then(|value| serde_json::from_value(value.clone()).ok()))
+}
+
+pub fn get_json_pref_or<R, T>(app: &AppHandle<R>, key: &str, default: T) -> Result<T>
+where
+    R: Runtime,
+    T: DeserializeOwned,
+{
+    Ok(get_json_pref(app, key)?.unwrap_or(default))
+}
+
 fn get_string_pref_raw<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<String>> {
     let store = get_store(app)?;
     if let Some(val) = store.get(key) {
@@ -374,11 +395,19 @@ pub fn get_string_pref_public<R: Runtime>(app: &AppHandle<R>, key: &str) -> Resu
     get_string_pref_raw(app, key)
 }
 
-pub fn set_string_pref<R: Runtime>(app: &AppHandle<R>, key: &str, value: &str) -> Result<()> {
+pub fn set_json_pref<R, T>(app: &AppHandle<R>, key: &str, value: &T) -> Result<()>
+where
+    R: Runtime,
+    T: Serialize + ?Sized,
+{
     let store = get_store(app)?;
-    store.set(key, serde_json::json!(value));
+    store.set(key, serde_json::to_value(value)?);
     store.save()?;
     Ok(())
+}
+
+pub fn set_string_pref<R: Runtime>(app: &AppHandle<R>, key: &str, value: &str) -> Result<()> {
+    set_json_pref(app, key, value)
 }
 
 pub fn delete_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<()> {
@@ -444,30 +473,15 @@ fn set_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str, value: &st
 }
 
 fn get_usize_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<usize>> {
-    let store = get_store(app)?;
-    if let Some(val) = store.get(key) {
-        if let Some(n) = val.as_u64() {
-            return Ok(Some(n as usize));
-        }
-    }
-    Ok(None)
+    get_json_pref(app, key)
 }
 
 pub fn get_bool_pref<R: Runtime>(app: &AppHandle<R>, key: &str, default: bool) -> Result<bool> {
-    let store = get_store(app)?;
-    if let Some(val) = store.get(key) {
-        if let Some(b) = val.as_bool() {
-            return Ok(b);
-        }
-    }
-    Ok(default)
+    get_json_pref_or(app, key, default)
 }
 
 pub fn set_bool_pref<R: Runtime>(app: &AppHandle<R>, key: &str, value: bool) -> Result<()> {
-    let store = get_store(app)?;
-    store.set(key, serde_json::json!(value));
-    store.save()?;
-    Ok(())
+    set_json_pref(app, key, &value)
 }
 
 // =============================================================================
