@@ -17,6 +17,10 @@ const NIX_SECRET_ASSIGNMENT_PATTERN =
 const e2eBootDiagnosticsEnabled = import.meta.env.VITE_NIXMAC_SKIP_PERMISSIONS === "true";
 let bootStageCleared = false;
 
+export function e2eBootDiagnosticsActive() {
+  return e2eBootDiagnosticsEnabled;
+}
+
 function setStorageValue(key: string, value: string) {
   try {
     window.localStorage.setItem(key, value);
@@ -36,6 +40,14 @@ function simpleHash(value: string) {
     hash = Math.imul(hash, 16777619);
   }
   return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+export function e2eErrorClass(error: unknown): string | null {
+  if (error == null) return null;
+  if (error instanceof Error) {
+    return error.constructor?.name || error.name || "Error";
+  }
+  return typeof error;
 }
 
 function sanitizeUrl(value: string): string {
@@ -119,6 +131,42 @@ export function bootBreadcrumb(label: string, detail?: unknown) {
   const summarized = summarizeDetail(detail);
   console.info(`[nixmac boot] ${label}`, summarized ?? "");
   void darwinAPI.debug.logBreadcrumb(label, summarized, clientTimestampUnixMs).catch(() => {});
+}
+
+type StartupStateDiagnostic = {
+  currentStep: string;
+  configDirPresent: boolean;
+  hostPresent: boolean;
+  hostKnown: boolean;
+  hostsCount: number;
+  nixInstalled: boolean | null;
+  darwinRebuildAvailable: boolean | null;
+  permissionsChecked: boolean;
+  permissionsComplete: boolean;
+  prefsLoaded: boolean;
+  errorClass: string | null;
+};
+
+export function recordE2eStartupState(label: string, state: StartupStateDiagnostic) {
+  if (!e2eBootDiagnosticsEnabled) return;
+
+  const bodyText = sanitizeE2eDiagnosticText(document.body?.innerText ?? "");
+  bootBreadcrumb(`E2E startup state ${label}`, {
+    label,
+    currentStep: state.currentStep,
+    configDirPresent: state.configDirPresent,
+    hostPresent: state.hostPresent,
+    hostKnown: state.hostKnown,
+    hostsCount: state.hostsCount,
+    nixInstalled: state.nixInstalled,
+    darwinRebuildAvailable: state.darwinRebuildAvailable,
+    permissionsChecked: state.permissionsChecked,
+    permissionsComplete: state.permissionsComplete,
+    prefsLoaded: state.prefsLoaded,
+    errorClass: state.errorClass,
+    bodyTextLength: bodyText.length,
+    bodyTextHash: simpleHash(bodyText),
+  });
 }
 
 type DomSnapshotOptions = {

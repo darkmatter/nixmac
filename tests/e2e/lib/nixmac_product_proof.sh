@@ -414,16 +414,25 @@ nixmac_pp_request_native_webview_snapshot() {
     printf '%s\n' "$label" > "$request_path" || return 1
     deadline=$(($(date +%s) + timeout))
     while [ "$(date +%s)" -le "$deadline" ]; do
-        if [ -s "$output_path" ]; then
-            printf '%s\n' "$output_path"
-            return 0
-        fi
         if [ -s "$status_path" ]; then
             status=$(jq -r '.status // ""' "$status_path" 2>/dev/null || true)
-            if [ "$status" = "failed" ]; then
-                debug "Native WKWebView snapshot failed for $label: $(jq -r '.message // "unknown"' "$status_path" 2>/dev/null || echo unknown)"
-                return 1
-            fi
+            case "$status" in
+                passed)
+                    if [ -s "$output_path" ]; then
+                        printf '%s\n' "$output_path"
+                        return 0
+                    fi
+                    debug "Native WKWebView snapshot status passed for $label but PNG is not ready yet"
+                    ;;
+                degraded)
+                    debug "Native WKWebView snapshot degraded for $label: $(jq -r '.message // "unknown"' "$status_path" 2>/dev/null || echo unknown)"
+                    return 1
+                    ;;
+                failed)
+                    debug "Native WKWebView snapshot failed for $label: $(jq -r '.message // "unknown"' "$status_path" 2>/dev/null || echo unknown)"
+                    return 1
+                    ;;
+            esac
         fi
         sleep 0.2
     done

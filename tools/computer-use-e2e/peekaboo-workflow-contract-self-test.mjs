@@ -74,6 +74,18 @@ const result = section(/^  peekaboo-result:$/m);
 const launchEnv = section({ sourceText: productProof, pattern: /^nixmac_pp_set_e2e_launch_env\(\) \{$/m }, /^}$/m);
 const cleanup = section({ sourceText: productProof, pattern: /^nixmac_pp_cleanup_common\(\) \{$/m }, /^}$/m);
 const frontendRenderApp = section({ sourceText: frontendMain, pattern: /^const renderApp = \(\) => \{$/m }, /^};$/m);
+const nativeWebviewCaptureProbeScheduler = section(
+  { sourceText: nativeMain, pattern: /^fn e2e_schedule_native_webview_capture_probe\(/m },
+  /^}\n\n#\[cfg/m,
+);
+const nativeWebviewSnapshotScheduler = section(
+  { sourceText: nativeMain, pattern: /^fn e2e_schedule_native_webview_snapshot\(/m },
+  /^}\n\n#\[cfg/m,
+);
+const nativeWebviewSnapshotPoller = section(
+  { sourceText: nativeMain, pattern: /^fn e2e_start_native_webview_snapshot_request_poller\(/m },
+  /^}\n\n#\[cfg/m,
+);
 const flakeInstalledAppsCommand = section(
   { sourceText: applyCommands, pattern: /^pub async fn flake_installed_apps\(app: AppHandle\)/m },
   /^\}\n\nfn nix_check_result/m,
@@ -268,11 +280,14 @@ assert.match(frontendBootDiagnostics, /export function clearBootStage[\s\S]*mark
 assert.match(frontendBootDiagnostics, /export function sanitizeE2eDiagnosticText[\s\S]*EMAIL_PATTERN[\s\S]*BEARER_TOKEN_PATTERN[\s\S]*OPENAI_TOKEN_PATTERN[\s\S]*HOME_DIR_PATH_PATTERN/, 'E2E DOM diagnostics must sanitize secret-shaped text before persisting report artifacts');
 assert.match(frontendBootDiagnostics, /export function recordE2eDomSnapshot[\s\S]*storagePrefix[\s\S]*nixmac:e2e-dom-snapshot[\s\S]*document\.documentElement\.dataset\.nixmacE2eDomSnapshot[\s\S]*`\$\{storagePrefix\}:last`[\s\S]*E2E DOM snapshot \$\{label\} summary[\s\S]*E2E DOM snapshot \$\{label\} text[\s\S]*E2E DOM snapshot \$\{label\} html/, 'E2E DOM diagnostics must persist bounded snapshots through both out-of-band DOM/localStorage state and breadcrumb artifacts');
 assert.match(frontendBootDiagnostics, /export function scheduleE2eDomSnapshots[\s\S]*count = 5[\s\S]*intervalMs = 2_000[\s\S]*emitted < count/, 'E2E DOM diagnostics must schedule a bounded post-mount snapshot series and self-stop');
+assert.match(frontendBootDiagnostics, /export function recordE2eStartupState[\s\S]*bootBreadcrumb\(`E2E startup state[\s\S]*configDirPresent[\s\S]*hostPresent[\s\S]*hostKnown[\s\S]*hostsCount[\s\S]*errorClass[\s\S]*bodyTextHash/, 'E2E startup diagnostics must persist only allowlisted routing booleans/counts/enums plus text fingerprint');
+assert.match(frontendBootDiagnostics, /export function e2eErrorClass\(error: unknown\)[\s\S]*error instanceof Error[\s\S]*error\.constructor\?\.name[\s\S]*return typeof error/, 'E2E startup diagnostics must classify errors by type/constructor instead of persisting error messages');
 assert.match(frontendMain, /PREFS_BOOT_TIMEOUT_MS = 8000[\s\S]*ui_get_prefs invoke start[\s\S]*success after timeout[\s\S]*Promise\.race\(\[prefsPromise, timeoutPromise\]\)/, 'Frontend boot must log prefs IPC progress with clear after-timeout labels');
 assert.match(frontendMain, /markBootStage\("main-loaded"\)[\s\S]*markBootStage\("root-found"\)[\s\S]*markBootStage\("react-render-start"\)[\s\S]*markBootStage\("react-render-scheduled"\)/, 'Frontend boot must synchronously mark module, root, and render-scheduling stages');
 assert.match(frontendMain, /import \{ flushSync \} from "react-dom";[\s\S]*if \(E2E_BOOT_PREFS_DISABLED\) \{[\s\S]*React render flushSync start[\s\S]*flushSync\(\(\) => \{[\s\S]*root\.render\(app\);[\s\S]*React render flushSync complete/, 'Frontend must force the initial React render synchronously in E2E mode so MacInCloud cannot stall at react-render-scheduled');
 assert.match(frontendApp, /markBootStage\("app-render"\)[\s\S]*markBootStage\("app-effect"\)[\s\S]*clearBootStage\(\)/, 'App must synchronously mark render/effect stages and clear the E2E title marker after mount');
 assert.match(frontendWidget, /markBootStage\("darwin-widget-render"\)/, 'DarwinWidget must mark when the product widget render body is reached');
+assert.match(frontendWidget, /recordStartupState\("init-start"\)[\s\S]*recordStartupState\("after-load-config"\)[\s\S]*recordStartupState\("after-load-hosts"\)[\s\S]*recordStartupState\("startup-error", e\)[\s\S]*recordStartupState\("startup-complete"\)/, 'DarwinWidget startup must breadcrumb async initialization state through success and failure without raw config values');
 assert.match(frontendEditorPanel, /const LazyNixEditor = lazy\(async \(\) => \{[\s\S]*import\("@\/components\/kibo-ui\/nix-editor"\)[\s\S]*default: module\.NixEditor/, 'EditorPanel must lazy-load the Monaco-backed Nix editor only when a file is opened');
 assert.doesNotMatch(frontendEditorPanel, /import \{ NixEditor \}/, 'EditorPanel must not import the Monaco-backed editor in the first app boot bundle');
 assert.match(frontendMain, /if \(E2E_BOOT_PREFS_DISABLED\) \{[\s\S]*setInterval\(\(\) => \{[\s\S]*boot heartbeat[\s\S]*boot heartbeat upper bound reached[\s\S]*stopBootHeartbeat[\s\S]*boot heartbeat stopped[\s\S]*nixmac:app-mounted/, 'Frontend boot must emit bounded E2E-only heartbeat breadcrumbs until App mounted and record when the bound is reached');
@@ -321,8 +336,12 @@ assert.match(productProof, /maxDarkChromeYAvg: 42/, 'ready-shell visual gate mus
 assert.match(productProof, /nixmac_pp_request_native_webview_snapshot\(\)[\s\S]*NIXMAC_E2E_DIAGNOSTICS_DIR[\s\S]*native-webview-snapshots[\s\S]*\.request[\s\S]*status_path/, 'Product Proof must request fresh native WKWebView snapshots through the existing diagnostics directory');
 assert.match(productProof, /nixmac_pp_capture_native_visual_signal\(\)[\s\S]*nixmac_pp_request_native_webview_snapshot[\s\S]*nixmac_pp_screenshot_has_visual_signal/, 'Native WKWebView fallback must run the exact same visual signal probe before it can satisfy readiness');
 assert.match(productProof, /disable_marker="\$\{NIXMAC_E2E_DIAGNOSTICS_DIR:-\$E2E_DIAGNOSTIC_DIR\}\/native-webview-snapshots\/\.disabled"[\s\S]*\[ ! -f "\$disable_marker" \][\s\S]*visual-signal-failed/, 'Native WKWebView snapshot fallback must persist scenario-level disable state outside command-substitution subshells');
-assert.match(nativeMain, /WKSnapshotConfiguration[\s\S]*setRect:[\s\S]*setAfterScreenUpdates: false[\s\S]*takeSnapshotWithConfiguration: configuration/, 'Native snapshot requests must use an explicit WKSnapshotConfiguration instead of relying on the virtualized host visible-rect default');
-assert.match(nativeMain, /e2e_try_cached_display_snapshot[\s\S]*bitmapImageRepForCachingDisplayInRect[\s\S]*cacheDisplayInRect[\s\S]*NSView\.cacheDisplayInRect/, 'Native snapshot requests must fall back to AppKit cached-display capture when WebKit snapshotting fails');
+assert.match(nativeWebviewCaptureProbeScheduler, /run_on_main_thread[\s\S]*e2e_request_native_webview_capture_probe/, 'Native WebView capture probes must touch AppKit/WebKit from the main thread');
+assert.match(nativeWebviewSnapshotScheduler, /run_on_main_thread[\s\S]*e2e_request_native_webview_snapshot/, 'Scheduled native WebView snapshots must touch WKWebView from the main thread');
+assert.match(nativeWebviewSnapshotPoller, /run_on_main_thread[\s\S]*e2e_request_native_webview_snapshot/, 'On-demand native WebView snapshot requests must touch WKWebView from the main thread');
+assert.match(nativeMain, /WKSnapshotConfiguration[\s\S]*setRect:[\s\S]*setAfterScreenUpdates: true[\s\S]*takeSnapshotWithConfiguration: configuration/, 'Native snapshot requests must wait for painted WKWebView content instead of capturing a pre-update virtualized host surface');
+assert.match(nativeMain, /e2e_try_cached_display_snapshot[\s\S]*bitmapImageRepForCachingDisplayInRect[\s\S]*cacheDisplayInRect[\s\S]*"degraded"[\s\S]*NSView\.cacheDisplayInRect/, 'Native snapshot requests must retain AppKit cached-display fallback as degraded diagnostics, not passing visual proof');
+assert.match(productProof, /status=\$\(jq -r '\.status \/\/ ""' "\$status_path"[\s\S]*passed\)[\s\S]*\[ -s "\$output_path" \][\s\S]*degraded\)[\s\S]*return 1[\s\S]*failed\)[\s\S]*return 1/, 'Product Proof native snapshot reader must wait for terminal status and accept only status=passed before returning a PNG path');
 assert.match(productProof, /nixmac_pp_capture_ready_visual_signal\(\)[\s\S]*peekaboo_run see --app "\$NIXMAC_APP_NAME" --path "\$path"[\s\S]*nixmac_pp_screenshot_has_visual_signal "\$path"[\s\S]*nixmac_pp_capture_native_visual_signal/, 'Ready-shell visual probe must try system pixels first, then use a fresh native WKWebView snapshot only as a strict fallback');
 assert.match(productProof, /nixmac_pp_record_ready_visual_signal\(\)[\s\S]*status=failed[\s\S]*preserving strict screenshot-signal report gate/, 'ready-shell must record visual proof quality without weakening the runner screenshot-signal gate');
 assert.match(productProof, /nixmac_pp_wait_for_ready_app_shell\(\)[\s\S]*nixmac_pp_elements_show_ready_shell[\s\S]*nixmac_pp_record_ready_visual_signal "ready-shell" \|\| true[\s\S]*return 0/, 'ready-shell readiness must succeed on driver-visible AX/product evidence instead of requiring host pixels before launch passes');

@@ -277,7 +277,16 @@ fn e2e_schedule_native_webview_capture_probe(
 ) {
     std::thread::spawn(move || {
         std::thread::sleep(delay);
-        e2e_request_native_webview_capture_probe(&window, label);
+        let probe_window = window.clone();
+        if let Err(error) = window.run_on_main_thread(move || {
+            e2e_request_native_webview_capture_probe(&probe_window, label);
+        }) {
+            log::warn!(
+                "NIXMAC_E2E_CAPTURE could not schedule native WebView probe {} on main thread: {}",
+                label,
+                error
+            );
+        }
     });
 }
 
@@ -503,7 +512,7 @@ unsafe fn e2e_try_cached_display_snapshot(
         Ok(()) => {
             e2e_write_native_snapshot_status_with_source(
                 status_path,
-                "passed",
+                "degraded",
                 label,
                 output_path,
                 Some(&format!(
@@ -739,7 +748,7 @@ fn e2e_request_native_webview_snapshot(
 
             let bounds: E2eNativeRect = msg_send![webview, bounds];
             let _: () = msg_send![configuration, setRect: bounds];
-            let _: () = msg_send![configuration, setAfterScreenUpdates: false];
+            let _: () = msg_send![configuration, setAfterScreenUpdates: true];
         }
         let _: () = msg_send![
             webview,
@@ -783,12 +792,30 @@ fn e2e_schedule_native_webview_snapshot(
     std::thread::spawn(move || {
         std::thread::sleep(delay);
         if let Some((output_path, status_path)) = e2e_native_snapshot_paths(label) {
-            e2e_request_native_webview_snapshot(
-                &window,
-                label.to_string(),
-                output_path,
-                status_path,
-            );
+            let snapshot_window = window.clone();
+            let output_path_for_error = output_path.clone();
+            let status_path_for_error = status_path.clone();
+            if let Err(error) = window.run_on_main_thread(move || {
+                e2e_request_native_webview_snapshot(
+                    &snapshot_window,
+                    label.to_string(),
+                    output_path,
+                    status_path,
+                );
+            }) {
+                log::warn!(
+                    "NIXMAC_E2E_NATIVE_SNAPSHOT could not schedule {} on main thread: {}",
+                    label,
+                    error
+                );
+                e2e_write_native_snapshot_status(
+                    &status_path_for_error,
+                    "failed",
+                    label,
+                    &output_path_for_error,
+                    Some(&format!("main-thread scheduling failed: {error}")),
+                );
+            }
         }
     });
 }
@@ -836,7 +863,31 @@ fn e2e_start_native_webview_snapshot_request_poller(window: WebviewWindow) {
                 let _ = std::fs::remove_file(&request_path);
                 let output_path = root.join(format!("{request_id}.png"));
                 let status_path = root.join(format!("{request_id}.json"));
-                e2e_request_native_webview_snapshot(&window, label, output_path, status_path);
+                let snapshot_window = window.clone();
+                let output_path_for_error = output_path.clone();
+                let status_path_for_error = status_path.clone();
+                let label_for_error = label.clone();
+                if let Err(error) = window.run_on_main_thread(move || {
+                    e2e_request_native_webview_snapshot(
+                        &snapshot_window,
+                        label,
+                        output_path,
+                        status_path,
+                    );
+                }) {
+                    log::warn!(
+                        "NIXMAC_E2E_NATIVE_SNAPSHOT could not schedule request {} on main thread: {}",
+                        label_for_error,
+                        error
+                    );
+                    e2e_write_native_snapshot_status(
+                        &status_path_for_error,
+                        "failed",
+                        &label_for_error,
+                        &output_path_for_error,
+                        Some(&format!("main-thread scheduling failed: {error}")),
+                    );
+                }
             }
             std::thread::sleep(Duration::from_millis(250));
         }

@@ -35,7 +35,13 @@ import { useQueueSummarizer } from "@/hooks/use-queue-summarizer";
 import { useWatcher } from "@/hooks/use-watcher";
 import { loadConfig, loadHosts, loadEvolveState } from "@/hooks/use-widget-initialization";
 import { useSummary } from "@/hooks/use-summary";
-import { markBootStage } from "@/lib/e2e-boot-diagnostics";
+import {
+  e2eBootDiagnosticsActive,
+  e2eErrorClass,
+  markBootStage,
+  recordE2eStartupState,
+} from "@/lib/e2e-boot-diagnostics";
+import { computeCurrentStep } from "@/components/widget/utils";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { UpdateBanner } from "@/components/widget/layout/update-banner";
 import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
@@ -58,6 +64,25 @@ export function DarwinWidget() {
   const { startWatching } = useWatcher();
   const { queueForSummaries } = useQueueSummarizer();
   const { findChangeMap } = useSummary();
+
+  const recordStartupState = (label: string, error?: unknown) => {
+    if (!e2eBootDiagnosticsActive()) return;
+
+    const state = useWidgetStore.getState();
+    recordE2eStartupState(label, {
+      currentStep: computeCurrentStep(state),
+      configDirPresent: state.configDir.length > 0,
+      hostPresent: state.host.length > 0,
+      hostKnown: state.host.length > 0 && state.hosts.includes(state.host),
+      hostsCount: state.hosts.length,
+      nixInstalled: state.nixInstalled,
+      darwinRebuildAvailable: state.darwinRebuildAvailable,
+      permissionsChecked: state.permissionsChecked,
+      permissionsComplete: Boolean(state.permissionsState?.allRequiredGranted),
+      prefsLoaded: state.prefsLoaded,
+      errorClass: e2eErrorClass(error) ?? (state.error ? "StoreError" : null),
+    });
+  };
 
   // Set up panic handler to catch Rust crashes and show feedback dialog
   usePanicHandler();
@@ -108,18 +133,29 @@ export function DarwinWidget() {
   useEffect(() => {
     (async () => {
       try {
+        recordStartupState("init-start");
         await checkPermissions();
+        recordStartupState("after-check-permissions");
         await loadConfig();
+        recordStartupState("after-load-config");
         await checkNix();
+        recordStartupState("after-check-nix");
         await loadHosts();
+        recordStartupState("after-load-hosts");
         await loadEvolveState();
+        recordStartupState("after-load-evolve-state");
         await getInitialStatus();
+        recordStartupState("after-git-status");
         await loadPrefs();
+        recordStartupState("after-load-prefs");
         await findChangeMap();
+        recordStartupState("after-find-change-map");
         refreshPromptHistory();
       } catch (e: unknown) {
         useWidgetStore.getState().setError((e as Error)?.message || String(e));
+        recordStartupState("startup-error", e);
       }
+      recordStartupState("startup-complete");
 
       // Start watching for git changes and summarizer updates after initial load
       startWatching();
