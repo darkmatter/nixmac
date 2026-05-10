@@ -1,9 +1,9 @@
 use super::helpers::capture_err;
 use crate::bootstrap::default_config;
+use crate::git;
 use crate::storage::store;
 use crate::system::nix;
 use crate::{rebuild, shared_types};
-use std::process::Command;
 use tauri::AppHandle;
 
 /// Starts a streaming darwin-rebuild switch operation.
@@ -60,60 +60,24 @@ pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<shared_types::
     let dir = store::ensure_config_dir_exists(&app)
         .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
 
-    let output = Command::new("git")
-        .args(["add", "."])
-        .current_dir(&dir)
-        .env("PATH", nix::get_nix_path())
-        .output()
-        .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
-    if !output.status.success() {
-        return Err(format!(
-            "Failed to add files to git: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
+    git::run_command(&dir, ["add", "."])
+        .map_err(|e| format!("Failed to add files to git: {}", e))?;
 
     let date = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
-    let output = Command::new("git")
-        .args(["checkout", "-b", &format!("canceled-{}", date)])
-        .current_dir(&dir)
-        .env("PATH", nix::get_nix_path())
-        .output()
-        .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
-    if !output.status.success() {
-        return Err(format!(
-            "Failed to checkout canceled commit: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
+    let branch_name = format!("canceled-{}", date);
+    let output = git::run_command(&dir, ["checkout", "-b", &branch_name])
+        .map_err(|e| format!("Failed to checkout canceled commit: {}", e))?;
 
     let commit_hash = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    let output = Command::new("git")
-        .args(["commit", "-m", &format!("Canceled commit: {}", commit_hash)])
-        .current_dir(&dir)
-        .env("PATH", nix::get_nix_path())
-        .output()
-        .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
-    if !output.status.success() {
-        return Err(format!(
-            "Failed to commit canceled commit: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
+    git::run_command(
+        &dir,
+        ["commit", "-m", &format!("Canceled commit: {}", commit_hash)],
+    )
+    .map_err(|e| format!("Failed to commit canceled commit: {}", e))?;
 
     // check out prev branch
-    let output = Command::new("git")
-        .args(["checkout", "-"])
-        .current_dir(&dir)
-        .env("PATH", nix::get_nix_path())
-        .output()
-        .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
-    if !output.status.success() {
-        return Err(format!(
-            "Failed to checkout previous branch: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
+    git::run_command(&dir, ["checkout", "-"])
+        .map_err(|e| format!("Failed to checkout previous branch: {}", e))?;
 
     // TODO: Implement actual cancellation by tracking the child process
     Ok(shared_types::OkResult::yes())

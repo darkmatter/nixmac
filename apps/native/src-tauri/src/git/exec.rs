@@ -41,7 +41,7 @@ impl GitCommand {
 }
 
 /// Identity and hooks injected so nixmac doesn't inherit user's config
-fn git_command() -> GitCommand {
+fn base_git_command() -> Command {
     let mut cmd = Command::new("git");
     cmd.env("PATH", crate::system::nix::get_nix_path());
     cmd.args([
@@ -54,7 +54,21 @@ fn git_command() -> GitCommand {
         "-c",
         "core.hooksPath=/dev/null",
     ]);
-    GitCommand(cmd)
+    cmd
+}
+
+fn git_command() -> GitCommand {
+    GitCommand(base_git_command())
+}
+
+/// Runs a git command with nixmac's fixed identity and hook suppression.
+pub fn run_command<I, S, P>(dir: P, args: I) -> Result<Output>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+    P: AsRef<Path>,
+{
+    git_command().args(args).current_dir(dir).output()
 }
 
 /// Checks if a directory is inside a git repository.
@@ -647,6 +661,31 @@ mod tests {
         let repo_dir = temp_dir.path().join("repo");
         init_repo(&repo_dir.to_string_lossy()).unwrap();
         assert!(is_repo(&repo_dir.to_string_lossy()));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_run_command_disables_repo_hooks() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        init_repo(&repo_dir.to_string_lossy()).unwrap();
+
+        let hook_path = repo_dir.join(".git/hooks/pre-commit");
+        fs::write(&hook_path, "#!/bin/sh\nprintf ran > hook-ran\nexit 1\n").unwrap();
+        let mut permissions = fs::metadata(&hook_path).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&hook_path, permissions).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
+        run_command(&repo_dir, ["add", "-A"]).unwrap();
+        run_command(&repo_dir, ["commit", "-m", "initial commit"]).unwrap();
+
+        assert!(
+            !repo_dir.join("hook-ran").exists(),
+            "repo hooks must not run from nixmac git commands"
+        );
     }
 
     #[test]
