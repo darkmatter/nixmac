@@ -8,13 +8,18 @@
 
 use serde::Deserialize;
 use std::collections::HashMap;
+#[allow(unused_imports)]
 use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[allow(dead_code)]
 const RUNTIME_FILE_NAME: &str = "e2e-runtime.json";
+
+#[allow(dead_code)]
 const BUNDLE_ID: &str = "com.darkmatter.nixmac";
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 struct E2eRuntimeFile {
     #[serde(rename = "schemaVersion")]
@@ -26,6 +31,7 @@ struct E2eRuntimeFile {
     values: HashMap<String, String>,
 }
 
+#[allow(dead_code)]
 fn runtime_file_path() -> Option<PathBuf> {
     let home = dirs::home_dir()?;
     Some(
@@ -36,6 +42,7 @@ fn runtime_file_path() -> Option<PathBuf> {
     )
 }
 
+#[allow(dead_code)]
 fn now_unix() -> Option<u64> {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)

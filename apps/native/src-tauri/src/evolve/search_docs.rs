@@ -9,6 +9,8 @@ use std::cmp::Ordering;
 use std::fmt;
 use std::sync::RwLock;
 
+use crate::commands::debug::TimerGuard;
+
 /// Which documentation source an entry belongs to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -96,6 +98,8 @@ struct DocsIndex {
 }
 
 pub fn initialize_docs_index() {
+    let _timer = TimerGuard::new("initialize_docs_index");
+
     let mut guard = match DOCS_INDEX.write() {
         Ok(g) => g,
         Err(poisoned) => poisoned.into_inner(),
@@ -116,7 +120,7 @@ pub fn initialize_docs_index() {
         "[search_docs] initialized docs index with {} nix-darwin + {} home-manager = {} total entries",
         darwin_count,
         hm_count,
-        entries.len()
+        entries.len(),
     );
     *guard = Some(DocsIndex { entries });
 }
