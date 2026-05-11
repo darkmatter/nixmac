@@ -14,7 +14,7 @@ const HOME_DIR_PATH_PATTERN = /\/Users\/[^/\s'"`]+/g;
 const NIX_SECRET_ASSIGNMENT_PATTERN =
   /\b(password|passwd|token|secret|api[-_]?key|private[-_]?key)\s*=\s*(".*?"|'.*?'|[^\s;]+)/gi;
 
-const e2eBootDiagnosticsEnabled = import.meta.env.VITE_NIXMAC_SKIP_PERMISSIONS === "true";
+const e2eBootDiagnosticsEnabled = import.meta.env.VITE_NIXMAC_E2E_MODE === "true";
 let bootStageCleared = false;
 
 function setStorageValue(key: string, value: string) {

@@ -60,15 +60,16 @@ markBootStage("root-found");
 
 const E2E_APP_MOUNT_RELOAD_TIMEOUT_MS = 12000;
 const E2E_APP_MOUNT_RELOAD_KEY = "nixmac:e2e-app-mount-reload-attempted";
-// This existing flag marks E2E/dev permission bypass builds. In that mode, boot must not
-// introduce another preference IPC before the app shell has rendered.
-const E2E_BOOT_PREFS_DISABLED = import.meta.env.VITE_NIXMAC_SKIP_PERMISSIONS === "true";
+// Build-time flag identifying an E2E build. In that mode, boot must not introduce
+// another preference IPC before the app shell has rendered, and the harness-only
+// instrumentation (heartbeat, watchdog, DOM snapshots) is active.
+const E2E_MODE = import.meta.env.VITE_NIXMAC_E2E_MODE === "true";
 
 let bootHeartbeatStopped = false;
 let bootHeartbeatTick = 0;
 let bootHeartbeat: number | null = null;
 
-if (E2E_BOOT_PREFS_DISABLED) {
+if (E2E_MODE) {
   bootHeartbeat = window.setInterval(() => {
     if (bootHeartbeatStopped) {
       if (bootHeartbeat !== null) {
@@ -267,9 +268,9 @@ const loadPrefsForBoot = async (): Promise<DarwinPrefs | null> => {
 };
 
 const initializeSentryAfterPostMountFrame = async () => {
-  if (E2E_BOOT_PREFS_DISABLED) {
+  if (E2E_MODE) {
     bootBreadcrumb("Sentry init skipped for E2E boot", {
-      viteSkipPermissions: true,
+      viteE2eMode: true,
     });
     console.info("Sentry not enabled during E2E boot.");
     return;
@@ -366,7 +367,7 @@ const captureRenderErrorAfterSentryInit = (
   error: unknown,
 ) => {
   void startSentryInitOnce(reason).then(() => {
-    if (!E2E_BOOT_PREFS_DISABLED) {
+    if (!E2E_MODE) {
       Sentry.captureException(error);
     }
   });
@@ -384,7 +385,7 @@ window.setTimeout(() => {
   startSentryInitOnce("mount-timeout");
 }, SENTRY_MOUNT_TIMEOUT_MS);
 
-if (E2E_BOOT_PREFS_DISABLED) {
+if (E2E_MODE) {
   window.setTimeout(() => {
     if (bootHeartbeatStopped) {
       return;
