@@ -35,7 +35,7 @@ import { useQueueSummarizer } from "@/hooks/use-queue-summarizer";
 import { useWatcher } from "@/hooks/use-watcher";
 import { loadConfig, loadHosts, loadEvolveState } from "@/hooks/use-widget-initialization";
 import { useSummary } from "@/hooks/use-summary";
-import { markBootStage } from "@/lib/e2e-boot-diagnostics";
+import { markBootStage } from "@/lib/boot-diagnostics";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { UpdateBanner } from "@/components/widget/layout/update-banner";
 import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
