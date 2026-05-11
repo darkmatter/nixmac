@@ -20,7 +20,7 @@ import {
   Square,
   XCircle,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { darwinAPI } from "@/tauri-api";
 import type { EvolveEvent, EvolveEventType } from "@/stores/widget-store";
@@ -257,14 +257,11 @@ function QuestionPrompt({
     inputRef.current?.focus();
   }, []);
 
-  const handleSubmit = useCallback(
-    (value: string) => {
-      if (!value.trim() || answered) return;
-      setAnswered(true);
-      onAnswer(value.trim());
-    },
-    [answered, onAnswer],
-  );
+  const handleSubmit = (value: string) => {
+    if (!value.trim() || answered) return;
+    setAnswered(true);
+    onAnswer(value.trim());
+  };
 
   if (answered) {
     return (
@@ -352,11 +349,11 @@ export function EvolveProgress({
   const [autoScroll, setAutoScroll] = useState(true);
   const prevEventsLengthRef = useRef(events.length);
 
-  const handleQuestionAnswer = useCallback((answer: string) => {
+  const handleQuestionAnswer = (answer: string) => {
     darwinAPI.darwin.evolveAnswer(answer).catch((e) => {
       console.error("Failed to send answer:", e);
     });
-  }, []);
+  };
 
   // Auto-scroll to bottom when new events arrive
   useEffect(() => {

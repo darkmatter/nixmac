@@ -2,7 +2,7 @@
 import preview from "#storybook/preview";
 import type { EvolveState } from "@/stores/widget-store";
 import { useWidgetStore } from "@/stores/widget-store";
-import { fn } from "@storybook/test";
+import { fn } from "storybook/test";
 import { useEffect } from "react";
 import { ExternalBuildDetected } from "@/components/widget/notifications/external-build-detected";
 

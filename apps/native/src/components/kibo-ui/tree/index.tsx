@@ -7,7 +7,6 @@ import {
   createContext,
   type HTMLAttributes,
   type ReactNode,
-  useCallback,
   useContext,
   useId,
   useState,
@@ -94,7 +93,7 @@ export const TreeProvider = ({
     selectedIds !== undefined && onSelectionChange !== undefined;
   const currentSelectedIds = isControlled ? selectedIds : internalSelectedIds;
 
-  const toggleExpanded = useCallback((nodeId: string) => {
+  const toggleExpanded = (nodeId: string) => {
     setExpandedIds((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(nodeId)) {
@@ -104,38 +103,29 @@ export const TreeProvider = ({
       }
       return newSet;
     });
-  }, []);
+  };
 
-  const handleSelection = useCallback(
-    (nodeId: string, ctrlKey = false) => {
-      if (!selectable) {
-        return;
-      }
+  const handleSelection = (nodeId: string, ctrlKey = false) => {
+    if (!selectable) {
+      return;
+    }
 
-      let newSelection: string[];
+    let newSelection: string[];
 
-      if (multiSelect && ctrlKey) {
-        newSelection = currentSelectedIds.includes(nodeId)
-          ? currentSelectedIds.filter((id) => id !== nodeId)
-          : [...currentSelectedIds, nodeId];
-      } else {
-        newSelection = currentSelectedIds.includes(nodeId) ? [] : [nodeId];
-      }
+    if (multiSelect && ctrlKey) {
+      newSelection = currentSelectedIds.includes(nodeId)
+        ? currentSelectedIds.filter((id) => id !== nodeId)
+        : [...currentSelectedIds, nodeId];
+    } else {
+      newSelection = currentSelectedIds.includes(nodeId) ? [] : [nodeId];
+    }
 
-      if (isControlled) {
-        onSelectionChange?.(newSelection);
-      } else {
-        setInternalSelectedIds(newSelection);
-      }
-    },
-    [
-      selectable,
-      multiSelect,
-      currentSelectedIds,
-      isControlled,
-      onSelectionChange,
-    ]
-  );
+    if (isControlled) {
+      onSelectionChange?.(newSelection);
+    } else {
+      setInternalSelectedIds(newSelection);
+    }
+  };
 
   return (
     <TreeContext.Provider
