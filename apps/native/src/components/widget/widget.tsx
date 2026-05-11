@@ -24,6 +24,7 @@ import {
     PermissionsStep,
     SetupStep,
 } from "@/components/widget/steps";
+import { surfaceRecoveryReport } from "@/hooks/use-feedback-on-recovery";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useNixInstall } from "@/hooks/use-nix-install";
 import { usePanicHandler } from "@/hooks/use-panic-handler";
@@ -121,7 +122,7 @@ export function DarwinWidget() {
         useWidgetStore.getState().setError((e as Error)?.message || String(e));
       }
 
-      // Start watching for git changes and summarizer updates after initial load
+      surfaceRecoveryReport();
       startWatching();
       queueForSummaries();
     })();

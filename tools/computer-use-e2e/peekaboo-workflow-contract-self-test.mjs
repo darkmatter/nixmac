@@ -27,7 +27,7 @@ const frontendDomSnapshotsPath = path.join(repoRoot, 'apps/native/src/e2e/dom-sn
 const frontendBootHarnessPath = path.join(repoRoot, 'apps/native/src/e2e/boot-harness.ts');
 const frontendSentryInitPath = path.join(repoRoot, 'apps/native/src/lib/sentry/init.ts');
 const frontendSentrySanitizePath = path.join(repoRoot, 'apps/native/src/lib/sentry/sanitize.ts');
-const frontendStartupFallbackPath = path.join(repoRoot, 'apps/native/src/components/StartupFallback.tsx');
+const frontendAppFatalFallbackPath = path.join(repoRoot, 'apps/native/src/components/widget/layout/AppFatalFallback.tsx');
 const tauriApiPath = path.join(repoRoot, 'apps/native/src/tauri-api.ts');
 const workflow = readFileSync(workflowPath, 'utf8');
 const productProof = readFileSync(productProofPath, 'utf8');
@@ -50,7 +50,7 @@ const frontendDomSnapshots = readFileSync(frontendDomSnapshotsPath, 'utf8');
 const frontendBootHarness = readFileSync(frontendBootHarnessPath, 'utf8');
 const frontendSentryInit = readFileSync(frontendSentryInitPath, 'utf8');
 const frontendSentrySanitize = readFileSync(frontendSentrySanitizePath, 'utf8');
-const frontendStartupFallback = readFileSync(frontendStartupFallbackPath, 'utf8');
+const frontendAppFatalFallback = readFileSync(frontendAppFatalFallbackPath, 'utf8');
 const tauriApi = readFileSync(tauriApiPath, 'utf8');
 
 function section(startPattern, endPattern = null) {
@@ -261,7 +261,9 @@ assertOrder(frontendMain, 'await attachSentry();', 'renderApp();', 'Frontend boo
 assertOrder(frontendMain, 'import("@/e2e/boot-harness")', 'renderApp();', 'Frontend boot must queue the harness dynamic import before rendering so the heartbeat-stop listener runs in time for the App mount event');
 assert.doesNotMatch(frontendMain, /renderApp\(\);\s*void initializeSentry/, 'Frontend boot must not directly initialize preference-backed Sentry immediately after first render');
 assert.doesNotMatch(frontendRenderApp, /\bawait\b/, 'Frontend renderApp must stay synchronous and never await prefs IPC before first render');
-assert.match(frontendStartupFallback, /role="alert"[\s\S]*background: "#27272a"[\s\S]*border: "1px solid #52525b"/, 'Startup fallback must include a visible central card with enough luminance range for screenshot signal diagnostics');
+assert.match(frontendAppFatalFallback, /role="alert"/, 'App fatal fallback must use role="alert" for accessibility');
+assert.match(frontendAppFatalFallback, /window\.location\.reload\(\)/, 'App fatal fallback must offer a Reload affordance');
+assert.match(frontendAppFatalFallback, /window\.localStorage\.setItem\(\s*RECOVERY_STORAGE_KEY/, 'App fatal fallback must stash error details to localStorage for the post-reload recovery handoff');
 assert.match(frontendBootHarness, /window\.addEventListener\("unhandledrejection"[\s\S]*window unhandled rejection/, 'E2E boot harness must capture top-level unhandled rejections');
 assert.match(runnerShell, /E2E_TERMINAL_CLEANUP_MODE=kill recording_close_terminal_windows/, 'Runner preflight must kill stale recorder Terminal windows before each scenario');
 assert.match(peekabooRunner, /for key in NIXMAC_E2E_MOCK_SYSTEM NIXMAC_E2E_SOLID_CAPTURE NIXMAC_E2E_OPAQUE_WINDOW NIXMAC_E2E_WEBVIEW_WATCHDOG NIXMAC_SKIP_PERMISSIONS/, 'Runner preflight must clear stale Peekaboo launchctl flags, including solid capture, opaque capture, and the independent WebView watchdog');
