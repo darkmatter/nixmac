@@ -108,11 +108,11 @@ function resetMocks() {
   mockNormalize.mockImplementation(async (p) => p.trim());
   mockPrepareNewDir.mockResolvedValue();
   mockExists.mockResolvedValue(true);
-  mockSetDir.mockResolvedValue({
-    dir: "/Users/me/.darwin",
+  mockSetDir.mockImplementation(async (p) => ({
+    dir: p,
     evolveState: {} as never,
     hosts: [],
-  });
+  }));
   mockSetHostAttr.mockResolvedValue();
   mockFlakeExistsAt.mockResolvedValue(true);
   mockFlakeExists.mockResolvedValue(true);
@@ -178,7 +178,6 @@ describe("<DirectoryPicker>", () => {
 
   it("on a valid path, normalizes, persists, clears host, and refreshes the hosts list", async () => {
     mockNormalize.mockResolvedValue("/Users/me/.darwin");
-    mockExists.mockResolvedValue(true);
     mockSetDir.mockResolvedValue({
       dir: "/Users/me/.darwin",
       evolveState: {} as never,
