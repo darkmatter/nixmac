@@ -66,7 +66,5 @@ export function surfaceRecoveryReport(): void {
     timestamp: report.timestamp,
   });
 
-  setError(
-    `Recovered from an unexpected error: ${report.message}\n\nClick Report Error to share details, or Dismiss to continue.`,
-  );
+  setError(`Recovered from an unexpected error: ${report.message}`);
 }
