@@ -1,20 +1,11 @@
+import { sanitizeDiagnosticText } from "@/lib/sentry/sanitize";
 import { darwinAPI } from "@/tauri-api";
 
 const MAX_DETAIL_LENGTH = 1_000;
 const APP_TITLE = "nixmac";
-const REDACTED = "[REDACTED]";
-const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
-const BEARER_TOKEN_PATTERN = /\bBearer\s+[A-Za-z0-9\-._~+/]+=*/gi;
-const GITHUB_TOKEN_PATTERN = /\bgh[pousr]_[A-Za-z0-9]{20,}\b/gi;
-const OPENAI_TOKEN_PATTERN = /\bsk-[A-Za-z0-9]{20,}\b/g;
-const ANTHROPIC_TOKEN_PATTERN = /\bsk-ant-[A-Za-z0-9_-]{20,}\b/gi;
-const PRIVATE_KEY_BLOCK_PATTERN =
-  /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g;
-const HOME_DIR_PATH_PATTERN = /\/Users\/[^/\s'"`]+/g;
-const NIX_SECRET_ASSIGNMENT_PATTERN =
-  /\b(password|passwd|token|secret|api[-_]?key|private[-_]?key)\s*=\s*(".*?"|'.*?'|[^\s;]+)/gi;
 
-const e2eBootDiagnosticsEnabled = import.meta.env.VITE_NIXMAC_E2E_MODE === "true";
+const e2eBootDiagnosticsEnabled =
+  import.meta.env.VITE_NIXMAC_E2E_MODE === "true";
 let bootStageCleared = false;
 
 function setStorageValue(key: string, value: string) {
@@ -38,37 +29,8 @@ function simpleHash(value: string) {
   return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
-function sanitizeUrl(value: string): string {
-  if (!(value.startsWith("http://") || value.startsWith("https://"))) {
-    return value;
-  }
-
-  try {
-    const url = new URL(value);
-    url.search = "";
-    return url.toString();
-  } catch {
-    return value;
-  }
-}
-
-export function sanitizeE2eDiagnosticText(value: string): string {
-  let sanitized = value;
-  sanitized = sanitized.replace(EMAIL_PATTERN, REDACTED);
-  sanitized = sanitized.replace(BEARER_TOKEN_PATTERN, REDACTED);
-  sanitized = sanitized.replace(GITHUB_TOKEN_PATTERN, REDACTED);
-  sanitized = sanitized.replace(OPENAI_TOKEN_PATTERN, REDACTED);
-  sanitized = sanitized.replace(ANTHROPIC_TOKEN_PATTERN, REDACTED);
-  sanitized = sanitized.replace(PRIVATE_KEY_BLOCK_PATTERN, REDACTED);
-  sanitized = sanitized.replace(HOME_DIR_PATH_PATTERN, "/Users/[REDACTED_USER]");
-  sanitized = sanitized.replace(NIX_SECRET_ASSIGNMENT_PATTERN, (_, key: string) => {
-    return `${key} = ${REDACTED}`;
-  });
-  return sanitizeUrl(sanitized).replace(/[^\t\x20-\x7e]/g, "");
-}
-
 function excerpt(value: string, maxLength: number) {
-  const sanitized = sanitizeE2eDiagnosticText(value).replace(/\s+/g, " ").trim();
+  const sanitized = sanitizeDiagnosticText(value).replace(/\s+/g, " ").trim();
   if (sanitized.length <= maxLength) return sanitized;
   return `${sanitized.slice(0, maxLength)}...`;
 }
@@ -118,14 +80,19 @@ export function bootBreadcrumb(label: string, detail?: unknown) {
   const clientTimestampUnixMs = Date.now();
   const summarized = summarizeDetail(detail);
   console.info(`[nixmac boot] ${label}`, summarized ?? "");
-  void darwinAPI.debug.logBreadcrumb(label, summarized, clientTimestampUnixMs).catch(() => {});
+  void darwinAPI.debug
+    .logBreadcrumb(label, summarized, clientTimestampUnixMs)
+    .catch(() => {});
 }
 
 type DomSnapshotOptions = {
   storagePrefix?: string;
 };
 
-export function recordE2eDomSnapshot(label: string, options: DomSnapshotOptions = {}) {
+export function recordE2eDomSnapshot(
+  label: string,
+  options: DomSnapshotOptions = {},
+) {
   if (!e2eBootDiagnosticsEnabled) return;
 
   const root = document.getElementById("root");
@@ -133,8 +100,10 @@ export function recordE2eDomSnapshot(label: string, options: DomSnapshotOptions 
   const rawRootHtml = root?.innerHTML ?? "";
   const snapshot = {
     label,
-    title: sanitizeE2eDiagnosticText(document.title || ""),
-    bootStage: sanitizeE2eDiagnosticText(document.documentElement.dataset.nixmacBootStage ?? ""),
+    title: sanitizeDiagnosticText(document.title || ""),
+    bootStage: sanitizeDiagnosticText(
+      document.documentElement.dataset.nixmacBootStage ?? "",
+    ),
     rootChildCount: root?.childElementCount ?? null,
     bodyTextLength: rawBodyText.length,
     rootHtmlLength: rawRootHtml.length,
@@ -169,7 +138,11 @@ export function recordE2eDomSnapshot(label: string, options: DomSnapshotOptions 
   bootBreadcrumb(`E2E DOM snapshot ${label} html`, htmlExcerpt);
 }
 
-export function scheduleE2eDomSnapshots(prefix: string, count = 5, intervalMs = 2_000) {
+export function scheduleE2eDomSnapshots(
+  prefix: string,
+  count = 5,
+  intervalMs = 2_000,
+) {
   if (!e2eBootDiagnosticsEnabled) return;
 
   let emitted = 0;
