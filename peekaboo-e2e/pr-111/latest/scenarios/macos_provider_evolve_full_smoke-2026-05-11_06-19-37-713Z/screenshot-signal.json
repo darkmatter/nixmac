@@ -1,0 +1,16 @@
+{
+  "status": "failed",
+  "scannedFiles": 2,
+  "violations": [
+    {
+      "path": "screenshots/failure-1778480570-1778480570_annotated.png",
+      "label": "failure-1778480570-1778480570_annotated",
+      "issue": "central app content appears blank or occluded (YMAX 25 below 35)"
+    },
+    {
+      "path": "screenshots/failure-1778480570-1778480570.png",
+      "label": "failure-1778480570-1778480570",
+      "issue": "central app content appears blank or occluded (YMAX 25 below 35)"
+    }
+  ]
+}
