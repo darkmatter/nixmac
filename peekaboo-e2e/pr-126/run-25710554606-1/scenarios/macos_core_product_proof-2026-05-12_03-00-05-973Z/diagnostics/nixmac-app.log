@@ -1,0 +1,130 @@
+2026-05-12T03:00:21.789957Z  INFO nixmac: NIXMAC_LOGFILE active at /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-12_03-00-05-973Z/diagnostics/nixmac-app.log
+2026-05-12T03:00:21.793343Z DEBUG nixmac: nixmac process booted
+2026-05-12T03:00:22.085655Z DEBUG nixmac: Tauri setup started
+2026-05-12T03:00:22.085728Z  INFO nixmac::panic_handler: Custom panic handler installed
+2026-05-12T03:00:22.086335Z  INFO nixmac::system::secret_scanner: [secret_scanner] initialized secrets scanner
+2026-05-12T03:00:22.086351Z  INFO nixmac: Sentry diagnostics disabled by user preference
+2026-05-12T03:00:22.087276Z DEBUG rusqlite_migration: some migrations defined (version: 3), try to migrate
+2026-05-12T03:00:22.087482Z DEBUG rusqlite_migration: some migrations to run, target: 3, current: 0
+2026-05-12T03:00:22.087533Z DEBUG rusqlite_migration: Running: CREATE TABLE IF NOT EXISTS commits (
+    id INTEGER PRIMARY KEY,
+    hash TEXT NOT NULL UNIQUE,
+    tree_hash TEXT NOT NULL,
+    message TEXT,
+    created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS evolutions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    origin_branch TEXT NOT NULL,
+    merged INTEGER NOT NULL DEFAULT 0,
+    builds INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS change_summaries (
+    id INTEGER PRIMARY KEY,
+    title TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'QUEUED' CHECK(status IN ('QUEUED', 'DONE', 'FAILED', 'CANCELLED')),
+    created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS changes (
+    id INTEGER PRIMARY KEY,
+    hash TEXT NOT NULL UNIQUE,
+    filename TEXT NOT NULL,
+    diff TEXT NOT NULL,
+    line_count INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    own_summary_id INTEGER REFERENCES change_summaries(id)
+);
+
+CREATE TABLE IF NOT EXISTS group_summaries (
+    change_id INTEGER NOT NULL REFERENCES changes(id),
+    change_summary_id INTEGER NOT NULL REFERENCES change_summaries(id)
+);
+
+CREATE TABLE IF NOT EXISTS change_sets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    commit_id INTEGER REFERENCES commits(id),
+    base_commit_id INTEGER NOT NULL REFERENCES commits(id),
+    commit_message TEXT,
+    generated_commit_message TEXT,
+    created_at INTEGER NOT NULL,
+    evolution_id INTEGER REFERENCES evolutions(id)
+);
+
+CREATE TABLE IF NOT EXISTS set_changes (
+    change_set_id INTEGER NOT NULL REFERENCES change_sets(id),
+    change_id INTEGER NOT NULL REFERENCES changes(id),
+    PRIMARY KEY (change_set_id, change_id)
+);
+
+CREATE TABLE IF NOT EXISTS queued_summaries (
+    id INTEGER PRIMARY KEY,
+    status TEXT NOT NULL DEFAULT 'QUEUED' CHECK(status IN ('QUEUED', 'DONE', 'FAILED', 'CANCELLED')),
+    attempted_count INTEGER NOT NULL DEFAULT 0,
+    prompt TEXT NOT NULL,
+    model_response TEXT,
+    group_summary_id INTEGER REFERENCES change_summaries(id),
+    hash_own_summary_id_pairs TEXT,
+    type TEXT NOT NULL CHECK(type IN ('NEW_SINGLE', 'NEW_GROUP', 'EVOLVED_GROUP'))
+);
+
+CREATE TABLE IF NOT EXISTS prompts (
+    id INTEGER PRIMARY KEY,
+    text TEXT NOT NULL,
+    commit_id INTEGER REFERENCES commits(id) ON DELETE SET NULL,
+    created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_commits_tree_hash ON commits(tree_hash);
+CREATE INDEX IF NOT EXISTS idx_evolutions_origin_branch ON evolutions(origin_branch);
+CREATE INDEX IF NOT EXISTS idx_prompts_commit ON prompts(commit_id);
+CREATE INDEX IF NOT EXISTS idx_change_sets_commit ON change_sets(commit_id);
+CREATE INDEX IF NOT EXISTS idx_change_sets_base ON change_sets(base_commit_id);
+CREATE INDEX IF NOT EXISTS idx_set_changes_change ON set_changes(change_id);
+CREATE INDEX IF NOT EXISTS idx_queued_summaries_status ON queued_summaries(status);
+
+2026-05-12T03:00:22.095878Z DEBUG rusqlite_migration: Running: CREATE TABLE IF NOT EXISTS restore_commits (
+    commit_hash TEXT PRIMARY KEY,
+    origin_hash TEXT NOT NULL
+);
+
+2026-05-12T03:00:22.095965Z DEBUG rusqlite_migration: Running: -- Legacy databases created before rusqlite_migration used `evolutions.branch`.
+-- The Rust hook for this migration performs the conditional column repair.
+SELECT 1;
+
+2026-05-12T03:00:22.097266Z  INFO rusqlite_migration: Database migrated to version 3
+2026-05-12T03:00:22.101998Z DEBUG nixmac::commands::debug: ⏱️  [db::init] took 15.904208ms
+2026-05-12T03:00:22.102030Z  INFO nixmac: Database initialized successfully
+2026-05-12T03:00:22.114466Z  INFO nixmac: NIXMAC_E2E_SOLID_CAPTURE enabled; using CSS-only dark WebView capture while preserving the normal overlay window
+2026-05-12T03:00:22.114491Z  INFO nixmac: NIXMAC_E2E_OPAQUE_WINDOW enabled; using an opaque visible-titlebar window with dark WebView backing for host visual capture
+2026-05-12T03:00:22.114509Z  INFO nixmac: NIXMAC_E2E_WEBVIEW_WATCHDOG enabled; stalled main WebView loads will request one reload
+2026-05-12T03:00:22.128580Z  INFO nixmac::evolve::search_docs: [search_docs] initialized docs index with 676 nix-darwin + 5230 home-manager = 5906 total entries
+2026-05-12T03:00:22.128606Z DEBUG nixmac::commands::debug: ⏱️  [initialize_docs_index] took 42.564042ms
+2026-05-12T03:00:22.439724Z DEBUG nixmac: Main nixmac window created
+2026-05-12T03:00:22.439794Z  INFO nixmac: NIXMAC_E2E_OPAQUE_WINDOW native window diagnostics: isOpaque=true alphaValue=1.000 level=0 hasShadow=true
+2026-05-12T03:00:23.064047Z DEBUG nixmac::evolve::chat_memory: [chat_memory] cleared messages count_before=0 count_after=0
+2026-05-12T03:00:24.011076Z DEBUG nixmac: main webview page load Started: tauri://localhost
+2026-05-12T03:00:24.268230Z DEBUG nixmac: main webview page load Finished: tauri://localhost
+2026-05-12T03:00:24.445709Z DEBUG nixmac: main webview E2E boot probe requested: post-build-plus-2s
+2026-05-12T03:00:25.274758Z DEBUG nixmac: main webview E2E boot probe requested: page-load-finished-plus-1s
+2026-05-12T03:00:26.898281Z  WARN nixmac::system::secret_scanner: Using fallback regex for gitleaks rule: generic-api-key (original error: Error compiling regex: Regex error: error building NFA)
+2026-05-12T03:00:29.274276Z DEBUG nixmac: main webview E2E boot probe requested: page-load-finished-plus-5s
+2026-05-12T03:00:30.272262Z  WARN nixmac::system::secret_scanner: Skipping gitleaks rule without regex: pkcs12-file
+2026-05-12T03:00:31.574586Z  WARN nixmac::system::secret_scanner: Using fallback regex for gitleaks rule: pypi-upload-token (original error: Error compiling regex: Regex error: error building NFA)
+2026-05-12T03:00:32.446417Z DEBUG nixmac: main webview E2E boot probe requested: post-build-plus-10s
+2026-05-12T03:00:33.847040Z  WARN nixmac::system::secret_scanner: Using fallback regex for gitleaks rule: vault-batch-token (original error: Error compiling regex: Regex error: error building NFA)
+2026-05-12T03:00:34.418915Z DEBUG nixmac::commands::debug: ⏱️  [SecretScanner::global] took 12.332638084s
+2026-05-12T03:00:34.445455Z DEBUG nixmac: main webview E2E load watchdog satisfied before reload
+2026-05-12T03:00:53.062328Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: main-loaded
+2026-05-12T03:00:53.063874Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: root-found
+2026-05-12T03:00:53.077980Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: react-render-scheduled
+2026-05-12T03:00:53.079248Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: react-render-start
+2026-05-12T03:00:53.132671Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: app-render
+2026-05-12T03:00:53.133078Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: darwin-widget-render
+2026-05-12T03:00:53.205427Z DEBUG nixmac::commands::debug: ⏱️  [ui_get_prefs] took 208.75µs
+2026-05-12T03:00:53.207452Z  INFO nixmac::system::permissions: NIXMAC_SKIP_PERMISSIONS=1: reporting all permissions as granted
+2026-05-12T03:00:53.210149Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: app-effect
+2026-05-12T03:00:53.217843Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: mounted
