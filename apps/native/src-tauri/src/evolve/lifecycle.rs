@@ -112,6 +112,7 @@ fn elapsed_since(start_time_ms: i64) -> i64 {
 pub async fn backup_evolve_and_record_changeset(
     app: &AppHandle,
     description: &str,
+    banned_tools: Option<&[&str]>,
 ) -> std::result::Result<EvolutionResult, EvolutionFailureResult> {
     let start_time_ms: i64 = chrono::Utc::now().timestamp_millis();
     let start_time_s: i64 = start_time_ms / 1000;
@@ -194,7 +195,14 @@ pub async fn backup_evolve_and_record_changeset(
     }
 
     // Step 2: Run AI evolution
-    let evolution = match evolve::generate_evolution(app, &config_dir, description).await {
+    let evolution = match evolve::generate_evolution(
+        app,
+        &config_dir,
+        description,
+        banned_tools.unwrap_or(&[]),
+    )
+    .await
+    {
         Ok(evolution) => evolution,
         Err(e) => {
             let duration_ms = elapsed_since(start_time_ms);
