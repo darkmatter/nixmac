@@ -1,0 +1,46 @@
+[
+  {
+    "ts": "2026-05-12T07:44:18.745Z",
+    "type": "peekaboo.suite.rendered",
+    "scenarios": [
+      "macos_core_product_proof",
+      "macos_support_dialogs_smoke",
+      "macos_console_smoke",
+      "macos_homebrew_save_rollback_smoke",
+      "macos_customization_save_rollback_smoke",
+      "macos_provider_evolve_full_smoke",
+      "macos_provider_discard_smoke"
+    ],
+    "sourceRuns": [
+      "/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-12_07-18-23-969Z",
+      "/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-12_07-20-28-815Z",
+      "/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-12_07-25-14-010Z",
+      "/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-12_07-31-30-984Z",
+      "/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-12_07-38-59-523Z",
+      "/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-12_07-40-44-962Z",
+      "/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-12_07-42-33-544Z"
+    ]
+  },
+  {
+    "ts": "2026-05-12T07:44:18.841Z",
+    "type": "report.rendered",
+    "path": "index.html"
+  },
+  {
+    "ts": "2026-05-12T07:44:38.721Z",
+    "type": "report.rendered",
+    "path": "index.html"
+  },
+  {
+    "ts": "2026-05-12T07:44:38.730Z",
+    "type": "report.inspected",
+    "method": "ci-static",
+    "inspector": "runner",
+    "path": "report-inspection.json"
+  },
+  {
+    "ts": "2026-05-12T07:44:38.735Z",
+    "type": "report.rendered",
+    "path": "index.html"
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "app": "nixmac",
+  "reason": "ready-shell-timeout",
+  "capturedAt": "2026-05-12T07:20:12Z",
+  "processes": [
+{
+  "pid": 4094,
+  "ps": " 4094     1 R    Tue May 12 00:20:06 2026     /private/tmp/nixmac-cu-e2e-app-1778570375/nixmac.app/Contents/MacOS/nixmac"
+}
+
+  ]
+}
