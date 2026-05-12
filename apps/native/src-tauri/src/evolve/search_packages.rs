@@ -32,6 +32,31 @@ pub struct SearchPackageResult {
     pub install_via: SearchResultInstallTarget,
 }
 
+/// Determine prior to searching whether a channel is registered and can be searched,
+/// to avoid unnecessary command execution and errors.
+/// We can do this with the following command:
+/// ```bash
+/// nix registry list'
+/// ```
+/// and check if the output contains the channel in a "flake:channel" format.
+fn channel_is_registered(channel: &str) -> bool {
+    let mut cmd = Command::new("nix");
+    cmd.args(["registry", "list"]);
+
+    // Pipe this to grep to check if the channel is registered
+    let output = match cmd.output() {
+        Ok(output) => output,
+        Err(e) => {
+            log::error!("Failed to execute nix registry list: {}", e);
+            return false;
+        }
+    };
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    // Important to have a space before and after the channel name to avoid partial matches (e.g. "nixpkgs-unstable" matching "nixpkgs")
+    stdout.lines().any(|line| line.contains(&format!(" flake:{} ", channel)))
+}
+
 /// Search a single channel and return a list of SearchPackageResult
 /// results.
 fn search_single_channel(
@@ -157,6 +182,12 @@ fn collect_from_channels(
     for channel in channels {
         if structured.len() >= limit as usize {
             return Ok(true);
+        }
+
+        if !channel_is_registered(channel) {
+            // CONSIDER: Whether we need to surface this to the agent somehow.
+            log::warn!("Channel '{}' is not registered, skipping search for this channel", channel);
+            continue;
         }
 
         let channel_results = search_single_channel(config_dir, query_term, use_regex, channel)?;
