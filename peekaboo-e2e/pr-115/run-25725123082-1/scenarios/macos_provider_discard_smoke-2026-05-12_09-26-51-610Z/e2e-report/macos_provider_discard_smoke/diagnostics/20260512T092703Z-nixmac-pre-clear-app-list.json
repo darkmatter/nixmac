@@ -1,0 +1,277 @@
+{
+  "success" : true,
+  "data" : {
+    "apps" : [
+      {
+        "bundle_id" : "com.apple.RemoteDesktopAgent",
+        "name" : "ARDAgent",
+        "is_active" : false,
+        "pid" : 897,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.AccessibilityUIServer",
+        "name" : "Accessibility",
+        "is_active" : false,
+        "pid" : 457,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.AirPlayUIAgent",
+        "name" : "AirPlay Screen Mirroring",
+        "is_active" : false,
+        "pid" : 946,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.backgroundtaskmanagement.agent",
+        "name" : "BackgroundTaskManagementAgent",
+        "is_active" : false,
+        "pid" : 69933,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.openai.codex",
+        "name" : "Codex",
+        "is_active" : true,
+        "pid" : 14277,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.controlcenter",
+        "name" : "Control Center",
+        "is_active" : false,
+        "pid" : 392,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.CoreLocationAgent",
+        "name" : "CoreLocationAgent",
+        "is_active" : false,
+        "pid" : 67017,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.coreservices.uiagent",
+        "name" : "CoreServicesUIAgent",
+        "is_active" : false,
+        "pid" : 91543,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.dock",
+        "name" : "Dock",
+        "is_active" : false,
+        "pid" : 80839,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.dock.extra",
+        "name" : "Dock Extra",
+        "is_active" : false,
+        "pid" : 80991,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.finder",
+        "name" : "Finder",
+        "is_active" : false,
+        "pid" : 394,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.security.Keychain-Circle-Notification",
+        "name" : "Keychain Circle Notification",
+        "is_active" : false,
+        "pid" : 66685,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.notificationcenterui",
+        "name" : "Notification Center",
+        "is_active" : false,
+        "pid" : 429,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "boo.peekaboo.mac",
+        "name" : "Peekaboo",
+        "is_active" : false,
+        "pid" : 12806,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.Preview",
+        "name" : "Preview",
+        "is_active" : false,
+        "pid" : 36457,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.SSMenuAgent",
+        "name" : "SSMenuAgent",
+        "is_active" : false,
+        "pid" : 25427,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.Safari",
+        "name" : "Safari",
+        "is_active" : false,
+        "pid" : 5410,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.WebKit.Networking",
+        "name" : "Safari Networking",
+        "is_active" : false,
+        "pid" : 5423,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.WorkflowKit.ShortcutsViewService",
+        "name" : "Shortcuts",
+        "is_active" : false,
+        "pid" : 67038,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.AppSSOAgent",
+        "name" : "Single Sign-On",
+        "is_active" : false,
+        "pid" : 10063,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.SoftwareUpdateNotificationManager",
+        "name" : "SoftwareUpdateNotificationManager",
+        "is_active" : false,
+        "pid" : 71946,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.Spotlight",
+        "name" : "Spotlight",
+        "is_active" : false,
+        "pid" : 434,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.systemevents",
+        "name" : "System Events",
+        "is_active" : false,
+        "pid" : 72031,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.systempreferences",
+        "name" : "System Settings",
+        "is_active" : false,
+        "pid" : 13031,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.systemuiserver",
+        "name" : "SystemUIServer",
+        "is_active" : false,
+        "pid" : 393,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.TextInputMenuAgent",
+        "name" : "TextInputMenuAgent",
+        "is_active" : false,
+        "pid" : 947,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "org.sparkle-project.Sparkle.Updater",
+        "name" : "Updater",
+        "is_active" : false,
+        "pid" : 14382,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.UserNotificationCenter",
+        "name" : "UserNotificationCenter",
+        "is_active" : false,
+        "pid" : 9505,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.wallpaper.agent",
+        "name" : "Wallpaper",
+        "is_active" : false,
+        "pid" : 404,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.wifi.WiFiAgent",
+        "name" : "Wi-Fi",
+        "is_active" : false,
+        "pid" : 4260,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.WindowManager",
+        "name" : "WindowManager",
+        "is_active" : false,
+        "pid" : 363,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.loginwindow",
+        "name" : "loginwindow",
+        "is_active" : false,
+        "pid" : 171,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.apple.nbagent",
+        "name" : "nbagent",
+        "is_active" : false,
+        "pid" : 91542,
+        "is_hidden" : false
+      },
+      {
+        "bundle_id" : "com.nuords.nrdagent",
+        "name" : "nuoRDS Agent",
+        "is_active" : false,
+        "pid" : 942,
+        "is_hidden" : false
+      },
+      {
+        "is_hidden" : false,
+        "name" : "nuoRDS Agent",
+        "pid" : 962,
+        "bundle_id" : "com.nuords.nrdagent",
+        "is_active" : false
+      },
+      {
+        "is_hidden" : false,
+        "name" : "nuoRDS Guard",
+        "pid" : 943,
+        "bundle_id" : "com.nuords.nrdguard",
+        "is_active" : false
+      },
+      {
+        "is_hidden" : false,
+        "name" : "talagentd",
+        "pid" : 385,
+        "bundle_id" : "com.apple.talagent",
+        "is_active" : false
+      },
+      {
+        "is_hidden" : false,
+        "name" : "universalAccessAuthWarn",
+        "pid" : 34716,
+        "bundle_id" : "com.apple.accessibility.universalAccessAuthWarn",
+        "is_active" : false
+      }
+    ],
+    "count" : 38
+  },
+  "debug_logs" : [
+    "[2026-05-12T09:27:03.663Z] DEBUG: Runtime host: remote gui via \/Users\/admin\/Library\/Application Support\/Peekaboo\/bridge.sock (build 3.0.0-beta3 (1))"
+  ]
+}

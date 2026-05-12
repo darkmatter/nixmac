@@ -1,0 +1,43 @@
+{
+  "success" : true,
+  "data" : {
+    "target_application_info" : {
+      "bundle_id" : "com.darkmatter.nixmac",
+      "app_name" : "nixmac",
+      "pid" : 91325
+    },
+    "windows" : [
+      {
+        "window_index" : 0,
+        "window_id" : 23381,
+        "window_title" : "nixmac",
+        "is_on_screen" : true,
+        "bounds" : {
+          "width" : 800,
+          "y" : 93,
+          "x" : 560,
+          "height" : 800
+        }
+      },
+      {
+        "window_index" : 1,
+        "window_id" : 23384,
+        "window_title" : "",
+        "is_on_screen" : true,
+        "bounds" : {
+          "x" : 0,
+          "height" : 500,
+          "width" : 500,
+          "y" : 580
+        }
+      }
+    ]
+  },
+  "debug_logs" : [
+    "[2026-05-12T09:28:21.523Z] DEBUG: Runtime host: remote gui via \/Users\/admin\/Library\/Application Support\/Peekaboo\/bridge.sock (build 3.0.0-beta3 (1))",
+    "[2026-05-12T09:28:21.555Z] VERBOSE: Skipping window {index=2, reason=window too small, title=, app=nixmac}",
+    "[2026-05-12T09:28:21.555Z] VERBOSE: Skipping window {index=3, reason=window too small, title=, app=nixmac}",
+    "[2026-05-12T09:28:21.555Z] VERBOSE: Skipping window {index=4, reason=window too small, title=, app=nixmac}",
+    "[2026-05-12T09:28:21.555Z] VERBOSE: Skipping window {app=nixmac, title=, reason=window too small, index=5}"
+  ]
+}
