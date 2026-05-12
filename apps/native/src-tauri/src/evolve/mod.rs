@@ -339,6 +339,7 @@ pub async fn generate_evolution<R: Runtime>(
     app: &AppHandle<R>,
     config_dir: &str,
     prompt: &str,
+    banned_tools: &[&str],
 ) -> Result<Evolution> {
     let start_time = chrono::Utc::now().timestamp();
 
@@ -452,7 +453,7 @@ pub async fn generate_evolution<R: Runtime>(
         max_build_attempts
     );
 
-    let tools = create_tools();
+    let tools = create_tools(banned_tools);
     let allowed_tool_names = tools
         .iter()
         .map(|tool| tool.name.as_str())
