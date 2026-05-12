@@ -1,0 +1,17 @@
+file '../scenarios/macos_core_product_proof-2026-05-12_06-43-51-415Z/screenshots/core-launch-missing-1778568321.png'
+duration 1.1
+file '../scenarios/macos_core_product_proof-2026-05-12_06-43-51-415Z/screenshots/failure-1778568341-1778568341.png'
+duration 1.1
+file '../scenarios/macos_support_dialogs_smoke-2026-05-12_06-46-01-214Z/screenshots/failure-1778568454-1778568454.png'
+duration 1.1
+file '../scenarios/macos_console_smoke-2026-05-12_06-48-23-566Z/screenshots/failure-1778568606-1778568606.png'
+duration 1.1
+file '../scenarios/macos_homebrew_save_rollback_smoke-2026-05-12_06-50-45-261Z/screenshots/failure-1778568736-1778568736.png'
+duration 1.1
+file '../scenarios/macos_customization_save_rollback_smoke-2026-05-12_06-52-29-903Z/screenshots/failure-1778568839-1778568839.png'
+duration 1.1
+file '../scenarios/macos_provider_evolve_full_smoke-2026-05-12_06-54-12-824Z/screenshots/failure-1778569045-1778569045.png'
+duration 1.1
+file '../scenarios/macos_provider_discard_smoke-2026-05-12_06-57-38-384Z/screenshots/failure-1778569149-1778569149.png'
+duration 1.1
+file '../scenarios/macos_provider_discard_smoke-2026-05-12_06-57-38-384Z/screenshots/failure-1778569149-1778569149.png'

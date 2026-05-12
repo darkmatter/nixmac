@@ -1,0 +1,135 @@
+2026-05-12T06:48:36.137722Z  INFO nixmac: NIXMAC_LOGFILE active at /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-12_06-48-23-566Z/diagnostics/nixmac-app.log
+2026-05-12T06:48:36.140393Z DEBUG nixmac: nixmac process booted
+2026-05-12T06:48:36.332089Z DEBUG nixmac: Tauri setup started
+2026-05-12T06:48:36.332123Z  INFO nixmac::panic_handler: Custom panic handler installed
+2026-05-12T06:48:36.332797Z  INFO nixmac: Sentry diagnostics disabled by user preference
+2026-05-12T06:48:36.333518Z  INFO nixmac::system::secret_scanner: [secret_scanner] initialized secrets scanner
+2026-05-12T06:48:36.336093Z DEBUG rusqlite_migration: some migrations defined (version: 3), try to migrate
+2026-05-12T06:48:36.336414Z DEBUG rusqlite_migration: some migrations to run, target: 3, current: 0
+2026-05-12T06:48:36.336488Z DEBUG rusqlite_migration: Running: CREATE TABLE IF NOT EXISTS commits (
+    id INTEGER PRIMARY KEY,
+    hash TEXT NOT NULL UNIQUE,
+    tree_hash TEXT NOT NULL,
+    message TEXT,
+    created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS evolutions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    origin_branch TEXT NOT NULL,
+    merged INTEGER NOT NULL DEFAULT 0,
+    builds INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS change_summaries (
+    id INTEGER PRIMARY KEY,
+    title TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'QUEUED' CHECK(status IN ('QUEUED', 'DONE', 'FAILED', 'CANCELLED')),
+    created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS changes (
+    id INTEGER PRIMARY KEY,
+    hash TEXT NOT NULL UNIQUE,
+    filename TEXT NOT NULL,
+    diff TEXT NOT NULL,
+    line_count INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    own_summary_id INTEGER REFERENCES change_summaries(id)
+);
+
+CREATE TABLE IF NOT EXISTS group_summaries (
+    change_id INTEGER NOT NULL REFERENCES changes(id),
+    change_summary_id INTEGER NOT NULL REFERENCES change_summaries(id)
+);
+
+CREATE TABLE IF NOT EXISTS change_sets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    commit_id INTEGER REFERENCES commits(id),
+    base_commit_id INTEGER NOT NULL REFERENCES commits(id),
+    commit_message TEXT,
+    generated_commit_message TEXT,
+    created_at INTEGER NOT NULL,
+    evolution_id INTEGER REFERENCES evolutions(id)
+);
+
+CREATE TABLE IF NOT EXISTS set_changes (
+    change_set_id INTEGER NOT NULL REFERENCES change_sets(id),
+    change_id INTEGER NOT NULL REFERENCES changes(id),
+    PRIMARY KEY (change_set_id, change_id)
+);
+
+CREATE TABLE IF NOT EXISTS queued_summaries (
+    id INTEGER PRIMARY KEY,
+    status TEXT NOT NULL DEFAULT 'QUEUED' CHECK(status IN ('QUEUED', 'DONE', 'FAILED', 'CANCELLED')),
+    attempted_count INTEGER NOT NULL DEFAULT 0,
+    prompt TEXT NOT NULL,
+    model_response TEXT,
+    group_summary_id INTEGER REFERENCES change_summaries(id),
+    hash_own_summary_id_pairs TEXT,
+    type TEXT NOT NULL CHECK(type IN ('NEW_SINGLE', 'NEW_GROUP', 'EVOLVED_GROUP'))
+);
+
+CREATE TABLE IF NOT EXISTS prompts (
+    id INTEGER PRIMARY KEY,
+    text TEXT NOT NULL,
+    commit_id INTEGER REFERENCES commits(id) ON DELETE SET NULL,
+    created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_commits_tree_hash ON commits(tree_hash);
+CREATE INDEX IF NOT EXISTS idx_evolutions_origin_branch ON evolutions(origin_branch);
+CREATE INDEX IF NOT EXISTS idx_prompts_commit ON prompts(commit_id);
+CREATE INDEX IF NOT EXISTS idx_change_sets_commit ON change_sets(commit_id);
+CREATE INDEX IF NOT EXISTS idx_change_sets_base ON change_sets(base_commit_id);
+CREATE INDEX IF NOT EXISTS idx_set_changes_change ON set_changes(change_id);
+CREATE INDEX IF NOT EXISTS idx_queued_summaries_status ON queued_summaries(status);
+
+2026-05-12T06:48:36.340595Z DEBUG rusqlite_migration: Running: CREATE TABLE IF NOT EXISTS restore_commits (
+    commit_hash TEXT PRIMARY KEY,
+    origin_hash TEXT NOT NULL
+);
+
+2026-05-12T06:48:36.340683Z DEBUG rusqlite_migration: Running: -- Legacy databases created before rusqlite_migration used `evolutions.branch`.
+-- The Rust hook for this migration performs the conditional column repair.
+SELECT 1;
+
+2026-05-12T06:48:36.343049Z  INFO rusqlite_migration: Database migrated to version 3
+2026-05-12T06:48:36.343645Z DEBUG nixmac::commands::debug: ⏱️  [db::init] took 11.258083ms
+2026-05-12T06:48:36.343655Z  INFO nixmac: Database initialized successfully
+2026-05-12T06:48:36.361941Z  INFO nixmac: NIXMAC_E2E_SOLID_CAPTURE enabled; using CSS-only dark WebView capture while preserving the normal overlay window
+2026-05-12T06:48:36.361955Z  INFO nixmac: NIXMAC_E2E_OPAQUE_WINDOW enabled; using an opaque visible-titlebar window with dark WebView backing for host visual capture
+2026-05-12T06:48:36.361962Z  INFO nixmac: NIXMAC_E2E_WEBVIEW_WATCHDOG enabled; stalled main WebView loads will request one reload
+2026-05-12T06:48:36.400778Z  INFO nixmac::evolve::search_docs: [search_docs] initialized docs index with 676 nix-darwin + 5230 home-manager = 5906 total entries
+2026-05-12T06:48:36.400795Z DEBUG nixmac::commands::debug: ⏱️  [initialize_docs_index] took 68.11675ms
+2026-05-12T06:48:36.525537Z DEBUG nixmac: Main nixmac window created
+2026-05-12T06:48:36.525964Z  INFO nixmac: NIXMAC_E2E_OPAQUE_WINDOW native window diagnostics: isOpaque=true alphaValue=1.000 level=0 hasShadow=true
+2026-05-12T06:48:36.975986Z DEBUG nixmac::evolve::chat_memory: [chat_memory] cleared messages count_before=0 count_after=0
+2026-05-12T06:48:38.540815Z DEBUG nixmac: main webview E2E boot probe requested: post-build-plus-2s
+2026-05-12T06:48:40.969461Z  WARN nixmac::system::secret_scanner: Using fallback regex for gitleaks rule: generic-api-key (original error: Error compiling regex: Regex error: error building NFA)
+2026-05-12T06:48:44.340774Z  WARN nixmac::system::secret_scanner: Skipping gitleaks rule without regex: pkcs12-file
+2026-05-12T06:48:45.389800Z  WARN nixmac::system::secret_scanner: Using fallback regex for gitleaks rule: pypi-upload-token (original error: Error compiling regex: Regex error: error building NFA)
+2026-05-12T06:48:46.567810Z DEBUG nixmac: main webview E2E boot probe requested: post-build-plus-10s
+2026-05-12T06:48:47.899211Z  WARN nixmac::system::secret_scanner: Using fallback regex for gitleaks rule: vault-batch-token (original error: Error compiling regex: Regex error: error building NFA)
+2026-05-12T06:48:48.393048Z DEBUG nixmac::commands::debug: ⏱️  [SecretScanner::global] took 12.059828292s
+2026-05-12T06:48:48.543190Z  WARN nixmac: main webview E2E load watchdog did not observe PageLoadEvent::Finished; reloading main webview
+2026-05-12T06:48:48.543384Z DEBUG nixmac: main webview E2E boot probe requested: watchdog-before-reload
+2026-05-12T06:48:48.543841Z  WARN nixmac: main webview E2E load watchdog reload requested
+2026-05-12T06:49:06.844824Z DEBUG nixmac: main webview page load Started: tauri://localhost
+2026-05-12T06:49:06.903504Z DEBUG nixmac: main webview page load Finished: tauri://localhost
+2026-05-12T06:49:06.948508Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: main-loaded
+2026-05-12T06:49:06.950581Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: root-found
+2026-05-12T06:49:06.967671Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: react-render-start
+2026-05-12T06:49:06.969893Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: darwin-widget-render
+2026-05-12T06:49:06.969902Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: app-render
+2026-05-12T06:49:06.970103Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: react-render-scheduled
+2026-05-12T06:49:06.979511Z DEBUG nixmac::commands::debug: ⏱️  [ui_get_prefs] took 344.792µs
+2026-05-12T06:49:06.980999Z  INFO nixmac::system::permissions: NIXMAC_SKIP_PERMISSIONS=1: reporting all permissions as granted
+2026-05-12T06:49:06.985332Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: app-effect
+2026-05-12T06:49:06.987820Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: mounted
+2026-05-12T06:49:07.909453Z DEBUG nixmac: main webview E2E boot probe requested: page-load-finished-plus-1s
+2026-05-12T06:49:11.907724Z DEBUG nixmac: main webview E2E boot probe requested: page-load-finished-plus-5s
+2026-05-12T06:49:22.215425Z DEBUG nixmac::commands::debug: ⏱️  [ui_get_prefs] took 4.953875ms
+2026-05-12T06:49:22.338256Z DEBUG nixmac::evolve::chat_memory: [chat_memory] cleared messages count_before=0 count_after=0
+2026-05-12T06:49:37.328906Z DEBUG nixmac::commands::debug: ⏱️  [ui_get_prefs] took 217.875µs
