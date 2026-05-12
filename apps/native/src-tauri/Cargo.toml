@@ -84,5 +84,8 @@ url = "2"
 cocoa = "0.26"
 objc = "0.2"
 
+[dev-dependencies]
+mockall = "0.14.0"
+
 [dependencies.tera]
 version = "1"
