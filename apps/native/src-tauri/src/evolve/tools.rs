@@ -29,14 +29,14 @@ use std::path::{Component, Path};
 // =============================================================================
 
 /// Creates provider-agnostic tools
-pub fn create_tools() -> Vec<Tool> {
+pub fn create_tools(banned_tools: &[&str]) -> Vec<Tool> {
     let search_docs_limit_description = format!(
         "Maximum results to return (default: {}, max: {})",
         search_docs_default_limit(),
         search_docs_max_limit()
     );
 
-    vec![
+    let allowed_tools = vec![
         Tool {
             name: "think".to_string(),
             description: "Use this tool to think through problems step by step. You should use this \
@@ -446,7 +446,12 @@ IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with
                 "required": ["summary"]
             }),
         },
-    ]
+    ];
+
+    allowed_tools
+        .into_iter()
+        .filter(|tool| !banned_tools.contains(&tool.name.as_str()))
+        .collect()
 }
 
 // =============================================================================
@@ -1328,5 +1333,22 @@ mod tests {
             err_chain.contains("ignored by .gitignore"),
             "unexpected error: {err:#}"
         );
+    }
+
+    #[test]
+    fn create_tools_allows_bans() {
+        let banned_tools = ["edit_file", "edit_nix_file"];
+        let tools = super::create_tools(&banned_tools);
+
+        // Ensure tools doesn't contain either of the banned ones
+        // by looking for the tools with the banned names and asserting they are not found.
+        for banned in &banned_tools {
+            let found = tools.iter().find(|tool| tool.name == *banned);
+            assert!(
+                found.is_none(),
+                "Banned tool '{}' should not be in the tools list",
+                banned
+            );
+        }
     }
 }
