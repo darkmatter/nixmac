@@ -92,6 +92,14 @@ bun install
 cd apps/native && bun run tauri build --bundles app
 ```
 
+### Build Debug with Bundle
+
+```bash
+cd apps/native
+bun run tauri build --debug
+../../target/debug/nixmac
+```
+
 ### Development
 
 ```bash

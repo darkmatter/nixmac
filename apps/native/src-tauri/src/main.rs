@@ -469,6 +469,7 @@ fn run_gui_mode(
             commands::config::config_get,
             commands::config::config_set_host_attr,
             commands::config::config_set_dir,
+            commands::config::config_prepare_new_dir,
             commands::config::config_pick_dir,
             commands::config::flake_exists_at,
             commands::config::path_exists,
@@ -480,6 +481,7 @@ fn run_gui_mode(
             commands::debug::trigger_test_panic,
             #[cfg(debug_assertions)]
             commands::debug::debug_sentry_event,
+            commands::debug::developer_clear_tauri_state,
             #[cfg(debug_assertions)]
             commands::debug::e2e_log_breadcrumb,
             #[cfg(debug_assertions)]
@@ -584,10 +586,19 @@ fn run_gui_mode(
                 }
             });
 
-            // Retry any pending feedback reports from previous failed submissions
-            let retry_handle = handle.clone();
+            // Background initialize the scanner singleton; the returned &'static ref is not
+            // needed right now. fire-and-forget is intentional here.
+            let scanner_handle = handle.clone();
             tauri::async_runtime::spawn(async move {
-                match feedback::retry_pending(&retry_handle).await {
+                let _ = tauri::async_runtime::spawn_blocking({
+                    let h = scanner_handle.clone();
+                    move || system::secret_scanner::SecretScanner::global(&h)
+                }).await;
+
+                // Retry any pending feedback reports from previous failed submissions
+                // Note that this depends on the secret scanner having been initialized first,
+                // hence the blocking spawn and await above.
+                match feedback::retry_pending(&scanner_handle).await {
                     Ok(n) if n > 0 => {
                         log::info!("Retried and sent {} pending feedback report(s)", n)
                     }
@@ -596,14 +607,10 @@ fn run_gui_mode(
                 }
             });
 
-            // Eagerly initialise the scanner singleton; the returned &'static ref is not
-            // needed right now. fire-and-forget is intentional here.
-            let _ = system::secret_scanner::SecretScanner::global(handle);
-
-            // Build the nix-darwin docs index once at startup for fast option-shape lookup.
-            // CONSIDER: Moving this to background or do it on first search_docs call
-            // if we start to get concerned about startup time.
-            evolve::search_docs::initialize_docs_index();
+            // Background initialize the nix-darwin docs index once at startup for fast option-shape lookup.
+             tauri::async_runtime::spawn_blocking(|| {
+                 evolve::search_docs::initialize_docs_index();
+             });
 
             let send_diagnostics = store::get_send_diagnostics(handle).unwrap_or(false);
             if send_diagnostics {

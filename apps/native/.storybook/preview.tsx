@@ -1,26 +1,19 @@
+import addonA11y from "@storybook/addon-a11y";
+import addonDocs from "@storybook/addon-docs";
 import type { Decorator } from "@storybook/react-vite";
 import { definePreview } from "@storybook/react-vite";
+import { sb } from "storybook/test";
 import { useEffect } from "react";
 import "./mocks/tauri-runtime";
 import "../src/index.css";
-import { useWidgetStore } from "../src/stores/widget-store";
 
-// Pre-seed the widget store at module-load time so components never see the
-// default null/false values (which would show the nix-setup or permissions
-// screens). This runs synchronously before any story renders.
-useWidgetStore.setState({
-  nixInstalled: true,
-  darwinRebuildAvailable: true,
-  permissionsChecked: true,
-  permissionsState: {
-    permissions: [],
-    allRequiredGranted: true,
-    checkedAt: Date.now(),
-  },
-  configDir: "/Users/demo/.darwin",
-  hosts: ["Demo-MacBook-Pro", "Work-MacBook"],
-  host: "Demo-MacBook-Pro",
-});
+// Replace the widget-store module wholesale with a clamped variant that
+// can never drift the nix-setup / permissions / feedback-dialog
+// bypasses. The redirect target is `apps/native/src/stores/__mocks__/widget-store.ts`.
+//
+// Storybook's mocker resolves the path via Node's `require.resolve`, which
+// doesn't know about `.ts` extensions — so we spell it out.
+sb.mock(import("../src/stores/widget-store.ts"));
 
 /**
  * Decorator that applies the dark theme class to the document.
@@ -38,16 +31,18 @@ const withDarkTheme: Decorator = (Story) => {
 };
 
 const preview = definePreview({
-  addons: [],
+  addons: [addonA11y(), addonDocs()],
   tags: ["autodocs", "test"],
   parameters: {
     layout: "padded",
+
     controls: {
       matchers: {
         color: /(background|color)$/i,
         date: /Date$/i,
       },
     },
+
     backgrounds: {
       options: {
         dark: { name: "dark", value: "#0a0a0b" },
@@ -56,6 +51,13 @@ const preview = definePreview({
       },
       default: "dark",
     },
+
+    a11y: {
+      // 'todo' - show a11y violations in the test UI only
+      // 'error' - fail CI on a11y violations
+      // 'off' - skip a11y checks entirely
+      test: "todo"
+    }
   },
   initialGlobals: {
     // 👇 Set the initial background color

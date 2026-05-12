@@ -3,6 +3,7 @@ import "@testing-library/jest-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useWidgetStore } from "@/stores/widget-store";
+import type { SetDirResult } from "@/types/shared";
 import { DirectoryPicker } from "@/components/widget/controls/directory-picker";
 
 // ---------------------------------------------------------------------------
@@ -50,6 +51,7 @@ function resetStore() {
 
 function resetMocks() {
   mockPickDir.mockReset();
+  mockPrepareNewDir.mockReset();
   mockNormalize.mockReset();
   mockExists.mockReset();
   mockSetDir.mockReset();
@@ -59,6 +61,7 @@ function resetMocks() {
 
   // Sensible "happy-path" defaults; individual tests override as needed.
   mockNormalize.mockImplementation(async (p) => p.trim());
+  mockPrepareNewDir.mockResolvedValue();
   mockExists.mockResolvedValue(true);
   mockSetDir.mockImplementation(async (p) => ({
     dir: p,
@@ -211,6 +214,49 @@ describe("<DirectoryPicker>", () => {
     render(<DirectoryPicker label="Config directory" />);
     fireEvent.click(screen.getByRole("button", { name: /browse/i }));
     expect(mockPickDir).toHaveBeenCalledTimes(1);
+  });
+
+  it("in setup flow, starts with New/Existing choices and creates a named directory", async () => {
+    const onConfigured = vi.fn();
+    mockNormalize.mockImplementation(async (p) => p === "~/.nixmac" ? "/Users/me/.nixmac" : p.trim());
+
+    render(<DirectoryPicker label="Config directory" flow="setup" onConfigured={onConfigured} />);
+
+    expect(screen.getByRole("tab", { name: "New" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Existing" })).toBeInTheDocument();
+
+    const nameInput = screen.getByLabelText("Config directory name");
+    fireEvent.change(nameInput, { target: { value: ".nixmac" } });
+    fireEvent.click(screen.getByRole("button", { name: /create/i }));
+
+    await waitFor(() => expect(mockPrepareNewDir).toHaveBeenCalledWith("/Users/me/.nixmac"));
+    expect(useWidgetStore.getState().configDir).toBe("/Users/me/.nixmac");
+    expect(onConfigured).toHaveBeenCalledTimes(1);
+  });
+
+  it("in setup flow, rejects path-like names for new directories", async () => {
+    render(<DirectoryPicker label="Config directory" flow="setup" />);
+
+    fireEvent.change(screen.getByLabelText("Config directory name"), {
+      target: { value: "configs/darwin" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /create/i }));
+
+    expect(await screen.findByText("Use a directory name, not a path")).toBeInTheDocument();
+    expect(mockPrepareNewDir).not.toHaveBeenCalled();
+  });
+
+  it("in setup flow, Existing keeps the browse-based selection path", async () => {
+    const onConfigured = vi.fn();
+    mockPickDir.mockResolvedValue({ dir: "/Users/me/config", evolveState: null, hosts: ["mbp"] });
+
+    render(<DirectoryPicker label="Config directory" flow="setup" onConfigured={onConfigured} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Existing" }));
+    fireEvent.click(await screen.findByRole("button", { name: /browse/i }));
+
+    await waitFor(() => expect(mockPickDir).toHaveBeenCalledTimes(1));
+    expect(useWidgetStore.getState().configDir).toBe("/Users/me/config");
+    expect(onConfigured).toHaveBeenCalledTimes(1);
   });
 
   it("clears the validation message when configDir changes externally to a valid dir with a flake", async () => {

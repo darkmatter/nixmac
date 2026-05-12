@@ -12,11 +12,11 @@
   },
   "iconLibrary": "lucide",
   "aliases": {
-    "components": "@/components",
-    "utils": "@/lib/utils",
-    "ui": "@/components/ui",
-    "lib": "@/lib",
-    "hooks": "@/hooks"
+    "components": "@nixmac/ui/components",
+    "utils": "@nixmac/ui/lib/utils",
+    "ui": "@nixmac/ui/components/ui",
+    "lib": "@nixmac/ui/lib",
+    "hooks": "@nixmac/ui/hooks"
   },
   "registries": {
     "@aceternity": "https://ui.aceternity.com/registry/{name}.json",

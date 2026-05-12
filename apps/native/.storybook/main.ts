@@ -1,9 +1,12 @@
-import path from "node:path";
+import path, { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { StorybookConfig } from "@storybook/react-vite";
 import { mergeConfig } from "vite";
 
 const storybookDir = fileURLToPath(new URL(".", import.meta.url));
+const appRoot = path.resolve(storybookDir, "..");
+const repoRoot = path.resolve(appRoot, "../..");
+const uiPackageRoot = path.resolve(repoRoot, "packages/ui/src");
 
 function withoutMonacoEditorPlugin(plugins: unknown): unknown {
   if (!Array.isArray(plugins)) return plugins;
@@ -29,22 +32,30 @@ function withoutMonacoEditorPlugin(plugins: unknown): unknown {
 }
 
 const config: StorybookConfig = {
-  stories: ["../src/**/*.mdx", "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
+  stories: [
+    "../src/**/*.mdx",
+    "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)",
+    "../../../packages/ui/src/**/*.stories.@(js|jsx|mjs|ts|tsx)",
+  ],
   addons: [
-    "@storybook/addon-essentials",
-    "@storybook/addon-a11y",
-    "@storybook/addon-onboarding",
-    "@storybook/addon-vitest",
+    getAbsolutePath("@storybook/addon-a11y"),
+    getAbsolutePath("@storybook/addon-onboarding"),
+    getAbsolutePath("@storybook/addon-vitest"),
+    getAbsolutePath("@storybook/addon-docs")
   ],
   framework: {
-    name: "@storybook/react-vite",
+    name: getAbsolutePath("@storybook/react-vite"),
     options: {},
   },
   viteFinal: async (config) => {
     const merged = mergeConfig(config, {
       resolve: {
         alias: {
+          "@": path.resolve(appRoot, "src"),
+          "#storybook/preview": path.resolve(storybookDir, "preview.tsx"),
           "@/tauri-api": path.resolve(storybookDir, "mocks/tauri-api.ts"),
+          "@/components/ui": path.resolve(uiPackageRoot, "components/ui"),
+          "@nixmac/ui": uiPackageRoot,
           "@tauri-apps/api/core": path.resolve(storybookDir, "mocks/tauri-core.ts"),
           "@tauri-apps/api/app": path.resolve(storybookDir, "mocks/tauri-app.ts"),
           "@tauri-apps/api/event": path.resolve(storybookDir, "mocks/tauri-event.ts"),
@@ -56,11 +67,19 @@ const config: StorybookConfig = {
         },
       },
     });
-    merged.plugins = withoutMonacoEditorPlugin(merged.plugins) as typeof merged.plugins;
+    // merged.plugins = withoutMonacoEditorPlugin(merged.plugins) as typeof merged.plugins;
     merged.build ??= {};
     merged.build.target = "esnext";
     return merged;
   },
+  env: (config) => ({
+    ...config,
+    NIX_INSTALLED_OVERRIDE: "true",
+  }),
 };
 
 export default config;
+
+function getAbsolutePath(value: string): any {
+  return dirname(fileURLToPath(import.meta.resolve(`${value}/package.json`)));
+}

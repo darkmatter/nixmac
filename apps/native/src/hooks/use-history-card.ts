@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import type { KeyboardEvent } from "react";
 import type { HistoryItem } from "@/tauri-api";
 import { cn } from "@/lib/utils";
@@ -23,16 +23,16 @@ export function useHistoryCard(item: HistoryItem, isPreview = false): UseHistory
 
   const colorMap = item.changeMap ? buildColorMap(item.changeMap) : new Map();
 
-  const handleCardClick = useCallback(() => {
+  const handleCardClick = () => {
     if (window.getSelection()?.toString()) return;
     if (!item.changeMap || isPreview) return;
     setExpanded((prev) => !prev);
-  }, [item.changeMap, isPreview]);
+  };
 
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+  const handleKeyDown = (e: KeyboardEvent) => {
     if (isPreview) return;
     if (e.key === "Enter" || e.key === " ") setExpanded((prev) => !prev);
-  }, [isPreview]);
+  };
 
   const borderColor = item.isBuilt ? "border-teal-400/40" : "border-white/[0.12]";
   const interactivity = item.changeMap && !isPreview

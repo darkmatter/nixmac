@@ -1,5 +1,6 @@
 #[cfg(debug_assertions)]
 use crate::shared_types;
+use crate::storage::store;
 #[cfg(debug_assertions)]
 use serde::Serialize;
 #[cfg(debug_assertions)]
@@ -8,8 +9,39 @@ use std::io::Write;
 use std::path::Path;
 #[cfg(debug_assertions)]
 use std::time::{SystemTime, UNIX_EPOCH};
+use tauri::AppHandle;
 #[cfg(debug_assertions)]
-use tauri::{AppHandle, Manager};
+use tauri::Manager;
+use tauri_plugin_store::StoreExt;
+
+fn clear_tauri_store(app: &AppHandle, path: &str) -> Result<(), String> {
+    let store = app.store(path).map_err(|e| e.to_string())?;
+    store.clear();
+    store.save().map_err(|e| e.to_string())
+}
+
+use std::time::Instant;
+
+pub struct TimerGuard {
+    name: &'static str,
+    start: Instant,
+}
+
+impl TimerGuard {
+    pub fn new(name: &'static str) -> Self {
+        Self {
+            name,
+            start: Instant::now(),
+        }
+    }
+}
+
+impl Drop for TimerGuard {
+    fn drop(&mut self) {
+        let elapsed = self.start.elapsed();
+        log::debug!("⏱️  [{}] took {:?}", self.name, elapsed);
+    }
+}
 
 /// Test command to trigger a panic and verify the panic handler works.
 /// This will cause a controlled panic that should be caught by the panic handler
@@ -39,6 +71,21 @@ pub async fn debug_sentry_event() -> Result<shared_types::DebugSentryResult, Str
         ok: true,
         message: "Debug event captured from Rust".to_string(),
     })
+}
+
+/// Clears the app's Tauri plugin-store files.
+#[tauri::command]
+pub async fn developer_clear_tauri_state(app: AppHandle) -> Result<(), String> {
+    let developer_mode =
+        store::get_bool_pref(&app, store::DEVELOPER_MODE_KEY, false).map_err(|e| e.to_string())?;
+    if !developer_mode {
+        return Err("Developer mode is required to clear Tauri state".to_string());
+    }
+
+    clear_tauri_store(&app, "settings.json")?;
+    clear_tauri_store(&app, "evolve-state.json")?;
+    clear_tauri_store(&app, "build-state.json")?;
+    Ok(())
 }
 
 #[cfg(debug_assertions)]

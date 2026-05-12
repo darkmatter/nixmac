@@ -12,6 +12,8 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "paths": {
+      "@/components/ui/*": ["../../packages/ui/src/components/ui/*"],
+      "@nixmac/ui/*": ["../../packages/ui/src/*"],
       "@/*": ["./src/*"]
     },
     "strict": true,

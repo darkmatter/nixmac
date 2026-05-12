@@ -8,6 +8,7 @@ import {
   InputGroupText,
   InputGroupTextarea,
 } from "@/components/ui/input-group";
+import { BeginEvolveWarning } from "@/components/widget/promptinput/begin-evolve-warning";
 import { MacRecommendationChip } from "@/components/widget/promptinput/mac-recommendation-chip";
 import { HomebrewBadge } from "@/components/widget/promptinput/homebrew-badge";
 import { PromptHistoryBadge } from "@/components/widget/promptinput/prompt-history-badge";
@@ -17,7 +18,8 @@ import { getProviderConfigInvalidReason } from "@/lib/ai-provider-validation";
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
 import { ArrowUpIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { Separator } from "@/components/ui/separator";
 
 const MAX_CONTEXT_LENGTH = 1000;
 
@@ -33,6 +35,7 @@ export function PromptInput() {
   const settingsOpen = useWidgetStore((s) => s.settingsOpen);
   const setSettingsOpen = useWidgetStore((s) => s.setSettingsOpen);
   const { handleEvolve, evolveFromManual } = useEvolve();
+  const [warningOpen, setWarningOpen] = useState(false);
   const [providerErrors, setProviderErrors] = useState<{ evolve: string | null; summary: string | null }>({
     evolve: null,
     summary: null,
@@ -78,7 +81,7 @@ export function PromptInput() {
 
   const needsResolution = !evolveState?.evolutionId && gitStatus && !gitStatus.cleanHead;
 
-  const promptValidationError = useMemo(() => {
+  const promptValidationError = (() => {
     const evolveError = providerErrors.evolve;
     const summaryError = providerErrors.summary;
 
@@ -98,7 +101,7 @@ export function PromptInput() {
     }
 
     return null;
-  }, [providerErrors.evolve, providerErrors.summary]);
+  })();
 
   const handleSubmit = () => {
     if (!evolvePrompt.trim()) return;
@@ -123,63 +126,61 @@ export function PromptInput() {
     percentage >= 1 ? "100% used" : percentage < 0.1 ? "" : `${Math.floor(percentage * 100)}% used`;
 
   return (
-    <div className="space-y-3">
-      <InputGroup>
+    <div className="space-y-3 flex-col min-h-24">
+      <BeginEvolveWarning open={warningOpen} onOpenChange={setWarningOpen} handleEvolve={handleEvolve} />
+      <InputGroup className="bg-background flex-col min-h-24">
         <InputGroupTextarea
           id="evolve-prompt-input"
           data-testid="evolve-prompt-input"
           disabled={isLoading}
-          onChange={(e) => setEvolvePrompt(e.target.value)}
-          onKeyDown={(e) => {
+          onChange={(e: { target: { value: string; }; }) => setEvolvePrompt(e.target.value)}
+          onKeyDown={(e: { key: string; }) => {
             if (e.key === "Enter" && evolvePrompt.trim() && !sendDisabled) {
               handleSubmit();
             }
           }}
           placeholder={placeholder}
           value={evolvePrompt}
+          className="outline-none"
         />
-
-        {/* Placeholder template
-        "+" for adding files/resources for context
-        "dropdown" for selecting context mode (auto/agent/manual) */}
-
-        <InputGroupAddon align="block-end">
-          {/* <InputGroupButton
-            className="rounded-full"
-            size="icon-xs"
-            variant="outline"
-          >
-            <Plus />
-          </InputGroupButton> */}
-          {/* <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <InputGroupButton variant="ghost">Auto</InputGroupButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              className="[--radius:0.95rem]"
-              side="top"
+          <InputGroupAddon align="block-end">
+            {/* <InputGroupButton
+              className="rounded-full size-6 p-0.5"
+              size="icon-xs"
+              variant="outline"
             >
-              <DropdownMenuItem>Auto</DropdownMenuItem>
-              <DropdownMenuItem>Agent</DropdownMenuItem>
-              <DropdownMenuItem>Manual</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu> */}
-          <InputGroupText className="ml-auto">{contextUsage}</InputGroupText>
-          {/* <Separator className="!h-4" orientation="vertical" /> */}
-          <InputGroupButton
+              <Plus />
+            </InputGroupButton> */}
+             {/* <DropdownMenu>
+               <DropdownMenuTrigger asChild>
+                 <InputGroupButton variant="ghost">Auto</InputGroupButton>
+               </DropdownMenuTrigger>
+               <DropdownMenuContent
+                 align="start"
+                 className="[--radius:0.95rem]"
+                 side="top"
+               >
+                 <DropdownMenuItem>Auto</DropdownMenuItem>
+                 <DropdownMenuItem>Agent</DropdownMenuItem>
+                 <DropdownMenuItem>Manual</DropdownMenuItem>
+               </DropdownMenuContent>
+             </DropdownMenu> */}
+             <InputGroupText className="ml-auto">{contextUsage}</InputGroupText>
+             <Separator className="!h-4" orientation="vertical" />
+             <Separator className="!h-4" orientation="vertical" />
+             <InputGroupButton
+               className="rounded-full size-6 p-0.5"
+               size="icon-xs"
+            variant="default"
             id="evolve-prompt-send"
             data-testid="evolve-prompt-send"
-            className="rounded-full"
             disabled={sendDisabled}
             onClick={handleSubmit}
-            size="icon-xs"
-            variant="default"
-          >
-            <ArrowUpIcon />
-            <span className="sr-only">Send</span>
-          </InputGroupButton>
-        </InputGroupAddon>
+             >
+               <ArrowUpIcon />
+               <span className="sr-only">Send</span>
+             </InputGroupButton>
+           </InputGroupAddon>
       </InputGroup>
 
       {promptValidationError && (
