@@ -1,0 +1,61 @@
+[0;34m[19:05:10][0m === macos-e2e test runner ===
+[0;34m[19:05:10][0m Started at Tue May 12 19:05:10 PDT 2026
+[0;34m[19:05:10][0m Machine: DXU97120 | macOS 26.2
+[0;34m[19:05:10][0m Working directory: /Users/admin/nixmac-peekaboo-local-e2e/tests/e2e
+[0;34m[19:05:11][0m Scenario: macos_console_smoke
+[0;34m[19:05:11][0m Starting screen recording: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-13_02-05-08-477Z/video/peekaboo-e2e.mp4
+[0;34m[19:05:14][0m Attempted to dismiss Terminal Automation permission prompt
+[0;34m[19:05:18][0m Recorder started (PID: 34540)
+[0;34m[19:05:18][0m === Phase 1: Prepare Console fixture ===
+[0;32m[PASS][0m Peekaboo Bridge connected
+[0;32m[PASS][0m Peekaboo permissions OK
+[1;33m[WARN][0m No ADMIN_PASSWORD set, cannot unlock screen
+[0;34m[19:05:18][0m Clearing nixmac app state...
+[0;32m[PASS][0m App state cleared
+[0;34m[19:05:21][0m Seeded nixmac settings at /Users/admin/Library/Application Support/com.darkmatter.nixmac/settings.json
+[0;34m[19:05:21][0m Seeded nixmac E2E runtime at /Users/admin/Library/Application Support/com.darkmatter.nixmac/e2e-runtime.json (expires 2026-05-12 19:35:21)
+[0;32m[PASS][0m peekabooCoreFixture: Prepared deterministic config and local provider-validation settings
+[0;34m[19:05:21][0m === Phase 2: Launch nixmac app ===
+[0;34m[19:05:21][0m Launching nixmac...
+[0;32m[PASS][0m App launched: nixmac
+[0;31m[FAIL][0m App shell did not expose Console footer with visible screenshot signal
+📝 Created annotated screenshot with 104 interactive elements
+🖼️  Screenshot saved to: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-13_02-05-08-477Z/screenshots/failure-1778638099-1778638099.png
+📝 Annotated screenshot: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-13_02-05-08-477Z/screenshots/failure-1778638099-1778638099_annotated.png
+📱 Application: nixmac
+[win] Window: nixmac
+🧊 Detection method: AXorcist (cached)
+📊 UI elements detected: 125
+⚙️  Interactable elements: 104
+⏱️  Execution time: 0.21s
+
+🔍 Element Summary
+• menu_0 (menu) - Apple
+• menu_72 (menu) - nixmac
+• menu_93 (menu) - File
+• menu_97 (menu) - Edit
+• menu_114 (menu) - View
+• menu_117 (menu) - Window
+• menu_123 (menu) - Help
+• menuitem_1 (other) - Menu Item
+• menuitem_2 (other) - About This Mac
+• menuitem_3 (other) - System Information
+  ...and 115 more elements
+
+📝 Annotated screenshot created
+
+Snapshot ID: 02B27D55-D198-4953-889E-D0A2FF452AA9
+Agent: Use a tool like view_image to inspect it.
+[0;34m[19:08:19][0m Screenshot saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-13_02-05-08-477Z/screenshots/failure-1778638099-1778638099.png
+/Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-13_02-05-08-477Z/screenshots/failure-1778638099-1778638099.png
+[0;34m[19:08:20][0m Stopping recorder (PID: 34540)...
+[0;34m[19:08:25][0m Video saved: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-13_02-05-08-477Z/video/peekaboo-e2e.mp4 (512K)
+✓ Quit nixmac
+✗ Failed to quit nixmac Graphics and Media (PID: 36837)
+  💡 Tip: The app may have unsaved changes or be showing a dialog. Try --force to force quit.
+[0;34m[19:08:28][0m Uninstalling Nix...
+ INFO nix-installer v3.19.0
+ INFO nix-installer v3.19.0
+[31m`nix-darwin` installation detected, it must be removed before uninstalling Nix. Please refer to https://github.com/LnL7/nix-darwin#uninstalling for instructions how to uninstall `nix-darwin`.[39m
+[0;32m[PASS][0m Nix uninstalled
+[0;34m[19:08:30][0m E2E report written: /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-13_02-05-08-477Z/e2e-report/macos_console_smoke/e2e-report.json

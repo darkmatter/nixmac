@@ -1,0 +1,50 @@
+[
+  {
+    "timeSeconds": 0,
+    "label": "core launch missing 1778637751",
+    "screenshot": "scenarios/macos_core_product_proof-2026-05-13_02-01-00-749Z/screenshots/core-launch-missing-1778637751.png",
+    "capturedAt": "2026-05-13T02:02:32.040Z"
+  },
+  {
+    "timeSeconds": 1.1,
+    "label": "failure 1778637752 1778637752",
+    "screenshot": "scenarios/macos_core_product_proof-2026-05-13_02-01-00-749Z/screenshots/failure-1778637752-1778637752.png",
+    "capturedAt": "2026-05-13T02:02:32.500Z"
+  },
+  {
+    "timeSeconds": 2.2,
+    "label": "failure 1778637859 1778637859",
+    "screenshot": "scenarios/macos_support_dialogs_smoke-2026-05-13_02-02-46-135Z/screenshots/failure-1778637859-1778637859.png",
+    "capturedAt": "2026-05-13T02:04:19.889Z"
+  },
+  {
+    "timeSeconds": 3.3,
+    "label": "failure 1778638099 1778638099",
+    "screenshot": "scenarios/macos_console_smoke-2026-05-13_02-05-08-477Z/screenshots/failure-1778638099-1778638099.png",
+    "capturedAt": "2026-05-13T02:08:19.722Z"
+  },
+  {
+    "timeSeconds": 4.4,
+    "label": "failure 1778638249 1778638249",
+    "screenshot": "scenarios/macos_homebrew_save_rollback_smoke-2026-05-13_02-08-32-467Z/screenshots/failure-1778638249-1778638249.png",
+    "capturedAt": "2026-05-13T02:10:50.118Z"
+  },
+  {
+    "timeSeconds": 5.5,
+    "label": "failure 1778638472 1778638472",
+    "screenshot": "scenarios/macos_customization_save_rollback_smoke-2026-05-13_02-11-03-326Z/screenshots/failure-1778638472-1778638472.png",
+    "capturedAt": "2026-05-13T02:14:32.580Z"
+  },
+  {
+    "timeSeconds": 6.6,
+    "label": "failure 1778638618 1778638618",
+    "screenshot": "scenarios/macos_provider_evolve_full_smoke-2026-05-13_02-14-45-876Z/screenshots/failure-1778638618-1778638618.png",
+    "capturedAt": "2026-05-13T02:16:59.116Z"
+  },
+  {
+    "timeSeconds": 7.7,
+    "label": "failure 1778638764 1778638764",
+    "screenshot": "scenarios/macos_provider_discard_smoke-2026-05-13_02-17-11-986Z/screenshots/failure-1778638764-1778638764.png",
+    "capturedAt": "2026-05-13T02:19:24.697Z"
+  }
+]
