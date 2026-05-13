@@ -32,29 +32,40 @@ pub struct SearchPackageResult {
     pub install_via: SearchResultInstallTarget,
 }
 
+/// Wrapper for `nix registry list` that returns the raw output as a string, or an error if the command fails.
+/// Clients can parse it themselves.
+fn nix_registry_list(config_dir: &str) -> Result<String> {
+    let mut cmd = Command::new("nix");
+    cmd.args(["registry", "list"])
+        .current_dir(config_dir)
+        .env("PATH", crate::system::nix::get_nix_path())
+        .env("NIX_CONFIG", "experimental-features = nix-command flakes");
+
+    let output = cmd.output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let truncated_stderr = truncate_error(&stderr, 8000);
+        return Err(anyhow::anyhow!(
+            "nix registry list failed with status {:?}: {}",
+            output.status.code(),
+            truncated_stderr
+        ));
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+}
+
 /// Determine prior to searching whether a channel is registered and can be searched,
 /// to avoid unnecessary command execution and errors.
-/// We can do this with the following command:
-/// ```bash
-/// nix registry list'
-/// ```
-/// and check if the output contains the channel in a "flake:channel" format.
-fn channel_is_registered(channel: &str) -> bool {
-    let mut cmd = Command::new("nix");
-    cmd.args(["registry", "list"]);
-
-    // Pipe this to grep to check if the channel is registered
-    let output = match cmd.output() {
-        Ok(output) => output,
-        Err(e) => {
-            log::error!("Failed to execute nix registry list: {}", e);
-            return false;
-        }
-    };
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    // Important to have a space before and after the channel name to avoid partial matches (e.g. "nixpkgs-unstable" matching "nixpkgs")
-    stdout.lines().any(|line| line.contains(&format!(" flake:{} ", channel)))
+/// Check if the output contains the channel in a "flake:channel" format.
+fn channel_is_registered(registry_list: &str, channel: &str) -> bool {
+    // Split each line by whitespace and check if any token equals "flake:<channel>".
+    // Avoids partial matches.
+    let channel_pattern = format!("flake:{}", channel);
+    registry_list
+        .lines()
+        .any(|line| line.split_whitespace().any(|token| token == channel_pattern))
 }
 
 /// Search a single channel and return a list of SearchPackageResult
@@ -179,12 +190,14 @@ fn collect_from_channels(
     limit: u64,
     structured: &mut Vec<SearchPackageResult>,
 ) -> Result<bool> {
+    let registry_list = nix_registry_list(config_dir)?;
+
     for channel in channels {
         if structured.len() >= limit as usize {
             return Ok(true);
         }
 
-        if !channel_is_registered(channel) {
+        if !channel_is_registered(&registry_list, channel) {
             // CONSIDER: Whether we need to surface this to the agent somehow.
             log::warn!("Channel '{}' is not registered, skipping search for this channel", channel);
             continue;
@@ -428,5 +441,13 @@ mod tests {
         process_channel_results(&mut structured, channel2_results, 10).unwrap();
 
         assert_eq!(structured.len(), 2, "expected deduplication by attr_path");
+    }
+
+    #[test]
+    fn channel_registration_check() {
+        let registry_list = "global flake:agda github:agda/agd\nglobal flake:nixpkgs github:NixOS/nixpkgs/nixpkgs-unstable\nglobal flake:nix github:NixOS/nix\n";
+        assert!(channel_is_registered(registry_list, "nixpkgs"));
+        assert!(channel_is_registered(registry_list, "nix"));
+        assert!(!channel_is_registered(registry_list, "unregistered-channel"));
     }
 }
