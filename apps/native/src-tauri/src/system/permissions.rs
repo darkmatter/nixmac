@@ -73,8 +73,24 @@ fn get_default_permissions() -> Vec<Permission> {
     ]
 }
 
+#[cfg(debug_assertions)]
 fn e2e_skip_permissions_enabled() -> bool {
     crate::e2e_runtime::enabled("NIXMAC_SKIP_PERMISSIONS")
+}
+
+#[cfg(not(debug_assertions))]
+fn e2e_skip_permissions_enabled() -> bool {
+    false
+}
+
+#[cfg(debug_assertions)]
+fn vite_skip_permissions_enabled() -> bool {
+    std::env::var("VITE_NIXMAC_SKIP_PERMISSIONS").is_ok()
+}
+
+#[cfg(not(debug_assertions))]
+fn vite_skip_permissions_enabled() -> bool {
+    false
 }
 
 fn granted_folder_permission(id: &str, name: &str, description: &str) -> Permission {
@@ -147,7 +163,7 @@ fn check_folder_access(path: &PathBuf) -> PermissionStatus {
 /// PermissionDenied. Only if every probe path is missing (NotFound) do we
 /// fall back to Pending.
 fn check_full_disk_access() -> PermissionStatus {
-    if std::env::var("VITE_NIXMAC_SKIP_PERMISSIONS").is_ok() {
+    if vite_skip_permissions_enabled() {
         debug!("VITE_NIXMAC_SKIP_PERMISSIONS is set, assuming Full Disk Access granted");
         return PermissionStatus::Granted;
     }
@@ -424,6 +440,54 @@ pub fn all_required_permissions_granted() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn e2e_permission_skip_env_is_honored_in_debug_builds() {
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore =
+            crate::test_support::EnvVarRestore::capture(&["NIXMAC_SKIP_PERMISSIONS"]);
+
+        std::env::set_var("NIXMAC_SKIP_PERMISSIONS", "true");
+
+        assert!(e2e_skip_permissions_enabled());
+    }
+
+    #[cfg(not(debug_assertions))]
+    #[test]
+    fn e2e_permission_skip_env_is_ignored_in_release_builds() {
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore =
+            crate::test_support::EnvVarRestore::capture(&["NIXMAC_SKIP_PERMISSIONS"]);
+
+        std::env::set_var("NIXMAC_SKIP_PERMISSIONS", "true");
+
+        assert!(!e2e_skip_permissions_enabled());
+    }
+
+    #[cfg(debug_assertions)]
+    #[test]
+    fn vite_permission_skip_env_is_honored_in_debug_builds() {
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore =
+            crate::test_support::EnvVarRestore::capture(&["VITE_NIXMAC_SKIP_PERMISSIONS"]);
+
+        std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "true");
+
+        assert!(vite_skip_permissions_enabled());
+    }
+
+    #[cfg(not(debug_assertions))]
+    #[test]
+    fn vite_permission_skip_env_is_ignored_in_release_builds() {
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore =
+            crate::test_support::EnvVarRestore::capture(&["VITE_NIXMAC_SKIP_PERMISSIONS"]);
+
+        std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "true");
+
+        assert!(!vite_skip_permissions_enabled());
+    }
 
     #[test]
     fn test_check_desktop_access() {
