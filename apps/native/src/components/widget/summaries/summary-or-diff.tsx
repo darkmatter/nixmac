@@ -7,12 +7,13 @@ import {
 import { Tabs } from "@/components/ui/tabs";
 import { DiffSection } from "@/components/widget/summaries/diff-section";
 import { SummaryItems } from "@/components/widget/summaries/summary-items";
+import { prefetchFileDiffContents } from "@/hooks/use-git-operations";
 import { useSummary } from "@/hooks/use-summary";
 import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
 import type { Change } from "@/types/shared.ts";
 import { Dna, Wrench } from "lucide-react";
-import { Activity, useEffect, useState } from "react";
+import { Activity, useEffect, useMemo, useState } from "react";
 import { enrichChanges } from "../utils";
 
 interface SummaryOrDiffProps {
@@ -31,6 +32,16 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
     window.addEventListener("focus", summarizeOnFocus);
     return () => window.removeEventListener("focus", summarizeOnFocus);
   }, [summarizeOnFocus]);
+
+  const fileDiffKey = useMemo(
+    () =>
+      gitStatus?.changes.map((c) => `${c.filename}:${c.hash}`).sort().join("\n") ?? "",
+    [gitStatus],
+  );
+
+  useEffect(() => {
+    prefetchFileDiffContents(useWidgetStore.getState().gitStatus);
+  }, [fileDiffKey]);
 
   if (!gitStatus || !evolveState || evolveState.step === "begin") {
     return null;

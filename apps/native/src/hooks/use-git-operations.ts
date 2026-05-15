@@ -7,7 +7,7 @@ import { toast } from "sonner";
  * Hook for git operations.
  * Provides functions for refreshing git status and stashing changes.
  */
-const prefetchFileDiffContents = async (status: { changes: { filename: string }[] } | null) => {
+export const prefetchFileDiffContents = async (status: { changes: { filename: string }[] } | null) => {
   const setFileDiffContents = useWidgetStore.getState().setFileDiffContents;
   if (!status) {
     setFileDiffContents({});
@@ -34,7 +34,6 @@ const refreshGitStatus = async (options?: { cache?: boolean }) => {
       : await darwinAPI.git.status();
 
     useWidgetStore.getState().setGitStatus(status);
-    prefetchFileDiffContents(status);
 
     return status;
   } catch (e: unknown) {
@@ -54,7 +53,6 @@ const getInitialStatus = async () => {
   try {
     const currentStatus = await darwinAPI.git.statusAndCache();
     useWidgetStore.getState().setGitStatus(currentStatus);
-    prefetchFileDiffContents(currentStatus);
   } catch (e: unknown) {
     const msg = (e as Error)?.message || String(e);
     useWidgetStore.getState().setError(msg);
