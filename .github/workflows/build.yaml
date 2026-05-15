@@ -24,6 +24,11 @@ jobs:
           persist-credentials: true
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+      - name: Verify Rust toolchain
+        run: |
+          rustup default stable
+          rustup show
+          cargo --version
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
         with:
@@ -84,7 +89,9 @@ jobs:
       # Running `security list-keychain -d user -s <keychain>` before the build
       # replaces the keychain search list and breaks DMG bundling on tag runs.
       - name: Build Tauri app
-        run: bun run desktop:build
+        run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
+          bun run desktop:build
         shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
