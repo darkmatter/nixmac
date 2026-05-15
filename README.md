@@ -24,6 +24,8 @@ nixmac is a native macOS app (Tauri + Rust) that puts an AI agent in front of yo
 
 The agent reads your config, plans the changes, edits the Nix files, builds the system, and applies it — all while you watch. If something breaks, roll back in one click.
 
+Random change
+
 ### Key Features
 
 - **Natural-language config evolution** — an agentic loop with tool use (read, edit, search) that iterates until your system matches the prompt
