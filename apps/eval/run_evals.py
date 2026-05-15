@@ -22,7 +22,7 @@ from git import Actor, Repo
 # DEFAULT_EVOLVE_MODEL = "gpt-oss-200k:latest"
 # DEFAULT_SUMMARY_MODEL = "gpt-oss:120b"
 
-DEFAULT_EVOLVE_MODEL = "gpt-4o"
+DEFAULT_EVOLVE_MODEL = "gpt-oss-120b"
 DEFAULT_SUMMARY_MODEL = "gpt-4o"
 DEFAULT_MAX_ITERATIONS = 25
 
@@ -35,7 +35,8 @@ RESULTS_DIR: Path = SCRIPT_DIR / "data/results"
 CONFIG_TEMPLATE_DIR: Path = SCRIPT_DIR.parent / "native/templates/nix-darwin-determinate"
 
 # Default place we find nixmac to run evolution during test cases
-DEFAULT_NIXMAC = SCRIPT_DIR.parent.parent / "target" / "debug" / "nixmac"
+# Will work if you have the "nixmac" and "nixmac-web" repos checked out side-by-side and have built the nixmac binary locally.
+DEFAULT_NIXMAC = SCRIPT_DIR.parent.parent.parent / "nixmac" / "target" / "debug" / "nixmac"
 
 # Directory containing nixmac config/state files (settings.json, evolve-state.json, etc.)
 NIXMAC_CONFIG_DIR: Path = Path.home() / "Library" / "Application Support" / "com.darkmatter.nixmac"
@@ -165,12 +166,16 @@ def create_nix_config_git_repo(hostname: str | None = None):
         username = os.environ.get("USER", "nobody")
 
     # Replace placeholders in ALL .nix files (matching default_config.rs behavior)
+    # Turn on unfree packages because we have several tests that require them
+    # and agent behavior is inconsistent as to whether it tries to automatically
+    # enable or just get stuck on the error.
     for nix_file in tmpdir.rglob("*.nix"):
         content = nix_file.read_text()
         updated = (
             content.replace("HOSTNAME_PLACEHOLDER", hostname)
             .replace("USERNAME_PLACEHOLDER", username)
             .replace("PLATFORM_PLACEHOLDER", "aarch64-darwin")
+            .replace("# nixpkgs.config.allowUnfree = true;", "nixpkgs.config.allowUnfree = true;")
         )
         if updated != content:
             nix_file.write_text(updated)
