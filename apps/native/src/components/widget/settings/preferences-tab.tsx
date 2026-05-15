@@ -9,6 +9,7 @@ export function PreferencesTab() {
   const confirmRollback = useWidgetStore((s) => s.confirmRollback);
   const autoSummarizeOnFocus = useWidgetStore((s) => s.autoSummarizeOnFocus);
   const scanHomebrewOnStartup = useWidgetStore((s) => s.scanHomebrewOnStartup);
+  const defaultToDiffTab = useWidgetStore((s) => s.defaultToDiffTab);
 
   return (
     <div className="space-y-6">
@@ -62,6 +63,16 @@ export function PreferencesTab() {
               <Switch
                 checked={autoSummarizeOnFocus}
                 onCheckedChange={(checked) => setPref("autoSummarizeOnFocus", checked)}
+              />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-border p-3">
+              <div className="space-y-0.5">
+                <div className="text-sm">Diff Tab</div>
+                <div className="text-muted-foreground text-xs">Prefer Diff tab when reviewing changes</div>
+              </div>
+              <Switch
+                checked={defaultToDiffTab}
+                onCheckedChange={(checked) => setPref("defaultToDiffTab", checked)}
               />
             </div>
           </div>

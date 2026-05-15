@@ -24,8 +24,9 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   const gitStatus = useWidgetStore((s) => s.gitStatus);
   const changeMap = useWidgetStore((s) => s.changeMap);
   const evolveState = useWidgetStore((s) => s.evolveState);
+  const defaultToDiffTab = useWidgetStore((s) => s.defaultToDiffTab);
   const { summarizeOnFocus } = useSummary();
-  const [activeTab, setActiveTab] = useState("summary");
+  const [activeTab, setActiveTab] = useState(defaultToDiffTab ? "diff" : "summary");
   const [openFiles, setOpenFiles] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -74,7 +75,7 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
               : "What's changed"}
           </h2>
         </div>
-        <AnimatedTabsList defaultValue="summary">
+        <AnimatedTabsList value={activeTab}>
           <AnimatedTabsTrigger value="summary">Summary</AnimatedTabsTrigger>
           <AnimatedTabsTrigger value="diff">Diff</AnimatedTabsTrigger>
         </AnimatedTabsList>

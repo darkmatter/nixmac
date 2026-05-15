@@ -39,6 +39,8 @@ pub struct UiPrefs {
     pub auto_summarize_on_focus: bool,
     /// Whether Homebrew state should be scanned on app startup.
     pub scan_homebrew_on_startup: bool,
+    /// Whether the change view defaults to the Diff tab instead of Summary.
+    pub default_to_diff_tab: bool,
     /// Whether developer-only UI/actions are enabled.
     pub developer_mode: bool,
     /// Version pinned by the user, when update pinning is active.
@@ -84,6 +86,8 @@ pub struct UiPrefsUpdate {
     pub auto_summarize_on_focus: Option<bool>,
     /// Startup Homebrew scan preference update.
     pub scan_homebrew_on_startup: Option<bool>,
+    /// Default-to-diff-tab preference update.
+    pub default_to_diff_tab: Option<bool>,
     /// Developer mode preference update.
     pub developer_mode: Option<bool>,
     /// `None` -> field not sent; `Some(None)` -> clear the pinned version.

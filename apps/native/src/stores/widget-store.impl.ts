@@ -32,7 +32,7 @@ export type SettingsTab = "general" | "api-keys" | "ai-models" | "preferences" |
 export type WidgetStep = "permissions" | "nix-setup" | "setup" | "begin" | "evolve" | "commit" | "manualEvolve" | "manualCommit" | "history" | "filesystem";
 type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
 export type ConfirmPrefKey = "confirmBuild" | "confirmClear" | "confirmRollback";
-export type BoolPrefKey = ConfirmPrefKey | "autoSummarizeOnFocus" | "scanHomebrewOnStartup";
+export type BoolPrefKey = ConfirmPrefKey | "autoSummarizeOnFocus" | "scanHomebrewOnStartup" | "defaultToDiffTab";
 
 // Rebuild state for showing progress inline in the widget
 export type RebuildErrorType =
@@ -156,6 +156,9 @@ export interface WidgetState {
 
   // Startup scanning preferences
   scanHomebrewOnStartup: boolean;
+
+  // Default-tab preference
+  defaultToDiffTab: boolean;
 
   // Developer mode (hidden settings panel for bisecting / pinning to a past release)
   developerMode: boolean;
@@ -350,6 +353,9 @@ const initialWidgetState: WidgetState = {
 
   // Startup scanning preferences
   scanHomebrewOnStartup: true,
+
+  // Default-tab preference
+  defaultToDiffTab: false,
 
   // Developer mode
   developerMode: false,
