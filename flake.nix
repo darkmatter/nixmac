@@ -51,5 +51,11 @@
         # Add your own packages here
         packages.hello = pkgs.hello;
       }
-    );
+    )
+    // {
+      herculesCI = _: {
+        onPush.default.outputs.placeholder =
+          nixpkgs.legacyPackages.x86_64-linux.runCommand "hercules-placeholder" { } "touch $out";
+      };
+    };
 }
