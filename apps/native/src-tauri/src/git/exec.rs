@@ -115,6 +115,15 @@ pub fn get_nix_diff(dir: &str) -> Result<String> {
     Ok(diff)
 }
 
+pub fn repo_root(dir: &str) -> String {
+    git_command()
+        .args(["rev-parse", "--show-toplevel"])
+        .current_dir(dir)
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_else(|_| dir.to_string())
+}
+
 /// Returns (original, modified) file content for a single file: HEAD content and working-tree content.
 /// Returns empty strings for new files (no HEAD) or deleted files (not on disk).
 pub fn file_diff_contents(dir: &str, filename: &str) -> (String, String) {
@@ -124,7 +133,7 @@ pub fn file_diff_contents(dir: &str, filename: &str) -> (String, String) {
         .output()
         .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
         .unwrap_or_default();
-    let modified = std::fs::read_to_string(std::path::Path::new(dir).join(filename))
+    let modified = std::fs::read_to_string(std::path::Path::new(&repo_root(dir)).join(filename))
         .unwrap_or_default();
     (original, modified)
 }
