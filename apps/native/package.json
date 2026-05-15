@@ -11,6 +11,7 @@
     "build": "tsc && vite build",
     "desktop:dev": "TAURI_CONFIG=dev tauri dev",
     "desktop:build": "tauri build",
+    "desktop:test": "cargo test --manifest-path src-tauri/Cargo.toml && bun run test:unit",
     "lint": "oxlint .",
     "preview": "vite preview",
     "test": "vitest run",
