@@ -1,0 +1,22 @@
+{"timestamp_unix_ms":1778852879495,"client_timestamp_unix_ms":1778852879482,"label":"native webview boot probe post-build-plus-2s","detail":"{\"title\":\"nixmac\",\"readyState\":\"interactive\",\"bootStage\":\"\",\"capture\":\"\",\"capturePaint\":\"\",\"rootChildren\":0,\"bodyTextLength\":0,\"storage\":{\"nixmac:e2e-boot-stage\":null,\"nixmac:e2e-dom-snapshot:last\":null,\"nixmac:e2e-dom-snapshot:text\":null,\"nixmac:e2e-dom-snapshot:html\":null,\"nixmac:e2e-dom-snapshot:watchdog-pre-reload:last\":null}}"}
+{"timestamp_unix_ms":1778852879500,"client_timestamp_unix_ms":1778852879496,"label":"native webview boot probe page-load-finished-plus-1s","detail":"{\"title\":\"nixmac\",\"readyState\":\"interactive\",\"bootStage\":\"\",\"capture\":\"\",\"capturePaint\":\"\",\"rootChildren\":0,\"bodyTextLength\":0,\"storage\":{\"nixmac:e2e-boot-stage\":null,\"nixmac:e2e-dom-snapshot:last\":null,\"nixmac:e2e-dom-snapshot:text\":null,\"nixmac:e2e-dom-snapshot:html\":null,\"nixmac:e2e-dom-snapshot:watchdog-pre-reload:last\":null}}"}
+{"timestamp_unix_ms":1778852879500,"client_timestamp_unix_ms":1778852879497,"label":"native webview boot probe page-load-finished-plus-5s","detail":"{\"title\":\"nixmac\",\"readyState\":\"interactive\",\"bootStage\":\"\",\"capture\":\"\",\"capturePaint\":\"\",\"rootChildren\":0,\"bodyTextLength\":0,\"storage\":{\"nixmac:e2e-boot-stage\":null,\"nixmac:e2e-dom-snapshot:last\":null,\"nixmac:e2e-dom-snapshot:text\":null,\"nixmac:e2e-dom-snapshot:html\":null,\"nixmac:e2e-dom-snapshot:watchdog-pre-reload:last\":null}}"}
+{"timestamp_unix_ms":1778852879509,"client_timestamp_unix_ms":1778852879508,"label":"native webview boot probe post-build-plus-10s","detail":"{\"title\":\"nixmac\",\"readyState\":\"interactive\",\"bootStage\":\"\",\"capture\":\"\",\"capturePaint\":\"\",\"rootChildren\":0,\"bodyTextLength\":0,\"storage\":{\"nixmac:e2e-boot-stage\":null,\"nixmac:e2e-dom-snapshot:last\":null,\"nixmac:e2e-dom-snapshot:text\":null,\"nixmac:e2e-dom-snapshot:html\":null,\"nixmac:e2e-dom-snapshot:watchdog-pre-reload:last\":null}}"}
+{"timestamp_unix_ms":1778852894583,"client_timestamp_unix_ms":1778852894581,"label":"main.tsx loaded","detail":null}
+{"timestamp_unix_ms":1778852894588,"client_timestamp_unix_ms":1778852894587,"label":"root element found","detail":null}
+{"timestamp_unix_ms":1778852894589,"client_timestamp_unix_ms":1778852894587,"label":"native boot stage marker","detail":"main-loaded"}
+{"timestamp_unix_ms":1778852894589,"client_timestamp_unix_ms":1778852894588,"label":"native boot stage marker","detail":"root-found"}
+{"timestamp_unix_ms":1778852894596,"client_timestamp_unix_ms":1778852894590,"label":"React render scheduled","detail":null}
+{"timestamp_unix_ms":1778852894596,"client_timestamp_unix_ms":1778852894589,"label":"React render start","detail":null}{"timestamp_unix_ms":1778852894596,"client_timestamp_unix_ms":1778852894590,"label":"native boot stage marker","detail":"react-render-scheduled"}
+
+{"timestamp_unix_ms":1778852894602,"client_timestamp_unix_ms":1778852894590,"label":"native boot stage marker","detail":"react-render-start"}
+{"timestamp_unix_ms":1778852894638,"client_timestamp_unix_ms":1778852894637,"label":"e2e-capture-paint-raf","detail":"{\"captureMode\":\"solid\",\"rootChildren\":0,\"bodyChildren\":1}"}
+{"timestamp_unix_ms":1778852894647,"client_timestamp_unix_ms":1778852894645,"label":"native boot stage marker","detail":"app-render"}
+{"timestamp_unix_ms":1778852894647,"client_timestamp_unix_ms":1778852894646,"label":"native boot stage marker","detail":"darwin-widget-render"}
+{"timestamp_unix_ms":1778852894765,"client_timestamp_unix_ms":1778852894763,"label":"native boot stage marker","detail":"app-effect"}
+{"timestamp_unix_ms":1778852894775,"client_timestamp_unix_ms":1778852894763,"label":"app mounted event received","detail":null}
+{"timestamp_unix_ms":1778852894775,"client_timestamp_unix_ms":1778852894763,"label":"App mounted","detail":null}
+{"timestamp_unix_ms":1778852894777,"client_timestamp_unix_ms":1778852894764,"label":"boot heartbeat stopped","detail":"{\"tick\":0}"}{"timestamp_unix_ms":1778852894777,"client_timestamp_unix_ms":1778852894764,"label":"Sentry init start requested","detail":"{\"reason\":\"app-mounted\"}"}
+
+{"timestamp_unix_ms":1778852894781,"client_timestamp_unix_ms":1778852894764,"label":"post-mount init scheduled","detail":null}
+{"timestamp_unix_ms":1778852894786,"client_timestamp_unix_ms":1778852894764,"label":"native boot stage marker","detail":"mounted"}

@@ -1,0 +1,50 @@
+[
+  {
+    "timeSeconds": 0,
+    "label": "core launch missing 1778852622",
+    "screenshot": "scenarios/macos_core_product_proof-2026-05-15_13-42-09-730Z/screenshots/core-launch-missing-1778852622.png",
+    "capturedAt": "2026-05-15T13:43:42.979Z"
+  },
+  {
+    "timeSeconds": 1.1,
+    "label": "failure 1778852623 1778852623",
+    "screenshot": "scenarios/macos_core_product_proof-2026-05-15_13-42-09-730Z/screenshots/failure-1778852623-1778852623.png",
+    "capturedAt": "2026-05-15T13:43:43.497Z"
+  },
+  {
+    "timeSeconds": 2.2,
+    "label": "failure 1778852725 1778852725",
+    "screenshot": "scenarios/macos_support_dialogs_smoke-2026-05-15_13-43-56-718Z/screenshots/failure-1778852725-1778852725.png",
+    "capturedAt": "2026-05-15T13:45:26.095Z"
+  },
+  {
+    "timeSeconds": 3.3,
+    "label": "failure 1778852830 1778852830",
+    "screenshot": "scenarios/macos_console_smoke-2026-05-15_13-45-39-241Z/screenshots/failure-1778852830-1778852830.png",
+    "capturedAt": "2026-05-15T13:47:10.362Z"
+  },
+  {
+    "timeSeconds": 4.4,
+    "label": "failure 1778852940 1778852940",
+    "screenshot": "scenarios/macos_homebrew_save_rollback_smoke-2026-05-15_13-47-23-325Z/screenshots/failure-1778852940-1778852940.png",
+    "capturedAt": "2026-05-15T13:49:00.575Z"
+  },
+  {
+    "timeSeconds": 5.5,
+    "label": "failure 1778853044 1778853044",
+    "screenshot": "scenarios/macos_customization_save_rollback_smoke-2026-05-15_13-49-13-608Z/screenshots/failure-1778853044-1778853044.png",
+    "capturedAt": "2026-05-15T13:50:44.865Z"
+  },
+  {
+    "timeSeconds": 6.6,
+    "label": "failure 1778853149 1778853149",
+    "screenshot": "scenarios/macos_provider_evolve_full_smoke-2026-05-15_13-50-57-739Z/screenshots/failure-1778853149-1778853149.png",
+    "capturedAt": "2026-05-15T13:52:29.478Z"
+  },
+  {
+    "timeSeconds": 7.7,
+    "label": "failure 1778853253 1778853253",
+    "screenshot": "scenarios/macos_provider_discard_smoke-2026-05-15_13-52-42-401Z/screenshots/failure-1778853253-1778853253.png",
+    "capturedAt": "2026-05-15T13:54:13.632Z"
+  }
+]
