@@ -406,7 +406,7 @@ export type EvolveEventType =
 /**
  * Agent is reading a file.
  */
-"reading" | 
+"reading" | "searchPackages" | 
 /**
  * Agent is editing a file.
  */
@@ -690,6 +690,11 @@ nixVersion: string | null;
 appVersion: string | null }
 
 /**
+ * HEAD content vs working-tree content for a file, used by the diff tab Monaco DiffEditor.
+ */
+export type FileDiffContents = { original: string; modified: string }
+
+/**
  * File or directory entry returned by the editor tree.
  */
 export type FileEntry = { 
@@ -718,11 +723,6 @@ gitStatus: GitStatus;
  * Evolve state after finalization.
  */
 evolveState: EvolveState }
-
-/**
- * HEAD content vs working-tree content for a file, used by the diff tab Monaco DiffEditor.
- */
-export type FileDiffContents = { original: string; modified: string }
 
 /**
  * Individual file status parsed from diff headers.
