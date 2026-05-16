@@ -231,7 +231,15 @@ pub async fn backup_evolve_and_record_changeset(
     // Short-circuit: conversational responses made no environment changes.
     if evolution.state == EvolutionState::Conversational {
         info!("[evolution] Conversational response — skipping git/db workflow");
-        let evolve_state = evolve_state::get(app).unwrap_or_default();
+        let evolve_state = evolve_state::set(
+            app,
+            EvolveState {
+                last_evolution_state: Some(EvolutionState::Conversational),
+                ..evolve_state::get(app).unwrap_or_default()
+            },
+            &initial_status.changes,
+        )
+        .unwrap_or_default();
         return Ok(EvolutionResult {
             change_map: SemanticChangeMap::default(),
             git_status: initial_status,
@@ -271,6 +279,7 @@ pub async fn backup_evolve_and_record_changeset(
             evolution_id: db_evolution_id,
             current_changeset_id: new_changeset_id,
             backup_branch,
+            last_evolution_state: Some(evolution.state.clone()),
             ..current_state
         },
         &final_status.changes,
@@ -321,6 +330,7 @@ fn restore_after_failure(app: &AppHandle, config_dir: &str, backup_branch: &Opti
         app,
         EvolveState {
             backup_branch: None,
+            last_evolution_state: Some(EvolutionState::Failed),
             ..evolve_state::get(app).unwrap_or_default()
         },
         &[],

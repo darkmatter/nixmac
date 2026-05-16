@@ -5,7 +5,7 @@ use tauri::{AppHandle, Runtime};
 use tauri_plugin_store::StoreExt;
 
 use crate::evolve::session_chat_memory_store;
-use crate::shared_types::{EvolveState, EvolveStep};
+use crate::shared_types::{EvolutionState, EvolveState, EvolveStep};
 use crate::sqlite_types::Change;
 
 impl EvolveState {
@@ -24,8 +24,12 @@ impl EvolveState {
 const EVOLVE_STATE_PATH: &str = "evolve-state.json";
 const EVOLVE_STATE_KEY: &str = "evolveState";
 
-fn clear_chat_memory_if_begin(step: &EvolveStep, clear_fn: impl FnOnce()) {
-    if *step == EvolveStep::Begin {
+fn clear_chat_memory_if_begin(
+    step: &EvolveStep,
+    preserve_for_conversational_begin: bool,
+    clear_fn: impl FnOnce(),
+) {
+    if *step == EvolveStep::Begin && !preserve_for_conversational_begin {
         clear_fn();
     }
 }
@@ -52,6 +56,16 @@ pub fn set<R: Runtime>(
     let is_built = crate::state::build_state::current_state_built(app, current_changes);
     let has_changes = !current_changes.is_empty();
     state.recompute_step(is_built, has_changes);
+
+    // Preserve chat memory whenever we are at Begin and the last evolution
+    // outcome was conversational (no edits). This intentionally persists
+    // across repeated conversational cycles.
+    let preserve_for_conversational_begin = state.step == EvolveStep::Begin
+        && matches!(
+            state.last_evolution_state,
+            Some(EvolutionState::Conversational)
+        );
+
     let store = app.store(EVOLVE_STATE_PATH)?;
     store.set(EVOLVE_STATE_KEY, serde_json::to_value(&state)?);
     store.save()?;
@@ -62,7 +76,9 @@ pub fn set<R: Runtime>(
     // Note that `clear` is NOT a suitable place to do this since it is not called
     // on all possible transitions back to Begin (e.g. Evolve -> Begin when evolution_id
     // is cleared but committable is still true).
-    clear_chat_memory_if_begin(&state.step, || session_chat_memory_store().clear());
+    clear_chat_memory_if_begin(&state.step, preserve_for_conversational_begin, || {
+        session_chat_memory_store().clear()
+    });
 
     Ok(state)
 }
@@ -79,7 +95,7 @@ mod tests {
     #[test]
     fn clear_chat_memory_if_begin_calls_clear() {
         let mut cleared = false;
-        clear_chat_memory_if_begin(&EvolveStep::Begin, || {
+        clear_chat_memory_if_begin(&EvolveStep::Begin, false, || {
             cleared = true;
         });
         assert!(cleared);
@@ -88,15 +104,33 @@ mod tests {
     #[test]
     fn clear_chat_memory_if_begin_skips_non_begin_steps() {
         let mut cleared = false;
-        clear_chat_memory_if_begin(&EvolveStep::Evolve, || {
+        clear_chat_memory_if_begin(&EvolveStep::Evolve, false, || {
             cleared = true;
         });
         assert!(!cleared);
 
-        clear_chat_memory_if_begin(&EvolveStep::Commit, || {
+        clear_chat_memory_if_begin(&EvolveStep::Commit, false, || {
             cleared = true;
         });
         assert!(!cleared);
+    }
+
+    #[test]
+    fn clear_chat_memory_if_begin_skips_when_last_state_is_conversational() {
+        let mut cleared = false;
+        clear_chat_memory_if_begin(&EvolveStep::Begin, true, || {
+            cleared = true;
+        });
+        assert!(!cleared);
+    }
+
+    #[test]
+    fn clear_chat_memory_if_begin_clears_for_non_conversational_last_state() {
+        let mut cleared = false;
+        clear_chat_memory_if_begin(&EvolveStep::Begin, false, || {
+            cleared = true;
+        });
+        assert!(cleared);
     }
 
     #[test]
@@ -109,7 +143,7 @@ mod tests {
         state.recompute_step(true, false);
 
         let mut cleared = false;
-        clear_chat_memory_if_begin(&state.step, || {
+        clear_chat_memory_if_begin(&state.step, false, || {
             cleared = true;
         });
 
