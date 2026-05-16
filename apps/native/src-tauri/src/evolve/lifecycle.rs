@@ -239,7 +239,7 @@ pub async fn backup_evolve_and_record_changeset(
             },
             &initial_status.changes,
         )
-        .unwrap_or_default();
+        .unwrap_or_else(|_| evolve_state::get(app).unwrap_or_default());
         return Ok(EvolutionResult {
             change_map: SemanticChangeMap::default(),
             git_status: initial_status,
