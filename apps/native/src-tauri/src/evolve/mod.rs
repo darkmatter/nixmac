@@ -23,6 +23,7 @@ pub mod lifecycle;
 /// Directories ignored by file listing and search helpers.
 pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 
+use crate::evolve::utils::{escape_user_query, short_hash};
 // Re-export public API
 use crate::shared_types::EvolutionState;
 use crate::system::nix;
@@ -30,8 +31,8 @@ use anyhow::{anyhow, Result};
 use chrono::Utc;
 use log::{debug, error, info, warn};
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sha2::{Digest, Sha256};
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::Path;
@@ -57,11 +58,62 @@ use providers::{AiProvider, CliProvider, OllamaProvider, OpenAIProvider, Provide
 
 use self::types::FileEdit;
 
-/// Return short hex prefix for correlation of error messages without risking sensitive content exposure.
-fn short_hash(s: &str) -> String {
-    let mut h = Sha256::new();
-    h.update(s.as_bytes());
-    hex::encode(h.finalize())[..8].to_string()
+/// Strategy for retaining evolution messages in the conversation history for provider context.
+/// This is used to balance keeping important context visible to the model with limiting token usage
+/// and latency by discarding less relevant messages.
+enum MemoryStrategy {
+    None,      // no filtering (pass everything through)
+    Retention, // use TTL-based filtering
+}
+
+impl MemoryStrategy {
+    fn from_env() -> Self {
+        match std::env::var("NIXMAC_EVOLUTION_MEMORY_STRATEGY")
+            .ok()
+            .as_deref()
+            .map(|s| s.trim())
+        {
+            None | Some("") | Some("none") => MemoryStrategy::None,
+            Some("retention") => MemoryStrategy::Retention,
+            _ => MemoryStrategy::Retention, // safe default if set but unknown
+        }
+    }
+}
+
+/// Retention policy for evolution-time messages, used to determine which messages to keep in the
+/// conversation history for context and which to discard to save tokens and latency.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+enum Retention {
+    Permanent,
+    Recent { keep_iterations: usize },
+}
+
+/// An evolution-time message with associated metadata for retention and iteration tracking.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct EvolutionMessage {
+    message: Message,
+    retention: Retention,
+    created_iteration: usize,
+}
+
+impl EvolutionMessage {
+    fn permanent(message: Message, iteration: usize) -> Self {
+        Self {
+            message,
+            retention: Retention::Permanent,
+            created_iteration: iteration,
+        }
+    }
+
+    fn recent(message: Message, iteration: usize, keep: usize) -> Self {
+        Self {
+            message,
+            retention: Retention::Recent {
+                keep_iterations: keep,
+            },
+            created_iteration: iteration,
+        }
+    }
 }
 
 /// Extract structured metadata from an error string without returning any user/chat text.
@@ -281,11 +333,11 @@ const SYSTEM_PROMPT: &str = include_str!("../../prompts/system.md");
 
 /// Build a short single-line preview from the conversation messages to help with
 /// troubleshooting.
-fn build_preview(messages: &[Message]) -> String {
+fn build_preview(messages: &[EvolutionMessage]) -> String {
     let preview_raw: String = messages
         .iter()
         .rev()
-        .filter_map(|m| match m {
+        .filter_map(|m| match &m.message {
             // user messages and system prompts are always relevant
             Message::User { content } | Message::System { content } => {
                 let c = content.trim();
@@ -323,11 +375,87 @@ fn build_preview(messages: &[Message]) -> String {
     preview
 }
 
-fn escape_user_query(input: &str) -> String {
-    input
-        .replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
+/// Filter evolution messages based on their retention policy to determine which should be sent to the provider for context in the next iteration.
+fn filter_evolution_messages(messages: &[EvolutionMessage], iteration: usize) -> Vec<Message> {
+    let strategy = MemoryStrategy::from_env();
+
+    match strategy {
+        MemoryStrategy::None => {
+            // NO FILTERING: pass everything through exactly as-is
+            messages.iter().map(|m| m.message.clone()).collect()
+        }
+
+        MemoryStrategy::Retention => messages
+            .iter()
+            .filter(|m| match m.retention {
+                Retention::Permanent => true,
+                Retention::Recent { keep_iterations } => {
+                    iteration.saturating_sub(m.created_iteration) <= keep_iterations
+                }
+            })
+            .map(|m| m.message.clone())
+            .collect(),
+    }
+}
+
+/// Map a tool name to its retention window in provider-loop iterations.
+///
+/// `keep_iterations` is compared against the loop's `iteration` counter, not the
+/// number of `Message` values in history. Because one loop iteration can append
+/// several messages, the windows below are chosen to mean:
+/// - `1`: keep the tool result visible to the next provider call only
+/// - `2`: keep the tool result visible through the next two provider calls
+/// - `Permanent`: keep it for the whole evolution session
+fn retention_for_tool(tool_name: &str) -> Retention {
+    match tool_name {
+        // The model needs the build result on the very next provider call so it can
+        // decide whether to call `done` or continue fixing issues.
+        "build_check" => Retention::Recent { keep_iterations: 1 },
+
+        // These results often drive follow-up edits or reasoning in the next couple
+        // of turns, so we keep them a little longer.
+        "read_file" | "search_code" | "search_docs" | "search_packages" | "list_files" => {
+            Retention::Recent { keep_iterations: 2 }
+        }
+
+        // We need think a little longer because it may have planned out a few steps.
+        // But think results are very verbose, so we have to be careful to balance.
+        "think" => Retention::Recent { keep_iterations: 4 },
+
+        // Multiple edits across iterations may be important.
+        "edit_file" | "edit_nix_file" => Retention::Recent { keep_iterations: 3 },
+
+        // Everything else is informational or durable enough to keep for the whole run.
+        _ => Retention::Permanent,
+    }
+}
+
+/// Determine how to store a tool result based on the tool type. For tools that produce important context,
+/// keep them forever. For everything else, just keep it around for as long as seems useful empirically/heuristically.
+fn store_tool_result(msg: Message, tool_name: &str, iteration: usize) -> EvolutionMessage {
+    match retention_for_tool(tool_name) {
+        Retention::Permanent => EvolutionMessage::permanent(msg, iteration),
+        Retention::Recent { keep_iterations } => {
+            EvolutionMessage::recent(msg, iteration, keep_iterations)
+        }
+    }
+}
+
+/// When starting an evolution, we want to restore any relevant context from the current session's
+/// chat memory so the model can continue referencing it. These would typically be
+/// conversational responses from earlier on in the session.
+fn restore_historical_evolution_messages() -> Vec<EvolutionMessage> {
+    let chat_memory_store = session_chat_memory_store();
+    let historical_ev_msgs: Vec<EvolutionMessage> =
+        to_provider_context_messages(chat_memory_store.as_ref())
+            .into_iter()
+            .map(|m| EvolutionMessage::permanent(m, 0))
+            .collect();
+    debug!(
+        "[evolve] restored session chat context messages={}",
+        historical_ev_msgs.len()
+    );
+    historical_ev_msgs
 }
 
 /// Generate an evolution from a user prompt using OpenAI function calling.
@@ -467,12 +595,7 @@ pub async fn generate_evolution<R: Runtime>(
     let chat_memory_store = session_chat_memory_store();
 
     // Restore only persisted conversational history (user/assistant, NOT tool)
-    // to keep iterative requests grounded without requiring users to restate context.
-    let historical_context = to_provider_context_messages(chat_memory_store.as_ref());
-    debug!(
-        "[evolve] restored session chat context messages={}",
-        historical_context.len()
-    );
+    let historical_context = restore_historical_evolution_messages();
 
     // Persist the raw user request at session scope before model execution so the
     // next evolve run can continue from this thread.
@@ -499,21 +622,27 @@ pub async fn generate_evolution<R: Runtime>(
         }
     };
 
-    let mut messages: Vec<Message> = vec![Message::System {
-        content: SYSTEM_PROMPT.to_string(),
-    }];
+    let mut messages: Vec<EvolutionMessage> = vec![EvolutionMessage::permanent(
+        Message::System {
+            content: SYSTEM_PROMPT.to_string(),
+        },
+        0,
+    )];
 
     // Restore historical context after system prompt but before the new user message,
     // so it's included in the token count and visible to the model in the correct order.
     messages.extend(historical_context);
 
-    messages.push(Message::User {
-        content: format!(
-            "<user_query>{}</user_query>\n\n<config_dir>\n{}\n</config_dir>\n\nStart by using the 'think' tool to plan your approach.",
-            escape_user_query(prompt),
-            config_dir_context
-        ),
-    });
+    messages.push(EvolutionMessage::permanent(
+        Message::User {
+            content: format!(
+                "<user_query>{}</user_query>\n\n<config_dir>\n{}\n</config_dir>\n\nStart by using the 'think' tool to plan your approach.",
+                escape_user_query(prompt),
+                config_dir_context
+            ),
+        },
+        0,
+    ));
 
     let gitignore_matcher = gitignore::load_gitignore_matcher(Path::new(config_dir))?;
 
@@ -576,8 +705,9 @@ pub async fn generate_evolution<R: Runtime>(
         // on it plus a cancellation signal. This lets the future borrow
         // `messages` only for the call so we can mutate `messages` after
         // the block without deep-cloning the conversation.
+        let active_messages = filter_evolution_messages(&messages, iteration);
         let response_result = {
-            let fut = provider.completion(&messages, &tools);
+            let fut = provider.completion(&active_messages, &tools);
             tokio::pin!(fut);
 
             tokio::select! {
@@ -624,7 +754,7 @@ pub async fn generate_evolution<R: Runtime>(
                 // Log full details locally and report redacted summary to Sentry
                 log_api_error(
                     &e,
-                    &messages,
+                    &active_messages,
                     prompt,
                     iteration,
                     &provider_type,
@@ -691,9 +821,13 @@ pub async fn generate_evolution<R: Runtime>(
                 global_utils::truncate_with_ellipsis(text, 500)
             );
         }
-
+        let assistant_ev_msg: EvolutionMessage = EvolutionMessage {
+            message: assistant_msg.clone(),
+            retention: Retention::Permanent,
+            created_iteration: iteration,
+        };
         // Add assistant message to history
-        messages.push(assistant_msg.clone());
+        messages.push(assistant_ev_msg);
 
         // Check if model wants to use tools
         if let Message::Assistant {
@@ -887,10 +1021,14 @@ pub async fn generate_evolution<R: Runtime>(
                                     }
                                 };
                                 info!("📨 User answered: {}", user_answer);
-                                messages.push(Message::Tool {
-                                    tool_call_id: tool_call.id.clone(),
-                                    content: format!("User response: {}", user_answer),
-                                });
+                                messages.push(store_tool_result(
+                                    Message::Tool {
+                                        tool_call_id: tool_call.id.clone(),
+                                        content: format!("User response: {}", user_answer),
+                                    },
+                                    tool_name,
+                                    iteration,
+                                ));
                                 continue;
                             }
 
@@ -917,7 +1055,7 @@ pub async fn generate_evolution<R: Runtime>(
                                     .into());
                                 }
                             };
-                            messages.push(msg);
+                            messages.push(store_tool_result(msg, tool_name, iteration));
 
                             match break_signal {
                                 Some(true) => {
@@ -959,10 +1097,14 @@ Do not invent tool names and do not place tool invocations in assistant content.
                                 format!("Error: {}. Please try a different approach.", tool_error)
                             };
 
-                            messages.push(Message::Tool {
-                                tool_call_id: tool_call.id.clone(),
-                                content: recovery_message,
-                            });
+                            messages.push(store_tool_result(
+                                Message::Tool {
+                                    tool_call_id: tool_call.id.clone(),
+                                    content: recovery_message,
+                                },
+                                tool_name,
+                                iteration,
+                            ));
                         }
                     }
                 }
@@ -1133,13 +1275,17 @@ Could you provide more specific guidance on what aspects of your configuration n
             });
             debug!("[evolve] saved evolution.summary to session chat memory");
         }
-    } else if let Some(content) = messages.iter().rev().find_map(|message| match message {
-        Message::Assistant {
-            content: Some(content),
-            ..
-        } if !content.trim().is_empty() => Some(content.clone()),
-        _ => None,
-    }) {
+    } else if let Some(content) = messages
+        .iter()
+        .rev()
+        .find_map(|ev_msg| match &ev_msg.message {
+            Message::Assistant {
+                content: Some(content),
+                ..
+            } if !content.trim().is_empty() => Some(content.clone()),
+            _ => None,
+        })
+    {
         // Fallback: persist the last assistant message if no summary was produced.
         chat_memory_store.append(ChatMessage {
             role: ChatMemoryRole::Assistant,
@@ -1520,4 +1666,224 @@ fn process_tool_result(
     };
 
     Ok((message, should_break))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        filter_evolution_messages, store_tool_result, EvolutionMessage, Message, Retention,
+    };
+    use std::ffi::OsString;
+    use std::sync::{Mutex, MutexGuard};
+
+    // This is to support parallel tests with env vars.
+    static ENV_LOCK: once_cell::sync::Lazy<Mutex<()>> =
+        once_cell::sync::Lazy::new(|| Mutex::new(()));
+
+    struct EnvVarGuard {
+        key: &'static str,
+        prev: Option<OsString>,
+        _lock: MutexGuard<'static, ()>,
+    }
+
+    impl EnvVarGuard {
+        fn set(key: &'static str, value: &str) -> Self {
+            let lock = ENV_LOCK.lock().expect("env lock poisoned");
+            let prev = std::env::var_os(key);
+            std::env::set_var(key, value);
+            Self {
+                key,
+                prev,
+                _lock: lock,
+            }
+        }
+    }
+
+    impl Drop for EnvVarGuard {
+        fn drop(&mut self) {
+            if let Some(v) = &self.prev {
+                std::env::set_var(self.key, v);
+            } else {
+                std::env::remove_var(self.key);
+            }
+        }
+    }
+
+    fn sample_messages() -> Vec<EvolutionMessage> {
+        vec![
+            EvolutionMessage::permanent(
+                Message::System {
+                    content: "System prompt".to_string(),
+                },
+                0,
+            ),
+            EvolutionMessage::permanent(
+                Message::User {
+                    content: "Initial user prompt".to_string(),
+                },
+                0,
+            ),
+            EvolutionMessage::recent(
+                Message::User {
+                    content: "Short-lived message".to_string(),
+                },
+                1,
+                1,
+            ),
+        ]
+    }
+
+    #[test]
+    fn test_filter_evolution_messages_none_strategy_keeps_recent_messages() {
+        let _env = EnvVarGuard::set("NIXMAC_EVOLUTION_MEMORY_STRATEGY", "none");
+        let messages = sample_messages();
+
+        let out = filter_evolution_messages(&messages, 1000);
+
+        // With strategy=none, no retention filtering is applied.
+        assert_eq!(out.len(), messages.len());
+        assert!(out
+            .iter()
+            .any(|m| matches!(m, Message::User { content } if content == "Short-lived message")));
+    }
+
+    #[test]
+    fn test_filter_evolution_messages_retention_strategy_expires_recent_messages() {
+        let _env = EnvVarGuard::set("NIXMAC_EVOLUTION_MEMORY_STRATEGY", "retention");
+        let messages = sample_messages();
+
+        let out = filter_evolution_messages(&messages, 1000);
+
+        // With strategy=retention, recent messages eventually expire.
+        assert!(out
+            .iter()
+            .all(|m| !matches!(m, Message::User { content } if content == "Short-lived message")));
+        assert!(out
+            .iter()
+            .any(|m| matches!(m, Message::System { content } if content == "System prompt")));
+        assert!(out
+            .iter()
+            .any(|m| matches!(m, Message::User { content } if content == "Initial user prompt")));
+    }
+
+    #[test]
+    fn test_filter_evolution_messages_unknown_strategy_defaults_to_retention() {
+        let _env = EnvVarGuard::set("NIXMAC_EVOLUTION_MEMORY_STRATEGY", "bogus-value");
+        let messages = sample_messages();
+
+        let out = filter_evolution_messages(&messages, 1000);
+
+        // Unknown values should safely default to retention behavior.
+        assert!(out
+            .iter()
+            .all(|m| !matches!(m, Message::User { content } if content == "Short-lived message")));
+    }
+
+    #[test]
+    fn test_filter_evolution_messages_retention_timeline() {
+        let _env = EnvVarGuard::set("NIXMAC_EVOLUTION_MEMORY_STRATEGY", "retention");
+        let messages = vec![
+            EvolutionMessage::permanent(
+                Message::System {
+                    content: "System prompt".to_string(),
+                },
+                0,
+            ),
+            EvolutionMessage::permanent(
+                Message::User {
+                    content: "Initial user prompt".to_string(),
+                },
+                0,
+            ),
+            EvolutionMessage::recent(
+                Message::User {
+                    content: "One-iteration message".to_string(),
+                },
+                1,
+                1,
+            ),
+            EvolutionMessage::recent(
+                Message::User {
+                    content: "Two-iteration message".to_string(),
+                },
+                1,
+                2,
+            ),
+        ];
+
+        let iteration_1_messages = filter_evolution_messages(&messages, 1);
+        assert_eq!(iteration_1_messages.len(), 4);
+
+        let iteration_2_messages = filter_evolution_messages(&messages, 2);
+        assert_eq!(iteration_2_messages.len(), 4);
+
+        let iteration_3_messages = filter_evolution_messages(&messages, 3);
+        assert_eq!(iteration_3_messages.len(), 3);
+        assert!(iteration_3_messages.iter().all(
+            |m| !matches!(m, Message::User { content } if content == "One-iteration message")
+        ));
+        assert!(iteration_3_messages
+            .iter()
+            .any(|m| matches!(m, Message::User { content } if content == "Two-iteration message")));
+
+        let iteration_4_messages = filter_evolution_messages(&messages, 4);
+        assert_eq!(iteration_4_messages.len(), 2);
+        assert!(iteration_4_messages.iter().all(
+            |m| !matches!(m, Message::User { content } if content == "One-iteration message")
+        ));
+        assert!(iteration_4_messages.iter().all(
+            |m| !matches!(m, Message::User { content } if content == "Two-iteration message")
+        ));
+    }
+
+    #[test]
+    fn test_store_tool_result() {
+        let iteration = 7;
+
+        let think_message = Message::Tool {
+            tool_call_id: "think-1".to_string(),
+            content: "Thought recorded".to_string(),
+        };
+        let search_docs_message = Message::Tool {
+            tool_call_id: "search-docs-1".to_string(),
+            content: "[]".to_string(),
+        };
+        let build_check_message = Message::Tool {
+            tool_call_id: "build-check-1".to_string(),
+            content: "Build failed".to_string(),
+        };
+
+        // The retention windows are measured in loop iterations, not message count.
+
+        // We only assert that tool results are recorded with a recent retention
+        // window (not permanent), that the creation iteration is preserved, and
+        // that the tool_call_id survives. This avoids tying tests to numeric
+        // retention tuning.
+        let think_stored = store_tool_result(think_message, "think", iteration);
+        assert!(matches!(think_stored.retention, Retention::Recent { .. }));
+        assert_eq!(think_stored.created_iteration, iteration);
+        assert!(
+            matches!(think_stored.message, Message::Tool { ref tool_call_id, .. } if tool_call_id == "think-1")
+        );
+
+        let search_docs_stored = store_tool_result(search_docs_message, "search_docs", iteration);
+        assert!(matches!(
+            search_docs_stored.retention,
+            Retention::Recent { .. }
+        ));
+        assert_eq!(search_docs_stored.created_iteration, iteration);
+        assert!(
+            matches!(search_docs_stored.message, Message::Tool { ref tool_call_id, .. } if tool_call_id == "search-docs-1")
+        );
+
+        let build_check_stored = store_tool_result(build_check_message, "build_check", iteration);
+        assert!(matches!(
+            build_check_stored.retention,
+            Retention::Recent { .. }
+        ));
+        assert_eq!(build_check_stored.created_iteration, iteration);
+        assert!(
+            matches!(build_check_stored.message, Message::Tool { ref tool_call_id, .. } if tool_call_id == "build-check-1")
+        );
+    }
 }

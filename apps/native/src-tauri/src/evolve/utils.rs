@@ -1,7 +1,23 @@
 //! Common utilities for the evolve module
 
 use anyhow::{anyhow, Result};
+use sha2::{Digest, Sha256};
 use std::path::{Component, Path, PathBuf};
+
+/// Escape special characters in the user query to prevent them from being interpreted as markup in the system prompt.
+pub fn escape_user_query(input: &str) -> String {
+    input
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
+
+/// Return short hex prefix for correlation of error messages without risking sensitive content exposure.
+pub fn short_hash(s: &str) -> String {
+    let mut h = Sha256::new();
+    h.update(s.as_bytes());
+    hex::encode(h.finalize())[..8].to_string()
+}
 
 /// Truncate error output to a maximum length, keeping the most relevant parts
 pub fn truncate_error(s: &str, max_len: usize) -> String {
