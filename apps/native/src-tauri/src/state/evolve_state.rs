@@ -62,7 +62,7 @@ pub fn set<R: Runtime>(
     // across repeated conversational cycles.
     let preserve_for_conversational_begin = state.step == EvolveStep::Begin
         && matches!(
-            state.last_evolution_state,
+            state.last_evolution_state.as_ref(),
             Some(EvolutionState::Conversational)
         );
 
