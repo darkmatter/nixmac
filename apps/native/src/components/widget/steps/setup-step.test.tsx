@@ -7,6 +7,12 @@ import { SetupStep } from "./setup-step";
 
 const mockSaveHost = vi.hoisted(() => vi.fn<(host: string) => Promise<void>>());
 
+vi.mock("@/lib/env", () => ({
+  settings: {
+    NIX_INSTALLED_OVERRIDE: false,
+  },
+}));
+
 vi.mock("@/hooks/use-darwin-config", () => ({
   useDarwinConfig: () => ({
     saveHost: mockSaveHost,
