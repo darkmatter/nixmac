@@ -21,6 +21,7 @@ export function SetupStep() {
   const host = useWidgetStore((state) => state.host);
   const [configDirConfirmed, setConfigDirConfirmed] = useState(false);
   const [selectedHost, setSelectedHost] = useState<string>("");
+  const effectiveHost = selectedHost || host;
 
   const { saveHost } = useDarwinConfig();
 
@@ -82,7 +83,7 @@ export function SetupStep() {
           ) : (
             <BootstrapConfig label="2. Configuration" />
           )}
-          <Button onClick={() => saveHost(selectedHost)}>
+          <Button disabled={!effectiveHost} onClick={() => saveHost(effectiveHost)}>
             Next
           </Button>
         </div>
