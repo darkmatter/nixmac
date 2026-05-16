@@ -563,6 +563,7 @@ fn append_values_to_existing_list(
         // used for existing list items so the appended items match formatting.
         let close_line_start = before_close.rfind('\n').map_or(0, |idx| idx + 1);
         let close_line = &before_close[close_line_start..];
+        let close_line_has_content = !close_line.trim().is_empty();
         let close_indent: String = close_line
             .chars()
             .take_while(|ch| ch.is_whitespace())
@@ -589,13 +590,31 @@ fn append_values_to_existing_list(
 
         // Build the insertion text: each value on its own line using the detected indent.
         let mut insertion = String::new();
+
+        // If the closing bracket is on the same line as content, insert at the exact
+        // bracket position and prefix a newline so values append after existing items.
+        if close_line_has_content {
+            insertion.push('\n');
+        }
+
         for value in values {
             insertion.push_str(&item_indent);
             insertion.push_str(value);
             insertion.push('\n');
         }
 
-        (close_line_start, insertion)
+        if close_line_has_content {
+            insertion.push_str(&close_indent);
+        }
+
+        (
+            if close_line_has_content {
+                close_offset
+            } else {
+                close_line_start
+            },
+            insertion,
+        )
     } else {
         // Single-line list: append space-separated values, preserving a single space
         // between existing content and the new values. Detect whether there is
@@ -941,6 +960,13 @@ environment.systemPackages = with pkgs; [
 }
 "#;
 
+    const NO_WITH_PACKAGES_INLINE_CLOSE: &str = r#"{ config, pkgs, ... }:
+{
+    environment.systemPackages = [
+        git];
+}
+"#;
+
     const BOOL_ASSIGNMENT: &str = r#"{ config, pkgs, ... }:
 {
     services.tailscale.enable = false;
@@ -1024,8 +1050,6 @@ environment.systemPackages = with pkgs; [
         ripgrep
     ];"#;
 
-        println!("Edited content:\n{}", edited);
-        println!("Expected snippet:\n{}", expected);
         assert!(
             edited.contains(expected),
             "expected ripgrep to append at the end while preserving list comment/spacing structure"
@@ -1075,6 +1099,28 @@ environment.systemPackages = with pkgs; [
         expected,
         edited
     );
+    }
+
+    #[test]
+    fn add_appends_when_multiline_list_closes_inline_with_last_item() {
+        let edited = add(
+            NO_WITH_PACKAGES_INLINE_CLOSE,
+            "environment.systemPackages",
+            &["firefox".to_string()],
+        )
+        .expect("add should append for multiline lists with inline closing bracket");
+
+        let expected = r#"environment.systemPackages = [
+        git
+        firefox
+        ];"#;
+
+        assert!(
+            edited.contains(expected),
+            "expected appended value to be inserted after existing inline-closing item.\nExpected:\n{}\n\nActual:\n{}",
+            expected,
+            edited
+        );
     }
 
     #[test]
