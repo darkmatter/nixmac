@@ -19,6 +19,8 @@ pub enum SearchResultInstallTarget {
     System,
     // Package is not available on the host platform (e.g. no Darwin support, etc.)
     UnavailableOnHostPlatform,
+    // Don't try to install -- package is broken etc.
+    None,
 }
 
 #[derive(Debug, serde::Serialize, Clone, PartialEq, Eq)]
@@ -30,6 +32,7 @@ pub struct SearchPackageResult {
     pub version: String,
     pub description: String,
     pub install_via: SearchResultInstallTarget,
+    pub additional_info: Option<String>,
 }
 
 /// Search a single channel and return a list of SearchPackageResult
@@ -89,10 +92,11 @@ fn process_search_output(
     if let Some(value) = parsed.as_object() {
         for (attr_path, pkg) in value {
             let name = attr_path.split('.').last().unwrap_or(attr_path).to_string();
-            let package_type = if let Some(classifier) = package_classifier {
-                classifier(&name)
+            let (package_type, additional_info) = if let Some(classifier) = package_classifier {
+                (classifier(&name), None)
             } else {
-                classify_package(channel, attr_path)
+                let (pkg_type, info) = classify_package(channel, attr_path);
+                (pkg_type, info)
             };
 
             // If the package is unavailable on the host platform, skip it.
@@ -115,6 +119,7 @@ fn process_search_output(
                     .and_then(|v| v.as_str())
                     .unwrap_or("No description")
                     .to_string(),
+                additional_info,
             });
         }
     }
@@ -240,7 +245,7 @@ fn classify_derivation(drv: &str) -> SearchResultInstallTarget {
 
 /// Heuristically classify whether a nix package behaves like a GUI app
 /// (Homebrew Cask-like) or a CLI / nix-native package.
-fn classify_package(channel: &str, attr_path: &str) -> SearchResultInstallTarget {
+fn classify_package(channel: &str, attr_path: &str) -> (SearchResultInstallTarget, Option<String>) {
     let mut cmd = Command::new("nix");
     cmd.args(&[
         "derivation",
@@ -252,7 +257,7 @@ fn classify_package(channel: &str, attr_path: &str) -> SearchResultInstallTarget
         Ok(output) => output,
         Err(e) => {
             log::error!("Failed to execute nix derivation show: {}", e);
-            return SearchResultInstallTarget::Either;
+            return (SearchResultInstallTarget::Either, None);
         }
     };
 
@@ -262,7 +267,23 @@ fn classify_package(channel: &str, attr_path: &str) -> SearchResultInstallTarget
         // If the error message contains "not available on the requested hostPlatform",
         // set to "unavailable".
         if stderr.contains("not available on the requested hostPlatform") {
-            return SearchResultInstallTarget::UnavailableOnHostPlatform;
+            return (SearchResultInstallTarget::UnavailableOnHostPlatform, None);
+        }
+
+        // If the package is broken, set to "none" to avoid trying to install it at all.
+        if stderr.contains("broken: This package is broken.") {
+            return (SearchResultInstallTarget::None, Some("package is broken".to_string()));
+        }
+
+        // If this error occurs because the package is "unfree" and allowUnfree
+        // is not enabled, we can't do a type determination but the package
+        // is technically installable via nix if the user enables allowUnfree,
+        // so we return "either".
+        // CONSIDER: We may do something additional in the future like offer
+        // to enable allowUnfree for the user or something like that, but for now
+        // we'll leave things up to the agent.
+        if stderr.contains("Refusing to evaluate package") && stderr.contains("because it has an unfree license") {
+            return (SearchResultInstallTarget::Either, Some("needs allowUnfree enabled".to_string()));
         }
 
         // Else assume the error is on our side and let the agent decide what to
@@ -273,12 +294,12 @@ fn classify_package(channel: &str, attr_path: &str) -> SearchResultInstallTarget
             output.status.code(),
             truncated
         );
-        return SearchResultInstallTarget::Either;
+        return (SearchResultInstallTarget::Either, Some(truncated));
     }
 
     let drv = String::from_utf8_lossy(&output.stdout);
 
-    classify_derivation(&drv)
+    (classify_derivation(&drv), None)
 }
 
 #[cfg(test)]
@@ -329,6 +350,7 @@ mod tests {
             version: "30.2".to_string(),
             description: "Extensible, customizable GNU text editor".to_string(),
             install_via: SearchResultInstallTarget::Either,
+            additional_info: None,
         })), ("emacs-fulltext", 55, Some(SearchPackageResult{
             name: "auctex".to_string(),
             attr_path: "legacyPackages.aarch64-darwin.auctex".to_string(),
@@ -336,6 +358,7 @@ mod tests {
             version: "13.2".to_string(),
             description: "Extensible package for writing and formatting TeX files in GNU Emacs and XEmacs".to_string(),
             install_via: SearchResultInstallTarget::Either,  
+            additional_info: None,
         })), ("empty", 0, None )];
         let fake_package_classifier = |_package_name: &str| SearchResultInstallTarget::Either;
 
@@ -372,6 +395,7 @@ mod tests {
                 version: "30.2".to_string(),
                 description: "Extensible, customizable GNU text editor".to_string(),
                 install_via: SearchResultInstallTarget::Either,
+                additional_info: None,
             },
             SearchPackageResult {
                 name: "auctex".to_string(),
@@ -382,6 +406,7 @@ mod tests {
                     "Extensible package for writing and formatting TeX files in GNU Emacs and XEmacs"
                         .to_string(),
                 install_via: SearchResultInstallTarget::Either,
+                additional_info: None,
             },
         ];
         let channel2_results = vec![SearchPackageResult {
@@ -391,6 +416,7 @@ mod tests {
             version: "30.2".to_string(),
             description: "Extensible, customizable GNU text editor".to_string(),
             install_via: SearchResultInstallTarget::Either,
+            additional_info: None,
         }];
 
         process_channel_results(&mut structured, channel1_results, 10).unwrap();
