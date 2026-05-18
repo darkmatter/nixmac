@@ -9,8 +9,8 @@
 pub const FIND_EXISTING: bool = false;
 pub const GROUP_EXISTING: bool = false;
 pub const SIMPLIFY_GROUP: bool = false;
-pub const FRESH_CHANGESET: bool = true;
-pub const EVOLVED_CHANGESET: bool = true;
+pub const FRESH_CHANGESET: bool = false;
+pub const EVOLVED_CHANGESET: bool = false;
 pub const QUEUE_SUMMARIZER: bool = false;
 
 // ── Imports ───────────────────────────────────────────────────────────────────
