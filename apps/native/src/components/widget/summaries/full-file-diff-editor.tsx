@@ -38,12 +38,14 @@ export function FullFileDiffEditor({ filename, changes, contents, isOpen, onOpen
 
   const focusChange = (index: number) => {
     const line = getModStartLine(changes[index].diff);
-    if (!line) return;
-    if (isOpen) {
-      editorRef.current?.getModifiedEditor().revealLineInCenter(line, monaco.editor.ScrollType.Smooth);
-    } else {
-      pendingScrollLineRef.current = line;
+    const target = line && line > 0 ? line : null;
+    if (!isOpen) {
+      pendingScrollLineRef.current = target;
       onOpenChange(true);
+      return;
+    }
+    if (target != null) {
+      editorRef.current?.getModifiedEditor().revealLineInCenter(target, monaco.editor.ScrollType.Smooth);
     }
   };
 
@@ -78,8 +80,8 @@ export function FullFileDiffEditor({ filename, changes, contents, isOpen, onOpen
       }
     >
       {contents ? (
-        changeType === "new" || changeType === "removed" ? (
-          <FileView contents={contents} filename={filename} changeType={changeType} />
+        changeType === "new" ? (
+          <FileView contents={contents} filename={filename} />
         ) : (
           <DiffView contents={contents} filename={filename} onMount={handleMount} />
         )

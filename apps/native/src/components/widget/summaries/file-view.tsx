@@ -5,11 +5,10 @@ import { languageFromFilename, NIXMAC_THEME, NIXMAC_THEME_DATA, FILE_VIEW_OPTION
 interface FileViewProps {
   contents: FileDiffContents;
   filename: string;
-  changeType: "new" | "removed";
 }
 
-export function FileView({ contents, filename, changeType }: FileViewProps) {
-  const value = changeType === "new" ? contents.modified : contents.original;
+export function FileView({ contents, filename }: FileViewProps) {
+  const value = contents.modified;
   const lineCount = value.split("\n").length;
 
   return (

@@ -32,7 +32,6 @@ export const NewNixFile = meta.story({
       <FileView
         contents={{ original: "", modified: NIX_CONTENT }}
         filename="modules/darwin/fonts.nix"
-        changeType="new"
       />
     </div>
   ),
@@ -44,19 +43,6 @@ export const NewJsonFile = meta.story({
       <FileView
         contents={{ original: "", modified: JSON_CONTENT }}
         filename=".vscode/settings.json"
-        changeType="new"
-      />
-    </div>
-  ),
-});
-
-export const RemovedNixFile = meta.story({
-  render: () => (
-    <div className="w-[560px]">
-      <FileView
-        contents={{ original: NIX_CONTENT, modified: "" }}
-        filename="modules/home/old-shell.nix"
-        changeType="removed"
       />
     </div>
   ),

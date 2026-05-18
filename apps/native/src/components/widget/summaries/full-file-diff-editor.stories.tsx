@@ -152,6 +152,38 @@ export const Collapsed = meta.story({
   ),
 });
 
+const REMOVED_DIFF = `diff --git a/modules/home/old-shell.nix b/modules/home/old-shell.nix
+deleted file mode 100644
+--- a/modules/home/old-shell.nix
++++ /dev/null
+@@ -1,8 +0,0 @@
+-{ config, pkgs, ... }:
+-
+-{
+-  programs.fish = {
+-    enable = true;
+-    shellAliases.ll = "ls -la";
+-  };
+-}`;
+
+export const Removed = meta.story({
+  render: () => (
+    <WithStore>
+      <ControlledFullFileDiffEditor
+        filename="modules/home/old-shell.nix"
+        changes={[{
+          ...makeChange(99, REMOVED_DIFF),
+          filename: "modules/home/old-shell.nix",
+          shortFilename: "old-shell.nix",
+          changeType: "removed",
+        }]}
+        contents={{ original: ORIGINAL, modified: "" }}
+        initialOpen
+      />
+    </WithStore>
+  ),
+});
+
 export const Loading = meta.story({
   render: () => (
     <WithStore>
