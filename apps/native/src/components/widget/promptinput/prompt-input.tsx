@@ -133,8 +133,8 @@ export function PromptInput() {
           id="evolve-prompt-input"
           data-testid="evolve-prompt-input"
           disabled={isLoading}
-          onChange={(e) => setEvolvePrompt(e.target.value)}
-          onKeyDown={(e) => {
+          onChange={(e: { target: { value: string; }; }) => setEvolvePrompt(e.target.value)}
+          onKeyDown={(e: { key: string; }) => {
             if (e.key === "Enter" && evolvePrompt.trim() && !sendDisabled) {
               handleSubmit();
             }

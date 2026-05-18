@@ -9,6 +9,10 @@ vi.mock("@/tauri-api", () => ({
     git: {
       status: vi.fn().mockResolvedValue({ hasChanges: false, files: [] }),
     },
+    debug: {
+      logBreadcrumb: vi.fn().mockResolvedValue(undefined),
+      markBootStage: vi.fn().mockResolvedValue(undefined),
+    },
     config: {
       read: vi.fn().mockResolvedValue({ configDir: "/Users/test/nixmac" }),
       listHosts: vi.fn().mockResolvedValue(["Test-MacBook"]),

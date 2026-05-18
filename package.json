@@ -11,6 +11,7 @@
     "dev": "bun -F native dev",
     "desktop:dev": "bun -F native desktop:dev",
     "desktop:build": "bun -F native desktop:build",
+    "desktop:test": "bun -F native desktop:test",
     "postinstall": "bun2nix -o bun.nix",
     "release": "release-it",
     "test:e2e": "bun -F native test:e2e",

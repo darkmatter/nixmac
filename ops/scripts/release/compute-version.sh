@@ -17,13 +17,20 @@ MODE="branch"
 VERSION=""
 TAG=""
 
+# Match only stable vMAJ.MIN.PAT tags when deriving the next bump. Disposable
+# prerelease tags like `v0.22.0-test.1` would otherwise be returned by
+# `git describe --tags`, and parsing `0-test.1` as PAT breaks the arithmetic
+# bump below.
+STABLE_TAG_MATCH='v[0-9]*.[0-9]*.[0-9]*'
+STABLE_TAG_EXCLUDE='*-*'
+
 if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
 	MODE="tag"
 	VERSION="${GITHUB_REF_NAME#v}"
 	TAG="$GITHUB_REF_NAME"
 elif [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/main" ]]; then
 	MODE="release"
-	BASE=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "")
+	BASE=$(git describe --tags --abbrev=0 --match "$STABLE_TAG_MATCH" --exclude "$STABLE_TAG_EXCLUDE" 2>/dev/null | sed 's/^v//' || echo "")
 	if [[ -z "$BASE" ]]; then
 		BASE=$(node -p "require('./package.json').version")
 		echo "No tags found — bumping from package.json version $BASE"
@@ -34,7 +41,7 @@ elif [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/main" ]];
 	TAG="v${VERSION}"
 elif [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/develop" ]]; then
 	MODE="develop"
-	BASE=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "")
+	BASE=$(git describe --tags --abbrev=0 --match "$STABLE_TAG_MATCH" --exclude "$STABLE_TAG_EXCLUDE" 2>/dev/null | sed 's/^v//' || echo "")
 	if [[ -z "$BASE" ]]; then
 		BASE=$(node -p "require('./package.json').version")
 		echo "No tags found — using package.json version $BASE as develop base"

@@ -353,6 +353,13 @@ fn get_string_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<S
     get_string_pref_raw(app, key)
 }
 
+/// Reads a value from the store and deserializes it into `T`.
+///
+/// Returns `Ok(None)` both when the key is absent and when stored JSON fails to
+/// deserialize (e.g. after a schema change). Callers that want a default in the
+/// failure case can use [`get_json_pref_or`]. If you add a required field to `T`,
+/// existing stores will silently fall back to the default — use `#[serde(default)]`
+/// on new fields to preserve forward-compatibility.
 pub fn get_json_pref<R, T>(app: &AppHandle<R>, key: &str) -> Result<Option<T>>
 where
     R: Runtime,

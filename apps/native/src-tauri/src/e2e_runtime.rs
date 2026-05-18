@@ -6,23 +6,20 @@
 //! debug builds can still receive deterministic test controls. Release builds
 //! ignore the file.
 
-#[cfg(debug_assertions)]
 use serde::Deserialize;
-#[cfg(debug_assertions)]
 use std::collections::HashMap;
-#[cfg(debug_assertions)]
+#[allow(unused_imports)]
 use std::fs;
-#[cfg(debug_assertions)]
 use std::path::PathBuf;
-#[cfg(debug_assertions)]
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[cfg(debug_assertions)]
+#[allow(dead_code)]
 const RUNTIME_FILE_NAME: &str = "e2e-runtime.json";
-#[cfg(debug_assertions)]
+
+#[allow(dead_code)]
 const BUNDLE_ID: &str = "com.darkmatter.nixmac";
 
-#[cfg(debug_assertions)]
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 struct E2eRuntimeFile {
     #[serde(rename = "schemaVersion")]
@@ -34,7 +31,7 @@ struct E2eRuntimeFile {
     values: HashMap<String, String>,
 }
 
-#[cfg(debug_assertions)]
+#[allow(dead_code)]
 fn runtime_file_path() -> Option<PathBuf> {
     let home = dirs::home_dir()?;
     Some(
@@ -45,7 +42,7 @@ fn runtime_file_path() -> Option<PathBuf> {
     )
 }
 
-#[cfg(debug_assertions)]
+#[allow(dead_code)]
 fn now_unix() -> Option<u64> {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)

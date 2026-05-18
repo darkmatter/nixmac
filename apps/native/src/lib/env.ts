@@ -1,34 +1,25 @@
-export interface SettingsType {
-  VITE_SERVER_URL?: string;
-  NIX_INSTALLED_OVERRIDE?: boolean;
-}
+import * as Schema from "effect/Schema";
 
-function booleanFromEnv(value: unknown): boolean | undefined {
-  if (typeof value === "boolean") return value;
-  if (typeof value !== "string") return undefined;
+const Settings = Schema.Struct({
+  VITE_SERVER_URL: Schema.optional(Schema.String),
+  // Vite env vars come in as strings; only the literal "true"
+  // (case-insensitive) will be treated as an override.
+  NIX_INSTALLED_OVERRIDE: Schema.optional(Schema.String),
+});
 
-  switch (value.trim().toLowerCase()) {
-    case "1":
-    case "true":
-    case "yes":
-    case "on":
-      return true;
-    case "0":
-    case "false":
-    case "no":
-    case "off":
-      return false;
-    default:
-      return undefined;
-  }
-}
+export type SettingsType = Schema.Schema.Type<typeof Settings>;
 
-export const settings: SettingsType = {
-  VITE_SERVER_URL:
-    typeof import.meta.env.VITE_SERVER_URL === "string"
-      ? import.meta.env.VITE_SERVER_URL
-      : undefined,
-  NIX_INSTALLED_OVERRIDE: booleanFromEnv(import.meta.env.NIX_INSTALLED_OVERRIDE),
+const rawSettings = Schema.decodeUnknownSync(Settings)(import.meta.env) as SettingsType;
+
+export const settings = {
+  ...rawSettings,
+  NIX_INSTALLED_OVERRIDE:
+    rawSettings.NIX_INSTALLED_OVERRIDE == null
+      ? undefined
+      : /^true$/i.test(String(rawSettings.NIX_INSTALLED_OVERRIDE)),
+} as {
+  readonly VITE_SERVER_URL?: string;
+  readonly NIX_INSTALLED_OVERRIDE?: boolean;
 };
 
 // Helper to resolve the public website URL used by the native/web apps.
