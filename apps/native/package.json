@@ -38,6 +38,7 @@
     "test:wdio:conversational": "npm run build:e2e && wdio run e2e-tauri/wdio.conversational.conf.mjs",
     "test:wdio:discard": "npm run build:e2e && wdio run e2e-tauri/wdio.discard.conf.mjs",
     "test:wdio:modify": "npm run build:e2e && wdio run e2e-tauri/wdio.modify.conf.mjs",
+    "test:wdio:manual-changes": "npm run build:e2e && wdio run e2e-tauri/wdio.manual-changes.conf.mjs",
     "test:wdio:onboarding": "npm run build:e2e && wdio run e2e-tauri/wdio.onboarding.conf.mjs"
   },
   "dependencies": {

@@ -1,4 +1,4 @@
-import { getShortFilename, type ChangeWithRichType } from "@/components/widget/utils";
+import { getModStartLine, getShortFilename, type ChangeWithRichType } from "@/components/widget/utils";
 import type { FileDiffContents } from "@/types/shared";
 import type { editor } from "monaco-editor";
 import { useRef } from "react";
@@ -7,11 +7,6 @@ import { HunkPill } from "./hunk-pill";
 import { DiffView } from "./diff-view";
 import { monaco } from "./monaco-setup";
 import { FileView } from "./file-view";
-
-function getModStartLine(diff: string): number | null {
-  const match = /@@ -\d+(?:,\d+)? \+(\d+)/.exec(diff);
-  return match ? parseInt(match[1]) : null;
-}
 
 interface FullFileDiffEditorProps {
   filename: string;

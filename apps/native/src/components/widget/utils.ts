@@ -206,7 +206,7 @@ export type ChangeFileSummary = ChangeWithRichType & {
   hunkCount: number;
 };
 
-function inferChangeType(diff: string): ChangeType {
+export function inferChangeType(diff: string): ChangeType {
   if (/^@@ -0(?:,0)? \+/.test(diff)) return "new";
   if (/^@@ -\d+(?:,\d+)? \+0(?:,0)? @@/.test(diff)) return "removed";
   return "edited";
@@ -285,6 +285,11 @@ export function summarizeChangesByFile(
   }
 
   return Array.from(byFile.values());
+}
+
+export function getModStartLine(diff: string): number | null {
+  const match = /@@ -\d+(?:,\d+)? \+(\d+)/.exec(diff);
+  return match ? parseInt(match[1]) : null;
 }
 
 export function enrichChanges(changes: Change[]): ChangeWithRichType[] {

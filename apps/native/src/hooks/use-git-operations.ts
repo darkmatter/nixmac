@@ -26,7 +26,7 @@ export const prefetchFileDiffContents = async (status: { changes: { filename: st
   }
 };
 
-const refreshGitStatus = async (options?: { cache?: boolean }) => {
+export const refreshGitStatus = async (options?: { cache?: boolean }) => {
   try {
     const shouldCache = options?.cache === true;
     const status = shouldCache

@@ -19,6 +19,7 @@ export function FileView({ contents, filename }: FileViewProps) {
       value={value}
       theme={NIXMAC_THEME}
       options={FILE_VIEW_OPTIONS}
+      wrapperProps={{ "data-testid": "monaco-file-view" }}
       beforeMount={(m) => m.editor.defineTheme(NIXMAC_THEME, NIXMAC_THEME_DATA)}
     />
   );

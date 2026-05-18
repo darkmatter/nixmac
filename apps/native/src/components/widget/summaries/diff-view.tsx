@@ -34,6 +34,7 @@ export function DiffView({ contents, filename, onMount }: DiffViewProps) {
       modified={contents.modified}
       theme={NIXMAC_THEME}
       options={DIFF_EDITOR_OPTIONS}
+      wrapperProps={{ "data-testid": "monaco-diff-view" }}
       beforeMount={(m) => m.editor.defineTheme(NIXMAC_THEME, NIXMAC_THEME_DATA)}
       onMount={(ed: editor.IStandaloneDiffEditor) => {
         editorRef.current = ed;

@@ -40,7 +40,7 @@ export function DiffSection({ changes, openFiles, onOpenFilesChange }: DiffSecti
   }
 
   return (
-    <ScrollArea className="min-h-0 w-full flex-1">
+    <ScrollArea className="min-h-0 w-full flex-1" data-testid="diff-section">
       <div className="flex flex-col gap-2 py-2">
         {[...byFile.entries()].map(([filename, fileChanges]) => (
           <FullFileDiffEditor

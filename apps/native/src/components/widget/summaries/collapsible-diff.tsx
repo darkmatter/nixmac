@@ -40,6 +40,7 @@ export function CollapsibleDiff({
       open={open}
       defaultOpen={defaultOpen}
       onOpenChange={onOpenChange}
+      data-testid={`diff-row-${change.filename}`}
     >
       <div className="flex items-center gap-2 rounded-t-md bg-muted/50 px-2 py-1.5">
         <button
