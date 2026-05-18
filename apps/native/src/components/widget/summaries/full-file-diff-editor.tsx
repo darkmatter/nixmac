@@ -23,28 +23,36 @@ interface FullFileDiffEditorProps {
 
 export function FullFileDiffEditor({ filename, changes, contents, isOpen, onOpenChange }: FullFileDiffEditorProps) {
   const editorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
+  const pendingScrollLineRef = useRef<number | null>(
+    isOpen ? getModStartLine(changes[0].diff) : null,
+  );
 
-  const scrollToChange = (index: number) => {
-    const line = getModStartLine(changes[index].diff);
-    if (line) editorRef.current?.getModifiedEditor().revealLineInCenter(line, monaco.editor.ScrollType.Smooth);
+  const handleMount = (ed: editor.IStandaloneDiffEditor) => {
+    editorRef.current = ed;
+    const pending = pendingScrollLineRef.current;
+    pendingScrollLineRef.current = null;
+    if (pending != null) {
+      ed.getModifiedEditor().revealLineInCenter(pending, monaco.editor.ScrollType.Immediate);
+    }
   };
 
-  const handlePillClick = (index: number) => {
-    if (!isOpen) {
-      onOpenChange(true);
-      setTimeout(() => scrollToChange(index), 150);
+  const focusChange = (index: number) => {
+    const line = getModStartLine(changes[index].diff);
+    if (!line) return;
+    if (isOpen) {
+      editorRef.current?.getModifiedEditor().revealLineInCenter(line, monaco.editor.ScrollType.Smooth);
     } else {
-      scrollToChange(index);
+      pendingScrollLineRef.current = line;
+      onOpenChange(true);
     }
   };
 
   const handleToggle = () => {
-    if (!isOpen) {
-      onOpenChange(true);
-      setTimeout(() => scrollToChange(0), 150);
-    } else {
+    if (isOpen) {
       onOpenChange(false);
       editorRef.current?.setModel(null);
+    } else {
+      focusChange(0);
     }
   };
 
@@ -64,7 +72,7 @@ export function FullFileDiffEditor({ filename, changes, contents, isOpen, onOpen
       headerExtra={
         <>
           {changes.map((c, i) => (
-            <HunkPill key={c.hash} change={c} onClick={() => handlePillClick(i)} />
+            <HunkPill key={c.hash} change={c} onClick={() => focusChange(i)} />
           ))}
         </>
       }
@@ -73,7 +81,7 @@ export function FullFileDiffEditor({ filename, changes, contents, isOpen, onOpen
         changeType === "new" || changeType === "removed" ? (
           <FileView contents={contents} filename={filename} changeType={changeType} />
         ) : (
-          <DiffView contents={contents} filename={filename} onMount={(ed) => { editorRef.current = ed; }} />
+          <DiffView contents={contents} filename={filename} onMount={handleMount} />
         )
       ) : (
         <div className="flex items-center justify-center py-8 text-muted-foreground text-xs">

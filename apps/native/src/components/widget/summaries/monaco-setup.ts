@@ -67,6 +67,7 @@ export const DIFF_EDITOR_OPTIONS = {
   renderSideBySide: false,
   renderOverviewRuler: false,
   renderIndicators: true,
+  stickyScroll: { enabled: false },
 };
 
 const EXT_TO_LANGUAGE: Record<string, string> = {
