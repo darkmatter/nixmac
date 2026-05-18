@@ -1,6 +1,6 @@
-use async_openai::types::CreateChatCompletionResponse;
-use chrono::Local;
+use chrono::{Local, Utc};
 use log::{error, info};
+use serde::Serialize;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
@@ -9,16 +9,12 @@ use tokio::task::spawn_blocking;
 /// Returns the daily-rotated JSONL path for the given prefix.
 ///
 /// Files land in `~/Library/Application Support/nixmac/logs/{prefix}_YYYY-MM-DD.jsonl`
-/// on a Mac.
+/// on macOS.
 fn log_path_for_today(prefix: &str) -> PathBuf {
     let date = Local::now().format("%Y-%m-%d");
-    crate::e2e_runtime::value("NIXMAC_COMPLETION_LOG_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| {
-            dirs::data_local_dir()
-                .unwrap_or_else(|| std::path::PathBuf::from("."))
-                .join("nixmac")
-        })
+    dirs::data_local_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("nixmac")
         .join("logs")
         .join(format!("{prefix}_{date}.jsonl"))
 }
@@ -43,35 +39,42 @@ pub fn init_recording(prefix: &str, label: &str) -> bool {
     }
 
     info!(
-        "NIXMAC_RECORD_COMPLETIONS is set; recording raw {label} completion JSONL to {}",
+        "NIXMAC_RECORD_COMPLETIONS is set; recording full {label} request/response JSONL to {}",
         path.display()
     );
     true
 }
 
-/// Appends a single serialized `CreateChatCompletionResponse` line to the
-/// daily JSONL file for `prefix`. No-ops when `record_completions` is false.
+/// Appends a single event JSON line to the daily file for `prefix`.
+/// No-ops when `enabled` is false.
 ///
 /// The write is dispatched to a blocking thread via `spawn_blocking` so the
 /// Tokio runtime is not stalled. Each append serializes to a single
 /// newline-terminated buffer and writes it with `write_all`, which issues one
 /// `write(2)` syscall. Combined with `O_APPEND`, this makes each line
 /// effectively atomic for the typical response sizes seen here.
-pub async fn append_jsonl(
-    record_completions: bool,
+pub async fn append_event_jsonl<T: Serialize>(
+    enabled: bool,
     prefix: &str,
-    response: &CreateChatCompletionResponse,
+    provider: &str,
+    event: &str,
+    payload: &T,
 ) {
-    if !record_completions {
+    if !enabled {
         return;
     }
 
-    let line = match serde_json::to_string(response) {
+    let line = match serde_json::to_string(&serde_json::json!({
+        "ts": Utc::now().to_rfc3339(),
+        "provider": provider,
+        "event": event,
+        "payload": payload,
+    })) {
         Ok(json) => json,
         Err(e) => {
             error!(
-                "Failed to serialize provider response for JSONL recording: {}",
-                e
+                "Failed to serialize chat-log payload for provider '{}' event '{}': {}",
+                provider, event, e
             );
             return;
         }
@@ -90,6 +93,6 @@ pub async fn append_jsonl(
     })
     .await
     {
-        error!("Failed to append completion JSONL for prefix '{prefix}': {e}");
+        error!("Failed to append chat-log JSONL for prefix '{prefix}': {e}");
     }
 }
