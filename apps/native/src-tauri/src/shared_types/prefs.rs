@@ -2,17 +2,12 @@ use serde::{Deserialize, Serialize};
 use specta::Type;
 
 /// Auto-update channel selected for release-mode builds.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Type)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, Type)]
 #[serde(rename_all = "camelCase")]
 pub enum UpdateChannel {
+    #[default]
     Stable,
     Develop,
-}
-
-impl Default for UpdateChannel {
-    fn default() -> Self {
-        Self::Stable
-    }
 }
 
 /// User interface preferences (synced to settings.json via tauri-plugin-store).
