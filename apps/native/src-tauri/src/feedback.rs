@@ -563,11 +563,13 @@ fn get_feedback_url() -> Result<String> {
     let base = option_env!("VITE_SERVER_URL")
         .map(|s| s.to_string())
         .or_else(|| std::env::var("VITE_SERVER_URL").ok())
+        .filter(|s| !s.is_empty())
         .ok_or_else(|| anyhow::anyhow!("sending feedback not configured (url)"))?;
 
     let dsn = option_env!("SUBMITTED_FEEDBACK_DSN")
         .map(|s| s.to_string())
         .or_else(|| std::env::var("SUBMITTED_FEEDBACK_DSN").ok())
+        .filter(|s| !s.is_empty())
         .ok_or_else(|| anyhow::anyhow!("sending feedback not configured (dsn)"))?;
 
     Ok(format!("{}/api/feedback/{}", base, dsn))
@@ -879,8 +881,11 @@ regex = "token=([A-Za-z0-9]+)"
 
     #[test]
     fn test_get_feedback_url() {
-        // Backup original env var
-        let original = std::env::var("VITE_SERVER_URL").ok();
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore = crate::test_support::EnvVarRestore::capture(&[
+            "VITE_SERVER_URL",
+            "SUBMITTED_FEEDBACK_DSN",
+        ]);
 
         // Test with env var set
         std::env::set_var("VITE_SERVER_URL", "https://example.com");
@@ -893,9 +898,9 @@ regex = "token=([A-Za-z0-9]+)"
         std::env::remove_var("SUBMITTED_FEEDBACK_DSN");
         assert!(super::get_feedback_url().is_err());
 
-        // Restore original env var
-        if let Some(val) = original {
-            std::env::set_var("VITE_SERVER_URL", val);
-        }
+        // Test with env var empty
+        std::env::set_var("VITE_SERVER_URL", "");
+        std::env::set_var("SUBMITTED_FEEDBACK_DSN", "");
+        assert!(super::get_feedback_url().is_err());
     }
 }
