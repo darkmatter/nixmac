@@ -387,9 +387,12 @@ fn filter_evolution_messages(
 ) -> Vec<Message> {
     let strategy = MemoryStrategy::from_env();
 
+    if matches!(strategy, MemoryStrategy::None) {
+        return messages.iter().map(|m| m.message.clone()).collect();
+    }
+
     // 1. Filter by retention policy.
     let filtered_msgs: Vec<&EvolutionMessage> = match strategy {
-        MemoryStrategy::None => messages.iter().collect(),
         MemoryStrategy::Retention => messages
             .iter()
             .filter(|m| match m.retention {
@@ -399,6 +402,7 @@ fn filter_evolution_messages(
                 }
             })
             .collect(),
+        MemoryStrategy::None => unreachable!("handled by early return above"),
     };
 
     // 2. Filter thinks prior to build check.
@@ -1834,11 +1838,77 @@ mod tests {
 
         let out = filter_evolution_messages(&messages, 1000, false);
 
-        // With strategy=none, no retention filtering is applied.
+        // With strategy=none, no filtering is applied at all.
         assert_eq!(out.len(), messages.len());
         assert!(out
             .iter()
             .any(|m| matches!(m, Message::User { content } if content == "Short-lived message")));
+    }
+
+    #[test]
+    fn test_filter_evolution_messages_none_strategy_bypasses_all_other_filters() {
+        let _env = EnvVarGuard::set("NIXMAC_EVOLUTION_MEMORY_STRATEGY", "none");
+        let messages = vec![
+            EvolutionMessage::recent(
+                Message::Tool {
+                    tool_call_id: "think-1".to_string(),
+                    content: "Thought before build".to_string(),
+                },
+                1,
+                1,
+                Some("think_1".to_string()),
+            ),
+            EvolutionMessage::recent(
+                Message::Tool {
+                    tool_call_id: "build-check-1".to_string(),
+                    content: "Build failed".to_string(),
+                },
+                2,
+                1,
+                Some("build_check_1".to_string()),
+            ),
+            EvolutionMessage::recent(
+                Message::Tool {
+                    tool_call_id: "think-2".to_string(),
+                    content: "Thought after build".to_string(),
+                },
+                3,
+                1,
+                Some("think_2".to_string()),
+            ),
+            EvolutionMessage::recent(
+                Message::Tool {
+                    tool_call_id: "read-file-1".to_string(),
+                    content: "first read".to_string(),
+                },
+                4,
+                1,
+                Some("module.nix".to_string()),
+            ),
+            EvolutionMessage::recent(
+                Message::Tool {
+                    tool_call_id: "read-file-2".to_string(),
+                    content: "second read".to_string(),
+                },
+                5,
+                1,
+                Some("module.nix".to_string()),
+            ),
+        ];
+
+        let out = filter_evolution_messages(&messages, 99, true);
+
+        assert_eq!(out.len(), messages.len());
+        assert!(out
+            .iter()
+            .any(|m| matches!(m, Message::Tool { tool_call_id, .. } if tool_call_id == "think-1")));
+        assert!(out.iter().any(
+            |m| matches!(m, Message::Tool { tool_call_id, .. } if tool_call_id == "build-check-1")
+        ));
+        assert!(out
+            .iter()
+            .any(|m| matches!(m, Message::Tool { tool_call_id, .. } if tool_call_id == "think-2")));
+        assert!(out.iter().filter(|m| matches!(m, Message::Tool { tool_call_id, .. } if tool_call_id == "read-file-1" || tool_call_id == "read-file-2")).count() == 2);
     }
 
     #[test]
@@ -2012,9 +2082,9 @@ mod tests {
             Some("think_2".to_string()),
         );
         let messages = vec![m1, m2, m3, m4];
-        // Use Retention::None for simplicity
-        std::env::set_var("NIXMAC_EVOLUTION_MEMORY_STRATEGY", "none");
-        let filtered = filter_evolution_messages(&messages, 10, true);
+        // Use retention so we exercise the build-check pruning branch.
+        std::env::set_var("NIXMAC_EVOLUTION_MEMORY_STRATEGY", "retention");
+        let filtered = filter_evolution_messages(&messages, 3, true);
         // The think before the build check should be filtered out, but the one after should be kept.
         assert!(filtered.iter().any(
             |m| matches!(m, Message::Tool { ref tool_call_id, .. } if tool_call_id == "think-2")
@@ -2069,8 +2139,8 @@ mod tests {
             None,
         );
         let messages = vec![m1, m2, m3, m4, m5, m6];
-        // Use Retention::None for simplicity
-        std::env::set_var("NIXMAC_EVOLUTION_MEMORY_STRATEGY", "none");
+        // Use retention so dedupe logic is exercised (none now early-exits).
+        let _env = EnvVarGuard::set("NIXMAC_EVOLUTION_MEMORY_STRATEGY", "retention");
         let filtered = filter_evolution_messages(&messages, 10, false);
         // Only the last message for key1 and key2 should be kept, plus all messages with no key
         let contents: Vec<_> = filtered
