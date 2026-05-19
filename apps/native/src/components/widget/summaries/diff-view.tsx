@@ -18,6 +18,7 @@ export function DiffView({ contents, filename, onMount }: DiffViewProps) {
     contents.modified.split("\n").length,
   );
 
+  // null model on non-collapse unmount (e.g. routing) to prevent monaco crashes
   useEffect(() => {
     return () => {
       editorRef.current?.setModel(null);

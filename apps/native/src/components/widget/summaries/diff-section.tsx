@@ -19,17 +19,15 @@ interface DiffSectionProps {
 export function DiffSection({ changes, openFiles, onOpenFilesChange }: DiffSectionProps) {
   const fileContents = useWidgetStore((s) => s.fileDiffContents);
 
-  const enriched = useMemo(() => enrichChanges(changes), [changes]);
-
   const byFile = useMemo(() => {
     const map = new Map<string, ChangeWithRichType[]>();
-    for (const c of enriched) {
+    for (const c of enrichChanges(changes)) {
       const arr = map.get(c.filename) ?? [];
       arr.push(c);
       map.set(c.filename, arr);
     }
     return map;
-  }, [enriched]);
+  }, [changes]);
 
   if (changes.length === 0) {
     return (

@@ -22,6 +22,7 @@ export function FullFileDiffEditor({ filename, changes, contents, isOpen, onOpen
     isOpen ? getModStartLine(changes[0].diff) : null,
   );
 
+  // re-fires on every expand (radix collapsible unmounts on close)
   const handleMount = (ed: editor.IStandaloneDiffEditor) => {
     editorRef.current = ed;
     const pending = pendingScrollLineRef.current;
@@ -47,6 +48,7 @@ export function FullFileDiffEditor({ filename, changes, contents, isOpen, onOpen
   const handleToggle = () => {
     if (isOpen) {
       onOpenChange(false);
+      // Detach model before onmount
       editorRef.current?.setModel(null);
     } else {
       focusChange(0);

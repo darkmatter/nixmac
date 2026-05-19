@@ -24,6 +24,7 @@ interface HunkPillProps {
   onClick: () => void;
 }
 
+// Badge shown in a file header for a single change: displays the summary title if available, otherwise +N/-M counts. Clicking scrolls the diff editor to that hunk.
 export function HunkPill({ change, onClick }: HunkPillProps) {
   const changeMap = useWidgetStore((s) => s.changeMap);
 
