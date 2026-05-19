@@ -74,7 +74,15 @@ fn get_default_permissions() -> Vec<Permission> {
 }
 
 fn e2e_skip_permissions_enabled() -> bool {
-    crate::e2e_runtime::enabled("NIXMAC_SKIP_PERMISSIONS")
+    cfg!(debug_assertions) && crate::e2e_runtime::enabled("NIXMAC_SKIP_PERMISSIONS")
+}
+
+fn vite_skip_permissions_enabled() -> bool {
+    cfg!(debug_assertions)
+        && std::env::var("VITE_NIXMAC_SKIP_PERMISSIONS")
+            .ok()
+            .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
+            .unwrap_or(false)
 }
 
 fn granted_folder_permission(id: &str, name: &str, description: &str) -> Permission {
@@ -147,7 +155,7 @@ fn check_folder_access(path: &PathBuf) -> PermissionStatus {
 /// PermissionDenied. Only if every probe path is missing (NotFound) do we
 /// fall back to Pending.
 fn check_full_disk_access() -> PermissionStatus {
-    if std::env::var("VITE_NIXMAC_SKIP_PERMISSIONS").is_ok() {
+    if vite_skip_permissions_enabled() {
         debug!("VITE_NIXMAC_SKIP_PERMISSIONS is set, assuming Full Disk Access granted");
         return PermissionStatus::Granted;
     }
@@ -450,5 +458,18 @@ mod tests {
         let state = check_all_permissions();
         assert_eq!(state.permissions.len(), 4);
         assert!(state.checked_at.is_some());
+    }
+
+    #[test]
+    fn vite_permission_skip_requires_truthy_value() {
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore =
+            crate::test_support::EnvVarRestore::capture(&["VITE_NIXMAC_SKIP_PERMISSIONS"]);
+
+        std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "false");
+        assert!(!vite_skip_permissions_enabled());
+
+        std::env::set_var("VITE_NIXMAC_SKIP_PERMISSIONS", "true");
+        assert_eq!(vite_skip_permissions_enabled(), cfg!(debug_assertions));
     }
 }
