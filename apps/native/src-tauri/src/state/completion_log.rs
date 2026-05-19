@@ -8,13 +8,18 @@ use tokio::task::spawn_blocking;
 
 /// Returns the daily-rotated JSONL path for the given prefix.
 ///
-/// Files land in `~/Library/Application Support/nixmac/logs/{prefix}_YYYY-MM-DD.jsonl`
+/// Uses `NIXMAC_COMPLETION_LOG_DIR` (including e2e runtime overrides) when set,
+/// otherwise defaults to `~/Library/Application Support/nixmac/logs/{prefix}_YYYY-MM-DD.jsonl`
 /// on macOS.
 fn log_path_for_today(prefix: &str) -> PathBuf {
     let date = Local::now().format("%Y-%m-%d");
-    dirs::data_local_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("nixmac")
+    crate::e2e_runtime::value("NIXMAC_COMPLETION_LOG_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            dirs::data_local_dir()
+                .unwrap_or_else(|| PathBuf::from("."))
+                .join("nixmac")
+        })
         .join("logs")
         .join(format!("{prefix}_{date}.jsonl"))
 }
