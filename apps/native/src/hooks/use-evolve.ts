@@ -1,3 +1,4 @@
+import { EVOLUTION_CANCELLED_MSG } from "@/lib/constants";
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI, EVOLVE_EVENT_CHANNEL, ipcRenderer, type EvolveEvent } from "@/tauri-api";
 
@@ -101,7 +102,7 @@ const handleEvolve = async () => {
     const msg = (e as Error)?.message || String(e);
     // User-initiated cancellation isn't an error — backup still ran, so refresh
     // the change map but skip the red banner.
-    const isCancelled = msg.toLowerCase().includes("cancelled by user");
+    const isCancelled = msg.includes(EVOLUTION_CANCELLED_MSG);
 
     if (isCancelled) {
       useWidgetStore.getState().appendLog("✗ Evolution cancelled\n");

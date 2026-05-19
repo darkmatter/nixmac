@@ -406,7 +406,7 @@ export type EvolveEventType =
 /**
  * Agent is reading a file.
  */
-"reading" | 
+"reading" | "searchPackages" | 
 /**
  * Agent is editing a file.
  */
