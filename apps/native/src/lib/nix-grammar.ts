@@ -1,7 +1,7 @@
 import type * as monacoNs from "monaco-editor";
 import { wireTmGrammars } from "monaco-editor-textmate";
+import { loadWASM } from "onigasm";
 import { Registry } from "monaco-textmate";
-import { loadWASM } from "vscode-oniguruma";
 
 let initialized = false;
 
@@ -15,13 +15,8 @@ export async function initNixGrammar(
 
   if (initialized) return;
 
-  // Load oniguruma WASM
-  const onigWasmUrl = new URL(
-    "vscode-oniguruma/release/onig.wasm",
-    import.meta.url,
-  );
-  const response = await fetch(onigWasmUrl);
-  await loadWASM(response);
+  const onigWasmUrl = new URL("onigasm/lib/onigasm.wasm", import.meta.url);
+  await loadWASM(onigWasmUrl.href);
 
   // Register Nix language with Monaco if not already registered
   const langs = monaco.languages.getLanguages();

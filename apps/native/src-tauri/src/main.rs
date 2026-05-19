@@ -490,11 +490,13 @@ fn run_gui_mode(
             commands::homebrew::homebrew_apply_diff,
             commands::homebrew::homebrew_get_state_diff,
             // Git
+            commands::git::git_init_repo,
             commands::git::git_status,
             commands::git::git_status_and_cache,
             commands::git::git_cached,
             commands::git::git_commit,
             commands::git::git_stash,
+            commands::git::git_file_diff_contents,
             // Darwin/Nix
             commands::evolve::darwin_evolve,
             commands::evolve::darwin_evolve_cancel,

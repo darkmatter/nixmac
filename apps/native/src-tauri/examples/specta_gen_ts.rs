@@ -68,6 +68,7 @@ fn main() {
         .register::<shared_types::UpdateChannel>()
         .register::<shared_types::UpdateInfo>()
         .register::<shared_types::UiPrefs>()
+        .register::<shared_types::FileDiffContents>()
         .register::<shared_types::UiPrefsUpdate>()
         .register::<shared_types::OkResult>()
         .register::<shared_types::NixCheckResult>()

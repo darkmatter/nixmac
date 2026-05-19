@@ -4,6 +4,31 @@ use crate::storage::store;
 use crate::{db, git, shared_types};
 use tauri::AppHandle;
 
+/// Initializes a git repository in the config directory if one doesn't exist.
+#[tauri::command]
+pub async fn git_init_repo(app: AppHandle) -> Result<shared_types::OkResult, String> {
+    let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_init_repo", e))?;
+    git::init_repo(&dir).map_err(|e| capture_err("git_init_repo", e))?;
+    Ok(shared_types::OkResult::yes())
+}
+
+/// Returns original (HEAD) and modified (working-tree) content for each requested file.
+#[tauri::command]
+pub async fn git_file_diff_contents(
+    app: AppHandle,
+    filenames: Vec<String>,
+) -> Result<std::collections::HashMap<String, shared_types::FileDiffContents>, String> {
+    let dir =
+        store::get_config_dir(&app).map_err(|e| capture_err("git_file_diff_contents", e))?;
+    Ok(filenames
+        .into_iter()
+        .map(|f| {
+            let (original, modified) = git::exec::file_diff_contents(&dir, &f);
+            (f, shared_types::FileDiffContents { original, modified })
+        })
+        .collect())
+}
+
 /// Returns the current git status of the config directory.
 #[tauri::command]
 pub async fn git_status(app: AppHandle) -> Result<shared_types::GitStatus, String> {

@@ -697,6 +697,11 @@ nixVersion: string | null;
 appVersion: string | null }
 
 /**
+ * HEAD content vs working-tree content for a file, used by the diff tab Monaco DiffEditor.
+ */
+export type FileDiffContents = { original: string; modified: string }
+
+/**
  * File or directory entry returned by the editor tree.
  */
 export type FileEntry = { 
@@ -1375,6 +1380,10 @@ autoSummarizeOnFocus: boolean;
  */
 scanHomebrewOnStartup: boolean; 
 /**
+ * Whether the change view defaults to the Diff tab instead of Summary.
+ */
+defaultToDiffTab: boolean; 
+/**
  * Whether developer-only UI/actions are enabled.
  */
 developerMode: boolean; 
@@ -1460,6 +1469,10 @@ autoSummarizeOnFocus: boolean | null;
  * Startup Homebrew scan preference update.
  */
 scanHomebrewOnStartup: boolean | null; 
+/**
+ * Default-to-diff-tab preference update.
+ */
+defaultToDiffTab: boolean | null; 
 /**
  * Developer mode preference update.
  */

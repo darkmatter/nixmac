@@ -77,6 +77,9 @@ pub async fn start(app: &AppHandle) -> Result<(), String> {
                 }
             }
         }
+        // Clear state for next open
+        *lsp_state().lock().await = None;
+        let _ = app_handle.emit("lsp:exit", ());
     });
 
     // Spawn stderr reader — log for debugging.
