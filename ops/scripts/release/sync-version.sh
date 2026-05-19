@@ -4,8 +4,8 @@ set -euo pipefail
 # Sync versions across native app files, with stale-package.json guard for branch builds.
 #
 # Required env vars:
-#   RELEASE_MODE          - "tag" | "release" | "branch" (from compute-version.sh)
-#   RELEASE_VERSION       - computed version (from compute-version.sh, for tag/release)
+#   RELEASE_MODE          - "tag" | "release" | "develop" | "branch" (from compute-version.sh)
+#   RELEASE_VERSION       - computed version (from compute-version.sh, for tag/release/develop)
 #   GITHUB_SHA           - commit SHA (for branch build suffix)
 #
 # Optional env vars:
@@ -16,7 +16,7 @@ set -euo pipefail
 #   VERSION env var       - build version (may include -SHORT_SHA suffix for branch)
 #   build_version output  - same, via GITHUB_OUTPUT
 
-if [[ "$RELEASE_MODE" == "tag" || "$RELEASE_MODE" == "release" ]]; then
+if [[ "$RELEASE_MODE" == "tag" || "$RELEASE_MODE" == "release" || "$RELEASE_MODE" == "develop" ]]; then
 	VERSION="$RELEASE_VERSION"
 	echo "$RELEASE_MODE build — syncing to version: $VERSION"
 	node scripts/sync-versions.mjs "$VERSION"

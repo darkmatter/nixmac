@@ -1,7 +1,7 @@
 name: Build macOS App
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
     tags:
       - "v*"
   pull_request:
@@ -105,14 +105,16 @@ jobs:
       # before `bun run desktop:build`, which caused DMG bundling failures on tags.
       - name: Import Apple Developer certificate
         if: (steps.release-version.outputs.mode == 'tag' ||
-          steps.release-version.outputs.mode == 'release') &&
+          steps.release-version.outputs.mode == 'release' ||
+          steps.release-version.outputs.mode == 'develop') &&
           steps.check-secrets.outputs.has_certificate == 'true'
         shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
         run: bash ops/scripts/release/import-certificate.sh
       # Sign the app bundle (required for notarization)
       - name: Sign app bundle
         if: (steps.release-version.outputs.mode == 'tag' ||
-          steps.release-version.outputs.mode == 'release') &&
+          steps.release-version.outputs.mode == 'release' ||
+          steps.release-version.outputs.mode == 'develop') &&
           steps.check-secrets.outputs.has_certificate == 'true'
         run: bash ops/scripts/release/sign-app.sh
       # Replace unsigned app inside the Tauri-built DMG with the signed one.
@@ -123,13 +125,15 @@ jobs:
       # shipped a bare DMG without the drag-to-Applications affordance.
       - name: Swap signed app into Tauri DMG
         if: (steps.release-version.outputs.mode == 'tag' ||
-          steps.release-version.outputs.mode == 'release') &&
+          steps.release-version.outputs.mode == 'release' ||
+          steps.release-version.outputs.mode == 'develop') &&
           steps.check-secrets.outputs.has_certificate == 'true'
         run: bash ops/scripts/release/swap-signed-dmg.sh
       # Notarize the app (requires Apple Developer account)
       - name: Notarize app
         if: (steps.release-version.outputs.mode == 'tag' ||
-          steps.release-version.outputs.mode == 'release') &&
+          steps.release-version.outputs.mode == 'release' ||
+          steps.release-version.outputs.mode == 'develop') &&
           steps.check-secrets.outputs.has_notarization == 'true'
         shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
         run: bash ops/scripts/release/notarize.sh
@@ -197,7 +201,8 @@ jobs:
       # overwriting latest.json on the updater CDN.
       - name: Upload to R2
         if: (steps.release-version.outputs.mode == 'tag' ||
-          steps.release-version.outputs.mode == 'release') &&
+          steps.release-version.outputs.mode == 'release' ||
+          steps.release-version.outputs.mode == 'develop') &&
           !contains(steps.release-version.outputs.tag, '-test.')
         shell: 'sops exec-env ops/secrets/secrets.yaml "bash -e {0}"'
         env:
@@ -205,6 +210,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_VERSION: ${{ steps.release-version.outputs.version }}
           RELEASE_TAG: ${{ steps.release-version.outputs.tag }}
+          UPDATE_CHANNEL: ${{ steps.release-version.outputs.mode == 'develop' && 'develop' || 'stable' }}
         run: bash ops/scripts/release/upload-r2.sh
       # Sync the shipped release to Linear so issues referenced in commits since
       # the previous release get linked. Runs only after R2 upload succeeds, so
