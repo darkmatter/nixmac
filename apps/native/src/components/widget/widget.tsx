@@ -24,6 +24,7 @@ import {
     PermissionsStep,
     SetupStep,
 } from "@/components/widget/steps";
+import { surfaceRecoveryReport } from "@/hooks/use-feedback-on-recovery";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useNixInstall } from "@/hooks/use-nix-install";
 import { usePanicHandler } from "@/hooks/use-panic-handler";
@@ -35,7 +36,7 @@ import { useQueueSummarizer } from "@/hooks/use-queue-summarizer";
 import { useWatcher } from "@/hooks/use-watcher";
 import { loadConfig, loadHosts, loadEvolveState } from "@/hooks/use-widget-initialization";
 import { useSummary } from "@/hooks/use-summary";
-import { markBootStage } from "@/lib/e2e-boot-diagnostics";
+import { markBootStage } from "@/lib/boot-diagnostics";
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import { UpdateBanner } from "@/components/widget/layout/update-banner";
 import { setupErrorTestHelpers } from "@/utils/error-test-helpers";
@@ -121,7 +122,7 @@ export function DarwinWidget() {
         useWidgetStore.getState().setError((e as Error)?.message || String(e));
       }
 
-      // Start watching for git changes and summarizer updates after initial load
+      surfaceRecoveryReport();
       startWatching();
       queueForSummaries();
     })();

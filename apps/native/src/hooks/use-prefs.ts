@@ -12,6 +12,7 @@ export function usePrefs() {
         .setBoolPref("scanHomebrewOnStartup", prefs.scanHomebrewOnStartup ?? true);
       useWidgetStore.getState().setDeveloperMode(prefs.developerMode ?? false);
       useWidgetStore.getState().setPinnedVersion(prefs.pinnedVersion ?? null);
+      useWidgetStore.getState().setUpdateChannel(prefs.updateChannel ?? "stable");
     }
     useWidgetStore.getState().setPrefsLoaded(true);
   };
