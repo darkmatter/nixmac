@@ -69,6 +69,14 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, Strin
         "ui_get_prefs",
         store::get_string_pref_public(&app, store::PINNED_VERSION_KEY),
     )?;
+    let update_channel = wrap_result_and_capture_err(
+        "ui_get_prefs",
+        store::get_json_pref_or(
+            &app,
+            store::UPDATE_CHANNEL_KEY,
+            shared_types::UpdateChannel::default(),
+        ),
+    )?;
 
     Ok(shared_types::UiPrefs {
         openrouter_api_key,
@@ -95,6 +103,7 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, Strin
         default_to_diff_tab,
         developer_mode,
         pinned_version,
+        update_channel,
     })
 }
 
@@ -198,6 +207,10 @@ pub async fn ui_set_prefs(
                     .map_err(|e| capture_err("ui_set_prefs", e))?;
             }
         }
+    }
+    if let Some(update_channel) = prefs.update_channel {
+        store::set_json_pref(&app, store::UPDATE_CHANNEL_KEY, &update_channel)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
 
     Ok(shared_types::OkResult::yes())

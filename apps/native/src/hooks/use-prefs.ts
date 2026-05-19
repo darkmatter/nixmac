@@ -15,6 +15,7 @@ export function usePrefs() {
         .setBoolPref("defaultToDiffTab", prefs.defaultToDiffTab ?? false);
       useWidgetStore.getState().setDeveloperMode(prefs.developerMode ?? false);
       useWidgetStore.getState().setPinnedVersion(prefs.pinnedVersion ?? null);
+      useWidgetStore.getState().setUpdateChannel(prefs.updateChannel ?? "stable");
     }
     useWidgetStore.getState().setPrefsLoaded(true);
   };

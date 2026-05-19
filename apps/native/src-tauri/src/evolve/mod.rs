@@ -487,10 +487,7 @@ pub async fn generate_evolution<R: Runtime>(
     info!("Evolution ID: {}", evolution.id);
     info!("════════════════════════════════════════════════════════════════");
 
-    // Initialize conversation with system prompt (inject config values) and user message
-    let system_prompt = SYSTEM_PROMPT
-        .replace("{{CONFIG_DIR}}", config_dir)
-        .replace("{{HOST_ATTR}}", &host_attr);
+    // Initialize conversation with system prompt
     let config_dir_context = match format_config_dir_context(config_dir) {
         Ok(tree) => tree,
         Err(e) => {
@@ -503,7 +500,7 @@ pub async fn generate_evolution<R: Runtime>(
     };
 
     let mut messages: Vec<Message> = vec![Message::System {
-        content: system_prompt,
+        content: SYSTEM_PROMPT.to_string(),
     }];
 
     // Restore historical context after system prompt but before the new user message,
