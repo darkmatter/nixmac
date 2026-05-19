@@ -406,7 +406,7 @@ export type EvolveEventType =
 /**
  * Agent is reading a file.
  */
-"reading" | "searchPackages" |
+"reading" | "searchPackages" | 
 /**
  * Agent is editing a file.
  */
@@ -491,7 +491,14 @@ rollbackChangesetId: number | null;
 /**
  * UI step derived from the routing state.
  */
-step: EvolveStep }
+step: EvolveStep; 
+/**
+ * Last terminal state observed for this routing session.
+ * 
+ * This supports transition-sensitive behavior when returning to Begin
+ * and maybe some other useful things in the future.
+ */
+lastEvolutionState?: EvolutionState | null }
 
 /**
  * Widget step derived from `EvolveState` fields.
@@ -1374,7 +1381,7 @@ developerMode: boolean;
 /**
  * Version pinned by the user, when update pinning is active.
  */
-pinnedVersion: string | null;
+pinnedVersion: string | null; 
 /**
  * Auto-update channel used when no explicit version pin is active.
  */
@@ -1460,7 +1467,7 @@ developerMode: boolean | null;
 /**
  * `None` -> field not sent; `Some(None)` -> clear the pinned version.
  */
-pinnedVersion?: string | null;
+pinnedVersion?: string | null; 
 /**
  * Auto-update channel preference update.
  */
@@ -1474,15 +1481,15 @@ export type UpdateChannel = "stable" | "develop"
 /**
  * Lightweight update metadata returned by the channel-aware updater command.
  */
-export type UpdateInfo = {
+export type UpdateInfo = { 
 /**
  * Channel whose manifest produced this update.
  */
-channel: UpdateChannel;
+channel: UpdateChannel; 
 /**
  * Version advertised by the channel manifest.
  */
-version: string;
+version: string; 
 /**
  * Release notes from the channel manifest, when available.
  */
@@ -1512,3 +1519,4 @@ error: string | null;
  * True when a build outside nixmac was detected.
  */
 externalBuildDetected: boolean }
+
