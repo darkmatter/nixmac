@@ -4,6 +4,13 @@
     "-lintignore"
   ],
   "workspaces": {
-    ".": {}
+    ".": {},
+    "apps/native": {
+      "ignoreDependencies": [
+        "@wdio/local-runner",
+        "@wdio/mocha-framework",
+        "@wdio/spec-reporter"
+      ]
+    }
   }
 }
