@@ -94,24 +94,27 @@ struct EvolutionMessage {
     message: Message,
     retention: Retention,
     created_iteration: usize,
+    key: Option<String>, // optional key for deduplication or reference (e.g. file path for read_file results)
 }
 
 impl EvolutionMessage {
-    fn permanent(message: Message, iteration: usize) -> Self {
+    fn permanent(message: Message, iteration: usize, key: Option<String>) -> Self {
         Self {
             message,
             retention: Retention::Permanent,
             created_iteration: iteration,
+            key,
         }
     }
 
-    fn recent(message: Message, iteration: usize, keep: usize) -> Self {
+    fn recent(message: Message, iteration: usize, keep: usize, key: Option<String>) -> Self {
         Self {
             message,
             retention: Retention::Recent {
                 keep_iterations: keep,
             },
             created_iteration: iteration,
+            key,
         }
     }
 }
@@ -375,16 +378,18 @@ fn build_preview(messages: &[EvolutionMessage]) -> String {
     preview
 }
 
-/// Filter evolution messages based on their retention policy to determine which should be sent to the provider for context in the next iteration.
-fn filter_evolution_messages(messages: &[EvolutionMessage], iteration: usize) -> Vec<Message> {
+/// Filter evolution messages based on their retention policy and key to determine which should be
+/// sent to the provider for context in the next iteration.
+fn filter_evolution_messages(
+    messages: &[EvolutionMessage],
+    iteration: usize,
+    made_build_check: bool,
+) -> Vec<Message> {
     let strategy = MemoryStrategy::from_env();
 
-    match strategy {
-        MemoryStrategy::None => {
-            // NO FILTERING: pass everything through exactly as-is
-            messages.iter().map(|m| m.message.clone()).collect()
-        }
-
+    // 1. Filter by retention policy.
+    let filtered_msgs: Vec<&EvolutionMessage> = match strategy {
+        MemoryStrategy::None => messages.iter().collect(),
         MemoryStrategy::Retention => messages
             .iter()
             .filter(|m| match m.retention {
@@ -393,9 +398,63 @@ fn filter_evolution_messages(messages: &[EvolutionMessage], iteration: usize) ->
                     iteration.saturating_sub(m.created_iteration) <= keep_iterations
                 }
             })
-            .map(|m| m.message.clone())
             .collect(),
+    };
+
+    // 2. Filter thinks prior to build check.
+    //  If we made a build check, discard the "think" tool results that came BEFORE
+    //  the first build check (which has a key prefixed with "build_check_") since they likely
+    //  contain outdated plans or reasoning that led to the now-failed build.
+    //  The "think" tool calls have a key with a prefix of "think_".
+    // CONSIDER: There are probably other tools (the "search_*" tools come to mind)
+    // that are probably also not very useful after an edit and/or build check.
+    let first_build_check_idx = if made_build_check {
+        filtered_msgs.iter().position(|m| {
+            m.key
+                .as_deref()
+                .is_some_and(|key| key.starts_with("build_check_"))
+        })
+    } else {
+        None
+    };
+
+    let filtered_msgs: Vec<&EvolutionMessage> = match first_build_check_idx {
+        Some(build_check_idx) => filtered_msgs
+            .into_iter()
+            .enumerate()
+            .filter(|(idx, m)| {
+                if *idx < build_check_idx {
+                    if let Some(key) = m.key.as_deref() {
+                        !key.starts_with("think_")
+                    } else {
+                        true
+                    }
+                } else {
+                    true
+                }
+            })
+            .map(|(_, m)| m)
+            .collect(),
+        None => filtered_msgs,
+    };
+
+    // 3. Filter out-of-date duplicates.
+    //  If key is set, only keep the LAST message with that key to ensure only the most recent info is used.
+    //  To do this, iterate in reverse, track seen keys, and collect messages, then reverse to restore order.
+    let mut seen_keys = std::collections::HashSet::new();
+    let mut filtered = Vec::with_capacity(filtered_msgs.len());
+    for m in filtered_msgs.iter().rev() {
+        if let Some(key) = m.key.as_ref() {
+            if seen_keys.contains(key) {
+                continue;
+            } else {
+                seen_keys.insert(key.clone());
+            }
+        }
+        filtered.push((*m).clone());
     }
+    filtered.reverse();
+    filtered.into_iter().map(|m| m.message.clone()).collect()
 }
 
 /// Map a tool name to its retention window in provider-loop iterations.
@@ -412,31 +471,49 @@ fn retention_for_tool(tool_name: &str) -> Retention {
         // decide whether to call `done` or continue fixing issues.
         "build_check" => Retention::Recent { keep_iterations: 1 },
 
-        // These results often drive follow-up edits or reasoning in the next couple
-        // of turns, so we keep them a little longer.
-        "read_file" | "search_code" | "search_docs" | "search_packages" | "list_files" => {
-            Retention::Recent { keep_iterations: 2 }
-        }
-
-        // We need think a little longer because it may have planned out a few steps.
-        // But think results are very verbose, so we have to be careful to balance.
-        "think" => Retention::Recent { keep_iterations: 4 },
-
-        // Multiple edits across iterations may be important.
+        // Multiple edits across iterations may be important but only temporarily.
         "edit_file" | "edit_nix_file" => Retention::Recent { keep_iterations: 3 },
 
         // Everything else is informational or durable enough to keep for the whole run.
+        // In particular:
+        // 1. "search_packages", "search_docs", and "search_code" need to be durable so that the agent can
+        //      plan to add a bunch of requested packages in one shot toward the end.
+        // 2. "read_file" can be very large; however, the agent likes to read a
+        //      file up front, and then refer back to it at the end after it plans the edit.
+        // 3. "list_files" needs to persist because the agent tries to re-read things later,
+        //      and it's bad if it tries to read files that don't exist that are hallucinated
+        //      from training data.
+        // 4. "think" may contain the original plan up to the point where we start doing build checks.
         _ => Retention::Permanent,
+    }
+}
+
+/// Set a evolution-message deduplication key for a "read_file" tool action.
+/// Currently this only applies to full-file reads, hence the checks on the
+/// line start and line end args.
+fn read_file_dedup_key(path: &str, args: &serde_json::Value) -> Option<String> {
+    let has_line_start = args.get("line_start").is_some();
+    let has_line_end = args.get("line_end").is_some();
+
+    if has_line_start || has_line_end {
+        None
+    } else {
+        Some(path.to_string())
     }
 }
 
 /// Determine how to store a tool result based on the tool type. For tools that produce important context,
 /// keep them forever. For everything else, just keep it around for as long as seems useful empirically/heuristically.
-fn store_tool_result(msg: Message, tool_name: &str, iteration: usize) -> EvolutionMessage {
+fn store_tool_result(
+    msg: Message,
+    tool_name: &str,
+    iteration: usize,
+    key: Option<String>,
+) -> EvolutionMessage {
     match retention_for_tool(tool_name) {
-        Retention::Permanent => EvolutionMessage::permanent(msg, iteration),
+        Retention::Permanent => EvolutionMessage::permanent(msg, iteration, key),
         Retention::Recent { keep_iterations } => {
-            EvolutionMessage::recent(msg, iteration, keep_iterations)
+            EvolutionMessage::recent(msg, iteration, keep_iterations, key)
         }
     }
 }
@@ -449,7 +526,7 @@ fn restore_historical_evolution_messages() -> Vec<EvolutionMessage> {
     let historical_ev_msgs: Vec<EvolutionMessage> =
         to_provider_context_messages(chat_memory_store.as_ref())
             .into_iter()
-            .map(|m| EvolutionMessage::permanent(m, 0))
+            .map(|m| EvolutionMessage::permanent(m, 0, None))
             .collect();
     debug!(
         "[evolve] restored session chat context messages={}",
@@ -627,6 +704,7 @@ pub async fn generate_evolution<R: Runtime>(
             content: SYSTEM_PROMPT.to_string(),
         },
         0,
+        None,
     )];
 
     // Restore historical context after system prompt but before the new user message,
@@ -642,12 +720,14 @@ pub async fn generate_evolution<R: Runtime>(
             ),
         },
         0,
+        None,
     ));
 
     let gitignore_matcher = gitignore::load_gitignore_matcher(Path::new(config_dir))?;
 
-    // Track whether we've made any actual edits or build checks
-    let mut made_edit_or_build_check = false;
+    // Track whether we've made any actual edits and/or build checks
+    let mut made_edit = false;
+    let mut made_build_check = false;
 
     // Agentic loop - let the model use tools until done AND build passes
     loop {
@@ -705,7 +785,7 @@ pub async fn generate_evolution<R: Runtime>(
         // on it plus a cancellation signal. This lets the future borrow
         // `messages` only for the call so we can mutate `messages` after
         // the block without deep-cloning the conversation.
-        let active_messages = filter_evolution_messages(&messages, iteration);
+        let active_messages = filter_evolution_messages(&messages, iteration, made_build_check);
         let response_result = {
             let fut = provider.completion(&active_messages, &tools);
             tokio::pin!(fut);
@@ -825,6 +905,7 @@ pub async fn generate_evolution<R: Runtime>(
             message: assistant_msg.clone(),
             retention: Retention::Permanent,
             created_iteration: iteration,
+            key: None,
         };
         // Add assistant message to history
         messages.push(assistant_ev_msg);
@@ -863,6 +944,7 @@ pub async fn generate_evolution<R: Runtime>(
                         gitignore_matcher.as_ref(),
                     );
 
+                    let mut tool_key: Option<String> = None;
                     match result {
                         Ok(ref res) => {
                             let (result_summary, success) = summarize_result(res);
@@ -876,13 +958,18 @@ pub async fn generate_evolution<R: Runtime>(
                             );
 
                             // Track if we've made an edit or build check
-                            if is_editing_tool(tool_name) || tool_name == "build_check" {
-                                made_edit_or_build_check = true;
+                            if is_editing_tool(tool_name) {
+                                made_edit = true;
+                            }
+                            if tool_name == "build_check" {
+                                made_build_check = true;
+                                tool_key = Some(format!("build_check_{}", iteration));
                             }
 
                             // Emit specific events based on tool result type
                             match res {
                                 ToolResult::Think { category, thought } => {
+                                    tool_key = Some("think_".to_string() + &iteration.to_string());
                                     emit_evolve_event(
                                         app,
                                         EvolveEvent::thinking(
@@ -961,6 +1048,7 @@ pub async fn generate_evolution<R: Runtime>(
                                         if let Some(path) =
                                             args.get("path").and_then(|v| v.as_str())
                                         {
+                                            tool_key = read_file_dedup_key(path, &args);
                                             emit_evolve_event(
                                                 app,
                                                 EvolveEvent::reading(start_time, iteration, path),
@@ -1028,6 +1116,7 @@ pub async fn generate_evolution<R: Runtime>(
                                     },
                                     tool_name,
                                     iteration,
+                                    None,
                                 ));
                                 continue;
                             }
@@ -1055,7 +1144,7 @@ pub async fn generate_evolution<R: Runtime>(
                                     .into());
                                 }
                             };
-                            messages.push(store_tool_result(msg, tool_name, iteration));
+                            messages.push(store_tool_result(msg, tool_name, iteration, tool_key));
 
                             match break_signal {
                                 Some(true) => {
@@ -1104,6 +1193,7 @@ Do not invent tool names and do not place tool invocations in assistant content.
                                 },
                                 tool_name,
                                 iteration,
+                                tool_key,
                             ));
                         }
                     }
@@ -1153,7 +1243,7 @@ Do not invent tool names and do not place tool invocations in assistant content.
         }
 
         // Safety limits -- Max Iterations Before Edit Check
-        if iteration == max_iterations_before_edit && !made_edit_or_build_check {
+        if iteration == max_iterations_before_edit && !(made_edit || made_build_check) {
             warn!(
                 "⚠️ No edit or build_check by iteration {} - agent not making progress",
                 max_iterations_before_edit
@@ -1671,7 +1761,8 @@ fn process_tool_result(
 #[cfg(test)]
 mod tests {
     use super::{
-        filter_evolution_messages, store_tool_result, EvolutionMessage, Message, Retention,
+        filter_evolution_messages, read_file_dedup_key, store_tool_result, EvolutionMessage,
+        Message, Retention,
     };
     use std::ffi::OsString;
     use std::sync::{Mutex, MutexGuard};
@@ -1716,12 +1807,14 @@ mod tests {
                     content: "System prompt".to_string(),
                 },
                 0,
+                None,
             ),
             EvolutionMessage::permanent(
                 Message::User {
                     content: "Initial user prompt".to_string(),
                 },
                 0,
+                None,
             ),
             EvolutionMessage::recent(
                 Message::User {
@@ -1729,6 +1822,7 @@ mod tests {
                 },
                 1,
                 1,
+                None,
             ),
         ]
     }
@@ -1738,7 +1832,7 @@ mod tests {
         let _env = EnvVarGuard::set("NIXMAC_EVOLUTION_MEMORY_STRATEGY", "none");
         let messages = sample_messages();
 
-        let out = filter_evolution_messages(&messages, 1000);
+        let out = filter_evolution_messages(&messages, 1000, false);
 
         // With strategy=none, no retention filtering is applied.
         assert_eq!(out.len(), messages.len());
@@ -1752,7 +1846,7 @@ mod tests {
         let _env = EnvVarGuard::set("NIXMAC_EVOLUTION_MEMORY_STRATEGY", "retention");
         let messages = sample_messages();
 
-        let out = filter_evolution_messages(&messages, 1000);
+        let out = filter_evolution_messages(&messages, 1000, false);
 
         // With strategy=retention, recent messages eventually expire.
         assert!(out
@@ -1771,7 +1865,7 @@ mod tests {
         let _env = EnvVarGuard::set("NIXMAC_EVOLUTION_MEMORY_STRATEGY", "bogus-value");
         let messages = sample_messages();
 
-        let out = filter_evolution_messages(&messages, 1000);
+        let out = filter_evolution_messages(&messages, 1000, false);
 
         // Unknown values should safely default to retention behavior.
         assert!(out
@@ -1788,12 +1882,14 @@ mod tests {
                     content: "System prompt".to_string(),
                 },
                 0,
+                None,
             ),
             EvolutionMessage::permanent(
                 Message::User {
                     content: "Initial user prompt".to_string(),
                 },
                 0,
+                None,
             ),
             EvolutionMessage::recent(
                 Message::User {
@@ -1801,6 +1897,7 @@ mod tests {
                 },
                 1,
                 1,
+                None,
             ),
             EvolutionMessage::recent(
                 Message::User {
@@ -1808,16 +1905,17 @@ mod tests {
                 },
                 1,
                 2,
+                None,
             ),
         ];
 
-        let iteration_1_messages = filter_evolution_messages(&messages, 1);
+        let iteration_1_messages = filter_evolution_messages(&messages, 1, false);
         assert_eq!(iteration_1_messages.len(), 4);
 
-        let iteration_2_messages = filter_evolution_messages(&messages, 2);
+        let iteration_2_messages = filter_evolution_messages(&messages, 2, false);
         assert_eq!(iteration_2_messages.len(), 4);
 
-        let iteration_3_messages = filter_evolution_messages(&messages, 3);
+        let iteration_3_messages = filter_evolution_messages(&messages, 3, false);
         assert_eq!(iteration_3_messages.len(), 3);
         assert!(iteration_3_messages.iter().all(
             |m| !matches!(m, Message::User { content } if content == "One-iteration message")
@@ -1826,7 +1924,7 @@ mod tests {
             .iter()
             .any(|m| matches!(m, Message::User { content } if content == "Two-iteration message")));
 
-        let iteration_4_messages = filter_evolution_messages(&messages, 4);
+        let iteration_4_messages = filter_evolution_messages(&messages, 4, false);
         assert_eq!(iteration_4_messages.len(), 2);
         assert!(iteration_4_messages.iter().all(
             |m| !matches!(m, Message::User { content } if content == "One-iteration message")
@@ -1840,10 +1938,6 @@ mod tests {
     fn test_store_tool_result() {
         let iteration = 7;
 
-        let think_message = Message::Tool {
-            tool_call_id: "think-1".to_string(),
-            content: "Thought recorded".to_string(),
-        };
         let search_docs_message = Message::Tool {
             tool_call_id: "search-docs-1".to_string(),
             content: "[]".to_string(),
@@ -1859,24 +1953,18 @@ mod tests {
         // window (not permanent), that the creation iteration is preserved, and
         // that the tool_call_id survives. This avoids tying tests to numeric
         // retention tuning.
-        let think_stored = store_tool_result(think_message, "think", iteration);
-        assert!(matches!(think_stored.retention, Retention::Recent { .. }));
-        assert_eq!(think_stored.created_iteration, iteration);
-        assert!(
-            matches!(think_stored.message, Message::Tool { ref tool_call_id, .. } if tool_call_id == "think-1")
-        );
-
-        let search_docs_stored = store_tool_result(search_docs_message, "search_docs", iteration);
+        let edit_file_stored = store_tool_result(search_docs_message, "edit_file", iteration, None);
         assert!(matches!(
-            search_docs_stored.retention,
+            edit_file_stored.retention,
             Retention::Recent { .. }
         ));
-        assert_eq!(search_docs_stored.created_iteration, iteration);
+        assert_eq!(edit_file_stored.created_iteration, iteration);
         assert!(
-            matches!(search_docs_stored.message, Message::Tool { ref tool_call_id, .. } if tool_call_id == "search-docs-1")
+            matches!(edit_file_stored.message, Message::Tool { ref tool_call_id, .. } if tool_call_id == "search-docs-1")
         );
 
-        let build_check_stored = store_tool_result(build_check_message, "build_check", iteration);
+        let build_check_stored =
+            store_tool_result(build_check_message, "build_check", iteration, None);
         assert!(matches!(
             build_check_stored.retention,
             Retention::Recent { .. }
@@ -1884,6 +1972,135 @@ mod tests {
         assert_eq!(build_check_stored.created_iteration, iteration);
         assert!(
             matches!(build_check_stored.message, Message::Tool { ref tool_call_id, .. } if tool_call_id == "build-check-1")
+        );
+    }
+
+    #[test]
+    fn test_filter_out_thinks_after_build_check() {
+        let m1 = EvolutionMessage::permanent(
+            Message::User {
+                content: "User message".to_string(),
+            },
+            0,
+            None,
+        );
+        let m2 = EvolutionMessage::recent(
+            Message::Tool {
+                tool_call_id: "think-1".to_string(),
+                content: "Thought content".to_string(),
+            },
+            1,
+            1,
+            Some("think_1".to_string()),
+        );
+        let m3 = EvolutionMessage::recent(
+            Message::Tool {
+                tool_call_id: "build-check-1".to_string(),
+                content: "Build failed".to_string(),
+            },
+            1,
+            2,
+            Some("build_check_1".to_string()),
+        );
+        let m4 = EvolutionMessage::recent(
+            Message::Tool {
+                tool_call_id: "think-2".to_string(),
+                content: "Another thought".to_string(),
+            },
+            1,
+            3,
+            Some("think_2".to_string()),
+        );
+        let messages = vec![m1, m2, m3, m4];
+        // Use Retention::None for simplicity
+        std::env::set_var("NIXMAC_EVOLUTION_MEMORY_STRATEGY", "none");
+        let filtered = filter_evolution_messages(&messages, 10, true);
+        // The think before the build check should be filtered out, but the one after should be kept.
+        assert!(filtered.iter().any(
+            |m| matches!(m, Message::Tool { ref tool_call_id, .. } if tool_call_id == "think-2")
+        ));
+        assert!(filtered.iter().all(
+            |m| !matches!(m, Message::Tool { ref tool_call_id, .. } if tool_call_id == "think-1")
+        ));
+    }
+
+    #[test]
+    fn test_filter_evolution_messages_last_key_wins() {
+        let m1 = EvolutionMessage::permanent(
+            Message::User {
+                content: "A".to_string(),
+            },
+            0,
+            Some("key1".to_string()),
+        );
+        let m2 = EvolutionMessage::permanent(
+            Message::User {
+                content: "B".to_string(),
+            },
+            1,
+            Some("key2".to_string()),
+        );
+        let m3 = EvolutionMessage::permanent(
+            Message::User {
+                content: "C".to_string(),
+            },
+            2,
+            Some("key1".to_string()),
+        );
+        let m4 = EvolutionMessage::permanent(
+            Message::User {
+                content: "D".to_string(),
+            },
+            3,
+            None,
+        );
+        let m5 = EvolutionMessage::permanent(
+            Message::User {
+                content: "E".to_string(),
+            },
+            4,
+            Some("key2".to_string()),
+        );
+        let m6 = EvolutionMessage::permanent(
+            Message::User {
+                content: "F".to_string(),
+            },
+            5,
+            None,
+        );
+        let messages = vec![m1, m2, m3, m4, m5, m6];
+        // Use Retention::None for simplicity
+        std::env::set_var("NIXMAC_EVOLUTION_MEMORY_STRATEGY", "none");
+        let filtered = filter_evolution_messages(&messages, 10, false);
+        // Only the last message for key1 and key2 should be kept, plus all messages with no key
+        let contents: Vec<_> = filtered
+            .iter()
+            .map(|m| match m {
+                Message::User { content } => content.as_str(),
+                _ => "",
+            })
+            .collect();
+        assert_eq!(contents, vec!["C", "D", "E", "F"]);
+    }
+
+    #[test]
+    fn test_read_file_dedup_key_only_for_full_file_reads() {
+        let full_file_args = serde_json::json!({
+            "path": "modules/darwin/defaults.nix",
+        });
+        let partial_args = serde_json::json!({
+            "path": "modules/darwin/defaults.nix",
+            "line_start": 1,
+            "line_end": 200,
+        });
+
+        assert_eq!(
+            read_file_dedup_key("modules/darwin/defaults.nix", &full_file_args),
+            Some("modules/darwin/defaults.nix".to_string())
+        );
+        assert_eq!(
+            read_file_dedup_key("modules/darwin/defaults.nix", &partial_args),
+            None
         );
     }
 }
