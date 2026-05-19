@@ -2083,7 +2083,8 @@ mod tests {
         );
         let messages = vec![m1, m2, m3, m4];
         // Use retention so we exercise the build-check pruning branch.
-        std::env::set_var("NIXMAC_EVOLUTION_MEMORY_STRATEGY", "retention");
+        let _memory_strategy_guard =
+            EnvVarGuard::set("NIXMAC_EVOLUTION_MEMORY_STRATEGY", "retention");
         let filtered = filter_evolution_messages(&messages, 3, true);
         // The think before the build check should be filtered out, but the one after should be kept.
         assert!(filtered.iter().any(
