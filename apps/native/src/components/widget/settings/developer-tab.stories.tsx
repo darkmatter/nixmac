@@ -29,7 +29,7 @@ export const Unpinned = meta.story({
   decorators: [
     (Story: React.ComponentType) => {
       useEffect(() => {
-        useWidgetStore.setState({ developerMode: true, pinnedVersion: null });
+        useWidgetStore.setState({ developerMode: true, pinnedVersion: null, updateChannel: "stable" });
       }, []);
       return <Story />;
     },
@@ -41,7 +41,7 @@ export const PinnedToPastVersion = meta.story({
   decorators: [
     (Story: React.ComponentType) => {
       useEffect(() => {
-        useWidgetStore.setState({ developerMode: true, pinnedVersion: "0.21.0" });
+        useWidgetStore.setState({ developerMode: true, pinnedVersion: "0.21.0", updateChannel: "develop" });
       }, []);
       return <Story />;
     },

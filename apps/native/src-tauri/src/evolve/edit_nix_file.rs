@@ -537,6 +537,105 @@ fn find_list_for_attrpath(root: &SyntaxNode, content: &str, attrpath: &str) -> O
     None
 }
 
+fn append_values_to_existing_list(
+    content: &str,
+    list_node: &SyntaxNode,
+    values: &[String],
+) -> Result<String> {
+    // Compute the byte range for the List node and extract its text.
+    // Operate on the raw slice so we can insert *before* the closing token.
+    let range = list_node.text_range();
+    let byte_range = text_range_to_usize_range(range);
+    let list_text = content
+        .get(byte_range.clone())
+        .context("List text range was out of bounds")?;
+
+    // Find the closing ']' inside the list text. Insert before this.
+    let close_offset = list_text
+        .rfind(']')
+        .context("Existing list node had no closing ']' token")?;
+    let before_close = &list_text[..close_offset];
+
+    // Two insertion modes: multiline lists (preserve per-line indentation and comments)
+    // and single-line lists (append inline space-separated values).
+    let (insert_rel, insertion_text) = if list_text.contains('\n') {
+        // Multiline: find the start of the close line and derive the indentation
+        // used for existing list items so the appended items match formatting.
+        let close_line_start = before_close.rfind('\n').map_or(0, |idx| idx + 1);
+        let close_line = &before_close[close_line_start..];
+        let close_line_has_content = !close_line.trim().is_empty();
+        let close_indent: String = close_line
+            .chars()
+            .take_while(|ch| ch.is_whitespace())
+            .collect();
+
+        // Determine item indentation by scanning previous non-empty, non-'[' lines
+        // and using their leading whitespace. If none found, default to two spaces
+        // beyond the closing line's indentation.
+        let item_indent = before_close
+            .lines()
+            .rev()
+            .find_map(|line| {
+                let trimmed = line.trim();
+                if trimmed.is_empty() || trimmed == "[" {
+                    return None;
+                }
+                Some(
+                    line.chars()
+                        .take_while(|ch| ch.is_whitespace())
+                        .collect::<String>(),
+                )
+            })
+            .unwrap_or_else(|| format!("{}  ", close_indent));
+
+        // Build the insertion text: each value on its own line using the detected indent.
+        let mut insertion = String::new();
+
+        // If the closing bracket is on the same line as content, insert at the exact
+        // bracket position and prefix a newline so values append after existing items.
+        if close_line_has_content {
+            insertion.push('\n');
+        }
+
+        for value in values {
+            insertion.push_str(&item_indent);
+            insertion.push_str(value);
+            insertion.push('\n');
+        }
+
+        if close_line_has_content {
+            insertion.push_str(&close_indent);
+        }
+
+        (
+            if close_line_has_content {
+                close_offset
+            } else {
+                close_line_start
+            },
+            insertion,
+        )
+    } else {
+        // Single-line list: append space-separated values, preserving a single space
+        // between existing content and the new values. Detect whether there is
+        // already trailing whitespace to avoid double-spacing.
+        let trimmed_before_close = before_close.trim_end_matches(char::is_whitespace);
+        let has_trailing_space = trimmed_before_close.len() != before_close.len();
+        let mut insertion = format!(" {}", values.join(" "));
+        if !has_trailing_space {
+            insertion.push(' ');
+        }
+        (trimmed_before_close.len(), insertion)
+    };
+
+    // Convert the relative insert offset into an absolute byte offset in the file,
+    // perform the string insertion, and return the patched content.
+    let insert_abs = byte_range.start + insert_rel;
+    let mut patched = content.to_string();
+    patched.insert_str(insert_abs, &insertion_text);
+    Ok(patched)
+}
+
 /// Add values to a list at the given attrpath, creating the list if it doesn't exist. Idempotent for existing values.
 fn add(content: &str, attrpath: &str, values: &[String]) -> Result<String> {
     if values.is_empty() {
@@ -554,30 +653,26 @@ fn add(content: &str, attrpath: &str, values: &[String]) -> Result<String> {
     if let Some(list_node) = find_list_for_attrpath(&root_node, content, attrpath) {
         debug!("Found existing list for {}", attrpath);
         let mut items = extract_package_list(&list_node)?;
-        let mut added_any = false;
+        let mut values_to_append = Vec::new();
         for value in values {
             if items.contains(value) {
                 info!("Value {} already present at {}; skipping", value, attrpath);
                 continue;
             }
             items.push(value.clone());
-            added_any = true;
+            values_to_append.push(value.clone());
         }
 
-        if !added_any {
+        if values_to_append.is_empty() {
             info!("All values already present at {}; no-op", attrpath);
             return Ok(content.to_string());
         }
 
-        let new_text = format!("[ {} ]", items.join(" "));
-        let range = list_node.text_range();
-        let mut patched = content.to_string();
-        let byte_range = text_range_to_usize_range(range);
-
-        // TODO: This drops list formatting and inline comments; rowan can preserve them if needed.
-        info!("Replacing list at {:?} with {}", byte_range, new_text);
-        patched.replace_range(byte_range, &new_text);
-        return Ok(patched);
+        info!(
+            "Appending values {:?} to existing list at {}",
+            values_to_append, attrpath
+        );
+        return append_values_to_existing_list(content, &list_node, &values_to_append);
     }
 
     // not found -> insert new attr assignment in top-level attrset
@@ -854,6 +949,24 @@ environment.systemPackages = with pkgs; [
 }
 "#;
 
+    const NO_WITH_PACKAGES_ACTIVE: &str = r#"{ config, pkgs, ... }:
+{
+        environment.systemPackages = [
+            git
+
+            # this is ripgrep
+            ripgrep
+        ];
+}
+"#;
+
+    const NO_WITH_PACKAGES_INLINE_CLOSE: &str = r#"{ config, pkgs, ... }:
+{
+    environment.systemPackages = [
+        git];
+}
+"#;
+
     const BOOL_ASSIGNMENT: &str = r#"{ config, pkgs, ... }:
 {
     services.tailscale.enable = false;
@@ -884,7 +997,7 @@ environment.systemPackages = with pkgs; [
         .expect("add should succeed");
 
         assert!(
-            edited.contains("environment.systemPackages = with pkgs; [ ripgrep ];"),
+            edited.contains("environment.systemPackages = with pkgs; [\n  ripgrep\n];"),
             "expected to update existing assignment in-place"
         );
 
@@ -930,9 +1043,16 @@ environment.systemPackages = with pkgs; [
         )
         .expect("add should succeed");
 
+        let expected = r#"
+    environment.systemPackages = with pkgs; [
+        # Example packages (uncomment or add your own):
+        # git   # version control
+        ripgrep
+    ];"#;
+
         assert!(
-            edited.contains("environment.systemPackages = with pkgs; [ ripgrep"),
-            "expected add to update existing commented assignment"
+            edited.contains(expected),
+            "expected ripgrep to append at the end while preserving list comment/spacing structure"
         );
         assert_eq!(
             edited.matches("environment.systemPackages =").count(),
@@ -951,8 +1071,55 @@ environment.systemPackages = with pkgs; [
         .expect("add should succeed");
 
         assert!(
-            edited.contains("environment.systemPackages = with pkgs; [ ripgrep fd ];"),
+            edited.contains("environment.systemPackages = with pkgs; [\n  ripgrep\n  fd\n];"),
             "expected add to insert multiple values into existing assignment"
+        );
+    }
+
+    #[test]
+    fn add_preserves_existing_multiline_list_structure_and_comments() {
+        let edited = add(
+            NO_WITH_PACKAGES_ACTIVE,
+            "environment.systemPackages",
+            &["firefox".to_string()],
+        )
+        .expect("add should preserve list structure and comments");
+
+        let expected = r#"environment.systemPackages = [
+            git
+
+            # this is ripgrep
+            ripgrep
+            firefox
+        ];"#;
+
+        assert!(
+        edited.contains(expected),
+        "expected firefox to append at the end while preserving list comment/spacing structure.\nExpected:\n{}\n\nActual:\n{}",
+        expected,
+        edited
+    );
+    }
+
+    #[test]
+    fn add_appends_when_multiline_list_closes_inline_with_last_item() {
+        let edited = add(
+            NO_WITH_PACKAGES_INLINE_CLOSE,
+            "environment.systemPackages",
+            &["firefox".to_string()],
+        )
+        .expect("add should append for multiline lists with inline closing bracket");
+
+        let expected = r#"environment.systemPackages = [
+        git
+        firefox
+        ];"#;
+
+        assert!(
+            edited.contains(expected),
+            "expected appended value to be inserted after existing inline-closing item.\nExpected:\n{}\n\nActual:\n{}",
+            expected,
+            edited
         );
     }
 
