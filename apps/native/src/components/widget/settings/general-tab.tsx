@@ -13,8 +13,9 @@ import { getWebSiteUrl } from "@/lib/env";
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
 import { getVersion } from "@tauri-apps/api/app";
-import { open } from '@tauri-apps/plugin-shell';
+import { open } from "@tauri-apps/plugin-shell";
 import type { AnyFieldApi } from "@tanstack/react-form";
+import { ExternalLink } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 interface GeneralTabProps {
@@ -27,6 +28,18 @@ interface GeneralTabProps {
   setSettingsOpen: (open: boolean) => void;
   // biome-ignore lint/suspicious/noExplicitAny: tanstack form types are complex
   sendDiagnosticsField: AnyFieldApi;
+}
+
+// Support should always land on the public website, even in local app builds.
+const SUPPORT_NIXMAC_URL = "https://nixmac.com/support";
+
+async function openExternalUrl(url: string) {
+  try {
+    await open(url);
+  } catch (error) {
+    console.warn("Failed to open external URL with Tauri shell; falling back to browser window.", error);
+    window.open(url, "_blank");
+  }
 }
 
 export function GeneralTab({
@@ -87,15 +100,9 @@ export function GeneralTab({
                 <div>
                   <button
                     type="button"
-                    onClick={async () => {
+                    onClick={() => {
                       const base = getWebSiteUrl().replace(/\/$/, "");
-                      const url = `${base}/privacy-policy`;
-                      try {
-                        await open(url);
-                      } catch (err) {
-                        // Fallback to window.open if Tauri shell fails for some reason (e.g. during direct development in the web app)
-                        window.open(url, "_blank");
-                      }
+                      openExternalUrl(`${base}/privacy-policy`);
                     }}
                     className="mt-2 text-xs text-zinc-400 underline hover:text-zinc-200"
                   >
@@ -118,6 +125,24 @@ export function GeneralTab({
                 }
               }}
             />
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border border-border p-3">
+            <div className="space-y-0.5">
+              <div className="font-medium text-sm">Support Nixmac</div>
+              <div className="text-muted-foreground text-xs">
+                Help fund continued development.
+              </div>
+            </div>
+            <Button
+              aria-label="Open Support Nixmac"
+              onClick={() => openExternalUrl(SUPPORT_NIXMAC_URL)}
+              size="sm"
+              variant="outline"
+            >
+              Open
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Button>
           </div>
 
           <VersionRow />

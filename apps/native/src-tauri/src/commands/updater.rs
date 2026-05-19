@@ -1,4 +1,104 @@
+use crate::shared_types;
 use tauri::AppHandle;
+
+#[cfg(any(not(debug_assertions), test))]
+const STABLE_MANIFEST_URL: &str = "https://releases.nixmac.com/latest.json";
+#[cfg(any(not(debug_assertions), test))]
+const DEVELOP_MANIFEST_URL: &str = "https://releases.nixmac.com/channels/develop/latest.json";
+
+#[cfg(any(not(debug_assertions), test))]
+fn update_manifest_url(channel: shared_types::UpdateChannel) -> &'static str {
+    match channel {
+        shared_types::UpdateChannel::Stable => STABLE_MANIFEST_URL,
+        shared_types::UpdateChannel::Develop => DEVELOP_MANIFEST_URL,
+    }
+}
+
+#[cfg(not(debug_assertions))]
+fn update_info(
+    channel: shared_types::UpdateChannel,
+    update: tauri_plugin_updater::Update,
+) -> shared_types::UpdateInfo {
+    shared_types::UpdateInfo {
+        channel,
+        version: update.version,
+        notes: update.body,
+    }
+}
+
+#[cfg(not(debug_assertions))]
+fn selected_update_channel(app: &AppHandle) -> Result<shared_types::UpdateChannel, String> {
+    crate::storage::store::get_json_pref_or(
+        app,
+        crate::storage::store::UPDATE_CHANNEL_KEY,
+        shared_types::UpdateChannel::default(),
+    )
+    .map_err(|e| format!("[updater] failed to read update channel preference: {e}"))
+}
+
+#[cfg(not(debug_assertions))]
+fn channel_updater(
+    app: &AppHandle,
+    channel: shared_types::UpdateChannel,
+) -> Result<tauri_plugin_updater::Updater, String> {
+    use tauri_plugin_updater::UpdaterExt;
+
+    let manifest_url: url::Url = update_manifest_url(channel)
+        .parse()
+        .map_err(|e: url::ParseError| format!("[updater] invalid channel manifest URL: {e}"))?;
+
+    app.updater_builder()
+        .endpoints(vec![manifest_url])
+        .map_err(|e| format!("[updater] endpoints rejected: {e}"))?
+        .build()
+        .map_err(|e| format!("[updater] build failed: {e}"))
+}
+
+/// Check the selected auto-update channel for an available release.
+#[tauri::command]
+#[cfg(not(debug_assertions))]
+pub async fn check_update(app: AppHandle) -> Result<Option<shared_types::UpdateInfo>, String> {
+    let channel = selected_update_channel(&app)?;
+    let updater = channel_updater(&app, channel)?;
+    let update = updater
+        .check()
+        .await
+        .map_err(|e| format!("[updater] check failed: {e}"))?;
+
+    Ok(update.map(|update| update_info(channel, update)))
+}
+
+/// Download and install the latest release from the selected auto-update channel.
+#[tauri::command]
+#[cfg(not(debug_assertions))]
+pub async fn install_update(app: AppHandle) -> Result<(), String> {
+    let channel = selected_update_channel(&app)?;
+    let updater = channel_updater(&app, channel)?;
+    let update = updater
+        .check()
+        .await
+        .map_err(|e| format!("[updater] check failed: {e}"))?
+        .ok_or_else(|| "[updater] no update available".to_string())?;
+
+    update
+        .download_and_install(|_, _| {}, || {})
+        .await
+        .map_err(|e| format!("[updater] download_and_install failed: {e}"))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+#[cfg(debug_assertions)]
+pub async fn check_update(_app: AppHandle) -> Result<Option<shared_types::UpdateInfo>, String> {
+    Ok(None)
+}
+
+#[tauri::command]
+#[cfg(debug_assertions)]
+pub async fn install_update(_app: AppHandle) -> Result<(), String> {
+    Err("Auto-update install requires a release build (the updater plugin is not registered in dev mode).".to_string())
+}
 
 /// Safely relaunch the app after the Tauri updater has installed a new bundle.
 ///
@@ -50,4 +150,25 @@ pub fn relaunch_after_update(app: AppHandle) -> Result<(), String> {
     // `app.exit` schedules an exit through the Tauri event loop and returns
     // (it does not call std::process::exit directly), so we must return Ok here.
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stable_channel_keeps_legacy_manifest_url() {
+        assert_eq!(
+            update_manifest_url(shared_types::UpdateChannel::Stable),
+            "https://releases.nixmac.com/latest.json"
+        );
+    }
+
+    #[test]
+    fn develop_channel_uses_isolated_manifest_url() {
+        assert_eq!(
+            update_manifest_url(shared_types::UpdateChannel::Develop),
+            "https://releases.nixmac.com/channels/develop/latest.json"
+        );
+    }
 }

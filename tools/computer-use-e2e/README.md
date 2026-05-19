@@ -700,7 +700,7 @@ Then build and launch the real app as a debug `.app` bundle:
 
 ```bash
 cd apps/native
-VITE_NIXMAC_SKIP_PERMISSIONS=true ./node_modules/.bin/tauri build \
+VITE_NIXMAC_SKIP_PERMISSIONS=true VITE_NIXMAC_E2E_MODE=true ./node_modules/.bin/tauri build \
   --debug \
   --bundles app \
   --no-sign \
