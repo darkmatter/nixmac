@@ -491,7 +491,14 @@ rollbackChangesetId: number | null;
 /**
  * UI step derived from the routing state.
  */
-step: EvolveStep }
+step: EvolveStep; 
+/**
+ * Last terminal state observed for this routing session.
+ * 
+ * This supports transition-sensitive behavior when returning to Begin
+ * and maybe some other useful things in the future.
+ */
+lastEvolutionState?: EvolutionState | null }
 
 /**
  * Widget step derived from `EvolveState` fields.
@@ -1374,7 +1381,11 @@ developerMode: boolean;
 /**
  * Version pinned by the user, when update pinning is active.
  */
-pinnedVersion: string | null }
+pinnedVersion: string | null; 
+/**
+ * Auto-update channel used when no explicit version pin is active.
+ */
+updateChannel: UpdateChannel }
 
 /**
  * Partial update to UI preferences — every field is optional so the caller
@@ -1456,7 +1467,33 @@ developerMode: boolean | null;
 /**
  * `None` -> field not sent; `Some(None)` -> clear the pinned version.
  */
-pinnedVersion?: string | null }
+pinnedVersion?: string | null; 
+/**
+ * Auto-update channel preference update.
+ */
+updateChannel: UpdateChannel | null }
+
+/**
+ * Auto-update channel selected for release-mode builds.
+ */
+export type UpdateChannel = "stable" | "develop"
+
+/**
+ * Lightweight update metadata returned by the channel-aware updater command.
+ */
+export type UpdateInfo = { 
+/**
+ * Channel whose manifest produced this update.
+ */
+channel: UpdateChannel; 
+/**
+ * Version advertised by the channel manifest.
+ */
+version: string; 
+/**
+ * Release notes from the channel manifest, when available.
+ */
+notes: string | null }
 
 /**
  * Event payload emitted by the git status watcher.

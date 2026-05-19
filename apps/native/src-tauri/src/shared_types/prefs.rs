@@ -1,6 +1,15 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+/// Auto-update channel selected for release-mode builds.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum UpdateChannel {
+    #[default]
+    Stable,
+    Develop,
+}
+
 /// User interface preferences (synced to settings.json via tauri-plugin-store).
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -43,6 +52,8 @@ pub struct UiPrefs {
     pub developer_mode: bool,
     /// Version pinned by the user, when update pinning is active.
     pub pinned_version: Option<String>,
+    /// Auto-update channel used when no explicit version pin is active.
+    pub update_channel: UpdateChannel,
 }
 
 /// Partial update to UI preferences — every field is optional so the caller
@@ -93,6 +104,20 @@ pub struct UiPrefsUpdate {
         with = "double_option"
     )]
     pub pinned_version: Option<Option<String>>,
+    /// Auto-update channel preference update.
+    pub update_channel: Option<UpdateChannel>,
+}
+
+/// Lightweight update metadata returned by the channel-aware updater command.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateInfo {
+    /// Channel whose manifest produced this update.
+    pub channel: UpdateChannel,
+    /// Version advertised by the channel manifest.
+    pub version: String,
+    /// Release notes from the channel manifest, when available.
+    pub notes: Option<String>,
 }
 
 #[allow(dead_code)]

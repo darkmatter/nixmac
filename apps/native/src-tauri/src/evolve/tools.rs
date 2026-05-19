@@ -289,13 +289,14 @@ IMPORTANT: The generated Nix code is syntax-validated before writing. Edits with
             description: "Search for Nix packages by name or description. This is a convenient \
                          wrapper around 'nix search' that returns a list of structured JSON results. \
                          Output format: Array of SearchPackageResult objects, each containing \
-                         {\"name\": string, \"attr_path\": string, \"version\": string, \"description\": string, \"channel\": string, \"installTarget\": SearchResultInstallTarget}. \
+                         {\"name\": string, \"attrPath\": string, \"version\": string, \"description\": string, \"channel\": string, \"installTarget\": SearchResultInstallTarget, \"additionalInfo\": string?}. \
                          The installTarget field indicates whether a package should be installed via Homebrew (Homebrew), \
-                         Nix (System), or either (Either). IMPORTANT: When making nix package edits later, try to respect \
+                         Nix (System), either (Either), or not at all (None or UnavailableOnHostPlatform). \
+                         The additionalInfo field is an optional string containing any other relevant clues for how to install the package. IMPORTANT: When making nix package edits later, try to respect \
                          1) any expressed user preference, followed by 2) the installTarget value to guide installation method recommendations. \
-                         Example: [{\"name\": \"wget\", \"attr_path\": \"wget\", \"version\": \"1.21.3\", \"description\": \"retrieves files from the web\", \"channel\": \"nixpkgs-unstable\", \"installTarget\": \"System\"}]. \
+                         Example: [{\"name\": \"wget\", \"attrPath\": \"wget\", \"version\": \"1.21.3\", \"description\": \"retrieves files from the web\", \"channel\": \"nixpkgs-unstable\", \"installTarget\": \"System\"}]. \
                          Parameters: \
-                         use_regex enables regex patterns for advanced matching; \
+                         useRegex enables regex patterns for advanced matching; \
                          channels lets you search in different flakes (one or more of nixpkgs, nixpkgs-unstable, etc.), max 5".to_string(),
             parameters: serde_json::json!({
                 "type": "object",
