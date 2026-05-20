@@ -20,6 +20,7 @@ from openpyxl import load_workbook
 SCRIPT_DIR = Path(__file__).parent.resolve()
 
 # Testcase data
+DEFAULT_CSV: Path = SCRIPT_DIR / "data/test_prompts.csv"
 SPREADSHEET: Path = SCRIPT_DIR / "data/dimensions-of-variation.xlsx"
 
 # Location where we store JSON evaluation results during test runs
@@ -488,6 +489,15 @@ def sha256_file(path: Path) -> str | None:
     return digest.hexdigest()
 
 
+def prompt_source_path(parsed_args: argparse.Namespace) -> Path:
+    """Return the prompt source used for this run."""
+    if parsed_args.csv:
+        return Path(parsed_args.csv).resolve()
+    if DEFAULT_CSV.exists():
+        return DEFAULT_CSV.resolve()
+    return SPREADSHEET.resolve()
+
+
 def git_commit() -> str | None:
     """Return the current git commit for reproducibility metadata."""
     try:
@@ -510,7 +520,7 @@ def build_manifest(
     started_at: str,
     completed_at: str | None = None,
 ) -> dict[str, Any]:
-    csv_path = Path(parsed_args.csv).resolve() if parsed_args.csv else SPREADSHEET.resolve()
+    csv_path = prompt_source_path(parsed_args)
     previous_manifest = load_manifest(output_dir)
     previous_selected = previous_manifest.get("selected_cases", [])
     previous_attempted = previous_manifest.get("attempted_cases", [])
@@ -611,16 +621,21 @@ def main(parsed_args: argparse.Namespace) -> None:
         else:
             rows = None
 
-        # Read test cases from CSV if specified, otherwise use Excel spreadsheet
+        # Read test cases from CSV by default; fall back to the old spreadsheet path if needed.
         cases: list[EvalTestCase]
-        if parsed_args.csv:
-            csv_path = Path(parsed_args.csv)
+        prompt_path = prompt_source_path(parsed_args)
+        if prompt_path.suffix.lower() == ".csv":
+            csv_path = prompt_path
             if not csv_path.exists():
                 raise FileNotFoundError(f"CSV file not found: {csv_path}")
             cases = read_test_cases_from_csv(
                 csv_path, rows=rows, priority=parsed_args.priority, persona=parsed_args.persona
             )
         else:
+            if not SPREADSHEET.exists():
+                raise FileNotFoundError(
+                    f"Prompt source not found: {SPREADSHEET}. Use --csv {DEFAULT_CSV}."
+                )
             cases = read_test_cases_from_xl(
                 rows=rows, priority=parsed_args.priority, persona=parsed_args.persona
             )
@@ -786,7 +801,7 @@ if __name__ == "__main__":
         "--csv",
         type=str,
         default=None,
-        help="Path to CSV file containing test prompts (alternative to Excel spreadsheet)",
+        help="Path to CSV file containing test prompts (default: data/test_prompts.csv)",
     )
     parser.add_argument(
         "--rows",

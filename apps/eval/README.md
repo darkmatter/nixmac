@@ -14,7 +14,7 @@ uv sync
 
 Execute the evaluation suite:
 
-### Run with default Excel spreadsheet
+### Run with the default CSV prompt set
 
 ```bash
 uv run python run_evals.py
@@ -22,7 +22,7 @@ uv run python run_evals.py
 
 Options:
 
-- `--cases <row_numbers>` - Run specific test cases by row number (comma-separated)
+- `--rows <case_ids>` - Run specific test cases by case ID (comma-separated)
 - `--priority <level>` - Filter by priority level
 - `--limit <num>` - Max number of cases to run
 - `--persona <name>` - Filter by persona
@@ -77,10 +77,10 @@ uv run python calc_stats.py
 uv run python calc_stats.py -i ./data/results -s
 ```
 
-Run specific cases by row number:
+Run specific cases by case ID:
 
 ```bash
-uv run python run_evals.py --cases 5,6,8
+uv run python run_evals.py --rows 5,6,8
 ```
 
 ### Run with CSV file
