@@ -4,7 +4,19 @@ This directory contains tools for evaluating nixmac's evolution capabilities aga
 
 ## Setup
 
-Install dependencies with `uv`:
+From the repository root, build the debug nixmac binary:
+
+```bash
+cargo build -p nixmac
+```
+
+The eval runner shells out to `../../target/debug/nixmac`, so confirm that file exists before running cases:
+
+```bash
+ls -lh ../../target/debug/nixmac
+```
+
+Then install eval dependencies with `uv`:
 
 ```bash
 uv sync
