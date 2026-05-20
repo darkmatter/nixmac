@@ -1,0 +1,15 @@
+[project]
+name = "nixmac-eval"
+version = "1.0.0"
+description = "AI Evolution Engine Evaluation runner for nixmac"
+requires-python = ">=3.8"
+dependencies = [
+    "openpyxl>=3.0.0",
+    "gitpython>=3.1.46",
+    "tabulate>=0.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "types-tabulate>=0.9.0.20241207",
+]
