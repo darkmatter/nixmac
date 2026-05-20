@@ -422,6 +422,10 @@ mod tests {
     #[test]
     #[ignore = "Manual interactive test: launches `sops` editor"]
     fn execute_ensure_secret_full_flow_interactive() {
+        let _env_lock = crate::test_support::e2e_env_lock();
+        let _env_restore =
+            crate::test_support::EnvVarRestore::capture(&["HOME", "SOPS_AGE_KEY_FILE"]);
+
         if !command_exists("age-keygen") {
             eprintln!("Skipping test: age-keygen is not installed");
             return;
@@ -440,12 +444,10 @@ mod tests {
         let fake_home = temp.path().join("home");
         std::fs::create_dir_all(&fake_home).expect("create fake HOME");
 
-        let original_home = std::env::var_os("HOME");
         std::env::set_var("HOME", &fake_home);
 
         // Point sops at the explicit key path for deterministic test behavior.
         let age_key_file = fake_home.join(".config/sops/age/keys.txt");
-        let original_sops_age_key_file = std::env::var_os("SOPS_AGE_KEY_FILE");
         std::env::set_var("SOPS_AGE_KEY_FILE", &age_key_file);
 
         let secret_name = "manual-interactive-secret";
@@ -455,18 +457,6 @@ mod tests {
 
         let result = execute_ensure_secret(&base, &args, None)
             .expect("execute_ensure_secret should succeed after interactive edit is completed");
-
-        if let Some(previous_home) = original_home {
-            std::env::set_var("HOME", previous_home);
-        } else {
-            std::env::remove_var("HOME");
-        }
-
-        if let Some(previous_sops_age_key_file) = original_sops_age_key_file {
-            std::env::set_var("SOPS_AGE_KEY_FILE", previous_sops_age_key_file);
-        } else {
-            std::env::remove_var("SOPS_AGE_KEY_FILE");
-        }
 
         assert_eq!(result.name, secret_name);
         assert_eq!(result.path, format!("secrets/{}.yaml", secret_name));
