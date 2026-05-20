@@ -10,6 +10,9 @@ export function usePrefs() {
       useWidgetStore
         .getState()
         .setBoolPref("scanHomebrewOnStartup", prefs.scanHomebrewOnStartup ?? true);
+      useWidgetStore
+        .getState()
+        .setBoolPref("defaultToDiffTab", prefs.defaultToDiffTab ?? false);
       useWidgetStore.getState().setDeveloperMode(prefs.developerMode ?? false);
       useWidgetStore.getState().setPinnedVersion(prefs.pinnedVersion ?? null);
       useWidgetStore.getState().setUpdateChannel(prefs.updateChannel ?? "stable");

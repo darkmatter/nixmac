@@ -5,14 +5,15 @@ import {
   AnimatedTabsTrigger,
 } from "@/components/ui/animated-tabs";
 import { Tabs } from "@/components/ui/tabs";
-import { Diff } from "@/components/widget/summaries/diff";
+import { DiffSection } from "@/components/widget/summaries/diff-section";
 import { SummaryItems } from "@/components/widget/summaries/summary-items";
+import { prefetchFileDiffContents } from "@/hooks/use-git-operations";
 import { useSummary } from "@/hooks/use-summary";
 import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
 import type { Change } from "@/types/shared.ts";
 import { Dna, Wrench } from "lucide-react";
-import { Activity, useEffect, useState } from "react";
+import { Activity, useEffect, useMemo, useState } from "react";
 import { enrichChanges } from "../utils";
 
 interface SummaryOrDiffProps {
@@ -23,23 +24,29 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   const gitStatus = useWidgetStore((s) => s.gitStatus);
   const changeMap = useWidgetStore((s) => s.changeMap);
   const evolveState = useWidgetStore((s) => s.evolveState);
+  const defaultToDiffTab = useWidgetStore((s) => s.defaultToDiffTab);
   const { summarizeOnFocus } = useSummary();
-  const [activeTab, setActiveTab] = useState("summary");
+  const [activeTab, setActiveTab] = useState(defaultToDiffTab ? "diff" : "summary");
+  const [openFiles, setOpenFiles] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     window.addEventListener("focus", summarizeOnFocus);
     return () => window.removeEventListener("focus", summarizeOnFocus);
   }, [summarizeOnFocus]);
 
+  const fileDiffKey = useMemo(
+    () =>
+      gitStatus?.changes.map((c) => `${c.filename}:${c.hash}`).sort().join("\n") ?? "",
+    [gitStatus],
+  );
+
+  useEffect(() => {
+    prefetchFileDiffContents(useWidgetStore.getState().gitStatus);
+  }, [fileDiffKey]);
+
   if (!gitStatus || !evolveState || evolveState.step === "begin") {
     return null;
   }
-  const changes = enrichChanges(gitStatus.changes) ?? [];
-
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
-    if (tab === "summary") summarizeOnFocus();
-  };
 
   const hashSet = new Set(changeMap?.unsummarizedHashes);
   const unsummarized = (gitStatus?.changes.filter((c) => hashSet.has(c.hash)) ||
@@ -49,7 +56,7 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   return (
     <Tabs
       value={activeTab}
-      onValueChange={handleTabChange}
+      onValueChange={setActiveTab}
       className={cn(
         "flex max-w-full flex-col rounded-lg gap-0",
         variant === "outline" && "border border-border",
@@ -68,7 +75,7 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
               : "What's changed"}
           </h2>
         </div>
-        <AnimatedTabsList defaultValue="summary">
+        <AnimatedTabsList value={activeTab}>
           <AnimatedTabsTrigger value="summary">Summary</AnimatedTabsTrigger>
           <AnimatedTabsTrigger value="diff">Diff</AnimatedTabsTrigger>
         </AnimatedTabsList>
@@ -82,9 +89,13 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
             />
           )}
         </Activity>
-        <Activity mode={activeTab === "diff" ? "visible" : "hidden"}>
-          <Diff changes={changes} />
-        </Activity>
+        {activeTab === "diff" && (
+          <DiffSection
+            changes={gitStatus.changes}
+            openFiles={openFiles}
+            onOpenFilesChange={setOpenFiles}
+          />
+        )}
       </>
     </Tabs>
   );

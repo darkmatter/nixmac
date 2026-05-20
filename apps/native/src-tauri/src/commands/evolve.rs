@@ -18,8 +18,7 @@ pub async fn darwin_evolve(
                 let is_cancelled = evolve::session_control::is_evolve_cancelled()
                     || failure
                         .error
-                        .to_ascii_lowercase()
-                        .contains("cancelled by user");
+                        .contains(evolve::session_control::EVOLUTION_CANCELLED_MSG);
 
                 if is_cancelled {
                     log::info!(
