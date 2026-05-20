@@ -737,15 +737,15 @@ pub async fn generate_evolution<R: Runtime>(
     loop {
         // Check for cancellation at the start of each iteration
         if session_control::is_evolve_cancelled() {
-            warn!("⚠️ Evolution cancelled by user");
+            warn!("⚠️ {}", session_control::EVOLUTION_CANCELLED_MSG);
             evolution.state = EvolutionState::Failed;
             emit_evolve_event(
                 app,
                 EvolveEvent::error(
                     start_time,
                     Some(iteration),
-                    "Evolution cancelled by user",
-                    "Evolution cancelled by user",
+                    session_control::EVOLUTION_CANCELLED_MSG,
+                    session_control::EVOLUTION_CANCELLED_MSG,
                 ),
             );
             // Track failure
@@ -753,7 +753,7 @@ pub async fn generate_evolution<R: Runtime>(
                 warn!("Failed to record evolution failure stats: {}", e);
             }
             return Err(EvolutionRunError::from_state(
-                "Evolution cancelled by user",
+                session_control::EVOLUTION_CANCELLED_MSG,
                 &evolution,
                 iteration,
                 build_attempts,
@@ -805,18 +805,18 @@ pub async fn generate_evolution<R: Runtime>(
                         sleep(Duration::from_millis(100)).await;
                     }
                 } => {
-                    warn!("⚠️ Evolution cancelled by user during provider call");
+                    warn!("⚠️ {} during provider call", session_control::EVOLUTION_CANCELLED_MSG);
                     evolution.state = EvolutionState::Failed;
                     emit_evolve_event(
                         app,
-                        EvolveEvent::error(start_time, Some(iteration), "Evolution cancelled by user", "Evolution cancelled by user"),
+                        EvolveEvent::error(start_time, Some(iteration), session_control::EVOLUTION_CANCELLED_MSG, session_control::EVOLUTION_CANCELLED_MSG),
                     );
                     // Track failure
                     if let Err(e) = statistics::record_evolution_failure(app, iteration) {
                         warn!("Failed to record evolution failure stats: {}", e);
                     }
                     return Err(EvolutionRunError::from_state(
-                        "Evolution cancelled by user",
+                        session_control::EVOLUTION_CANCELLED_MSG,
                         &evolution,
                         iteration,
                         build_attempts,
@@ -1104,7 +1104,7 @@ pub async fn generate_evolution<R: Runtime>(
                                         warn!("Evolution cancelled while waiting for question response");
                                         evolution.state = EvolutionState::Failed;
                                         return Err(EvolutionRunError::from_state(
-                                            "Evolution cancelled by user",
+                                            session_control::EVOLUTION_CANCELLED_MSG,
                                             &evolution,
                                             iteration,
                                             build_attempts,

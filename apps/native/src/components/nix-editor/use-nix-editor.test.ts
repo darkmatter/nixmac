@@ -93,6 +93,7 @@ vi.mock("monaco-editor", () => ({
   editor: {
     create: (container: HTMLElement, options: { value: string }) =>
       h.monacoCreate(container, options),
+    defineTheme: vi.fn(),
     setModelMarkers: vi.fn(),
   },
   languages: {

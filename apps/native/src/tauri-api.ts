@@ -18,6 +18,7 @@ import type {
   FeedbackPanicDetails,
   FeedbackShareOptions,
   FeedbackSystemInfo,
+  FileDiffContents,
   FileEntry,
   FinalizeApplyResult,
   GitStatus,
@@ -65,6 +66,7 @@ export type {
   FeedbackPanicDetails,
   FeedbackShareOptions,
   FeedbackSystemInfo,
+  FileDiffContents,
   FileEntry,
   FinalizeApplyResult,
   GitFileStatus,
@@ -143,6 +145,7 @@ export const darwinAPI = {
     cached: () => invoke<GitStatus | null>("git_cached"),
     commit: (message: string) => invoke<CommitResult>("git_commit", { message }),
     stash: (message: string) => invoke<OkResult>("git_stash", { message }),
+    fileDiffContents: (filenames: string[]) => invoke<Record<string, FileDiffContents>>("git_file_diff_contents", { filenames }),
   },
   darwin: {
     evolve: (description: string) => invoke<EvolutionResult>("darwin_evolve", { description }),

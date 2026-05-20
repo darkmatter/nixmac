@@ -2,6 +2,7 @@ import { computeCurrentStep } from "@/components/widget/utils";
 import type {
   EvolveEvent,
   EvolveState,
+  FileDiffContents,
   GitStatus,
   HistoryItem,
   PermissionsState,
@@ -33,7 +34,7 @@ export type SettingsTab = "general" | "api-keys" | "ai-models" | "preferences" |
 export type WidgetStep = "permissions" | "nix-setup" | "setup" | "begin" | "evolve" | "commit" | "manualEvolve" | "manualCommit" | "history" | "filesystem";
 type ProcessingAction = "evolve" | "apply" | "merge" | "cancel" | null;
 export type ConfirmPrefKey = "confirmBuild" | "confirmClear" | "confirmRollback";
-export type BoolPrefKey = ConfirmPrefKey | "autoSummarizeOnFocus" | "scanHomebrewOnStartup";
+export type BoolPrefKey = ConfirmPrefKey | "autoSummarizeOnFocus" | "scanHomebrewOnStartup" | "defaultToDiffTab";
 
 // Rebuild state for showing progress inline in the widget
 export type RebuildErrorType =
@@ -93,6 +94,7 @@ export interface WidgetState {
 
   // Git (from backend)
   gitStatus: GitStatus | null;
+  fileDiffContents: Record<string, FileDiffContents>;
   // Evolution
   evolvePrompt: string;
   isProcessing: boolean;
@@ -157,6 +159,9 @@ export interface WidgetState {
   // Startup scanning preferences
   scanHomebrewOnStartup: boolean;
 
+  // Default-tab preference
+  defaultToDiffTab: boolean;
+
   // Developer mode (hidden settings panel for bisecting / pinning to a past release)
   developerMode: boolean;
   pinnedVersion: string | null;
@@ -187,6 +192,7 @@ interface WidgetActions {
   setEvolveState: (state: EvolveState | null) => void;
   setExternalBuildDetected: (detected: boolean) => void;
   setGitStatus: (status: GitStatus | null) => void;
+  setFileDiffContents: (contents: Record<string, FileDiffContents>) => void;
   setEvolvePrompt: (prompt: string) => void;
   setProcessing: (isProcessing: boolean, action?: ProcessingAction) => void;
   setChangeMap: (map: SemanticChangeMap | null) => void;
@@ -297,6 +303,7 @@ const initialWidgetState: WidgetState = {
 
   // Git
   gitStatus: null,
+  fileDiffContents: {},
 
   // Evolution
   evolvePrompt: "",
@@ -351,6 +358,9 @@ const initialWidgetState: WidgetState = {
   // Startup scanning preferences
   scanHomebrewOnStartup: true,
 
+  // Default-tab preference
+  defaultToDiffTab: false,
+
   // Developer mode
   developerMode: false,
   pinnedVersion: null,
@@ -386,6 +396,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     setEvolveState: (evolveState) => set({ evolveState: evolveState }),
     setExternalBuildDetected: (externalBuildDetected) => set({ externalBuildDetected }),
     setGitStatus: (gitStatus) => set({ gitStatus }),
+    setFileDiffContents: (fileDiffContents) => set({ fileDiffContents }),
     setEvolvePrompt: (evolvePrompt) => set({ evolvePrompt }),
     setProcessing: (isProcessing, action = null) =>
       set({

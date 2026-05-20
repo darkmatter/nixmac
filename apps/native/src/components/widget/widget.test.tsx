@@ -25,6 +25,14 @@ vi.mock("@/tauri-api", () => ({
   DEFAULT_MAX_ITERATIONS: 25,
 }));
 
+vi.mock("@/components/editor-panel", () => ({
+  EditorPanel: () => null,
+}));
+
+vi.mock("@/components/widget/summaries/diff-section", () => ({
+  DiffSection: () => null,
+}));
+
 // Mock hooks
 vi.mock("@/hooks/use-widget-initialization", () => ({
   loadConfig: vi.fn().mockResolvedValue(undefined),

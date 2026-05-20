@@ -52,22 +52,6 @@ export function getDirectory(path: string): string {
   return parts.slice(0, -1).join("/");
 }
 
-/**
- * Infer change type from diff chunk content.
- */
-function getChangeTypeFromChunks(
-  chunks: string,
-): "new" | "edited" | "removed" {
-  const contentLines = chunks
-    .split("\n")
-    .filter((l) => l.startsWith("+") || l.startsWith("-"));
-  if (contentLines.length === 0) return "edited";
-  const hasAdditions = contentLines.some((l) => l.startsWith("+"));
-  const hasDeletions = contentLines.some((l) => l.startsWith("-"));
-  if (hasAdditions && !hasDeletions) return "new";
-  if (!hasAdditions && hasDeletions) return "removed";
-  return "edited";
-}
 
 // =============================================================================
 // SUMMARY CATEGORY COLORS
@@ -215,16 +199,17 @@ export type ChangeWithRichType = Change & {
   changeType: ChangeType;
   oldFilename?: string;
   shortFilename?: string;
+  hasMultipleHunks?: boolean;
 };
 
 export type ChangeFileSummary = ChangeWithRichType & {
   hunkCount: number;
 };
 
-function inferChangeType(diff: string): ChangeType {
-  if (/^new file mode/m.test(diff)) return "new";
-  if (/^deleted file mode/m.test(diff)) return "removed";
-  return getChangeTypeFromChunks(diff) as ChangeType;
+export function inferChangeType(diff: string): ChangeType {
+  if (/^@@ -0(?:,0)? \+/.test(diff)) return "new";
+  if (/^@@ -\d+(?:,\d+)? \+0(?:,0)? @@/.test(diff)) return "removed";
+  return "edited";
 }
 
 type RenamePair = {
@@ -300,6 +285,11 @@ export function summarizeChangesByFile(
   }
 
   return Array.from(byFile.values());
+}
+
+export function getModStartLine(diff: string): number | null {
+  const match = /@@ -\d+(?:,\d+)? \+(\d+)/.exec(diff);
+  return match ? parseInt(match[1]) : null;
 }
 
 export function enrichChanges(changes: Change[]): ChangeWithRichType[] {
