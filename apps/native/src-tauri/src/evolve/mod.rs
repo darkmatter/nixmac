@@ -392,13 +392,14 @@ fn filter_evolution_messages(
     }
 
     // 1. Filter by retention policy.
-    let filtered_msgs: Vec<&EvolutionMessage> = match strategy {
+    let filtered_msgs: Vec<(usize, &EvolutionMessage)> = match strategy {
         MemoryStrategy::Retention => messages
             .iter()
-            .filter(|m| match m.retention {
+            .enumerate()
+            .filter(|m| match m.1.retention {
                 Retention::Permanent => true,
                 Retention::Recent { keep_iterations } => {
-                    iteration.saturating_sub(m.created_iteration) <= keep_iterations
+                    iteration.saturating_sub(m.1.created_iteration) <= keep_iterations
                 }
             })
             .collect(),
@@ -413,7 +414,7 @@ fn filter_evolution_messages(
     // CONSIDER: There are probably other tools (the "search_*" tools come to mind)
     // that are probably also not very useful after an edit and/or build check.
     let first_build_check_idx = if made_build_check {
-        filtered_msgs.iter().position(|m| {
+        messages.iter().position(|m| {
             m.key
                 .as_deref()
                 .is_some_and(|key| key.starts_with("build_check_"))
@@ -422,12 +423,11 @@ fn filter_evolution_messages(
         None
     };
 
-    let filtered_msgs: Vec<&EvolutionMessage> = match first_build_check_idx {
+    let filtered_msgs: Vec<(usize, &EvolutionMessage)> = match first_build_check_idx {
         Some(build_check_idx) => filtered_msgs
             .into_iter()
-            .enumerate()
-            .filter(|(idx, m)| {
-                if *idx < build_check_idx {
+            .filter(|(original_idx, m)| {
+                if *original_idx < build_check_idx {
                     if let Some(key) = m.key.as_deref() {
                         !key.starts_with("think_")
                     } else {
@@ -437,7 +437,6 @@ fn filter_evolution_messages(
                     true
                 }
             })
-            .map(|(_, m)| m)
             .collect(),
         None => filtered_msgs,
     };
@@ -447,7 +446,7 @@ fn filter_evolution_messages(
     //  To do this, iterate in reverse, track seen keys, and collect messages, then reverse to restore order.
     let mut seen_keys = std::collections::HashSet::new();
     let mut filtered = Vec::with_capacity(filtered_msgs.len());
-    for m in filtered_msgs.iter().rev() {
+    for (_, m) in filtered_msgs.iter().rev() {
         if let Some(key) = m.key.as_ref() {
             if seen_keys.contains(key) {
                 continue;
@@ -1768,40 +1767,18 @@ mod tests {
         filter_evolution_messages, read_file_dedup_key, store_tool_result, EvolutionMessage,
         Message, Retention,
     };
-    use std::ffi::OsString;
-    use std::sync::{Mutex, MutexGuard};
 
-    // This is to support parallel tests with env vars.
-    static ENV_LOCK: once_cell::sync::Lazy<Mutex<()>> =
-        once_cell::sync::Lazy::new(|| Mutex::new(()));
-
-    struct EnvVarGuard {
-        key: &'static str,
-        prev: Option<OsString>,
-        _lock: MutexGuard<'static, ()>,
-    }
-
-    impl EnvVarGuard {
-        fn set(key: &'static str, value: &str) -> Self {
-            let lock = ENV_LOCK.lock().expect("env lock poisoned");
-            let prev = std::env::var_os(key);
-            std::env::set_var(key, value);
-            Self {
-                key,
-                prev,
-                _lock: lock,
-            }
-        }
-    }
-
-    impl Drop for EnvVarGuard {
-        fn drop(&mut self) {
-            if let Some(v) = &self.prev {
-                std::env::set_var(self.key, v);
-            } else {
-                std::env::remove_var(self.key);
-            }
-        }
+    fn set_memory_strategy_for_test(
+        value: &str,
+    ) -> (
+        std::sync::MutexGuard<'static, ()>,
+        crate::test_support::EnvVarRestore,
+    ) {
+        let lock = crate::test_support::e2e_env_lock();
+        let restore =
+            crate::test_support::EnvVarRestore::capture(&["NIXMAC_EVOLUTION_MEMORY_STRATEGY"]);
+        std::env::set_var("NIXMAC_EVOLUTION_MEMORY_STRATEGY", value);
+        (lock, restore)
     }
 
     fn sample_messages() -> Vec<EvolutionMessage> {
@@ -1833,7 +1810,7 @@ mod tests {
 
     #[test]
     fn test_filter_evolution_messages_none_strategy_keeps_recent_messages() {
-        let _env = EnvVarGuard::set("NIXMAC_EVOLUTION_MEMORY_STRATEGY", "none");
+        let (_lock, _restore) = set_memory_strategy_for_test("none");
         let messages = sample_messages();
 
         let out = filter_evolution_messages(&messages, 1000, false);
@@ -1847,7 +1824,7 @@ mod tests {
 
     #[test]
     fn test_filter_evolution_messages_none_strategy_bypasses_all_other_filters() {
-        let _env = EnvVarGuard::set("NIXMAC_EVOLUTION_MEMORY_STRATEGY", "none");
+        let (_lock, _restore) = set_memory_strategy_for_test("none");
         let messages = vec![
             EvolutionMessage::recent(
                 Message::Tool {
@@ -1913,7 +1890,7 @@ mod tests {
 
     #[test]
     fn test_filter_evolution_messages_retention_strategy_expires_recent_messages() {
-        let _env = EnvVarGuard::set("NIXMAC_EVOLUTION_MEMORY_STRATEGY", "retention");
+        let (_lock, _restore) = set_memory_strategy_for_test("retention");
         let messages = sample_messages();
 
         let out = filter_evolution_messages(&messages, 1000, false);
@@ -1932,7 +1909,7 @@ mod tests {
 
     #[test]
     fn test_filter_evolution_messages_unknown_strategy_defaults_to_retention() {
-        let _env = EnvVarGuard::set("NIXMAC_EVOLUTION_MEMORY_STRATEGY", "bogus-value");
+        let (_lock, _restore) = set_memory_strategy_for_test("bogus-value");
         let messages = sample_messages();
 
         let out = filter_evolution_messages(&messages, 1000, false);
@@ -1945,7 +1922,7 @@ mod tests {
 
     #[test]
     fn test_filter_evolution_messages_retention_timeline() {
-        let _env = EnvVarGuard::set("NIXMAC_EVOLUTION_MEMORY_STRATEGY", "retention");
+        let (_lock, _restore) = set_memory_strategy_for_test("retention");
         let messages = vec![
             EvolutionMessage::permanent(
                 Message::System {
@@ -2083,8 +2060,7 @@ mod tests {
         );
         let messages = vec![m1, m2, m3, m4];
         // Use retention so we exercise the build-check pruning branch.
-        let _memory_strategy_guard =
-            EnvVarGuard::set("NIXMAC_EVOLUTION_MEMORY_STRATEGY", "retention");
+        let (_lock, _restore) = set_memory_strategy_for_test("retention");
         let filtered = filter_evolution_messages(&messages, 3, true);
         // The think before the build check should be filtered out, but the one after should be kept.
         assert!(filtered.iter().any(
@@ -2093,6 +2069,59 @@ mod tests {
         assert!(filtered.iter().all(
             |m| !matches!(m, Message::Tool { ref tool_call_id, .. } if tool_call_id == "think-1")
         ));
+    }
+
+    #[test]
+    fn test_pre_build_thinks_stay_pruned_after_build_check_message_expires() {
+        let (_lock, _restore) = set_memory_strategy_for_test("retention");
+
+        let messages = vec![
+            EvolutionMessage::permanent(
+                Message::User {
+                    content: "User message".to_string(),
+                },
+                0,
+                None,
+            ),
+            EvolutionMessage::permanent(
+                Message::Tool {
+                    tool_call_id: "think-before-build".to_string(),
+                    content: "Outdated pre-build reasoning".to_string(),
+                },
+                1,
+                Some("think_1".to_string()),
+            ),
+            EvolutionMessage::recent(
+                Message::Tool {
+                    tool_call_id: "build-check-1".to_string(),
+                    content: "Build failed".to_string(),
+                },
+                2,
+                1,
+                Some("build_check_2".to_string()),
+            ),
+            EvolutionMessage::permanent(
+                Message::Tool {
+                    tool_call_id: "think-after-build".to_string(),
+                    content: "Post-build reasoning".to_string(),
+                },
+                3,
+                Some("think_3".to_string()),
+            ),
+        ];
+
+        // At iteration 10, the build_check message is expired by retention,
+        // but made_build_check is still true and pre-build thinks should remain pruned.
+        let filtered = filter_evolution_messages(&messages, 10, true);
+
+        assert!(filtered.iter().all(|m| !matches!(
+            m,
+            Message::Tool { tool_call_id, .. } if tool_call_id == "think-before-build"
+        )));
+        assert!(filtered.iter().any(|m| matches!(
+            m,
+            Message::Tool { tool_call_id, .. } if tool_call_id == "think-after-build"
+        )));
     }
 
     #[test]
@@ -2141,7 +2170,7 @@ mod tests {
         );
         let messages = vec![m1, m2, m3, m4, m5, m6];
         // Use retention so dedupe logic is exercised (none now early-exits).
-        let _env = EnvVarGuard::set("NIXMAC_EVOLUTION_MEMORY_STRATEGY", "retention");
+        let (_lock, _restore) = set_memory_strategy_for_test("retention");
         let filtered = filter_evolution_messages(&messages, 10, false);
         // Only the last message for key1 and key2 should be kept, plus all messages with no key
         let contents: Vec<_> = filtered
