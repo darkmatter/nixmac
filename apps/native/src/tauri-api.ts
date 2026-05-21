@@ -33,6 +33,7 @@ import type {
   SystemDefaultsScan,
   UiPrefs as DarwinPrefs,
   UiPrefsUpdate as DarwinPrefsUpdate,
+  UpdateInfo,
 } from "./types/shared";
 
 export const darwinAPI = {
@@ -106,6 +107,7 @@ export const darwinAPI = {
         clientTimestampUnixMs: clientTimestampUnixMs ?? null,
       }),
     sentryEvent: () => invoke<void>("debug_sentry_event"),
+    clearTauriState: () => invoke<void>("developer_clear_tauri_state"),
   },
   ui: {
     getPrefs: () => invoke<DarwinPrefs>("ui_get_prefs"),
@@ -178,6 +180,8 @@ export const darwinAPI = {
   },
 
   updater: {
+    checkUpdate: () => invoke<UpdateInfo | null>("check_update"),
+    installUpdate: () => invoke<void>("install_update"),
     installVersion: (version: string) => invoke<void>("install_version", { version }),
     relaunch: () => invoke<void>("relaunch_after_update"),
     clearPinnedVersion: () => invoke<void>("clear_pinned_version"),

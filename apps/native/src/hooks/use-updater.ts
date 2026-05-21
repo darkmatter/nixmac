@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { darwinAPI } from "@/tauri-api";
 import type { UpdateInfo } from "@/types/shared";
 import { useWidgetStore } from "@/stores/widget-store";
@@ -44,7 +43,7 @@ export function useUpdater() {
   const checkForUpdates = useCallback(async () => {
     setState((s) => ({ ...s, checking: true, error: null }));
     try {
-      const update = await invoke<UpdateInfo | null>("check_update");
+      const update = await darwinAPI.updater.checkUpdate();
       if (update) {
         setState((s) => ({
           ...s,
@@ -93,7 +92,7 @@ export function useUpdater() {
     setState((s) => ({ ...s, downloading: true, progress: 0, error: null }));
 
     try {
-      await invoke("install_update");
+      await darwinAPI.updater.installUpdate();
       setState((s) => ({ ...s, progress: 100 }));
 
       // On macOS the updater swaps the .app bundle on disk; using the
