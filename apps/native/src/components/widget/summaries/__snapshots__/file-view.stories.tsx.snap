@@ -1,5 +1,5 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`New Json File 1`] = `"<div class="w-[560px]"><section style="display: flex; position: relative; text-align: initial; width: 100%; height: 100px;"><div style="width: 100%;" data-keybinding-context="N" data-mode-id="json"><div class="monaco-editor no-user-select mac  showUnused showDeprecated vs-dark" role="code" data-uri="inmemory://model/N" style="width: 560px; height: 100px;"><div data-slot="monaco-editor-placeholder"></div></div></div></section></div>"`;
+exports[`New Json File 1`] = `"<div class="w-[560px]"><section data-testid="monaco-file-view" style="display: flex; position: relative; text-align: initial; width: 100%; height: 100px;"><div style="width: 100%;" data-keybinding-context="N" data-mode-id="json"><div class="monaco-editor no-user-select mac  showUnused showDeprecated vs-dark" role="code" data-uri="inmemory://model/N" style="width: 560px; height: 100px;"><div data-slot="monaco-editor-placeholder"></div></div></div></section></div>"`;
 
 exports[`New Nix File 1`] = `"<div class="monaco-alert" role="alert" aria-atomic="true"></div><div class="monaco-alert" role="alert" aria-atomic="true"></div><div class="monaco-status" aria-live="polite" aria-atomic="true"></div><div class="monaco-status" aria-live="polite" aria-atomic="true"></div>"`;
