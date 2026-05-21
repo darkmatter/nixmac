@@ -91,6 +91,11 @@ pub fn get_config_dir<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
 /// If not stored, it is derived from configDir using `git rev-parse`,
 /// then cached into the store for future use.
 pub fn get_repo_root<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
+    // Currently for E2E we only support the git repo being the same as the config dir, so we can skip the git call and just return the config dir.
+    if let Some(dir) = e2e_env_value("NIXMAC_E2E_CONFIG_DIR") {
+        return Ok(dir);
+    }
+
     let store = get_store(app)?;
 
     // 1. Fast path: use stored value
@@ -127,7 +132,8 @@ pub fn ensure_config_dir_exists<R: Runtime>(app: &AppHandle<R>) -> Result<String
     Ok(dir)
 }
 
-/// Creates the git repository if it doesn't exist and returns the path.
+/// Creates the git repository root directory if it doesn't exist and returns the path.
+/// It DOES NOT init the repository.
 pub fn ensure_git_repo_exists<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
     let dir = get_repo_root(app)?;
     std::fs::create_dir_all(&dir)?;

@@ -37,7 +37,7 @@ pub fn format_config_dir_context(repo_root: &Path, config_dir: &str) -> Result<S
 }
 
 // Returns a flattened list of repo-root-relative file paths under config_dir,
-// one path per line and always prefixed with '/'.
+// one path per line.
 pub fn format_config_dir_context_with_max_depth(
     repo_root: &Path,
     config_dir: &str,
