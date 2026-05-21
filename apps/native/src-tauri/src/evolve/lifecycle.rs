@@ -117,7 +117,7 @@ pub async fn backup_evolve_and_record_changeset(
     let start_time_ms: i64 = chrono::Utc::now().timestamp_millis();
     let start_time_s: i64 = start_time_ms / 1000;
 
-    let config_dir = match store::ensure_config_dir_exists(app) {
+    let config_dir: String = match store::ensure_config_dir_exists(app) {
         Ok(dir) => dir,
         Err(e) => {
             return Err(EvolutionFailureResult::defaults(
@@ -127,8 +127,18 @@ pub async fn backup_evolve_and_record_changeset(
             ));
         }
     };
+    let repo_root = match store::ensure_git_repo_exists(app) {
+        Ok(dir) => dir,
+        Err(e) => {
+            return Err(EvolutionFailureResult::defaults(
+                format!("Failed to get git repository root: {}", e),
+                None,
+                elapsed_since(start_time_ms),
+            ));
+        }
+    };
 
-    let initial_status = match git::status(&config_dir) {
+    let initial_status = match git::status(&repo_root) {
         Ok(status) => status,
         Err(e) => {
             return Err(EvolutionFailureResult::defaults(
@@ -147,20 +157,18 @@ pub async fn backup_evolve_and_record_changeset(
     // Step 1: Snapshot the working tree onto a backup branch before AI touches anything.
     let pre_evolve_state = evolve_state::get(app).unwrap_or_default();
     let changeset_id = pre_evolve_state.current_changeset_id.unwrap_or(0);
-    let backup_branch = match git::create_evolution_backup(
-        &config_dir,
-        pre_evolve_state.evolution_id,
-        changeset_id,
-    ) {
-        Ok(branch) => branch,
-        Err(e) => {
-            return Err(EvolutionFailureResult::defaults(
-                format!("Failed to create backup branch: {}", e),
-                None,
-                elapsed_since(start_time_ms),
-            ));
-        }
-    };
+    let backup_branch =
+        match git::create_evolution_backup(&repo_root, pre_evolve_state.evolution_id, changeset_id)
+        {
+            Ok(branch) => branch,
+            Err(e) => {
+                return Err(EvolutionFailureResult::defaults(
+                    format!("Failed to create backup branch: {}", e),
+                    None,
+                    elapsed_since(start_time_ms),
+                ));
+            }
+        };
 
     if let Some(ref branch) = backup_branch {
         info!("[evolution] backup branch created | branch={}", branch);
@@ -206,8 +214,8 @@ pub async fn backup_evolve_and_record_changeset(
         Ok(evolution) => evolution,
         Err(e) => {
             let duration_ms = elapsed_since(start_time_ms);
-            let git_status = git::status(&config_dir).ok();
-            restore_after_failure(app, &config_dir, &backup_branch);
+            let git_status = git::status(&repo_root).ok();
+            restore_after_failure(app, &repo_root, &backup_branch);
             if let Some(run_error) = e.downcast_ref::<evolve::EvolutionRunError>() {
                 return Err(EvolutionFailureResult::new(
                     run_error.message.clone(),
@@ -250,10 +258,10 @@ pub async fn backup_evolve_and_record_changeset(
     }
 
     // Get final git status
-    let final_status = match git::status(&config_dir) {
+    let final_status = match git::status(&repo_root) {
         Ok(status) => status,
         Err(e) => {
-            restore_after_failure(app, &config_dir, &backup_branch);
+            restore_after_failure(app, &repo_root, &backup_branch);
             return Err(EvolutionFailureResult::from_evolution(
                 format!("Failed to get final git status: {}", e),
                 None,
@@ -289,7 +297,7 @@ pub async fn backup_evolve_and_record_changeset(
     // Build the change map from whatever is now stored in the DB.
     let change_map = db::get_db_path(app)
         .ok()
-        .and_then(|db_path| summarize::find_existing::for_current_state(&db_path, &config_dir).ok())
+        .and_then(|db_path| summarize::find_existing::for_current_state(&db_path, &repo_root).ok())
         .map(summarize::group_existing::from_change_sets)
         .unwrap_or_default();
 
@@ -302,7 +310,7 @@ pub async fn backup_evolve_and_record_changeset(
     })
 }
 
-fn restore_after_failure(app: &AppHandle, config_dir: &str, backup_branch: &Option<String>) {
+fn restore_after_failure(app: &AppHandle, repo_root: &str, backup_branch: &Option<String>) {
     // Allow skipping the actual git restore calls for debugging/testing.
     // If `DEBUG_SKIP_RESTORE_ALL` is set to a non-zero value, skip restore operations
     // but keep the same state updates and logging behavior.
@@ -315,7 +323,7 @@ fn restore_after_failure(app: &AppHandle, config_dir: &str, backup_branch: &Opti
         log::warn!("[evolution] DEBUG_SKIP_RESTORE_ALL set — skipping restore_from_branch_ref");
     } else if let Some(branch) = backup_branch {
         let ref_name = format!("refs/heads/{}", branch);
-        if let Err(e) = git::restore_from_branch_ref(config_dir, &ref_name) {
+        if let Err(e) = git::restore_from_branch_ref(repo_root, &ref_name) {
             log::error!("[evolution] restore_from_branch_ref failed: {}", e);
         }
     } else {

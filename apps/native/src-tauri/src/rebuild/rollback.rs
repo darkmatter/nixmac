@@ -12,8 +12,8 @@ use crate::{
 };
 
 pub fn rollback_erase<R: Runtime>(app: &AppHandle<R>) -> Result<RollbackResult> {
-    let config_dir =
-        store::ensure_config_dir_exists(app).context("Failed to get config directory")?;
+    let repo_root =
+        store::ensure_git_repo_exists(app).context("Failed to get git repository root")?;
 
     let current_evolve = evolve_state::get(app).unwrap_or_default();
     let rollback_store_path = current_evolve.rollback_store_path.clone();
@@ -21,8 +21,8 @@ pub fn rollback_erase<R: Runtime>(app: &AppHandle<R>) -> Result<RollbackResult> 
 
     if let Some(ref branch) = current_evolve.rollback_branch {
         let ref_name = format!("refs/heads/{}", branch);
-        if git::get_ref_sha(&config_dir, &ref_name).is_some() {
-            git::restore_from_branch_ref(&config_dir, &ref_name)
+        if git::get_ref_sha(&repo_root, &ref_name).is_some() {
+            git::restore_from_branch_ref(&repo_root, &ref_name)
                 .context("Failed to restore from rollback branch")?;
         } else {
             warn!(
@@ -32,7 +32,7 @@ pub fn rollback_erase<R: Runtime>(app: &AppHandle<R>) -> Result<RollbackResult> 
         }
     }
 
-    let final_status = git::status(&config_dir).context("Failed to get final git status")?;
+    let final_status = git::status(&repo_root).context("Failed to get final git status")?;
     // fire-and-forget: best-effort cache update. `final_status` is returned via
     // RollbackResult regardless; a store write failure must not abort the rollback.
     let _ = store::set_cached_git_status(app, &final_status);

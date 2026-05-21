@@ -500,7 +500,10 @@ pub fn execute_tool(
     args: &serde_json::Value,
     gitignore_matcher: Option<&Gitignore>,
 ) -> Result<ToolResult> {
-    let base = Path::new(config_dir);
+    // Allow tools to operate relative to the git repo root that contains the config.
+    let binding = crate::git::exec::repo_root(config_dir);
+    let base = binding.as_path();
+
     match name {
         "think" => {
             let category = args["category"].as_str().unwrap_or("other").to_string();
@@ -526,8 +529,9 @@ pub fn execute_tool(
             let normalized_rel = normalize_relative_path(Path::new(path))?;
             if is_ignored_by_matcher(gitignore_matcher, &normalized_rel, false) {
                 return Err(anyhow!(
-                    "read_file: '{}' is ignored by .gitignore in config_dir",
-                    path
+                    "read_file: '{}' is ignored by .gitignore in git repository at '{}'",
+                    path,
+                    base.display()
                 ));
             }
 
@@ -589,9 +593,9 @@ pub fn execute_tool(
                     .collect::<Vec<_>>()
                     .join(", ");
 
-                // Don't return the sample as part of the error return since it contains local paths outside config_dir.
+                // Don't return the sample as part of the error return since it contains local paths outside git repository.
                 return Err(anyhow!(
-                    "list_files matched one or more files outside config_dir after symlink resolution. pattern='{}' config_dir='{}'. Fix: narrow the pattern to files under config_dir and avoid symlink targets outside config_dir.",
+                    "list_files matched one or more files outside git repository after symlink resolution. pattern='{}' git repository='{}'. Fix: narrow the pattern to files under git repository and avoid symlink targets outside git repository.",
                     pattern,
                     base.display(),
                 ));
@@ -773,8 +777,8 @@ pub fn execute_tool(
         "build_check" => {
             let show_trace = args["show_trace"].as_bool().unwrap_or(false);
             info!(
-                "Running build check for host: {}, show_trace: {}",
-                host_attr, show_trace
+                "Running build check for host: {}, show_trace: {}, config_dir: {}",
+                host_attr, show_trace, config_dir
             );
 
             let (passed, stdout, stderr) =
@@ -808,7 +812,7 @@ pub fn execute_tool(
                 .as_str()
                 .ok_or_else(|| anyhow!("search_code: missing pattern"))?;
             let file_pattern = args["file_pattern"].as_str();
-            let output = execute_search_code(config_dir, pattern, file_pattern, gitignore_matcher)?;
+            let output = execute_search_code(base, pattern, file_pattern, gitignore_matcher)?;
             Ok(ToolResult::Continue(output))
         }
 

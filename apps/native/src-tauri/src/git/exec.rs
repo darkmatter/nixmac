@@ -3,7 +3,7 @@
 use crate::shared_types::{GitFileStatus, GitStatus};
 use anyhow::{Context, Result};
 use std::ffi::OsStr;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use tauri::AppHandle;
 
@@ -115,13 +115,19 @@ pub fn get_nix_diff(dir: &str) -> Result<String> {
     Ok(diff)
 }
 
-pub fn repo_root(dir: &str) -> String {
-    git_command()
+/// Gets the git repository root directory for `dir`, or `dir` if not in a repo.
+/// Used for resolving file paths for the benefit of tools and git operations.
+pub fn repo_root(dir: &str) -> PathBuf {
+    match git_command()
         .args(["rev-parse", "--show-toplevel"])
         .current_dir(dir)
         .output()
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        .unwrap_or_else(|_| dir.to_string())
+    {
+        Ok(output) if output.status.success() => {
+            PathBuf::from(String::from_utf8_lossy(&output.stdout).trim().to_string())
+        }
+        _ => PathBuf::from(dir),
+    }
 }
 
 /// Returns (original, modified) file content for a single file: HEAD content and working-tree content.
@@ -133,8 +139,7 @@ pub fn file_diff_contents(dir: &str, filename: &str) -> (String, String) {
         .output()
         .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
         .unwrap_or_default();
-    let modified = std::fs::read_to_string(std::path::Path::new(&repo_root(dir)).join(filename))
-        .unwrap_or_default();
+    let modified = std::fs::read_to_string(repo_root(dir).join(filename)).unwrap_or_default();
     (original, modified)
 }
 
@@ -178,14 +183,18 @@ fn append_untracked_diffs(diff: &mut String, dir: &str, path_filter: Option<&str
         args.extend(["--", filter]);
     }
 
-    let untracked_output = git_command().args(&args).current_dir(dir).output()?;
+    let repo_root_dir = repo_root(dir);
+    let untracked_output = git_command()
+        .args(&args)
+        .current_dir(&repo_root_dir)
+        .output()?;
     let untracked_files = String::from_utf8_lossy(&untracked_output.stdout);
 
     for file in untracked_files.lines() {
         if file.is_empty() {
             continue;
         }
-        let file_path = std::path::Path::new(dir).join(file);
+        let file_path = repo_root_dir.join(file);
         if let Ok(contents) = std::fs::read_to_string(&file_path) {
             diff.push_str(&format!("\ndiff --git a/{} b/{}\n", file, file));
             diff.push_str("new file mode 100644\n");
@@ -346,9 +355,10 @@ pub fn cached<R: tauri::Runtime>(app: &AppHandle<R>) -> Result<Option<GitStatus>
 /// Registers all untracked files as intent-to-add in the git index.
 /// Makes files visible to `git ls-files` (and therefore Nix flakes)
 pub fn intent_add_untracked(dir: &str) -> Result<()> {
+    let repo_root_dir = repo_root(dir);
     let output = git_command()
         .args(["ls-files", "--others", "--exclude-standard"])
-        .current_dir(dir)
+        .current_dir(&repo_root_dir)
         .output()?;
 
     if !output.status.success() {
@@ -367,7 +377,10 @@ pub fn intent_add_untracked(dir: &str) -> Result<()> {
 
     let mut args = vec!["add", "-N", "--"];
     args.extend(files);
-    let add_output = git_command().args(&args).current_dir(dir).output()?;
+    let add_output = git_command()
+        .args(&args)
+        .current_dir(&repo_root_dir)
+        .output()?;
     if !add_output.status.success() {
         let stderr = String::from_utf8_lossy(&add_output.stderr);
         return Err(anyhow::anyhow!(
@@ -782,6 +795,30 @@ deleted file mode 100644
     }
 
     #[test]
+    fn test_get_full_diff_includes_untracked_file_from_nested_config_dir() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let config_dir = repo_dir.join("nix/os");
+        fs::create_dir_all(&config_dir).unwrap();
+
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        let config_dir_str = config_dir.to_string_lossy().to_string();
+
+        init_repo(&repo_dir_str).unwrap();
+        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
+        commit_all(&repo_dir_str, "initial").unwrap();
+
+        fs::write(repo_dir.join("new.nix"), "{ new = true; }").unwrap();
+
+        let diff = get_full_diff(&config_dir_str).unwrap();
+        assert!(
+            diff.contains("new.nix"),
+            "untracked repo-root file should appear in diff from nested config dir"
+        );
+        assert!(diff.contains("+{ new = true; }"));
+    }
+
+    #[test]
     fn test_get_full_diff_excludes_gitignored_file() {
         let temp_dir = TempDir::new().unwrap();
         let repo_dir = temp_dir.path().join("repo");
@@ -987,5 +1024,31 @@ deleted file mode 100644
 
         let result = create_evolution_backup(&repo_dir_str, Some(1), 0).unwrap();
         assert!(result.is_some());
+    }
+
+    #[test]
+    fn test_intent_add_untracked_from_nested_config_dir() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let config_dir = repo_dir.join("nix/os");
+        fs::create_dir_all(&config_dir).unwrap();
+
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        let config_dir_str = config_dir.to_string_lossy().to_string();
+
+        init_repo(&repo_dir_str).unwrap();
+        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
+        run_git_ok(&repo_dir, &["add", "-A"]);
+        run_git_ok(&repo_dir, &["commit", "-m", "initial commit"]);
+
+        fs::write(repo_dir.join("new.nix"), "{ untracked = true; }\n").unwrap();
+
+        intent_add_untracked(&config_dir_str).unwrap();
+
+        let indexed = run_git_ok(&repo_dir, &["ls-files"]);
+        assert!(
+            indexed.lines().any(|line| line == "new.nix"),
+            "intent-add should index repo-root untracked file when invoked from nested config dir"
+        );
     }
 }

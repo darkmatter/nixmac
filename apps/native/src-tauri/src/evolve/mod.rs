@@ -23,6 +23,7 @@ pub mod lifecycle;
 /// Directories ignored by file listing and search helpers.
 pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 
+use crate::git::exec::repo_root;
 // Re-export public API
 use crate::shared_types::EvolutionState;
 use crate::system::nix;
@@ -342,6 +343,7 @@ pub async fn generate_evolution<R: Runtime>(
     banned_tools: &[&str],
 ) -> Result<Evolution> {
     let start_time = chrono::Utc::now().timestamp();
+    let repo_root = repo_root(config_dir);
 
     // Determine provider
     let store_provider = store::get_evolve_provider(app).ok().flatten();
@@ -355,6 +357,7 @@ pub async fn generate_evolution<R: Runtime>(
     info!("════════════════════════════════════════════════════════════════");
     info!("Provider: {}", provider_type);
     info!("Config dir: {}", config_dir);
+    info!("Repo root: {}", repo_root.display());
     info!("📝 Prompt: {}", prompt);
 
     let store_model = store::get_evolve_model(app).ok().flatten();
@@ -488,14 +491,14 @@ pub async fn generate_evolution<R: Runtime>(
     info!("════════════════════════════════════════════════════════════════");
 
     // Initialize conversation with system prompt
-    let config_dir_context = match format_config_dir_context(config_dir) {
+    let repo_view_context = match format_config_dir_context(repo_root.as_path(), config_dir) {
         Ok(tree) => tree,
         Err(e) => {
             warn!(
-                "Failed to build config_dir context for prompt ({}): {}",
+                "Failed to build repo view context for prompt ({}): {}",
                 config_dir, e
             );
-            "(Failed to render config directory tree)".to_string()
+            "(Failed to render repo view)".to_string()
         }
     };
 
@@ -507,11 +510,13 @@ pub async fn generate_evolution<R: Runtime>(
     // so it's included in the token count and visible to the model in the correct order.
     messages.extend(historical_context);
 
+    log::debug!("Repo subtree context for prompt:\n{}", repo_view_context);
+
     messages.push(Message::User {
         content: format!(
-            "<user_query>{}</user_query>\n\n<config_dir>\n{}\n</config_dir>\n\nStart by using the 'think' tool to plan your approach.",
+            "<user_query>{}</user_query>\n\n<repo_view>\n{}\n</repo_view>\nStart by using the 'think' tool to plan your approach.",
             escape_user_query(prompt),
-            config_dir_context
+            repo_view_context,
         ),
     });
 

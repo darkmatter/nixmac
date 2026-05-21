@@ -3,6 +3,7 @@
 //! Settings are stored in a JSON file managed by tauri-plugin-store.
 //! This provides a simple key-value interface for preferences.
 
+use crate::git::exec::repo_root;
 use crate::shared_types;
 use crate::storage::credential_store::{
     get_with_lazy_migration, set_with_cleanup, CredentialStoreError, KeychainStore,
@@ -85,9 +86,36 @@ pub fn get_config_dir<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
     Ok(home.join(".darwin").to_string_lossy().to_string())
 }
 
+/// Gets the git repository root for the current workspace.
+///
+/// If not stored, it is derived from configDir using `git rev-parse`,
+/// then cached into the store for future use.
+pub fn get_repo_root<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
+    let store = get_store(app)?;
+
+    // 1. Fast path: use stored value
+    if let Some(root) = store.get("repoRoot") {
+        if let Some(root_str) = root.as_str() {
+            return Ok(root_str.to_string());
+        }
+    }
+
+    // 2. Fallback: derive from configDir
+    let config_dir = get_config_dir(app)?;
+    let repo_root = repo_root(&config_dir);
+
+    // 3. Persist for future calls
+    store.set("repoRoot", serde_json::json!(&repo_root));
+    store.save()?;
+
+    Ok(repo_root.to_string_lossy().to_string())
+}
+
 pub fn set_config_dir<R: Runtime>(app: &AppHandle<R>, dir: &str) -> Result<()> {
     let store = get_store(app)?;
+    let repo_root = repo_root(dir);
     store.set("configDir", serde_json::json!(dir));
+    store.set("repoRoot", serde_json::json!(repo_root));
     store.save()?;
     Ok(())
 }
@@ -95,6 +123,13 @@ pub fn set_config_dir<R: Runtime>(app: &AppHandle<R>, dir: &str) -> Result<()> {
 /// Creates the config directory if it doesn't exist and returns the path.
 pub fn ensure_config_dir_exists<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
     let dir = get_config_dir(app)?;
+    std::fs::create_dir_all(&dir)?;
+    Ok(dir)
+}
+
+/// Creates the git repository if it doesn't exist and returns the path.
+pub fn ensure_git_repo_exists<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
+    let dir = get_repo_root(app)?;
     std::fs::create_dir_all(&dir)?;
     Ok(dir)
 }
