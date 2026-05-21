@@ -4,14 +4,6 @@ use crate::storage::store;
 use crate::{db, git, shared_types};
 use tauri::AppHandle;
 
-/// Initializes a git repository in the config directory if one doesn't exist.
-#[tauri::command]
-pub async fn git_init_repo(app: AppHandle) -> Result<shared_types::OkResult, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_init_repo", e))?;
-    git::init_repo(&dir).map_err(|e| capture_err("git_init_repo", e))?;
-    Ok(shared_types::OkResult::yes())
-}
-
 /// Returns original (HEAD) and modified (working-tree) content for each requested file.
 #[tauri::command]
 pub async fn git_file_diff_contents(
