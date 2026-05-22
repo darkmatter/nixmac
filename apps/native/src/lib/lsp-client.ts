@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { darwinAPI } from "@/tauri-api";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 interface JsonRpcRequest {
@@ -41,7 +41,7 @@ export class NixdLspClient {
   async start(configDir: string): Promise<void> {
     if (this._running) return;
 
-    await invoke("lsp_start");
+    await darwinAPI.lsp.start();
 
     // Listen for messages from nixd via Tauri events
     this.unlisten = await listen<string>("lsp:message", (event) => {
@@ -87,7 +87,7 @@ export class NixdLspClient {
     }
 
     try {
-      await invoke("lsp_stop");
+      await darwinAPI.lsp.stop();
     } catch {
       // Best effort
     }
@@ -108,7 +108,7 @@ export class NixdLspClient {
       this.pending.set(id, { resolve, reject });
     });
 
-    await invoke("lsp_send", { message: JSON.stringify(request) }).catch((e) => {
+    await darwinAPI.lsp.send(JSON.stringify(request)).catch((e) => {
       this.pending.delete(id);
       if (String(e).includes("Broken pipe")) this.markDead();
       throw e;
@@ -118,7 +118,7 @@ export class NixdLspClient {
 
   sendNotification(method: string, params: unknown): void {
     const notification: JsonRpcNotification = { jsonrpc: "2.0", method, params };
-    invoke("lsp_send", { message: JSON.stringify(notification) }).catch((e) => {
+    darwinAPI.lsp.send(JSON.stringify(notification)).catch((e: unknown) => {
       console.warn("[lsp-client] Failed to send notification:", e);
       if (String(e).includes("Broken pipe")) this.markDead();
     });

@@ -120,14 +120,3 @@ pub struct RecommendedPrompt {
     pub prompt_text: String,
 }
 
-/// File or directory entry returned by the editor tree.
-#[derive(Debug, Clone, Serialize, Type)]
-#[serde(rename_all = "camelCase")]
-pub struct FileEntry {
-    /// Path relative to the selected config directory.
-    pub path: String,
-    /// File or directory basename.
-    pub name: String,
-    /// Whether this entry is a directory.
-    pub is_dir: bool,
-}

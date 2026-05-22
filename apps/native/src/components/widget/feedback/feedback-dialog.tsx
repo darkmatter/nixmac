@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import * as Sentry from "@sentry/react";
-import { invoke } from "@tauri-apps/api/core";
+
 import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
 import {
   Dialog,
@@ -385,15 +385,15 @@ export function FeedbackDialog() {
         share: shareOptions,
         // artifact fields left empty for now; will be populated by caller when collecting logs
         lastPromptText: selectedPromptText,
-        currentAppStateSnapshot: metadata?.currentAppStateSnapshot,
-        systemInfo: metadata?.systemInfo,
-        usageStats: metadata?.usageStats,
-        evolutionLogContent: metadata?.evolutionLogContent,
-        changedNixFilesDiff: metadata?.changedNixFilesDiff,
-        aiProviderModelInfo: metadata?.aiProviderModelInfo,
-        buildErrorOutput: metadata?.buildErrorOutput,
-        flakeInputsSnapshot: metadata?.flakeInputsSnapshot,
-        appLogsContent: metadata?.appLogsContent,
+        currentAppStateSnapshot: metadata?.currentAppStateSnapshot ?? undefined,
+        systemInfo: metadata?.systemInfo ?? undefined,
+        usageStats: metadata?.usageStats ?? undefined,
+        evolutionLogContent: metadata?.evolutionLogContent ?? undefined,
+        changedNixFilesDiff: metadata?.changedNixFilesDiff ?? undefined,
+        aiProviderModelInfo: metadata?.aiProviderModelInfo ?? undefined,
+        buildErrorOutput: metadata?.buildErrorOutput ?? undefined,
+        flakeInputsSnapshot: metadata?.flakeInputsSnapshot ?? undefined,
+        appLogsContent: metadata?.appLogsContent ?? undefined,
         panicDetails: feedbackType === FeedbackType.Error ? (panicDetails ?? undefined) : undefined,
       });
 
@@ -443,7 +443,7 @@ export function FeedbackDialog() {
 
     // Also send from Rust backend
     try {
-      await invoke("debug_sentry_event");
+      await darwinAPI.debug.sentryEvent();
     } catch (err) {
       // eslint-disable-next-line no-console
       console.warn("[debug_sentry_event] Failed to invoke Rust command:", err);

@@ -21,8 +21,6 @@ vi.mock("@/tauri-api", () => ({
   ipcRenderer: {
     on: vi.fn().mockReturnValue(Promise.resolve(() => {})),
   },
-  CONFIG_CHANGED_CHANNEL: "config-changed",
-  DEFAULT_MAX_ITERATIONS: 25,
 }));
 
 vi.mock("@/components/editor-panel", () => ({

@@ -3,7 +3,7 @@ import { useWidgetStore } from "@/stores/widget-store";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useHistory } from "@/hooks/use-history";
 import { darwinAPI } from "@/tauri-api";
-import type { HistoryItem } from "@/tauri-api";
+import type { HistoryItem } from "@/types/shared";
 
 // Sentinel hash used to identify the frontend-only preview item.
 export const PREVIEW_ITEM_HASH = "n1xm4c0";

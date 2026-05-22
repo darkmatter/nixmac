@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { darwinAPI } from "@/tauri-api";
-import type { UpdateInfo } from "@/tauri-api";
+import type { UpdateInfo } from "@/types/shared";
 import { useWidgetStore } from "@/stores/widget-store";
 
 interface UpdateState {
@@ -44,7 +43,7 @@ export function useUpdater() {
   const checkForUpdates = useCallback(async () => {
     setState((s) => ({ ...s, checking: true, error: null }));
     try {
-      const update = await invoke<UpdateInfo | null>("check_update");
+      const update = await darwinAPI.updater.checkUpdate();
       if (update) {
         setState((s) => ({
           ...s,
@@ -93,14 +92,14 @@ export function useUpdater() {
     setState((s) => ({ ...s, downloading: true, progress: 0, error: null }));
 
     try {
-      await invoke("install_update");
+      await darwinAPI.updater.installUpdate();
       setState((s) => ({ ...s, progress: 100 }));
 
       // On macOS the updater swaps the .app bundle on disk; using the
       // custom relaunch_after_update command opens the newly-installed
       // bundle via LaunchServices instead of re-exec-ing the cached
       // (potentially stale) binary path from the old bundle.
-      await invoke("relaunch_after_update");
+      await darwinAPI.updater.relaunch();
     } catch (err) {
       if (isDevMode) {
         setState((s) => ({
@@ -123,6 +122,18 @@ export function useUpdater() {
       }));
     }
   };
+
+  const installVersion = useCallback(async (version: string): Promise<void> => {
+    await darwinAPI.updater.installVersion(version);
+  }, []);
+
+  const relaunch = useCallback(async (): Promise<void> => {
+    await darwinAPI.updater.relaunch();
+  }, []);
+
+  const clearPinnedVersion = useCallback(async (): Promise<void> => {
+    await darwinAPI.updater.clearPinnedVersion();
+  }, []);
 
   const dismiss = () => {
     setState(initialState);
@@ -169,6 +180,9 @@ export function useUpdater() {
     ...state,
     checkForUpdates,
     installUpdate,
+    installVersion,
+    relaunch,
+    clearPinnedVersion,
     dismiss,
   };
 }

@@ -4,14 +4,6 @@ use crate::storage::store;
 use crate::{db, git, shared_types};
 use tauri::AppHandle;
 
-/// Initializes a git repository in the config directory if one doesn't exist.
-#[tauri::command]
-pub async fn git_init_repo(app: AppHandle) -> Result<shared_types::OkResult, String> {
-    let dir = store::ensure_config_dir_exists(&app).map_err(|e| capture_err("git_init_repo", e))?;
-    git::init_repo(&dir).map_err(|e| capture_err("git_init_repo", e))?;
-    Ok(shared_types::OkResult::yes())
-}
-
 /// Returns original (HEAD) and modified (working-tree) content for each requested file.
 #[tauri::command]
 pub async fn git_file_diff_contents(
@@ -45,12 +37,6 @@ pub async fn git_status_and_cache(app: AppHandle) -> Result<shared_types::GitSta
     let status =
         git::status_and_cache(&dir, &app).map_err(|e| capture_err("git_status_and_cache", e))?;
     Ok(status)
-}
-
-/// Returns the cached git status if available.
-#[tauri::command]
-pub async fn git_cached(app: AppHandle) -> Result<Option<shared_types::GitStatus>, String> {
-    git::cached(&app).map_err(|e| capture_err("git_cached", e))
 }
 
 /// Stages all changes and creates a commit with the given message.
