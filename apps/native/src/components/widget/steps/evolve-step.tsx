@@ -7,6 +7,8 @@ import { StepActionsHeader } from "@/components/widget/layout/step-actions-heade
 import { SummaryOrDiff } from "@/components/widget/summaries/summary-or-diff";
 import { useApply } from "@/hooks/use-apply";
 import { useRollback } from "@/hooks/use-rollback";
+import { formatDurationMs } from "@/lib/utils";
+import { useWidgetStore } from "@/stores/widget-store";
 import { Eraser, Wrench } from "lucide-react";
 
 /**
@@ -16,6 +18,7 @@ import { Eraser, Wrench } from "lucide-react";
 export function EvolveStep() {
   const { handleApply } = useApply();
   const { handleRollback } = useRollback();
+  const telemetry = useWidgetStore((s) => s.evolutionTelemetry);
 
   return (
     <>
@@ -46,6 +49,12 @@ export function EvolveStep() {
           Build & Test
         </ConfirmButton>
       </StepActionsHeader>
+      {telemetry && (
+        <p className="text-muted-foreground text-xs pb-2">
+          Evolution completed in {formatDurationMs(telemetry.durationMs)} and{" "}
+          {telemetry.iterations} iteration{telemetry.iterations === 1 ? "" : "s"}.
+        </p>
+      )}
       <SummaryOrDiff />
       <PromptInputSection />
     </>
