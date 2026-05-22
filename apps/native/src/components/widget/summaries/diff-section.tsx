@@ -6,7 +6,7 @@ import {
   type ChangeWithRichType,
 } from "@/components/widget/utils";
 import { useWidgetStore } from "@/stores/widget-store";
-import type { Change } from "@/types/shared";
+import type { Change } from "@/ipc/types";
 import { useMemo } from "react";
 import { FullFileDiffEditor } from "./full-file-diff-editor";
 

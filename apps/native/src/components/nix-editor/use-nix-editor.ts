@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { initNixGrammar } from "@/lib/nix-grammar";
 import { lspClient } from "@/lib/lsp-client";
 import { bridgeMonacoToLsp } from "@/lib/lsp-monaco-bridge";
-import { tauriAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 import { NIXMAC_THEME, NIXMAC_THEME_DATA } from "@/components/widget/summaries/monaco-theme";
 
 interface UseNixEditorOptions {

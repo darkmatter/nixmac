@@ -1,6 +1,6 @@
 import { useWidgetStore } from "@/stores/widget-store";
-import { tauriAPI } from "@/tauri-api";
-import type { PermissionStatus, PermissionsState } from "@/types/shared";
+import { tauriAPI } from "@/ipc/api";
+import type { PermissionStatus, PermissionsState } from "@/ipc/types";
 
 /**
  * Hook for checking and managing macOS permissions.

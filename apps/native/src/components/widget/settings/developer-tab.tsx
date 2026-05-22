@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useWidgetStore } from "@/stores/widget-store";
-import { tauriAPI } from "@/tauri-api";
-import type { UpdateChannel } from "@/types/shared";
+import { tauriAPI } from "@/ipc/api";
+import type { UpdateChannel } from "@/ipc/types";
 import { useUpdater } from "@/hooks/use-updater";
 import { getVersion } from "@tauri-apps/api/app";
 import {

@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/react";
 import { bootBreadcrumb } from "@/lib/boot-diagnostics";
-import { tauriAPI } from "@/tauri-api";
-import type { UiPrefs as DarwinPrefs } from "@/types/shared";
+import { tauriAPI } from "@/ipc/api";
+import type { UiPrefs as DarwinPrefs } from "@/ipc/types";
 import { sanitizeSentryEvent } from "./sanitize";
 
 const E2E_MODE = import.meta.env.VITE_NIXMAC_E2E_MODE === "true";

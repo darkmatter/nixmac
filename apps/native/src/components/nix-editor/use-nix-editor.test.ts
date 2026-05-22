@@ -118,7 +118,7 @@ vi.mock("@/lib/lsp-monaco-bridge", () => ({
   bridgeMonacoToLsp: (...args: unknown[]) => h.bridgeMonacoToLsp(...(args as Parameters<typeof h.bridgeMonacoToLsp>)),
 }));
 
-vi.mock("@/tauri-api", () => ({
+vi.mock("@/ipc/api", () => ({
   tauriAPI: {
     editor: {
       readFile: (p: string) => h.mockReadFile(p),

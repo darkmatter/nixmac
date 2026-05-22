@@ -1,8 +1,8 @@
 //! Standalone example for generating TypeScript bindings from schema row types.
 //!
 //! Run with: cargo run --example specta_gen_ts
-//! Output: apps/native/src/types/sqlite.ts
-//!         apps/native/src/types/shared.ts
+//! Output: apps/native/src/ipc/sqlite.ts
+//!         apps/native/src/ipc/types.ts
 //!
 //! Re-run whenever sqlite_types.rs or shared_types.rs changes.
 
@@ -25,7 +25,7 @@ fn main() {
         .register::<sqlite_types::ChangeSummary>()
         .register::<sqlite_types::ChangeSet>();
 
-    let output_path = "../src/types/sqlite.ts";
+    let output_path = "../src/ipc/sqlite.ts";
 
     Typescript::default()
         .bigint(specta_typescript::BigIntExportBehavior::Number)
@@ -106,7 +106,7 @@ fn main() {
         .register::<shared_types::SystemDefaultsScan>()
         .register::<shared_types::RecommendedPrompt>();
 
-    let shared_output_path = "../src/types/shared.ts";
+    let shared_output_path = "../src/ipc/types.ts";
 
     Typescript::default()
         .bigint(specta_typescript::BigIntExportBehavior::Number)

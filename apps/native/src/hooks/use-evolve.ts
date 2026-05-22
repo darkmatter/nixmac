@@ -1,8 +1,8 @@
 import { EVOLUTION_CANCELLED_MSG } from "@/lib/constants";
 import { useWidgetStore } from "@/stores/widget-store";
 import { EVOLVE_EVENT_CHANNEL } from "@/lib/constants";
-import { tauriAPI, ipcRenderer } from "@/tauri-api";
-import type { EvolveEvent } from "@/types/shared";
+import { tauriAPI, ipcRenderer } from "@/ipc/api";
+import type { EvolveEvent } from "@/ipc/types";
 
 /**
  * Hook for the evolution operation.

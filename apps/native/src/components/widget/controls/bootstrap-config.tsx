@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { useWidgetStore } from "@/stores/widget-store";
-import { tauriAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 import { AlertCircle, GitCommit, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 

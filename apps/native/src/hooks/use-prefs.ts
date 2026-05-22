@@ -1,5 +1,5 @@
 import { useWidgetStore, type BoolPrefKey } from "@/stores/widget-store";
-import { tauriAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 
 export function usePrefs() {
   const loadPrefs = async () => {

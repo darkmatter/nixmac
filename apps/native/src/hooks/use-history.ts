@@ -1,4 +1,4 @@
-import { tauriAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 import { useWidgetStore } from "@/stores/widget-store";
 
 const loadHistory = async () => {

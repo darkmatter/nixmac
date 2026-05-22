@@ -1,4 +1,4 @@
-import { tauriAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 
 const MAX_DETAIL_LENGTH = 1_000;
 const APP_TITLE = "nixmac";

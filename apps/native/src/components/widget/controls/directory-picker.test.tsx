@@ -18,7 +18,7 @@ const mockSetHostAttr = vi.fn<(h: string) => Promise<void>>();
 const mockFlakeExistsAt = vi.fn<(p: string) => Promise<boolean>>();
 const mockFlakeExists = vi.fn<() => Promise<boolean>>();
 
-vi.mock("@/tauri-api", () => ({
+vi.mock("@/ipc/api", () => ({
   tauriAPI: {
     path: {
       normalize: (p: string) => mockNormalize(p),

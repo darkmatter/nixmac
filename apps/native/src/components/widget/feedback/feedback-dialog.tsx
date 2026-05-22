@@ -26,7 +26,7 @@ import {
 import { Lightbulb, Bug, MessageCircle, Info, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Feedback as FeedbackModel, FeedbackType, ShareOptions } from "@/types/feedback";
-import { tauriAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 import { toast } from "sonner";
 
 const DEFAULT_SHARE_OPTIONS: ShareOptions = {

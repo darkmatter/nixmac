@@ -1,5 +1,5 @@
 import { useWidgetStore } from "@/stores/widget-store";
-import { tauriAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useSummary } from "@/hooks/use-summary";
 

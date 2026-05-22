@@ -11,7 +11,7 @@ import { BootstrapConfig } from "@/components/widget/controls/bootstrap-config";
 import { DirectoryPicker } from "@/components/widget/controls/directory-picker";
 import { getWebSiteUrl } from "@/lib/env";
 import { useWidgetStore } from "@/stores/widget-store";
-import { tauriAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 import { getVersion } from "@tauri-apps/api/app";
 import { open } from "@tauri-apps/plugin-shell";
 import type { AnyFieldApi } from "@tanstack/react-form";

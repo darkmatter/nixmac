@@ -34,7 +34,7 @@ import type {
   UiPrefs as DarwinPrefs,
   UiPrefsUpdate as DarwinPrefsUpdate,
   UpdateInfo,
-} from "./types/shared";
+} from "@/ipc/types";
 
 export const tauriAPI = {
   config: {

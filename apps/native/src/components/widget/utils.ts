@@ -134,7 +134,7 @@ export function getCategoryStyle(title: string): CategoryStyle {
 
 export type ColorMap = Map<string, CategoryStyle>;
 
-import type { Change, ChangeType, SemanticChangeMap } from "@/types/shared";
+import type { Change, ChangeType, SemanticChangeMap } from "@/ipc/types";
 import { settings } from "@/lib/env";
 
 export function buildColorMap(changeMap: SemanticChangeMap): ColorMap {

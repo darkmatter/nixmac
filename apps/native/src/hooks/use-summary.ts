@@ -1,5 +1,5 @@
 import { useWidgetStore } from "@/stores/widget-store";
-import { tauriAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 
 /**
  * Hook for fetching and managing the AI-generated summary of changes.

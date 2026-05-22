@@ -2,7 +2,7 @@
 
 import { EvolveProgress } from "@/components/widget/overlays/evolve-progress";
 import { useWidgetStore } from "@/stores/widget-store";
-import { tauriAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 
 /**
  * Overlay panel that shows evolution progress.

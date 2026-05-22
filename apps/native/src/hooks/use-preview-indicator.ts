@@ -1,5 +1,5 @@
-import { tauriAPI } from "@/tauri-api";
-import type { PreviewIndicatorState } from "@/types/shared";
+import { tauriAPI } from "@/ipc/api";
+import type { PreviewIndicatorState } from "@/ipc/types";
 
 /**
  * Hook for updating the preview indicator window.

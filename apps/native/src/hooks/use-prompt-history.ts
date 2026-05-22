@@ -1,5 +1,5 @@
 import { useWidgetStore } from "@/stores/widget-store";
-import { tauriAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 
 /**
  * Hook for managing prompt history.

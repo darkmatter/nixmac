@@ -7,8 +7,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useWidgetStore } from "@/stores/widget-store";
-import type { SystemDefault, SystemDefaultsScan } from "@/types/shared";
-import { tauriAPI } from "@/tauri-api";
+import type { SystemDefault, SystemDefaultsScan } from "@/ipc/types";
+import { tauriAPI } from "@/ipc/api";
 import { Monitor, X } from "lucide-react";
 import { useEffect, useState } from "react";
 

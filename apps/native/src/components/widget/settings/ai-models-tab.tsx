@@ -10,8 +10,8 @@ import {
 import { ModelCombobox } from "@/components/widget/controls/model-combobox";
 import { getProviderConfigInvalidReason, isCliProvider } from "@/lib/ai-provider-validation";
 import { DEFAULT_MAX_ITERATIONS } from "@/lib/constants";
-import { tauriAPI } from "@/tauri-api";
-import type { CliToolsState } from "@/types/shared";
+import { tauriAPI } from "@/ipc/api";
+import type { CliToolsState } from "@/ipc/types";
 import type { AnyFieldApi, ReactFormExtendedApi } from "@tanstack/react-form";
 import { Info } from "lucide-react";
 import { useEffect, useState } from "react";

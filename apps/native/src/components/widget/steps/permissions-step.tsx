@@ -1,8 +1,8 @@
 "use client";
 
 import { useWidgetStore } from "@/stores/widget-store";
-import { tauriAPI } from "@/tauri-api";
-import type { Permission, PermissionStatus } from "@/types/shared";
+import { tauriAPI } from "@/ipc/api";
+import type { Permission, PermissionStatus } from "@/ipc/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Shield, Check, X, AlertCircle, Loader2 } from "lucide-react";

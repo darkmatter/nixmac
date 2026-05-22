@@ -2,7 +2,7 @@
 import preview from "#storybook/preview";
 import { useWidgetStore } from "@/stores/widget-store";
 import type { ChangeWithRichType } from "@/components/widget/utils";
-import type { FileDiffContents } from "@/types/shared";
+import type { FileDiffContents } from "@/ipc/types";
 import { useEffect, useState } from "react";
 import { FullFileDiffEditor } from "./full-file-diff-editor";
 

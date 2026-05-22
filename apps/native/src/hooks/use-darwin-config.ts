@@ -1,6 +1,6 @@
 import { useWidgetStore } from "@/stores/widget-store";
-import { tauriAPI } from "@/tauri-api";
-import type { SetDirResult } from "@/types/shared";
+import { tauriAPI } from "@/ipc/api";
+import type { SetDirResult } from "@/ipc/types";
 
 const applyDirResult = async (result: SetDirResult) => {
   const store = useWidgetStore.getState();

@@ -1,7 +1,7 @@
 "use client";
 
 import { useWidgetStore } from "@/stores/widget-store";
-import { tauriAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 import { useState } from "react";
 import { GitStatusDebug } from "@/components/widget/layout/git-status-debug";
 

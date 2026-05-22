@@ -1,8 +1,8 @@
 "use client";
 
-import { tauriAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 import { useWidgetStore } from "@/stores/widget-store";
-import type { HomebrewState } from "@/types/shared";
+import type { HomebrewState } from "@/ipc/types";
 import { useCallback, useEffect, useState } from "react";
 
 const TWENTY_MINUTES_SECS = 20 * 60;

@@ -1,6 +1,6 @@
 import { loadHosts } from "@/hooks/use-widget-initialization";
 import { useWidgetStore } from "@/stores/widget-store";
-import { tauriAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 import { toast } from "sonner";
 
 /**

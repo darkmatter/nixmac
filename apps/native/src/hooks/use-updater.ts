@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { tauriAPI } from "@/tauri-api";
-import type { UpdateInfo } from "@/types/shared";
+import { tauriAPI } from "@/ipc/api";
+import type { UpdateInfo } from "@/ipc/types";
 import { useWidgetStore } from "@/stores/widget-store";
 
 interface UpdateState {

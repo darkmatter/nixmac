@@ -9,7 +9,7 @@ import { ConfigDirBadge } from "@/components/widget/badges/config-dir-badge";
 import { GitignoreBadge } from "@/components/widget/badges/gitignore-badge";
 import { FolderOpen, FolderPlus } from "lucide-react";
 import { useEffect, useState } from "react";
-import { tauriAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 
 type DirectoryPickerProps = {
   label: string;

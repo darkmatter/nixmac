@@ -1,4 +1,4 @@
-import { tauriAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 interface JsonRpcRequest {

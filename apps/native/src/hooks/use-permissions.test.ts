@@ -1,4 +1,4 @@
-import type { PermissionsState } from "@/types/shared";
+import type { PermissionsState } from "@/ipc/types";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -38,7 +38,7 @@ const mockCheckFullDiskAccess = vi.fn();
 const mockSetPermissionsState = vi.fn();
 const mockSetPermissionsChecked = vi.fn();
 
-vi.mock("@/tauri-api", () => ({
+vi.mock("@/ipc/api", () => ({
   tauriAPI: {
     permissions: {
       checkAll: (...args: unknown[]) => mockCheckAll(...args),
