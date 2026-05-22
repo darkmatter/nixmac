@@ -9,7 +9,9 @@ import {
 } from "@/components/ui/select";
 import { ModelCombobox } from "@/components/widget/controls/model-combobox";
 import { getProviderConfigInvalidReason, isCliProvider } from "@/lib/ai-provider-validation";
-import { darwinAPI, DEFAULT_MAX_ITERATIONS, type CliToolsState } from "@/tauri-api";
+import { DEFAULT_MAX_ITERATIONS } from "@/lib/constants";
+import { darwinAPI } from "@/tauri-api";
+import type { CliToolsState } from "@/types/shared";
 import type { AnyFieldApi, ReactFormExtendedApi } from "@tanstack/react-form";
 import { Info } from "lucide-react";
 import { useEffect, useState } from "react";

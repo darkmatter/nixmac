@@ -1,4 +1,5 @@
-import { darwinAPI, type PreviewIndicatorState } from "@/tauri-api";
+import { darwinAPI } from "@/tauri-api";
+import type { PreviewIndicatorState } from "@/types/shared";
 
 /**
  * Hook for updating the preview indicator window.

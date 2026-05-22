@@ -450,6 +450,19 @@ export const storybookDarwinAPI = {
     }),
     applyDiff: async () => ({ ok: true, count: 0, changeMap: baseSemanticChangeMap(), gitStatus: baseGitStatus(), evolveState: baseEvolveState() }),
   },
+  debug: {
+    logBreadcrumb: async () => okResult(),
+    markBootStage: async () => okResult(),
+    sentryEvent: async () => undefined,
+    clearTauriState: async () => undefined,
+  },
+  updater: {
+    checkUpdate: async () => null,
+    installUpdate: async () => undefined,
+    installVersion: async () => undefined,
+    relaunch: async () => undefined,
+    clearPinnedVersion: async () => undefined,
+  },
 };
 
 if (typeof window !== "undefined") {
