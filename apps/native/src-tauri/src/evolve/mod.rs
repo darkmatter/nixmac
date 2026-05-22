@@ -57,6 +57,18 @@ use providers::{AiProvider, CliProvider, OllamaProvider, OpenAIProvider, Provide
 
 use self::types::FileEdit;
 
+/// Format a duration in seconds as a human-readable string (e.g. "1m 23s", "45s").
+fn format_duration_secs(secs: i64) -> String {
+    let secs = secs.max(0);
+    if secs < 60 {
+        format!("{}s", secs)
+    } else if secs < 3600 {
+        format!("{}m {}s", secs / 60, secs % 60)
+    } else {
+        format!("{}h {}m {}s", secs / 3600, (secs % 3600) / 60, secs % 60)
+    }
+}
+
 /// Return short hex prefix for correlation of error messages without risking sensitive content exposure.
 fn short_hash(s: &str) -> String {
     let mut h = Sha256::new();
@@ -1149,11 +1161,13 @@ Could you provide more specific guidance on what aspects of your configuration n
         debug!("[evolve] saved assistant message to session chat memory");
     }
 
+    let elapsed_secs = chrono::Utc::now().timestamp().saturating_sub(start_time).max(0);
     info!("════════════════════════════════════════════════════════════════");
     info!("EVOLUTION COMPLETE");
     info!("════════════════════════════════════════════════════════════════");
     info!("ID: {}", evolution.id);
     info!("State: {:?}", evolution.state);
+    info!("Duration: {}", format_duration_secs(elapsed_secs));
     info!("Iterations: {}", evolution.iterations);
     info!("Build attempts: {}", evolution.build_attempts);
     info!("Total tokens: {}", evolution.total_tokens);
