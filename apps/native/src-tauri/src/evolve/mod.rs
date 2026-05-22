@@ -384,11 +384,11 @@ fn filter_evolution_messages(
     messages: &[EvolutionMessage],
     iteration: usize,
     made_build_check: bool,
-) -> Vec<Message> {
+) -> Vec<EvolutionMessage> {
     let strategy = MemoryStrategy::from_env();
 
     if matches!(strategy, MemoryStrategy::None) {
-        return messages.iter().map(|m| m.message.clone()).collect();
+        return messages.to_vec();
     }
 
     // 1. Filter by retention policy.
@@ -457,7 +457,7 @@ fn filter_evolution_messages(
         filtered.push((*m).clone());
     }
     filtered.reverse();
-    filtered.into_iter().map(|m| m.message.clone()).collect()
+    filtered
 }
 
 /// Map a tool name to its retention window in provider-loop iterations.
@@ -772,25 +772,28 @@ pub async fn generate_evolution<R: Runtime>(
         );
         info!("────────────────────────────────────────────────────────────────");
 
-        // Emit iteration event
-        emit_evolve_event(
-            app,
-            EvolveEvent::iteration(start_time, iteration, messages.len()),
-        );
-
-        // Capture the messages that most directly drive the agent's next action
-        let preview = build_preview(&messages);
-
-        debug!("Sending request to AI provider, preview: {}", preview);
-        emit_evolve_event(app, EvolveEvent::api_request(start_time, iteration));
-
         // Run provider completion inside a short-lived block and select!
         // on it plus a cancellation signal. This lets the future borrow
         // `messages` only for the call so we can mutate `messages` after
         // the block without deep-cloning the conversation.
         let active_messages = filter_evolution_messages(&messages, iteration, made_build_check);
+        let active_provider_messages: Vec<Message> =
+            active_messages.iter().map(|m| m.message.clone()).collect();
+
+        // Emit iteration event
+        emit_evolve_event(
+            app,
+            EvolveEvent::iteration(start_time, iteration, active_messages.len()),
+        );
+
+        // Capture the messages that most directly drive the agent's next action
+        let preview = build_preview(&active_messages);
+
+        debug!("Sending request to AI provider, preview: {}", preview);
+        emit_evolve_event(app, EvolveEvent::api_request(start_time, iteration));
+
         let response_result = {
-            let fut = provider.completion(&active_messages, &tools);
+            let fut = provider.completion(&active_provider_messages, &tools);
             tokio::pin!(fut);
 
             tokio::select! {
@@ -837,7 +840,7 @@ pub async fn generate_evolution<R: Runtime>(
                 // Log full details locally and report redacted summary to Sentry
                 log_api_error(
                     &e,
-                    &active_messages,
+                    &active_provider_messages,
                     prompt,
                     iteration,
                     &provider_type,
@@ -1817,9 +1820,9 @@ mod tests {
 
         // With strategy=none, no filtering is applied at all.
         assert_eq!(out.len(), messages.len());
-        assert!(out
-            .iter()
-            .any(|m| matches!(m, Message::User { content } if content == "Short-lived message")));
+        assert!(out.iter().any(
+            |m| matches!(&m.message, Message::User { content } if content == "Short-lived message")
+        ));
     }
 
     #[test]
@@ -1878,14 +1881,14 @@ mod tests {
         assert_eq!(out.len(), messages.len());
         assert!(out
             .iter()
-            .any(|m| matches!(m, Message::Tool { tool_call_id, .. } if tool_call_id == "think-1")));
+            .any(|m| matches!(&m.message, Message::Tool { tool_call_id, .. } if tool_call_id == "think-1")));
         assert!(out.iter().any(
-            |m| matches!(m, Message::Tool { tool_call_id, .. } if tool_call_id == "build-check-1")
+            |m| matches!(&m.message, Message::Tool { tool_call_id, .. } if tool_call_id == "build-check-1")
         ));
         assert!(out
             .iter()
-            .any(|m| matches!(m, Message::Tool { tool_call_id, .. } if tool_call_id == "think-2")));
-        assert!(out.iter().filter(|m| matches!(m, Message::Tool { tool_call_id, .. } if tool_call_id == "read-file-1" || tool_call_id == "read-file-2")).count() == 2);
+            .any(|m| matches!(&m.message, Message::Tool { tool_call_id, .. } if tool_call_id == "think-2")));
+        assert!(out.iter().filter(|m| matches!(&m.message, Message::Tool { tool_call_id, .. } if tool_call_id == "read-file-1" || tool_call_id == "read-file-2")).count() == 2);
     }
 
     #[test]
@@ -1896,15 +1899,15 @@ mod tests {
         let out = filter_evolution_messages(&messages, 1000, false);
 
         // With strategy=retention, recent messages eventually expire.
-        assert!(out
-            .iter()
-            .all(|m| !matches!(m, Message::User { content } if content == "Short-lived message")));
-        assert!(out
-            .iter()
-            .any(|m| matches!(m, Message::System { content } if content == "System prompt")));
-        assert!(out
-            .iter()
-            .any(|m| matches!(m, Message::User { content } if content == "Initial user prompt")));
+        assert!(out.iter().all(
+            |m| !matches!(&m.message, Message::User { content } if content == "Short-lived message")
+        ));
+        assert!(out.iter().any(
+            |m| matches!(&m.message, Message::System { content } if content == "System prompt")
+        ));
+        assert!(out.iter().any(
+            |m| matches!(&m.message, Message::User { content } if content == "Initial user prompt")
+        ));
     }
 
     #[test]
@@ -1915,9 +1918,9 @@ mod tests {
         let out = filter_evolution_messages(&messages, 1000, false);
 
         // Unknown values should safely default to retention behavior.
-        assert!(out
-            .iter()
-            .all(|m| !matches!(m, Message::User { content } if content == "Short-lived message")));
+        assert!(out.iter().all(
+            |m| !matches!(&m.message, Message::User { content } if content == "Short-lived message")
+        ));
     }
 
     #[test]
@@ -1965,19 +1968,19 @@ mod tests {
         let iteration_3_messages = filter_evolution_messages(&messages, 3, false);
         assert_eq!(iteration_3_messages.len(), 3);
         assert!(iteration_3_messages.iter().all(
-            |m| !matches!(m, Message::User { content } if content == "One-iteration message")
+            |m| !matches!(&m.message, Message::User { content } if content == "One-iteration message")
         ));
         assert!(iteration_3_messages
             .iter()
-            .any(|m| matches!(m, Message::User { content } if content == "Two-iteration message")));
+            .any(|m| matches!(&m.message, Message::User { content } if content == "Two-iteration message")));
 
         let iteration_4_messages = filter_evolution_messages(&messages, 4, false);
         assert_eq!(iteration_4_messages.len(), 2);
         assert!(iteration_4_messages.iter().all(
-            |m| !matches!(m, Message::User { content } if content == "One-iteration message")
+            |m| !matches!(&m.message, Message::User { content } if content == "One-iteration message")
         ));
         assert!(iteration_4_messages.iter().all(
-            |m| !matches!(m, Message::User { content } if content == "Two-iteration message")
+            |m| !matches!(&m.message, Message::User { content } if content == "Two-iteration message")
         ));
     }
 
@@ -2064,10 +2067,10 @@ mod tests {
         let filtered = filter_evolution_messages(&messages, 3, true);
         // The think before the build check should be filtered out, but the one after should be kept.
         assert!(filtered.iter().any(
-            |m| matches!(m, Message::Tool { ref tool_call_id, .. } if tool_call_id == "think-2")
+            |m| matches!(&m.message, Message::Tool { ref tool_call_id, .. } if tool_call_id == "think-2")
         ));
         assert!(filtered.iter().all(
-            |m| !matches!(m, Message::Tool { ref tool_call_id, .. } if tool_call_id == "think-1")
+            |m| !matches!(&m.message, Message::Tool { ref tool_call_id, .. } if tool_call_id == "think-1")
         ));
     }
 
@@ -2115,11 +2118,11 @@ mod tests {
         let filtered = filter_evolution_messages(&messages, 10, true);
 
         assert!(filtered.iter().all(|m| !matches!(
-            m,
+            &m.message,
             Message::Tool { tool_call_id, .. } if tool_call_id == "think-before-build"
         )));
         assert!(filtered.iter().any(|m| matches!(
-            m,
+            &m.message,
             Message::Tool { tool_call_id, .. } if tool_call_id == "think-after-build"
         )));
     }
@@ -2175,7 +2178,7 @@ mod tests {
         // Only the last message for key1 and key2 should be kept, plus all messages with no key
         let contents: Vec<_> = filtered
             .iter()
-            .map(|m| match m {
+            .map(|m| match &m.message {
                 Message::User { content } => content.as_str(),
                 _ => "",
             })
