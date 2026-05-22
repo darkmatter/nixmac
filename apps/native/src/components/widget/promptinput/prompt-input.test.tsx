@@ -93,8 +93,8 @@ describe("PromptInput", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.buildCheck.mockResolvedValue({ passed: true });
-    mocks.checkTools.mockResolvedValue({});
-    mocks.getPrefs.mockResolvedValue({});
+    mocks.checkTools.mockReturnValue(new Promise(() => {}));
+    mocks.getPrefs.mockReturnValue(new Promise(() => {}));
 
     const store = useWidgetStore.getState();
     store.setEvolvePrompt("Install vim");

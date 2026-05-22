@@ -8,12 +8,13 @@
     "react-perf",
     "vitest"
   ],
-  "rules": {
+  "categories": {
     "correctness": "error",
     "perf": "error",
     "style": "warn",
     "suspicious": "error"
   },
+  "rules": {},
   "overrides": [
     {
       "files": [
