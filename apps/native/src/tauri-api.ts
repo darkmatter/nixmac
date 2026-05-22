@@ -197,10 +197,10 @@ export const ipcRenderer = {
 
 declare global {
   interface Window {
-    darwinAPI?: typeof tauriAPI;
+    tauriAPI?: typeof tauriAPI;
     __NIXMAC__?: typeof tauriAPI;
   }
 }
 
 window.__NIXMAC__ = tauriAPI;
-window.darwinAPI = tauriAPI;
+window.tauriAPI = tauriAPI;

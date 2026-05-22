@@ -19,7 +19,7 @@ const mockFlakeExistsAt = vi.fn<(p: string) => Promise<boolean>>();
 const mockFlakeExists = vi.fn<() => Promise<boolean>>();
 
 vi.mock("@/tauri-api", () => ({
-  darwinAPI: {
+  tauriAPI: {
     path: {
       normalize: (p: string) => mockNormalize(p),
       exists: (p: string) => mockExists(p),
@@ -145,7 +145,7 @@ describe("<DirectoryPicker>", () => {
     // Allow all chained awaits in onBlur to settle.
     await screen.findByDisplayValue("/Users/me/.darwin");
 
-    // Input is trimmed before being passed to `darwinAPI.path.normalize`.
+    // Input is trimmed before being passed to `tauriAPI.path.normalize`.
     expect(mockNormalize).toHaveBeenCalledWith("/Users/me/.darwin");
     expect(mockExists).toHaveBeenCalledWith("/Users/me/.darwin");
     expect(mockSetDir).toHaveBeenCalledWith("/Users/me/.darwin");

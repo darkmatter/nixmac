@@ -39,7 +39,7 @@ const mockSetPermissionsState = vi.fn();
 const mockSetPermissionsChecked = vi.fn();
 
 vi.mock("@/tauri-api", () => ({
-  darwinAPI: {
+  tauriAPI: {
     permissions: {
       checkAll: (...args: unknown[]) => mockCheckAll(...args),
       checkFullDiskAccess: (...args: unknown[]) => mockCheckFullDiskAccess(...args),

@@ -20,7 +20,7 @@ vi.mock("@/components/widget/controls/bootstrap-config", () => ({
 }));
 
 vi.mock("@/tauri-api", () => ({
-  darwinAPI: {
+  tauriAPI: {
     ui: {
       setPrefs: vi.fn().mockResolvedValue(undefined),
     },

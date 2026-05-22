@@ -4,7 +4,7 @@ React + TypeScript frontend served by Vite inside a Tauri webview.
 
 ## IPC Gateway
 
-`tauri-api.ts` mirrors the Rust command layer: handlers registered in `main.rs` have corresponding `invoke` calls here. Hooks and occasionally components call `darwinAPI.*`; `tauri-api.ts` reflects the handlers exposed one-to-one.
+`tauri-api.ts` mirrors the Rust command layer: handlers registered in `main.rs` have corresponding `invoke` calls here. Hooks and occasionally components call `tauriAPI.*`; `tauri-api.ts` reflects the handlers exposed one-to-one.
 
 ### DarwinWidget
 
@@ -14,7 +14,7 @@ React + TypeScript frontend served by Vite inside a Tauri webview.
 
 ## Domain Hooks
 
-Hooks in `hooks/` sit between components and `tauri-api.ts`. Each hook owns a slice of async state: loading flags, error handling, IPC subscriptions. Components call hooks; (mostly) hooks call `darwinAPI`.
+Hooks in `hooks/` sit between components and `tauri-api.ts`. Each hook owns a slice of async state: loading flags, error handling, IPC subscriptions. Components call hooks; (mostly) hooks call `tauriAPI`.
 
 ## App State
 

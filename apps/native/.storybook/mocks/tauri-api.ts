@@ -1,6 +1,6 @@
-import { storybookDarwinAPI, tauriEvent } from "./tauri-runtime";
+import { storybookTauriAPI, tauriEvent } from "./tauri-runtime";
 
-export const darwinAPI = storybookDarwinAPI;
+export const tauriAPI = storybookTauriAPI;
 
 export const ipcRenderer = {
   on: tauriEvent.listen,

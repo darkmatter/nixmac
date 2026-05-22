@@ -5,7 +5,7 @@ import { DarwinWidget } from "./widget";
 
 // Mock Tauri API
 vi.mock("@/tauri-api", () => ({
-  darwinAPI: {
+  tauriAPI: {
     git: {
       status: vi.fn().mockResolvedValue({ hasChanges: false, files: [] }),
     },
