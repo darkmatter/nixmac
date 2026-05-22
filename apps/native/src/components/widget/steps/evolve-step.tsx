@@ -50,10 +50,10 @@ export function EvolveStep() {
         </ConfirmButton>
       </StepActionsHeader>
       {telemetry && (
-        <p className="text-muted-foreground text-xs pb-2">
-          Evolution completed in {formatDurationMs(telemetry.durationMs)} and{" "}
-          {telemetry.iterations} iteration{telemetry.iterations === 1 ? "" : "s"}.
-        </p>
+        <span className="pointer-events-none absolute top-1 right-2 z-10 text-[10px] text-muted-foreground/60">
+          Evolution complete in {formatDurationMs(telemetry.durationMs)} and {telemetry.iterations} iteration
+          {telemetry.iterations === 1 ? "" : "s"}
+        </span>
       )}
       <SummaryOrDiff />
       <PromptInputSection />
