@@ -1,4 +1,4 @@
-import type { EvolveState, GitStatus, RollbackResult } from "@/tauri-api";
+import type { EvolveState, GitStatus } from "@/tauri-api";
 import { useWidgetStore } from "@/stores/widget-store";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -81,7 +81,7 @@ describe("useRollback", () => {
       gitStatus: cleanGitStatus,
       rollbackChangesetId: 1,
       rollbackStorePath: "/nix/store/old-system",
-    } satisfies RollbackResult);
+    });
     mocks.triggerRebuild.mockResolvedValue(undefined);
 
     const store = useWidgetStore.getState();

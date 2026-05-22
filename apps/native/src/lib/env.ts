@@ -1,15 +1,21 @@
-import * as Schema from "effect/Schema";
+export interface SettingsType {
+  VITE_SERVER_URL?: string;
+  NIX_INSTALLED_OVERRIDE?: boolean;
+}
 
-const Settings = Schema.Struct({
-  VITE_SERVER_URL: Schema.optional(Schema.String),
-  NIX_INSTALLED_OVERRIDE: Schema.optional(Schema.BooleanFromString),
-});
+const env = import.meta.env as Record<string, string | boolean | undefined>;
 
-export type SettingsType = Schema.Schema.Type<typeof Settings>;
+function parseBoolean(value: string | boolean | undefined): boolean | undefined {
+  if (typeof value === "boolean") return value;
+  if (value === "true") return true;
+  if (value === "false") return false;
+  return undefined;
+}
 
-export const settings: SettingsType = Schema.decodeUnknownSync(Settings)(
-  import.meta.env,
-);
+export const settings: SettingsType = {
+  VITE_SERVER_URL: typeof env.VITE_SERVER_URL === "string" ? env.VITE_SERVER_URL : undefined,
+  NIX_INSTALLED_OVERRIDE: parseBoolean(env.NIX_INSTALLED_OVERRIDE),
+};
 
 // Helper to resolve the public website URL used by the native/web apps.
 // Prefers the Vite env var `VITE_SERVER_URL` when available, otherwise

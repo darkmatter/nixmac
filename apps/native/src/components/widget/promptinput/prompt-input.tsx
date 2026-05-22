@@ -17,9 +17,8 @@ import { useEvolve } from "@/hooks/use-evolve";
 import { getProviderConfigInvalidReason } from "@/lib/ai-provider-validation";
 import { useWidgetStore } from "@/stores/widget-store";
 import { darwinAPI } from "@/tauri-api";
-import { ArrowUpIcon, Plus } from "lucide-react";
+import { ArrowUpIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 
 const MAX_CONTEXT_LENGTH = 1000;
