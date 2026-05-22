@@ -234,6 +234,7 @@ describe("<DirectoryPicker>", () => {
       evolveState: {} as never,
       hosts: ["mbp"],
     });
+    mockListHosts.mockResolvedValue(["mbp"]);
 
     render(<DirectoryPicker label="Config directory" />);
     typeAndBlur(screen.getByLabelText("Config directory"), "/Users/me/.darwin");
