@@ -3,7 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { PreviewIndicator } from "@/components/preview-indicator/preview-indicator";
-import type { PreviewIndicatorState } from "@/types/shared";
+import type { PreviewIndicatorState } from "@/ipc/types";
 import "./index.css";
 
 function PreviewIndicatorWindow() {

@@ -26,7 +26,7 @@ import {
 import { Lightbulb, Bug, MessageCircle, Info, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Feedback as FeedbackModel, FeedbackType, ShareOptions } from "@/types/feedback";
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 import { toast } from "sonner";
 
 const DEFAULT_SHARE_OPTIONS: ShareOptions = {
@@ -298,7 +298,7 @@ export function FeedbackDialog() {
       return;
     }
 
-    darwinAPI.promptHistory.get().then(setPromptHistory).catch(console.error);
+    tauriAPI.promptHistory.get().then(setPromptHistory).catch(console.error);
   }, [feedbackOpen]);
 
   useEffect(() => {
@@ -360,9 +360,9 @@ export function FeedbackDialog() {
 
     let sentSuccessfully = false;
     try {
-      let metadata: Awaited<ReturnType<typeof darwinAPI.feedback.gatherMetadata>> | null = null;
+      let metadata: Awaited<ReturnType<typeof tauriAPI.feedback.gatherMetadata>> | null = null;
       try {
-        metadata = await darwinAPI.feedback.gatherMetadata(feedbackType, shareOptions);
+        metadata = await tauriAPI.feedback.gatherMetadata(feedbackType, shareOptions);
       } catch (err) {
         // eslint-disable-next-line no-console
         console.warn("Failed to gather feedback metadata:", err);
@@ -403,7 +403,7 @@ export function FeedbackDialog() {
       }
 
       const json = JSON.stringify(feedbackModel.toJSON());
-      const sent = await darwinAPI.feedback.submit(json);
+      const sent = await tauriAPI.feedback.submit(json);
 
       if (sent) {
         toast.success("Thanks — feedback sent");
@@ -443,7 +443,7 @@ export function FeedbackDialog() {
 
     // Also send from Rust backend
     try {
-      await darwinAPI.debug.sentryEvent();
+      await tauriAPI.debug.sentryEvent();
     } catch (err) {
       // eslint-disable-next-line no-console
       console.warn("[debug_sentry_event] Failed to invoke Rust command:", err);

@@ -1,8 +1,8 @@
 import { EVOLUTION_CANCELLED_MSG } from "@/lib/constants";
 import { useWidgetStore } from "@/stores/widget-store";
 import { EVOLVE_EVENT_CHANNEL } from "@/lib/constants";
-import { darwinAPI, ipcRenderer } from "@/tauri-api";
-import type { EvolveEvent } from "@/types/shared";
+import { tauriAPI, ipcRenderer } from "@/ipc/api";
+import type { EvolveEvent } from "@/ipc/types";
 
 /**
  * Hook for the evolution operation.
@@ -17,18 +17,18 @@ import type { EvolveEvent } from "@/types/shared";
  * - Returns summary and final git status
  */
 const evolveFromManual = async () => {
-  await darwinAPI.darwin.evolveFromManual();
+  await tauriAPI.darwin.evolveFromManual();
 };
 
 const buildCheck = async () => {
-  return await darwinAPI.darwin.buildCheck();
+  return await tauriAPI.darwin.buildCheck();
 };
 
 const refreshPromptHistory = async (prompt?: string) => {
   if (prompt) {
-    await darwinAPI.promptHistory.add(prompt).catch(console.error);
+    await tauriAPI.promptHistory.add(prompt).catch(console.error);
   }
-  darwinAPI.promptHistory
+  tauriAPI.promptHistory
     .get()
     .then((history) => useWidgetStore.getState().setPromptHistory(history))
     .catch(console.error);
@@ -37,7 +37,7 @@ const refreshPromptHistory = async (prompt?: string) => {
 const findChangeMap = async (): Promise<void> => {
   const { setChangeMap, setSummaryAvailable } = useWidgetStore.getState();
   try {
-    const map = await darwinAPI.summarizedChanges.findChangeMap();
+    const map = await tauriAPI.summarizedChanges.findChangeMap();
     if (map) {
       setChangeMap(map);
       setSummaryAvailable(map.groups.length > 0 || map.singles.length > 0);
@@ -79,7 +79,7 @@ const handleEvolve = async () => {
   try {
     // Run the unified evolution workflow
     // Backend handles: AI + summary + branch + commit + DB
-    const result = await darwinAPI.darwin.evolve(store.evolvePrompt);
+    const result = await tauriAPI.darwin.evolve(store.evolvePrompt);
     const isConversational = result?.telemetry?.state === "conversational";
 
     useWidgetStore.getState().appendLog("✓ Evolution complete\n");
