@@ -32,6 +32,11 @@ vi.mock("@/hooks/use-summary", () => ({
   }),
 }));
 
+vi.mock("@/lib/env", () => ({
+  getWebSiteUrl: () => "http://localhost:3001",
+  settings: {},
+}));
+
 const cleanGitStatus: GitStatus = {
   additions: 0,
   branch: "main",

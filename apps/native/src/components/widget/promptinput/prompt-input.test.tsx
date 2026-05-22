@@ -49,6 +49,11 @@ vi.mock("@/lib/ai-provider-validation", () => ({
   getProviderConfigInvalidReason: () => null,
 }));
 
+vi.mock("@/lib/env", () => ({
+  getWebSiteUrl: () => "http://localhost:3001",
+  settings: {},
+}));
+
 vi.mock("@/components/widget/promptinput/homebrew-badge", () => ({
   HomebrewBadge: () => null,
 }));
