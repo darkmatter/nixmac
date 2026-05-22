@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/tauri-api";
 import type { EvolveEvent, EvolveEventType } from "@/stores/widget-store";
 
 // =============================================================================
@@ -350,7 +350,7 @@ export function EvolveProgress({
   const prevEventsLengthRef = useRef(events.length);
 
   const handleQuestionAnswer = (answer: string) => {
-    darwinAPI.darwin.evolveAnswer(answer).catch((e) => {
+    tauriAPI.darwin.evolveAnswer(answer).catch((e) => {
       console.error("Failed to send answer:", e);
     });
   };

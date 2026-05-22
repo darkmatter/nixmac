@@ -36,7 +36,7 @@ import type {
   UpdateInfo,
 } from "./types/shared";
 
-export const darwinAPI = {
+export const tauriAPI = {
   config: {
     get: () => invoke<DarwinConfig>("config_get"),
     setDir: (dir: string) => invoke<SetDirResult>("config_set_dir", { dir }),
@@ -197,10 +197,10 @@ export const ipcRenderer = {
 
 declare global {
   interface Window {
-    darwinAPI?: typeof darwinAPI;
-    __NIXMAC__?: typeof darwinAPI;
+    darwinAPI?: typeof tauriAPI;
+    __NIXMAC__?: typeof tauriAPI;
   }
 }
 
-window.__NIXMAC__ = darwinAPI;
-window.darwinAPI = darwinAPI;
+window.__NIXMAC__ = tauriAPI;
+window.darwinAPI = tauriAPI;

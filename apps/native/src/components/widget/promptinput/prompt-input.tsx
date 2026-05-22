@@ -16,7 +16,7 @@ import { SystemDefaultsCTA } from "@/components/widget/promptinput/system-defaul
 import { useEvolve } from "@/hooks/use-evolve";
 import { getProviderConfigInvalidReason } from "@/lib/ai-provider-validation";
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/tauri-api";
 import { ArrowUpIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Separator } from "@/components/ui/separator";
@@ -47,8 +47,8 @@ export function PromptInput() {
     const refreshProviderValidation = async () => {
       try {
         const [prefs, cliStatus] = await Promise.all([
-          darwinAPI.ui.getPrefs(),
-          darwinAPI.cli.checkTools(),
+          tauriAPI.ui.getPrefs(),
+          tauriAPI.cli.checkTools(),
         ]);
 
         const evolveProvider = prefs?.evolveProvider ?? "openrouter";

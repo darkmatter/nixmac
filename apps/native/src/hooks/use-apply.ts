@@ -1,5 +1,5 @@
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/tauri-api";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 
 /**
@@ -18,7 +18,7 @@ export function useApply() {
       context: "apply",
       onSuccess: async () => {
         try {
-          const result = await darwinAPI.darwin.finalizeApply();
+          const result = await tauriAPI.darwin.finalizeApply();
           useWidgetStore.getState().setExternalBuildDetected(false);
           if (result?.gitStatus) {
             useWidgetStore.getState().setGitStatus(result.gitStatus);
@@ -39,14 +39,14 @@ export function useApply() {
     await triggerRebuild({
       context: "apply",
       onSuccess: async () => {
-        await darwinAPI.darwin.finalizeApply();
+        await tauriAPI.darwin.finalizeApply();
       },
     });
   };
 
   const handleManualBuildConfirm = async () => {
     try {
-      const result = await darwinAPI.darwin.finalizeApply();
+      const result = await tauriAPI.darwin.finalizeApply();
       useWidgetStore.getState().setExternalBuildDetected(false);
       if (result?.gitStatus) {
         useWidgetStore.getState().setGitStatus(result.gitStatus);

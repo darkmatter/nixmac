@@ -1,5 +1,5 @@
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/tauri-api";
 
 
 type Config = {
@@ -11,7 +11,7 @@ type Config = {
  * Loads config from backend and updates store.
  */
 export async function loadConfig() {
-  const cfg = (await darwinAPI.config.get()) as Config | null;
+  const cfg = (await tauriAPI.config.get()) as Config | null;
   if (cfg?.configDir) {
     useWidgetStore.getState().setConfigDir(cfg.configDir);
   }
@@ -23,7 +23,7 @@ export async function loadConfig() {
 /** Loads persisted evolve state from backend and syncs to store on startup. */
 export async function loadEvolveState() {
   try {
-    const evolveState = await darwinAPI.evolveState.get();
+    const evolveState = await tauriAPI.evolveState.get();
     useWidgetStore.getState().setEvolveState(evolveState);
   } catch {
     // Non-fatal — evolve state defaults to Begin if unavailable.
@@ -36,7 +36,7 @@ export async function loadEvolveState() {
  */
 export async function loadHosts() {
   try {
-    const hosts = (await darwinAPI.flake.listHosts()) as string[];
+    const hosts = (await tauriAPI.flake.listHosts()) as string[];
     if (Array.isArray(hosts)) {
       useWidgetStore.getState().setHosts(hosts);
     }

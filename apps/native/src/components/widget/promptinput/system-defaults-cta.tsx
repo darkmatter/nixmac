@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/popover";
 import { useWidgetStore } from "@/stores/widget-store";
 import type { SystemDefault, SystemDefaultsScan } from "@/types/shared";
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/tauri-api";
 import { Monitor, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -61,7 +61,7 @@ export function SystemDefaultsCTA() {
     }
 
     let cancelled = false;
-    darwinAPI.scanner
+    tauriAPI.scanner
       .scanDefaults()
       .then((result) => {
         if (!cancelled) setScan(result);
@@ -78,7 +78,7 @@ export function SystemDefaultsCTA() {
     store.setProcessing(true, "apply");
 
     try {
-      const result = await darwinAPI.scanner.applyDefaults(defaults);
+      const result = await tauriAPI.scanner.applyDefaults(defaults);
       useWidgetStore.getState().setEvolveState(result.evolveState);
       useWidgetStore.getState().setChangeMap(result.changeMap);
       useWidgetStore.getState().setGitStatus(result.gitStatus);

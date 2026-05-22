@@ -1,5 +1,5 @@
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/tauri-api";
 
 /**
  * Hook for fetching and managing the AI-generated summary of changes.
@@ -7,7 +7,7 @@ import { darwinAPI } from "@/tauri-api";
 const findChangeMap = async (): Promise<void> => {
   const { setChangeMap, setSummaryAvailable } = useWidgetStore.getState();
   try {
-    const map = await darwinAPI.summarizedChanges.findChangeMap();
+    const map = await tauriAPI.summarizedChanges.findChangeMap();
     if (map) {
       setChangeMap(map);
       setSummaryAvailable(map.groups.length > 0 || map.singles.length > 0);
@@ -21,7 +21,7 @@ const generateCommitMessage = async () => {
   const { setCommitMessageSuggestion } = useWidgetStore.getState();
   setCommitMessageSuggestion(null);
   try {
-    const message = await darwinAPI.summarizedChanges.generateCommitMessage();
+    const message = await tauriAPI.summarizedChanges.generateCommitMessage();
     setCommitMessageSuggestion(message);
   } catch {
     // Keep null on error — user can type manually
@@ -32,7 +32,7 @@ const generateCurrentSummary = async () => {
   const { setSummarizing, setChangeMap, setSummaryAvailable } = useWidgetStore.getState();
   setSummarizing(true);
   try {
-    const map = await darwinAPI.summarizedChanges.summarizeCurrent();
+    const map = await tauriAPI.summarizedChanges.summarizeCurrent();
     setChangeMap(map);
     setSummaryAvailable(map.groups.length > 0 || map.singles.length > 0);
   } finally {

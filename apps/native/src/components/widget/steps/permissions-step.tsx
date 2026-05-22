@@ -1,7 +1,7 @@
 "use client";
 
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/tauri-api";
 import type { Permission, PermissionStatus } from "@/types/shared";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -16,7 +16,7 @@ import { useState, useEffect } from "react";
 async function checkAndUpdateFDAPermission(permissions: Permission[]): Promise<Permission[]> {
   try {
     const skipFDA = import.meta.env.VITE_NIXMAC_SKIP_PERMISSIONS === "true";
-    const pluginGranted = skipFDA || (await darwinAPI.permissions.checkFullDiskAccess());
+    const pluginGranted = skipFDA || (await tauriAPI.permissions.checkFullDiskAccess());
     // OR plugin result with the backend's own probe (already in `permissions`)
     // so a single narrow source can't wrongly force "denied".
     const backendGranted = permissions.some(
@@ -50,7 +50,7 @@ export function PermissionsStep() {
   useEffect(() => {
     const refreshPermissions = async () => {
       try {
-        const state = await darwinAPI.permissions.checkAll();
+        const state = await tauriAPI.permissions.checkAll();
         // Use the native plugin for accurate FDA check
         const updatedPermissions = await checkAndUpdateFDAPermission(state.permissions);
         const allRequiredGranted = updatedPermissions
@@ -73,7 +73,7 @@ export function PermissionsStep() {
     try {
       // For FDA, use the native plugin to request
       if (permissionId === "full-disk") {
-        await darwinAPI.permissions.requestFullDiskAccess();
+        await tauriAPI.permissions.requestFullDiskAccess();
         // Wait a bit for user to potentially grant access, then re-check
         await new Promise((resolve) => setTimeout(resolve, 1000));
         const updatedPermissions = await checkAndUpdateFDAPermission(
@@ -93,7 +93,7 @@ export function PermissionsStep() {
         }
       } else {
         // For other permissions, use the backend
-        const updatedPermission = await darwinAPI.permissions.request(permissionId);
+        const updatedPermission = await tauriAPI.permissions.request(permissionId);
 
         // Update the permission in the state
         if (permissionsState) {
@@ -121,7 +121,7 @@ export function PermissionsStep() {
   const handleRefreshAll = async () => {
     setIsLoading("all");
     try {
-      const state = await darwinAPI.permissions.checkAll();
+      const state = await tauriAPI.permissions.checkAll();
       // Use the native plugin for accurate FDA check
       const updatedPermissions = await checkAndUpdateFDAPermission(state.permissions);
       const allRequiredGranted = updatedPermissions

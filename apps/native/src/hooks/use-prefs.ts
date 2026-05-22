@@ -1,9 +1,9 @@
 import { useWidgetStore, type BoolPrefKey } from "@/stores/widget-store";
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/tauri-api";
 
 export function usePrefs() {
   const loadPrefs = async () => {
-    const prefs = await darwinAPI.ui.getPrefs().catch(() => null);
+    const prefs = await tauriAPI.ui.getPrefs().catch(() => null);
     if (prefs) {
       useWidgetStore.getState().initConfirmPrefs(prefs);
       useWidgetStore.getState().setAutoSummarizeOnFocus(prefs.autoSummarizeOnFocus ?? false);
@@ -24,7 +24,7 @@ export function usePrefs() {
     const previous = useWidgetStore.getState()[key];
     useWidgetStore.getState().setBoolPref(key, value);
     try {
-      await darwinAPI.ui.setPrefs({ [key]: value });
+      await tauriAPI.ui.setPrefs({ [key]: value });
     } catch {
       useWidgetStore.getState().setBoolPref(key, previous);
     }

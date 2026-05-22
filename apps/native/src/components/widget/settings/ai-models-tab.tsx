@@ -10,7 +10,7 @@ import {
 import { ModelCombobox } from "@/components/widget/controls/model-combobox";
 import { getProviderConfigInvalidReason, isCliProvider } from "@/lib/ai-provider-validation";
 import { DEFAULT_MAX_ITERATIONS } from "@/lib/constants";
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/tauri-api";
 import type { CliToolsState } from "@/types/shared";
 import type { AnyFieldApi, ReactFormExtendedApi } from "@tanstack/react-form";
 import { Info } from "lucide-react";
@@ -66,7 +66,7 @@ const DEFAULT_SUMMARY_MODEL: Record<string, string> = {
 function useCliToolStatus() {
   const [status, setStatus] = useState<CliToolsState | null>(null);
   useEffect(() => {
-    darwinAPI.cli.checkTools().then(setStatus).catch(() => {});
+    tauriAPI.cli.checkTools().then(setStatus).catch(() => {});
   }, []);
   return status;
 }
@@ -172,11 +172,11 @@ export function AiModelsTab({
                 </label>
                 <Select
                   onValueChange={async (value) => {
-                    await darwinAPI.models.clearCached(value);
+                    await tauriAPI.models.clearCached(value);
                     evolveProviderField.handleChange(value);
                     const defaultModel = DEFAULT_EVOLVE_MODEL[value] ?? "";
                     evolveModelField.handleChange(defaultModel);
-                    await darwinAPI.ui.setPrefs({
+                    await tauriAPI.ui.setPrefs({
                       evolveProvider: value,
                       evolveModel: defaultModel,
                     });
@@ -212,7 +212,7 @@ export function AiModelsTab({
                           value={evolveModelField.state.value}
                           onChange={async (e) => {
                             evolveModelField.handleChange(e.target.value);
-                            await darwinAPI.ui.setPrefs({ evolveModel: e.target.value });
+                            await tauriAPI.ui.setPrefs({ evolveModel: e.target.value });
                           }}
                           onBlur={evolveModelField.handleBlur}
                           placeholder="Leave empty for CLI default"
@@ -223,7 +223,7 @@ export function AiModelsTab({
                           value={evolveModelField.state.value}
                           onChange={async (value) => {
                             evolveModelField.handleChange(value);
-                            await darwinAPI.ui.setPrefs({ evolveModel: value });
+                            await tauriAPI.ui.setPrefs({ evolveModel: value });
                           }}
                           onBlur={evolveModelField.handleBlur}
                           placeholder={
@@ -260,11 +260,11 @@ export function AiModelsTab({
                 </label>
                 <Select
                   onValueChange={async (value) => {
-                    await darwinAPI.models.clearCached(value);
+                    await tauriAPI.models.clearCached(value);
                     summaryProviderField.handleChange(value);
                     const defaultModel = DEFAULT_SUMMARY_MODEL[value] ?? "";
                     summaryModelField.handleChange(defaultModel);
-                    await darwinAPI.ui.setPrefs({
+                    await tauriAPI.ui.setPrefs({
                       summaryProvider: value,
                       summaryModel: defaultModel,
                     });
@@ -300,7 +300,7 @@ export function AiModelsTab({
                           value={summaryModelField.state.value}
                           onChange={async (e) => {
                             summaryModelField.handleChange(e.target.value);
-                            await darwinAPI.ui.setPrefs({ summaryModel: e.target.value });
+                            await tauriAPI.ui.setPrefs({ summaryModel: e.target.value });
                           }}
                           onBlur={summaryModelField.handleBlur}
                           placeholder="Leave empty for CLI default"
@@ -311,7 +311,7 @@ export function AiModelsTab({
                           value={summaryModelField.state.value}
                           onChange={async (value) => {
                             summaryModelField.handleChange(value);
-                            await darwinAPI.ui.setPrefs({ summaryModel: value });
+                            await tauriAPI.ui.setPrefs({ summaryModel: value });
                           }}
                           onBlur={summaryModelField.handleBlur}
                           placeholder={
@@ -376,7 +376,7 @@ export function AiModelsTab({
                   onChange={async (e) => {
                     const value = Number.parseInt(e.target.value, 10) || DEFAULT_MAX_ITERATIONS;
                     maxIterationsField.handleChange(value);
-                    await darwinAPI.ui.setPrefs({ maxIterations: value });
+                    await tauriAPI.ui.setPrefs({ maxIterations: value });
                   }}
                   onBlur={maxIterationsField.handleBlur}
                 />
@@ -413,7 +413,7 @@ export function AiModelsTab({
                   onChange={async (e) => {
                     const value = Number.parseInt(e.target.value, 10) || 5;
                     maxBuildAttemptsField.handleChange(value);
-                    await darwinAPI.ui.setPrefs({ maxBuildAttempts: value });
+                    await tauriAPI.ui.setPrefs({ maxBuildAttempts: value });
                   }}
                   onBlur={maxBuildAttemptsField.handleBlur}
                 />

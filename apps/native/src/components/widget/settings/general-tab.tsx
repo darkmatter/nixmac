@@ -11,7 +11,7 @@ import { BootstrapConfig } from "@/components/widget/controls/bootstrap-config";
 import { DirectoryPicker } from "@/components/widget/controls/directory-picker";
 import { getWebSiteUrl } from "@/lib/env";
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/tauri-api";
 import { getVersion } from "@tauri-apps/api/app";
 import { open } from "@tauri-apps/plugin-shell";
 import type { AnyFieldApi } from "@tanstack/react-form";
@@ -117,7 +117,7 @@ export function GeneralTab({
                 const previousValue = !!sendDiagnosticsField.state.value;
                 sendDiagnosticsField.handleChange(checked);
                 try {
-                  await darwinAPI.ui.setPrefs({ sendDiagnostics: checked });
+                  await tauriAPI.ui.setPrefs({ sendDiagnostics: checked });
                 } catch (error) {
                   // Revert the field value if persisting the preference fails
                   sendDiagnosticsField.handleChange(previousValue);
@@ -184,7 +184,7 @@ function VersionRow() {
       setTapHint(null);
       setDeveloperMode(true);
       try {
-        await darwinAPI.ui.setPrefs({ developerMode: true });
+        await tauriAPI.ui.setPrefs({ developerMode: true });
       } catch (err) {
         console.error("Failed to enable developer mode:", err);
         setDeveloperMode(false);
@@ -199,7 +199,7 @@ function VersionRow() {
   const handleDisable = async () => {
     setDeveloperMode(false);
     try {
-      await darwinAPI.ui.setPrefs({ developerMode: false });
+      await tauriAPI.ui.setPrefs({ developerMode: false });
     } catch (err) {
       console.error("Failed to disable developer mode:", err);
       setDeveloperMode(true);

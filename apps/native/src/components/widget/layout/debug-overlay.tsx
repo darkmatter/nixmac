@@ -1,7 +1,7 @@
 "use client";
 
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/tauri-api";
 import { useState } from "react";
 import { GitStatusDebug } from "@/components/widget/layout/git-status-debug";
 
@@ -47,7 +47,7 @@ export function DebugOverlay() {
       </div>
       <button
         className="pointer-events-auto rounded bg-black/80 px-2 py-1 font-mono text-xs text-rose-400/60 hover:text-rose-400"
-        onClick={() => darwinAPI.evolveState.clear().then((s) => useWidgetStore.getState().setEvolveState(s))}
+        onClick={() => tauriAPI.evolveState.clear().then((s) => useWidgetStore.getState().setEvolveState(s))}
         style={{ backdropFilter: "blur(4px)" }}
         type="button"
       >

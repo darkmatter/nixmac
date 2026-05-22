@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/react";
 import { bootBreadcrumb } from "@/lib/boot-diagnostics";
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/tauri-api";
 import type { UiPrefs as DarwinPrefs } from "@/types/shared";
 import { sanitizeSentryEvent } from "./sanitize";
 
@@ -16,7 +16,7 @@ const loadPrefsForBoot = async (): Promise<DarwinPrefs | null> => {
   let settled = false;
   let timedOut = false;
 
-  const prefsPromise = darwinAPI.ui
+  const prefsPromise = tauriAPI.ui
     .getPrefs()
     .then((prefs) => {
       settled = true;
