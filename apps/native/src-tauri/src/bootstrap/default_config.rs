@@ -82,32 +82,6 @@ fn copy_template_dir(
     Ok(())
 }
 
-/// Checks if a directory is empty or only contains a .git folder.
-///
-/// This safety check prevents accidentally overwriting existing configurations.
-fn is_dir_safe_for_bootstrap(path: &Path) -> Result<bool, String> {
-    let entries: Vec<_> = fs::read_dir(path)
-        .map_err(|e| format!("Failed to read directory: {}", e))?
-        .filter_map(|e| e.ok())
-        .collect();
-
-    // Empty directory is safe
-    if entries.is_empty() {
-        return Ok(true);
-    }
-
-    // Only .git directory is safe
-    if entries.len() == 1 {
-        if let Some(name) = entries[0].file_name().to_str() {
-            if name == ".git" {
-                return Ok(true);
-            }
-        }
-    }
-
-    Ok(false)
-}
-
 /// Resolves the path to the bundled template directory.
 ///
 /// Searches in order:
@@ -178,7 +152,6 @@ fn resolve_template_path(app: &AppHandle) -> Result<std::path::PathBuf, String> 
 ///
 /// # Errors
 /// Returns an error if:
-/// - The target directory is not empty
 /// - Template directory cannot be found
 /// - File operations fail
 /// - Git commands fail
@@ -202,14 +175,6 @@ pub fn bootstrap(app: &AppHandle, hostname: &str) -> Result<(), String> {
             log::warn!("Failed to tag initial commit as base: {}", e);
         }
         return Ok(());
-    }
-
-    // Safety check: only proceed if directory is empty or contains only .git
-    if !is_dir_safe_for_bootstrap(dest_path)? {
-        return Err(
-            "Directory is not empty. Please use an empty directory or a directory containing a flake.nix."
-                .to_string(),
-        );
     }
 
     let platform = detect_darwin_platform();
