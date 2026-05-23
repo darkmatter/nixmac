@@ -80,7 +80,7 @@ export function createWdioConfig({ specs, setupOptions = {} }) {
     port: 4444,
     connectionRetryCount: 10,
     connectionRetryTimeout: 120000,
-    waitforTimeout: 45000,
+    waitforTimeout: Number(process.env.WDIO_TIMEOUT) || 45000,
     specs: resolvedSpecs,
     maxInstances: 1,
     capabilities: [
@@ -95,7 +95,7 @@ export function createWdioConfig({ specs, setupOptions = {} }) {
     reporters: ['spec'],
     mochaOpts: {
       ui: 'bdd',
-      timeout: 120000,
+      timeout: Number(process.env.WDIO_TEST_TIMEOUT) || 120000,
     },
     async onPrepare() {
       testEnvironment = await setupNixmacTestEnvironment(setupOptions);
