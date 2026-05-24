@@ -19,8 +19,12 @@ set -euo pipefail
 #   6. Push main + tag atomically
 #   7. The tag push triggers build.yaml's `tag` mode and ships
 #
-# Required env (CI sets these; local runs use your git creds):
-#   GIT_USER_NAME, GIT_USER_EMAIL  - committer identity for the merge commit
+# Optional env (CI sets these to a bot identity; local runs fall back to
+# whatever `git config user.name` / `user.email` is already configured):
+#   GIT_USER_NAME, GIT_USER_EMAIL  - override committer identity for the
+#   merge commit produced in step 4. If unset, the merge uses the caller's
+#   existing git config — fine for local rehearsals, less ideal in CI
+#   where the bot identity should be the committer.
 
 DRY_RUN="${DRY_RUN:-0}"
 MAIN_BRANCH="${MAIN_BRANCH:-main}"

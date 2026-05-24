@@ -55,9 +55,12 @@ jobs:
           # Full history needed for `git describe --tags` and merge.
           fetch-depth: 0
           # Use the bot token if available so the push can bypass the
-          # branch ruleset. Falls back to GITHUB_TOKEN, which can push
-          # tags but cannot push commits to a protected main.
-          token: ${{ secrets.RELEASE_BOT_TOKEN || secrets.GITHUB_TOKEN }}
+          # branch ruleset. Falls back to the workflow's auto-injected
+          # token via `github.token` (canonical context form — survives
+          # || fallback cases where `secrets.GITHUB_TOKEN` can resolve
+          # to empty), which can push tags but cannot push commits to
+          # a protected main.
+          token: ${{ secrets.RELEASE_BOT_TOKEN || github.token }}
           persist-credentials: true
 
       - name: Run nightly release
