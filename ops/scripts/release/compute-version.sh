@@ -29,16 +29,25 @@ if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
 	VERSION="${GITHUB_REF_NAME#v}"
 	TAG="$GITHUB_REF_NAME"
 elif [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/main" ]]; then
-	MODE="release"
-	BASE=$(git describe --tags --abbrev=0 --match "$STABLE_TAG_MATCH" --exclude "$STABLE_TAG_EXCLUDE" 2>/dev/null | sed 's/^v//' || echo "")
-	if [[ -z "$BASE" ]]; then
-		BASE=$(node -p "require('./package.json').version")
-		echo "No tags found — bumping from package.json version $BASE"
+	# If HEAD is already tagged with a v* tag (e.g. nightly-release pushed both
+	# main and the tag together), skip release mode so the tag-push event is
+	# the single source of truth. Otherwise we'd build twice — once at the
+	# tag's version, once at a stale patch-bump — and ship the wrong one.
+	if git tag --points-at HEAD 2>/dev/null | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+'; then
+		echo "HEAD is already tagged — letting the tag-push event handle release"
+		MODE="branch"
+	else
+		MODE="release"
+		BASE=$(git describe --tags --abbrev=0 --match "$STABLE_TAG_MATCH" --exclude "$STABLE_TAG_EXCLUDE" 2>/dev/null | sed 's/^v//' || echo "")
+		if [[ -z "$BASE" ]]; then
+			BASE=$(node -p "require('./package.json').version")
+			echo "No tags found — bumping from package.json version $BASE"
+		fi
+		IFS='.' read -r MAJ MIN PAT <<<"$BASE"
+		PAT=$((PAT + 1))
+		VERSION="${MAJ}.${MIN}.${PAT}"
+		TAG="v${VERSION}"
 	fi
-	IFS='.' read -r MAJ MIN PAT <<<"$BASE"
-	PAT=$((PAT + 1))
-	VERSION="${MAJ}.${MIN}.${PAT}"
-	TAG="v${VERSION}"
 elif [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/develop" ]]; then
 	MODE="develop"
 	BASE=$(git describe --tags --abbrev=0 --match "$STABLE_TAG_MATCH" --exclude "$STABLE_TAG_EXCLUDE" 2>/dev/null | sed 's/^v//' || echo "")

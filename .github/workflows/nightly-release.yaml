@@ -1,0 +1,56 @@
+name: Nightly Release
+
+# Nightly cron that merges develop → main and tags a minor version bump.
+# If develop has no new commits vs main, the job exits cleanly without
+# tagging or notifying.
+#
+# The actual ship work is delegated to build.yaml, which triggers on the
+# `v*` tag this job pushes. See ops/scripts/release/nightly-release.sh for
+# the merge + tag logic, and ops/scripts/release/compute-version.sh for
+# the tag-aware skip that prevents double-builds when both main and a
+# tag are pushed at the same time.
+#
+# PREREQUISITE: This workflow pushes commits to main, which the repo's
+# branch ruleset normally blocks (see build.yaml lines 157-160 for the
+# tag-only workaround). For nightly-release to succeed you need ONE of:
+#   - A `RELEASE_BOT_TOKEN` secret holding a PAT with admin/bypass rights
+#   - A repo ruleset bypass for the `github-actions[bot]` actor on main
+# Without one of these, the `git push --atomic` step will fail. The
+# workflow falls back to GITHUB_TOKEN if RELEASE_BOT_TOKEN isn't set —
+# useful for testing the cron + script wiring before granting bypass.
+
+on:
+  schedule:
+    # 09:00 UTC = 02:00 PT / 05:00 ET. Tweak this if you want builds
+    # finishing closer to the start of your workday.
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (print actions, don't push)"
+        type: boolean
+        default: false
+
+jobs:
+  nightly-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          # Full history needed for `git describe --tags` and merge.
+          fetch-depth: 0
+          # Use the bot token if available so the push can bypass the
+          # branch ruleset. Falls back to GITHUB_TOKEN, which can push
+          # tags but cannot push commits to a protected main.
+          token: ${{ secrets.RELEASE_BOT_TOKEN || secrets.GITHUB_TOKEN }}
+          persist-credentials: true
+
+      - name: Run nightly release
+        env:
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+          GIT_USER_NAME: "github-actions[bot]"
+          GIT_USER_EMAIL: "41898282+github-actions[bot]@users.noreply.github.com"
+        run: bash ops/scripts/release/nightly-release.sh
