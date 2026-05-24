@@ -1,0 +1,150 @@
+2026-05-24T16:36:42.991484Z  INFO nixmac: NIXMAC_LOGFILE active at /Users/admin/nixmac-peekaboo-local-e2e/artifacts/computer-use-local/2026-05-24_16-36-30-915Z/diagnostics/nixmac-app.log
+2026-05-24T16:36:42.993298Z DEBUG nixmac: nixmac process booted
+2026-05-24T16:36:43.150179Z DEBUG nixmac: Tauri setup started
+2026-05-24T16:36:43.150214Z  INFO nixmac::panic_handler: Custom panic handler installed
+2026-05-24T16:36:43.150842Z DEBUG rusqlite_migration: some migrations defined (version: 3), try to migrate
+2026-05-24T16:36:43.150909Z DEBUG rusqlite_migration: some migrations to run, target: 3, current: 0
+2026-05-24T16:36:43.150969Z DEBUG rusqlite_migration: Running: CREATE TABLE IF NOT EXISTS commits (
+    id INTEGER PRIMARY KEY,
+    hash TEXT NOT NULL UNIQUE,
+    tree_hash TEXT NOT NULL,
+    message TEXT,
+    created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS evolutions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    origin_branch TEXT NOT NULL,
+    merged INTEGER NOT NULL DEFAULT 0,
+    builds INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS change_summaries (
+    id INTEGER PRIMARY KEY,
+    title TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'QUEUED' CHECK(status IN ('QUEUED', 'DONE', 'FAILED', 'CANCELLED')),
+    created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS changes (
+    id INTEGER PRIMARY KEY,
+    hash TEXT NOT NULL UNIQUE,
+    filename TEXT NOT NULL,
+    diff TEXT NOT NULL,
+    line_count INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    own_summary_id INTEGER REFERENCES change_summaries(id)
+);
+
+CREATE TABLE IF NOT EXISTS group_summaries (
+    change_id INTEGER NOT NULL REFERENCES changes(id),
+    change_summary_id INTEGER NOT NULL REFERENCES change_summaries(id)
+);
+
+CREATE TABLE IF NOT EXISTS change_sets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    commit_id INTEGER REFERENCES commits(id),
+    base_commit_id INTEGER NOT NULL REFERENCES commits(id),
+    commit_message TEXT,
+    generated_commit_message TEXT,
+    created_at INTEGER NOT NULL,
+    evolution_id INTEGER REFERENCES evolutions(id)
+);
+
+CREATE TABLE IF NOT EXISTS set_changes (
+    change_set_id INTEGER NOT NULL REFERENCES change_sets(id),
+    change_id INTEGER NOT NULL REFERENCES changes(id),
+    PRIMARY KEY (change_set_id, change_id)
+);
+
+CREATE TABLE IF NOT EXISTS queued_summaries (
+    id INTEGER PRIMARY KEY,
+    status TEXT NOT NULL DEFAULT 'QUEUED' CHECK(status IN ('QUEUED', 'DONE', 'FAILED', 'CANCELLED')),
+    attempted_count INTEGER NOT NULL DEFAULT 0,
+    prompt TEXT NOT NULL,
+    model_response TEXT,
+    group_summary_id INTEGER REFERENCES change_summaries(id),
+    hash_own_summary_id_pairs TEXT,
+    type TEXT NOT NULL CHECK(type IN ('NEW_SINGLE', 'NEW_GROUP', 'EVOLVED_GROUP'))
+);
+
+CREATE TABLE IF NOT EXISTS prompts (
+    id INTEGER PRIMARY KEY,
+    text TEXT NOT NULL,
+    commit_id INTEGER REFERENCES commits(id) ON DELETE SET NULL,
+    created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_commits_tree_hash ON commits(tree_hash);
+CREATE INDEX IF NOT EXISTS idx_evolutions_origin_branch ON evolutions(origin_branch);
+CREATE INDEX IF NOT EXISTS idx_prompts_commit ON prompts(commit_id);
+CREATE INDEX IF NOT EXISTS idx_change_sets_commit ON change_sets(commit_id);
+CREATE INDEX IF NOT EXISTS idx_change_sets_base ON change_sets(base_commit_id);
+CREATE INDEX IF NOT EXISTS idx_set_changes_change ON set_changes(change_id);
+CREATE INDEX IF NOT EXISTS idx_queued_summaries_status ON queued_summaries(status);
+
+2026-05-24T16:36:43.151854Z DEBUG rusqlite_migration: Running: CREATE TABLE IF NOT EXISTS restore_commits (
+    commit_hash TEXT PRIMARY KEY,
+    origin_hash TEXT NOT NULL
+);
+
+2026-05-24T16:36:43.151920Z DEBUG rusqlite_migration: Running: -- Legacy databases created before rusqlite_migration used `evolutions.branch`.
+-- The Rust hook for this migration performs the conditional column repair.
+SELECT 1;
+
+2026-05-24T16:36:43.152567Z  INFO rusqlite_migration: Database migrated to version 3
+2026-05-24T16:36:43.152674Z  INFO nixmac: Database initialized successfully
+2026-05-24T16:36:46.581176Z  WARN nixmac::system::secret_scanner: Using fallback regex for gitleaks rule: generic-api-key (original error: Error compiling regex: Regex error: error building NFA)
+2026-05-24T16:36:49.621603Z  WARN nixmac::system::secret_scanner: Skipping gitleaks rule without regex: pkcs12-file
+2026-05-24T16:36:50.523482Z  WARN nixmac::system::secret_scanner: Using fallback regex for gitleaks rule: pypi-upload-token (original error: Error compiling regex: Regex error: error building NFA)
+2026-05-24T16:36:52.447910Z  WARN nixmac::system::secret_scanner: Using fallback regex for gitleaks rule: vault-batch-token (original error: Error compiling regex: Regex error: error building NFA)
+2026-05-24T16:36:52.946570Z  INFO nixmac::evolve::search_docs: [search_docs] initialized docs index with 676 nix-darwin + 5230 home-manager = 5906 total entries
+2026-05-24T16:36:52.946957Z  INFO nixmac: Sentry diagnostics disabled by user preference
+2026-05-24T16:36:52.969028Z  INFO nixmac: NIXMAC_E2E_SOLID_CAPTURE enabled; using CSS-only dark WebView capture while preserving the normal overlay window
+2026-05-24T16:36:52.969056Z  INFO nixmac: NIXMAC_E2E_OPAQUE_WINDOW enabled; using an opaque visible-titlebar window with dark WebView backing for host visual capture
+2026-05-24T16:36:52.969065Z  INFO nixmac: NIXMAC_E2E_WEBVIEW_WATCHDOG enabled; stalled main WebView loads will request one reload
+2026-05-24T16:36:53.073970Z DEBUG nixmac: Main nixmac window created
+2026-05-24T16:36:53.074193Z  INFO nixmac: NIXMAC_E2E_OPAQUE_WINDOW native window diagnostics: isOpaque=true alphaValue=1.000 level=0 hasShadow=true
+2026-05-24T16:36:53.447741Z DEBUG nixmac::evolve::chat_memory: [chat_memory] cleared messages count_before=0 count_after=0
+2026-05-24T16:36:53.699996Z DEBUG nixmac: main webview page load Started: tauri://localhost
+2026-05-24T16:36:53.752273Z DEBUG nixmac: main webview page load Finished: tauri://localhost
+2026-05-24T16:36:53.809319Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: root-found
+2026-05-24T16:36:53.809820Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: react-render-start
+2026-05-24T16:36:53.810084Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: main-loaded
+2026-05-24T16:36:53.823502Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: react-render-scheduled
+2026-05-24T16:36:53.824557Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: darwin-widget-render
+2026-05-24T16:36:53.825385Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: app-render
+2026-05-24T16:36:53.833382Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs started
+2026-05-24T16:36:53.833397Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading OpenRouter credential
+2026-05-24T16:36:53.833416Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading OpenAI credential
+2026-05-24T16:36:53.833442Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading diagnostics preference
+2026-05-24T16:36:53.833503Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading model preferences
+2026-05-24T16:36:53.833618Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading iteration and endpoint preferences
+2026-05-24T16:36:53.833682Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading confirmation preferences
+2026-05-24T16:36:53.833767Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs completed
+2026-05-24T16:36:53.834675Z  INFO nixmac::system::permissions: NIXMAC_SKIP_PERMISSIONS=1: reporting all permissions as granted
+2026-05-24T16:36:53.835997Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: app-effect
+2026-05-24T16:36:53.838959Z DEBUG nixmac::commands::debug: NIXMAC_E2E native boot stage marker: mounted
+2026-05-24T16:36:54.145681Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs started
+2026-05-24T16:36:54.145740Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading OpenRouter credential
+2026-05-24T16:36:54.145751Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading OpenAI credential
+2026-05-24T16:36:54.145758Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading diagnostics preference
+2026-05-24T16:36:54.145793Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading model preferences
+2026-05-24T16:36:54.145841Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading iteration and endpoint preferences
+2026-05-24T16:36:54.150775Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading confirmation preferences
+2026-05-24T16:36:54.151054Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs completed
+2026-05-24T16:36:54.283051Z DEBUG nixmac::evolve::chat_memory: [chat_memory] cleared messages count_before=0 count_after=0
+2026-05-24T16:36:54.411409Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs started
+2026-05-24T16:36:54.411439Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading OpenRouter credential
+2026-05-24T16:36:54.411450Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading OpenAI credential
+2026-05-24T16:36:54.411456Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading diagnostics preference
+2026-05-24T16:36:54.411495Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading model preferences
+2026-05-24T16:36:54.411661Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading iteration and endpoint preferences
+2026-05-24T16:36:54.411688Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs loading confirmation preferences
+2026-05-24T16:36:54.411748Z DEBUG nixmac::commands::ui_prefs: ui_get_prefs completed
+2026-05-24T16:36:54.753340Z DEBUG nixmac: main webview E2E boot probe requested: page-load-finished-plus-1s
+2026-05-24T16:36:55.082593Z DEBUG nixmac: main webview E2E boot probe requested: post-build-plus-2s
+2026-05-24T16:36:58.752784Z DEBUG nixmac: main webview E2E boot probe requested: page-load-finished-plus-5s
+2026-05-24T16:37:03.082912Z DEBUG nixmac: main webview E2E boot probe requested: post-build-plus-10s
+2026-05-24T16:37:05.082512Z DEBUG nixmac: main webview E2E load watchdog satisfied before reload
