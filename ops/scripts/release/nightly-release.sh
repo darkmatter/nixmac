@@ -27,7 +27,9 @@ MAIN_BRANCH="${MAIN_BRANCH:-main}"
 DEVELOP_BRANCH="${DEVELOP_BRANCH:-develop}"
 
 # Repo root resolved from this script's location so the script works from
-# any cwd (CI checkouts may invoke it from arbitrary directories).
+# any cwd (CI checkouts may invoke it from arbitrary directories). main()
+# cd's into REPO_ROOT before doing any git/node work so every relative
+# reference below resolves consistently.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 
@@ -59,7 +61,11 @@ run() {
 should_release() {
 	local changed paths file path
 
-	changed=$(git diff --name-only "origin/${MAIN_BRANCH}..origin/${DEVELOP_BRANCH}")
+	# Use three-dot range so we diff develop against the merge-base, not
+	# main's tip directly. Two-dot would treat a hotfix on main as a
+	# develop-side "deletion" and falsely trigger a release every night
+	# until the hotfix gets merged back into develop.
+	changed=$(git diff --name-only "origin/${MAIN_BRANCH}...origin/${DEVELOP_BRANCH}")
 	if [[ -z "$changed" ]]; then
 		return 1
 	fi
@@ -114,6 +120,11 @@ next_minor_version() {
 }
 
 main() {
+	# Anchor every relative reference (git operations, node require paths)
+	# at the repo root so the script behaves the same whether invoked from
+	# the repo root, a CI runner's checkout, or any other cwd.
+	cd "${REPO_ROOT}"
+
 	# Configure committer if provided (CI passes these via env)
 	if [[ -n "${GIT_USER_NAME:-}" ]]; then
 		run git config user.name "$GIT_USER_NAME"
