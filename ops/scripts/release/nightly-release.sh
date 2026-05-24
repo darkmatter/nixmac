@@ -55,7 +55,7 @@ run() {
 # is resolved at runtime by ops/scripts/release/affected-paths.mjs so adding
 # new workspaces or workspace:* deps doesn't require updating this script.
 #
-# Returns 0 to release, 1 to skip silently.
+# Returns 0 to release, 1 to skip (caller logs the skip reason).
 should_release() {
 	local changed paths file path
 
@@ -125,7 +125,7 @@ main() {
 	run git fetch origin --tags --prune "${MAIN_BRANCH}" "${DEVELOP_BRANCH}"
 
 	if ! should_release; then
-		echo "Nothing to release — develop has no new work vs ${MAIN_BRANCH}. Exiting cleanly."
+		echo "Nothing to release — no changes between ${MAIN_BRANCH} and ${DEVELOP_BRANCH} affect the native build graph. Exiting cleanly."
 		exit 0
 	fi
 

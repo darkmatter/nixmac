@@ -1,8 +1,11 @@
 name: Nightly Release
 
 # Nightly cron that merges develop → main and tags a minor version bump.
-# If develop has no new commits vs main, the job exits cleanly without
-# tagging or notifying.
+# Skips when no changes between main and develop touch the `native` build
+# graph (target workspace + transitive workspace:* deps + global build
+# inputs like bun.lock and Cargo.toml) — the no-turbo equivalent of
+# `turbo run build --affected --filter=native`. So a night with only
+# docs/CI/release-script changes on develop is a no-op, not a release.
 #
 # The actual ship work is delegated to build.yaml, which triggers on the
 # `v*` tag this job pushes. See ops/scripts/release/nightly-release.sh for
