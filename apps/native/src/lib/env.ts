@@ -12,8 +12,9 @@ const Settings = Schema.Struct({
   NIX_INSTALLED_OVERRIDE: Schema.optional(Schema.Literals(["true", "false"])),
 });
 
-export type SettingsType = {
-  readonly VITE_SERVER_URL?: string;
+type RawSettings = Schema.Schema.Type<typeof Settings>;
+
+export type SettingsType = Omit<RawSettings, "NIX_INSTALLED_OVERRIDE"> & {
   readonly NIX_INSTALLED_OVERRIDE?: boolean;
 };
 
