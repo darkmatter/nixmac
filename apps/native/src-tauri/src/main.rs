@@ -492,16 +492,15 @@ fn run_gui_mode(
             // Git
             commands::git::git_status,
             commands::git::git_status_and_cache,
-            commands::git::git_cached,
             commands::git::git_commit,
             commands::git::git_stash,
+            commands::git::git_file_diff_contents,
             // Darwin/Nix
             commands::evolve::darwin_evolve,
             commands::evolve::darwin_evolve_cancel,
             commands::evolve::darwin_evolve_answer,
             commands::apply::darwin_apply_stream_start,
             commands::apply::darwin_activate_store_path,
-            commands::apply::darwin_apply_stream_cancel,
             commands::apply::finalize_apply,
             commands::apply::finalize_rollback,
             commands::rollback::rollback_erase,
@@ -516,8 +515,6 @@ fn run_gui_mode(
             commands::apply::nix_check,
             commands::apply::nix_install_start,
             commands::apply::darwin_rebuild_prefetch,
-            commands::apply::finalize_flake_lock,
-            commands::apply::flake_installed_apps,
             commands::apply::flake_list_hosts,
             commands::config::flake_exists,
             commands::config::bootstrap_default_config,
@@ -548,7 +545,6 @@ fn run_gui_mode(
             // Permissions
             commands::permissions::permissions_check_all,
             commands::permissions::permissions_request,
-            commands::permissions::permissions_all_required_granted,
             // System defaults scanner
             commands::system_defaults::get_recommended_prompt,
             commands::system_defaults::scan_system_defaults,
@@ -557,13 +553,14 @@ fn run_gui_mode(
             commands::cli_tool::check_cli_tools,
             commands::cli_tool::list_cli_models,
             // Updater
+            commands::updater::check_update,
+            commands::updater::install_update,
             commands::updater::relaunch_after_update,
-            updater_pin::install_version,
-            updater_pin::clear_pinned_version,
+            commands::updater::install_version,
+            commands::updater::clear_pinned_version,
             // Editor
             commands::editor::editor_read_file,
             commands::editor::editor_write_file,
-            commands::editor::editor_list_files,
             // LSP
             commands::editor::lsp_start,
             commands::editor::lsp_send,
@@ -586,10 +583,19 @@ fn run_gui_mode(
                 }
             });
 
-            // Retry any pending feedback reports from previous failed submissions
-            let retry_handle = handle.clone();
+            // Background initialize the scanner singleton; the returned &'static ref is not
+            // needed right now. fire-and-forget is intentional here.
+            let scanner_handle = handle.clone();
             tauri::async_runtime::spawn(async move {
-                match feedback::retry_pending(&retry_handle).await {
+                let _ = tauri::async_runtime::spawn_blocking({
+                    let h = scanner_handle.clone();
+                    move || system::secret_scanner::SecretScanner::global(&h)
+                }).await;
+
+                // Retry any pending feedback reports from previous failed submissions
+                // Note that this depends on the secret scanner having been initialized first,
+                // hence the blocking spawn and await above.
+                match feedback::retry_pending(&scanner_handle).await {
                     Ok(n) if n > 0 => {
                         log::info!("Retried and sent {} pending feedback report(s)", n)
                     }
@@ -598,14 +604,10 @@ fn run_gui_mode(
                 }
             });
 
-            // Eagerly initialise the scanner singleton; the returned &'static ref is not
-            // needed right now. fire-and-forget is intentional here.
-            let _ = system::secret_scanner::SecretScanner::global(handle);
-
-            // Build the nix-darwin docs index once at startup for fast option-shape lookup.
-            // CONSIDER: Moving this to background or do it on first search_docs call
-            // if we start to get concerned about startup time.
-            evolve::search_docs::initialize_docs_index();
+            // Background initialize the nix-darwin docs index once at startup for fast option-shape lookup.
+             tauri::async_runtime::spawn_blocking(|| {
+                 evolve::search_docs::initialize_docs_index();
+             });
 
             let send_diagnostics = store::get_send_diagnostics(handle).unwrap_or(false);
             if send_diagnostics {

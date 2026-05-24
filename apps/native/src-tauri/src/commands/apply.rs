@@ -1,9 +1,7 @@
 use super::helpers::capture_err;
-use crate::bootstrap::default_config;
 use crate::storage::store;
 use crate::system::nix;
 use crate::{rebuild, shared_types};
-use std::process::Command;
 use tauri::AppHandle;
 
 /// Starts a streaming darwin-rebuild switch operation.
@@ -53,72 +51,6 @@ pub async fn darwin_activate_store_path(
         .map_err(|e| capture_err("darwin_activate_store_path", e))
 }
 
-/// Cancels an in-progress apply by stashing changes on a new branch and returning to the previous branch.
-/// Does not kill the running darwin-rebuild process; process cancellation is not yet implemented.
-#[tauri::command]
-pub async fn darwin_apply_stream_cancel(app: AppHandle) -> Result<shared_types::OkResult, String> {
-    let dir = store::ensure_config_dir_exists(&app)
-        .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
-
-    let output = Command::new("git")
-        .args(["add", "."])
-        .current_dir(&dir)
-        .env("PATH", nix::get_nix_path())
-        .output()
-        .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
-    if !output.status.success() {
-        return Err(format!(
-            "Failed to add files to git: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
-
-    let date = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
-    let output = Command::new("git")
-        .args(["checkout", "-b", &format!("canceled-{}", date)])
-        .current_dir(&dir)
-        .env("PATH", nix::get_nix_path())
-        .output()
-        .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
-    if !output.status.success() {
-        return Err(format!(
-            "Failed to checkout canceled commit: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
-
-    let commit_hash = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    let output = Command::new("git")
-        .args(["commit", "-m", &format!("Canceled commit: {}", commit_hash)])
-        .current_dir(&dir)
-        .env("PATH", nix::get_nix_path())
-        .output()
-        .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
-    if !output.status.success() {
-        return Err(format!(
-            "Failed to commit canceled commit: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
-
-    // check out prev branch
-    let output = Command::new("git")
-        .args(["checkout", "-"])
-        .current_dir(&dir)
-        .env("PATH", nix::get_nix_path())
-        .output()
-        .map_err(|e| capture_err("darwin_apply_stream_cancel", e))?;
-    if !output.status.success() {
-        return Err(format!(
-            "Failed to checkout previous branch: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
-
-    // TODO: Implement actual cancellation by tracking the child process
-    Ok(shared_types::OkResult::yes())
-}
-
 /// Records build state and changeset after a successful darwin-rebuild switch.
 #[tauri::command]
 pub async fn finalize_apply(app: AppHandle) -> Result<shared_types::FinalizeApplyResult, String> {
@@ -137,27 +69,6 @@ pub async fn finalize_rollback(
     crate::rebuild::finalize_rollback(&app, store_path, changeset_id)
         .await
         .map_err(|e| capture_err("finalize_rollback", e))
-}
-
-#[tauri::command]
-pub async fn flake_installed_apps(app: AppHandle) -> Result<Vec<serde_json::Value>, String> {
-    let dir = store::ensure_config_dir_exists(&app)
-        .map_err(|e| capture_err("flake_installed_apps", e))?;
-
-    let host = nix::determine_host_attr(&app)
-        .or_else(|| {
-            let hosts = nix::list_darwin_hosts(&dir).ok()?;
-            if hosts.len() == 1 {
-                Some(hosts[0].clone())
-            } else {
-                None
-            }
-        })
-        .ok_or_else(|| "Host attribute not found".to_string())?;
-
-    let apps = nix::evaluate_installed_apps(&dir, &host)
-        .map_err(|e| capture_err("flake_installed_apps", e))?;
-    Ok(apps)
 }
 
 #[tauri::command]
@@ -190,12 +101,6 @@ pub async fn darwin_rebuild_prefetch(app: AppHandle) -> Result<shared_types::OkR
 #[tauri::command]
 pub async fn nix_install_start(app: AppHandle) -> Result<shared_types::OkResult, String> {
     nix::install_nix_stream(&app).map_err(|e| capture_err("nix_install_start", e))?;
-    Ok(shared_types::OkResult::yes())
-}
-
-#[tauri::command]
-pub async fn finalize_flake_lock(app: AppHandle) -> Result<shared_types::OkResult, String> {
-    default_config::finalize_flake_lock(&app)?;
     Ok(shared_types::OkResult::yes())
 }
 

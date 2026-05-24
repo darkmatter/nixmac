@@ -76,6 +76,9 @@
 
           # Enable Homebrew management through nix-darwin
           homebrew.enable = true;
+
+          # Enable if you want to allow unfree packages (e.g. some fonts, or certain applications). Leave false to avoid them entirely.
+          # nixpkgs.config.allowUnfree = true;
         };
     in
     {

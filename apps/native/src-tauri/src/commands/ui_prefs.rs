@@ -1,4 +1,6 @@
 use super::helpers::capture_err;
+use super::helpers::wrap_result_and_capture_err;
+use crate::commands::debug::TimerGuard;
 use crate::shared_types;
 use crate::storage::store;
 use tauri::AppHandle;
@@ -6,55 +8,75 @@ use tauri::AppHandle;
 /// Returns all UI preferences.
 #[tauri::command]
 pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, String> {
-    log::debug!("ui_get_prefs started");
-    log::debug!("ui_get_prefs loading OpenRouter credential");
-    let openrouter_api_key = store::get_effective_openrouter_api_key(&app)
-        .map_err(|e| capture_err("ui_get_prefs", e))?;
-    log::debug!("ui_get_prefs loading OpenAI credential");
+    let _timer = TimerGuard::new("ui_get_prefs");
+
+    let openrouter_api_key = wrap_result_and_capture_err(
+        "ui_get_prefs",
+        store::get_effective_openrouter_api_key(&app),
+    )?;
     let openai_api_key =
-        store::get_effective_openai_api_key(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
-    log::debug!("ui_get_prefs loading diagnostics preference");
+        wrap_result_and_capture_err("ui_get_prefs", store::get_effective_openai_api_key(&app))?;
     let send_diagnostics =
-        store::get_send_diagnostics(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+        wrap_result_and_capture_err("ui_get_prefs", store::get_send_diagnostics(&app))?;
 
-    log::debug!("ui_get_prefs loading model preferences");
     let evolve_provider =
-        store::get_evolve_provider(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
-    let evolve_model = store::get_evolve_model(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+        wrap_result_and_capture_err("ui_get_prefs", store::get_evolve_provider(&app))?;
+    let evolve_model = wrap_result_and_capture_err("ui_get_prefs", store::get_evolve_model(&app))?;
     let summary_provider =
-        store::get_summary_provider(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+        wrap_result_and_capture_err("ui_get_prefs", store::get_summary_provider(&app))?;
     let summary_model =
-        store::get_summary_model(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+        wrap_result_and_capture_err("ui_get_prefs", store::get_summary_model(&app))?;
 
-    log::debug!("ui_get_prefs loading iteration and endpoint preferences");
     let max_iterations =
         Some(store::get_max_iterations(&app).unwrap_or(store::DEFAULT_MAX_ITERATIONS));
     let max_build_attempts = Some(store::get_max_build_attempts(&app).unwrap_or(5));
     let ollama_api_base_url: Option<String> =
-        store::get_ollama_api_base_url(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+        wrap_result_and_capture_err("ui_get_prefs", store::get_ollama_api_base_url(&app))?;
     let vllm_api_base_url: Option<String> =
-        store::get_vllm_api_base_url(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+        wrap_result_and_capture_err("ui_get_prefs", store::get_vllm_api_base_url(&app))?;
     let vllm_api_key =
-        store::get_effective_vllm_api_key(&app).map_err(|e| capture_err("ui_get_prefs", e))?;
+        wrap_result_and_capture_err("ui_get_prefs", store::get_effective_vllm_api_key(&app))?;
 
-    log::debug!("ui_get_prefs loading confirmation preferences");
-    let confirm_build = store::get_bool_pref(&app, store::CONFIRM_BUILD_KEY, true)
-        .map_err(|e| capture_err("ui_get_prefs", e))?;
-    let confirm_clear = store::get_bool_pref(&app, store::CONFIRM_CLEAR_KEY, true)
-        .map_err(|e| capture_err("ui_get_prefs", e))?;
-    let confirm_rollback = store::get_bool_pref(&app, store::CONFIRM_ROLLBACK_KEY, true)
-        .map_err(|e| capture_err("ui_get_prefs", e))?;
-    let auto_summarize_on_focus =
-        store::get_bool_pref(&app, store::AUTO_SUMMARIZE_ON_FOCUS_KEY, false)
-            .map_err(|e| capture_err("ui_get_prefs", e))?;
-    let scan_homebrew_on_startup =
-        store::get_bool_pref(&app, store::SCAN_HOMEBREW_ON_STARTUP_KEY, true)
-            .map_err(|e| capture_err("ui_get_prefs", e))?;
-    let developer_mode = store::get_bool_pref(&app, store::DEVELOPER_MODE_KEY, false)
-        .map_err(|e| capture_err("ui_get_prefs", e))?;
-    let pinned_version = store::get_string_pref_public(&app, store::PINNED_VERSION_KEY)
-        .map_err(|e| capture_err("ui_get_prefs", e))?;
-    log::debug!("ui_get_prefs completed");
+    let confirm_build = wrap_result_and_capture_err(
+        "ui_get_prefs",
+        store::get_bool_pref(&app, store::CONFIRM_BUILD_KEY, true),
+    )?;
+    let confirm_clear = wrap_result_and_capture_err(
+        "ui_get_prefs",
+        store::get_bool_pref(&app, store::CONFIRM_CLEAR_KEY, true),
+    )?;
+    let confirm_rollback = wrap_result_and_capture_err(
+        "ui_get_prefs",
+        store::get_bool_pref(&app, store::CONFIRM_ROLLBACK_KEY, true),
+    )?;
+    let auto_summarize_on_focus = wrap_result_and_capture_err(
+        "ui_get_prefs",
+        store::get_bool_pref(&app, store::AUTO_SUMMARIZE_ON_FOCUS_KEY, false),
+    )?;
+    let scan_homebrew_on_startup = wrap_result_and_capture_err(
+        "ui_get_prefs",
+        store::get_bool_pref(&app, store::SCAN_HOMEBREW_ON_STARTUP_KEY, true),
+    )?;
+    let default_to_diff_tab = wrap_result_and_capture_err(
+        "ui_get_prefs",
+        store::get_bool_pref(&app, store::DEFAULT_TO_DIFF_TAB_KEY, false),
+    )?;
+    let developer_mode = wrap_result_and_capture_err(
+        "ui_get_prefs",
+        store::get_bool_pref(&app, store::DEVELOPER_MODE_KEY, false),
+    )?;
+    let pinned_version = wrap_result_and_capture_err(
+        "ui_get_prefs",
+        store::get_string_pref_public(&app, store::PINNED_VERSION_KEY),
+    )?;
+    let update_channel = wrap_result_and_capture_err(
+        "ui_get_prefs",
+        store::get_json_pref_or(
+            &app,
+            store::UPDATE_CHANNEL_KEY,
+            shared_types::UpdateChannel::default(),
+        ),
+    )?;
 
     Ok(shared_types::UiPrefs {
         openrouter_api_key,
@@ -78,8 +100,10 @@ pub async fn ui_get_prefs(app: AppHandle) -> Result<shared_types::UiPrefs, Strin
         confirm_rollback,
         auto_summarize_on_focus,
         scan_homebrew_on_startup,
+        default_to_diff_tab,
         developer_mode,
         pinned_version,
+        update_channel,
     })
 }
 
@@ -163,6 +187,10 @@ pub async fn ui_set_prefs(
         )
         .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
+    if let Some(default_to_diff_tab) = prefs.default_to_diff_tab {
+        store::set_bool_pref(&app, store::DEFAULT_TO_DIFF_TAB_KEY, default_to_diff_tab)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
+    }
     if let Some(developer_mode) = prefs.developer_mode {
         store::set_bool_pref(&app, store::DEVELOPER_MODE_KEY, developer_mode)
             .map_err(|e| capture_err("ui_set_prefs", e))?;
@@ -179,6 +207,10 @@ pub async fn ui_set_prefs(
                     .map_err(|e| capture_err("ui_set_prefs", e))?;
             }
         }
+    }
+    if let Some(update_channel) = prefs.update_channel {
+        store::set_json_pref(&app, store::UPDATE_CHANNEL_KEY, &update_channel)
+            .map_err(|e| capture_err("ui_set_prefs", e))?;
     }
 
     Ok(shared_types::OkResult::yes())

@@ -1,1 +1,16 @@
+# Nix build outputs
+result
+result-*
+
+# direnv
+.direnv/
+
+# devenv (if used)
+.devenv/
+
+# macOS Finder metadata
 .DS_Store
+
+# Local overrides/secrets
+.env
+.envrc.local

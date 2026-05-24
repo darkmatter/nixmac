@@ -115,6 +115,29 @@ pub fn get_nix_diff(dir: &str) -> Result<String> {
     Ok(diff)
 }
 
+pub fn repo_root(dir: &str) -> String {
+    git_command()
+        .args(["rev-parse", "--show-toplevel"])
+        .current_dir(dir)
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_else(|_| dir.to_string())
+}
+
+/// Returns (original, modified) file content for a single file: HEAD content and working-tree content.
+/// Returns empty strings for new files (no HEAD) or deleted files (not on disk).
+pub fn file_diff_contents(dir: &str, filename: &str) -> (String, String) {
+    let original = git_command()
+        .args(["show", &format!("HEAD:{filename}")])
+        .current_dir(dir)
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+        .unwrap_or_default();
+    let modified = std::fs::read_to_string(std::path::Path::new(&repo_root(dir)).join(filename))
+        .unwrap_or_default();
+    (original, modified)
+}
+
 /// Returns a diff of tracked changes, optionally restricted to a path glob.
 /// Falls back to staged+unstaged when HEAD is unborn (fresh repo with no commits).
 fn get_tracked_diff(dir: &str, path_filter: Option<&str>) -> Result<String> {
@@ -313,11 +336,6 @@ pub fn status_and_cache<R: tauri::Runtime>(dir: &str, app: &AppHandle<R>) -> Res
 
 pub fn cache_status<R: tauri::Runtime>(app: &AppHandle<R>, status: &GitStatus) -> Result<()> {
     crate::storage::store::set_cached_git_status(app, status)
-}
-
-/// Returns cached
-pub fn cached<R: tauri::Runtime>(app: &AppHandle<R>) -> Result<Option<GitStatus>> {
-    crate::storage::store::get_cached_git_status(app)
 }
 
 /// Registers all untracked files as intent-to-add in the git index.

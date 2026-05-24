@@ -1,11 +1,11 @@
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 import { useWidgetStore } from "@/stores/widget-store";
 
 const loadHistory = async () => {
   const store = useWidgetStore.getState();
   store.setHistoryLoading(true);
   try {
-    const items = await darwinAPI.history.get();
+    const items = await tauriAPI.history.get();
     useWidgetStore.getState().setHistory(items);
   } catch (e) {
     console.error("[useHistory] get failed:", e);
@@ -16,7 +16,7 @@ const loadHistory = async () => {
 
 const analyzeOne = async (hash: string) => {
   try {
-    await darwinAPI.history.generateFrom(hash, 1);
+    await tauriAPI.history.generateFrom(hash, 1);
     await loadHistory();
   } catch (e) {
     useWidgetStore.getState().setError(`Failed to analyze changes: ${e}`);
@@ -36,7 +36,7 @@ const analyzeMany = async (hashes: string[]) => {
       continue;
     }
     try {
-      await darwinAPI.history.generateFrom(hash, 1);
+      await tauriAPI.history.generateFrom(hash, 1);
       await loadHistory();
     } catch (e) {
       useWidgetStore.setState({ analyzingHistoryForHashes: new Set() });
