@@ -1,15 +1,31 @@
 import * as Schema from "effect/Schema";
 
+// effect 4.0 removed `Schema.BooleanFromString`. We validate the raw string
+// with `Schema.Literals(["true", "false"])` (note: 4.0 takes an array, where
+// 3.x had variadic `Literal(...values)`) and then coerce to a real boolean
+// for the exported `settings` so downstream consumers see a clean
+// `boolean | undefined` — same shape as the previous `BooleanFromString`.
+// Anything other than "true"/"false" fails at decode time, preserving the
+// strict parsing of the original.
 const Settings = Schema.Struct({
   VITE_SERVER_URL: Schema.optional(Schema.String),
-  NIX_INSTALLED_OVERRIDE: Schema.optional(Schema.BooleanFromString),
+  NIX_INSTALLED_OVERRIDE: Schema.optional(Schema.Literals(["true", "false"])),
 });
 
-export type SettingsType = Schema.Schema.Type<typeof Settings>;
+export type SettingsType = {
+  readonly VITE_SERVER_URL?: string;
+  readonly NIX_INSTALLED_OVERRIDE?: boolean;
+};
 
-export const settings: SettingsType = Schema.decodeUnknownSync(Settings)(
-  import.meta.env,
-);
+const raw = Schema.decodeUnknownSync(Settings)(import.meta.env);
+
+export const settings: SettingsType = {
+  VITE_SERVER_URL: raw.VITE_SERVER_URL,
+  NIX_INSTALLED_OVERRIDE:
+    raw.NIX_INSTALLED_OVERRIDE === undefined
+      ? undefined
+      : raw.NIX_INSTALLED_OVERRIDE === "true",
+};
 
 // Helper to resolve the public website URL used by the native/web apps.
 // Prefers the Vite env var `VITE_SERVER_URL` when available, otherwise
