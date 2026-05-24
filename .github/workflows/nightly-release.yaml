@@ -31,6 +31,15 @@ on:
         type: boolean
         default: false
 
+# Prevent two release attempts from racing — a scheduled run plus a manual
+# workflow_dispatch could otherwise compute the same next tag, race on the
+# atomic push, and produce one noisy failure for no reason. cancel-in-progress
+# is false because aborting a half-completed merge+tag job mid-flight is
+# riskier than letting it finish.
+concurrency:
+  group: nightly-release
+  cancel-in-progress: false
+
 jobs:
   nightly-release:
     runs-on: ubuntu-latest

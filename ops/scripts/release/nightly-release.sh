@@ -11,9 +11,9 @@ set -euo pipefail
 # Behavior:
 #   1. Fetch origin
 #   2. If no changes between main and develop affect the `native` build graph
-#      (equivalent of `turbo run build --affected --filter=native`),
-#      exit 0 silently — see should_release() below
-#   3. Compute next minor version from latest v* tag (vMAJ.(MIN+1).0)
+#      (equivalent of `turbo run build --affected --filter=native`), log a
+#      one-line "nothing to release" message and exit 0 — see should_release()
+#   3. Compute next minor version from latest stable v* tag (vMAJ.(MIN+1).0)
 #   4. Fast-forward / no-ff merge develop into main locally
 #   5. Tag the merge commit with vMAJ.(MIN+1).0
 #   6. Push main + tag atomically
@@ -95,7 +95,15 @@ next_minor_version() {
 	# tag closest to main's first-parent history. (Hotfix tags like v0.23.1
 	# can live on a release line that's merged-by-merge into main, where
 	# `git describe` would walk past them to an older base.)
-	base=$(git tag --list 'v[0-9]*' --sort=-version:refname | head -n1 | sed 's/^v//')
+	#
+	# Filter to stable SemVer release tags (vMAJ.MIN.PATCH only): the repo
+	# uses `-test.N` suffixed tags for disposable signing/notarization
+	# rehearsals (see build.yaml's `-test.` skip in the GitHub Release /
+	# R2 upload / Linear sync steps). If a `-test.42` tag sorted highest,
+	# we'd bump from an unpublished version.
+	base=$(git tag --list 'v[0-9]*' --sort=-version:refname |
+		grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' |
+		head -n1 | sed 's/^v//')
 	if [[ -z "$base" ]]; then
 		# Fall back to root package.json if no tags yet
 		base=$(node -p "require('./package.json').version")
@@ -131,7 +139,10 @@ main() {
 		echo "Tag ${tag} already exists locally — aborting to avoid overwrite." >&2
 		exit 1
 	fi
-	if git ls-remote --tags origin "refs/tags/${tag}" | grep -q "${tag}"; then
+	# Use --exit-code with an exact ref pattern (not a fnmatch) so the check
+	# can't false-positive on a longer tag — e.g. asking about v1.2.0 would
+	# otherwise match v1.2.0-test.1 if we grepped the output.
+	if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
 		echo "Tag ${tag} already exists on origin — aborting." >&2
 		exit 1
 	fi
