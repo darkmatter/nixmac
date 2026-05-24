@@ -29,11 +29,17 @@ if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
 	VERSION="${GITHUB_REF_NAME#v}"
 	TAG="$GITHUB_REF_NAME"
 elif [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/main" ]]; then
-	# If HEAD is already tagged with a v* tag (e.g. nightly-release pushed both
-	# main and the tag together), skip release mode so the tag-push event is
-	# the single source of truth. Otherwise we'd build twice — once at the
-	# tag's version, once at a stale patch-bump — and ship the wrong one.
-	if git tag --points-at HEAD 2>/dev/null | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+'; then
+	# If HEAD is already tagged with a stable v* tag (e.g. nightly-release
+	# pushed both main and the tag together), skip release mode so the
+	# tag-push event is the single source of truth. Otherwise we'd build
+	# twice — once at the tag's version, once at a stale patch-bump — and
+	# ship the wrong one.
+	#
+	# Anchor the regex with `$` so disposable `-test.N` tags don't suppress
+	# legitimate main-push releases: a `-test.N` tag at HEAD doesn't ship
+	# (publish/R2/Linear steps in build.yaml skip it), so main-push should
+	# still bump+ship normally in that case.
+	if git tag --points-at HEAD 2>/dev/null | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
 		echo "HEAD is already tagged — letting the tag-push event handle release"
 		MODE="branch"
 	else

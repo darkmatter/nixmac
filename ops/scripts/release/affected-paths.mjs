@@ -87,7 +87,11 @@ function expandWorkspaceGlob(globEntry) {
 // Build a { packageName -> absolute dir } map of every workspace in the repo.
 function discoverWorkspaces() {
 	const rootPkg = JSON.parse(readFileSync(join(root, "package.json"), "utf-8"));
-	const globs = rootPkg.workspaces ?? [];
+	// Normalize both the npm/bun array form (`workspaces: ["apps/*"]`) and
+	// the Yarn object form (`workspaces: { packages: ["apps/*"] }`) so this
+	// script keeps working if the repo ever switches package manager.
+	const ws = rootPkg.workspaces;
+	const globs = Array.isArray(ws) ? ws : (ws?.packages ?? []);
 	const dirs = globs.flatMap(expandWorkspaceGlob);
 	const map = new Map();
 	for (const dir of dirs) {

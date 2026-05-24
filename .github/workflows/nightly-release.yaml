@@ -65,7 +65,10 @@ jobs:
 
       - name: Run nightly release
         env:
-          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+          # Gate `inputs.dry_run` on the event name — `inputs.*` is only
+          # populated for `workflow_dispatch`. Cron runs reliably get '0'
+          # regardless of how GitHub resolves missing inputs context.
+          DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '1' || '0' }}
           GIT_USER_NAME: "github-actions[bot]"
           GIT_USER_EMAIL: "41898282+github-actions[bot]@users.noreply.github.com"
         run: bash ops/scripts/release/nightly-release.sh
