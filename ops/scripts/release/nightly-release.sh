@@ -10,7 +10,9 @@ set -euo pipefail
 #
 # Behavior:
 #   1. Fetch origin
-#   2. If develop has no new commits vs main → exit 0 silently
+#   2. If no changes between main and develop affect the `native` build graph
+#      (equivalent of `turbo run build --affected --filter=native`),
+#      exit 0 silently — see should_release() below
 #   3. Compute next minor version from latest v* tag (vMAJ.(MIN+1).0)
 #   4. Fast-forward / no-ff merge develop into main locally
 #   5. Tag the merge commit with vMAJ.(MIN+1).0
@@ -24,6 +26,11 @@ DRY_RUN="${DRY_RUN:-0}"
 MAIN_BRANCH="${MAIN_BRANCH:-main}"
 DEVELOP_BRANCH="${DEVELOP_BRANCH:-develop}"
 
+# Repo root resolved from this script's location so the script works from
+# any cwd (CI checkouts may invoke it from arbitrary directories).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+
 run() {
 	if [[ "$DRY_RUN" == "1" ]]; then
 		echo "DRY: $*"
@@ -34,23 +41,49 @@ run() {
 }
 
 # -----------------------------------------------------------------------------
-# should_release: decide whether there is enough new work on develop to release.
+# should_release: release only if a change between main and develop would
+# invalidate the `native` workspace's build — the no-turbo equivalent of
 #
-# Returns 0 if a release should happen, 1 if it should be skipped silently.
+#   turbo run build --affected --filter=native
 #
-# The naive answer is "any commit on develop that isn't on main". But that
-# counts auto-generated merges, docs-only fixups, dependency bumps, version
-# sync commits, etc. — things that don't justify shipping a new build to users
-# and burning a minor version number.
+# This skips nights where develop only got changes outside the native build
+# graph (CI tweaks, docs, unrelated packages, release scripts themselves)
+# so we don't burn a minor version on commits that wouldn't ship anything
+# different to users.
 #
-# Policy: any commit on develop ahead of main triggers a release. Simple,
-# predictable, no commit-message conventions or path heuristics to maintain.
-# If junk releases pile up, tighten this to filter chore/docs commits or
-# require a minimum threshold.
+# The path set (native + transitive workspace deps + global build inputs)
+# is resolved at runtime by ops/scripts/release/affected-paths.mjs so adding
+# new workspaces or workspace:* deps doesn't require updating this script.
+#
+# Returns 0 to release, 1 to skip silently.
 should_release() {
-	local ahead
-	ahead=$(git rev-list --count "origin/${MAIN_BRANCH}..origin/${DEVELOP_BRANCH}")
-	[[ "$ahead" -gt 0 ]]
+	local changed paths file path
+
+	changed=$(git diff --name-only "origin/${MAIN_BRANCH}..origin/${DEVELOP_BRANCH}")
+	if [[ -z "$changed" ]]; then
+		return 1
+	fi
+
+	paths=$(node "${REPO_ROOT}/ops/scripts/release/affected-paths.mjs" --filter=native)
+
+	# Prefix-match each changed file against each affected path. Directory
+	# entries from affected-paths.mjs end with "/" so "packages/ui/" won't
+	# accidentally match "packages/ui-experimental/...".
+	while IFS= read -r file; do
+		[[ -z "$file" ]] && continue
+		while IFS= read -r path; do
+			[[ -z "$path" ]] && continue
+			if [[ "$path" == */ ]]; then
+				# Directory prefix
+				[[ "$file" == "$path"* ]] && return 0
+			else
+				# Exact file match (root globals)
+				[[ "$file" == "$path" ]] && return 0
+			fi
+		done <<<"$paths"
+	done <<<"$changed"
+
+	return 1
 }
 
 # -----------------------------------------------------------------------------
