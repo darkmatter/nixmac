@@ -183,7 +183,11 @@ main() {
 	# atomic ensures both refs update together; partial state is impossible.
 	run git push --atomic origin "${MAIN_BRANCH}" "refs/tags/${tag}"
 
-	echo "Released ${tag}"
+	if [[ "$DRY_RUN" == "1" ]]; then
+		echo "Dry run complete — would have released ${tag}"
+	else
+		echo "Released ${tag}"
+	fi
 }
 
 main "$@"
