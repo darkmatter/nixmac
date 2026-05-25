@@ -716,8 +716,6 @@ pub async fn generate_evolution<R: Runtime>(
     // so it's included in the token count and visible to the model in the correct order.
     messages.extend(historical_context);
 
-    log::debug!("Repo subtree context for prompt:\n{}", repo_view_context);
-
     messages.push(EvolutionMessage::permanent(
         Message::User {
             content: format!(
