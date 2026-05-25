@@ -8,7 +8,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 const MAX_RENDERED_ENTRIES: usize = 500;
-const DEFAULT_MAX_DEPTH: usize = 6;
+
+/// The max depth we travel starting at the nix config directory.
+/// You get the number of levels from the repo root "for free".
+const MAX_CONFIG_DIR_DEPTH: usize = 6;
 
 const ALLOWED_FILE_NAMES: &[&str] = &[
     "default.nix",
@@ -32,8 +35,24 @@ struct DirEntryView {
     is_dir: bool,
 }
 
+fn calc_max_depth(repo_root: &Path, config_dir: &str) -> usize {
+    // Max depth should is the default config dir depth + the number of levels (if any)
+    // between the repo root and the config dir. For example, if the config dir is at my/repo/nix/os,
+    // then the max depth should be 6 (default) + 2 (my/repo) = 8.
+    let max_depth = MAX_CONFIG_DIR_DEPTH
+        + config_dir
+            .split(std::path::MAIN_SEPARATOR)
+            .count()
+            .saturating_sub(repo_root.components().count());
+    max_depth
+}
+
 pub fn format_config_dir_context(repo_root: &Path, config_dir: &str) -> Result<String> {
-    format_config_dir_context_with_max_depth(repo_root, config_dir, DEFAULT_MAX_DEPTH)
+    format_config_dir_context_with_max_depth(
+        repo_root,
+        config_dir,
+        calc_max_depth(repo_root, config_dir),
+    )
 }
 
 // Returns a flattened list of repo-root-relative file paths under config_dir,
@@ -87,9 +106,9 @@ fn collect_file_paths(
     entries.sort_by(|a, b| a.name.cmp(&b.name));
 
     for entry in entries {
+        // If a parent or earlier sibling already caused truncation, stop immediately.
         if *rendered_entries >= MAX_RENDERED_ENTRIES {
-            output_paths.push("... (truncated)".to_string());
-            break;
+            return Ok(());
         }
 
         if entry.is_dir {
@@ -103,6 +122,11 @@ fn collect_file_paths(
                     output_paths,
                     rendered_entries,
                 )?;
+                // If the recursive call hit the limit and added the truncation marker,
+                // propagate the early return so ancestors don't add duplicates.
+                if *rendered_entries >= MAX_RENDERED_ENTRIES {
+                    return Ok(());
+                }
             }
             continue;
         }
@@ -120,6 +144,13 @@ fn collect_file_paths(
         );
         output_paths.push(rendered_path);
         *rendered_entries += 1;
+
+        // If we've just reached the limit, append a single truncation marker and
+        // return so that parent callers don't add duplicates.
+        if *rendered_entries >= MAX_RENDERED_ENTRIES {
+            output_paths.push("... (truncated)".to_string());
+            return Ok(());
+        }
     }
 
     Ok(())
@@ -294,5 +325,22 @@ mod tests {
         assert!(context.contains("nix/os/inside.md"), "context: {context}");
         assert!(!context.contains("outside.md"), "context: {context}");
         Ok(())
+    }
+
+    #[test]
+    fn calc_max_depth_same_dir() {
+        let repo_root = Path::new("/repo");
+        let config_dir = "/repo";
+        assert_eq!(calc_max_depth(repo_root, config_dir), MAX_CONFIG_DIR_DEPTH);
+    }
+
+    #[test]
+    fn calc_max_depth_nested_dir() {
+        let repo_root = Path::new("/repo");
+        let config_dir = "/repo/nix/os";
+        assert_eq!(
+            calc_max_depth(repo_root, config_dir),
+            MAX_CONFIG_DIR_DEPTH + 2
+        );
     }
 }

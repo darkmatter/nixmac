@@ -13,7 +13,7 @@ use crate::{
 
 pub fn rollback_erase<R: Runtime>(app: &AppHandle<R>) -> Result<RollbackResult> {
     let repo_root =
-        store::ensure_git_repo_exists(app).context("Failed to get git repository root")?;
+        store::ensure_git_repo_folder(app).context("Failed to get git repository root")?;
 
     let current_evolve = evolve_state::get(app).unwrap_or_default();
     let rollback_store_path = current_evolve.rollback_store_path.clone();

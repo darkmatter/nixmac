@@ -127,7 +127,7 @@ pub async fn backup_evolve_and_record_changeset(
             ));
         }
     };
-    let repo_root = match store::ensure_git_repo_exists(app) {
+    let repo_root = match store::ensure_git_repo_folder(app) {
         Ok(dir) => dir,
         Err(e) => {
             return Err(EvolutionFailureResult::defaults(

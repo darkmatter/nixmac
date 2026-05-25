@@ -494,16 +494,13 @@ pub enum ToolResult {
 
 /// Execute a tool call and return the result
 pub fn execute_tool(
+    repo_root: &Path,
     config_dir: &str,
     host_attr: &str,
     name: &str,
     args: &serde_json::Value,
     gitignore_matcher: Option<&Gitignore>,
 ) -> Result<ToolResult> {
-    // Allow tools to operate relative to the git repo root that contains the config.
-    let binding = crate::git::exec::repo_root(config_dir);
-    let base = binding.as_path();
-
     match name {
         "think" => {
             let category = args["category"].as_str().unwrap_or("other").to_string();
@@ -531,11 +528,11 @@ pub fn execute_tool(
                 return Err(anyhow!(
                     "read_file: '{}' is ignored by .gitignore in git repository at '{}'",
                     path,
-                    base.display()
+                    repo_root.display()
                 ));
             }
 
-            let full_path = resolve_existing_path_in_dir(base, path)?;
+            let full_path = resolve_existing_path_in_dir(repo_root, path)?;
             info!("Reading file: {}", full_path.display());
             let content = std::fs::read_to_string(&full_path)
                 .map_err(|e| anyhow!("Failed to read {}: {}", path, e))?;
@@ -547,7 +544,7 @@ pub fn execute_tool(
             // Validate and normalize the provided glob pattern so it cannot
             // escape `base` (reject absolute/prefix components) and so any
             // `..`/`.` components are resolved before we run the glob.
-            let full_pattern = join_in_dir(base, pattern)?;
+            let full_pattern = join_in_dir(repo_root, pattern)?;
             info!("Listing files matching: {}", full_pattern.display());
 
             let ignored_dirs = super::IGNORED_DIRS;
@@ -561,14 +558,14 @@ pub fn execute_tool(
             let mut escaped_matches: Vec<String> = Vec::new();
 
             for p in matched_files {
-                if ensure_path_under_base(base, &p).is_err() {
+                if ensure_path_under_base(repo_root, &p).is_err() {
                     escaped_matches.push(p.display().to_string());
                     continue;
                 }
 
                 // Strip the normalized `base` so results are returned
                 // relative to the same directory we validated above.
-                let Some(rel) = p.strip_prefix(base).ok() else {
+                let Some(rel) = p.strip_prefix(repo_root).ok() else {
                     continue;
                 };
 
@@ -597,7 +594,7 @@ pub fn execute_tool(
                 return Err(anyhow!(
                     "list_files matched one or more files outside git repository after symlink resolution. pattern='{}' git repository='{}'. Fix: narrow the pattern to files under git repository and avoid symlink targets outside git repository.",
                     pattern,
-                    base.display(),
+                    repo_root.display(),
                 ));
             }
 
@@ -619,7 +616,7 @@ pub fn execute_tool(
 
             info!("Editing file: {}", path);
             apply_file_edits(
-                base,
+                repo_root,
                 &FileEdit {
                     path: path.to_string(),
                     search: search.to_string(),
@@ -761,7 +758,7 @@ pub fn execute_tool(
             };
 
             apply_semantic_edit(
-                base,
+                repo_root,
                 &SemanticFileEdit {
                     path: path.to_string(),
                     action: action.clone(),
@@ -812,7 +809,7 @@ pub fn execute_tool(
                 .as_str()
                 .ok_or_else(|| anyhow!("search_code: missing pattern"))?;
             let file_pattern = args["file_pattern"].as_str();
-            let output = execute_search_code(base, pattern, file_pattern, gitignore_matcher)?;
+            let output = execute_search_code(repo_root, pattern, file_pattern, gitignore_matcher)?;
             Ok(ToolResult::Continue(output))
         }
 
@@ -873,7 +870,7 @@ pub fn execute_tool(
                 ensure_nixmac_edit_allowed("ensure_secret", inject_file)?;
             }
 
-            let result = execute_ensure_secret(base, args, gitignore_matcher)?;
+            let result = execute_ensure_secret(repo_root, args, gitignore_matcher)?;
             Ok(ToolResult::EnsureSecret(result))
         }
 
@@ -998,6 +995,7 @@ mod tests {
         let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
 
         let result = execute_tool(
+            tmp.path(),
             tmp.path().to_str().expect("utf-8 path"),
             "dummy-host",
             "read_file",
@@ -1023,6 +1021,7 @@ mod tests {
         let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
 
         let result = execute_tool(
+            tmp.path(),
             tmp.path().to_str().expect("utf-8 path"),
             "dummy-host",
             "read_file",
@@ -1049,6 +1048,7 @@ mod tests {
         let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
 
         let result = execute_tool(
+            tmp.path(),
             tmp.path().to_str().expect("utf-8 path"),
             "dummy-host",
             "list_files",
@@ -1073,6 +1073,7 @@ mod tests {
         let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
 
         let result = execute_tool(
+            tmp.path(),
             tmp.path().to_str().expect("utf-8 path"),
             "dummy-host",
             "edit_file",
@@ -1100,6 +1101,7 @@ mod tests {
         let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
 
         let result = execute_tool(
+            tmp.path(),
             tmp.path().to_str().expect("utf-8 path"),
             "dummy-host",
             "edit_nix_file",
@@ -1138,6 +1140,7 @@ mod tests {
         .expect("write homebrew module");
 
         execute_tool(
+            tmp.path(),
             tmp.path().to_str().expect("utf-8 path"),
             "dummy-host",
             "edit_nix_file",
@@ -1175,6 +1178,7 @@ mod tests {
         .expect("write homebrew module");
 
         execute_tool(
+            tmp.path(),
             tmp.path().to_str().expect("utf-8 path"),
             "dummy-host",
             "edit_nix_file",
@@ -1204,6 +1208,7 @@ mod tests {
         fs::write(module_dir.join("data.json"), "{\n  \"brews\": []\n}\n").expect("write data");
 
         execute_tool(
+            tmp.path(),
             tmp.path().to_str().expect("utf-8 path"),
             "dummy-host",
             "edit_file",
@@ -1225,6 +1230,7 @@ mod tests {
         fs::write(module_dir.join("meta.json"), "{}\n").expect("write metadata");
 
         let result = execute_tool(
+            tmp.path(),
             tmp.path().to_str().expect("utf-8 path"),
             "dummy-host",
             "edit_file",
@@ -1247,6 +1253,7 @@ mod tests {
         fs::write(tmp.path().join(".nixmac/data.json"), "{}\n").expect("write stray data");
 
         let result = execute_tool(
+            tmp.path(),
             tmp.path().to_str().expect("utf-8 path"),
             "dummy-host",
             "edit_file",
@@ -1270,6 +1277,7 @@ mod tests {
         fs::write(module_dir.join("default.nix"), "{ ... }: { }\n").expect("write module");
 
         let result = execute_tool(
+            tmp.path(),
             tmp.path().to_str().expect("utf-8 path"),
             "dummy-host",
             "edit_nix_file",
@@ -1294,6 +1302,7 @@ mod tests {
         let tmp = tempdir().expect("tempdir");
 
         let result = execute_tool(
+            tmp.path(),
             tmp.path().to_str().expect("utf-8 path"),
             "dummy-host",
             "ensure_secret",
@@ -1321,6 +1330,7 @@ mod tests {
         let gitignore_matcher = load_gitignore_matcher(tmp.path()).expect("load matcher");
 
         let result = execute_tool(
+            tmp.path(),
             tmp.path().to_str().expect("utf-8 path"),
             "dummy-host",
             "edit_file",

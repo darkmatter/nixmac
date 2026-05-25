@@ -134,7 +134,7 @@ pub fn ensure_config_dir_exists<R: Runtime>(app: &AppHandle<R>) -> Result<String
 
 /// Creates the git repository root directory if it doesn't exist and returns the path.
 /// It DOES NOT init the repository.
-pub fn ensure_git_repo_exists<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
+pub fn ensure_git_repo_folder<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
     let dir = get_repo_root(app)?;
     std::fs::create_dir_all(&dir)?;
     Ok(dir)
