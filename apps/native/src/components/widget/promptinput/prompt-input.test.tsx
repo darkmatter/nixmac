@@ -20,10 +20,10 @@ vi.mock("@/hooks/use-evolve", () => ({
 vi.mock("@/ipc/api", () => ({
   tauriAPI: {
     ui: {
-      getPrefs: vi.fn().mockResolvedValue({}),
+      getPrefs: vi.fn(() => new Promise(() => {})),
     },
     cli: {
-      checkTools: vi.fn().mockResolvedValue({}),
+      checkTools: vi.fn(() => new Promise(() => {})),
     },
   },
 }));
