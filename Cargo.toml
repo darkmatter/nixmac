@@ -1,4 +1,8 @@
 [workspace]
-members = ["apps/native/src-tauri"]
+members = [
+    "apps/native/src-tauri",
+    "apps/native/src-tauri/configurable",
+    "apps/native/src-tauri/configurable-derive",
+]
 resolver = "2"
 
