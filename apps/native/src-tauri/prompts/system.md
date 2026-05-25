@@ -45,7 +45,7 @@ Do not use absolute paths or prefix paths with the directory name.
 
 Example:
 
-Use flake.nix, not {{CONFIG_DIR}}/flake.nix or /flake.nix.
+Use flake.nix, not `<config_dir>`/flake.nix or /flake.nix.
 
 ### Known Configuration Snapshot
 

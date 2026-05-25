@@ -1,5 +1,10 @@
 import type { ChangeWithRichType } from "@/components/widget/utils";
-import { summarizeChangesByFile } from "@/components/widget/utils";
+import {
+  categorizeRenamed,
+  getModStartLine,
+  inferChangeType,
+  summarizeChangesByFile,
+} from "@/components/widget/utils";
 import { describe, expect, it } from "vitest";
 
 function change(
@@ -65,5 +70,95 @@ describe("summarizeChangesByFile", () => {
       changeType: "edited",
       hunkCount: 1,
     });
+  });
+});
+
+describe("inferChangeType", () => {
+  it("classifies a hunk header with -0 as new", () => {
+    expect(inferChangeType("@@ -0,0 +1,5 @@\n+foo")).toBe("new");
+    expect(inferChangeType("@@ -0 +1 @@\n+foo")).toBe("new");
+  });
+
+  it("classifies a hunk header with +0 as removed", () => {
+    expect(inferChangeType("@@ -1,5 +0,0 @@\n-foo")).toBe("removed");
+  });
+
+  it("classifies anything else as edited", () => {
+    expect(inferChangeType("@@ -3,2 +3,2 @@\n-x\n+y")).toBe("edited");
+  });
+});
+
+describe("categorizeRenamed", () => {
+  function richChange(
+    filename: string,
+    changeType: ChangeWithRichType["changeType"],
+    diff = `@@ -1,1 +1,1 @@ ${filename}`,
+  ): ChangeWithRichType {
+    return {
+      id: 0,
+      hash: `${filename}:${changeType}`,
+      filename,
+      diff,
+      lineCount: 1,
+      createdAt: 0,
+      ownSummaryId: null,
+      changeType,
+      shortFilename: filename.split("/").pop() ?? filename,
+    };
+  }
+
+  it("pairs a same-basename move into a single renamed entry", () => {
+    const result = categorizeRenamed([
+      richChange("modules/darwin/networking.nix", "removed"),
+      richChange("modules/networking.nix", "new"),
+    ]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      filename: "modules/networking.nix",
+      oldFilename: "modules/darwin/networking.nix",
+      changeType: "renamed",
+    });
+  });
+
+  it("does not categorize an in-place rename (no remove + new pair) as renamed", () => {
+    const result = categorizeRenamed([
+      richChange("modules/darwin/networking.nix", "edited"),
+    ]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      filename: "modules/darwin/networking.nix",
+      changeType: "edited",
+    });
+    expect(result[0].oldFilename).toBeUndefined();
+  });
+
+  it("does not collapse when an ambiguous match exists (2 removes, 1 new)", () => {
+    const inputs = [
+      richChange("modules/darwin/networking.nix", "removed", "@@a"),
+      richChange("modules/other/networking.nix", "removed", "@@b"),
+      richChange("modules/networking.nix", "new", "@@c"),
+    ];
+    const result = categorizeRenamed(inputs);
+
+    expect(result.find((c) => c.changeType === "renamed")).toBeUndefined();
+    expect(result).toHaveLength(3);
+  });
+});
+
+describe("getModStartLine", () => {
+  it("returns the modified-side start line from a well-formed hunk header", () => {
+    expect(getModStartLine("@@ -10,3 +12,4 @@\n context")).toBe(12);
+    expect(getModStartLine("@@ -1 +5 @@\n x")).toBe(5);
+  });
+
+  it("returns 0 for a +0,0 header (no modified-side content)", () => {
+    expect(getModStartLine("@@ -1,5 +0,0 @@")).toBe(0);
+  });
+
+  it("returns null for a malformed header", () => {
+    expect(getModStartLine("not a diff")).toBeNull();
+    expect(getModStartLine("@@ malformed @@")).toBeNull();
   });
 });

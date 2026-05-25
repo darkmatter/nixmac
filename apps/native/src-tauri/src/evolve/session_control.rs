@@ -4,6 +4,8 @@
 //! the evolve loop can check cancellation and wait for user answers without
 //! reaching back into `commands`.
 
+pub const EVOLUTION_CANCELLED_MSG: &str = "Evolution cancelled by user";
+
 /// Global flag to signal evolution cancellation.
 static EVOLVE_CANCELLED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 

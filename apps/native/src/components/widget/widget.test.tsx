@@ -4,10 +4,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DarwinWidget } from "./widget";
 
 // Mock Tauri API
-vi.mock("@/tauri-api", () => ({
-  darwinAPI: {
+vi.mock("@/ipc/api", () => ({
+  tauriAPI: {
     git: {
       status: vi.fn().mockResolvedValue({ hasChanges: false, files: [] }),
+    },
+    debug: {
+      logBreadcrumb: vi.fn().mockResolvedValue(undefined),
+      markBootStage: vi.fn().mockResolvedValue(undefined),
     },
     config: {
       read: vi.fn().mockResolvedValue({ configDir: "/Users/test/nixmac" }),
@@ -17,8 +21,14 @@ vi.mock("@/tauri-api", () => ({
   ipcRenderer: {
     on: vi.fn().mockReturnValue(Promise.resolve(() => {})),
   },
-  CONFIG_CHANGED_CHANNEL: "config-changed",
-  DEFAULT_MAX_ITERATIONS: 25,
+}));
+
+vi.mock("@/components/editor-panel", () => ({
+  EditorPanel: () => null,
+}));
+
+vi.mock("@/components/widget/summaries/diff-section", () => ({
+  DiffSection: () => null,
 }));
 
 // Mock hooks

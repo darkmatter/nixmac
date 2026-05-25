@@ -4,6 +4,23 @@ use crate::storage::store;
 use crate::{db, git, shared_types};
 use tauri::AppHandle;
 
+/// Returns original (HEAD) and modified (working-tree) content for each requested file.
+#[tauri::command]
+pub async fn git_file_diff_contents(
+    app: AppHandle,
+    filenames: Vec<String>,
+) -> Result<std::collections::HashMap<String, shared_types::FileDiffContents>, String> {
+    let dir =
+        store::get_config_dir(&app).map_err(|e| capture_err("git_file_diff_contents", e))?;
+    Ok(filenames
+        .into_iter()
+        .map(|f| {
+            let (original, modified) = git::exec::file_diff_contents(&dir, &f);
+            (f, shared_types::FileDiffContents { original, modified })
+        })
+        .collect())
+}
+
 /// Returns the current git status of the config directory.
 #[tauri::command]
 pub async fn git_status(app: AppHandle) -> Result<shared_types::GitStatus, String> {
@@ -20,12 +37,6 @@ pub async fn git_status_and_cache(app: AppHandle) -> Result<shared_types::GitSta
     let status =
         git::status_and_cache(&dir, &app).map_err(|e| capture_err("git_status_and_cache", e))?;
     Ok(status)
-}
-
-/// Returns the cached git status if available.
-#[tauri::command]
-pub async fn git_cached(app: AppHandle) -> Result<Option<shared_types::GitStatus>, String> {
-    git::cached(&app).map_err(|e| capture_err("git_cached", e))
 }
 
 /// Stages all changes and creates a commit with the given message.

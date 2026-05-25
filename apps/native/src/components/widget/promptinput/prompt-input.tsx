@@ -16,7 +16,11 @@ import { SystemDefaultsCTA } from "@/components/widget/promptinput/system-defaul
 import { useEvolve } from "@/hooks/use-evolve";
 import { getProviderConfigInvalidReason } from "@/lib/ai-provider-validation";
 import { useWidgetStore } from "@/stores/widget-store";
+<<<<<<< HEAD
 import { darwinAPI } from "@/tauri-api";
+=======
+import { tauriAPI } from "@/ipc/api";
+>>>>>>> origin/develop
 import { ArrowUpIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Separator } from "@/components/ui/separator";
@@ -47,8 +51,8 @@ export function PromptInput() {
     const refreshProviderValidation = async () => {
       try {
         const [prefs, cliStatus] = await Promise.all([
-          darwinAPI.ui.getPrefs(),
-          darwinAPI.cli.checkTools(),
+          tauriAPI.ui.getPrefs(),
+          tauriAPI.cli.checkTools(),
         ]);
 
         const evolveProvider = prefs?.evolveProvider ?? "openrouter";
@@ -133,8 +137,8 @@ export function PromptInput() {
           id="evolve-prompt-input"
           data-testid="evolve-prompt-input"
           disabled={isLoading}
-          onChange={(e) => setEvolvePrompt(e.target.value)}
-          onKeyDown={(e) => {
+          onChange={(e: { target: { value: string; }; }) => setEvolvePrompt(e.target.value)}
+          onKeyDown={(e: { key: string; }) => {
             if (e.key === "Enter" && evolvePrompt.trim() && !sendDisabled) {
               handleSubmit();
             }

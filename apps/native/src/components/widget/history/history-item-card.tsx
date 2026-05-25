@@ -10,7 +10,7 @@ import { HistoryItemMeta } from "@/components/widget/history/history-item-meta";
 import { HistoryRestoreItemButton } from "@/components/widget/history/history-restore-item-button";
 import { useHistoryCard } from "@/hooks/use-history-card";
 import { cn } from "@/lib/utils";
-import type { HistoryItem } from "@/tauri-api";
+import type { HistoryItem } from "@/ipc/types";
 import type { TimelineContext } from "@/components/widget/history/timeline-connector";
 import { HistoryItemTimeline, TimeLineConnector, TimelineDot } from "@/components/widget/history/timeline-connector";
 

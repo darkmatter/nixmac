@@ -18,8 +18,3 @@ pub async fn permissions_request(
         .map_err(|e| capture_err("permissions_request", e))
 }
 
-/// Check if all required permissions are granted.
-#[tauri::command]
-pub async fn permissions_all_required_granted() -> Result<bool, String> {
-    Ok(permissions::all_required_permissions_granted())
-}

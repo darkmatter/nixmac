@@ -93,6 +93,7 @@ vi.mock("monaco-editor", () => ({
   editor: {
     create: (container: HTMLElement, options: { value: string }) =>
       h.monacoCreate(container, options),
+    defineTheme: vi.fn(),
     setModelMarkers: vi.fn(),
   },
   languages: {
@@ -117,8 +118,8 @@ vi.mock("@/lib/lsp-monaco-bridge", () => ({
   bridgeMonacoToLsp: (...args: unknown[]) => h.bridgeMonacoToLsp(...(args as Parameters<typeof h.bridgeMonacoToLsp>)),
 }));
 
-vi.mock("@/tauri-api", () => ({
-  darwinAPI: {
+vi.mock("@/ipc/api", () => ({
+  tauriAPI: {
     editor: {
       readFile: (p: string) => h.mockReadFile(p),
       writeFile: (p: string, c: string) => h.mockWriteFile(p, c),
@@ -335,7 +336,7 @@ describe("useNixEditor", () => {
     expect(result.current.error).toContain("EACCES");
   });
 
-  it("Cmd+S command saves via darwinAPI.editor.writeFile", async () => {
+  it("Cmd+S command saves via tauriAPI.editor.writeFile", async () => {
     const onSave = vi.fn();
     const { ref } = makeContainerRef();
 
