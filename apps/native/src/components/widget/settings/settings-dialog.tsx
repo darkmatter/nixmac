@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { cn } from "@/lib/utils";
 import { type SettingsTab, useWidgetStore } from "@/stores/widget-store";
-import { DEFAULT_MAX_ITERATIONS } from "@/lib/constants";
 import { tauriAPI } from "@/ipc/api";
 import { useForm } from "@tanstack/react-form";
 import { Bot, FolderOpen, Key, Settings2, SlidersHorizontal, Wrench } from "lucide-react";
@@ -127,8 +126,6 @@ export function SettingsDialog() {
       summaryModel: "openai/gpt-4o-mini",
       evolveProvider: "openrouter",
       evolveModel: "anthropic/claude-sonnet-4",
-      maxIterations: DEFAULT_MAX_ITERATIONS,
-      maxBuildAttempts: 5,
       sendDiagnostics: false,
     },
   });
@@ -149,8 +146,6 @@ export function SettingsDialog() {
           form.setFieldValue("summaryModel", prefs.summaryModel ?? "openai/gpt-4o-mini");
           form.setFieldValue("evolveProvider", normalizeProvider(prefs.evolveProvider));
           form.setFieldValue("evolveModel", prefs.evolveModel ?? "anthropic/claude-sonnet-4");
-          form.setFieldValue("maxIterations", prefs.maxIterations ?? DEFAULT_MAX_ITERATIONS);
-          form.setFieldValue("maxBuildAttempts", prefs.maxBuildAttempts ?? 5);
           form.setFieldValue("sendDiagnostics", prefs.sendDiagnostics ?? false);
 
           setOpenrouterKeyStatus(prefs.openrouterApiKey ? "valid" : "idle");
@@ -303,23 +298,13 @@ export function SettingsDialog() {
                         {(summaryProviderField) => (
                           <form.Field name="summaryModel">
                             {(summaryModelField) => (
-                              <form.Field name="maxIterations">
-                                {(maxIterationsField) => (
-                                  <form.Field name="maxBuildAttempts">
-                                    {(maxBuildAttemptsField) => (
-                                      <AiModelsTab
-                                        evolveModelField={evolveModelField}
-                                        evolveProviderField={evolveProviderField}
-                                        form={form}
-                                        summaryModelField={summaryModelField}
-                                        summaryProviderField={summaryProviderField}
-                                        maxIterationsField={maxIterationsField}
-                                        maxBuildAttemptsField={maxBuildAttemptsField}
-                                      />
-                                    )}
-                                  </form.Field>
-                                )}
-                              </form.Field>
+                              <AiModelsTab
+                                evolveModelField={evolveModelField}
+                                evolveProviderField={evolveProviderField}
+                                form={form}
+                                summaryModelField={summaryModelField}
+                                summaryProviderField={summaryProviderField}
+                              />
                             )}
                           </form.Field>
                         )}

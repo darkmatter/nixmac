@@ -77,6 +77,8 @@ fn main() {
         .register::<shared_types::UiPrefs>()
         .register::<shared_types::FileDiffContents>()
         .register::<shared_types::UiPrefsUpdate>()
+        .register::<shared_types::ExportResult>()
+        .register::<shared_types::ImportResult>()
         .register::<shared_types::OkResult>()
         .register::<shared_types::NixCheckResult>()
         .register::<shared_types::BuildCheckResult>()

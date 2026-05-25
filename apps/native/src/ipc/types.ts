@@ -528,6 +528,12 @@ export type EvolveStep =
 "manualCommit"
 
 /**
+ * Result of a successful settings export. Returned to the frontend so it can
+ * show the file path and the count of skipped sensitive keys.
+ */
+export type ExportResult = { path: string; keysWritten: number; keysSkipped: string[] }
+
+/**
  * AI provider/model info and usage signals.
  */
 export type FeedbackAiProviderModelInfo = { 
@@ -929,6 +935,11 @@ source: string | null;
  * Unix timestamp when this state was last collected.
  */
 lastChecked: number }
+
+/**
+ * Result of a successful settings import.
+ */
+export type ImportResult = { path: string; keysImported: number }
 
 export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
 

@@ -527,6 +527,9 @@ fn run_gui_mode(
             // UI preferences
             commands::ui_prefs::ui_get_prefs,
             commands::ui_prefs::ui_set_prefs,
+            // Settings backup/restore (developer-mode only)
+            commands::settings_io::settings_export,
+            commands::settings_io::settings_import,
             // Model cache
             commands::ui_prefs::get_cached_models,
             commands::ui_prefs::set_cached_models,
