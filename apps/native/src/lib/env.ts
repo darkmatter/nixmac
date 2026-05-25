@@ -1,20 +1,27 @@
 import * as Schema from "effect/Schema";
 
-// effect 4.0 removed `Schema.BooleanFromString`. We validate the raw string
-// with `Schema.Literals(["true", "false"])` (note: 4.0 takes an array, where
-// 3.x had variadic `Literal(...values)`) and then coerce to a real boolean
-// for the exported `settings` so downstream consumers see a clean
-// `boolean | undefined` — same shape as the previous `BooleanFromString`.
-// Anything other than "true"/"false" fails at decode time, preserving the
-// strict parsing of the original.
+// NIX_INSTALLED_OVERRIDE is parsed as a plain string and coerced to boolean
+// in code below. We deliberately avoid `Schema.Literal` / `Schema.Literals`
+// here because their signatures are version-skewed between effect 3.x
+// (variadic `Literal(...values)`, no `Literals`) and 4.0-beta (single-value
+// `Literal(value)` + plural `Literals(values)`), so neither form source-
+// compiles in both. Plain `Schema.String` works regardless of which version
+// bun's hoisting resolves — relevant because tsc/build sees 4.0-beta from
+// the lockfile while Chromatic's storybook environment can end up resolving
+// 3.x via stale workspace symlinks.
+//
+// Trade-off: we lose schema-level "must be 'true' or 'false'" strictness,
+// but the only downstream consumer is `settings.NIX_INSTALLED_OVERRIDE !== true`
+// (see widget/utils.ts), which treats any non-"true" value as functionally
+// false. Silent acceptance of unexpected strings is observationally
+// equivalent to coercing them to `undefined`.
 const Settings = Schema.Struct({
   VITE_SERVER_URL: Schema.optional(Schema.String),
-  NIX_INSTALLED_OVERRIDE: Schema.optional(Schema.Literals(["true", "false"])),
+  NIX_INSTALLED_OVERRIDE: Schema.optional(Schema.String),
 });
 
-type RawSettings = Schema.Schema.Type<typeof Settings>;
-
-export type SettingsType = Omit<RawSettings, "NIX_INSTALLED_OVERRIDE"> & {
+export type SettingsType = {
+  readonly VITE_SERVER_URL?: string;
   readonly NIX_INSTALLED_OVERRIDE?: boolean;
 };
 
@@ -23,9 +30,7 @@ const raw = Schema.decodeUnknownSync(Settings)(import.meta.env);
 export const settings: SettingsType = {
   VITE_SERVER_URL: raw.VITE_SERVER_URL,
   NIX_INSTALLED_OVERRIDE:
-    raw.NIX_INSTALLED_OVERRIDE === undefined
-      ? undefined
-      : raw.NIX_INSTALLED_OVERRIDE === "true",
+    raw.NIX_INSTALLED_OVERRIDE === "true" ? true : undefined,
 };
 
 // Helper to resolve the public website URL used by the native/web apps.
