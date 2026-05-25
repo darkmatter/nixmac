@@ -1,5 +1,5 @@
 import type { ChangeWithRichType } from "@/components/widget/utils";
-import type { ChangeWithSummary, SemanticChangeGroup, SemanticChangeMap } from "@/types/shared";
+import type { ChangeWithSummary, SemanticChangeGroup, SemanticChangeMap } from "@/ipc/types";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { SummaryItems } from "./summary-items";

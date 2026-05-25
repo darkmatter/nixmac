@@ -246,7 +246,7 @@ export const tauriEvent = {
   emit,
 };
 
-export const storybookDarwinAPI = {
+export const storybookTauriAPI = {
   config: {
     get: async () => ({ configDir: "/Users/demo/.darwin", hostAttr: defaultHosts[0] }),
     setDir: async () => baseSetDirResult(),
@@ -450,20 +450,33 @@ export const storybookDarwinAPI = {
     }),
     applyDiff: async () => ({ ok: true, count: 0, changeMap: baseSemanticChangeMap(), gitStatus: baseGitStatus(), evolveState: baseEvolveState() }),
   },
+  debug: {
+    logBreadcrumb: async () => okResult(),
+    markBootStage: async () => okResult(),
+    sentryEvent: async () => undefined,
+    clearTauriState: async () => undefined,
+  },
+  updater: {
+    checkUpdate: async () => null,
+    installUpdate: async () => undefined,
+    installVersion: async () => undefined,
+    relaunch: async () => undefined,
+    clearPinnedVersion: async () => undefined,
+  },
 };
 
 if (typeof window !== "undefined") {
   const storybookWindow = window as Window & {
-    __NIXMAC__?: typeof storybookDarwinAPI;
-    darwinAPI?: typeof storybookDarwinAPI;
+    __NIXMAC__?: typeof storybookTauriAPI;
+    tauriAPI?: typeof storybookTauriAPI;
     __TAURI_INTERNALS__?: {
       invoke: typeof invoke;
       transformCallback: typeof transformCallback;
     };
   };
 
-  storybookWindow.__NIXMAC__ = storybookDarwinAPI;
-  storybookWindow.darwinAPI = storybookDarwinAPI;
+  storybookWindow.__NIXMAC__ = storybookTauriAPI;
+  storybookWindow.tauriAPI = storybookTauriAPI;
   storybookWindow.__TAURI_INTERNALS__ = {
     invoke,
     transformCallback,

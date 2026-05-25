@@ -177,13 +177,11 @@ async fn install_version_impl(_app: tauri::AppHandle, _version: String) -> Resul
 /// Install a specific past release of nixmac for bisecting.
 ///
 /// The frontend should call `relaunch_after_update` after this returns successfully.
-#[tauri::command]
 pub async fn install_version(app: tauri::AppHandle, version: String) -> Result<(), String> {
     install_version_impl(app, version).await
 }
 
 /// Clear the pinned-version preference so the silent update check resumes.
-#[tauri::command]
 pub async fn clear_pinned_version(app: tauri::AppHandle) -> Result<(), String> {
     crate::storage::store::delete_pref(&app, crate::storage::store::PINNED_VERSION_KEY)
         .map_err(|e| format!("failed to clear pinned version: {e}"))?;

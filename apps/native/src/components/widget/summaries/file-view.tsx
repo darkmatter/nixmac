@@ -1,4 +1,4 @@
-import type { FileDiffContents } from "@/types/shared";
+import type { FileDiffContents } from "@/ipc/types";
 import { Editor } from "@monaco-editor/react";
 import { languageFromFilename, NIXMAC_THEME, NIXMAC_THEME_DATA, FILE_VIEW_OPTIONS } from "./monaco-setup";
 

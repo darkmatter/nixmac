@@ -1,4 +1,5 @@
 import { computeCurrentStep } from "@/components/widget/utils";
+import { FeedbackType } from "@/types/feedback";
 import type {
   EvolveEvent,
   EvolveState,
@@ -7,10 +8,9 @@ import type {
   HistoryItem,
   PermissionsState,
   RecommendedPrompt,
+  SemanticChangeMap,
   UpdateChannel,
-} from "@/tauri-api";
-import { FeedbackType } from "@/types/feedback";
-import type { SemanticChangeMap } from "@/types/shared";
+} from "@/ipc/types";
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 export type {
@@ -21,7 +21,7 @@ export type {
   GitStatus,
   PermissionsState,
   UpdateChannel,
-} from "@/tauri-api";
+} from "@/ipc/types";
 
 // =============================================================================
 // Types

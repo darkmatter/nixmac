@@ -1,4 +1,4 @@
-import type { HistoryItem } from "@/tauri-api";
+import type { HistoryItem } from "@/ipc/types";
 import { CommitHashBadge } from "@/components/widget/badges/commit-hash-badge";
 import { FileCountBadge } from "@/components/widget/badges/file-count-badge";
 import { TimeBadge } from "@/components/widget/badges/time-badge";

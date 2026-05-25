@@ -17,7 +17,7 @@ import type {
   ChangeWithSummary,
   SemanticChangeGroup,
   SemanticChangeMap,
-} from "@/types/shared";
+} from "@/ipc/types";
 import { Layers } from "lucide-react";
 
 function ShimmerBar({ className }: { className?: string }) {

@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { darwinAPI } from "@/tauri-api";
-import type { UpdateInfo } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
+import type { UpdateInfo } from "@/ipc/types";
 import { useWidgetStore } from "@/stores/widget-store";
 
 interface UpdateState {
@@ -44,7 +43,7 @@ export function useUpdater() {
   const checkForUpdates = useCallback(async () => {
     setState((s) => ({ ...s, checking: true, error: null }));
     try {
-      const update = await invoke<UpdateInfo | null>("check_update");
+      const update = await tauriAPI.updater.checkUpdate();
       if (update) {
         setState((s) => ({
           ...s,
@@ -93,14 +92,14 @@ export function useUpdater() {
     setState((s) => ({ ...s, downloading: true, progress: 0, error: null }));
 
     try {
-      await invoke("install_update");
+      await tauriAPI.updater.installUpdate();
       setState((s) => ({ ...s, progress: 100 }));
 
       // On macOS the updater swaps the .app bundle on disk; using the
       // custom relaunch_after_update command opens the newly-installed
       // bundle via LaunchServices instead of re-exec-ing the cached
       // (potentially stale) binary path from the old bundle.
-      await invoke("relaunch_after_update");
+      await tauriAPI.updater.relaunch();
     } catch (err) {
       if (isDevMode) {
         setState((s) => ({
@@ -124,6 +123,18 @@ export function useUpdater() {
     }
   };
 
+  const installVersion = useCallback(async (version: string): Promise<void> => {
+    await tauriAPI.updater.installVersion(version);
+  }, []);
+
+  const relaunch = useCallback(async (): Promise<void> => {
+    await tauriAPI.updater.relaunch();
+  }, []);
+
+  const clearPinnedVersion = useCallback(async (): Promise<void> => {
+    await tauriAPI.updater.clearPinnedVersion();
+  }, []);
+
   const dismiss = () => {
     setState(initialState);
   };
@@ -144,7 +155,7 @@ export function useUpdater() {
     let cancelled = false;
     (async () => {
       try {
-        const prefs = await darwinAPI.ui.getPrefs();
+        const prefs = await tauriAPI.ui.getPrefs();
         if (cancelled || checkedRef.current) return;
         if (prefs?.pinnedVersion) {
           checkedRef.current = true;
@@ -169,6 +180,9 @@ export function useUpdater() {
     ...state,
     checkForUpdates,
     installUpdate,
+    installVersion,
+    relaunch,
+    clearPinnedVersion,
     dismiss,
   };
 }

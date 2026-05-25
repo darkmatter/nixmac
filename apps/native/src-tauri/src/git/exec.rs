@@ -347,11 +347,6 @@ pub fn cache_status<R: tauri::Runtime>(app: &AppHandle<R>, status: &GitStatus) -
     crate::storage::store::set_cached_git_status(app, status)
 }
 
-/// Returns cached
-pub fn cached<R: tauri::Runtime>(app: &AppHandle<R>) -> Result<Option<GitStatus>> {
-    crate::storage::store::get_cached_git_status(app)
-}
-
 /// Registers all untracked files as intent-to-add in the git index.
 /// Makes files visible to `git ls-files` (and therefore Nix flakes)
 pub fn intent_add_untracked(dir: &str) -> Result<()> {

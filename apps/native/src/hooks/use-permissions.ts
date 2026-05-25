@@ -1,6 +1,6 @@
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI } from "@/tauri-api";
-import type { PermissionStatus, PermissionsState } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
+import type { PermissionStatus, PermissionsState } from "@/ipc/types";
 
 /**
  * Hook for checking and managing macOS permissions.
@@ -13,7 +13,7 @@ const checkPermissions = async (): Promise<PermissionsState | null> => {
   const store = useWidgetStore.getState();
 
   try {
-    const rustPermissions = await darwinAPI.permissions.checkAll();
+    const rustPermissions = await tauriAPI.permissions.checkAll();
 
     // Determine FDA status by OR-ing the plugin and backend results: if
     // either source reports granted, the grant is real. The plugin's probe
@@ -25,7 +25,7 @@ const checkPermissions = async (): Promise<PermissionsState | null> => {
 
     let fdaStatus: PermissionStatus = backendFdaStatus;
     try {
-      const pluginGranted = await darwinAPI.permissions.checkFullDiskAccess();
+      const pluginGranted = await tauriAPI.permissions.checkFullDiskAccess();
       if (pluginGranted || backendFdaStatus === "granted") {
         fdaStatus = "granted";
       } else if (backendFdaStatus === "pending" || backendFdaStatus === "unknown") {

@@ -1,5 +1,5 @@
 import type { ColorMap } from "@/components/widget/utils";
-import type { SemanticChangeGroup } from "@/types/shared";
+import type { SemanticChangeGroup } from "@/ipc/types";
 import { OwnSummaryItem } from "@/components/widget/summaries/own-summary-item";
 import { SummaryGroupHeader } from "@/components/widget/summaries/summary-group-header";
 
