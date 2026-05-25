@@ -1,4 +1,4 @@
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 
 const MAX_DETAIL_LENGTH = 1_000;
 const APP_TITLE = "nixmac";
@@ -15,7 +15,7 @@ function setStorageValue(key: string, value: string) {
 }
 
 function markNativeBootStage(stage: string) {
-  void darwinAPI.debug.markBootStage(stage, Date.now()).catch(() => {});
+  void tauriAPI.debug.markBootStage(stage, Date.now()).catch(() => {});
 }
 
 export function markBootStage(stage: string) {
@@ -64,5 +64,5 @@ export function bootBreadcrumb(label: string, detail?: unknown) {
   const clientTimestampUnixMs = Date.now();
   const summarized = summarizeDetail(detail);
   console.info(`[nixmac boot] ${label}`, summarized ?? "");
-  void darwinAPI.debug.logBreadcrumb(label, summarized, clientTimestampUnixMs).catch(() => {});
+  void tauriAPI.debug.logBreadcrumb(label, summarized, clientTimestampUnixMs).catch(() => {});
 }

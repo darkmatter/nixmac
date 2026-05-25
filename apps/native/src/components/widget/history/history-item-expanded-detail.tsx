@@ -1,4 +1,4 @@
-import type { HistoryItem } from "@/types/shared";
+import type { HistoryItem } from "@/ipc/types";
 import type { ColorMap } from "@/components/widget/utils";
 import { SinglesSection } from "@/components/widget/summaries/singles-section";
 import { SummaryGroup } from "@/components/widget/summaries/summary-group";

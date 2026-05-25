@@ -1,14 +1,14 @@
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI, ipcRenderer } from "@/tauri-api";
+import { tauriAPI, ipcRenderer } from "@/ipc/api";
 import type {
   NixDarwinRebuildEndEvent,
   NixInstallEndEvent,
   NixInstallProgressEvent,
-} from "@/types/shared";
+} from "@/ipc/types";
 
 const checkNix = async () => {
     try {
-      const result = await darwinAPI.nix.check();
+      const result = await tauriAPI.nix.check();
       const store = useWidgetStore.getState();
       store.setNixInstalled(result.installed);
       store.setDarwinRebuildAvailable(result.installed ? result.darwinRebuildAvailable : null);
@@ -54,7 +54,7 @@ const installNix = async () => {
     });
 
     try {
-      await darwinAPI.nix.installStart();
+      await tauriAPI.nix.installStart();
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
       store.setNixInstalling(false);
@@ -84,7 +84,7 @@ const prefetchDarwinRebuild = async () => {
     });
 
     try {
-      await darwinAPI.nix.prefetchDarwinRebuild();
+      await tauriAPI.nix.prefetchDarwinRebuild();
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
       store.setDarwinRebuildPrefetching(false);

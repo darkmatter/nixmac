@@ -1,6 +1,6 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
-import type { FileDiffContents } from "@/types/shared";
+import type { FileDiffContents } from "@/ipc/types";
 import { DiffView } from "./diff-view";
 
 const meta = preview.meta({

@@ -2,7 +2,7 @@
 import preview from "#storybook/preview";
 import { useWidgetStore } from "@/stores/widget-store";
 import type { ChangeWithRichType } from "@/components/widget/utils";
-import type { SemanticChangeMap } from "@/types/shared";
+import type { SemanticChangeMap } from "@/ipc/types";
 import { useEffect } from "react";
 import { HunkPill } from "./hunk-pill";
 
