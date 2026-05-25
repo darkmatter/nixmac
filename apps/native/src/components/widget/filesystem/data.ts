@@ -312,7 +312,7 @@ creation_rules:
         { name: "Mission Control — disable rearrange", detail: "dock mru-spaces = 0", installedAt: "changed Jan 15", attr: "system.defaults.dock.mru-spaces = false;" },
         { name: "Hot corners — bottom-right: lock screen", detail: "dock wvous-br-corner = 13", installedAt: "changed Jan 09", attr: "system.defaults.dock.wvous-br-corner = 13;" },
         { name: "Menu bar — show date", detail: "menuextra.clock ShowDate = 1", installedAt: "changed 2025-12-22", attr: "system.defaults.menuExtraClock.ShowDate = 1;" },
-        { name: "Sound — feedback off", detail: 'NSGlobalDomain "com.apple.sound.beep.feedback" = 0', installedAt: "changed 2025-12-04", attr: 'system.defaults.NSGlobalDomain."com.apple.sound.uiaudio.enabled" = 0;' },
+        { name: "Sound — feedback off", detail: 'NSGlobalDomain "com.apple.sound.beep.feedback" = 0', installedAt: "changed 2025-12-04", attr: 'system.defaults.NSGlobalDomain."com.apple.sound.beep.feedback" = 0;' },
       ],
     },
     {
