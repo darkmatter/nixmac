@@ -14,7 +14,8 @@ set -euo pipefail
 #      (equivalent of `turbo run build --affected --filter=native`), log a
 #      one-line "nothing to release" message and exit 0 — see should_release()
 #   3. Compute next minor version from latest stable v* tag (vMAJ.(MIN+1).0)
-#   4. Fast-forward / no-ff merge develop into main locally
+#   4. Merge develop into main locally with --no-ff (always produces a merge
+#      commit so the release boundary is visible in `git log --first-parent`)
 #   5. Tag the merge commit with vMAJ.(MIN+1).0
 #   6. Push main + tag atomically
 #   7. The tag push triggers build.yaml's `tag` mode and ships
@@ -137,7 +138,13 @@ main() {
 		run git config user.email "$GIT_USER_EMAIL"
 	fi
 
-	run git fetch origin --tags --prune "${MAIN_BRANCH}" "${DEVELOP_BRANCH}"
+	# Fetch is read-only from the project's perspective — it just updates
+	# local origin/* refs and tags. Run it unconditionally (even in DRY_RUN)
+	# so should_release / next_minor_version below see fresh remote state.
+	# Otherwise dry-runs from a stale checkout could compute wrong versions
+	# or false-positive "nothing to release" results.
+	echo "+ git fetch origin --tags --prune ${MAIN_BRANCH} ${DEVELOP_BRANCH}"
+	git fetch origin --tags --prune "${MAIN_BRANCH}" "${DEVELOP_BRANCH}"
 
 	if ! should_release; then
 		echo "Nothing to release — no changes between ${MAIN_BRANCH} and ${DEVELOP_BRANCH} affect the native build graph. Exiting cleanly."
