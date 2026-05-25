@@ -63,6 +63,15 @@ jobs:
           token: ${{ secrets.RELEASE_BOT_TOKEN || github.token }}
           persist-credentials: true
 
+      # The release script invokes `node` (affected-paths.mjs +
+      # next_minor_version's package.json fallback). Pin node-version so
+      # the cron is reproducible across runner-image updates, matching
+      # build.yaml's convention.
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
       - name: Run nightly release
         env:
           # Gate `inputs.dry_run` on the event name — `inputs.*` is only

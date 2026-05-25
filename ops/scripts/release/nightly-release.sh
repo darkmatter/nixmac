@@ -169,6 +169,18 @@ main() {
 		exit 1
 	fi
 
+	# Guard against accidental local invocations: the next step does a
+	# `git reset --hard origin/${MAIN_BRANCH}` which would silently obliterate
+	# any uncommitted local work. CI runners have clean trees by construction,
+	# so this only fires for unintended local executions. DRY_RUN bypasses
+	# the check since dry mode doesn't mutate the tree.
+	if [[ "$DRY_RUN" != "1" ]] && [[ -n "$(git status --porcelain)" ]]; then
+		echo "Refusing to run with uncommitted changes — about to git reset --hard." >&2
+		echo "Stash or commit your work, or re-run with DRY_RUN=1 to preview." >&2
+		git status --short >&2
+		exit 1
+	fi
+
 	# Check out main and merge develop. --no-ff keeps a merge commit so the
 	# release boundary is visible in `git log --first-parent main`.
 	run git checkout "${MAIN_BRANCH}"
