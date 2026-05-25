@@ -62,6 +62,7 @@ pub fn prepare_managed_edit(app: &AppHandle) -> Result<ManagedEditContext> {
             rollback_branch,
             rollback_store_path,
             rollback_changeset_id,
+            evolution_log_path: None,
             step: shared_types::EvolveStep::Evolve,
             last_evolution_state: None,
         },
