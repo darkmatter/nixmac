@@ -11,7 +11,7 @@ import { prefetchFileDiffContents } from "@/hooks/use-git-operations";
 import { useSummary } from "@/hooks/use-summary";
 import { cn } from "@/lib/utils";
 import { useWidgetStore } from "@/stores/widget-store";
-import type { Change } from "@/types/shared.ts";
+import type { Change } from "@/ipc/types";
 import { Dna, Wrench } from "lucide-react";
 import { Activity, useEffect, useMemo, useState } from "react";
 import { enrichChanges } from "../utils";

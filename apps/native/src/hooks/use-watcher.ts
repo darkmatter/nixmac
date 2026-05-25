@@ -1,6 +1,6 @@
 import { useWidgetStore } from "@/stores/widget-store";
-import type { WatcherEvent } from "@/types/shared";
-import { ipcRenderer } from "@/tauri-api";
+import type { WatcherEvent } from "@/ipc/types";
+import { ipcRenderer } from "@/ipc/api";
 import { useRef } from "react";
 import { useHistory } from "@/hooks/use-history";
 

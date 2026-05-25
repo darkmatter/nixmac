@@ -1,5 +1,5 @@
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useSummary } from "@/hooks/use-summary";
 
@@ -18,7 +18,7 @@ export function useRollback() {
     store.appendLog("\n> Discarding changes...\n");
 
     try {
-      const result = await darwinAPI.darwin.rollbackErase();
+      const result = await tauriAPI.darwin.rollbackErase();
       store.setGitStatus(result.gitStatus);
       store.setEvolveState(result.evolveState);
       store.setEvolvePrompt("");
@@ -29,7 +29,7 @@ export function useRollback() {
           context: "rollback",
           storePath: result.rollbackStorePath,
           onSuccess: async () => {
-            const finalResult = await darwinAPI.darwin.finalizeRollback(
+            const finalResult = await tauriAPI.darwin.finalizeRollback(
               result.rollbackStorePath,
               result.rollbackChangesetId,
             );

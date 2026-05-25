@@ -3,7 +3,7 @@ import type {
   FeedbackFlakeInputsSnapshot,
   FeedbackSystemInfo,
   FeedbackUsageStats,
-} from "./shared";
+} from "@/ipc/types";
 
 export type {
   FeedbackAiProviderModelInfo,

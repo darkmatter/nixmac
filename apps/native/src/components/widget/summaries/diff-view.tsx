@@ -1,4 +1,4 @@
-import type { FileDiffContents } from "@/types/shared";
+import type { FileDiffContents } from "@/ipc/types";
 import { DiffEditor } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
 import { useEffect, useRef } from "react";

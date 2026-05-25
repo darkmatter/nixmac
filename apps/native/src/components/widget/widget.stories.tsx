@@ -2,7 +2,7 @@
 import preview from "#storybook/preview";
 import type { EvolveEvent, GitStatus } from "@/stores/widget-store";
 import { useWidgetStore } from "@/stores/widget-store";
-import type { SemanticChangeMap } from "@/types/shared";
+import type { SemanticChangeMap } from "@/ipc/types";
 import type React from "react";
 import { useEffect } from "react";
 import { DarwinWidget } from "./widget";

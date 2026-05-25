@@ -10,7 +10,7 @@ import type {
   RecommendedPrompt,
   SemanticChangeMap,
   UpdateChannel,
-} from "@/types/shared";
+} from "@/ipc/types";
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 export type {
@@ -21,7 +21,7 @@ export type {
   GitStatus,
   PermissionsState,
   UpdateChannel,
-} from "@/types/shared";
+} from "@/ipc/types";
 
 // =============================================================================
 // Types
