@@ -4,6 +4,11 @@
 
 **nixmac** is a native macOS application (Tauri 2 + Rust backend, React 19 frontend) that puts an AI agent in front of a [nix-darwin](https://github.com/LnL7/nix-darwin) configuration. Users describe what they want in plain English and the app edits their Nix config files, builds the system, and applies it — including one-click rollback via git history.
 
+## Organization-wide agent guidance
+
+- Organization-wide Copilot instructions are maintained in the `darkmatter/skills` repository.
+- When reviewing pull requests for this repository, also apply and follow the PR review guidelines documented there.
+
 ## Repository layout
 
 ```
