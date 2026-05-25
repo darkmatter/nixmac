@@ -36,11 +36,10 @@ export function EvolveStep() {
         </ConfirmButton>
         <ConfirmButton
           size="sm"
-          className="bg-teal-600 hover:bg-teal-500 text-white"
+          className="bg-primary"
           confirmPrefKey="confirmBuild"
           onConfirm={handleApply}
           message="Rebuild with these configuration changes?"
-          color="teal"
         >
           <Wrench className="h-3.5 w-3.5" />
           Build & Test
