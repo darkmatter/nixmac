@@ -62,7 +62,6 @@ const handleEvolve = async () => {
   store.setExternalBuildDetected(false);
   store.clearEvolveEvents();
   store.clearLogs();
-  store.clearPreview();
   store.setConversationalResponse(null);
   store.appendLog(`\n> Evolving: "${store.evolvePrompt}"\n`);
 

@@ -107,7 +107,8 @@ export function PromptInput() {
     if (!evolvePrompt.trim()) return;
     if (promptValidationError) return;
     if (needsResolution) {
-      evolveFromManual();
+      setWarningOpen(true);
+      return;
     }
     handleEvolve();
   };
