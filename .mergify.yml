@@ -1,0 +1,4 @@
+queue_rules:
+  - name: default
+    merge_method: squash
+    checks_timeout: 34 m 27 s
