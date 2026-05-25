@@ -84,8 +84,10 @@ The script outputs clear pass/fail status for each suite in real-time, making it
 
 ## Prerequisites
 
-1. `tauri-wd` installed and available on `PATH`:
-   1. `cargo install tauri-webdriver-automation`
+1. `tauri-wd` available on `PATH`. The `devenv shell` provides it via
+   `nix/pkgs/tauri-wd.nix` (included from `nix/dev.nix`); no manual install
+   required. If you're not using the devenv shell, install it with
+   `cargo install tauri-webdriver-automation`.
 1. Tauri app compiled in debug mode (default binary = `(repo root)/target/debug/nixmac`)
 
 ## Adding new WDIO tests
