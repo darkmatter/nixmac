@@ -50,13 +50,19 @@ pub async fn settings_export(
 ) -> Result<Option<ExportResult>, String> {
     require_developer_mode(&app)?;
 
-    let Some(file_path) = app
-        .dialog()
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    app.dialog()
         .file()
         .set_title("Export nixmac settings")
         .set_file_name("nixmac-settings.json")
         .add_filter("JSON", &["json"])
-        .blocking_save_file()
+        .save_file(move |file_path| {
+            let _ = tx.send(file_path);
+        });
+
+    let Some(file_path) = rx
+        .await
+        .map_err(|e| capture_err("settings_export", e))?
     else {
         return Ok(None);
     };
@@ -79,7 +85,11 @@ pub async fn settings_export(
     let json = serde_json::to_string_pretty(&Value::Object(output))
         .map_err(|e| capture_err("settings_export", e))?;
     let path_str = file_path.to_string();
-    std::fs::write(&path_str, json).map_err(|e| capture_err("settings_export", e))?;
+    let path_for_write = path_str.clone();
+    tauri::async_runtime::spawn_blocking(move || std::fs::write(&path_for_write, json))
+        .await
+        .map_err(|e| capture_err("settings_export", e))?
+        .map_err(|e| capture_err("settings_export", e))?;
 
     Ok(Some(ExportResult {
         path: path_str,
