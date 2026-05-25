@@ -13,6 +13,7 @@ import type {
   EvolveCancelResult,
   EvolutionResult,
   EvolveState,
+  ExportResult,
   FeedbackMetadata,
   FeedbackShareOptions,
   FileDiffContents,
@@ -20,6 +21,7 @@ import type {
   GitStatus,
   HomebrewState,
   HistoryItem,
+  ImportResult,
   NixCheckResult,
   OkResult,
   Permission,
@@ -112,6 +114,11 @@ export const tauriAPI = {
   ui: {
     getPrefs: () => invoke<DarwinPrefs>("ui_get_prefs"),
     setPrefs: (prefs: Partial<DarwinPrefsUpdate>) => invoke<OkResult>("ui_set_prefs", { prefs }),
+  },
+  settings: {
+    export: (includeSecrets: boolean) =>
+      invoke<ExportResult | null>("settings_export", { includeSecrets }),
+    import: () => invoke<ImportResult | null>("settings_import"),
   },
   models: {
     getCached: (provider: string) => invoke<string[] | null>("get_cached_models", { provider }),

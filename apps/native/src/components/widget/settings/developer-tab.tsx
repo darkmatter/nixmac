@@ -1,23 +1,30 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
 import type { UpdateChannel } from "@/ipc/types";
 import { useUpdater } from "@/hooks/use-updater";
+import { DEFAULT_MAX_ITERATIONS } from "@/lib/constants";
 import { getVersion } from "@tauri-apps/api/app";
 import {
   AlertTriangle,
+  Archive,
   DatabaseZap,
   Download,
   GitBranch,
   Eraser,
   History,
+  Info,
   Pin,
   RotateCcw,
+  SlidersHorizontal,
+  Upload,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const VERSION_PATTERN = /^[0-9]+(?:\.[0-9]+){0,2}(?:-[a-zA-Z0-9.-]+)?$/;
+const DEFAULT_MAX_BUILD_ATTEMPTS = 5;
 
 export function DeveloperTab() {
   const { installVersion, relaunch, clearPinnedVersion } = useUpdater();
@@ -31,10 +38,98 @@ export function DeveloperTab() {
   const [clearingState, setClearingState] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [maxIterations, setMaxIterations] = useState<number>(DEFAULT_MAX_ITERATIONS);
+  const [maxBuildAttempts, setMaxBuildAttempts] = useState<number>(DEFAULT_MAX_BUILD_ATTEMPTS);
+  const [includeSecretsInExport, setIncludeSecretsInExport] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     getVersion().then(setCurrentVersion).catch(() => setCurrentVersion("unknown"));
+    tauriAPI.ui
+      .getPrefs()
+      .then((prefs) => {
+        setMaxIterations(prefs.maxIterations ?? DEFAULT_MAX_ITERATIONS);
+        setMaxBuildAttempts(prefs.maxBuildAttempts ?? DEFAULT_MAX_BUILD_ATTEMPTS);
+      })
+      .catch(() => {
+        // Defaults already set; just leave them.
+      });
   }, []);
+
+  const handleMaxIterationsChange = async (raw: string) => {
+    const next = Number.parseInt(raw, 10);
+    if (Number.isNaN(next)) return;
+    setMaxIterations(next);
+    try {
+      await tauriAPI.ui.setPrefs({ maxIterations: next });
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const handleMaxBuildAttemptsChange = async (raw: string) => {
+    const next = Number.parseInt(raw, 10);
+    if (Number.isNaN(next)) return;
+    setMaxBuildAttempts(next);
+    try {
+      await tauriAPI.ui.setPrefs({ maxBuildAttempts: next });
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const handleExport = async () => {
+    setErrorMessage(null);
+    setStatusMessage(null);
+    setExporting(true);
+    try {
+      const result = await tauriAPI.settings.export(includeSecretsInExport);
+      if (!result) {
+        // User cancelled the save dialog.
+        return;
+      }
+      const skippedHint =
+        result.keysSkipped.length > 0
+          ? ` (skipped ${result.keysSkipped.length} sensitive key${result.keysSkipped.length === 1 ? "" : "s"})`
+          : "";
+      setStatusMessage(`Exported ${result.keysWritten} settings to ${result.path}${skippedHint}.`);
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : String(err));
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleImport = async () => {
+    if (
+      !window.confirm(
+        "Import will REPLACE your current settings with the contents of the chosen file. Settings absent from the file (including API keys, if the export was sanitized) will be cleared. Continue?",
+      )
+    ) {
+      return;
+    }
+    setErrorMessage(null);
+    setStatusMessage(null);
+    setImporting(true);
+    try {
+      const result = await tauriAPI.settings.import();
+      if (!result) {
+        return;
+      }
+      setStatusMessage(
+        `Imported ${result.keysImported} settings from ${result.path}. Reopen settings to see the new values.`,
+      );
+      // Refresh local tuning values from the imported store.
+      const prefs = await tauriAPI.ui.getPrefs();
+      setMaxIterations(prefs.maxIterations ?? DEFAULT_MAX_ITERATIONS);
+      setMaxBuildAttempts(prefs.maxBuildAttempts ?? DEFAULT_MAX_BUILD_ATTEMPTS);
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : String(err));
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const handleInstall = async () => {
     const target = versionInput.trim();
@@ -245,6 +340,128 @@ export function DeveloperTab() {
             <Button onClick={handleInstall} disabled={installing} size="sm">
               <Download className="mr-2 h-3.5 w-3.5" />
               {installing ? "Installing…" : "Install"}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Tuning */}
+      <div className="rounded-lg border border-border p-3">
+        <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          Tuning
+        </div>
+        <p className="mb-3 text-xs text-muted-foreground">
+          Knobs that control how the evolution loop behaves. Changes take effect on the next run.
+        </p>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <label
+                className="text-xs font-medium text-muted-foreground"
+                htmlFor="dev-maxIterations"
+              >
+                Max iterations
+              </label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex h-4 w-4 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground/70"
+                    aria-label="Max iterations info"
+                  >
+                    <Info className="h-3.5 w-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="max-w-xs text-xs">
+                  <p>API calls before stopping (default: {DEFAULT_MAX_ITERATIONS}).</p>
+                  <p className="mt-1">
+                    Lower = faster/cheaper, may not finish complex changes.
+                    <br />
+                    Higher = more thorough, uses more API calls.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <Input
+              id="dev-maxIterations"
+              type="number"
+              min={1}
+              max={200}
+              value={maxIterations}
+              onChange={(e) => handleMaxIterationsChange(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <label
+                className="text-xs font-medium text-muted-foreground"
+                htmlFor="dev-maxBuildAttempts"
+              >
+                Max build attempts
+              </label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex h-4 w-4 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground/70"
+                    aria-label="Max build attempts info"
+                  >
+                    <Info className="h-3.5 w-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="max-w-xs text-xs">
+                  Failed builds before giving up on a run (default: {DEFAULT_MAX_BUILD_ATTEMPTS}).
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <Input
+              id="dev-maxBuildAttempts"
+              type="number"
+              min={1}
+              max={20}
+              value={maxBuildAttempts}
+              onChange={(e) => handleMaxBuildAttemptsChange(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Backup & Restore */}
+      <div className="rounded-lg border border-border p-3">
+        <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+          <Archive className="h-3.5 w-3.5" />
+          Backup & Restore
+        </div>
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Export the contents of <code className="rounded bg-muted px-1 font-mono">settings.json</code>{" "}
+            to a file you can keep or share. Import replaces all current settings with the contents of
+            a previously exported file.
+          </p>
+          <label className="flex items-start gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={includeSecretsInExport}
+              onChange={(e) => setIncludeSecretsInExport(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              Include API keys in export
+              <span className="block text-[10px] text-muted-foreground/70">
+                By default, legacy plain-text API keys are stripped before writing the file. Enable
+                this only if you trust the destination.
+              </span>
+            </span>
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={handleExport} disabled={exporting} size="sm" variant="outline">
+              <Download className="mr-2 h-3.5 w-3.5" />
+              {exporting ? "Exporting…" : "Export settings"}
+            </Button>
+            <Button onClick={handleImport} disabled={importing} size="sm" variant="outline">
+              <Upload className="mr-2 h-3.5 w-3.5" />
+              {importing ? "Importing…" : "Import settings"}
             </Button>
           </div>
         </div>
