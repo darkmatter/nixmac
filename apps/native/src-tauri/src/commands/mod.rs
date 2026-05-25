@@ -13,6 +13,7 @@ pub mod apply;
 pub mod cli_tool;
 pub mod config;
 pub mod debug;
+pub mod dev_configs;
 pub mod editor;
 pub mod evolve;
 pub mod evolve_state;
