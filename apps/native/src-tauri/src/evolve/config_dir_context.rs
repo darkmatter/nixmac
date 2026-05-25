@@ -36,15 +36,16 @@ struct DirEntryView {
 }
 
 fn calc_max_depth(repo_root: &Path, config_dir: &str) -> usize {
-    // Max depth should is the default config dir depth + the number of levels (if any)
+    // Max depth should be the default config dir depth + the number of levels (if any)
     // between the repo root and the config dir. For example, if the config dir is at my/repo/nix/os,
-    // then the max depth should be 6 (default) + 2 (my/repo) = 8.
-    let max_depth = MAX_CONFIG_DIR_DEPTH
-        + config_dir
-            .split(std::path::MAIN_SEPARATOR)
-            .count()
-            .saturating_sub(repo_root.components().count());
-    max_depth
+    // then the max depth should be 6 (default) + 2 (nix/os) = 8.
+    let config_dir_path = Path::new(config_dir);
+    let relative_depth = config_dir_path
+        .strip_prefix(repo_root)
+        .map(|relative_path| relative_path.components().count())
+        .unwrap_or(0);
+
+    MAX_CONFIG_DIR_DEPTH + relative_depth
 }
 
 pub fn format_config_dir_context(repo_root: &Path, config_dir: &str) -> Result<String> {
