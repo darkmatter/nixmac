@@ -530,6 +530,9 @@ fn run_gui_mode(
             // Settings backup/restore (developer-mode only)
             commands::settings_io::settings_export,
             commands::settings_io::settings_import,
+            // Configurable registry (auto-UI for dev settings)
+            commands::dev_configs::dev_configs_list,
+            commands::dev_configs::dev_config_set,
             // Model cache
             commands::ui_prefs::get_cached_models,
             commands::ui_prefs::set_cached_models,

@@ -1,32 +1,46 @@
 //! Configurable — store-backed dev settings without per-knob boilerplate.
 //!
-//! Derive `Configurable` on a struct to generate a `load(app)` method that reads
-//! each field from `tauri-plugin-store`, falling back to the per-field default.
-//! Edits made by the user via the dev-settings UI (which writes to the same
-//! store keys) are picked up on the next `load(app)` call — i.e. hot-reload.
+//! Derive `Configurable` on a struct to:
+//!   1. Generate a `load(app)` method that reads each field from
+//!      `tauri-plugin-store`, falling back to the per-field default.
+//!   2. Expose a rich schema (`schema()`) describing every field's
+//!      type, label, help text, range, and default value.
+//!   3. Auto-register the struct in a global `inventory` registry so
+//!      a single Tauri command can enumerate all configurables and
+//!      render their UI without per-struct frontend code.
 //!
 //! ```ignore
 //! use configurable::Configurable;
 //!
 //! #[derive(Configurable, Debug, Clone)]
-//! #[config(store_path = "settings.json")]
+//! #[config(
+//!     store_path = "settings.json",
+//!     display_name = "Tuning",
+//! )]
 //! pub struct EvolutionLimits {
-//!     #[config(default = 25, key = "maxIterations")]
+//!     #[config(
+//!         default = 25,
+//!         key = "maxIterations",
+//!         label = "Max iterations",
+//!         range = 1..=200,
+//!         help = "API calls before stopping",
+//!     )]
 //!     pub max_iterations: usize,
-//!
-//!     #[config(default = 5, key = "maxBuildAttempts")]
-//!     pub max_build_attempts: usize,
 //! }
 //!
 //! let limits = EvolutionLimits::load(&app)?;
+//! let schema = EvolutionLimits::schema(&app)?; // also exposed via the registry
 //! ```
 
 use anyhow::Result;
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
+use specta::Type;
 use tauri::{AppHandle, Runtime};
 use tauri_plugin_store::StoreExt;
 
 pub use configurable_derive::Configurable;
+pub use inventory;
 
 /// Read a typed field from the named store, returning `None` when the key is
 /// absent or the stored JSON fails to deserialize into `T` (e.g. schema drift).
@@ -40,4 +54,127 @@ where
     Ok(store
         .get(key)
         .and_then(|value| serde_json::from_value(value.clone()).ok()))
+}
+
+/// Write a single key/value pair to the named store and persist.
+pub fn write_field<R: Runtime>(
+    app: &AppHandle<R>,
+    store_path: &str,
+    key: &str,
+    value: serde_json::Value,
+) -> Result<()> {
+    let store = app.store(store_path)?;
+    store.set(key, value);
+    store.save()?;
+    Ok(())
+}
+
+// =============================================================================
+// Schema types — flow to TS via specta
+// =============================================================================
+
+/// What kind of control should render this field.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum FieldType {
+    /// Numeric input with optional min/max/step.
+    Number {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        min: Option<f64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        max: Option<f64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        step: Option<f64>,
+    },
+    /// Toggle / checkbox.
+    Boolean,
+    /// Single-line text or multi-line textarea when `multiline = true`.
+    String { multiline: bool },
+    /// Select / dropdown of pre-declared options.
+    Enum { variants: Vec<EnumVariant> },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct EnumVariant {
+    pub value: String,
+    pub label: String,
+}
+
+/// Per-field description rendered into a UI control.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ConfigField {
+    /// Key as written to the underlying store (typically camelCase).
+    pub key: String,
+    /// Human-readable label rendered above the input.
+    pub label: String,
+    /// Optional help text (rendered as a tooltip / "info" icon).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub help: Option<String>,
+    /// What control to render.
+    pub ty: FieldType,
+    /// Default if the store has no value yet.
+    pub default: serde_json::Value,
+    /// Current value loaded from the store.
+    pub current: serde_json::Value,
+}
+
+/// One section in the auto-rendered settings panel — corresponds to one
+/// `#[derive(Configurable)]` struct.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ConfigurableSchema {
+    /// Unique stable identifier (struct's Rust name). Used by `set_field` to
+    /// dispatch to the right registered configurable.
+    pub name: String,
+    /// Title shown above the section in the UI.
+    pub display_name: String,
+    /// Optional one-line description shown under the title.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    pub fields: Vec<ConfigField>,
+}
+
+// =============================================================================
+// Registry — auto-populated at startup via inventory::submit! in the derive
+// =============================================================================
+
+/// Type-erased per-struct shim that the registry can call without knowing the
+/// concrete type. The derive generates one of these per `Configurable` struct
+/// and submits it to the inventory.
+pub struct RegisteredConfig {
+    /// Stable identifier matching `ConfigurableSchema.name`.
+    pub name: &'static str,
+    /// Returns the schema with all fields' `current` values populated.
+    pub schema_fn: fn(&AppHandle<tauri::Wry>) -> Result<ConfigurableSchema>,
+    /// Writes `value` to the store under `key`, with type-checking against
+    /// the field's declared type. Returns an error if the field doesn't
+    /// exist on this struct or the value can't be coerced.
+    pub set_field_fn: fn(&AppHandle<tauri::Wry>, &str, serde_json::Value) -> Result<()>,
+}
+
+inventory::collect!(RegisteredConfig);
+
+/// Walks the inventory and returns all registered configurable schemas with
+/// their current values populated.
+pub fn all_schemas(app: &AppHandle<tauri::Wry>) -> Result<Vec<ConfigurableSchema>> {
+    inventory::iter::<RegisteredConfig>
+        .into_iter()
+        .map(|reg| (reg.schema_fn)(app))
+        .collect()
+}
+
+/// Find the registered struct by name and delegate the set.
+pub fn set_field_by_name(
+    app: &AppHandle<tauri::Wry>,
+    struct_name: &str,
+    field_key: &str,
+    value: serde_json::Value,
+) -> Result<()> {
+    let reg = inventory::iter::<RegisteredConfig>
+        .into_iter()
+        .find(|reg| reg.name == struct_name)
+        .ok_or_else(|| anyhow::anyhow!("unknown Configurable: {struct_name}"))?;
+    (reg.set_field_fn)(app, field_key, value)
 }

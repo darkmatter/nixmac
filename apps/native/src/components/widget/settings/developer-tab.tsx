@@ -1,11 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
 import type { UpdateChannel } from "@/ipc/types";
 import { useUpdater } from "@/hooks/use-updater";
-import { DEFAULT_MAX_ITERATIONS } from "@/lib/constants";
 import { getVersion } from "@tauri-apps/api/app";
 import {
   AlertTriangle,
@@ -15,16 +13,14 @@ import {
   GitBranch,
   Eraser,
   History,
-  Info,
   Pin,
   RotateCcw,
-  SlidersHorizontal,
   Upload,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { AutoTuningSection } from "@/components/widget/settings/auto-tuning-section";
 
 const VERSION_PATTERN = /^[0-9]+(?:\.[0-9]+){0,2}(?:-[a-zA-Z0-9.-]+)?$/;
-const DEFAULT_MAX_BUILD_ATTEMPTS = 5;
 
 export function DeveloperTab() {
   const { installVersion, relaunch, clearPinnedVersion } = useUpdater();
@@ -38,46 +34,13 @@ export function DeveloperTab() {
   const [clearingState, setClearingState] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [maxIterations, setMaxIterations] = useState<number>(DEFAULT_MAX_ITERATIONS);
-  const [maxBuildAttempts, setMaxBuildAttempts] = useState<number>(DEFAULT_MAX_BUILD_ATTEMPTS);
   const [includeSecretsInExport, setIncludeSecretsInExport] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     getVersion().then(setCurrentVersion).catch(() => setCurrentVersion("unknown"));
-    tauriAPI.ui
-      .getPrefs()
-      .then((prefs) => {
-        setMaxIterations(prefs.maxIterations ?? DEFAULT_MAX_ITERATIONS);
-        setMaxBuildAttempts(prefs.maxBuildAttempts ?? DEFAULT_MAX_BUILD_ATTEMPTS);
-      })
-      .catch(() => {
-        // Defaults already set; just leave them.
-      });
   }, []);
-
-  const handleMaxIterationsChange = async (raw: string) => {
-    const next = Number.parseInt(raw, 10);
-    if (Number.isNaN(next)) return;
-    setMaxIterations(next);
-    try {
-      await tauriAPI.ui.setPrefs({ maxIterations: next });
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : String(err));
-    }
-  };
-
-  const handleMaxBuildAttemptsChange = async (raw: string) => {
-    const next = Number.parseInt(raw, 10);
-    if (Number.isNaN(next)) return;
-    setMaxBuildAttempts(next);
-    try {
-      await tauriAPI.ui.setPrefs({ maxBuildAttempts: next });
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : String(err));
-    }
-  };
 
   const handleExport = async () => {
     setErrorMessage(null);
@@ -120,10 +83,6 @@ export function DeveloperTab() {
       setStatusMessage(
         `Imported ${result.keysImported} settings from ${result.path}. Reopen settings to see the new values.`,
       );
-      // Refresh local tuning values from the imported store.
-      const prefs = await tauriAPI.ui.getPrefs();
-      setMaxIterations(prefs.maxIterations ?? DEFAULT_MAX_ITERATIONS);
-      setMaxBuildAttempts(prefs.maxBuildAttempts ?? DEFAULT_MAX_BUILD_ATTEMPTS);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : String(err));
     } finally {
@@ -345,89 +304,8 @@ export function DeveloperTab() {
         </div>
       </div>
 
-      {/* Tuning */}
-      <div className="rounded-lg border border-border p-3">
-        <div className="mb-2 flex items-center gap-2 text-sm font-medium">
-          <SlidersHorizontal className="h-3.5 w-3.5" />
-          Tuning
-        </div>
-        <p className="mb-3 text-xs text-muted-foreground">
-          Knobs that control how the evolution loop behaves. Changes take effect on the next run.
-          Saved to <code className="rounded bg-muted px-1 font-mono">.nixmac/settings.json</code> in
-          your config repo so they sync across machines.
-        </p>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <label
-                className="text-xs font-medium text-muted-foreground"
-                htmlFor="dev-maxIterations"
-              >
-                Max iterations
-              </label>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="inline-flex h-4 w-4 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground/70"
-                    aria-label="Max iterations info"
-                  >
-                    <Info className="h-3.5 w-3.5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="max-w-xs text-xs">
-                  <p>API calls before stopping (default: {DEFAULT_MAX_ITERATIONS}).</p>
-                  <p className="mt-1">
-                    Lower = faster/cheaper, may not finish complex changes.
-                    <br />
-                    Higher = more thorough, uses more API calls.
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            <Input
-              id="dev-maxIterations"
-              type="number"
-              min={1}
-              max={200}
-              value={maxIterations}
-              onChange={(e) => handleMaxIterationsChange(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <label
-                className="text-xs font-medium text-muted-foreground"
-                htmlFor="dev-maxBuildAttempts"
-              >
-                Max build attempts
-              </label>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="inline-flex h-4 w-4 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground/70"
-                    aria-label="Max build attempts info"
-                  >
-                    <Info className="h-3.5 w-3.5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="max-w-xs text-xs">
-                  Failed builds before giving up on a run (default: {DEFAULT_MAX_BUILD_ATTEMPTS}).
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            <Input
-              id="dev-maxBuildAttempts"
-              type="number"
-              min={1}
-              max={20}
-              value={maxBuildAttempts}
-              onChange={(e) => handleMaxBuildAttemptsChange(e.target.value)}
-            />
-          </div>
-        </div>
-      </div>
+      {/* Tuning — auto-generated from every Configurable struct in the inventory */}
+      <AutoTuningSection />
 
       {/* Backup & Restore */}
       <div className="rounded-lg border border-border p-3">
