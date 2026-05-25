@@ -1,7 +1,9 @@
-//! `#[derive(Configurable)]` — generates `Foo::load(app)` that reads each field
-//! from `tauri-plugin-store` (falling back to the per-field default).
+//! `#[derive(Configurable)]` generates an inherent `Foo::load(app)` method that
+//! reads each field from `tauri-plugin-store`, falling back to the per-field
+//! default when no stored value is present.
 //!
-//! See the `configurable` crate for the user-facing trait and runtime helpers.
+//! The companion `configurable` crate provides the runtime helper(s) used by the
+//! generated code and re-exports this derive for end users.
 
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
