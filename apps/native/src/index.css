@@ -4,57 +4,59 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
+    /* Minted light tokens, adapted from apathy-theme for Tailwind v3 HSL variables. */
+    --background: 165 40% 98%;
+    --foreground: 230 12% 18%;
+    --card: 165 35% 97%;
+    --card-foreground: 230 12% 18%;
+    --popover: 165 35% 97%;
+    --popover-foreground: 230 12% 18%;
+    --primary: 156 68% 69%;
+    --primary-foreground: 240 17% 7%;
+    --secondary: 165 20% 93%;
+    --secondary-foreground: 230 12% 25%;
+    --muted: 165 20% 93%;
+    --muted-foreground: 230 9% 50%;
+    --accent: 85 53% 72%;
+    --accent-foreground: 230 12% 18%;
+    --destructive: 337 80% 44%;
+    --destructive-foreground: 165 35% 98%;
+    --border: 165 20% 88%;
+    --input: 165 20% 88%;
+    --ring: 156 68% 69%;
+    --chart-1: 156 68% 69%;
+    --chart-2: 85 53% 72%;
+    --chart-3: 191 60% 50%;
+    --chart-4: 21 100% 77%;
+    --chart-5: 247 58% 72%;
+    --radius: 0.625rem;
   }
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    /* Minted dark tokens from apathy-theme, used by default via index.html. */
+    --background: 240 17% 7%;
+    --foreground: 225 7% 89%;
+    --card: 234 22% 9%;
+    --card-foreground: 225 7% 89%;
+    --popover: 245 30% 8%;
+    --popover-foreground: 225 7% 89%;
+    --primary: 156 68% 69%;
+    --primary-foreground: 240 17% 7%;
+    --secondary: 246 12% 16%;
+    --secondary-foreground: 225 7% 89%;
+    --muted: 228 18% 27%;
+    --muted-foreground: 230 13% 52%;
+    --accent: 85 53% 72%;
+    --accent-foreground: 240 17% 7%;
+    --destructive: 337 80% 44%;
+    --destructive-foreground: 225 7% 89%;
+    --border: 262 8% 28%;
+    --input: 250 8% 31%;
+    --ring: 156 68% 69%;
+    --chart-1: 156 68% 69%;
+    --chart-2: 85 53% 72%;
+    --chart-3: 191 60% 50%;
+    --chart-4: 21 100% 77%;
+    --chart-5: 247 58% 72%;
   }
 }
 
@@ -74,27 +76,27 @@
     @apply text-foreground;
   }
 
-  /* Monaco diff text colors (emerald-400 / red-400) */
+  /* Monaco diff text colors (Minted added / deleted) */
   .nixmac-line-added,
   .nixmac-line-added * {
-    color: #34d399 !important;
+    color: #9ff0e3 !important;
   }
   /* Deleted lines in inline diff are rendered as view zones, not model lines */
   .monaco-editor .view-zones .view-line,
   .monaco-editor .view-zones .view-line * {
-    color: #f87171 !important;
+    color: #f09fad !important;
   }
 
   /* Diff gutter +/- indicator colors (match line text) */
   .monaco-diff-editor .codicon-diff-insert,
   .monaco-diff-editor .margin .insert-sign {
-    background: #34d39930;
-    color: #34d399 !important;
+    background: #9ff0e330;
+    color: #9ff0e3 !important;
   }
   .monaco-diff-editor .codicon-diff-remove,
   .monaco-diff-editor .margin .delete-sign {
-    background: #f8717130;
-    color: #f87171 !important;
+    background: #f09fad30;
+    color: #f09fad !important;
   }
   /* Hide the bleeding delete indicator inside the margin overlay */
   .monaco-editor .margin-view-overlays .cldr.delete-sign.codicon-diff-remove,
@@ -102,14 +104,20 @@
     display: none !important;
   }
 
-  /* Monaco scrollbar matching nixmac style */
+  /* Give Monaco diff diagnostics and the right edge a little breathing room. */
+  [data-testid="monaco-diff-view"] {
+    box-sizing: border-box;
+    padding-right: 2px;
+  }
+
+  /* Monaco scrollbar matching Minted style */
   .monaco-scrollable-element > .scrollbar.vertical > .slider {
-    background: hsl(173 80% 75% / 0.6) !important;
+    background: hsl(var(--primary) / 0.6) !important;
     border-radius: 4px !important;
   }
   .monaco-scrollable-element > .scrollbar.vertical > .slider:hover,
   .monaco-scrollable-element > .scrollbar.vertical.active > .slider {
-    background: hsl(173 80% 75%) !important;
+    background: hsl(var(--primary)) !important;
   }
 
   /* Scrollbar styling */
@@ -122,11 +130,11 @@
     border-radius: 4px;
   }
   ::-webkit-scrollbar-thumb {
-    background-color: hsl(173 80% 75% / 0.6);
+    background-color: hsl(var(--primary) / 0.6);
     border-radius: 4px;
     width: 2px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background-color: hsl(173 80% 75%);
+    background-color: hsl(var(--primary));
   }
 }

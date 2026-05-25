@@ -1,80 +1,128 @@
-export const NIXMAC_THEME = "nixmac-dark";
+import mintedThemeJson from "@/themes/minted.json";
+import type { editor } from "monaco-editor";
 
-export const NIXMAC_THEME_DATA = {
-  base: "vs-dark" as const,
+export const NIXMAC_THEME = "apathy-minted";
+
+type VscodeTokenColor = {
+  scope?: string | string[];
+  settings?: {
+    foreground?: string;
+    fontStyle?: string;
+  };
+};
+
+type VscodeTheme = {
+  colors?: Record<string, string>;
+  tokenColors?: VscodeTokenColor[];
+};
+
+const mintedTheme = mintedThemeJson as VscodeTheme;
+
+function tokenColor(color: string | undefined): string | undefined {
+  if (!color) return undefined;
+  const normalized = color.trim().replace(/^#/, "");
+  return normalized.length >= 6 ? normalized.slice(0, 6) : undefined;
+}
+
+function scopes(scope: string | string[] | undefined): string[] {
+  if (!scope) return [];
+  return (Array.isArray(scope) ? scope : scope.split(","))
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0 && !/\s/.test(part));
+}
+
+const tokenRules: editor.ITokenThemeRule[] = (mintedTheme.tokenColors ?? []).flatMap((entry) => {
+  const foreground = tokenColor(entry.settings?.foreground);
+  const fontStyle = entry.settings?.fontStyle;
+
+  if (!foreground && !fontStyle) return [];
+
+  return scopes(entry.scope).map((token) => ({
+    token,
+    ...(foreground ? { foreground } : {}),
+    ...(fontStyle ? { fontStyle } : {}),
+  }));
+});
+
+const mintedForeground = tokenColor(mintedTheme.colors?.["editor.foreground"]) ?? "e1e2e5";
+const mintedComment = "282948";
+const mintedString = "b7ce99";
+const mintedKeyword = "4a5585";
+const mintedNumber = "7bc2df";
+const mintedFunction = "99d3b9";
+const mintedType = "998fe1";
+const mintedWarning = "fcb086";
+const mintedDeleted = "f09fad";
+const mintedAdded = "9ff0e3";
+
+export const NIXMAC_THEME_DATA: editor.IStandaloneThemeData = {
+  base: "vs-dark",
   inherit: true,
   rules: [
-    { token: "", foreground: "fafafa" },
-    { token: "comment", foreground: "a3a3a3", fontStyle: "italic" },
-    { token: "string", foreground: "23d0e7" },
-    { token: "string.escape", foreground: "f7b23b" },
-    { token: "keyword", foreground: "55a0f6" },
-    { token: "keyword.control", foreground: "55a0f6" },
-    { token: "keyword.operator", foreground: "a3a3a3" },
-    { token: "constant", foreground: "f7b23b" },
-    { token: "constant.language", foreground: "f7b23b" },
-    { token: "constant.numeric", foreground: "f7b23b" },
-    { token: "number", foreground: "f7b23b" },
-    { token: "type", foreground: "55a0f6" },
-    { token: "type.identifier", foreground: "55a0f6" },
-    { token: "entity.name.function", foreground: "23d0e7" },
-    { token: "entity.name.type", foreground: "55a0f6" },
-    { token: "entity.name.tag", foreground: "f4587c" },
-    { token: "support.function", foreground: "23d0e7" },
-    { token: "variable.parameter", foreground: "f7b23b" },
-    { token: "invalid", foreground: "f4587c" },
-    { token: "addition.diff", foreground: "23d0e7" },
-    { token: "deletion.diff", foreground: "f4587c" },
-    { token: "info.diff", foreground: "a3a3a3" },
-    // JSON-specific (vs-dark has more specific rules that override our generic "string"/"keyword"; explicit suffix wins)
-    { token: "string.key.json", foreground: "55a0f6" },
-    { token: "string.value.json", foreground: "23d0e7" },
-    { token: "keyword.json", foreground: "f7b23b" },
-    { token: "number.json", foreground: "f7b23b" },
-    // YAML-specific
-    { token: "string.yaml", foreground: "23d0e7" },
-    { token: "comment.yaml", foreground: "a3a3a3", fontStyle: "italic" },
-    { token: "keyword.yaml", foreground: "55a0f6" },
-    { token: "number.yaml", foreground: "f7b23b" },
-    { token: "type.yaml", foreground: "55a0f6" },
-    { token: "tag.yaml", foreground: "f4587c" },
-    // TOML-specific
-    { token: "string.toml", foreground: "23d0e7" },
-    { token: "comment.toml", foreground: "a3a3a3", fontStyle: "italic" },
-    { token: "keyword.toml", foreground: "55a0f6" },
-    { token: "number.toml", foreground: "f7b23b" },
-    { token: "type.toml", foreground: "55a0f6" },
-    // Shell-specific
-    { token: "string.shell", foreground: "23d0e7" },
-    { token: "comment.shell", foreground: "a3a3a3", fontStyle: "italic" },
-    { token: "keyword.shell", foreground: "55a0f6" },
-    { token: "number.shell", foreground: "f7b23b" },
-    { token: "variable.shell", foreground: "f7b23b" },
-    { token: "predefined.shell", foreground: "23d0e7" },
+    { token: "", foreground: mintedForeground },
+    ...tokenRules,
+    // Monaco's built-in tokenizers use language-specific suffixes that can outrank
+    // the generic TextMate scopes from the Minted theme. Keep these explicit so
+    // bundled JSON/YAML/TOML/Shell views still inherit the Minted palette.
+    { token: "comment", foreground: mintedComment, fontStyle: "italic" },
+    { token: "string", foreground: mintedString },
+    { token: "string.escape", foreground: mintedString },
+    { token: "keyword", foreground: mintedKeyword },
+    { token: "keyword.control", foreground: mintedKeyword },
+    { token: "keyword.operator", foreground: mintedForeground },
+    { token: "constant", foreground: mintedNumber },
+    { token: "constant.language", foreground: mintedNumber },
+    { token: "constant.numeric", foreground: mintedNumber },
+    { token: "number", foreground: mintedNumber },
+    { token: "type", foreground: mintedType },
+    { token: "type.identifier", foreground: mintedType },
+    { token: "entity.name.function", foreground: mintedFunction },
+    { token: "entity.name.type", foreground: mintedType },
+    { token: "support.function", foreground: mintedFunction },
+    { token: "variable.parameter", foreground: mintedWarning },
+    { token: "invalid", foreground: mintedDeleted },
+    { token: "addition.diff", foreground: mintedAdded },
+    { token: "deletion.diff", foreground: mintedDeleted },
+    { token: "info.diff", foreground: mintedForeground },
+    { token: "string.key.json", foreground: mintedKeyword },
+    { token: "string.value.json", foreground: mintedString },
+    { token: "keyword.json", foreground: mintedNumber },
+    { token: "number.json", foreground: mintedNumber },
+    { token: "string.yaml", foreground: mintedString },
+    { token: "comment.yaml", foreground: mintedComment, fontStyle: "italic" },
+    { token: "keyword.yaml", foreground: mintedKeyword },
+    { token: "number.yaml", foreground: mintedNumber },
+    { token: "type.yaml", foreground: mintedType },
+    { token: "tag.yaml", foreground: mintedDeleted },
+    { token: "string.toml", foreground: mintedString },
+    { token: "comment.toml", foreground: mintedComment, fontStyle: "italic" },
+    { token: "keyword.toml", foreground: mintedKeyword },
+    { token: "number.toml", foreground: mintedNumber },
+    { token: "type.toml", foreground: mintedType },
+    { token: "string.shell", foreground: mintedString },
+    { token: "comment.shell", foreground: mintedComment, fontStyle: "italic" },
+    { token: "keyword.shell", foreground: mintedKeyword },
+    { token: "number.shell", foreground: mintedNumber },
+    { token: "variable.shell", foreground: mintedWarning },
+    { token: "predefined.shell", foreground: mintedFunction },
   ],
   colors: {
-    "editor.background": "#0a0a0a",
-    "editor.foreground": "#fafafa",
-    "editorLineNumber.foreground": "#404040",
-    "editorLineNumber.activeForeground": "#a3a3a3",
-    "editor.selectionBackground": "#23d0e730",
-    "editor.inactiveSelectionBackground": "#23d0e718",
-    "editor.lineHighlightBackground": "#141414",
-    "editorCursor.foreground": "#23d0e7",
-    "editorGutter.background": "#0a0a0a",
-    "editorGutter.addedBackground": "#23d0e740",
-    "editorGutter.deletedBackground": "#f4587c40",
-    "editorGutter.modifiedBackground": "#f7b23b40",
-    "scrollbarSlider.background": "#26262680",
-    "scrollbarSlider.hoverBackground": "#404040aa",
-    "scrollbarSlider.activeBackground": "#555555aa",
-    "editorWidget.background": "#141414",
-    "editorWidget.border": "#262626",
-    "diffEditor.insertedLineBackground": "#23d0e715",
-    "diffEditor.removedLineBackground": "#f4587c15",
-    "diffEditor.insertedTextBackground": "#00000000",
-    "diffEditor.removedTextBackground": "#00000000",
-    "diffEditorGutter.insertedLineBackground": "#00000000",
-    "diffEditorGutter.removedLineBackground": "#00000000",
+    ...(mintedTheme.colors ?? {}),
+    "editor.background": "#090910",
+    "editor.foreground": "#e1e2e5",
+    "editorGutter.background": "#090910",
+    "editor.selectionBackground": "#191a25fa",
+    "editor.inactiveSelectionBackground": "#0c002ecf",
+    "editor.lineHighlightBackground": "#1b162994",
+    "editorCursor.foreground": "#da4c51",
+    "scrollbarSlider.background": "#1b1b364d",
+    "scrollbarSlider.hoverBackground": "#383d51aa",
+    "scrollbarSlider.activeBackground": "#4a4854cc",
+    "diffEditor.insertedLineBackground": "#010e0daa",
+    "diffEditor.removedLineBackground": "#0f0404ff",
+    "diffEditor.insertedTextBackground": "#112b2a42",
+    "diffEditor.removedTextBackground": "#20030cbb",
+    "diffEditorGutter.insertedLineBackground": "#011211e2",
+    "diffEditorGutter.removedLineBackground": "#2d0a12b4",
   },
 };
