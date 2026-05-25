@@ -53,7 +53,7 @@ const config: StorybookConfig = {
         alias: {
           "@": path.resolve(appRoot, "src"),
           "#storybook/preview": path.resolve(storybookDir, "preview.tsx"),
-          "@/tauri-api": path.resolve(storybookDir, "mocks/tauri-api.ts"),
+          "@/ipc/api": path.resolve(storybookDir, "mocks/ipc-api.ts"),
           "@/components/ui": path.resolve(uiPackageRoot, "components/ui"),
           "@nixmac/ui": uiPackageRoot,
           "@tauri-apps/api/core": path.resolve(storybookDir, "mocks/tauri-core.ts"),

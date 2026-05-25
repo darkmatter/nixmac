@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useWidgetStore } from "@/stores/widget-store";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useHistory } from "@/hooks/use-history";
-import { darwinAPI } from "@/tauri-api";
-import type { HistoryItem } from "@/types/shared";
+import { tauriAPI } from "@/ipc/api";
+import type { HistoryItem } from "@/ipc/types";
 
 // Sentinel hash used to identify the frontend-only preview item.
 export const PREVIEW_ITEM_HASH = "n1xm4c0";
@@ -241,16 +241,16 @@ export function useHistoryRestore(
     setRestoringHash(hash);
     setProcessing(true);
     try {
-      await darwinAPI.darwin.prepareRestore(hash);
+      await tauriAPI.darwin.prepareRestore(hash);
       await triggerRebuild({
         context: "rollback",
         onSuccess: async () => {
-          const result = await darwinAPI.darwin.finalizeRestore(hash);
+          const result = await tauriAPI.darwin.finalizeRestore(hash);
           setGitStatus(result);
           await loadHistory();
         },
         onFailure: async () => {
-          await darwinAPI.darwin.abortRestore();
+          await tauriAPI.darwin.abortRestore();
         },
       });
     } catch {

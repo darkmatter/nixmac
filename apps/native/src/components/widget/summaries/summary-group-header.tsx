@@ -1,4 +1,4 @@
-import type { ChangeSummary } from "@/types/shared";
+import type { ChangeSummary } from "@/ipc/types";
 
 type SummaryGroupHeaderProps = Pick<ChangeSummary, "title" | "description">;
 

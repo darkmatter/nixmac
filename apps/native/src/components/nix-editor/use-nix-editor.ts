@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { initNixGrammar } from "@/lib/nix-grammar";
 import { lspClient } from "@/lib/lsp-client";
 import { bridgeMonacoToLsp } from "@/lib/lsp-monaco-bridge";
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 import { NIXMAC_THEME, NIXMAC_THEME_DATA } from "@/components/widget/summaries/monaco-theme";
 
 interface UseNixEditorOptions {
@@ -26,7 +26,7 @@ export function useNixEditor({ filePath, containerRef, onSave, disabled = false 
     if (!editor) return;
     const content = editor.getValue();
     try {
-      await darwinAPI.editor.writeFile(filePath, content);
+      await tauriAPI.editor.writeFile(filePath, content);
       originalContentRef.current = content;
       setIsDirty(false);
       onSave?.(content);
@@ -52,8 +52,8 @@ export function useNixEditor({ filePath, containerRef, onSave, disabled = false 
       try {
         // Load file content + config dir in parallel
         const [content, config] = await Promise.all([
-          darwinAPI.editor.readFile(filePath),
-          darwinAPI.config.get(),
+          tauriAPI.editor.readFile(filePath),
+          tauriAPI.config.get(),
         ]);
         if (disposed) return;
 
@@ -109,7 +109,7 @@ export function useNixEditor({ filePath, containerRef, onSave, disabled = false 
         // Cmd+S to save
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
           const content = editor!.getValue();
-          darwinAPI.editor.writeFile(filePath, content).then(() => {
+          tauriAPI.editor.writeFile(filePath, content).then(() => {
             originalContentRef.current = content;
             setIsDirty(false);
             onSave?.(content);
