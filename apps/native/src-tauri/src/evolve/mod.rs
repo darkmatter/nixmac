@@ -762,15 +762,6 @@ pub async fn generate_evolution<R: Runtime>(
         }
 
         iteration += 1;
-        info!("────────────────────────────────────────────────────────────────");
-        info!(
-            "ITERATION {} | messages={} | build_attempts={}/{}",
-            iteration,
-            messages.len(),
-            build_attempts,
-            max_build_attempts
-        );
-        info!("────────────────────────────────────────────────────────────────");
 
         // Run provider completion inside a short-lived block and select!
         // on it plus a cancellation signal. This lets the future borrow
@@ -779,6 +770,16 @@ pub async fn generate_evolution<R: Runtime>(
         let active_messages = filter_evolution_messages(&messages, iteration, made_build_check);
         let active_provider_messages: Vec<Message> =
             active_messages.iter().map(|m| m.message.clone()).collect();
+
+        info!("────────────────────────────────────────────────────────────────");
+        info!(
+            "ITERATION {} | active messages={} | build_attempts={}/{}",
+            iteration,
+            active_messages.len(),
+            build_attempts,
+            max_build_attempts
+        );
+        info!("────────────────────────────────────────────────────────────────");
 
         // Emit iteration event
         emit_evolve_event(
@@ -1911,16 +1912,14 @@ mod tests {
     }
 
     #[test]
-    fn test_filter_evolution_messages_unknown_strategy_defaults_to_retention() {
+    fn test_filter_evolution_messages_unknown_strategy_defaults_to_none() {
         let (_lock, _restore) = set_memory_strategy_for_test("bogus-value");
         let messages = sample_messages();
 
         let out = filter_evolution_messages(&messages, 1000, false);
 
-        // Unknown values should safely default to retention behavior.
-        assert!(out.iter().all(
-            |m| !matches!(&m.message, Message::User { content } if content == "Short-lived message")
-        ));
+        // Unknown values should safely default to none behavior.
+        assert!(out.len() == messages.len());
     }
 
     #[test]
