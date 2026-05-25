@@ -33,8 +33,8 @@ fn expand(input: DeriveInput) -> syn::Result<TokenStream2> {
     let store_path_binding: TokenStream2 = match &store_path {
         StorePath::Const(s) => quote! { let __store_path: &str = #s; },
         StorePath::Fn(path) => quote! {
-            let __store_path: ::std::string::String = #path(app)?;
-            let __store_path: &str = __store_path.as_str();
+            let __store_path_string: ::std::string::String = #path(app)?;
+            let __store_path: &str = __store_path_string.as_str();
         },
     };
 
