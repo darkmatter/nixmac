@@ -23,8 +23,8 @@ pub mod lifecycle;
 /// Directories ignored by file listing and search helpers.
 pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 
-use crate::git::exec::repo_root;
 use crate::evolve::utils::{escape_user_query, format_duration_secs, short_hash};
+use crate::git::exec::repo_root;
 // Re-export public API
 use crate::shared_types::EvolutionState;
 use crate::system::nix;
@@ -718,13 +718,17 @@ pub async fn generate_evolution<R: Runtime>(
 
     log::debug!("Repo subtree context for prompt:\n{}", repo_view_context);
 
-    messages.push(Message::User {
-        content: format!(
+    messages.push(EvolutionMessage::permanent(
+        Message::User {
+            content: format!(
             "<user_query>{}</user_query>\n\n<repo_view>\n{}\n</repo_view>\nStart by using the 'think' tool to plan your approach.",
-            escape_user_query(prompt),
-            repo_view_context,
-        ),
-    });
+                escape_user_query(prompt),
+                repo_view_context
+            ),
+        },
+        0,
+        None,
+    ));
 
     let gitignore_matcher = gitignore::load_gitignore_matcher(repo_root.as_path())?;
 
