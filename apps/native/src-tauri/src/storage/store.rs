@@ -523,10 +523,6 @@ fn set_secret_pref<R: Runtime>(app: &AppHandle<R>, key: &'static str, value: &st
     set_with_cleanup(&keychain, &legacy, value).map_err(anyhow::Error::from)
 }
 
-fn get_usize_pref<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<Option<usize>> {
-    get_json_pref(app, key)
-}
-
 pub fn get_bool_pref<R: Runtime>(app: &AppHandle<R>, key: &str, default: bool) -> Result<bool> {
     get_json_pref_or(app, key, default)
 }
@@ -536,28 +532,71 @@ pub fn set_bool_pref<R: Runtime>(app: &AppHandle<R>, key: &str, value: bool) -> 
 }
 
 // =============================================================================
-// Evolution Limits
+// Evolution Limits — repo-scoped (sync via user's nix config repo)
 // =============================================================================
+//
+// These knobs live under `<config_dir>/.nixmac/settings.json` so they ride
+// along with the user's nix repo across machines. The matching `Configurable`
+// struct lives at `evolve/config.rs`. Both reads and writes go through the
+// same repo store so the UI form and the agent loop see the same value.
 
-/// Gets the maximum iterations for evolution (default: 25).
+fn get_repo_store<R: Runtime>(
+    app: &AppHandle<R>,
+) -> Result<std::sync::Arc<tauri_plugin_store::Store<R>>> {
+    let path = crate::storage::configurable_scope::repo_store_path(app)?;
+    let store = app.store(&path)?;
+    Ok(store)
+}
+
+/// Copies a key from the legacy local store into the repo store the first
+/// time a repo-scoped getter runs (post-upgrade migration). No-op once the
+/// key already exists in the repo store.
+fn migrate_repo_key<R: Runtime>(app: &AppHandle<R>, key: &str) -> Result<()> {
+    let repo = get_repo_store(app)?;
+    if repo.get(key).is_some() {
+        return Ok(());
+    }
+    let local = get_store(app)?;
+    if let Some(value) = local.get(key) {
+        repo.set(key, value);
+        repo.save()?;
+    }
+    Ok(())
+}
+
+/// Gets the maximum iterations for evolution (default: 25). Repo-scoped.
 pub fn get_max_iterations<R: Runtime>(app: &AppHandle<R>) -> Result<usize> {
-    Ok(get_usize_pref(app, "maxIterations")?.unwrap_or(DEFAULT_MAX_ITERATIONS))
+    // Best-effort migration; falls back to defaults if the repo path can't
+    // be resolved (e.g. config_dir not yet set during onboarding).
+    let _ = migrate_repo_key(app, "maxIterations");
+    let value = get_repo_store(app)
+        .ok()
+        .and_then(|s| s.get("maxIterations"))
+        .and_then(|v| serde_json::from_value::<usize>(v).ok())
+        .unwrap_or(DEFAULT_MAX_ITERATIONS);
+    Ok(value)
 }
 
 pub fn set_max_iterations<R: Runtime>(app: &AppHandle<R>, max: usize) -> Result<()> {
-    let store = get_store(app)?;
+    let store = get_repo_store(app)?;
     store.set("maxIterations", serde_json::json!(max));
     store.save()?;
     Ok(())
 }
 
-/// Gets the maximum build attempts for evolution (default: 5).
+/// Gets the maximum build attempts for evolution (default: 5). Repo-scoped.
 pub fn get_max_build_attempts<R: Runtime>(app: &AppHandle<R>) -> Result<usize> {
-    Ok(get_usize_pref(app, "maxBuildAttempts")?.unwrap_or(5))
+    let _ = migrate_repo_key(app, "maxBuildAttempts");
+    let value = get_repo_store(app)
+        .ok()
+        .and_then(|s| s.get("maxBuildAttempts"))
+        .and_then(|v| serde_json::from_value::<usize>(v).ok())
+        .unwrap_or(5);
+    Ok(value)
 }
 
 pub fn set_max_build_attempts<R: Runtime>(app: &AppHandle<R>, max: usize) -> Result<()> {
-    let store = get_store(app)?;
+    let store = get_repo_store(app)?;
     store.set("maxBuildAttempts", serde_json::json!(max));
     store.save()?;
     Ok(())

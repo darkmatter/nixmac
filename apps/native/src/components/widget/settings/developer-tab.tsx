@@ -353,6 +353,8 @@ export function DeveloperTab() {
         </div>
         <p className="mb-3 text-xs text-muted-foreground">
           Knobs that control how the evolution loop behaves. Changes take effect on the next run.
+          Saved to <code className="rounded bg-muted px-1 font-mono">.nixmac/settings.json</code> in
+          your config repo so they sync across machines.
         </p>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -436,8 +438,10 @@ export function DeveloperTab() {
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">
             Export the contents of <code className="rounded bg-muted px-1 font-mono">settings.json</code>{" "}
-            to a file you can keep or share. Import replaces all current settings with the contents of
-            a previously exported file.
+            (per-device prefs like provider, model, and confirmations) to a file you can keep or share.
+            Import replaces all current settings with the contents of a previously exported file.
+            Repo-synced tuning values live in <code className="rounded bg-muted px-1 font-mono">.nixmac/settings.json</code>{" "}
+            inside your config directory and are versioned by git — not included in this export.
           </p>
           <label className="flex items-start gap-2 text-xs text-muted-foreground">
             <input

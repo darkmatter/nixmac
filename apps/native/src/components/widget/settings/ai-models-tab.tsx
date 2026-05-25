@@ -109,7 +109,7 @@ export function AiModelsTab({
       {([
         { value: "openrouter", label: "OpenRouter" },
         { value: "ollama", label: "Ollama" },
-        { value: "vllm", label: "vLLM / LiteLLM" },
+        { value: "vllm", label: "OpenAI Compatible" },
       ] as const).map(({ value, label }) => {
         return (
           <SelectItem key={value} value={value}>
