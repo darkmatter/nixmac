@@ -3,7 +3,7 @@
 use crate::shared_types::{GitFileStatus, GitStatus};
 use anyhow::{Context, Result};
 use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Output};
 use tauri::AppHandle;
 
@@ -130,6 +130,14 @@ pub fn repo_root(dir: &str) -> PathBuf {
     }
 }
 
+fn is_safe_repo_relative_path(filename: &str) -> bool {
+    let path = Path::new(filename);
+    !path.is_absolute()
+        && path
+            .components()
+            .all(|component| matches!(component, Component::Normal(_) | Component::CurDir))
+}
+
 /// Returns (original, modified) file content for a single file: HEAD content and working-tree content.
 /// Returns empty strings for new files (no HEAD) or deleted files (not on disk).
 pub fn file_diff_contents(dir: &str, filename: &str) -> (String, String) {
@@ -139,7 +147,11 @@ pub fn file_diff_contents(dir: &str, filename: &str) -> (String, String) {
         .output()
         .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
         .unwrap_or_default();
-    let modified = std::fs::read_to_string(repo_root(dir).join(filename)).unwrap_or_default();
+    let modified = if is_safe_repo_relative_path(filename) {
+        std::fs::read_to_string(repo_root(dir).join(filename)).unwrap_or_default()
+    } else {
+        String::new()
+    };
     (original, modified)
 }
 
@@ -787,6 +799,34 @@ deleted file mode 100644
             "untracked file should appear in diff"
         );
         assert!(diff.contains("+{ new = true; }"));
+    }
+
+    #[test]
+    fn test_file_diff_contents_rejects_parent_traversal() {
+        let temp_dir = TempDir::new().unwrap();
+        let outside_file = temp_dir.path().join("outside.txt");
+        fs::write(&outside_file, "outside").unwrap();
+
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        let (original, modified) = file_diff_contents(&repo_dir_str, "../outside.txt");
+        assert!(original.is_empty());
+        assert!(modified.is_empty());
+    }
+
+    #[test]
+    fn test_file_diff_contents_reads_safe_relative_path() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ inputs = {}; }").unwrap();
+
+        let (_, modified) = file_diff_contents(&repo_dir_str, "flake.nix");
+        assert_eq!(modified, "{ inputs = {}; }");
     }
 
     #[test]
