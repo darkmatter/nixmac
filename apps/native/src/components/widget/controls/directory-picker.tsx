@@ -9,7 +9,7 @@ import { ConfigDirBadge } from "@/components/widget/badges/config-dir-badge";
 import { GitignoreBadge } from "@/components/widget/badges/gitignore-badge";
 import { FolderOpen, FolderPlus } from "lucide-react";
 import { useEffect, useState } from "react";
-import { darwinAPI } from "@/tauri-api";
+import { tauriAPI } from "@/ipc/api";
 
 type DirectoryPickerProps = {
   label: string;
@@ -143,7 +143,7 @@ export function DirectoryPicker({
     }
 
     try {
-      const normalized = await darwinAPI.path.normalize(trimmedInput);
+      const normalized = await tauriAPI.path.normalize(trimmedInput);
       if (!normalized) {
         setValidationMessage("Directory path is required");
         return null;
@@ -163,7 +163,7 @@ export function DirectoryPicker({
 
   async function validateDirectoryExists(path: string): Promise<boolean> {
     try {
-      const exists = await darwinAPI.path.exists(path);
+      const exists = await tauriAPI.path.exists(path);
       if (!exists) {
         validateOrInitial(path, `Directory does not exist: ${path}`);
         return false;
@@ -179,7 +179,7 @@ export function DirectoryPicker({
 
   async function validateFlakeExists(path?: string): Promise<boolean> {
     try {
-      const hasFlake = path ? await darwinAPI.flake.existsAt(path) : await darwinAPI.flake.exists();
+      const hasFlake = path ? await tauriAPI.flake.existsAt(path) : await tauriAPI.flake.exists();
       if (hasFlake) {
         setValidationMessage(null);
         return true;

@@ -1,5 +1,5 @@
 import { getModStartLine, getShortFilename, type ChangeWithRichType } from "@/components/widget/utils";
-import type { FileDiffContents } from "@/types/shared";
+import type { FileDiffContents } from "@/ipc/types";
 import type { editor } from "monaco-editor";
 import { useRef } from "react";
 import { CollapsibleDiff } from "./collapsible-diff";

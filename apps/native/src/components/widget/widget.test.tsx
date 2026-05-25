@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DarwinWidget } from "./widget";
 
 // Mock Tauri API
-vi.mock("@/tauri-api", () => ({
-  darwinAPI: {
+vi.mock("@/ipc/api", () => ({
+  tauriAPI: {
     git: {
       status: vi.fn().mockResolvedValue({ hasChanges: false, files: [] }),
     },

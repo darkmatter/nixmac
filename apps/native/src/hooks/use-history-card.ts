@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { KeyboardEvent } from "react";
-import type { HistoryItem } from "@/types/shared";
+import type { HistoryItem } from "@/ipc/types";
 import { cn } from "@/lib/utils";
 import { buildColorMap } from "@/components/widget/utils";
 import type { ColorMap } from "@/components/widget/utils";

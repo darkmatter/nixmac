@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useWidgetStore } from "@/stores/widget-store";
-import { darwinAPI } from "@/tauri-api";
-import type { UpdateChannel } from "@/types/shared";
+import { tauriAPI } from "@/ipc/api";
+import type { UpdateChannel } from "@/ipc/types";
 import { useUpdater } from "@/hooks/use-updater";
 import { getVersion } from "@tauri-apps/api/app";
 import {
@@ -79,7 +79,7 @@ export function DeveloperTab() {
     setErrorMessage(null);
     setUpdateChannel(channel);
     try {
-      await darwinAPI.ui.setPrefs({ updateChannel: channel });
+      await tauriAPI.ui.setPrefs({ updateChannel: channel });
       setStatusMessage(
         channel === "stable"
           ? "Using stable updates from main."
@@ -102,7 +102,7 @@ export function DeveloperTab() {
     setStatusMessage(null);
     setClearingState(true);
     try {
-      await darwinAPI.debug.clearTauriState();
+      await tauriAPI.debug.clearTauriState();
       useWidgetStore.getState().setEvolveState(null);
       useWidgetStore.getState().setGitStatus(null);
       useWidgetStore.getState().setPromptHistory([]);
@@ -132,7 +132,7 @@ export function DeveloperTab() {
 
   const handleDisableDeveloper = async () => {
     try {
-      await darwinAPI.ui.setPrefs({ developerMode: false });
+      await tauriAPI.ui.setPrefs({ developerMode: false });
       useWidgetStore.getState().setDeveloperMode(false);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : String(err));

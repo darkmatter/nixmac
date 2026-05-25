@@ -1,5 +1,5 @@
 import type { ColorMap } from "@/components/widget/utils";
-import type { ChangeWithSummary } from "@/types/shared";
+import type { ChangeWithSummary } from "@/ipc/types";
 import { OwnSummaryItem } from "@/components/widget/summaries/own-summary-item";
 import { SummaryGroupHeader } from "@/components/widget/summaries/summary-group-header";
 
