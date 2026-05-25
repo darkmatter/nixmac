@@ -22,6 +22,7 @@ pub mod homebrew;
 pub mod peek;
 pub mod permissions;
 pub mod rollback;
+pub mod settings_io;
 pub mod summarize;
 pub mod system_defaults;
 pub mod ui_prefs;

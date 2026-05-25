@@ -12,6 +12,8 @@ mod feedback;
 mod git;
 #[path = "shared_types/prefs.rs"]
 mod prefs;
+#[path = "shared_types/settings_io.rs"]
+mod settings_io;
 #[path = "shared_types/system.rs"]
 mod system;
 
@@ -21,4 +23,5 @@ pub use evolve::*;
 pub use feedback::*;
 pub use git::*;
 pub use prefs::*;
+pub use settings_io::*;
 pub use system::*;
