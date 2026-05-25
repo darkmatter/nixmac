@@ -455,10 +455,7 @@ pub async fn generate_evolution<R: Runtime>(
         max_build_attempts,
     } = config::EvolutionLimits::load(app).unwrap_or_else(|e| {
         warn!("EvolutionLimits::load failed ({e}); using defaults");
-        config::EvolutionLimits {
-            max_iterations: 25,
-            max_build_attempts: 5,
-        }
+        config::EvolutionLimits::default()
     });
     let max_iterations_before_edit = std::cmp::max(
         1,
