@@ -1,6 +1,7 @@
 import { computeCurrentStep } from "@/components/widget/utils";
 import { FeedbackType } from "@/types/feedback";
 import type {
+  EvolutionTelemetry,
   EvolveEvent,
   EvolveState,
   FileDiffContents,
@@ -102,6 +103,7 @@ export interface WidgetState {
   evolveEvents: EvolveEvent[];
   promptHistory: string[];
   conversationalResponse: string | null;
+  evolutionTelemetry: EvolutionTelemetry | null;
 
   changeMap: SemanticChangeMap | null;
 
@@ -245,6 +247,7 @@ interface WidgetActions {
   // Evolve events
   appendEvolveEvent: (event: EvolveEvent) => void;
   clearEvolveEvents: () => void;
+  setEvolutionTelemetry: (telemetry: EvolutionTelemetry | null) => void;
 
   setConversationalResponse: (response: string | null) => void;
 
@@ -312,6 +315,7 @@ const initialWidgetState: WidgetState = {
   evolveEvents: [],
   promptHistory: [],
   conversationalResponse: null,
+  evolutionTelemetry: null,
 
   // History
   history: [],
@@ -471,6 +475,7 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
     appendEvolveEvent: (event) =>
       set((state) => ({ evolveEvents: [...state.evolveEvents, event] })),
     clearEvolveEvents: () => set({ evolveEvents: [] }),
+    setEvolutionTelemetry: (evolutionTelemetry) => set({ evolutionTelemetry }),
 
     // Conversational response
     setConversationalResponse: (conversationalResponse) => set({ conversationalResponse }),
