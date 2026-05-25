@@ -23,7 +23,7 @@ pub mod lifecycle;
 /// Directories ignored by file listing and search helpers.
 pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 
-use crate::evolve::utils::{escape_user_query, short_hash};
+use crate::evolve::utils::{escape_user_query, format_duration_secs, short_hash};
 // Re-export public API
 use crate::shared_types::EvolutionState;
 use crate::system::nix;
@@ -57,18 +57,6 @@ use messages::Message;
 use providers::{AiProvider, CliProvider, OllamaProvider, OpenAIProvider, ProviderError};
 
 use self::types::FileEdit;
-
-/// Format a duration in seconds as a human-readable string (e.g. "1m 23s", "45s").
-fn format_duration_secs(secs: i64) -> String {
-    let secs = secs.max(0);
-    if secs < 60 {
-        format!("{}s", secs)
-    } else if secs < 3600 {
-        format!("{}m {}s", secs / 60, secs % 60)
-    } else {
-        format!("{}h {}m {}s", secs / 3600, (secs % 3600) / 60, secs % 60)
-    }
-}
 
 /// Strategy for retaining evolution messages in the conversation history for provider context.
 /// This is used to balance keeping important context visible to the model with limiting token usage

@@ -19,6 +19,18 @@ pub fn short_hash(s: &str) -> String {
     hex::encode(h.finalize())[..8].to_string()
 }
 
+/// Format a duration in seconds as a human-readable string (e.g. "1m 23s", "45s").
+pub fn format_duration_secs(secs: i64) -> String {
+    let secs = secs.max(0);
+    if secs < 60 {
+        format!("{}s", secs)
+    } else if secs < 3600 {
+        format!("{}m {}s", secs / 60, secs % 60)
+    } else {
+        format!("{}h {}m {}s", secs / 3600, (secs % 3600) / 60, secs % 60)
+    }
+}
+
 /// Truncate error output to a maximum length, keeping the most relevant parts
 pub fn truncate_error(s: &str, max_len: usize) -> String {
     if s.len() <= max_len {
@@ -136,5 +148,13 @@ mod tests {
             err.to_string().contains("Absolute paths are not allowed"),
             "unexpected error: {err:#}"
         );
+    }
+
+    #[test]
+    fn test_format_duration_secs() {
+        assert_eq!(super::format_duration_secs(45), "45s");
+        assert_eq!(super::format_duration_secs(75), "1m 15s");
+        assert_eq!(super::format_duration_secs(3600), "1h 0m 0s");
+        assert_eq!(super::format_duration_secs(3665), "1h 1m 5s");
     }
 }
