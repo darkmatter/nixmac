@@ -6,7 +6,7 @@ import * as Schema from "effect/Schema";
 // (variadic `Literal(...values)`, no `Literals`) and 4.0-beta (single-value
 // `Literal(value)` + plural `Literals(values)`), so neither form source-
 // compiles in both. Plain `Schema.String` works regardless of which version
-// bun's hoisting resolves — relevant because tsc/build sees 4.0-beta from
+// bun's hoisting resolves - relevant because tsc/build sees 4.0-beta from
 // the lockfile while Chromatic's storybook environment can end up resolving
 // 3.x via stale workspace symlinks.
 //
@@ -29,8 +29,7 @@ const raw = Schema.decodeUnknownSync(Settings)(import.meta.env);
 
 export const settings: SettingsType = {
   VITE_SERVER_URL: raw.VITE_SERVER_URL,
-  NIX_INSTALLED_OVERRIDE:
-    raw.NIX_INSTALLED_OVERRIDE === "true" ? true : undefined,
+  NIX_INSTALLED_OVERRIDE: raw.NIX_INSTALLED_OVERRIDE === "true" ? true : undefined,
 };
 
 // Helper to resolve the public website URL used by the native/web apps.
