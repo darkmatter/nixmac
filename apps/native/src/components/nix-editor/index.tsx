@@ -1,5 +1,6 @@
 import { Loader2 } from "lucide-react";
 import { useRef } from "react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useNixEditor } from "./use-nix-editor";
 
@@ -12,7 +13,7 @@ interface NixEditorProps {
 
 export function NixEditor({ filePath, onSave, className, disableRuntime = false }: NixEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { isLoading, isDirty, error, lspStatus } = useNixEditor({
+  const { isLoading, isDirty, error, lspStatus, save } = useNixEditor({
     filePath,
     containerRef,
     onSave,
@@ -45,11 +46,9 @@ export function NixEditor({ filePath, onSave, className, disableRuntime = false 
             nixd unavailable
           </div>
         )}
-        {isDirty && (
-          <div className="rounded bg-muted px-2 py-0.5 text-muted-foreground text-xs">
-            Unsaved
-          </div>
-        )}
+        <Button size="sm" disabled={!isDirty || isLoading} onClick={() => void save()}>
+          Save
+        </Button>
       </div>
       <div ref={containerRef} className="flex-1" />
     </div>
