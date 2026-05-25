@@ -1,15 +1,8 @@
 import * as Schema from "effect/Schema";
 
-// effect 4.0 removed `Schema.BooleanFromString`. We validate the raw string
-// with `Schema.Literals(["true", "false"])` (note: 4.0 takes an array, where
-// 3.x had variadic `Literal(...values)`) and then coerce to a real boolean
-// for the exported `settings` so downstream consumers see a clean
-// `boolean | undefined` — same shape as the previous `BooleanFromString`.
-// Anything other than "true"/"false" fails at decode time, preserving the
-// strict parsing of the original.
 const Settings = Schema.Struct({
   VITE_SERVER_URL: Schema.optional(Schema.String),
-  NIX_INSTALLED_OVERRIDE: Schema.optional(Schema.Literals(["true", "false"])),
+  NIX_INSTALLED_OVERRIDE: Schema.optional(Schema.Literal("true", "false")),
 });
 
 type RawSettings = Schema.Schema.Type<typeof Settings>;
