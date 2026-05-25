@@ -75,7 +75,7 @@ impl MemoryStrategy {
         {
             None | Some("") | Some("none") => MemoryStrategy::None,
             Some("retention") => MemoryStrategy::Retention,
-            _ => MemoryStrategy::Retention, // safe default if set but unknown
+            _ => MemoryStrategy::None,
         }
     }
 }
