@@ -10,6 +10,7 @@ import type {
   CommitResult,
   Config as DarwinConfig,
   ConfigEditApplyResult,
+  ConfigurableSchema,
   EvolveCancelResult,
   EvolutionResult,
   EvolveState,
@@ -119,6 +120,11 @@ export const tauriAPI = {
     export: (includeSecrets: boolean) =>
       invoke<ExportResult | null>("settings_export", { includeSecrets }),
     import: () => invoke<ImportResult | null>("settings_import"),
+  },
+  devConfigs: {
+    list: () => invoke<ConfigurableSchema[]>("dev_configs_list"),
+    set: (structName: string, key: string, value: unknown) =>
+      invoke<void>("dev_config_set", { structName, key, value }),
   },
   models: {
     getCached: (provider: string) => invoke<string[] | null>("get_cached_models", { provider }),
