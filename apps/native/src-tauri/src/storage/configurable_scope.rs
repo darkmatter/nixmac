@@ -41,6 +41,10 @@ defaults on next launch.
 /// directory and the explanatory `README.md` are created on first call.
 pub fn repo_store_path<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
     let config_dir = store::get_config_dir(app)?;
+    repo_store_path_for_config_dir(&config_dir)
+}
+
+fn repo_store_path_for_config_dir(config_dir: &str) -> Result<String> {
     let dir = Path::new(&config_dir).join(REPO_DIR_NAME);
     std::fs::create_dir_all(&dir)?;
     let readme = dir.join(REPO_README_FILE);
@@ -51,4 +55,48 @@ pub fn repo_store_path<R: Runtime>(app: &AppHandle<R>) -> Result<String> {
         let _ = std::fs::write(&readme, REPO_README_CONTENT);
     }
     Ok(dir.join(REPO_SETTINGS_FILE).to_string_lossy().to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn repo_store_path_creates_managed_dir_and_readme() {
+        let temp = tempfile::tempdir().expect("create tempdir");
+
+        let path = repo_store_path_for_config_dir(temp.path().to_str().expect("utf-8 temp path"))
+            .expect("resolve repo-scoped store path");
+
+        let expected_dir = temp.path().join(REPO_DIR_NAME);
+        assert_eq!(
+            path,
+            expected_dir
+                .join(REPO_SETTINGS_FILE)
+                .to_string_lossy()
+                .to_string()
+        );
+        assert!(expected_dir.is_dir());
+        assert_eq!(
+            std::fs::read_to_string(expected_dir.join(REPO_README_FILE))
+                .expect("read generated README"),
+            REPO_README_CONTENT
+        );
+    }
+
+    #[test]
+    fn repo_store_path_preserves_existing_readme() {
+        let temp = tempfile::tempdir().expect("create tempdir");
+        let dir = temp.path().join(REPO_DIR_NAME);
+        std::fs::create_dir_all(&dir).expect("create managed dir");
+        std::fs::write(dir.join(REPO_README_FILE), "custom note").expect("write custom README");
+
+        let _ = repo_store_path_for_config_dir(temp.path().to_str().expect("utf-8 temp path"))
+            .expect("resolve repo-scoped store path");
+
+        assert_eq!(
+            std::fs::read_to_string(dir.join(REPO_README_FILE)).expect("read README"),
+            "custom note"
+        );
+    }
 }
