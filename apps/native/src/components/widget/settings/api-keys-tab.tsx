@@ -14,7 +14,7 @@ interface ApiKeysTabProps {
   // Ollama
   ollamaApiBaseUrlField: AnyFieldApi;
   onSaveOllamaUrl: (url: string) => Promise<void>;
-  // vLLM
+  // OpenAI Compatible
   vllmApiBaseUrlField: AnyFieldApi;
   vllmApiKeyField: AnyFieldApi;
   onSaveVllmUrl: (url: string) => Promise<void>;
@@ -277,16 +277,16 @@ export function ApiKeysTab({
             />
           </div>
 
-          {/* vLLM */}
+          {/* OpenAI Compatible */}
           <div className="rounded-lg border border-border p-4">
             <div className="mb-3 flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-blue-500 to-cyan-500">
-                <span className="font-bold text-white text-xs">VL</span>
+                <span className="font-bold text-white text-xs">OC</span>
               </div>
               <div>
-                <h3 className="font-medium text-sm">vLLM</h3>
+                <h3 className="font-medium text-sm">OpenAI Compatible</h3>
                 <p className="text-muted-foreground text-xs">
-                  OpenAI-compatible self-hosted inference server
+                  Self-hosted OpenAI-compatible inference server
                 </p>
               </div>
             </div>
@@ -303,7 +303,7 @@ export function ApiKeysTab({
               <UrlInput
                 id="vllmApiKey"
                 label="API Key (optional)"
-                description="Leave blank for unauthenticated vllm. Required for litellm proxy."
+                description="Leave blank if your OpenAI-compatible endpoint is unauthenticated. Required for LiteLLM proxy."
                 placeholder="sk-..."
                 field={vllmApiKeyField}
                 form={form}
@@ -317,9 +317,9 @@ export function ApiKeysTab({
           <div className="rounded-lg bg-muted/50 p-3">
             <p className="text-muted-foreground text-xs">
               <strong className="text-foreground">Tip:</strong> OpenRouter is the supported cloud
-              model path in the main UI. Use Ollama or vLLM when you want local or self-hosted
-              models. Previously saved direct OpenAI keys still work as a legacy fallback, but
-              they are no longer shown in Settings.
+              model path in the main UI. Use Ollama or OpenAI Compatible when you want local or
+              self-hosted models. Previously saved direct OpenAI keys still work as a legacy fallback,
+              but they are no longer shown in Settings.
             </p>
           </div>
         </div>
