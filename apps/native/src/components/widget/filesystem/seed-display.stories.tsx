@@ -60,9 +60,9 @@ export const HistoryRollover = meta.story({
     const seeds = [
       "Change modules/darwin/homebrew.nix: install Slack",
       "Change modules/darwin/defaults.nix: auto-hide the Dock",
-      "Add these items to my nix config by adding them to modules/darwin/homebrew.nix:\n- docker\n- obs\n- iterm2",
+      "Track these items by adding them to modules/darwin/homebrew.nix:\n- docker\n- obs\n- iterm2",
       "Change modules/home/dotfiles.nix: switch from neovim to helix",
-      'Add "Rectangle" to my nix config by adding it to modules/darwin/services.nix.',
+      'Track "Rectangle" by adding it to modules/darwin/services.nix.',
       "Change modules/darwin/security.nix: enable Touch ID for sudo",
     ];
     return (
