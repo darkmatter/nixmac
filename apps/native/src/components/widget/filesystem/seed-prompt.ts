@@ -18,25 +18,25 @@ export function seedForFile(file: FsFile): string {
 }
 
 /**
- * Build a prompt seed for "Track all items in this Untracked section."
+ * Build a prompt seed for "Add all items in this Untracked section."
  * Inlines the item names so the AI has the full list without needing
  * a separate scan call.
  */
 export function seedForUntrackedSection(file: FsFile): string {
   if (file.status !== "candidate" || !file.items?.length) {
-    return `Track ${file.title.toLowerCase()}.`;
+    return `Add ${file.title.toLowerCase()}.`;
   }
   const dest = file.destination ?? "the right module";
   const list = file.items.map((it) => `- ${it.name} (${it.detail})`).join("\n");
-  return `Track these items by adding them to ${dest}:\n${list}\n`;
+  return `Add these items to my nix config by adding them to ${dest}:\n${list}\n`;
 }
 
 /**
- * Build a prompt seed for tracking a single untracked item.
+ * Build a prompt seed for adding a single untracked item.
  */
 export function seedForUntrackedItem(file: FsFile, item: CandidateItem): string {
   const dest = file.destination ?? "the right module";
-  return `Track "${item.name}" by adding it to ${dest}. Detail: ${item.detail}.`;
+  return `Add "${item.name}" to my nix config by adding it to ${dest}. Detail: ${item.detail}.`;
 }
 
 /**
@@ -45,9 +45,14 @@ export function seedForUntrackedItem(file: FsFile, item: CandidateItem): string 
  */
 export function seedForUntrackedBanner(files: FsFile[]): string {
   const candidates = files.filter((f) => f.status === "candidate" && f.items?.length);
-  if (!candidates.length) return "Track everything that isn't in my config yet.";
+  if (!candidates.length) return "Add everything that isn't in my nix config yet.";
   const sections = candidates
-    .map((f) => `- ${f.title} (${f.items?.length ?? 0} items, would land in ${f.destination ?? "config"})`)
+    .map((f) => {
+      const dest = f.destination ?? "config";
+      const itemsList = (f.items ?? []).map((it) => `   - ${it.name} (${it.detail})`).join("\n");
+      return `- ${f.title} (would land in ${dest})\n${itemsList}`;
+    })
     .join("\n");
-  return `Track everything that isn't in my config yet:\n${sections}\n`;
+
+  return `Add everything that isn't in my nix config yet:\n${sections}\n`;
 }
