@@ -254,7 +254,11 @@ gitStatus: GitStatus | null;
 /**
  * Partial telemetry captured before failure.
  */
-telemetry: EvolutionTelemetry }
+telemetry: EvolutionTelemetry; 
+/**
+ * Absolute path to a structured JSON trace, if one was written before failure.
+ */
+evolutionLogPath: string | null }
 
 /**
  * Evolution result returned to the frontend on completion.
@@ -279,7 +283,11 @@ conversationalResponse: string | null;
 /**
  * Telemetry collected during evolution.
  */
-telemetry: EvolutionTelemetry }
+telemetry: EvolutionTelemetry; 
+/**
+ * Absolute path to the structured JSON trace for this evolution.
+ */
+evolutionLogPath: string | null }
 
 /**
  * Evolution lifecycle state.
@@ -490,6 +498,10 @@ rollbackStorePath: string | null;
  * Changeset id associated with the rollback target.
  */
 rollbackChangesetId: number | null; 
+/**
+ * Absolute path to the structured JSON trace for the latest evolution.
+ */
+evolutionLogPath?: string | null; 
 /**
  * UI step derived from the routing state.
  */

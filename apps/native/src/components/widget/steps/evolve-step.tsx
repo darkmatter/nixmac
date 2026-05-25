@@ -1,6 +1,7 @@
 "use client";
 
 import { ConfirmButton } from "@/components/widget/controls/confirm-button";
+import { EvolutionLogActions } from "@/components/widget/controls/evolution-log-actions";
 import { ExternalBuildDetected } from "@/components/widget/notifications/external-build-detected";
 import { PromptInputSection } from "@/components/widget/promptinput/prompt-input-section";
 import { StepActionsHeader } from "@/components/widget/layout/step-actions-header";
@@ -21,6 +22,7 @@ export function EvolveStep() {
     <>
       <ExternalBuildDetected />
       <StepActionsHeader label="Ready to test-drive your changes?">
+        <EvolutionLogActions />
         <ConfirmButton
           variant="ghost"
           size="sm"

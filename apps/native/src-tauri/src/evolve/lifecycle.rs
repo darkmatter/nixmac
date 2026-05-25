@@ -67,11 +67,13 @@ impl EvolutionFailureResult {
         error: String,
         git_status: Option<crate::shared_types::GitStatus>,
         telemetry: EvolutionTelemetry,
+        evolution_log_path: Option<String>,
     ) -> Self {
         Self {
             error,
             git_status,
             telemetry,
+            evolution_log_path,
         }
     }
 
@@ -84,6 +86,7 @@ impl EvolutionFailureResult {
             error,
             git_status,
             EvolutionTelemetry::failed_defaults(duration_ms),
+            None,
         )
     }
 
@@ -100,6 +103,7 @@ impl EvolutionFailureResult {
                 state: EvolutionState::Failed,
                 ..EvolutionTelemetry::from_evolution(evolution, duration_ms)
             },
+            evolution.evolution_log_path.clone(),
         )
     }
 }
@@ -195,7 +199,7 @@ pub async fn backup_evolve_and_record_changeset(
     }
 
     // Step 2: Run AI evolution
-    let evolution = match evolve::generate_evolution(
+    let mut evolution = match evolve::generate_evolution(
         app,
         &config_dir,
         description,
@@ -213,6 +217,7 @@ pub async fn backup_evolve_and_record_changeset(
                     run_error.message.clone(),
                     git_status,
                     EvolutionTelemetry::from_failed_progress(&run_error.progress, duration_ms),
+                    None,
                 ));
             }
             return Err(EvolutionFailureResult::defaults(
@@ -231,10 +236,14 @@ pub async fn backup_evolve_and_record_changeset(
     // Short-circuit: conversational responses made no environment changes.
     if evolution.state == EvolutionState::Conversational {
         info!("[evolution] Conversational response — skipping git/db workflow");
+        evolution.final_branch = initial_status.branch.clone();
+        evolution.final_commit_hash = initial_status.head_commit_hash.clone();
+        let evolution_log_path = persist_evolution_log(app, &mut evolution);
         let evolve_state = evolve_state::set(
             app,
             EvolveState {
                 last_evolution_state: Some(EvolutionState::Conversational),
+                evolution_log_path: evolution_log_path.clone(),
                 ..evolve_state::get(app).unwrap_or_default()
             },
             &initial_status.changes,
@@ -246,6 +255,7 @@ pub async fn backup_evolve_and_record_changeset(
             evolve_state,
             conversational_response: evolution.summary.clone(),
             telemetry: EvolutionTelemetry::from_evolution(&evolution, elapsed_since(start_time_ms)),
+            evolution_log_path,
         });
     }
 
@@ -262,6 +272,10 @@ pub async fn backup_evolve_and_record_changeset(
             ));
         }
     };
+
+    evolution.final_branch = final_status.branch.clone();
+    evolution.final_commit_hash = final_status.head_commit_hash.clone();
+    let evolution_log_path = persist_evolution_log(app, &mut evolution);
 
     emit_evolve_event(app, EvolveEvent::analyzing(start_time_s, None));
 
@@ -280,6 +294,7 @@ pub async fn backup_evolve_and_record_changeset(
             current_changeset_id: new_changeset_id,
             backup_branch,
             last_evolution_state: Some(evolution.state.clone()),
+            evolution_log_path: evolution_log_path.clone(),
             ..current_state
         },
         &final_status.changes,
@@ -299,7 +314,18 @@ pub async fn backup_evolve_and_record_changeset(
         evolve_state,
         conversational_response: None,
         telemetry: EvolutionTelemetry::from_evolution(&evolution, elapsed_since(start_time_ms)),
+        evolution_log_path,
     })
+}
+
+fn persist_evolution_log(app: &AppHandle, evolution: &mut evolve::Evolution) -> Option<String> {
+    match evolve::write_evolution_log(app, evolution) {
+        Ok(path) => Some(path),
+        Err(e) => {
+            log::warn!("[evolution] failed to write evolution trace: {}", e);
+            None
+        }
+    }
 }
 
 fn restore_after_failure(app: &AppHandle, config_dir: &str, backup_branch: &Option<String>) {

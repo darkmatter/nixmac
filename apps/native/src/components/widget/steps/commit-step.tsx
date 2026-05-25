@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/widget/controls/confirm-button";
+import { EvolutionLogActions } from "@/components/widget/controls/evolution-log-actions";
 import { MergeSection } from "@/components/widget/layout/merge-section";
 import { PromptInputSection } from "@/components/widget/promptinput/prompt-input-section";
 import { StepActionsHeader } from "@/components/widget/layout/step-actions-header";
@@ -20,6 +21,7 @@ export function CommitStep() {
   return (
     <>
       <StepActionsHeader label="All changes active!">
+        <EvolutionLogActions />
         <ConfirmButton
           variant="ghost"
           size="sm"

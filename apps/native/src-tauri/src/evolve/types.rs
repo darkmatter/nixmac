@@ -77,6 +77,24 @@ pub struct Evolution {
     pub created_at: i64,
     pub state: EvolutionState,
     pub prompt: String,
+    /// Provider selected for this evolution run.
+    pub provider: Option<String>,
+    /// Model selected for this evolution run.
+    pub model: Option<String>,
+    /// Repository/config directory evolved by this run.
+    pub config_dir: Option<String>,
+    /// nix-darwin host attribute used for build checks.
+    pub host_attr: Option<String>,
+    /// Branch at the start of the run.
+    pub initial_branch: Option<String>,
+    /// HEAD commit hash at the start of the run.
+    pub initial_commit_hash: Option<String>,
+    /// Branch after the run completes.
+    pub final_branch: Option<String>,
+    /// HEAD commit hash after the run completes.
+    pub final_commit_hash: Option<String>,
+    /// Absolute path to the structured JSON trace file.
+    pub evolution_log_path: Option<String>,
     pub edits: Vec<FileEdit>,
     pub commit_hash: Option<String>,
     pub summary: Option<String>,
@@ -105,6 +123,15 @@ impl Evolution {
             created_at: chrono::Utc::now().timestamp(),
             state: EvolutionState::Pending,
             prompt: prompt.to_string(),
+            provider: None,
+            model: None,
+            config_dir: None,
+            host_attr: None,
+            initial_branch: None,
+            initial_commit_hash: None,
+            final_branch: None,
+            final_commit_hash: None,
+            evolution_log_path: None,
             edits: vec![],
             commit_hash: None,
             summary: None,

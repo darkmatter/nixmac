@@ -34,7 +34,7 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 use tauri::{AppHandle, Runtime};
@@ -263,6 +263,35 @@ fn log_api_error(
     report_provider_error(err, provider, model, messages, iteration);
 }
 
+fn evolution_log_file_name(evolution_id: &str) -> String {
+    format!("evolve-{}.json", evolution_id)
+}
+
+/// Persist the structured trace for an evolution and keep the latest copy in app settings.
+pub fn write_evolution_log<R: Runtime>(
+    app: &AppHandle<R>,
+    evolution: &mut Evolution,
+) -> Result<String> {
+    let log_dir = dirs::data_local_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("nixmac")
+        .join("logs");
+
+    std::fs::create_dir_all(&log_dir)?;
+
+    let log_file = log_dir.join(evolution_log_file_name(&evolution.id));
+    let log_path = log_file.to_string_lossy().to_string();
+    evolution.evolution_log_path = Some(log_path.clone());
+
+    let json = serde_json::to_string_pretty(evolution)?;
+    std::fs::write(&log_file, &json)?;
+    store::set_evolve_metadata(app, &json)?;
+
+    info!("Evolution trace logged to: {}", log_path);
+
+    Ok(log_path)
+}
+
 // Use OpenRouter with Claude for evolution - better reasoning without strict content policies
 const DEFAULT_MODEL: &str = "anthropic/claude-sonnet-4";
 const DEFAULT_OLLAMA_API_BASE: &str = "http://localhost:11434";
@@ -421,11 +450,10 @@ pub async fn generate_evolution<R: Runtime>(
         Arc::new(OpenAIProvider::new(api_key, base_url.to_string(), model))
     };
 
+    let model_name = provider.model_name();
+
     // Emit start event
-    emit_evolve_event(
-        app,
-        EvolveEvent::start(start_time, &provider.model_name(), prompt),
-    );
+    emit_evolve_event(app, EvolveEvent::start(start_time, &model_name, prompt));
 
     // Determine the host for build checking
     let host_attr = nix::determine_host_attr(app)
@@ -460,6 +488,17 @@ pub async fn generate_evolution<R: Runtime>(
         .collect::<Vec<_>>();
     let allowed_tool_names_display = allowed_tool_names.join(", ");
     let mut evolution = Evolution::new(prompt);
+    let initial_git_status = crate::git::status(config_dir).ok();
+    evolution.provider = Some(provider_type.clone());
+    evolution.model = Some(model_name);
+    evolution.config_dir = Some(config_dir.to_string());
+    evolution.host_attr = Some(host_attr.clone());
+    evolution.initial_branch = initial_git_status
+        .as_ref()
+        .and_then(|status| status.branch.clone());
+    evolution.initial_commit_hash = initial_git_status
+        .as_ref()
+        .and_then(|status| status.head_commit_hash.clone());
     let mut iteration: usize = 0;
     let mut build_attempts: usize = 0;
     let mut build_verified = false;
@@ -1162,9 +1201,6 @@ Could you provide more specific guidance on what aspects of your configuration n
     info!("Tool calls: {}", evolution.tool_calls.len());
     info!("════════════════════════════════════════════════════════════════");
 
-    let evolution_json = serde_json::to_string(&evolution).unwrap_or_default();
-    store::set_evolve_metadata(app, &evolution_json)?;
-
     // Track successful evolution
     if let Err(e) = statistics::record_evolution_success(app, evolution.iterations) {
         warn!("Failed to record evolution success stats: {}", e);
@@ -1520,4 +1556,17 @@ fn process_tool_result(
     };
 
     Ok((message, should_break))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn evolution_log_file_name_uses_trace_prefix_and_json_extension() {
+        assert_eq!(
+            evolution_log_file_name("abc123"),
+            "evolve-abc123.json".to_string()
+        );
+    }
 }

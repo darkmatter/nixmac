@@ -99,6 +99,9 @@ pub struct EvolveState {
     pub rollback_store_path: Option<String>,
     /// Changeset id associated with the rollback target.
     pub rollback_changeset_id: Option<i64>,
+    /// Absolute path to the structured JSON trace for the latest evolution.
+    #[serde(default)]
+    pub evolution_log_path: Option<String>,
     /// UI step derived from the routing state.
     pub step: EvolveStep,
     /// Last terminal state observed for this routing session.
@@ -120,6 +123,7 @@ impl Default for EvolveState {
             rollback_branch: None,
             rollback_store_path: None,
             rollback_changeset_id: None,
+            evolution_log_path: None,
             step: EvolveStep::Begin,
             last_evolution_state: None,
         }
@@ -182,6 +186,8 @@ pub struct EvolutionResult {
     pub conversational_response: Option<String>,
     /// Telemetry collected during evolution.
     pub telemetry: EvolutionTelemetry,
+    /// Absolute path to the structured JSON trace for this evolution.
+    pub evolution_log_path: Option<String>,
 }
 
 /// Evolution failure payload with partial telemetry.
@@ -194,6 +200,8 @@ pub struct EvolutionFailureResult {
     pub git_status: Option<GitStatus>,
     /// Partial telemetry captured before failure.
     pub telemetry: EvolutionTelemetry,
+    /// Absolute path to a structured JSON trace, if one was written before failure.
+    pub evolution_log_path: Option<String>,
 }
 
 /// Acknowledgement from `darwin_evolve_cancel`.
