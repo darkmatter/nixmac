@@ -48,3 +48,16 @@ impl Default for EvolutionLimits {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_matches_configured_field_defaults() {
+        let limits = EvolutionLimits::default();
+
+        assert_eq!(limits.max_iterations, 25);
+        assert_eq!(limits.max_build_attempts, 5);
+    }
+}

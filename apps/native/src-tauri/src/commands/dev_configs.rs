@@ -27,3 +27,29 @@ pub async fn dev_config_set(
     configurable::set_field_by_name(&app, &struct_name, &key, value)
         .map_err(|e| capture_err("dev_config_set", e))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::future::Future;
+
+    #[test]
+    fn command_signatures_match_frontend_contract() {
+        fn assert_list_command<F, Fut>(_f: F)
+        where
+            F: Fn(AppHandle) -> Fut,
+            Fut: Future<Output = Result<Vec<ConfigurableSchema>, String>>,
+        {
+        }
+
+        fn assert_set_command<F, Fut>(_f: F)
+        where
+            F: Fn(AppHandle, String, String, serde_json::Value) -> Fut,
+            Fut: Future<Output = Result<(), String>>,
+        {
+        }
+
+        assert_list_command(dev_configs_list);
+        assert_set_command(dev_config_set);
+    }
+}
