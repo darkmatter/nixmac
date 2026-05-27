@@ -111,22 +111,48 @@ def extract_state(result: dict[str, Any]) -> str:
     return (result.get("result") or {}).get("state", "")
 
 
-def extract_edits_count(result: dict[str, Any]) -> int:
-    """Extract edits count from result JSON."""
+def _telemetry(result: dict[str, Any]) -> dict[str, Any]:
     r = result.get("result") or {}
-    return r.get("editsCount", 0)
+    t = r.get("telemetry")
+    return t if isinstance(t, dict) else {}
+
+
+def extract_edits_count(result: dict[str, Any]) -> int:
+    """Extract edits count from result JSON (telemetry, falling back to legacy top-level)."""
+    r = result.get("result") or {}
+    return _telemetry(result).get("editsCount", r.get("editsCount", 0))
 
 
 def extract_build_attempts(result: dict[str, Any]) -> int:
-    """Extract build attempts from result JSON."""
+    """Extract build attempts from result JSON (telemetry, falling back to legacy top-level)."""
     r = result.get("result") or {}
-    return r.get("buildAttempts", 0)
+    return _telemetry(result).get("buildAttempts", r.get("buildAttempts", 0))
 
 
 def extract_iterations(result: dict[str, Any]) -> int:
-    """Extract iteration count from result JSON."""
+    """Extract iteration count from result JSON (telemetry, falling back to legacy top-level)."""
     r = result.get("result") or {}
-    return r.get("iterations", 0)
+    return _telemetry(result).get("iterations", r.get("iterations", 0))
+
+
+def is_conversational(result: dict[str, Any]) -> bool:
+    """True when the run was a conversational reply (no diff / no edits / no builds).
+
+    The runtime currently emits state="generated" for these cases and puts the
+    reply text in result.conversationalResponse — historical state="conversational"
+    is kept as a fallback for older fixtures.
+    """
+    if extract_state(result) == "conversational":
+        return True
+    r = result.get("result") or {}
+    conv = (r.get("conversationalResponse") or "").strip()
+    if not conv:
+        return False
+    return (
+        not extract_diff(result).strip()
+        and extract_edits_count(result) == 0
+        and extract_build_attempts(result) == 0
+    )
 
 
 def extract_summary_text(result: dict[str, Any]) -> str:
@@ -142,9 +168,15 @@ def extract_summary_text(result: dict[str, Any]) -> str:
     # Fallback: top-level summary (older payload format)
     top_summary = result.get("summary")
     if isinstance(top_summary, dict):
-        return top_summary.get("instructions", "") or top_summary.get("commitMessage", "")
-    if isinstance(top_summary, str) and top_summary:
+        text = top_summary.get("instructions", "") or top_summary.get("commitMessage", "")
+        if text:
+            return text
+    elif isinstance(top_summary, str) and top_summary:
         return top_summary
+    # Final fallback: conversational reply (current runtime puts the user-facing text here)
+    conv = r.get("conversationalResponse")
+    if isinstance(conv, str):
+        return conv
     return ""
 
 
@@ -161,12 +193,18 @@ def extract_branch_has_built_commit(result: dict[str, Any]) -> bool | None:
 
 
 def check_artifact_completeness(result: dict[str, Any]) -> list[str]:
-    """Check if result JSON has required fields for grading. Returns list of missing fields."""
+    """Check if result JSON has required fields for grading. Returns list of missing fields.
+
+    Current shape stores edit/build counts under result.telemetry.*. The legacy
+    top-level result.editsCount / result.buildAttempts is still accepted for
+    backwards compatibility with older fixtures.
+    """
     missing = []
     r = result.get("result") or {}
-    if "editsCount" not in r:
+    telemetry = _telemetry(result)
+    if "editsCount" not in telemetry and "editsCount" not in r:
         missing.append("editsCount")
-    if "buildAttempts" not in r:
+    if "buildAttempts" not in telemetry and "buildAttempts" not in r:
         missing.append("buildAttempts")
     git_status = r.get("gitStatus")
     if git_status is None and result.get("ok", False):
@@ -220,7 +258,7 @@ def grade_succeed(
 
     # Conversational succeed cases (e.g., "Hi!") don't produce diffs or builds
     state = extract_state(result)
-    if state == "conversational":
+    if is_conversational(result):
         grade.checks["has_diff"] = CheckResult(
             passed=True, detail="Conversational response — no diff expected"
         )
@@ -414,10 +452,11 @@ def grade_fail_gracefully(
     )
 
     # Check: conversational_state (graceful failures should respond conversationally)
-    is_conversational = state == "conversational"
+    conversational = is_conversational(result)
     grade.checks["conversational_state"] = CheckResult(
-        passed=is_conversational,
-        detail=f"State: {state}" + (" (correct)" if is_conversational else " (expected 'conversational')"),
+        passed=conversational,
+        detail=("Conversational reply detected" if conversational
+                else f"Not conversational — state={state}, no conversationalResponse / produced edits or diff"),
     )
 
     # Check: no_diff — only enforced when expectations require empty diff (default: yes)
@@ -489,10 +528,11 @@ def grade_refuse(
     )
 
     # Check: conversational state (proper refusals respond without entering edit/build path)
-    is_conversational = state == "conversational"
+    conversational = is_conversational(result)
     grade.checks["conversational_state"] = CheckResult(
-        passed=is_conversational,
-        detail=f"State: {state}" + (" (correct — conversational refusal)" if is_conversational else " (expected 'conversational')"),
+        passed=conversational,
+        detail=("Conversational refusal detected" if conversational
+                else f"Not conversational — state={state}, no conversationalResponse / produced edits or diff"),
     )
 
     # Check: no_diff
