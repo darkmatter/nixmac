@@ -4,6 +4,7 @@
 //! from the frontend.
 //! All collection respects the ShareOptions flags provided by the user.
 
+use crate::shared_types::Evolution;
 use crate::storage::store;
 use crate::system::{nix, secret_scanner};
 use crate::{git, types};
@@ -142,7 +143,7 @@ pub fn gather_app_logs() -> Option<String> {
 // =============================================================================
 
 /// Gather the most recent evolution log from stored metadata
-pub fn gather_evolution_log(app: &AppHandle) -> Option<String> {
+pub fn gather_evolution_log(app: &AppHandle) -> Option<Evolution> {
     let store = store::get_store(app).ok()?;
 
     let metadata = store.get("evolveMetadata")?;
@@ -153,7 +154,7 @@ pub fn gather_evolution_log(app: &AppHandle) -> Option<String> {
     match serde_json::from_str::<Value>(metadata_str) {
         Ok(json) => {
             // Return pretty-printed JSON for readability (will be redacted in gather_metadata)
-            serde_json::to_string_pretty(&json).ok()
+            serde_json::from_value::<Evolution>(json).ok()
         }
         Err(e) => {
             warn!("Failed to parse evolution metadata: {}", e);
@@ -426,13 +427,6 @@ fn redact_metadata_with_scanner(
     let mut redacted_fields: Vec<&'static str> = Vec::new();
 
     // Redact all string fields
-    if let Some(ref mut content) = metadata.evolution_log_content {
-        let (redacted, changed) = scanner.redact_string(content);
-        if changed {
-            redacted_fields.push("evolution_log_content");
-        }
-        *content = redacted;
-    }
     if let Some(ref mut content) = metadata.changed_nix_files_diff {
         let (redacted, changed) = scanner.redact_string(content);
         if changed {
@@ -463,6 +457,20 @@ fn redact_metadata_with_scanner(
         }
         *state = redacted;
     }
+
+    if let Some(ref mut content) = metadata.evolution_log_content {
+        // Convert to JSON, redact, convert back
+        if let Ok(json) = serde_json::to_value(&*content) {
+            let (redacted, changed) = scanner.redact_json(json);
+            if changed {
+                redacted_fields.push("evolution_log_content");
+            }
+            if let Ok(redacted_info) = serde_json::from_value(redacted) {
+                *content = redacted_info;
+            }
+        }
+    }
+
     if let Some(ref mut info) = metadata.ai_provider_model_info {
         // Convert to JSON, redact, convert back
         if let Ok(json) = serde_json::to_value(&*info) {
@@ -722,7 +730,7 @@ pub fn gather_metadata(
 #[cfg(test)]
 mod tests {
     use super::{redact_metadata_with_scanner, types};
-    use crate::system::secret_scanner::SecretScanner;
+    use crate::{shared_types::Evolution, system::secret_scanner::SecretScanner};
     use serde_json::json;
 
     fn test_scanner() -> SecretScanner {
@@ -758,7 +766,7 @@ regex = "token=([A-Za-z0-9]+)"
     fn redacts_string_fields() {
         let scanner = test_scanner();
         let mut metadata = empty_metadata();
-        metadata.evolution_log_content = Some("token=abc123".to_string());
+        metadata.evolution_log_content = Some(Evolution::new("token=abc123"));
         metadata.changed_nix_files_diff = Some("no secrets here".to_string());
         metadata.build_error_output = Some("token=xyz".to_string());
 
@@ -770,6 +778,7 @@ regex = "token=([A-Za-z0-9]+)"
         assert!(metadata
             .evolution_log_content
             .unwrap()
+            .prompt
             .contains("[REDACTED]"));
         assert_eq!(metadata.changed_nix_files_diff.unwrap(), "no secrets here");
         assert!(metadata.build_error_output.unwrap().contains("[REDACTED]"));
@@ -820,12 +829,12 @@ regex = "token=([A-Za-z0-9]+)"
     fn no_redaction_returns_empty_list() {
         let scanner = test_scanner();
         let mut metadata = empty_metadata();
-        metadata.evolution_log_content = Some("safe text".to_string());
+        metadata.evolution_log_content = Some(Evolution::new("safe text"));
 
         let (metadata, redacted_fields) = redact_metadata_with_scanner(metadata, &scanner);
 
         assert!(redacted_fields.is_empty());
-        assert_eq!(metadata.evolution_log_content.unwrap(), "safe text");
+        assert_eq!(metadata.evolution_log_content.unwrap().prompt, "safe text");
     }
 
     #[test]
@@ -833,18 +842,18 @@ regex = "token=([A-Za-z0-9]+)"
         let scanner = test_scanner_no_rules();
         let mut metadata = empty_metadata();
         let token = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-        let high_entropy = format!("This log has a secret in it: {token} see how that works?");
-        metadata.evolution_log_content = Some(high_entropy.to_string());
+        let high_entropy = format!("This prompt has a secret in it: {token} see how that works?");
+        metadata.evolution_log_content = Some(Evolution::new(&high_entropy));
 
         let (metadata, redacted_fields) = redact_metadata_with_scanner(metadata, &scanner);
 
         assert!(redacted_fields.contains(&"evolution_log_content"));
         let content = metadata.evolution_log_content.unwrap();
-        assert!(content.contains("High Entropy"));
-        assert!(!content.contains(token));
+        assert!(content.prompt.contains("High Entropy"));
+        assert!(!content.prompt.contains(token));
         assert_eq!(
-            content,
-            "This log has a secret in it: [REDACTED (High Entropy)] see how that works?"
+            content.prompt,
+            "This prompt has a secret in it: [REDACTED (High Entropy)] see how that works?"
         );
     }
 

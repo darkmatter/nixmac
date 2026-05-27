@@ -26,7 +26,7 @@ pub(crate) const IGNORED_DIRS: [&str; 2] = [".git", "result"];
 use crate::evolve::utils::{escape_user_query, format_duration_secs, short_hash};
 use crate::git::exec::repo_root;
 // Re-export public API
-use crate::shared_types::EvolutionState;
+use crate::shared_types::{Evolution, EvolutionState, FileEdit};
 use crate::system::nix;
 use anyhow::{anyhow, Result};
 use chrono::Utc;
@@ -41,7 +41,6 @@ use std::time::Duration;
 use tauri::{AppHandle, Runtime};
 use tokio::time::sleep;
 use tools::{create_tools, execute_tool, is_editing_tool, ToolResult};
-pub use types::Evolution;
 pub use types::{EvolutionProgress, EvolutionRunError};
 
 use crate::{
@@ -55,8 +54,6 @@ pub(crate) use chat_memory::session_chat_memory_store;
 use config_dir_context::format_config_dir_context;
 use messages::Message;
 use providers::{AiProvider, CliProvider, OllamaProvider, OpenAIProvider, ProviderError};
-
-use self::types::FileEdit;
 
 /// Strategy for retaining evolution messages in the conversation history for provider context.
 /// This is used to balance keeping important context visible to the model with limiting token usage
