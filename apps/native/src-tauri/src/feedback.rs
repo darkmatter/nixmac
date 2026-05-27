@@ -152,10 +152,7 @@ pub fn gather_evolution_log(app: &AppHandle) -> Option<Evolution> {
     // The stored metadata is already a JSON string of the Evolution struct
     // We'll parse it to validate it's proper JSON and return it formatted
     match serde_json::from_str::<Value>(metadata_str) {
-        Ok(json) => {
-            // Return pretty-printed JSON for readability (will be redacted in gather_metadata)
-            serde_json::from_value::<Evolution>(json).ok()
-        }
+        Ok(json) => serde_json::from_value::<Evolution>(json).ok(),
         Err(e) => {
             warn!("Failed to parse evolution metadata: {}", e);
             None
@@ -511,7 +508,23 @@ pub async fn submit(app: &AppHandle, payload: String) -> Result<bool> {
             return Ok(false);
         }
     };
-    let parsed: Value = serde_json::from_str(&payload).unwrap_or(Value::String(payload.clone()));
+
+    // We expect valid JSON, but users can manually edit the payload preview.
+    // If parsing fails, preserve the raw content inside a minimal general
+    // feedback object so the backend still receives valid JSON.
+    let parsed: Value = match serde_json::from_str(&payload) {
+        Ok(value) => value,
+        Err(error) => {
+            warn!(
+                "[feedback] Payload preview is invalid JSON; falling back to general/text payload: {}",
+                error
+            );
+            serde_json::json!({
+                "type": "general",
+                "text": payload,
+            })
+        }
+    };
     let client = reqwest::Client::new();
 
     let sent = match client

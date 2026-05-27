@@ -405,50 +405,35 @@ export function FeedbackDialog() {
   };
 
   const submitPayload = async (payload: string) => {
-    if (submitting) return;
+    const sent = await tauriAPI.feedback.submit(payload);
 
-    setSubmitting(true);
-    let sentSuccessfully = false;
-    try {
-      const sent = await tauriAPI.feedback.submit(payload);
-
-      if (sent) {
-        toast.success("Thanks — feedback sent");
-      } else {
-        toast.info("Failed to send, we'll try again next time you open the app.");
-      }
-      sentSuccessfully = true;
-    } finally {
-      setSubmitting(false);
+    if (sent) {
+      toast.success("Thanks — feedback sent");
+    } else {
+      toast.info("Failed to send, we'll try again next time you open the app.");
     }
 
-    if (sentSuccessfully) {
-      handleClose();
-    }
+    handleClose();
   };
 
   const handleSubmit = async () => {
     if (submitting) return;
 
-    if (isPreviewingReport) {
-      await submitPayload(previewReportText);
-      return;
-    }
-
-    if (previewReport) {
-      setSubmitting(true);
-      try {
+    setSubmitting(true);
+    try {
+      if (isPreviewingReport) {
+        await submitPayload(previewReportText);
+      } else if (previewReport) {
         const payload = await buildFeedbackPayload();
         setPreviewReportText(payload);
         setIsPreviewingReport(true);
-      } finally {
-        setSubmitting(false);
+      } else {
+        const payload = await buildFeedbackPayload();
+        await submitPayload(payload);
       }
-      return;
+    } finally {
+      setSubmitting(false);
     }
-
-    const payload = await buildFeedbackPayload();
-    await submitPayload(payload);
   };
 
   const handleDebugSentryEvent = async () => {
