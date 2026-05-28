@@ -555,6 +555,10 @@ pub fn create_evolution_backup(
     evolution_id: Option<i64>,
     changeset_id: i64,
 ) -> Result<Option<String>> {
+    if !has_head_commit(repo_path) {
+        return Ok(None);
+    }
+
     let branch_name = format!(
         "nixmac-evolve/evolution{}-changeset{}",
         evolution_id.unwrap_or(0),
@@ -982,5 +986,24 @@ deleted file mode 100644
 
         let result = create_evolution_backup(&repo_dir_str, Some(1), 0).unwrap();
         assert!(result.is_some());
+    }
+
+    #[test]
+    fn test_create_evolution_backup_skips_unborn_head_without_staging() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_dir = temp_dir.path().join("repo");
+        let repo_dir_str = repo_dir.to_string_lossy().to_string();
+        init_repo(&repo_dir_str).unwrap();
+
+        fs::write(repo_dir.join("flake.nix"), "{ }").unwrap();
+
+        let result = create_evolution_backup(&repo_dir_str, Some(1), 1).unwrap();
+        assert!(result.is_none());
+
+        let status = run_git_ok(&repo_dir, &["status", "--porcelain=v1"]);
+        assert!(
+            status.lines().any(|line| line == "?? flake.nix"),
+            "unborn-head backup skip must leave first-use files untracked; status was: {status}"
+        );
     }
 }
