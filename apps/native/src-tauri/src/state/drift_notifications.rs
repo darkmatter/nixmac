@@ -119,10 +119,7 @@ mod tests {
         }
     }
 
-    fn watcher_event(
-        git_status: Option<GitStatus>,
-        external_build_detected: bool,
-    ) -> WatcherEvent {
+    fn watcher_event(git_status: Option<GitStatus>, external_build_detected: bool) -> WatcherEvent {
         WatcherEvent {
             git_status,
             change_map: None,
@@ -146,8 +143,9 @@ mod tests {
             Some(DriftNotification {
                 id: "external-build".to_string(),
                 title: "nixmac detected drift",
-                body: "A nix build was detected outside nixmac. Open nixmac to review and continue."
-                    .to_string(),
+                body:
+                    "A nix build was detected outside nixmac. Open nixmac to review and continue."
+                        .to_string(),
             })
         );
     }
