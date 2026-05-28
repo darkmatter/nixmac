@@ -1,11 +1,11 @@
 //! Git status watcher for detecting config changes.
 //!
-//! Polls git status at a configurable interval and emits slice update events to the frontend.
+//! Polls git status at a configurable interval and emits `WatcherEvent` to the frontend.
 //! Change detection compares current git status against the persisted store cache,
 //! which is kept in sync by both this watcher and the evolution/summarize handlers.
 
-use crate::shared_types::GitState;
-use crate::state::{build_state, evolve_state};
+use crate::shared_types::WatcherEvent;
+use crate::state::{build_state, drift_notifications, evolve_state};
 use crate::storage::store;
 use crate::{db, git, summarize};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -111,28 +111,37 @@ where
                                 })
                                 .map(summarize::group_existing::from_change_sets)
                                 .unwrap_or_default();
-                            // Side-effect: refresh the evolve slice. The slice write-guard
-                            // emits `evolve_state_changed` on drop, so no manual emit needed.
-                            if let Ok(es) = evolve_state::get(&app_handle) {
-                                let _ = evolve_state::set(&app_handle, es, &status.changes);
-                            }
-                            // One emit per slice — frontend listens on its dedicated channel.
-                            // fire-and-forget: window may not be connected yet.
-                            let _ = app_handle.emit(
-                                "git_state_changed",
-                                GitState {
-                                    git_status: Some(status.clone()),
-                                    external_build_detected,
-                                },
-                            );
-                            let _ = app_handle.emit("change_map_changed", change_map);
+                            let evolve_state_updated =
+                                evolve_state::get(&app_handle).ok().and_then(|es| {
+                                    // fire-and-forget: cache update in polling loop.
+                                    evolve_state::set(&app_handle, es, &status.changes).ok()
+                                });
+                            let event = WatcherEvent {
+                                git_status: Some(status.clone()),
+                                change_map: Some(change_map),
+                                evolve_state: evolve_state_updated,
+                                error: None,
+                                external_build_detected,
+                            };
+                            // fire-and-forget: frontend event delivery; window may not be connected.
+                            let _ = app_handle.emit("git:status-changed", event.clone());
+                            drift_notifications::maybe_notify(&event);
                             // fire-and-forget: git status cache write; watcher holds the live value.
                             let _ = store::set_cached_git_status(&app_handle, &status);
                         }
                     }
                     Err(e) => {
                         // fire-and-forget: error event delivery to frontend.
-                        let _ = app_handle.emit("git_state_error", e.to_string());
+                        let _ = app_handle.emit(
+                            "git:status-changed",
+                            WatcherEvent {
+                                git_status: None,
+                                change_map: None,
+                                evolve_state: None,
+                                error: Some(e.to_string()),
+                                external_build_detected: false,
+                            },
+                        );
                     }
                 }
             }
