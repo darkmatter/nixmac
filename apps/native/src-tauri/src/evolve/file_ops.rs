@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use anyhow::Context;
 use log::debug;
 
-const PATH_SCOPE_ERROR_CODE: &str = "E_PATH_OUTSIDE_CONFIG_DIR";
+const PATH_SCOPE_ERROR_CODE: &str = "E_PATH_OUTSIDE_GIT_REPO";
 
 /// Join a relative path into `base`, rejecting absolute paths and any path
 /// that would escape `base` using `..` components.
@@ -46,7 +46,7 @@ pub(crate) fn resolve_path_in_dir_allow_create(base: &Path, rel: &str) -> anyhow
     while !existing_ancestor.exists() {
         existing_ancestor = existing_ancestor
             .parent()
-            .ok_or_else(|| anyhow::anyhow!("Path has no ancestor under config_dir"))?;
+            .ok_or_else(|| anyhow::anyhow!("Path has no ancestor under git repository"))?;
     }
 
     let ancestor_canonical = existing_ancestor
@@ -110,13 +110,13 @@ where
 
 // We need a lot of extra complexity to handle symlinks and other filesystem weirdness robustly, but the core logic is just to check that the canonicalized path starts with the canonicalized base directory. The rest is about making sure we can get to that check without false positives or false negatives, and providing good error messages when things go wrong.
 fn canonicalize_base_dir(base: &Path) -> anyhow::Result<PathBuf> {
-    let base_canonical = base
-        .canonicalize()
-        .map_err(|e| anyhow::anyhow!("Failed to resolve config_dir {}: {}", base.display(), e))?;
+    let base_canonical = base.canonicalize().map_err(|e| {
+        anyhow::anyhow!("Failed to resolve git repository {}: {}", base.display(), e)
+    })?;
 
     if !base_canonical.is_dir() {
         return Err(anyhow::anyhow!(
-            "config_dir is not a directory: {}",
+            "git repository is not a directory: {}",
             base_canonical.display()
         ));
     }
@@ -128,7 +128,7 @@ fn canonicalize_base_dir(base: &Path) -> anyhow::Result<PathBuf> {
 fn ensure_under_base(base_canonical: &Path, candidate_canonical: &Path) -> anyhow::Result<()> {
     if !candidate_canonical.starts_with(base_canonical) {
         return Err(anyhow::anyhow!(
-            "resolved path {} escapes config_dir {}",
+            "resolved path {} escapes git repository {}",
             candidate_canonical.display(),
             base_canonical.display()
         ));
@@ -157,7 +157,7 @@ fn validate_under_base(
 /// Builds a consistent out-of-scope error with enough context for self-correction.
 fn path_scope_error(input: &str, base: &Path, resolved: &Path, operation: &str) -> anyhow::Error {
     anyhow::anyhow!(
-        "{}: {} is not allowed because the resolved path is outside config_dir. input='{}' resolved='{}' config_dir='{}'. Fix: use a relative path under config_dir, or choose a symlink target that resolves inside config_dir.",
+        "{}: {} is not allowed because the resolved path is outside git repository. input='{}' resolved='{}' git repository='{}'. Fix: use a relative path under git repository, or choose a symlink target that resolves inside git repository.",
         PATH_SCOPE_ERROR_CODE,
         operation,
         input,
@@ -448,7 +448,7 @@ fn reject_gitignored_edit_path(
 
     if is_ignored {
         return Err(anyhow::anyhow!(
-            "{}: '{}' is ignored by .gitignore in config_dir; refusing to edit",
+            "{}: '{}' is ignored by .gitignore in git repository; refusing to edit",
             operation,
             rel
         ));
