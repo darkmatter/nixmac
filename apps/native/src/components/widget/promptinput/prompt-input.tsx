@@ -61,8 +61,18 @@ export function PromptInput() {
 
         if (!cancelled) {
           setProviderErrors({
-            evolve: getProviderConfigInvalidReason(evolveProvider, normalizedPrefs, cliStatus),
-            summary: getProviderConfigInvalidReason(summaryProvider, normalizedPrefs, cliStatus),
+            evolve: getProviderConfigInvalidReason(
+              evolveProvider,
+              normalizedPrefs,
+              cliStatus,
+              prefs?.evolveModel,
+            ),
+            summary: getProviderConfigInvalidReason(
+              summaryProvider,
+              normalizedPrefs,
+              cliStatus,
+              prefs?.summaryModel,
+            ),
           });
         }
       } catch {

@@ -279,6 +279,26 @@ const BUILD_OUTPUT_TAIL_LINES: usize = 80;
 
 const SYSTEM_PROMPT: &str = include_str!("../../prompts/system.md");
 
+fn configured_model(store_model: Option<String>, env_var: &str) -> Option<String> {
+    store_model
+        .and_then(global_utils::non_empty_trimmed_string)
+        .or_else(|| {
+            std::env::var(env_var)
+                .ok()
+                .and_then(global_utils::non_empty_trimmed_string)
+        })
+}
+
+fn require_local_model(
+    provider_name: &str,
+    store_model: Option<String>,
+    env_var: &str,
+) -> Result<String> {
+    configured_model(store_model, env_var).ok_or_else(|| {
+        anyhow!("No {provider_name} model configured. Please select a model in Settings or set {env_var}.")
+    })
+}
+
 /// Build a short single-line preview from the conversation messages to help with
 /// troubleshooting.
 fn build_preview(messages: &[Message]) -> String {
@@ -361,9 +381,7 @@ pub async fn generate_evolution<R: Runtime>(
 
     // Select provider implementation
     let provider: Arc<dyn AiProvider> = if provider_type == "ollama" {
-        let model = store_model
-            .or_else(|| std::env::var("EVOLVE_MODEL").ok())
-            .unwrap_or_else(|| "qwen3-coder:30b".to_string());
+        let model = require_local_model("Ollama", store_model, "EVOLVE_MODEL")?;
         let base_url = store::get_ollama_api_base_url(app)
             .ok()
             .flatten()
@@ -380,15 +398,12 @@ pub async fn generate_evolution<R: Runtime>(
             "codex" => crate::ai::providers::cli::CliTool::Codex,
             _ => crate::ai::providers::cli::CliTool::OpenCode,
         };
-        let model = store_model
-            .or_else(|| std::env::var("EVOLVE_MODEL").ok())
-            .unwrap_or_else(|| provider_type.clone());
+        let model =
+            configured_model(store_model, "EVOLVE_MODEL").unwrap_or_else(|| provider_type.clone());
         info!("Using CLI provider: {} | Model: {}", provider_type, model);
         Arc::new(CliProvider::new(tool, model))
     } else if provider_type == "vllm" {
-        let model = store_model
-            .or_else(|| std::env::var("EVOLVE_MODEL").ok())
-            .unwrap_or_else(|| "gpt-oss-120b".to_string());
+        let model = require_local_model("vLLM", store_model, "EVOLVE_MODEL")?;
         let base_url = store::get_vllm_api_base_url(app)
             .ok()
             .flatten()
@@ -403,8 +418,7 @@ pub async fn generate_evolution<R: Runtime>(
                 anyhow!("No API key found. Please add your API key in Settings to get started.")
             })?;
 
-        let model = store_model
-            .or_else(|| std::env::var("EVOLVE_MODEL").ok())
+        let model = configured_model(store_model, "EVOLVE_MODEL")
             .unwrap_or_else(|| DEFAULT_MODEL.to_string());
         // Strip OpenRouter-style "openai/" prefix for direct OpenAI usage
         let model = if base_url == store::OPENAI_BASE_URL {
