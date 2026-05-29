@@ -2,7 +2,7 @@
 
 mod age;
 mod chat_memory;
-mod config;
+pub(crate) mod config;
 mod config_dir_context;
 pub(crate) mod edit_nix_file;
 mod ensure_secret;
@@ -39,7 +39,7 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::Arc;
 use std::time::Duration;
-use tauri::{AppHandle, Runtime};
+use tauri::{AppHandle, Manager, Runtime};
 use tokio::time::sleep;
 use tools::{create_tools, execute_tool, is_editing_tool, ToolResult};
 pub use types::Evolution;
@@ -647,17 +647,18 @@ pub async fn generate_evolution<R: Runtime>(
         EvolveEvent::info(start_time, None, &format!("Target host: {}", host_attr)),
     );
 
-    // Read configurable limits from store (hot-reloaded on every run).
+    // Read configurable limits from the repo-scoped slice.
+    let limits = app
+        .try_state::<crate::state::slice::Slice<config::EvolutionLimits>>()
+        .map(|slice| slice.read_sync().clone())
+        .unwrap_or_else(|| {
+            warn!("EvolutionLimits slice is not managed; using defaults");
+            config::EvolutionLimits::default()
+        });
     let config::EvolutionLimits {
         max_iterations,
         max_build_attempts,
-    } = config::EvolutionLimits::load(app).unwrap_or_else(|e| {
-        warn!("EvolutionLimits::load failed ({e}); using defaults");
-        config::EvolutionLimits {
-            max_iterations: 25,
-            max_build_attempts: 5,
-        }
-    });
+    } = limits;
     let max_iterations_before_edit = std::cmp::max(
         1,
         (max_iterations * MAX_ITERATIONS_BEFORE_EDIT_PERCENT) / 100,
@@ -1631,7 +1632,7 @@ fn process_tool_result(
             );
             evolution.edits.push(FileEdit {
                 path: edit.path.clone(),
-                // Preserve semantic edit events in the legacy edits list.
+                // Preserve semantic edit events in the existing edit telemetry list.
                 search: String::new(),
                 replace: format!("semantic:{:?}", edit.action),
             });
