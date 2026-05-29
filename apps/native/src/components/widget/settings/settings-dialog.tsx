@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
 import { cn } from "@/lib/utils";
 import { type SettingsTab, useWidgetStore } from "@/stores/widget-store";
-import { DEFAULT_MAX_ITERATIONS } from "@/lib/constants";
 import { tauriAPI } from "@/ipc/api";
 import { useForm } from "@tanstack/react-form";
 import { Bot, FolderOpen, Key, Settings2, SlidersHorizontal, Wrench } from "lucide-react";
@@ -12,6 +11,7 @@ import { ApiKeysTab } from "@/components/widget/settings/api-keys-tab";
 import { DeveloperTab } from "@/components/widget/settings/developer-tab";
 import { GeneralTab } from "@/components/widget/settings/general-tab";
 import { PreferencesTab } from "@/components/widget/settings/preferences-tab";
+import { TuningTab } from "@/components/widget/settings/tuning-tab";
 type ApiKeyStatus = "idle" | "verifying" | "valid" | "invalid";
 
 function normalizeProvider(provider?: string | null) {
@@ -127,8 +127,6 @@ export function SettingsDialog() {
       summaryModel: "openai/gpt-4o-mini",
       evolveProvider: "openrouter",
       evolveModel: "anthropic/claude-sonnet-4",
-      maxIterations: DEFAULT_MAX_ITERATIONS,
-      maxBuildAttempts: 5,
       sendDiagnostics: false,
     },
   });
@@ -149,8 +147,6 @@ export function SettingsDialog() {
           form.setFieldValue("summaryModel", prefs.summaryModel ?? "openai/gpt-4o-mini");
           form.setFieldValue("evolveProvider", normalizeProvider(prefs.evolveProvider));
           form.setFieldValue("evolveModel", prefs.evolveModel ?? "anthropic/claude-sonnet-4");
-          form.setFieldValue("maxIterations", prefs.maxIterations ?? DEFAULT_MAX_ITERATIONS);
-          form.setFieldValue("maxBuildAttempts", prefs.maxBuildAttempts ?? 5);
           form.setFieldValue("sendDiagnostics", prefs.sendDiagnostics ?? false);
 
           setOpenrouterKeyStatus(prefs.openrouterApiKey ? "valid" : "idle");
@@ -217,6 +213,12 @@ export function SettingsDialog() {
                 icon={<SlidersHorizontal className="h-4 w-4" />}
                 label="Preferences"
                 onClick={() => setActiveTab("preferences")}
+              />
+              <NavItem
+                active={activeTab === "tuning"}
+                icon={<SlidersHorizontal className="h-4 w-4" />}
+                label="Tuning"
+                onClick={() => setActiveTab("tuning")}
               />
               {developerMode && (
                 <NavItem
@@ -292,6 +294,8 @@ export function SettingsDialog() {
 
             {activeTab === "preferences" && <PreferencesTab />}
 
+            {activeTab === "tuning" && <TuningTab />}
+
             {activeTab === "developer" && developerMode && <DeveloperTab />}
 
             {activeTab === "ai-models" && (
@@ -303,23 +307,13 @@ export function SettingsDialog() {
                         {(summaryProviderField) => (
                           <form.Field name="summaryModel">
                             {(summaryModelField) => (
-                              <form.Field name="maxIterations">
-                                {(maxIterationsField) => (
-                                  <form.Field name="maxBuildAttempts">
-                                    {(maxBuildAttemptsField) => (
-                                      <AiModelsTab
-                                        evolveModelField={evolveModelField}
-                                        evolveProviderField={evolveProviderField}
-                                        form={form}
-                                        summaryModelField={summaryModelField}
-                                        summaryProviderField={summaryProviderField}
-                                        maxIterationsField={maxIterationsField}
-                                        maxBuildAttemptsField={maxBuildAttemptsField}
-                                      />
-                                    )}
-                                  </form.Field>
-                                )}
-                              </form.Field>
+                              <AiModelsTab
+                                evolveModelField={evolveModelField}
+                                evolveProviderField={evolveProviderField}
+                                form={form}
+                                summaryModelField={summaryModelField}
+                                summaryProviderField={summaryProviderField}
+                              />
                             )}
                           </form.Field>
                         )}
