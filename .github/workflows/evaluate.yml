@@ -1,0 +1,75 @@
+name: Evaluate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  merge_group:
+  workflow_dispatch:
+
+concurrency:
+  group: evaluate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  rust-build:
+    name: Rust Build
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/native/src-tauri
+      - name: Build Rust app crate
+        working-directory: apps/native/src-tauri
+        run: cargo build --locked
+
+  typescript:
+    name: TypeScript
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Type-check native app
+        working-directory: apps/native
+        run: bunx tsc --noEmit
+
+  treefmt:
+    name: Treefmt
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31.10.6
+      - name: Check changed Nix and shell files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+
+          base="${BASE_SHA:-}"
+          if [ -z "$base" ]; then
+            base="$(git rev-parse HEAD^)"
+          fi
+
+          git diff -z --name-only --diff-filter=ACMR "$base" HEAD -- '*.nix' '*.sh' > /tmp/treefmt-files
+
+          if [ ! -s /tmp/treefmt-files ]; then
+            echo "No treefmt-covered files changed."
+            exit 0
+          fi
+
+          xargs -0 nix fmt -- --ci --formatters nixfmt --formatters shellcheck < /tmp/treefmt-files
