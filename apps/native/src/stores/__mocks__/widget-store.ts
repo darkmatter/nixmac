@@ -118,8 +118,10 @@ export function createWidgetStore(initialState?: Partial<WidgetState>) {
 export const useWidgetStore = createWidgetStore();
 
 import { computeCurrentStep } from "@/components/widget/utils";
+import { useViewModel } from "@/stores/view-model";
 import type { WidgetStep } from "@/stores/widget-store.impl";
 
 export function useCurrentStep(): WidgetStep {
-  return useWidgetStore((state) => computeCurrentStep(state));
+  const evolveState = useViewModel((state) => state.evolve);
+  return useWidgetStore((state) => computeCurrentStep({ ...state, evolveState }));
 }

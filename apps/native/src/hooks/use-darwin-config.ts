@@ -1,13 +1,15 @@
 import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
 import type { SetDirResult } from "@/ipc/types";
+import { mirrorEvolveState } from "@/viewmodel/evolve";
+import { mirrorGitState } from "@/viewmodel/git";
 
 const applyDirResult = async (result: SetDirResult) => {
   const store = useWidgetStore.getState();
   store.setConfigDir(result.dir);
   if (result.evolveState) {
-    store.setEvolveState(result.evolveState);
-    store.setGitStatus(null);
+    mirrorEvolveState(result.evolveState);
+    mirrorGitState(null);
     store.setHost("");
     try {
       await tauriAPI.config.setHostAttr("");

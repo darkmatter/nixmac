@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useHistory } from "@/hooks/use-history";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useViewModel } from "@/stores/view-model";
 import { useHistoryRestore, PREVIEW_ITEM_HASH } from "@/hooks/use-history-restore";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { HistoryDayLabel } from "@/components/widget/history/history-day-label";
@@ -11,7 +11,7 @@ import { DiscardUncommittedDialog } from "@/components/widget/history/discard-un
 
 export function HistoryStep() {
   const { loadHistory } = useHistory();
-  const history = useWidgetStore((state) => state.history);
+  const history = useViewModel((state) => state.history);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const [isFlashing, setIsFlashing] = useState(false);

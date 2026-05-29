@@ -1,16 +1,13 @@
 import { tauriAPI } from "@/ipc/api";
+import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 
 const loadHistory = async () => {
-  const store = useWidgetStore.getState();
-  store.setHistoryLoading(true);
   try {
     const items = await tauriAPI.history.get();
-    useWidgetStore.getState().setHistory(items);
+    useViewModel.setState({ history: items });
   } catch (e) {
     console.error("[useHistory] get failed:", e);
-  } finally {
-    useWidgetStore.getState().setHistoryLoading(false);
   }
 };
 
@@ -30,7 +27,7 @@ const analyzeMany = async (hashes: string[]) => {
   for (const hash of hashes) {
     const store = useWidgetStore.getState();
     if (!store.analyzingHistoryForHashes.has(hash)) break;
-    const item = store.history.find((h) => h.hash === hash);
+    const item = useViewModel.getState().history.find((h) => h.hash === hash);
     if (item?.changeMap && item.unsummarizedHashes.length === 0) {
       store.removeAnalyzingHistoryHash(hash);
       continue;

@@ -1,5 +1,6 @@
 // @ts-nocheck - Storybook 10 alpha types have inference issues (resolves to `never`)
 import preview from "#storybook/preview";
+import { useViewModel } from "@/stores/view-model";
 import { useWidgetStore } from "@/stores/widget-store";
 import type { EvolveEvent } from "@/stores/widget-store";
 import type { SemanticChangeMap, EvolveState, GitStatus, Change } from "@/ipc/types";
@@ -158,7 +159,13 @@ const mockEvolveEvents: EvolveEvent[] = [
 
 function WidgetWithState({ storeState }: { storeState: Record<string, unknown> }) {
   useEffect(() => {
-    useWidgetStore.setState(storeState);
+    const { evolveState, gitStatus, changeMap, ...widgetState } = storeState;
+    useWidgetStore.setState(widgetState);
+    useViewModel.setState({
+      evolve: (evolveState as EvolveState | undefined) ?? null,
+      git: (gitStatus as GitStatus | undefined) ?? null,
+      changeMap: (changeMap as SemanticChangeMap | undefined) ?? null,
+    });
   }, [storeState]);
 
   return <DarwinWidget />;
@@ -168,8 +175,8 @@ function AnimatedEvolveFlow() {
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
+    useViewModel.setState({ evolve: evolveStateBegin });
     useWidgetStore.setState({
-      evolveState: evolveStateBegin,
       evolvePrompt: "Add system monitoring tools like htop and btop",
     });
 
@@ -195,19 +202,21 @@ function AnimatedEvolveFlow() {
     // Phase 2: Evolution complete -> show review step with changes
     const completionTime = 800 + mockEvolveEvents[mockEvolveEvents.length - 1].timestampMs + 1500;
     const t2 = setTimeout(() => {
+      useViewModel.setState({
+        evolve: evolveStateEvolve,
+        git: mockGitStatus,
+        changeMap: mockChangeMap,
+      });
       useWidgetStore.setState({
         isGenerating: false,
-        evolveState: evolveStateEvolve,
-        gitStatus: mockGitStatus,
-        changeMap: mockChangeMap,
       });
     }, completionTime);
     timeoutsRef.current.push(t2);
 
     // Phase 3: Transition to merge step
     const t3 = setTimeout(() => {
+      useViewModel.setState({ evolve: evolveStateMerge });
       useWidgetStore.setState({
-        evolveState: evolveStateMerge,
         commitMessageSuggestion: "feat: add system monitoring tools (htop, btop, bottom, bandwhich, procs)",
       });
     }, completionTime + 5000);

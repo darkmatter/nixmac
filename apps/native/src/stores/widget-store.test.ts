@@ -1,4 +1,4 @@
-import type { EvolveEvent, GitStatus } from "@/ipc/types";
+import type { EvolveEvent } from "@/ipc/types";
 import { describe, expect, it } from "vitest";
 import {
   createWidgetStore,
@@ -91,15 +91,6 @@ describe("widget store — simple setters", () => {
     expect(store.getState().error).toBeNull();
   });
 
-  it("setGitStatus stores the provided git status", () => {
-    const store = createWidgetStore();
-    const gitStatus: GitStatus = {
-      hasChanges: true,
-      files: [],
-    } as unknown as GitStatus;
-    store.getState().setGitStatus(gitStatus);
-    expect(store.getState().gitStatus).toBe(gitStatus);
-  });
 });
 
 // ---------------------------------------------------------------------------
