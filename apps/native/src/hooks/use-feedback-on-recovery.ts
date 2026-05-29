@@ -1,4 +1,4 @@
-import { useWidgetStore } from "@/stores/widget-store";
+import { useFeedbackStore } from "@/stores/feedback-store";
 
 const RECOVERY_STORAGE_KEY = "nixmac:pending-error-report";
 
@@ -19,13 +19,19 @@ function readStoredReport(): StoredErrorReport | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as Partial<StoredErrorReport>;
-    if (typeof parsed.message !== "string" || parsed.message.length === 0) return null;
+    if (typeof parsed.message !== "string" || parsed.message.length === 0)
+      return null;
     return {
-      name: typeof parsed.name === "string" && parsed.name.length > 0 ? parsed.name : "Error",
+      name:
+        typeof parsed.name === "string" && parsed.name.length > 0
+          ? parsed.name
+          : "Error",
       message: parsed.message,
       stack: typeof parsed.stack === "string" ? parsed.stack : "",
       timestamp:
-        typeof parsed.timestamp === "string" ? parsed.timestamp : new Date().toISOString(),
+        typeof parsed.timestamp === "string"
+          ? parsed.timestamp
+          : new Date().toISOString(),
     };
   } catch {
     return null;
@@ -57,7 +63,7 @@ export function surfaceRecoveryReport(): void {
   if (!report) return;
   clearStoredReport();
 
-  const { setError, setPanicDetails } = useWidgetStore.getState();
+  const { setError, setPanicDetails } = useFeedbackStore.getState();
 
   setPanicDetails({
     message: report.message,

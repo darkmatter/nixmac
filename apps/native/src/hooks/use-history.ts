@@ -1,4 +1,5 @@
 import { tauriAPI } from "@/ipc/api";
+import { useFeedbackStore } from "@/stores/feedback-store";
 import { useWidgetStore } from "@/stores/widget-store";
 
 const loadHistory = async () => {
@@ -19,7 +20,7 @@ const analyzeOne = async (hash: string) => {
     await tauriAPI.history.generateFrom(hash, 1);
     await loadHistory();
   } catch (e) {
-    useWidgetStore.getState().setError(`Failed to analyze changes: ${e}`);
+    useFeedbackStore.getState().setError(`Failed to analyze changes: ${e}`);
   }
 };
 
@@ -40,7 +41,7 @@ const analyzeMany = async (hashes: string[]) => {
       await loadHistory();
     } catch (e) {
       useWidgetStore.setState({ analyzingHistoryForHashes: new Set() });
-      useWidgetStore.getState().setError(`Failed to analyze changes: ${e}`);
+      useFeedbackStore.getState().setError(`Failed to analyze changes: ${e}`);
       return;
     } finally {
       useWidgetStore.getState().removeAnalyzingHistoryHash(hash);
@@ -51,7 +52,9 @@ const analyzeMany = async (hashes: string[]) => {
 const stopAnalyzing = () => {
   const current = useWidgetStore.getState().analyzingHistoryForHashes;
   const [first] = current;
-  useWidgetStore.setState({ analyzingHistoryForHashes: new Set(first ? [first] : []) });
+  useWidgetStore.setState({
+    analyzingHistoryForHashes: new Set(first ? [first] : []),
+  });
 };
 
 export function useHistory() {

@@ -1,7 +1,7 @@
 import { X } from "lucide-react";
 import { Component, type ErrorInfo, lazy, type ReactNode, Suspense } from "react";
 import { Button } from "@/components/ui/button";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiStore } from "@/stores/ui-store";
 
 class EditorErrorBoundary extends Component<
   { children: ReactNode; onError: () => void },
@@ -29,11 +29,11 @@ const LazyNixEditor = lazy(async () => {
 });
 
 export function EditorPanel({ disableEditorRuntime = false }: { disableEditorRuntime?: boolean }) {
-  const editingFile = useWidgetStore((s) => s.editingFile);
+  const editingFile = useUiStore((s) => s.editingFile);
 
   if (!editingFile) return null;
 
-  const close = () => useWidgetStore.setState({ editingFile: null });
+  const close = () => useUiStore.setState({ editingFile: null });
 
   const filename = editingFile.split("/").pop() ?? editingFile;
 

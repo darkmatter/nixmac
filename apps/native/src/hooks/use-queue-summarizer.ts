@@ -1,4 +1,5 @@
 import { useHistory } from "@/hooks/use-history";
+import { useUiStore } from "@/stores/ui-store";
 import { useWidgetStore } from "@/stores/widget-store";
 import { ipcRenderer } from "@/ipc/api";
 import type { SummarizerUpdateEvent } from "@/ipc/types";
@@ -23,7 +24,7 @@ export function useQueueSummarizer() {
         const store = useWidgetStore.getState();
         const map = event.payload.semanticMap;
         store.setChangeMap(map);
-        if (store.showHistory) {
+        if (useUiStore.getState().showHistory) {
           loadHistory();
         }
       },

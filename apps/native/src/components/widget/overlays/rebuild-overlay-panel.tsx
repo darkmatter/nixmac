@@ -2,8 +2,9 @@ import { Button } from "@/components/ui/button";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useRollback } from "@/hooks/use-rollback";
 import { cn } from "@/lib/utils";
+import { useUiStore } from "@/stores/ui-store";
 import { useWidgetStore } from "@/stores/widget-store";
-import type { RebuildErrorType, RebuildLine } from "@/types/ui";
+import type { RebuildErrorType, RebuildLine } from "@/stores/slices/rebuild";
 import {
   AlertTriangle,
   Brain,
@@ -349,7 +350,7 @@ export function RebuildOverlayPanel() {
   const isRollback = context === "rollback";
 
   const handleRetry = async () => {
-    useWidgetStore.getState().setProcessing(true, "cancel");
+    useUiStore.getState().setProcessing(true, "cancel");
     await triggerRebuild({ context: "rollback" });
   };
 

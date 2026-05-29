@@ -3,8 +3,9 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDarwinConfig } from "@/hooks/use-darwin-config";
-import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
+import { useFeedbackStore } from "@/stores/feedback-store";
+import { useWidgetStore } from "@/stores/widget-store";
 import { AlertCircle, GitCommit, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -27,16 +28,24 @@ export function BootstrapConfig({ label, onSuccess }: BootstrapConfigProps) {
       setFlakeExists(false);
       return;
     }
-    tauriAPI.flake.existsAt(configDir).then(setFlakeExists).catch(() => setFlakeExists(false));
+    tauriAPI.flake
+      .existsAt(configDir)
+      .then(setFlakeExists)
+      .catch(() => setFlakeExists(false));
   }, [configDir]);
 
-  const needsInitialCommit = flakeExists && (gitStatus === null || gitStatus.headCommitHash === "");
+  const needsInitialCommit =
+    flakeExists && (gitStatus === null || gitStatus.headCommitHash === "");
 
   const message = needsInitialCommit
     ? "flake.nix found but not committed — Nix needs a git commit to evaluate your flake"
     : "No nix-darwin configuration found in this directory";
-  const buttonLabel = needsInitialCommit ? "Make initial commit" : "Create Default Configuration";
-  const loadingLabel = needsInitialCommit ? "Committing..." : "Creating Configuration...";
+  const buttonLabel = needsInitialCommit
+    ? "Make initial commit"
+    : "Create Default Configuration";
+  const loadingLabel = needsInitialCommit
+    ? "Committing..."
+    : "Creating Configuration...";
   const helpText = needsInitialCommit
     ? "Stages all files and creates the first commit"
     : "This will create a basic nix-darwin flake in the directory";
@@ -44,7 +53,7 @@ export function BootstrapConfig({ label, onSuccess }: BootstrapConfigProps) {
   const handleBootstrap = async (): Promise<void> => {
     setLocalError(null);
     await bootstrap(needsInitialCommit ? "" : hostname);
-    const storeError = useWidgetStore.getState().error;
+    const storeError = useFeedbackStore.getState().error;
     if (storeError) {
       setLocalError(storeError);
     } else {
@@ -86,7 +95,9 @@ export function BootstrapConfig({ label, onSuccess }: BootstrapConfigProps) {
             onClick={handleBootstrap}
             className="w-full"
             data-testid="create-default-config-button"
-            disabled={(!needsInitialCommit && !hostname.trim()) || isBootstrapping}
+            disabled={
+              (!needsInitialCommit && !hostname.trim()) || isBootstrapping
+            }
           >
             {isBootstrapping ? (
               <>

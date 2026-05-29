@@ -5,6 +5,8 @@
 
 import { refreshGitStatus } from "@/hooks/use-git-operations";
 import { loadEvolveState } from "@/hooks/use-widget-initialization";
+import { useFeedbackStore } from "@/stores/feedback-store";
+import { useUiStore } from "@/stores/ui-store";
 import { useWidgetStore } from "@/stores/widget-store";
 
 interface WidgetTestHelpers {
@@ -45,28 +47,28 @@ export function setupWidgetTestHelpers() {
 
   const helpers: WidgetTestHelpers = {
     setEvolvePrompt: (value: string) => {
-      useWidgetStore.getState().setEvolvePrompt(value);
+      useUiStore.getState().setEvolvePrompt(value);
     },
     isEvolveProcessing: () => {
-      const state = useWidgetStore.getState();
+      const state = useUiStore.getState();
       return state.isProcessing && state.processingAction === "evolve";
     },
     getPromptHistory: () => {
-      return [...(useWidgetStore.getState().promptHistory ?? [])];
+      return [...(useUiStore.getState().promptHistory ?? [])];
     },
     getChangeMap: () => {
       return JSON.stringify(useWidgetStore.getState().changeMap);
     },
     resetForTest: () => {
       const state = useWidgetStore.getState();
-      state.setEvolvePrompt("");
-      state.setPromptHistory([]);
+      useUiStore.getState().setEvolvePrompt("");
+      useUiStore.getState().setPromptHistory([]);
       state.clearLogs();
       state.clearEvolveEvents();
       state.setConversationalResponse(null);
       state.setCommitMessageSuggestion(null);
       state.setChangeMap(null);
-      state.setError(null);
+      useFeedbackStore.getState().setError(null);
       state.clearRebuild();
     },
     refreshGitStatus: async () => {

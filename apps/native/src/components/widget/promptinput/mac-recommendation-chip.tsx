@@ -2,11 +2,11 @@
 
 import { BadgeButton } from "@/components/ui/badge-button";
 import { useRecommendedPrompt } from "@/hooks/use-recommended-prompt";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useUiStore } from "@/stores/ui-store";
 
 export function MacRecommendationChip() {
   const { recommendation } = useRecommendedPrompt();
-  const setEvolvePrompt = useWidgetStore((s) => s.setEvolvePrompt);
+  const setEvolvePrompt = useUiStore((s) => s.setEvolvePrompt);
 
   if (!recommendation) return null;
 

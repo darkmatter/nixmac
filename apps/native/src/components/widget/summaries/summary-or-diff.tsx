@@ -9,9 +9,10 @@ import { DiffSection } from "@/components/widget/summaries/diff-section";
 import { SummaryItems } from "@/components/widget/summaries/summary-items";
 import { prefetchFileDiffContents } from "@/hooks/use-git-operations";
 import { useSummary } from "@/hooks/use-summary";
-import { cn } from "@/lib/utils";
-import { useWidgetStore } from "@/stores/widget-store";
 import type { Change } from "@/ipc/types";
+import { cn } from "@/lib/utils";
+import { usePrefStore } from "@/stores/pref-store";
+import { useWidgetStore } from "@/stores/widget-store";
 import { Dna, Wrench } from "lucide-react";
 import { Activity, useEffect, useMemo, useState } from "react";
 import { enrichChanges } from "../utils";
@@ -24,9 +25,11 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
   const gitStatus = useWidgetStore((s) => s.gitStatus);
   const changeMap = useWidgetStore((s) => s.changeMap);
   const evolveState = useWidgetStore((s) => s.evolveState);
-  const defaultToDiffTab = useWidgetStore((s) => s.defaultToDiffTab);
+  const defaultToDiffTab = usePrefStore((s) => s.defaultToDiffTab);
   const { summarizeOnFocus } = useSummary();
-  const [activeTab, setActiveTab] = useState(defaultToDiffTab ? "diff" : "summary");
+  const [activeTab, setActiveTab] = useState(
+    defaultToDiffTab ? "diff" : "summary",
+  );
   const [openFiles, setOpenFiles] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -36,7 +39,10 @@ export function SummaryOrDiff({ variant = "default" }: SummaryOrDiffProps) {
 
   const fileDiffKey = useMemo(
     () =>
-      gitStatus?.changes.map((c) => `${c.filename}:${c.hash}`).sort().join("\n") ?? "",
+      gitStatus?.changes
+        .map((c) => `${c.filename}:${c.hash}`)
+        .sort()
+        .join("\n") ?? "",
     [gitStatus],
   );
 

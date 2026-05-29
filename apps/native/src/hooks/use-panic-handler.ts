@@ -1,15 +1,15 @@
 /**
  * Hook to listen for Rust panic events and automatically show the feedback dialog
  */
-import { useEffect } from "react";
-import { listen } from "@tauri-apps/api/event";
-import { toast } from "sonner";
-import { useWidgetStore } from "@/stores/widget-store";
 import type { RustPanicEvent } from "@/ipc/types";
+import { useFeedbackStore } from "@/stores/feedback-store";
 import { FeedbackType } from "@/types/feedback";
+import { listen } from "@tauri-apps/api/event";
+import { useEffect } from "react";
+import { toast } from "sonner";
 
 export function usePanicHandler() {
-  const { setError, openFeedback, setPanicDetails } = useWidgetStore();
+  const { setError, openFeedback, setPanicDetails } = useFeedbackStore();
 
   useEffect(() => {
     const unlisten = listen<RustPanicEvent>("rust:panic", (event) => {
@@ -41,7 +41,8 @@ export function usePanicHandler() {
       // Necessary because the dialog will probably obscure the error message
       // in the main window, and we want to make sure users understand what's happening.
       toast.error("Application Crash Detected", {
-        description: "The application encountered an unexpected error. Please report this issue.",
+        description:
+          "The application encountered an unexpected error. Please report this issue.",
         duration: 10000,
       });
 
@@ -49,7 +50,8 @@ export function usePanicHandler() {
       // This gives the user an immediate way to report the crash
       openFeedback(FeedbackType.Error, errorMessage);
     }).catch((error) => {
-      if (import.meta.env.PROD) console.error("Panic listener unavailable:", error);
+      if (import.meta.env.PROD)
+        console.error("Panic listener unavailable:", error);
       return () => {};
     });
 

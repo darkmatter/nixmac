@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useGitOperations } from "@/hooks/use-git-operations";
 import { useSummary } from "@/hooks/use-summary";
+import { useUiStore } from "@/stores/ui-store";
 import { useWidgetStore } from "@/stores/widget-store";
 import { GitMerge, Loader2 } from "lucide-react";
 import { useEffect } from "react";
 
 export function MergeSection() {
-  const isProcessing = useWidgetStore((s) => s.isProcessing);
-  const processingAction = useWidgetStore((s) => s.processingAction);
+  const isProcessing = useUiStore((s) => s.isProcessing);
+  const processingAction = useUiStore((s) => s.processingAction);
   const commitMessageSuggestion = useWidgetStore((s) => s.commitMessageSuggestion);
   const changeMap = useWidgetStore((s) => s.changeMap);
 
@@ -25,7 +26,7 @@ export function MergeSection() {
     e.preventDefault();
     const msg = new FormData(e.currentTarget).get("commitMsg")?.toString() ?? "";
     await handleCommit({ message: msg });
-    useWidgetStore.getState().setEvolvePrompt("");
+    useUiStore.getState().setEvolvePrompt("");
   }
 
   return (

@@ -2,7 +2,9 @@
 
 import { Button } from "@/components/ui/button";
 import { EVOLUTION_CANCELLED_MSG } from "@/lib/constants";
-import { useCurrentStep, useWidgetStore } from "@/stores/widget-store";
+import { useFeedbackStore } from "@/stores/feedback-store";
+import { useUiStore } from "@/stores/ui-store";
+import { useCurrentStep } from "@/stores/widget-store";
 import { FeedbackType } from "@/types/feedback";
 import { Settings } from "lucide-react";
 import { useEffect, useRef } from "react";
@@ -12,10 +14,10 @@ import { useEffect, useRef } from "react";
  * Filters out certain errors based on context (e.g., expected errors during setup).
  */
 export function ErrorMessage() {
-  const error = useWidgetStore((s) => s.error);
-  const setError = useWidgetStore((s) => s.setError);
-  const openFeedback = useWidgetStore((s) => s.openFeedback);
-  const setSettingsOpen = useWidgetStore((s) => s.setSettingsOpen);
+  const error = useFeedbackStore((s) => s.error);
+  const setError = useFeedbackStore((s) => s.setError);
+  const openFeedback = useFeedbackStore((s) => s.openFeedback);
+  const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
   const step = useCurrentStep();
   const dismissedRef = useRef<string | null>(null);
 
@@ -32,7 +34,8 @@ export function ErrorMessage() {
   const isSuppressedError =
     isDismissed ||
     step === "setup" ||
-    ((step === "evolve" || step === "begin") && error?.includes(EVOLUTION_CANCELLED_MSG));
+    ((step === "evolve" || step === "begin") &&
+      error?.includes(EVOLUTION_CANCELLED_MSG));
 
   if (!error || isSuppressedError) {
     return null;

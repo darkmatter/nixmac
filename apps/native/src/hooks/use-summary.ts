@@ -1,5 +1,6 @@
-import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
+import { usePrefStore } from "@/stores/pref-store";
+import { useWidgetStore } from "@/stores/widget-store";
 
 /**
  * Hook for fetching and managing the AI-generated summary of changes.
@@ -39,11 +40,16 @@ const generateCurrentSummary = async () => {
 };
 
 const summarizeOnFocus = () => {
-  if (useWidgetStore.getState().autoSummarizeOnFocus) {
+  if (usePrefStore.getState().autoSummarizeOnFocus) {
     generateCurrentSummary();
   }
 };
 
 export function useSummary() {
-  return { findChangeMap, generateCommitMessage, generateCurrentSummary, summarizeOnFocus };
+  return {
+    findChangeMap,
+    generateCommitMessage,
+    generateCurrentSummary,
+    summarizeOnFocus,
+  };
 }

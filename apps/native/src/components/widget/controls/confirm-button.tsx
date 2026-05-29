@@ -4,8 +4,7 @@ import { Button } from "@/components/ui/button";
 import { CheckConfirmationOff } from "@/components/widget/controls/check-confirmation-off";
 import { ConfirmationDialog } from "@/components/widget/controls/confirmation-dialog";
 import { usePrefs } from "@/hooks/use-prefs";
-import { useWidgetStore } from "@/stores/widget-store";
-import type { ConfirmPrefKey } from "@/types/ui";
+import { usePrefStore, type ConfirmPrefKey } from "@/stores/pref-store";
 import type { ComponentProps } from "react";
 import { useState } from "react";
 
@@ -24,7 +23,7 @@ export function ConfirmButton({
   children,
   ...buttonProps
 }: ConfirmButtonProps) {
-  const confirm = useWidgetStore((s) => s[confirmPrefKey]);
+  const confirm = usePrefStore((s) => s[confirmPrefKey]);
   const { setPref } = usePrefs();
 
   const [open, setOpen] = useState(false);

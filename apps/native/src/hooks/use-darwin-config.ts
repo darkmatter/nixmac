@@ -1,6 +1,7 @@
-import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
 import type { SetDirResult } from "@/ipc/types";
+import { useFeedbackStore } from "@/stores/feedback-store";
+import { useWidgetStore } from "@/stores/widget-store";
 
 const applyDirResult = async (result: SetDirResult) => {
   const store = useWidgetStore.getState();
@@ -43,14 +44,14 @@ const saveHost = async (host: string) => {
     store.setHost(host);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    store.setError(`Failed to save host: ${message}`);
+    useFeedbackStore.getState().setError(`Failed to save host: ${message}`);
   }
 };
 
 const bootstrap = async (hostname: string) => {
   const commitExisting = !hostname.trim();
   const store = useWidgetStore.getState();
-  store.setError(null);
+  useFeedbackStore.getState().setError(null);
   store.setBootstrapping(true);
 
   try {
@@ -73,7 +74,9 @@ const bootstrap = async (hostname: string) => {
     }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    store.setError(`Failed to create configuration: ${message}`);
+    useFeedbackStore
+      .getState()
+      .setError(`Failed to create configuration: ${message}`);
   } finally {
     store.setBootstrapping(false);
   }
@@ -82,5 +85,12 @@ const bootstrap = async (hostname: string) => {
 export function useDarwinConfig() {
   const isBootstrapping = useWidgetStore((state) => state.isBootstrapping);
 
-  return { setDir, prepareNewDir, pickDir, saveHost, bootstrap, isBootstrapping };
+  return {
+    setDir,
+    prepareNewDir,
+    pickDir,
+    saveHost,
+    bootstrap,
+    isBootstrapping,
+  };
 }

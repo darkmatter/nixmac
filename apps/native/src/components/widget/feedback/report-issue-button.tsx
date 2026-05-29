@@ -1,11 +1,11 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useWidgetStore } from "@/stores/widget-store";
+import { useFeedbackStore } from "@/stores/feedback-store";
 import { FeedbackType } from "@/types/feedback";
 
 export function ReportIssueButton() {
-  const openFeedback = useWidgetStore((s) => s.openFeedback);
+  const openFeedback = useFeedbackStore((s) => s.openFeedback);
 
   return (
     <div className="mt-auto flex justify-center py-2">

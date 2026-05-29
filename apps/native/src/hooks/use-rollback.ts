@@ -1,7 +1,9 @@
-import { useWidgetStore } from "@/stores/widget-store";
-import { tauriAPI } from "@/ipc/api";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
 import { useSummary } from "@/hooks/use-summary";
+import { tauriAPI } from "@/ipc/api";
+import { useFeedbackStore } from "@/stores/feedback-store";
+import { useUiStore } from "@/stores/ui-store";
+import { useWidgetStore } from "@/stores/widget-store";
 
 /**
  * Hook for discarding changes and restoring the working tree to its pre-evolution state.
@@ -14,14 +16,14 @@ export function useRollback() {
     const store = useWidgetStore.getState();
     const wasCommittable = store.evolveState?.committable === true;
 
-    store.setProcessing(true, "cancel");
+    useUiStore.getState().setProcessing(true, "cancel");
     store.appendLog("\n> Discarding changes...\n");
 
     try {
       const result = await tauriAPI.darwin.rollbackErase();
       store.setGitStatus(result.gitStatus);
       store.setEvolveState(result.evolveState);
-      store.setEvolvePrompt("");
+      useUiStore.getState().setEvolvePrompt("");
       store.appendLog("✓ Changes discarded\n");
 
       if (result.rollbackStorePath && wasCommittable) {
@@ -43,12 +45,12 @@ export function useRollback() {
         });
       }
       await findChangeMap();
-      useWidgetStore.getState().setProcessing(false);
+      useUiStore.getState().setProcessing(false);
     } catch (e: unknown) {
       const msg = (e as Error)?.message || String(e);
-      useWidgetStore.getState().setError(msg);
+      useFeedbackStore.getState().setError(msg);
       useWidgetStore.getState().appendLog(`✗ Error: ${msg}\n`);
-      useWidgetStore.getState().setProcessing(false);
+      useUiStore.getState().setProcessing(false);
     }
   };
 

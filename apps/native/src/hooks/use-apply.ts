@@ -1,3 +1,4 @@
+import { useUiStore } from "@/stores/ui-store";
 import { useWidgetStore } from "@/stores/widget-store";
 import { tauriAPI } from "@/ipc/api";
 import { useRebuildStream } from "@/hooks/use-rebuild-stream";
@@ -11,8 +12,7 @@ export function useApply() {
   const { triggerRebuild } = useRebuildStream();
 
   const handleApply = async () => {
-    const store = useWidgetStore.getState();
-    store.setProcessing(true, "apply");
+    useUiStore.getState().setProcessing(true, "apply");
 
     await triggerRebuild({
       context: "apply",
@@ -34,8 +34,7 @@ export function useApply() {
   };
 
   const handleHistoryBuild = async () => {
-    const store = useWidgetStore.getState();
-    store.setProcessing(true, "apply");
+    useUiStore.getState().setProcessing(true, "apply");
     await triggerRebuild({
       context: "apply",
       onSuccess: async () => {

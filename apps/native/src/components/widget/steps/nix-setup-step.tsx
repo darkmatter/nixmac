@@ -3,24 +3,45 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useNixInstall } from "@/hooks/use-nix-install";
+import { useFeedbackStore } from "@/stores/feedback-store";
+import { useUiStore } from "@/stores/ui-store";
 import { useWidgetStore } from "@/stores/widget-store";
-import { CheckCircle2, Download, ExternalLink, Loader2, Package } from "lucide-react";
+import {
+  CheckCircle2,
+  Download,
+  ExternalLink,
+  Loader2,
+  Package,
+} from "lucide-react";
 import { useEffect } from "react";
 
-type NixSetupState = "idle" | "downloading" | "waiting-for-installer" | "prefetching" | "success" | "error";
+type NixSetupState =
+  | "idle"
+  | "downloading"
+  | "waiting-for-installer"
+  | "prefetching"
+  | "success"
+  | "error";
 
 function getNixSetupState(store: {
   nixInstalled: boolean | null;
   nixInstalling: boolean;
-  nixInstallPhase: "downloading" | "waiting-for-installer" | "prefetching" | null;
+  nixInstallPhase:
+    | "downloading"
+    | "waiting-for-installer"
+    | "prefetching"
+    | null;
   darwinRebuildAvailable: boolean | null;
   error: string | null;
 }): NixSetupState {
-  if (store.nixInstalled === true && store.darwinRebuildAvailable === true) return "success";
+  if (store.nixInstalled === true && store.darwinRebuildAvailable === true)
+    return "success";
   if (store.error) return "error";
   if (store.nixInstallPhase === "downloading") return "downloading";
-  if (store.nixInstallPhase === "waiting-for-installer") return "waiting-for-installer";
-  if (store.nixInstallPhase === "prefetching" || store.nixInstalling) return "prefetching";
+  if (store.nixInstallPhase === "waiting-for-installer")
+    return "waiting-for-installer";
+  if (store.nixInstallPhase === "prefetching" || store.nixInstalling)
+    return "prefetching";
   return "idle";
 }
 
@@ -35,11 +56,19 @@ export function NixSetupStep() {
   const nixInstalling = useWidgetStore((s) => s.nixInstalling);
   const nixInstallPhase = useWidgetStore((s) => s.nixInstallPhase);
   const nixDownloadProgress = useWidgetStore((s) => s.nixDownloadProgress);
-  const darwinRebuildAvailable = useWidgetStore((s) => s.darwinRebuildAvailable);
-  const error = useWidgetStore((s) => s.error);
+  const darwinRebuildAvailable = useWidgetStore(
+    (s) => s.darwinRebuildAvailable,
+  );
+  const error = useFeedbackStore((s) => s.error);
   const { checkNix, installNix } = useNixInstall();
 
-  const state = getNixSetupState({ nixInstalled, nixInstalling, nixInstallPhase, darwinRebuildAvailable, error });
+  const state = getNixSetupState({
+    nixInstalled,
+    nixInstalling,
+    nixInstallPhase,
+    darwinRebuildAvailable,
+    error,
+  });
 
   useEffect(() => {
     if (nixInstalled === null && !nixInstalling) {
@@ -50,24 +79,34 @@ export function NixSetupStep() {
   // Auto-trigger install flow when nix is installed but darwin-rebuild is not.
   // The backend handles running the prefetch directly (no Terminal).
   useEffect(() => {
-    if (nixInstalled === true && darwinRebuildAvailable === false && !nixInstalling && !error) {
+    if (
+      nixInstalled === true &&
+      darwinRebuildAvailable === false &&
+      !nixInstalling &&
+      !error
+    ) {
       installNix();
     }
   }, [nixInstalled, darwinRebuildAvailable, nixInstalling, error, installNix]);
 
   // Open settings dialog during install so users can configure API keys while waiting.
-  const isInstalling = state === "downloading" || state === "waiting-for-installer" || state === "prefetching";
+  const isInstalling =
+    state === "downloading" ||
+    state === "waiting-for-installer" ||
+    state === "prefetching";
   useEffect(() => {
     if (!isInstalling) return;
     const timer = setTimeout(() => {
-      useWidgetStore.getState().setSettingsOpen(true);
+      useUiStore.getState().setSettingsOpen(true);
     }, 5000);
     return () => clearTimeout(timer);
   }, [isInstalling]);
 
   const downloadPercent =
     nixDownloadProgress && nixDownloadProgress.total > 0
-      ? Math.round((nixDownloadProgress.downloaded / nixDownloadProgress.total) * 100)
+      ? Math.round(
+          (nixDownloadProgress.downloaded / nixDownloadProgress.total) * 100,
+        )
       : 0;
 
   return (
@@ -77,9 +116,13 @@ export function NixSetupStep() {
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Package className="h-6 w-6 text-primary" />
           </div>
-          <h2 className="font-semibold text-foreground text-lg">System Setup</h2>
+          <h2 className="font-semibold text-foreground text-lg">
+            System Setup
+          </h2>
           <p className="mt-1 text-muted-foreground text-sm">
-            nixmac needs to install a few things to get started. While you wait, feel free to set up your AI provider and preferences using the gear icon above.
+            nixmac needs to install a few things to get started. While you wait,
+            feel free to set up your AI provider and preferences using the gear
+            icon above.
           </p>
         </div>
 
@@ -122,7 +165,8 @@ export function NixSetupStep() {
                     />
                   </div>
                   <p className="text-right text-muted-foreground text-xs">
-                    {formatBytes(nixDownloadProgress.downloaded)} / {formatBytes(nixDownloadProgress.total)}
+                    {formatBytes(nixDownloadProgress.downloaded)} /{" "}
+                    {formatBytes(nixDownloadProgress.total)}
                   </p>
                 </div>
               )}
@@ -136,7 +180,8 @@ export function NixSetupStep() {
                 Waiting for installation to complete...
               </div>
               <p className="text-center text-muted-foreground text-xs">
-                Follow the instructions in the Installer window. This page will update automatically.
+                Follow the instructions in the Installer window. This page will
+                update automatically.
               </p>
             </div>
           )}
@@ -164,7 +209,11 @@ export function NixSetupStep() {
             <div className="space-y-4">
               <p className="text-destructive text-sm">{error}</p>
               <div className="flex gap-2">
-                <Button onClick={installNix} variant="default" className="flex-1">
+                <Button
+                  onClick={installNix}
+                  variant="default"
+                  className="flex-1"
+                >
                   Try Again
                 </Button>
                 <Button onClick={checkNix} variant="outline" className="flex-1">
