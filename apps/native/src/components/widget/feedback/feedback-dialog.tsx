@@ -290,7 +290,6 @@ export function FeedbackDialog() {
   const [promptHistory, setPromptHistory] = useState<string[]>([]);
   const [relatedPrompt, setRelatedPrompt] = useState("");
   const [shareOptions, setShareOptions] = useState<ShareOptions>(DEFAULT_SHARE_OPTIONS);
-  const [previewReport, setPreviewReport] = useState(true);
   const [isPreviewingReport, setIsPreviewingReport] = useState(false);
   const [previewReportText, setPreviewReportText] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -353,7 +352,6 @@ export function FeedbackDialog() {
     setEmail("");
     setRelatedPrompt("");
     setShareOptions(DEFAULT_SHARE_OPTIONS);
-    setPreviewReport(true);
     setIsPreviewingReport(false);
     setPreviewReportText("");
     setFeedbackTypeOverride(null);
@@ -423,14 +421,23 @@ export function FeedbackDialog() {
     try {
       if (isPreviewingReport) {
         await submitPayload(previewReportText);
-      } else if (previewReport) {
-        const payload = await buildFeedbackPayload();
-        setPreviewReportText(payload);
-        setIsPreviewingReport(true);
       } else {
         const payload = await buildFeedbackPayload();
         await submitPayload(payload);
       }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handlePreview = async () => {
+    if (submitting || isPreviewingReport) return;
+
+    setSubmitting(true);
+    try {
+      const payload = await buildFeedbackPayload();
+      setPreviewReportText(payload);
+      setIsPreviewingReport(true);
     } finally {
       setSubmitting(false);
     }
@@ -974,31 +981,23 @@ export function FeedbackDialog() {
           )}
         </div>
 
-        {!isPreviewingReport && (
-          <div className="pt-2 border-t border-border/40">
-            <div className="flex items-center justify-center gap-2">
-              <Checkbox
-                id="preview-report"
-                checked={previewReport}
-                onCheckedChange={(checked: boolean | "indeterminate") =>
-                  setPreviewReport(checked === true)
-                }
-              />
-              <Label
-                htmlFor="preview-report"
-                className="cursor-pointer font-medium text-sm text-foreground"
-              >
-                Preview report before sending
-              </Label>
-            </div>
-          </div>
-        )}
-
         <DialogFooter>
           {!isPreviewingReport && showSentryDebugButton && (
-            <Button variant="secondary" onClick={handleDebugSentryEvent} disabled={submitting}>
-              Send Sentry Debug Event
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={handleDebugSentryEvent}
+                  disabled={submitting}
+                  aria-label="Send Sentry debug event"
+                >
+                  <Bug className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Send Sentry Debug Event</TooltipContent>
+            </Tooltip>
           )}
           {isPreviewingReport ? (
             <>
@@ -1017,6 +1016,9 @@ export function FeedbackDialog() {
             <>
               <Button variant="outline" onClick={handleClose} disabled={submitting}>
                 Cancel
+              </Button>
+              <Button variant="outline" onClick={handlePreview} disabled={submitting}>
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Preview"}
               </Button>
               <Button onClick={handleSubmit} disabled={submitting} aria-label="Send feedback">
                 {submitting ? (
